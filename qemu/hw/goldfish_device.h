@@ -51,6 +51,7 @@ DeviceState *goldfish_fb_create(GoldfishBus *gbus, int id);
 DeviceState *goldfish_memlog_create(GoldfishBus *gbus, uint32_t base);
 DeviceState *goldfish_battery_create(GoldfishBus *gbus);
 DeviceState *goldfish_switch_create(GoldfishBus *gbus, const char *name_dev, uint32_t (*writefn)(void *opaque, uint32_t state), void *writeopaque, int id);
+DeviceState *goldfish_events_create(GoldfishBus *gbus, DeviceState *goldfish_int_dev);
 
 /* Global functions provided by Goldfish devices */
 void goldfish_bus_register_withprop(GoldfishDeviceInfo *info);

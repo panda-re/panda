@@ -88,6 +88,7 @@ static int goldfish_device_add(GoldfishDevice *dev,
     // TODO: make sure that is the correct endian format
     iomemtype = cpu_register_io_memory(mem_read, mem_write, opaque, DEVICE_NATIVE_ENDIAN);
     cpu_register_physical_memory(dev->base, dev->size, iomemtype);
+    printf("%s: %x\t %x\n", dev->name, dev->base, iomemtype);
     return 0;
 }
 

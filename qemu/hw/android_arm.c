@@ -97,6 +97,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_memlog_create(gbus, 0xff006000);
     goldfish_battery_create(gbus);
     goldfish_nand_create(gbus);
+    goldfish_events_create(gbus, fg_int);
 
 #if TEST_SWITCH
     {
