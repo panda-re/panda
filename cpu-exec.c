@@ -47,8 +47,10 @@ bool qemu_cpu_has_work(CPUState *env)
 void cpu_loop_exit(CPUState *env)
 {
     if (rr_debug_whisper()) {
-        fprintf (logfile, "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit.\n", 
-                 (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+      qemu_log_mask(CPU_LOG_RR, 
+		    "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit.\n", 
+		    (unsigned long long)rr_prog_point.guest_instr_count,
+		    rr_prog_point.eip, rr_prog_point.ecx)
     }
     env->current_tb = NULL;
     longjmp(env->jmp_env, 1);
@@ -64,9 +66,8 @@ void cpu_resume_from_signal(CPUState *env, void *puc)
 
     env->exception_index = -1;
 
-    if (loglevel & CPU_LOG_RR) {
-        fprintf (logfile, "calling longjmp in cpu_resume_from_signal\n");
-    }
+    qemu_log_mask(CPU_LOG_RR, "calling longjmp in cpu_resume_from_signal\n");
+
     //mz Record & Replay NOTE:
     //mz we're not in the middle of recording any more...
     //mz 08.2010 I don't think this ever gets called.
@@ -171,9 +172,7 @@ static inline TranslationBlock *tb_find_fast(CPUState *env)
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (rr_flush_tb()) {
-      if (loglevel & CPU_LOG_RR) {	
-	fprintf (logfile, "flushing tb\n");
-      }
+      qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
       tb_flush(env);
       tb_invalidated_flag = 1;
       rr_flush_tb_off();  // just the first time, eh?
@@ -269,11 +268,9 @@ int cpu_exec(CPUState *env)
         sigprocmask(SIG_SETMASK, &oldset, NULL);
     }
 
-    if (loglevel & CPU_LOG_RR) {	
-      fprintf (logfile, "head of cpu_exec: env1->hflags = %x\n", env1->hflags);
-      fprintf (logfile, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
-	       env1->hflags & HF_HALTED_MASK);
-    }
+    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env1->hflags);
+    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
+		  env1->hflags & HF_HALTED_MASK);
 
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -651,11 +648,9 @@ int cpu_exec(CPUState *env)
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
                 spin_lock(&tb_lock);
 
-                if (loglevel & CPU_LOG_TB_IN_ASM) {
-                    fprintf(logfile, "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
-                            (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
-                }
-
+		qemu_log_mask(CPU_LOG_TB_IN_ASM, 
+			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
+			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
 
                 tb = tb_find_fast(env);
 
