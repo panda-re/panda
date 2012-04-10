@@ -22,6 +22,19 @@
 #include "tcg.h"
 #include "qemu-barrier.h"
 
+
+// TRL 0810 record replay stuff 
+#include "rr_log.h"
+#include <signal.h>
+
+//mz need this here because CPU_LOG_RR constant is not available in rr_log.[ch]
+int is_cpu_log_rr_set() {
+    return (loglevel & CPU_LOG_RR);
+}
+
+extern FILE *stderr;
+
+
 int tb_invalidated_flag;
 
 //#define CONFIG_DEBUG_EXEC
@@ -33,6 +46,10 @@ bool qemu_cpu_has_work(CPUState *env)
 
 void cpu_loop_exit(CPUState *env)
 {
+    if (rr_debug_whisper()) {
+        fprintf (logfile, "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit.\n", 
+                 (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+    }
     env->current_tb = NULL;
     longjmp(env->jmp_env, 1);
 }
@@ -46,6 +63,16 @@ void cpu_resume_from_signal(CPUState *env, void *puc)
     /* XXX: restore cpu registers saved in host registers */
 
     env->exception_index = -1;
+
+    if (loglevel & CPU_LOG_RR) {
+        fprintf (logfile, "calling longjmp in cpu_resume_from_signal\n");
+    }
+    //mz Record & Replay NOTE:
+    //mz we're not in the middle of recording any more...
+    //mz 08.2010 I don't think this ever gets called.
+    extern volatile sig_atomic_t rr_record_in_progress;
+    rr_record_in_progress = 0;
+
     longjmp(env->jmp_env, 1);
 }
 #endif
@@ -141,6 +168,17 @@ static inline TranslationBlock *tb_find_fast(CPUState *env)
     target_ulong cs_base, pc;
     int flags;
 
+    //mz This is done once at the start of record and once at the start of
+    //replay.  So we should be ok.
+    if (rr_flush_tb()) {
+      if (loglevel & CPU_LOG_RR) {	
+	fprintf (logfile, "flushing tb\n");
+      }
+      tb_flush(env);
+      tb_invalidated_flag = 1;
+      rr_flush_tb_off();  // just the first time, eh?
+    }
+
     /* we record a subset of the CPU state. It will
        always be the same before a given translated block
        is executed. */
@@ -177,6 +215,22 @@ static void cpu_handle_debug_exception(CPUState *env)
     }
 }
 
+
+
+void rr_set_program_point(void) {
+    if (cpu_single_env) {
+        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
+    }
+}
+
+void rr_quit_cpu_loop(void) {
+    if (cpu_single_env) {
+        cpu_single_env->exception_index = EXCP_DEBUG;
+        cpu_loop_exit();
+    }
+}
+
+
 /* main execution loop */
 
 volatile sig_atomic_t exit_request;
@@ -187,6 +241,39 @@ int cpu_exec(CPUState *env)
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
+
+    sigset_t blockset, oldset;
+
+    // create a signal set containing just ALARM and USR2
+    sigemptyset(&blockset);
+    sigaddset(&blockset, SIGALRM);
+    sigaddset(&blockset, SIGUSR2);
+    sigaddset(&blockset, SIGIO);
+
+    if (__builtin_expect(rr_record_requested, 0)) {
+        //block signals
+        sigprocmask(SIG_BLOCK, &blockset, &oldset);
+        rr_do_begin_record(rr_requested_name);
+        rr_record_requested = 0;
+        //unblock signals
+        sigprocmask(SIG_SETMASK, &oldset, NULL);
+    }
+    if (__builtin_expect(rr_replay_requested, 0)) {
+        extern void quit_timers(void);
+        //block signals
+        sigprocmask(SIG_BLOCK, &blockset, &oldset);
+        rr_do_begin_replay(rr_requested_name);
+        quit_timers();
+        rr_replay_requested = 0;
+        //unblock signals
+        sigprocmask(SIG_SETMASK, &oldset, NULL);
+    }
+
+    if (loglevel & CPU_LOG_RR) {	
+      fprintf (logfile, "head of cpu_exec: env1->hflags = %x\n", env1->hflags);
+      fprintf (logfile, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
+	       env1->hflags & HF_HALTED_MASK);
+    }
 
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -234,6 +321,11 @@ int cpu_exec(CPUState *env)
     /* prepare setjmp context for exception handling */
     for(;;) {
         if (setjmp(env->jmp_env) == 0) {
+	    // NB: we can only be here if we came from immediately before
+	    // the if (setjmp...)  stmt.  
+	    // the else block gets executed when we longjmp(env->jmp_env)
+            //mz Set the program point here.
+            rr_set_program_point();
             /* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
                 if (env->exception_index >= EXCP_INTERRUPT) {
@@ -262,7 +354,21 @@ int cpu_exec(CPUState *env)
 
             next_tb = 0; /* force lookup of first TB */
             for(;;) {
+                //mz Set the program point here.
+                rr_set_program_point();
+                // cache interrupt request value.
                 interrupt_request = env->interrupt_request;
+                //mz Record and Replay.
+                //mz it is important to do this in the order written, as
+                //during record env->interrupt_request can be changed at any
+                //time via a signal.  Thus, we want to make sure that we
+                //record the same value in the log as the one being used in
+                //these decisions.
+                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_1;
+                rr_interrupt_request(&interrupt_request);
+                if (rr_in_replay()) {
+                    env->interrupt_request = interrupt_request;
+                }
                 if (unlikely(interrupt_request)) {
                     if (unlikely(env->singlestep_enabled & SSTEP_NOIRQ)) {
                         /* Mask out external interrupts for this step. */
@@ -317,7 +423,15 @@ int cpu_exec(CPUState *env)
                             int intno;
                             svm_check_intercept(env, SVM_EXIT_INTR);
                             env->interrupt_request &= ~(CPU_INTERRUPT_HARD | CPU_INTERRUPT_VIRQ);
-                            intno = cpu_get_pic_interrupt(env);
+			    // dont bother calling this if we are replaying       
+			    // ... just obtain "intno" from (or record it to) 
+			    // non-deterministic inputs log
+			    RR_DO_RECORD_OR_REPLAY(
+						   /*action=*/intno = cpu_get_pic_interrupt(env),
+						   /*record=*/rr_input_4(&intno),
+						   /*replay=*/rr_input_4(&intno),
+						   /*location=*/RR_CALLSITE_CPU_EXEC_2);			    
+			    //mz servicing hardware interrupt
                             qemu_log_mask(CPU_LOG_TB_IN_ASM, "Servicing hardware INT=0x%02x\n", intno);
                             do_interrupt_x86_hardirq(env, intno, 1);
                             /* ensure that no TB jump will be modified as
@@ -497,6 +611,11 @@ int cpu_exec(CPUState *env)
                         next_tb = 0;
                     }
 #endif
+                    //mz set program point after handling interrupts.
+		    rr_set_program_point();
+                    //mz record the value again in case do_interrupt has set EXITTB flag
+                    rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
+                    rr_interrupt_request(&env->interrupt_request);
                    /* Don't use the cached interrupt_request value,
                       do_interrupt may have updated the EXITTB flag. */
                     if (env->interrupt_request & CPU_INTERRUPT_EXITTB) {
@@ -531,7 +650,27 @@ int cpu_exec(CPUState *env)
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
                 spin_lock(&tb_lock);
+
+                if (loglevel & CPU_LOG_TB_IN_ASM) {
+                    fprintf(logfile, "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
+                            (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+                }
+
+
                 tb = tb_find_fast(env);
+
+                if (rr_mode == RR_REPLAY)
+                {
+                    if (tb->num_guest_insns > rr_num_instr_before_next_interrupt) {
+                        //mz invalidate current TB and retranslate
+                        //printf("invalidating single TB: %llu -> %llu\n", 
+		        // tb->num_guest_insns, rr_num_instr_before_next_interrupt);
+                        invalidate_single_tb(env, tb->pc);
+                        //mz try again.
+                        tb = tb_find_fast();
+                    }
+                }
+
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
                 if (tb_invalidated_flag) {
@@ -549,10 +688,23 @@ int cpu_exec(CPUState *env)
                 /* see if we can patch the calling TB. When the TB
                    spans two pages, we cannot safely do a direct
                    jump. */
+		// TRL: note that this is where the translation block chaining happens.
+		// (T0 & ~3) contains pointer to previous translation block.
+		// (T0 & 3) contains info about which branch we took (why 2 bits?)
+		// tb is current translation block.  
+                if (rr_mode != RR_REPLAY)
+                {		
                 if (next_tb != 0 && tb->page_addr[1] == -1) {
                     tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                 }
-                spin_unlock(&tb_lock);
+		} else {
+		  /*
+		    TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
+		    There appears to be no equivalent in 1.0.1.  :<
+		  */
+		}		
+
+		spin_unlock(&tb_lock);	       
 
                 /* cpu_interrupt might be called while translating the
                    TB, but before it is linked into a potentially
@@ -562,7 +714,10 @@ int cpu_exec(CPUState *env)
                 barrier();
                 if (likely(!env->exit_request)) {
                     tc_ptr = tb->tc_ptr;
-                /* execute the generated code */
+		    //mz setting program point just before call to gen_func()
+		    rr_set_program_point();
+		    //mz Actually jump into the generated code
+		    /* execute the generated code */
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
