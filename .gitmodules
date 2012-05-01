@@ -1,0 +1,21 @@
+[submodule "roms/vgabios"]
+	path = roms/vgabios
+	url = git://git.qemu.org/vgabios.git/
+[submodule "roms/seabios"]
+	path = roms/seabios
+	url = git://git.qemu.org/seabios.git/
+[submodule "roms/SLOF"]
+	path = roms/SLOF
+	url = git://git.qemu.org/SLOF.git
+[submodule "roms/ipxe"]
+	path = roms/ipxe
+	url = git://git.qemu.org/ipxe.git
+[submodule "roms/openbios"]
+	path = roms/openbios
+	url = git://git.qemu.org/openbios.git
+[submodule "roms/qemu-palcode"]
+	path = roms/qemu-palcode
+	url = git://repo.or.cz/qemu-palcode.git
+[submodule "roms/sgabios"]
+	path = roms/sgabios
+	url = git://git.qemu.org/sgabios.git

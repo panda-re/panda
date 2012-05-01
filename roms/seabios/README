@@ -1,0 +1,190 @@
+This code implements an X86 legacy bios.  It is intended to be
+compiled using standard gnu tools (eg, gas and gcc).
+
+To build, one should be able to run "make" in the main directory.  The
+resulting file "out/bios.bin" contains the processed bios image.
+
+
+Testing of images:
+
+To test the bios under bochs, one will need to instruct bochs to use
+the new bios image.  Use the 'romimage' option - for example:
+
+bochs -q 'floppya: 1_44=myfdimage.img' 'romimage: file=out/bios.bin'
+
+To test under qemu, one will need to create a directory with all the
+bios images and then overwrite the main bios image.  For example:
+
+cp /usr/share/qemu/*.bin mybiosdir/
+cp out/bios.bin mybiosdir/
+
+Once this is setup, one can instruct qemu to use the newly created
+directory for rom images.  For example:
+
+qemu -L mybiosdir/ -fda myfdimage.img
+
+
+The following payloads have been tested:
+
+Freedos - see http://www.freedos.org/ .  Useful tests include: booting
+from installation cdrom, installing to hard drive and floppy, making
+sure hard drive and floppy boots then work.  It is also useful to take
+the bootable floppy and hard-drive images, write them to an el-torito
+bootable cdrom using the Linux mkisofs utility, and then boot those
+cdrom images.
+
+Linux - useful hard drive image available from
+http://fabrice.bellard.free.fr/qemu/linux-0.2.img.bz2 .  It is also
+useful to test standard distribution bootup and live cdroms.
+
+NetBSD - useful hard drive image available from
+http://nopid.free.fr/small.ffs.bz2 .  It is also useful to test
+standard distribution installation cdroms.
+
+
+Overview of files:
+
+The src/ directory contains the bios source code.  Several of the
+files are compiled twice - once for 16bit mode and once for 32bit
+mode.  (The build system will remove code that is not needed for a
+particular mode.)
+
+The tools/ directory contains helper utilities for manipulating and
+building the final rom.
+
+The out/ directory is created by the build process - it contains all
+temporary and final files.
+
+
+Build overview:
+
+The 16bit code is compiled via gcc to assembler (file out/ccode.16.s).
+The gcc "-fwhole-program" and "-ffunction-sections -fdata-sections"
+options are used to optimize the process so that gcc can efficiently
+compile and discard unneeded code.  (In the code, one can use the
+macros 'VISIBLE16' and 'VISIBLE32' to instruct a symbol to be
+outputted in 16bit and 32bit mode respectively.)
+
+This resulting assembler code is pulled into romlayout.S.  The gas
+option ".code16gcc" is used prior to including the gcc generated
+assembler - this option enables gcc to generate valid 16 bit code.
+
+The post code (post.c) is entered, via the function _start(), in 32bit
+mode.  The 16bit post vector (in romlayout.S) transitions the cpu into
+32 bit mode before calling the post.c code.
+
+In the last step of compilation, the 32 bit code is merged into the 16
+bit code so that one binary file contains both.  Currently, both 16bit
+and 32bit code will be located in the 64K block at segment 0xf000.
+
+
+GCC 16 bit limitations:
+
+Although the 16bit code is compiled with gcc, developers need to be
+aware of the environment.  In particular, global variables _must_ be
+treated specially.
+
+The code has full access to stack variables and general purpose
+registers.  The entry code in romlayout.S will push the original
+registers on the stack before calling the C code and then pop them off
+(including any required changes) before returning from the interrupt.
+Changes to CS, DS, and ES segment registers in C code is also safe.
+Changes to other segment registers (SS, FS, GS) need to be restored
+manually.
+
+Stack variables (and pointers to stack variables) work as they
+normally do in standard C code.
+
+However, variables stored outside the stack need to be accessed via
+the GET_VAR and SET_VAR macros (or one of the helper macros described
+below).  This is due to the 16bit segment nature of the X86 cpu when
+it is in "real mode".  The C entry code will set DS and SS to point to
+the stack segment.  Variables not on the stack need to be accessed via
+an explicit segment register.  Any other access requires altering one
+of the other segment registers (usually ES) and then accessing the
+variable via that segment register.
+
+There are three low-level ways to access a remote variable:
+GET/SET_VAR, GET/SET_FARVAR, and GET/SET_FLATPTR.  The first set takes
+an explicit segment descriptor (eg, "CS") and offset.  The second set
+will take a segment id and offset, set ES to the segment id, and then
+make the access via the ES segment.  The last method is similar to the
+second, except it takes a pointer that would be valid in 32-bit flat
+mode instead of a segment/offset pair.
+
+Most BIOS variables are stored in global variables, the "BDA", or
+"EBDA" memory areas.  Because this is common, three sets of helper
+macros (GET/SET_GLOBAL, GET/SET_BDA, and GET/SET_EBDA) are available
+to simplify these accesses.
+
+Global variables defined in the C code can be read in 16bit mode if
+the variable declaration is marked with VAR16, VAR16VISIBLE,
+VAR16EXPORT, or VAR16FIXED.  The GET_GLOBAL macro will then allow read
+access to the variable.  Global variables are stored in the 0xf000
+segment, and their values are persistent across soft resets.  Because
+the f-segment is marked read-only during run-time, the 16bit code is
+not permitted to change the value of 16bit variables (use of the
+SET_GLOBAL macro from 16bit mode will cause a link error).  Code
+running in 32bit mode can not access variables with VAR16, but can
+access variables marked with VAR16VISIBLE, VAR16EXPORT, VAR16FIXED, or
+with no marking at all.  The 32bit code can use the GET/SET_GLOBAL
+macros, but they are not required.
+
+
+GCC 16 bit stack limitations:
+
+Another limitation of gcc is its use of 32-bit temporaries.  Gcc will
+allocate 32-bits of space for every variable - even if that variable
+is only defined as a 'u8' or 'u16'.  If one is not careful, using too
+much stack space can break old DOS applications.
+
+There does not appear to be explicit documentation on the minimum
+stack space available for bios calls.  However, Freedos has been
+observed to call into the bios with less than 150 bytes available.
+
+Note that the post code and boot code (irq 18/19) do not have a stack
+limitation because the entry points for these functions transition the
+cpu to 32bit mode and reset the stack to a known state.  Only the
+general purpose 16-bit service entry points are affected.
+
+There are some ways to reduce stack usage: making sure functions are
+tail-recursive often helps, reducing the number of parameters passed
+to functions often helps, sometimes reordering variable declarations
+helps, inlining of functions can sometimes help, and passing of packed
+structures can also help.  It is also possible to transition to/from
+an extra stack stored in the EBDA using the stack_hop helper function.
+
+Some useful stats: the overhead for the entry to a bios handler that
+takes a 'struct bregs' is 42 bytes of stack space (6 bytes from
+interrupt insn, 32 bytes to store registers, and 4 bytes for call
+insn).  An entry to an ISR handler without args takes 30 bytes (6 + 20
++ 4).
+
+
+Debugging the bios:
+
+The bios will output information messages to a special debug port.
+Under qemu, one can view these messages by enabling the '#define
+DEBUG_BIOS' definition in 'qemu/hw/pc.c'.  Once this is done (and qemu
+is recompiled), one should see status messages on the console.
+
+The gdb-server mechanism of qemu is also useful.  One can use gdb with
+qemu to debug system images.  To use this, add '-s -S' to the qemu
+command line.  For example:
+
+qemu -L mybiosdir/ -fda myfdimage.img -s -S
+
+Then, in another session, run gdb with either out/rom16.o (to debug
+bios 16bit code) or out/rom32.o (to debug bios 32bit code).  For
+example:
+
+gdb out/rom16.o
+
+Once in gdb, use the command "target remote localhost:1234" to have
+gdb connect to qemu.  See the qemu documentation for more information
+on using gdb and qemu in this mode.  Note that gdb seems to get
+breakpoints confused when the cpu is in 16-bit real mode.  This makes
+stepping through the program difficult (though 'step instruction'
+still works).  Also, one may need to set 16bit break points at both
+the cpu address and memory address (eg, break *0x1234 ; break
+*0xf1234).

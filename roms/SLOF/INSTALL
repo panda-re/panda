@@ -1,0 +1,93 @@
+Slimline Open Firmware - SLOF
+
+Copyright (C) 2005, 2008 IBM Corporation
+
+
+BUILD
+===============================================================================
+
+ To build SLOF you need:
+  - Recent GNU tools, configured for powerpc64-linux
+    - GCC: 3.3.3 and newer are known to work
+    - Binutils: use a version as new as possible
+    - Subversion
+
+  - set the CROSS variable
+    - something like export CROSS="powerpc64-unknown-linux-gnu-"
+      when using a cross compiler
+    or
+    - export CROSS=""
+      when using a native compiler
+
+  - four more files to build a bootable image:
+    - libipmi.oco
+    - takeover.oco
+    - i2c_bmc.oco
+    - ipmi_oem.oco
+    these files are also provided through developerworks and have to be
+    also downloaded just like the SLOF source code
+
+  - starting with the SLOF release JX-1.6.0-0 it is necessary to
+    download a x86 emulator which is used to execute the BIOS
+    of VGA card; to download the x86 emulator following steps are
+    required:
+    - cd other-licence/x86emu/
+    - ./x86emu_download.sh # this downloads the x86 emulator sources
+    - cd -
+
+  - make js2x
+
+INSTALL
+===============================================================================
+
+ Detailed information about how to use SLOF on JS20 and JS21 can be found in
+ the document FlashingSLOF.pdf
+
+ The JS20 and JS21 blades both have 2 "flashsides". They have a 8MB flash part
+ which is divided into a 4MB "temporary" side and a 4MB "permanent" side.
+
+ The temporary side is the flashside used for the normal operation and the
+ permanent side is used as a backup if the temporary should ever fail.
+
+ Therefore it is important that the permanent flash side is not changed so
+ that if ever required the original firmware can be restored.
+
+ SLOF usually warns or in most cases does not easily allow to overwrite the
+ permanent side.
+
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !                                                           !
+ ! WITH THE FOLLOWING STEPS YOU MIGHT DESTROY YOUR FIRMWARE  !
+ ! IMAGE AND LOOSE YOUR WARRANTY !                           !
+ ! YOU MAY NEED TO CALL SERVICE, IF THE FIRMWARE IMAGE IS    !
+ ! DESTROYED !                                               !
+ !                                                           !
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+UNINSTALL
+===============================================================================
+
+ If you want to boot the original firmware again, you need to boot the blade 
+ from the management module. If auto-boot is enabled you have to press "s"
+ to reach the firmware prompt.
+ On the SLOF command line, type:
+
+  0 > other-firmware
+
+ and it should get you back to running the original firmware. To permanently 
+ get it back, after booting Linux from there, type
+
+  $ update_flash -r
+  $ halt
+ 
+ You will boot on the PERM side. To boot from the TEMP side again, you need to
+ restart the Blade System MGMT Processor.
+
+    Following steps are needed on
+        Management Module -> Blade Tasks -> Power/Restart
+        
+        Power Off Blade
+        Restart Blade System Mgmt Processor 
+        Power On Blade

@@ -1,0 +1,36 @@
+# *****************************************************************************
+# * Copyright (c) 2004, 2008 IBM Corporation
+# * All rights reserved.
+# * This program and the accompanying materials
+# * are made available under the terms of the BSD License
+# * which accompanies this distribution, and is available at
+# * http://www.opensource.org/licenses/bsd-license.php
+# *
+# * Contributors:
+# *     IBM Corporation - initial implementation
+# ****************************************************************************/
+
+-include .depend
+
+depend :
+	@rm -rf .depend
+ifdef OBJS
+	@touch .depend && \
+	$(CC) -M $(CPPFLAGS) $(CFLAGS) $(OBJS:.o=.c) >> .depend
+#else
+#	@echo "OBJ is NOT defined"
+endif
+ifdef OBJS2
+	@$(CC) -M $(CPPFLAGS) $(CFLAGS) $(OBJS2:.o=.S) >> .depend
+#else
+#	@echo "OBJ2 is NOT definde"
+endif
+	@for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir depend ; \
+	done
+
+mrproper : 
+	@rm -rf .depend ; \
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir mrproper ; \
+	done

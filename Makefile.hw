@@ -1,0 +1,25 @@
+# Makefile for qemu target independent devices.
+
+include ../config-host.mak
+include ../config-all-devices.mak
+include config.mak
+include $(SRC_PATH)/rules.mak
+
+.PHONY: all
+
+$(call set-vpath, $(SRC_PATH):$(SRC_PATH)/hw)
+
+QEMU_CFLAGS+=-I..
+QEMU_CFLAGS += $(GLIB_CFLAGS)
+
+include $(SRC_PATH)/Makefile.objs
+
+all: $(hw-obj-y)
+# Dummy command so that make thinks it has done something
+	@true
+
+clean:
+	rm -f *.o */*.o *.d */*.d *.a */*.a *~ */*~
+
+# Include automatically generated dependency files
+-include $(wildcard *.d */*.d)

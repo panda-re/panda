@@ -1,0 +1,12 @@
+tools/kconfig/lxdialog/checklist.c
+tools/kconfig/lxdialog/inputbox.c
+tools/kconfig/lxdialog/menubox.c
+tools/kconfig/lxdialog/textbox.c
+tools/kconfig/lxdialog/util.c
+tools/kconfig/lxdialog/yesno.c
+tools/kconfig/mconf.c
+tools/kconfig/conf.c
+tools/kconfig/confdata.c
+tools/kconfig/gconf.c
+tools/kconfig/gconf.glade.h
+tools/kconfig/qconf.cc

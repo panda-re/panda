@@ -1,0 +1,153 @@
+Slimline Open Firmware - SLOF
+
+Copyright (C) 2004, 2008  IBM Corporation
+
+
+Index
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+1.0 Introduction to Open Firmware
+1.1 Build process
+2.0 Extension
+3.0 Limitations
+
+1.0 Introduction to Open Firmware
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+The IEEE Standard 1275-1994 [1], Standard for Boot (Initialization Configuration)
+Firmware, Core Requirements and Practices, is the first non-proprietary open
+standard for boot firmware that is usable on different processors and buses.
+Firmware which complies with this standard (also known as Open Firmware)
+includes a processor-independent device interface that allows add-in devices
+to identify itself and to supply a single boot driver that can be used,
+unchanged, on any CPU.  In addition, Open Firmware includes a user interface
+with powerful scripting and debugging support and a client interface that
+allows an operating system and its loaders to use Open Firmware services
+during the configuration and initialization process.  Open Firmware stores
+information about the hardware in a tree structure called the
+``device tree''.  This device tree supports multiple interconnected system
+buses and offers a framework for ``plug and play''-type auto configuration
+across different buses.  It was designed to support a variety of different
+processor Instruction Set Architectures (ISAs) and buses.
+
+The full documentation of this Standard can be found in [1].
+
+
+1.1 Build process
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Open Firmware (OF) is based on the programming language Forth. 
+SLOF use Paflof as the Forth engine, which was developed by
+Segher Boessenkool.  Most parts of the Forth engine are implemented in 
+C, by using GNU extensions of ANSI C, (e.g. assigned goto, often misnamed "computed goto"),
+resulting in a very efficient yet still quite portable engine.  
+
+The basic Forth words, so-called primitives,  are implemented with 
+a set of C macros.  A set of .in and .code files are provided, which
+define the semantic of the Forth primitives.  A Perl script translates 
+these files into valid C code, which will be compiled into the Forth engine.
+The complete Forth system composes of the basic Forth primitives and
+a set of Forth words, which are compiled during the start of the Forth
+system.
+
+Example:
+Forth primitive 'dup'
+
+	dup ( a -- a a) \ Duplicate top of stack element
+
+
+prim.in:	
+	cod(DUP)
+
+prim.code:
+	PRIM(DUP) cell x = TOS; PUSH; TOS = x; MIRP
+
+Generated code:
+
+static cell xt_DUP[] = { { .a = xt_DOTICK }, { .c = "\000\003DUP" },
+	 { .a = &&code_DUP }, };
+
+code_DUP: { asm("#### " "DUP"); void *w = (cfa = (++ip)->a)->a;
+	 cell x = (*dp); dp++; (*dp) = x; goto *w; }
+
+Without going into detail, it can be seen, that the data stack is
+implemented in C as an array of cells, where dp is the pointer to the top of
+stack. 
+
+For the implementation of the Open Firmware, most of the
+code is added as Forth code and bound to the engine.  Also 
+the system vector for reset and all kinds of exceptions
+will be part of the image. Additionally a secondary boot-loader
+or any other client application can be bound to the code as payload, 
+e.g. diagnostics and test programs.
+
+The Open Firmware image will be put together by the build 
+process, with a loader at the start of the image. This loader
+is called by Low Level Firmware and loads at boot time the Open 
+Firmware to it's location in memory (see 1.3 Load process). Additionally 
+a secondary boot loader or any other client application can be bound
+to the code as payload.
+
+The Low Level Firmware (LLFW) is responsible for setting up the 
+system in an initial state. This task includes the setup of the 
+CPUs, the system memory and all the buses as well as the serial port
+itself.
+
+
+2.0 Extension
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+In the following paragraphs it will be shown how to add
+new primitive words (i.e., words implemented not by building
+pre-existing Forth words together, but instead implemented in
+C or assembler).  With this, it is possible to adapt SLOF to
+the specific needs of different hardware and architectures.
+
+
+To add primitives:
+   
+   For a new primitive, following steps have to be done:
+
+   + Definition of primitive name in <arch>.in
+     - cod(ABC) defines primitive ABC
+
+     You can also use the following in a .in file, see existing
+     code for how to use these:
+     - con(ABC) defines constant ABC   
+     - col(ABC) defines colon definition ABC
+     - dfr(ABC) defines defer definition ABC
+
+   + Definition of the primitives effects in <arch>.code
+     - PRIM(ABC) ... MIRP
+
+       The code for the primitive body is any C-code. With
+       the macros of prim.code the data and return stack of 
+       the Forth engine can be appropriately manipulated.
+
+
+3.0 Limitations of this package
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+ On a JS20 the memory setup is very static and therefore there are
+ only very few combinations of memory DIMM placement actually work.
+
+ Known booting configurations:
+
+    * 4x 256 MB (filling all slots) -- only "0.5 GB" reported.
+    * 2x 1 GB, slots 3/4 -- only "0.5 GB" reported.
+
+ Known failing configurations
+
+    * 2x 256 MB, slots 3/4
+    * 2x 256 MB, slots 1/2
+
+ On a JS20 SLOF wil always report 0.5 GB even if there is much more memory
+ available.
+
+ On a JS21 all memory configurations should work.
+
+Documentation
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+[1] IEEE 1275-1994 Standard, Standard for Boot (Initialization Configuration)
+    Firmware: Core Requierements and Practices
+

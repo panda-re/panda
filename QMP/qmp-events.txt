@@ -1,0 +1,266 @@
+                   QEMU Monitor Protocol Events
+                   ============================
+
+BLOCK_IO_ERROR
+--------------
+
+Emitted when a disk I/O error occurs.
+
+Data:
+
+- "device": device name (json-string)
+- "operation": I/O operation (json-string, "read" or "write")
+- "action": action that has been taken, it's one of the following (json-string):
+    "ignore": error has been ignored
+    "report": error has been reported to the device
+    "stop": error caused VM to be stopped
+
+Example:
+
+{ "event": "BLOCK_IO_ERROR",
+    "data": { "device": "ide0-hd1",
+              "operation": "write",
+              "action": "stop" },
+    "timestamp": { "seconds": 1265044230, "microseconds": 450486 } }
+
+Note: If action is "stop", a STOP event will eventually follow the
+BLOCK_IO_ERROR event.
+
+RESET
+-----
+
+Emitted when the Virtual Machine is reseted.
+
+Data: None.
+
+Example:
+
+{ "event": "RESET",
+    "timestamp": { "seconds": 1267041653, "microseconds": 9518 } }
+
+RESUME
+------
+
+Emitted when the Virtual Machine resumes execution.
+
+Data: None.
+
+Example:
+
+{ "event": "RESUME",
+    "timestamp": { "seconds": 1271770767, "microseconds": 582542 } }
+
+RTC_CHANGE
+----------
+
+Emitted when the guest changes the RTC time.
+
+Data:
+
+- "offset": delta against the host UTC in seconds (json-number)
+
+Example:
+
+{ "event": "RTC_CHANGE",
+    "data": { "offset": 78 },
+    "timestamp": { "seconds": 1267020223, "microseconds": 435656 } }
+
+SHUTDOWN
+--------
+
+Emitted when the Virtual Machine is powered down.
+
+Data: None.
+
+Example:
+
+{ "event": "SHUTDOWN",
+    "timestamp": { "seconds": 1267040730, "microseconds": 682951 } }
+
+Note: If the command-line option "-no-shutdown" has been specified, a STOP
+event will eventually follow the SHUTDOWN event.
+
+STOP
+----
+
+Emitted when the Virtual Machine is stopped.
+
+Data: None.
+
+Example:
+
+{ "event": "STOP",
+    "timestamp": { "seconds": 1267041730, "microseconds": 281295 } }
+
+VNC_CONNECTED
+-------------
+
+Emitted when a VNC client establishes a connection.
+
+Data:
+
+- "server": Server information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "auth": authentication method (json-string, optional)
+- "client": Client information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+
+Example:
+
+{ "event": "VNC_CONNECTED",
+    "data": {
+        "server": { "auth": "sasl", "family": "ipv4",
+                    "service": "5901", "host": "0.0.0.0" },
+        "client": { "family": "ipv4", "service": "58425",
+                    "host": "127.0.0.1" } },
+    "timestamp": { "seconds": 1262976601, "microseconds": 975795 } }
+
+
+Note: This event is emitted before any authentication takes place, thus
+the authentication ID is not provided.
+
+VNC_DISCONNECTED
+----------------
+
+Emitted when the conection is closed.
+
+Data:
+
+- "server": Server information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "auth": authentication method (json-string, optional)
+- "client": Client information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "x509_dname": TLS dname (json-string, optional)
+  - "sasl_username": SASL username (json-string, optional)
+
+Example:
+
+{ "event": "VNC_DISCONNECTED",
+    "data": {
+        "server": { "auth": "sasl", "family": "ipv4",
+                    "service": "5901", "host": "0.0.0.0" },
+        "client": { "family": "ipv4", "service": "58425",
+                    "host": "127.0.0.1", "sasl_username": "luiz" } },
+    "timestamp": { "seconds": 1262976601, "microseconds": 975795 } }
+
+VNC_INITIALIZED
+---------------
+
+Emitted after authentication takes place (if any) and the VNC session is
+made active.
+
+Data:
+
+- "server": Server information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "auth": authentication method (json-string, optional)
+- "client": Client information (json-object)
+  - "host": IP address (json-string)
+  - "service": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "x509_dname": TLS dname (json-string, optional)
+  - "sasl_username": SASL username (json-string, optional)
+
+Example:
+
+{ "event": "VNC_INITIALIZED",
+    "data": {
+        "server": { "auth": "sasl", "family": "ipv4",
+                    "service": "5901", "host": "0.0.0.0"},
+        "client": { "family": "ipv4", "service": "46089",
+                    "host": "127.0.0.1", "sasl_username": "luiz" } },
+        "timestamp": { "seconds": 1263475302, "microseconds": 150772 } }
+
+SPICE_CONNECTED, SPICE_DISCONNECTED
+-----------------------------------
+
+Emitted when a SPICE client connects or disconnects.
+
+Data:
+
+- "server": Server information (json-object)
+  - "host": IP address (json-string)
+  - "port": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+- "client": Client information (json-object)
+  - "host": IP address (json-string)
+  - "port": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+
+Example:
+
+{ "timestamp": {"seconds": 1290688046, "microseconds": 388707},
+  "event": "SPICE_CONNECTED",
+  "data": {
+    "server": { "port": "5920", "family": "ipv4", "host": "127.0.0.1"},
+    "client": {"port": "52873", "family": "ipv4", "host": "127.0.0.1"}
+}}
+
+
+SPICE_INITIALIZED
+-----------------
+
+Emitted after initial handshake and authentication takes place (if any)
+and the SPICE channel is up'n'running
+
+Data:
+
+- "server": Server information (json-object)
+  - "host": IP address (json-string)
+  - "port": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "auth": authentication method (json-string, optional)
+- "client": Client information (json-object)
+  - "host": IP address (json-string)
+  - "port": port number (json-string)
+  - "family": address family (json-string, "ipv4" or "ipv6")
+  - "connection-id": spice connection id.  All channels with the same id
+                     belong to the same spice session (json-int)
+  - "channel-type": channel type.  "1" is the main control channel, filter for
+                    this one if you want track spice sessions only (json-int)
+  - "channel-id": channel id.  Usually "0", might be different needed when
+                  multiple channels of the same type exist, such as multiple
+                  display channels in a multihead setup (json-int)
+  - "tls": whevener the channel is encrypted (json-bool)
+
+Example:
+
+{ "timestamp": {"seconds": 1290688046, "microseconds": 417172},
+  "event": "SPICE_INITIALIZED",
+  "data": {"server": {"auth": "spice", "port": "5921",
+                      "family": "ipv4", "host": "127.0.0.1"},
+           "client": {"port": "49004", "family": "ipv4", "channel-type": 3,
+                      "connection-id": 1804289383, "host": "127.0.0.1",
+                      "channel-id": 0, "tls": true}
+}}
+
+
+WATCHDOG
+--------
+
+Emitted when the watchdog device's timer is expired.
+
+Data:
+
+- "action": Action that has been taken, it's one of the following (json-string):
+            "reset", "shutdown", "poweroff", "pause", "debug", or "none"
+
+Example:
+
+{ "event": "WATCHDOG",
+     "data": { "action": "reset" },
+     "timestamp": { "seconds": 1267061043, "microseconds": 959568 } }
+
+Note: If action is "reset", "shutdown", or "pause" the WATCHDOG event is
+followed respectively by the RESET, SHUTDOWN, or STOP events.

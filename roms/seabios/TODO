@@ -1,0 +1,21 @@
+Review changes committed to coreboot, virtualbox, qemu, kvm, and bochs
+cvs tip.
+  * bochs cvs (20100104):
+    -- changes synched
+  * coreboot (r3348):    (bochs 20060708)
+    -- no noteworthy enhancements
+  * qemu - now uses SeaBIOS
+  * kvm - now uses SeaBIOS
+  * virtualbox (r13560): (bochs 20061231)
+    -- lots of mouse changes, logo, scsi/etherboot hooks,
+       floppy data rate?, int19 calls post
+
+The __call16 code does a long jump to the interrupt trampolines - this
+is unnecessary.
+
+Support PCIv3 roms?  Add support for PCI "configuration code"
+extensions?
+
+Possibly add option to eliminate tsc based delays on emulators.
+
+Possibly support sending debug information over EHCI debug port.

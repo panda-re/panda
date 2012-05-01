@@ -1,0 +1,6 @@
+*.o
+*.fsi
+*.a
+*.dep
+*.depend
+

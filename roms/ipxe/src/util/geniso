@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# Generate a isolinux ISO boot image
+#
+# geniso foo.iso foo.lkrn
+#
+# the ISO image is the first argument so that a list of .lkrn images
+# to include can be specified
+#
+case $# in
+0|1)
+	echo Usage: $0 foo.iso foo.lkrn ...
+	exit 1
+	;;
+esac
+
+# This should be the default location of the isolinux.bin file
+isolinux_bin=${ISOLINUX_BIN:-util/isolinux.bin}
+if [ ! -r $isolinux_bin ]
+then
+	echo $0: $isolinux_bin not found, please install, or set ISOLINUX_BIN in arch/i386/Makefile correctly
+	exit 1
+fi
+
+# There should either be mkisofs or the compatible genisoimage program
+mkisofs=`which mkisofs genisoimage 2>/dev/null | head -n1`
+if [ -z $mkisofs ]
+then
+	echo $0: mkisofs or genisoimage not found, please install or set PATH
+	exit 1
+fi
+
+# isohybrid will be used if available
+isohybrid=`which isohybrid 2>/dev/null`
+
+out=$1
+shift
+dir=`mktemp -d bin/iso.dir.XXXXXX`
+cfg=$dir/isolinux.cfg
+cp -p $isolinux_bin $dir
+cat > $cfg <<EOF
+# These default options can be changed in the geniso script
+SAY iPXE ISO boot image
+TIMEOUT 30
+EOF
+first=
+for f
+do
+	if [ ! -r $f ]
+	then
+		echo $f does not exist, skipping 1>&2
+		continue
+	fi
+	b=$(basename $f)
+	g=${b%.lkrn}
+	g=${g//[^a-z0-9]}.krn
+	case "$first" in
+	"")
+		echo DEFAULT $g
+		;;
+	esac
+	first=$g
+	echo LABEL $b
+	echo "" KERNEL $g
+	cp -p $f $dir/$g
+done >> $cfg
+$mkisofs -quiet -l -o $out -c boot.cat -b isolinux.bin -no-emul-boot -boot-load-size 4 -boot-info-table $dir
+rm -fr $dir
+if [ -n "$isohybrid" ]
+then
+    $isohybrid $out >/dev/null
+fi

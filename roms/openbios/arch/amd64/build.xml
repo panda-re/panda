@@ -1,0 +1,5 @@
+<build condition="AMD64">
+ <dictionary name="openbios-amd64" init="openbios" target="forth">
+  <object source="init.fs"/>
+ </dictionary>
+</build>

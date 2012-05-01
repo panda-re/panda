@@ -1,0 +1,271 @@
+@example
+@c man begin SYNOPSIS
+usage: qemu-img command [command options]
+@c man end
+@end example
+
+@c man begin OPTIONS
+
+The following commands are supported:
+
+@include qemu-img-cmds.texi
+
+Command parameters:
+@table @var
+@item filename
+ is a disk image filename
+@item fmt
+is the disk image format. It is guessed automatically in most cases. See below
+for a description of the supported disk formats.
+
+@item size
+is the disk image size in bytes. Optional suffixes @code{k} or @code{K}
+(kilobyte, 1024) @code{M} (megabyte, 1024k) and @code{G} (gigabyte, 1024M)
+and T (terabyte, 1024G) are supported.  @code{b} is ignored.
+
+@item output_filename
+is the destination disk image filename
+
+@item output_fmt
+ is the destination format
+@item options
+is a comma separated list of format specific options in a
+name=value format. Use @code{-o ?} for an overview of the options supported
+by the used format or see the format descriptions below for details.
+
+
+@item -c
+indicates that target image must be compressed (qcow format only)
+@item -h
+with or without a command shows help and lists the supported formats
+@item -p
+display progress bar (convert and rebase commands only)
+@item -S @var{size}
+indicates the consecutive number of bytes that must contain only zeros
+for qemu-img to create a sparse image during conversion. This value is rounded
+down to the nearest 512 bytes. You may use the common size suffixes like
+@code{k} for kilobytes.
+@item -t @var{cache}
+specifies the cache mode that should be used with the (destination) file. See
+the documentation of the emulator's @code{-drive cache=...} option for allowed
+values.
+@end table
+
+Parameters to snapshot subcommand:
+
+@table @option
+
+@item snapshot
+is the name of the snapshot to create, apply or delete
+@item -a
+applies a snapshot (revert disk to saved state)
+@item -c
+creates a snapshot
+@item -d
+deletes a snapshot
+@item -l
+lists all snapshots in the given image
+@end table
+
+Command description:
+
+@table @option
+@item check [-f @var{fmt}] @var{filename}
+
+Perform a consistency check on the disk image @var{filename}.
+
+Only the formats @code{qcow2}, @code{qed} and @code{vdi} support
+consistency checks.
+
+@item create [-f @var{fmt}] [-o @var{options}] @var{filename} [@var{size}]
+
+Create the new disk image @var{filename} of size @var{size} and format
+@var{fmt}. Depending on the file format, you can add one or more @var{options}
+that enable additional features of this format.
+
+If the option @var{backing_file} is specified, then the image will record
+only the differences from @var{backing_file}. No size needs to be specified in
+this case. @var{backing_file} will never be modified unless you use the
+@code{commit} monitor command (or qemu-img commit).
+
+The size can also be specified using the @var{size} option with @code{-o},
+it doesn't need to be specified separately in this case.
+
+@item commit [-f @var{fmt}] [-t @var{cache}] @var{filename}
+
+Commit the changes recorded in @var{filename} in its base image.
+
+@item convert [-c] [-p] [-f @var{fmt}] [-t @var{cache}] [-O @var{output_fmt}] [-o @var{options}] [-s @var{snapshot_name}] [-S @var{sparse_size}] @var{filename} [@var{filename2} [...]] @var{output_filename}
+
+Convert the disk image @var{filename} or a snapshot @var{snapshot_name} to disk image @var{output_filename}
+using format @var{output_fmt}. It can be optionally compressed (@code{-c}
+option) or use any format specific options like encryption (@code{-o} option).
+
+Only the formats @code{qcow} and @code{qcow2} support compression. The
+compression is read-only. It means that if a compressed sector is
+rewritten, then it is rewritten as uncompressed data.
+
+Image conversion is also useful to get smaller image when using a
+growable format such as @code{qcow} or @code{cow}: the empty sectors
+are detected and suppressed from the destination image.
+
+You can use the @var{backing_file} option to force the output image to be
+created as a copy on write image of the specified base image; the
+@var{backing_file} should have the same content as the input's base image,
+however the path, image format, etc may differ.
+
+@item info [-f @var{fmt}] @var{filename}
+
+Give information about the disk image @var{filename}. Use it in
+particular to know the size reserved on disk which can be different
+from the displayed size. If VM snapshots are stored in the disk image,
+they are displayed too.
+
+@item snapshot [-l | -a @var{snapshot} | -c @var{snapshot} | -d @var{snapshot} ] @var{filename}
+
+List, apply, create or delete snapshots in image @var{filename}.
+
+@item rebase [-f @var{fmt}] [-t @var{cache}] [-p] [-u] -b @var{backing_file} [-F @var{backing_fmt}] @var{filename}
+
+Changes the backing file of an image. Only the formats @code{qcow2} and
+@code{qed} support changing the backing file.
+
+The backing file is changed to @var{backing_file} and (if the image format of
+@var{filename} supports this) the backing file format is changed to
+@var{backing_fmt}.
+
+There are two different modes in which @code{rebase} can operate:
+@table @option
+@item Safe mode
+This is the default mode and performs a real rebase operation. The new backing
+file may differ from the old one and qemu-img rebase will take care of keeping
+the guest-visible content of @var{filename} unchanged.
+
+In order to achieve this, any clusters that differ between @var{backing_file}
+and the old backing file of @var{filename} are merged into @var{filename}
+before actually changing the backing file.
+
+Note that the safe mode is an expensive operation, comparable to converting
+an image. It only works if the old backing file still exists.
+
+@item Unsafe mode
+qemu-img uses the unsafe mode if @code{-u} is specified. In this mode, only the
+backing file name and format of @var{filename} is changed without any checks
+on the file contents. The user must take care of specifying the correct new
+backing file, or the guest-visible content of the image will be corrupted.
+
+This mode is useful for renaming or moving the backing file to somewhere else.
+It can be used without an accessible old backing file, i.e. you can use it to
+fix an image whose backing file has already been moved/renamed.
+@end table
+
+@item resize @var{filename} [+ | -]@var{size}
+
+Change the disk image as if it had been created with @var{size}.
+
+Before using this command to shrink a disk image, you MUST use file system and
+partitioning tools inside the VM to reduce allocated file systems and partition
+sizes accordingly.  Failure to do so will result in data loss!
+
+After using this command to grow a disk image, you must use file system and
+partitioning tools inside the VM to actually begin using the new space on the
+device.
+@end table
+
+Supported image file formats:
+
+@table @option
+@item raw
+
+Raw disk image format (default). This format has the advantage of
+being simple and easily exportable to all other emulators. If your
+file system supports @emph{holes} (for example in ext2 or ext3 on
+Linux or NTFS on Windows), then only the written sectors will reserve
+space. Use @code{qemu-img info} to know the real size used by the
+image or @code{ls -ls} on Unix/Linux.
+
+@item qcow2
+QEMU image format, the most versatile format. Use it to have smaller
+images (useful if your filesystem does not supports holes, for example
+on Windows), optional AES encryption, zlib based compression and
+support of multiple VM snapshots.
+
+Supported options:
+@table @code
+@item backing_file
+File name of a base image (see @option{create} subcommand)
+@item backing_fmt
+Image format of the base image
+@item encryption
+If this option is set to @code{on}, the image is encrypted.
+
+Encryption uses the AES format which is very secure (128 bit keys). Use
+a long password (16 characters) to get maximum protection.
+
+@item cluster_size
+Changes the qcow2 cluster size (must be between 512 and 2M). Smaller cluster
+sizes can improve the image file size whereas larger cluster sizes generally
+provide better performance.
+
+@item preallocation
+Preallocation mode (allowed values: off, metadata). An image with preallocated
+metadata is initially larger but can improve performance when the image needs
+to grow.
+
+@end table
+
+
+@item qcow
+Old QEMU image format. Left for compatibility.
+
+Supported options:
+@table @code
+@item backing_file
+File name of a base image (see @option{create} subcommand)
+@item encryption
+If this option is set to @code{on}, the image is encrypted.
+@end table
+
+@item cow
+User Mode Linux Copy On Write image format. Used to be the only growable
+image format in QEMU. It is supported only for compatibility with
+previous versions. It does not work on win32.
+@item vdi
+VirtualBox 1.1 compatible image format.
+@item vmdk
+VMware 3 and 4 compatible image format.
+
+Supported options:
+@table @code
+@item backing_fmt
+Image format of the base image
+@item compat6
+Create a VMDK version 6 image (instead of version 4)
+@end table
+
+@item vpc
+VirtualPC compatible image format (VHD).
+
+@item cloop
+Linux Compressed Loop image, useful only to reuse directly compressed
+CD-ROM images present for example in the Knoppix CD-ROMs.
+@end table
+
+
+@c man end
+
+@ignore
+
+@setfilename qemu-img
+@settitle QEMU disk image utility
+
+@c man begin SEEALSO
+The HTML documentation of QEMU for more precise information and Linux
+user mode emulator invocation.
+@c man end
+
+@c man begin AUTHOR
+Fabrice Bellard
+@c man end
+
+@end ignore

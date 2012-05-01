@@ -1,0 +1,28 @@
+# -*- makefile -*- : Force emacs to use Makefile mode
+
+# The EFI linker script
+#
+LDSCRIPT	= arch/x86/scripts/efi.lds
+
+# Retain relocation information for elf2efi
+#
+LDFLAGS		+= -q -S
+
+# Media types.
+#
+NON_AUTO_MEDIA	+= efi
+NON_AUTO_MEDIA	+= efidrv
+
+# Rules for building EFI files
+#
+$(BIN)/%.efi : $(BIN)/%.efi.tmp $(ELF2EFI)
+	$(QM)$(ECHO) "  [FINISH] $@"
+	$(Q)$(ELF2EFI) --subsystem=10 $< $@
+
+$(BIN)/%.efidrv : $(BIN)/%.efidrv.tmp $(ELF2EFI)
+	$(QM)$(ECHO) "  [FINISH] $@"
+	$(Q)$(ELF2EFI) --subsystem=11 $< $@
+
+$(BIN)/%.efirom : $(BIN)/%.efidrv $(EFIROM)
+	$(QM)$(ECHO) "  [FINISH] $@"
+	$(Q)$(EFIROM) -v $(TGT_PCI_VENDOR) -d $(TGT_PCI_DEVICE) $< $@
