@@ -1478,7 +1478,33 @@ static void main_loop(void)
 #ifdef CONFIG_PROFILER
         ti = profile_getclock();
 #endif
-        last_io = main_loop_wait(nonblocking);
+        //mz 05.2012 FIXME there likely to be dragons here as we are running
+        //mz concurrently with the CPU thread.
+        //mz need to guard this to replay any special calls that occur during
+        //mz main_loop_wait()
+        //mz replay_action is set to main_loop_wait() to interact with the
+        //mz monitor - code has been added to guard against running
+        //mz devices/timers/etc.
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/last_io = main_loop_wait(nonblocking),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/last_io = main_loop_wait(nonblocking),
+            /*location=*/RR_CALLSITE_MAIN_LOOP);
+        //mz 05.2012 FIXME this is likely also broken due to the threading issue
+        if (rr_end_record_requested) {
+            rr_do_end_record();
+            rr_end_record_requested = 0;
+        }
+
+        if (rr_end_replay_requested) {
+            rr_do_end_replay(/*is_error=*/0);
+            rr_end_replay_requested = 0;
+            //mz FIXME is this still the right call?
+            //mz this is used in the monitor for do_stop()
+            vm_stop(EXCP_INTERRUPT);
+            //mz restore timers
+            init_timer_alarm();
+        }
 #ifdef CONFIG_PROFILER
         dev_time += profile_getclock() - ti;
 #endif
@@ -3228,6 +3254,8 @@ int main(int argc, char **argv, char **envp)
 
     os_set_line_buffering();
 
+    //mz 05.2012 really don't want to do this in replay, but have to
+    //mz because things like pc_init() use it
     if (init_timer_alarm() < 0) {
         fprintf(stderr, "could not initialize alarm timer\n");
         exit(1);
@@ -3482,7 +3510,18 @@ int main(int argc, char **argv, char **envp)
     os_setup_post();
 
     resume_all_vcpus();
+    
+    //mz 11.12.2009 we have to do that after we loadvm, as it needs the
+    //timers!  
+    if (rr_replay_requested || rr_in_replay()) {
+      quit_timers();
+    }
+
     main_loop();
+
+    //mz 05.2012 it looks like quit_timers() gets registered using atexit(),
+    //so we don't need to quit them manually anymore
+    
     bdrv_close_all();
     pause_all_vcpus();
     net_cleanup();
