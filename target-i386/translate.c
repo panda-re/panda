@@ -478,6 +478,22 @@ static inline void gen_op_add_reg_im(int size, int reg, int32_t val)
     }
 }
 
+// rw - I think this will work?
+static inline void gen_op_update_icount()
+{
+    tcg_gen_ld_tl(cpu_tmp0, rr_guest_instr_count, 0);
+    tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, 1);
+    tcg_gen_st_tl(cpu_tmp0, rr_guest_instr_count, 0);
+}
+
+// rw - I think this will work?
+static inline void gen_op_add_eip(int val)
+{
+    tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, eip));
+    tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, val);
+    tcg_gen_st_tl(cpu_tmp0, cpu_env, offsetof(CPUState, eip));
+}
+
 static inline void gen_op_add_reg_T0(int size, int reg)
 {
     switch(size) {
@@ -7875,7 +7891,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
     //mz for record and replay, let's start each block with EIP = pc_start.
     //mz this way, we can chain in record and not chain in replay.
     if (rr_mode != RR_OFF) {
-        gen_jmp_im(pc_start - dc->cs_base); // <-----------
+        gen_jmp_im(pc_start - dc->cs_base);
     }
 
     dc->is_first_instr = 1;
@@ -7911,7 +7927,35 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
-        pc_ptr = disas_insn(dc, pc_ptr);
+        prev_pc_ptr = pc_ptr;
+        saved_gen_opc_ptr = gen_opc_ptr;
+        saved_gen_opparam_ptr = gen_opparam_ptr;
+        //mz TRY to generate code for this instruction
+        if (setjmp(dc->end_translate_env) == 0) {
+            //mz let's count this instruction
+            if (rr_mode != RR_OFF) {
+                gen_op_update_icount();
+            }
+            //mz generate micro-ops for this instruction
+            pc_ptr = disas_insn(dc, pc_ptr);
+            tb->num_guest_insns++;
+            if (dc->is_first_instr) {
+                //mz record the page for the last byte of 1st instruction.
+                //mz this page is safe to use, but don't read from elsewhere.
+                dc->tb_src_page = (pc_ptr - 1) & TARGET_PAGE_MASK;
+            }
+        }
+        else {
+            //mz we decided not to disassemble this instruction because it crosses
+            //a page boundary and thus may result in a page fault.  
+            //revert any changes that may have been made in the interim!
+            gen_opc_ptr = saved_gen_opc_ptr;
+            gen_opparam_ptr = saved_gen_opparam_ptr;
+            //mz let's start translating from here next time
+            gen_jmp_im(prev_pc_ptr - dc->cs_base);
+            gen_eob(dc);
+        }
+
         num_insns++;
         /* stop translation if indicated */
         if (dc->is_jmp)
@@ -7940,7 +7984,47 @@ static inline void gen_intermediate_code_internal(CPUState *env,
             gen_eob(dc);
             break;
         }
-    }
+
+        if (rr_mode == RR_REPLAY) {
+            //mz make sure we'll terminate in time for next interrupt
+            //mz NOTE: we cannot muck with size of translation block if search_pc
+            //is set - must be the same as last translation!
+            if (search_pc == 0 && tb->num_guest_insns == rr_num_instr_before_next_interrupt) {
+                gen_jmp_im(pc_ptr - dc->cs_base);
+                gen_eob(dc);
+                break;
+            }
+        }
+        if (rr_mode != RR_OFF) {
+            //mz update EIP (otherwise it has already been updated by a gen_jmp_im instruction)
+            assert( (pc_ptr - prev_pc_ptr) < sizeof(gen_op_add_eip) / sizeof(GenOpFunc *) );
+            gen_op_add_eip[pc_ptr - prev_pc_ptr]();
+            // rw - think this needs to be gen_op_add_reg_im()
+        }
+        dc->is_first_instr = 0;
+#if 0
+        //mz TEST: randomly terminate translation blocks in replay
+        //mz NOTE: we cannot muck with size of translation block if search_pc
+        //is set - must be the same as last translation!
+        if (rr_mode == RR_REPLAY) {
+            if (search_pc) {
+                if (tb->num_guest_insns == saved_num_guest_insns) {
+                    gen_jmp_im(pc_ptr - dc->cs_base);
+                    gen_eob(dc);
+                    break;
+                }
+            }
+            else {
+                if ((rand() % 10) == 0) {
+                    gen_jmp_im(pc_ptr - dc->cs_base);
+                    gen_eob(dc);
+                    break;
+                }
+            }
+        }
+#endif
+
+    } /* for (;;) */
     if (tb->cflags & CF_LAST_IO)
         gen_io_end();
     gen_icount_end(tb, num_insns);
