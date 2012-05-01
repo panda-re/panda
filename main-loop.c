@@ -431,7 +431,11 @@ int main_loop_wait(int nonblocking)
         qemu_bh_update_timeout(&timeout);
     }
 
-    os_host_main_loop_wait(&timeout);
+    //mz 05.2012 this is a no-op unless we're on Windows, but we probably
+    //mz don't want to do it anyway
+    if (! (rr_in_replay() || rr_replay_requested)) {
+        os_host_main_loop_wait(&timeout);
+    }
 
     tv.tv_sec = timeout / 1000;
     tv.tv_usec = (timeout % 1000) * 1000;
@@ -444,10 +448,19 @@ int main_loop_wait(int nonblocking)
     FD_ZERO(&xfds);
 
 #ifdef CONFIG_SLIRP
-    slirp_select_fill(&nfds, &rfds, &wfds, &xfds);
+    //mz 05.2012 don't want to do this in replay
+    if (! (rr_in_replay() || rr_replay_requested)) {
+        slirp_select_fill(&nfds, &rfds, &wfds, &xfds);
+    }
 #endif
+    //mz 05.2012 we still want to service monitor fds, so some portion of
+    //mz qemu_iohandler_fill() is needed
     qemu_iohandler_fill(&nfds, &rfds, &wfds, &xfds);
-    glib_select_fill(&nfds, &rfds, &wfds, &xfds, &tv);
+    //mz 05.2012 I'm not sure what uses this mechanism...but let's disable it
+    //mz for now
+    if (! (rr_in_replay() || rr_replay_requested)) {
+        glib_select_fill(&nfds, &rfds, &wfds, &xfds, &tv);
+    }
 
     if (timeout > 0) {
         qemu_mutex_unlock_iothread();
@@ -459,17 +472,24 @@ int main_loop_wait(int nonblocking)
         qemu_mutex_lock_iothread();
     }
 
-    glib_select_poll(&rfds, &wfds, &xfds, (ret < 0));
+    //mz 05.2012 this should be safe to do as only the monitor fds were
+    //mz enabled for the select() call above, but let's disable them just in case
+    if (! (rr_in_replay() || rr_replay_requested)) {
+        glib_select_poll(&rfds, &wfds, &xfds, (ret < 0));
+    }
+    //mz 05.2012 want to service the monitor, so run this
     qemu_iohandler_poll(&rfds, &wfds, &xfds, ret);
+    //mz 05.2012 we don't want to run any of this other stuff
+    if (! (rr_in_replay() || rr_replay_requested)) {
 #ifdef CONFIG_SLIRP
-    slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0));
+        slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0));
 #endif
+        qemu_run_all_timers();
 
-    qemu_run_all_timers();
-
-    /* Check bottom-halves last in case any of the earlier events triggered
-       them.  */
-    qemu_bh_poll();
+        /* Check bottom-halves last in case any of the earlier events triggered
+           them.  */
+        qemu_bh_poll();
+    }
 
     return ret;
 }
