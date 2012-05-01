@@ -21,6 +21,11 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+#include "rr_log.h"
+
+//mz 09.13.2009 env->tlb_table is read but not written in this file.
+
 #include "qemu-timer.h"
 
 #define DATA_SIZE (1 << SHIFT)
@@ -72,16 +77,31 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(target_phys_addr_t physaddr,
 
     env->mem_io_vaddr = addr;
 #if SHIFT <= 2
-    res = io_mem_read[index][SHIFT](io_mem_opaque[index], physaddr);
+#define ACTION \
+   do { \
+      res = io_mem_read[index][SHIFT](io_mem_opaque[index], physaddr); \
+   } while (0);
 #else
 #ifdef TARGET_WORDS_BIGENDIAN
-    res = (uint64_t)io_mem_read[index][2](io_mem_opaque[index], physaddr) << 32;
-    res |= io_mem_read[index][2](io_mem_opaque[index], physaddr + 4);
+#define ACTION \
+   do { \
+      res = (uint64_t)io_mem_read[index][2](io_mem_opaque[index], physaddr) << 32; \
+      res |= io_mem_read[index][2](io_mem_opaque[index], physaddr + 4); \
+   } while (0);
 #else
-    res = io_mem_read[index][2](io_mem_opaque[index], physaddr);
-    res |= (uint64_t)io_mem_read[index][2](io_mem_opaque[index], physaddr + 4) << 32;
+#define ACTION \
+   do { \
+      res = io_mem_read[index][2](io_mem_opaque[index], physaddr); \
+      res |= (uint64_t)io_mem_read[index][2](io_mem_opaque[index], physaddr + 4) << 32; \
+   } while (0);
 #endif
 #endif /* SHIFT > 2 */
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/ACTION,
+        /*record=*/glue(rr_input_shift_, SHIFT)(&res),
+        /*replay=*/glue(rr_input_shift_, SHIFT)(&res),
+        /*location=*/glue(RR_CALLSITE_IO_READ_, SHIFT));
+#undef ACTION
     return res;
 }
 
@@ -215,16 +235,36 @@ static inline void glue(io_write, SUFFIX)(target_phys_addr_t physaddr,
     env->mem_io_vaddr = addr;
     env->mem_io_pc = (unsigned long)retaddr;
 #if SHIFT <= 2
-    io_mem_write[index][SHIFT](io_mem_opaque[index], physaddr, val);
+#define ACTION \
+    do { \
+        io_mem_write[index][SHIFT](io_mem_opaque[index], physaddr, val); \
+    } while (0);
 #else
 #ifdef TARGET_WORDS_BIGENDIAN
-    io_mem_write[index][2](io_mem_opaque[index], physaddr, val >> 32);
-    io_mem_write[index][2](io_mem_opaque[index], physaddr + 4, val);
+#define ACTION \
+    do { \
+        io_mem_write[index][2](io_mem_opaque[index], physaddr, val >> 32); \
+        io_mem_write[index][2](io_mem_opaque[index], physaddr + 4, val); \
+    } while (0);
 #else
-    io_mem_write[index][2](io_mem_opaque[index], physaddr, val);
-    io_mem_write[index][2](io_mem_opaque[index], physaddr + 4, val >> 32);
+#define ACTION \
+    do { \
+        io_mem_write[index][2](io_mem_opaque[index], physaddr, val); \
+        io_mem_write[index][2](io_mem_opaque[index], physaddr + 4, val >> 32); \
+    } while (0);
 #endif
 #endif /* SHIFT > 2 */
+    if (index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+        ACTION;
+    }
+    else {
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/ACTION,
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/glue(RR_CALLSITE_IO_WRITE_, SHIFT));
+    }
+#undef ACTION
 }
 
 void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
@@ -242,6 +282,8 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
     tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     if ((addr & TARGET_PAGE_MASK) == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
         if (tlb_addr & ~TARGET_PAGE_MASK) {
+            //mz 10.20.2009  There's something in the lower 12 bits (and
+            //TLB_INVALID_MASK is not it) - therefore, it must be IO
             /* IO access */
             if ((addr & (DATA_SIZE - 1)) != 0)
                 goto do_unaligned_access;

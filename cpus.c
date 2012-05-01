@@ -776,6 +776,17 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             qemu_notify_event();
         }
         qemu_tcg_wait_io_event();
+        //mz 05.2012 not sure if this is the right place, but let's try
+#if RR_REPORT_PROGRESS
+        if (rr_in_replay()) {
+            static uint64_t num = 0;
+            if (runstate_is_running()) {
+                if ((++num % RR_PROGRESS_FREQ) == 0) {
+                  replay_progress();
+                }
+            }
+        }
+#endif /* RR_REPORT_PROGRESS */
     }
 
     return NULL;

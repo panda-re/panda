@@ -29,6 +29,8 @@
 #include "trace.h"
 #include "memory.h"
 
+#include "rr_log.h"
+
 /***********************************************************/
 /* IO Port */
 
@@ -58,6 +60,8 @@ static IOPortWriteFunc default_ioport_writeb, default_ioport_writew, default_iop
 
 static uint32_t ioport_read(int index, uint32_t address)
 {
+    uint32_t result;
+
     static IOPortReadFunc * const default_func[3] = {
         default_ioport_readb,
         default_ioport_readw,
@@ -66,7 +70,12 @@ static uint32_t ioport_read(int index, uint32_t address)
     IOPortReadFunc *func = ioport_read_table[index][address];
     if (!func)
         func = default_func[index];
-    return func(ioport_opaque[address], address);
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/result = func(ioport_opaque[address], address),
+            /*record=*/rr_input_4((uint32_t *)&result),
+            /*replay=*/rr_input_4((uint32_t *)&result),
+            /*location=*/RR_CALLSITE_IOPORT_READ);
+    return result;
 }
 
 static void ioport_write(int index, uint32_t address, uint32_t data)
@@ -79,17 +88,23 @@ static void ioport_write(int index, uint32_t address, uint32_t data)
     IOPortWriteFunc *func = ioport_write_table[index][address];
     if (!func)
         func = default_func[index];
-    func(ioport_opaque[address], address, data);
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/func(ioport_opaque[address], address, data),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/RR_CALLSITE_IOPORT_WRITE);
 }
 
 static uint32_t default_ioport_readb(void *opaque, uint32_t address)
 {
+    //mz 05.2012: no RR action necessary
     LOG_UNUSED_IOPORT("unused inb: port=0x%04"PRIx32"\n", address);
     return 0xff;
 }
 
 static void default_ioport_writeb(void *opaque, uint32_t address, uint32_t data)
 {
+    //mz 05.2012: no RR action necessary
     LOG_UNUSED_IOPORT("unused outb: port=0x%04"PRIx32" data=0x%02"PRIx32"\n",
                       address, data);
 }
@@ -98,6 +113,7 @@ static void default_ioport_writeb(void *opaque, uint32_t address, uint32_t data)
 static uint32_t default_ioport_readw(void *opaque, uint32_t address)
 {
     uint32_t data;
+    //mz 05.2012: no RR action necessary - handled as part of ioport_read()
     data = ioport_read(0, address);
     address = (address + 1) & IOPORTS_MASK;
     data |= ioport_read(0, address) << 8;
@@ -106,6 +122,7 @@ static uint32_t default_ioport_readw(void *opaque, uint32_t address)
 
 static void default_ioport_writew(void *opaque, uint32_t address, uint32_t data)
 {
+    //mz 05.2012: no RR action necessary - handled as part of ioport_write()
     ioport_write(0, address, data & 0xff);
     address = (address + 1) & IOPORTS_MASK;
     ioport_write(0, address, (data >> 8) & 0xff);
@@ -113,12 +130,14 @@ static void default_ioport_writew(void *opaque, uint32_t address, uint32_t data)
 
 static uint32_t default_ioport_readl(void *opaque, uint32_t address)
 {
+    //mz 05.2012: no RR action necessary
     LOG_UNUSED_IOPORT("unused inl: port=0x%04"PRIx32"\n", address);
     return 0xffffffff;
 }
 
 static void default_ioport_writel(void *opaque, uint32_t address, uint32_t data)
 {
+    //mz 05.2012: no RR action necessary
     LOG_UNUSED_IOPORT("unused outl: port=0x%04"PRIx32" data=0x%02"PRIx32"\n",
                       address, data);
 }
