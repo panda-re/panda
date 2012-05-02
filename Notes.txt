@@ -121,4 +121,47 @@ never executing code when IO thread is executing devices.  Yay!
 - CPU must only be able to execute while main_loop_wait() is in the select()
   call; otherwise, it reacquires the mutex.
 - This only occurs if timeout > 0, that is nonblocking = false
-        
+
+
+===============================================================================
+Ryan Whelan
+5/2/12
+Memory model notes
+
+-In vl.c inside of main(), eventually cpu_exec_init_all() is called.  This
+function calls memory_map_init() and io_mem_init() to initialize the system
+memory and the I/O memory.
+
+-Later on in main(), machine->init() is called.  We can see that the init()
+function pointer is actually pc_init_pci() from looking in hw/pc_piix.c at the
+1.0 machine settings.  This function just calls pc_init1().
+
+-The other functions that allocate system and PCI RAM are pc_memory_init() and
+i440fx_init(), respectively.
+
+-Inside of pc_memory_init(), the MemoryRegion 'ram' is allocated using
+g_malloc().  This function is used quite often during RAM allocation, and I'm
+not quite sure how it works.  But then memory_region_init_ram() is called, which
+actually sets the ram_addr field by calling qemu_ram_alloc().  I'm guessing this
+is the reason why the old API is still compatible with the new API, but I'm
+still not quite sure how the pieces fit together, especially in terms of the
+different alloc() functions.
+
+-Here is a comment from inside pc_memory_init():
+/* Allocate RAM.  We allocate it as a single memory region and use
+ * aliases to address portions of it, mostly for backwards compatiblity
+ * with older qemus that used qemu_ram_alloc().
+ */
+
+-Running 'info mtree' inside of the monitor allows you to see the memory map.
+
+-As far as devices go, it seems like most (if not all) have converted to the new
+memory API.  An example is in hw/e1000.c in e1000_mmio_setup(), where the new
+memory API is being used.
+
+-Overall, it's still somewhat unclear how the two memory APIs are compatible,
+but the call to qemu_ram_alloc() during allocation could be responsible for
+that.  There are also many other uses of ram_addr stuff in memory.c.  It's also
+unclear what this means in regard to record/replay, but I will try to start
+decode this by looking at the patch.
+
