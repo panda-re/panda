@@ -96,11 +96,11 @@ void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *
     QLIST_FOREACH(ioh, &io_handlers, next) {
         if (ioh->deleted)
             continue;
-        //mz 05.2012 add another clause to test whether ioh->opaque == monitor_hd here!
-        //mz if not, continue (only in replay)
+        //mz 05.2012 add another clause to test whether ioh->opaque is a
+        //mz monitor device. if not, continue (only in replay)
         if (rr_in_replay() || rr_replay_requested) {
-            //mz lives in monitor.c
-            extern int is_monitor_device(const void *opaque);
+            //mz lives in monitor.c. opaque is CharDriverState *?
+            extern bool is_monitor_device(const void *opaque);
             if ( ! is_monitor_device(ioh->opaque))
                 continue;
         }

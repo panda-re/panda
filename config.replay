@@ -1,0 +1,46 @@
+#
+# Record and Replay for QEMU
+#
+# Copyright (c) 2007-2011 Massachusetts Institute of Technology
+#
+# Authors:
+#   Tim Leek <tleek@ll.mit.edu>
+#   Michael Zhivich <mzhivich@ll.mit.edu>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
+#
+# Record and Replay compile-time parameters
+#
+# RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY controls how long to wait in the select
+#     call to service monitor file descriptors
+#
+# RR_REPORT_PROGRESS controls whether progress indicator is printed to stdout.
+#     The progress indicator currently consists of two measures - percent of
+#     instructions executed and percent of record log consumed.  This
+#     indicator is particularly useful as there is otherwise no feedback of
+#     how the replay is proceeding (e.g. VGA devices are not run in replay)
+#
+# RR_PROGRESS_FREQ controls the frequency of progress reports.  The value here
+#    is a bit bizarre - this is the number of main_loop() iterations in vl.c.  It
+#    bears some relation to the number of guest instructions executed, but is not
+#    a direct measure.
+#
+# RR_CFLAGS is also a good opportunity to inject other DEBUG compile-time
+# parameters
+#
+RR_CFLAGS = -DRR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY=0 -DRR_REPORT_PROGRESS -DRR_PROGRESS_FREQ=1000
+

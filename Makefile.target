@@ -12,13 +12,16 @@ include $(SRC_PATH)/rules.mak
 ifneq ($(HWDIR),)
 include $(HWDIR)/config.mak
 endif
+include ../config.replay
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)
+
+# rw I think these replace BASE_CFLAGS that was in 0.9.1
 ifdef CONFIG_LINUX
-QEMU_CFLAGS += -I../linux-headers
+QEMU_CFLAGS += -I../linux-headers $(RR_CFLAGS)
 endif
-QEMU_CFLAGS += -I.. -I$(TARGET_PATH) -DNEED_CPU_H
+QEMU_CFLAGS += -I.. -I$(TARGET_PATH) -DNEED_CPU_H $(RR_CFLAGS)
 
 include $(SRC_PATH)/Makefile.objs
 

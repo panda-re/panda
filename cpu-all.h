@@ -286,6 +286,7 @@ extern unsigned long reserved_va;
 /* page related stuff */
 
 #define TARGET_PAGE_SIZE (1 << TARGET_PAGE_BITS)
+//mz keep everything but the lower 12 bits
 #define TARGET_PAGE_MASK ~(TARGET_PAGE_SIZE - 1)
 #define TARGET_PAGE_ALIGN(addr) (((addr) + TARGET_PAGE_SIZE - 1) & TARGET_PAGE_MASK)
 
@@ -446,6 +447,9 @@ void run_on_cpu(CPUState *env, void (*func)(void *data), void *data);
 #define CPU_LOG_IOPORT     (1 << 7)
 #define CPU_LOG_TB_CPU     (1 << 8)
 #define CPU_LOG_RESET      (1 << 9)
+//rw these are slightly different than before
+#define CPU_LOG_RR         (1 << 10)
+#define CPU_LOG_OPEN_FILE  (1 << 11)
 
 /* define log items */
 typedef struct CPULogItem {
@@ -466,6 +470,9 @@ int cpu_str_to_log_mask(const char *str);
    only for debugging because no protection checks are done. Return -1
    if no page found. */
 target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr);
+
+//mz Record and Replay needs this one.
+void invalidate_single_tb(CPUState *env, target_ulong pc);
 
 /* memory API */
 
