@@ -64,4 +64,8 @@ typedef void (MonitorCompletion)(void *opaque, QObject *ret_data);
 
 void monitor_set_error(Monitor *mon, QError *qerror);
 
+//mz 05.2012:  determine whether a device is a monitor device
+//mz the opaque here (I believe) is CharDriverState *
+bool is_monitor_device(const void *opaque);
+
 #endif /* !MONITOR_H */
