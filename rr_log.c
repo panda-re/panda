@@ -889,6 +889,66 @@ static inline void rr_reset_state() {
     rr_guest_instr_count = 0;
 }
 
+
+//////////////////////////////////////////////////////////////
+//
+// QMP commands
+
+#include "error.h"
+void qmp_begin_record(const char *file_name, Error **errp) {
+  rr_record_requested = 1;
+  rr_requested_name = qemu_strdup(file_name);
+}
+
+void qmp_end_record(Error **errp) {
+  do_stop();
+  rr_end_record_requested = 1;
+}
+
+void qmp_begin_replay(const char *file_name, Error **errp) {
+  rr_replay_requested = 1;
+  rr_requested_name = qemu_strdup(file_name);
+}
+
+void qmp_end_replay(Error **errp) {
+  do_stop();
+  rr_end_replay_requested = 1;
+}
+
+#include "qemu-common.h"  // Monitor def
+#include "qdict.h"        // QDict def
+
+// HMP commands (the "monitor")
+void hmp_begin_record(Monitor *mon, const QDict *qdict)
+{
+  Error *err;
+  const char *file_name = qdict_get_try_str(qdict, "file_name");
+  qmp_begin_record(file_name, &err);
+}
+
+void hmp_begin_replay(Monitor *mon, const QDict *qdict)
+{
+  Error *err;
+  const char *file_name = qdict_get_try_str(qdict, "file_name");
+  qmp_begin_replay(file_name, &err);
+}
+
+void hmp_end_record(Monitor *mon, const QDict *qdict)
+{
+  Error *err;
+  qmp_end_record(&err);
+}
+
+void hmp_end_replay(Monitor *mon, const QDict *qdict)
+{
+  Error *err;
+  qmp_end_replay(&err);
+}
+
+
+
+
+
 //mz file_name_full should be full path to desired record/replay log file
 void rr_do_begin_record(const char *file_name_full) {
   char name_buf[1024];
