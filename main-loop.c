@@ -419,6 +419,8 @@ static inline void os_host_main_loop_wait(int *timeout)
 }
 #endif
 
+#define RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY 1000
+
 int main_loop_wait(int nonblocking)
 {
     fd_set rfds, wfds, xfds;

@@ -360,7 +360,7 @@ void hw_error(const char *fmt, ...)
 }
 
 //mz 05.2012 adding this for RR logging
-void log_all_cpu_states() {
+void log_all_cpu_states(void) {
     CPUState *env;
     if (rr_debug_whisper()) {
         fprintf(logfile, "\nLogging all cpu states\n");
