@@ -128,6 +128,9 @@ Ryan Whelan
 5/2/12
 Memory model notes
 
+-In addition to the notes provided in docs/memory.txt, there is more info
+available here: http://wiki.qemu.org/Features/Memory_API
+
 -In vl.c inside of main(), eventually cpu_exec_init_all() is called.  This
 function calls memory_map_init() and io_mem_init() to initialize the system
 memory and the I/O memory.
@@ -164,4 +167,11 @@ but the call to qemu_ram_alloc() during allocation could be responsible for
 that.  There are also many other uses of ram_addr stuff in memory.c.  It's also
 unclear what this means in regard to record/replay, but I will try to start
 decode this by looking at the patch.
+
+-The more I look, the more I think about it, the more I think the new memory API
+is just an abstraction over the old one.  At least for now.  Consider that
+exec.c still uses the old memory API.  Actually, this comment on the webpage
+seems to confirm that, I guess it is just in limbo now: "Currently the memory
+API is implemented on top of the old ram_addr_t API; the two APIs coexist. This
+severely limits the utility of the new API. Patches are queued in..."
 
