@@ -748,13 +748,12 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                     break;
                 case RR_CALL_CPU_REG_MEM_REGION:
                     {
-                        //mz XXX can we get a full prototype here?
-                        extern void cpu_register_physical_memory();
-                        cpu_register_physical_memory(
-                                args->variant.cpu_mem_reg_region_args.start_addr,
-                                args->variant.cpu_mem_reg_region_args.size,
-                                args->variant.cpu_mem_reg_region_args.phys_offset
-                                );
+		      cpu_register_physical_memory_log(
+						       args->variant.cpu_mem_reg_region_args.start_addr,
+						       args->variant.cpu_mem_reg_region_args.size,
+						       args->variant.cpu_mem_reg_region_args.phys_offset,
+						       0, false
+						       );
                     }
                     break;
                 default:
@@ -780,7 +779,7 @@ void rr_create_record_log (const char *filename) {
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = RECORD;
-  rr_nondet_log->name = qemu_strdup(filename);
+  rr_nondet_log->name = g_strdup(filename);
   rr_nondet_log->fp = fopen(rr_nondet_log->name, "w");
   assert(rr_nondet_log->fp != NULL);
 
@@ -806,7 +805,7 @@ void rr_create_replay_log (const char *filename) {
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = REPLAY;
-  rr_nondet_log->name = qemu_strdup(filename);
+  rr_nondet_log->name = g_strdup(filename);
   rr_nondet_log->fp = fopen(rr_nondet_log->name, "r");
   assert(rr_nondet_log->fp != NULL);
 
@@ -863,7 +862,7 @@ void replay_progress(void) {
 /* MONITOR CALLBACKS (top-level) */
 /******************************************************************************************/
 //mz from vl.c
-extern void do_savevm(const char *name);
+extern void do_savevm_aux(void *mon, const char *name);
 extern void do_loadvm(const char *name);
 
 // rr_name is the current rec/replay name. 
@@ -900,23 +899,22 @@ static inline void rr_reset_state(void) {
 #include "error.h"
 void qmp_begin_record(const char *file_name, Error **errp) {
   rr_record_requested = 1;
-  rr_requested_name = qemu_strdup(file_name);
+  rr_requested_name = g_strdup(file_name);
 }
 
 void qmp_begin_replay(const char *file_name, Error **errp) {
   rr_replay_requested = 1;
-  rr_requested_name = qemu_strdup(file_name);
+  rr_requested_name = g_strdup(file_name);
 }
 
-extern void do_stop(void);
 
 void qmp_end_record(Error **errp) {
-  do_stop();
+  qmp_stop(NULL);
   rr_end_record_requested = 1;
 }
 
 void qmp_end_replay(Error **errp) {
-  do_stop();
+  qmp_stop(NULL);
   rr_end_replay_requested = 1;
 }
 
@@ -953,6 +951,7 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 
 
 
+void *get_monitor(void);
 
 //mz file_name_full should be full path to desired record/replay log file
 void rr_do_begin_record(const char *file_name_full) {
@@ -969,7 +968,7 @@ void rr_do_begin_record(const char *file_name_full) {
   // first take a snapshot
   rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
   printf ("writing snapshot:\t%s\n", name_buf);
-  do_savevm(name_buf);
+  do_savevm(get_monitor(), name_buf);
   log_all_cpu_states();
   // second, open non-deterministic input log for write. 
   rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1014,22 +1013,22 @@ void rr_do_end_record(void) {
 void rr_do_begin_replay(const char *file_name_full) {
   char name_buf[1024];
   // decompose file_name_base into path & file. 
-  char *rr_path = qemu_strdup(file_name_full);
-  char *rr_name = qemu_strdup(file_name_full);
+  char *rr_path = g_strdup(file_name_full);
+  char *rr_name = g_strdup(file_name_full);
   rr_path = dirname(rr_path);
   rr_name = basename(rr_name);
   if (rr_debug_whisper()) {
     fprintf (logfile,"Begin vm replay for file_name_full = %s\n", file_name_full);    
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
   }
-
   // first retrieve snapshot
   rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
   if (rr_debug_whisper()) {
     fprintf (logfile,"reading snapshot:\t%s\n", name_buf);
   }
   printf ("loading snapsnot\n");
-  do_loadvm(name_buf);
+  //  vm_stop(0) RUN_STATE_RESTORE_VM);
+  load_vmstate(name_buf);
   printf ("... done.\n");
   log_all_cpu_states();
   // second, open non-deterministic input log for read.  

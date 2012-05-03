@@ -481,7 +481,7 @@ static inline void gen_op_add_reg_im(int size, int reg, int32_t val)
 }
 
 // rw - I think this will work?
-static inline void gen_op_update_icount()
+static inline void gen_op_update_icount(void)
 {
     tcg_gen_ld_tl(cpu_tmp0, rr_guest_instr_count, 0);
     tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, 1);
@@ -7795,9 +7795,9 @@ void optimize_flags_init(void)
 /* generate intermediate code in gen_opc_buf and gen_opparam_buf for
    basic block 'tb'. If search_pc is TRUE, also generate PC
    information for each intermediate instruction. */
-static int void gen_intermediate_code_internal(CPUState *env,
-					       TranslationBlock *tb,
-					       int search_pc)
+static void gen_intermediate_code_internal(CPUState *env,
+					   TranslationBlock *tb,
+					   int search_pc)
 {
     DisasContext dc1, *dc = &dc1;
     target_ulong pc_ptr;
@@ -7813,7 +7813,7 @@ static int void gen_intermediate_code_internal(CPUState *env,
     uint16_t *saved_gen_opc_ptr;
     uint32_t *saved_gen_opparam_ptr;
 
-    uint16_t saved_num_guest_insns = tb->num_guest_insns; // rw - icount?
+    //    uint16_t saved_num_guest_insns = tb->num_guest_insns; // rw - icount?
 
     tb->num_guest_insns = 0; //rw - we now have tb->icount
 
@@ -7999,8 +7999,8 @@ static int void gen_intermediate_code_internal(CPUState *env,
         }
         if (rr_mode != RR_OFF) {
             //mz update EIP (otherwise it has already been updated by a gen_jmp_im instruction)
-            assert( (pc_ptr - prev_pc_ptr) < sizeof(gen_op_add_eip) / sizeof(GenOpFunc *) );
-            gen_op_add_eip[pc_ptr - prev_pc_ptr]();
+	  //            assert( (pc_ptr - prev_pc_ptr) < sizeof(gen_op_add_eip) / sizeof(char *) );
+	  gen_op_add_eip(pc_ptr - prev_pc_ptr);
             // rw - think this needs to be gen_op_add_reg_im()
         }
         dc->is_first_instr = 0;

@@ -1944,7 +1944,14 @@ static int del_existing_snapshots(Monitor *mon, const char *name)
     return 0;
 }
 
-void do_savevm(Monitor *mon, const QDict *qdict)
+
+
+void do_savevm(Monitor *mon, const QDict *qdict) {
+  const char *name = qdict_get_try_str(qdict, "name");
+  do_savevm_aux(mon, name);
+}
+
+void do_savevm_aux(Monitor *mon, char *name)
 {
     BlockDriverState *bs, *bs1;
     QEMUSnapshotInfo sn1, *sn = &sn1, old_sn1, *old_sn = &old_sn1;
@@ -1959,7 +1966,7 @@ void do_savevm(Monitor *mon, const QDict *qdict)
     struct timeval tv;
     struct tm tm;
 #endif
-    const char *name = qdict_get_try_str(qdict, "name");
+
 
     /* Verify if there is a device that doesn't support snapshots and is writable */
     bs = NULL;

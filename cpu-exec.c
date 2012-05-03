@@ -28,7 +28,7 @@
 #include <signal.h>
 
 //mz need this here because CPU_LOG_RR constant is not available in rr_log.[ch]
-int is_cpu_log_rr_set() {
+int is_cpu_log_rr_set(void) {
     return (loglevel & CPU_LOG_RR);
 }
 
@@ -50,7 +50,7 @@ void cpu_loop_exit(CPUState *env)
       qemu_log_mask(CPU_LOG_RR, 
 		    "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit.\n", 
 		    (unsigned long long)rr_prog_point.guest_instr_count,
-		    rr_prog_point.eip, rr_prog_point.ecx)
+		    rr_prog_point.eip, rr_prog_point.ecx);
     }
     env->current_tb = NULL;
     longjmp(env->jmp_env, 1);
@@ -225,7 +225,7 @@ void rr_set_program_point(void) {
 void rr_quit_cpu_loop(void) {
     if (cpu_single_env) {
         cpu_single_env->exception_index = EXCP_INTERRUPT;
-        cpu_loop_exit();
+        cpu_loop_exit(cpu_single_env);
     }
 }
 
@@ -268,9 +268,9 @@ int cpu_exec(CPUState *env)
         sigprocmask(SIG_SETMASK, &oldset, NULL);
     }
 
-    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env1->hflags);
-    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
-		  env1->hflags & HF_HALTED_MASK);
+    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env->hflags);
+    //    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
+    //		  env->hflags & HF_HALTED_MASK);
 
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -676,7 +676,7 @@ int cpu_exec(CPUState *env)
 		        // tb->num_guest_insns, rr_num_instr_before_next_interrupt);
                         invalidate_single_tb(env, tb->pc);
                         //mz try again.
-                        tb = tb_find_fast();
+                        tb = tb_find_fast(env);
                     }
                 }
 

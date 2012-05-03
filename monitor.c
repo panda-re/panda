@@ -210,6 +210,10 @@ Monitor *default_mon;
 static void monitor_command_cb(Monitor *mon, const char *cmdline,
                                void *opaque);
 
+Monitor *get_monitor(void) {
+    return default_mon;
+}
+
 static inline int qmp_cmd_mode(const Monitor *mon)
 {
     return (mon->mc ? mon->mc->command_mode : 0);

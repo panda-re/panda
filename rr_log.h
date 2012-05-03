@@ -235,6 +235,9 @@ typedef enum {
   RR_CALLSITE_IO_READ_1, 
   RR_CALLSITE_IO_READ_2, 
   RR_CALLSITE_IO_READ_3, 
+  RR_CALLSITE_CPU_EXEC_0,
+  RR_CALLSITE_CPU_EXEC_00,
+  RR_CALLSITE_CPU_EXEC_000,
   RR_CALLSITE_CPU_EXEC_1, 
   RR_CALLSITE_CPU_EXEC_2, 
   RR_CALLSITE_CPU_EXEC_3,
@@ -259,7 +262,9 @@ typedef enum {
   RR_CALLSITE_STL_PHYS,
   RR_CALLSITE_DO_SMM_ENTER,
   RR_CALLSITE_HELPER_RSM,
-  RR_CALLSITE_LAST  
+  RR_CALLSITE_IOPORT_READ,
+  RR_CALLSITE_IOPORT_WRITE,
+  RR_CALLSITE_LAST,
 } RR_callsite_id;
 
 static const char *callsite_str[] = {
@@ -277,6 +282,9 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IO_READ_1", 
   "RR_CALLSITE_IO_READ_2", 
   "RR_CALLSITE_IO_READ_3", 
+  "RR_CALLSITE_CPU_EXEC_0",
+  "RR_CALLSITE_CPU_EXEC_00",
+  "RR_CALLSITE_CPU_EXEC_000",
   "RR_CALLSITE_CPU_EXEC_1", 
   "RR_CALLSITE_CPU_EXEC_2", 
   "RR_CALLSITE_CPU_EXEC_3",
@@ -301,6 +309,8 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_STL_PHYS",
   "RR_CALLSITE_DO_SMM_ENTER",
   "RR_CALLSITE_HELPER_RSM",
+  "RR_CALLSITE_IOPORT_READ",
+  "RR_CALLSITE_IOPORT_WRITE",
   "RR_CALLSITE_LAST"
 };
 
@@ -366,7 +376,7 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
 
 // Convenience routines that perform appropriate action based on rr_mode setting
-static inline void rr_interrupt_request(int *interrupt_request) {
+static inline void rr_interrupt_request(uint32_t *interrupt_request) {
     switch (rr_mode) {
         case RR_RECORD:
             rr_record_interrupt_request(rr_skipped_callsite_location, *interrupt_request);
