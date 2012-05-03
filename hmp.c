@@ -521,4 +521,3 @@ void hmp_cpu(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, "invalid CPU index\n");
     }
 }
-
