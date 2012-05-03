@@ -27,6 +27,8 @@
 #include "disas.h"
 #include "tcg-op.h"
 
+#include "rr_log.h"
+
 #include "helper.h"
 #define GEN_HELPER 1
 #include "helper.h"

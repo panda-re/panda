@@ -167,6 +167,8 @@ int main(int argc, char **argv)
 
 #include "ui/qemu-spice.h"
 
+#include "rr_log.h"
+
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
 

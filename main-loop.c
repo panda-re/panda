@@ -27,6 +27,8 @@
 #include "slirp/slirp.h"
 #include "main-loop.h"
 
+#include "rr_log.h"
+
 #ifndef _WIN32
 
 #include "compatfd.h"

@@ -58,6 +58,8 @@
 
 #endif /* CONFIG_LINUX */
 
+#include "rr_log.h"
+
 static CPUState *next_cpu;
 
 /***********************************************************/
@@ -356,6 +358,26 @@ void hw_error(const char *fmt, ...)
     va_end(ap);
     abort();
 }
+
+//mz 05.2012 adding this for RR logging
+void log_all_cpu_states() {
+    CPUState *env;
+    if (rr_debug_whisper()) {
+        fprintf(logfile, "\nLogging all cpu states\n");
+        for(env = first_cpu; env != NULL; env = env->next_cpu) {
+            fprintf(logfile, "CPU #%d:\n", env->cpu_index);
+            cpu_dump_state(env, logfile, fprintf, X86_DUMP_FPU);
+        }
+    }
+    else {
+        printf ("\nLogging all cpu states\n");
+        for(env = first_cpu; env != NULL; env = env->next_cpu) {
+            printf("CPU #%d:\n", env->cpu_index);
+            cpu_dump_state(env, stderr, fprintf, X86_DUMP_FPU);
+        }
+    }
+}
+
 
 void cpu_synchronize_all_states(void)
 {

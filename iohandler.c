@@ -32,6 +32,8 @@
 #include <sys/wait.h>
 #endif
 
+#include "rr_log.h"
+
 typedef struct IOHandlerRecord {
     int fd;
     IOCanReadHandler *fd_read_poll;
