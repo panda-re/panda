@@ -1490,18 +1490,17 @@ static void main_loop(void)
             /*record=*/RR_NO_ACTION,
             /*replay=*/last_io = main_loop_wait(nonblocking),
             /*location=*/RR_CALLSITE_MAIN_LOOP);
-        //mz 05.2012 FIXME this is likely also broken due to the threading issue
+
+        //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested) {
             rr_do_end_record();
             rr_end_record_requested = 0;
         }
-
         if (rr_end_replay_requested) {
             rr_do_end_replay(/*is_error=*/0);
             rr_end_replay_requested = 0;
-            //mz FIXME is this still the right call?
-            //mz this is used in the monitor for do_stop()
-            vm_stop(EXCP_INTERRUPT);
+            //mz FIXME this is used in the monitor for do_stop()??
+            vm_stop(RUN_STATE_PAUSED);
             //mz restore timers
             init_timer_alarm();
         }
