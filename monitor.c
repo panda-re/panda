@@ -4853,6 +4853,21 @@ static void sortcmdlist(void)
 }
 
 
+//mz 05.2012:  determine whether a device is a monitor device
+//mz the opaque here (I believe) is CharDriverState *
+bool is_monitor_device(const void *opaque) {
+    bool ret = false;
+    Monitor *mon;
+
+    QLIST_FOREACH(mon, &mon_list, entry) {
+        if (mon->chr == opaque) {
+            ret = true;
+        }
+    }
+    return ret;
+}
+
+
 /*
  * Local variables:
  *  c-indent-level: 4
