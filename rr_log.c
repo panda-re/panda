@@ -900,14 +900,14 @@ void qmp_begin_record(const char *file_name, Error **errp) {
   rr_requested_name = qemu_strdup(file_name);
 }
 
-void qmp_end_record(Error **errp) {
-  do_stop();
-  rr_end_record_requested = 1;
-}
-
 void qmp_begin_replay(const char *file_name, Error **errp) {
   rr_replay_requested = 1;
   rr_requested_name = qemu_strdup(file_name);
+}
+
+void qmp_end_record(Error **errp) {
+  do_stop();
+  rr_end_record_requested = 1;
 }
 
 void qmp_end_replay(Error **errp) {
