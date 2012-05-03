@@ -1374,7 +1374,7 @@ ETEXI
     {
         .name       = "begin_record",
         .args_type  = "file_name:s",
-        .params     = "begin_record [file_name]",
+        .params     = "[file_name]",
         .help       = "begin recording for later replay",
         .mhandler.cmd = hmp_begin_record,
     },
@@ -1383,7 +1383,7 @@ ETEXI
     {
         .name       = "begin_replay",
         .args_type  = "file_name:s",
-        .params     = "begin_replay [file_name]",
+        .params     = "[file_name]",
         .help       = "begin replay",
         .mhandler.cmd = hmp_begin_replay,
     },
@@ -1392,7 +1392,7 @@ ETEXI
     {
         .name       = "end_record",
         .args_type  = "",
-        .params     = "end_record",
+        .params     = "",
         .help       = "end recording for later replay",
         .mhandler.cmd = hmp_end_record,
     },
@@ -1400,7 +1400,7 @@ ETEXI
     {
         .name       = "end_replay",
         .args_type  = "",
-        .params     = "end_replay",
+        .params     = "",
         .help       = "end replay",
         .mhandler.cmd = hmp_end_replay,
     },

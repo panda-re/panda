@@ -895,7 +895,7 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_record': 'data': { 'filename': 'str' } }
+{ 'command': 'begin_record', 'data': { 'filename': 'str' } }
 
 ##
 # @begin_replay
@@ -904,7 +904,7 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_replay': 'data': { 'filename': 'str' } }
+{ 'command': 'begin_replay', 'data': { 'filename': 'str' } }
 
 ##
 # @end_record
@@ -913,7 +913,7 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_record' }
+{ 'command': 'end_record' }
 
 ##
 # @begin_replay
@@ -922,6 +922,6 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_replay' } 
+{ 'command': 'end_replay' } 
 
 
