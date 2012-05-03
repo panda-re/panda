@@ -424,12 +424,19 @@ int main_loop_wait(int nonblocking)
     struct timeval tv;
     int timeout;
 
-    if (nonblocking) {
-        timeout = 0;
-    } else {
-        timeout = qemu_calculate_timeout();
-        qemu_bh_update_timeout(&timeout);
+    //mz 05.2012 let's make sure CPUs get to run in replay
+    if (rr_in_replay()) {
+        timeout = RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY;
     }
+    else {
+        if (nonblocking) {
+            timeout = 0;
+        } else {
+            timeout = qemu_calculate_timeout();
+            qemu_bh_update_timeout(&timeout);
+        }
+    }
+
 
     //mz 05.2012 this is a no-op unless we're on Windows, but we probably
     //mz don't want to do it anyway
