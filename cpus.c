@@ -475,6 +475,9 @@ static void cpu_signal(int sig)
         cpu_exit(cpu_single_env);
     }
     exit_request = 1;
+    if (rr_in_replay()) {
+        rr_use_live_exit_request = 1;
+    }
 }
 
 #ifdef CONFIG_LINUX
@@ -1079,6 +1082,9 @@ static void tcg_exec_all(void)
         }
     }
     exit_request = 0;
+    if (rr_in_replay()) {
+        rr_use_live_exit_request = 0;
+    }
 }
 
 void set_numa_modes(void)

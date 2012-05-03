@@ -52,6 +52,8 @@ volatile uint64_t rr_num_instr_before_next_interrupt;
 volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
+volatile sig_atomic_t rr_use_live_exit_request = 0;
+
 // a program-point indexed record/replay log
 typedef enum {RECORD, REPLAY} RR_log_type;
 typedef struct RR_log_t {

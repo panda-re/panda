@@ -79,6 +79,8 @@ extern volatile sig_atomic_t rr_skipped_callsite_location;
 //mz see RR_DO_RECORD_OR_REPLAY() macro
 extern volatile sig_atomic_t rr_record_in_progress; 
 
+extern volatile sig_atomic_t rr_use_live_exit_request;
+
 static inline void rr_set_prog_point(uint32_t eip, uint32_t ecx, uint64_t guest_instr_count) {
   rr_num_instr_before_next_interrupt -= (guest_instr_count - rr_prog_point.guest_instr_count);
   rr_prog_point.guest_instr_count = guest_instr_count;

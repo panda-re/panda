@@ -224,7 +224,7 @@ void rr_set_program_point(void) {
 
 void rr_quit_cpu_loop(void) {
     if (cpu_single_env) {
-        cpu_single_env->exception_index = EXCP_DEBUG;
+        cpu_single_env->exception_index = EXCP_INTERRUPT;
         cpu_loop_exit();
     }
 }
@@ -622,11 +622,25 @@ int cpu_exec(CPUState *env)
                         next_tb = 0;
                     }
                 }
+
+                rr_set_program_point();
+                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
+                if (rr_in_record()) {
+                    //mz FIXME yes this is the wrong routine, but we need the same kind of
+                    //mz compression here (e.g. give 0 if nothing recorded)
+                    rr_interrupt_request(&env->exit_request);
+                }
+                else if (rr_in_replay()) {
+                    if (!rr_use_live_exit_request) {
+                        rr_interrupt_request(&env->exit_request);
+                    }
+                }
                 if (unlikely(env->exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
                     cpu_loop_exit(env);
                 }
+
 #if defined(DEBUG_DISAS) || defined(CONFIG_DEBUG_EXEC)
                 if (qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
                     /* restore flags in standard format */
@@ -689,9 +703,9 @@ int cpu_exec(CPUState *env)
 		// tb is current translation block.  
                 if (rr_mode != RR_REPLAY)
                 {		
-                if (next_tb != 0 && tb->page_addr[1] == -1) {
-                    tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
-                }
+                    if (next_tb != 0 && tb->page_addr[1] == -1) {
+                        tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
+                    }
 		} else {
 		  /*
 		    TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
@@ -707,6 +721,20 @@ int cpu_exec(CPUState *env)
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
                 barrier();
+
+                rr_set_program_point();
+                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_000;
+                if (rr_in_record()) {
+                    //mz FIXME yes this is the wrong routine, but we need the same kind of
+                    //mz compression here (e.g. give 0 if nothing recorded)
+                    rr_interrupt_request(&env->exit_request);
+                }
+                else if (rr_in_replay()) {
+                    if (!rr_use_live_exit_request) {
+                        rr_interrupt_request(&env->exit_request);
+                    }
+                }
+
                 if (likely(!env->exit_request)) {
                     tc_ptr = tb->tc_ptr;
 		    //mz setting program point just before call to gen_func()
