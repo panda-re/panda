@@ -1,0 +1,124 @@
+vl.c:
+- ioport stuff moved to ioport.c - see that file and associated routines
+- timer stuff moved to qemu-timer.c - see that file and associated routines
+- main_loop_wait()
+- main_loop()
+
+cpus.c
+- look at calls to cpu_signal(sig) - signals the currently running cpu
+- SIG_IPI setup in qemu_tcg_init_cpu_signals() to point to cpu_signal
+- iothread_requesting_mutex??
+- qemu_tcg_init_vcpu()
+    -> qemu_tcg_cpu_thread_fn()
+        -> tcg_exec_all() - new main loop?
+            -> tcg_cpu_exec() 
+                -> setup icount stuff
+                -> cpu_exec()
+                -> do icount stuff
+        -> qemu_tcg_wait_io_event()
+
+- io_thread is the coordinating thread (see qemu_init_cpu_loop())
+    -> called from vl.c
+
+main-loop.c
+- qemu_signal_init()
+    -> SIG_IPI - for cpus
+    -> SIGIO
+    -> SIGALRM
+    -> SIGBUS
+
+exec.c
+- memory_map_init() - looks like memory subsystem changed
+- cpu_register_io_memory_fixed()?
+
+
+ioport.c
+- ioport_register(IORange)
+    - register_ioport_read() with ioport_read_thunk()
+    - register_ioport_write() with ioport_write_thunk()
+    - seems like a shortcut for a port range (base, len) and sizes (1,2,4)
+- register_ioport_read()
+    - modifies ioport_read_table
+- register_ioport_write()
+    - modifies ioport_write_table
+- portio_list_add()
+- ioport_read_table and ioport_write_table are now here
+- ioport_{read,write}{b,w,l}_thunk()??
+
+memory.[ch]
+
+
+cpu_register_physical_memory_log(start_addr, size, phys_offset, region_offset,
+log_dirty) - TODO: need to fix rr_log
+    - seems to be where all CPU physical memory is registered
+cpu_register_io_memory(readfunc, writefund, opaque, endianness)
+    - returns table address?
+cpu_unregister_io_memory(table_address)
+cpu_physical_memory_rw()
+    - TODO also see cpu_physical_memory_map()
+    - this seems to be used by devices to get a read or write (but not both)
+      buffer into RAM.
+    - it's used by dma-helper.c in dam_bdrv_cb() routine.  not quite sure what
+      to do with it yet.
+
+Interesting:  queued_work_first, queued_work_last in CPU env.
+cpus.c:
+- run_on_cpu(env, func, data)
+
+
+Conditions:
+- tcg_halt_cond (also env->halt_cond)
+    - all envs have this as env->halt_cond
+    - broadcast: qemu_kick_cpu() 
+- qemu_cpu_cond
+    - signal: qemu_tcg_cpu_thread_fn() when cpus are created
+    - wait: qemu_tcg_init_vcpu() env->created == 0
+- qemu_pause_cond
+    - signal: qemu_wait_io_event_common() if env->stop == 1
+    - signal: cpu_stop_current() if cpu_single_env
+    - wait: pause_all_vcpus() while !all_vcpus_paused()
+- qemu_work_cond
+    - wait:  run_on_cpu() while work not done
+    - broadcast:  flush_queued_work() when work completed
+- qemu_io_proceeded_cond
+    - wait:  qemu_tcg_wait_io_event() while iothread_requesting_mutex
+    - broadcast:  qemu_mutex_lock_iothread() after qemu_mutex_lock() succeeded
+
+Mutex:
+- qemu_global_mutex
+    - qemu_tcg_cpu_thread_fn() takes the lock before cpu creation (it's
+      released temporarily whenever a wait is used)
+    - qemu_mutex_lock_iothread()
+        - iothread_requesting_mutex = true
+        - trylock() first, if that fails:
+            - qemu_cpu_kick_thread(first_cpu), then qemu_mutex_lock()
+        - iotrhead_requesting_mutex = false
+        - broadcast qemu_io_proceeded_cond
+    - qemu_init_main_loop() - via qemu_mutex_lock_iothread()
+    - os_host_main_loop_wait() - via qemu_mutex_lock_iothread() only in
+      windows
+    - main_loop_wait() if timeout > 0: mutex is unlocked, then select, then
+      locked
+
+
+Threads:
+- io_thread
+- tcg_cpu_thread
+    - all CPUs run on this thread
+- qemu_cpu_kick_thread()
+    - sends SIG_IPI (SIGUSR1) to env->thread->thread (tcg_cpu_thread)
+    - handled by cpu_signal()
+        - if (cpu_single_env) { cpu_exit(); }
+            - cpu_unlink_tb()
+            - env->exit_request = 1
+            - cpu_loop_exit()
+        - exit_request = 1
+    - causes exit from tcg_exec_all()
+    - calls qemu_tcg_wait_io_event()
+
+It looks like qemu_global_mutex synchronizes the two threads, so that CPU is
+never executing code when IO thread is executing devices.  Yay!
+- CPU must only be able to execute while main_loop_wait() is in the select()
+  call; otherwise, it reacquires the mutex.
+- This only occurs if timeout > 0, that is nonblocking = false
+        

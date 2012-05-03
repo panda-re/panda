@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include "qemu-common.h"
+#include "rr_log.h"
 
 #ifdef TARGET_X86_64
 #define TARGET_LONG_BITS 64
@@ -989,6 +990,13 @@ static inline int cpu_mmu_index (CPUState *env)
 #define CC_DST (env->cc_dst)
 #define CC_OP  (env->cc_op)
 
+// record/replay
+#ifndef reg_GUEST_ICOUNT
+extern volatile uint64_t rr_guest_instr_count;
+#define GUEST_ICOUNT rr_guest_instr_count
+#endif
+
+
 /* float macros */
 #define FT0    (env->ft0)
 #define ST0    (env->fpregs[env->fpstt].d)
@@ -1016,6 +1024,12 @@ static inline void cpu_clone_regs(CPUState *env, target_ulong newsp)
 
 static inline bool cpu_has_work(CPUState *env)
 {
+
+    // interrupt record/replay stuff
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
+    rr_interrupt_request(&env->interrupt_request);
+    // Note, we are using cached value of interrupt request here
+
     return ((env->interrupt_request & CPU_INTERRUPT_HARD) &&
             (env->eflags & IF_MASK)) ||
            (env->interrupt_request & (CPU_INTERRUPT_NMI |

@@ -135,15 +135,22 @@ static int64_t qemu_next_alarm_deadline(void)
 
 static void qemu_rearm_alarm_timer(struct qemu_alarm_timer *t)
 {
-    int64_t nearest_delta_ns;
-    assert(alarm_has_dynticks(t));
-    if (!rt_clock->active_timers &&
-        !vm_clock->active_timers &&
-        !host_clock->active_timers) {
+    //mz 05.2012 this is a different place from 0.9.1, but I think this is
+    //mz what we want to disable in replay.
+    if (rr_in_replay() || rr_replay_requested) {
         return;
     }
-    nearest_delta_ns = qemu_next_alarm_deadline();
-    t->rearm(t, nearest_delta_ns);
+    else {
+        int64_t nearest_delta_ns;
+        assert(alarm_has_dynticks(t));
+        if (!rt_clock->active_timers &&
+            !vm_clock->active_timers &&
+            !host_clock->active_timers) {
+            return;
+        }
+        nearest_delta_ns = qemu_next_alarm_deadline();
+        t->rearm(t, nearest_delta_ns);
+    }
 }
 
 /* TODO: MIN_TIMER_REARM_NS should be optimized */
@@ -808,7 +815,7 @@ static void win32_rearm_timer(struct qemu_alarm_timer *t,
 
 #endif /* _WIN32 */
 
-static void quit_timers(void)
+void quit_timers(void)
 {
     struct qemu_alarm_timer *t = alarm_timer;
     alarm_timer = NULL;

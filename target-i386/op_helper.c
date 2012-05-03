@@ -21,6 +21,7 @@
 #include "cpu.h"
 #include "dyngen-exec.h"
 #include "host-utils.h"
+#include "rr_log.h"
 #include "ioport.h"
 #include "qemu-common.h"
 #include "qemu-log.h"
@@ -1544,7 +1545,12 @@ void do_smm_enter(CPUState *env1)
     log_cpu_state_mask(CPU_LOG_INT, env, X86_DUMP_CCOP);
 
     env->hflags |= HF_SMM_MASK;
-    cpu_smm_update(env);
+
+    RR_DO_RECORD_OR_REPLAY(
+    /*action=*/cpu_smm_update(env),
+    /*record=*/RR_NO_ACTION,
+    /*replay=*/RR_NO_ACTION,
+    /*location=*/RR_CALLSITE_DO_SMM_ENTER);
 
     sm_state = env->smbase + 0x8000;
 
@@ -1780,7 +1786,12 @@ void helper_rsm(void)
 #endif
     CC_OP = CC_OP_EFLAGS;
     env->hflags &= ~HF_SMM_MASK;
-    cpu_smm_update(env);
+
+    RR_DO_RECORD_OR_REPLAY(
+    /*action=*/cpu_smm_update(env),
+    /*record=*/RR_NO_ACTION,
+    /*replay=*/RR_NO_ACTION,
+    /*location=*/RR_CALLSITE_HELPER_RSM);
 
     qemu_log_mask(CPU_LOG_INT, "SMM: after RSM\n");
     log_cpu_state_mask(CPU_LOG_INT, env, X86_DUMP_CCOP);
@@ -3128,7 +3139,12 @@ void helper_rdtsc(void)
     }
     helper_svm_check_intercept_param(SVM_EXIT_RDTSC, 0);
 
-    val = cpu_get_tsc(env) + env->tsc_offset;
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/val = cpu_get_tsc(env) + env->tsc_offset,
+        /*record=*/rr_input_8(&val),
+        /*replay=*/rr_input_8(&val),
+        /*location=*/RR_CALLSITE_RDTSC);
+
     EAX = (uint32_t)(val);
     EDX = (uint32_t)(val >> 32);
 }
