@@ -446,7 +446,8 @@ static void tlb_unprotect_code_phys(CPUState *env, ram_addr_t ram_addr,
 #define mmap_unlock() do { } while(0)
 #endif
 
-#define DEFAULT_CODE_GEN_BUFFER_SIZE (32 * 1024 * 1024)
+// rw old name in 0.9.1 was just CODE_GEN_BUFFER_SIZE - changed to 256
+#define DEFAULT_CODE_GEN_BUFFER_SIZE (256 * 1024 * 1024)
 
 #if defined(CONFIG_USER_ONLY)
 /* Currently it is not recommended to allocate big chunks of data in
@@ -1097,6 +1098,18 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
             tb_phys_invalidate(tb, -1);
             if (env) {
                 env->current_tb = saved_tb;
+                //mz Record and Replay note:
+                //mz We don't really care about the value of interrupt_request
+                //mz here.  Basically, because QEMU is mucking with tb in
+                //tb_phys_invalidate, it's guarding against a signal calling
+                //cpu_interrupt() and tb_reset_jump_recursive() while tb
+                //structure is in flux.  Thus, env->current_tb is set to NULL
+                //while tb_phys_invalidate() executes.  When QEMU comes back,
+                //it wants to make sure that cpu_interrupt() is called and
+                //tb_reset_jump_recursive() is appropriately performed once tb
+                //structure is fixed.  For replay, we don't really care if
+                //this happens, as we're not relying on chaining to get us
+                //back to cpu_exec().
                 if (env->interrupt_request && env->current_tb)
                     cpu_interrupt(env, env->interrupt_request);
             }
@@ -1427,6 +1440,27 @@ int cpu_watchpoint_insert(CPUState *env, target_ulong addr, target_ulong len,
     return -ENOSYS;
 }
 #else
+
+//mz Record and Replay.  We need to invalidate a single TB, so let's use
+//mz the same mechanism as breakpoint_invalidate, but operate on a TB instead.
+void invalidate_single_tb(CPUState *env, target_ulong pc)
+{
+    target_phys_addr_t addr;
+    target_ulong pd;
+    ram_addr_t ram_addr;
+    PhysPageDesc *p;
+
+    addr = cpu_get_phys_page_debug(env, pc);
+    p = phys_page_find(addr >> TARGET_PAGE_BITS);
+    if (!p) {
+        pd = IO_MEM_UNASSIGNED;
+    } else {
+        pd = p->phys_offset;
+    }
+    ram_addr = (pd & TARGET_PAGE_MASK) | (pc & ~TARGET_PAGE_MASK);
+    tb_invalidate_phys_page_range(ram_addr, ram_addr + 1, 0);
+}
+
 /* Add a watchpoint.  */
 int cpu_watchpoint_insert(CPUState *env, target_ulong addr, target_ulong len,
                           int flags, CPUWatchpoint **watchpoint)
@@ -1687,6 +1721,9 @@ void cpu_interrupt(CPUState *env, int mask)
 
 void cpu_reset_interrupt(CPUState *env, int mask)
 {
+    //mz Record & Replay Note:
+    //This is never called by x86 code. Besides, we will read the value of
+    //interrupt_request from the log whenever it is needed.
     env->interrupt_request &= ~mask;
 }
 
@@ -1725,6 +1762,10 @@ const CPULogItem cpu_log_items[] = {
     { CPU_LOG_IOPORT, "ioport",
       "show all i/o ports accesses" },
 #endif
+    { CPU_LOG_RR, "rr",
+      "record trace for rec/replay" },
+    { CPU_LOG_OPEN_FILE, "open_file",
+      "just open the log file" },
     { 0, NULL, NULL },
 };
 
@@ -1991,7 +2032,7 @@ void tlb_flush(CPUState *env, int flush_global)
     int i;
 
 #if defined(DEBUG_TLB)
-    printf("tlb_flush:\n");
+    fprintf(logfile, "tlb_flush:\n");
 #endif
     /* must reset current TB so that interrupts cannot modify the
        links while we are modifying them */
@@ -2029,12 +2070,12 @@ void tlb_flush_page(CPUState *env, target_ulong addr)
     int mmu_idx;
 
 #if defined(DEBUG_TLB)
-    printf("tlb_flush_page: " TARGET_FMT_lx "\n", addr);
+    fprintf(logfile, "tlb_flush_page: " TARGET_FMT_lx "\n", addr);
 #endif
     /* Check if we need to flush due to large pages.  */
     if ((addr & env->tlb_flush_mask) == env->tlb_flush_addr) {
 #if defined(DEBUG_TLB)
-        printf("tlb_flush_page: forced full flush ("
+        fprintf(logfile, "tlb_flush_page: forced full flush ("
                TARGET_FMT_lx "/" TARGET_FMT_lx ")\n",
                env->tlb_flush_addr, env->tlb_flush_mask);
 #endif
@@ -2092,6 +2133,10 @@ void cpu_physical_memory_reset_dirty(ram_addr_t start, ram_addr_t end,
 
     start &= TARGET_PAGE_MASK;
     end = TARGET_PAGE_ALIGN(end);
+
+#if defined(DEBUG_TLB)
+    fprintf(logfile, "cpu_physical_memory_reset_dirty: start=0x%08x end=0x%08x dirty_flags=0x%x\n", start, end, dirty_flags);
+#endif
 
     length = end - start;
     if (length == 0)
@@ -2175,6 +2220,10 @@ static inline void tlb_update_dirty(CPUTLBEntry *tlb_entry)
     ram_addr_t ram_addr;
     void *p;
 
+#if defined(DEBUG_TLB)
+    fprintf(logfile, "cpu_tlb_update_dirty:\n");
+#endif
+
     if ((tlb_entry->addr_write & ~TARGET_PAGE_MASK) == IO_MEM_RAM) {
         p = (void *)(unsigned long)((tlb_entry->addr_write & TARGET_PAGE_MASK)
             + tlb_entry->addend);
@@ -2208,6 +2257,10 @@ static inline void tlb_set_dirty(CPUState *env, target_ulong vaddr)
 {
     int i;
     int mmu_idx;
+
+#if defined(DEBUG_TLB)
+    fprintf(logfile, "tlb_set_dirty: vaddr=" TARGET_FMT_lx " addr=0x%08lx\n", vaddr, addr);
+#endif
 
     vaddr &= TARGET_PAGE_MASK;
     i = (vaddr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
@@ -2266,7 +2319,7 @@ void tlb_set_page(CPUState *env, target_ulong vaddr,
         pd = p->phys_offset;
     }
 #if defined(DEBUG_TLB)
-    printf("tlb_set_page: vaddr=" TARGET_FMT_lx " paddr=0x" TARGET_FMT_plx
+    fprintf(logfile,"tlb_set_page: vaddr=" TARGET_FMT_lx " paddr=0x" TARGET_FMT_plx
            " prot=%x idx=%d pd=0x%08lx\n",
            vaddr, paddr, prot, mmu_idx, pd);
 #endif
@@ -2670,6 +2723,13 @@ void cpu_register_physical_memory_log(target_phys_addr_t start_addr,
     CPUState *env;
     ram_addr_t orig_size = size;
     subpage_t *subpage;
+
+    //mz Record and replay
+    extern volatile sig_atomic_t rr_record_in_progress;
+
+    if (rr_in_record() && rr_record_in_progress) {
+        rr_reg_mem_call_record(start_addr, size, phys_offset);
+    }
 
     assert(size);
     cpu_notify_set_memory(start_addr, size, phys_offset, log_dirty);
@@ -3951,6 +4011,13 @@ int cpu_memory_rw_debug(CPUState *env, target_ulong addr,
 }
 
 #else
+
+// addr is a physical addr.
+// buf is a buffer outside physical memory?
+// if is_write != 0 then this is a 
+// read of len bytes from buf that get written to addr.
+// if is_write == 0 then this is a 
+// read of len bytes from addr that get written to buf.
 void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                             int len, int is_write)
 {
@@ -3973,7 +4040,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
             pd = p->phys_offset;
         }
 
-        if (is_write) {
+        if (is_write) { // i.e. "is a write to phys mem"
             if ((pd & ~TARGET_PAGE_MASK) != IO_MEM_RAM) {
                 target_phys_addr_t addr1 = addr;
                 io_index = (pd >> IO_MEM_SHIFT) & (IO_MEM_NB_ENTRIES - 1);
@@ -3981,20 +4048,54 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                     addr1 = (addr & ~TARGET_PAGE_MASK) + p->region_offset;
                 /* XXX: could force cpu_single_env to NULL to avoid
                    potential bugs */
+
+                // write to memory-mapped i/o
+                // don't bother with call to io_mem_write if in replay mode!
+
                 if (l >= 4 && ((addr1 & 3) == 0)) {
                     /* 32 bit write access */
                     val = ldl_p(buf);
-                    io_mem_write[io_index][2](io_mem_opaque[io_index], addr1, val);
+                    //mz this just uses MMIO mechanism, it is not really MMIO
+                    if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+                      io_mem_write[io_index][2](io_mem_opaque[io_index], addr1, val);
+                    }
+                    else {
+                      RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val),
+                        /*record=*/RR_NO_ACTION,
+                        /*replay=*/RR_NO_ACTION,
+                        /*location=*/RR_CALLSITE_PHYS_MEM_IO_1);
+                    }
                     l = 4;
                 } else if (l >= 2 && ((addr1 & 1) == 0)) {
                     /* 16 bit write access */
                     val = lduw_p(buf);
-                    io_mem_write[io_index][1](io_mem_opaque[io_index], addr1, val);
+                    //mz this just uses MMIO mechanism, it is not really MMIO
+                    if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+                      io_mem_write[io_index][1](io_mem_opaque[io_index], addr1, val);
+                    }
+                    else {
+                      RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/io_mem_write[io_index][1](io_mem_opaque[io_index], addr, val),
+                        /*record=*/RR_NO_ACTION,
+                        /*replay=*/RR_NO_ACTION,
+                        /*location=*/RR_CALLSITE_PHYS_MEM_IO_2);
+                    }                    
                     l = 2;
                 } else {
                     /* 8 bit write access */
                     val = ldub_p(buf);
-                    io_mem_write[io_index][0](io_mem_opaque[io_index], addr1, val);
+                    //mz this just uses MMIO mechanism, it is not really MMIO
+                    if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+                      io_mem_write[io_index][0](io_mem_opaque[io_index], addr1, val);
+                    }
+                    else {
+                      RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/io_mem_write[io_index][0](io_mem_opaque[io_index], addr, val),
+                        /*record=*/RR_NO_ACTION,
+                        /*replay=*/RR_NO_ACTION,
+                        /*location=*/RR_CALLSITE_PHYS_MEM_IO_3);
+                    }
                     l = 1;
                 }
             } else {
@@ -4011,6 +4112,14 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                         addr1, (0xff & ~CODE_DIRTY_FLAG));
                 }
                 qemu_put_ram_ptr(ptr);
+                //mz record & replay
+                //mz Need to record parameters of this call in the log (so that we can
+                //replay it) if it occurs during main_loop_wait() call
+                //mz Only care about writes to memory.
+                extern volatile sig_atomic_t rr_record_in_progress;
+                if (rr_in_record() && rr_record_in_progress) {
+                   rr_device_mem_rw_call_record(addr, buf, len, is_write); 
+                }
             }
         } else {
             if ((pd & ~TARGET_PAGE_MASK) > IO_MEM_ROM &&
@@ -4022,17 +4131,29 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                     addr1 = (addr & ~TARGET_PAGE_MASK) + p->region_offset;
                 if (l >= 4 && ((addr1 & 3) == 0)) {
                     /* 32 bit read access */
-                    val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr1);
+                    RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr),
+                        /*record=*/rr_input_4(&val),
+                        /*replay=*/rr_input_4(&val),
+                        /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_2);
                     stl_p(buf, val);
                     l = 4;
                 } else if (l >= 2 && ((addr1 & 1) == 0)) {
                     /* 16 bit read access */
-                    val = io_mem_read[io_index][1](io_mem_opaque[io_index], addr1);
+                    RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/val = io_mem_read[io_index][1](io_mem_opaque[io_index], addr),
+                        /*record=*/rr_input_2((uint16_t *)&val),
+                        /*replay=*/rr_input_2((uint16_t *)&val),
+                        /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_3);
                     stw_p(buf, val);
                     l = 2;
                 } else {
                     /* 8 bit read access */
-                    val = io_mem_read[io_index][0](io_mem_opaque[io_index], addr1);
+                    RR_DO_RECORD_OR_REPLAY(
+                        /*action=*/val = io_mem_read[io_index][0](io_mem_opaque[io_index], addr),
+                        /*record=*/rr_input_1((uint8_t *)&val),
+                        /*replay=*/rr_input_1((uint8_t *)&val),
+                        /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_4);
                     stb_p(buf, val);
                     l = 1;
                 }
@@ -4258,7 +4379,13 @@ static inline uint32_t ldl_phys_internal(target_phys_addr_t addr,
         io_index = (pd >> IO_MEM_SHIFT) & (IO_MEM_NB_ENTRIES - 1);
         if (p)
             addr = (addr & ~TARGET_PAGE_MASK) + p->region_offset;
-        val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr);
+
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr),
+            /*record=*/rr_input_4(&val),
+            /*replay=*/rr_input_4(&val),
+            /*location=*/RR_CALLSITE_LDL_PHYS);
+
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap32(val);
@@ -4329,12 +4456,29 @@ static inline uint64_t ldq_phys_internal(target_phys_addr_t addr,
         /* XXX This is broken when device endian != cpu endian.
                Fix and add "endian" variable check */
 #ifdef TARGET_WORDS_BIGENDIAN
-        val = (uint64_t)io_mem_read[io_index][2](io_mem_opaque[io_index], addr) << 32;
-        val |= io_mem_read[io_index][2](io_mem_opaque[io_index], addr + 4);
+#define ACTION  \
+    do { \
+        val = (uint64_t)io_mem_read[io_index][2](io_mem_opaque[io_index], addr) << 32; \
+        val |= io_mem_read[io_index][2](io_mem_opaque[io_index], addr + 4); \
+    } while (0);
 #else
-        val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr);
-        val |= (uint64_t)io_mem_read[io_index][2](io_mem_opaque[io_index], addr + 4) << 32;
+#define ACTION  \
+    do { \
+        val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr); \
+        val |= (uint64_t)io_mem_read[io_index][2](io_mem_opaque[io_index], addr + 4) << 32; \
+    } while (0);
 #endif
+        if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+            ACTION;
+        }
+        else {
+            RR_DO_RECORD_OR_REPLAY(
+                /*action=*/ACTION,
+                /*record=*/rr_input_8(&val),
+                /*replay=*/rr_input_8(&val),
+                /*location=*/RR_CALLSITE_LDQ_PHYS);
+        }
+#undef ACTION
     } else {
         /* RAM case */
         ptr = qemu_get_ram_ptr(pd & TARGET_PAGE_MASK) +
@@ -4465,7 +4609,19 @@ void stl_phys_notdirty(target_phys_addr_t addr, uint32_t val)
         io_index = (pd >> IO_MEM_SHIFT) & (IO_MEM_NB_ENTRIES - 1);
         if (p)
             addr = (addr & ~TARGET_PAGE_MASK) + p->region_offset;
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val);
+
+        // don't bother with io writes if in replay mode
+        //mz this is not really MMIO, just uses the same mechanism.
+        if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+          io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val);
+        }
+        else {
+          RR_DO_RECORD_OR_REPLAY(
+            /*action=*/io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/RR_CALLSITE_STL_PHYS_ND);          
+        }
     } else {
         unsigned long addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);
         ptr = qemu_get_ram_ptr(addr1);
@@ -4502,12 +4658,30 @@ void stq_phys_notdirty(target_phys_addr_t addr, uint64_t val)
         if (p)
             addr = (addr & ~TARGET_PAGE_MASK) + p->region_offset;
 #ifdef TARGET_WORDS_BIGENDIAN
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val >> 32);
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr + 4, val);
+#define ACTION  \
+    do { \
+        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val >> 32); \
+        io_mem_write[io_index][2](io_mem_opaque[io_index], addr + 4, val); \
+    } while (0);
 #else
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val);
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr + 4, val >> 32);
+#define ACTION  \
+    do { \
+        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val); \
+        io_mem_write[io_index][2](io_mem_opaque[io_index], addr + 4, val >> 32); \
+    } while (0);
 #endif
+        //mz this is not really MMIO, just uses the same mechanism
+        if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+            ACTION;
+        }
+        else {
+            RR_DO_RECORD_OR_REPLAY(
+                /*action=*/ACTION,
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_STQ_PHYS_ND);
+        }
+#undef ACTION
     } else {
         ptr = qemu_get_ram_ptr(pd & TARGET_PAGE_MASK) +
             (addr & ~TARGET_PAGE_MASK);
@@ -4544,7 +4718,17 @@ static inline void stl_phys_internal(target_phys_addr_t addr, uint32_t val,
             val = bswap32(val);
         }
 #endif
-        io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val);
+        //mz this is not actual MMIO, just uses the same mechanism
+        if (io_index == (IO_MEM_NOTDIRTY >> IO_MEM_SHIFT)) {
+              io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val);
+        }
+        else {
+          RR_DO_RECORD_OR_REPLAY(
+              /*action=*/io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val),
+              /*record=*/RR_NO_ACTION,
+              /*replay=*/RR_NO_ACTION,
+              /*location=*/RR_CALLSITE_STL_PHYS);
+        }
     } else {
         unsigned long addr1;
         addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);

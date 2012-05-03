@@ -7813,9 +7813,9 @@ static inline void gen_intermediate_code_internal(CPUState *env,
     uint16_t *saved_gen_opc_ptr;
     uint32_t *saved_gen_opparam_ptr;
 
-    uint16_t saved_num_guest_insns = tb->icount; // rw - is this right?
+    uint16_t saved_num_guest_insns = tb->num_guest_insns; // rw - icount?
 
-    //tb->num_guest_insns = 0; rw - we now have tb->icount
+    tb->num_guest_insns = 0; //rw - we now have tb->icount
 
     int num_insns;
     int max_insns;

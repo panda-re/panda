@@ -159,6 +159,8 @@ struct TranslationBlock {
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
     uint32_t icount;
+    // record and replay - might just be able to use icount
+    uint16_t num_guest_insns;
 };
 
 static inline unsigned int tb_jmp_cache_hash_page(target_ulong pc)
@@ -256,6 +258,7 @@ static inline void tb_set_jmp_target(TranslationBlock *tb,
 
 #endif
 
+// TRL: called by cpu_exec() to chain previous (tb) to current (tb_next)
 static inline void tb_add_jump(TranslationBlock *tb, int n,
                                TranslationBlock *tb_next)
 {
@@ -345,6 +348,8 @@ static inline tb_page_addr_t get_page_addr_code(CPUState *env1, target_ulong add
     void *p;
 
     page_index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    //mz 09.13.2009 this returns 1 for user mode and 0 for kernel mode,
+    //depending on CPU (for i386)
     mmu_idx = cpu_mmu_index(env1);
     if (unlikely(env1->tlb_table[mmu_idx][page_index].addr_code !=
                  (addr & TARGET_PAGE_MASK))) {
