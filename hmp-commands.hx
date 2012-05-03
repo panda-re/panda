@@ -1366,3 +1366,43 @@ ETEXI
 STEXI
 @end table
 ETEXI
+
+
+
+
+ 
+    {
+        .name       = "begin_record",
+        .args_type  = "file_name:s",
+        .params     = "begin_record [file_name]",
+        .help       = "begin recording for later replay",
+        .mhandler.cmd = hmp_begin_record,
+    },
+
+
+    {
+        .name       = "begin_replay",
+        .args_type  = "file_name:s",
+        .params     = "begin_replay [file_name]",
+        .help       = "begin replay",
+        .mhandler.cmd = hmp_begin_replay,
+    },
+
+
+    {
+        .name       = "end_record",
+        .args_type  = "",
+        .params     = "end_record",
+        .help       = "end recording for later replay",
+        .mhandler.cmd = hmp_end_record,
+    },
+
+    {
+        .name       = "end_replay",
+        .args_type  = "",
+        .params     = "end_replay",
+        .help       = "end replay",
+        .mhandler.cmd = hmp_end_replay,
+    },
+
+

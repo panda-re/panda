@@ -887,3 +887,41 @@
 # Notes: Do not use this command.
 ##
 { 'command': 'cpu', 'data': {'index': 'int'} }
+
+##
+# @begin_record
+#
+# Requests that we begin recording for later replay
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_record': 'data': { 'filename': 'str' } }
+
+##
+# @begin_replay
+#
+# Requests that we begin replaying 
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_replay': 'data': { 'filename': 'str' } }
+
+##
+# @end_record
+#
+# Requests that we begin recording for later replay
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_record' }
+
+##
+# @begin_replay
+#
+# Requests that we begin replaying 
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_replay' } 
+
+
