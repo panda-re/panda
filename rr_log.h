@@ -34,11 +34,14 @@
 #include <stdint.h>
 #include <assert.h>
 
+typedef enum {RR_OFF, RR_RECORD, RR_REPLAY} RR_mode;
+
+extern volatile RR_mode rr_mode;
 
 // Log management
 void rr_create_record_log (const char *filename);
 void rr_create_replay_log (const char *filename);
-void rr_destroy_log();
+void rr_destroy_log(void);
 
 //mz Flags set by monitor to indicate requested record/replay action
 extern volatile int rr_replay_requested;
@@ -49,12 +52,12 @@ extern const char *rr_requested_name;
 
 // used from monitor.c 
 void rr_do_begin_record(const char *name);
-void rr_do_end_record();
+void rr_do_end_record(void);
 void rr_do_begin_replay(const char *name);
 void rr_do_end_replay(int is_error);
 
 //mz display indication of replay progress
-extern void replay_progress();
+extern void replay_progress(void);
 
 //mz 10.20.2009 
 //mz A record of a point in the program.  This is a subset of guest CPU state
@@ -150,7 +153,8 @@ static const char *skipped_call_kind_str[] = {
 
 static inline const char *get_skipped_call_kind_string(RR_skipped_call_kind kind)
 {
-    if (kind >= 0 && kind <= RR_CALL_LAST)
+  //  if (kind >= 0 && kind <= RR_CALL_LAST)
+  if (kind <= RR_CALL_LAST)
         return skipped_call_kind_str[kind];
     else
         return NULL;
@@ -206,7 +210,7 @@ static const char *log_entry_kind_str[] = {
 
 static inline const char *get_log_entry_kind_string(RR_log_entry_kind kind)
 {
-    if (kind >= 0 && kind <= RR_LAST)
+    if (kind <= RR_LAST)
         return log_entry_kind_str[kind];
     else
         return NULL;
@@ -300,7 +304,7 @@ static const char *callsite_str[] = {
 
 static inline const char *get_callsite_string(RR_callsite_id cid)
 {
-    if (cid >= 0 && cid <= RR_CALLSITE_LAST)
+    if (cid <= RR_CALLSITE_LAST)
         return callsite_str[cid];
     else
         return NULL;
@@ -366,7 +370,7 @@ static inline void rr_interrupt_request(int *interrupt_request) {
             rr_record_interrupt_request(rr_skipped_callsite_location, *interrupt_request);
             break;
         case RR_REPLAY:
-            rr_replay_interrupt_request(rr_skipped_callsite_location, interrupt_request);
+	  rr_replay_interrupt_request(rr_skipped_callsite_location, (uint32_t *) interrupt_request);
             break;
         default:
             break;
@@ -442,7 +446,7 @@ static inline void rr_reg_mem_call_record(uint32_t start_addr, unsigned long siz
     rr_record_cpu_reg_io_mem_region(rr_skipped_callsite_location, start_addr, size, phys_offset);
 }
 
-static inline void rr_replay_skipped_calls() {
+static inline void rr_replay_skipped_calls(void) {
     rr_replay_skipped_calls_internal(rr_skipped_callsite_location);
 }
 
@@ -458,8 +462,6 @@ static inline void rr_replay_skipped_calls() {
 //mz - LOCATION = one of RR_callsite_id constants
 #define RR_DO_RECORD_OR_REPLAY(ACTION, RECORD_ACTION, REPLAY_ACTION, LOCATION) \
     do { \
-        extern volatile sig_atomic_t rr_record_in_progress; \
-        extern volatile sig_atomic_t rr_skipped_callsite_location; \
         extern void rr_set_program_point(void);\
         switch (rr_mode) { \
             case RR_RECORD: \
@@ -500,47 +502,47 @@ static inline void rr_replay_skipped_calls() {
 //
 // Record/replay mode
 //
-typedef enum {RR_OFF, RR_RECORD, RR_REPLAY} RR_mode;
-extern volatile RR_mode rr_mode;
+
+
 // these are all returning booleans, really.
 // return true iff we are in replay/record/off
-static inline uint8_t rr_in_replay() {
+static inline uint8_t rr_in_replay(void) {
   return (rr_mode == RR_REPLAY);
 }
 
-static inline uint8_t rr_in_record() {
+static inline uint8_t rr_in_record(void) {
   return (rr_mode == RR_RECORD);
 }
 
-static inline uint8_t rr_off() {
+static inline uint8_t rr_off(void) {
   return (rr_mode == RR_OFF);
 }
 
-static inline uint8_t rr_on() {
+static inline uint8_t rr_on(void) {
   return (!rr_off());
 }
 
 //mz flag indicating that TB cache flush has been requested
 extern uint8_t rr_please_flush_tb;
 // returns true if we are supposed to be flushing the tb whenever possible.
-static inline uint8_t rr_flush_tb() {
+static inline uint8_t rr_flush_tb(void) {
   return rr_please_flush_tb;
 }
 
 // sets flag so that we'll flush tb whenever possible.
-static inline void rr_flush_tb_on() {
+static inline void rr_flush_tb_on(void) {
   rr_please_flush_tb = 1;
 }
 
 // unsets flag so that we'll not flush tb whenever possible.
-static inline void rr_flush_tb_off() {
+static inline void rr_flush_tb_off(void) {
   rr_please_flush_tb = 0;
 }
 
 //
 // Debug level
 //
-extern int is_cpu_log_rr_set();
+extern int is_cpu_log_rr_set(void);
 
 typedef enum {
   RR_DEBUG_SILENT = 0,   // really nothing
@@ -551,39 +553,39 @@ typedef enum {
 extern RR_debug_level_type rr_debug_level;
 
 // debugging is on? 
-static inline uint8_t rr_debug_on() {
+static inline uint8_t rr_debug_on(void) {
   return (is_cpu_log_rr_set() && (rr_on())
           && (rr_debug_level > RR_DEBUG_SILENT));
 }
 
 // is the debug level this?
-static inline uint8_t rr_debug_noisy() {
+static inline uint8_t rr_debug_noisy(void) {
   return (rr_debug_on() && (rr_debug_level >= RR_DEBUG_NOISY));
 }
 
-static inline uint8_t rr_debug_whisper() {
+static inline uint8_t rr_debug_whisper(void) {
   return (rr_debug_on() && (rr_debug_level >= RR_DEBUG_WHISPER));
 }
 
-static inline uint8_t rr_debug_quiet() {
+static inline uint8_t rr_debug_quiet(void) {
   return (rr_debug_on() && (rr_debug_level >= RR_DEBUG_QUIET));
 }
 
 
 // set debug level
-static inline void rr_set_debug_silent() {
+static inline void rr_set_debug_silent(void) {
   rr_debug_level = RR_DEBUG_SILENT;
 }
 
-static inline void rr_set_debug_whisper() {
+static inline void rr_set_debug_whisper(void) {
   rr_debug_level = RR_DEBUG_WHISPER;
 }
 
-static inline void rr_set_debug_quiet() {
+static inline void rr_set_debug_quiet(void) {
   rr_debug_level = RR_DEBUG_QUIET;
 }
 
-static inline void rr_set_debug_noisy() {
+static inline void rr_set_debug_noisy(void) {
   rr_debug_level = RR_DEBUG_NOISY;
 }
 

@@ -34,6 +34,7 @@
 
 #include <libgen.h>
 
+#include "qemu-common.h"
 #include "rr_log.h"
 
 
@@ -64,14 +65,14 @@ typedef struct RR_log_t {
   unsigned long long size;     // for a log being opened for read, this will be the size in bytes
 
   RR_log_entry current_item;
-  RR_bool current_item_valid;
+  uint8_t current_item_valid;
   unsigned long long item_number;
 } RR_log;
 
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 
-static inline uint8_t log_is_empty() {
+static inline uint8_t log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
         return 1;
@@ -120,23 +121,23 @@ int rr_hist_index = 0;
 
 
 // write this program point to this file 
-void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
+static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
   fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
           (unsigned long long)pp.guest_instr_count,
 	  pp.eip,
 	  pp.ecx);
 }
 
-void rr_debug_log_prog_point(RR_prog_point pp) {
+static void rr_debug_log_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(logfile,pp);
 }
 
-void rr_spit_prog_point(RR_prog_point pp) {
+static void rr_spit_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(stdout,pp);
 }
 
 
-void rr_spit_log_entry(RR_log_entry item) {
+static void rr_spit_log_entry(RR_log_entry item) {
     rr_spit_prog_point(item.header.prog_point);
     switch (item.header.kind) {
         case RR_INPUT_1:
@@ -165,7 +166,7 @@ void rr_spit_log_entry(RR_log_entry item) {
 }
 
 //mz use in debugger to print a short history of log entries
-void rr_print_history() {
+static void rr_print_history(void) {
     int i = rr_hist_index;
     do {
         rr_spit_log_entry(rr_log_entry_history[i]);
@@ -198,7 +199,7 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
 /******************************************************************************************/
 
 //mz write the current log item to file
-static inline void rr_write_item() {
+static inline void rr_write_item(void) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
 
     //mz save the header
@@ -382,7 +383,7 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
 }
 
 //mz record a marker for end of the log
-void rr_record_end_of_log() {
+static void rr_record_end_of_log(void) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -414,7 +415,7 @@ static inline void free_entry_params(RR_log_entry *entry)
         case RR_SKIPPED_CALL:
             switch (entry->variant.call_args.kind) {
                 case RR_CALL_CPU_MEM_RW:
-                    qemu_free(entry->variant.call_args.variant.cpu_mem_rw_args.buf);
+                    g_free(entry->variant.call_args.variant.cpu_mem_rw_args.buf);
                     entry->variant.call_args.variant.cpu_mem_rw_args.buf = NULL;
                 break;
             }
@@ -449,7 +450,7 @@ static inline void add_to_recycle_list(RR_log_entry *entry)
 }
 
 //mz allocate a new entry (not filled yet)
-static inline RR_log_entry *alloc_new_entry()
+static inline RR_log_entry *alloc_new_entry(void) 
 {
     RR_log_entry *new_entry = NULL;
     if (recycle_list != NULL) {
@@ -458,14 +459,14 @@ static inline RR_log_entry *alloc_new_entry()
         new_entry->next = NULL;
     }
     else {
-        new_entry = qemu_malloc(sizeof(RR_log_entry));
+        new_entry = g_malloc(sizeof(RR_log_entry));
     }
     memset(new_entry, 0, sizeof(RR_log_entry));
     return new_entry;
 }
 
 //mz fill an entry
-RR_log_entry *rr_read_item() {
+static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
 
     //mz read header
@@ -530,7 +531,7 @@ RR_log_entry *rr_read_item() {
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_rw_args);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.cpu_mem_rw_args.buf = qemu_malloc(args->variant.cpu_mem_rw_args.len);
+                        args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
                         fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
                         rr_size_of_log_entries[item->header.kind] += args->variant.cpu_mem_rw_args.len;
@@ -560,7 +561,7 @@ RR_log_entry *rr_read_item() {
 
 
 //mz fill the queue of log entries from the file
-static void rr_fill_queue() {
+static void rr_fill_queue(void) {
     RR_log_entry *log_entry = NULL;
     unsigned long long num_entries = 0;
 
@@ -587,7 +588,7 @@ static void rr_fill_queue() {
             //cpu_exec() loop due to end_record command.
             //
             //mz from cpu-exec.c
-            extern void rr_quit_cpu_loop();
+            extern void rr_quit_cpu_loop(void);
             rr_end_replay_requested = 1;
             //mz need to get out of cpu loop so that we can process the end_replay request
             //mz this will call cpu_loop_exit(), which longjmps
@@ -734,7 +735,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                 case RR_CALL_CPU_MEM_RW:
                     {
                         //mz XXX can we get a full prototype here?
-                        extern void cpu_physical_memory_rw();
+		      extern void cpu_physical_memory_rw();
                         cpu_physical_memory_rw(
                                 args->variant.cpu_mem_rw_args.addr,
                                 args->variant.cpu_mem_rw_args.buf,
@@ -772,7 +773,7 @@ extern char *qemu_strdup(const char *str);
 // create record log
 void rr_create_record_log (const char *filename) {
   // create log
-  rr_nondet_log = (RR_log *) qemu_malloc (sizeof (RR_log));
+  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
   assert (rr_nondet_log != NULL);
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
@@ -798,7 +799,7 @@ void rr_create_record_log (const char *filename) {
 void rr_create_replay_log (const char *filename) {
   struct stat statbuf = {0};
   // create log
-  rr_nondet_log = (RR_log *) qemu_malloc (sizeof (RR_log));
+  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
   assert (rr_nondet_log != NULL);
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
@@ -820,7 +821,7 @@ void rr_create_replay_log (const char *filename) {
 
 
 // close file and free associated memory
-void rr_destroy_log() {
+void rr_destroy_log(void) {
   if (rr_nondet_log->fp) {
     //mz if in record, update the header with the last written prog point.
     if (rr_nondet_log->type == RECORD) {
@@ -830,13 +831,13 @@ void rr_destroy_log() {
     fclose(rr_nondet_log->fp);
     rr_nondet_log->fp = NULL;
   }
-  qemu_free(rr_nondet_log->name);
-  qemu_free(rr_nondet_log);
+  g_free(rr_nondet_log->name);
+  g_free(rr_nondet_log);
   rr_nondet_log = NULL;
 }
 
 //mz display a measure of replay progress (using instruction counts and log size)
-void replay_progress() {
+void replay_progress(void) {
   if (rr_nondet_log) {
     if (log_is_empty()) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
@@ -878,7 +879,7 @@ static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, cha
 }
 
 
-static inline void rr_reset_state() {
+static inline void rr_reset_state(void) {
     //mz reset program point
     memset(&rr_prog_point, 0, sizeof(RR_prog_point));
     // set flag to signal that we'll be needing the tb flushed. 
@@ -904,6 +905,8 @@ void qmp_begin_replay(const char *file_name, Error **errp) {
   rr_replay_requested = 1;
   rr_requested_name = qemu_strdup(file_name);
 }
+
+extern void do_stop(void);
 
 void qmp_end_record(Error **errp) {
   do_stop();
@@ -953,10 +956,10 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 void rr_do_begin_record(const char *file_name_full) {
   char name_buf[1024];
   // decompose file_name_base into path & file. 
-  char *rr_path = qemu_strdup(file_name_full);
-  char *rr_name = qemu_strdup(file_name_full);
-  rr_path = dirname(rr_path);
-  rr_name = basename(rr_name);
+  char *rr_path_base = g_strdup(file_name_full);
+  char *rr_name_base = g_strdup(file_name_full);
+  char *rr_path = dirname(rr_path_base);
+  char *rr_name = basename(rr_name_base);
   if (rr_debug_whisper()) {
     fprintf (logfile,"Begin vm record for file_name_full = %s\n", file_name_full);    
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -972,22 +975,33 @@ void rr_do_begin_record(const char *file_name_full) {
   rr_create_record_log(name_buf);
   // reset record/replay counters and flags
   rr_reset_state();
+  g_free(rr_path_base);
+  g_free(rr_name_base);
   // set global to turn on recording
   rr_mode = RR_RECORD;
 }
 
 
-void rr_do_end_record() {  
+void rr_do_end_record(void) {  
   //mz put in end-of-log marker
   rr_record_end_of_log();
 
+  char *rr_path_base = g_strdup(rr_nondet_log->name);
+  char *rr_name_base = g_strdup(rr_nondet_log->name);
+  //char *rr_path = dirname(rr_path_base);
+  char *rr_name = basename(rr_name_base);
+  
   if (rr_debug_whisper()) {
     fprintf (logfile,"End vm record for name = %s\n", rr_name);
     printf ("End vm record for name = %s\n", rr_name);
   }
+  
   log_all_cpu_states();
 
   rr_destroy_log();
+
+  g_free(rr_path_base);
+  g_free(rr_name_base);
 
   // turn off logging
   rr_mode = RR_OFF;
@@ -1058,7 +1072,7 @@ void rr_do_end_replay(int is_error) {
             entry = recycle_list;
             recycle_list = entry->next;
             //mz entry params already freed
-            qemu_free(entry);
+            g_free(entry);
             num_items++;
         }
         printf("%lu items on recycle list, %lu bytes total\n", num_items, num_items * sizeof(RR_log_entry));
@@ -1083,7 +1097,7 @@ void rr_do_end_replay(int is_error) {
             queue_head = entry->next;
             entry->next = NULL;
             free_entry_params(entry);
-            qemu_free(entry);
+            g_free(entry);
         }
     }
     queue_head = NULL;

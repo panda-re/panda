@@ -992,7 +992,7 @@ static inline int cpu_mmu_index (CPUState *env)
 
 // record/replay
 #ifndef reg_GUEST_ICOUNT
-extern volatile uint64_t rr_guest_instr_count;
+//extern volatile uint64_t rr_guest_instr_count;
 #define GUEST_ICOUNT rr_guest_instr_count
 #endif
 
@@ -1027,7 +1027,7 @@ static inline bool cpu_has_work(CPUState *env)
 
     // interrupt record/replay stuff
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
-    rr_interrupt_request(&env->interrupt_request);
+    rr_interrupt_request((int *) &env->interrupt_request);
     // Note, we are using cached value of interrupt request here
 
     return ((env->interrupt_request & CPU_INTERRUPT_HARD) &&

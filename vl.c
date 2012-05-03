@@ -3515,6 +3515,7 @@ int main(int argc, char **argv, char **envp)
     //mz 11.12.2009 we have to do that after we loadvm, as it needs the
     //timers!  
     if (rr_replay_requested || rr_in_replay()) {
+      extern void quit_timers(void);
       quit_timers();
     }
 

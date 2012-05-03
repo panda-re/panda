@@ -37,5 +37,11 @@ void hmp_stop(Monitor *mon, const QDict *qdict);
 void hmp_system_reset(Monitor *mon, const QDict *qdict);
 void hmp_system_powerdown(Monitor *mon, const QDict *qdict);
 void hmp_cpu(Monitor *mon, const QDict *qdict);
+void hmp_begin_record(Monitor *mon, const QDict *qdict);
+void hmp_begin_replay(Monitor *mon, const QDict *qdict);
+void hmp_end_record(Monitor *mon, const QDict *qdict);
+void hmp_end_replay(Monitor *mon, const QDict *qdict);
+
+
 
 #endif
