@@ -40,6 +40,11 @@
 #define BTRFS_SUPER_MAGIC 0x9123683E
 #endif
 
+// rw: enable compilation on Ubuntu 12.04 Linux 3.2
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH   0x1000  /* Allow empty relative pathname */
+#endif
+
 struct handle_data {
     int mountfd;
     int handle_bytes;
