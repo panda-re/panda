@@ -968,7 +968,7 @@ void rr_do_begin_record(const char *file_name_full) {
   // first take a snapshot
   rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
   printf ("writing snapshot:\t%s\n", name_buf);
-  do_savevm(get_monitor(), name_buf);
+  do_savevm_aux(get_monitor(), name_buf);
   log_all_cpu_states();
   // second, open non-deterministic input log for write. 
   rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));

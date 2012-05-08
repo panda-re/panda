@@ -1948,6 +1948,7 @@ static int del_existing_snapshots(Monitor *mon, const char *name)
 
 void do_savevm(Monitor *mon, const QDict *qdict) {
   const char *name = qdict_get_try_str(qdict, "name");
+  assert(name != NULL);
   do_savevm_aux(mon, name);
 }
 
