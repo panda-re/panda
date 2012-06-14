@@ -772,6 +772,9 @@ typedef struct CPUX86State {
     XMMReg ymmh_regs[CPU_NB_REGS];
 
     uint64_t xcr0;
+
+  uint64_t rr_guest_instr_count;
+
 } CPUX86State;
 
 CPUX86State *cpu_x86_init(const char *cpu_model);
@@ -993,7 +996,7 @@ static inline int cpu_mmu_index (CPUState *env)
 // record/replay
 #ifndef reg_GUEST_ICOUNT
 //extern volatile uint64_t rr_guest_instr_count;
-#define GUEST_ICOUNT rr_guest_instr_count
+#define GUEST_ICOUNT cpu_single_env->rr_guest_instr_count
 #endif
 
 

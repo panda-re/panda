@@ -483,9 +483,9 @@ static inline void gen_op_add_reg_im(int size, int reg, int32_t val)
 // rw - I think this will work?
 static inline void gen_op_update_icount(void)
 {
-    tcg_gen_ld_tl(cpu_tmp0, rr_guest_instr_count, 0);
+  tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
     tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, 1);
-    tcg_gen_st_tl(cpu_tmp0, rr_guest_instr_count, 0);
+    tcg_gen_st_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
 }
 
 // rw - I think this will work?

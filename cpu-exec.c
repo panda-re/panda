@@ -230,6 +230,12 @@ void rr_quit_cpu_loop(void) {
 }
 
 
+void rr_clear_rr_guest_instr_count(CPUState *cpu_state) {
+  cpu_state->rr_guest_instr_count = 0;
+}
+
+
+
 /* main execution loop */
 
 volatile sig_atomic_t exit_request;
@@ -252,7 +258,7 @@ int cpu_exec(CPUState *env)
     if (__builtin_expect(rr_record_requested, 0)) {
         //block signals
         sigprocmask(SIG_BLOCK, &blockset, &oldset);
-        rr_do_begin_record(rr_requested_name);
+        rr_do_begin_record(rr_requested_name, env);
         rr_record_requested = 0;
         //unblock signals
         sigprocmask(SIG_SETMASK, &oldset, NULL);
@@ -261,7 +267,7 @@ int cpu_exec(CPUState *env)
         extern void quit_timers(void);
         //block signals
         sigprocmask(SIG_BLOCK, &blockset, &oldset);
-        rr_do_begin_replay(rr_requested_name);
+        rr_do_begin_replay(rr_requested_name, env);
         quit_timers();
         rr_replay_requested = 0;
         //unblock signals

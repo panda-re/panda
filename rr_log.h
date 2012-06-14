@@ -51,9 +51,9 @@ extern volatile int rr_end_replay_requested;
 extern const char *rr_requested_name;
 
 // used from monitor.c 
-void rr_do_begin_record(const char *name);
+void rr_do_begin_record(const char *name, void *cpu_state);
 void rr_do_end_record(void);
-void rr_do_begin_replay(const char *name);
+void rr_do_begin_replay(const char *name, void *cpu_state);
 void rr_do_end_replay(int is_error);
 
 //mz display indication of replay progress
@@ -71,7 +71,7 @@ extern RR_prog_point rr_prog_point;
 
 //mz number of guest instructions executed since start of session (for both
 //mz record and replay)
-extern volatile uint64_t rr_guest_instr_count;
+//extern volatile uint64_t rr_guest_instr_count;
 //mz part of replay state that determines whether we need to terminate a
 //mz translation block early
 extern volatile uint64_t rr_num_instr_before_next_interrupt;
@@ -478,16 +478,15 @@ static inline void rr_replay_skipped_calls(void) {
         switch (rr_mode) { \
             case RR_RECORD: \
                 { \
-                    if (rr_record_in_progress) { \
+                   if (rr_record_in_progress) {	\
                         ACTION; \
                     } \
                     else { \
                         rr_record_in_progress = 1; \
                         rr_skipped_callsite_location = LOCATION; \
-                        /* mz we need to update program point! */ \
                         rr_set_program_point(); \
-                        ACTION; \
-                        RECORD_ACTION; \
+                        ACTION;						\
+			RECORD_ACTION;					\
                         rr_record_in_progress = 0; \
                     } \
                 } \

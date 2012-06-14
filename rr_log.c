@@ -38,6 +38,9 @@
 #include "rr_log.h"
 
 
+void rr_clear_rr_guest_instr_count(void *cpu_state);
+
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -46,7 +49,7 @@ volatile RR_mode rr_mode = RR_OFF;
 
 //mz program execution state
 RR_prog_point rr_prog_point = {0, 0, 0};
-volatile uint64_t rr_guest_instr_count;
+//volatile uint64_t rr_guest_instr_count;
 volatile uint64_t rr_num_instr_before_next_interrupt;
 
 //mz 11.06.2009 Flags to manage nested recording
@@ -880,7 +883,7 @@ static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, cha
 }
 
 
-static inline void rr_reset_state(void) {
+static inline void rr_reset_state(void *cpu_state) {
     //mz reset program point
     memset(&rr_prog_point, 0, sizeof(RR_prog_point));
     // set flag to signal that we'll be needing the tb flushed. 
@@ -888,7 +891,7 @@ static inline void rr_reset_state(void) {
     // clear flags
     rr_record_in_progress = 0;
     rr_skipped_callsite_location = 0;
-    rr_guest_instr_count = 0;
+    rr_clear_rr_guest_instr_count(cpu_state);
 }
 
 
@@ -954,7 +957,7 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 void *get_monitor(void);
 
 //mz file_name_full should be full path to desired record/replay log file
-void rr_do_begin_record(const char *file_name_full) {
+void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path_base = g_strdup(file_name_full);
@@ -975,7 +978,7 @@ void rr_do_begin_record(const char *file_name_full) {
   printf ("opening nondet log for write :\t%s\n", name_buf);
   rr_create_record_log(name_buf);
   // reset record/replay counters and flags
-  rr_reset_state();
+  rr_reset_state(cpu_state);
   g_free(rr_path_base);
   g_free(rr_name_base);
   // set global to turn on recording
@@ -1010,7 +1013,7 @@ void rr_do_end_record(void) {
 
 
 // file_name_full should be full path to the record/replay log
-void rr_do_begin_replay(const char *file_name_full) {
+void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path = g_strdup(file_name_full);
@@ -1036,7 +1039,7 @@ void rr_do_begin_replay(const char *file_name_full) {
   printf ("opening nondet log for read :\t%s\n", name_buf);
   rr_create_replay_log(name_buf);
   // reset record/replay counters and flags
-  rr_reset_state();
+  rr_reset_state(cpu_state);
   // set global to turn on replay
   rr_mode = RR_REPLAY;
   //mz fill the queue!
