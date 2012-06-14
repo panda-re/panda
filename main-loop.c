@@ -429,7 +429,7 @@ int main_loop_wait(int nonblocking)
     int timeout;
 
     //mz 05.2012 let's make sure CPUs get to run in replay
-    if (rr_in_replay()) {
+    if (rr_in_replay() || rr_replay_requested) {
         timeout = RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY;
     }
     else {
