@@ -196,6 +196,7 @@ typedef enum {
     RR_INPUT_4,
     RR_INPUT_8,
     RR_INTERRUPT_REQUEST,
+    RR_EXIT_REQUEST,
     RR_SKIPPED_CALL,
     RR_LAST
 } RR_log_entry_kind;
@@ -346,6 +347,7 @@ typedef struct rr_log_entry_t {
         uint64_t input_8;
         // if log_entry.kind == RR_INTERRUPT_REQUEST
         uint16_t interrupt_request;         //mz 2-bytes is enough for the interrupt request value!
+        uint16_t exit_request;
         // if log_entry.kind == RR_SKIPPED_CALL
         RR_skipped_call_args call_args;
         // if log_entry.kind == RR_LAST
@@ -383,6 +385,19 @@ static inline void rr_interrupt_request(uint32_t *interrupt_request) {
             break;
         case RR_REPLAY:
 	  rr_replay_interrupt_request(rr_skipped_callsite_location, (uint32_t *) interrupt_request);
+            break;
+        default:
+            break;
+    }
+}
+
+static inline void rr_exit_request(uint32_t *exit_request) {
+    switch (rr_mode) {
+        case RR_RECORD:
+            rr_record_exit_request(rr_skipped_callsite_location, *exit_request);
+            break;
+        case RR_REPLAY:
+            rr_replay_exit_request(rr_skipped_callsite_location, (uint32_t *) exit_request);
             break;
         default:
             break;

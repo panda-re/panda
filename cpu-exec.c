@@ -287,6 +287,24 @@ int cpu_exec(CPUState *env)
     }
 
     cpu_single_env = env;
+    
+    // rw - RR stuff wasn't present before this potential exit request
+    // do we need it? got an assert(0) in rr_replay_input_4() with it here
+#if 0
+    rr_set_program_point();
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
+    if (rr_in_record()) {
+        //mz FIXME yes this is the wrong routine, but we need the same kind of
+        //mz compression here (e.g. give 0 if nothing recorded)
+        rr_exit_request(&env->exit_request);
+    }
+    else if (rr_in_replay()) {
+        if (!rr_use_live_exit_request) {
+            rr_exit_request(&env->exit_request);
+        }
+    }
+#endif
+    // rw
 
     if (unlikely(exit_request)) {
         env->exit_request = 1;
@@ -634,11 +652,11 @@ int cpu_exec(CPUState *env)
                 if (rr_in_record()) {
                     //mz FIXME yes this is the wrong routine, but we need the same kind of
                     //mz compression here (e.g. give 0 if nothing recorded)
-                    rr_interrupt_request(&env->exit_request);
+                    rr_exit_request(&env->exit_request);
                 }
                 else if (rr_in_replay()) {
                     if (!rr_use_live_exit_request) {
-                        rr_interrupt_request(&env->exit_request);
+                        rr_exit_request(&env->exit_request);
                     }
                 }
                 if (unlikely(env->exit_request)) {
@@ -733,11 +751,11 @@ int cpu_exec(CPUState *env)
                 if (rr_in_record()) {
                     //mz FIXME yes this is the wrong routine, but we need the same kind of
                     //mz compression here (e.g. give 0 if nothing recorded)
-                    rr_interrupt_request(&env->exit_request);
+                    rr_exit_request(&env->exit_request);
                 }
                 else if (rr_in_replay()) {
                     if (!rr_use_live_exit_request) {
-                        rr_interrupt_request(&env->exit_request);
+                        rr_exit_request(&env->exit_request);
                     }
                 }
 

@@ -235,6 +235,9 @@ static inline void rr_write_item(void) {
         case RR_INTERRUPT_REQUEST:
             fwrite(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp);
             break;
+        case RR_EXIT_REQUEST:
+            fwrite(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp);
+            break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
@@ -342,6 +345,23 @@ void rr_record_interrupt_request(RR_callsite_id call_site, uint32_t interrupt_re
         item->header.prog_point = rr_prog_point;
 
         item->variant.interrupt_request = interrupt_request;
+
+        rr_write_item();
+    }
+}
+
+void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request) {
+    //mz we only record interrupt_requests if the value is non-zero
+    if (exit_request != 0) {
+        RR_log_entry *item = &(rr_nondet_log->current_item);
+        //mz just in case
+        memset(item, 0, sizeof(RR_log_entry));
+
+        item->header.kind = RR_EXIT_REQUEST;
+        item->header.callsite_loc = call_site;
+        item->header.prog_point = rr_prog_point;
+
+        item->variant.exit_request = exit_request;
 
         rr_write_item();
     }
@@ -523,6 +543,10 @@ static RR_log_entry *rr_read_item(void) {
         case RR_INTERRUPT_REQUEST:
             fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.interrupt_request);
+            break;
+        case RR_EXIT_REQUEST:
+            fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp);
+            rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.exit_request);
             break;
         case RR_SKIPPED_CALL:
             {
@@ -722,6 +746,25 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
     }
 }
 
+void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request) {
+    RR_log_entry *current_item = get_next_entry(RR_EXIT_REQUEST);
+    if (current_item == NULL) {
+        //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
+        //entry.  this is NOT cause for failure as we do not record
+        //interrupt_request values of 0 in the log (too many of them).
+        *exit_request = 0;
+    }
+    else {
+        //mz final sanity checks
+        assert(current_item->header.callsite_loc == call_site);
+        *exit_request = current_item->variant.exit_request;
+        //mz we've used the item
+        add_to_recycle_list(current_item);
+        //mz before we can return, we need to fill the queue with information
+        //up to the next interrupt value!
+        //rr_fill_queue();
+    }
+}
 
 //mz this function consumes 2 types of entries:  
 //RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION 
