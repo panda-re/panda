@@ -288,24 +288,11 @@ int cpu_exec(CPUState *env)
 
     cpu_single_env = env;
     
-    // rw - RR stuff wasn't present before this potential exit request
-    // do we need it? got an assert(0) in rr_replay_input_4() with it here
-#if 0
-    rr_set_program_point();
-    rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
-    if (rr_in_record()) {
-        //mz FIXME yes this is the wrong routine, but we need the same kind of
-        //mz compression here (e.g. give 0 if nothing recorded)
-        rr_exit_request(&env->exit_request);
-    }
-    else if (rr_in_replay()) {
-        if (!rr_use_live_exit_request) {
-            rr_exit_request(&env->exit_request);
-        }
-    }
-#endif
-    // rw
-
+    //mz 06.2012  I *believe* this is OK.  We certainly want this to happen in
+    //record, and in replay we want this to happen because this will let us
+    //know that the monitor has been used and we should go service that
+    //request.  The actual value of env->exit_request will be checked against
+    //the RR log before it is used.
     if (unlikely(exit_request)) {
         env->exit_request = 1;
     }
@@ -650,8 +637,6 @@ int cpu_exec(CPUState *env)
                 rr_set_program_point();
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
                 if (rr_in_record()) {
-                    //mz FIXME yes this is the wrong routine, but we need the same kind of
-                    //mz compression here (e.g. give 0 if nothing recorded)
                     rr_exit_request(&env->exit_request);
                 }
                 else if (rr_in_replay()) {
@@ -749,8 +734,6 @@ int cpu_exec(CPUState *env)
                 rr_set_program_point();
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_000;
                 if (rr_in_record()) {
-                    //mz FIXME yes this is the wrong routine, but we need the same kind of
-                    //mz compression here (e.g. give 0 if nothing recorded)
                     rr_exit_request(&env->exit_request);
                 }
                 else if (rr_in_replay()) {

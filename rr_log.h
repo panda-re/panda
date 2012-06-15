@@ -207,6 +207,7 @@ static const char *log_entry_kind_str[] = {
     "RR_INPUT_4",
     "RR_INPUT_8",
     "RR_INTERRUPT_REQUEST",
+    "RR_EXIT_REQUEST",
     "RR_SKIPPED_CALL",
     "RR_LAST"
 };
@@ -347,6 +348,7 @@ typedef struct rr_log_entry_t {
         uint64_t input_8;
         // if log_entry.kind == RR_INTERRUPT_REQUEST
         uint16_t interrupt_request;         //mz 2-bytes is enough for the interrupt request value!
+        // if log_entry.kind == RR_EXIT_REQUEST
         uint16_t exit_request;
         // if log_entry.kind == RR_SKIPPED_CALL
         RR_skipped_call_args call_args;
