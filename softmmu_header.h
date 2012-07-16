@@ -88,6 +88,10 @@ static inline RES_TYPE glue(glue(ld, USUFFIX), MEMSUFFIX)(target_ulong ptr)
     unsigned long physaddr;
     int mmu_idx;
 
+    if (unlikely(ptr >= 0x8dacd000 && ptr <= 0x8dacd000+1000)) {
+        puts("foo");
+    }
+
     addr = ptr;
     page_index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     mmu_idx = CPU_MMU_INDEX;

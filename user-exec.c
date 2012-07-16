@@ -43,7 +43,7 @@ static void exception_action(CPUState *env1)
 #if defined(TARGET_I386)
     raise_exception_err_env(env1, env1->exception_index, env1->error_code);
 #else
-    cpu_loop_exit(env1);
+    cpu_loop_exit(env1, __FILE__, __LINE__);
 #endif
 }
 

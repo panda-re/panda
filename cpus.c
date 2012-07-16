@@ -474,10 +474,14 @@ static void cpu_signal(int sig)
     if (cpu_single_env) {
         cpu_exit(cpu_single_env);
     }
-    exit_request = 1;
     if (rr_in_replay()) {
+        if (rr_debug_whisper()) {
+            fprintf(logfile, "cpu_signal called in replay mode, this had really better be a monitor request!!\n");
+        }
+        
         rr_use_live_exit_request = 1;
     }
+    exit_request = 1;
 }
 
 #ifdef CONFIG_LINUX
@@ -1081,10 +1085,10 @@ static void tcg_exec_all(void)
             break;
         }
     }
-    exit_request = 0;
     if (rr_in_replay()) {
         rr_use_live_exit_request = 0;
     }
+    exit_request = 0;
 }
 
 void set_numa_modes(void)

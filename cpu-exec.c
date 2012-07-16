@@ -34,7 +34,6 @@ int is_cpu_log_rr_set(void) {
 
 extern FILE *stderr;
 
-
 int tb_invalidated_flag;
 
 //#define CONFIG_DEBUG_EXEC
@@ -44,13 +43,14 @@ bool qemu_cpu_has_work(CPUState *env)
     return cpu_has_work(env);
 }
 
-void cpu_loop_exit(CPUState *env)
+void cpu_loop_exit(CPUState *env, char *file, int line)
 {
     if (rr_debug_whisper()) {
       qemu_log_mask(CPU_LOG_RR, 
-		    "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit.\n", 
+		    "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit from %s:%d.\n", 
 		    (unsigned long long)rr_prog_point.guest_instr_count,
-		    rr_prog_point.eip, rr_prog_point.ecx);
+		    rr_prog_point.eip, rr_prog_point.ecx,
+            file, line);
     }
     env->current_tb = NULL;
     longjmp(env->jmp_env, 1);
@@ -169,15 +169,6 @@ static inline TranslationBlock *tb_find_fast(CPUState *env)
     target_ulong cs_base, pc;
     int flags;
 
-    //mz This is done once at the start of record and once at the start of
-    //replay.  So we should be ok.
-    if (rr_flush_tb()) {
-      qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
-      tb_flush(env);
-      tb_invalidated_flag = 1;
-      rr_flush_tb_off();  // just the first time, eh?
-    }
-
     /* we record a subset of the CPU state. It will
        always be the same before a given translated block
        is executed. */
@@ -225,7 +216,7 @@ void rr_set_program_point(void) {
 void rr_quit_cpu_loop(void) {
     if (cpu_single_env) {
         cpu_single_env->exception_index = EXCP_INTERRUPT;
-        cpu_loop_exit(cpu_single_env);
+        cpu_loop_exit(cpu_single_env, __FILE__, __LINE__);
     }
 }
 
@@ -242,11 +233,12 @@ volatile sig_atomic_t exit_request;
 
 int cpu_exec(CPUState *env)
 {
-    int ret, interrupt_request;
+    int ret, interrupt_request, saved_exit_request;
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+/*
     sigset_t blockset, oldset;
 
     // create a signal set containing just ALARM and USR2
@@ -272,6 +264,16 @@ int cpu_exec(CPUState *env)
         rr_replay_requested = 0;
         //unblock signals
         sigprocmask(SIG_SETMASK, &oldset, NULL);
+    }
+*/
+
+    //mz This is done once at the start of record and once at the start of
+    //replay.  So we should be ok.
+    if (unlikely(rr_flush_tb())) {
+      qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
+      tb_flush(env);
+      tb_invalidated_flag = 1;
+      rr_flush_tb_off();  // just the first time, eh?
     }
 
     qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env->hflags);
@@ -374,6 +376,14 @@ int cpu_exec(CPUState *env)
                 //these decisions.
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_1;
                 rr_interrupt_request(&interrupt_request);
+
+                // Extra debug
+                if (rr_debug_whisper()) {
+                      qemu_log_mask(CPU_LOG_RR, 
+                          "RR_CALLSITE_CPU_EXEC_1 interrupt_request %x: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
+                          interrupt_request, env->eflags, env->hflags, env->hflags2);
+                }
+
                 if (rr_in_replay()) {
                     env->interrupt_request = interrupt_request;
                 }
@@ -385,7 +395,7 @@ int cpu_exec(CPUState *env)
                     if (interrupt_request & CPU_INTERRUPT_DEBUG) {
                         env->interrupt_request &= ~CPU_INTERRUPT_DEBUG;
                         env->exception_index = EXCP_DEBUG;
-                        cpu_loop_exit(env);
+                        cpu_loop_exit(env, __FILE__, __LINE__);
                     }
 #if defined(TARGET_ARM) || defined(TARGET_SPARC) || defined(TARGET_MIPS) || \
     defined(TARGET_PPC) || defined(TARGET_ALPHA) || defined(TARGET_CRIS) || \
@@ -394,7 +404,7 @@ int cpu_exec(CPUState *env)
                         env->interrupt_request &= ~CPU_INTERRUPT_HALT;
                         env->halted = 1;
                         env->exception_index = EXCP_HLT;
-                        cpu_loop_exit(env);
+                        cpu_loop_exit(env, __FILE__, __LINE__);
                     }
 #endif
 #if defined(TARGET_I386)
@@ -402,7 +412,7 @@ int cpu_exec(CPUState *env)
                             svm_check_intercept(env, SVM_EXIT_INIT);
                             do_cpu_init(env);
                             env->exception_index = EXCP_HALTED;
-                            cpu_loop_exit(env);
+                            cpu_loop_exit(env, __FILE__, __LINE__);
                     } else if (interrupt_request & CPU_INTERRUPT_SIPI) {
                             do_cpu_sipi(env);
                     } else if (env->hflags2 & HF2_GIF_MASK) {
@@ -620,10 +630,17 @@ int cpu_exec(CPUState *env)
                     }
 #endif
                     //mz set program point after handling interrupts.
-		    rr_set_program_point();
+                    rr_set_program_point();
                     //mz record the value again in case do_interrupt has set EXITTB flag
                     rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
                     rr_interrupt_request(&env->interrupt_request);
+
+                    if (rr_debug_whisper()) {
+                          qemu_log_mask(CPU_LOG_RR, 
+                              "RR_CALLSITE_CPU_EXEC_4 interrupt_request %x: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
+                              interrupt_request, env->eflags, env->hflags, env->hflags2);
+                    }
+
                    /* Don't use the cached interrupt_request value,
                       do_interrupt may have updated the EXITTB flag. */
                     if (env->interrupt_request & CPU_INTERRUPT_EXITTB) {
@@ -634,21 +651,40 @@ int cpu_exec(CPUState *env)
                     }
                 }
 
+                // capture exit_request as it may change
+                saved_exit_request = env->exit_request;
+
                 rr_set_program_point();
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
                 if (rr_in_record()) {
-                    rr_exit_request(&env->exit_request);
+                    rr_exit_request(&saved_exit_request);
                 }
                 else if (rr_in_replay()) {
                     if (!rr_use_live_exit_request) {
-                        rr_exit_request(&env->exit_request);
+                        rr_exit_request(&saved_exit_request);
                     }
                 }
-                if (unlikely(env->exit_request)) {
+
+                if (rr_debug_whisper()) {
+                      qemu_log_mask(CPU_LOG_RR, 
+                          "RR_CALLSITE_CPU_EXEC_00 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
+                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
+                }
+
+                if (unlikely(saved_exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
-                    cpu_loop_exit(env);
+                    cpu_loop_exit(env, __FILE__, __LINE__);
                 }
+
+                if (rr_prog_point.guest_instr_count == 4998583) {
+                    if (rr_debug_whisper()) {
+                          qemu_log_mask(CPU_LOG_RR, 
+                              "At problematic log point, ECX=%08x ESI=%08x EDI=%08x EBP=%08x\n", 
+                              ECX, ESI, EDI, EBP);
+                    }
+                }
+                    
 
 #if defined(DEBUG_DISAS) || defined(CONFIG_DEBUG_EXEC)
                 if (qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
@@ -671,7 +707,7 @@ int cpu_exec(CPUState *env)
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
                 spin_lock(&tb_lock);
 
-		qemu_log_mask(CPU_LOG_TB_IN_ASM, 
+                qemu_log_mask(CPU_LOG_TB_IN_ASM, 
 			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
 			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
 
@@ -682,7 +718,7 @@ int cpu_exec(CPUState *env)
                     if (tb->num_guest_insns > rr_num_instr_before_next_interrupt) {
                         //mz invalidate current TB and retranslate
                         //printf("invalidating single TB: %llu -> %llu\n", 
-		        // tb->num_guest_insns, rr_num_instr_before_next_interrupt);
+                        // tb->num_guest_insns, rr_num_instr_before_next_interrupt);
                         invalidate_single_tb(env, tb->pc);
                         //mz try again.
                         tb = tb_find_fast(env);
@@ -710,7 +746,7 @@ int cpu_exec(CPUState *env)
 		// (T0 & ~3) contains pointer to previous translation block.
 		// (T0 & 3) contains info about which branch we took (why 2 bits?)
 		// tb is current translation block.  
-                if (rr_mode != RR_REPLAY)
+                if (0 && rr_mode != RR_REPLAY)
                 {		
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
@@ -731,23 +767,32 @@ int cpu_exec(CPUState *env)
                 env->current_tb = tb;
                 barrier();
 
+                // Capture exit_request
+                saved_exit_request = env->exit_request;
+
                 rr_set_program_point();
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_000;
                 if (rr_in_record()) {
-                    rr_exit_request(&env->exit_request);
+                    rr_exit_request(&saved_exit_request);
                 }
                 else if (rr_in_replay()) {
                     if (!rr_use_live_exit_request) {
-                        rr_exit_request(&env->exit_request);
+                        rr_exit_request(&saved_exit_request);
                     }
                 }
 
-                if (likely(!env->exit_request)) {
+                if (rr_debug_whisper()) {
+                      qemu_log_mask(CPU_LOG_RR, 
+                          "RR_CALLSITE_CPU_EXEC_000 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
+                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
+                }
+
+                if (likely(!saved_exit_request)) {
                     tc_ptr = tb->tc_ptr;
-		    //mz setting program point just before call to gen_func()
-		    rr_set_program_point();
-		    //mz Actually jump into the generated code
-		    /* execute the generated code */
+                    //mz setting program point just before call to gen_func()
+                    rr_set_program_point();
+                    //mz Actually jump into the generated code
+                    /* execute the generated code */
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
@@ -773,7 +818,7 @@ int cpu_exec(CPUState *env)
                             }
                             env->exception_index = EXCP_INTERRUPT;
                             next_tb = 0;
-                            cpu_loop_exit(env);
+                            cpu_loop_exit(env, __FILE__, __LINE__);
                         }
                     }
                 }

@@ -1031,6 +1031,7 @@ static inline bool cpu_has_work(CPUState *env)
     // interrupt record/replay stuff
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
     rr_interrupt_request(&env->interrupt_request);
+
     // Note, we are using cached value of interrupt request here
 
     return ((env->interrupt_request & CPU_INTERRUPT_HARD) &&

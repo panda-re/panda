@@ -365,6 +365,7 @@ void rr_record_input_4(RR_callsite_id call_site, uint32_t data);
 void rr_record_input_8(RR_callsite_id call_site, uint64_t data);
 
 void rr_record_interrupt_request(RR_callsite_id call_site, uint32_t interrupt_request);
+void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, uint32_t start_addr, unsigned long size, unsigned long phys_offset);
@@ -376,6 +377,7 @@ void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data);
 void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_request);
+void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request);
 
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
 
@@ -501,9 +503,9 @@ static inline void rr_replay_skipped_calls(void) {
                     else { \
                         rr_record_in_progress = 1; \
                         rr_skipped_callsite_location = LOCATION; \
-                        rr_set_program_point(); \
-                        ACTION;						\
-			RECORD_ACTION;					\
+                        rr_set_program_point();    \
+                        ACTION;                    \
+                        RECORD_ACTION;             \
                         rr_record_in_progress = 0; \
                     } \
                 } \
@@ -567,10 +569,19 @@ static inline void rr_flush_tb_off(void) {
   rr_please_flush_tb = 0;
 }
 
+// our own assertion mechanism
+
+#define rr_assert(exp) if(exp); \
+    else rr_assert_fail(#exp, __FILE__, __LINE__, __FUNCTION__);
+
+inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function);
+
 //
 // Debug level
 //
+#ifndef RR_LOG_STANDALONE
 extern int is_cpu_log_rr_set(void);
+#endif
 
 typedef enum {
   RR_DEBUG_SILENT = 0,   // really nothing
@@ -582,8 +593,12 @@ extern RR_debug_level_type rr_debug_level;
 
 // debugging is on? 
 static inline uint8_t rr_debug_on(void) {
-  return (is_cpu_log_rr_set() && (rr_on())
-          && (rr_debug_level > RR_DEBUG_SILENT));
+  return (
+#ifndef RR_LOG_STANDALONE
+    is_cpu_log_rr_set() &&
+#endif
+        (rr_on()) && (rr_debug_level > RR_DEBUG_SILENT)
+    );
 }
 
 // is the debug level this?

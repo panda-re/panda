@@ -96,6 +96,11 @@ void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *
     IOHandlerRecord *ioh;
 
     QLIST_FOREACH(ioh, &io_handlers, next) {
+        //bdg don't do ANYTHING in replay
+        if (rr_in_replay() || rr_replay_requested) {
+            continue;
+        }
+
         if (ioh->deleted)
             continue;
         //mz 05.2012 add another clause to test whether ioh->opaque is a

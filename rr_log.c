@@ -88,7 +88,7 @@ static inline uint8_t log_is_empty(void) {
 }
 
 
-RR_debug_level_type rr_debug_level = RR_DEBUG_WHISPER;
+RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 
 // used as a signal that TB cache needs flushing.
 uint8_t rr_please_flush_tb = 0;
@@ -124,6 +124,23 @@ volatile unsigned long long rr_max_num_queue_entries;
 RR_log_entry rr_log_entry_history[RR_HIST_SIZE];
 int rr_hist_index = 0;
 
+// our debug rr_assert
+inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function) {
+    printf("RR rr_assertion `%s' failed at %s:%d\n", exp, file, line);
+    if(rr_debug_whisper()) {
+        fprintf(logfile, "RR rr_assertion `%s' failed at %s:%d in %s\n", exp, file, line, function);
+    }
+    fflush(logfile);
+    extern void rr_quit_cpu_loop(void);
+    rr_end_replay_requested = 1;
+    //mz need to get out of cpu loop so that we can process the end_replay request
+    //mz this will call cpu_loop_exit(), which longjmps
+    //bdg gosh I hope this is OK here. I think it should be as long as we only ever call
+    //bdg rr_assert from the CPU loop
+    rr_quit_cpu_loop();
+    /* NOT REACHED */
+}
+    
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
@@ -140,7 +157,6 @@ static void rr_debug_log_prog_point(RR_prog_point pp) {
 static void rr_spit_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(stdout,pp);
 }
-
 
 static void rr_spit_log_entry(RR_log_entry item) {
     rr_spit_prog_point(item.header.prog_point);
@@ -160,6 +176,9 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_INTERRUPT_REQUEST:
             printf("\tRR_INTERRUPT_REQUEST from %s\n", get_callsite_string(item.header.callsite_loc));
             break;
+        case RR_EXIT_REQUEST:
+            printf("\tRR_EXIT_REQUEST from %s\n", get_callsite_string(item.header.callsite_loc));
+            break;
         case RR_SKIPPED_CALL:
             printf("\tRR_SKIPPED_CALL (%s) from %s\n", 
                     get_skipped_call_kind_string(item.variant.call_args.kind),
@@ -167,6 +186,10 @@ static void rr_spit_log_entry(RR_log_entry item) {
             break;
         case RR_LAST:
             printf("\tRR_LAST\n");
+            break;
+        default:
+            printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
+            break;
     }
 }
 
@@ -207,9 +230,17 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
 static inline void rr_write_item(void) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
 
+    if(rr_debug_whisper()) {
+        fprintf(logfile,"[Thread: %lu] Saved %s %d, callsite=%s\n", pthread_self(),
+            get_log_entry_kind_string(item->header.kind),
+            item->header.kind == RR_EXIT_REQUEST ? item->variant.exit_request : -1,
+            get_callsite_string(item->header.callsite_loc)
+        );
+    }
+
     //mz save the header
-    assert (rr_in_record());
-    assert (rr_nondet_log != NULL);
+    rr_assert (rr_in_record());
+    rr_assert (rr_nondet_log != NULL);
     //mz this is more compact, as it doesn't include extra padding.
     fwrite(&(item->header.prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp);
     fwrite(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp);
@@ -245,7 +276,7 @@ static inline void rr_write_item(void) {
                 fwrite(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp);
                 switch (args->kind) {
                     case RR_CALL_CPU_MEM_RW:
-                        assert(args->variant.cpu_mem_rw_args.buf != NULL || 
+                        rr_assert(args->variant.cpu_mem_rw_args.buf != NULL || 
                                 args->variant.cpu_mem_rw_args.len == 0);
                         fwrite(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp);
                         //mz write the buffer
@@ -257,7 +288,7 @@ static inline void rr_write_item(void) {
                         break;
                     default:
                         //mz unimplemented
-                        assert(0);
+                        rr_assert(0);
                 }
             }
             break;
@@ -266,7 +297,7 @@ static inline void rr_write_item(void) {
             break;
         default:
             //mz unimplemented
-            assert(0);
+            rr_assert(0);
     }
     rr_nondet_log->item_number++;
 }
@@ -351,7 +382,6 @@ void rr_record_interrupt_request(RR_callsite_id call_site, uint32_t interrupt_re
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request) {
-    //mz we only record interrupt_requests if the value is non-zero
     if (exit_request != 0) {
         RR_log_entry *item = &(rr_nondet_log->current_item);
         //mz just in case
@@ -495,9 +525,9 @@ static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
 
     //mz read header
-    assert (rr_in_replay());
-    assert ( ! log_is_empty());
-    assert (rr_nondet_log->fp != NULL);
+    rr_assert (rr_in_replay());
+    rr_assert ( ! log_is_empty());
+    rr_assert (rr_nondet_log->fp != NULL);
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
     if (fread(&(item->header.prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp) != 1) {
@@ -505,12 +535,12 @@ static RR_log_entry *rr_read_item(void) {
         if (feof(rr_nondet_log->fp)) {
             // replay is done - we've reached the end of file
             //mz we should never get here!
-            assert(0);
+            rr_assert(0);
         } 
         else {
             //mz some other kind of error
             //mz XXX something more graceful, perhaps?
-            assert(0);
+            rr_assert(0);
         }
     }
     //mz this is more compact, as it doesn't include extra padding.
@@ -572,7 +602,7 @@ static RR_log_entry *rr_read_item(void) {
                         break;
                     default:
                         //mz unimplemented
-                        assert(0);
+                        rr_assert(0);
                 }
             }
             break;
@@ -581,7 +611,7 @@ static RR_log_entry *rr_read_item(void) {
             break;
         default:
             //mz unimplemented
-            assert(0);
+            rr_assert(0);
     }
     rr_nondet_log->item_number++;
 
@@ -595,7 +625,7 @@ static void rr_fill_queue(void) {
     unsigned long long num_entries = 0;
 
     //mz first, some sanity checks.  The queue should be empty when this is called.
-    assert(queue_head == NULL && queue_tail == NULL);
+    rr_assert(queue_head == NULL && queue_tail == NULL);
 
     while ( ! log_is_empty()) {
         log_entry = rr_read_item();
@@ -624,7 +654,8 @@ static void rr_fill_queue(void) {
             rr_quit_cpu_loop();
             /* NOT REACHED */
         }
-        else if (log_entry->header.kind == RR_INTERRUPT_REQUEST) {
+        else if (log_entry->header.kind == RR_INTERRUPT_REQUEST || 
+                 log_entry->header.kind == RR_EXIT_REQUEST) {
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
             break;
         }
@@ -636,13 +667,30 @@ static void rr_fill_queue(void) {
 }
 
 //mz return next log entry from the queue
-static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind) 
+static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_id call_site) 
 {
     RR_log_entry *current;
     //mz make sure queue is not empty, and that we have the right element next
-    if (queue_head == NULL || queue_head->header.kind != kind) {
+    if (queue_head == NULL) {
+        printf("Queue is empty, will return NULL\n");
         return NULL;
     }
+
+    if(rr_debug_whisper()) {
+        fprintf(logfile,"[Thread: %lu] Expected kind: %s, callsite=%s, found %s %d, callsite=%s (matched=%d)\n", pthread_self(),
+            get_log_entry_kind_string(kind),
+            get_callsite_string(call_site),
+            get_log_entry_kind_string(queue_head->header.kind),
+            queue_head->header.kind == RR_EXIT_REQUEST ? queue_head->variant.exit_request : -1,
+            get_callsite_string(queue_head->header.callsite_loc),
+            kind == queue_head->header.kind && rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point) == 0
+        );
+    }
+
+    if(queue_head->header.kind != kind) {
+        return NULL;
+    }
+
     //mz rr_prog_point_compare will fail if we're ahead of the log
     if (rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point) != 0) {
         return NULL;
@@ -659,15 +707,15 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind)
 
 //mz replay 1-byte input to the CPU
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_1);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_1, call_site);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
-        assert(0);
+        rr_assert(0);
     }
     //mz now we have our item and it is appropriate for replay here.
     //mz final sanity checks
-    assert(current_item->header.callsite_loc == call_site);
+    rr_assert(current_item->header.callsite_loc == call_site);
     *data = current_item->variant.input_1;
     //mz we've used the item - recycle it.
     add_to_recycle_list(current_item);
@@ -675,15 +723,15 @@ void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data) {
 
 //mz replay 2-byte input to the CPU
 void rr_replay_input_2( RR_callsite_id call_site, uint16_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_2);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_2, call_site);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
-        assert(0);
+        rr_assert(0);
     }
     //mz now we have our item and it is appropriate for replay here.
     //mz final sanity checks
-    assert(current_item->header.callsite_loc == call_site);
+    rr_assert(current_item->header.callsite_loc == call_site);
     *data = current_item->variant.input_2;
     //mz we've used the item - recycle it.
     add_to_recycle_list(current_item);
@@ -692,15 +740,17 @@ void rr_replay_input_2( RR_callsite_id call_site, uint16_t *data) {
 
 //mz replay 4-byte input to the CPU
 void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_4);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_4, call_site);
+
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
-        assert(0);
+        rr_assert(0);
     }
+
     //mz now we have our item and it is appropriate for replay here.
     //mz final sanity checks
-    assert(current_item->header.callsite_loc == call_site);
+    rr_assert(current_item->header.callsite_loc == call_site);
     *data = current_item->variant.input_4;
     //mz we've used the item - recycle it.
     add_to_recycle_list(current_item);
@@ -709,15 +759,15 @@ void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data) {
 
 //mz replay 8-byte input to the CPU
 void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_8);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_8, call_site);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
-        assert(0);
+        rr_assert(0);
     }
     //mz now we have our item and it is appropriate for replay here.
     //mz final sanity checks
-    assert(current_item->header.callsite_loc == call_site);
+    rr_assert(current_item->header.callsite_loc == call_site);
     *data = current_item->variant.input_8;
     //mz we've used the item - recycle it.
     add_to_recycle_list(current_item);
@@ -727,7 +777,7 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data) {
 //mz replay interrupt_request value.  if there's nothing in the log, the value
 //mz was 0 during record.
 void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_request) {
-    RR_log_entry *current_item = get_next_entry(RR_INTERRUPT_REQUEST);
+    RR_log_entry *current_item = get_next_entry(RR_INTERRUPT_REQUEST, call_site);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is NOT cause for failure as we do not record
@@ -736,7 +786,7 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
     }
     else {
         //mz final sanity checks
-        assert(current_item->header.callsite_loc == call_site);
+        rr_assert(current_item->header.callsite_loc == call_site);
         *interrupt_request = current_item->variant.interrupt_request;
         //mz we've used the item
         add_to_recycle_list(current_item);
@@ -747,23 +797,65 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
 }
 
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request) {
-    RR_log_entry *current_item = get_next_entry(RR_EXIT_REQUEST);
-    if (current_item == NULL) {
-        //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
-        //entry.  this is NOT cause for failure as we do not record
-        //interrupt_request values of 0 in the log (too many of them).
-        *exit_request = 0;
+    //bdg we have to duplicate some of get_next_entry in here because we do
+    //bdg somewhat more strict checks
+    RR_log_entry *current = NULL;
+
+    //mz make sure queue is not empty, and that we have the right element next
+    if (queue_head == NULL) {
+        printf("Queue is empty, will return NULL\n");
+        goto replay_exit_request_zero;
     }
-    else {
-        //mz final sanity checks
-        assert(current_item->header.callsite_loc == call_site);
-        *exit_request = current_item->variant.exit_request;
-        //mz we've used the item
-        add_to_recycle_list(current_item);
-        //mz before we can return, we need to fill the queue with information
-        //up to the next interrupt value!
-        //rr_fill_queue();
+
+    if (queue_head->header.kind != RR_EXIT_REQUEST) {
+        goto replay_exit_request_zero;
     }
+
+  uint32_t eip;
+  uint32_t ecx;
+  uint64_t guest_instr_count; 
+
+    if (rr_prog_point.eip != queue_head->header.prog_point.eip ||
+        rr_prog_point.ecx != queue_head->header.prog_point.ecx ||
+        rr_prog_point.guest_instr_count != queue_head->header.prog_point.guest_instr_count) {
+        goto replay_exit_request_zero;
+    }
+
+    if (queue_head->header.callsite_loc != call_site) {
+        goto replay_exit_request_zero;
+    }
+
+    //bdg Passed all checks. Remove from the queue, get the value, recycle and return
+    current = queue_head;
+    queue_head = queue_head->next;
+    current->next = NULL;
+    if (current == queue_tail) {
+        queue_tail = NULL;
+    }
+
+    
+    *exit_request = current->variant.exit_request;
+
+    if(rr_debug_whisper()) {
+        fprintf(logfile,"[Thread: %lu] Successfully matched exit_request, value is %d\n", pthread_self(), *exit_request);
+    }
+
+    //mz we've used the item
+    add_to_recycle_list(current);
+
+    //bdg just like interrupt_request
+    rr_fill_queue();
+    
+    return;
+
+replay_exit_request_zero:
+
+    if(rr_debug_whisper()) {
+        fprintf(logfile,"[Thread: %lu] exit_request found no matching log entry, assuming 0\n", pthread_self());
+    }
+
+    *exit_request = 0;
+    return;
 }
 
 //mz this function consumes 2 types of entries:  
@@ -772,7 +864,7 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request) {
 void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
     uint8_t replay_done = 0;
     do {
-        RR_log_entry *current_item = get_next_entry(RR_SKIPPED_CALL);
+        RR_log_entry *current_item = get_next_entry(RR_SKIPPED_CALL, call_site);
         if (current_item == NULL) {
             //mz queue is empty or we've replayed all we can for this prog point
             replay_done = 1;
@@ -804,7 +896,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                     break;
                 default:
                     //mz sanity check
-                    assert(0);
+                    rr_assert(0);
             }
             add_to_recycle_list(current_item);
         }
@@ -821,13 +913,13 @@ extern char *qemu_strdup(const char *str);
 void rr_create_record_log (const char *filename) {
   // create log
   rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
-  assert (rr_nondet_log != NULL);
+  rr_assert (rr_nondet_log != NULL);
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = RECORD;
   rr_nondet_log->name = g_strdup(filename);
   rr_nondet_log->fp = fopen(rr_nondet_log->name, "w");
-  assert(rr_nondet_log->fp != NULL);
+  rr_assert(rr_nondet_log->fp != NULL);
 
   if (rr_debug_whisper()) {
     fprintf (logfile, "opened %s for write.\n", rr_nondet_log->name);
@@ -847,13 +939,13 @@ void rr_create_replay_log (const char *filename) {
   struct stat statbuf = {0};
   // create log
   rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
-  assert (rr_nondet_log != NULL);
+  rr_assert (rr_nondet_log != NULL);
   memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = REPLAY;
   rr_nondet_log->name = g_strdup(filename);
   rr_nondet_log->fp = fopen(rr_nondet_log->name, "r");
-  assert(rr_nondet_log->fp != NULL);
+  rr_assert(rr_nondet_log->fp != NULL);
 
   //mz fill in log size
   stat(rr_nondet_log->name, &statbuf);
@@ -915,13 +1007,13 @@ extern void do_loadvm(const char *name);
 // here we compute the snapshot name to use for rec/replay 
 // NB: path not used here.
 static inline void rr_get_snapshot_name (char *rr_name, char *snapshot_name, size_t snapshot_name_len) {
-  assert (rr_name != NULL);
+  rr_assert (rr_name != NULL);
   snprintf(snapshot_name, snapshot_name_len, "%s-rr-snp", rr_name);
 }
 
 
 static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, char *file_name, size_t file_name_len) {
-  assert (rr_name != NULL && rr_path != NULL);
+  rr_assert (rr_name != NULL && rr_path != NULL);
   snprintf(file_name, file_name_len, "%s/%s-rr-nondet.log", rr_path, rr_name);
 }
 

@@ -1487,11 +1487,64 @@ static void main_loop(void)
         //mz replay_action is set to main_loop_wait() to interact with the
         //mz monitor - code has been added to guard against running
         //mz devices/timers/etc.
-        RR_DO_RECORD_OR_REPLAY(
-            /*action=*/last_io = main_loop_wait(nonblocking),
-            /*record=*/RR_NO_ACTION,
-            /*replay=*/last_io = main_loop_wait(nonblocking),
-            /*location=*/RR_CALLSITE_MAIN_LOOP);
+        //bdg note: not using the RR macro here, because we do NOT want to set
+        //bdg rr_record_in_progress -- otherwise all the stuff that happens
+        //bdg in the cpu_exec thread will be lost!
+        extern void rr_set_program_point(void);
+        switch (rr_mode) { 
+            case RR_RECORD: 
+                { 
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
+                    rr_set_program_point();    
+                    last_io = main_loop_wait(nonblocking);
+                } 
+                break; 
+            case RR_REPLAY: 
+                { 
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
+                    /* mz we need to update program point! */ 
+                    rr_set_program_point(); 
+                    rr_replay_skipped_calls(); 
+                    last_io = main_loop_wait(nonblocking);
+                } 
+                break; 
+            case RR_OFF: 
+            default: 
+                last_io = main_loop_wait(nonblocking);
+        } 
+
+        // bdg 07.2012 moving these in here from cpu-exec.c because savevm_aux
+        // bdg does not like being called from the CPU thread
+
+        sigset_t blockset, oldset;
+
+        // create a signal set containing just ALARM and USR2
+        sigemptyset(&blockset);
+        sigaddset(&blockset, SIGALRM);
+        sigaddset(&blockset, SIGUSR2);
+        sigaddset(&blockset, SIGIO);
+
+
+        if (__builtin_expect(rr_record_requested, 0)) {
+            extern void *first_cpu;
+            //block signals
+            sigprocmask(SIG_BLOCK, &blockset, &oldset);
+            rr_do_begin_record(rr_requested_name, first_cpu);
+            rr_record_requested = 0;
+            //unblock signals
+            sigprocmask(SIG_SETMASK, &oldset, NULL);
+        }
+        if (__builtin_expect(rr_replay_requested, 0)) {
+            extern void quit_timers(void);
+            extern void *first_cpu;
+            //block signals
+            sigprocmask(SIG_BLOCK, &blockset, &oldset);
+            rr_do_begin_replay(rr_requested_name, first_cpu);
+            quit_timers();
+            rr_replay_requested = 0;
+            //unblock signals
+            sigprocmask(SIG_SETMASK, &oldset, NULL);
+        }
 
         //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested) {
