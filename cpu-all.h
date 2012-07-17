@@ -403,7 +403,7 @@ void cpu_interrupt(CPUState *env, int mask);
 
 void cpu_reset_interrupt(CPUState *env, int mask);
 
-void cpu_exit(CPUState *s);
+void cpu_exit(CPUState *s, char *file, int line, char *function);
 
 bool qemu_cpu_has_work(CPUState *env);
 

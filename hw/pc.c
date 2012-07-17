@@ -1108,7 +1108,7 @@ static void cpu_request_exit(void *opaque, int irq, int level)
     CPUState *env = cpu_single_env;
 
     if (env && level) {
-        cpu_exit(env);
+        cpu_exit(env, __FILE__, __LINE__, __FUNCTION__);
     }
 }
 

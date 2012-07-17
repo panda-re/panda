@@ -119,10 +119,16 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
     /* test if there is match for unaligned or IO access */
     /* XXX: could done more in memory macro in a non portable way */
     index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+
+    if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+        printf("%s is loading from address %#lx (mmu_idx=%d, index=%d)\n", __FUNCTION__, addr, mmu_idx, index);
+
  redo:
     tlb_addr = env->tlb_table[mmu_idx][index].ADDR_READ;
     if ((addr & TARGET_PAGE_MASK) == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
         if (tlb_addr & ~TARGET_PAGE_MASK) {
+            if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+                printf("%s address %#lx is in I/O memory\n", __FUNCTION__, addr);
             /* IO access */
             if ((addr & (DATA_SIZE - 1)) != 0)
                 goto do_unaligned_access;
@@ -147,6 +153,8 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             }
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
+            if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+                printf("%s address %#lx is at host memory %#lx\n", __FUNCTION__, addr, addr+addend);
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
         }
     } else {
@@ -278,12 +286,18 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
     int index;
 
     index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+
+    if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+        printf("%s is storing to address %#lx (mmu_idx=%d, index=%d)\n", __FUNCTION__, addr, mmu_idx, index);
+
  redo:
     tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     if ((addr & TARGET_PAGE_MASK) == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
         if (tlb_addr & ~TARGET_PAGE_MASK) {
             //mz 10.20.2009  There's something in the lower 12 bits (and
             //TLB_INVALID_MASK is not it) - therefore, it must be IO
+            if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+                printf("%s address %#lx is in I/O memory\n", __FUNCTION__, addr);
             /* IO access */
             if ((addr & (DATA_SIZE - 1)) != 0)
                 goto do_unaligned_access;
@@ -307,6 +321,8 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             }
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
+            if (addr >= 0x8dacd000 && addr < 0x8dacd000+0x1000)
+                printf("%s address %#lx is at host memory %#lx\n", __FUNCTION__, addr, addr+addend);
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
         }
     } else {

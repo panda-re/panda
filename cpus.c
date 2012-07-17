@@ -472,7 +472,7 @@ static void cpu_handle_guest_debug(CPUState *env)
 static void cpu_signal(int sig)
 {
     if (cpu_single_env) {
-        cpu_exit(cpu_single_env);
+        cpu_exit(cpu_single_env, __FILE__, __LINE__, __FUNCTION__);
     }
     if (rr_in_replay()) {
         if (rr_debug_whisper()) {
@@ -991,7 +991,7 @@ void cpu_stop_current(void)
     if (cpu_single_env) {
         cpu_single_env->stop = 0;
         cpu_single_env->stopped = 1;
-        cpu_exit(cpu_single_env);
+        cpu_exit(cpu_single_env, __FILE__, __LINE__, __FUNCTION__);
         qemu_cond_signal(&qemu_pause_cond);
     }
 }

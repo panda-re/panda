@@ -671,6 +671,11 @@ int cpu_exec(CPUState *env)
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
                 }
 
+                if(saved_exit_request != env->exit_request) {
+                    //printf("RR_CALLSITE_CPU_EXEC_00: Ruh roh! Someone done changed env->exit_request behind our back!\n");
+                    fflush(stdout);
+                }
+
                 if (unlikely(saved_exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
@@ -710,6 +715,13 @@ int cpu_exec(CPUState *env)
                 qemu_log_mask(CPU_LOG_TB_IN_ASM, 
 			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
 			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+
+                if(rr_debug_whisper()) {
+                    qemu_log_mask(CPU_LOG_RR, 
+                        "Register dump, EAX=%08x EBX=%08x ECX=%08x EDX=%08x ESI=%08x EDI=%08x EBP=%08x ESP=%08x\n", 
+                            EAX, EBX, ECX, EDX, ESI, EDI, EBP, ESP);
+                }
+
 
                 tb = tb_find_fast(env);
 
@@ -785,6 +797,11 @@ int cpu_exec(CPUState *env)
                       qemu_log_mask(CPU_LOG_RR, 
                           "RR_CALLSITE_CPU_EXEC_000 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
+                }
+
+                if(saved_exit_request != env->exit_request) {
+                    //printf("RR_CALLSITE_CPU_EXEC_000: Ruh roh! Someone done changed env->exit_request behind our back!\n");
+                    fflush(stdout);
                 }
 
                 if (likely(!saved_exit_request)) {

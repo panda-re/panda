@@ -1727,8 +1727,10 @@ void cpu_reset_interrupt(CPUState *env, int mask)
     env->interrupt_request &= ~mask;
 }
 
-void cpu_exit(CPUState *env)
+void cpu_exit(CPUState *env, char *file, int line, char *function)
 {
+    //printf("cpu_exit called from %s:%d (%s) setting exit_request to 1\n", file, line, function);
+    fflush(stdout);
     env->exit_request = 1;
     cpu_unlink_tb(env);
 }
@@ -4911,6 +4913,13 @@ void cpu_io_recompile(CPUState *env, void *retaddr)
         cpu_abort(env, "cpu_io_recompile: could not find TB for pc=%p", 
                   retaddr);
     }
+    
+    if (rr_debug_whisper()) {
+        qemu_log_mask(CPU_LOG_RR,
+            "Called cpu_io_recompile to retranslate TB at pc=%p\n",
+            retaddr);
+    }
+
     n = env->icount_decr.u16.low + tb->icount;
     cpu_restore_state(tb, env, (unsigned long)retaddr);
     /* Calculate how many instructions had been executed before the fault
