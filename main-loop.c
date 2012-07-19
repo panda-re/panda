@@ -486,20 +486,41 @@ int main_loop_wait(int nonblocking)
     //mz 05.2012 this should be safe to do as only the monitor fds were
     //mz enabled for the select() call above, but let's disable them just in case
     if (! (rr_in_replay() || rr_replay_requested)) {
-        glib_select_poll(&rfds, &wfds, &xfds, (ret < 0));
+        RR_DO_RECORD_OR_REPLAY(
+                   /*action=*/glib_select_poll(&rfds, &wfds, &xfds, (ret < 0)),
+                   /*record=*/RR_NO_ACTION,
+                   /*replay=*/RR_NO_ACTION,
+                   /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_1);
     }
     //mz 05.2012 want to service the monitor, so run this
-    qemu_iohandler_poll(&rfds, &wfds, &xfds, ret);
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/qemu_iohandler_poll(&rfds, &wfds, &xfds, ret),
+        /*record=*/RR_NO_ACTION,
+        /*replay=*/RR_NO_ACTION,
+        /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_2);
+
     //mz 05.2012 we don't want to run any of this other stuff
     if (! (rr_in_replay() || rr_replay_requested)) {
 #ifdef CONFIG_SLIRP
-        slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0));
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0)),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_3);
 #endif
-        qemu_run_all_timers();
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/qemu_run_all_timers(),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_4);
 
         /* Check bottom-halves last in case any of the earlier events triggered
            them.  */
-        qemu_bh_poll();
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/qemu_bh_poll(),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/RR_NO_ACTION,
+            /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_4);
     }
 
     return ret;

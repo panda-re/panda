@@ -1490,28 +1490,28 @@ static void main_loop(void)
         //bdg note: not using the RR macro here, because we do NOT want to set
         //bdg rr_record_in_progress -- otherwise all the stuff that happens
         //bdg in the cpu_exec thread will be lost!
-        extern void rr_set_program_point(void);
-        switch (rr_mode) { 
-            case RR_RECORD: 
-                { 
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
-                    rr_set_program_point();    
-                    last_io = main_loop_wait(nonblocking);
-                } 
-                break; 
-            case RR_REPLAY: 
-                { 
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
-                    /* mz we need to update program point! */ 
-                    rr_set_program_point(); 
-                    rr_replay_skipped_calls(); 
-                    last_io = main_loop_wait(nonblocking);
-                } 
-                break; 
-            case RR_OFF: 
-            default: 
+//        extern void rr_set_program_point(void);
+//        switch (rr_mode) { 
+//            case RR_RECORD: 
+//                { 
+//                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
+//                    rr_set_program_point();    
+//                    last_io = main_loop_wait(nonblocking);
+//                } 
+//                break; 
+//            case RR_REPLAY: 
+//                { 
+//                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
+//                    /* mz we need to update program point! */ 
+//                    rr_set_program_point(); 
+//                    rr_replay_skipped_calls(); 
+//                    last_io = main_loop_wait(nonblocking);
+//                } 
+//                break; 
+//            case RR_OFF: 
+//            default: 
                 last_io = main_loop_wait(nonblocking);
-        } 
+        //} 
 
         // bdg 07.2012 moving these in here from cpu-exec.c because savevm_aux
         // bdg does not like being called from the CPU thread

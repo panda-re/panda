@@ -131,6 +131,8 @@ inline void rr_assert_fail(const char *exp, const char *file, int line, const ch
         fprintf(logfile, "RR rr_assertion `%s' failed at %s:%d in %s\n", exp, file, line, function);
     }
     fflush(logfile);
+    // just abort
+    abort();
     extern void rr_quit_cpu_loop(void);
     rr_end_replay_requested = 1;
     //mz need to get out of cpu loop so that we can process the end_replay request

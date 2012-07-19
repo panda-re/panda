@@ -276,7 +276,7 @@ int cpu_exec(CPUState *env)
       rr_flush_tb_off();  // just the first time, eh?
     }
 
-    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env->hflags);
+    //qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env->hflags);
     //    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
     //		  env->hflags & HF_HALTED_MASK);
 

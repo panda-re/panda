@@ -93,14 +93,8 @@ static inline RES_TYPE glue(glue(ld, USUFFIX), MEMSUFFIX)(target_ulong ptr)
     mmu_idx = CPU_MMU_INDEX;
     if (unlikely(env->tlb_table[mmu_idx][page_index].ADDR_READ !=
                  (addr & (TARGET_PAGE_MASK | (DATA_SIZE - 1))))) {
-        if (unlikely(ptr >= 0x8dacd000 && ptr <= 0x8dacd000+0x1000)) {
-            printf("TLB miss in %s: going into __ld code for address %#lx", __FUNCTION__, ptr);
-        }
         res = glue(glue(__ld, SUFFIX), MMUSUFFIX)(addr, mmu_idx);
     } else {
-        if (unlikely(ptr >= 0x8dacd000 && ptr <= 0x8dacd000+0x1000)) {
-            printf("TLB hit in %s: going into ld_raw code for address %#lx", __FUNCTION__, ptr);
-        }
         physaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)physaddr);
     }
@@ -145,14 +139,8 @@ static inline void glue(glue(st, SUFFIX), MEMSUFFIX)(target_ulong ptr, RES_TYPE 
     mmu_idx = CPU_MMU_INDEX;
     if (unlikely(env->tlb_table[mmu_idx][page_index].addr_write !=
                  (addr & (TARGET_PAGE_MASK | (DATA_SIZE - 1))))) {
-        if (unlikely(ptr >= 0x8dacd000 && ptr <= 0x8dacd000+0x1000)) {
-            printf("TLB miss in %s: going into __ld code for address %#lx", __FUNCTION__, ptr);
-        }
         glue(glue(__st, SUFFIX), MMUSUFFIX)(addr, v, mmu_idx);
     } else {
-        if (unlikely(ptr >= 0x8dacd000 && ptr <= 0x8dacd000+0x1000)) {
-            printf("TLB hitin %s: going into __ld code for address %#lx", __FUNCTION__, ptr);
-        }
         physaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         glue(glue(st, SUFFIX), _raw)((uint8_t *)physaddr, v);
     }
