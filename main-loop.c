@@ -477,7 +477,9 @@ int main_loop_wait(int nonblocking)
         qemu_mutex_unlock_iothread();
     }
 
-    ret = select(nfds + 1, &rfds, &wfds, &xfds, &tv);
+    ret = select(nfds + 1, &rfds, &wfds, &xfds,
+        &tv);
+    //    rr_in_replay() ? NULL : &tv);
 
     if (timeout > 0) {
         qemu_mutex_lock_iothread();
@@ -485,7 +487,7 @@ int main_loop_wait(int nonblocking)
 
 
     //bdg Do all of these things at once under the same callsite
-    if(!rr_in_replay()) {
+    if(rr_in_record()) {
         rr_record_in_progress = 1;
         rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
         rr_set_program_point();
@@ -513,7 +515,7 @@ int main_loop_wait(int nonblocking)
     if (!rr_in_replay())
         qemu_bh_poll();
 
-    if(!rr_in_replay()) {
+    if(rr_in_record()) {
         rr_record_in_progress = 0;
     }
 

@@ -753,7 +753,7 @@ int cpu_exec(CPUState *env)
 		// (T0 & ~3) contains pointer to previous translation block.
 		// (T0 & 3) contains info about which branch we took (why 2 bits?)
 		// tb is current translation block.  
-                if (0 && rr_mode != RR_REPLAY)
+                if (rr_mode != RR_REPLAY)
                 {		
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
@@ -786,10 +786,6 @@ int cpu_exec(CPUState *env)
                     if (!rr_use_live_exit_request) {
                         rr_exit_request(&saved_exit_request);
                     }
-                }
-
-                if (rr_prog_point.guest_instr_count == 7213133) {
-                    printf("Break here\n");
                 }
 
                 if (rr_debug_whisper()) {
