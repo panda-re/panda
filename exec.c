@@ -4028,10 +4028,6 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
     ram_addr_t pd;
     PhysPageDesc *p;
 
-    if (is_write == 1) {
-        printf("cpu_physical_memory_rw called with is_write == 1\n");
-    }
-
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         l = (page + TARGET_PAGE_SIZE) - addr;
@@ -4336,7 +4332,7 @@ void cpu_physical_memory_unmap(void *buffer, target_phys_addr_t len,
 
             //bdg Save addr1,access_len,buffer contents
             if (rr_in_record() && rr_record_in_progress) {
-                rr_record_cpu_mem_unmap(RR_CALLSITE_CPU_PHYSICAL_MEMORY_UNMAP, addr1, buffer, access_len, is_write);
+                rr_cpu_physical_memory_unmap_record(addr1, buffer, access_len, is_write);
             }
 
             while (access_len) {

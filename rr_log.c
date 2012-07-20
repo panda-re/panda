@@ -253,6 +253,9 @@ static inline void rr_write_item(void) {
     rr_nondet_log->last_prog_point = item->header.prog_point;
 
     switch (item->header.kind) {
+        case RR_IOTHREAD_REQUEST:
+            fwrite(&(item->variant.iothread_request), sizeof(item->variant.iothread_request), 1, rr_nondet_log->fp);
+            break;
         case RR_INPUT_1:
             fwrite(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
             break;
@@ -401,6 +404,23 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request) {
         item->header.prog_point = rr_prog_point;
 
         item->variant.exit_request = exit_request;
+
+        rr_write_item();
+    }
+}
+
+//bdg record iothread request (boolean)
+void rr_record_iothread_request(RR_callsite_id call_site, uint8_t iothread_request) {
+    if (iothread_request != 0) {
+        RR_log_entry *item = &(rr_nondet_log->current_item);
+        //mz just in case
+        memset(item, 0, sizeof(RR_log_entry));
+
+        item->header.kind = RR_IOTHREAD_REQUEST;
+        item->header.callsite_loc = call_site;
+        item->header.prog_point = rr_prog_point;
+
+        item->variant.iothread_request = iothread_request;
 
         rr_write_item();
     }
@@ -589,6 +609,10 @@ static RR_log_entry *rr_read_item(void) {
 
     //mz read the rest of the item
     switch (item->header.kind) {
+        case RR_IOTHREAD_REQUEST:
+            fread(&(item->variant.iothread_request), sizeof(item->variant.iothread_request), 1, rr_nondet_log->fp);
+            rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.iothread_request);
+            break;
         case RR_INPUT_1:
             fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_1);
@@ -816,6 +840,21 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data) {
     add_to_recycle_list(current_item);
 }
 
+//bdg replay iothread request
+void rr_replay_iothread_request(RR_callsite_id call_site, uint8_t *iothread_request) {
+    RR_log_entry *current_item = get_next_entry(RR_IOTHREAD_REQUEST, call_site);
+    if (current_item == NULL) {
+        *iothread_request = 0;
+    }
+    else {
+        //mz now we have our item and it is appropriate for replay here.
+        //mz final sanity checks
+        rr_assert(current_item->header.callsite_loc == call_site);
+        *iothread_request = current_item->variant.iothread_request;
+        //mz we've used the item - recycle it.
+        add_to_recycle_list(current_item);
+    }
+}
 
 //mz replay interrupt_request value.  if there's nothing in the log, the value
 //mz was 0 during record.

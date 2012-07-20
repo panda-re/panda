@@ -206,6 +206,7 @@ typedef enum {
     RR_INPUT_8,
     RR_INTERRUPT_REQUEST,
     RR_EXIT_REQUEST,
+    RR_IOTHREAD_REQUEST,
     RR_SKIPPED_CALL,
     RR_LAST
 } RR_log_entry_kind;
@@ -217,6 +218,7 @@ static const char *log_entry_kind_str[] = {
     "RR_INPUT_8",
     "RR_INTERRUPT_REQUEST",
     "RR_EXIT_REQUEST",
+    "RR_IOTHREAD_REQUEST",
     "RR_SKIPPED_CALL",
     "RR_LAST"
 };
@@ -247,6 +249,7 @@ typedef enum {
   RR_CALLSITE_IO_READ_1, 
   RR_CALLSITE_IO_READ_2, 
   RR_CALLSITE_IO_READ_3, 
+  RR_CALLSITE_WAIT_IO_EVENT,
   RR_CALLSITE_CPU_EXEC_0,
   RR_CALLSITE_CPU_EXEC_00,
   RR_CALLSITE_CPU_EXEC_000,
@@ -266,11 +269,7 @@ typedef enum {
   RR_CALLSITE_IO_WRITE_3, 
   RR_CALLSITE_DEFAULT_IOPORT_WRITEW,
   RR_CALLSITE_MAIN_LOOP,
-  RR_CALLSITE_MAIN_LOOP_WAIT_1,
-  RR_CALLSITE_MAIN_LOOP_WAIT_2,
-  RR_CALLSITE_MAIN_LOOP_WAIT_3,
-  RR_CALLSITE_MAIN_LOOP_WAIT_4,
-  RR_CALLSITE_MAIN_LOOP_WAIT_5,
+  RR_CALLSITE_MAIN_LOOP_WAIT,
   RR_CALLSITE_PHYS_MEM_IO_1,
   RR_CALLSITE_PHYS_MEM_IO_2,
   RR_CALLSITE_PHYS_MEM_IO_3,
@@ -300,6 +299,7 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IO_READ_1", 
   "RR_CALLSITE_IO_READ_2", 
   "RR_CALLSITE_IO_READ_3", 
+  "RR_CALLSITE_WAIT_IO_EVENT",
   "RR_CALLSITE_CPU_EXEC_0",
   "RR_CALLSITE_CPU_EXEC_00",
   "RR_CALLSITE_CPU_EXEC_000",
@@ -319,11 +319,7 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IO_WRITE_3", 
   "RR_CALLSITE_DEFAULT_IOPORT_WRITEW",
   "RR_CALLSITE_MAIN_LOOP",
-  "RR_CALLSITE_MAIN_LOOP_WAIT_1",
-  "RR_CALLSITE_MAIN_LOOP_WAIT_2",
-  "RR_CALLSITE_MAIN_LOOP_WAIT_3",
-  "RR_CALLSITE_MAIN_LOOP_WAIT_4",
-  "RR_CALLSITE_MAIN_LOOP_WAIT_5",
+  "RR_CALLSITE_MAIN_LOOP_WAIT",
   "RR_CALLSITE_PHYS_MEM_IO_1",
   "RR_CALLSITE_PHYS_MEM_IO_2",
   "RR_CALLSITE_PHYS_MEM_IO_3",
@@ -359,6 +355,8 @@ typedef struct rr_log_entry_t {
     RR_header header;
     //mz all possible options, depending on log_entry.kind
     union {
+        // if log_entry.kind == RR_IOTHREAD_REQUEST
+        uint8_t iothread_request;
         // if log_entry.kind == RR_INPUT_1
         uint8_t input_1;
         // if log_entry.kind == RR_INPUT_2
@@ -387,6 +385,7 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data);
 
 void rr_record_interrupt_request(RR_callsite_id call_site, uint32_t interrupt_request);
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
+void rr_record_iothread_request(RR_callsite_id call_site, uint8_t iothread_request);
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, uint32_t start_addr, unsigned long size, unsigned long phys_offset);
@@ -400,6 +399,7 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_request);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request);
+void rr_replay_iothread_request(RR_callsite_id call_site, uint8_t *iothread_request);
 
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
 
@@ -424,6 +424,19 @@ static inline void rr_exit_request(uint32_t *exit_request) {
             break;
         case RR_REPLAY:
             rr_replay_exit_request(rr_skipped_callsite_location, (uint32_t *) exit_request);
+            break;
+        default:
+            break;
+    }
+}
+
+static inline void rr_iothread_request(uint8_t *iothread_request) {
+    switch (rr_mode) {
+        case RR_RECORD:
+            rr_record_iothread_request(rr_skipped_callsite_location, *iothread_request);
+            break;
+        case RR_REPLAY:
+            rr_replay_iothread_request(rr_skipped_callsite_location, (uint8_t *) iothread_request);
             break;
         default:
             break;
@@ -488,6 +501,10 @@ static inline void rr_input_8(uint64_t *val) {
 #define rr_input_shift_1 rr_input_2
 #define rr_input_shift_2 rr_input_4
 #define rr_input_shift_3 rr_input_8
+
+static inline void rr_cpu_physical_memory_unmap_record(uint32_t addr, uint8_t *buf, int len, int is_write) {
+    rr_record_cpu_mem_unmap(rr_skipped_callsite_location, addr, buf, len, is_write);
+}
 
 //mz XXX addr should be target_phys_addr_t
 static inline void rr_device_mem_rw_call_record(uint32_t addr, uint8_t *buf, int len, int is_write) {

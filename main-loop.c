@@ -483,45 +483,39 @@ int main_loop_wait(int nonblocking)
         qemu_mutex_lock_iothread();
     }
 
+
+    //bdg Do all of these things at once under the same callsite
+    if(!rr_in_replay()) {
+        rr_record_in_progress = 1;
+        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+        rr_set_program_point();
+    }
+
     //mz 05.2012 this should be safe to do as only the monitor fds were
     //mz enabled for the select() call above, but let's disable them just in case
-
-    //bdg Disabling this in replay is now handled by the macro
-    RR_DO_RECORD_OR_REPLAY(
-               /*action=*/glib_select_poll(&rfds, &wfds, &xfds, (ret < 0)),
-               /*record=*/RR_NO_ACTION,
-               /*replay=*/RR_NO_ACTION,
-               /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_1);
+    if (!rr_in_replay())
+        glib_select_poll(&rfds, &wfds, &xfds, (ret < 0));
 
     //mz 05.2012 want to service the monitor, so run this
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/qemu_iohandler_poll(&rfds, &wfds, &xfds, ret),
-        /*record=*/RR_NO_ACTION,
-        /*replay=*/RR_NO_ACTION,
-        /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_2);
+    qemu_iohandler_poll(&rfds, &wfds, &xfds, ret);
 
     //mz 05.2012 we don't want to run any of this other stuff
 #ifdef CONFIG_SLIRP
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0)),
-        /*record=*/RR_NO_ACTION,
-        /*replay=*/RR_NO_ACTION,
-        /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_3);
+    if (!rr_in_replay())
+        slirp_select_poll(&rfds, &wfds, &xfds, (ret < 0));
 #endif
 
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/qemu_run_all_timers(),
-        /*record=*/RR_NO_ACTION,
-        /*replay=*/RR_NO_ACTION,
-        /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_4);
+    if (!rr_in_replay())
+        qemu_run_all_timers();
 
     /* Check bottom-halves last in case any of the earlier events triggered
        them.  */
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/qemu_bh_poll(),
-        /*record=*/RR_NO_ACTION,
-        /*replay=*/RR_NO_ACTION,
-        /*location=*/RR_CALLSITE_MAIN_LOOP_WAIT_4);
+    if (!rr_in_replay())
+        qemu_bh_poll();
+
+    if(!rr_in_replay()) {
+        rr_record_in_progress = 0;
+    }
 
     return ret;
 }
