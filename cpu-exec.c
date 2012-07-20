@@ -671,11 +671,6 @@ int cpu_exec(CPUState *env)
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
                 }
 
-                if(saved_exit_request != env->exit_request) {
-                    //printf("RR_CALLSITE_CPU_EXEC_00: Ruh roh! Someone done changed env->exit_request behind our back!\n");
-                    fflush(stdout);
-                }
-
                 if (unlikely(saved_exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
@@ -758,7 +753,7 @@ int cpu_exec(CPUState *env)
 		// (T0 & ~3) contains pointer to previous translation block.
 		// (T0 & 3) contains info about which branch we took (why 2 bits?)
 		// tb is current translation block.  
-                if (0 && rr_mode != RR_REPLAY)
+                if (rr_mode != RR_REPLAY)
                 {		
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
@@ -797,11 +792,6 @@ int cpu_exec(CPUState *env)
                       qemu_log_mask(CPU_LOG_RR, 
                           "RR_CALLSITE_CPU_EXEC_000 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
-                }
-
-                if(saved_exit_request != env->exit_request) {
-                    //printf("RR_CALLSITE_CPU_EXEC_000: Ruh roh! Someone done changed env->exit_request behind our back!\n");
-                    fflush(stdout);
                 }
 
                 if (likely(!saved_exit_request)) {

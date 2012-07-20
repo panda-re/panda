@@ -1729,8 +1729,6 @@ void cpu_reset_interrupt(CPUState *env, int mask)
 
 void cpu_exit(CPUState *env, char *file, int line, char *function)
 {
-    //printf("cpu_exit called from %s:%d (%s) setting exit_request to 1\n", file, line, function);
-    fflush(stdout);
     env->exit_request = 1;
     cpu_unlink_tb(env);
 }
@@ -4030,6 +4028,10 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
     ram_addr_t pd;
     PhysPageDesc *p;
 
+    if (is_write == 1) {
+        printf("cpu_physical_memory_rw called with is_write == 1\n");
+    }
+
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         l = (page + TARGET_PAGE_SIZE) - addr;
@@ -4269,6 +4271,7 @@ void *cpu_physical_memory_map(target_phys_addr_t addr,
                               target_phys_addr_t *plen,
                               int is_write)
 {
+    target_phys_addr_t requested_len = *plen;
     target_phys_addr_t len = *plen;
     target_phys_addr_t todo = 0;
     int l;
@@ -4316,6 +4319,7 @@ void *cpu_physical_memory_map(target_phys_addr_t addr,
     rlen = todo;
     ret = qemu_ram_ptr_length(raddr, &rlen);
     *plen = rlen;
+
     return ret;
 }
 
@@ -4329,6 +4333,12 @@ void cpu_physical_memory_unmap(void *buffer, target_phys_addr_t len,
     if (buffer != bounce.buffer) {
         if (is_write) {
             ram_addr_t addr1 = qemu_ram_addr_from_host_nofail(buffer);
+
+            //bdg Save addr1,access_len,buffer contents
+            if (rr_in_record() && rr_record_in_progress) {
+                rr_record_cpu_mem_unmap(RR_CALLSITE_CPU_PHYSICAL_MEMORY_UNMAP, addr1, buffer, access_len, is_write);
+            }
+
             while (access_len) {
                 unsigned l;
                 l = TARGET_PAGE_SIZE;
@@ -4341,6 +4351,7 @@ void cpu_physical_memory_unmap(void *buffer, target_phys_addr_t len,
                     cpu_physical_memory_set_dirty_flags(
                         addr1, (0xff & ~CODE_DIRTY_FLAG));
                 }
+
                 addr1 += l;
                 access_len -= l;
             }

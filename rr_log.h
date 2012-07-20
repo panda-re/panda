@@ -144,12 +144,14 @@ static inline int rr_prog_point_compare(RR_prog_point current,
 typedef enum {
     RR_CALL_CPU_MEM_RW,             // cpu_physical_memory_rw()
     RR_CALL_CPU_REG_MEM_REGION,     // cpu_register_physical_memory()
+    RR_CALL_CPU_MEM_UNMAP,          // cpu_physical_memory_unmap()
     RR_CALL_LAST
 } RR_skipped_call_kind;
 
 static const char *skipped_call_kind_str[] = {
     "RR_CALL_CPU_MEM_RW",
     "RR_CALL_CPU_REG_MEM_REGION",
+    "RR_CALL_CPU_MEM_UNMAP",
     "RR_CALL_LAST"
 };
 
@@ -176,12 +178,19 @@ typedef struct {
     unsigned long phys_offset;
 } RR_cpu_reg_mem_region_args;
 
+typedef struct {
+    uint32_t addr;
+    uint8_t *buf;
+    uint32_t len;
+} RR_cpu_mem_unmap;
+
 //mz generic args
 typedef struct {
     uint8_t kind;
     union {
         RR_cpu_reg_mem_region_args cpu_mem_reg_region_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;
+        RR_cpu_mem_unmap cpu_mem_unmap;
     } variant;
 } RR_skipped_call_args;
 
@@ -231,6 +240,7 @@ typedef enum {
   RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_2,
   RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_3, 
   RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_4, 
+  RR_CALLSITE_CPU_PHYSICAL_MEMORY_UNMAP,
   RR_CALLSITE_LDL_PHYS,  
   RR_CALLSITE_LDQ_PHYS,  
   RR_CALLSITE_IO_READ_0, 
@@ -283,6 +293,7 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_2",
   "RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_3", 
   "RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_4", 
+  "RR_CALLSITE_CPU_PHYSICAL_MEMORY_UNMAP",
   "RR_CALLSITE_LDL_PHYS",  
   "RR_CALLSITE_LDQ_PHYS",  
   "RR_CALLSITE_IO_READ_0", 
@@ -379,6 +390,7 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, uint32_t start_addr, unsigned long size, unsigned long phys_offset);
+void rr_record_cpu_mem_unmap(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 
 // Replay routines
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data);

@@ -284,6 +284,13 @@ static inline void rr_write_item(void) {
                         //mz write the buffer
                         fwrite(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
                         break;
+                    case RR_CALL_CPU_MEM_UNMAP:
+                        //bdg same deal as RR_CALL_CPU_MEM_RW
+                        rr_assert(args->variant.cpu_mem_unmap.buf != NULL || 
+                                args->variant.cpu_mem_unmap.len == 0);
+                        fwrite(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
+                        fwrite(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+                        break;
                     case RR_CALL_CPU_REG_MEM_REGION:
                         fwrite(&(args->variant.cpu_mem_reg_region_args), 
                                sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
@@ -420,6 +427,28 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site,
     rr_write_item();
 }
 
+//bdg Record the memory modified during a call to cpu_physical_memory_map/unmap.
+//bdg Really we could subsume the functionality of rr_record_cpu_mem_rw_call into this,
+//bdg since they're both concerned with capturing the memory side effects of device code
+void rr_record_cpu_mem_unmap(RR_callsite_id call_site,
+                                   uint32_t addr, uint8_t *buf, int len, int is_write) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_CPU_MEM_UNMAP;
+    item->variant.call_args.variant.cpu_mem_unmap.addr = addr;
+    item->variant.call_args.variant.cpu_mem_unmap.buf = buf;
+    item->variant.call_args.variant.cpu_mem_unmap.len = len;
+    //mz is_write is dropped on the floor, as we only record writes
+
+    rr_write_item();
+}
+
 //mz record a call to cpu_register_io_memory() that will need to be replayed.
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
                                          uint32_t start_addr, unsigned long size, unsigned long phys_offset) {
@@ -474,7 +503,11 @@ static inline void free_entry_params(RR_log_entry *entry)
                 case RR_CALL_CPU_MEM_RW:
                     g_free(entry->variant.call_args.variant.cpu_mem_rw_args.buf);
                     entry->variant.call_args.variant.cpu_mem_rw_args.buf = NULL;
-                break;
+                    break;
+                case RR_CALL_CPU_MEM_UNMAP:
+                    g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
+                    entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
+                    break;
             }
             break;
         case RR_INPUT_1:
@@ -597,6 +630,14 @@ static RR_log_entry *rr_read_item(void) {
                         fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
                         rr_size_of_log_entries[item->header.kind] += args->variant.cpu_mem_rw_args.len;
                         break;
+                    case RR_CALL_CPU_MEM_UNMAP:
+                        fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
+                        rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_unmap);
+                        args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
+                        fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+                        rr_size_of_log_entries[item->header.kind] += args->variant.cpu_mem_unmap.len;
+                        break;
+
                     case RR_CALL_CPU_REG_MEM_REGION:
                         fread(&(args->variant.cpu_mem_reg_region_args), 
                               sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
@@ -863,6 +904,7 @@ replay_exit_request_zero:
 //mz this function consumes 2 types of entries:  
 //RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION 
 //XXX call_site parameter no longer used...
+//bdg 07.2012: Adding RR_SKIPPED_CALL_CPU_MEM_UNMAP
 void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
     uint8_t replay_done = 0;
     do {
@@ -894,6 +936,27 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 						       args->variant.cpu_mem_reg_region_args.phys_offset,
 						       0, false
 						       );
+                    }
+                    break;
+                case RR_CALL_CPU_MEM_UNMAP:
+                    {
+                        extern void * cpu_physical_memory_map();
+                        extern void cpu_physical_memory_unmap();
+                        void *host_buf;
+                        uint32_t plen = args->variant.cpu_mem_unmap.len;
+                        host_buf = cpu_physical_memory_map(
+                                args->variant.cpu_mem_rw_args.addr,
+                                &plen,
+                                /*is_write=*/1
+                                );
+                        memcpy(host_buf, args->variant.cpu_mem_rw_args.buf, args->variant.cpu_mem_unmap.len);
+                        cpu_physical_memory_unmap(
+                                host_buf,
+                                plen,
+                                /*is_write=*/1,
+                                args->variant.cpu_mem_unmap.len
+                                );
+
                     }
                     break;
                 default:
