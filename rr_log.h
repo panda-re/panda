@@ -206,7 +206,6 @@ typedef enum {
     RR_INPUT_8,
     RR_INTERRUPT_REQUEST,
     RR_EXIT_REQUEST,
-    RR_IOTHREAD_REQUEST,
     RR_SKIPPED_CALL,
     RR_LAST
 } RR_log_entry_kind;
@@ -218,7 +217,6 @@ static const char *log_entry_kind_str[] = {
     "RR_INPUT_8",
     "RR_INTERRUPT_REQUEST",
     "RR_EXIT_REQUEST",
-    "RR_IOTHREAD_REQUEST",
     "RR_SKIPPED_CALL",
     "RR_LAST"
 };
@@ -355,8 +353,6 @@ typedef struct rr_log_entry_t {
     RR_header header;
     //mz all possible options, depending on log_entry.kind
     union {
-        // if log_entry.kind == RR_IOTHREAD_REQUEST
-        uint8_t iothread_request;
         // if log_entry.kind == RR_INPUT_1
         uint8_t input_1;
         // if log_entry.kind == RR_INPUT_2
@@ -385,7 +381,6 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data);
 
 void rr_record_interrupt_request(RR_callsite_id call_site, uint32_t interrupt_request);
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
-void rr_record_iothread_request(RR_callsite_id call_site, uint8_t iothread_request);
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, uint32_t start_addr, unsigned long size, unsigned long phys_offset);
@@ -399,7 +394,6 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_request);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request);
-void rr_replay_iothread_request(RR_callsite_id call_site, uint8_t *iothread_request);
 
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
 
@@ -424,19 +418,6 @@ static inline void rr_exit_request(uint32_t *exit_request) {
             break;
         case RR_REPLAY:
             rr_replay_exit_request(rr_skipped_callsite_location, (uint32_t *) exit_request);
-            break;
-        default:
-            break;
-    }
-}
-
-static inline void rr_iothread_request(uint8_t *iothread_request) {
-    switch (rr_mode) {
-        case RR_RECORD:
-            rr_record_iothread_request(rr_skipped_callsite_location, *iothread_request);
-            break;
-        case RR_REPLAY:
-            rr_replay_iothread_request(rr_skipped_callsite_location, (uint8_t *) iothread_request);
             break;
         default:
             break;

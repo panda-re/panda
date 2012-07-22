@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 
 #define RR_LOG_STANDALONE
 #include "rr_log.h"
@@ -75,9 +76,6 @@ static void rr_spit_prog_point(RR_prog_point pp) {
 static void rr_spit_log_entry(RR_log_entry item) {
     rr_spit_prog_point(item.header.prog_point);
     switch (item.header.kind) {
-        case RR_IOTHREAD_REQUEST:
-            printf("\tRR_IOTHREAD_REQUEST (%s) from %s\n", item.variant.iothread_request ? "true" : "false", get_callsite_string(item.header.callsite_loc));
-            break;
         case RR_INPUT_1:
             printf("\tRR_INPUT_1 from %s\n", get_callsite_string(item.header.callsite_loc));
             break;
@@ -114,7 +112,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
 static inline RR_log_entry *alloc_new_entry(void) 
 {
     RR_log_entry *new_entry = NULL;
-    new_entry = (RR_log_entry *) g_malloc(sizeof(RR_log_entry));
+    new_entry = g_new(RR_log_entry, 1);
     memset(new_entry, 0, sizeof(RR_log_entry));
     return new_entry;
 }
@@ -148,9 +146,6 @@ static RR_log_entry *rr_read_item(void) {
 
     //mz read the rest of the item
     switch (item->header.kind) {
-        case RR_IOTHREAD_REQUEST:
-            fread(&(item->variant.iothread_request), sizeof(item->variant.iothread_request), 1, rr_nondet_log->fp);
-            break;
         case RR_INPUT_1:
             fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
             break;

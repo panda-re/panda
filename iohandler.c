@@ -97,9 +97,9 @@ void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *
 
     QLIST_FOREACH(ioh, &io_handlers, next) {
         //bdg don't do ANYTHING in replay
-        if (rr_in_replay() || rr_replay_requested) {
-            continue;
-        }
+        //if (rr_in_replay() || rr_replay_requested) {
+        //    continue;
+        //}
 
         if (ioh->deleted)
             continue;

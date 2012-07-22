@@ -1468,6 +1468,9 @@ static bool main_loop_should_exit(void)
     return false;
 }
 
+extern void *first_cpu;        // from exec.c
+extern void quit_timers(void); // from qemu-timers.c
+
 static void main_loop(void)
 {
     bool nonblocking;
@@ -1480,42 +1483,10 @@ static void main_loop(void)
 #ifdef CONFIG_PROFILER
         ti = profile_getclock();
 #endif
-        //mz 05.2012 FIXME there likely to be dragons here as we are running
-        //mz concurrently with the CPU thread.
-        //mz need to guard this to replay any special calls that occur during
-        //mz main_loop_wait()
-        //mz replay_action is set to main_loop_wait() to interact with the
-        //mz monitor - code has been added to guard against running
-        //mz devices/timers/etc.
-        //bdg note: not using the RR macro here, because we do NOT want to set
-        //bdg rr_record_in_progress -- otherwise all the stuff that happens
-        //bdg in the cpu_exec thread will be lost!
-//        extern void rr_set_program_point(void);
-//        switch (rr_mode) { 
-//            case RR_RECORD: 
-//                { 
-//                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
-//                    rr_set_program_point();    
-//                    last_io = main_loop_wait(nonblocking);
-//                } 
-//                break; 
-//            case RR_REPLAY: 
-//                { 
-//                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP;
-//                    /* mz we need to update program point! */ 
-//                    rr_set_program_point(); 
-//                    rr_replay_skipped_calls(); 
-//                    last_io = main_loop_wait(nonblocking);
-//                } 
-//                break; 
-//            case RR_OFF: 
-//            default: 
                 last_io = main_loop_wait(nonblocking);
-        //} 
 
         // bdg 07.2012 moving these in here from cpu-exec.c because savevm_aux
         // bdg does not like being called from the CPU thread
-
         sigset_t blockset, oldset;
 
         // create a signal set containing just ALARM and USR2
@@ -1524,9 +1495,7 @@ static void main_loop(void)
         sigaddset(&blockset, SIGUSR2);
         sigaddset(&blockset, SIGIO);
 
-
         if (__builtin_expect(rr_record_requested, 0)) {
-            extern void *first_cpu;
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
             rr_do_begin_record(rr_requested_name, first_cpu);
@@ -1534,9 +1503,8 @@ static void main_loop(void)
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
+
         if (__builtin_expect(rr_replay_requested, 0)) {
-            extern void quit_timers(void);
-            extern void *first_cpu;
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
             rr_do_begin_replay(rr_requested_name, first_cpu);
@@ -3568,8 +3536,7 @@ int main(int argc, char **argv, char **envp)
     //mz 11.12.2009 we have to do that after we loadvm, as it needs the
     //timers!  
     if (rr_replay_requested || rr_in_replay()) {
-      extern void quit_timers(void);
-      quit_timers();
+        quit_timers();
     }
 
     main_loop();

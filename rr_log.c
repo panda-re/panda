@@ -35,11 +35,15 @@
 #include <libgen.h>
 
 #include "qemu-common.h"
+#include "qmp-commands.h"
+#include "hmp.h"
 #include "rr_log.h"
 
 
 void rr_clear_rr_guest_instr_count(void *cpu_state);
 
+// Externs from other parts of QEMU we need
+extern void rr_quit_cpu_loop(void);
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -100,6 +104,10 @@ volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
 const char * rr_requested_name = NULL;
 
+//mz FIFO queue of log entries read from the log file
+static RR_log_entry *queue_head;
+static RR_log_entry *queue_tail;
+
 //
 //mz Other useful things
 //
@@ -124,25 +132,6 @@ volatile unsigned long long rr_max_num_queue_entries;
 RR_log_entry rr_log_entry_history[RR_HIST_SIZE];
 int rr_hist_index = 0;
 
-// our debug rr_assert
-inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function) {
-    printf("RR rr_assertion `%s' failed at %s:%d\n", exp, file, line);
-    if(rr_debug_whisper()) {
-        fprintf(logfile, "RR rr_assertion `%s' failed at %s:%d in %s\n", exp, file, line, function);
-    }
-    fflush(logfile);
-    // just abort
-    abort();
-    extern void rr_quit_cpu_loop(void);
-    rr_end_replay_requested = 1;
-    //mz need to get out of cpu loop so that we can process the end_replay request
-    //mz this will call cpu_loop_exit(), which longjmps
-    //bdg gosh I hope this is OK here. I think it should be as long as we only ever call
-    //bdg rr_assert from the CPU loop
-    rr_quit_cpu_loop();
-    /* NOT REACHED */
-}
-    
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
@@ -224,6 +213,34 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
       }
 }
 
+// our debug rr_assert
+inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function) {
+    printf("RR rr_assertion `%s' failed at %s:%d\n", exp, file, line);
+    printf("Current log point:\n");
+    if(queue_head != NULL) {
+        rr_spit_prog_point(queue_head->header.prog_point);
+        printf("Next log entry type: %s\n", log_entry_kind_str[queue_head->header.kind]);
+    }
+    else {
+        printf("<queue empty>\n");
+    }
+    printf("Current replay point:\n");
+    rr_spit_prog_point(rr_prog_point);
+    if(rr_debug_whisper()) {
+        fprintf(logfile, "RR rr_assertion `%s' failed at %s:%d in %s\n", exp, file, line, function);
+    }
+    fflush(logfile);
+    // just abort
+    abort();
+    rr_end_replay_requested = 1;
+    //mz need to get out of cpu loop so that we can process the end_replay request
+    //mz this will call cpu_loop_exit(), which longjmps
+    //bdg gosh I hope this is OK here. I think it should be as long as we only ever call
+    //bdg rr_assert from the CPU loop
+    rr_quit_cpu_loop();
+    /* NOT REACHED */
+}
+
 /******************************************************************************************/
 /* RECORD */
 /******************************************************************************************/
@@ -231,14 +248,6 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
 //mz write the current log item to file
 static inline void rr_write_item(void) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
-
-    if(rr_debug_whisper()) {
-        fprintf(logfile,"[Thread: %lu] Saved %s %d, callsite=%s\n", pthread_self(),
-            get_log_entry_kind_string(item->header.kind),
-            item->header.kind == RR_EXIT_REQUEST ? item->variant.exit_request : -1,
-            get_callsite_string(item->header.callsite_loc)
-        );
-    }
 
     //mz save the header
     rr_assert (rr_in_record());
@@ -253,9 +262,6 @@ static inline void rr_write_item(void) {
     rr_nondet_log->last_prog_point = item->header.prog_point;
 
     switch (item->header.kind) {
-        case RR_IOTHREAD_REQUEST:
-            fwrite(&(item->variant.iothread_request), sizeof(item->variant.iothread_request), 1, rr_nondet_log->fp);
-            break;
         case RR_INPUT_1:
             fwrite(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
             break;
@@ -409,23 +415,6 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request) {
     }
 }
 
-//bdg record iothread request (boolean)
-void rr_record_iothread_request(RR_callsite_id call_site, uint8_t iothread_request) {
-    if (iothread_request != 0) {
-        RR_log_entry *item = &(rr_nondet_log->current_item);
-        //mz just in case
-        memset(item, 0, sizeof(RR_log_entry));
-
-        item->header.kind = RR_IOTHREAD_REQUEST;
-        item->header.callsite_loc = call_site;
-        item->header.prog_point = rr_prog_point;
-
-        item->variant.iothread_request = iothread_request;
-
-        rr_write_item();
-    }
-}
-
 //mz record call to cpu_physical_memory_rw() that will need to be replayed.
 //mz only "write" modifications are recorded
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site,
@@ -507,10 +496,6 @@ static void rr_record_end_of_log(void) {
 /* REPLAY */
 /******************************************************************************************/
 
-//mz FIFO queue of log entries read from the log file
-static RR_log_entry *queue_head;
-static RR_log_entry *queue_tail;
-
 //mz avoid actually releasing memory
 static RR_log_entry *recycle_list = NULL;
 
@@ -569,7 +554,7 @@ static inline RR_log_entry *alloc_new_entry(void)
         new_entry->next = NULL;
     }
     else {
-        new_entry = g_malloc(sizeof(RR_log_entry));
+        new_entry = g_new(RR_log_entry, 1);
     }
     memset(new_entry, 0, sizeof(RR_log_entry));
     return new_entry;
@@ -609,10 +594,6 @@ static RR_log_entry *rr_read_item(void) {
 
     //mz read the rest of the item
     switch (item->header.kind) {
-        case RR_IOTHREAD_REQUEST:
-            fread(&(item->variant.iothread_request), sizeof(item->variant.iothread_request), 1, rr_nondet_log->fp);
-            rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.iothread_request);
-            break;
         case RR_INPUT_1:
             fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_1);
@@ -714,7 +695,6 @@ static void rr_fill_queue(void) {
             //cpu_exec() loop due to end_record command.
             //
             //mz from cpu-exec.c
-            extern void rr_quit_cpu_loop(void);
             rr_end_replay_requested = 1;
             //mz need to get out of cpu loop so that we can process the end_replay request
             //mz this will call cpu_loop_exit(), which longjmps
@@ -734,7 +714,7 @@ static void rr_fill_queue(void) {
 }
 
 //mz return next log entry from the queue
-static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_id call_site) 
+static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_id call_site, bool check_callsite) 
 {
     RR_log_entry *current;
     //mz make sure queue is not empty, and that we have the right element next
@@ -743,18 +723,11 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
         return NULL;
     }
 
-    if(rr_debug_whisper()) {
-        fprintf(logfile,"[Thread: %lu] Expected kind: %s, callsite=%s, found %s %d, callsite=%s (matched=%d)\n", pthread_self(),
-            get_log_entry_kind_string(kind),
-            get_callsite_string(call_site),
-            get_log_entry_kind_string(queue_head->header.kind),
-            queue_head->header.kind == RR_EXIT_REQUEST ? queue_head->variant.exit_request : -1,
-            get_callsite_string(queue_head->header.callsite_loc),
-            kind == queue_head->header.kind && rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point) == 0
-        );
+    if (queue_head->header.kind != kind) {
+        return NULL;
     }
 
-    if(queue_head->header.kind != kind) {
+    if (check_callsite && queue_head->header.callsite_loc != call_site) {
         return NULL;
     }
 
@@ -774,7 +747,7 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
 
 //mz replay 1-byte input to the CPU
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_1, call_site);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_1, call_site, false);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
@@ -790,7 +763,7 @@ void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data) {
 
 //mz replay 2-byte input to the CPU
 void rr_replay_input_2( RR_callsite_id call_site, uint16_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_2, call_site);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_2, call_site, false);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
@@ -807,7 +780,7 @@ void rr_replay_input_2( RR_callsite_id call_site, uint16_t *data) {
 
 //mz replay 4-byte input to the CPU
 void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_4, call_site);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_4, call_site, false);
 
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
@@ -826,7 +799,7 @@ void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data) {
 
 //mz replay 8-byte input to the CPU
 void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data) {
-    RR_log_entry *current_item = get_next_entry(RR_INPUT_8, call_site);
+    RR_log_entry *current_item = get_next_entry(RR_INPUT_8, call_site, false);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is cause for failure
@@ -840,26 +813,10 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t *data) {
     add_to_recycle_list(current_item);
 }
 
-//bdg replay iothread request
-void rr_replay_iothread_request(RR_callsite_id call_site, uint8_t *iothread_request) {
-    RR_log_entry *current_item = get_next_entry(RR_IOTHREAD_REQUEST, call_site);
-    if (current_item == NULL) {
-        *iothread_request = 0;
-    }
-    else {
-        //mz now we have our item and it is appropriate for replay here.
-        //mz final sanity checks
-        rr_assert(current_item->header.callsite_loc == call_site);
-        *iothread_request = current_item->variant.iothread_request;
-        //mz we've used the item - recycle it.
-        add_to_recycle_list(current_item);
-    }
-}
-
 //mz replay interrupt_request value.  if there's nothing in the log, the value
 //mz was 0 during record.
 void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_request) {
-    RR_log_entry *current_item = get_next_entry(RR_INTERRUPT_REQUEST, call_site);
+    RR_log_entry *current_item = get_next_entry(RR_INTERRUPT_REQUEST, call_site, false);
     if (current_item == NULL) {
         //mz we're trying to replay too early or we have the wrong kind of rr_nondet_log
         //entry.  this is NOT cause for failure as we do not record
@@ -879,66 +836,29 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
 }
 
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request) {
-    //bdg we have to duplicate some of get_next_entry in here because we do
-    //bdg somewhat more strict checks
-    RR_log_entry *current = NULL;
-
-    //mz make sure queue is not empty, and that we have the right element next
-    if (queue_head == NULL) {
-        printf("Queue is empty, will return NULL\n");
-        goto replay_exit_request_zero;
+    RR_log_entry *current_item = get_next_entry(RR_EXIT_REQUEST, call_site, true);
+    if (current_item == NULL) {
+        *exit_request = 0;
     }
-
-    if (queue_head->header.kind != RR_EXIT_REQUEST) {
-        goto replay_exit_request_zero;
+    else {
+        //mz final sanity checks
+        rr_assert(current_item->header.callsite_loc == call_site);
+        *exit_request = current_item->variant.exit_request;
+        //mz we've used the item
+        add_to_recycle_list(current_item);
+        //mz before we can return, we need to fill the queue with information
+        //up to the next exit_request value!
+        rr_fill_queue();
     }
-
-  uint32_t eip;
-  uint32_t ecx;
-  uint64_t guest_instr_count; 
-
-    if (rr_prog_point.eip != queue_head->header.prog_point.eip ||
-        rr_prog_point.ecx != queue_head->header.prog_point.ecx ||
-        rr_prog_point.guest_instr_count != queue_head->header.prog_point.guest_instr_count) {
-        goto replay_exit_request_zero;
-    }
-
-    if (queue_head->header.callsite_loc != call_site) {
-        goto replay_exit_request_zero;
-    }
-
-    //bdg Passed all checks. Remove from the queue, get the value, recycle and return
-    current = queue_head;
-    queue_head = queue_head->next;
-    current->next = NULL;
-    if (current == queue_tail) {
-        queue_tail = NULL;
-    }
-
-    
-    *exit_request = current->variant.exit_request;
-
-    if(rr_debug_whisper()) {
-        fprintf(logfile,"[Thread: %lu] Successfully matched exit_request, value is %d\n", pthread_self(), *exit_request);
-    }
-
-    //mz we've used the item
-    add_to_recycle_list(current);
-
-    //bdg just like interrupt_request
-    rr_fill_queue();
-    
-    return;
-
-replay_exit_request_zero:
-
-    if(rr_debug_whisper()) {
-        fprintf(logfile,"[Thread: %lu] exit_request found no matching log entry, assuming 0\n", pthread_self());
-    }
-
-    *exit_request = 0;
-    return;
 }
+
+//bdg Externs for replaying skipped calls
+// FIXME: We want the real prototypes here at some point (with correct target address sizes)
+//        I guess that will require figuring out how to rebuild this for each target?
+extern void cpu_physical_memory_rw(uint32_t addr, uint8_t *buf, int len, int is_write);
+extern void cpu_register_physical_memory_log(uint32_t start_addr, uint32_t size, uint32_t phys_offset, uint32_t region_offset, bool log_dirty);
+extern void *cpu_physical_memory_map(uint32_t addr, uint32_t *plen, int is_write);
+extern void cpu_physical_memory_unmap(void *buffer, uint32_t len, int is_write, uint32_t access_len); 
 
 //mz this function consumes 2 types of entries:  
 //RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION 
@@ -947,7 +867,7 @@ replay_exit_request_zero:
 void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
     uint8_t replay_done = 0;
     do {
-        RR_log_entry *current_item = get_next_entry(RR_SKIPPED_CALL, call_site);
+        RR_log_entry *current_item = get_next_entry(RR_SKIPPED_CALL, call_site, false);
         if (current_item == NULL) {
             //mz queue is empty or we've replayed all we can for this prog point
             replay_done = 1;
@@ -958,7 +878,6 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                 case RR_CALL_CPU_MEM_RW:
                     {
                         //mz XXX can we get a full prototype here?
-		      extern void cpu_physical_memory_rw();
                         cpu_physical_memory_rw(
                                 args->variant.cpu_mem_rw_args.addr,
                                 args->variant.cpu_mem_rw_args.buf,
@@ -969,7 +888,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                     break;
                 case RR_CALL_CPU_REG_MEM_REGION:
                     {
-		      cpu_register_physical_memory_log(
+                          cpu_register_physical_memory_log(
 						       args->variant.cpu_mem_reg_region_args.start_addr,
 						       args->variant.cpu_mem_reg_region_args.size,
 						       args->variant.cpu_mem_reg_region_args.phys_offset,
@@ -979,8 +898,6 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                     break;
                 case RR_CALL_CPU_MEM_UNMAP:
                     {
-                        extern void * cpu_physical_memory_map();
-                        extern void cpu_physical_memory_unmap();
                         void *host_buf;
                         uint32_t plen = args->variant.cpu_mem_unmap.len;
                         host_buf = cpu_physical_memory_map(
@@ -1016,9 +933,8 @@ extern char *qemu_strdup(const char *str);
 // create record log
 void rr_create_record_log (const char *filename) {
   // create log
-  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
+  rr_nondet_log = g_new0(RR_log, 1);
   rr_assert (rr_nondet_log != NULL);
-  memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = RECORD;
   rr_nondet_log->name = g_strdup(filename);
@@ -1042,9 +958,8 @@ void rr_create_record_log (const char *filename) {
 void rr_create_replay_log (const char *filename) {
   struct stat statbuf = {0};
   // create log
-  rr_nondet_log = (RR_log *) g_malloc (sizeof (RR_log));
+  rr_nondet_log = g_new0(RR_log,1);
   rr_assert (rr_nondet_log != NULL);
-  memset(rr_nondet_log, 0, sizeof(RR_log));
 
   rr_nondet_log->type = REPLAY;
   rr_nondet_log->name = g_strdup(filename);
@@ -1105,7 +1020,7 @@ void replay_progress(void) {
 /******************************************************************************************/
 //mz from vl.c
 extern void do_savevm_aux(void *mon, const char *name);
-extern void do_loadvm(const char *name);
+extern int load_vmstate(const char *name);
 
 // rr_name is the current rec/replay name. 
 // here we compute the snapshot name to use for rec/replay 
