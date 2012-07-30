@@ -1093,16 +1093,16 @@ void replay_progress(void) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
     }
     else {
-      printf ("%s:  %.2f%% of %llu bytes processed.\n", 
+      printf ("%s:  %llu of %llu (%.2f%%) bytes, %llu of %llu (%.2f%%) instructions processed.\n", 
               rr_nondet_log->name,
+              ftell(rr_nondet_log->fp),
+              rr_nondet_log->size,
               (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
-              rr_nondet_log->size);
-      //mz use head of queue entry
-      printf ("%s:  %.2f%% of %llu instructions processed.\n", 
-              rr_nondet_log->name,
+              queue_head->header.prog_point.guest_instr_count,
+              (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count,
               ((queue_head->header.prog_point.guest_instr_count * 100.0) / 
-                    rr_nondet_log->last_prog_point.guest_instr_count),
-              (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count);
+                    rr_nondet_log->last_prog_point.guest_instr_count)
+      );
     }
   }
 }
