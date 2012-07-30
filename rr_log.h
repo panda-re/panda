@@ -65,6 +65,7 @@ extern void replay_progress(void);
 typedef struct RR_prog_point_t {
   uint32_t eip;             
   uint32_t ecx;
+  uint32_t reghash;
   uint64_t guest_instr_count;
 } RR_prog_point;
 extern RR_prog_point rr_prog_point;
@@ -84,52 +85,18 @@ extern volatile sig_atomic_t rr_record_in_progress;
 
 extern volatile sig_atomic_t rr_use_live_exit_request;
 
-static inline void rr_set_prog_point(uint32_t eip, uint32_t ecx, uint64_t guest_instr_count) {
+static inline void rr_set_prog_point(uint32_t eip, uint32_t ecx, uint32_t reghash, uint64_t guest_instr_count) {
   rr_num_instr_before_next_interrupt -= (guest_instr_count - rr_prog_point.guest_instr_count);
   rr_prog_point.guest_instr_count = guest_instr_count;
   rr_prog_point.eip = eip;
   rr_prog_point.ecx = ecx;
+  rr_prog_point.reghash = reghash;
 }
 
 //mz Routine that handles the situation when program points disagree during
 //mz replay. Typically, this means a fatal error - the routine prints some
 //mz diagnostics.
 extern void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded);
-// compare two program points current and recorded.
-// if current < recorded, return -1.
-// if current == recorded, return 0.
-// current > recorded is a fatal error.
-static inline int rr_prog_point_compare(RR_prog_point current,
-                                        RR_prog_point recorded) {
-  //mz my contention is that we should never be in a situation where the
-  //program point counts are higher than current item being replayed.  This is
-  //cause for failure.
-  if (current.guest_instr_count < recorded.guest_instr_count) {
-     return (-1);
-  }
-  else if (current.guest_instr_count == recorded.guest_instr_count) {
-      // the two counts are the same.  
-      // other things should agree.  else, we are in trouble
-      if (current.eip == recorded.eip && current.ecx == recorded.ecx) {
-          return 0;
-      }
-      else {
-          //mz XXX we need to fix this, but in some cases instruction counts
-          //may be the same for several program points (e.g. for hlt
-          //instruction the instruction count does not get presently updated).
-          return -1;
-      }
-  }
-  else {
-      //mz if we've managed to get here, we're either ahead of the log or eip/ecx
-      //values do not match.  In either case, fail.
-      rr_signal_disagreement(current, recorded);
-      //mz we don't come back from rr_do_end_replay() - this is just to clean things up.
-      rr_do_end_replay(/*is_error=*/1);
-      // to placate gcc.
-      return 1;
-  }
-}
 
 
 //
@@ -207,6 +174,7 @@ typedef enum {
     RR_INTERRUPT_REQUEST,
     RR_EXIT_REQUEST,
     RR_SKIPPED_CALL,
+    RR_DEBUG,
     RR_LAST
 } RR_log_entry_kind;
 
@@ -218,6 +186,7 @@ static const char *log_entry_kind_str[] = {
     "RR_INTERRUPT_REQUEST",
     "RR_EXIT_REQUEST",
     "RR_SKIPPED_CALL",
+    "RR_DEBUG",
     "RR_LAST"
 };
 
@@ -255,6 +224,7 @@ typedef enum {
   RR_CALLSITE_CPU_EXEC_2, 
   RR_CALLSITE_CPU_EXEC_3,
   RR_CALLSITE_CPU_EXEC_4,
+  RR_CALLSITE_CPU_EXEC_DBG,
   RR_CALLSITE_CPU_HALTED,
   RR_CALLSITE_RDTSC,
   RR_CALLSITE_TB_INVALIDATE_PHYS_PAGE_RANGE,
@@ -305,6 +275,7 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_CPU_EXEC_2", 
   "RR_CALLSITE_CPU_EXEC_3",
   "RR_CALLSITE_CPU_EXEC_4",
+  "RR_CALLSITE_CPU_EXEC_DBG",
   "RR_CALLSITE_CPU_HALTED",
   "RR_CALLSITE_RDTSC",
   "RR_CALLSITE_TB_INVALIDATE_PHYS_PAGE_RANGE",
@@ -374,6 +345,7 @@ typedef struct rr_log_entry_t {
 } RR_log_entry;
 
 // Record routines
+void rr_record_debug(RR_callsite_id call_site);
 void rr_record_input_1(RR_callsite_id call_site, uint8_t data);
 void rr_record_input_2(RR_callsite_id call_site, uint16_t data);
 void rr_record_input_4(RR_callsite_id call_site, uint32_t data);
@@ -387,6 +359,7 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, uint32_t start_ad
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, uint32_t addr, uint8_t *buf, int len, int is_write);
 
 // Replay routines
+void rr_replay_debug(RR_callsite_id call_site);
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t *data);
 void rr_replay_input_2(RR_callsite_id call_site, uint16_t *data);
 void rr_replay_input_4(RR_callsite_id call_site, uint32_t *data);
@@ -396,6 +369,49 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t *exit_request);
 
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
+
+// compare two program points current and recorded.
+// if current < recorded, return -1.
+// if current == recorded, return 0.
+// current > recorded is a fatal error.
+static inline int rr_prog_point_compare(RR_prog_point current,
+                                        RR_prog_point recorded,
+                                        RR_log_entry_kind kind) {
+  //mz my contention is that we should never be in a situation where the
+  //program point counts are higher than current item being replayed.  This is
+  //cause for failure.
+  if (current.guest_instr_count < recorded.guest_instr_count) {
+     return (-1);
+  }
+  else if (current.guest_instr_count == recorded.guest_instr_count) {
+      // the two counts are the same.  
+      // other things should agree.  else, we are in trouble
+      if (current.eip == recorded.eip && current.ecx == recorded.ecx && current.reghash == recorded.reghash) {
+          return 0;
+      }
+      else {
+          //mz XXX we need to fix this, but in some cases instruction counts
+          //may be the same for several program points (e.g. for hlt
+          //instruction the instruction count does not get presently updated).
+          //rr_spit_queue_head();
+          //rr_signal_disagreement(current, recorded);
+          //mz we don't come back from rr_do_end_replay() - this is just to clean things up.
+          //rr_do_end_replay(/*is_error=*/1);
+          return -1;
+      }
+  }
+  else {
+      //mz if we've managed to get here, we're either ahead of the log or eip/ecx
+      //values do not match.  In either case, fail.
+      printf("Ahead of log while looking for log entry of type %s\n", log_entry_kind_str[kind]);
+      rr_spit_queue_head();
+      rr_signal_disagreement(current, recorded);
+      //mz we don't come back from rr_do_end_replay() - this is just to clean things up.
+      rr_do_end_replay(/*is_error=*/1);
+      // to placate gcc.
+      return 1;
+  }
+}
 
 // Convenience routines that perform appropriate action based on rr_mode setting
 static inline void rr_interrupt_request(uint32_t *interrupt_request) {
@@ -418,6 +434,19 @@ static inline void rr_exit_request(uint32_t *exit_request) {
             break;
         case RR_REPLAY:
             rr_replay_exit_request(rr_skipped_callsite_location, (uint32_t *) exit_request);
+            break;
+        default:
+            break;
+    }
+}
+
+static inline void rr_debug(void) {
+    switch (rr_mode) {
+        case RR_RECORD:
+            rr_record_debug(rr_skipped_callsite_location);
+            break;
+        case RR_REPLAY:
+            rr_replay_debug(rr_skipped_callsite_location);
             break;
         default:
             break;
@@ -595,6 +624,9 @@ static inline void rr_flush_tb_off(void) {
     else rr_assert_fail(#exp, __FILE__, __LINE__, __FUNCTION__);
 
 inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function);
+
+// print current log entry
+void rr_spit_queue_head(void);
 
 //
 // Debug level

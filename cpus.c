@@ -725,39 +725,9 @@ static void qemu_tcg_wait_io_event(void)
         qemu_cond_wait(tcg_halt_cond, &qemu_global_mutex);
     }
 
-    //bdg Replay skipped calls from the I/O thread here
-    if(rr_in_replay()) {
-        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-        rr_set_program_point();
-        rr_replay_skipped_calls();
-    }
-
     while(iothread_requesting_mutex) {
         qemu_cond_wait(&qemu_io_proceeded_cond, &qemu_global_mutex);
     }
-
-#if 0
-    while (1) {
-        //bdg similar to exit_request and interrupt_request, this can be
-        //bdg modified at any time if select returns. So we cache it here
-        cached_iothread_requesting_mutex = iothread_requesting_mutex;
-
-        // record or replay iothread_requesting_mutex
-        rr_set_program_point();
-        rr_skipped_callsite_location = RR_CALLSITE_WAIT_IO_EVENT;
-        if (rr_in_record() || rr_in_replay()) {
-            rr_iothread_request(&cached_iothread_requesting_mutex);
-        }
-
-        if(cached_iothread_requesting_mutex) {
-            printf("{icount=%d} Waiting for I/O thread\n", rr_prog_point.guest_instr_count);
-            qemu_cond_wait(&qemu_io_proceeded_cond, &qemu_global_mutex);
-        }
-        else {
-            break;
-        }
-    }
-#endif
 
     for (env = first_cpu; env != NULL; env = env->next_cpu) {
         qemu_wait_io_event_common(env);
@@ -836,17 +806,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             qemu_notify_event();
         }
         qemu_tcg_wait_io_event();
-        //mz 05.2012 not sure if this is the right place, but let's try
-#if RR_REPORT_PROGRESS
-        if (rr_in_replay()) {
-            static uint64_t num = 0;
-            if (runstate_is_running()) {
-                if ((++num % RR_PROGRESS_FREQ) == 0) {
-                  replay_progress();
-                }
-            }
-        }
-#endif /* RR_REPORT_PROGRESS */
     }
 
     return NULL;

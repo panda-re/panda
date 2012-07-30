@@ -162,11 +162,11 @@ void target_disas(FILE *out, target_ulong code, target_ulong size, int flags)
 #endif
 #if defined(TARGET_I386)
     if (flags == 2)
-        disasm_info.mach = bfd_mach_x86_64;
+        disasm_info.mach = bfd_mach_x86_64_intel_syntax;
     else if (flags == 1)
         disasm_info.mach = bfd_mach_i386_i8086;
     else
-        disasm_info.mach = bfd_mach_i386_i386;
+        disasm_info.mach = bfd_mach_i386_i386_intel_syntax;
     print_insn = print_insn_i386;
 #elif defined(TARGET_ARM)
     if (flags)

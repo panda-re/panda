@@ -209,7 +209,11 @@ static void cpu_handle_debug_exception(CPUState *env)
 
 void rr_set_program_point(void) {
     if (cpu_single_env) {
-        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
+        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX],
+            cpu_single_env->regs[R_EAX] ^ cpu_single_env->regs[R_EBX] ^ cpu_single_env->regs[R_ECX] ^
+            cpu_single_env->regs[R_EDX] ^ cpu_single_env->regs[R_ESP] ^ cpu_single_env->regs[R_EBP] ^
+            cpu_single_env->regs[R_ESI] ^ cpu_single_env->regs[R_EDI],
+            GUEST_ICOUNT);
     }
 }
 
@@ -237,35 +241,6 @@ int cpu_exec(CPUState *env)
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
-
-/*
-    sigset_t blockset, oldset;
-
-    // create a signal set containing just ALARM and USR2
-    sigemptyset(&blockset);
-    sigaddset(&blockset, SIGALRM);
-    sigaddset(&blockset, SIGUSR2);
-    sigaddset(&blockset, SIGIO);
-
-    if (__builtin_expect(rr_record_requested, 0)) {
-        //block signals
-        sigprocmask(SIG_BLOCK, &blockset, &oldset);
-        rr_do_begin_record(rr_requested_name, env);
-        rr_record_requested = 0;
-        //unblock signals
-        sigprocmask(SIG_SETMASK, &oldset, NULL);
-    }
-    if (__builtin_expect(rr_replay_requested, 0)) {
-        extern void quit_timers(void);
-        //block signals
-        sigprocmask(SIG_BLOCK, &blockset, &oldset);
-        rr_do_begin_replay(rr_requested_name, env);
-        quit_timers();
-        rr_replay_requested = 0;
-        //unblock signals
-        sigprocmask(SIG_SETMASK, &oldset, NULL);
-    }
-*/
 
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
@@ -384,6 +359,12 @@ int cpu_exec(CPUState *env)
                           interrupt_request, env->eflags, env->hflags, env->hflags2);
                 }
 
+                if(0 && rr_prog_point.guest_instr_count >= 7903827835) {
+                    rr_spit_prog_point(rr_prog_point);
+                    rr_spit_queue_head();
+                    printf("Block: (%d bytes, %d instructions)", tb->size, tb->num_guest_insns);
+                    target_disas(stdout, rr_prog_point.eip, tb->size, 0);
+                }
                 if (rr_in_replay()) {
                     env->interrupt_request = interrupt_request;
                 }
@@ -635,12 +616,6 @@ int cpu_exec(CPUState *env)
                     rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
                     rr_interrupt_request(&env->interrupt_request);
 
-                    if (rr_debug_whisper()) {
-                          qemu_log_mask(CPU_LOG_RR, 
-                              "RR_CALLSITE_CPU_EXEC_4 interrupt_request %x: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                              interrupt_request, env->eflags, env->hflags, env->hflags2);
-                    }
-
                    /* Don't use the cached interrupt_request value,
                       do_interrupt may have updated the EXITTB flag. */
                     if (env->interrupt_request & CPU_INTERRUPT_EXITTB) {
@@ -651,7 +626,8 @@ int cpu_exec(CPUState *env)
                     }
                 }
 
-                // capture exit_request as it may change
+#if 0
+                // Capture exit_request
                 saved_exit_request = env->exit_request;
 
                 rr_set_program_point();
@@ -670,21 +646,20 @@ int cpu_exec(CPUState *env)
                           "RR_CALLSITE_CPU_EXEC_00 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
                 }
+#endif
 
-                if (unlikely(saved_exit_request)) {
+                //bdg Replay skipped calls from the I/O thread here
+                if(rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                    rr_set_program_point();
+                    rr_replay_skipped_calls();
+                }
+
+                if (unlikely(env->exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
                     cpu_loop_exit(env, __FILE__, __LINE__);
                 }
-
-                if (rr_prog_point.guest_instr_count == 4998583) {
-                    if (rr_debug_whisper()) {
-                          qemu_log_mask(CPU_LOG_RR, 
-                              "At problematic log point, ECX=%08x ESI=%08x EDI=%08x EBP=%08x\n", 
-                              ECX, ESI, EDI, EBP);
-                    }
-                }
-                    
 
 #if defined(DEBUG_DISAS) || defined(CONFIG_DEBUG_EXEC)
                 if (qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
@@ -708,8 +683,8 @@ int cpu_exec(CPUState *env)
                 spin_lock(&tb_lock);
 
                 qemu_log_mask(CPU_LOG_TB_IN_ASM, 
-			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
-			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x hash=%08x}\n",
+			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx, rr_prog_point.reghash);
 
                 if(rr_debug_whisper()) {
                     qemu_log_mask(CPU_LOG_RR, 
@@ -729,6 +704,9 @@ int cpu_exec(CPUState *env)
                         invalidate_single_tb(env, tb->pc);
                         //mz try again.
                         tb = tb_find_fast(env);
+                        //printf("after retranslation TB is %llu insns\n", 
+                        // tb->num_guest_insns);
+                        //rr_spit_queue_head();
                     }
                 }
 
@@ -749,23 +727,23 @@ int cpu_exec(CPUState *env)
                 /* see if we can patch the calling TB. When the TB
                    spans two pages, we cannot safely do a direct
                    jump. */
-		// TRL: note that this is where the translation block chaining happens.
-		// (T0 & ~3) contains pointer to previous translation block.
-		// (T0 & 3) contains info about which branch we took (why 2 bits?)
-		// tb is current translation block.  
-                if (rr_mode != RR_REPLAY)
-                {		
+                // TRL: note that this is where the translation block chaining happens.
+                // (T0 & ~3) contains pointer to previous translation block.
+                // (T0 & 3) contains info about which branch we took (why 2 bits?)
+                // tb is current translation block.  
+                if (rr_mode != RR_REPLAY) {		
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                     }
-		} else {
-		  /*
-		    TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
-		    There appears to be no equivalent in 1.0.1.  :<
-		  */
-		}		
+                }
+                else {
+                  /*
+                    TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
+                    There appears to be no equivalent in 1.0.1.  :<
+                  */
+                }		
 
-		spin_unlock(&tb_lock);	       
+                spin_unlock(&tb_lock);	       
 
                 /* cpu_interrupt might be called while translating the
                    TB, but before it is linked into a potentially
@@ -774,6 +752,7 @@ int cpu_exec(CPUState *env)
                 env->current_tb = tb;
                 barrier();
 
+#if 0
                 // Capture exit_request
                 saved_exit_request = env->exit_request;
 
@@ -794,13 +773,19 @@ int cpu_exec(CPUState *env)
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
                 }
 
-                if (likely(!saved_exit_request)) {
+                // Debug!
+                //rr_debug();
+#endif
+
+                if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;
                     //mz setting program point just before call to gen_func()
                     rr_set_program_point();
                     //mz Actually jump into the generated code
                     /* execute the generated code */
+                    //uint64_t icount_before = GUEST_ICOUNT;
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
+                    //if (GUEST_ICOUNT == icount_before) printf("We went through generated code at PC %#x (%d insns) without changing instruction count.\n", tb->pc, tb->num_guest_insns);
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
                         int insns_left;

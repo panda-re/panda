@@ -63,10 +63,11 @@ const char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
+  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x hash=%08x}\n", 
           (unsigned long long)pp.guest_instr_count,
 	  pp.eip,
-	  pp.ecx);
+	  pp.ecx,
+      pp.reghash);
 }
 
 static void rr_spit_prog_point(RR_prog_point pp) {
@@ -101,6 +102,9 @@ static void rr_spit_log_entry(RR_log_entry item) {
             break;
         case RR_LAST:
             printf("\tRR_LAST\n");
+            break;
+        case RR_DEBUG:
+            printf("\tRR_DEBUG\n");
             break;
         default:
             printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -197,6 +201,7 @@ static RR_log_entry *rr_read_item(void) {
             }
             break;
         case RR_LAST:
+        case RR_DEBUG:
             //mz nothing to read
             break;
         default:
@@ -234,6 +239,7 @@ void rr_create_replay_log (const char *filename) {
 
 int main(int argc, char **argv) {
     rr_create_replay_log(argv[1]);
+    printf("RR Log with %llu instructions\n", rr_nondet_log->last_prog_point.guest_instr_count);
     while(!log_is_empty()) {
         RR_log_entry *log_entry = rr_read_item();
         rr_spit_log_entry(*log_entry);

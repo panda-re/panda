@@ -1027,16 +1027,18 @@ static inline void cpu_clone_regs(CPUState *env, target_ulong newsp)
 
 static inline bool cpu_has_work(CPUState *env)
 {
+    uint32_t interrupt_req;
+    interrupt_req = env->interrupt_request;
 
     // interrupt record/replay stuff
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
-    rr_interrupt_request(&env->interrupt_request);
+    rr_interrupt_request(&interrupt_req);
 
     // Note, we are using cached value of interrupt request here
 
-    return ((env->interrupt_request & CPU_INTERRUPT_HARD) &&
+    return ((interrupt_req & CPU_INTERRUPT_HARD) &&
             (env->eflags & IF_MASK)) ||
-           (env->interrupt_request & (CPU_INTERRUPT_NMI |
+           (interrupt_req & (CPU_INTERRUPT_NMI |
                                       CPU_INTERRUPT_INIT |
                                       CPU_INTERRUPT_SIPI |
                                       CPU_INTERRUPT_MCE));

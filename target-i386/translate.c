@@ -7992,6 +7992,7 @@ static void gen_intermediate_code_internal(CPUState *env,
             //mz NOTE: we cannot muck with size of translation block if search_pc
             //is set - must be the same as last translation!
             if (search_pc == 0 && tb->num_guest_insns == rr_num_instr_before_next_interrupt) {
+                //printf("Terminating block %#x early because we have an interrupt coming up.\n", pc_start);
                 gen_jmp_im(pc_ptr - dc->cs_base);
                 gen_eob(dc);
                 break;
