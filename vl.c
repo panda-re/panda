@@ -1519,12 +1519,12 @@ static void main_loop(void)
             rr_end_record_requested = 0;
         }
         if (rr_end_replay_requested) {
-            rr_do_end_replay(/*is_error=*/0);
-            rr_end_replay_requested = 0;
-            //mz FIXME this is used in the monitor for do_stop()??
-            vm_stop(RUN_STATE_PAUSED);
             //mz restore timers
             init_timer_alarm();
+            //mz FIXME this is used in the monitor for do_stop()??
+            rr_do_end_replay(/*is_error=*/0);
+            rr_end_replay_requested = 0;
+            vm_stop(RUN_STATE_PAUSED);
         }
 #ifdef CONFIG_PROFILER
         dev_time += profile_getclock() - ti;

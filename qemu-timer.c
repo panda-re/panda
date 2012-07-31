@@ -821,7 +821,7 @@ void quit_timers(void)
 {
     struct qemu_alarm_timer *t = alarm_timer;
     alarm_timer = NULL;
-    t->stop(t);
+    if(t) t->stop(t);
 }
 
 int init_timer_alarm(void)
