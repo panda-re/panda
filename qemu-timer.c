@@ -46,7 +46,7 @@
 
 #include "qemu-timer.h"
 
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 /***********************************************************/
 /* timers */

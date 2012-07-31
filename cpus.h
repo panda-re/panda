@@ -11,6 +11,8 @@ void cpu_synchronize_all_states(void);
 void cpu_synchronize_all_post_reset(void);
 void cpu_synchronize_all_post_init(void);
 
+void log_all_cpu_states(void);
+
 /* vl.c */
 extern int smp_cores;
 extern int smp_threads;

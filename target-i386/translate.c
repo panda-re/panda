@@ -7811,7 +7811,7 @@ static void gen_intermediate_code_internal(CPUState *env,
     target_ulong prev_pc_ptr;
 
     uint16_t *saved_gen_opc_ptr;
-    uint32_t *saved_gen_opparam_ptr;
+    TCGArg *saved_gen_opparam_ptr;
 
     //    uint16_t saved_num_guest_insns = tb->num_guest_insns; // rw - icount?
 

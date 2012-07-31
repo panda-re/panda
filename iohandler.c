@@ -32,7 +32,7 @@
 #include <sys/wait.h>
 #endif
 
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 typedef struct IOHandlerRecord {
     int fd;
@@ -91,6 +91,8 @@ int qemu_set_fd_handler(int fd,
     return qemu_set_fd_handler2(fd, NULL, fd_read, fd_write, opaque);
 }
 
+extern bool is_monitor_device(const void *opaque);
+
 void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *xfds)
 {
     IOHandlerRecord *ioh;
@@ -107,7 +109,6 @@ void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *
         //mz monitor device. if not, continue (only in replay)
         if (rr_in_replay() || rr_replay_requested) {
             //mz lives in monitor.c. opaque is CharDriverState *?
-            extern bool is_monitor_device(const void *opaque);
             if ( ! is_monitor_device(ioh->opaque))
                 continue;
         }

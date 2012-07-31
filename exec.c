@@ -57,6 +57,9 @@
 #include "trace.h"
 #endif
 
+// rr_log_all.h is included in cpu.h, but we want the target-specific header here
+#include "rr_log.h"
+
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
 //#define DEBUG_TLB
@@ -1727,7 +1730,7 @@ void cpu_reset_interrupt(CPUState *env, int mask)
     env->interrupt_request &= ~mask;
 }
 
-void cpu_exit(CPUState *env, char *file, int line, char *function)
+void cpu_exit(CPUState *env, const char *file, int line, const char *function)
 {
     env->exit_request = 1;
     cpu_unlink_tb(env);
@@ -2723,9 +2726,6 @@ void cpu_register_physical_memory_log(target_phys_addr_t start_addr,
     CPUState *env;
     ram_addr_t orig_size = size;
     subpage_t *subpage;
-
-    //mz Record and replay
-    extern volatile sig_atomic_t rr_record_in_progress;
 
     if (rr_in_record() && rr_record_in_progress) {
         rr_reg_mem_call_record(start_addr, size, phys_offset);
@@ -4116,7 +4116,6 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                 //mz Need to record parameters of this call in the log (so that we can
                 //replay it) if it occurs during main_loop_wait() call
                 //mz Only care about writes to memory.
-                extern volatile sig_atomic_t rr_record_in_progress;
                 if (rr_in_record() && rr_record_in_progress) {
                    rr_device_mem_rw_call_record(addr, buf, len, is_write); 
                 }
@@ -4267,7 +4266,6 @@ void *cpu_physical_memory_map(target_phys_addr_t addr,
                               target_phys_addr_t *plen,
                               int is_write)
 {
-    target_phys_addr_t requested_len = *plen;
     target_phys_addr_t len = *plen;
     target_phys_addr_t todo = 0;
     int l;

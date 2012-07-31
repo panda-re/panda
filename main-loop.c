@@ -27,7 +27,7 @@
 #include "slirp/slirp.h"
 #include "main-loop.h"
 
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 #ifndef _WIN32
 

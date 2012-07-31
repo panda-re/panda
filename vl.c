@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 
 #include "ui/qemu-spice.h"
 
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
@@ -1469,7 +1469,6 @@ static bool main_loop_should_exit(void)
 }
 
 extern void *first_cpu;        // from exec.c
-extern void quit_timers(void); // from qemu-timers.c
 
 static void main_loop(void)
 {

@@ -32,8 +32,6 @@ int is_cpu_log_rr_set(void) {
     return (loglevel & CPU_LOG_RR);
 }
 
-extern FILE *stderr;
-
 int tb_invalidated_flag;
 
 //#define CONFIG_DEBUG_EXEC
@@ -43,7 +41,7 @@ bool qemu_cpu_has_work(CPUState *env)
     return cpu_has_work(env);
 }
 
-void cpu_loop_exit(CPUState *env, char *file, int line)
+void cpu_loop_exit(CPUState *env, const char *file, int line)
 {
     if (rr_debug_whisper()) {
       qemu_log_mask(CPU_LOG_RR, 
@@ -71,7 +69,6 @@ void cpu_resume_from_signal(CPUState *env, void *puc)
     //mz Record & Replay NOTE:
     //mz we're not in the middle of recording any more...
     //mz 08.2010 I don't think this ever gets called.
-    extern volatile sig_atomic_t rr_record_in_progress;
     rr_record_in_progress = 0;
 
     longjmp(env->jmp_env, 1);
@@ -210,9 +207,6 @@ static void cpu_handle_debug_exception(CPUState *env)
 void rr_set_program_point(void) {
     if (cpu_single_env) {
         rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX],
-            cpu_single_env->regs[R_EAX] ^ cpu_single_env->regs[R_EBX] ^ cpu_single_env->regs[R_ECX] ^
-            cpu_single_env->regs[R_EDX] ^ cpu_single_env->regs[R_ESP] ^ cpu_single_env->regs[R_EBP] ^
-            cpu_single_env->regs[R_ESI] ^ cpu_single_env->regs[R_EDI],
             GUEST_ICOUNT);
     }
 }
@@ -237,7 +231,7 @@ volatile sig_atomic_t exit_request;
 
 int cpu_exec(CPUState *env)
 {
-    int ret, interrupt_request, saved_exit_request;
+    int ret, interrupt_request;
     TranslationBlock *tb;
     uint8_t *tc_ptr;
     unsigned long next_tb;
@@ -352,19 +346,6 @@ int cpu_exec(CPUState *env)
                 rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_1;
                 rr_interrupt_request(&interrupt_request);
 
-                // Extra debug
-                if (rr_debug_whisper()) {
-                      qemu_log_mask(CPU_LOG_RR, 
-                          "RR_CALLSITE_CPU_EXEC_1 interrupt_request %x: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                          interrupt_request, env->eflags, env->hflags, env->hflags2);
-                }
-
-                if(0 && rr_prog_point.guest_instr_count >= 7903827835) {
-                    rr_spit_prog_point(rr_prog_point);
-                    rr_spit_queue_head();
-                    printf("Block: (%d bytes, %d instructions)", tb->size, tb->num_guest_insns);
-                    target_disas(stdout, rr_prog_point.eip, tb->size, 0);
-                }
                 if (rr_in_replay()) {
                     env->interrupt_request = interrupt_request;
                 }
@@ -422,15 +403,15 @@ int cpu_exec(CPUState *env)
                             int intno;
                             svm_check_intercept(env, SVM_EXIT_INTR);
                             env->interrupt_request &= ~(CPU_INTERRUPT_HARD | CPU_INTERRUPT_VIRQ);
-			    // dont bother calling this if we are replaying       
-			    // ... just obtain "intno" from (or record it to) 
-			    // non-deterministic inputs log
-			    RR_DO_RECORD_OR_REPLAY(
-						   /*action=*/intno = cpu_get_pic_interrupt(env),
-						   /*record=*/rr_input_4(&intno),
-						   /*replay=*/rr_input_4(&intno),
-						   /*location=*/RR_CALLSITE_CPU_EXEC_2);			    
-			    //mz servicing hardware interrupt
+                            // dont bother calling this if we are replaying       
+                            // ... just obtain "intno" from (or record it to) 
+                            // non-deterministic inputs log
+                            RR_DO_RECORD_OR_REPLAY(
+                                /*action=*/intno = cpu_get_pic_interrupt(env),
+                                /*record=*/rr_input_4((uint32_t *)&intno),
+                                /*replay=*/rr_input_4((uint32_t *)&intno),
+                                /*location=*/RR_CALLSITE_CPU_EXEC_2);			    
+                            //mz servicing hardware interrupt
                             qemu_log_mask(CPU_LOG_TB_IN_ASM, "Servicing hardware INT=0x%02x\n", intno);
                             do_interrupt_x86_hardirq(env, intno, 1);
                             /* ensure that no TB jump will be modified as
@@ -614,7 +595,7 @@ int cpu_exec(CPUState *env)
                     rr_set_program_point();
                     //mz record the value again in case do_interrupt has set EXITTB flag
                     rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
-                    rr_interrupt_request(&env->interrupt_request);
+                    rr_interrupt_request((int *)&env->interrupt_request);
 
                    /* Don't use the cached interrupt_request value,
                       do_interrupt may have updated the EXITTB flag. */
@@ -683,15 +664,8 @@ int cpu_exec(CPUState *env)
                 spin_lock(&tb_lock);
 
                 qemu_log_mask(CPU_LOG_TB_IN_ASM, 
-			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x hash=%08x}\n",
-			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx, rr_prog_point.reghash);
-
-                if(rr_debug_whisper()) {
-                    qemu_log_mask(CPU_LOG_RR, 
-                        "Register dump, EAX=%08x EBX=%08x ECX=%08x EDX=%08x ESI=%08x EDI=%08x EBP=%08x ESP=%08x\n", 
-                            EAX, EBX, ECX, EDX, ESI, EDI, EBP, ESP);
-                }
-
+			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
+			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
 
                 tb = tb_find_fast(env);
 

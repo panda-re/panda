@@ -40,11 +40,6 @@
 #include "rr_log.h"
 
 
-void rr_clear_rr_guest_instr_count(void *cpu_state);
-
-// Externs from other parts of QEMU we need
-extern void rr_quit_cpu_loop(void);
-
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -133,14 +128,13 @@ int rr_hist_index = 0;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x hash=%08x}\n", 
+  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
           (unsigned long long)pp.guest_instr_count,
 	  pp.eip,
-	  pp.ecx,
-      pp.reghash);
+	  pp.ecx);
 }
 
-static void rr_debug_log_prog_point(RR_prog_point pp) {
+void rr_debug_log_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(logfile,pp);
 }
 
@@ -191,7 +185,7 @@ void rr_spit_queue_head(void) {
 }
 
 //mz use in debugger to print a short history of log entries
-static void rr_print_history(void) {
+void rr_print_history(void) {
     int i = rr_hist_index;
     do {
         rr_spit_log_entry(rr_log_entry_history[i]);
@@ -437,7 +431,7 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request) {
 //mz record call to cpu_physical_memory_rw() that will need to be replayed.
 //mz only "write" modifications are recorded
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site,
-                                   uint32_t addr, uint8_t *buf, int len, int is_write) {
+                                   target_phys_addr_t addr, uint8_t *buf, int len, int is_write) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -459,7 +453,7 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site,
 //bdg Really we could subsume the functionality of rr_record_cpu_mem_rw_call into this,
 //bdg since they're both concerned with capturing the memory side effects of device code
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site,
-                                   uint32_t addr, uint8_t *buf, int len, int is_write) {
+                                   target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -479,7 +473,7 @@ void rr_record_cpu_mem_unmap(RR_callsite_id call_site,
 
 //mz record a call to cpu_register_io_memory() that will need to be replayed.
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
-                                         uint32_t start_addr, unsigned long size, unsigned long phys_offset) {
+                                         target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -603,8 +597,8 @@ static RR_log_entry *rr_read_item(void) {
         }
     }
     //mz this is more compact, as it doesn't include extra padding.
-    fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp);
-    fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp);
+    rr_assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) != -1);
+    rr_assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) != -1);
 
     //mz let's do some counting
     rr_number_of_log_entries[item->header.kind]++;
@@ -614,57 +608,57 @@ static RR_log_entry *rr_read_item(void) {
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
-            fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_1);
             break;
         case RR_INPUT_2:
-            fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_2);
             break;
         case RR_INPUT_4:
-            fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_4);
             break;
         case RR_INPUT_8:
-            fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.interrupt_request);
             break;
         case RR_EXIT_REQUEST:
-            fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp);
+            rr_assert(fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp) != -1);
             rr_size_of_log_entries[item->header.kind] += sizeof(item->variant.exit_request);
             break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
-                fread(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp);
+                rr_assert(fread(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp) != -1);
                 rr_size_of_log_entries[item->header.kind] += sizeof(args->kind);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
-                        fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp);
+                        rr_assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) != -1);
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_rw_args);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
-                        fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
+                        rr_assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) != -1);
                         rr_size_of_log_entries[item->header.kind] += args->variant.cpu_mem_rw_args.len;
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
-                        fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
+                        rr_assert(fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp) != -1);
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_unmap);
                         args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
-                        fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+                        rr_assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) != -1);
                         rr_size_of_log_entries[item->header.kind] += args->variant.cpu_mem_unmap.len;
                         break;
 
                     case RR_CALL_CPU_REG_MEM_REGION:
-                        fread(&(args->variant.cpu_mem_reg_region_args), 
-                              sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
+                        rr_assert(fread(&(args->variant.cpu_mem_reg_region_args), 
+                              sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) != -1);
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_reg_region_args);
                         break;
                     default:
@@ -809,7 +803,6 @@ void rr_replay_debug(RR_callsite_id call_site) {
         // We think we're in the right place now, so let's do more stringent checks
         rr_assert(log_point.ecx == rr_prog_point.ecx);
         rr_assert(log_point.eip == rr_prog_point.eip);
-        rr_assert(log_point.reghash == rr_prog_point.reghash);
         
         // We passed all these, so consume the log entry
         current_item = queue_head;
@@ -1066,7 +1059,7 @@ void rr_create_replay_log (const char *filename) {
 	     rr_nondet_log->name, rr_nondet_log->size);
   }
   //mz read the last program point from the log header.
-  fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp);
+  rr_assert(fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp) != -1);
 }
 
 
@@ -1093,12 +1086,12 @@ void replay_progress(void) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
     }
     else {
-      printf ("%s:  %llu of %llu (%.2f%%) bytes, %llu of %llu (%.2f%%) instructions processed.\n", 
+      printf ("%s:  %ld of %llu (%.2f%%) bytes, %llu of %llu (%.2f%%) instructions processed.\n", 
               rr_nondet_log->name,
               ftell(rr_nondet_log->fp),
               rr_nondet_log->size,
               (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
-              queue_head->header.prog_point.guest_instr_count,
+              (unsigned long long)queue_head->header.prog_point.guest_instr_count,
               (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count,
               ((queue_head->header.prog_point.guest_instr_count * 100.0) / 
                     rr_nondet_log->last_prog_point.guest_instr_count)
@@ -1196,11 +1189,6 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
   Error *err;
   qmp_end_replay(&err);
 }
-
-
-
-
-void *get_monitor(void);
 
 //mz file_name_full should be full path to desired record/replay log file
 void rr_do_begin_record(const char *file_name_full, void *cpu_state) {

@@ -21,7 +21,7 @@
 
 #include "config.h"
 #include "qemu-common.h"
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 #ifdef TARGET_X86_64
 #define TARGET_LONG_BITS 64
@@ -1027,7 +1027,7 @@ static inline void cpu_clone_regs(CPUState *env, target_ulong newsp)
 
 static inline bool cpu_has_work(CPUState *env)
 {
-    uint32_t interrupt_req;
+    int interrupt_req;
     interrupt_req = env->interrupt_request;
 
     // interrupt record/replay stuff

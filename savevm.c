@@ -1944,15 +1944,7 @@ static int del_existing_snapshots(Monitor *mon, const char *name)
     return 0;
 }
 
-
-
-void do_savevm(Monitor *mon, const QDict *qdict) {
-  const char *name = qdict_get_try_str(qdict, "name");
-  assert(name != NULL);
-  do_savevm_aux(mon, name);
-}
-
-void do_savevm_aux(Monitor *mon, char *name)
+void do_savevm_aux(Monitor *mon, const char *name)
 {
     BlockDriverState *bs, *bs1;
     QEMUSnapshotInfo sn1, *sn = &sn1, old_sn1, *old_sn = &old_sn1;
@@ -2063,6 +2055,12 @@ void do_savevm_aux(Monitor *mon, char *name)
  the_end:
     if (saved_vm_running)
         vm_start();
+}
+
+void do_savevm(Monitor *mon, const QDict *qdict) {
+  const char *name = qdict_get_try_str(qdict, "name");
+  assert(name != NULL);
+  do_savevm_aux(mon, name);
 }
 
 int load_vmstate(const char *name)
