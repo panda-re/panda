@@ -1021,9 +1021,15 @@ static inline bool cpu_has_work(CPUState *env)
     int interrupt_req;
     interrupt_req = env->interrupt_request;
 
+    // CPU always "has work" in replay
+    if (rr_in_replay()) return true;
+
+    /*
+    rr_set_program_point();
     // interrupt record/replay stuff
     rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
     rr_interrupt_request(&interrupt_req);
+    */
 
     // Note, we are using cached value of interrupt request here
 

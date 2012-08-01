@@ -209,8 +209,9 @@ void rr_set_program_point(void) {
 #if defined( TARGET_I386 )
         rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
 #elif defined ( TARGET_ARM )
-        // XXX Figure out correct program point for ARM
-        rr_set_prog_point(cpu_single_env->regs[15], 0, GUEST_ICOUNT);
+        //rr_set_prog_point(cpu_single_env->regs[15], 0, GUEST_ICOUNT);
+        //XXX Do we need the program counter here?
+        rr_set_prog_point(0, 0, GUEST_ICOUNT);
 #endif
     }
 }
@@ -675,15 +676,19 @@ int cpu_exec(CPUState *env)
 
                 if (rr_mode == RR_REPLAY)
                 {
-                    if (tb->num_guest_insns > rr_num_instr_before_next_interrupt) {
+                    if (rr_num_instr_before_next_interrupt > 0 &&
+                        tb->num_guest_insns > rr_num_instr_before_next_interrupt) {
+                        //int before = tb->num_guest_insns;
                         //mz invalidate current TB and retranslate
                         //printf("invalidating single TB: %llu -> %llu\n", 
-                        // tb->num_guest_insns, rr_num_instr_before_next_interrupt);
+                        //    tb->num_guest_insns, rr_num_instr_before_next_interrupt);
                         invalidate_single_tb(env, tb->pc);
                         //mz try again.
                         tb = tb_find_fast(env);
-                        //printf("after retranslation TB is %llu insns\n", 
-                        // tb->num_guest_insns);
+                        //if (tb->num_guest_insns != before)
+                        //    printf("Successfully reduced TB size from %d to %d (%d insns until next interrupt)\n",
+                        //        before, tb->num_guest_insns, rr_num_instr_before_next_interrupt);
+                        //printf("after retranslation TB is %llu insns\n", tb->num_guest_insns);
                         //rr_spit_queue_head();
                     }
                 }

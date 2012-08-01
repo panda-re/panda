@@ -28,6 +28,7 @@
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu-defs.h"
+#include "rr_log_all.h"
 
 #include "softfloat.h"
 
@@ -524,7 +525,19 @@ static inline void cpu_get_tb_cpu_state(CPUState *env, target_ulong *pc,
 
 static inline bool cpu_has_work(CPUState *env)
 {
-    return env->interrupt_request &
+    int req = env->interrupt_request;
+
+    // CPU always "has work" in replay
+    if (rr_in_replay()) return true;
+
+    /*
+    rr_set_program_point();
+    // interrupt record/replay stuff
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
+    rr_interrupt_request(&req);
+    */
+
+    return req &
         (CPU_INTERRUPT_FIQ | CPU_INTERRUPT_HARD | CPU_INTERRUPT_EXITTB);
 }
 
