@@ -64,8 +64,8 @@ const char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x hash=%08x}\n", 
-          (unsigned long long)pp.guest_instr_count,
+  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
+      (unsigned long long)pp.guest_instr_count,
 	  pp.eip,
 	  pp.ecx);
 }
@@ -90,13 +90,13 @@ static void rr_spit_log_entry(RR_log_entry item) {
             printf("\tRR_INPUT_8 from %s\n", get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INTERRUPT_REQUEST:
-            printf("\tRR_INTERRUPT_REQUEST %d from %s\n", item.variant.interrupt_request, get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INTERRUPT_REQUEST_%d from %s\n", item.variant.interrupt_request, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_EXIT_REQUEST:
-            printf("\tRR_EXIT_REQUEST %d from %s\n", item.variant.exit_request, get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_EXIT_REQUEST_%d from %s\n", item.variant.exit_request, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_SKIPPED_CALL:
-            printf("\tRR_SKIPPED_CALL (%s) from %s\n", 
+            printf("\tRR_SKIPPED_CALL_(%s) from %s\n", 
                     get_skipped_call_kind_string(item.variant.call_args.kind),
                     get_callsite_string(item.header.callsite_loc));
             break;
@@ -145,54 +145,54 @@ static RR_log_entry *rr_read_item(void) {
         }
     }
     //mz this is more compact, as it doesn't include extra padding.
-    fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp);
-    fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp);
+    assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) == 1);
+    assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) == 1);
 
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
-            fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_INPUT_2:
-            fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_INPUT_4:
-            fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_INPUT_8:
-            fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_INTERRUPT_REQUEST:
-            fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.interrupt_request), sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_EXIT_REQUEST:
-            fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp);
+            assert(fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
-                fread(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp);
+                assert(fread(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp) == 1);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
-                        fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp);
+                        assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) == 1);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
-                        fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
+                        assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
-                        fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
+                        assert(fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp) == 1);
                         //mz buffer length in args->variant.cpu_mem_unmap.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
                         args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
                         //mz read the buffer
-                        fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+                        assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
                         break;
                     case RR_CALL_CPU_REG_MEM_REGION:
-                        fread(&(args->variant.cpu_mem_reg_region_args), 
-                              sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
+                        assert(fread(&(args->variant.cpu_mem_reg_region_args), 
+                              sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) == 1);
                         break;
                     default:
                         //mz unimplemented
@@ -234,12 +234,12 @@ void rr_create_replay_log (const char *filename) {
 	     rr_nondet_log->name, rr_nondet_log->size);
   }
   //mz read the last program point from the log header.
-  fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp);
+  assert(fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp) == 1);
 }
 
 int main(int argc, char **argv) {
     rr_create_replay_log(argv[1]);
-    printf("RR Log with %llu instructions\n", rr_nondet_log->last_prog_point.guest_instr_count);
+    printf("RR Log with %llu instructions\n", (unsigned long long) rr_nondet_log->last_prog_point.guest_instr_count);
     while(!log_is_empty()) {
         RR_log_entry *log_entry = rr_read_item();
         rr_spit_log_entry(*log_entry);
