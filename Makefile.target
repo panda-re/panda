@@ -33,7 +33,9 @@ else
 QEMU_PROG=qemu-system-$(TARGET_ARCH2)$(EXESUF)
 endif
 
-PROGS=$(QEMU_PROG)
+RR_PRINT_PROG=rr_print_$(TARGET_ARCH2)$(EXESUF)
+
+PROGS=$(QEMU_PROG) $(RR_PRINT_PROG)
 STPFILES=
 
 ifndef CONFIG_HAIKU
@@ -419,6 +421,8 @@ obj-$(CONFIG_GDBSTUB_XML) += gdbstub-xml.o
 $(QEMU_PROG): $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y)
 	$(call LINK,$^)
 
+$(RR_PRINT_PROG): rr_print.o
+	$(call LINK,$^)
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"  GEN   $(TARGET_DIR)$@")

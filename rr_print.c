@@ -4,6 +4,7 @@
 #include <glib.h>
 
 #define RR_LOG_STANDALONE
+#include "cpu.h"
 #include "rr_log.h"
 
 /******************************************************************************************/
@@ -66,11 +67,10 @@ static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
   fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x hash=%08x}\n", 
           (unsigned long long)pp.guest_instr_count,
 	  pp.eip,
-	  pp.ecx,
-      pp.reghash);
+	  pp.ecx);
 }
 
-static void rr_spit_prog_point(RR_prog_point pp) {
+void rr_spit_prog_point(RR_prog_point pp) {
   rr_spit_prog_point_fp(stdout,pp);
 }
 

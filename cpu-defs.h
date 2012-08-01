@@ -218,6 +218,13 @@ typedef struct CPUWatchpoint {
     struct KVMState *kvm_state;                                         \
     struct kvm_run *kvm_run;                                            \
     int kvm_fd;                                                         \
-    int kvm_vcpu_dirty;
+    int kvm_vcpu_dirty;                                                 \
+    /* record and replay */                                             \
+    uint64_t rr_guest_instr_count;
+
+// record/replay
+#ifndef GUEST_ICOUNT
+#define GUEST_ICOUNT cpu_single_env->rr_guest_instr_count
+#endif
 
 #endif

@@ -4061,7 +4061,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                     }
                     else {
                       RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/io_mem_write[io_index][2](io_mem_opaque[io_index], addr, val),
+                        /*action=*/io_mem_write[io_index][2](io_mem_opaque[io_index], addr1, val),
                         /*record=*/RR_NO_ACTION,
                         /*replay=*/RR_NO_ACTION,
                         /*location=*/RR_CALLSITE_PHYS_MEM_IO_1);
@@ -4076,7 +4076,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                     }
                     else {
                       RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/io_mem_write[io_index][1](io_mem_opaque[io_index], addr, val),
+                        /*action=*/io_mem_write[io_index][1](io_mem_opaque[io_index], addr1, val),
                         /*record=*/RR_NO_ACTION,
                         /*replay=*/RR_NO_ACTION,
                         /*location=*/RR_CALLSITE_PHYS_MEM_IO_2);
@@ -4091,7 +4091,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                     }
                     else {
                       RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/io_mem_write[io_index][0](io_mem_opaque[io_index], addr, val),
+                        /*action=*/io_mem_write[io_index][0](io_mem_opaque[io_index], addr1, val),
                         /*record=*/RR_NO_ACTION,
                         /*replay=*/RR_NO_ACTION,
                         /*location=*/RR_CALLSITE_PHYS_MEM_IO_3);
@@ -4131,7 +4131,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                 if (l >= 4 && ((addr1 & 3) == 0)) {
                     /* 32 bit read access */
                     RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr),
+                        /*action=*/val = io_mem_read[io_index][2](io_mem_opaque[io_index], addr1),
                         /*record=*/rr_input_4(&val),
                         /*replay=*/rr_input_4(&val),
                         /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_2);
@@ -4140,7 +4140,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                 } else if (l >= 2 && ((addr1 & 1) == 0)) {
                     /* 16 bit read access */
                     RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/val = io_mem_read[io_index][1](io_mem_opaque[io_index], addr),
+                        /*action=*/val = io_mem_read[io_index][1](io_mem_opaque[io_index], addr1),
                         /*record=*/rr_input_2((uint16_t *)&val),
                         /*replay=*/rr_input_2((uint16_t *)&val),
                         /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_3);
@@ -4149,7 +4149,7 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
                 } else {
                     /* 8 bit read access */
                     RR_DO_RECORD_OR_REPLAY(
-                        /*action=*/val = io_mem_read[io_index][0](io_mem_opaque[io_index], addr),
+                        /*action=*/val = io_mem_read[io_index][0](io_mem_opaque[io_index], addr1),
                         /*record=*/rr_input_1((uint8_t *)&val),
                         /*replay=*/rr_input_1((uint8_t *)&val),
                         /*location=*/RR_CALLSITE_CPU_PHYSICAL_MEMORY_RW_4);

@@ -206,8 +206,12 @@ static void cpu_handle_debug_exception(CPUState *env)
 
 void rr_set_program_point(void) {
     if (cpu_single_env) {
-        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX],
-            GUEST_ICOUNT);
+#if defined( TARGET_I386 )
+        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
+#elif defined ( TARGET_ARM )
+        // XXX Figure out correct program point for ARM
+        rr_set_prog_point(cpu_single_env->regs[15], 0, GUEST_ICOUNT);
+#endif
     }
 }
 
