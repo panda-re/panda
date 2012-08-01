@@ -46,3 +46,17 @@ static inline void gen_io_end(void)
     tcg_gen_st_i32(tmp, cpu_env, offsetof(CPUState, can_do_io));
     tcg_temp_free_i32(tmp);
 }
+
+// Record and replay
+static inline void gen_op_update_rr_icount(void)
+{
+    TCGv_i64 count;
+
+    count = tcg_temp_local_new_i64();
+
+    tcg_gen_ld_i64(count, cpu_env, offsetof(CPUState, rr_guest_instr_count));
+    tcg_gen_addi_i64(count, count, 1);
+    tcg_gen_st_i64(count, cpu_env, offsetof(CPUState, rr_guest_instr_count));
+
+    tcg_temp_free_i64(count);
+}

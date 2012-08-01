@@ -483,7 +483,7 @@ static inline void gen_op_add_reg_im(int size, int reg, int32_t val)
 // rw - I think this will work?
 static inline void gen_op_update_icount(void)
 {
-  tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
+    tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
     tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, 1);
     tcg_gen_st_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
 }
@@ -7936,7 +7936,7 @@ static void gen_intermediate_code_internal(CPUState *env,
         if (setjmp(dc->end_translate_env) == 0) {
             //mz let's count this instruction
             if (rr_mode != RR_OFF) {
-                gen_op_update_icount();
+                gen_op_update_rr_icount();
             }
             //mz generate micro-ops for this instruction
             pc_ptr = disas_insn(dc, pc_ptr);
