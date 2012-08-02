@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1245,6 +1246,7 @@ void rr_do_end_record(void) {
   rr_mode = RR_OFF;
 }
 
+static time_t rr_start_time;
 
 // file_name_full should be full path to the record/replay log
 void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
@@ -1268,6 +1270,10 @@ void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   load_vmstate(name_buf);
   printf ("... done.\n");
   log_all_cpu_states();
+
+  // save the time so we can report how long replay takes
+  time(&rr_start_time);
+
   // second, open non-deterministic input log for read.  
   rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
   printf ("opening nondet log for read :\t%s\n", name_buf);
@@ -1293,6 +1299,11 @@ void rr_do_end_replay(int is_error) {
     else {
         printf ("Replay completed successfully.\n");
     }
+
+    time_t rr_end_time;
+    time(&rr_end_time);
+    printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+    
     printf ("Stats:\n");
     for (i = 0; i < RR_LAST; i++) {
         printf("%s number = %llu, size = %llu bytes\n", get_log_entry_kind_string(i), 
