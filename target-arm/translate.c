@@ -9879,7 +9879,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         max_insns = CF_COUNT_MASK;
 
     if (rr_in_replay())
-        max_insns = max_insns > rr_num_instr_before_next_interrupt ?
+        max_insns = max_insns < rr_num_instr_before_next_interrupt ?
                         max_insns : rr_num_instr_before_next_interrupt;
 
     gen_icount_start();

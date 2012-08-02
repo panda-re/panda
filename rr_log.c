@@ -38,6 +38,7 @@
 #include "qemu-common.h"
 #include "qmp-commands.h"
 #include "hmp.h"
+#include "sysemu.h"
 #include "rr_log.h"
 
 
@@ -907,6 +908,11 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
             rr_signal_disagreement(current_item->header.prog_point, rr_prog_point);
             rr_assert(current_item->header.callsite_loc == call_site);
         }
+        if(current_item->header.prog_point.eip != rr_prog_point.eip) {
+            printf("EIP match failed; %#x != %#x!\n", current_item->header.prog_point.eip, rr_prog_point.eip);
+            rr_signal_disagreement(current_item->header.prog_point, rr_prog_point);
+            rr_assert(current_item->header.prog_point.eip != rr_prog_point.eip);
+        }
         *interrupt_request = current_item->variant.interrupt_request;
         //mz we've used the item
         add_to_recycle_list(current_item);
@@ -1105,8 +1111,6 @@ void replay_progress(void) {
 /* MONITOR CALLBACKS (top-level) */
 /******************************************************************************************/
 //mz from vl.c
-extern void do_savevm_aux(void *mon, const char *name);
-extern int load_vmstate(const char *name);
 
 // rr_name is the current rec/replay name. 
 // here we compute the snapshot name to use for rec/replay 

@@ -322,7 +322,7 @@ static inline int rr_prog_point_compare(RR_prog_point current,
   else if (current.guest_instr_count == recorded.guest_instr_count) {
       // the two counts are the same.  
       // other things should agree.  else, we are in trouble
-      if (current.eip == recorded.eip && current.ecx == recorded.ecx) {
+      if (current.ecx == recorded.ecx) {
           return 0;
       }
       else {

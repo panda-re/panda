@@ -29,6 +29,8 @@
 #include "helper.h"
 #include "tcg-op.h"
 
+#include "rr_log.h"
+
 #define GEN_HELPER 1
 #include "helper.h"
 
@@ -5267,6 +5269,11 @@ static inline void gen_intermediate_code_internal(TranslationBlock * tb,
     max_insns = tb->cflags & CF_COUNT_MASK;
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
+
+    if (rr_in_replay())
+        max_insns = max_insns < rr_num_instr_before_next_interrupt ?
+                        max_insns : rr_num_instr_before_next_interrupt;
+
     gen_icount_start();
     do {
         if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
@@ -5296,6 +5303,12 @@ static inline void gen_intermediate_code_internal(TranslationBlock * tb,
         }
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
+
+        if (rr_mode != RR_OFF) {
+            gen_op_update_rr_icount();
+            tb->num_guest_insns++;
+        }
+
         last_pc = dc->pc;
         disas_sparc_insn(dc);
         num_insns++;

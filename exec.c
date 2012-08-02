@@ -1730,7 +1730,7 @@ void cpu_reset_interrupt(CPUState *env, int mask)
     env->interrupt_request &= ~mask;
 }
 
-void cpu_exit(CPUState *env, const char *file, int line, const char *function)
+void cpu_exit(CPUState *env)
 {
     env->exit_request = 1;
     cpu_unlink_tb(env);

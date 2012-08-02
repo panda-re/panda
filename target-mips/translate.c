@@ -31,6 +31,8 @@
 #include "tcg-op.h"
 #include "qemu-common.h"
 
+#include "rr_log.h"
+
 #include "helper.h"
 #define GEN_HELPER 1
 #include "helper.h"
@@ -12411,6 +12413,11 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
     max_insns = tb->cflags & CF_COUNT_MASK;
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
+
+    if (rr_in_replay())
+        max_insns = max_insns < rr_num_instr_before_next_interrupt ?
+                        max_insns : rr_num_instr_before_next_interrupt;
+
     LOG_DISAS("\ntb %p idx %d hflags %04x\n", tb, ctx.mem_idx, ctx.hflags);
     gen_icount_start();
     while (ctx.bstate == BS_NONE) {
@@ -12442,6 +12449,11 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
         }
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
+
+        if (rr_mode != RR_OFF) {
+            gen_op_update_rr_icount();
+            tb->num_guest_insns++;
+        }
 
         is_branch = 0;
         if (!(ctx.hflags & MIPS_HFLAG_M16)) {

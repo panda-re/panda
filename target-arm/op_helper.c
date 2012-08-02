@@ -27,7 +27,7 @@
 static void raise_exception(int tt)
 {
     env->exception_index = tt;
-    cpu_loop_exit(env, __FILE__, __LINE__);
+    cpu_loop_exit(env);
 }
 #endif
 
@@ -238,13 +238,13 @@ void HELPER(wfi)(void)
 {
     env->exception_index = EXCP_HLT;
     env->halted = 1;
-    cpu_loop_exit(env, __FILE__, __LINE__);
+    cpu_loop_exit(env);
 }
 
 void HELPER(exception)(uint32_t excp)
 {
     env->exception_index = excp;
-    cpu_loop_exit(env, __FILE__, __LINE__);
+    cpu_loop_exit(env);
 }
 
 uint32_t HELPER(cpsr_read)(void)

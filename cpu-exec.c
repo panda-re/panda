@@ -41,15 +41,8 @@ bool qemu_cpu_has_work(CPUState *env)
     return cpu_has_work(env);
 }
 
-void cpu_loop_exit(CPUState *env, const char *file, int line)
+void cpu_loop_exit(CPUState *env)
 {
-    if (rr_debug_whisper()) {
-      qemu_log_mask(CPU_LOG_RR, 
-		    "tp (icount=%llu, eip=0x%08x, ecx=0x%08x) called cpu_loop_exit from %s:%d.\n", 
-		    (unsigned long long)rr_prog_point.guest_instr_count,
-		    rr_prog_point.eip, rr_prog_point.ecx,
-            file, line);
-    }
     env->current_tb = NULL;
     longjmp(env->jmp_env, 1);
 }
@@ -212,6 +205,10 @@ void rr_set_program_point(void) {
         //rr_set_prog_point(cpu_single_env->regs[15], 0, GUEST_ICOUNT);
         //XXX Do we need the program counter here?
         rr_set_prog_point(0, 0, GUEST_ICOUNT);
+#elif defined ( TARGET_SPARC )
+        rr_set_prog_point(cpu_single_env->pc, 0, GUEST_ICOUNT);
+#else
+        rr_set_prog_point(0, 0, GUEST_ICOUNT);
 #endif
     }
 }
@@ -219,7 +216,7 @@ void rr_set_program_point(void) {
 void rr_quit_cpu_loop(void) {
     if (cpu_single_env) {
         cpu_single_env->exception_index = EXCP_INTERRUPT;
-        cpu_loop_exit(cpu_single_env, __FILE__, __LINE__);
+        cpu_loop_exit(cpu_single_env);
     }
 }
 
@@ -255,7 +252,7 @@ int cpu_exec(CPUState *env)
     //		  env->hflags & HF_HALTED_MASK);
 
     if (env->halted) {
-        if (!cpu_has_work(env)) {
+        if (!rr_in_replay() && !cpu_has_work(env)) {
             return EXCP_HALTED;
         }
 
@@ -362,7 +359,7 @@ int cpu_exec(CPUState *env)
                     if (interrupt_request & CPU_INTERRUPT_DEBUG) {
                         env->interrupt_request &= ~CPU_INTERRUPT_DEBUG;
                         env->exception_index = EXCP_DEBUG;
-                        cpu_loop_exit(env, __FILE__, __LINE__);
+                        cpu_loop_exit(env);
                     }
 #if defined(TARGET_ARM) || defined(TARGET_SPARC) || defined(TARGET_MIPS) || \
     defined(TARGET_PPC) || defined(TARGET_ALPHA) || defined(TARGET_CRIS) || \
@@ -371,7 +368,7 @@ int cpu_exec(CPUState *env)
                         env->interrupt_request &= ~CPU_INTERRUPT_HALT;
                         env->halted = 1;
                         env->exception_index = EXCP_HLT;
-                        cpu_loop_exit(env, __FILE__, __LINE__);
+                        cpu_loop_exit(env);
                     }
 #endif
 #if defined(TARGET_I386)
@@ -379,7 +376,7 @@ int cpu_exec(CPUState *env)
                             svm_check_intercept(env, SVM_EXIT_INIT);
                             do_cpu_init(env);
                             env->exception_index = EXCP_HALTED;
-                            cpu_loop_exit(env, __FILE__, __LINE__);
+                            cpu_loop_exit(env);
                     } else if (interrupt_request & CPU_INTERRUPT_SIPI) {
                             do_cpu_sipi(env);
                     } else if (env->hflags2 & HF2_GIF_MASK) {
@@ -644,7 +641,7 @@ int cpu_exec(CPUState *env)
                 if (unlikely(env->exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
-                    cpu_loop_exit(env, __FILE__, __LINE__);
+                    cpu_loop_exit(env);
                 }
 
 #if defined(DEBUG_DISAS) || defined(CONFIG_DEBUG_EXEC)
@@ -793,7 +790,7 @@ int cpu_exec(CPUState *env)
                             }
                             env->exception_index = EXCP_INTERRUPT;
                             next_tb = 0;
-                            cpu_loop_exit(env, __FILE__, __LINE__);
+                            cpu_loop_exit(env);
                         }
                     }
                 }
