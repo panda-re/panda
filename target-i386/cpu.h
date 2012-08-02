@@ -21,7 +21,6 @@
 
 #include "config.h"
 #include "qemu-common.h"
-#include "rr_log_all.h"
 
 #ifdef TARGET_X86_64
 #define TARGET_LONG_BITS 64
@@ -990,7 +989,6 @@ static inline int cpu_mmu_index (CPUState *env)
 #define CC_DST (env->cc_dst)
 #define CC_OP  (env->cc_op)
 
-
 /* float macros */
 #define FT0    (env->ft0)
 #define ST0    (env->fpregs[env->fpstt].d)
@@ -1018,24 +1016,9 @@ static inline void cpu_clone_regs(CPUState *env, target_ulong newsp)
 
 static inline bool cpu_has_work(CPUState *env)
 {
-    int interrupt_req;
-    interrupt_req = env->interrupt_request;
-
-    // CPU always "has work" in replay
-    if (rr_in_replay()) return true;
-
-    /*
-    rr_set_program_point();
-    // interrupt record/replay stuff
-    rr_skipped_callsite_location = RR_CALLSITE_CPU_HALTED;
-    rr_interrupt_request(&interrupt_req);
-    */
-
-    // Note, we are using cached value of interrupt request here
-
-    return ((interrupt_req & CPU_INTERRUPT_HARD) &&
+    return ((env->interrupt_request & CPU_INTERRUPT_HARD) &&
             (env->eflags & IF_MASK)) ||
-           (interrupt_req & (CPU_INTERRUPT_NMI |
+           (env->interrupt_request & (CPU_INTERRUPT_NMI |
                                       CPU_INTERRUPT_INIT |
                                       CPU_INTERRUPT_SIPI |
                                       CPU_INTERRUPT_MCE));

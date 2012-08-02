@@ -96,10 +96,26 @@ static void rr_spit_log_entry(RR_log_entry item) {
             printf("\tRR_EXIT_REQUEST_%d from %s\n", item.variant.exit_request, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_SKIPPED_CALL:
-            printf("\tRR_SKIPPED_CALL_(%s) from %s\n", 
-                    get_skipped_call_kind_string(item.variant.call_args.kind),
-                    get_callsite_string(item.header.callsite_loc));
-            break;
+            {
+                RR_skipped_call_args *args = &item.variant.call_args;
+                int callbytes;
+                switch (item.variant.call_args.kind) {
+                    case RR_CALL_CPU_MEM_RW:
+                        callbytes = sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
+                        break;
+                    case RR_CALL_CPU_REG_MEM_REGION:
+                        callbytes = sizeof(args->variant.cpu_mem_reg_region_args);
+                        break;
+                    case RR_CALL_CPU_MEM_UNMAP:
+                        callbytes = sizeof(args->variant.cpu_mem_unmap) + args->variant.cpu_mem_unmap.len;
+                        break;
+                }
+                printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
+                        get_skipped_call_kind_string(item.variant.call_args.kind),
+                        get_callsite_string(item.header.callsite_loc),
+                        callbytes);
+                break;
+            }
         case RR_LAST:
             printf("\tRR_LAST\n");
             break;

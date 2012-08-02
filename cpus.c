@@ -462,6 +462,8 @@ bool all_cpu_threads_idle(void)
 {
     CPUState *env;
 
+    if (rr_in_replay()) return false;
+
     for (env = first_cpu; env != NULL; env = env->next_cpu) {
         if (!cpu_thread_is_idle(env)) {
             return false;
