@@ -1362,6 +1362,11 @@ void rr_do_end_replay(int is_error) {
     if (is_error) {
         abort();
     }
+    else {
+#ifdef RR_QUIT_AFTER_REPLAY
+        qemu_system_shutdown_request();
+#endif
+    }
 }
 
 /**************************************************************************/
