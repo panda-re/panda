@@ -64,3 +64,4 @@ qemu-ga
 qmp-commands.h
 qmp-marshal.c
 tags
+.*\.sym

@@ -481,14 +481,6 @@ static inline void gen_op_add_reg_im(int size, int reg, int32_t val)
 }
 
 // rw - I think this will work?
-static inline void gen_op_update_icount(void)
-{
-    tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
-    tcg_gen_addi_tl(cpu_tmp0, cpu_tmp0, 1);
-    tcg_gen_st_tl(cpu_tmp0, cpu_env, offsetof(CPUState, rr_guest_instr_count));
-}
-
-// rw - I think this will work?
 static inline void gen_op_add_eip(int val)
 {
     tcg_gen_ld_tl(cpu_tmp0, cpu_env, offsetof(CPUState, eip));
@@ -8000,8 +7992,8 @@ static void gen_intermediate_code_internal(CPUState *env,
         }
         if (rr_mode != RR_OFF) {
             //mz update EIP (otherwise it has already been updated by a gen_jmp_im instruction)
-	  //            assert( (pc_ptr - prev_pc_ptr) < sizeof(gen_op_add_eip) / sizeof(char *) );
-	  gen_op_add_eip(pc_ptr - prev_pc_ptr);
+            //            assert( (pc_ptr - prev_pc_ptr) < sizeof(gen_op_add_eip) / sizeof(char *) );
+            gen_op_add_eip(pc_ptr - prev_pc_ptr);
             // rw - think this needs to be gen_op_add_reg_im()
         }
         dc->is_first_instr = 0;

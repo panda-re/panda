@@ -201,14 +201,8 @@ void rr_set_program_point(void) {
     if (cpu_single_env) {
 #if defined( TARGET_I386 )
         rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
-#elif defined ( TARGET_ARM )
-        //rr_set_prog_point(cpu_single_env->regs[15], 0, GUEST_ICOUNT);
-        //XXX Do we need the program counter here?
-        rr_set_prog_point(0, 0, GUEST_ICOUNT);
-#elif defined ( TARGET_SPARC )
-        rr_set_prog_point(cpu_single_env->pc, 0, GUEST_ICOUNT);
 #else
-        rr_set_prog_point(0, 0, GUEST_ICOUNT);
+        rr_set_prog_point(cpu_single_env->rr_guest_pc, 0, GUEST_ICOUNT);
 #endif
     }
 }
@@ -666,8 +660,10 @@ int cpu_exec(CPUState *env)
                 spin_lock(&tb_lock);
 
                 qemu_log_mask(CPU_LOG_TB_IN_ASM, 
-			      "Prog point: {guest=%llu, eip=%08x, ecx=%08x}\n",
-			      (unsigned long long)rr_prog_point.guest_instr_count, rr_prog_point.eip, rr_prog_point.ecx);
+			      "Prog point: {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
+			      (unsigned long long)rr_prog_point.guest_instr_count, 
+                  (unsigned long long)rr_prog_point.pc,
+                  (unsigned long long)rr_prog_point.secondary);
 
                 tb = tb_find_fast(env);
 

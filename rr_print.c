@@ -64,10 +64,10 @@ const char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
+  fprintf(fp, "{guest_instr_count=%llu pc=0x%08llx, secondary=0x%08llx}\n", 
       (unsigned long long)pp.guest_instr_count,
-	  pp.eip,
-	  pp.ecx);
+	  (unsigned long long)pp.pc,
+	  (unsigned long long)pp.secondary);
 }
 
 void rr_spit_prog_point(RR_prog_point pp) {

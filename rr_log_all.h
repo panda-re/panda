@@ -66,8 +66,8 @@ void rr_set_program_point(void);
 //mz A record of a point in the program.  This is a subset of guest CPU state
 //mz and the number of guest instructions executed so far.
 typedef struct RR_prog_point_t {
-  uint32_t eip;             
-  uint32_t ecx;
+  uint64_t pc;             
+  uint64_t secondary;
   uint64_t guest_instr_count;
 } RR_prog_point;
 extern RR_prog_point rr_prog_point;
@@ -87,11 +87,11 @@ extern volatile sig_atomic_t rr_record_in_progress;
 
 extern volatile sig_atomic_t rr_use_live_exit_request;
 
-static inline void rr_set_prog_point(uint32_t eip, uint32_t ecx, uint64_t guest_instr_count) {
+static inline void rr_set_prog_point(uint64_t pc, uint64_t secondary, uint64_t guest_instr_count) {
   rr_num_instr_before_next_interrupt -= (guest_instr_count - rr_prog_point.guest_instr_count);
   rr_prog_point.guest_instr_count = guest_instr_count;
-  rr_prog_point.eip = eip;
-  rr_prog_point.ecx = ecx;
+  rr_prog_point.pc = pc;
+  rr_prog_point.secondary = secondary;
 }
 
 //mz Routine that handles the situation when program points disagree during
@@ -322,7 +322,7 @@ static inline int rr_prog_point_compare(RR_prog_point current,
   else if (current.guest_instr_count == recorded.guest_instr_count) {
       // the two counts are the same.  
       // other things should agree.  else, we are in trouble
-      if (current.ecx == recorded.ecx) {
+      if (current.pc == recorded.pc && current.secondary == recorded.secondary) {
           return 0;
       }
       else {

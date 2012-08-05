@@ -57,7 +57,6 @@
 #include "trace.h"
 #endif
 
-// rr_log_all.h is included in cpu.h, but we want the target-specific header here
 #include "rr_log.h"
 
 //#define DEBUG_TB_INVALIDATE

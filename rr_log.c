@@ -130,10 +130,10 @@ int rr_hist_index = 0;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu eip=0x%08x, ecx=0x%08x}\n", 
-          (unsigned long long)pp.guest_instr_count,
-	  pp.eip,
-	  pp.ecx);
+    fprintf(fp, "{guest_instr_count=%llu pc=0x%08llx, secondary=0x%08llx}\n", 
+        (unsigned long long)pp.guest_instr_count,
+        (unsigned long long)pp.pc,
+        (unsigned long long)pp.secondary);
 }
 
 void rr_debug_log_prog_point(RR_prog_point pp) {
@@ -207,11 +207,11 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
       if (current.guest_instr_count != recorded.guest_instr_count) {
           printf(">>> guest instruction counts disagree\n");
       }
-      if (current.eip != recorded.eip) {
-          printf(">>> guest EIPs disagree\n");
+      if (current.pc != recorded.pc) {
+          printf(">>> guest PCs disagree\n");
       }
-      if (current.ecx != recorded.ecx) {
-          printf(">>> guest ECXs disagree\n");
+      if (current.secondary != recorded.secondary) {
+          printf(">>> guest secondary info disagrees\n");
       }
 }
 
@@ -233,7 +233,7 @@ inline void rr_assert_fail(const char *exp, const char *file, int line, const ch
     }
     fflush(logfile);
     // just abort
-    abort();
+    exit(1);
     rr_end_replay_requested = 1;
     //mz need to get out of cpu loop so that we can process the end_replay request
     //mz this will call cpu_loop_exit(), which longjmps
@@ -746,31 +746,17 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
         printf("Queue is empty, will return NULL\n");
         return NULL;
     }
-    //if(rr_prog_point.guest_instr_count >= 13072022000 && !logfile) {
-    //    cpu_set_log(CPU_LOG_TB_IN_ASM);
-    //}
 
     if (queue_head->header.kind != kind) {
-        //if(rr_prog_point.guest_instr_count >= 13072022000)
-        //    fprintf(logfile, "Getting next entry returns null because kind %s != requested %s\n", log_entry_kind_str[queue_head->header.kind], log_entry_kind_str[kind]);
         return NULL;
     }
 
     if (check_callsite && queue_head->header.callsite_loc != call_site) {
-        //if(rr_prog_point.guest_instr_count >= 13072022000)
-        //    fprintf(logfile, "Getting next entry returns null because log callsite %s != current %s\n", get_callsite_string(queue_head->header.callsite_loc), get_callsite_string(call_site));
         return NULL;
     }
 
     //mz rr_prog_point_compare will fail if we're ahead of the log
     if (rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point, kind) != 0) {
-        //if(rr_prog_point.guest_instr_count >= 13072022000) {
-        //    fprintf(logfile, "Getting next entry returns null because rr_prog_point_compare found: %s %s %s\n",
-        //        queue_head->header.prog_point.guest_instr_count != rr_prog_point.guest_instr_count ? "[instr_count mismatch]" : "",
-        //        queue_head->header.prog_point.eip != rr_prog_point.eip ? "[EIP mismatch]" : "",
-        //        queue_head->header.prog_point.ecx != rr_prog_point.ecx ? "[ECX mismatch]" : ""
-        //    );
-        //}
         return NULL;
     }
     //mz remove log entry from queue and return it.
@@ -803,8 +789,8 @@ void rr_replay_debug(RR_callsite_id call_site) {
     }
     else if (log_point.guest_instr_count == rr_prog_point.guest_instr_count) {
         // We think we're in the right place now, so let's do more stringent checks
-        rr_assert(log_point.ecx == rr_prog_point.ecx);
-        rr_assert(log_point.eip == rr_prog_point.eip);
+        rr_assert(log_point.secondary == rr_prog_point.secondary);
+        rr_assert(log_point.pc == rr_prog_point.pc);
         
         // We passed all these, so consume the log entry
         current_item = queue_head;
@@ -902,17 +888,6 @@ void rr_replay_interrupt_request(RR_callsite_id call_site, uint32_t *interrupt_r
         *interrupt_request = 0;
     }
     else {
-        //mz final sanity checks
-        if(current_item->header.callsite_loc != call_site) {
-            printf("Callsite match failed; %s != %s!\n", get_callsite_string(current_item->header.callsite_loc), get_callsite_string(call_site));
-            rr_signal_disagreement(current_item->header.prog_point, rr_prog_point);
-            rr_assert(current_item->header.callsite_loc == call_site);
-        }
-        if(current_item->header.prog_point.eip != rr_prog_point.eip) {
-            printf("EIP match failed; %#x != %#x!\n", current_item->header.prog_point.eip, rr_prog_point.eip);
-            rr_signal_disagreement(current_item->header.prog_point, rr_prog_point);
-            rr_assert(current_item->header.prog_point.eip != rr_prog_point.eip);
-        }
         *interrupt_request = current_item->variant.interrupt_request;
         //mz we've used the item
         add_to_recycle_list(current_item);
