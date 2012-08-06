@@ -12452,6 +12452,7 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
 
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
+            gen_op_update_rr_pc(ctx.pc);
             tb->num_guest_insns++;
         }
 
