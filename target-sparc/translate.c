@@ -5306,6 +5306,7 @@ static inline void gen_intermediate_code_internal(TranslationBlock * tb,
 
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
+            gen_op_update_rr_pc(dc->pc);
             tb->num_guest_insns++;
         }
 
