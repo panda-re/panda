@@ -467,10 +467,16 @@ int cpu_exec(CPUState *env)
                     }
 #elif defined(TARGET_SPARC)
                     if (interrupt_request & CPU_INTERRUPT_HARD) {
+                        // This appears to be set in device code
+                        rr_set_program_point();
+                        rr_skipped_callsite_location = RR_CALLSITE_SPARC_CPU_EXEC_1;
+                        rr_input_4((uint32_t *)&env->interrupt_index);
+
                         if (cpu_interrupts_enabled(env) &&
                             env->interrupt_index > 0) {
                             int pil = env->interrupt_index & 0xf;
                             int type = env->interrupt_index & 0xf0;
+                            qemu_log_mask(CPU_LOG_TB_IN_ASM, "[SPARC] Hardware int interrupt_index=%x\n", env->interrupt_index);
 
                             if (((type == TT_EXTINT) &&
                                   cpu_pil_allowed(env, pil)) ||
