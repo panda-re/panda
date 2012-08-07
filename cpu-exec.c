@@ -406,7 +406,7 @@ int cpu_exec(CPUState *env)
                                 /*action=*/intno = cpu_get_pic_interrupt(env),
                                 /*record=*/rr_input_4((uint32_t *)&intno),
                                 /*replay=*/rr_input_4((uint32_t *)&intno),
-                                /*location=*/RR_CALLSITE_CPU_EXEC_2);			    
+                                /*location=*/RR_CALLSITE_CPU_EXEC_2);
                             //mz servicing hardware interrupt
                             qemu_log_mask(CPU_LOG_TB_IN_ASM, "Servicing hardware INT=0x%02x\n", intno);
                             do_interrupt_x86_hardirq(env, intno, 1);
@@ -457,13 +457,21 @@ int cpu_exec(CPUState *env)
                         next_tb = 0;
                     }
 #elif defined(TARGET_MIPS)
-                    if ((interrupt_request & CPU_INTERRUPT_HARD) &&
-                        cpu_mips_hw_interrupts_pending(env)) {
-                        /* Raise it */
-                        env->exception_index = EXCP_EXT_INTERRUPT;
-                        env->error_code = 0;
-                        do_interrupt(env);
-                        next_tb = 0;
+                    if ((interrupt_request & CPU_INTERRUPT_HARD)) {
+                        int pending;
+                        RR_DO_RECORD_OR_REPLAY(
+                            /*action=*/pending = cpu_mips_hw_interrupts_pending(env),
+                            /*record=*/rr_input_4((uint32_t *)&pending),
+                            /*replay=*/rr_input_4((uint32_t *)&pending),
+                            /*location=*/RR_CALLSITE_MIPS_CPU_EXEC_1);
+                         
+                        if (pending) {
+                            /* Raise it */
+                            env->exception_index = EXCP_EXT_INTERRUPT;
+                            env->error_code = 0;
+                            do_interrupt(env);
+                            next_tb = 0;
+                        }
                     }
 #elif defined(TARGET_SPARC)
                     if (interrupt_request & CPU_INTERRUPT_HARD) {
