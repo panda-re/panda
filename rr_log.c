@@ -1197,7 +1197,7 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   g_free(rr_name_base);
   // set global to turn on recording
   rr_mode = RR_RECORD;
-  cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
+  //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
 }
 
 
@@ -1263,7 +1263,7 @@ void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   // set global to turn on replay
   rr_mode = RR_REPLAY;
 
-  cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
+  //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
 
   //mz fill the queue!
   rr_fill_queue();
