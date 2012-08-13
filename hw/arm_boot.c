@@ -15,7 +15,8 @@
 
 #define KERNEL_ARGS_ADDR 0x100
 #define KERNEL_LOAD_ADDR 0x00010000
-#define INITRD_LOAD_ADDR 0x00d00000
+//#define INITRD_LOAD_ADDR 0x00d00000
+#define INITRD_LOAD_ADDR 0x02000000
 
 /* The worlds second smallest bootloader.  Set r0-r2, then jump to kernel.  */
 static uint32_t bootloader[] = {
