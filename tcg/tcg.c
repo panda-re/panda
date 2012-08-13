@@ -22,6 +22,19 @@
  * THE SOFTWARE.
  */
 
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 /* define it to use liveness analysis (better code) */
 #define USE_LIVENESS_ANALYSIS
 #define USE_TCG_OPTIMIZATIONS
@@ -860,6 +873,12 @@ static TCGHelperInfo *tcg_find_helper(TCGContext *s, tcg_target_ulong val)
         }
     }
     return NULL;
+}
+
+const char *tcg_helper_get_name(TCGContext *s, void *func)
+{
+    TCGHelperInfo *info = tcg_find_helper(s, (tcg_target_ulong) func);
+    return info ? info->name : NULL;
 }
 
 static const char * const cond_name[] =

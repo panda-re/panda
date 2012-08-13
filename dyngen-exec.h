@@ -61,7 +61,11 @@
 #endif
 
 #if defined(AREG0)
+#ifndef CONFIG_LLVM
 register CPUState *env asm(AREG0);
+#else
+extern CPUState *env;
+#endif
 #else
 /* TODO: Try env = cpu_single_env. */
 extern CPUState *env;

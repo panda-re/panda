@@ -9979,7 +9979,11 @@ static inline void gen_intermediate_code_internal(CPUState *env,
             tb->num_guest_insns++;
         }
 
+#if defined(CONFIG_LLVM)
+        if (generate_llvm | unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
+#else
         if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
+#endif
             tcg_gen_debug_insn_start(dc->pc);
         }
 

@@ -532,7 +532,7 @@ static inline int lduw_be_p(const void *ptr)
                   : "m" (*(uint16_t *)ptr));
     return val;
 #else
-    const uint8_t *b = ptr;
+    const uint8_t *b = (uint8_t *)ptr;
     return ((b[0] << 8) | b[1]);
 #endif
 }
@@ -547,7 +547,7 @@ static inline int ldsw_be_p(const void *ptr)
                   : "m" (*(uint16_t *)ptr));
     return (int16_t)val;
 #else
-    const uint8_t *b = ptr;
+    const uint8_t *b = (uint8_t *)ptr;
     return (int16_t)((b[0] << 8) | b[1]);
 #endif
 }
@@ -562,7 +562,7 @@ static inline int ldl_be_p(const void *ptr)
                   : "m" (*(uint32_t *)ptr));
     return val;
 #else
-    const uint8_t *b = ptr;
+    const uint8_t *b = (uint8_t *)ptr;
     return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
 #endif
 }
@@ -583,7 +583,7 @@ static inline void stw_be_p(void *ptr, int v)
                   : "=q" (v)
                   : "m" (*(uint16_t *)ptr), "0" (v));
 #else
-    uint8_t *d = (uint8_t *) ptr;
+    uint8_t *d = (uint8_t *)ptr;
     d[0] = v >> 8;
     d[1] = v;
 #endif

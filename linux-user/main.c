@@ -16,6 +16,20 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -35,6 +49,12 @@
 #include "envlist.h"
 
 #define DEBUG_LOGFILE "/tmp/qemu.log"
+
+#ifdef CONFIG_LLVM
+#include <tcg-llvm.h>
+//extern int generate_llvm;
+//extern int execute_llvm;
+#endif
 
 char *exec_path;
 
@@ -3089,6 +3109,26 @@ static void handle_arg_version(const char *arg)
     exit(0);
 }
 
+#ifdef CONFIG_LLVM
+static void handle_execute_llvm(const char *arg)
+{
+    generate_llvm = 1;
+    execute_llvm = 1;
+}
+
+static void handle_generate_llvm(const char *arg)
+{
+    generate_llvm = 1;
+}
+
+#ifdef CONFIG_LLVM_TRACE
+static void handle_trace_llvm(const char *arg)
+{
+    trace_llvm = 1;
+}
+#endif
+#endif
+
 struct qemu_argument {
     const char *argv;
     const char *env;
@@ -3133,6 +3173,16 @@ struct qemu_argument arg_table[] = {
      "",           "log system calls"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
+#ifdef CONFIG_LLVM
+    {"llvm",       "QEMU_LLVM",        false, handle_execute_llvm,
+     "",        "execute code using LLVM JIT"},
+    {"generate-llvm", "QEMU_GEN_LLVM",        false, handle_generate_llvm,
+     "",        "translate code into LLVM but don't execute it"},
+#ifdef CONFIG_LLVM_TRACE
+    {"trace-llvm", "QEMU_TRACE_LLVM",  false, handle_trace_llvm,
+     "",        "deposit LLVM bitcode and trace files into /tmp"},
+#endif
+#endif
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -3516,6 +3566,10 @@ int main(int argc, char **argv, char **envp)
        generating the prologue until now so that the prologue can take
        the real value of GUEST_BASE into account.  */
     tcg_prologue_init(&tcg_ctx);
+#endif
+
+#ifdef CONFIG_LLVM
+    tcg_llvm_ctx = tcg_llvm_initialize();
 #endif
 
 #if defined(TARGET_I386)

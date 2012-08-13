@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,6 +46,10 @@
 #include "helper.h"
 #define GEN_HELPER 1
 #include "helper.h"
+
+#ifdef CONFIG_LLVM
+#include "tcg-llvm.h"
+#endif
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -4156,7 +4174,11 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
     target_ulong next_eip, tval;
     int rex_w, rex_r;
 
+#if defined(CONFIG_LLVM)
+    if (generate_llvm | unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
+#else
     if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
+#endif
         tcg_gen_debug_insn_start(pc_start);
     s->pc = pc_start;
     prefixes = 0;
@@ -8067,6 +8089,16 @@ void gen_intermediate_code_pc(CPUState *env, TranslationBlock *tb)
 void restore_state_to_opc(CPUState *env, TranslationBlock *tb, int pc_pos)
 {
     int cc_op;
+
+#ifdef CONFIG_LLVM
+#ifdef CONFIG_LLVM_TRACE
+    if (execute_llvm && trace_llvm){
+        //printf("FAULT\n"); //rwhelan - indicate this for dynamic log
+        printdynval(0xDEADBEEF, 0);
+    }
+#endif
+#endif
+
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_OP)) {
         int i;

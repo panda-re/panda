@@ -2598,6 +2598,18 @@ the @var{simple} tracing backend.
 @end table
 ETEXI
 
+#if defined(CONFIG_LLVM)
+DEF("llvm", 0, QEMU_OPTION_execute_llvm,
+    "-llvm           execute code using LLVM JIT\n", QEMU_ARCH_ALL)
+DEF("generate-llvm", 0, QEMU_OPTION_generate_llvm,
+    "-generate-llvm  translate code into LLVM but don't execute it\n", QEMU_ARCH_ALL)
+#ifdef CONFIG_LLVM_TRACE
+DEF("trace-llvm", 0, QEMU_OPTION_trace_llvm,
+    "-trace-llvm     deposit LLVM bitcode and trace files into /tmp\n",
+    QEMU_ARCH_ALL)
+#endif
+#endif
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table

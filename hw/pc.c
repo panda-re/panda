@@ -21,6 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "hw.h"
 #include "pc.h"
 #include "apic.h"
@@ -921,9 +935,15 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
+#ifdef CONFIG_LLVM
+extern CPUState *env;
+#endif
+
 static void pc_cpu_reset(void *opaque)
 {
+#ifndef CONFIG_LLVM
     CPUState *env = opaque;
+#endif
 
     cpu_reset(env);
     env->halted = !cpu_is_bsp(env);

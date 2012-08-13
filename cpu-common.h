@@ -88,12 +88,12 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
 static inline void cpu_physical_memory_read(target_phys_addr_t addr,
                                             void *buf, int len)
 {
-    cpu_physical_memory_rw(addr, buf, len, 0);
+    cpu_physical_memory_rw(addr, (uint8_t *)buf, len, 0);
 }
 static inline void cpu_physical_memory_write(target_phys_addr_t addr,
                                              const void *buf, int len)
 {
-    cpu_physical_memory_rw(addr, (void *)buf, len, 1);
+    cpu_physical_memory_rw(addr, (uint8_t *)buf, len, 1);
 }
 void *cpu_physical_memory_map(target_phys_addr_t addr,
                               target_phys_addr_t *plen,

@@ -21,6 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu-common.h"
 
 /* Target word size (must be identical to pointer size). */
@@ -299,7 +313,7 @@ static inline TCGCond tcg_swap_cond(TCGCond c)
 
 static inline TCGCond tcg_unsigned_cond(TCGCond c)
 {
-    return (c >= TCG_COND_LT && c <= TCG_COND_GT ? c + 4 : c);
+    return (TCGCond)(c >= TCG_COND_LT && c <= TCG_COND_GT ? c + 4 : c);
 }
 
 #define TEMP_VAL_DEAD  0

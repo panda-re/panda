@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #ifndef CPU_ALL_H
 #define CPU_ALL_H
 
@@ -450,6 +464,8 @@ void run_on_cpu(CPUState *env, void (*func)(void *data), void *data);
 //rw these are slightly different than before
 #define CPU_LOG_RR         (1 << 10)
 #define CPU_LOG_OPEN_FILE  (1 << 11)
+#define CPU_LOG_LLVM_IR    (1 << 12)
+#define CPU_LOG_LLVM_ASM   (1 << 13)
 
 /* define log items */
 typedef struct CPULogItem {

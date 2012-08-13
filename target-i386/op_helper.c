@@ -32,6 +32,10 @@
 #include "softmmu_exec.h"
 #endif /* !defined(CONFIG_USER_ONLY) */
 
+#ifdef CONFIG_LLVM
+struct CPUX86State *env = 0;
+#endif
+
 //#define DEBUG_PCALL
 
 #ifdef DEBUG_PCALL

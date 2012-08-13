@@ -1235,9 +1235,15 @@ int cpu_x86_get_descr_debug(CPUX86State *env, unsigned int selector,
     return 1;
 }
 
+#ifdef CONFIG_LLVM
+extern CPUX86State *env;
+#endif
+
 CPUX86State *cpu_x86_init(const char *cpu_model)
 {
+#ifndef CONFIG_LLVM
     CPUX86State *env;
+#endif
     static int inited;
 
     env = g_malloc0(sizeof(CPUX86State));

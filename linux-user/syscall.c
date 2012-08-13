@@ -100,6 +100,12 @@ int __clone2(int (*fn)(void *), void *child_stack_base,
 
 #include "qemu.h"
 
+#ifdef CONFIG_LLVM
+#include "tcg.h"
+#include "tcg-llvm.h"
+#include "linux-user-syscall.h"
+#endif
+
 #if defined(CONFIG_USE_NPTL)
 #define CLONE_NPTL_FLAGS2 (CLONE_SETTLS | \
     CLONE_PARENT_SETTID | CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID)
@@ -4673,6 +4679,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0)))
                 goto efault;
             ret = get_errno(read(arg1, p, arg3));
+#ifdef CONFIG_LLVM_TRACE
+            if (execute_llvm && trace_llvm){
+                inst_read(arg1, ret, p);
+            }
+#endif
             unlock_user(p, arg2, ret);
         }
         break;
@@ -4680,6 +4691,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user(VERIFY_READ, arg2, arg3, 1)))
             goto efault;
         ret = get_errno(write(arg1, p, arg3));
+#ifdef CONFIG_LLVM_TRACE
+        if (execute_llvm && trace_llvm){
+            inst_write(arg1, ret, p);
+        }
+#endif
         unlock_user(p, arg2, 0);
         break;
     case TARGET_NR_open:
@@ -4688,6 +4704,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         ret = get_errno(open(path(p),
                              target_to_host_bitmask(arg2, fcntl_flags_tbl),
                              arg3));
+#ifdef CONFIG_LLVM_TRACE
+        if (execute_llvm && trace_llvm){
+            inst_open(ret, p, target_to_host_bitmask(arg2, fcntl_flags_tbl));
+        }
+#endif
         unlock_user(p, arg1, 0);
         break;
 #if defined(TARGET_NR_openat) && defined(__NR_openat)
@@ -6396,6 +6417,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #ifdef TARGET_GPROF
         _mcleanup();
 #endif
+
+#ifdef CONFIG_LLVM
+        inst_exit_group();
+#endif
+
         gdb_exit(cpu_env, arg1);
         ret = get_errno(exit_group(arg1));
         break;

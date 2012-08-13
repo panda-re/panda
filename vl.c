@@ -21,6 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -164,6 +178,20 @@ int main(int argc, char **argv)
 #include "qemu-queue.h"
 #include "cpus.h"
 #include "arch_init.h"
+
+#ifdef CONFIG_LLVM
+struct TCGLLVMContext;
+
+extern struct TCGLLVMContext* tcg_llvm_ctx;
+extern int generate_llvm;
+extern int execute_llvm;
+extern const int has_llvm_engine;
+extern int trace_llvm;
+
+struct TCGLLVMContext* tcg_llvm_initialize(void);
+void tcg_llvm_close(struct TCGLLVMContext *l);
+void tcg_llvm_write_module(struct TCGLLVMContext *l);
+#endif
 
 #include "ui/qemu-spice.h"
 
@@ -558,6 +586,21 @@ static void configure_rtc(QemuOpts *opts)
         }
     }
 }
+
+#ifdef CONFIG_LLVM
+static void tcg_llvm_cleanup(void)
+{
+    if(tcg_llvm_ctx) {
+#ifdef CONFIG_LLVM_TRACE
+        if (execute_llvm && trace_llvm){
+            tcg_llvm_write_module(tcg_llvm_ctx);
+        }
+#endif
+        tcg_llvm_close(tcg_llvm_ctx);
+        tcg_llvm_ctx = NULL;
+    }
+}
+#endif
 
 /***********************************************************/
 /* Bluetooth support */
@@ -3104,6 +3147,29 @@ int main(int argc, char **argv, char **envp)
                     fclose(fp);
                     break;
                 }
+#if defined(CONFIG_LLVM)
+            case QEMU_OPTION_execute_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+                generate_llvm = 1;
+                execute_llvm = 1;
+                break;
+            case QEMU_OPTION_generate_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+
+                generate_llvm = 1;
+                break;
+#ifdef CONFIG_LLVM_TRACE
+            case QEMU_OPTION_trace_llvm:
+                trace_llvm = 1;
+                break;
+#endif
+#endif
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
@@ -3141,6 +3207,10 @@ int main(int argc, char **argv, char **envp)
         fprintf(stderr, "No machine found.\n");
         exit(1);
     }
+
+#if defined(CONFIG_LLVM)
+    tcg_llvm_ctx = tcg_llvm_initialize();
+#endif
 
     /*
      * Default to max_cpus = smp_cpus, in case the user doesn't
@@ -3547,6 +3617,10 @@ int main(int argc, char **argv, char **envp)
     pause_all_vcpus();
     net_cleanup();
     res_free();
+
+#ifdef CONFIG_LLVM
+    tcg_llvm_cleanup();
+#endif
 
     return 0;
 }

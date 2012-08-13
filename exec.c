@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010-2012, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "config.h"
 #ifdef _WIN32
 #include <windows.h>
@@ -58,6 +72,12 @@
 #endif
 
 #include "rr_log.h"
+
+#ifdef CONFIG_LLVM
+//#include "tcg-llvm.h"
+void tcg_llvm_tb_alloc(TranslationBlock *tb);
+void tcg_llvm_tb_free(struct TranslationBlock *tb);
+#endif
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -679,6 +699,11 @@ static TranslationBlock *tb_alloc(target_ulong pc)
     tb = &tbs[nb_tbs++];
     tb->pc = pc;
     tb->cflags = 0;
+
+#ifdef CONFIG_LLVM
+    tcg_llvm_tb_alloc(tb);
+#endif
+
     return tb;
 }
 
@@ -689,6 +714,11 @@ void tb_free(TranslationBlock *tb)
        be the last one generated.  */
     if (nb_tbs > 0 && tb == &tbs[nb_tbs - 1]) {
         code_gen_ptr = tb->tc_ptr;
+
+#if defined(CONFIG_LLVM)
+        tcg_llvm_tb_free(tb);
+#endif
+
         nb_tbs--;
     }
 }
@@ -746,6 +776,12 @@ void tb_flush(CPUState *env1)
 #endif
     if ((unsigned long)(code_gen_ptr - code_gen_buffer) > code_gen_buffer_size)
         cpu_abort(env1, "Internal error: code buffer overflow\n");
+
+#if defined(CONFIG_LLVM)
+    int i2;
+    for(i2 = 0; i2 < nb_tbs; ++i2)
+        tcg_llvm_tb_free(&tbs[i2]);
+#endif
 
     nb_tbs = 0;
 
@@ -866,6 +902,9 @@ static inline void tb_jmp_remove(TranslationBlock *tb, int n)
 static inline void tb_reset_jump(TranslationBlock *tb, int n)
 {
     tb_set_jmp_target(tb, n, (unsigned long)(tb->tc_ptr + tb->tb_next_offset[n]));
+#ifdef CONFIG_LLVM
+    tb->llvm_tb_next[n] = NULL;
+#endif
 }
 
 void tb_phys_invalidate(TranslationBlock *tb, tb_page_addr_t page_addr)
@@ -1335,6 +1374,21 @@ TranslationBlock *tb_find_pc(unsigned long tc_ptr)
 
     if (nb_tbs <= 0)
         return NULL;
+
+#if defined(CONFIG_LLVM)
+    if(execute_llvm) {
+        for(m=0; m<nb_tbs; m++) {
+            tb = &tbs[m];
+            if(tb->llvm_function) {
+                if(tc_ptr >= (uintptr_t) tb->llvm_tc_ptr &&
+                   tc_ptr <  (uintptr_t) tb->llvm_tc_end)
+                    return tb;
+            }
+        }
+        return NULL;
+    }
+#endif
+
     if (tc_ptr < (unsigned long)code_gen_buffer ||
         tc_ptr >= (unsigned long)code_gen_ptr)
         return NULL;
@@ -1768,6 +1822,12 @@ const CPULogItem cpu_log_items[] = {
       "record trace for rec/replay" },
     { CPU_LOG_OPEN_FILE, "open_file",
       "just open the log file" },
+#ifdef CONFIG_LLVM
+    { CPU_LOG_LLVM_IR, "llvm_ir",
+      "show generated LLVM IR code" },
+    { CPU_LOG_LLVM_ASM, "llvm_asm",
+      "show LLVM-generated assembly code" },
+#endif
     { 0, NULL, NULL },
 };
 

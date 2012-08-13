@@ -379,9 +379,15 @@ static int vfp_gdb_set_reg(CPUState *env, uint8_t *buf, int reg)
     return 0;
 }
 
+#ifdef CONFIG_LLVM
+extern CPUARMState *env;
+#endif
+
 CPUARMState *cpu_arm_init(const char *cpu_model)
 {
+#ifndef CONFIG_LLVM
     CPUARMState *env;
+#endif
     uint32_t id;
     static int inited = 0;
 

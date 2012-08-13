@@ -72,8 +72,10 @@ all: $(PROGS) stap
 
 #########################################################
 # cpu emulator library
+tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS) 
 libobj-y = exec.o translate-all.o cpu-exec.o translate.o rr_log.o
 libobj-y += tcg/tcg.o tcg/optimize.o
+libobj-$(CONFIG_LLVM) += tcg/tcg-llvm.o
 libobj-$(CONFIG_TCG_INTERPRETER) += tci.o
 libobj-y += fpu/softfloat.o
 libobj-y += op_helper.o helper.o
@@ -125,6 +127,10 @@ obj-y = main.o syscall.o strace.o mmap.o signal.o thunk.o \
       elfload.o linuxload.o uaccess.o gdbstub.o cpu-uname.o \
       user-exec.o $(oslib-obj-y)
 
+ifdef CONFIG_LLVM
+libobj-y += laredo/linux-user-syscall.o
+endif
+
 obj-$(TARGET_HAS_BFLT) += flatload.o
 
 obj-$(TARGET_I386) += vm86.o
@@ -142,6 +148,7 @@ $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y): $(GENERATED_HEADERS)
 
 obj-y += $(addprefix ../libuser/, $(user-obj-y))
 obj-y += $(addprefix ../libdis-user/, $(libdis-y))
+obj-y += $(llvminstobj-y)
 obj-y += $(libobj-y)
 
 endif #CONFIG_LINUX_USER
@@ -405,8 +412,55 @@ obj-y += $(addprefix ../libdis/, $(libdis-y))
 obj-y += $(libobj-y)
 obj-y += $(addprefix $(HWDIR)/, $(hw-obj-y))
 obj-y += $(addprefix ../, $(trace-obj-y))
+obj-y += $(llvminstobj-y)
 
 endif # CONFIG_SOFTMMU
+
+ifdef CONFIG_LLVM
+
+#########################################################
+# LLVM library
+
+# regular bitcode -- always generate
+llvm-y =
+
+# instrumented bitcode
+llvminst-y =
+
+# compiled bitcode
+llvminstobj-y =
+
+ifeq ($(TARGET_ARCH), i386)
+llvm-y += op_helper.bc1 cpuid.bc1
+#llvminstobj-y += op_helper.bc  <--- eventually
+
+endif
+
+ifeq ($(TARGET_ARCH), x86_64)
+llvm-y += op_helper.bc1 cpuid.bc1
+#llvminstobj-y += op_helper.bc  <--- eventually
+
+endif
+
+ifeq ($(TARGET_ARCH), arm)
+llvm-y += op_helper.bc1 laredo_op_helper.bc1
+
+ifdef CONFIG_LLVM_INSTR_HELPERS
+llvminst-y += laredo_op_helper.bc
+llvminstobj-y += laredo_op_helper.o
+endif
+
+endif
+
+$(llvm-y): %.bc1: %.c $(GENERATED_HEADERS)
+
+$(llvminst-y): %.bc: %.bc1
+
+$(llvminstobj-y): %.o: %.bc
+
+all: $(llvminstobj-y) $(llvminst-y) $(llvm-y)
+
+endif
 
 ifndef CONFIG_LINUX_USER
 ifndef CONFIG_BSD_USER
@@ -435,7 +489,7 @@ qmp-commands-old.h: $(SRC_PATH)/qmp-commands.hx
 
 clean:
 	rm -f *.o *.a *~ $(PROGS) nwfpe/*.o fpu/*.o
-	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o
+	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o laredo/*.o *.bc1 *.bc
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp

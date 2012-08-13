@@ -2,6 +2,14 @@
 #
 # qemu configure script (c) 2003 Fabrice Bellard
 #
+
+# The file was modified for S2E Selective Symbolic Execution Framework
+#
+# Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+#
+# Main authors: Vitaly Chipounov, Volodymyr Kuznetsov.
+# All contributors are listed in S2E-AUTHORS file.
+
 # set temporary file name
 if test ! -z "$TMPDIR" ; then
     TMPDIR1="${TMPDIR}"
@@ -12,6 +20,8 @@ else
 fi
 
 TMPC="${TMPDIR1}/qemu-conf-${RANDOM}-$$-${RANDOM}.c"
+TMPCXX="${TMPDIR1}/qemu-conf-${RANDOM}-$$-${RANDOM}.cpp"
+TMPASM="${TMPDIR1}/qemu-conf-${RANDOM}-$$-${RANDOM}.asm"
 TMPO="${TMPDIR1}/qemu-conf-${RANDOM}-$$-${RANDOM}.o"
 TMPE="${TMPDIR1}/qemu-conf-${RANDOM}-$$-${RANDOM}.exe"
 
@@ -28,8 +38,24 @@ compile_object() {
 compile_prog() {
   local_cflags="$1"
   local_ldflags="$2"
-  echo $cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
+  echo $cxx $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
   $cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log 2>&1
+}
+
+compile_prog_cxx() {
+  local_cxxflags="$1"
+  local_ldflags="$2"
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags > /dev/null 2> /dev/null
+}
+
+compile_object_cxx() {
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX >> config.log
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX > /dev/null 2> /dev/null
+}
+
+assemble_object_asm() {
+  $asm -o $TMPO $TMPASM >> config.log
+  $asm -o $TMPO $TMPASM > /dev/null 2> /dev/null
 }
 
 # symbolically link $1 to $2.  Portable version of "ln -sf".
@@ -81,6 +107,9 @@ interp_prefix="/usr/gnemul/qemu-%M"
 static="no"
 sparc_cpu=""
 cross_prefix=""
+cc="gcc"
+cxx="g++"
+asm="nasm"
 audio_drv_list=""
 audio_card_list="ac97 es1370 sb16 hda"
 audio_possible_cards="ac97 es1370 sb16 cs4231a adlib gus hda"
@@ -93,6 +122,9 @@ audio_pt_int=""
 audio_win_int=""
 cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
+llvm="no"
+llvm_trace="no"
+llvm_instr_helpers="no"
 
 target_list=""
 
@@ -193,13 +225,17 @@ for opt do
   case "$opt" in
   --cross-prefix=*) cross_prefix="$optarg"
   ;;
-  --cc=*) CC="$optarg"
+  --cc=*) cc="$optarg"
+  ;;
+  --cxx=*) cxx="$optarg"
   ;;
   --source-path=*) source_path="$optarg"
   ;;
   --cpu=*) cpu="$optarg"
   ;;
   --extra-cflags=*) QEMU_CFLAGS="$optarg $QEMU_CFLAGS"
+  ;;
+  --extra-cxxflags=*) QEMU_CXXFLAGS="$optarg $QEMU_CXXFLAGS"
   ;;
   --extra-ldflags=*) LDFLAGS="$optarg $LDFLAGS"
   ;;
@@ -237,6 +273,7 @@ sdl_config="${SDL_CONFIG-${cross_prefix}sdl-config}"
 # default flags for all hosts
 QEMU_CFLAGS="-fno-strict-aliasing $QEMU_CFLAGS"
 CFLAGS="-g $CFLAGS"
+CXXFLAGS="-g $CXXFLAGS"
 QEMU_CFLAGS="-Wall -Wundef -Wwrite-strings -Wmissing-prototypes $QEMU_CFLAGS"
 QEMU_CFLAGS="-Wstrict-prototypes -Wredundant-decls $QEMU_CFLAGS"
 QEMU_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $QEMU_CFLAGS"
@@ -350,6 +387,12 @@ else
   targetos=`uname -s`
 fi
 
+if [ "$cpu" = "i386" ]; then
+  QEMU_ASMFLAGS="-f elf32"
+elif [ "$cpu" = "x86_64" ] ; then
+  QEMU_ASMFLAGS="-f elf64"
+fi
+
 case $targetos in
 CYGWIN*)
   mingw32="yes"
@@ -401,10 +444,12 @@ Darwin)
   # on Leopard most of the system is 32-bit, so we have to ask the kernel it if we can
   # run 64-bit userspace code
   if [ "$cpu" = "i386" ] ; then
+    QEMU_ASMFLAGS="-f macho32"
     is_x86_64=`sysctl -n hw.optional.x86_64`
     [ "$is_x86_64" = "1" ] && cpu=x86_64
   fi
   if [ "$cpu" = "x86_64" ] ; then
+    QEMU_ASMFLAGS="-f macho64"
     QEMU_CFLAGS="-arch x86_64 $QEMU_CFLAGS"
     LDFLAGS="-arch x86_64 $LDFLAGS"
   else
@@ -528,6 +573,8 @@ for opt do
   ;;
   --cc=*)
   ;;
+  --cxx=*)
+  ;;
   --host-cc=*) host_cc="$optarg"
   ;;
   --make=*) make="$optarg"
@@ -539,6 +586,8 @@ for opt do
   --smbd=*) smbd="$optarg"
   ;;
   --extra-cflags=*)
+  ;;
+  --extra-cxxflags=*)
   ;;
   --extra-ldflags=*)
   ;;
@@ -583,6 +632,10 @@ for opt do
   --enable-sdl) sdl="yes"
   ;;
   --disable-vnc) vnc="no"
+  ;;
+  --disable-virtfs) virtfs="no"
+  ;;
+  --enable-virtfs) virtfs="yes"
   ;;
   --disable-virtfs) virtfs="no"
   ;;
@@ -664,6 +717,16 @@ for opt do
   --disable-bluez) bluez="no"
   ;;
   --enable-bluez) bluez="yes"
+  ;;
+  --enable-llvm) llvm="yes"
+  ;;
+  --with-llvm=*) llvmdir="$optarg"
+  ;;
+  --enable-llvm-trace) llvm_trace="yes"
+  ;;
+  --enable-instr-helpers) llvm_instr_helpers="yes"
+  ;;
+  --with-laredo=*) laredodir="$optarg"
   ;;
   --disable-kvm) kvm="no"
   ;;
@@ -966,9 +1029,11 @@ echo "Advanced options (experts only):"
 echo "  --source-path=PATH       path of source code [$source_path]"
 echo "  --cross-prefix=PREFIX    use PREFIX for compile tools [$cross_prefix]"
 echo "  --cc=CC                  use C compiler CC [$cc]"
+echo "  --cxx=CXX                use C++ compiler CXX [$cxx]"
 echo "  --host-cc=CC             use C compiler CC [$host_cc] for code run at"
 echo "                           build time"
 echo "  --extra-cflags=CFLAGS    append extra C compiler flags QEMU_CFLAGS"
+echo "  --extra-cxxflags=CXXFLAGS append extra CXX compiler flags QEMU_CXXFLAGS"
 echo "  --extra-ldflags=LDFLAGS  append extra linker flags LDFLAGS"
 echo "  --make=MAKE              use specified make [$make]"
 echo "  --install=INSTALL        use specified install [$install]"
@@ -1026,6 +1091,11 @@ echo "  --enable-check-utests    enable check unit-tests"
 echo "  --disable-bluez          disable bluez stack connectivity"
 echo "  --enable-bluez           enable bluez stack connectivity"
 echo "  --disable-slirp          disable SLIRP userspace network connectivity"
+echo "  --enable-llvm            enable LLVM support (for all targets)"
+echo "  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
+echo "  --enable-llvm-trace      enable LLVM tracing"
+echo "  --enable-instr-helpers   enable helpers instrumented with LLVM"
+echo "  --with-laredo=PATH       Laredo path (PATH/bin/ binaries must exist)"
 echo "  --disable-kvm            disable KVM acceleration support"
 echo "  --enable-kvm             enable KVM acceleration support"
 echo "  --enable-tcg-interpreter enable TCG with bytecode interpreter (TCI)"
@@ -2114,6 +2184,100 @@ EOF
   fi
 fi
 
+##########################################
+# asm support probe
+
+cat > $TMPASM <<EOF
+mov eax, 1
+EOF
+
+if assemble_object_asm ; then
+  :  assembler works ok
+else
+  echo "ERROR: \"$asm\" either does not exist or does not work"
+  exit 1
+fi
+
+##########################################
+# C++ support probe
+
+if test "$llvm" != "no" ; then
+
+# check that the CXX compiler works.
+cat > $TMPCXX <<EOF
+int main(void) {}
+EOF
+
+if compile_object_cxx ; then
+  : CXX compiler works ok
+else
+  echo "ERROR: \"$cxx\" (required for --enable-llvm) either does not exist or does not work"
+  exit 1
+fi
+
+fi
+
+##########################################
+# llvm support probe
+
+if test "$llvm" != "no" ; then
+  cat > $TMPCXX << EOF
+#include <llvm/LLVMContext.h>
+int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+EOF
+  if test "$llvmdir" != ""; then
+      llvm_config="$llvmdir/bin/llvm-config"
+  else
+      llvm_config="llvm-config"
+  fi
+  llvm_components="jit bitreader bitwriter ipo linker engine"
+  llvm_cxxflags=`$llvm_config $llvm_components --cflags 2> /dev/null`
+
+  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
+  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
+
+  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
+    : LLVM found
+  else
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  fi
+fi
+
+if test "$llvm" != "no" ; then
+  llvm="yes"
+  #These will be automatically added by klee and we don't want
+  #duplicated libs on the command line.
+  #if [ "x$s2e" != "xyes" ]; then
+    LIBS="$llvm_libs $LIBS $llvm_ldflags"
+  #fi
+  linker="$cxx"
+fi
+
+if test "$llvm" != "no" ; then
+  if [ -e "$llvmdir/bin/clang" ] ; then
+        clang=`cd $llvmdir/bin/ && find \`pwd\` -name clang`
+  fi
+  if [ -x "$clang" ]; then
+    : clang found
+  else
+    feature_not_found "clang (required to be built with LLVM)"
+    exit 1
+  fi
+fi
+
+if test "$llvm" != "no" -a "$llvm_trace" != "no" -a "$llvm_instr_helpers" != "no"; then
+  if [ -e "$laredodir/bin/laredo-helper-analyzer" ] ; then
+        laredo_helper_analyzer=`cd $laredodir/bin/ && find \`pwd\` -name laredo-helper-analyzer`
+  fi
+  if [ -x "$laredo_helper_analyzer" ]; then
+    : laredo_helper_analyzer found
+  else
+    feature_not_found "laredo-helper-analyzer (required for helper instrumentation)"
+    exit 1
+  fi
+fi
+
 #
 # Check for xxxat() functions when we are building linux-user
 # emulator.  This is done because older glibc versions don't
@@ -2786,9 +2950,12 @@ echo "ELF interp prefix $interp_prefix"
 fi
 echo "Source path       $source_path"
 echo "C compiler        $cc"
+echo "C++ compiler      $cxx"
 echo "Host C compiler   $host_cc"
 echo "CFLAGS            $CFLAGS"
+echo "CXXFLAGS          $CXXFLAGS"
 echo "QEMU_CFLAGS       $QEMU_CFLAGS"
+echo "QEMU_CXXFLAGS     $QEMU_CXXFLAGS"
 echo "LDFLAGS           $LDFLAGS"
 echo "make              $make"
 echo "install           $install"
@@ -2844,6 +3011,9 @@ echo "vde support       $vde"
 echo "Linux AIO support $linux_aio"
 echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
+echo "LLVM support      $llvm"
+echo "LLVM tracing      $llvm_trace"
+echo "LLVM helpers      $llvm_instr_helpers"
 echo "KVM support       $kvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
@@ -3106,6 +3276,27 @@ if test "$bluez" = "yes" ; then
   echo "BLUEZ_CFLAGS=$bluez_cflags" >> $config_host_mak
 fi
 echo "GLIB_CFLAGS=$glib_cflags" >> $config_host_mak
+
+if test "$llvm" = "yes" ; then
+  if test "$debug" = "yes" ; then
+     FILTERFLAGS="-O2 -O1 -O3 -fomit-frame-pointer"
+  fi
+
+  echo "LLVMCC:=$clang" >> $config_host_mak
+  echo "CONFIG_LLVM=y" >> $config_host_mak
+  echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
+
+  if test "$llvm_trace" = "yes" ; then
+    echo "CONFIG_LLVM_TRACE=y" >> $config_host_mak
+  fi
+
+  # llvm_instr_helpers also needs llvm_trace enabled
+  if test "$llvm_instr_helpers" = "yes" -a "$llvm_trace" = "yes" ; then
+    echo "LAREDOCC:=$laredo_helper_analyzer" >> $config_host_mak
+    echo "CONFIG_LLVM_INSTR_HELPERS=y" >> $config_host_mak
+  fi
+fi
+
 if test "$xen" = "yes" ; then
   echo "CONFIG_XEN_BACKEND=y" >> $config_host_mak
   echo "CONFIG_XEN_CTRL_INTERFACE_VERSION=$xen_ctrl_version" >> $config_host_mak
@@ -3257,6 +3448,9 @@ echo "INSTALL_PROG=$install -c -m 0755" >> $config_host_mak
 echo "PYTHON=$python" >> $config_host_mak
 echo "CC=$cc" >> $config_host_mak
 echo "CC_I386=$cc_i386" >> $config_host_mak
+echo "CXX=$cxx" >> $config_host_mak
+echo "ASM=$asm" >> $config_host_mak
+echo "LINKER=$linker" >> $config_host_mak
 echo "HOST_CC=$host_cc" >> $config_host_mak
 echo "AR=$ar" >> $config_host_mak
 echo "OBJCOPY=$objcopy" >> $config_host_mak
@@ -3264,7 +3458,11 @@ echo "LD=$ld" >> $config_host_mak
 echo "WINDRES=$windres" >> $config_host_mak
 echo "LIBTOOL=$libtool" >> $config_host_mak
 echo "CFLAGS=$CFLAGS" >> $config_host_mak
+echo "CXXFLAGS=$CXXFLAGS" >> $config_host_mak
+echo "QEMU_ASMFLAGS=$QEMU_ASMFLAGS" >> $config_host_mak
 echo "QEMU_CFLAGS=$QEMU_CFLAGS" >> $config_host_mak
+echo "QEMU_CCFLAGS=$QEMU_CCFLAGS" >> $config_host_mak
+echo "QEMU_CXXFLAGS=$QEMU_CXXFLAGS" >> $config_host_mak
 echo "QEMU_INCLUDES=$QEMU_INCLUDES" >> $config_host_mak
 if test "$sparse" = "yes" ; then
   echo "CC           := REAL_CC=\"\$(CC)\" cgcc"       >> $config_host_mak
@@ -3353,6 +3551,7 @@ mkdir -p $target_dir/fpu
 mkdir -p $target_dir/tcg
 mkdir -p $target_dir/ide
 mkdir -p $target_dir/9pfs
+mkdir -p $target_dir/laredo
 if test "$target" = "arm-linux-user" -o "$target" = "armeb-linux-user" -o "$target" = "arm-bsd-user" -o "$target" = "armeb-bsd-user" ; then
   mkdir -p $target_dir/nwfpe
 fi
@@ -3582,6 +3781,11 @@ if test "$smartcard_nss" = "yes" ; then
   echo "libcacard_libs=$libcacard_libs" >> $config_host_mak
   echo "libcacard_cflags=$libcacard_cflags" >> $config_host_mak
 fi
+
+if [ "$llvm" = "yes" ]; then
+   echo "LIBS:=$llvm_libs $llvm_ldflags \$(LIBS)" >> $config_target_mak
+fi
+
 list=""
 if test ! -z "$gdb_xml_files" ; then
   for x in $gdb_xml_files; do
@@ -3622,6 +3826,8 @@ else
   includes="-I\$(SRC_PATH)/tcg/\$(ARCH) $includes"
 fi
 includes="-I\$(SRC_PATH)/tcg $includes"
+
+includes="-I\$(SRC_PATH)/laredo $includes"
 
 if test "$target_user_only" = "yes" ; then
     libdis_config_mak=libdis-user/config.mak
@@ -3811,6 +4017,8 @@ for rom in seabios vgabios ; do
     echo "# Automatically generated by configure - do not modify" > $config_mak
     echo "SRC_PATH=$source_path/roms/$rom" >> $config_mak
     echo "CC=$cc" >> $config_mak
+    echo "CXX=$cxx" >> $config_mak
+    echo "LINKER=$linker" >> $config_mak
     echo "BCC=bcc" >> $config_mak
     echo "CPP=${cross_prefix}cpp" >> $config_mak
     echo "OBJCOPY=objcopy" >> $config_mak

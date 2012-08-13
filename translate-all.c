@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,6 +43,10 @@
 #include "disas.h"
 #include "tcg.h"
 #include "qemu-timer.h"
+
+#ifdef CONFIG_LLVM
+#include "tcg-llvm.h"
+#endif
 
 /* code generation context */
 TCGContext tcg_ctx;
@@ -89,6 +107,12 @@ int cpu_gen_code(CPUState *env, TranslationBlock *tb, int *gen_code_size_ptr)
 #endif
     gen_code_size = tcg_gen_code(s, gen_code_buf);
     *gen_code_size_ptr = gen_code_size;
+
+#if defined(CONFIG_LLVM)
+    if(generate_llvm)
+        tcg_llvm_gen_code(tcg_llvm_ctx, s, tb);
+#endif
+
 #ifdef CONFIG_PROFILER
     s->code_time += profile_getclock();
     s->code_in_len += tb->size;
@@ -102,6 +126,19 @@ int cpu_gen_code(CPUState *env, TranslationBlock *tb, int *gen_code_size_ptr)
         qemu_log("\n");
         qemu_log_flush();
     }
+
+#if defined(CONFIG_LLVM)
+    if(generate_llvm && qemu_loglevel_mask(CPU_LOG_LLVM_ASM)
+            && tb->llvm_tc_ptr) {
+        ptrdiff_t size = tb->llvm_tc_end - tb->llvm_tc_ptr;
+        qemu_log("OUT (LLVM ASM) [size=%ld] (%s)\n", size,
+                    tcg_llvm_get_func_name(tb));
+        log_disas((void*) tb->llvm_tc_ptr, size);
+        qemu_log("\n");
+        qemu_log_flush();
+    }
+#endif
+
 #endif
     return 0;
 }
@@ -132,6 +169,13 @@ int cpu_restore_state(TranslationBlock *tb,
         env->can_do_io = 0;
     }
 
+#if defined(CONFIG_LLVM)
+    if(execute_llvm) {
+        assert(tb->llvm_function != NULL);
+        j = tcg_llvm_search_last_pc(tb, searched_pc);
+    } else {
+#endif
+
     /* find opc index corresponding to search_pc */
     tc_ptr = (unsigned long)tb->tc_ptr;
     if (searched_pc < tc_ptr)
@@ -151,6 +195,11 @@ int cpu_restore_state(TranslationBlock *tb,
     /* now find start of instruction before */
     while (gen_opc_instr_start[j] == 0)
         j--;
+
+#ifdef CONFIG_LLVM
+    }
+#endif
+
     env->icount_decr.u16.low -= gen_opc_icount[j];
 
     restore_state_to_opc(env, tb, j);

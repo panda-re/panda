@@ -16,12 +16,37 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010-2012, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "config.h"
 #include "cpu.h"
 #include "disas.h"
 #include "tcg.h"
 #include "qemu-barrier.h"
 
+#if defined(CONFIG_LLVM)
+#include "tcg/tcg-llvm.h"
+const int has_llvm_engine = 1;
+#ifdef CONFIG_LLVM_TRACE
+extern FILE *funclog; //rwhelan: file for logging
+#endif
+#endif
+
+int generate_llvm = 0;
+int execute_llvm = 0;
+int trace_llvm = 0;
 
 // TRL 0810 record replay stuff 
 #include "rr_log.h"
@@ -75,6 +100,10 @@ static void cpu_exec_nocache(CPUState *env, int max_cycles,
 {
     unsigned long next_tb;
     TranslationBlock *tb;
+
+#if defined(CONFIG_LLVM)
+    assert(execute_llvm == 0);
+#endif
 
     /* Should never happen.
        We only end up here when an existing TB is too long.  */
@@ -740,6 +769,15 @@ int cpu_exec(CPUState *env)
                    infinite loop and becomes env->current_tb. Avoid
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
+
+#ifdef CONFIG_LLVM_TRACE
+                // rwhelan: open function log file
+                if (unlikely(!funclog && execute_llvm && trace_llvm)){
+                    funclog = fopen("/tmp/llvm-functions.log", "w");
+                    setbuf(funclog, NULL);
+                }
+#endif
+
                 barrier();
 
 #if 0
@@ -763,9 +801,10 @@ int cpu_exec(CPUState *env)
                           saved_exit_request, env->eflags, env->hflags, env->hflags2);
                 }
 
+#endif
+
                 // Debug!
                 //rr_debug();
-#endif
 
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;
@@ -773,9 +812,22 @@ int cpu_exec(CPUState *env)
                     rr_set_program_point();
                     //mz Actually jump into the generated code
                     /* execute the generated code */
-                    //uint64_t icount_before = GUEST_ICOUNT;
+
+#if defined(CONFIG_LLVM)
+
+#ifdef CONFIG_LLVM_TRACE
+                    if (execute_llvm && trace_llvm){
+                        fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+                    }
+#endif
+                    if(execute_llvm) {
+                        next_tb = tcg_llvm_qemu_tb_exec(env, tb);
+                    } else {
+                        next_tb = tcg_qemu_tb_exec(env, tc_ptr);
+                    }
+#else
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
-                    //if (GUEST_ICOUNT == icount_before) printf("We went through generated code at PC %#x (%d insns) without changing instruction count.\n", tb->pc, tb->num_guest_insns);
+#endif
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
                         int insns_left;
@@ -814,7 +866,6 @@ int cpu_exec(CPUState *env)
             env = cpu_single_env;
         }
     } /* for(;;) */
-
 
 #if defined(TARGET_I386)
     /* restore flags in standard format */
