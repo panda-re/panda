@@ -4174,12 +4174,6 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
     target_ulong next_eip, tval;
     int rex_w, rex_r;
 
-#if defined(CONFIG_LLVM)
-    if (generate_llvm | unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
-#else
-    if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
-#endif
-        tcg_gen_debug_insn_start(pc_start);
     s->pc = pc_start;
     prefixes = 0;
     aflag = s->code32;
@@ -7948,6 +7942,12 @@ static void gen_intermediate_code_internal(CPUState *env,
         saved_gen_opparam_ptr = gen_opparam_ptr;
         //mz TRY to generate code for this instruction
         if (setjmp(dc->end_translate_env) == 0) {
+#if defined(CONFIG_LLVM)
+            if (generate_llvm || unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
+#else
+            if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
+#endif
+                tcg_gen_debug_insn_start(pc_ptr);
             //mz let's count this instruction
             if (rr_mode != RR_OFF) {
                 gen_op_update_rr_icount();
