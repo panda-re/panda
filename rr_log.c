@@ -747,6 +747,18 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
         return NULL;
     }
 
+    if (kind != RR_INTERRUPT_REQUEST && kind != RR_SKIPPED_CALL) {
+        while (queue_head && queue_head->header.kind == RR_DEBUG) {
+            //printf("Removing RR_DEBUG because we are looking for %s\n", log_entry_kind_str[kind]);
+            current = queue_head;
+            queue_head = queue_head->next;
+            current->next = NULL;
+            if (current == queue_tail) {
+                queue_tail = NULL;
+            }
+        }
+    }
+
     if (queue_head->header.kind != kind) {
         return NULL;
     }
@@ -789,8 +801,8 @@ void rr_replay_debug(RR_callsite_id call_site) {
     }
     else if (log_point.guest_instr_count == rr_prog_point.guest_instr_count) {
         // We think we're in the right place now, so let's do more stringent checks
-        rr_assert(log_point.secondary == rr_prog_point.secondary);
-        rr_assert(log_point.pc == rr_prog_point.pc);
+        if (log_point.secondary != rr_prog_point.secondary || log_point.pc != rr_prog_point.pc)
+            rr_signal_disagreement(rr_prog_point, log_point);
         
         // We passed all these, so consume the log entry
         current_item = queue_head;
@@ -801,11 +813,22 @@ void rr_replay_debug(RR_callsite_id call_site) {
         }
 
         add_to_recycle_list(current_item);
+        printf("RR_DEBUG check passed: ");
+        rr_spit_prog_point(rr_prog_point);
     }
     else { // log_point.guest_instr_count > rr_prog_point.guest_instr_count
         // This shouldn't happen. We're ahead of the log.
-        rr_signal_disagreement(rr_prog_point, log_point);
-        abort();
+        //rr_signal_disagreement(rr_prog_point, log_point);
+        current_item = queue_head;
+        queue_head = queue_head->next;
+        current_item->next = NULL;
+        if (current_item == queue_tail) {
+            queue_tail = NULL;
+        }
+
+        add_to_recycle_list(current_item);
+
+        //abort();
     }
 }
 
