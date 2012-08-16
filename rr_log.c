@@ -1210,6 +1210,10 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   printf ("writing snapshot:\t%s\n", name_buf);
   do_savevm_aux(get_monitor(), name_buf);
   log_all_cpu_states();
+
+  // save the time so we can report how long record takes
+  time(&rr_start_time);
+
   // second, open non-deterministic input log for write. 
   rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
   printf ("opening nondet log for write :\t%s\n", name_buf);
@@ -1237,6 +1241,10 @@ void rr_do_end_record(void) {
     fprintf (logfile,"End vm record for name = %s\n", rr_name);
     printf ("End vm record for name = %s\n", rr_name);
   }
+
+  time_t rr_end_time;
+  time(&rr_end_time);
+  printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
   
   log_all_cpu_states();
 
