@@ -1193,6 +1193,8 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
   qmp_end_replay(&err);
 }
 
+static time_t rr_start_time;
+
 //mz file_name_full should be full path to desired record/replay log file
 void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   char name_buf[1024];
@@ -1256,8 +1258,6 @@ void rr_do_end_record(void) {
   // turn off logging
   rr_mode = RR_OFF;
 }
-
-static time_t rr_start_time;
 
 // file_name_full should be full path to the record/replay log
 void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
