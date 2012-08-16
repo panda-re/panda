@@ -1,5 +1,5 @@
 # TRL 2012 05 01 -- tell quiet-command to be a little noisier
-V=1
+#V=1
 
 # Don't use implicit rules or variables
 # we have explicit rules for everything

@@ -2,8 +2,16 @@
 #define __RR_LOG_H_
 
 /* Target-specific code for record and replay.
-   This is mostly code that relies on things like target_phys_addr_t and ram_addr_t
+   This is mostly code that relies on things like target_phys_addr_t and
+   ram_addr_t. Note that record/replay currently only works in whole-system
+   mode.
 */
+
+// Hack to enable QEMU user mode to compile
+#if !defined(CONFIG_SOFTMMU)
+typedef uint32_t target_phys_addr_t;
+typedef uint32_t ram_addr_t;
+#endif
 
 #include "rr_log_all.h"
 

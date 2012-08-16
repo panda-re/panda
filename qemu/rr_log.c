@@ -955,6 +955,7 @@ extern void cpu_physical_memory_unmap(void *buffer, uint32_t len, int is_write, 
 //XXX call_site parameter no longer used...
 //bdg 07.2012: Adding RR_SKIPPED_CALL_CPU_MEM_UNMAP
 void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
+#ifdef CONFIG_SOFTMMU
     uint8_t replay_done = 0;
     do {
         RR_log_entry *current_item = get_next_entry(RR_SKIPPED_CALL, call_site, false);
@@ -1012,6 +1013,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
             add_to_recycle_list(current_item);
         }
     } while ( ! replay_done);
+#endif
 }
 
 /******************************************************************************************/
@@ -1141,6 +1143,8 @@ static inline void rr_reset_state(void *cpu_state) {
 //
 // QMP commands
 
+#ifdef CONFIG_SOFTMMU
+
 #include "error.h"
 void qmp_begin_record(const char *file_name, Error **errp) {
   rr_record_requested = 1;
@@ -1193,11 +1197,14 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
   qmp_end_replay(&err);
 }
 
+#endif // CONFIG_SOFTMMU
+
 static time_t rr_start_time;
 
 //mz file_name_full should be full path to desired record/replay log file
 void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
-  char name_buf[1024];
+#ifdef CONFIG_SOFTMMU 
+ char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path_base = g_strdup(file_name_full);
   char *rr_name_base = g_strdup(file_name_full);
@@ -1227,10 +1234,12 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   // set global to turn on recording
   rr_mode = RR_RECORD;
   //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
+#endif
 }
 
 
-void rr_do_end_record(void) {  
+void rr_do_end_record(void) {
+#ifdef CONFIG_SOFTMMU
   //mz put in end-of-log marker
   rr_record_end_of_log();
 
@@ -1257,10 +1266,12 @@ void rr_do_end_record(void) {
 
   // turn off logging
   rr_mode = RR_OFF;
+#endif
 }
 
 // file_name_full should be full path to the record/replay log
 void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
+#ifdef CONFIG_SOFTMMU
   char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path = g_strdup(file_name_full);
@@ -1298,11 +1309,13 @@ void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 
   //mz fill the queue!
   rr_fill_queue();
+#endif
 }
 
 
 //mz XXX what about early replay termination? Can we save state and resume later?
 void rr_do_end_replay(int is_error) {
+#ifdef CONFIG_SOFTMMU
     // log is empty - we're done
     // dump cpu state at exit as a sanity check.   
     int i;
@@ -1381,6 +1394,7 @@ void rr_do_end_replay(int is_error) {
         qemu_system_shutdown_request();
 #endif
     }
+#endif // CONFIG_SOFTMMU
 }
 
 /**************************************************************************/

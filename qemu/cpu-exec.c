@@ -710,6 +710,7 @@ int cpu_exec(CPUState *env)
 
                 tb = tb_find_fast(env);
 
+#ifdef CONFIG_SOFTMMU
                 if (rr_mode == RR_REPLAY)
                 {
                     if (rr_num_instr_before_next_interrupt > 0 &&
@@ -728,6 +729,7 @@ int cpu_exec(CPUState *env)
                         //rr_spit_queue_head();
                     }
                 }
+#endif //CONFIG_SOFTMMU
 
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
