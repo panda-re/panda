@@ -434,8 +434,12 @@ llvminst-y =
 llvminstobj-y =
 
 ifeq ($(TARGET_ARCH), i386)
-llvm-y += op_helper.bc1 cpuid.bc1
-#llvminstobj-y += op_helper.bc  <--- eventually
+llvm-y += op_helper.bc1 cpuid.bc1 laredo_op_helper.bc1
+
+ifdef CONFIG_LLVM_INSTR_HELPERS
+llvminst-y += laredo_op_helper.bc
+llvminstobj-y += laredo_op_helper.o
+endif
 
 endif
 

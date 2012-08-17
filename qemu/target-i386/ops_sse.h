@@ -104,6 +104,7 @@ void glue(helper_psllw, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 void glue(helper_psrld, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -123,6 +124,7 @@ void glue(helper_psrld, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
+#endif
 
 void glue(helper_psrad, SUFFIX)(Reg *d, Reg *s)
 {
@@ -141,6 +143,7 @@ void glue(helper_psrad, SUFFIX)(Reg *d, Reg *s)
 #endif
 }
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -160,6 +163,7 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
+#endif
 
 void glue(helper_psrlq, SUFFIX)(Reg *d, Reg *s)
 {
@@ -358,7 +362,9 @@ static inline int satsw(int x)
 #define FAVG(a, b) ((a) + (b) + 1) >> 1
 #endif
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 SSE_HELPER_B(helper_paddb, FADD)
+#endif
 SSE_HELPER_W(helper_paddw, FADD)
 SSE_HELPER_L(helper_paddl, FADD)
 SSE_HELPER_Q(helper_paddq, FADD)
@@ -384,12 +390,17 @@ SSE_HELPER_B(helper_pmaxub, FMAXUB)
 SSE_HELPER_W(helper_pminsw, FMINSW)
 SSE_HELPER_W(helper_pmaxsw, FMAXSW)
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 SSE_HELPER_Q(helper_pand, FAND)
+#endif
 SSE_HELPER_Q(helper_pandn, FANDN)
 SSE_HELPER_Q(helper_por, FOR)
+
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 SSE_HELPER_Q(helper_pxor, FXOR)
 
 SSE_HELPER_B(helper_pcmpgtb, FCMPGTB)
+#endif
 SSE_HELPER_W(helper_pcmpgtw, FCMPGTW)
 SSE_HELPER_L(helper_pcmpgtl, FCMPGTL)
 
@@ -471,6 +482,7 @@ void glue(helper_maskmov, SUFFIX) (Reg *d, Reg *s, target_ulong a0)
     }
 }
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
 {
     d->L(0) = val;
@@ -479,6 +491,7 @@ void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
     d->Q(1) = 0;
 #endif
 }
+#endif
 
 #ifdef TARGET_X86_64
 void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
@@ -491,6 +504,8 @@ void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
 #endif
 
 #if SHIFT == 0
+
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 void glue(helper_pshufw, SUFFIX) (Reg *d, Reg *s, int order)
 {
     Reg r;
@@ -500,6 +515,8 @@ void glue(helper_pshufw, SUFFIX) (Reg *d, Reg *s, int order)
     r.W(3) = s->W((order >> 6) & 3);
     *d = r;
 }
+#endif
+
 #else
 void helper_shufps(Reg *d, Reg *s, int order)
 {
@@ -1181,7 +1198,10 @@ void glue(helper_punpck ## base_name ## qdq, SUFFIX) (Reg *d, Reg *s)  \
 }                                                               \
 )
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 UNPCK_OP(l, 0)
+#endif
+
 UNPCK_OP(h, 1)
 
 /* 3DNow! float ops */

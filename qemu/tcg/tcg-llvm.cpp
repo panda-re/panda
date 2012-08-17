@@ -812,22 +812,23 @@ inline void printloc(uintptr_t val){
         fprintf(memlog, "%d\n", CC_DST_REG);
     } else if (val == ((uintptr_t)env) + offsetof(CPUX86State, eip)){
         fprintf(memlog, "%d\n", EIP_REG);
-    } /*else if (val == ((size_t)cpu_single_env) + offsetof(CPUX86State,
-        cr[0])){ 
-        printf("reg cr0\n");
-    } else if (val == ((size_t)cpu_single_env) + offsetof(CPUX86State,
-        cr[1])){ 
-        printf("reg cr1\n");
-    } else if (val == ((size_t)cpu_single_env) + offsetof(CPUX86State,
-        cr[2])){ 
-        printf("reg cr2\n");
-    } else if (val == ((size_t)cpu_single_env) + offsetof(CPUX86State,
-        cr[3])){ 
-        printf("reg cr3\n");
-    } else if (val == ((size_t)cpu_single_env) + offsetof(CPUX86State,
-        cr[4])){ 
-        printf("reg cr4\n");
-    }*/
+    }
+
+    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
+            && (val < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
+                + sizeof(XMMReg) * CPU_NB_REGS))){
+        fprintf(memlog, "INSIDE XMM/MMX REGS\n");
+    }
+    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)))
+            && (val < (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)
+                + sizeof(XMMReg)))){
+        fprintf(memlog, "INSIDE XMM_T0\n");
+    }
+    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)))
+            && (val < (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)
+                + sizeof(MMXReg)))){
+        fprintf(memlog, "INSIDE MMX_T0\n");
+    }
 
     // exception occurred
     else if (val == 0xDEADBEEF){
