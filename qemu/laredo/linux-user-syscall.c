@@ -28,6 +28,7 @@ void inst_open(int ret, void *p, int flags){
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
                 && (strncmp(file, "/proc", 5) != 0)
+                && (strncmp(file, "/dev", 4) != 0)
                 && (strstr(file, "openssl.cnf") == 0)){
             printf("open %s for ", file);
             if ((flags & (O_RDONLY | O_WRONLY)) == O_RDONLY){
