@@ -6,20 +6,24 @@
 #define MAX_PANDA_PLUGINS 16
 
 typedef enum panda_cb_type {
-    PANDA_CB_BEFORE_BLOCK,
-    PANDA_CB_AFTER_BLOCK,
-    PANDA_CB_MEM_READ,
-    PANDA_CB_MEM_WRITE,
-    PANDA_CB_HD_READ,
-    PANDA_CB_HD_WRITE,
-    PANDA_CB_GUEST_HYPERCALL,
+    PANDA_CB_BEFORE_BLOCK,      // Before each basic block
+    PANDA_CB_AFTER_BLOCK,       // After each basic block
+    PANDA_CB_MEM_READ,          // Each memory read
+    PANDA_CB_MEM_WRITE,         // Each memory write
+    PANDA_CB_HD_READ,           // Each HDD read
+    PANDA_CB_HD_WRITE,          // Each HDD write
+    PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_LAST,
 } panda_cb_type;
 
+// Union of all possible callback function types
 typedef union panda_cb {
-    int (*guest_hypercall)(CPUState *env);
+    // PANDA_CB_BEFORE_BLOCK
     int (*before_block)(CPUState *env, TranslationBlock *tb);
+    // PANDA_CB_AFTER_BLOCK
     int (*after_block)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+    // PANDA_CB_GUEST_HYPERCALL
+    int (*guest_hypercall)(CPUState *env);
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner
@@ -31,16 +35,17 @@ struct _panda_cb_list {
     panda_cb_list *prev;
 };
 
+// Structure to store metadata about a plugin
 typedef struct panda_plugin {
-    char name[256];
-    void *plugin;
+    char name[256];     // Currently basename(filename)
+    void *plugin;       // Handle to the plugin (for use with dlsym())
 } panda_plugin;
 
-void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
-void panda_unregister_callbacks(void *plugin);
+void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void   panda_unregister_callbacks(void *plugin);
 void * panda_load_plugin(const char *filename);
 void * panda_get_plugin_by_name(const char *name);
-void panda_unload_plugin(void *plugin);
-void panda_unload_plugins(void);
+void   panda_unload_plugin(void *plugin);
+void   panda_unload_plugins(void);
 
 #endif

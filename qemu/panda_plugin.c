@@ -1,5 +1,6 @@
 #include "panda_plugin.h"
 #include <dlfcn.h>
+#include <string.h>
 
 // WARNING: this is all gloriously un-thread-safe
 
@@ -23,7 +24,7 @@ void * panda_load_plugin(const char *filename) {
     }
     if(init_fn(plugin)) {
         panda_plugins[nb_panda_plugins].plugin = plugin;
-        strncpy(panda_plugins[nb_panda_plugins].name, filename, 256);
+        strncpy(panda_plugins[nb_panda_plugins].name, basename(filename), 256);
         nb_panda_plugins++;
         return plugin;
     }
