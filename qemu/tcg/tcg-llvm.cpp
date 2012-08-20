@@ -1053,17 +1053,10 @@ inline void printloc(uintptr_t val){
         fprintf(memlog, "%d\n", CC_DST_REG);
     } else if (val == ((uintptr_t)env) + offsetof(CPUX86State, eip)){
         fprintf(memlog, "%d\n", EIP_REG);
-    }
-
-    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
+    } else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
             && (val < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
                 + (sizeof(XMMReg) * CPU_NB_REGS)))){
         // inside XMM regs
-        /*fprintf(memlog, "INSIDE XMM REGS at %d: size one %d, size all %d\n",
-            (val - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs))),
-            sizeof(XMMReg), sizeof(env->xmm_regs));*/
-        //uintptr_t xmm_start = (uintptr_t)env + offsetof(CPUX86State, xmm_regs);
-        
         // print the proper enum to be used by the trace analyzer
 
         // get FP register
@@ -1078,104 +1071,27 @@ inline void printloc(uintptr_t val){
         int xmmenum = XMMREGS_0_0 + xmmreg*16 + xmmoff;
 
         fprintf(memlog, "%d\n", xmmenum);
-        
-        //fprintf(memlog, "start of xmmregs enum is %d\n", XMMREGS_0_0);
-        
-        
-        //fprintf(memlog, "%lu\n", val - ((uintptr_t)env +
-        //    offsetof(CPUX86State, xmm_regs)) + XMMREGS_0_0);
 
-        /*if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[1])){
-            fprintf(memlog, "INSIDE XMM[0] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[0])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[2])){
-            fprintf(memlog, "INSIDE XMM[1] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[1])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[3])){
-            fprintf(memlog, "INSIDE XMM[2] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[2])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[4])){
-            fprintf(memlog, "INSIDE XMM[3] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[3])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[5])){
-            fprintf(memlog, "INSIDE XMM[4] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[4])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[6])){
-            fprintf(memlog, "INSIDE XMM[5] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[5])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[7])){
-            fprintf(memlog, "INSIDE XMM[6] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[6])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, xmm_regs[8])){
-            fprintf(memlog, "INSIDE XMM[7] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                xmm_regs[7])));
-            fprintf(memlog, "\n");
-        }*/
-        
-    }
-    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)))
+    } else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)))
             && (val < (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)
                 + sizeof(XMMReg)))){
         // inside xmm_t0
-
-
         // print the proper enum to be used by the trace analyzer
         fprintf(memlog, "%lu\n", val - ((uintptr_t)env +
             offsetof(CPUX86State, xmm_t0)) + XMM_T0_0);
 
-        //fprintf(memlog, "start of xmm_t0 enum is %d\n", XMM_T0_0);
-
-        /*fprintf(memlog, "INSIDE XMM_T0 at %d: size %d\n",
-            (val - ((uintptr_t)env + offsetof(CPUX86State, xmm_t0))),
-            sizeof(env->xmm_t0));*/
-    }
-    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)))
+    } else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)))
             && (val < (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)
                 + sizeof(MMXReg)))){
         // inside mmx_t0
- 
-        
         // print the proper enum to be used by the trace analyzer
         fprintf(memlog, "%lu\n", val - ((uintptr_t)env +
             offsetof(CPUX86State, mmx_t0)) + MMX_T0_0);
-        
-        //fprintf(memlog, "start of mmx_t0 enum is %d\n", MMX_T0_0);
-        
-        /*fprintf(memlog, "INSIDE MMX_T0 at %d: size %d\n",
-            (val - ((uintptr_t)env + offsetof(CPUX86State, mmx_t0))),
-            sizeof(env->mmx_t0));*/
-    }
-    else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs)))
+
+    } else if ((val >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs)))
             && (val < (((uintptr_t)env) + offsetof(CPUX86State, fpregs)
                 + (sizeof(FPReg) * 8)))){
         // inside FP regs
-        /*fprintf(memlog, "INSIDE FP REGS at %d: size one %d, size all %d\n",
-            (val - ((uintptr_t)env + offsetof(CPUX86State, fpregs))),
-            sizeof(FPReg), sizeof(env->fpregs));*/
-        
-        
         // print the proper enum as seen above to be used by the trace analyzer
 
         // get FP register
@@ -1190,59 +1106,6 @@ inline void printloc(uintptr_t val){
         int fpenum = FPREGS_0_0 + fpreg*10 + fpoff;
 
         fprintf(memlog, "%d\n", fpenum);
-        
-        
-        /*fprintf(memlog, "start of fpregs enum is %d\n", FPREGS_0_0);
-        
-        if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[1])){
-            fprintf(memlog, "INSIDE FP[0] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[0])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[2])){
-            fprintf(memlog, "INSIDE FP[1] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[1])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[3])){
-            fprintf(memlog, "INSIDE FP[2] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[2])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[4])){
-            fprintf(memlog, "INSIDE FP[3] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[3])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[5])){
-            fprintf(memlog, "INSIDE FP[4] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[4])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[6])){
-            fprintf(memlog, "INSIDE FP[5] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[5])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[7])){
-            fprintf(memlog, "INSIDE FP[6] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[6])));
-            fprintf(memlog, "\n");
-        }
-        else if (val < (uintptr_t)env + offsetof(CPUX86State, fpregs[8])){
-            fprintf(memlog, "INSIDE FP[7] at offset ");
-            fprintf(memlog, "%lu", val - ((uintptr_t)env + offsetof(CPUX86State,
-                fpregs[7])));
-            fprintf(memlog, "\n");
-        }*/
-
     }
 
     // exception occurred
