@@ -28,6 +28,9 @@
 #include "cpu-defs.h"
 #include "helper.h"
 
+#include "panda_plugin.h"
+extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
+
 #if !defined(CONFIG_USER_ONLY)
 #include "softmmu_exec.h"
 #endif /* !defined(CONFIG_USER_ONLY) */
@@ -2110,6 +2113,12 @@ void helper_cpuid(void)
     uint32_t eax, ebx, ecx, edx;
 
     helper_svm_check_intercept_param(SVM_EXIT_CPUID, 0);
+
+    // PANDA instrumentation: guest hypercall
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL; plist = plist->next) {
+        plist->entry.guest_hypercall(env);
+    }
 
     cpu_x86_cpuid(env, (uint32_t)EAX, (uint32_t)ECX, &eax, &ebx, &ecx, &edx);
     EAX = eax;
