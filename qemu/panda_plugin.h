@@ -3,6 +3,8 @@
 
 #include "cpu.h"
 
+#define MAX_PANDA_PLUGINS 16
+
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK,
     PANDA_CB_AFTER_BLOCK,
@@ -20,15 +22,25 @@ typedef union panda_cb {
     int (*after_block)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
 } panda_cb;
 
+// Doubly linked list that stores a callback, along with its owner
 typedef struct _panda_cb_list panda_cb_list;
-
 struct _panda_cb_list {
     panda_cb entry;
+    void *owner;
     panda_cb_list *next;
+    panda_cb_list *prev;
 };
 
-void register_panda_callback(panda_cb_type type, panda_cb cb);
-void * load_panda_plugin(const char *filename);
-void unload_panda_plugin(void *plugin);
+typedef struct panda_plugin {
+    char name[256];
+    void *plugin;
+} panda_plugin;
+
+void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void panda_unregister_callbacks(void *plugin);
+void * panda_load_plugin(const char *filename);
+void * panda_get_plugin_by_name(const char *name);
+void panda_unload_plugin(void *plugin);
+void panda_unload_plugins(void);
 
 #endif

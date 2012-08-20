@@ -10,8 +10,8 @@
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
 int before_block_callback(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
-bool init_plugin(void);
-void uninit_plugin(void);
+bool init_plugin(void *);
+void uninit_plugin(void *);
 
 FILE *plugin_log;
 
@@ -48,22 +48,22 @@ int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *
     return 1;
 }
 
-bool init_plugin(void) {
+bool init_plugin(void *self) {
     panda_cb pcb;
 
     pcb.guest_hypercall = guest_hypercall_callback;
-    register_panda_callback(PANDA_CB_GUEST_HYPERCALL, pcb);
+    panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
     pcb.after_block = after_block_callback;
-    register_panda_callback(PANDA_CB_AFTER_BLOCK, pcb);
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK, pcb);
     pcb.before_block = before_block_callback;
-    register_panda_callback(PANDA_CB_BEFORE_BLOCK, pcb);
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK, pcb);
 
     plugin_log = fopen("sample_tblog.txt", "w");    
     if(!plugin_log) return false;
     else return true;
 }
 
-void uninit_plugin(void) {
+void uninit_plugin(void *self) {
     printf("Unloading sample plugin.\n");
     fclose(plugin_log);
 }
