@@ -188,6 +188,8 @@ extern int execute_llvm;
 extern const int has_llvm_engine;
 extern int trace_llvm;
 
+extern bool load_panda_plugin(const char *);
+
 struct TCGLLVMContext* tcg_llvm_initialize(void);
 void tcg_llvm_close(struct TCGLLVMContext *l);
 void tcg_llvm_write_module(struct TCGLLVMContext *l);
@@ -3169,6 +3171,10 @@ int main(int argc, char **argv, char **envp)
                 trace_llvm = 1;
                 break;
 #endif
+            case QEMU_OPTION_panda_plugin:
+                if(!load_panda_plugin(optarg))
+                    fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
+                break;
 #endif
             default:
                 os_parse_cmd_args(popt->index, optarg);

@@ -52,6 +52,9 @@ int trace_llvm = 0;
 #include "rr_log.h"
 #include <signal.h>
 
+#include "panda_plugin.h"
+extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
+
 //mz need this here because CPU_LOG_RR constant is not available in rr_log.[ch]
 int is_cpu_log_rr_set(void) {
     return (loglevel & CPU_LOG_RR);
@@ -815,6 +818,12 @@ int cpu_exec(CPUState *env)
                     //mz Actually jump into the generated code
                     /* execute the generated code */
 
+                    // PANDA instrumentation: guest hypercall
+                    panda_cb_list *plist;
+                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK]; plist != NULL; plist = plist->next) {
+                        plist->entry.before_block(env, tb);
+                    }
+
 #if defined(CONFIG_LLVM)
 
 #ifdef CONFIG_LLVM_TRACE
@@ -830,6 +839,11 @@ int cpu_exec(CPUState *env)
 #else
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
 #endif
+
+                    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK]; plist != NULL; plist = plist->next) {
+                        plist->entry.after_block(env, tb, (TranslationBlock *)(next_tb & ~3));
+                    }
+
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
                         int insns_left;

@@ -3,6 +3,7 @@
 #./configure --target-list=i386-softmmu,i386-linux-user,\
 #arm-linux-user,x86_64-linux-user,x86_64-softmmu \
 ./configure --target-list=x86_64-softmmu,i386-linux-user,arm-linux-user \
+--disable-pie \
 --enable-llvm \
 --with-llvm=../llvm-3.0/Release+Debug+Asserts \
 --enable-llvm-trace \

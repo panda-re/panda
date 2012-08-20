@@ -2610,6 +2610,10 @@ DEF("trace-llvm", 0, QEMU_OPTION_trace_llvm,
 #endif
 #endif
 
+DEF("panda-plugin", HAS_ARG, QEMU_OPTION_panda_plugin,
+    "-panda-plugin <file>\n"
+    "                load PANDA plugin from <file>\n", QEMU_ARCH_ALL)
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table
