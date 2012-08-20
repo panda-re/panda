@@ -28,6 +28,7 @@ struct _panda_cb_list {
 };
 
 void register_panda_callback(panda_cb_type type, panda_cb cb);
-bool load_panda_plugin(const char *filename);
+void * load_panda_plugin(const char *filename);
+void unload_panda_plugin(void *plugin);
 
 #endif

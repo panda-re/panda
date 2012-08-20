@@ -188,7 +188,10 @@ extern int execute_llvm;
 extern const int has_llvm_engine;
 extern int trace_llvm;
 
-extern bool load_panda_plugin(const char *);
+extern void * load_panda_plugin(const char *);
+extern void unload_panda_plugin(void *);
+extern void *panda_plugins[16];
+extern int nb_panda_plugins;
 
 struct TCGLLVMContext* tcg_llvm_initialize(void);
 void tcg_llvm_close(struct TCGLLVMContext *l);
@@ -3172,8 +3175,14 @@ int main(int argc, char **argv, char **envp)
                 break;
 #endif
             case QEMU_OPTION_panda_plugin:
-                if(!load_panda_plugin(optarg))
-                    fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
+                {
+                    void *phandle;
+                    if(!(phandle = load_panda_plugin(optarg))) {
+                        fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
+                    }
+                    panda_plugins[nb_panda_plugins] = phandle;
+                    nb_panda_plugins++;
+                }
                 break;
 #endif
             default:
@@ -3619,6 +3628,13 @@ int main(int argc, char **argv, char **envp)
     //mz 05.2012 it looks like quit_timers() gets registered using atexit(),
     //so we don't need to quit them manually anymore
     
+    if(nb_panda_plugins) {
+        int i;
+        for (i = 0; i < nb_panda_plugins; i++) {
+            unload_panda_plugin(panda_plugins[i]);
+        }
+    }
+
     bdrv_close_all();
     pause_all_vcpus();
     net_cleanup();
