@@ -1,4 +1,10 @@
 #include "panda_plugin.h"
+#include "qemu-common.h"
+#include "qdict.h"
+#include "qmp-commands.h"
+#include "hmp.h"
+#include "error.h"
+
 #include <dlfcn.h>
 #include <string.h>
 
@@ -10,31 +16,40 @@ panda_cb_list *panda_cbs[PANDA_CB_LAST];
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 int nb_panda_plugins;
 
-void * panda_load_plugin(const char *filename) {
+bool panda_load_plugin(const char *filename) {
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
-        return NULL;
+        return false;
     }
     bool (*init_fn)(void *) = dlsym(plugin, "init_plugin");
     if(!init_fn) {
         fprintf(stderr, "Couldn't get symbol %s: %s\n", "init_plugin", dlerror());
         dlclose(plugin);
-        return NULL;
+        return false;
     }
     if(init_fn(plugin)) {
         panda_plugins[nb_panda_plugins].plugin = plugin;
         strncpy(panda_plugins[nb_panda_plugins].name, basename(filename), 256);
         nb_panda_plugins++;
-        return plugin;
+        return true;
     }
     else {
         dlclose(plugin);
-        return NULL;
+        return false;
     }
 }
 
-void panda_unload_plugin(void *plugin) {
+// Internal: remove a plugin from the global array
+static void panda_delete_plugin(int i) {
+    if (i != nb_panda_plugins - 1) { // not the last element
+        memmove(&panda_plugins[i], &panda_plugins[i+1], (nb_panda_plugins - i - 1)*sizeof(panda_plugin));
+    }
+    nb_panda_plugins--;
+}
+
+void panda_unload_plugin(int plugin_idx) {
+    void *plugin = panda_plugins[plugin_idx].plugin;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
     if(!uninit_fn) {
         fprintf(stderr, "Couldn't get symbol %s: %s\n", "uninit_plugin", dlerror());
@@ -43,15 +58,7 @@ void panda_unload_plugin(void *plugin) {
         uninit_fn(plugin);
     }
     panda_unregister_callbacks(plugin);
-
-    // Find it in the plugin list and remove it, shifting everything else down
-    int i;
-    for (i = 0; i < nb_panda_plugins; i++) if (panda_plugins[i].plugin == plugin) break;
-    if (i != nb_panda_plugins) { // not the last element
-        memmove(&panda_plugins[i], &panda_plugins[i+1], (nb_panda_plugins - i - 1)*sizeof(panda_plugin));
-    }
-    nb_panda_plugins--;
-
+    panda_delete_plugin(plugin_idx);
     dlclose(plugin);
 }
 
@@ -59,7 +66,7 @@ void panda_unload_plugins(void) {
     // Unload them starting from the end to avoid having to shuffle everything
     // down each time
     while (nb_panda_plugins > 0) {
-        panda_unload_plugin(panda_plugins[nb_panda_plugins-1].plugin);
+        panda_unload_plugin(nb_panda_plugins - 1);
     }
 }
 
@@ -108,4 +115,46 @@ void panda_unregister_callbacks(void *plugin) {
             }
         }
     }
+}
+
+// QMP
+
+void qmp_load_plugin(const char *filename, Error **errp) {
+    if(!panda_load_plugin(filename)) {
+        // TODO: do something with errp here?
+    }
+}
+
+void qmp_unload_plugin(int64_t index, Error **errp) {
+    if (index >= nb_panda_plugins || index < 0) {
+        // TODO: errp
+    }
+    panda_unload_plugin(index);
+}
+
+void qmp_list_plugins(Error **errp) {
+    
+}
+
+// HMP
+void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict) {
+    Error *err;
+    const char *filename = qdict_get_try_str(qdict, "filename");
+    qmp_load_plugin(filename, &err);
+}
+
+void hmp_panda_unload_plugin(Monitor *mon, const QDict *qdict) {
+    Error *err;
+    const int index = qdict_get_try_int(qdict, "index", -1);
+    qmp_unload_plugin(index, &err);
+}
+
+void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
+    Error *err;
+    int i;
+    monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
+    for (i = 0; i < nb_panda_plugins; i++) {
+        monitor_printf(mon, "%d\t%-20s\t%p\n", i, panda_plugins[i].name, panda_plugins[i].plugin);
+    }
+    qmp_list_plugins(&err);
 }

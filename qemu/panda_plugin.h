@@ -43,9 +43,9 @@ typedef struct panda_plugin {
 
 void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
-void * panda_load_plugin(const char *filename);
+bool   panda_load_plugin(const char *filename);
 void * panda_get_plugin_by_name(const char *name);
-void   panda_unload_plugin(void *plugin);
+void   panda_unload_plugin(int index);
 void   panda_unload_plugins(void);
 
 #endif

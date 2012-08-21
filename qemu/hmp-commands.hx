@@ -1406,3 +1406,27 @@ ETEXI
     },
 
 
+    {
+        .name       = "load_plugin",
+        .args_type  = "filename:F",
+        .params     = "filename",
+        .help       = "load a PANDA plugin",
+        .mhandler.cmd = hmp_panda_load_plugin,
+    },
+
+    {
+        .name       = "unload_plugin",
+        .args_type  = "index:i",
+        .params     = "index",
+        .help       = "unload a PANDA plugin",
+        .mhandler.cmd = hmp_panda_unload_plugin,
+    },
+    
+    {
+        .name       = "list_plugins",
+        .args_type  = "",
+        .params     = "",
+        .help       = "list loaded PANDA plugins",
+        .mhandler.cmd = hmp_panda_list_plugins,
+    },
+

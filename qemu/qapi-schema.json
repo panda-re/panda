@@ -924,4 +924,29 @@
 ##
 { 'command': 'end_replay' } 
 
+##
+# @load_plugin
+#
+# Loads a PANDA plugin
+# 
+# BDG 20120821
+##
+{ 'command': 'load_plugin', 'data': { 'filename': 'str' } }
 
+##
+# @unload_plugin
+#
+# Unloads a PANDA plugin
+# 
+# BDG 20120821
+##
+{ 'command': 'unload_plugin', 'data': { 'index': 'int' } }
+
+##
+# @list_plugins
+#
+# List loaded PANDA plugins
+# 
+# BDG 20120821
+##
+{ 'command': 'list_plugins' }

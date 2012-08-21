@@ -190,7 +190,7 @@ extern int trace_llvm;
 
 // PANDA: externed here because we don't want to pull in the target-specific
 // pieces of QEMU
-extern void * panda_load_plugin(const char *);
+extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
 
 struct TCGLLVMContext* tcg_llvm_initialize(void);
