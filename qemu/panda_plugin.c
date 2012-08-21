@@ -117,6 +117,8 @@ void panda_unregister_callbacks(void *plugin) {
     }
 }
 
+#ifdef CONFIG_SOFTMMU
+
 // QMP
 
 void qmp_load_plugin(const char *filename, Error **errp) {
@@ -158,3 +160,5 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     }
     qmp_list_plugins(&err);
 }
+
+#endif // CONFIG_SOFTMMU
