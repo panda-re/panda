@@ -790,8 +790,10 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 /* XMM and MMX registers can be accessed at offsets inside of them, so log the
  * specific byte accessed for these registers.  XMM registers are 16 bytes.
  * Floating point registers are 10 bytes.  XMM_T0 and MMX_T0 don't correspond to
- * actual hardware, but they are a part of the CPUState.  There will probably be
- * an opportunity to clean this up once this is a runtime system.
+ * actual hardware, but they are a part of the CPUState.
+ * 
+ * XXX: There will probably be an opportunity to clean this up once this is a
+ * runtime system.
  */
 enum {
     XMM_T0_0 = 12,
@@ -1059,10 +1061,10 @@ inline void printloc(uintptr_t val){
         // inside XMM regs
         // print the proper enum to be used by the trace analyzer
 
-        // get FP register
+        // get XMM register
         int xmmreg =
-            (int)((val - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0]))) 
-            / sizeof(XMMReg));
+            floor(((val - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0])))
+            / sizeof(XMMReg)));
         // get offset within register
         int xmmoff =
             (val - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0]))) %
@@ -1096,8 +1098,8 @@ inline void printloc(uintptr_t val){
 
         // get FP register
         int fpreg =
-            (int)((val - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) /
-            sizeof(FPReg));
+            floor(((val - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) /
+            sizeof(FPReg)));
         // get offset within register
         int fpoff =
             (val - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) %
@@ -1110,13 +1112,11 @@ inline void printloc(uintptr_t val){
 
     // exception occurred
     else if (val == 0xDEADBEEF){
-        //printf("deadbeef\n");
         fprintf(memlog, "%lu\n", val);
     }
 
     else {
         fprintf(memlog, "-1\n");
-        //printf("0x%lx\n", val);
     }
 }
 #endif //TARGET_I386
