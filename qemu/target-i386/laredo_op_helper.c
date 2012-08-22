@@ -324,3 +324,13 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 
 #endif
 
+void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
+{
+    Reg r;
+    r.L(0) = s->L(order & 3);
+    r.L(1) = s->L((order >> 2) & 3);
+    r.L(2) = s->L((order >> 4) & 3);
+    r.L(3) = s->L((order >> 6) & 3);
+    *d = r;
+}
+

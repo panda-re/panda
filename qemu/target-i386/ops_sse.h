@@ -536,6 +536,7 @@ void helper_shufpd(Reg *d, Reg *s, int order)
     *d = r;
 }
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS) || defined(TARGET_X86_64)
 void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
 {
     Reg r;
@@ -545,6 +546,7 @@ void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
     r.L(3) = s->L((order >> 6) & 3);
     *d = r;
 }
+#endif
 
 void glue(helper_pshuflw, SUFFIX) (Reg *d, Reg *s, int order)
 {
