@@ -818,7 +818,7 @@ int cpu_exec(CPUState *env)
                     //mz Actually jump into the generated code
                     /* execute the generated code */
 
-                    // PANDA instrumentation: guest hypercall
+                    // PANDA instrumentation: before basic block 
                     panda_cb_list *plist;
                     for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK]; plist != NULL; plist = plist->next) {
                         plist->entry.before_block(env, tb);

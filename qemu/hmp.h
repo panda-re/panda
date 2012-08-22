@@ -48,5 +48,6 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict);
 void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict);
 void hmp_panda_unload_plugin(Monitor *mon, const QDict *qdict);
 void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict);
+void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict);
 
 #endif

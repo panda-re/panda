@@ -950,3 +950,12 @@
 # BDG 20120821
 ##
 { 'command': 'list_plugins' }
+
+##
+# @plugin_cmd
+#
+# Send a command to a loaded PANDA plugin
+# 
+# BDG 20120822
+##
+{ 'command': 'plugin_cmd', 'data': { 'cmd': 'str' } }

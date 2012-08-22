@@ -13,6 +13,7 @@ ifneq ($(HWDIR),)
 include $(HWDIR)/config.mak
 endif
 include ../config.replay
+include ../panda_plugins/config.panda
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)
@@ -38,9 +39,10 @@ ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_ARCH2)$(EXESUF)
 endif
 
-PANDA_PLUGINS=panda_sample.so
+PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
+PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
-PROGS=$(QEMU_PROG) $(RR_PRINT_PROG) $(PANDA_PLUGINS)
+PROGS=$(QEMU_PROG) $(RR_PRINT_PROG)
 STPFILES=
 
 ifndef CONFIG_HAIKU
@@ -70,7 +72,9 @@ else
 stap:
 endif
 
-all: $(PROGS) stap
+
+
+all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap
 
 # Dummy command so that make thinks it has done something
 	@true
@@ -81,7 +85,6 @@ tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
 libobj-y = exec.o translate-all.o cpu-exec.o translate.o
 libobj-y += rr_log.o
 libobj-y += panda_plugin.o
-libobj-y += panda_plugins/sample.o
 libobj-y += tcg/tcg.o tcg/optimize.o
 libobj-$(CONFIG_LLVM) += tcg/tcg-llvm.o
 libobj-$(CONFIG_TCG_INTERPRETER) += tci.o
@@ -490,9 +493,10 @@ $(QEMU_PROG): $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y)
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
-$(PANDA_PLUGINS): panda_plugins/sample.o
-	$(call quiet-command,$(CC) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
+plugin-%:
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C ../panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
 
+TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"  GEN   $(TARGET_DIR)$@")
 

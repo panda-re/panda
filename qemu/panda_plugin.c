@@ -138,6 +138,10 @@ void qmp_list_plugins(Error **errp) {
     
 }
 
+void qmp_plugin_cmd(const char * cmd, Error **errp) {
+    
+}
+
 // HMP
 void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict) {
     Error *err;
@@ -159,6 +163,14 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
         monitor_printf(mon, "%d\t%-20s\t%p\n", i, panda_plugins[i].name, panda_plugins[i].plugin);
     }
     qmp_list_plugins(&err);
+}
+
+void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
+    panda_cb_list *plist;
+    const char *cmd = qdict_get_try_str(qdict, "cmd");
+    for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = plist->next) {
+        plist->entry.monitor(mon, cmd);
+    }
 }
 
 #endif // CONFIG_SOFTMMU

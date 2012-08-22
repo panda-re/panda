@@ -13,6 +13,7 @@ typedef enum panda_cb_type {
     PANDA_CB_HD_READ,           // Each HDD read
     PANDA_CB_HD_WRITE,          // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
+    PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -24,6 +25,8 @@ typedef union panda_cb {
     int (*after_block)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
     // PANDA_CB_GUEST_HYPERCALL
     int (*guest_hypercall)(CPUState *env);
+    // PANDA_CB_MONITOR
+    int (*monitor)(Monitor *mon, const char *cmd);
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner

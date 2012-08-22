@@ -1430,3 +1430,11 @@ ETEXI
         .mhandler.cmd = hmp_panda_list_plugins,
     },
 
+    {
+        .name       = "plugin_cmd",
+        .args_type  = "cmd:s",
+        .params     = "cmd",
+        .help       = "send a command to a PANDA plugin",
+        .mhandler.cmd = hmp_panda_plugin_cmd,
+    },
+        
