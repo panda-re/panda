@@ -703,15 +703,22 @@ int cpu_exec(CPUState *env)
 #endif
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
+
+                if(panda_flush_tb()) {
+                    tb_flush(env);
+                    tb_invalidated_flag = 1;
+                }
+
                 spin_lock(&tb_lock);
 
+                tb = tb_find_fast(env);
+
                 qemu_log_mask(CPU_LOG_TB_IN_ASM, 
-			      "Prog point: {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
+			      "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
+                  tb->pc,
 			      (unsigned long long)rr_prog_point.guest_instr_count, 
                   (unsigned long long)rr_prog_point.pc,
                   (unsigned long long)rr_prog_point.secondary);
-
-                tb = tb_find_fast(env);
 
 #ifdef CONFIG_SOFTMMU
                 if (rr_mode == RR_REPLAY)

@@ -3174,11 +3174,11 @@ int main(int argc, char **argv, char **envp)
                 trace_llvm = 1;
                 break;
 #endif
+#endif
             case QEMU_OPTION_panda_plugin:
                 if(!panda_load_plugin(optarg))
                     fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
                 break;
-#endif
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }

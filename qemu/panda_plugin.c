@@ -16,6 +16,8 @@ panda_cb_list *panda_cbs[PANDA_CB_LAST];
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 int nb_panda_plugins;
 
+bool panda_please_flush_tb = false;
+
 bool panda_load_plugin(const char *filename) {
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
@@ -115,6 +117,18 @@ void panda_unregister_callbacks(void *plugin) {
             }
         }
     }
+}
+
+bool panda_flush_tb(void) {
+    if(panda_please_flush_tb) {
+        panda_please_flush_tb = false;
+        return true;
+    }
+    else return false;
+}
+
+void panda_do_flush_tb(void) {
+    panda_please_flush_tb = true;
 }
 
 #ifdef CONFIG_SOFTMMU

@@ -709,6 +709,7 @@ static TranslationBlock *tb_alloc(target_ulong pc)
 
 void tb_free(TranslationBlock *tb)
 {
+    printf("Calling tb_free on TB %p PC=0x" TARGET_FMT_lx "\n", tb, tb->pc);
     /* In practice this is mostly used for single use temporary TB
        Ignore the hard cases and just back up if this TB happens to
        be the last one generated.  */

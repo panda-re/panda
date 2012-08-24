@@ -1,1 +1,1 @@
-PANDA_PLUGINS = sample sample2
+PANDA_PLUGINS = sample taintcap
