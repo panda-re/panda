@@ -2,6 +2,7 @@
 #include "qemu-common.h"
 #include "monitor.h"
 #include "cpu.h"
+#include "disas.h"
 
 #include "panda_plugin.h"
 
@@ -73,6 +74,18 @@ int monitor_callback(Monitor *mon, const char *cmd) {
     return 1;
 }
 
+// We're going to log all user instructions
+bool translate_callback(CPUState *env, target_ulong pc) {
+    // We have access to env here, so we could choose to
+    // read the bytes and do something fancy with the insn
+    return pc < 0x80000000;
+}
+
+int exec_callback(CPUState *env, target_ulong pc) {
+    printf("User insn 0x" TARGET_FMT_lx " executed.\n", pc);
+    return 1;
+}
+
 bool init_plugin(void *self) {
     panda_cb pcb;
 
@@ -84,6 +97,10 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK, pcb);
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
+    pcb.insn_translate = translate_callback;
+    panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
+    pcb.insn_exec = exec_callback;
+    panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
 
     plugin_log = fopen("sample_tblog.txt", "w");    
     if(!plugin_log) return false;

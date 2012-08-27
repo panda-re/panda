@@ -95,6 +95,9 @@ static uint8_t gen_opc_cc_op[OPC_BUF_SIZE];
 
 #include "gen-icount.h"
 
+#include "panda_plugin.h"
+extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
+
 #ifdef TARGET_X86_64
 static int x86_64_hregs;
 #endif
@@ -7942,6 +7945,8 @@ static void gen_intermediate_code_internal(CPUState *env,
         saved_gen_opparam_ptr = gen_opparam_ptr;
         //mz TRY to generate code for this instruction
         if (setjmp(dc->end_translate_env) == 0) {
+            // Note: this *needs* to be here, as LLVM wants to know where each
+            // instruction is
 #if defined(CONFIG_LLVM)
             if (generate_llvm || unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
 #else
@@ -7952,6 +7957,20 @@ static void gen_intermediate_code_internal(CPUState *env,
             if (rr_mode != RR_OFF) {
                 gen_op_update_rr_icount();
             }
+
+            // PANDA: ask if anyone wants execution notification
+            bool panda_exec_cb = false;
+            panda_cb_list *plist;
+            for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = plist->next) {
+                panda_exec_cb |= plist->entry.insn_translate(env, pc_ptr);
+            }
+
+            // PANDA: Insert the instrumentation
+            if (unlikely(panda_exec_cb)) {
+                gen_helper_panda_insn_exec(tcg_const_tl(pc_ptr));
+            }
+
+            
             //mz generate micro-ops for this instruction
             pc_ptr = disas_insn(dc, pc_ptr);
             tb->num_guest_insns++;

@@ -1,5 +1,7 @@
 #include "def-helper.h"
 
+#include "panda_helper_defs.h"
+
 DEF_HELPER_FLAGS_1(cc_compute_all, TCG_CALL_PURE, i32, int)
 DEF_HELPER_FLAGS_1(cc_compute_c, TCG_CALL_PURE, i32, int)
 

@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-int before_block_callback(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -32,12 +30,12 @@ int guest_hypercall_callback(CPUState *env) {
             
             fprintf(funclog, "label " TARGET_FMT_lu " " TARGET_FMT_lu "\n", 
                 buf_start, buf_len);
-            printf("label " TARGET_FMT_lu " " TARGET_FMT_lu "\n", 
+            printf("label " TARGET_FMT_lx " " TARGET_FMT_lu "\n", 
                 buf_start, buf_len);
 
             execute_llvm = 1;
             generate_llvm = 1;
-            trace_llvm = 1;
+//            trace_llvm = 1;
             
             // Need this because existing TBs do not contain LLVM code
             panda_do_flush_tb();
@@ -48,13 +46,11 @@ int guest_hypercall_callback(CPUState *env) {
 
             fprintf(funclog, "query " TARGET_FMT_lu " " TARGET_FMT_lu "\n", 
                 buf_start, buf_len);
-            printf("query " TARGET_FMT_lu " " TARGET_FMT_lu "\n", 
+            printf("query " TARGET_FMT_lx " " TARGET_FMT_lu "\n", 
                 buf_start, buf_len);
-
-            fclose(funclog);
             execute_llvm = 0;
             generate_llvm = 0;
-            trace_llvm = 0;
+//            trace_llvm = 0;
         }
     }
 #endif
@@ -96,9 +92,9 @@ bool init_plugin(void *self) {
     //panda_register_callback(self, PANDA_CB_MONITOR, pcb);
 
     return true;
-
 }
 
 void uninit_plugin(void *self) {
+    fclose(funclog);
     printf("Unloading taintcap plugin.\n");
 }

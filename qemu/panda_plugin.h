@@ -8,8 +8,8 @@
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK,      // Before each basic block
     PANDA_CB_AFTER_BLOCK,       // After each basic block
-    PANDA_CB_BEFORE_INSN,       // Before each instruction
-    PANDA_CB_AFTER_INSN,        // After each instruction
+    PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
+    PANDA_CB_INSN_EXEC,         // Before an insn is executed
     PANDA_CB_MEM_READ,          // Each memory read
     PANDA_CB_MEM_WRITE,         // Each memory write
     PANDA_CB_HD_READ,           // Each HDD read
@@ -25,10 +25,10 @@ typedef union panda_cb {
     int (*before_block)(CPUState *env, TranslationBlock *tb);
     // PANDA_CB_AFTER_BLOCK
     int (*after_block)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-    // PANDA_CB_BEFORE_INSN
-    int (*before_insn)(CPUState *env);
-    // PANDA_CB_AFTER_INSN
-    int (*after_insn)(CPUState *env);
+    // PANDA_CB_INSN_EXEC
+    int (*insn_exec)(CPUState *env, target_ulong pc);
+    // PANDA_CB_INSN_TRANSLATE
+    bool (*insn_translate)(CPUState *env, target_ulong pc);
     // PANDA_CB_GUEST_HYPERCALL
     int (*guest_hypercall)(CPUState *env);
     // PANDA_CB_MONITOR

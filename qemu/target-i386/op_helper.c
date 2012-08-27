@@ -39,6 +39,8 @@ extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 struct CPUX86State *env = 0;
 #endif
 
+#include "panda_helper_impl.h"
+
 //#define DEBUG_PCALL
 
 #ifdef DEBUG_PCALL
