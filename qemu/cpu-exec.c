@@ -134,6 +134,7 @@ static TranslationBlock *tb_find_slow(CPUState *env,
                                       target_ulong cs_base,
                                       uint64_t flags)
 {
+    panda_cb_list *plist;
     TranslationBlock *tb, **ptb1;
     unsigned int h;
     tb_page_addr_t phys_pc, phys_page1;
@@ -171,7 +172,16 @@ static TranslationBlock *tb_find_slow(CPUState *env,
     }
  not_found:
    /* if no translated code available, then translate it now */
+
+    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_TRANSLATE]; plist != NULL; plist = plist->next) {
+        plist->entry.before_block_translate(env, pc);
+    }
+
     tb = tb_gen_code(env, pc, cs_base, flags, 0);
+
+    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_TRANSLATE]; plist != NULL; plist = plist->next) {
+        plist->entry.after_block_translate(env, tb);
+    }
 
  found:
     /* Move the last found TB to the head of the list */
@@ -720,26 +730,22 @@ int cpu_exec(CPUState *env)
                   (unsigned long long)rr_prog_point.pc,
                   (unsigned long long)rr_prog_point.secondary);
 
-#ifdef CONFIG_SOFTMMU
-                if (rr_mode == RR_REPLAY)
-                {
-                    if (rr_num_instr_before_next_interrupt > 0 &&
-                        tb->num_guest_insns > rr_num_instr_before_next_interrupt) {
-                        //int before = tb->num_guest_insns;
-                        //mz invalidate current TB and retranslate
-                        //printf("invalidating single TB: %llu -> %llu\n", 
-                        //    tb->num_guest_insns, rr_num_instr_before_next_interrupt);
-                        invalidate_single_tb(env, tb->pc);
-                        //mz try again.
-                        tb = tb_find_fast(env);
-                        //if (tb->num_guest_insns != before)
-                        //    printf("Successfully reduced TB size from %d to %d (%d insns until next interrupt)\n",
-                        //        before, tb->num_guest_insns, rr_num_instr_before_next_interrupt);
-                        //printf("after retranslation TB is %llu insns\n", tb->num_guest_insns);
-                        //rr_spit_queue_head();
-                    }
+                // PANDA instrumentation: before basic block 
+                panda_cb_list *plist;
+                bool panda_invalidate_tb = false;
+                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
+                    panda_invalidate_tb |= plist->entry.before_block_exec(env, tb);
                 }
-#endif //CONFIG_SOFTMMU
+
+#ifdef CONFIG_SOFTMMU
+                if (panda_invalidate_tb ||
+                    (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
+                        tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
+                    //mz invalidate current TB and retranslate
+                    invalidate_single_tb(env, tb->pc);
+                    //mz try again.
+                    tb = tb_find_fast(env);
+                }
 
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
@@ -750,6 +756,8 @@ int cpu_exec(CPUState *env)
                     next_tb = 0;
                     tb_invalidated_flag = 0;
                 }
+#endif //CONFIG_SOFTMMU
+
 #ifdef CONFIG_DEBUG_EXEC
                 qemu_log_mask(CPU_LOG_EXEC, "Trace 0x%08lx [" TARGET_FMT_lx "] %s\n",
                              (long)tb->tc_ptr, tb->pc,
@@ -825,12 +833,6 @@ int cpu_exec(CPUState *env)
                     //mz Actually jump into the generated code
                     /* execute the generated code */
 
-                    // PANDA instrumentation: before basic block 
-                    panda_cb_list *plist;
-                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK]; plist != NULL; plist = plist->next) {
-                        plist->entry.before_block(env, tb);
-                    }
-
 #if defined(CONFIG_LLVM)
 
 #ifdef CONFIG_LLVM_TRACE
@@ -847,8 +849,8 @@ int cpu_exec(CPUState *env)
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
 #endif
 
-                    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK]; plist != NULL; plist = plist->next) {
-                        plist->entry.after_block(env, tb, (TranslationBlock *)(next_tb & ~3));
+                    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
+                        plist->entry.after_block_exec(env, tb, (TranslationBlock *)(next_tb & ~3));
                     }
 
                     if ((next_tb & 3) == 2) {

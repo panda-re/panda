@@ -10,8 +10,12 @@
 #include <stdlib.h>
 
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-int before_block_callback(CPUState *env, TranslationBlock *tb);
+bool before_block_callback(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
+bool translate_callback(CPUState *env, target_ulong pc);
+int exec_callback(CPUState *env, target_ulong pc);
+int monitor_callback(Monitor *mon, const char *cmd);
+
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
@@ -24,7 +28,7 @@ int guest_hypercall_callback(CPUState *env) {
     return 1;
 }
 
-int before_block_callback(CPUState *env, TranslationBlock *tb) {
+bool before_block_callback(CPUState *env, TranslationBlock *tb) {
     fprintf(plugin_log, "Next TB: " TARGET_FMT_lx 
 #ifdef TARGET_I386
         ", CR3=" TARGET_FMT_lx
@@ -91,10 +95,10 @@ bool init_plugin(void *self) {
 
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
-    pcb.after_block = after_block_callback;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK, pcb);
-    pcb.before_block = before_block_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK, pcb);
+    pcb.after_block_exec = after_block_callback;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    pcb.before_block_exec = before_block_callback;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.monitor = monitor_callback;
     panda_register_callback(self, PANDA_CB_MONITOR, pcb);
     pcb.insn_translate = translate_callback;

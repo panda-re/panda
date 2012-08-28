@@ -6,8 +6,10 @@
 #define MAX_PANDA_PLUGINS 16
 
 typedef enum panda_cb_type {
-    PANDA_CB_BEFORE_BLOCK,      // Before each basic block
-    PANDA_CB_AFTER_BLOCK,       // After each basic block
+    PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
+    PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
+    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block (may trigger retranslation)
+    PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
     PANDA_CB_MEM_READ,          // Each memory read
@@ -21,10 +23,14 @@ typedef enum panda_cb_type {
 
 // Union of all possible callback function types
 typedef union panda_cb {
-    // PANDA_CB_BEFORE_BLOCK
-    int (*before_block)(CPUState *env, TranslationBlock *tb);
-    // PANDA_CB_AFTER_BLOCK
-    int (*after_block)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+    // PANDA_CB_BEFORE_BLOCK_EXEC
+    bool (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    // PANDA_CB_AFTER_BLOCK_EXEC
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+    // PANDA_CB_BEFORE_BLOCK_TRANSLATE
+    int (*before_block_translate)(CPUState *env, target_ulong pc);
+    // PANDA_CB_AFTER_BLOCK_TRANSLATE
+    int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
     // PANDA_CB_INSN_EXEC
     int (*insn_exec)(CPUState *env, target_ulong pc);
     // PANDA_CB_INSN_TRANSLATE
