@@ -38,7 +38,7 @@ bool before_block_callback(CPUState *env, TranslationBlock *tb) {
         env->cr[3],
 #endif
         "");
-    return 1;
+    return false;
 }
 
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
