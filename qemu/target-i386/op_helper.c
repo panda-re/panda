@@ -5026,8 +5026,29 @@ void helper_boundl(target_ulong a0, int v)
 
 #define SHIFT 3
 #include "softmmu_template.h"
+#undef MMUSUFFIX
 
+// rwhelan: functions that only we call in generated code that perform logging
+#if defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
+#define MMUSUFFIX _mmu_laredo
+#define MMU_INSTR
+
+#define SHIFT 0
+#include "softmmu_template.h"
+
+#define SHIFT 1
+#include "softmmu_template.h"
+
+#define SHIFT 2
+#include "softmmu_template.h"
+
+#define SHIFT 3
+#include "softmmu_template.h"
+
+#undef MMU_INSTR
 #endif
+
+#endif // CONFIG_USER_ONLY
 
 #if !defined(CONFIG_USER_ONLY)
 /* try to fill the TLB and return an exception if error. If retaddr is

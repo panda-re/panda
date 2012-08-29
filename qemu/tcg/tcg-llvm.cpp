@@ -49,6 +49,42 @@ extern "C" {
 
 #include "../../softmmu_defs.h"
 
+// FIXME for other architectures
+// these functions perform logging of dynamic values
+#if defined(TARGET_I386) && defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
+static void *qemu_ld_helpers[5] = {
+    (void*) __ldb_mmu_laredo,
+    (void*) __ldw_mmu_laredo,
+    (void*) __ldl_mmu_laredo,
+    (void*) __ldq_mmu_laredo,
+    (void*) __ldq_mmu_laredo,
+};
+
+static void *qemu_st_helpers[5] = {
+    (void*) __stb_mmu_laredo,
+    (void*) __stw_mmu_laredo,
+    (void*) __stl_mmu_laredo,
+    (void*) __stq_mmu_laredo,
+    (void*) __stq_mmu_laredo,
+};
+
+static char *qemu_ld_helper_names[5] = {
+    (char*)"__ldb_mmu_laredo",
+    (char*)"__ldw_mmu_laredo",
+    (char*)"__ldl_mmu_laredo",
+    (char*)"__ldq_mmu_laredo",
+    (char*)"__ldq_mmu_laredo",
+};
+
+static char *qemu_st_helper_names[5] = {
+    (char*)"__stb_mmu_laredo",
+    (char*)"__stw_mmu_laredo",
+    (char*)"__stl_mmu_laredo",
+    (char*)"__stq_mmu_laredo",
+    (char*)"__stq_mmu_laredo",
+};
+
+#else
 static void *qemu_ld_helpers[5] = {
     (void*) __ldb_mmu,
     (void*) __ldw_mmu,
@@ -64,6 +100,24 @@ static void *qemu_st_helpers[5] = {
     (void*) __stq_mmu,
     (void*) __stq_mmu,
 };
+
+static char *qemu_ld_helper_names[5] = {
+    (char*)"__ldb_mmu",
+    (char*)"__ldw_mmu",
+    (char*)"__ldl_mmu",
+    (char*)"__ldq_mmu",
+    (char*)"__ldq_mmu",
+};
+
+static char *qemu_st_helper_names[5] = {
+    (char*)"__stb_mmu",
+    (char*)"__stw_mmu",
+    (char*)"__stl_mmu",
+    (char*)"__stq_mmu",
+    (char*)"__stq_mmu",
+};
+
+#endif
 
 #endif
 
@@ -234,7 +288,6 @@ public:
     /* Code generation */
     Value* generateQemuMemOp(bool ld, Value *value, Value *addr,
                              int mem_index, int bits);
-
     void generateTraceCall(uintptr_t pc);
     int generateOperation(int opc, const TCGArg *args);
     void generateCode(TCGContext *s, TranslationBlock *tb);
@@ -700,9 +753,8 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
 }
 
 /*
- * rwhelan: this now just calls the helper functions.  we can probably just
- * instrument those in the meantime, but eventually we will deal with it when we
- * deal with all helper functions
+ * rwhelan: This now just calls the helper functions for whole system mode, and
+ * we take care of the logging in there.  For user mode, we log in the IR.
  */
 inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         Value *value, Value *addr, int mem_index, int bits)
@@ -713,10 +765,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 
 #ifdef CONFIG_SOFTMMU
 
-#if  defined(CONFIG_LLVM)
-    uintptr_t helperFunc = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
+    uintptr_t helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
                            (uint64_t) qemu_st_helpers[bits>>4];
-
 
     std::vector<Value*> argValues;
     argValues.reserve(3);
@@ -730,17 +780,29 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     for(int i=0; i<(ld?2:3); ++i)
         argTypes.push_back(argValues[i]->getType());
 
-    Type* helperFunctionPtrTy = PointerType::get(
-            FunctionType::get(
-                    ld ? intType(bits) : Type::getVoidTy(m_context),
-                    argTypes, false),
-            0);
+    FunctionType* helperFunctionTy;
+    if (ld){
+        helperFunctionTy = FunctionType::get(intType(bits),
+            argTypes, false);
+    } else {
+        helperFunctionTy = FunctionType::get(Type::getVoidTy(m_context),
+            argTypes, false);
+    }
 
-    Value* funcAddr = m_builder.CreateIntToPtr(
-            ConstantInt::get(wordType(), helperFunc),
-            helperFunctionPtrTy);
-    return m_builder.CreateCall(funcAddr, ArrayRef<Value*>(argValues));
-#endif
+    char *funcName = ld ? qemu_ld_helper_names[bits>>4]:
+        qemu_st_helper_names[bits>>4];
+    assert(funcName);
+    Function* helperFunction = m_module->getFunction(funcName);
+    if(!helperFunction) {
+        helperFunction = Function::Create(
+                helperFunctionTy,
+                Function::PrivateLinkage, funcName, m_module);
+        m_executionEngine->addGlobalMapping(helperFunction,
+                                            (void*) helperFuncAddr);
+    }
+
+    return m_builder.CreateCall(helperFunction, ArrayRef<Value*>(argValues));
+
 
 #else // CONFIG_SOFTMMU
     std::vector<Value*> argValues2;
@@ -1248,25 +1310,19 @@ void printdynval(uintptr_t val, int op){
     }
 }
 
-/* XXX: in this current form, it should only be used with QEMU user mode.  QEMU
- * whole-system mode calls helper functions for memory access
+/* XXX: For whole-system mode, make sure you pass in the return value from
+ * qemu_ram_addr_from_host_nofail(addr).  For user-mode, we log the virtual
+ * address.
  */
-inline void printramaddr(void* physaddr, int store){
+inline void printramaddr(uintptr_t physaddr, int store){
     if (!memlog){
         memlog = fopen("/tmp/llvm-memlog.log", "w");
     }
 
-    //if ((size_t)physaddr == 0xDEADBEEF){
-    //    printf("deadbeef\n");
-    //}
     if (store == 1){
-        fprintf(memlog, "store %lu\n",
-            (uintptr_t)physaddr);
-            //qemu_ram_addr_from_host_nofail(physaddr));
+        fprintf(memlog, "store %lu\n", physaddr);
     } else if (store == 0){
-        fprintf(memlog, "load %lu\n",
-            (uintptr_t)physaddr);
-            //qemu_ram_addr_from_host_nofail(physaddr));
+        fprintf(memlog, "load %lu\n", physaddr);
     }
 }
 #endif //CONFIG_LLVM_TRACE

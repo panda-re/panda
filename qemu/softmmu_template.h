@@ -58,9 +58,22 @@
 #define ADDR_READ addr_read
 #endif
 
+#if defined(CONFIG_LLVM_TRACE) && defined(MMU_INSTR)
+#ifndef PRINTRAMADDR
+#define PRINTRAMADDR
+extern void printramaddr(uintptr_t, int);
+extern void printdynval(uintptr_t, int);
+extern FILE *memlog;
+// rwhelan: flag to indicate whether address has been logged
+static uint8_t logged;
+#endif
+#endif
+
 static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
                                                         int mmu_idx,
                                                         void *retaddr);
+
+#ifndef MMU_INSTR
 static inline DATA_TYPE glue(io_read, SUFFIX)(target_phys_addr_t physaddr,
                                               target_ulong addr,
                                               void *retaddr)
@@ -104,11 +117,15 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(target_phys_addr_t physaddr,
 #undef ACTION
     return res;
 }
+#endif
 
 /* handle all cases except unaligned access which span two pages */
 DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
                                                       int mmu_idx)
 {
+#ifdef MMU_INSTR
+    logged = 0;
+#endif
     DATA_TYPE res;
     int index;
     target_ulong tlb_addr;
@@ -130,6 +147,10 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             retaddr = GETPC();
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
+#ifdef MMU_INSTR
+            printdynval(-1, 0);
+            logged = 1;
+#endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
             /* slow unaligned access (it spans two pages or IO) */
         do_unaligned_access:
@@ -148,6 +169,13 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             }
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
+
+#ifdef MMU_INSTR
+            printramaddr(qemu_ram_addr_from_host_nofail(
+                (void*)(addr+addend)), 0);
+            logged = 1;
+#endif
+
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
         }
     } else {
@@ -184,6 +212,12 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
                 goto do_unaligned_access;
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
+#ifdef MMU_INSTR
+            if (!logged){
+                printdynval(-1, 0);
+                logged = 1;
+            }
+#endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             /* slow unaligned access (it spans two pages) */
@@ -203,6 +237,15 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
         } else {
             /* unaligned/aligned access in the same page */
             addend = env->tlb_table[mmu_idx][index].addend;
+
+#ifdef MMU_INSTR
+            if (!logged){
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 0);
+                logged = 1;
+            }
+#endif
+
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
         }
     } else {
@@ -220,6 +263,7 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
                                                    int mmu_idx,
                                                    void *retaddr);
 
+#ifndef MMU_INSTR
 static inline void glue(io_write, SUFFIX)(target_phys_addr_t physaddr,
                                           DATA_TYPE val,
                                           target_ulong addr,
@@ -267,11 +311,15 @@ static inline void glue(io_write, SUFFIX)(target_phys_addr_t physaddr,
     }
 #undef ACTION
 }
+#endif
 
 void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
                                                  DATA_TYPE val,
                                                  int mmu_idx)
 {
+#ifdef MMU_INSTR
+    logged = 0;
+#endif
     target_phys_addr_t ioaddr;
     unsigned long addend;
     target_ulong tlb_addr;
@@ -292,6 +340,10 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             retaddr = GETPC();
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
+#ifdef MMU_INSTR
+            printdynval(-1, 1);
+            logged = 1;
+#endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             retaddr = GETPC();
@@ -309,6 +361,13 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             }
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
+
+#ifdef MMU_INSTR
+            printramaddr(qemu_ram_addr_from_host_nofail(
+                (void*)(addr+addend)), 1);
+            logged = 1;
+#endif
+
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
         }
     } else {
@@ -344,6 +403,12 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
                 goto do_unaligned_access;
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
+#ifdef MMU_INSTR
+            if (!logged){
+                printdynval(-1, 1);
+                logged = 1;
+            }
+#endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             /* XXX: not efficient, but simple */
@@ -361,6 +426,15 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
         } else {
             /* aligned/unaligned access in the same page */
             addend = env->tlb_table[mmu_idx][index].addend;
+
+#ifdef MMU_INSTR
+            if (!logged){
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 1);
+                logged = 1;
+            }
+#endif
+
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
         }
     } else {
