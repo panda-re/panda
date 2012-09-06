@@ -148,8 +148,10 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
 #ifdef MMU_INSTR
-            printdynval(-1, 0);
-            logged = 1;
+            if (execute_llvm && trace_llvm){
+                printdynval(-1, 0);
+                logged = 1;
+            }
 #endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
             /* slow unaligned access (it spans two pages or IO) */
@@ -171,9 +173,11 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            printramaddr(qemu_ram_addr_from_host_nofail(
-                (void*)(addr+addend)), 0);
-            logged = 1;
+            if (execute_llvm && trace_llvm){
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 0);
+                logged = 1;
+            }
 #endif
 
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
@@ -213,7 +217,7 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
 #ifdef MMU_INSTR
-            if (!logged){
+            if (!logged && execute_llvm && trace_llvm){
                 printdynval(-1, 0);
                 logged = 1;
             }
@@ -239,7 +243,7 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            if (!logged){
+            if (!logged && execute_llvm && trace_llvm){
                 printramaddr(qemu_ram_addr_from_host_nofail(
                     (void*)(addr+addend)), 0);
                 logged = 1;
@@ -341,8 +345,10 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
 #ifdef MMU_INSTR
-            printdynval(-1, 1);
-            logged = 1;
+            if (execute_llvm && trace_llvm){
+                printdynval(-1, 1);
+                logged = 1;
+            }
 #endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
@@ -363,9 +369,11 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            printramaddr(qemu_ram_addr_from_host_nofail(
-                (void*)(addr+addend)), 1);
-            logged = 1;
+            if (execute_llvm && trace_llvm){
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 1);
+                logged = 1;
+            }
 #endif
 
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
@@ -404,7 +412,7 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
 #ifdef MMU_INSTR
-            if (!logged){
+            if (!logged && execute_llvm && trace_llvm){
                 printdynval(-1, 1);
                 logged = 1;
             }
@@ -428,7 +436,7 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            if (!logged){
+            if (!logged && execute_llvm && trace_llvm){
                 printramaddr(qemu_ram_addr_from_host_nofail(
                     (void*)(addr+addend)), 1);
                 logged = 1;
