@@ -49,12 +49,15 @@ DeviceState *goldfish_tty_create(GoldfishBus *gbus, CharDriverState *cs, int id,
 DeviceState *goldfish_nand_create(GoldfishBus *gbus);
 DeviceState *goldfish_fb_create(GoldfishBus *gbus, int id);
 DeviceState *goldfish_memlog_create(GoldfishBus *gbus, uint32_t base);
+DeviceState *goldfish_battery_create(GoldfishBus *gbus);
 
 /* Global functions provided by Goldfish devices */
 void goldfish_bus_register_withprop(GoldfishDeviceInfo *info);
 int goldfish_add_device_no_io(GoldfishDevice *dev);
 void goldfish_device_init(DeviceState *dev, uint32_t base, uint32_t irq);
 void goldfish_device_set_irq(GoldfishDevice *dev, int irq, int level);
+void goldfish_battery_set_prop(void *opaque, int ac, int property, int value);
+void goldfish_battery_display(void *opaque, void (* callback)(void *data, const char* string), void *data);
 
 /** TEMP FILE SUPPORT
  **
