@@ -47,6 +47,7 @@ DeviceState *goldfish_timer_create(GoldfishBus *gbus, uint32_t base, int irq);
 DeviceState *goldfish_rtc_create(GoldfishBus *gbus);
 DeviceState *goldfish_tty_create(GoldfishBus *gbus, CharDriverState *cs, int id, uint32_t base, int irq);
 DeviceState *goldfish_nand_create(GoldfishBus *gbus);
+DeviceState *goldfish_fb_create(GoldfishBus *gbus, int id);
 
 /* Global functions provided by Goldfish devices */
 void goldfish_bus_register_withprop(GoldfishDeviceInfo *info);
