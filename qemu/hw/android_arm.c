@@ -65,6 +65,8 @@ static void android_arm_init_(ram_addr_t ram_size,
         }
     }
 
+    goldfish_nand_create(gbus);
+
     info.ram_size        = ram_size;
     info.kernel_filename = kernel_filename;
     info.kernel_cmdline  = kernel_cmdline;
