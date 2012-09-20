@@ -14,6 +14,7 @@
 #include "devices.h"
 #include "net.h"
 #include "sysemu.h"
+#include "goldfish_device.h"
 #include "audio/audio.h"
 #include "arm-misc.h"
 #include "console.h"
@@ -38,6 +39,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     CPUState *env;
     qemu_irq *cpu_pic;
     ram_addr_t ram_offset;
+    DeviceState *gf_int;
 
     if (!cpu_model)
         cpu_model = "arm926";
@@ -48,6 +50,9 @@ static void android_arm_init_(ram_addr_t ram_size,
     cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
 
     cpu_pic = arm_pic_init_cpu(env);
+    GoldfishBus *gbus = goldfish_bus_init(0xff001000, 1);
+    gf_int = goldfish_int_create(gbus, 0xff000000, cpu_pic[ARM_PIC_CPU_IRQ], cpu_pic[ARM_PIC_CPU_FIQ]);
+    goldfish_device_init(gf_int, 0xff010000, 10);
 
     info.ram_size        = ram_size;
     info.kernel_filename = kernel_filename;
