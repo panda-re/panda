@@ -40,6 +40,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     qemu_irq *cpu_pic;
     ram_addr_t ram_offset;
     DeviceState *gf_int;
+    int i;
 
     if (!cpu_model)
         cpu_model = "arm926";
@@ -55,6 +56,14 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_device_init(gf_int, 0xff010000, 10);
     goldfish_timer_create(gbus, 0xff003000, 3);
     goldfish_rtc_create(gbus);
+    goldfish_tty_create(gbus, serial_hds[0], 0, 0xff002000, 4);
+    for(i = 1; i < MAX_SERIAL_PORTS; i++) {
+        //printf("android_arm_init serial %d %x\n", i, serial_hds[i]);
+        if(serial_hds[i]) {
+            printf("serial_hds: %d\n",i);
+            goldfish_tty_create(gbus, serial_hds[i], i, 0, 0);
+        }
+    }
 
     info.ram_size        = ram_size;
     info.kernel_filename = kernel_filename;
