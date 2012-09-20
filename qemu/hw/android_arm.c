@@ -53,6 +53,8 @@ static void android_arm_init_(ram_addr_t ram_size,
     GoldfishBus *gbus = goldfish_bus_init(0xff001000, 1);
     gf_int = goldfish_int_create(gbus, 0xff000000, cpu_pic[ARM_PIC_CPU_IRQ], cpu_pic[ARM_PIC_CPU_FIQ]);
     goldfish_device_init(gf_int, 0xff010000, 10);
+    goldfish_timer_create(gbus, 0xff003000, 3);
+    goldfish_rtc_create(gbus);
 
     info.ram_size        = ram_size;
     info.kernel_filename = kernel_filename;

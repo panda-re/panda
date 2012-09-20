@@ -43,6 +43,8 @@ typedef struct GoldfishBus {
 /* QDEV device creation */
 GoldfishBus *goldfish_bus_init(uint32_t base, uint32_t irq);
 DeviceState *goldfish_int_create(GoldfishBus *gbus, uint32_t base, qemu_irq parent_irq, qemu_irq parent_fiq);
+DeviceState *goldfish_timer_create(GoldfishBus *gbus, uint32_t base, int irq);
+DeviceState *goldfish_rtc_create(GoldfishBus *gbus);
 
 /* Global functions provided by Goldfish devices */
 void goldfish_bus_register_withprop(GoldfishDeviceInfo *info);
