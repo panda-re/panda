@@ -29,7 +29,6 @@
 #include "helper.h"
 
 #include "panda_plugin.h"
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 #if !defined(CONFIG_USER_ONLY)
 #include "softmmu_exec.h"

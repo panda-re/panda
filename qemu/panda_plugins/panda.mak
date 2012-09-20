@@ -21,3 +21,7 @@ QEMU_CFLAGS+=$(GLIB_CFLAGS)
 
 $(PLUGIN_TARGET_DIR)/%.o: %.c
 	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) -c -o $@ $<,"  CC    $@")
+
+$(PLUGIN_TARGET_DIR)/%.o: %.cpp $(GENERATED_HEADERS)
+	$(call quiet-command,$(CXX) $(filter-out -Wnested-externs -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration -Wold-style-definition, $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS)) -c -o $@ $<,"  CXX   $@")
+

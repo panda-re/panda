@@ -96,7 +96,6 @@ static uint8_t gen_opc_cc_op[OPC_BUF_SIZE];
 #include "gen-icount.h"
 
 #include "panda_plugin.h"
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 #ifdef TARGET_X86_64
 static int x86_64_hregs;
@@ -7954,6 +7953,9 @@ static void gen_intermediate_code_internal(CPUState *env,
 #endif
                 tcg_gen_debug_insn_start(pc_ptr);
             //mz let's count this instruction
+            if (rr_mode != RR_OFF || panda_update_pc) {
+                gen_op_update_panda_pc(pc_ptr);
+            }
             if (rr_mode != RR_OFF) {
                 gen_op_update_rr_icount();
             }

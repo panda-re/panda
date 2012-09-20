@@ -53,7 +53,6 @@ int trace_llvm = 0;
 #include <signal.h>
 
 #include "panda_plugin.h"
-extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 //mz need this here because CPU_LOG_RR constant is not available in rr_log.[ch]
 int is_cpu_log_rr_set(void) {
@@ -244,7 +243,7 @@ void rr_set_program_point(void) {
 #if defined( TARGET_I386 )
         rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
 #else
-        rr_set_prog_point(cpu_single_env->rr_guest_pc, 0, GUEST_ICOUNT);
+        rr_set_prog_point(cpu_single_env->panda_guest_pc, 0, GUEST_ICOUNT);
 #endif
     }
 }

@@ -967,6 +967,8 @@ static void tcg_out_jmp(TCGContext *s, tcg_target_long dest)
 
 #include "../../softmmu_defs.h"
 
+#include "panda_plugin.h"
+
 static void *qemu_ld_helpers[4] = {
     __ldb_mmu,
     __ldw_mmu,
@@ -979,6 +981,21 @@ static void *qemu_st_helpers[4] = {
     __stw_mmu,
     __stl_mmu,
     __stq_mmu,
+};
+
+// For PANDA memory instrumentation
+static void *qemu_ld_helpers_laredo[4] = {
+    __ldb_mmu_laredo,
+    __ldw_mmu_laredo,
+    __ldl_mmu_laredo,
+    __ldq_mmu_laredo,
+};
+
+static void *qemu_st_helpers_laredo[4] = {
+    __stb_mmu_laredo,
+    __stw_mmu_laredo,
+    __stl_mmu_laredo,
+    __stq_mmu_laredo,
 };
 
 /* Perform the TLB load and compare.
@@ -1040,7 +1057,10 @@ static inline void tcg_out_tlb_load(TCGContext *s, int addrlo_idx,
     tcg_out_mov(s, type, r0, addrlo);
 
     /* jne label1 */
-    tcg_out8(s, OPC_JCC_short + JCC_JNE);
+    if (panda_use_memcb)
+        tcg_out8(s, OPC_JMP_short);
+    else
+        tcg_out8(s, OPC_JCC_short + JCC_JNE);
     label_ptr[0] = s->code_ptr;
     s->code_ptr++;
 
@@ -1192,7 +1212,11 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args,
     }
     tcg_out_movi(s, TCG_TYPE_I32, tcg_target_call_iarg_regs[arg_idx],
                  mem_index);
-    tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers[s_bits]);
+
+    if (panda_use_memcb)
+        tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers_laredo[s_bits]);
+    else
+        tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers[s_bits]);
 
     switch(opc) {
     case 0 | 4:
@@ -1399,7 +1423,10 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args,
         }
     }
 
-    tcg_out_calli(s, (tcg_target_long)qemu_st_helpers[s_bits]);
+    if (panda_use_memcb)
+        tcg_out_calli(s, (tcg_target_long)qemu_st_helpers_laredo[s_bits]);
+    else
+        tcg_out_calli(s, (tcg_target_long)qemu_st_helpers[s_bits]);
 
     if (stack_adjust == (TCG_TARGET_REG_BITS / 8)) {
         /* Pop and discard.  This is 2 bytes smaller than the add.  */

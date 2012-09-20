@@ -221,7 +221,8 @@ typedef struct CPUWatchpoint {
     int kvm_vcpu_dirty;                                                 \
     /* record and replay */                                             \
     uint64_t rr_guest_instr_count;                                      \
-    uint64_t rr_guest_pc;
+    uint64_t rr_guest_pc;                                               \
+    uint64_t panda_guest_pc;
 
 // record/replay
 #ifndef GUEST_ICOUNT

@@ -17,6 +17,8 @@ panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 int nb_panda_plugins;
 
 bool panda_please_flush_tb = false;
+bool panda_update_pc = false;
+bool panda_use_memcb = false;
 
 bool panda_load_plugin(const char *filename) {
     void *plugin = dlopen(filename, RTLD_NOW);
@@ -129,6 +131,22 @@ bool panda_flush_tb(void) {
 
 void panda_do_flush_tb(void) {
     panda_please_flush_tb = true;
+}
+
+void panda_enable_precise_pc(void) {
+    panda_update_pc = true;
+}
+
+void panda_disable_precise_pc(void) {
+    panda_update_pc = false;
+}
+
+void panda_enable_memcb(void) {
+    panda_use_memcb = true;
+}
+
+void panda_disable_memcb(void) {
+    panda_use_memcb = false;
 }
 
 #ifdef CONFIG_SOFTMMU
