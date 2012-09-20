@@ -74,6 +74,25 @@ static void android_arm_init_(ram_addr_t ram_size,
         }
     }
 
+    for(i = 0; i < MAX_NICS; i++) {
+        if (nd_table[i].vlan) {
+            if (nd_table[i].model == NULL
+                || strcmp(nd_table[i].model, "smc91c111") == 0) {
+                GoldfishDevice *smc_device;
+                smc_device = qemu_mallocz(sizeof(*smc_device));
+                smc_device->name = (char *)"smc91x";
+                smc_device->id = i;
+                smc_device->size = 0x1000;
+                smc_device->irq_count = 1;
+                goldfish_add_device_no_io(smc_device);
+                smc91c111_init(&nd_table[i], smc_device->base, qdev_get_gpio_in(gf_int, smc_device->irq));
+            } else {
+                fprintf(stderr, "qemu: Unsupported NIC: %s\n", nd_table[0].model);
+                exit (1);
+            }
+        }
+    }
+
     goldfish_fb_create(gbus, 0);
     goldfish_memlog_create(gbus, 0xff006000);
     goldfish_battery_create(gbus);
