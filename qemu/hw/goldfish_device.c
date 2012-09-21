@@ -1158,7 +1158,7 @@ static char*
 substring_dup( const char*  start, const char*  end )
 {
     int    len    = end - start;
-    char*  result = qemu_malloc(len+1);
+    char*  result = g_malloc(len+1);
     memcpy(result, start, len);
     result[len] = 0;
     return result;
@@ -1199,7 +1199,7 @@ path_split( const char*  path, char* *pdirname, char* *pbasename )
     /* handle cases where there is no path separator */
     if (last == path) {
         if (pdirname)
-            *pdirname  = qemu_strdup(".");
+            *pdirname  = g_strdup(".");
         if (pbasename)
             *pbasename = substring_dup(path,end);
         return 0;
@@ -1208,7 +1208,7 @@ path_split( const char*  path, char* *pdirname, char* *pbasename )
     /* handle "/foo" */
     if (last == path+1) {
         if (pdirname)
-            *pdirname  = qemu_strdup("/");
+            *pdirname  = g_strdup("/");
         if (pbasename)
             *pbasename = substring_dup(path+1,end);
         return 0;
@@ -1217,14 +1217,14 @@ path_split( const char*  path, char* *pdirname, char* *pbasename )
     /* compute basename */
     basename = substring_dup(last,end);
     if (strcmp(basename, ".") == 0 || strcmp(basename, "..") == 0) {
-        qemu_free(basename);
+        g_free(basename);
         return -1;
     }
 
     if (pbasename)
         *pbasename = basename;
     else {
-        qemu_free(basename);
+        g_free(basename);
     }
 
     /* compute dirname */

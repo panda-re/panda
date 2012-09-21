@@ -6,7 +6,6 @@
 --disable-pie \
 --enable-llvm \
 --with-llvm=../llvm-3.0/Release+Debug+Asserts \
---enable-llvm-trace \
 --enable-instr-helpers \
 --with-laredo=../llvm-3.0/projects/laredo/Release+Debug+Asserts \
 --extra-cflags="-O2" \

@@ -65,7 +65,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
         case TTY_PUT_CHAR: {
             uint8_t ch = value;
             if(s->cs)
-                qemu_chr_write(s->cs, &ch, 1);
+                qemu_chr_fe_write(s->cs, &ch, 1);
         } break;
 
         case TTY_CMD:
@@ -105,7 +105,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
                                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
                             cpu_memory_rw_debug(cpu_single_env, buf, (uint8_t*)temp, to_write, 0);
-                            qemu_chr_write(s->cs, (const uint8_t*)temp, to_write);
+                            qemu_chr_fe_write(s->cs, (const uint8_t*)temp, to_write);
                             buf += to_write;
                             len -= to_write;
                         }

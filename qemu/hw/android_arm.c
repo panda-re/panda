@@ -79,7 +79,7 @@ static void android_arm_init_(ram_addr_t ram_size,
             if (nd_table[i].model == NULL
                 || strcmp(nd_table[i].model, "smc91c111") == 0) {
                 GoldfishDevice *smc_device;
-                smc_device = qemu_mallocz(sizeof(*smc_device));
+                smc_device = g_malloc0(sizeof(*smc_device));
                 smc_device->name = (char *)"smc91x";
                 smc_device->id = i;
                 smc_device->size = 0x1000;
