@@ -30,6 +30,7 @@
 #include "tcg-op.h"
 
 #include "rr_log.h"
+#include "panda_plugin.h"
 
 #define GEN_HELPER 1
 #include "helper.h"
@@ -5304,9 +5305,12 @@ static inline void gen_intermediate_code_internal(TranslationBlock * tb,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
+        if (rr_mode != RR_OFF || panda_update_pc) {
+            gen_op_update_panda_pc(dc->pc);
+        }
+
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
-            gen_op_update_rr_pc(dc->pc);
             tb->num_guest_insns++;
         }
 

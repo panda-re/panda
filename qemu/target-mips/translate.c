@@ -32,6 +32,7 @@
 #include "qemu-common.h"
 
 #include "rr_log.h"
+#include "panda_plugin.h"
 
 #include "helper.h"
 #define GEN_HELPER 1
@@ -12450,9 +12451,12 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
+        if (rr_mode != RR_OFF || panda_update_pc) {
+            gen_op_update_panda_pc(ctx.pc);
+        }
+
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
-            gen_op_update_rr_pc(ctx.pc);
             tb->num_guest_insns++;
         }
 

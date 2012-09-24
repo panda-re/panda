@@ -51,7 +51,7 @@ extern "C" {
 
 // FIXME for other architectures
 // these functions perform logging of dynamic values
-#if defined(TARGET_I386) && defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
+#if (defined(TARGET_I386) || defined(TARGET_ARM)) && defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
 static void *qemu_ld_helpers[5] = {
     (void*) __ldb_mmu_laredo,
     (void*) __ldw_mmu_laredo,
@@ -1294,7 +1294,8 @@ inline void printloc(uintptr_t val){
  */
 void printdynval(uintptr_t val, int op){
     if (!memlog){
-        memlog = fopen("/tmp/llvm-memlog.log", "w");
+        //memlog = fopen("/tmp/llvm-memlog.log", "w");
+        memlog = fopen("/dev/null", "w");
         setbuf(memlog, NULL);
     }
     if (op == 1){
@@ -1316,7 +1317,8 @@ void printdynval(uintptr_t val, int op){
  */
 inline void printramaddr(uintptr_t physaddr, int store){
     if (!memlog){
-        memlog = fopen("/tmp/llvm-memlog.log", "w");
+        //memlog = fopen("/tmp/llvm-memlog.log", "w");
+        memlog = fopen("/dev/null", "w");
     }
 
     if (store == 1){
@@ -1440,9 +1442,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             tcg_target_ulong helperAddrC = (tcg_target_ulong)
                    cast<ConstantInt>(helperAddr)->getZExtValue();
             assert(helperAddrC);
-            printf("HELPER %s\n", tcg_helper_get_name(m_tcgContext,
-                (void*)helperAddrC));
-            fflush(stdout);
+            //printf("HELPER %s\n", tcg_helper_get_name(m_tcgContext,
+            //    (void*)helperAddrC));
+            //fflush(stdout);
 
             const char *helperName = tcg_helper_get_name(m_tcgContext,
                                                          (void*) helperAddrC);
