@@ -1931,7 +1931,13 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Create new function for current translation block */
     /* TODO: compute the checksum of the tb to see if we can reuse some code */
     std::ostringstream fName;
+
     fName << "tcg-llvm-tb-" << (m_tbCount++) << "-" << std::hex << tb->pc;
+
+#ifdef CONFIG_USER_ONLY
+    const char *symName = lookup_symbol(tb->pc);
+    fName << "-" << symName;
+#endif
 
     /*
     if(m_tbFunction)

@@ -1636,9 +1636,10 @@ static void load_elf_image(const char *image_name, int image_fd,
         info->brk = info->end_code;
     }
 
-    if (qemu_log_enabled()) {
+    // rwhelan: always load symbols (for now)
+    //if (qemu_log_enabled()) {
         load_symbols(ehdr, image_fd, load_bias);
-    }
+    //}
 
     close(image_fd);
     return;
