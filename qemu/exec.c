@@ -72,6 +72,7 @@
 #endif
 
 #include "rr_log.h"
+#include "panda_plugin.h"
 
 #ifdef CONFIG_LLVM
 //#include "tcg-llvm.h"
@@ -4070,6 +4071,12 @@ int cpu_memory_rw_debug(CPUState *env, target_ulong addr,
     return 0;
 }
 
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
+                        uint8_t *buf, int len, int is_write) {
+    // XXX Unimplemented for linux user mode
+    return -1;
+}
+
 #else
 
 // addr is a physical addr.
@@ -4078,8 +4085,10 @@ int cpu_memory_rw_debug(CPUState *env, target_ulong addr,
 // read of len bytes from buf that get written to addr.
 // if is_write == 0 then this is a 
 // read of len bytes from addr that get written to buf.
-void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
-                            int len, int is_write)
+// bdg: renaming this to _ex so we can include a "safe" mode
+//      that is guaranteed not to touch I/O
+static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
+                            int len, int is_write, bool safe)
 {
     int l, io_index;
     uint8_t *ptr;
@@ -4102,6 +4111,9 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
 
         if (is_write) { // i.e. "is a write to phys mem"
             if ((pd & ~TARGET_PAGE_MASK) != IO_MEM_RAM) {
+                // bdg: I/O guard
+                if (safe) return -1;
+
                 target_phys_addr_t addr1 = addr;
                 io_index = (pd >> IO_MEM_SHIFT) & (IO_MEM_NB_ENTRIES - 1);
                 if (p)
@@ -4183,6 +4195,9 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
         } else {
             if ((pd & ~TARGET_PAGE_MASK) > IO_MEM_ROM &&
                 !(pd & IO_MEM_ROMD)) {
+                // bdg: I/O guard
+                if (safe) return -1;
+
                 target_phys_addr_t addr1 = addr;
                 /* I/O case */
                 io_index = (pd >> IO_MEM_SHIFT) & (IO_MEM_NB_ENTRIES - 1);
@@ -4227,6 +4242,17 @@ void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
         buf += l;
         addr += l;
     }
+    return 0;
+}
+
+void cpu_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
+                            int len, int is_write) {
+    cpu_physical_memory_rw_ex(addr, buf, len, is_write, false);
+}
+
+int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf,
+                            int len, int is_write) {
+    return cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
 }
 
 /* used for ROM loading : can write in RAM and ROM */
@@ -4962,6 +4988,38 @@ int cpu_memory_rw_debug(CPUState *env, target_ulong addr,
     }
     return 0;
 }
+
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
+                        uint8_t *buf, int len, int is_write)
+{
+    int l;
+    int ret;
+    target_phys_addr_t phys_addr;
+    target_ulong page;
+
+    while (len > 0) {
+        page = addr & TARGET_PAGE_MASK;
+        phys_addr = cpu_get_phys_page_debug(env, page);
+        /* if no physical page mapped, return an error */
+        if (phys_addr == -1)
+            return -1;
+        l = (page + TARGET_PAGE_SIZE) - addr;
+        if (l > len)
+            l = len;
+        phys_addr += (addr & ~TARGET_PAGE_MASK);
+        if (is_write)
+            cpu_physical_memory_write_rom(phys_addr, buf, l);
+        else {
+            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+            if(ret < 0) return ret;
+        }
+        len -= l;
+        buf += l;
+        addr += l;
+    }
+    return 0;
+}
+
 #endif
 
 /* in deterministic execution mode, instructions doing device I/Os
