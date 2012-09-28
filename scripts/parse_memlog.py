@@ -25,6 +25,7 @@ shadow_mem = defaultdict(list)
 
 for line in fileinput.input():
     pc, addr, val = line.strip().split()
+    pc = pc.split('.')[0]
     pc = int(pc, 16)
     addr = int(addr, 16)
     val = val.decode('hex')
