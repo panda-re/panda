@@ -246,6 +246,13 @@ void * panda_get_plugin_by_name(const char *name);
 void   panda_unload_plugin(int index);
 void   panda_unload_plugins(void);
 
+// Doesn't exist in user mode
+#ifdef CONFIG_SOFTMMU
+int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
+#endif
+
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
+
 bool panda_flush_tb(void);
 
 void panda_do_flush_tb(void);
