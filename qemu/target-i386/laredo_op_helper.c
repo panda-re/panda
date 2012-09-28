@@ -26,15 +26,19 @@ void dummy(){
     printdynval(0, 0);
 }
 
-/******************************************************************************/
-/* MMX stuff */
-
 #define SHIFT 0
 
+#define FOR(a, b) (a) | (b)
 #define FXOR(a, b) (a) ^ (b)
 #define FCMPGTB(a, b) (int8_t)(a) > (int8_t)(b) ? -1 : 0
+#define FCMPEQ(a, b) (a) == (b) ? -1 : 0
 #define FAND(a, b) (a) & (b)
 #define FADD(a, b) ((a) + (b))
+#define FSUB(a, b) ((a) - (b))
+#define FMAXUB(a, b) ((a) > (b)) ? (a) : (b)
+
+/******************************************************************************/
+/* MMX stuff */
 
 #define Reg MMXReg
 #define XMM_ONLY(...)
@@ -76,10 +80,14 @@ void glue(name, SUFFIX) (Reg *d, Reg *s)\
     )\
 }
 
+SSE_HELPER_Q(helper_por, FOR)
 SSE_HELPER_Q(helper_pxor, FXOR)
 SSE_HELPER_B(helper_pcmpgtb, FCMPGTB)
+SSE_HELPER_B(helper_pcmpeqb, FCMPEQ)
 SSE_HELPER_Q(helper_pand, FAND)
 SSE_HELPER_B(helper_paddb, FADD)
+SSE_HELPER_B(helper_psubb, FSUB)
+SSE_HELPER_B(helper_pmaxub, FMAXUB)
 
 void glue(helper_pshufw, SUFFIX) (Reg *d, Reg *s, int order)
 {
@@ -99,6 +107,16 @@ void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
     d->Q(1) = 0;
 #endif
 }
+
+#ifdef TARGET_X86_64
+void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
+{
+    d->Q(0) = val;
+#if SHIFT == 1
+    d->Q(1) = 0;
+#endif
+}
+#endif
 
 #define UNPCK_OP(base_name, base)                               \
                                                                 \
@@ -210,10 +228,34 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
+uint32_t glue(helper_pmovmskb, SUFFIX)(Reg *s)
+{
+    uint32_t val;
+    val = 0;
+    val |= (s->B(0) >> 7);
+    val |= (s->B(1) >> 6) & 0x02;
+    val |= (s->B(2) >> 5) & 0x04;
+    val |= (s->B(3) >> 4) & 0x08;
+    val |= (s->B(4) >> 3) & 0x10;
+    val |= (s->B(5) >> 2) & 0x20;
+    val |= (s->B(6) >> 1) & 0x40;
+    val |= (s->B(7)) & 0x80;
+#if SHIFT == 1
+    val |= (s->B(8) << 1) & 0x0100;
+    val |= (s->B(9) << 2) & 0x0200;
+    val |= (s->B(10) << 3) & 0x0400;
+    val |= (s->B(11) << 4) & 0x0800;
+    val |= (s->B(12) << 5) & 0x1000;
+    val |= (s->B(13) << 6) & 0x2000;
+    val |= (s->B(14) << 7) & 0x4000;
+    val |= (s->B(15) << 8) & 0x8000;
+#endif
+    return val;
+}
+
 
 /******************************************************************************/
 /* XMM stuff */
-/* Note: currently assuming these are not called */
 
 
 #undef SHIFT
@@ -266,10 +308,14 @@ void glue(name, SUFFIX) (Reg *d, Reg *s)\
     )\
 }
 
+SSE_HELPER_Q(helper_por, FOR)
 SSE_HELPER_Q(helper_pxor, FXOR)
 SSE_HELPER_B(helper_pcmpgtb, FCMPGTB)
+SSE_HELPER_B(helper_pcmpeqb, FCMPEQ)
 SSE_HELPER_Q(helper_pand, FAND)
 SSE_HELPER_B(helper_paddb, FADD)
+SSE_HELPER_B(helper_psubb, FSUB)
+SSE_HELPER_B(helper_pmaxub, FMAXUB)
 
 void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
 {
@@ -279,6 +325,16 @@ void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
     d->Q(1) = 0;
 #endif
 }
+
+#ifdef TARGET_X86_64
+void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
+{
+    d->Q(0) = val;
+#if SHIFT == 1
+    d->Q(1) = 0;
+#endif
+}
+#endif
 
 UNPCK_OP(l, 0)
 
@@ -330,6 +386,31 @@ void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
     r.L(2) = s->L((order >> 4) & 3);
     r.L(3) = s->L((order >> 6) & 3);
     *d = r;
+}
+
+uint32_t glue(helper_pmovmskb, SUFFIX)(Reg *s)
+{
+    uint32_t val;
+    val = 0;
+    val |= (s->B(0) >> 7);
+    val |= (s->B(1) >> 6) & 0x02;
+    val |= (s->B(2) >> 5) & 0x04;
+    val |= (s->B(3) >> 4) & 0x08;
+    val |= (s->B(4) >> 3) & 0x10;
+    val |= (s->B(5) >> 2) & 0x20;
+    val |= (s->B(6) >> 1) & 0x40;
+    val |= (s->B(7)) & 0x80;
+#if SHIFT == 1
+    val |= (s->B(8) << 1) & 0x0100;
+    val |= (s->B(9) << 2) & 0x0200;
+    val |= (s->B(10) << 3) & 0x0400;
+    val |= (s->B(11) << 4) & 0x0800;
+    val |= (s->B(12) << 5) & 0x1000;
+    val |= (s->B(13) << 6) & 0x2000;
+    val |= (s->B(14) << 7) & 0x4000;
+    val |= (s->B(15) << 8) & 0x8000;
+#endif
+    return val;
 }
 
 #endif

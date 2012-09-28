@@ -2,8 +2,7 @@
 
 #./configure --target-list=i386-softmmu,i386-linux-user,\
 #arm-linux-user,x86_64-linux-user,x86_64-softmmu \
-./configure --target-list=x86_64-softmmu,i386-linux-user,arm-linux-user,arm-softmmu \
---prefix=`pwd`/install \
+./configure --target-list=x86_64-softmmu,x86_64-linux-user,i386-linux-user,arm-linux-user,arm-softmmu \
 --disable-pie \
 --enable-llvm \
 --with-llvm=../llvm-3.0/Release+Debug+Asserts \
