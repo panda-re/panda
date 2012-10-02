@@ -1717,9 +1717,10 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             Value* helperAddr = getValue(args[nb_oargs + nb_iargs]);
             Value* result;
 
-            // Print helper names
             tcg_target_ulong helperAddrC = (tcg_target_ulong)
                    cast<ConstantInt>(helperAddr)->getZExtValue();
+            
+            // Print helper names
             assert(helperAddrC);
             printf("HELPER %s\n", tcg_helper_get_name(m_tcgContext,
                 (void*)helperAddrC));
@@ -2172,15 +2173,15 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         //llvm::errs() << "arg2=" << *arg2 << "\n";
         arg2 = m_builder.CreateTrunc(arg2, intType(64));
 
-        uint32_t ofs = args[3];
-        uint32_t len = args[4];
+        uint64_t ofs = args[3];
+        uint64_t len = args[4];
 
         if (ofs == 0 && len == 64) {
             setValue(args[0], arg2);
             break;
         }
 
-        uint32_t mask = (1u << len) - 1;
+        uint64_t mask = (1u << len) - 1;
         Value *t1, *ret;
         if (ofs + len < 64) {
             t1 = m_builder.CreateAnd(arg2, APInt(64, mask));
@@ -2420,7 +2421,7 @@ int tcg_llvm_search_last_pc(TranslationBlock *tb, uintptr_t searched_pc)
 
 const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 {
-    static char buf[64];
+    static char buf[500];
     if(tb->llvm_function) {
         strncpy(buf, tb->llvm_function->getNameStr().c_str(), sizeof(buf));
     } else {
