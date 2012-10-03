@@ -228,6 +228,24 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
+void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
+{
+    int shift;
+
+    if (s->Q(0) > 63) {
+        d->Q(0) = 0;
+#if SHIFT == 1
+        d->Q(1) = 0;
+#endif
+    } else {
+        shift = s->B(0);
+        d->Q(0) <<= shift;
+#if SHIFT == 1
+        d->Q(1) <<= shift;
+#endif
+    }
+}
+
 uint32_t glue(helper_pmovmskb, SUFFIX)(Reg *s)
 {
     uint32_t val;
@@ -374,6 +392,24 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 #if SHIFT == 1
         d->L(2) <<= shift;
         d->L(3) <<= shift;
+#endif
+    }
+}
+
+void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
+{
+    int shift;
+
+    if (s->Q(0) > 63) {
+        d->Q(0) = 0;
+#if SHIFT == 1
+        d->Q(1) = 0;
+#endif
+    } else {
+        shift = s->B(0);
+        d->Q(0) <<= shift;
+#if SHIFT == 1
+        d->Q(1) <<= shift;
 #endif
     }
 }

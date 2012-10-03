@@ -183,6 +183,7 @@ void glue(helper_psrlq, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
+#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -200,6 +201,7 @@ void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
+#endif
 
 #if SHIFT == 1
 void glue(helper_psrldq, SUFFIX)(Reg *d, Reg *s)

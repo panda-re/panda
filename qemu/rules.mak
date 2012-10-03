@@ -60,7 +60,7 @@ LINK = $(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $(s
 	$(call quiet-command,rm -f $@ && $(AR) rcs $@ $^,"  AR    $(TARGET_DIR)$@")
 
 %.bc1: %.c $(GENERATED_HEADERS)
-	$(call quiet-command,$(LLVMCC) $(filter-out -g -Wold-style-declaration, $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS)) -O3 -c -emit-llvm -o $@ $<,"  LLVMCC    $(TARGET_DIR)$@")
+	$(call quiet-command,$(LLVMCC) $(filter-out -g -Wold-style-declaration, $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS)) -O1 -c -emit-llvm -o $@ $<,"  LLVMCC    $(TARGET_DIR)$@")
 
 %.bc: %.bc1
 	$(call quiet-command,$(LAREDOCC) -i $< -o $@ -c $@.taintcache,"  LAREDOCC    $(TARGET_DIR)$@ \n              $(TARGET_DIR)$@.taintcache")
