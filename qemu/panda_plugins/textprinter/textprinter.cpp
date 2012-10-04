@@ -57,6 +57,7 @@ bool init_plugin(void *self) {
     printf("Initializing plugin textprinter\n");
     
     panda_enable_precise_pc();
+    panda_enable_memcb();
     
     pcb.mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
