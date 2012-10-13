@@ -4719,6 +4719,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                                    path(p),
                                    target_to_host_bitmask(arg3, fcntl_flags_tbl),
                                    arg4));
+#ifdef CONFIG_LLVM_TRACE
+        if (execute_llvm && trace_llvm){
+            inst_open(ret, p, target_to_host_bitmask(arg3, fcntl_flags_tbl));
+        }
+#endif
         unlock_user(p, arg2, 0);
         break;
 #endif
@@ -4762,6 +4767,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user_string(arg1)))
             goto efault;
         ret = get_errno(creat(p, arg2));
+#ifdef CONFIG_LLVM_TRACE
+        if (execute_llvm && trace_llvm){
+            inst_creat(ret, p);
+        }
+#endif
         unlock_user(p, arg1, 0);
         break;
 #endif
