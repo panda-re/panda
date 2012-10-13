@@ -30,7 +30,8 @@ void inst_open(int ret, void *p, int flags){
                 && (strncmp(file, "/proc", 5) != 0)
                 && (strncmp(file, "/dev", 4) != 0)
                 && (strncmp(file, "/usr", 4) != 0)
-                && (strstr(file, "openssl.cnf") == 0)){
+                && (strstr(file, "openssl.cnf") == 0)
+                && (strstr(file, "xpdfrc") == 0)){
             printf("open %s for ", file);
             if ((flags & (O_RDONLY | O_WRONLY)) == O_RDONLY){
                 printf("read\n");
@@ -41,6 +42,14 @@ void inst_open(int ret, void *p, int flags){
                 outfd = ret;
             }
         }
+    }
+}
+
+void inst_creat(int ret, void *p){
+    const char *file = path(p);
+    if (ret > 0){
+        printf("open %s for write\n", file);
+        outfd = ret;
     }
 }
 
