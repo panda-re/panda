@@ -85,6 +85,7 @@ tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
 libobj-y = exec.o translate-all.o cpu-exec.o translate.o
 libobj-y += rr_log.o
 libobj-y += panda_plugin.o
+libobj-y += panda/panda_memlog.o
 libobj-y += tcg/tcg.o tcg/optimize.o
 libobj-$(CONFIG_LLVM) += tcg/tcg-llvm.o
 libobj-$(CONFIG_TCG_INTERPRETER) += tci.o
@@ -139,7 +140,7 @@ obj-y = main.o syscall.o strace.o mmap.o signal.o thunk.o \
       user-exec.o $(oslib-obj-y)
 
 ifdef CONFIG_LLVM
-libobj-y += laredo/linux-user-syscall.o
+libobj-y += panda/linux-user-syscall.o
 endif
 
 obj-$(TARGET_HAS_BFLT) += flatload.o
@@ -515,7 +516,7 @@ qmp-commands-old.h: $(SRC_PATH)/qmp-commands.hx
 
 clean:
 	rm -f *.o *.a *~ $(PROGS) nwfpe/*.o fpu/*.o
-	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o laredo/*.o *.bc1 *.bc
+	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o panda/*.o *.bc1 *.bc
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp

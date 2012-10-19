@@ -41,6 +41,7 @@
 #include "disas.h"
 #include "tcg-op.h"
 
+#include "panda_memlog.h"
 #include "rr_log.h"
 
 #include "helper.h"

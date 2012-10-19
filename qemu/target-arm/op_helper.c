@@ -77,8 +77,7 @@ uint32_t HELPER(neon_tbl)(uint32_t ireg, uint32_t def,
 
 // rwhelan: functions that only we call in generated code that perform logging
 #undef MMUSUFFIX
-#if defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
-#define MMUSUFFIX _mmu_laredo
+#define MMUSUFFIX _mmu_panda
 #define MMU_INSTR
 
 #define SHIFT 0
@@ -94,7 +93,6 @@ uint32_t HELPER(neon_tbl)(uint32_t ireg, uint32_t def,
 #include "softmmu_template.h"
 
 #undef MMU_INSTR
-#endif
 
 /* try to fill the TLB and return an exception if error. If retaddr is
    NULL, it means that the function was called in C code (i.e. not

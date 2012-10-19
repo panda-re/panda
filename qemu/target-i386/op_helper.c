@@ -5028,8 +5028,7 @@ void helper_boundl(target_ulong a0, int v)
 #undef MMUSUFFIX
 
 // rwhelan: functions that only we call in generated code that perform logging
-#if defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
-#define MMUSUFFIX _mmu_laredo
+#define MMUSUFFIX _mmu_panda
 #define MMU_INSTR
 
 #define SHIFT 0
@@ -5045,7 +5044,6 @@ void helper_boundl(target_ulong a0, int v)
 #include "softmmu_template.h"
 
 #undef MMU_INSTR
-#endif
 
 #endif // CONFIG_USER_ONLY
 

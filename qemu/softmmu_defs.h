@@ -19,16 +19,14 @@ uint64_t REGPARM __ldq_mmu(target_ulong addr, int mmu_idx);
 void REGPARM __stq_mmu(target_ulong addr, uint64_t val, int mmu_idx);
 
 // memory functions with logging
-#if defined(CONFIG_LLVM) && defined(CONFIG_LLVM_TRACE)
-uint8_t REGPARM __ldb_mmu_laredo(target_ulong addr, int mmu_idx);
-void REGPARM __stb_mmu_laredo(target_ulong addr, uint8_t val, int mmu_idx);
-uint16_t REGPARM __ldw_mmu_laredo(target_ulong addr, int mmu_idx);
-void REGPARM __stw_mmu_laredo(target_ulong addr, uint16_t val, int mmu_idx);
-uint32_t REGPARM __ldl_mmu_laredo(target_ulong addr, int mmu_idx);
-void REGPARM __stl_mmu_laredo(target_ulong addr, uint32_t val, int mmu_idx);
-uint64_t REGPARM __ldq_mmu_laredo(target_ulong addr, int mmu_idx);
-void REGPARM __stq_mmu_laredo(target_ulong addr, uint64_t val, int mmu_idx);
-#endif
+uint8_t REGPARM __ldb_mmu_panda(target_ulong addr, int mmu_idx);
+void REGPARM __stb_mmu_panda(target_ulong addr, uint8_t val, int mmu_idx);
+uint16_t REGPARM __ldw_mmu_panda(target_ulong addr, int mmu_idx);
+void REGPARM __stw_mmu_panda(target_ulong addr, uint16_t val, int mmu_idx);
+uint32_t REGPARM __ldl_mmu_panda(target_ulong addr, int mmu_idx);
+void REGPARM __stl_mmu_panda(target_ulong addr, uint32_t val, int mmu_idx);
+uint64_t REGPARM __ldq_mmu_panda(target_ulong addr, int mmu_idx);
+void REGPARM __stq_mmu_panda(target_ulong addr, uint64_t val, int mmu_idx);
 
 uint8_t REGPARM __ldb_cmmu(target_ulong addr, int mmu_idx);
 void REGPARM __stb_cmmu(target_ulong addr, uint8_t val, int mmu_idx);

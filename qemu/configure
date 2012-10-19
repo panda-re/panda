@@ -3552,7 +3552,7 @@ mkdir -p $target_dir/fpu
 mkdir -p $target_dir/tcg
 mkdir -p $target_dir/ide
 mkdir -p $target_dir/9pfs
-mkdir -p $target_dir/laredo
+mkdir -p $target_dir/panda
 mkdir -p $target_dir/panda_plugins
 if test "$target" = "arm-linux-user" -o "$target" = "armeb-linux-user" -o "$target" = "arm-bsd-user" -o "$target" = "armeb-bsd-user" ; then
   mkdir -p $target_dir/nwfpe
@@ -3829,7 +3829,7 @@ else
 fi
 includes="-I\$(SRC_PATH)/tcg $includes"
 
-includes="-I\$(SRC_PATH)/laredo $includes"
+includes="-I\$(SRC_PATH)/panda $includes"
 
 if test "$target_user_only" = "yes" ; then
     libdis_config_mak=libdis-user/config.mak

@@ -984,18 +984,18 @@ static void *qemu_st_helpers[4] = {
 };
 
 // For PANDA memory instrumentation
-static void *qemu_ld_helpers_laredo[4] = {
-    __ldb_mmu_laredo,
-    __ldw_mmu_laredo,
-    __ldl_mmu_laredo,
-    __ldq_mmu_laredo,
+static void *qemu_ld_helpers_panda[4] = {
+    __ldb_mmu_panda,
+    __ldw_mmu_panda,
+    __ldl_mmu_panda,
+    __ldq_mmu_panda,
 };
 
-static void *qemu_st_helpers_laredo[4] = {
-    __stb_mmu_laredo,
-    __stw_mmu_laredo,
-    __stl_mmu_laredo,
-    __stq_mmu_laredo,
+static void *qemu_st_helpers_panda[4] = {
+    __stb_mmu_panda,
+    __stw_mmu_panda,
+    __stl_mmu_panda,
+    __stq_mmu_panda,
 };
 
 /* Perform the TLB load and compare.
@@ -1214,7 +1214,7 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args,
                  mem_index);
 
     if (panda_use_memcb)
-        tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers_laredo[s_bits]);
+        tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers_panda[s_bits]);
     else
         tcg_out_calli(s, (tcg_target_long)qemu_ld_helpers[s_bits]);
 
@@ -1424,7 +1424,7 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args,
     }
 
     if (panda_use_memcb)
-        tcg_out_calli(s, (tcg_target_long)qemu_st_helpers_laredo[s_bits]);
+        tcg_out_calli(s, (tcg_target_long)qemu_st_helpers_panda[s_bits]);
     else
         tcg_out_calli(s, (tcg_target_long)qemu_st_helpers[s_bits]);
 

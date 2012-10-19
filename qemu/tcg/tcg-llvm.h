@@ -82,9 +82,6 @@ uintptr_t tcg_llvm_qemu_tb_exec(void *env, TranslationBlock *tb);
 int tcg_llvm_search_last_pc(struct TranslationBlock *tb, uintptr_t searched_pc);
 
 #ifdef CONFIG_LLVM_TRACE
-void printdynval(uintptr_t, int);
-inline void printramaddr(uintptr_t, int);
-inline void printloc(uintptr_t);
 void tcg_llvm_write_module(struct TCGLLVMContext *l);
 #endif
 
