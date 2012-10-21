@@ -6,7 +6,9 @@ include $(SRC_PATH)/rules.mak
 #include $(HWDIR)/config.mak
 #endif
 
-PLUGIN_TARGET_DIR=$(SRC_PATH)/$(TARGET_DIR)/panda_plugins
+PLUGIN_TARGET_DIR=$(SRC_PATH)$(TARGET_DIR)panda_plugins
+
+PLUGIN_SRC_ROOT=$(SRC_PATH)/panda_plugins
 
 ifdef CONFIG_LINUX_USER
 

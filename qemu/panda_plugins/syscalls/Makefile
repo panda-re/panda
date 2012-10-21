@@ -13,7 +13,9 @@ include ../panda.mak
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
-panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
-	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $(SRC_PATH)/$(TARGET_DIR)/$@ $^ $(LIBS),"  PLUGIN  $@")
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).c
 
-all: panda_$(PLUGIN_NAME).so
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
+	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
+
+all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
