@@ -24,18 +24,19 @@ def dump_mem(coalesced):
 shadow_mem = defaultdict(list)
 
 for line in fileinput.input():
-    pc, addr, val = line.strip().split()
-    pc = pc.split('.')[0]
+    caller, pc, cr3, addr, n, val = line.strip().split()
+    caller = int(caller, 16)
     pc = int(pc, 16)
+    cr3 = int(cr3, 16)
     addr = int(addr, 16)
     val = val.decode('hex')
-    shadow_mem[pc].append((addr,val))
+    shadow_mem[caller,pc,cr3].append((addr,val))
 
 
 #from IPython.frontend.terminal.interactiveshell import TerminalInteractiveShell
 #shell = TerminalInteractiveShell(user_ns=locals())
 #shell.mainloop()
 
-for eip in shadow_mem:
-    print "==== %#010x ====" % eip
-    pprint(coalesce(dict(shadow_mem[eip])))
+for caller,eip,cr3 in shadow_mem:
+    print "==== %#010x (CR3: %#010x Caller: %#010x) ====" % (eip, cr3, caller)
+    pprint(coalesce(dict(shadow_mem[caller,eip,cr3])))

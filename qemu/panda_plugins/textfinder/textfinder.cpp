@@ -40,8 +40,11 @@ struct text_counter { int hist[256]; };
 struct prog_point {
     target_ulong caller;
     target_ulong pc;
+    target_ulong cr3;
     bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || (this->pc == p.pc && this->caller < p.caller);
+        return (this->pc < p.pc) || \
+               (this->pc == p.pc && this->caller < p.caller) || \
+               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
     }
 };
 
@@ -55,6 +58,8 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     prog_point p = {};
 #ifdef TARGET_I386
     panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
+        p.cr3 = env->cr[3];
 #endif
     p.pc = pc;
     for (unsigned int i = 0; i < size; i++) {
@@ -128,6 +133,20 @@ bool confidence_compare(std::pair<prog_point,text_counter> first,
     return confidence(first_text, first_nontext) < confidence(second_text, second_nontext);
 }
 
+double byte_entropy(text_counter t) {
+    int sum = 0;
+    for (int i = 0; i < 256; i++) {
+        sum += t.hist[i];
+    }
+    double ent = 0.0;
+    for (int i = 0; i < 256; i++) {
+        double p_i = t.hist[i] / (double)sum;
+        if (t.hist[i] != 0)
+            ent += -(p_i*(log(p_i)/log(2.0)));
+    }
+    return ent;
+}
+
 void uninit_plugin(void *self) {
     std::list<std::pair<prog_point,text_counter> > display_map;
 
@@ -139,20 +158,23 @@ void uninit_plugin(void *self) {
     for(std::map<prog_point,text_counter>::iterator it = text_tracker.begin(); it != text_tracker.end(); it++) {
         display_map.push_back(std::make_pair(it->first, it->second));
     }
-    display_map.sort(confidence_compare);
+    //display_map.sort(confidence_compare);
 
-    FILE *mem_report = fopen("mem_report.txt", "w");
+    FILE *mem_report = fopen("mem_report.bin", "w");
     if(!mem_report) {
         printf("Couldn't write report:\n");
         perror("fopen");
         return;
     }
-    fprintf(mem_report, "PC          Text/Non-text\n");
+    //fprintf(mem_report, "PC          Text/Non-text\n");
     std::list<std::pair<prog_point,text_counter> >::iterator it;
     for(it = display_map.begin(); it != display_map.end(); it++) {
-        fprintf(mem_report, TARGET_FMT_lx "." TARGET_FMT_lx, it->first.pc, it->first.caller);
-        for(int i = 0; i < 256; i++) fprintf(mem_report, " %d", it->second.hist[i]);
-        fprintf(mem_report, "\n");
+        //fprintf(mem_report, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx, it->first.cr3, it->first.pc, it->first.caller);
+        //for(int i = 0; i < 256; i++) fprintf(mem_report, " %d", it->second.hist[i]);
+        //fprintf(mem_report, " %f", byte_entropy(it->second));
+        //fprintf(mem_report, "\n");
+        fwrite(&it->first, sizeof(prog_point), 1, mem_report);
+        fwrite(&it->second, sizeof(text_counter), 1, mem_report);
     }
     fclose(mem_report);
     

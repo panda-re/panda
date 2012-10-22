@@ -19,7 +19,7 @@ FILE *plugin_log;
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
     unsigned char buf[2];
-    cpu_memory_rw_debug(env, pc, buf, 2, 0);
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
     if (buf[0] == 0x0F && buf[1] == 0x34)
         return true;
     else
