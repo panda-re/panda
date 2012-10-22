@@ -303,7 +303,7 @@ endif
 		$(INSTALL_DATA) $(SRC_PATH)/pc-bios/keymaps/$$x "$(DESTDIR)$(datadir)/keymaps"; \
 	done
 	for d in $(TARGET_DIRS); do \
-	$(MAKE) -C $$d $@ TARGET_DIR=$$d || exit 1 ; \
+	$(MAKE) -C $$d $@ TARGET_DIR=$$d/ || exit 1 ; \
         done
 
 # various test targets

@@ -220,4 +220,4 @@ qemu/x86_64-linux-user/
 qemu/arm-linux-user/
 qemu/arm-softmmu/
 qemu/x86_64-softmmu/
-
+qemu/install/*
