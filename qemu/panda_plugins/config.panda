@@ -1,1 +1,1 @@
-PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls
+PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls stringsearch
