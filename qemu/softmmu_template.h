@@ -152,7 +152,7 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
 #ifdef MMU_INSTR
-            //printdynval((ioaddr & TARGET_PAGE_MASK) + addr, 0);
+            printdynval((ioaddr & TARGET_PAGE_MASK) + addr, 0);
             logged = 1;
 #endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
@@ -175,7 +175,8 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            //printramaddr(qemu_ram_addr_from_host_nofail( (void*)(addr+addend)), 0);
+            printramaddr(qemu_ram_addr_from_host_nofail(
+                (void*)(addr+addend)), 0);
             logged = 1;
 #endif
 
@@ -226,7 +227,7 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
 #ifdef MMU_INSTR
             if (!logged){
-                //printdynval(-1, 0);
+                printdynval(-1, 0);
                 logged = 1;
             }
 #endif
@@ -252,8 +253,8 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
 
 #ifdef MMU_INSTR
             if (!logged){
-                //printramaddr(qemu_ram_addr_from_host_nofail(
-                //    (void*)(addr+addend)), 0);
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 0);
                 logged = 1;
             }
 #endif
@@ -370,7 +371,7 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
 #ifdef MMU_INSTR
-            //printdynval((ioaddr & TARGET_PAGE_MASK) + addr, 1);
+            printdynval((ioaddr & TARGET_PAGE_MASK) + addr, 1);
             logged = 1;
 #endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
@@ -392,8 +393,8 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             addend = env->tlb_table[mmu_idx][index].addend;
 
 #ifdef MMU_INSTR
-            //printramaddr(qemu_ram_addr_from_host_nofail(
-            //    (void*)(addr+addend)), 1);
+            printramaddr(qemu_ram_addr_from_host_nofail(
+                (void*)(addr+addend)), 1);
             logged = 1;
 #endif
 
@@ -443,7 +444,7 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
 #ifdef MMU_INSTR
             if (!logged){
-                //printdynval(-1, 1);
+                printdynval(-1, 1);
                 logged = 1;
             }
 #endif
@@ -467,8 +468,8 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
 
 #ifdef MMU_INSTR
             if (!logged){
-                //printramaddr(qemu_ram_addr_from_host_nofail(
-                //    (void*)(addr+addend)), 1);
+                printramaddr(qemu_ram_addr_from_host_nofail(
+                    (void*)(addr+addend)), 1);
                 logged = 1;
             }
 #endif
