@@ -194,7 +194,7 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     p.pc = pc;
 
     // XXX DEBUG: Just check the one we KNOW is correct
-    if(p.caller != 0x0000000075939788 || p.pc != 0x00000000759382ef || p.cr3 != 0x000000003f19f0e0) return 1;
+    //if(p.caller != 0x0000000074ce9788 || p.pc != 0x0000000074ce82ef || p.cr3 != 0x000000003f9650e0) return 1;
 
     for (unsigned int i = 0; i < size; i++) {
         uint8_t val = ((uint8_t *)buf)[i];
@@ -221,6 +221,10 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
             if (unlikely(match)) {
                 fprintf(stderr, "MAC match found at " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
                     p.caller, p.pc, p.cr3);
+                fprintf(stderr, "Key: ");
+                for(int j = 0; j < MASTER_SECRET_SIZE; j++)
+                    fprintf(stderr, "%02x", g_master_secret.data[j]);
+                fprintf(stderr, "\n");
                 matches.insert(p);
             }
         }
