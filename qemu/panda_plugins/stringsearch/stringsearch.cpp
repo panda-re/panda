@@ -137,7 +137,7 @@ bool init_plugin(void *self) {
         while (std::getline(iss, x, ':')) {
             tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
             if (i >= MAX_STRLEN) {
-                printf("Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
+                printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
                 break;
             }
         }

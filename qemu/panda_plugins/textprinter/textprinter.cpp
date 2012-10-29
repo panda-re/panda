@@ -60,7 +60,7 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     p.pc = pc;
 
     // XXX disable CR3 check
-    //p.cr3 = 0;
+    p.cr3 = 0;
 
     if (tap_points.find(p) != tap_points.end()) {
         for (unsigned int i = 0; i < size; i++) {
@@ -95,7 +95,7 @@ bool init_plugin(void *self) {
         taps >> std::hex >> p.cr3;
 
         // XXX disable CR3 check
-        //p.cr3 = 0;
+        p.cr3 = 0;
 
         printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
                p.caller, p.pc, p.cr3);
