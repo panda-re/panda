@@ -59,6 +59,9 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 #endif
     p.pc = pc;
 
+    // XXX disable CR3 check
+    p.cr3 = 0;
+
     if (tap_points.find(p) != tap_points.end()) {
         for (unsigned int i = 0; i < size; i++) {
             fprintf(tap_buffers, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
@@ -90,6 +93,10 @@ bool init_plugin(void *self) {
     while (taps >> std::hex >> p.caller) {
         taps >> std::hex >> p.pc;
         taps >> std::hex >> p.cr3;
+
+        // XXX disable CR3 check
+        p.cr3 = 0;
+
         printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
                p.caller, p.pc, p.cr3);
         tap_points.insert(p);

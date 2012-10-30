@@ -1,1 +1,1 @@
-PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls llvm_trace
+PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls llvm_trace stringsearch keyfind

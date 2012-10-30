@@ -1,0 +1,8 @@
+# ==== 10.0.2.15:49305 <-> 18.26.6.153:4433 ====
+Client-Random: 5029633ca9af483eb3c1f9e025ce16eb58e9bc21bf075ec4e9101a0fd61ca3d9
+Server-Random: 508612c66255039dc2eb4a89fad65516ca3a32513a833ada7263fea781a2f89f
+Enc-Msg:       c790f3db7dd409a41a396b3a0f166289b0872407aa8b437b3b73656a729e04c806d21d8cc76e0c6b73b367f3588b24e5 
+Version:       0301
+Content-Type:  16
+Cipher:        AES-128-CBC
+MAC:           SHA1
