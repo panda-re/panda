@@ -51,10 +51,10 @@
 #define DEBUG_LOGFILE "/tmp/qemu.log"
 
 #ifdef CONFIG_LLVM
-#include <tcg-llvm.h>
-//extern int generate_llvm;
-//extern int execute_llvm;
+#include "tcg-llvm.h"
 #endif
+
+#include "panda_plugin.h"
 
 char *exec_path;
 
@@ -3120,14 +3120,13 @@ static void handle_generate_llvm(const char *arg)
 {
     generate_llvm = 1;
 }
+#endif
 
-#ifdef CONFIG_LLVM_TRACE
-static void handle_trace_llvm(const char *arg)
+static void handle_panda_plugin(const char *arg)
 {
-    trace_llvm = 1;
+        if(!panda_load_plugin(arg))
+            fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
 }
-#endif
-#endif
 
 struct qemu_argument {
     const char *argv;
@@ -3178,11 +3177,9 @@ struct qemu_argument arg_table[] = {
      "",        "execute code using LLVM JIT"},
     {"generate-llvm", "QEMU_GEN_LLVM",        false, handle_generate_llvm,
      "",        "translate code into LLVM but don't execute it"},
-#ifdef CONFIG_LLVM_TRACE
-    {"trace-llvm", "QEMU_TRACE_LLVM",  false, handle_trace_llvm,
-     "",        "deposit LLVM bitcode and trace files into /tmp"},
 #endif
-#endif
+    {"panda-plugin", "QEMU_PANDA_PLUGIN", true, handle_panda_plugin,
+     "",        "load PANDA plugin from <file>"},
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -3569,7 +3566,11 @@ int main(int argc, char **argv, char **envp)
 #endif
 
 #ifdef CONFIG_LLVM
-    tcg_llvm_ctx = tcg_llvm_initialize();
+    if (generate_llvm || execute_llvm){
+        if (tcg_llvm_ctx == NULL){
+            tcg_llvm_ctx = tcg_llvm_initialize();
+        }
+    }
 #endif
 
 #if defined(TARGET_I386)

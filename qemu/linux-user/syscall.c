@@ -103,8 +103,9 @@ int __clone2(int (*fn)(void *), void *child_stack_base,
 #ifdef CONFIG_LLVM
 #include "tcg.h"
 #include "tcg-llvm.h"
-#include "linux-user-syscall.h"
 #endif
+
+#include "panda_plugin.h"
 
 #if defined(CONFIG_USE_NPTL)
 #define CLONE_NPTL_FLAGS2 (CLONE_SETTLS | \
@@ -4619,6 +4620,8 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     struct statfs stfs;
     void *p;
 
+    panda_cb_list *plist;
+
 #ifdef DEBUG
     gemu_log("syscall %d", num);
 #endif
@@ -4679,11 +4682,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0)))
                 goto efault;
             ret = get_errno(read(arg1, p, arg3));
-#ifdef CONFIG_LLVM_TRACE
-            if (execute_llvm && trace_llvm){
-                inst_read(arg1, ret, p);
+            
+            for(plist = panda_cbs[PANDA_CB_USER_READ]; plist != NULL;
+                    plist = plist->next) {
+                plist->entry.user_read(ret, arg1, p, arg3);
             }
-#endif
+            
             unlock_user(p, arg2, ret);
         }
         break;
@@ -4691,11 +4695,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user(VERIFY_READ, arg2, arg3, 1)))
             goto efault;
         ret = get_errno(write(arg1, p, arg3));
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            inst_write(arg1, ret, p);
+        
+        for(plist = panda_cbs[PANDA_CB_USER_WRITE]; plist != NULL;
+                plist = plist->next) {
+            plist->entry.user_write(ret, arg1, p, arg3);
         }
-#endif
+        
         unlock_user(p, arg2, 0);
         break;
     case TARGET_NR_open:
@@ -4704,11 +4709,13 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         ret = get_errno(open(path(p),
                              target_to_host_bitmask(arg2, fcntl_flags_tbl),
                              arg3));
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            inst_open(ret, p, target_to_host_bitmask(arg2, fcntl_flags_tbl));
+        
+        for(plist = panda_cbs[PANDA_CB_USER_OPEN]; plist != NULL;
+                plist = plist->next) {
+            plist->entry.user_open(ret, p,
+                target_to_host_bitmask(arg2, fcntl_flags_tbl), arg3);
         }
-#endif
+
         unlock_user(p, arg1, 0);
         break;
 #if defined(TARGET_NR_openat) && defined(__NR_openat)
@@ -4719,11 +4726,13 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                                    path(p),
                                    target_to_host_bitmask(arg3, fcntl_flags_tbl),
                                    arg4));
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            inst_open(ret, p, target_to_host_bitmask(arg3, fcntl_flags_tbl));
+        
+        for(plist = panda_cbs[PANDA_CB_USER_OPENAT]; plist != NULL;
+                plist = plist->next) {
+            plist->entry.user_openat(ret, arg1, p,
+                target_to_host_bitmask(arg3, fcntl_flags_tbl), arg4);
         }
-#endif
+
         unlock_user(p, arg2, 0);
         break;
 #endif
@@ -4767,11 +4776,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user_string(arg1)))
             goto efault;
         ret = get_errno(creat(p, arg2));
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            inst_creat(ret, p);
+        
+        for(plist = panda_cbs[PANDA_CB_USER_CREAT]; plist != NULL;
+                plist = plist->next) {
+            plist->entry.user_creat(ret, p, arg2);
         }
-#endif
+
         unlock_user(p, arg1, 0);
         break;
 #endif
@@ -6428,9 +6438,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         _mcleanup();
 #endif
 
-#ifdef CONFIG_LLVM
-        inst_exit_group();
-#endif
+        panda_unload_plugins();
 
         gdb_exit(cpu_env, arg1);
         ret = get_errno(exit_group(arg1));

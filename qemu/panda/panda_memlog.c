@@ -868,10 +868,7 @@ void printloc(uintptr_t val){
  * TODO: mesh with laredo.h for logop enum
  */
 void printdynval(uintptr_t val, int op){
-    if (!memlog){
-        memlog = fopen("/tmp/llvm-memlog.log", "w");
-        setbuf(memlog, NULL);
-    }
+    assert(memlog);
     if (op == 1){
         fprintf(memlog, "store ");
         printloc(val);
@@ -898,6 +895,17 @@ void printramaddr(uintptr_t physaddr, int store){
         fprintf(memlog, "store %lu\n", physaddr);
     } else if (store == 0){
         fprintf(memlog, "load %lu\n", physaddr);
+    }
+}
+
+void open_memlog(void){
+    memlog = fopen("/tmp/llvm-memlog.log", "w");
+}
+
+void close_memlog(void){
+    if (memlog){
+        fclose(memlog);
+        memlog = NULL;
     }
 }
 

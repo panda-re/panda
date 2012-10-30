@@ -3,11 +3,11 @@
 
 #include "inttypes.h"
 
-//#ifdef CONFIG_LLVM_TRACE
 void printloc(uintptr_t);
 void printdynval(uintptr_t, int);
 void printramaddr(uintptr_t, int);
-//#endif
+void open_memlog(void);
+void close_memlog(void);
 
 #endif
 

@@ -139,10 +139,6 @@ obj-y = main.o syscall.o strace.o mmap.o signal.o thunk.o \
       elfload.o linuxload.o uaccess.o gdbstub.o cpu-uname.o \
       user-exec.o $(oslib-obj-y)
 
-ifdef CONFIG_LLVM
-libobj-y += panda/linux-user-syscall.o
-endif
-
 obj-$(TARGET_HAS_BFLT) += flatload.o
 
 obj-$(TARGET_I386) += vm86.o

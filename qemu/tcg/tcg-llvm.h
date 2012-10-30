@@ -68,7 +68,7 @@ struct TCGLLVMRuntime {
 extern struct TCGLLVMRuntime tcg_llvm_runtime;
 
 struct TCGLLVMContext* tcg_llvm_initialize(void);
-void tcg_llvm_close(struct TCGLLVMContext *l);
+void tcg_llvm_destroy(void);
 
 void tcg_llvm_tb_alloc(struct TranslationBlock *tb);
 void tcg_llvm_tb_free(struct TranslationBlock *tb);
@@ -81,9 +81,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(void *env, TranslationBlock *tb);
 
 int tcg_llvm_search_last_pc(struct TranslationBlock *tb, uintptr_t searched_pc);
 
-#ifdef CONFIG_LLVM_TRACE
 void tcg_llvm_write_module(struct TCGLLVMContext *l);
-#endif
 
 #ifdef __cplusplus
 }
@@ -125,9 +123,8 @@ public:
 
     void generateCode(struct TCGContext *s,
                       struct TranslationBlock *tb);
-#ifdef CONFIG_LLVM_TRACE
+
     void writeModule();
-#endif
 };
 
 #endif
