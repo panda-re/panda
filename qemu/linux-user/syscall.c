@@ -4621,6 +4621,12 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
     void *p;
 
     panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_USER_BEFORE_SYSCALL]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.user_before_syscall(cpu_env, fcntl_flags_tbl,
+                                         num, arg1, arg2, arg3, arg4,
+                                         arg5, arg6, arg7, arg8);
+    }
 
 #ifdef DEBUG
     gemu_log("syscall %d", num);
@@ -4682,12 +4688,6 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
             if (!(p = lock_user(VERIFY_WRITE, arg2, arg3, 0)))
                 goto efault;
             ret = get_errno(read(arg1, p, arg3));
-            
-            for(plist = panda_cbs[PANDA_CB_USER_READ]; plist != NULL;
-                    plist = plist->next) {
-                plist->entry.user_read(ret, arg1, p, arg3);
-            }
-            
             unlock_user(p, arg2, ret);
         }
         break;
@@ -4695,12 +4695,6 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user(VERIFY_READ, arg2, arg3, 1)))
             goto efault;
         ret = get_errno(write(arg1, p, arg3));
-        
-        for(plist = panda_cbs[PANDA_CB_USER_WRITE]; plist != NULL;
-                plist = plist->next) {
-            plist->entry.user_write(ret, arg1, p, arg3);
-        }
-        
         unlock_user(p, arg2, 0);
         break;
     case TARGET_NR_open:
@@ -4709,13 +4703,6 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         ret = get_errno(open(path(p),
                              target_to_host_bitmask(arg2, fcntl_flags_tbl),
                              arg3));
-        
-        for(plist = panda_cbs[PANDA_CB_USER_OPEN]; plist != NULL;
-                plist = plist->next) {
-            plist->entry.user_open(ret, p,
-                target_to_host_bitmask(arg2, fcntl_flags_tbl), arg3);
-        }
-
         unlock_user(p, arg1, 0);
         break;
 #if defined(TARGET_NR_openat) && defined(__NR_openat)
@@ -4726,13 +4713,6 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
                                    path(p),
                                    target_to_host_bitmask(arg3, fcntl_flags_tbl),
                                    arg4));
-        
-        for(plist = panda_cbs[PANDA_CB_USER_OPENAT]; plist != NULL;
-                plist = plist->next) {
-            plist->entry.user_openat(ret, arg1, p,
-                target_to_host_bitmask(arg3, fcntl_flags_tbl), arg4);
-        }
-
         unlock_user(p, arg2, 0);
         break;
 #endif
@@ -4776,12 +4756,6 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
         if (!(p = lock_user_string(arg1)))
             goto efault;
         ret = get_errno(creat(p, arg2));
-        
-        for(plist = panda_cbs[PANDA_CB_USER_CREAT]; plist != NULL;
-                plist = plist->next) {
-            plist->entry.user_creat(ret, p, arg2);
-        }
-
         unlock_user(p, arg1, 0);
         break;
 #endif
@@ -8198,6 +8172,14 @@ fail:
 #endif
     if(do_strace)
         print_syscall_ret(num, ret);
+
+    for(plist = panda_cbs[PANDA_CB_USER_AFTER_SYSCALL]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.user_after_syscall(cpu_env, fcntl_flags_tbl,num, arg1,
+                                        arg2, arg3, arg4, arg5, arg6, arg7,
+                                        arg8, p, ret);
+    }
+
     return ret;
 efault:
     ret = -TARGET_EFAULT;

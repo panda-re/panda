@@ -79,11 +79,8 @@ QEMU user-mode only. The callback types currently defined are:
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
-    PANDA_CB_USER_OPEN,         // open() system call
-    PANDA_CB_USER_OPENAT,       // openat() system call
-    PANDA_CB_USER_CREAT,        // creat() system call
-    PANDA_CB_USER_READ,         // read() system call
-    PANDA_CB_USER_WRITE,        // write() system call
+    PANDA_CB_USER_BEFORE_SYSCALL, // before system call
+    PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
 
 For more information on each callback, see the "Callbacks" section.
 	
@@ -425,98 +422,59 @@ We use void pointers because of C++ constructs, cast properly in plugin.
 
 ---
 
-**user_open**: Called after `open()` syscall for QEMU user mode.
+**user_before_syscall**: Called before a syscall for QEMU user mode.
 
-**Callback ID**: PANDA_CB_USER_OPEN
+**Callback ID**: PANDA_CB_USER_BEFORE_SYSCALL
        
 **Arguments**:
 
-* `abi_long ret`: return value of syscall
-* `void *p`: pointer to path name; plugin should process with `path()`
-* `unsigned int flags`: flags which have been processed by `target_to_host_bitmask()`
-* `abi_long mode`: mode argument
-       
+* `void *cpu_env`: pointer to CPUState
+* `bitmask_transtbl *fcntl_flags_tbl`: syscall flags table from syscall.c
+* `int num`: syscall number
+* `abi_long arg1..arg8`: syscall arguments
+
 **Return value**: unused
+
+**Notes**:
+Some system call arguments need some additional processing, as evident in
+linux-user/syscall.c.  If your plugin is particularly interested in system call
+arguments, be sure to process them in similar ways.
 
 **Signature**:
 
-    int (*user_open)(abi_long ret, void *p, unsigned int flags, abi_long mode);
-
+    int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                               int num, abi_long arg1, abi_long arg2, abi_long
+                               arg3, abi_long arg4, abi_long arg5,
+                               abi_long arg6, abi_long arg7, abi_long arg8);
 ---
 
-**user_openat**: Called after `openat()` syscall for QEMU user mode.
-       
-**Callback ID**: PANDA_CB_USER_OPENAT
+**user_after_syscall**: Called after a syscall for QEMU user mode
+
+**Callback ID**: PANDA_CB_USER_AFTER_SYSCALL
 
 **Arguments**:
 
+* `void *cpu_env`: pointer to CPUState
+* `bitmask_transtbl *fcntl_flags_tbl`: syscall flags table from syscall.c
+* `int num`: syscall number
+* `abi_long arg1..arg8`: syscall arguments
+* `void *p`: void pointer used for processing of some arguments
 * `abi_long ret`: return value of syscall
-* `abi_long fd`: directory file descriptor
-* `void *p`: pointer to path name; plugin should process with `path()`
-* `unsigned int flags`: flags which have been processed by `target_to_host_bitmask()`
-* `abi_long mode`: mode argument
        
 **Return value**: unused
 
-**Signature**:
-
-    int (*user_openat)(abi_long ret, abi_long fd, void *p, unsigned int flags, abi_long mode);
-
----
-
-**user_creat**: Called after `creat()` syscall for QEMU user mode
-       
-**Callback ID**: PANDA_CB_USER_CREAT
-
-**Arguments**:
-
-* `abi_long ret`: return value of syscall
-* `void *p`: pointer to path name; plugin should process with `path()`
-* `abi_long mode`: mode argument
-       
-**Return value**: unused
+**Notes**:
+Some system call arguments need some additional processing, as evident in
+linux-user/syscall.c.  If your plugin is particularly interested in system call
+arguments, be sure to process them in similar ways.
 
 **Signature**:
 
-    int (*user_creat)(abi_long ret, void *p, abi_long mode);
-
----
-
-**user_read**: Called after `read()` syscall for QEMU user mode
-       
-**Callback ID**: PANDA_CB_USER_READ
-       
-**Arguments**:
-
-* `abi_long ret`: return value of syscall
-* `abi_long fd`: file descriptor to read
-* `void *p`: buffer to read into
-* `abi_long count`: number of bytes to read
-       
-**Return value**: unused
-
-**Signature**:
-
-    int (*user_read)(abi_long ret, abi_long fd, void *p, abi_long count);
-
----
-
-**user_write**: Called after `write()` syscall for QEMU user mode 
-       
-**Callback ID**: PANDA_CB_USER_WRITE
-       
-**Arguments**:
-
-* `abi_long ret`: return value of syscall
-* `abi_long fd`: file descriptor to read
-* `void *p`: buffer to read into
-* `abi_long count`: number of bytes to read
-       
-**Return value**: unused
-
-**Signature**:
-
-    int (*user_write)(abi_long ret, abi_long fd, void *p, abi_long count);
+    int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                              int num, abi_long arg1, abi_long arg2, abi_long
+                              arg3, abi_long arg4, abi_long arg5, abi_long arg6,
+                              abi_long arg7, abi_long arg8, void *p,
+                              abi_long ret);
 
 ---
 
