@@ -25,6 +25,10 @@ extern "C" {
 #include "panda_plugin.h"
 #include "panda_memlog.h"
 
+#ifndef CONFIG_SOFTMMU
+#include "syscall_defs.h"
+#endif
+
 }
 
 #include <stdio.h>
@@ -44,14 +48,14 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 bool before_block_exec(CPUState *env, TranslationBlock *tb);
+int llvm_init(void *exEngine, void *funPassMan, void *module);
 
 #ifndef CONFIG_SOFTMMU
-int user_open(abi_long ret, void *p, unsigned int flags, abi_long mode);
-int user_openat(abi_long ret, abi_long fd, void *p, unsigned int flags,
-                abi_long mode);
-int user_creat(abi_long ret, void *p, abi_long mode);
-int user_read(abi_long ret, abi_long fd, void *p, abi_long count);
-int user_write(abi_long ret, abi_long fd, void *p, abi_long count);
+int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                       int num, abi_long arg1, abi_long arg2, abi_long arg3,
+                       abi_long arg4, abi_long arg5, abi_long arg6, abi_long
+                       arg7, abi_long arg8, void *p, abi_long ret);
+
 #endif
 //int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 //                       target_ulong size, void *buf);
@@ -122,8 +126,10 @@ int outfd = -1;
  * of interest. /proc and openssl.cnf also aren't interesting, from looking at
  * openssl.
  */
-int user_open(abi_long ret, void *p, unsigned int flags, abi_long mode){
+static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
+              abi_long flagarg){
     const char *file = path((const char*)p);
+    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl); 
     if (ret > 0){
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
@@ -146,13 +152,7 @@ int user_open(abi_long ret, void *p, unsigned int flags, abi_long mode){
     return 0;
 }
 
-int user_openat(abi_long ret, abi_long fd, void *p, unsigned int flags,
-                abi_long mode){
-    user_open(ret, p, flags, mode);
-    return 0;
-}
-
-int user_creat(abi_long ret, void *p, abi_long mode){
+static int user_creat(abi_long ret, void *p){
     const char *file = path((const char*)p);
     if (ret > 0){
         printf("open %s for write\n", file);
@@ -161,7 +161,7 @@ int user_creat(abi_long ret, void *p, abi_long mode){
     return 0;
 }
 
-int user_read(abi_long ret, abi_long fd, void *p, abi_long count){
+static int user_read(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
         // log the address and size of a buffer to be tainted
         fprintf(funclog, "taint,read,%ld,%ld\n", (uintptr_t)p,
@@ -171,7 +171,7 @@ int user_read(abi_long ret, abi_long fd, void *p, abi_long count){
     return 0;
 }
 
-int user_write(abi_long ret, abi_long fd, void *p, abi_long count){
+static int user_write(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == outfd){
         // log the address and size of a buffer to be checked for taint
         fprintf(funclog, "taint,write,%ld,%ld\n", (uintptr_t)p,
@@ -180,7 +180,34 @@ int user_write(abi_long ret, abi_long fd, void *p, abi_long count){
     }
     return 0;
 }
-#endif
+
+int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                       int num, abi_long arg1, abi_long arg2, abi_long arg3,
+                       abi_long arg4, abi_long arg5, abi_long arg6,
+                       abi_long arg7, abi_long arg8, void *p, abi_long ret){
+    switch (num){
+        case TARGET_NR_read:
+            user_read(ret, arg1, p);
+            break;
+        case TARGET_NR_write:
+            user_write(ret, arg1, p);
+            break;
+        case TARGET_NR_open:
+            user_open(fcntl_flags_tbl, ret, p, arg2);
+            break;
+        case TARGET_NR_openat:
+            user_open(fcntl_flags_tbl, ret, p, arg3);
+            break;
+        case TARGET_NR_creat:
+            user_creat(ret, p);
+            break;
+        default:
+            break;
+    }
+    return 0;
+}
+
+#endif // CONFIG_SOFTMMU
 
 bool init_plugin(void *self) {
     printf("Initializing plugin llvm_trace\n");
@@ -198,16 +225,8 @@ bool init_plugin(void *self) {
     //panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
 
 #ifndef CONFIG_SOFTMMU
-    pcb.user_open = user_open;
-    panda_register_callback(self, PANDA_CB_USER_OPEN, pcb);
-    pcb.user_openat = user_openat;
-    panda_register_callback(self, PANDA_CB_USER_OPENAT, pcb);
-    pcb.user_creat = user_creat;
-    panda_register_callback(self, PANDA_CB_USER_CREAT, pcb);
-    pcb.user_read = user_read;
-    panda_register_callback(self, PANDA_CB_USER_READ, pcb);
-    pcb.user_write = user_write;
-    panda_register_callback(self, PANDA_CB_USER_WRITE, pcb);
+    pcb.user_after_syscall = user_after_syscall;
+    panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
 
     open_memlog();
