@@ -63,7 +63,10 @@ The `uninit_plugin` function will be called when the plugin is unloaded. You sho
 
 	void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 
-Registers a callback with PANDA. The `type` parameter specifies what type of callback, and `cb` is used for the callback itself (`panda_cb` is a union of all possible callback signatures). The callback types currently defined are:
+Registers a callback with PANDA. The `type` parameter specifies what type of
+callback, and `cb` is used for the callback itself (`panda_cb` is a union of all
+possible callback signatures). Callbacks prefixed with PANDA_CB_USER are for
+QEMU user-mode only. The callback types currently defined are:
 
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
@@ -75,6 +78,12 @@ Registers a callback with PANDA. The `type` parameter specifies what type of cal
     PANDA_CB_MEM_WRITE,         // Before each memory write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
+    PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
+    PANDA_CB_USER_OPEN,         // open() system call
+    PANDA_CB_USER_OPENAT,       // openat() system call
+    PANDA_CB_USER_CREAT,        // creat() system call
+    PANDA_CB_USER_READ,         // read() system call
+    PANDA_CB_USER_WRITE,        // write() system call
 
 For more information on each callback, see the "Callbacks" section.
 	
@@ -118,6 +127,15 @@ Read or write `len` bytes of guest physical memory at `addr` into or from the su
     int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
 
 Read or write `len` bytes of guest virtual memory at `addr` into or from the supplied buffer `buf`. This function differs from QEMU's `cpu_memory_rw_debug` in that it will never access I/O, only RAM. This function returns zero on success, and negative values on failure.
+
+    void panda_enable_llvm(void);
+    void panda_disable_llvm(void);
+
+These functions enable and disable the use of the LLVM JIT in replacement of the
+TCG backend.  Here, an additional translation step is added from the TCG IR to
+the LLVM IR, and that is executed on the LLVM JIT.  Currently, this only works
+when QEMU is starting up, but we are hoping to support dynamic configuration of
+code generation soon.
 
 ## Callbacks
 
@@ -380,6 +398,127 @@ If you need to know the physical address of the memory write, use QEMU's `get_ph
 **Signature**:
 
 	int (*mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+**llvm_init**: Called on initialization of LLVM JIT.  Use for adding function
+passes to the JIT, linking external functions to the JIT, etc.  Add
+function passes here that will be run on generation of each new LLVM
+function.
+
+**Callback ID**: PANDA_CB_LLVM_INIT
+
+**Arguments**:
+
+* `void *exEngine`: void pointer to the LLVM execution engine (JIT)
+* `void *funPassMan`: void pointer to the LLVM function pass manager
+* `void *module`: void pointer to the JIT IR module
+       
+**Return value**: unused
+
+**Notes**:
+We use void pointers because of C++ constructs, cast properly in plugin.
+
+**Signature**:
+
+    int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
+
+---
+
+**user_open**: Called after `open()` syscall for QEMU user mode.
+
+**Callback ID**: PANDA_CB_USER_OPEN
+       
+**Arguments**:
+
+* `abi_long ret`: return value of syscall
+* `void *p`: pointer to path name; plugin should process with `path()`
+* `unsigned int flags`: flags which have been processed by `target_to_host_bitmask()`
+* `abi_long mode`: mode argument
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*user_open)(abi_long ret, void *p, unsigned int flags, abi_long mode);
+
+---
+
+**user_openat**: Called after `openat()` syscall for QEMU user mode.
+       
+**Callback ID**: PANDA_CB_USER_OPENAT
+
+**Arguments**:
+
+* `abi_long ret`: return value of syscall
+* `abi_long fd`: directory file descriptor
+* `void *p`: pointer to path name; plugin should process with `path()`
+* `unsigned int flags`: flags which have been processed by `target_to_host_bitmask()`
+* `abi_long mode`: mode argument
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*user_openat)(abi_long ret, abi_long fd, void *p, unsigned int flags, abi_long mode);
+
+---
+
+**user_creat**: Called after `creat()` syscall for QEMU user mode
+       
+**Callback ID**: PANDA_CB_USER_CREAT
+
+**Arguments**:
+
+* `abi_long ret`: return value of syscall
+* `void *p`: pointer to path name; plugin should process with `path()`
+* `abi_long mode`: mode argument
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*user_creat)(abi_long ret, void *p, abi_long mode);
+
+---
+
+**user_read**: Called after `read()` syscall for QEMU user mode
+       
+**Callback ID**: PANDA_CB_USER_READ
+       
+**Arguments**:
+
+* `abi_long ret`: return value of syscall
+* `abi_long fd`: file descriptor to read
+* `void *p`: buffer to read into
+* `abi_long count`: number of bytes to read
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*user_read)(abi_long ret, abi_long fd, void *p, abi_long count);
+
+---
+
+**user_write**: Called after `write()` syscall for QEMU user mode 
+       
+**Callback ID**: PANDA_CB_USER_WRITE
+       
+**Arguments**:
+
+* `abi_long ret`: return value of syscall
+* `abi_long fd`: file descriptor to read
+* `void *p`: buffer to read into
+* `abi_long count`: number of bytes to read
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*user_write)(abi_long ret, abi_long fd, void *p, abi_long count);
+
+---
 
 ## Sample Plugin: Syscall Monitor
 

@@ -194,8 +194,7 @@ extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
 
 struct TCGLLVMContext* tcg_llvm_initialize(void);
-void tcg_llvm_close(struct TCGLLVMContext *l);
-void tcg_llvm_write_module(struct TCGLLVMContext *l);
+void tcg_llvm_destroy(void);
 #endif
 
 #include "ui/qemu-spice.h"
@@ -596,12 +595,7 @@ static void configure_rtc(QemuOpts *opts)
 static void tcg_llvm_cleanup(void)
 {
     if(tcg_llvm_ctx) {
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            tcg_llvm_write_module(tcg_llvm_ctx);
-        }
-#endif
-        tcg_llvm_close(tcg_llvm_ctx);
+        tcg_llvm_destroy();
         tcg_llvm_ctx = NULL;
     }
 }
@@ -3218,7 +3212,11 @@ int main(int argc, char **argv, char **envp)
     }
 
 #if defined(CONFIG_LLVM)
-    tcg_llvm_ctx = tcg_llvm_initialize();
+    if (generate_llvm || execute_llvm){
+        if (tcg_llvm_ctx == NULL){
+            tcg_llvm_ctx = tcg_llvm_initialize();
+        }
+    }
 #endif
 
     /*
@@ -3631,7 +3629,9 @@ int main(int argc, char **argv, char **envp)
     res_free();
 
 #ifdef CONFIG_LLVM
-    tcg_llvm_cleanup();
+    if (generate_llvm || execute_llvm){
+        tcg_llvm_cleanup();
+    }
 #endif
 
     return 0;

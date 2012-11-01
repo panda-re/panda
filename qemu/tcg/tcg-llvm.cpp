@@ -44,9 +44,9 @@ extern "C" {
 #include "config.h"
 #include "qemu-common.h"
 #include "disas.h"
-#include "panda_memlog.h"
 
-extern FILE *memlog;
+#include "panda_memlog.h"
+#include "panda_plugin.h"
 
 #if defined(CONFIG_SOFTMMU)
 
@@ -147,16 +147,6 @@ static char *qemu_st_helper_names[5] = {
 
 #include <iostream>
 #include <sstream>
-
-enum logop {
-    LOAD,
-    STORE,
-    BRANCH
-};
-
-#ifdef CONFIG_LLVM_TRACE
-FILE *funclog;
-#endif
 
 //#undef NDEBUG
 //#define DEBUGSTRINGS
@@ -290,7 +280,6 @@ public:
     void generateTraceCall(uintptr_t pc);
     int generateOperation(int opc, const TCGArg *args);
     void generateCode(TCGContext *s, TranslationBlock *tb);
-    void traceVal(Value *v, std::vector<Value*> argValues, int op);
 };
 
 /* Custom JITMemoryManager in order to capture the size of
@@ -399,7 +388,14 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager = new FunctionPassManager(m_module);
     m_functionPassManager->add(
             new TargetData(*m_executionEngine->getTargetData()));
-
+    
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_LLVM_INIT]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.llvm_init(m_executionEngine, m_functionPassManager,
+                               m_module);
+    }
+    
     /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
      * code size
      */
@@ -438,11 +434,6 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
         delete m_executionEngine;
     }
 }
-
-#ifdef CONFIG_LLVM_TRACE
-Function* printFunc;
-Function* ramFunc;
-#endif
 
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 {
@@ -522,31 +513,9 @@ unsigned TCGLLVMContextPrivate::getValueBits(int idx)
 
 Value* TCGLLVMContextPrivate::getValue(int idx)
 {
-#ifdef CONFIG_LLVM_TRACE
-    std::vector<Value*> argValues2;
-#endif
 
     if(m_values[idx] == NULL) {
         if(idx < m_tcgContext->nb_globals) {
-
-#ifdef CONFIG_LLVM_TRACE
-            if (execute_llvm && trace_llvm){
-                //rwhelan - log this load
-                argValues2.clear();
-                Value *v = m_builder.CreatePtrToInt(getPtrForValue(idx),
-                    wordType());
-                //rwhelan: try adding metadata
-                //static_cast<Instruction*>(v)->setMetadata(
-                //    m_context.getMDKindID("instrumentation"),
-                //    MDNode::get(m_context, ArrayRef<Value*>(MDString::get(
-                //    m_context,
-                //    "instrumentation"))));
-                argValues2.push_back(v);
-                argValues2.push_back(ConstantInt::get(wordType(), LOAD));
-                m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-            }
-#endif
-
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
 #ifndef NDEBUG
 #ifdef DEBUGSTRINGS
@@ -555,18 +524,6 @@ Value* TCGLLVMContextPrivate::getValue(int idx)
 #endif
                     );
         } else if(m_tcgContext->temps[idx].temp_local) {
-
-#ifdef CONFIG_LLVM_TRACE
-            if (execute_llvm && trace_llvm){
-                //rwhelan - log this load
-                argValues2.clear();
-                argValues2.push_back(m_builder.CreatePtrToInt(
-                    getPtrForValue(idx), wordType()));
-                argValues2.push_back(ConstantInt::get(wordType(), LOAD));
-                m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-            }
-#endif
-
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx));
 #ifndef NDEBUG
 #ifdef DEBUGSTRINGS
@@ -589,10 +546,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
     delValue(idx);
     m_values[idx] = v;
 
-#ifdef CONFIG_LLVM_TRACE
-    std::vector<Value*> argValues2;
-#endif
-
     if(!v->hasName() && !isa<Constant>(v)) {
 #ifndef NDEBUG
 #ifdef DEBUGSTRINGS
@@ -613,17 +566,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
 
     if(idx < m_tcgContext->nb_globals) {
 
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            //rwhelan - log this store
-            argValues2.clear();
-            argValues2.push_back(m_builder.CreatePtrToInt(getPtrForValue(idx),
-                wordType()));
-            argValues2.push_back(ConstantInt::get(wordType(), STORE));
-            m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
-
         // We need to save a global copy of a value
         m_builder.CreateStore(v, getPtrForValue(idx));
 
@@ -638,17 +580,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
             }
         }
     } else if(m_tcgContext->temps[idx].temp_local) {
-
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            //rwhelan - log this store
-            argValues2.clear();
-            argValues2.push_back(m_builder.CreatePtrToInt(getPtrForValue(idx),
-                wordType()));
-            argValues2.push_back(ConstantInt::get(wordType(), STORE));
-            m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
 
         // We need to save an in-memory copy of a value
         m_builder.CreateStore(v, getPtrForValue(idx));
@@ -725,17 +656,6 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
         assert(bb->getParent() == 0);
 
     if(!m_builder.GetInsertBlock()->getTerminator()){
-#ifdef CONFIG_LLVM_TRACE
-        std::vector<Value*> argValues2;
-        if (execute_llvm && trace_llvm){
-            argValues2.clear();
-            Value *v2 = ConstantInt::get(wordType(), 0);
-            argValues2.push_back(v2);
-            argValues2.push_back(ConstantInt::get(wordType(), BRANCH));
-            m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
-
         m_builder.CreateBr(bb);
     }
 
@@ -766,7 +686,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 
     uintptr_t helperFuncAddr;
     
-    if (trace_llvm){
+    if (panda_use_memcb){
         helperFuncAddr = ld ? (uint64_t) qemu_panda_ld_helpers[bits>>4]:
                                (uint64_t) qemu_panda_st_helpers[bits>>4];
     }
@@ -797,7 +717,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     }
 
     char *funcName;
-    if (trace_llvm){
+    if (panda_use_memcb){
         funcName = ld ? qemu_panda_ld_helper_names[bits>>4]:
             qemu_panda_st_helper_names[bits>>4];
     }
@@ -825,55 +745,12 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         ConstantInt::get(wordType(), GUEST_BASE));
     addr = m_builder.CreateIntToPtr(addr, intPtrType(bits));
     if(ld) {
-
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            //rwhelan: log this load
-            argValues2.clear();
-            argValues2.push_back(m_builder.CreatePtrToInt(addr, wordType()));
-            argValues2.push_back(ConstantInt::get(wordType(), LOAD));
-            m_builder.CreateCall(ramFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
-
         return m_builder.CreateLoad(addr);
     } else {
-        
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            //rwhelan: log this store
-            argValues2.clear();
-            argValues2.push_back(m_builder.CreatePtrToInt(addr, wordType()));
-            argValues2.push_back(ConstantInt::get(wordType(), STORE));
-            m_builder.CreateCall(ramFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
-
         m_builder.CreateStore(value, addr);
         return NULL;
     }
 #endif // CONFIG_SOFTMMU
-}
-
-//for use in pre-processed code
-void TCGLLVMContextPrivate::traceVal(Value *v, std::vector<Value*> argValues2,
-    int op){
-#ifdef CONFIG_LLVM_TRACE
-    if (execute_llvm && trace_llvm){
-        argValues2.clear();
-        if (op == BRANCH){
-            argValues2.push_back(m_builder.CreateZExt(
-                m_builder.CreateNot(v), wordType()));
-        }
-        else if (op == LOAD || op == STORE){
-            //argValues2.push_back(ConstantInt::get(wordType(), op));
-            //argValues2.push_back(v);
-            argValues2.push_back(m_builder.CreatePtrToInt(v, wordType()));
-        }
-        argValues2.push_back(ConstantInt::get(wordType(), op));
-        m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-    }
-#endif
 }
 
 int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
@@ -881,40 +758,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     Value *v;
     TCGOpDef &def = tcg_op_defs[opc];
     int nb_args = def.nb_args;
-
-    std::vector<Value*> argValues2;
-#ifdef CONFIG_LLVM_TRACE
-    if (execute_llvm && trace_llvm){
-        printFunc = m_module->getFunction("printdynval");
-        ramFunc = m_module->getFunction("printramaddr");
-        if(!printFunc) {
-            //printf("Linking in printdynval...\n");
-            std::vector<Type*> argTypes;
-            argTypes.push_back(intType(64));
-            argTypes.push_back(wordType());
-            printFunc = Function::Create(
-                    FunctionType::get(Type::getVoidTy(m_context),
-                    argTypes, false),
-                    Function::PrivateLinkage, "printdynval", m_module);
-            printFunc->addFnAttr(Attribute::AlwaysInline);
-            m_executionEngine->addGlobalMapping(printFunc,
-                                                (void*) &printdynval);
-        }
-        if(!ramFunc){
-            //printf("Linking in printramaddr...\n");
-            std::vector<Type*> argTypes;
-            argTypes.push_back(intType(64));
-            argTypes.push_back(intType(64));
-            ramFunc = Function::Create(
-                    FunctionType::get(Type::getVoidTy(m_context),
-                    argTypes, false),
-                    Function::PrivateLinkage, "printramaddr", m_module);
-            ramFunc->addFnAttr(Attribute::AlwaysInline);
-            m_executionEngine->addGlobalMapping(ramFunc,
-                                                (void*) &printramaddr); 
-        }
-    }
-#endif
 
     switch(opc) {
     case INDEX_op_debug_insn_start:
@@ -967,12 +810,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             tcg_target_ulong helperAddrC = (tcg_target_ulong)
                    cast<ConstantInt>(helperAddr)->getZExtValue();
             
-            // Print helper names
-            assert(helperAddrC);
-            printf("HELPER %s\n", tcg_helper_get_name(m_tcgContext,
-                (void*)helperAddrC));
-            fflush(stdout);
-
             const char *helperName = tcg_helper_get_name(m_tcgContext,
                                                          (void*) helperAddrC);
             assert(helperName);
@@ -1005,19 +842,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
             if(nb_oargs == 1)
                 setValue(args[1], result);
+
         }
         break;
 
     case INDEX_op_br:
-#ifdef CONFIG_LLVM_TRACE
-        if (execute_llvm && trace_llvm){
-            argValues2.clear();
-            Value *v2 = ConstantInt::get(wordType(), 0);
-            argValues2.push_back(v2);
-            argValues2.push_back(ConstantInt::get(wordType(), BRANCH));
-            m_builder.CreateCall(printFunc, ArrayRef<Value*>(argValues2));
-        }
-#endif
         m_builder.CreateBr(getLabel(args[0]));
         startNewBasicBlock();
         break;
@@ -1028,7 +857,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                         getValue(args[0]), getValue(args[1]));      \
             break;
 
-//rwhelan - log branch
 #define __OP_BRCOND(opc_name, bits)                                 \
     case opc_name: {                                                \
         assert(getValue(args[0])->getType() == intType(bits));      \
@@ -1048,9 +876,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                 tcg_abort();                                        \
         }                                                           \
         BasicBlock* bb = BasicBlock::Create(m_context);             \
-\
-        traceVal(v, argValues2, BRANCH);                            \
-\
         m_builder.CreateCondBr(v, getLabel(args[3]), bb);           \
         startNewBasicBlock(bb);                                     \
     } break;
@@ -1122,22 +947,17 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #undef __EXT_OP
 
     /* load/store */
-//rwhelan - log this load
 #define __LD_OP(opc_name, memBits, regBits, signE)                  \
     case opc_name:                                                  \
         assert(getValue(args[1])->getType() == wordType());         \
         v = m_builder.CreateAdd(getValue(args[1]),                  \
                     ConstantInt::get(wordType(), args[2]));         \
         v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
-\
-        traceVal(v, argValues2, LOAD);                              \
-\
         v = m_builder.CreateLoad(v);                                \
         setValue(args[0], m_builder.Create ## signE ## Ext(         \
                     v, intType(regBits)));                          \
         break;
 
-//rwhelan - log this store
 #define __ST_OP(opc_name, memBits, regBits)                         \
     case opc_name:  {                                                 \
         assert(getValue(args[0])->getType() == intType(regBits));   \
@@ -1148,9 +968,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         v = m_builder.CreateAdd(getValue(args[1]),                  \
                     ConstantInt::get(wordType(), args[2]));         \
         v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
-\
-        traceVal(v, argValues2, STORE);                             \
-\
         m_builder.CreateStore(m_builder.CreateTrunc(                \
                 valueToStore, intType(memBits)), v);           \
     } break;
@@ -1533,9 +1350,8 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     verifyFunction(*m_tbFunction);
 #endif
 
-    // need to figure out how to eliminate logging call if logged instruction
-    // gets optimized away
-    //m_functionPassManager->run(*m_tbFunction);
+    // run all specified function passes
+    m_functionPassManager->run(*m_tbFunction);
 
     tb->llvm_function = m_tbFunction;
 
@@ -1607,7 +1423,6 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-#ifdef CONFIG_LLVM_TRACE
 void TCGLLVMContext::writeModule(){
     std::string Error;
     raw_ostream *outfile;
@@ -1616,7 +1431,6 @@ void TCGLLVMContext::writeModule(){
     WriteBitcodeToFile(getModule(), *outfile);
     delete outfile;
 }
-#endif
 
 /*****************************/
 /* Functions for QEMU c code */
@@ -1630,16 +1444,11 @@ TCGLLVMContext* tcg_llvm_initialize()
     return new TCGLLVMContext;
 }
 
-void tcg_llvm_close(TCGLLVMContext *l)
-{
-#ifdef CONFIG_LLVM_TRACE
-    if (execute_llvm && trace_llvm){
-        fclose(funclog);
-        fclose(memlog);
+void tcg_llvm_destroy(){
+    if (tcg_llvm_ctx){
+        delete tcg_llvm_ctx;
+        tcg_llvm_ctx = NULL;
     }
-#endif
-
-    delete l;
 }
 
 void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
@@ -1690,9 +1499,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
     return next_tb;
 }
 
-#ifdef CONFIG_LLVM_TRACE
 void tcg_llvm_write_module(TCGLLVMContext *l){
     l->writeModule();    
 }
-#endif
 

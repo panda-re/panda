@@ -1,3 +1,4 @@
+#include "config.h"
 #include "panda_plugin.h"
 #include "qemu-common.h"
 #include "qdict.h"
@@ -5,8 +6,14 @@
 #include "hmp.h"
 #include "error.h"
 
+#ifdef CONFIG_LLVM
+#include "tcg.h"
+#include "tcg-llvm.h"
+#endif
+
 #include <dlfcn.h>
 #include <string.h>
+
 
 // WARNING: this is all gloriously un-thread-safe
 
@@ -148,6 +155,23 @@ void panda_enable_memcb(void) {
 void panda_disable_memcb(void) {
     panda_use_memcb = false;
 }
+
+#ifdef CONFIG_LLVM
+void panda_enable_llvm(void){
+    panda_do_flush_tb();
+    execute_llvm = 1;
+    generate_llvm = 1;
+    tcg_llvm_ctx = tcg_llvm_initialize();
+}
+
+void panda_disable_llvm(void){
+    panda_do_flush_tb();
+    execute_llvm = 0;
+    generate_llvm = 0;
+    tcg_llvm_destroy();
+    tcg_llvm_ctx = NULL;
+}
+#endif
 
 #ifdef CONFIG_SOFTMMU
 

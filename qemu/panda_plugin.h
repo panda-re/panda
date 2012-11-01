@@ -18,6 +18,14 @@ typedef enum panda_cb_type {
     PANDA_CB_HD_WRITE,          // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
+    PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
+#ifndef CONFIG_SOFTMMU          // *** Only callbacks for QEMU user mode *** //
+    PANDA_CB_USER_OPEN,         // open() system call
+    PANDA_CB_USER_OPENAT,       // openat() system call
+    PANDA_CB_USER_CREAT,        // creat() system call
+    PANDA_CB_USER_READ,         // read() system call
+    PANDA_CB_USER_WRITE,        // write() system call
+#endif
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -222,6 +230,124 @@ typedef union panda_cb {
     */
     int (*mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
+/* Callback ID: PANDA_CB_LLVM_INIT
+
+       llvm_init: Called on initialization of LLVM JIT.  Use for adding function
+        passes to the JIT, linking external functions to the JIT, etc.  Add
+        function passes here that will be run on generation of each new LLVM
+        function.
+       
+       Arguments:
+        void *exEngine: void pointer to the LLVM execution engine (JIT)
+        void *funPassMan: void pointer to the LLVM function pass manager
+        void *module: void pointer to the JIT IR module
+       
+       Return value:
+        unused
+
+       Notes:
+        We use void pointers because of C++ constructs, cast properly in plugin.
+*/
+#ifdef CONFIG_LLVM
+    int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
+#endif
+
+/* User-mode only callbacks:
+ * We currently support a small set of syscalls.  If necessary, we can add
+ * callbacks for all syscalls in linux-user/syscall.c, and more that are
+ * specific to QEMU user-mode.
+ */
+#ifndef CONFIG_SOFTMMU
+
+/* Callback ID: PANDA_CB_USER_OPEN
+
+       user_open: Called after open() syscall for QEMU user mode.
+       
+       Arguments:
+        abi_long ret: return value of syscall
+        void *p: pointer to path name; plugin should process with path()
+        unsigned int flags: flags which have been processed by
+         target_to_host_bitmask()
+        abi_long mode: mode argument
+       
+       Return value:
+        unused
+
+       Notes:
+*/
+    int (*user_open)(abi_long ret, void *p, unsigned int flags, abi_long mode);
+
+/* Callback ID: PANDA_CB_USER_OPENAT
+
+       user_openat: Called after openat() syscall for QEMU user mode.
+       
+       Arguments:
+        abi_long ret: return value of syscall
+        abi_long fd: directory file descriptor
+        void *p: pointer to path name; plugin should process with path()
+        unsigned int flags: flags which have been processed by
+         target_to_host_bitmask()
+        abi_long mode: mode argument
+       
+       Return value:
+        unused
+
+       Notes:
+*/
+    int (*user_openat)(abi_long ret, abi_long fd, void *p, unsigned int flags, abi_long mode);
+
+/* Callback ID: PANDA_CB_USER_CREAT
+
+       user_creat: Called after creat() syscall for QEMU user mode
+       
+       Arguments:
+        abi_long ret: return value of syscall
+        void *p: pointer to path name; plugin should process with path()
+        abi_long mode: mode argument
+       
+       Return value:
+        unused
+
+       Notes:
+*/
+    int (*user_creat)(abi_long ret, void *p, abi_long mode);
+
+/* Callback ID: PANDA_CB_USER_READ
+
+       user_read: Called after read() syscall for QEMU user mode
+       
+       Arguments:
+        abi_long ret: return value of syscall
+        abi_long fd: file descriptor to read
+        void *p: buffer to read into
+        abi_long count: number of bytes to read
+       
+       Return value:
+        unused
+
+       Notes:
+*/
+    int (*user_read)(abi_long ret, abi_long fd, void *p, abi_long count);
+
+/* Callback ID: PANDA_CB_USER_WRITE
+
+       user_write: Called after write() syscall for QEMU user mode 
+       
+       Arguments:
+        abi_long ret: return value of syscall
+        abi_long fd: file descriptor to read
+        void *p: buffer to read into
+        abi_long count: number of bytes to read
+       
+       Return value:
+        unused
+
+       Notes:
+*/
+    int (*user_write)(abi_long ret, abi_long fd, void *p, abi_long count);
+
+#endif // CONFIG_SOFTMMU
+
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner
@@ -260,6 +386,9 @@ void panda_enable_precise_pc(void);
 void panda_disable_precise_pc(void);
 void panda_enable_memcb(void);
 void panda_disable_memcb(void);
+
+void panda_enable_llvm(void);
+void panda_disable_llvm(void);
 
 extern bool panda_update_pc;
 extern bool panda_use_memcb;

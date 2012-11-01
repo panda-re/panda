@@ -39,9 +39,6 @@
 #if defined(CONFIG_LLVM)
 #include "tcg/tcg-llvm.h"
 const int has_llvm_engine = 1;
-#ifdef CONFIG_LLVM_TRACE
-extern FILE *funclog; //rwhelan: file for logging
-#endif
 #endif
 
 int generate_llvm = 0;
@@ -789,13 +786,6 @@ int cpu_exec(CPUState *env)
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
 
-#ifdef CONFIG_LLVM_TRACE
-                // rwhelan: open function log file
-                if (unlikely(!funclog && execute_llvm && trace_llvm)){
-                    funclog = fopen("/tmp/llvm-functions.log", "w");
-                    setbuf(funclog, NULL);
-                }
-#endif
 
                 barrier();
 
@@ -833,12 +823,6 @@ int cpu_exec(CPUState *env)
                     /* execute the generated code */
 
 #if defined(CONFIG_LLVM)
-
-#ifdef CONFIG_LLVM_TRACE
-                    if (execute_llvm && trace_llvm){
-                        fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
-                    }
-#endif
                     if(execute_llvm) {
                         next_tb = tcg_llvm_qemu_tb_exec(env, tb);
                     } else {

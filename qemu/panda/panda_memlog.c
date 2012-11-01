@@ -869,10 +869,7 @@ void printloc(uintptr_t val){
  */
 void printdynval(uintptr_t val, int op){
 #if 0
-    if (!memlog){
-        memlog = fopen("/tmp/llvm-memlog.log", "w");
-        setbuf(memlog, NULL);
-    }
+    assert(memlog);
     if (op == 1){
         fprintf(memlog, "store ");
         printloc(val);
@@ -903,5 +900,16 @@ void printramaddr(uintptr_t physaddr, int store){
         fprintf(memlog, "load %lu\n", physaddr);
     }
 #endif
+}
+
+void open_memlog(void){
+    memlog = fopen("/tmp/llvm-memlog.log", "w");
+}
+
+void close_memlog(void){
+    if (memlog){
+        fclose(memlog);
+        memlog = NULL;
+    }
 }
 

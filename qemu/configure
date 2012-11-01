@@ -3286,6 +3286,7 @@ if test "$llvm" = "yes" ; then
   echo "LLVMCC:=$clang" >> $config_host_mak
   echo "CONFIG_LLVM=y" >> $config_host_mak
   echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
+  echo "LLVMDIR=$llvmdir" >> $config_host_mak
 
   if test "$llvm_trace" = "yes" ; then
     echo "CONFIG_LLVM_TRACE=y" >> $config_host_mak
