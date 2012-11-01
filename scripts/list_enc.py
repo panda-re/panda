@@ -58,17 +58,17 @@ for label, plist in sessions.items():
         if (tls_rec.major_version,tls_rec.minor_version) not in VALID_TLS_VERSIONS: continue
         else:
             info['version'] = VALID_TLS_VERSIONS[(tls_rec.major_version,tls_rec.minor_version)]
-        if TLSv1ClientHello in tls_rec:
+        if TLSv1ClientHello in tls_rec and 'client_random' not in info:
             hello = tls_rec[TLSv1ClientHello]
             date = struct.pack(">I", hello.unix_time)
             info['client_random'] = date + hello.random_bytes
-        if TLSv1ServerHello in tls_rec:
+        if TLSv1ServerHello in tls_rec and 'server_random' not in info:
             hello = tls_rec[TLSv1ServerHello]
             date = struct.pack(">I", hello.unix_time)
             info['server_random'] = date + hello.random_bytes
             info['cipher_suite'] = tls_rec.sprintf("%TLSv1ServerHello.cipher_suite%")
         # Get the first encrypted client message so we can test
-        if client_send:
+        if client_send and 'client_enc' not in info:
             rec = tls_rec
             while TLSv1RecordLayer in rec:
                 if rec[TLSv1RecordLayer].sprintf("%TLSv1RecordLayer.code%") == "CHANGE CIPHER SPEC":
@@ -96,5 +96,6 @@ for label, plist in sessions.items():
     print "Enc-Msg:       %s" % info['client_enc'][2].encode('hex')
     print "Cipher:        %s" % CIPHER_SUITES[info['cipher_suite']][0]
     print "MAC:           %s" % CIPHER_SUITES[info['cipher_suite']][1]
+
     successful += 1
 print >>sys.stderr,"END: Found necessary info in %d of %d sessions." % (successful, len(sessions))
