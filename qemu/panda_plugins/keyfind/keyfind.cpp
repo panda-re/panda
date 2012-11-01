@@ -15,6 +15,7 @@ extern "C" {
 }
 
 #include "keyfind.h"
+#include <unordered_set>
 #include <set>
 #include <map>
 
@@ -71,7 +72,22 @@ struct prog_point {
                (this->pc == p.pc && this->caller < p.caller) || \
                (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
     }
+    bool operator ==(const prog_point &p) const {
+        return (this->pc == p.pc && this->caller == p.caller && this->cr3 == p.cr3);
+    }
 };
+
+struct hash_prog_point{
+    size_t operator()(const prog_point &p) const
+    {
+        size_t h1 = std::hash<target_ulong>()(p.caller);
+        size_t h2 = std::hash<target_ulong>()(p.pc);
+        size_t h3 = std::hash<target_ulong>()(p.cr3);
+        return h1 ^ h2 ^ h3;
+    }
+};
+    
+std::unordered_set <prog_point, hash_prog_point > candidates;
 
 // Ringbuf-like structure
 struct key_buf {
@@ -193,6 +209,9 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 #endif
     p.pc = pc;
 
+    // Only use candidates found in config (pre-filtered for key-ness)
+    if (candidates.find(p) == candidates.end()) return 1;
+
     // XXX DEBUG: Just check the one we KNOW is correct
     //if(p.caller != 0x0000000074ce9788 || p.pc != 0x0000000074ce82ef || p.cr3 != 0x000000003f9650e0) return 1;
 
@@ -251,13 +270,32 @@ bool init_plugin(void *self) {
     // Init list of ciphers & digests
     OpenSSL_add_all_algorithms();
 
+    // Read and parse list of candidate taps
+    std::ifstream taps("keyfind_candidates.txt");
+    if (!taps) {
+        printf("Couldn't open keyfind_candidates.txt; no key tap candidates defined. Exiting.\n");
+        return false;
+    }
+
+    prog_point p = {};
+    while (taps >> std::hex >> p.caller) {
+        taps >> std::hex >> p.pc;
+        taps >> std::hex >> p.cr3;
+
+        //printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
+        //       p.caller, p.pc, p.cr3);
+        candidates.insert(p);
+    }
+    printf("keyfind: Will check for keys on %ld taps.\n", candidates.size());
+    taps.close();
+
+    // Read and parse the configuration file
     std::ifstream config("keyfind_config.txt");
     if (!config) {
         printf("Couldn't open keyfind_config.txt. Aborting.\n");
         return false;
     }
 
-    // Read and parse the configuration file
     bool found_client_random = false,
          found_server_random = false,
          found_enc_msg = false,
