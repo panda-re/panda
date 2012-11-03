@@ -67,6 +67,7 @@ for label, plist in sessions.items():
             date = struct.pack(">I", hello.unix_time)
             info['server_random'] = date + hello.random_bytes
             info['cipher_suite'] = tls_rec.sprintf("%TLSv1ServerHello.cipher_suite%")
+            info['session_id'] = tls_rec.session_id
         # Get the first encrypted client message so we can test
         if client_send and 'client_enc' not in info:
             rec = tls_rec
@@ -96,6 +97,8 @@ for label, plist in sessions.items():
     print "Enc-Msg:       %s" % info['client_enc'][2].encode('hex')
     print "Cipher:        %s" % CIPHER_SUITES[info['cipher_suite']][0]
     print "MAC:           %s" % CIPHER_SUITES[info['cipher_suite']][1]
+    print "Ciphersuite:   %s" % info['cipher_suite']
+    print "Session-ID:    %s" % info['session_id'].encode('hex')
 
     successful += 1
-print >>sys.stderr,"END: Found necessary info in %d of %d sessions." % (successful, len(sessions))
+print "# END: Found necessary info in %d of %d sessions." % (successful, len(sessions))

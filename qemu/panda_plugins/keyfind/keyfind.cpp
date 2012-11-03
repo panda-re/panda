@@ -16,6 +16,7 @@ extern "C" {
 
 #include "keyfind.h"
 #include <unordered_set>
+#include <vector>
 #include <set>
 #include <map>
 
@@ -26,6 +27,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+int before_block_translate_cb(CPUState *env, target_ulong pc);
+int after_block_translate_cb(CPUState *env, TranslationBlock *tb);
 
 }
 
@@ -88,6 +91,10 @@ struct hash_prog_point{
 };
     
 std::unordered_set <prog_point, hash_prog_point > candidates;
+
+// Optimization
+std::unordered_set <target_ulong> cr3s;
+std::vector <target_ulong> eips;
 
 // Ringbuf-like structure
 struct key_buf {
@@ -210,7 +217,10 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     p.pc = pc;
 
     // Only use candidates found in config (pre-filtered for key-ness)
-    if (candidates.find(p) == candidates.end()) return 1;
+    if (candidates.find(p) == candidates.end()) {
+        //printf("Skipping " TARGET_FMT_lx "\n", p.pc);
+        return 1;
+    }
 
     // XXX DEBUG: Just check the one we KNOW is correct
     //if(p.caller != 0x0000000074ce9788 || p.pc != 0x0000000074ce82ef || p.cr3 != 0x000000003f9650e0) return 1;
@@ -252,6 +262,57 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return 1;
 }
 
+#define ASSUMED_TB_SIZE 256
+
+bool enabled_memcb = false;
+int instrumented, total;
+int before_block_translate_cb(CPUState *env, target_ulong pc) {
+    target_ulong tb_cr3 = 0;
+#ifdef TARGET_I386
+    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
+       tb_cr3 = env->cr[3];
+#endif
+    if (cr3s.find(tb_cr3) == cr3s.end()) return 1;
+
+    // Slightly tricky: we ask for the lower bound of the TB start and
+    // the lower bound of the (assumed) TB end in our sorted list of tap
+    // EIPs. If that interval is nonempty then at least one of our taps
+    // is in the upcoming TB, so we need to instrument it.
+    std::vector<target_ulong>::iterator beg, end, it;
+    beg = std::lower_bound(eips.begin(), eips.end(), pc);
+    end = std::lower_bound(eips.begin(), eips.end(), pc+ASSUMED_TB_SIZE);
+
+    if (std::distance(beg, end) != 0) {
+        panda_enable_memcb();
+        panda_enable_precise_pc();
+        enabled_memcb = true;
+        //printf("Enabling callbacks for TB " TARGET_FMT_lx " Interval:(%ld,%ld)\n", pc, beg-eips.begin(), end-eips.begin());
+        //printf("Encompassed EIPs:");
+        //for (it = beg; it != end; it++) {
+        //    printf(" " TARGET_FMT_lx, *it);
+        //}
+        //printf("\n");
+        instrumented++;
+    }
+    total++;
+
+    return 1;
+}
+
+int after_block_translate_cb(CPUState *env, TranslationBlock *tb) {
+    if (enabled_memcb) {
+        // Check our assumption
+        if (tb->size > ASSUMED_TB_SIZE) {
+            printf("WARN: TB " TARGET_FMT_lx " is larger than we thought (%d bytes)\n", tb->pc, tb->size);
+        }
+        panda_disable_memcb();
+        panda_disable_precise_pc();
+        enabled_memcb = false;
+        //printf("Disabling callbacks for TB " TARGET_FMT_lx "\n", tb->pc);
+    }
+    return 1;
+}
+
 bool init_plugin(void *self) {
     // General PANDA stuff
     panda_cb pcb;
@@ -259,12 +320,16 @@ bool init_plugin(void *self) {
     printf("Initializing plugin keyfind\n");
 
     // Need this to get EIP with our callbacks
-    panda_enable_precise_pc();
+    // panda_enable_precise_pc();
     // Enable memory logging
-    panda_enable_memcb();
+    // panda_enable_memcb();
 
     pcb.mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
+    pcb.before_block_translate = before_block_translate_cb;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
+    pcb.after_block_translate = after_block_translate_cb;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
 
     // SSL stuff
     // Init list of ciphers & digests
@@ -277,10 +342,14 @@ bool init_plugin(void *self) {
         return false;
     }
 
+    std::unordered_set <target_ulong> eipset;
     prog_point p = {};
     while (taps >> std::hex >> p.caller) {
         taps >> std::hex >> p.pc;
         taps >> std::hex >> p.cr3;
+
+        eipset.insert(p.pc);
+        cr3s.insert(p.cr3);
 
         //printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
         //       p.caller, p.pc, p.cr3);
@@ -288,6 +357,12 @@ bool init_plugin(void *self) {
     }
     printf("keyfind: Will check for keys on %ld taps.\n", candidates.size());
     taps.close();
+
+    // Sort EIPs
+    for(auto ii : eipset) {
+        eips.push_back(ii);
+    }
+    std::sort(eips.begin(), eips.end());
 
     // Read and parse the configuration file
     std::ifstream config("keyfind_config.txt");
@@ -413,6 +488,7 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
+    printf("%d / %d blocks instrumented.\n", instrumented, total);
     FILE *mem_report = fopen("key_matches.txt", "w");
     if(!mem_report) {
         printf("Couldn't write report:\n");
