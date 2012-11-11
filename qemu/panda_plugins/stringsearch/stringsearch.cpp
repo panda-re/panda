@@ -36,23 +36,6 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target
 
 }
 
-/*
-const uint8_t tofind[] = {
-    'h', '\x00', 't', '\x00', 't', '\x00', 'p', '\x00', ':', '\x00',
-    '/', '\x00', '/', '\x00', 'f', '\x00', 'a', '\x00', 'c', '\x00',
-    'e', '\x00', 'b', '\x00', 'o', '\x00', 'o', '\x00', 'k', '\x00',
-    '.', '\x00', 'c', '\x00', 'o', '\x00', 'm', '\x00'
-};
-
-const uint8_t tofind[] = {
-    0x7a, 0xa3, 0x4f, 0xeb, 0x91, 0xa9, 0xf5, 0x5f, 0x3d, 0x94, 0x10,
-    0x15, 0xe4, 0xf4, 0x4b, 0x54, 0xeb, 0xdc, 0x44, 0x7a, 0x93, 0xa5,
-    0x89, 0x00, 0xbb, 0x20, 0x7b, 0xd6, 0xf1, 0x3c, 0xee, 0x21, 0x54,
-    0x27, 0xc4, 0xc6, 0x7a, 0x64, 0xed, 0x64, 0x61, 0x4d, 0x62, 0xe1,
-    0x31, 0xba, 0x3d, 0x40
-};
-*/
-
 struct prog_point {
     target_ulong caller;
     target_ulong pc;
@@ -75,13 +58,15 @@ struct string_pos{
 };
 
 std::map<prog_point,match_strings> matches;
-std::map<prog_point,string_pos> text_tracker;
+std::map<prog_point,string_pos> read_text_tracker;
+std::map<prog_point,string_pos> write_text_tracker;
 uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
+int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf, bool is_write,
+                       std::map<prog_point,string_pos> &text_tracker) {
     prog_point p = {};
 #ifdef TARGET_I386
     panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
@@ -99,6 +84,8 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
             if (text_tracker[p].val[str_idx] == strlens[str_idx]) {
                 // Victory!
+                printf("%s Match at: " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
+                    (is_write ? "WRITE" : "READ"), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
                 text_tracker[p].val[str_idx] = 0;
             }
@@ -106,6 +93,17 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     }
  
     return 1;
+}
+
+int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf) {
+    return mem_callback(env, pc, addr, size, buf, false, read_text_tracker);
+
+}
+
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf) {
+    return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
 
 bool init_plugin(void *self) {
@@ -120,6 +118,8 @@ bool init_plugin(void *self) {
 
     pcb.mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
+    pcb.mem_read = mem_read_callback;
+    //panda_register_callback(self, PANDA_CB_MEM_READ, pcb);
 
     std::ifstream search_strings("search_strings.txt");
     if (!search_strings) {
@@ -132,6 +132,7 @@ bool init_plugin(void *self) {
     std::string line;
     while(std::getline(search_strings, line)) {
         std::istringstream iss(line);
+        
         std::string x;
         int i = 0;
         while (std::getline(iss, x, ':')) {

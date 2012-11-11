@@ -767,8 +767,15 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
         return NULL;
     }
 
+    // XXX FIXME this is a temporary hack to get around the fact that we
+    // cannot currently do a tb_flush and a savevm in the same instant.
+    if (queue_head->header.prog_point.pc == 0 &&
+        queue_head->header.prog_point.secondary == 0 &&
+        queue_head->header.prog_point.guest_instr_count == 0) {
+        // We'll process this one beacuse it's the start of the log
+    }
     //mz rr_prog_point_compare will fail if we're ahead of the log
-    if (rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point, kind) != 0) {
+    else if (rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point, kind) != 0) {
         return NULL;
     }
     //mz remove log entry from queue and return it.
