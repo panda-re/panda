@@ -869,17 +869,18 @@ void printloc(uintptr_t val){
  */
 void printdynval(uintptr_t val, int op){
 #if 0
-    assert(memlog);
-    if (op == 1){
-        fprintf(memlog, "store ");
-        printloc(val);
-    } else if (op == 0){
-        fprintf(memlog, "load ");
-        printloc(val);
-    } else if (op == 2){
-        fprintf(memlog, "condbranch %lu\n", val);
-    } else if (op == 3){
-        fprintf(memlog, "select %lu\n", val);
+    if (memlog){
+        if (op == 1){
+            fprintf(memlog, "store ");
+            printloc(val);
+        } else if (op == 0){
+            fprintf(memlog, "load ");
+            printloc(val);
+        } else if (op == 2){
+            fprintf(memlog, "condbranch %lu\n", val);
+        } else if (op == 3){
+            fprintf(memlog, "select %lu\n", val);
+        }
     }
 #endif
 }
@@ -890,14 +891,12 @@ void printdynval(uintptr_t val, int op){
  */
 void printramaddr(uintptr_t physaddr, int store){
 #if 0
-    if (!memlog){
-        memlog = fopen("/tmp/llvm-memlog.log", "w");
-    }
-
-    if (store == 1){
-        fprintf(memlog, "store %lu\n", physaddr);
-    } else if (store == 0){
-        fprintf(memlog, "load %lu\n", physaddr);
+    if (memlog){
+        if (store == 1){
+            fprintf(memlog, "store %lu\n", physaddr);
+        } else if (store == 0){
+            fprintf(memlog, "load %lu\n", physaddr);
+        }
     }
 #endif
 }

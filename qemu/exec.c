@@ -781,8 +781,9 @@ void tb_flush(CPUState *env1)
 
 #if defined(CONFIG_LLVM)
     int i2;
-    for(i2 = 0; i2 < nb_tbs; ++i2)
+    for(i2 = 0; i2 < nb_tbs; ++i2){
         tcg_llvm_tb_free(&tbs[i2]);
+    }
 #endif
 
     nb_tbs = 0;

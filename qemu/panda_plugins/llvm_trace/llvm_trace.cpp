@@ -36,6 +36,8 @@ extern "C" {
 #include <vector>
 
 #include "llvm/PassManager.h"
+#include "llvm/PassRegistry.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "laredo.h"
@@ -222,6 +224,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    
     //panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
 
 #ifndef CONFIG_SOFTMMU
@@ -242,11 +245,29 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-
-    fclose(funclog);
-    close_memlog();
     tcg_llvm_write_module(tcg_llvm_ctx);
 
+    /*
+     * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
+     * fine, until we reload this plugin again into QEMU and we get an LLVM
+     * assertion saying the pass is already registered.  This seems like a bug
+     * with LLVM.  Switching between TCG and LLVM works fine when passes aren't
+     * added to LLVM.
+     */
+    llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
+    const llvm::PassInfo *pi =
+        //pr->getPassInfo(&llvm::LaredoInstrFunctionPass::ID);
+        pr->getPassInfo(llvm::StringRef("LaredoInstr"));
+    if (!pi){
+        printf("Unable to find 'LaredoInstr' pass in pass registry\n");
+    }
+    else {
+        pr->unregisterPass(*pi);
+    }
+
     panda_disable_llvm();
+    panda_disable_memcb();
+    fclose(funclog);
+    close_memlog();
 }
 
