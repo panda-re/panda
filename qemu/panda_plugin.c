@@ -22,6 +22,8 @@ panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 int nb_panda_plugins;
+bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
+bool panda_plugin_to_unload = false;
 
 bool panda_please_flush_tb = false;
 bool panda_update_pc = false;
@@ -59,7 +61,7 @@ static void panda_delete_plugin(int i) {
     nb_panda_plugins--;
 }
 
-void panda_unload_plugin(int plugin_idx) {
+void panda_do_unload_plugin(int plugin_idx){
     void *plugin = panda_plugins[plugin_idx].plugin;
     void (*uninit_fn)(void *) = dlsym(plugin, "uninit_plugin");
     if(!uninit_fn) {
@@ -71,6 +73,11 @@ void panda_unload_plugin(int plugin_idx) {
     panda_unregister_callbacks(plugin);
     panda_delete_plugin(plugin_idx);
     dlclose(plugin);
+}
+
+void panda_unload_plugin(int plugin_idx) {
+    panda_plugin_to_unload = true;
+    panda_plugins_to_unload[plugin_idx] = true;
 }
 
 void panda_unload_plugins(void) {
@@ -95,6 +102,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     new_list->entry = cb;
     new_list->owner = plugin;
     new_list->prev = NULL;
+    new_list->next = NULL;
     if(panda_cbs[type] != NULL) {
         new_list->next = panda_cbs[type];
         panda_cbs[type]->prev = new_list;
@@ -116,6 +124,10 @@ void panda_unregister_callbacks(void *plugin) {
                     plist->prev->next = plist->next;
                 if (plist->next)
                     plist->next->prev = plist->prev;
+                if (!plist->prev && !plist->next){
+                    // List is now empty
+                    panda_cbs[i] = NULL;
+                }
                 // Advance the pointer
                 plist = plist->next;
                 // Free the entry we just unlinked
@@ -164,10 +176,12 @@ void panda_enable_llvm(void){
     tcg_llvm_ctx = tcg_llvm_initialize();
 }
 
+extern CPUState *env;
+
 void panda_disable_llvm(void){
-    panda_do_flush_tb();
     execute_llvm = 0;
     generate_llvm = 0;
+    tb_flush(env);
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }

@@ -9,8 +9,8 @@ LLVM_BUILD_TYPE = $(shell ../../$(LLVMDIR)/bin/llvm-config --build-mode)
 CXXFLAGS+=$(LLVM_CXXFLAGS) -I../../../llvm-3.0/projects/laredo/include/ -I../../tcg
 LIBS+=../../../llvm-3.0/projects/laredo/$(LLVM_BUILD_TYPE)/lib/libLaredoAnalysis.a
 
-CFLAGS+=-O0
-CXXFLAGS+=-O0
+CFLAGS+=-O0 -g
+CXXFLAGS+=-O0 -g
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.

@@ -424,14 +424,27 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager->doInitialization();
 }
 
+/* rwhelan: to restart LLVM again, there is either a bug with the
+ * FunctionPassManager destructor not unregistering passes, or we need to
+ * manually unregister our passes somehow.  If you don't add passes into LLVM,
+ * then switching between TCG and LLVM should work fine.
+ */
 TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 {
-    delete m_functionPassManager;
-
+    if (m_functionPassManager){
+        delete m_functionPassManager;
+        m_functionPassManager = NULL;
+    }
+ 
     // the following line will also delete
     // m_moduleProvider, m_module and all its functions
     if (m_executionEngine) {
         delete m_executionEngine;
+        m_executionEngine = NULL;
+    }
+
+    if (llvm_is_multithreaded()){
+        llvm_stop_multithreaded();
     }
 }
 
@@ -1466,6 +1479,8 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
 {
     if(tb->llvm_function) {
         tb->llvm_function->eraseFromParent();
+        tb->llvm_function = NULL;
+        tb->llvm_tc_ptr = NULL;
     }
 }
 

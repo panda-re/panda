@@ -710,6 +710,17 @@ int cpu_exec(CPUState *env)
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
 
+                if (panda_plugin_to_unload){
+                    panda_plugin_to_unload = false;
+                    int i;
+                    for (i = 0; i < MAX_PANDA_PLUGINS; i++){
+                        if (panda_plugins_to_unload[i]){
+                            panda_do_unload_plugin(i);
+                            panda_plugins_to_unload[i] = false;
+                        }
+                    }
+                }
+                
                 if(panda_flush_tb()) {
                     tb_flush(env);
                     tb_invalidated_flag = 1;
@@ -824,8 +835,10 @@ int cpu_exec(CPUState *env)
 
 #if defined(CONFIG_LLVM)
                     if(execute_llvm) {
+                        assert(tb->llvm_tc_ptr);
                         next_tb = tcg_llvm_qemu_tb_exec(env, tb);
                     } else {
+                        assert(tc_ptr);
                         next_tb = tcg_qemu_tb_exec(env, tc_ptr);
                     }
 #else
