@@ -97,7 +97,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_memlog_create(gbus, 0xff006000);
     goldfish_battery_create(gbus);
     goldfish_nand_create(gbus);
-    goldfish_events_create(gbus, fg_int);
+    goldfish_events_create(gbus, gf_int);
 
 #if TEST_SWITCH
     {
@@ -115,6 +115,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     info.nb_cpus         = 1;
 
     arm_load_kernel(env, &info);
+    android_emulation_setup();
 }
 
 QEMUMachine android_arm_machine = {

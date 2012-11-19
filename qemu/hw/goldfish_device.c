@@ -350,7 +350,7 @@ vbufprint( char*        buffer,
     return buffer + len;
 }
 
-static char*
+char*
 bufprint(char*  buffer, char*  end, const char*  fmt, ... )
 {
     va_list  args;

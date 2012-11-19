@@ -217,7 +217,7 @@ static uint32_t events_read(void *x, target_phys_addr_t off)
 {
     GoldfishEventsDevice *s = (GoldfishEventsDevice *) x;
     int offset = off; // - s->base;
-    printf("Events_read: %d\n", offset);
+    //printf("Events_read: %d\n", offset);
 
     /* This gross hack below is used to ensure that we
      * only raise the IRQ when the kernel driver is
@@ -304,11 +304,11 @@ events_set_bits(GoldfishEventsDevice *s, int type, int bitl, int bith)
     il = bitl / 8;
     ih = bith / 8;
     if (ih >= s->ev_bits[type].len) {
-        bits = qemu_mallocz(ih + 1);
+        bits = g_malloc0(ih + 1);
         if (bits == NULL)
             return;
         memcpy(bits, s->ev_bits[type].bits, s->ev_bits[type].len);
-        qemu_free(s->ev_bits[type].bits);
+        g_free(s->ev_bits[type].bits);
         s->ev_bits[type].bits = bits;
         s->ev_bits[type].len = ih + 1;
     }
@@ -503,7 +503,7 @@ static int goldfish_events_init(GoldfishDevice *dev)
 
     //cpu_register_physical_memory(base, 0xfff, iomemtype);
 
-    qemu_add_kbd_event_handler(events_put_keycode, s);
+    //qemu_add_kbd_event_handler(events_put_keycode, s);
     qemu_activate_mouse_event_handler(qemu_add_mouse_event_handler(events_put_mouse, s, 1, "goldfish-events"));
 
     s->first = 0;
