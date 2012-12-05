@@ -868,7 +868,6 @@ void printloc(uintptr_t val){
  * TODO: mesh with laredo.h for logop enum
  */
 void printdynval(uintptr_t val, int op){
-#if 0
     if (memlog){
         if (op == 1){
             fprintf(memlog, "store ");
@@ -882,7 +881,6 @@ void printdynval(uintptr_t val, int op){
             fprintf(memlog, "select %lu\n", val);
         }
     }
-#endif
 }
 
 /* For whole-system mode, make sure you pass in the return value from
@@ -890,7 +888,6 @@ void printdynval(uintptr_t val, int op){
  * address.
  */
 void printramaddr(uintptr_t physaddr, int store){
-#if 0
     if (memlog){
         if (store == 1){
             fprintf(memlog, "store %lu\n", physaddr);
@@ -898,7 +895,6 @@ void printramaddr(uintptr_t physaddr, int store){
             fprintf(memlog, "load %lu\n", physaddr);
         }
     }
-#endif
 }
 
 void open_memlog(void){

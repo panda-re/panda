@@ -74,8 +74,10 @@ QEMU user-mode only. The callback types currently defined are:
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
     PANDA_CB_INSN_EXEC,         // Before an instruction is executed
-    PANDA_CB_MEM_READ,          // After each memory read
-    PANDA_CB_MEM_WRITE,         // Before each memory write
+    PANDA_CB_VIRT_MEM_READ,     // After each memory read (virtual addr.)
+    PANDA_CB_VIRT_MEM_WRITE,    // Before each memory write (virtual addr.)
+    PANDA_CB_PHYS_MEM_READ,     // After each memory read (physical addr.)
+    PANDA_CB_PHYS_MEM_WRITE,    // Before each memory write (physical addr.)
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
@@ -342,9 +344,9 @@ as a prefix (`sample_do_foo` rather than `do_foo`).
 
 ---
 
-**mem_read**: called after memory is read
+**virt_mem_read**: called after memory is read
 
-**Callback ID**: PANDA_CB_MEM_READ
+**Callback ID**: PANDA_CB_VIRT_MEM_READ
 
 **Arguments**:
 
@@ -360,19 +362,20 @@ unused
 
 **Notes**:
 
-In TCG mode you must call `panda_enable_memcb()` to turn on memory callbacks before this callback will take effect. In LLVM mode the callbacks are currently on by default, though **this may change in the future**.
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
 
 If you need to know the physical address of the memory read, use QEMU's `get_phys_page_debug` function.
 
 **Signature**:
 
-	int (*mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+	int (*virt_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 ---
 
-**mem_read**: called before memory is written
+**virt_mem_write**: called before memory is written
 
-**Callback ID**: PANDA_CB_MEM_WRITE
+**Callback ID**: PANDA_CB_VIRT_MEM_WRITE
 
 **Arguments**:
 
@@ -388,13 +391,69 @@ unused
 
 **Notes**:
 
-In TCG mode you must call `panda_enable_memcb()` to turn on memory callbacks before this callback will take effect. In LLVM mode the callbacks are currently on by default, though **this may change in the future**.
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
 
 If you need to know the physical address of the memory write, use QEMU's `get_phys_page_debug` function.
 
 **Signature**:
 
-	int (*mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+	int (*virt_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+**phys_mem_read**: called after memory is read
+
+**Callback ID**: PANDA_CB_PHYS_MEM_READ
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (physical) address being read
+* `target_ulong size`: the size of the read
+* `void *buf`: pointer to the data that was read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+	int (*phys_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+**phys_mem_write**: called before memory is written
+
+**Callback ID**: PANDA_CB_PHYS_MEM_WRITE
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (physical) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that is to be written 
+
+Return value:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+
+**Signature**:
+
+	int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 ---
 

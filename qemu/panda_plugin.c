@@ -84,7 +84,7 @@ void panda_unload_plugins(void) {
     // Unload them starting from the end to avoid having to shuffle everything
     // down each time
     while (nb_panda_plugins > 0) {
-        panda_unload_plugin(nb_panda_plugins - 1);
+        panda_do_unload_plugin(nb_panda_plugins - 1);
     }
 }
 

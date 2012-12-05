@@ -18,8 +18,10 @@ typedef enum panda_cb_type {
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
-    PANDA_CB_MEM_READ,          // After each memory read
-    PANDA_CB_MEM_WRITE,         // Before each memory write
+    PANDA_CB_VIRT_MEM_READ,     // After each memory read (virtual addr.)
+    PANDA_CB_VIRT_MEM_WRITE,    // Before each memory write (virtual addr.)
+    PANDA_CB_PHYS_MEM_READ,     // After each memory read (physical addr.)
+    PANDA_CB_PHYS_MEM_WRITE,    // Before each memory write (physical addr.)
     PANDA_CB_HD_READ,           // Each HDD read
     PANDA_CB_HD_WRITE,          // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
@@ -193,9 +195,9 @@ typedef union panda_cb {
     */
     int (*monitor)(Monitor *mon, const char *cmd);
 
-    /* Callback ID: PANDA_CB_MEM_READ
+    /* Callback ID: PANDA_CB_VIRT_MEM_READ
 
-       mem_read: called after memory is read
+       virt_mem_read: called after memory is read
        
        Arguments:
         CPUState *env: the current CPU state
@@ -207,15 +209,12 @@ typedef union panda_cb {
        Return value:
         unused
 
-       Notes:
-        Due to the way the instrumentation is implemented, this
-        callback will only be called when executing in LLVM mode.
     */
-    int (*mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    int (*virt_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-/* Callback ID: PANDA_CB_MEM_WRITE
+/* Callback ID: PANDA_CB_VIRT_MEM_WRITE
 
-       mem_read: called before memory is written
+       virt_mem_write: called before memory is written
        
        Arguments:
         CPUState *env: the current CPU state
@@ -227,11 +226,42 @@ typedef union panda_cb {
        Return value:
         unused
 
-       Notes:
-        Due to the way the instrumentation is implemented, this
-        callback will only be called when executing in LLVM mode.
     */
-    int (*mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+    int (*virt_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_PHYS_MEM_READ
+
+       phys_mem_read: called after memory is read
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the read
+        target_ulong addr: the (physical) address being read
+        target_ulong size: the size of the read
+        void *buf: pointer to the data that was read
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+/* Callback ID: PANDA_CB_PHYS_MEM_WRITE
+
+       phys_mem_write: called before memory is written
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the write
+        target_ulong addr: the (physical) address being written
+        target_ulong size: the size of the write
+        void *buf: pointer to the data that is to be written 
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 /* Callback ID: PANDA_CB_LLVM_INIT
 

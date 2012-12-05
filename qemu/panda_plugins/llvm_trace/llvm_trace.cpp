@@ -49,7 +49,8 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-bool before_block_exec(CPUState *env, TranslationBlock *tb);
+int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock
+*tbnext);
 int llvm_init(void *exEngine, void *funPassMan, void *module);
 
 #ifndef CONFIG_SOFTMMU
@@ -59,16 +60,25 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        arg7, abi_long arg8, void *p, abi_long ret);
 
 #endif
-//int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-//                       target_ulong size, void *buf);
+int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf);
+int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+        target_ulong size, void *buf);
 
 FILE *funclog;
 extern FILE *memlog;
 
 }
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
+    printramaddr(addr, 1);
+    return 0;
+}
+
+int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
+        target_ulong size, void *buf){
+    printramaddr(addr, 0);
     return 0;
 }
 
@@ -109,9 +119,10 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
 
 } // namespace llvm
 
-bool before_block_exec(CPUState *env, TranslationBlock *tb){
+int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock
+*tbnext){
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
-    return false; // don't retranslate
+    return 0;
 }
 
 #ifndef CONFIG_SOFTMMU
@@ -219,13 +230,14 @@ bool init_plugin(void *self) {
     //panda_enable_precise_pc();
 
     panda_enable_memcb();    
-    //pcb.mem_write = mem_write_callback;
     pcb.llvm_init = llvm::llvm_init;
     panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
-    //panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    pcb.phys_mem_read = phys_mem_read_callback;
+    panda_register_callback(self, PANDA_CB_PHYS_MEM_READ, pcb);
+    pcb.phys_mem_write = phys_mem_write_callback;
+    panda_register_callback(self, PANDA_CB_PHYS_MEM_WRITE, pcb);
 
 #ifndef CONFIG_SOFTMMU
     pcb.user_after_syscall = user_after_syscall;
