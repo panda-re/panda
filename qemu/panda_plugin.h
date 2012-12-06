@@ -14,7 +14,8 @@
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
-    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block (may trigger retranslation)
+    PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
+    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
@@ -36,9 +37,10 @@ typedef enum panda_cb_type {
 
 // Union of all possible callback function types
 typedef union panda_cb {
-    /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC
+    /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT
 
-       before_block_exec: called before execution of every basic block
+       before_block_exec_invalidate_opt: called before execution of every basic
+       block, with the option to invalidate the TB
 
        Arguments:
         CPUState *env: the current CPU state
@@ -48,7 +50,20 @@ typedef union panda_cb {
         true if we should invalidate the current translation block
         and retranslate, false otherwise
     */
-    bool (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+    
+    /* Callback ID: PANDA_CB_BEFORE_BLOCK_EXEC
+
+       before_block_exec: called before execution of every basic block
+
+       Arguments:
+        CPUState *env: the current CPU state
+        TranslationBlock *tb: the TB we are about to execute
+
+       Return value:
+        unused
+    */
+    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
 
     /* Callback ID: PANDA_CB_AFTER_BLOCK_EXEC
 

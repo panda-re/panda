@@ -737,11 +737,14 @@ int cpu_exec(CPUState *env)
                   (unsigned long long)rr_prog_point.pc,
                   (unsigned long long)rr_prog_point.secondary);
 
-                // PANDA instrumentation: before basic block 
+                // PANDA instrumentation: before basic block exec (with option
+                // to invalidate tb)
                 panda_cb_list *plist;
                 bool panda_invalidate_tb = false;
-                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
-                    panda_invalidate_tb |= plist->entry.before_block_exec(env, tb);
+                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
+                        plist != NULL; plist = plist->next) {
+                    panda_invalidate_tb |=
+                        plist->entry.before_block_exec_invalidate_opt(env, tb);
                 }
 
 #ifdef CONFIG_SOFTMMU
@@ -832,6 +835,12 @@ int cpu_exec(CPUState *env)
                     rr_set_program_point();
                     //mz Actually jump into the generated code
                     /* execute the generated code */
+
+                    // PANDA instrumentation: before basic block exec
+                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
+                            plist != NULL; plist = plist->next) {
+                        plist->entry.before_block_exec(env, tb);
+                    }
 
 #if defined(CONFIG_LLVM)
                     if(execute_llvm) {

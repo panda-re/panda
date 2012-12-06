@@ -70,7 +70,8 @@ QEMU user-mode only. The callback types currently defined are:
 
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
-    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block (may trigger retranslation)
+    PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
+    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
     PANDA_CB_INSN_EXEC,         // Before an instruction is executed
@@ -140,9 +141,10 @@ code generation soon.
 
 ---
 
-**before_block_exec**: called before execution of every basic block
+**before_block_exec_invalidate_opt**: called before execution of every basic
+block, with the option to invalidate the TB
 
-**Callback ID**: PANDA_CB_BEFORE_BLOCK_EXEC
+**Callback ID**: PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT
 
 **Arguments**:
 
@@ -155,7 +157,26 @@ code generation soon.
 
 **Signature**:
 
-    bool (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+
+---
+
+**before_block_exec**: called before execution of every basic block
+
+**Callback ID**: PANDA_CB_BEFORE_BLOCK_EXEC
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB we are about to execute
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
 
 ---
 
