@@ -387,8 +387,6 @@ unused
 You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
-If you need to know the physical address of the memory read, use QEMU's `get_phys_page_debug` function.
-
 **Signature**:
 
 	int (*virt_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
@@ -415,8 +413,6 @@ unused
 
 You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
-
-If you need to know the physical address of the memory write, use QEMU's `get_phys_page_debug` function.
 
 **Signature**:
 

@@ -1351,6 +1351,11 @@ target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr)
     return phys_addr;
 }
 
+target_phys_addr_t cpu_get_phys_addr(CPUState *env, target_ulong addr){
+    // rwhelan: appears it actually returns the address for ARM
+    return cpu_get_phys_page_debug(env, addr);
+}
+
 void HELPER(set_cp)(CPUState *env, uint32_t insn, uint32_t val)
 {
     int cp_num = (insn >> 8) & 0xf;

@@ -124,9 +124,6 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(target_phys_addr_t physaddr,
 DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
                                                       int mmu_idx)
 {
-#ifdef MMU_INSTR
-    logged = 0;
-#endif
     DATA_TYPE res;
     int index;
     target_ulong tlb_addr;
@@ -148,16 +145,6 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             retaddr = GETPC();
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
-#ifdef MMU_INSTR
-            // PANDA instrumentation: memory read
-            panda_cb_list *plist;
-            for(plist = panda_cbs[PANDA_CB_PHYS_MEM_READ]; plist != NULL;
-                    plist = plist->next) {
-                plist->entry.phys_mem_read(env, env->panda_guest_pc,
-                    (ioaddr & TARGET_PAGE_MASK) + addr, DATA_SIZE, &res);
-            }
-            logged = 1;
-#endif
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
             /* slow unaligned access (it spans two pages or IO) */
         do_unaligned_access:
@@ -177,19 +164,6 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
-
-#ifdef MMU_INSTR
-            // PANDA instrumentation: memory read
-            panda_cb_list *plist;
-            for(plist = panda_cbs[PANDA_CB_PHYS_MEM_READ]; plist != NULL;
-                    plist = plist->next) {
-                plist->entry.phys_mem_read(env, env->panda_guest_pc,
-                    qemu_ram_addr_from_host_nofail((void*)(addr+addend)),
-                    DATA_SIZE, &res);
-            }
-            logged = 1;
-#endif
-
         }
     } else {
         /* the page is not in the TLB : fill it */
@@ -205,8 +179,15 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
 #ifdef MMU_INSTR
     // PANDA instrumentation: memory read
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_READ]; plist != NULL; plist = plist->next) {
-        plist->entry.virt_mem_read(env, env->panda_guest_pc, addr, DATA_SIZE, &res);
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_READ]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.virt_mem_read(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &res);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_READ]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.phys_mem_read(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE, &res);
     }
 #endif
 
@@ -234,20 +215,6 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
                 goto do_unaligned_access;
             ioaddr = env->iotlb[mmu_idx][index];
             res = glue(io_read, SUFFIX)(ioaddr, addr, retaddr);
-
-#ifdef MMU_INSTR
-            if (!logged){
-                // PANDA instrumentation: memory read
-                panda_cb_list *plist;
-                for(plist = panda_cbs[PANDA_CB_PHYS_MEM_READ]; plist != NULL;
-                        plist = plist->next) {
-                    plist->entry.phys_mem_read(env, env->panda_guest_pc,
-                        (ioaddr & TARGET_PAGE_MASK) + addr, DATA_SIZE, &res);
-                }
-                logged = 1;
-            }
-#endif
-
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             /* slow unaligned access (it spans two pages) */
@@ -268,21 +235,6 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
             /* unaligned/aligned access in the same page */
             addend = env->tlb_table[mmu_idx][index].addend;
             res = glue(glue(ld, USUFFIX), _raw)((uint8_t *)(long)(addr+addend));
-
-#ifdef MMU_INSTR
-            if (!logged){
-                // PANDA instrumentation: memory read
-                panda_cb_list *plist;
-                for(plist = panda_cbs[PANDA_CB_PHYS_MEM_READ]; plist != NULL;
-                        plist = plist->next) {
-                    plist->entry.phys_mem_read(env, env->panda_guest_pc,
-                        qemu_ram_addr_from_host_nofail((void*)(addr+addend)),
-                        DATA_SIZE, &res);
-                }
-                logged = 1;
-            }
-#endif
-
         }
     } else {
         /* the page is not in the TLB : fill it */
@@ -292,10 +244,13 @@ static DATA_TYPE glue(glue(slow_ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
 
 #ifdef MMU_INSTR
     // PANDA instrumentation: memory read
-    panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_READ]; plist != NULL; plist = plist->next) {
-        plist->entry.virt_mem_read(env, env->panda_guest_pc, addr, DATA_SIZE, &res);
-    }
+    // rwhelan: redundant?
+    /*panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_READ]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.virt_mem_read(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &res);
+    }*/
 #endif
 
     return res;
@@ -376,8 +331,15 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
 #ifdef MMU_INSTR
     // PANDA instrumentation: memory write
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_WRITE]; plist != NULL; plist = plist->next) {
-        plist->entry.virt_mem_write(env, env->panda_guest_pc, addr, DATA_SIZE, &val);
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_WRITE]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.virt_mem_write(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &val);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_WRITE]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.phys_mem_write(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE, &val);
     }
 #endif
 
@@ -393,18 +355,6 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             retaddr = GETPC();
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
-
-#ifdef MMU_INSTR
-            // PANDA instrumentation: memory write
-            panda_cb_list *plist;
-            for(plist = panda_cbs[PANDA_CB_PHYS_MEM_WRITE]; plist != NULL;
-                    plist = plist->next) {
-                plist->entry.phys_mem_write(env, env->panda_guest_pc,
-                    (ioaddr & TARGET_PAGE_MASK) + addr, DATA_SIZE, &val);
-            }
-            logged = 1;
-#endif
-
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             retaddr = GETPC();
@@ -423,19 +373,6 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
 #endif
             addend = env->tlb_table[mmu_idx][index].addend;
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
-
-#ifdef MMU_INSTR
-            // PANDA instrumentation: memory write
-            panda_cb_list *plist;
-            for(plist = panda_cbs[PANDA_CB_PHYS_MEM_WRITE]; plist != NULL;
-                    plist = plist->next) {
-                plist->entry.phys_mem_write(env, env->panda_guest_pc,
-                    qemu_ram_addr_from_host_nofail((void*)(addr+addend)),
-                    DATA_SIZE, &val);
-            }
-            logged = 1;
-#endif
-
         }
     } else {
         /* the page is not in the TLB : fill it */
@@ -464,10 +401,11 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
 
 #ifdef MMU_INSTR
     // PANDA instrumentation: memory write
-    panda_cb_list *plist;
+    // rwhelan: redundant?
+    /*panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_WRITE]; plist != NULL; plist = plist->next) {
         plist->entry.virt_mem_write(env, env->panda_guest_pc, addr, DATA_SIZE, &val);
-    }
+    }*/
 #endif
 
  redo:
@@ -479,20 +417,6 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
                 goto do_unaligned_access;
             ioaddr = env->iotlb[mmu_idx][index];
             glue(io_write, SUFFIX)(ioaddr, val, addr, retaddr);
-
-#ifdef MMU_INSTR
-            if (!logged){
-                // PANDA instrumentation: memory write
-                panda_cb_list *plist;
-                for(plist = panda_cbs[PANDA_CB_PHYS_MEM_WRITE]; plist != NULL;
-                        plist = plist->next) {
-                    plist->entry.phys_mem_write(env, env->panda_guest_pc,
-                        (ioaddr & TARGET_PAGE_MASK) + addr, DATA_SIZE, &val);
-                }
-                logged = 1;
-            }
-#endif
-
         } else if (((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1) >= TARGET_PAGE_SIZE) {
         do_unaligned_access:
             /* XXX: not efficient, but simple */
@@ -511,21 +435,6 @@ static void glue(glue(slow_st, SUFFIX), MMUSUFFIX)(target_ulong addr,
             /* aligned/unaligned access in the same page */
             addend = env->tlb_table[mmu_idx][index].addend;
             glue(glue(st, SUFFIX), _raw)((uint8_t *)(long)(addr+addend), val);
-
-#ifdef MMU_INSTR
-            if (!logged){
-                // PANDA instrumentation: memory write
-                panda_cb_list *plist;
-                for(plist = panda_cbs[PANDA_CB_PHYS_MEM_WRITE]; plist != NULL;
-                        plist = plist->next) {
-                    plist->entry.phys_mem_write(env, env->panda_guest_pc,
-                        qemu_ram_addr_from_host_nofail((void*)(addr+addend)),
-                        DATA_SIZE, &val);
-                }
-                logged = 1;
-            }
-#endif
-
         }
     } else {
         /* the page is not in the TLB : fill it */

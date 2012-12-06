@@ -863,11 +863,10 @@ int cpu_x86_handle_mmu_fault(CPUX86State *env, target_ulong addr,
     return 1;
 }
 
-target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr)
-{
+static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
+        uint32_t *page_offset_addr, int *page_size_addr, uint64_t *pte_addr2){
     target_ulong pde_addr, pte_addr;
     uint64_t pte;
-    target_phys_addr_t paddr;
     uint32_t page_offset;
     int page_size;
 
@@ -953,8 +952,43 @@ target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr)
     }
 
     page_offset = (addr & TARGET_PAGE_MASK) & (page_size - 1);
-    paddr = (pte & TARGET_PAGE_MASK) + page_offset;
-    return paddr;
+    *page_offset_addr = page_offset;
+    *page_size_addr = page_size;
+    *pte_addr2 = pte;
+    return 1;
+}
+
+target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr)
+{
+    uint64_t pte;
+    target_phys_addr_t paddr;
+    uint32_t page_offset;
+    int page_size;
+
+    if (cpu_get_phys_page_stuff(env, addr, &page_offset, &page_size, &pte) > -1){
+        page_offset = (addr & TARGET_PAGE_MASK) & (page_size - 1);
+        paddr = (pte & TARGET_PAGE_MASK) + page_offset;
+        return paddr;
+    }
+    else {
+        return -1;
+    }
+}
+
+target_phys_addr_t cpu_get_phys_addr(CPUState *env, target_ulong addr){
+    uint64_t pte;
+    target_phys_addr_t paddr;
+    uint32_t page_offset;
+    int page_size;
+
+    if (cpu_get_phys_page_stuff(env, addr, &page_offset, &page_size, &pte) > -1){
+        page_offset = addr & (page_size - 1);
+        paddr = (pte & TARGET_PAGE_MASK) + page_offset;
+        return paddr;
+    }
+    else {
+        return -1;
+    }
 }
 
 void hw_breakpoint_insert(CPUState *env, int index)

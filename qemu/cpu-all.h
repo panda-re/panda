@@ -487,6 +487,12 @@ int cpu_str_to_log_mask(const char *str);
    if no page found. */
 target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr);
 
+/* rwhelan: translate guest virtual address to guest physical address.
+ * XXX: currently supported for x86 and ARM, may need to implement for
+ * additional ISAs
+ */
+target_phys_addr_t cpu_get_phys_addr(CPUState *env, target_ulong addr);
+
 //mz Record and Replay needs this one.
 void invalidate_single_tb(CPUState *env, target_ulong pc);
 
