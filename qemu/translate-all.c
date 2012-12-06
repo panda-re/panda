@@ -48,6 +48,8 @@
 #include "tcg-llvm.h"
 #endif
 
+#include "panda_plugin.h"
+
 /* code generation context */
 TCGContext tcg_ctx;
 
@@ -148,6 +150,13 @@ int cpu_gen_code(CPUState *env, TranslationBlock *tb, int *gen_code_size_ptr)
 int cpu_restore_state(TranslationBlock *tb,
                       CPUState *env, unsigned long searched_pc)
 {
+    // PANDA instrumentation: CPU restore state
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_CPU_RESTORE_STATE]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.cb_cpu_restore_state(env, tb);
+    }
+ 
     TCGContext *s = &tcg_ctx;
     int j;
     unsigned long tc_ptr;

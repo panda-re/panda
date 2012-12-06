@@ -433,6 +433,5 @@ static inline int can_do_io(CPUState *env)
 extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;
-extern int trace_llvm;
 
 #endif

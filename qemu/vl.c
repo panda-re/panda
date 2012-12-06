@@ -186,7 +186,6 @@ extern struct TCGLLVMContext* tcg_llvm_ctx;
 extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;
-extern int trace_llvm;
 
 // PANDA: externed here because we don't want to pull in the target-specific
 // pieces of QEMU
@@ -3163,11 +3162,6 @@ int main(int argc, char **argv, char **envp)
 
                 generate_llvm = 1;
                 break;
-#ifdef CONFIG_LLVM_TRACE
-            case QEMU_OPTION_trace_llvm:
-                trace_llvm = 1;
-                break;
-#endif
 #endif
             case QEMU_OPTION_panda_plugin:
                 if(!panda_load_plugin(optarg))

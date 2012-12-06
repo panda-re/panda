@@ -123,7 +123,6 @@ audio_win_int=""
 cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 llvm="no"
-llvm_trace="no"
 llvm_instr_helpers="no"
 
 target_list=""
@@ -723,8 +722,6 @@ for opt do
   ;;
   --with-llvm=*) llvmdir="$optarg"
   ;;
-  --enable-llvm-trace) llvm_trace="yes"
-  ;;
   --enable-instr-helpers) llvm_instr_helpers="yes"
   ;;
   --with-laredo=*) laredodir="$optarg"
@@ -1094,7 +1091,6 @@ echo "  --enable-bluez           enable bluez stack connectivity"
 echo "  --disable-slirp          disable SLIRP userspace network connectivity"
 echo "  --enable-llvm            enable LLVM support (for all targets)"
 echo "  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
-echo "  --enable-llvm-trace      enable LLVM tracing"
 echo "  --enable-instr-helpers   enable helpers instrumented with LLVM"
 echo "  --with-laredo=PATH       Laredo path (PATH/bin/ binaries must exist)"
 echo "  --disable-kvm            disable KVM acceleration support"
@@ -2267,7 +2263,7 @@ if test "$llvm" != "no" ; then
   fi
 fi
 
-if test "$llvm" != "no" -a "$llvm_trace" != "no" -a "$llvm_instr_helpers" != "no"; then
+if test "$llvm" != "no" -a "$llvm_instr_helpers" != "no"; then
   if [ -e "$laredodir/bin/laredo-helper-analyzer" ] ; then
         laredo_helper_analyzer=`cd $laredodir/bin/ && find \`pwd\` -name laredo-helper-analyzer`
   fi
@@ -3013,7 +3009,6 @@ echo "Linux AIO support $linux_aio"
 echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
 echo "LLVM support      $llvm"
-echo "LLVM tracing      $llvm_trace"
 echo "LLVM helpers      $llvm_instr_helpers"
 echo "KVM support       $kvm"
 echo "TCG interpreter   $tcg_interpreter"
@@ -3288,12 +3283,7 @@ if test "$llvm" = "yes" ; then
   echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
   echo "LLVMDIR=$llvmdir" >> $config_host_mak
 
-  if test "$llvm_trace" = "yes" ; then
-    echo "CONFIG_LLVM_TRACE=y" >> $config_host_mak
-  fi
-
-  # llvm_instr_helpers also needs llvm_trace enabled
-  if test "$llvm_instr_helpers" = "yes" -a "$llvm_trace" = "yes" ; then
+  if test "$llvm_instr_helpers" = "yes" ; then
     echo "LAREDOCC:=$laredo_helper_analyzer" >> $config_host_mak
     echo "CONFIG_LLVM_INSTR_HELPERS=y" >> $config_host_mak
   fi

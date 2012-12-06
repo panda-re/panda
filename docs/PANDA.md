@@ -82,6 +82,7 @@ QEMU user-mode only. The callback types currently defined are:
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
+    PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
 
@@ -499,6 +500,24 @@ We use void pointers because of C++ constructs, cast properly in plugin.
 **Signature**:
 
     int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
+
+---
+
+**cb_cpu_restore_state**: Called inside of cpu_restore_state(), when there is a
+CPU fault/exception
+
+**Callback ID**: PANDA_CB_CPU_RESTORE_STATE
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the current translation block
+       
+**Return value**: unused
+
+**Signature**:
+
+    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 
 ---
 

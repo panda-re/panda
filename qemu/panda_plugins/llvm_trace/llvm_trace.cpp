@@ -51,6 +51,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 int llvm_init(void *exEngine, void *funPassMan, void *module);
+int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
@@ -122,6 +123,11 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
 
 int before_block_exec(CPUState *env, TranslationBlock *tb){
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+    return 0;
+}
+
+int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
+    printdynval(0xDEADBEEF, 0);
     return 0;
 }
 
@@ -238,6 +244,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_PHYS_MEM_READ, pcb);
     pcb.phys_mem_write = phys_mem_write_callback;
     panda_register_callback(self, PANDA_CB_PHYS_MEM_WRITE, pcb);
+    pcb.cb_cpu_restore_state = cb_cpu_restore_state;
+    panda_register_callback(self, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
 #ifndef CONFIG_SOFTMMU
     pcb.user_after_syscall = user_after_syscall;

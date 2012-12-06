@@ -28,6 +28,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
+    PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
 #ifndef CONFIG_SOFTMMU          // *** Only callbacks for QEMU user mode *** //
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
@@ -299,6 +300,21 @@ typedef union panda_cb {
 #ifdef CONFIG_LLVM
     int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
 #endif
+
+/* Callback ID: PANDA_CB_CPU_RESTORE_STATE
+
+       cb_cpu_restore_state: called inside of cpu_restore_state(), when there is
+        a CPU fault/exception
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        TranslationBlock *tb: the current translation block
+       
+       Return value:
+        unused
+
+*/
+    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 
 /* User-mode only callbacks:
  * We currently only support syscalls.  If you are particularly concerned about
