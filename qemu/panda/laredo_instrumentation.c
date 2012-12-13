@@ -96,7 +96,7 @@ void dump_taint_stats(Shad *shad){
     }
 }
 
-void cleanup_taint_stats(){
+void cleanup_taint_stats(void){
     if (taintstats){
         fclose(taintstats);
     }

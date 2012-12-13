@@ -6,8 +6,8 @@
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "max.h"
-#include "taint_processor.h"
 #include "guestarch.h"
+#include "taint_processor.h"
 
 #define SB_INLINE inline
 

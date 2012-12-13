@@ -78,7 +78,7 @@ static SB_INLINE const char *labelset_type_str(LabelSetType type) {
 
 // create a new labelset and return it
 // NB: this function allocates memory. caller is responsible for freeing.
-static SB_INLINE LabelSet *labelset_new() {  
+static SB_INLINE LabelSet *labelset_new(void) {  
   LabelSet *ls;
   //  if (last_recycled_index == -1) {
       ls = (LabelSet *) my_calloc(1, sizeof(LabelSet), poolid_label_set);
@@ -127,7 +127,7 @@ static SB_INLINE void labelset_set_max_num_labels(uint32_t m) {
 
 
 // retrieve max number of labels
-static SB_INLINE uint32_t labelset_get_max_num_labels() {
+static SB_INLINE uint32_t labelset_get_max_num_labels(void) {
   return bitset_get_max_num_elements();
 }
 

@@ -22,7 +22,7 @@
 
 #include "bitvector_label_set.c"
 
-#define SB_INLINE //inline
+//#define SB_INLINE inline
 
 // 64-bit addresses
 // create a new table

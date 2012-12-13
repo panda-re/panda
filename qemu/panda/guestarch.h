@@ -11,13 +11,13 @@
  * Arch is defined in Makefile.common
  */
 
+#include "cpu.h"
+
 #include "taint_processor.h"
 
-#define X86_64 // FIXME
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
-#ifdef X86
-
-#define R_EAX 0
+/*#define R_EAX 0
 #define R_ECX 1
 #define R_EDX 2
 #define R_EBX 3
@@ -28,7 +28,7 @@
 #define CC_OP 8
 #define CC_SRC 9
 #define CC_DST 10
-#define EIP 11
+#define EIP 11*/
 
 /* 
  * Note: code in guestarch.c will need to change if this enum is changed.  Also,
@@ -274,18 +274,18 @@ enum SpecAddrs {
 #define WORDSIZE 4
 #define LENDIAN
 
-#endif
+#endif // TARGET_I386
 
-#ifdef X86_64
+#ifdef TARGET_X86_64
 
-#define R_RAX 0
+/*#define R_RAX 0
 #define R_RCX 1
 #define R_RDX 2
 #define R_RBX 3
 #define R_RSP 4
 #define R_RBP 5
 #define R_RSI 6
-#define R_RDI 7
+#define R_RDI 7*/
 #define R8 8
 #define R9 9
 #define R10 10
@@ -294,10 +294,10 @@ enum SpecAddrs {
 #define R13 13
 #define R14 14
 #define R15 15
-#define CC_OP 16
+/*#define CC_OP 16
 #define CC_SRC 17
 #define CC_DST 18
-#define RIP 19
+#define RIP 19*/
 
 enum SpecAddrs {
     XMM_T0_0 = 20,
@@ -669,7 +669,7 @@ enum SpecAddrs {
 
 #endif
 
-#ifdef ARM
+#ifdef TARGET_ARM
 
 #define NUMREGS 16
 #define NUMSPECADDRS 0

@@ -60,6 +60,7 @@ uint32_t shad_dir_occ_64(SdDir64 *shad_dir);
 
 // release all memory associated with this shad_dir
 void shad_dir_free_64(SdDir64 *shad_dir);
+int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff);
 
 /*
   add this mapping from addr to ls_new

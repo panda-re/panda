@@ -1,8 +1,16 @@
 
 #include "stdio.h"
+
+#include "cpu.h"
+
 #include "guestarch.h"
 
-#ifdef X86
+void printreg(Addr a){}
+void printspec(Addr a){}
+
+#if 0 // fix printing later
+
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
 void printreg(Addr a){
 
@@ -70,7 +78,7 @@ void printspec(Addr a){
 
 #endif
 
-#ifdef X86_64
+#ifdef TARGET_X86_64
 
 void printreg(Addr a){
 
@@ -144,7 +152,7 @@ void printspec(Addr a){}
 
 #endif
 
-#ifdef ARM
+#ifdef TARGET_ARM
 
 void printreg(Addr a){
     switch(a.val.gr){
@@ -175,6 +183,7 @@ void printreg(Addr a){
 
 void printspec(Addr a){}
 
+#endif
 #endif
 
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,

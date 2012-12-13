@@ -52,7 +52,7 @@ typedef enum {
 } pool_id;
 
 
-void spit_mem_usage();
+void spit_mem_usage(void);
 
 void *my_malloc(size_t n, pool_id pid);
 void *my_calloc(size_t nmemb, size_t memsz, pool_id pid);

@@ -219,4 +219,8 @@ void tob_clear(TaintOpBuffer *buf);
 enum {RETURN, BRANCH, EXCEPT};
 //extern int next_step;
 
+void print_addr(Shad *shad, Addr a);
+
+void process_insn_start_op(TaintOp op, TaintOpBuffer *buf, FILE *dlog);
+
 #endif

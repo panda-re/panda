@@ -64,7 +64,7 @@ typedef struct {
 pool_info mem_usage[poolid_last];
 
 
-void spit_mem_usage() {
+void spit_mem_usage(void) {
    int i;
    for (i = 0; i < poolid_last; i++) {
        printf("%s: ", pool_names[i]);

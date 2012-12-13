@@ -90,7 +90,7 @@ namespace llvm {
 
 int llvm_init(void *exEngine, void *funPassMan, void *module){
 
-    Shad *shad = tp_init(5, 5, 5, 5);
+    //Shad *shad = tp_init(5, 5, 5, 5);
 
     ExecutionEngine *ee = (ExecutionEngine *)exEngine;
     FunctionPassManager *fpm = (FunctionPassManager *)funPassMan;
