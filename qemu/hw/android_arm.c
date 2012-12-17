@@ -21,6 +21,7 @@
 #ifdef CONFIG_MEMCHECK
 #include "memcheck/memcheck_api.h"
 #endif  // CONFIG_MEMCHECK
+#include "android/android.h"
 
 /* Board init.  */
 
@@ -37,6 +38,8 @@ static uint32_t switch_test_write(void *opaque, uint32_t state)
     return state;
 }
 #endif
+
+
 
 static void android_arm_init_(ram_addr_t ram_size,
     const char *boot_device,
@@ -67,7 +70,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_rtc_create(gbus);
     goldfish_tty_create(gbus, serial_hds[0], 0, 0xff002000, 4);
     for(i = 1; i < MAX_SERIAL_PORTS; i++) {
-        //printf("android_arm_init serial %d %x\n", i, serial_hds[i]);
+        printf("android_arm_init serial %d %x\n", i, serial_hds[i]);
         if(serial_hds[i]) {
             printf("serial_hds: %d\n",i);
             goldfish_tty_create(gbus, serial_hds[i], i, 0, 0);
@@ -96,8 +99,9 @@ static void android_arm_init_(ram_addr_t ram_size,
     goldfish_fb_create(gbus, 0);
     goldfish_memlog_create(gbus, 0xff006000);
     goldfish_battery_create(gbus);
-    goldfish_nand_create(gbus);
     goldfish_events_create(gbus, gf_int);
+    goldfish_nand_create(gbus);
+    goldfish_pipe_create(gbus);
 
 #if TEST_SWITCH
     {

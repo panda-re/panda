@@ -404,9 +404,11 @@ obj-arm-y += ../iolooper-select.o
 obj-arm-y += ../android/looper-qemu.o
 obj-arm-y += ../android/utils/panic.o
 obj-arm-y += ../android/qemu-setup.o
-obj-arm-y += ../android/adb-qemud.o
+obj-arm-y += ../android/adb-qemud.o ../android/console.o ../shaper.o
 obj-arm-y += ../android/hw-qemud.o
 obj-arm-y += ../charpipe.o ../cbuffer.o
+obj-arm-y += ../android/net.o
+obj-arm-y += ../android/keycode-translator.o
 
 obj-sh4-y = shix.o r2d.o sh7750.o sh7750_regnames.o tc58128.o
 obj-sh4-y += sh_timer.o sh_serial.o sh_intc.o sh_pci.o sm501.o

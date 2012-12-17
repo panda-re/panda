@@ -764,7 +764,8 @@ static void handle_keyup(DisplayState *ds, SDL_Event *ev)
         sdl_process_key(&ev->key);
     }
 }
-
+#define ANDROID
+#if !defined(ANDROID)
 static void handle_mousemotion(DisplayState *ds, SDL_Event *ev)
 {
     int max_x, max_y;
@@ -784,7 +785,7 @@ static void handle_mousemotion(DisplayState *ds, SDL_Event *ev)
         }
     }
     if (gui_grab || kbd_mouse_is_absolute() || absolute_enabled) {
-        sdl_send_mouse_event(ev->motion.xrel, ev->motion.yrel, 0,
+        sdl_send_mouse_event(ev->motion.xrel, ev->motion.yrel, 1,
                              ev->motion.x, ev->motion.y, ev->motion.state);
     }
 }
@@ -825,6 +826,75 @@ static void handle_mousebutton(DisplayState *ds, SDL_Event *ev)
         sdl_send_mouse_event(0, 0, dz, bev->x, bev->y, buttonstate);
     }
 }
+#else //ANDROID
+bool is_dragging = 0;
+static void handle_mousemotion(DisplayState *ds, SDL_Event *ev)
+{
+    int max_x, max_y;
+    
+    if (is_graphic_console() &&
+        (kbd_mouse_is_absolute() || absolute_enabled)) {
+        max_x = real_screen->w - 1;
+    max_y = real_screen->h - 1;
+    if (gui_grab && (ev->motion.x == 0 || ev->motion.y == 0 ||
+        ev->motion.x == max_x || ev->motion.y == max_y)) {
+        sdl_grab_end();
+    }
+    if (!gui_grab && SDL_GetAppState() & SDL_APPINPUTFOCUS &&
+        (ev->motion.x > 0 && ev->motion.x < max_x &&
+        ev->motion.y > 0 && ev->motion.y < max_y)) {
+        sdl_grab_start();
+    }
+    }
+    if(is_dragging){
+        kbd_mouse_event(ev->motion.x, ev->motion.y, 0, 1);
+    }
+
+}
+
+
+static void handle_mousebutton(DisplayState *ds, SDL_Event *ev)
+{
+    int buttonstate = SDL_GetMouseState(NULL, NULL);
+    SDL_MouseButtonEvent *bev;
+    int dz;
+    
+    if (!is_graphic_console()) {
+        return;
+    }
+    
+    bev = &ev->button;
+    if (!gui_grab && !kbd_mouse_is_absolute()) {
+        if (ev->type == SDL_MOUSEBUTTONDOWN &&
+            (bev->button == SDL_BUTTON_LEFT)) {
+            /* start grabbing all events */
+            sdl_grab_start();
+        }
+    } else {
+        dz = 0;
+        if(bev->button == SDL_BUTTON_LEFT){
+            int x, y;
+            #if 1
+            x = ev->motion.x;
+            y = ev->motion.y;
+            #elif 0
+            x = ev->motion.y
+            y = ev->motion.x;
+            #elif 1
+            x = 
+            #endif
+            
+            if(ev->type == SDL_MOUSEBUTTONDOWN){
+                kbd_mouse_event(x, y, 0, 1);
+                is_dragging = true;
+            }else if(ev->type == SDL_MOUSEBUTTONUP){
+                kbd_mouse_event(x, y, 0, 0);
+                is_dragging = false;
+            }
+        }
+    }
+}
+#endif //ANDROID
 
 static void handle_activation(DisplayState *ds, SDL_Event *ev)
 {

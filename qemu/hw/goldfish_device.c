@@ -65,8 +65,8 @@ int goldfish_add_device_no_io(GoldfishDevice *dev)
         dev->irq = goldfish_free_irq;
         goldfish_free_irq += dev->irq_count;
     }
-    //printf("goldfish_add_device: %s, base %x %x, irq %d %d\n",
-    //       dev->name, dev->base, dev->size, dev->irq, dev->irq_count);
+    printf("goldfish_add_device: %s, base %x %x, irq %d %d\n",
+           dev->name, dev->base, dev->size, dev->irq, dev->irq_count);
     dev->next = NULL;
     if(last_device) {
         last_device->next = dev;

@@ -13,12 +13,13 @@
 #include "goldfish_device.h"
 #include "goldfish_nand_reg.h"
 #include "goldfish_nand.h"
+#include "android/utils/debug.h"
 
 #ifdef TARGET_I386
 #include "kvm.h"
 #endif
 
-#define  DEBUG  0
+#define  DEBUG  1
 #if DEBUG
 #  define  D(...)    VERBOSE_PRINT(init,__VA_ARGS__)
 #  define  D_ACTIVE  VERBOSE_CHECK(init)
@@ -133,6 +134,8 @@ typedef struct {
     uint32_t addr_high;
     uint32_t transfer_size;
     uint32_t data;
+    uint32_t batch_addr_low;
+    uint32_t batch_addr_high;
     uint32_t result;
 } nand_dev_controller_state;
 
@@ -157,6 +160,8 @@ typedef struct GoldfishNandDevice {
     uint32_t addr_high;
     uint32_t transfer_size;
     uint32_t data;
+    uint32_t batch_addr_low;
+    uint32_t batch_addr_high;
     uint32_t result;
 } GoldfishNandDevice;
 
@@ -190,6 +195,17 @@ static int  do_lseek(int  fd, off_t offset, int whence)
         ret = lseek(fd, offset, whence);
     } while (ret < 0 && errno == EINTR);
 
+    return ret;
+}
+
+/* EINTR-proof ftruncate - due to SIGALRM in use elsewhere */
+static int  do_ftruncate(int  fd, size_t  size)
+{
+    int  ret;
+    do {
+        ret = ftruncate(fd, size);
+    } while (ret < 0 && errno == EINTR);
+    
     return ret;
 }
 
@@ -292,6 +308,18 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
     uint64_t addr;
     nand_dev *dev;
 
+    if (cmd == NAND_CMD_WRITE_BATCH || cmd == NAND_CMD_READ_BATCH ||
+        cmd == NAND_CMD_ERASE_BATCH) {
+        struct batch_data bd;
+        uint64_t bd_addr = ((uint64_t)s->batch_addr_high << 32) | s->batch_addr_low;
+
+        cpu_physical_memory_read(bd_addr, (void*)&bd, sizeof(struct batch_data));
+        s->dev = bd.dev;
+        s->addr_low = bd.addr_low;
+        s->addr_high = bd.addr_high;
+        s->transfer_size = bd.transfer_size;
+        s->data = bd.data;
+    }
     addr = s->addr_low | ((uint64_t)s->addr_high << 32);
     size = s->transfer_size;
     if(s->dev >= nand_dev_count)
@@ -308,6 +336,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env, s->data, (uint8_t*)dev->devname, size, 1);
         return size;
+    case NAND_CMD_READ_BATCH:
     case NAND_CMD_READ:
         if(addr >= dev->max_size)
             return 0;
@@ -321,6 +350,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 1);
         return size;
+    case NAND_CMD_WRITE_BATCH:
     case NAND_CMD_WRITE:
         if(dev->flags & NAND_DEV_FLAG_READ_ONLY)
             return 0;
@@ -336,6 +366,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 0);
         return size;
+    case NAND_CMD_ERASE_BATCH:
     case NAND_CMD_ERASE:
         if(dev->flags & NAND_DEV_FLAG_READ_ONLY)
             return 0;
@@ -377,6 +408,12 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
     case NAND_ADDR_LOW:
         s->addr_low = value;
         break;
+    case NAND_BATCH_ADDR_LOW:
+        s->batch_addr_low = value;
+        break;
+    case NAND_BATCH_ADDR_HIGH:
+        s->batch_addr_high = value;
+        break;
     case NAND_TRANSFER_SIZE:
         s->transfer_size = value;
         break;
@@ -385,6 +422,13 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
         break;
     case NAND_COMMAND:
         s->result = nand_dev_do_cmd(s, value);
+        if (value == NAND_CMD_WRITE_BATCH || value == NAND_CMD_READ_BATCH ||
+            value == NAND_CMD_ERASE_BATCH) {
+            struct batch_data bd;
+            uint64_t bd_addr = ((uint64_t)s->batch_addr_high << 32) | s->batch_addr_low;
+            bd.result = s->result;
+            cpu_physical_memory_write(bd_addr, (void*)&bd, sizeof(struct batch_data));
+        }
         break;
     default:
         cpu_abort(cpu_single_env, "nand_dev_write: Bad offset %x\n", offset);
@@ -527,6 +571,7 @@ void nand_add_dev(const char *arg)
             if(arg_match("size", arg, arg_len)) {
                 char *ep;
                 dev_size = strtoull(value, &ep, 0);
+                D("Dev size 0x%X came from argument\n", dev_size);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
             }
@@ -604,6 +649,7 @@ void nand_add_dev(const char *arg)
             exit(1);
         }
         if(dev_size == 0) {
+            D("calculating dev_size from lseek\n");
             dev_size = do_lseek(initfd, 0, SEEK_END);
             do_lseek(initfd, 0, SEEK_SET);
         }
@@ -630,6 +676,9 @@ void nand_add_dev(const char *arg)
     if(dev->data == NULL)
         goto out_of_memory;
     dev->flags = read_only ? NAND_DEV_FLAG_READ_ONLY : 0;
+#ifdef TARGET_I386
+    dev->flags |= NAND_DEV_FLAG_BATCH_CAP;
+#endif
 
     if (initfd >= 0) {
         do {
@@ -674,7 +723,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             PANIC("Invalid system partition size: %jd", sysBytes);
         }
 
-        snprintf(tmp,sizeof(tmp),"system,size=0x%jx", sysBytes);
+        snprintf(tmp,sizeof(tmp),"system");
 
         if (sysImage && *sysImage) {
             if (filelock_create(sysImage) == NULL) {
@@ -709,7 +758,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             PANIC("Invalid data partition size: %jd", dataBytes);
         }
 
-        snprintf(tmp,sizeof(tmp),"userdata,size=0x%jx", dataBytes);
+        snprintf(tmp,sizeof(tmp),"userdata");
 
         if (dataImage && *dataImage) {
             if (filelock_create(dataImage) == NULL) {

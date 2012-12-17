@@ -19,6 +19,9 @@
 #include "console.h"
 #include "goldfish_device.h"
 
+#include "android/hw-constants.h"
+#include "android/keycode-translator.h"
+
 #define MAX_EVENTS 256*4
 
 enum {
@@ -58,6 +61,8 @@ typedef struct GoldfishEventsDevice {
     unsigned first;
     unsigned last;
     unsigned state;
+    
+    AndroidKeycodeState_t keycodeState;
 
     const char *name;
 
@@ -263,7 +268,12 @@ static CPUWriteMemoryFunc *events_writefn[] = {
 static void events_put_keycode(void *x, int keycode)
 {
     GoldfishEventsDevice *s = (GoldfishEventsDevice *) x;
-
+    
+    keycode = translateToAndroid(&(s->keycodeState),  keycode);
+    printf("Putting keycode %d being %d\n", keycode, keycode&0x1ff);
+    if(keycode < 0) return;
+    //format
+    //enqueue_event(s, EV_KEY, character/key, is_press)
     enqueue_event(s, EV_KEY, keycode&0x1ff, (keycode&0x200) ? 1 : 0);
 }
 
@@ -279,9 +289,11 @@ static void events_put_mouse(void *opaque, int dx, int dy, int dz, int buttons_s
         enqueue_event(s, EV_ABS, ABS_Y, dy);
         enqueue_event(s, EV_ABS, ABS_Z, dz);
         enqueue_event(s, EV_KEY, BTN_TOUCH, buttons_state&1);
+        //printf("Putting abs event %d %d %d %d\n", dx, dy, dz, buttons_state);
     } else {
         enqueue_event(s, EV_REL, REL_X, dx);
         enqueue_event(s, EV_REL, REL_Y, dy);
+        //printf("Putting rel event: %d %d %d\n", dx, dy, dz);
     }
     enqueue_event(s, EV_SYN, 0, 0);
 }
@@ -465,8 +477,6 @@ static int goldfish_events_init(GoldfishDevice *dev)
     s->abs_info_count = 3*4;
     s->abs_info = values = malloc(sizeof(uint32_t)*s->abs_info_count);
 
-#define ANDROID_LCD_WIDTH 1280
-#define ANDROID_LCD_HEIGHT 800
     /* ABS_X min/max/fuzz/flat */
     values[0] = 0;
     values[1] = ANDROID_LCD_WIDTH-1;
@@ -503,12 +513,13 @@ static int goldfish_events_init(GoldfishDevice *dev)
 
     //cpu_register_physical_memory(base, 0xfff, iomemtype);
 
-    //qemu_add_kbd_event_handler(events_put_keycode, s);
-    qemu_activate_mouse_event_handler(qemu_add_mouse_event_handler(events_put_mouse, s, 1, "goldfish-events"));
+    qemu_add_kbd_event_handler(events_put_keycode, s);
+    qemu_add_mouse_event_handler(events_put_mouse, s, 0, "goldfish-events");
 
     s->first = 0;
     s->last = 0;
     s->state = STATE_INIT;
+    s->name=g_strdup("qwerty2");
 
     /* This function migh fire buffered events to the device, so
      * ensure that it is called after initialization is complete
@@ -533,7 +544,13 @@ DeviceState *goldfish_events_create(GoldfishBus *gbus, DeviceState *goldfish_int
     qdev_init_nofail(dev);
     gdev = (GoldfishDevice *)dev;
     edev = DO_UPCAST(GoldfishEventsDevice, dev, gdev);
+    //goldfish_add_device_no_io(gdev);
+    printf("Using event IRQ\n");
+    //int iomemtype = cpu_register_io_memory(events_readfn, events_writefn, dev, DEVICE_NATIVE_ENDIAN);
+    //cpu_register_physical_memory(edev->base, 0xfff, iomemtype);
     edev->irq = qdev_get_gpio_in(goldfish_int_dev, gdev->irq); 
+    
+    edev->keycodeState.hasBit7 = false;
 
     return dev;
 }
