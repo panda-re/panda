@@ -33,6 +33,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 }
 
@@ -64,15 +65,45 @@ uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
 
+#ifdef TARGET_ARM
+// ARM: stolen from target-arm/helper.c
+static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
+{   
+    uint32_t table;
+
+    if (address & env->cp15.c2_mask)
+        table = env->cp15.c2_base1 & 0xffffc000;
+    else
+        table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
+
+    table |= (address >> 18) & 0x3ffc;
+    return table;
+}
+#endif
+
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write,
                        std::map<prog_point,string_pos> &text_tracker) {
     prog_point p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+
+    // Try to get the caller
+#if defined(TARGET_I386)
+#ifdef TARGET_X86_64 // In 64-bit mode we can't use EBP+4 for this.
+    if (env->hflags & HF_LMA_MASK)
+#endif
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+#elif defined(TARGET_ARM)
+    p.caller = env->regs[14];
+#endif
+
+    // Get address space identifier
+#if defined(TARGET_I386)
     if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
         p.cr3 = env->cr[3];
+#elif defined(TARGET_ARM)
+    p.cr3 = arm_get_vaddr_table(env, addr);
 #endif
+
     p.pc = pc;
     for (unsigned int i = 0; i < size; i++) {
         uint8_t val = ((uint8_t *)buf)[i];
