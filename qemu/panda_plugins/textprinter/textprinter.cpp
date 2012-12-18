@@ -28,7 +28,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+int mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 }
 
@@ -49,7 +49,7 @@ struct prog_point {
 std::set<prog_point> tap_points;
 FILE *tap_buffers;
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     prog_point p = {};
 #ifdef TARGET_I386
@@ -60,7 +60,8 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     p.pc = pc;
 
     // XXX disable CR3 check
-    p.cr3 = 0;
+    //p.cr3 = 0;
+    //p.caller = 0;
 
     if (tap_points.find(p) != tap_points.end()) {
         for (unsigned int i = 0; i < size; i++) {
@@ -80,7 +81,7 @@ bool init_plugin(void *self) {
     
     panda_enable_precise_pc();
     panda_enable_memcb();    
-    pcb.virt_mem_write = mem_write_callback;
+    pcb.virt_mem_write = mem_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
     std::ifstream taps("tap_points.txt");
@@ -95,7 +96,8 @@ bool init_plugin(void *self) {
         taps >> std::hex >> p.cr3;
 
         // XXX disable CR3 check
-        p.cr3 = 0;
+        //p.cr3 = 0;
+        //p.caller = 0;
 
         printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
                p.caller, p.pc, p.cr3);
