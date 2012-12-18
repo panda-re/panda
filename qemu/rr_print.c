@@ -78,16 +78,16 @@ static void rr_spit_log_entry(RR_log_entry item) {
     rr_spit_prog_point(item.header.prog_point);
     switch (item.header.kind) {
         case RR_INPUT_1:
-            printf("\tRR_INPUT_1 from %s\n", get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INPUT_1 %d from %s\n", item.variant.input_1, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INPUT_2:
-            printf("\tRR_INPUT_2 from %s\n", get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INPUT_2 %d from %s\n", item.variant.input_2, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INPUT_4:
-            printf("\tRR_INPUT_4 from %s\n", get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INPUT_4 %d from %s\n", item.variant.input_4, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INPUT_8:
-            printf("\tRR_INPUT_8 from %s\n", get_callsite_string(item.header.callsite_loc));
+            printf("\tRR_INPUT_8 %ld from %s\n", item.variant.input_8, get_callsite_string(item.header.callsite_loc));
             break;
         case RR_INTERRUPT_REQUEST:
             printf("\tRR_INTERRUPT_REQUEST_%d from %s\n", item.variant.interrupt_request, get_callsite_string(item.header.callsite_loc));
