@@ -36,7 +36,7 @@ int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_
 uint64_t bytes_read, bytes_written;
 uint64_t num_reads, num_writes;
 
-struct text_counter { int hist[256]; };
+struct text_counter { unsigned int hist[256]; };
 struct prog_point {
     target_ulong caller;
     target_ulong pc;
@@ -166,13 +166,14 @@ void uninit_plugin(void *self) {
         perror("fopen");
         return;
     }
+
+    // Cross platform support: need to know how big a target_ulong is
+    uint32_t target_ulong_size = sizeof(target_ulong);
+    fwrite(&target_ulong_size, sizeof(uint32_t), 1, mem_report);
+
     //fprintf(mem_report, "PC          Text/Non-text\n");
     std::list<std::pair<prog_point,text_counter> >::iterator it;
     for(it = display_map.begin(); it != display_map.end(); it++) {
-        //fprintf(mem_report, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx, it->first.cr3, it->first.pc, it->first.caller);
-        //for(int i = 0; i < 256; i++) fprintf(mem_report, " %d", it->second.hist[i]);
-        //fprintf(mem_report, " %f", byte_entropy(it->second));
-        //fprintf(mem_report, "\n");
         fwrite(&it->first, sizeof(prog_point), 1, mem_report);
         fwrite(&it->second, sizeof(text_counter), 1, mem_report);
     }
