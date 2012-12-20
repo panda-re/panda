@@ -48,6 +48,7 @@ typedef enum {
   poolid_iferret_trace,
   poolid_thread_trace_hashtable,
   poolid_taint_processor,
+  poolid_dynamic_log,
   poolid_last
 } pool_id;
 

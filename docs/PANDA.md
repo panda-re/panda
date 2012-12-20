@@ -111,10 +111,12 @@ Flushing the translation block cache may be necessary if the plugin makes change
 
 These functions enable and disable the memory callbacks (PANDA_CB_MEM_READ and PANDA_CB_MEM_WRITE). Because of the overhead of implementing memory callbacks, these are not on by default. They are implemented by setting a flag that both LLVM and TCG check that will cause them to use the instrumented versions _mmu functions, enabling the memory callbacks.
 
-	void panda_disable_chaining(void);
-	void panda_enable_chaining(void);
+	void panda_disable_tb_chaining(void);
+	void panda_enable_tb_chaining(void);
 
-**XXX** These are currently unimplemented. The idea is that they will allow plugins to selectively turn chaining on and off, regardless of whether the backend is TCG or LLVM, and independent of record and replay.
+These functions allow plugins to selectively turn translation block chaining on
+and off, regardless of whether the backend is TCG or LLVM, and independent of
+record and replay.
 
 	void panda_enable_precise_pc(void);
 	void panda_disable_precise_pc(void);

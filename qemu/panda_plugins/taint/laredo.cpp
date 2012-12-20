@@ -8,6 +8,7 @@ extern "C" {
 #include "guestarch.h"
 extern int next_step;
 extern int taken_branch;
+extern DynValBuffer *dynval_buffer; // declared in taint.cpp
 }
 
 using namespace llvm;
@@ -2149,7 +2150,7 @@ bool LaredoInstrFunctionPass::runOnFunction(Function &F){
  * the root of a global value (likely CPUState), then we can ignore it.
  */
 void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
-    Function *F = mod->getFunction("printdynval");
+    Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
         assert(1==0);
@@ -2168,8 +2169,11 @@ void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
             uint64_t constaddr = static_cast<ConstantInt*>(
                 static_cast<Instruction*>(
                     I.getPointerOperand())->getOperand(0))->getZExtValue();
-            argValues.push_back(ConstantInt::get(wordType, constaddr));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
             argValues.push_back(ConstantInt::get(intType, LOAD));
+            argValues.push_back(ConstantInt::get(wordType, constaddr));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
         }
@@ -2179,8 +2183,11 @@ void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
             std::vector<Value*> argValues;
             PTII = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
                 I.getPointerOperand(), wordType));
-            argValues.push_back(static_cast<Value*>(PTII));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
             argValues.push_back(ConstantInt::get(intType, LOAD));
+            argValues.push_back(static_cast<Value*>(PTII));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
             PTII->insertBefore(static_cast<Instruction*>(CI));
@@ -2190,7 +2197,7 @@ void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
 
 // Call the logging function, logging the address of the store
 void LaredoInstrumentVisitor::visitStoreInst(StoreInst &I){
-    Function *F = mod->getFunction("printdynval");
+    Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
         assert(1==0);
@@ -2212,8 +2219,11 @@ void LaredoInstrumentVisitor::visitStoreInst(StoreInst &I){
         uint64_t constaddr = static_cast<ConstantInt*>(
             static_cast<Instruction*>(
                 I.getPointerOperand())->getOperand(0))->getZExtValue();
-        argValues.push_back(ConstantInt::get(wordType, constaddr));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
         argValues.push_back(ConstantInt::get(intType, STORE));
+        argValues.push_back(ConstantInt::get(wordType, constaddr));
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
         CI->insertBefore(static_cast<Instruction*>(&I));
     }
@@ -2223,8 +2233,11 @@ void LaredoInstrumentVisitor::visitStoreInst(StoreInst &I){
         std::vector<Value*> argValues;
         PTII = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
             I.getPointerOperand(), wordType));
-        argValues.push_back(static_cast<Value*>(PTII));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
         argValues.push_back(ConstantInt::get(intType, STORE));
+        argValues.push_back(static_cast<Value*>(PTII));
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
         CI->insertBefore(static_cast<Instruction*>(&I));
         PTII->insertBefore(static_cast<Instruction*>(CI));
@@ -2243,7 +2256,7 @@ void LaredoInstrumentVisitor::visitBranchInst(BranchInst &I){
     CallInst *CI;
     std::vector<Value*> argValues;
     Value *condition;
-    Function *F = mod->getFunction("printdynval");
+    Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
         assert(1==0);
@@ -2255,16 +2268,22 @@ void LaredoInstrumentVisitor::visitBranchInst(BranchInst &I){
             std::vector<Value*> argValues;
             uint64_t constcond = static_cast<ConstantInt*>(
                 I.getCondition())->getZExtValue();
-            argValues.push_back(ConstantInt::get(wordType, !constcond));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, BRANCHENTRY));
             argValues.push_back(ConstantInt::get(intType, BRANCHOP));
+            argValues.push_back(ConstantInt::get(wordType, !constcond));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
         }
         else {
             BO = static_cast<BinaryOperator*>(IRB.CreateNot(condition));
             ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(BO, wordType));
-            argValues.push_back(static_cast<Value*>(ZEI));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, BRANCHENTRY));
             argValues.push_back(ConstantInt::get(intType, BRANCHOP));
+            argValues.push_back(static_cast<Value*>(ZEI));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
             ZEI->insertBefore(static_cast<Instruction*>(CI));
@@ -2272,8 +2291,11 @@ void LaredoInstrumentVisitor::visitBranchInst(BranchInst &I){
         }
     }
     else {
-        argValues.push_back(ConstantInt::get(wordType, 0));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, BRANCHENTRY));
         argValues.push_back(ConstantInt::get(intType, BRANCHOP));
+        argValues.push_back(ConstantInt::get(wordType, 0));
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
         CI->insertBefore(static_cast<Instruction*>(&I));
     }
@@ -2288,7 +2310,7 @@ void LaredoInstrumentVisitor::visitSelectInst(SelectInst &I){
     CallInst *CI;
     std::vector<Value*> argValues;
     Value *condition;
-    Function *F = mod->getFunction("printdynval");
+    Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
         assert(1==0);
@@ -2296,8 +2318,11 @@ void LaredoInstrumentVisitor::visitSelectInst(SelectInst &I){
     condition = I.getCondition();
     BO = static_cast<BinaryOperator*>(IRB.CreateNot(condition));
     ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(BO, wordType));
-    argValues.push_back(static_cast<Value*>(ZEI));
+    argValues.push_back(ConstantInt::get(ptrType,
+        (uintptr_t)dynval_buffer));
+    argValues.push_back(ConstantInt::get(intType, SELECTENTRY));
     argValues.push_back(ConstantInt::get(intType, SELECT));
+    argValues.push_back(static_cast<Value*>(ZEI));
     CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
     CI->insertBefore(static_cast<Instruction*>(&I));
     ZEI->insertBefore(static_cast<Instruction*>(CI));
@@ -2308,10 +2333,10 @@ void LaredoInstrumentVisitor::visitSelectInst(SelectInst &I){
  * Just print out name so we can see which helpers are being called.
  */
 void LaredoInstrumentVisitor::visitCallInst(CallInst &I){
-    assert(I.getCalledFunction()->hasName());
+    /*assert(I.getCalledFunction()->hasName());
     std::string fnName = I.getCalledFunction()->getName().str();
     printf("HELPER %s\n", fnName.c_str());
-    fflush(stdout);
+    fflush(stdout);*/
 }
 
 

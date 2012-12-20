@@ -21,7 +21,7 @@ void memplot(Shad *shad){
     fprintf(memplotlog, "\"Address\",\"Label\",\"Type\"\n");
     unsigned int i;
     for (i = 0; i < 0xffffffff; i++){
-#ifdef X86_64
+#ifdef TARGET_X86_64
         LabelSet *ls = shad_dir_find_64(shad->ram, i);
         if (ls){
             unsigned int j;
@@ -50,7 +50,7 @@ void bufplot(Shad *shad, uint64_t addr, int length){
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
     uint64_t i;
     for (i = addr; i < addr+length; i++){
-#ifdef X86_64
+#ifdef TARGET_X86_64
         LabelSet *ls = shad_dir_find_64(shad->ram, i);
         if (ls){
             unsigned int j;
@@ -86,7 +86,7 @@ void dump_taint_stats(Shad *shad){
             taintstats = fopen("taintstats.csv", "w");
             fprintf(taintstats, "\"Instrs\",\"TaintedAddrs\"\n");
         }
-#ifdef X86_64
+#ifdef TARGET_X86_64
         tainted_addrs = shad_dir_occ_64(shad->ram);
 #else
         tainted_addrs = shad_dir_occ_32(shad->ram);
