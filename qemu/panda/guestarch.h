@@ -1,15 +1,5 @@
-/*
- * XXX: REMOVE ME AND USE QEMU STUFF
- */
-
-
 #ifndef GUESTARCH_H
 #define GUESTARCH_H
-
-/* Modeled after target-specific cpu.h files in QEMU
- *
- * Arch is defined in Makefile.common
- */
 
 #include "cpu.h"
 
@@ -17,22 +7,21 @@
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
-/*#define R_EAX 0
-#define R_ECX 1
-#define R_EDX 2
-#define R_EBX 3
-#define R_ESP 4
-#define R_EBP 5
-#define R_ESI 6
-#define R_EDI 7
-#define CC_OP 8
-#define CC_SRC 9
-#define CC_DST 10
-#define EIP 11*/
+/*
+ * These continue #defines after general purpose regs in cpu.h
+ */
+#define CC_OP_REG 8
+#define CC_SRC_REG 9
+#define CC_DST_REG 10
+#define EIP_REG 11
 
 /* 
- * Note: code in guestarch.c will need to change if this enum is changed.  Also,
- * we assume that this enum starts right after guest registers.
+ * We assume that this enum starts right after guest registers.
+ *
+ * XMM and MMX registers can be accessed at offsets inside of them, so log the
+ * specific byte accessed for these registers.  XMM registers are 16 bytes.
+ * Floating point registers are 10 bytes.  XMM_T0 and MMX_T0 don't correspond to
+ * actual hardware, but they are a part of the CPUState.
  */
 enum SpecAddrs {
     XMM_T0_0 = 12,
@@ -278,14 +267,30 @@ enum SpecAddrs {
 
 #ifdef TARGET_X86_64
 
-/*#define R_RAX 0
-#define R_RCX 1
-#define R_RDX 2
-#define R_RBX 3
-#define R_RSP 4
-#define R_RBP 5
-#define R_RSI 6
-#define R_RDI 7*/
+extern uintptr_t rax_reg;
+extern uintptr_t rcx_reg;
+extern uintptr_t rdx_reg;
+extern uintptr_t rbx_reg;
+extern uintptr_t rsp_reg;
+extern uintptr_t rbp_reg;
+extern uintptr_t rsi_reg;
+extern uintptr_t rdi_reg;
+extern uintptr_t r8_reg;
+extern uintptr_t r9_reg;
+extern uintptr_t r10_reg;
+extern uintptr_t r11_reg;
+extern uintptr_t r12_reg;
+extern uintptr_t r13_reg;
+extern uintptr_t r14_reg;
+extern uintptr_t r15_reg;
+extern uintptr_t cc_op_reg;  //
+extern uintptr_t cc_src_reg; // maybe we should remove these until we need them
+extern uintptr_t cc_dst_reg; //
+extern uintptr_t rip_reg;
+
+/*
+ * These continue #defines after general purpose regs in cpu.h
+ */
 #define R8 8
 #define R9 9
 #define R10 10
@@ -294,11 +299,19 @@ enum SpecAddrs {
 #define R13 13
 #define R14 14
 #define R15 15
-/*#define CC_OP 16
-#define CC_SRC 17
-#define CC_DST 18
-#define RIP 19*/
+#define CC_OP_REG 16
+#define CC_SRC_REG 17
+#define CC_DST_REG 18
+#define RIP_REG 19
 
+/* 
+ * We assume that this enum starts right after guest registers.
+ *
+ * XMM and MMX registers can be accessed at offsets inside of them, so log the
+ * specific byte accessed for these registers.  XMM registers are 16 bytes.
+ * Floating point registers are 10 bytes.  XMM_T0 and MMX_T0 don't correspond to
+ * actual hardware, but they are a part of the CPUState.
+ */
 enum SpecAddrs {
     XMM_T0_0 = 20,
     XMM_T0_1,
@@ -678,10 +691,13 @@ enum SpecAddrs {
 
 #endif
 
+void init_regs(void);
+int get_cpustate_val(uintptr_t dynval);
+
 void printreg(Addr a);
 void printspec(Addr a);
-void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
-    TaintOpBuffer *buf);
+
+void guestStoreTaint(LAddr localSrc, GReg guestDst, int len, TaintOpBuffer *buf);
 void guestLoadTaint(GReg guestSrc, LAddr localDst, int len, TaintOpBuffer *buf);
 void guestDeleteTaint(GReg guestDst, int len, TaintOpBuffer *buf);
 

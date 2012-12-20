@@ -23,15 +23,8 @@
 extern "C" {
 #include "taint_processor.h"
 #include "laredo_instrumentation.h"
+#include "panda_memlog.h"
 }
-
-// Also in qemu/tcg/tcg-llvm.cpp
-enum logop {
-    LOAD,
-    STORE,
-    BRANCHOP,
-    SELECT
-};
 
 namespace llvm {
 
@@ -185,12 +178,14 @@ class LaredoInstrumentVisitor : public InstVisitor<LaredoInstrumentVisitor> {
     Module *mod;
     IntegerType *wordType;
     IntegerType *intType;
+    IntegerType *ptrType;
 public:
     LaredoInstrumentVisitor() : IRB(getGlobalContext()) {}
     
     LaredoInstrumentVisitor(Module *M) : IRB(getGlobalContext()), mod(M),
         wordType(IntegerType::get(getGlobalContext(), sizeof(size_t)*8)),
-        intType(IntegerType::get(getGlobalContext(), sizeof(int)*8)) {}
+        intType(IntegerType::get(getGlobalContext(), sizeof(int)*8)),
+        ptrType(IntegerType::get(getGlobalContext(), sizeof(uintptr_t)*8)) {}
 
     inline ~LaredoInstrumentVisitor() {
     }

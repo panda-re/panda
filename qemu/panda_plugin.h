@@ -412,14 +412,16 @@ void panda_enable_precise_pc(void);
 void panda_disable_precise_pc(void);
 void panda_enable_memcb(void);
 void panda_disable_memcb(void);
-
 void panda_enable_llvm(void);
 void panda_disable_llvm(void);
+void panda_enable_tb_chaining(void);
+void panda_disable_tb_chaining(void);
 
 extern bool panda_update_pc;
 extern bool panda_use_memcb;
 extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 extern bool panda_plugin_to_unload;
+extern bool panda_tb_chaining;
 
 #endif

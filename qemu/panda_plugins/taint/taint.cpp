@@ -1,17 +1,6 @@
 /*
- * llvm_trace PANDA plugin
+ * PANDA taint analysis plugin
  * Ryan Whelan
- *
- * This plugin captures a trace in LLVM format and saves 3 files to /tmp.  The
- * first is llvm-mod.bc, which is the LLVM IR bitcode of each guest translation
- * block.  The others are llvm-functions.log and llvm-memlog.log.  The first
- * contains the order of LLVM functions executed, and the second contains every
- * memory (and CPUState) access, as well as every branch target in the bitcode.
- * llvm-functions.log also contains select information about system calls for
- * QEMU-user mode, and our callbacks for those are implemented here.  For
- * instrumented helper functions, use this with our helper function analyzer.
- * This assumes you are obtaining an entire trace, so LLVM will be disabled and
- * the bitcode module will be written at the end of execution.
  */
 
 // This needs to be defined before anything is included in order to get
@@ -40,9 +29,9 @@ extern "C" {
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-#include "laredo.h"
 #include "tcg-llvm.h"
 
+#include "laredo.h"
 #include "taint_processor.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -52,6 +41,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
+int after_block_exec(CPUState *env, TranslationBlock *tb);
 int llvm_init(void *exEngine, void *funPassMan, void *module);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
@@ -72,62 +62,90 @@ extern FILE *memlog;
 
 }
 
+// FIXME: get rid of these
+Shad *shad;
+TaintOpBuffer *tbuf;
+TaintTB *ttb;
+
+// Our pass manager to derive taint ops
+llvm::FunctionPassManager *taintfpm;
+llvm::FunctionPass *taintfp;
+llvm::LaredoTaintFunctionPass *LTFP;
+
+// Dynamic log buffer
+DynValBuffer *dynval_buffer;
+
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     //printramaddr(addr, 1);
-    printramaddr(0x4000000, 1);
+    //printramaddr(0x4000000, 1);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
     //printramaddr(addr, 0);
-    printramaddr(0x4000001, 0);
+    //printramaddr(0x4000001, 0);
     return 0;
 }
 
 namespace llvm {
 
 int llvm_init(void *exEngine, void *funPassMan, void *module){
-
-    //Shad *shad = tp_init(5, 5, 5, 5);
-
     ExecutionEngine *ee = (ExecutionEngine *)exEngine;
     FunctionPassManager *fpm = (FunctionPassManager *)funPassMan;
     Module *mod = (Module *)module;
     LLVMContext &ctx = mod->getContext();
 
-    // Link logging functions in with JIT
-    Function* printFunc;
-    Function* ramFunc;
+    // Link logging function in with JIT
+    Function *logFunc;
     std::vector<Type*> argTypes;
+    // DynValBuffer*
     argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(int)));
-    printFunc = Function::Create(
+    // DynValEntryType
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(DynValEntryType)));
+    // LogOp
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(LogOp)));
+    // Dynamic value
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
+    logFunc = Function::Create(
             FunctionType::get(Type::getVoidTy(ctx), argTypes, false),
-            Function::ExternalLinkage, "printdynval", mod);
-    printFunc->addFnAttr(Attribute::AlwaysInline);
-    ee->addGlobalMapping(printFunc, (void*) &printdynval);
+            Function::ExternalLinkage, "log_dynval", mod);
+    logFunc->addFnAttr(Attribute::AlwaysInline);
+    ee->addGlobalMapping(logFunc, (void*) &log_dynval);
     
-    argTypes.clear();
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(int)));
-    ramFunc = Function::Create(
-            FunctionType::get(Type::getVoidTy(ctx), argTypes, false),
-            Function::PrivateLinkage, "printramaddr", mod);
-    ramFunc->addFnAttr(Attribute::AlwaysInline);
-    ee->addGlobalMapping(ramFunc, (void*) &printramaddr);
-
-    // Add our IR instrumentation pass to the pass manager
     fpm->add(createLaredoInstrFunctionPass(mod));
-    
+
     return 0;
 }
 
 } // namespace llvm
 
+// Derive taint ops
 int before_block_exec(CPUState *env, TranslationBlock *tb){
-    fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+    //fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+
+    tob_clear(tbuf);
+    LTFP->LTV->LST = createLaredoSlotTracker(tb->llvm_function);
+    LTFP->LTV->LST->initialize();
+    taintfpm->run(*(tb->llvm_function));
+    delete LTFP->LTV->LST;
+    clear_dynval_buffer(dynval_buffer);
+    return 0;
+}
+
+// Execute taint ops
+int after_block_exec(CPUState *env, TranslationBlock *tb,
+        TranslationBlock *next_tb){
+    rewind_dynval_buffer(dynval_buffer);
+
+    //printf("%s\n", tb->llvm_function->getName().str().c_str());
+    //LTFP->debugTaintOps();
+    //printf("\n\n");
+    execute_taint_ops(LTFP->ttb, LTFP->shad, dynval_buffer);
+
+    // Make sure there's nothing left in the buffer
+    assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
     return 0;
 }
 
@@ -234,17 +252,23 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 #endif // CONFIG_SOFTMMU
 
 bool init_plugin(void *self) {
+
+    /*
+     * PANDA plugin initialization
+     */
+
     printf("Initializing plugin llvm_trace\n");
 
     panda_cb pcb;
 
-    //panda_enable_precise_pc();
-
-    panda_enable_memcb();    
+    panda_enable_memcb();
+    panda_disable_tb_chaining();
     pcb.llvm_init = llvm::llvm_init;
     panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_read = phys_mem_read_callback;
     panda_register_callback(self, PANDA_CB_PHYS_MEM_READ, pcb);
     pcb.phys_mem_write = phys_mem_write_callback;
@@ -257,14 +281,54 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
 
-    open_memlog();
-    setbuf(memlog, NULL);
-    funclog = fopen("/tmp/llvm-functions.log", "w");
-    setbuf(funclog, NULL);
-
     if (!execute_llvm){
         panda_enable_llvm();
     }
+
+    /*
+     * Taint processor initialization
+     */
+
+    /*
+     * NOTE: Shadow memory (specifically quick taint lookup) currently
+     * DOES NOT support a 64-bit shadow memory.
+     */
+
+    //uint32_t ram_size = 536870912; // 500MB each
+#ifdef TARGET_X86_64
+    // this is only for the fast bitmap which we currently aren't using
+    uint64_t ram_size = 0;
+#else
+    uint32_t ram_size = 0xffffffff; //guest address space -- QEMU user mode
+#endif
+    uint64_t hd_size =  536870912;
+    uint64_t io_size = 536870912;
+    uint16_t num_vals = 2000; // LLVM virtual registers
+    // FIXME: never gets freed, nbd, but should happen at some point
+    shad = tp_init(hd_size, ram_size, io_size, num_vals);
+    
+    tbuf = tob_new(3*1048576); // 3MB
+    ttb = NULL;
+
+    dynval_buffer = create_dynval_buffer(1048576);
+
+    if (shad == NULL){
+        printf("Error initializing shadow memory...\n");
+        exit(1);
+    }
+    if (tbuf == NULL){
+        printf("Error initializing taint op buffer...\n");
+        exit(1);
+    }
+
+    taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
+    
+    // Add the taint analysis pass to our taint pass manager
+    taintfp = llvm::createLaredoTaintFunctionPass(/*dlog*/NULL, shad, tbuf, ttb,
+        /*tc*/NULL);
+    LTFP = static_cast<llvm::LaredoTaintFunctionPass*>(taintfp);
+    taintfpm->add(taintfp);
+    taintfpm->doInitialization();
     
     return true;
 }
@@ -290,9 +354,10 @@ void uninit_plugin(void *self) {
         pr->unregisterPass(*pi);
     }
 
+    delete_dynval_buffer(dynval_buffer);
+
     panda_disable_llvm();
     panda_disable_memcb();
-    fclose(funclog);
-    close_memlog();
+    panda_enable_tb_chaining();
 }
 

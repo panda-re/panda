@@ -8,6 +8,7 @@
 #include "max.h"
 #include "guestarch.h"
 #include "taint_processor.h"
+#include "panda_memlog.h"
 
 #define SB_INLINE inline
 
@@ -65,7 +66,7 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
     shad->num_vals = max_vals;
     shad->guest_regs = NUMREGS;
     shad->hd = shad_dir_new_64(12,12,16);
-#ifdef X86_64
+#ifdef TARGET_X86_64
     shad->ram = shad_dir_new_64(12,12,16);
 #else
     shad->ram = shad_dir_new_32(10,10,12);
@@ -107,7 +108,7 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
             }
         case MADDR:
             {
-#ifdef X86_64
+#ifdef TARGET_X86_64
                 /* XXX: this only applies to x86_64 user because the bit array
                  * is too big to represent.  We can still use it for
                  * whole-system though.
@@ -193,7 +194,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr a) {
             }
         case MADDR:
             {
-#ifdef X86_64
+#ifdef TARGET_X86_64
                 /* XXX: this only applies to x86_64 user because the bit array
                  * is too big to represent.  We can still use it for
                  * whole-system though.
@@ -285,7 +286,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case MADDR:
             {
-#ifdef X86_64
+#ifdef TARGET_X86_64
                 /* XXX: this only applies to x86_64 user because the bit array
                  * is too big to represent.  We can still use it for
                  * whole-system though.
@@ -669,360 +670,438 @@ SB_INLINE TaintOp tob_op_read(TaintOpBuffer *buf) {
     return op;
 }
 
-void process_insn_start_op(TaintOp op, TaintOpBuffer *buf, FILE *dlog){
+void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
+        DynValBuffer *dynval_buf){
 #ifdef TAINTDEBUG
     printf("Fixing up taint op buffer for: %s\n", op.val.insn_start.name);
 #endif
 
-    char line[50];
-    if (op.val.insn_start.flag == INSNREADLOG){
-        fgets(line, sizeof(line), dlog);
-        line[strlen(line)-1] = '\0';
+    assert(op.val.insn_start.flag == INSNREADLOG);
 
-        if (!strcmp(op.val.insn_start.name, "load")){
-            if (strstr(line, "load") == NULL){
-                if (strstr(line, EXCEPTIONSTRING)){
-                    printf("Memory exception\n");
-                    next_step = EXCEPT;
-                    return;
-                }
-                else{
-                    fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                    fprintf(stderr, "In: load\n");
-                    fflush(stdout);
-                    exit(1);
-                }
-            }
+    DynValEntry dventry;
+    read_dynval_buffer(dynval_buf, &dventry);
+
+    if (!strcmp(op.val.insn_start.name, "load")){
+        
+        // XXX: figure out new exception logic
+        /*if (strstr(line, "load") == NULL){
             if (strstr(line, EXCEPTIONSTRING)){
                 printf("Memory exception\n");
                 next_step = EXCEPT;
                 return;
             }
-
-            else {
-                /*** Fix up taint op buffer here ***/
-                char *addrstring = line + 5;
-                char *saved_buf_ptr = buf->ptr;
-                TaintOp *cur_op = (TaintOp*) buf->ptr;
-                uint64_t addr = atol(addrstring);
-
-                int i;
-                for (i = 0; i < op.val.insn_start.num_ops; i++){
-
-                    switch (cur_op->typ){
-                        case COPYOP:
-                            if (addr == (uint64_t)IRRELEVANT){
-                                // load from irrelevant part of CPU state
-                                // delete taint at the destination
-                                cur_op->val.copy.a.flag = IRRELEVANT;
-                            }
-                            else if (addr < NUMREGS){
-                                // guest register
-                                cur_op->val.copy.a.flag = 0;
-                                cur_op->val.copy.a.typ = GREG;
-                                cur_op->val.copy.a.val.gr = addr;
-                            }
-                            else if ((addr >= NUMREGS)
-                                    && (addr <= (NUMSPECADDRS + NUMREGS))){
-                                // guest special address
-                                cur_op->val.copy.a.flag = 0;
-                                cur_op->val.copy.a.typ = GSPEC;
-                                cur_op->val.copy.a.val.gs = addr;
-
-                            }
-                            else {
-                                // guest RAM
-                                cur_op->val.copy.a.flag = 0;
-                                cur_op->val.copy.a.typ = MADDR;
-                                cur_op->val.copy.a.val.ma = addr;
-                            }
-                            break;
-
-                        default:
-                            // taint ops for load only consist of copy ops
-                            assert(1==0);
-                    }
-
-                    cur_op++;
-                }
-
-                buf->ptr = saved_buf_ptr;
+            else{
+                fprintf(stderr, "Error: traces don't align -- %s\n", line);
+                fprintf(stderr, "In: load\n");
+                fflush(stdout);
+                exit(1);
             }
         }
+        if (strstr(line, EXCEPTIONSTRING)){
+            printf("Memory exception\n");
+            next_step = EXCEPT;
+            return;
+        }*/
 
-        else if (!strcmp(op.val.insn_start.name, "store")){
+        if ((dventry.entrytype != ADDRENTRY)
+                || (dventry.entry.memaccess.op != LOAD)){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: load\n");
+            exit(1);
+        }
 
-            if (strstr(line, "store") == NULL){
-                if (strstr(line, EXCEPTIONSTRING)){
-                    printf("Memory exception\n");
-                    next_step = EXCEPT;
-                    return;
+        else if ((dventry.entrytype == ADDRENTRY)
+                && (dventry.entry.memaccess.op == LOAD)) {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+
+                switch (cur_op->typ){
+                    case COPYOP:
+                        if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
+                            // load from irrelevant part of CPU state
+                            // delete taint at the destination
+                            cur_op->val.copy.a.flag = IRRELEVANT;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = GREG;
+                            cur_op->val.copy.a.val.gr =
+                                dventry.entry.memaccess.addr.val.gr;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = GSPEC;
+                            cur_op->val.copy.a.val.gs =
+                                dventry.entry.memaccess.addr.val.gs;
+
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = MADDR;
+                            cur_op->val.copy.a.val.ma =
+                                dventry.entry.memaccess.addr.val.ma;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+
+                    default:
+                        // taint ops for load only consist of copy ops
+                        assert(1==0);
                 }
-                else{
-                    fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                    fprintf(stderr, "In: store\n");
-					fflush(stdout);
-                    exit(1);
-                }
+
+                cur_op++;
             }
+
+            buf->ptr = saved_buf_ptr;
+        }
+
+        else {
+            fprintf(stderr, "Error: unknown error in dynamic log\n");
+            fprintf(stderr, "In: load\n");
+            exit(1);
+        }
+    }
+
+    else if (!strcmp(op.val.insn_start.name, "store")){
+
+        //XXX: figure out new exception logic
+        /*if (strstr(line, "store") == NULL){
             if (strstr(line, EXCEPTIONSTRING)){
                 printf("Memory exception\n");
                 next_step = EXCEPT;
                 return;
             }
+            else{
+                fprintf(stderr, "Error: traces don't align -- %s\n", line);
+                fprintf(stderr, "In: store\n");
+                fflush(stdout);
+                exit(1);
+            }
+        }
+        if (strstr(line, EXCEPTIONSTRING)){
+            printf("Memory exception\n");
+            next_step = EXCEPT;
+            return;
+        }*/
 
+        if ((dventry.entrytype != ADDRENTRY)
+                || (dventry.entry.memaccess.op != STORE)){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: store\n");
+            exit(1);
+        }
 
-            else {
-                /*** Fix up taint op buffer here ***/
-                char *addrstring = line + 6;
-                char *saved_buf_ptr = buf->ptr;
-                TaintOp *cur_op = (TaintOp*) buf->ptr;
-                uint64_t addr = atol(addrstring);
+        else if ((dventry.entrytype == ADDRENTRY)
+                && (dventry.entry.memaccess.op == STORE)) {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
 
-                int i;
-                for (i = 0; i < op.val.insn_start.num_ops; i++){
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
 
-                    switch (cur_op->typ){
-                        case COPYOP:
-                            if (addr == (uint64_t)IRRELEVANT){
-                                // store to irrelevant part of CPU state
-                                // delete taint at the destination
-                                cur_op->val.copy.b.flag = IRRELEVANT;
-                            }
-                            else if (addr < NUMREGS){
-                                // guest register
-                                cur_op->val.copy.b.flag = 0;
-                                cur_op->val.copy.b.typ = GREG;
-                                cur_op->val.copy.b.val.gr = addr;
-                            }
-                            else if ((addr >= NUMREGS)
-                                    && (addr < (NUMSPECADDRS + NUMREGS))){
-                                // guest special address
-                                cur_op->val.copy.b.flag = 0;
-                                cur_op->val.copy.b.typ = GSPEC;
-                                cur_op->val.copy.b.val.gs = addr;
-                            }
-                            else {
-                                // guest RAM
-                                cur_op->val.copy.b.flag = 0;
-                                cur_op->val.copy.b.typ = MADDR;
-                                cur_op->val.copy.b.val.ma = addr;
-                            }
-                            break;
+                switch (cur_op->typ){
+                    case COPYOP:
+                        if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
+                            // store to irrelevant part of CPU state
+                            // delete taint at the destination
+                            cur_op->val.copy.b.flag = IRRELEVANT;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = GREG;
+                            cur_op->val.copy.b.val.gr =
+                                dventry.entry.memaccess.addr.val.gr;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = GSPEC;
+                            cur_op->val.copy.b.val.gs =
+                                dventry.entry.memaccess.addr.val.gs;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = MADDR;
+                            cur_op->val.copy.b.val.ma =
+                                dventry.entry.memaccess.addr.val.ma;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
 
 #ifdef TAINTED_POINTER
-                        /* this only assumes we are in tainted pointer mode,
-                         * with the associated taint models
-                         */
-                        case COMPUTEOP:
-                            if (addr == (uint64_t)IRRELEVANT){
-                                // store to irrelevant part of CPU state
-                                // delete taint at the destination
-                                cur_op->val.compute.b.flag = IRRELEVANT;
-                                cur_op->val.compute.c.flag = IRRELEVANT;
-                            }
+                    /* this only assumes we are in tainted pointer mode,
+                     * with the associated taint models
+                     */
+                    case COMPUTEOP:
+                        if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
+                            // store to irrelevant part of CPU state
+                            // delete taint at the destination
+                            cur_op->val.compute.b.flag = IRRELEVANT;
+                            cur_op->val.compute.c.flag = IRRELEVANT;
+                        }
 
-                            // for store, if B and C aren't of type UNK, then
-                            // skip over them (see the taint model, and how we
-                            // use RET as a temp register)
-                            else if (cur_op->val.compute.b.typ != UNK
-                                    && cur_op->val.compute.c.typ != UNK){
-                                // do nothing
-                            }
-                            else if (addr < NUMREGS){
-                                // guest register
-                                // a register should never be a tainted pointer,
-                                // so this is ignored in tob_process()
-                                cur_op->val.compute.b.flag = 0;
-                                cur_op->val.compute.b.typ = GREG;
-                                cur_op->val.compute.b.val.gr = addr;
-                                cur_op->val.compute.c.flag = 0;
-                                cur_op->val.compute.c.typ = GREG;
-                                cur_op->val.compute.c.val.gr = addr;
-                            }
-                            else if ((addr >= NUMREGS)
-                                    && (addr < (NUMSPECADDRS + NUMREGS))){
-                                // special address
-                                // a register should never be a tainted pointer,
-                                // so this is ignored in tob_process()
-                                cur_op->val.compute.b.flag = 0;
-                                cur_op->val.compute.b.typ = GSPEC;
-                                cur_op->val.compute.b.val.gs = addr;
-                                cur_op->val.compute.c.flag = 0;
-                                cur_op->val.compute.c.typ = GSPEC;
-                                cur_op->val.compute.c.val.gs = addr;
-                            }
-                            else {
-                                // guest RAM
-                                cur_op->val.compute.b.flag = 0;
-                                cur_op->val.compute.b.typ = MADDR;
-                                cur_op->val.compute.b.val.ma = addr;
-                                cur_op->val.compute.c.flag = 0;
-                                cur_op->val.compute.c.typ = MADDR;
-                                cur_op->val.compute.c.val.ma = addr;
-                            }
-                            break;
-#endif
-
-                        case DELETEOP:
-                            if (addr == (uint64_t)IRRELEVANT){
-                                // do nothing for delete at address we aren't
-                                // tracking
-                                cur_op->val.deletel.a.flag = IRRELEVANT;
-                            }
-                            else if (addr < NUMREGS){
-                                // guest register
-                                cur_op->val.deletel.a.flag = 0;
-                                cur_op->val.deletel.a.typ = GREG;
-                                cur_op->val.deletel.a.val.gr = addr;
-                            }
-                            else if ((addr >= NUMREGS)
-                                    && (addr < (NUMSPECADDRS + NUMREGS))){
-                                // guest special address
-                                cur_op->val.deletel.a.flag = 0;
-                                cur_op->val.deletel.a.typ = GSPEC;
-                                cur_op->val.deletel.a.val.gs = addr;
-                            }
-                            else {
-                                // guest RAM
-                                cur_op->val.deletel.a.flag = 0;
-                                cur_op->val.deletel.a.typ = MADDR;
-                                cur_op->val.deletel.a.val.ma = addr;
-                            }
-                            break;
-
-                        default:
-                            // rest are unhandled for now
-                            assert(1==0);
-                    }
-
-                    cur_op++;
-                }
-
-                buf->ptr = saved_buf_ptr;
-            }
-        }
-
-        else if (!strcmp(op.val.insn_start.name, "condbranch")){
-            if (strstr(line, "condbranch") == NULL){
-                if (strstr(line, EXCEPTIONSTRING)){
-                    printf("Memory exception\n");
-                    next_step = EXCEPT;
-                    return;
-                }
-                else{
-                    fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                    fprintf(stderr, "In: branch\n");
-					fflush(stdout);
-                    exit(1);
-                }
-            }
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-
-            else {
-                /*** Fix up taint op buffer here ***/
-                char *targetstring = line + 11;
-                int target = atoi(targetstring); // 0 or 1 for true/false branch
-                /*
-                 * The true branch is target[0] for brcond and br, and the
-                 * optional false branch is target[1], so that is how we log it
-                 */
-                if (!target){
-                    taken_branch =
-                        op.val.insn_start.branch_labels[0];
-#ifdef TAINTDEBUG
-                        printf("Taken branch: %d\n", taken_branch);
-#endif
-                }
-                else {
-                    taken_branch =
-                        op.val.insn_start.branch_labels[1];
-#ifdef TAINTDEBUG
-                        printf("Taken branch: %d\n", taken_branch);
-#endif
-                }
-
-                next_step = BRANCH;
-            }
-        }
-
-        else if (!strcmp(op.val.insn_start.name, "select")){
-            if (strstr(line, "select") == NULL){
-                if (strstr(line, EXCEPTIONSTRING)){
-                    printf("Memory exception\n");
-                    next_step = EXCEPT;
-                    return;
-                }
-                else{
-                    fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                    fprintf(stderr, "In: select\n");
-					fflush(stdout);
-                    exit(1);
-                }
-            }
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-
-            else {
-                /*** Fix up taint op buffer here ***/
-                char *addrstring = line + 7;
-                char *saved_buf_ptr = buf->ptr;
-
-                TaintOp *cur_op = (TaintOp*) buf->ptr;
-                int target = atoi(addrstring);
-
-                int i;
-                for (i = 0; i < op.val.insn_start.num_ops; i++){
-                    // fill in src value
-                    cur_op->val.copy.a.flag = 0;
-                    cur_op->val.copy.a.typ = LADDR;
-                    if (!target){
-                        if (op.val.insn_start.branch_labels[0] == -1){
-                            // select value was a constant, so we delete taint
-                            // at dest
-                            cur_op->typ = DELETEOP;
-                            cur_op->val.deletel.a.val.la =
-                                cur_op->val.copy.b.val.la;
+                        // for store, if B and C aren't of type UNK, then
+                        // skip over them (see the taint model, and how we
+                        // use RET as a temp register)
+                        else if (cur_op->val.compute.b.typ != UNK
+                                && cur_op->val.compute.c.typ != UNK){
+                            // do nothing
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            // a register should never be a tainted pointer,
+                            // so this is ignored in tob_process()
+                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.typ = GREG;
+                            cur_op->val.compute.b.val.gr =
+                                dventry.entry.memaccess.addr.val.gr; 
+                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.typ = GREG;
+                            cur_op->val.compute.c.val.gr =
+                                dventry.entry.memaccess.addr.val.gr; 
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GSPEC){
+                            // special address
+                            // a register should never be a tainted pointer,
+                            // so this is ignored in tob_process()
+                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.typ = GSPEC;
+                            cur_op->val.compute.b.val.gs =
+                                dventry.entry.memaccess.addr.val.gs;
+                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.typ = GSPEC;
+                            cur_op->val.compute.c.val.gs =
+                                dventry.entry.memaccess.addr.val.gs; 
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.typ = MADDR;
+                            cur_op->val.compute.b.val.ma =
+                                dventry.entry.memaccess.addr.val.ma; 
+                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.typ = MADDR;
+                            cur_op->val.compute.c.val.ma =
+                                dventry.entry.memaccess.addr.val.ma; 
                         }
                         else {
-                            cur_op->val.copy.a.val.la =
-                                op.val.insn_start.branch_labels[0];
+                            assert(1==0);
                         }
+                        break;
+#endif
+
+                    case DELETEOP:
+                        if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
+                            // do nothing for delete at address we aren't
+                            // tracking
+                            cur_op->val.deletel.a.flag = IRRELEVANT;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = GREG;
+                            cur_op->val.deletel.a.val.gr =
+                                dventry.entry.memaccess.addr.val.gr; 
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = GSPEC;
+                            cur_op->val.deletel.a.val.gs =
+                                dventry.entry.memaccess.addr.val.gs; 
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = MADDR;
+                            cur_op->val.deletel.a.val.ma =
+                                dventry.entry.memaccess.addr.val.ma; 
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+
+                    default:
+                        // rest are unhandled for now
+                        assert(1==0);
+                }
+
+                cur_op++;
+            }
+
+            buf->ptr = saved_buf_ptr;
+        }
+        
+        else {
+            fprintf(stderr, "Error: unknown error in dynamic log\n");
+            fprintf(stderr, "In: store\n");
+            exit(1);
+        }
+    }
+
+    else if (!strcmp(op.val.insn_start.name, "condbranch")){
+        
+        //XXX: fix exception logic
+        /*if (strstr(line, "condbranch") == NULL){
+            if (strstr(line, EXCEPTIONSTRING)){
+                printf("Memory exception\n");
+                next_step = EXCEPT;
+                return;
+            }
+            else {
+                fprintf(stderr, "Error: traces don't align -- %s\n", line);
+                fprintf(stderr, "In: branch\n");
+                fflush(stdout);
+                exit(1);
+            }
+        }
+        if (strstr(line, EXCEPTIONSTRING)){
+            printf("Memory exception\n");
+            next_step = EXCEPT;
+            return;
+        }*/
+        
+        if (dventry.entrytype != BRANCHENTRY){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: branch\n");
+            exit(1);
+        }
+
+        else if (dventry.entrytype == BRANCHENTRY) {
+
+            /*** Fix up taint op buffer here ***/
+            /*
+             * The true branch is target[0] for brcond and br, and the
+             * optional false branch is target[1], so that is how we log it
+             */
+            if (dventry.entry.branch.br == false){
+                taken_branch = op.val.insn_start.branch_labels[0];
+#ifdef TAINTDEBUG
+                printf("Taken branch: %d\n", taken_branch);
+#endif
+            }
+            else if (dventry.entry.branch.br == true) {
+                taken_branch = op.val.insn_start.branch_labels[1];
+#ifdef TAINTDEBUG
+                printf("Taken branch: %d\n", taken_branch);
+#endif
+            }
+            else {
+                assert(1==0);
+            }
+
+            next_step = BRANCH;
+        }
+        
+        else {
+            fprintf(stderr, "Error: unknown error in dynamic log\n");
+            fprintf(stderr, "In: branch\n");
+            exit(1);
+        }
+    }
+
+    else if (!strcmp(op.val.insn_start.name, "select")){
+        
+        //XXX: fix exception logic
+        /*if (strstr(line, "select") == NULL){
+            if (strstr(line, EXCEPTIONSTRING)){
+                printf("Memory exception\n");
+                next_step = EXCEPT;
+                return;
+            }
+            else{
+                fprintf(stderr, "Error: traces don't align -- %s\n", line);
+                fprintf(stderr, "In: select\n");
+                fflush(stdout);
+                exit(1);
+            }
+        }
+        if (strstr(line, EXCEPTIONSTRING)){
+            printf("Memory exception\n");
+            next_step = EXCEPT;
+            return;
+        }*/
+
+        if (dventry.entrytype != SELECTENTRY){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: select\n");
+            exit(1);
+        }
+
+        else if (dventry.entrytype == SELECTENTRY) {
+            /*** Fix up taint op buffer here ***/
+
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+            char *saved_buf_ptr = buf->ptr;
+
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+                // fill in src value
+                cur_op->val.copy.a.flag = 0;
+                cur_op->val.copy.a.typ = LADDR;
+                if (dventry.entry.select.sel == false){
+                    if (op.val.insn_start.branch_labels[0] == -1){
+                        // select value was a constant, so we delete taint
+                        // at dest
+                        cur_op->typ = DELETEOP;
+                        cur_op->val.deletel.a.val.la =
+                            cur_op->val.copy.b.val.la;
                     }
                     else {
-                        if (op.val.insn_start.branch_labels[1] == -1){
-                            // select value was a constant, so we delete taint
-                            // at dest
-                            cur_op->typ = DELETEOP;
-                            cur_op->val.deletel.a.val.la =
-                                cur_op->val.copy.b.val.la;
-                        }
-                        else {
-                            cur_op->val.copy.a.val.la =
-                                op.val.insn_start.branch_labels[1];
-                        }
+                        cur_op->val.copy.a.val.la =
+                            op.val.insn_start.branch_labels[0];
                     }
-
-                    cur_op++;
+                }
+                else if (dventry.entry.select.sel == true){
+                    if (op.val.insn_start.branch_labels[1] == -1){
+                        // select value was a constant, so we delete taint
+                        // at dest
+                        cur_op->typ = DELETEOP;
+                        cur_op->val.deletel.a.val.la =
+                            cur_op->val.copy.b.val.la;
+                    }
+                    else {
+                        cur_op->val.copy.a.val.la =
+                            op.val.insn_start.branch_labels[1];
+                    }
+                }
+                else {
+                    assert(1==0);
                 }
 
-                buf->ptr = saved_buf_ptr;
+                cur_op++;
             }
+
+            buf->ptr = saved_buf_ptr;
+        }
+        
+        else {
+            fprintf(stderr, "Error: unknown error in dynamic log\n");
+            fprintf(stderr, "In: select\n");
+            exit(1);
         }
     }
 }
 
-void execute_taint_ops(TaintTB *ttb, Shad *shad, FILE *dlog){
+void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
     // execute taint ops starting with the entry BB
     next_step = RETURN;
-    tob_process(ttb->entry->ops, shad, dlog);
+    tob_process(ttb->entry->ops, shad, dynval_buf);
 
     // process successor(s) if necessary
     while (next_step != RETURN && next_step != EXCEPT){
@@ -1030,14 +1109,15 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, FILE *dlog){
         int i;
         for (i = 0; i < ttb->numBBs-1; i++){
             if (ttb->tbbs[i]->label == taken_branch){
-                tob_process(ttb->tbbs[i]->ops, shad, dlog);
+                tob_process(ttb->tbbs[i]->ops, shad, dynval_buf);
                 break;
             }
         }
     }
 }
 
-SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad, FILE *dlog) {
+SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
+        DynValBuffer *dynval_buf) {
     uint32_t i;
     tob_rewind(buf);
     i = 0;
@@ -1149,7 +1229,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad, FILE *dlog) {
 
             case INSNSTARTOP:
                 {
-                    process_insn_start_op(op, buf, dlog);
+                    process_insn_start_op(op, buf, dynval_buf);
                     if (next_step == EXCEPT){
                         return;
                     }
@@ -1159,7 +1239,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad, FILE *dlog) {
             case CALLOP:
                 {
                     shad->current_frame = shad->current_frame + 1;
-                    execute_taint_ops(op.val.call.ttb, shad, dlog);
+                    execute_taint_ops(op.val.call.ttb, shad, dynval_buf);
                     break;
                 }
 

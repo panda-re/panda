@@ -90,7 +90,7 @@ typedef struct shad_struct {
   uint32_t num_vals;
   uint32_t guest_regs;
   SdDir64 *hd;
-#ifdef X86_64
+#ifdef TARGET_X86_64
   SdDir64 *ram;
 #else
   SdDir32 *ram;
@@ -190,6 +190,7 @@ typedef struct taint_op_struct {
   } val;
 } TaintOp;
 
+#include "panda_memlog.h"
 
 TaintOpBuffer *tob_new(uint32_t size);
 void tob_rewind(TaintOpBuffer *buf);
@@ -202,10 +203,10 @@ void tob_op_write(TaintOpBuffer *buf, TaintOp op);
 TaintOp tob_op_read(TaintOpBuffer *buf);
 
 // execute a function or taint translation block of taint ops
-void execute_taint_ops(TaintTB *ttb, Shad *shad, FILE *dlog);
+void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf);
 
 // process ops in taint op buffer (called by execute)
-void tob_process(TaintOpBuffer *buf, Shad *shad, FILE *dlog);
+void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf);
 
 void tob_op_print(Shad *shad, TaintOp op);
 
@@ -217,10 +218,10 @@ void tob_clear(TaintOpBuffer *buf);
 
 // stuff for control flow in trace
 enum {RETURN, BRANCH, EXCEPT};
-//extern int next_step;
 
 void print_addr(Shad *shad, Addr a);
 
-void process_insn_start_op(TaintOp op, TaintOpBuffer *buf, FILE *dlog);
+void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
+    DynValBuffer *dynval_buf);
 
 #endif

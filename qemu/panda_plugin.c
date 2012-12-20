@@ -28,6 +28,7 @@ bool panda_plugin_to_unload = false;
 bool panda_please_flush_tb = false;
 bool panda_update_pc = false;
 bool panda_use_memcb = false;
+bool panda_tb_chaining = true;
 
 bool panda_load_plugin(const char *filename) {
     void *plugin = dlopen(filename, RTLD_NOW);
@@ -166,6 +167,14 @@ void panda_enable_memcb(void) {
 
 void panda_disable_memcb(void) {
     panda_use_memcb = false;
+}
+
+void panda_enable_tb_chaining(void){
+    panda_tb_chaining = true;
+}
+
+void panda_disable_tb_chaining(void){
+    panda_tb_chaining = false;
 }
 
 #ifdef CONFIG_LLVM

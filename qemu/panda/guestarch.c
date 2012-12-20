@@ -1,14 +1,18 @@
 
+/*
+ * This file is responsible for implementing the architecture-specific details
+ * for the taint processor, such as printing taint ops, and determining where in
+ * the CPUState memory accesses are.
+ */
+
 #include "stdio.h"
 
 #include "cpu.h"
+#include "config.h"
+#include "dyngen-exec.h"
+#include "qemu-common.h"
 
 #include "guestarch.h"
-
-void printreg(Addr a){}
-void printspec(Addr a){}
-
-#if 0 // fix printing later
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
@@ -39,16 +43,16 @@ void printreg(Addr a){
         case R_EDI:
             printf("g_edi[%d]", a.off);
             break;
-        case CC_OP:
+        case CC_OP_REG:
             printf("g_cc_op[%d]", a.off);
             break;
-        case CC_SRC:
+        case CC_SRC_REG:
             printf("g_cc_src[%d]", a.off);
             break;
-        case CC_DST:
+        case CC_DST_REG:
             printf("g_cc_dst[%d]", a.off);
             break;
-        case EIP:
+        case EIP_REG:
             printf("g_eip[%d]", a.off);
             break;
         default:
@@ -80,31 +84,141 @@ void printspec(Addr a){
 
 #ifdef TARGET_X86_64
 
+uintptr_t rax_reg = (uintptr_t)NULL;
+uintptr_t rcx_reg = (uintptr_t)NULL;
+uintptr_t rdx_reg = (uintptr_t)NULL;
+uintptr_t rbx_reg = (uintptr_t)NULL;
+uintptr_t rsp_reg = (uintptr_t)NULL;
+uintptr_t rbp_reg = (uintptr_t)NULL;
+uintptr_t rsi_reg = (uintptr_t)NULL;
+uintptr_t rdi_reg = (uintptr_t)NULL;
+uintptr_t r8_reg = (uintptr_t)NULL;
+uintptr_t r9_reg = (uintptr_t)NULL;
+uintptr_t r10_reg = (uintptr_t)NULL;
+uintptr_t r11_reg = (uintptr_t)NULL;
+uintptr_t r12_reg = (uintptr_t)NULL;
+uintptr_t r13_reg = (uintptr_t)NULL;
+uintptr_t r14_reg = (uintptr_t)NULL;
+uintptr_t r15_reg = (uintptr_t)NULL;
+uintptr_t cc_op_reg = (uintptr_t)NULL;  // 
+uintptr_t cc_src_reg = (uintptr_t)NULL; // maybe we should remove these until
+uintptr_t cc_dst_reg = (uintptr_t)NULL; // we need them
+uintptr_t rip_reg = (uintptr_t)NULL;
+
+void init_regs(void){
+    rax_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EAX]);
+    rcx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ECX]);
+    rdx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EDX]);
+    rbx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EBX]);
+    rsp_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ESP]);
+    rbp_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EBP]);
+    rsi_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ESI]);
+    rdi_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EDI]);
+    r8_reg = (uintptr_t)env + offsetof(CPUX86State, regs[8]);
+    r9_reg = (uintptr_t)env + offsetof(CPUX86State, regs[9]);
+    r10_reg = (uintptr_t)env + offsetof(CPUX86State, regs[10]);
+    r11_reg = (uintptr_t)env + offsetof(CPUX86State, regs[11]);
+    r12_reg = (uintptr_t)env + offsetof(CPUX86State, regs[12]);
+    r13_reg = (uintptr_t)env + offsetof(CPUX86State, regs[13]);
+    r14_reg = (uintptr_t)env + offsetof(CPUX86State, regs[14]);
+    r15_reg = (uintptr_t)env + offsetof(CPUX86State, regs[15]);
+    cc_op_reg = (uintptr_t)env + offsetof(CPUX86State, cc_op);
+    cc_src_reg = (uintptr_t)env + offsetof(CPUX86State, cc_src);
+    cc_dst_reg = (uintptr_t)env + offsetof(CPUX86State, cc_dst);
+    rip_reg = (uintptr_t)env + offsetof(CPUX86State, eip);
+}
+
+int get_cpustate_val(uintptr_t dynval){
+    if (dynval == rax_reg){
+        return R_EAX;
+    }
+    else if (dynval == rcx_reg){
+        return R_ECX;
+    }
+    else if (dynval == rdx_reg){
+        return R_EDX;
+    }
+    else if (dynval == rbx_reg){
+        return R_EBX;
+    }
+    else if (dynval == rsp_reg){
+        return R_ESP;
+    }
+    else if (dynval == rbp_reg){
+        return R_EBP;
+    }
+    else if (dynval == rsi_reg){
+        return R_ESI;
+    }
+    else if (dynval == rdi_reg){
+        return R_EDI;
+    }
+    else if (dynval == r8_reg){
+        return R8;
+    }
+    else if (dynval == r9_reg){
+        return R9;
+    }
+    else if (dynval == r10_reg){
+        return R10;
+    }
+    else if (dynval == r11_reg){
+        return R11;
+    }
+    else if (dynval == r12_reg){
+        return R12;
+    }
+    else if (dynval == r13_reg){
+        return R13;
+    }
+    else if (dynval == r14_reg){
+        return R14;
+    }
+    else if (dynval == r15_reg){
+        return R15;
+    }
+    else if (dynval == cc_op_reg){
+        return CC_OP_REG;
+    }
+    else if (dynval == cc_src_reg){
+        return CC_SRC_REG;
+    }
+    else if (dynval == cc_dst_reg){
+        return CC_DST_REG;
+    }
+    else if (dynval == rip_reg){
+        return RIP_REG;
+    }
+    else {
+        return -1; // irrelevant part of CPUstate
+    }
+}
+
 void printreg(Addr a){
 
     switch(a.val.gr){
-        case R_RAX:
+        case R_EAX:
             printf("g_rax[%d]", a.off);
             break;
-        case R_RCX:
+        case R_ECX:
             printf("g_rcx[%d]", a.off);
             break;
-        case R_RDX:
+        case R_EDX:
             printf("g_rdx[%d]", a.off);
             break;
-        case R_RBX:
+        case R_EBX:
             printf("g_rbx[%d]", a.off);
             break;
-        case R_RSP:
+        case R_ESP:
             printf("g_rsp[%d]", a.off);
             break;
-        case R_RBP:
+        case R_EBP:
             printf("g_rbp[%d]", a.off);
             break;
-        case R_RSI:
+        case R_ESI:
             printf("g_rsi[%d]", a.off);
             break;
-        case R_RDI:
+        case R_EDI:
             printf("g_rdi[%d]", a.off);
             break;
         case R8:
@@ -131,16 +245,16 @@ void printreg(Addr a){
         case R15:
             printf("g_r15[%d]", a.off);
             break;
-        case CC_OP:
+        case CC_OP_REG:
             printf("g_cc_op[%d]", a.off);
             break;
-        case CC_SRC:
+        case CC_SRC_REG:
             printf("g_cc_src[%d]", a.off);
             break;
-        case CC_DST:
+        case CC_DST_REG:
             printf("g_cc_dst[%d]", a.off);
             break;
-        case RIP:
+        case RIP_REG:
             printf("g_rip[%d]", a.off);
             break;
         default:
@@ -183,7 +297,6 @@ void printreg(Addr a){
 
 void printspec(Addr a){}
 
-#endif
 #endif
 
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
