@@ -1,1 +1,4 @@
-PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls stringsearch keyfind memstats llvm_trace taint memdump correlatetaps memsnap bufmon bigrams
+PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls stringsearch keyfind memstats taint memdump correlatetaps memsnap bufmon bigrams
+
+# llvm_trace -- currently won't compile, need to fix and adapt to changes of
+# online taint plugin

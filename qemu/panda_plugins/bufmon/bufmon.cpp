@@ -95,10 +95,10 @@ bool init_plugin(void *self) {
     // Enable memory logging
     panda_enable_memcb();
 
-    pcb.mem_read = mem_read_callback;
-    panda_register_callback(self, PANDA_CB_MEM_READ, pcb);
-    pcb.mem_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_MEM_WRITE, pcb);
+    pcb.virt_mem_read = mem_read_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
+    pcb.virt_mem_write = mem_write_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
     std::ifstream buffile("search_buffers.txt");
     if (!buffile) {
