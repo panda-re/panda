@@ -20,18 +20,14 @@ extern "C" {
 
 }
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "tcg-llvm.h"
 
 #include "laredo.h"
+#include "panda_dynval_inst.h"
 #include "taint_processor.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -41,7 +37,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
-int after_block_exec(CPUState *env, TranslationBlock *tb);
+int after_block_exec(CPUState *env, TranslationBlock *tb,
+    TranslationBlock *next_tb);
 int llvm_init(void *exEngine, void *funPassMan, void *module);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
@@ -57,24 +54,28 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
+// XXX
 FILE *funclog;
 extern FILE *memlog;
 
 }
 
-// FIXME: get rid of these
+// FIXME: get rid of these and fix up taint classes
 Shad *shad;
 TaintOpBuffer *tbuf;
 TaintTB *ttb;
 
 // Our pass manager to derive taint ops
 llvm::FunctionPassManager *taintfpm;
-llvm::FunctionPass *taintfp;
+
+// Taint and instrumentation function passes
 llvm::LaredoTaintFunctionPass *LTFP;
+llvm::LaredoInstrFunctionPass *LIFP;
 
-// Dynamic log buffer
-DynValBuffer *dynval_buffer;
-
+/*
+ * These memory callbacks are only for whole-system mode.  User-mode memory
+ * accesses are captured by IR instrumentation.
+ */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     //printramaddr(addr, 1);
@@ -114,7 +115,10 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     logFunc->addFnAttr(Attribute::AlwaysInline);
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
     
-    fpm->add(createLaredoInstrFunctionPass(mod));
+    // Create instrumentation pass and add to function pass manager
+    llvm::FunctionPass *instfp = createLaredoInstrFunctionPass(mod);
+    fpm->add(instfp);
+    LIFP = static_cast<LaredoInstrFunctionPass*>(instfp);
 
     return 0;
 }
@@ -130,6 +134,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     LTFP->LTV->LST->initialize();
     taintfpm->run(*(tb->llvm_function));
     delete LTFP->LTV->LST;
+    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
     clear_dynval_buffer(dynval_buffer);
     return 0;
 }
@@ -137,6 +142,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
 // Execute taint ops
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
+    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
     rewind_dynval_buffer(dynval_buffer);
 
     //printf("%s\n", tb->llvm_function->getName().str().c_str());
@@ -257,7 +263,7 @@ bool init_plugin(void *self) {
      * PANDA plugin initialization
      */
 
-    printf("Initializing plugin llvm_trace\n");
+    printf("Initializing taint plugin\n");
 
     panda_cb pcb;
 
@@ -289,14 +295,10 @@ bool init_plugin(void *self) {
      * Taint processor initialization
      */
 
-    /*
-     * NOTE: Shadow memory (specifically quick taint lookup) currently
-     * DOES NOT support a 64-bit shadow memory.
-     */
-
     //uint32_t ram_size = 536870912; // 500MB each
 #ifdef TARGET_X86_64
-    // this is only for the fast bitmap which we currently aren't using
+    // this is only for the fast bitmap which we currently aren't using for
+    // 64-bit, it only supports 32-bit
     uint64_t ram_size = 0;
 #else
     uint32_t ram_size = 0xffffffff; //guest address space -- QEMU user mode
@@ -310,8 +312,6 @@ bool init_plugin(void *self) {
     tbuf = tob_new(3*1048576); // 3MB
     ttb = NULL;
 
-    dynval_buffer = create_dynval_buffer(1048576);
-
     if (shad == NULL){
         printf("Error initializing shadow memory...\n");
         exit(1);
@@ -324,18 +324,17 @@ bool init_plugin(void *self) {
     taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
     
     // Add the taint analysis pass to our taint pass manager
-    taintfp = llvm::createLaredoTaintFunctionPass(/*dlog*/NULL, shad, tbuf, ttb,
+    llvm::FunctionPass *taintfp =
+        llvm::createLaredoTaintFunctionPass(/*dlog*/NULL, shad, tbuf, ttb,
         /*tc*/NULL);
     LTFP = static_cast<llvm::LaredoTaintFunctionPass*>(taintfp);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();
-    
+ 
     return true;
 }
 
 void uninit_plugin(void *self) {
-    tcg_llvm_write_module(tcg_llvm_ctx);
-
     /*
      * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
      * fine, until we reload this plugin again into QEMU and we get an LLVM
@@ -354,7 +353,7 @@ void uninit_plugin(void *self) {
         pr->unregisterPass(*pi);
     }
 
-    delete_dynval_buffer(dynval_buffer);
+    delete taintfpm; // Delete function pass manager and pass
 
     panda_disable_llvm();
     panda_disable_memcb();

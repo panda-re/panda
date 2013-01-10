@@ -2227,7 +2227,7 @@ EOF
   else
       llvm_config="llvm-config"
   fi
-  llvm_components="jit bitreader bitwriter ipo linker engine"
+  llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
   llvm_cxxflags=`$llvm_config $llvm_components --cflags 2> /dev/null`
 
   llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`

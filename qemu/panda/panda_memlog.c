@@ -452,6 +452,7 @@ void rewind_dynval_buffer(DynValBuffer *dynval_buf){
 
 void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
         uintptr_t dynval){
+    assert(dynval_buf);
     DynValEntry dventry;
     memset(&dventry, 0, sizeof(DynValEntry));
     if (dynval_buf){

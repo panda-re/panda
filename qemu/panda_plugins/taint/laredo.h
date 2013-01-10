@@ -168,66 +168,6 @@ FunctionPass *createLaredoTaintFunctionPass(FILE *log, Shad *shad,
                                         TaintOpBuffer *tbuf, TaintTB *ttb,
                                         FILE *tc);
 
-
-/* LaredoInstrumentVisitor class
- * This class takes care of instrumenting instructions we are interested in for
- * logging dynamic values.
- */
-class LaredoInstrumentVisitor : public InstVisitor<LaredoInstrumentVisitor> {
-    IRBuilder<> IRB;
-    Module *mod;
-    IntegerType *wordType;
-    IntegerType *intType;
-    IntegerType *ptrType;
-public:
-    LaredoInstrumentVisitor() : IRB(getGlobalContext()) {}
-    
-    LaredoInstrumentVisitor(Module *M) : IRB(getGlobalContext()), mod(M),
-        wordType(IntegerType::get(getGlobalContext(), sizeof(size_t)*8)),
-        intType(IntegerType::get(getGlobalContext(), sizeof(int)*8)),
-        ptrType(IntegerType::get(getGlobalContext(), sizeof(uintptr_t)*8)) {}
-
-    inline ~LaredoInstrumentVisitor() {
-    }
-
-    void visitLoadInst(LoadInst &I);
-    void visitStoreInst(StoreInst &I);
-    void visitBranchInst(BranchInst &I);
-    void visitSelectInst(SelectInst &I);
-    void visitCallInst(CallInst &I);
-};
-
-/* Laredo InstrFunctionPass
- * This class is our function pass that instruments code to insert calls to
- * logging functions so we can log dynamic values, specifically for QEMU helper
- * functions.
- */
-class LaredoInstrFunctionPass : public FunctionPass {
-
-public:
-    static char ID;
-    LaredoInstrumentVisitor *LIV;
-
-    LaredoInstrFunctionPass() : FunctionPass(ID),
-        LIV(new LaredoInstrumentVisitor()) {}
-
-    LaredoInstrFunctionPass(Module *M) : FunctionPass(ID),
-        LIV(new LaredoInstrumentVisitor(M)) {}
-
-    inline ~LaredoInstrFunctionPass() {
-        delete LIV;
-    }
-
-    // runOnFunction - Our custom function pass implementation
-    bool runOnFunction(Function &F);
-
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-        AU.setPreservesCFG();
-    }
-};
-
-FunctionPass *createLaredoInstrFunctionPass(Module *M);
-
 } // End llvm namespace
 
 #endif

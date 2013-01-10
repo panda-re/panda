@@ -81,7 +81,8 @@ all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap
 
 #########################################################
 # cpu emulator library
-tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS) 
+tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
+panda/panda_dynval_inst.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS) 
 libobj-y = exec.o translate-all.o cpu-exec.o translate.o
 libobj-y += rr_log.o
 libobj-y += panda_plugin.o
@@ -91,6 +92,7 @@ libobj-y += panda/laredo_instrumentation.o
 libobj-y += panda/my_mem.o panda/shad_dir_32.o
 libobj-y += panda/shad_dir_64.o
 libobj-y += panda/taint_processor.o
+libobj-$(CONFIG_LLVM) += panda/panda_dynval_inst.o
 libobj-y += tcg/tcg.o tcg/optimize.o
 libobj-$(CONFIG_LLVM) += tcg/tcg-llvm.o
 libobj-$(CONFIG_TCG_INTERPRETER) += tci.o

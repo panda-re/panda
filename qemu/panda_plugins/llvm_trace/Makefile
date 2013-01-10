@@ -3,23 +3,30 @@ PLUGIN_NAME=llvm_trace
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-LLVM_BUILD_TYPE = $(shell ../../$(LLVMDIR)/bin/llvm-config --build-mode)
+# Include files and lib from LLVM
+CXXFLAGS+=$(LLVM_CXXFLAGS)
 
-# Include files and lib from our LLVM project
-CXXFLAGS+=$(LLVM_CXXFLAGS) -I../../../llvm-3.0/projects/laredo/include/ -I../../tcg
-LIBS+=../../../llvm-3.0/projects/laredo/$(LLVM_BUILD_TYPE)/lib/libLaredoAnalysis.a
-
-CFLAGS+=-O0 -g
-CXXFLAGS+=-O0 -g
+# plugin source file depends on shadow memory stuff in panda directory
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
+    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp \
+    $(wildcard $(SRC_PATH)/panda/*.[ch]) $(wildcard $(SRC_PATH)/panda/*.cpp) 
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 	$(call quiet-command,$(CXX) $(QEMU_CXXFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
+# Testing tool for LLVM traces
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_test: \
+    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_test.cpp
+
+	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(CXXFLAGS) \
+            -o $@ $^ $(LIBS),"  PLUGIN_TEST  $@")
+
 ifdef CONFIG_LLVM
-all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
+all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_test
 endif
 

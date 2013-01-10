@@ -31,16 +31,11 @@ extern "C" {
 
 }
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <vector>
-
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-#include "laredo.h"
+#include "panda_dynval_inst.h"
 #include "tcg-llvm.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -50,6 +45,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
+int after_block_exec(CPUState *env, TranslationBlock *tb,
+    TranslationBlock *next_tb);
 int llvm_init(void *exEngine, void *funPassMan, void *module);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
@@ -70,17 +67,24 @@ extern FILE *memlog;
 
 }
 
+// Instrumentation function pass
+llvm::LaredoInstrFunctionPass *LIFP;
+
+/*
+ * These memory callbacks are only for whole-system mode.  User-mode memory
+ * accesses are captured by IR instrumentation.
+ */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     //printramaddr(addr, 1);
-    printramaddr(0x4000000, 1);
+    //printramaddr(0x4000000, 1);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
     //printramaddr(addr, 0);
-    printramaddr(0x4000001, 0);
+    //printramaddr(0x4000001, 0);
     return 0;
 }
 
@@ -92,29 +96,27 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     Module *mod = (Module *)module;
     LLVMContext &ctx = mod->getContext();
 
-    // Link logging functions in with JIT
-    Function* printFunc;
-    Function* ramFunc;
+    // Link logging function in with JIT
+    Function *logFunc;
     std::vector<Type*> argTypes;
+    // DynValBuffer*
     argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(int)));
-    printFunc = Function::Create(
+    // DynValEntryType
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(DynValEntryType)));
+    // LogOp
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(LogOp)));
+    // Dynamic value
+    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
+    logFunc = Function::Create(
             FunctionType::get(Type::getVoidTy(ctx), argTypes, false),
-            Function::ExternalLinkage, "printdynval", mod);
-    printFunc->addFnAttr(Attribute::AlwaysInline);
-    ee->addGlobalMapping(printFunc, (void*) &printdynval);
+            Function::ExternalLinkage, "log_dynval", mod);
+    logFunc->addFnAttr(Attribute::AlwaysInline);
+    ee->addGlobalMapping(logFunc, (void*) &log_dynval);
     
-    argTypes.clear();
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(int)));
-    ramFunc = Function::Create(
-            FunctionType::get(Type::getVoidTy(ctx), argTypes, false),
-            Function::PrivateLinkage, "printramaddr", mod);
-    ramFunc->addFnAttr(Attribute::AlwaysInline);
-    ee->addGlobalMapping(ramFunc, (void*) &printramaddr);
-
-    // Add our IR instrumentation pass to the pass manager
-    fpm->add(createLaredoInstrFunctionPass(mod));
+    // Create instrumentation pass and add to function pass manager
+    llvm::FunctionPass *instfp = createLaredoInstrFunctionPass(mod);
+    fpm->add(instfp);
+    LIFP = static_cast<LaredoInstrFunctionPass*>(instfp);
     
     return 0;
 }
@@ -123,11 +125,28 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
 
 int before_block_exec(CPUState *env, TranslationBlock *tb){
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    if (dynval_buffer->cur_size > 0){
+        // Buffer wasn't flushed before, have to flush it now
+        fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
+    }
+    clear_dynval_buffer(dynval_buffer);
+    return 0;
+}
+
+int after_block_exec(CPUState *env, TranslationBlock *tb,
+        TranslationBlock *next_tb){
+    // flush dynlog to file
+    assert(memlog);
+    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
+    clear_dynval_buffer(dynval_buffer);
     return 0;
 }
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
-    printdynval(0xDEADBEEF, 0);
+    //printdynval(0xDEADBEEF, 0);
+    //printf("RESTORE\n");
     return 0;
 }
 
@@ -230,16 +249,14 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 
 bool init_plugin(void *self) {
     printf("Initializing plugin llvm_trace\n");
-
     panda_cb pcb;
-
-    //panda_enable_precise_pc();
-
-    panda_enable_memcb();    
+    panda_enable_memcb();
     pcb.llvm_init = llvm::llvm_init;
     panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_read = phys_mem_read_callback;
     panda_register_callback(self, PANDA_CB_PHYS_MEM_READ, pcb);
     pcb.phys_mem_write = phys_mem_write_callback;
@@ -253,9 +270,7 @@ bool init_plugin(void *self) {
 #endif
 
     open_memlog();
-    setbuf(memlog, NULL);
     funclog = fopen("/tmp/llvm-functions.log", "w");
-    setbuf(funclog, NULL);
 
     if (!execute_llvm){
         panda_enable_llvm();
@@ -265,6 +280,12 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
+    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    if (dynval_buffer->cur_size > 0){
+        // Buffer wasn't flushed before, have to flush it now
+        fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
+    }
+
     tcg_llvm_write_module(tcg_llvm_ctx);
 
     /*
