@@ -16,6 +16,76 @@
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
+uintptr_t eax_reg = (uintptr_t)NULL;
+uintptr_t ecx_reg = (uintptr_t)NULL;
+uintptr_t edx_reg = (uintptr_t)NULL;
+uintptr_t ebx_reg = (uintptr_t)NULL;
+uintptr_t esp_reg = (uintptr_t)NULL;
+uintptr_t ebp_reg = (uintptr_t)NULL;
+uintptr_t esi_reg = (uintptr_t)NULL;
+uintptr_t edi_reg = (uintptr_t)NULL;
+uintptr_t cc_op_reg = (uintptr_t)NULL;  // 
+uintptr_t cc_src_reg = (uintptr_t)NULL; // maybe we should remove these until
+uintptr_t cc_dst_reg = (uintptr_t)NULL; // we need them
+uintptr_t eip_reg = (uintptr_t)NULL;
+
+void init_regs(void){
+    eax_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EAX]);
+    ecx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ECX]);
+    edx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EDX]);
+    ebx_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EBX]);
+    esp_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ESP]);
+    ebp_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EBP]);
+    esi_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_ESI]);
+    edi_reg = (uintptr_t)env + offsetof(CPUX86State, regs[R_EDI]);
+    cc_op_reg = (uintptr_t)env + offsetof(CPUX86State, cc_op);
+    cc_src_reg = (uintptr_t)env + offsetof(CPUX86State, cc_src);
+    cc_dst_reg = (uintptr_t)env + offsetof(CPUX86State, cc_dst);
+    eip_reg = (uintptr_t)env + offsetof(CPUX86State, eip);
+}
+
+int get_cpustate_val(uintptr_t dynval){
+    if (dynval == eax_reg){
+        return R_EAX;
+    }
+    else if (dynval == ecx_reg){
+        return R_ECX;
+    }
+    else if (dynval == edx_reg){
+        return R_EDX;
+    }
+    else if (dynval == ebx_reg){
+        return R_EBX;
+    }
+    else if (dynval == esp_reg){
+        return R_ESP;
+    }
+    else if (dynval == ebp_reg){
+        return R_EBP;
+    }
+    else if (dynval == esi_reg){
+        return R_ESI;
+    }
+    else if (dynval == edi_reg){
+        return R_EDI;
+    }
+    else if (dynval == cc_op_reg){
+        return CC_OP_REG;
+    }
+    else if (dynval == cc_src_reg){
+        return CC_SRC_REG;
+    }
+    else if (dynval == cc_dst_reg){
+        return CC_DST_REG;
+    }
+    else if (dynval == eip_reg){
+        return EIP_REG;
+    }
+    else {
+        return -1; // irrelevant part of CPUstate
+    }
+}
+
 void printreg(Addr a){
 
     switch(a.val.gr){
@@ -262,11 +332,119 @@ void printreg(Addr a){
     }
 }
 
-void printspec(Addr a){}
+void printspec(Addr a){
+    if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
+        printf("g_xmm_t0[%d]", a.off);
+    }
+    else if ((a.val.gs >= MMX_T0_0) && (a.val.gs < FPREGS_0_0)){
+        printf("g_mmx_t0[%d]", a.off);
+    }
+    else if ((a.val.gs >= FPREGS_0_0) && (a.val.gs < XMMREGS_0_0)){
+        int fpreg = (a.val.gs - FPREGS_0_0) / 10; // fpregs are 10 bytes
+        printf("g_st%d[%d]", fpreg, a.off);
+    }
+    else if ((a.val.gs >= XMMREGS_0_0) && (a.val.gs <= XMMREGS_15_15)){
+        int fpreg = (a.val.gs - XMMREGS_0_0) / 16; // xmm regs are 16 bytes
+        printf("g_xmm%d[%d]", fpreg, a.off);
+    }
+    else {
+        assert(1==0);
+    }
+}
 
 #endif
 
 #ifdef TARGET_ARM
+
+uintptr_t r0_reg = (uintptr_t)NULL;
+uintptr_t r1_reg = (uintptr_t)NULL;
+uintptr_t r2_reg = (uintptr_t)NULL;
+uintptr_t r3_reg = (uintptr_t)NULL;
+uintptr_t r4_reg = (uintptr_t)NULL;
+uintptr_t r5_reg = (uintptr_t)NULL;
+uintptr_t r6_reg = (uintptr_t)NULL;
+uintptr_t r7_reg = (uintptr_t)NULL;
+uintptr_t r8_reg = (uintptr_t)NULL;
+uintptr_t r9_reg = (uintptr_t)NULL;
+uintptr_t r10_reg = (uintptr_t)NULL;
+uintptr_t r11_reg = (uintptr_t)NULL;
+uintptr_t r12_reg = (uintptr_t)NULL;
+uintptr_t r13_reg = (uintptr_t)NULL;
+uintptr_t r14_reg = (uintptr_t)NULL;
+uintptr_t r15_reg = (uintptr_t)NULL;
+
+void init_regs(void){
+    r0_reg = (uintptr_t)env + offsetof(CPUARMState, regs[0]);
+    r1_reg = (uintptr_t)env + offsetof(CPUARMState, regs[1]);
+    r2_reg = (uintptr_t)env + offsetof(CPUARMState, regs[2]);
+    r3_reg = (uintptr_t)env + offsetof(CPUARMState, regs[3]);
+    r4_reg = (uintptr_t)env + offsetof(CPUARMState, regs[4]);
+    r5_reg = (uintptr_t)env + offsetof(CPUARMState, regs[5]);
+    r6_reg = (uintptr_t)env + offsetof(CPUARMState, regs[6]);
+    r7_reg = (uintptr_t)env + offsetof(CPUARMState, regs[7]);
+    r8_reg = (uintptr_t)env + offsetof(CPUARMState, regs[8]);
+    r9_reg = (uintptr_t)env + offsetof(CPUARMState, regs[9]);
+    r10_reg = (uintptr_t)env + offsetof(CPUARMState, regs[10]);
+    r11_reg = (uintptr_t)env + offsetof(CPUARMState, regs[11]);
+    r12_reg = (uintptr_t)env + offsetof(CPUARMState, regs[12]);
+    r13_reg = (uintptr_t)env + offsetof(CPUARMState, regs[13]);
+    r14_reg = (uintptr_t)env + offsetof(CPUARMState, regs[14]);
+    r15_reg = (uintptr_t)env + offsetof(CPUARMState, regs[15]);
+}
+
+int get_cpustate_val(uintptr_t dynval){
+    if (dynval == r0_reg){
+        return 0;
+    }
+    else if (dynval == r1_reg){
+        return 1;
+    }
+    else if (dynval == r2_reg){
+        return 2;
+    }
+    else if (dynval == r3_reg){
+        return 3;
+    }
+    else if (dynval == r4_reg){
+        return 4;
+    }
+    else if (dynval == r5_reg){
+        return 5;
+    }
+    else if (dynval == r6_reg){
+        return 6;
+    }
+    else if (dynval == r7_reg){
+        return 7;
+    }
+    else if (dynval == r8_reg){
+        return 8;
+    }
+    else if (dynval == r9_reg){
+        return 9;
+    }
+    else if (dynval == r10_reg){
+        return 10;
+    }
+    else if (dynval == r11_reg){
+        return 11;
+    }
+    else if (dynval == r12_reg){
+        return 12;
+    }
+    else if (dynval == r13_reg){
+        return 13;
+    }
+    else if (dynval == r14_reg){
+        return 14;
+    }
+    else if (dynval == r15_reg){
+        return 15;
+    }
+    else {
+        return -1; // irrelevant part of CPUstate
+    }
+}
 
 void printreg(Addr a){
     switch(a.val.gr){

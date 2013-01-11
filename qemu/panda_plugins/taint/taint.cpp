@@ -283,8 +283,9 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
 #ifndef CONFIG_SOFTMMU
-    pcb.user_after_syscall = user_after_syscall;
-    panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
+    // Disabled until we fix
+    //pcb.user_after_syscall = user_after_syscall;
+    //panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
 
     if (!execute_llvm){

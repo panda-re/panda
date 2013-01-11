@@ -7,6 +7,19 @@
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
+extern uintptr_t eax_reg;
+extern uintptr_t ecx_reg;
+extern uintptr_t edx_reg;
+extern uintptr_t ebx_reg;
+extern uintptr_t esp_reg;
+extern uintptr_t ebp_reg;
+extern uintptr_t esi_reg;
+extern uintptr_t edi_reg;
+extern uintptr_t cc_op_reg;  //
+extern uintptr_t cc_src_reg; // maybe we should remove these until we need them
+extern uintptr_t cc_dst_reg; //
+extern uintptr_t eip_reg;
+
 /*
  * These continue #defines after general purpose regs in cpu.h
  */
@@ -683,6 +696,23 @@ enum SpecAddrs {
 #endif
 
 #ifdef TARGET_ARM
+
+extern uintptr_t r0_reg;
+extern uintptr_t r1_reg;
+extern uintptr_t r2_reg;
+extern uintptr_t r3_reg;
+extern uintptr_t r4_reg;
+extern uintptr_t r5_reg;
+extern uintptr_t r6_reg;
+extern uintptr_t r7_reg;
+extern uintptr_t r8_reg;
+extern uintptr_t r9_reg;
+extern uintptr_t r10_reg;
+extern uintptr_t r11_reg;
+extern uintptr_t r12_reg;
+extern uintptr_t r13_reg;
+extern uintptr_t r14_reg;
+extern uintptr_t r15_reg;
 
 #define NUMREGS 16
 #define NUMSPECADDRS 0

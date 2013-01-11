@@ -290,13 +290,6 @@ void close_memlog(void){
 
 bool regs_inited = false;
 
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){}
-static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){}
-#endif
-
-#if defined(TARGET_X86_64)
-
 static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
     if (unlikely(!regs_inited)){
         init_regs();
@@ -317,7 +310,7 @@ static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
         write_dynval_buffer(dynval_buf, &dventry);
     }
     else if ((dynval >= (uintptr_t)env) &&
-            (dynval < ((uintptr_t)env + sizeof(CPUX86State)))){
+            (dynval < ((uintptr_t)env + sizeof(CPUState)))){
         // inside of CPUState
         DynValEntry dventry;
         memset(&dventry, 0, sizeof(DynValEntry));
@@ -370,7 +363,7 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         write_dynval_buffer(dynval_buf, &dventry);
     }
     else if ((dynval >= (uintptr_t)env) &&
-            (dynval < ((uintptr_t)env + sizeof(CPUX86State)))){
+            (dynval < ((uintptr_t)env + sizeof(CPUState)))){
         // inside of CPUState
         DynValEntry dventry;
         memset(&dventry, 0, sizeof(DynValEntry));
@@ -403,12 +396,6 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         write_dynval_buffer(dynval_buf, &dventry);
     }
 }
-#endif
-
-#if defined(TARGET_ARM)
-static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){}
-static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){}
-#endif
 
 DynValBuffer *create_dynval_buffer(uint32_t size){
     DynValBuffer *buf = (DynValBuffer *) my_malloc(sizeof(DynValBuffer),
