@@ -12,11 +12,11 @@ extern "C" {
 
 namespace llvm {
 
-/* LaredoInstrumentVisitor class
+/* PandaInstrumentVisitor class
  * This class takes care of instrumenting instructions we are interested in for
  * logging dynamic values.
  */
-class LaredoInstrumentVisitor : public InstVisitor<LaredoInstrumentVisitor> {
+class PandaInstrumentVisitor : public InstVisitor<PandaInstrumentVisitor> {
     IRBuilder<> IRB;
     Module *mod;
     IntegerType *wordType;
@@ -24,9 +24,9 @@ class LaredoInstrumentVisitor : public InstVisitor<LaredoInstrumentVisitor> {
     IntegerType *ptrType;
     DynValBuffer *dynval_buffer;
 public:
-    LaredoInstrumentVisitor() : IRB(getGlobalContext()) {}
+    PandaInstrumentVisitor() : IRB(getGlobalContext()) {}
 
-    LaredoInstrumentVisitor(Module *M) :
+    PandaInstrumentVisitor(Module *M) :
         IRB(getGlobalContext()),
         mod(M),
         wordType(IntegerType::get(getGlobalContext(), sizeof(size_t)*8)),
@@ -35,7 +35,7 @@ public:
         dynval_buffer(create_dynval_buffer(1048576)) // Default 1MB
         {}
 
-    ~LaredoInstrumentVisitor();
+    ~PandaInstrumentVisitor();
 
     DynValBuffer *getDynvalBuffer();
 
@@ -46,23 +46,23 @@ public:
     void visitCallInst(CallInst &I);
 };
 
-/* LaredoInstrFunctionPass
+/* PandaInstrFunctionPass
  * This class is our function pass that instruments code to insert calls to
  * logging functions so we can log dynamic values.
  */
-class LaredoInstrFunctionPass : public FunctionPass {
+class PandaInstrFunctionPass : public FunctionPass {
 
 public:
     static char ID;
-    LaredoInstrumentVisitor *LIV;
+    PandaInstrumentVisitor *PIV;
 
-    LaredoInstrFunctionPass() : FunctionPass(ID),
-        LIV(new LaredoInstrumentVisitor()) {}
+    PandaInstrFunctionPass() : FunctionPass(ID),
+        PIV(new PandaInstrumentVisitor()) {}
 
-    LaredoInstrFunctionPass(Module *M) :
-        FunctionPass(ID), LIV(new LaredoInstrumentVisitor(M)) {}
+    PandaInstrFunctionPass(Module *M) :
+        FunctionPass(ID), PIV(new PandaInstrumentVisitor(M)) {}
 
-    ~LaredoInstrFunctionPass();
+    ~PandaInstrFunctionPass();
 
     // runOnFunction - Our custom function pass implementation
     bool runOnFunction(Function &F);
@@ -72,7 +72,7 @@ public:
     }
 };
 
-FunctionPass *createLaredoInstrFunctionPass(Module *M);
+FunctionPass *createPandaInstrFunctionPass(Module *M);
 
 } // End LLVM namespace
 

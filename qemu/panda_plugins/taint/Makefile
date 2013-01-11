@@ -15,8 +15,8 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
     $(wildcard $(SRC_PATH)/panda/*.[ch]) $(wildcard $(SRC_PATH)/panda/*.cpp) 
 
 # plugin source file depends on shadow memory stuff in panda directory
-$(PLUGIN_TARGET_DIR)/laredo.o: \
-    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/laredo.cpp \
+$(PLUGIN_TARGET_DIR)/llvm_taint_lib.o: \
+    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.cpp \
     $(wildcard $(SRC_PATH)/panda/*.[ch]) \
     $(wildcard $(SRC_PATH)/panda/*.cpp)
 
@@ -24,7 +24,7 @@ $(PLUGIN_TARGET_DIR)/laredo.o: \
 # convention.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o \
-    $(PLUGIN_TARGET_DIR)/laredo.o
+    $(PLUGIN_TARGET_DIR)/llvm_taint_lib.o
 
 	$(call quiet-command,$(CXX) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")

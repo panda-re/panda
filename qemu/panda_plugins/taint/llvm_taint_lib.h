@@ -22,7 +22,7 @@
 
 extern "C" {
 #include "taint_processor.h"
-#include "laredo_instrumentation.h"
+#include "panda_stats.h"
 #include "panda_memlog.h"
 }
 

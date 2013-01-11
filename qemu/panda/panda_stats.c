@@ -8,7 +8,7 @@
 #include "stdio.h"
 
 #include "bitvector_label_set.c"
-#include "laredo_instrumentation.h"
+#include "panda_stats.h"
 
 #define INSTR_INTERVAL 10000
 

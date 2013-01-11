@@ -12,44 +12,44 @@ using namespace llvm;
 
 
 /***
- *** LaredoInstrFunctionPass
+ *** PandaInstrFunctionPass
  ***/
 
 
 
-char LaredoInstrFunctionPass::ID = 0;
-static RegisterPass<LaredoInstrFunctionPass>
-Y("LaredoInstr", "Instrument instructions that produce dynamic values");
+char PandaInstrFunctionPass::ID = 0;
+static RegisterPass<PandaInstrFunctionPass>
+Y("PandaInstr", "Instrument instructions that produce dynamic values");
 
-LaredoInstrFunctionPass::~LaredoInstrFunctionPass(){
-    delete LIV;
+PandaInstrFunctionPass::~PandaInstrFunctionPass(){
+    delete PIV;
 }
 
-FunctionPass *llvm::createLaredoInstrFunctionPass(Module *M) {
-    return new LaredoInstrFunctionPass(M);
+FunctionPass *llvm::createPandaInstrFunctionPass(Module *M) {
+    return new PandaInstrFunctionPass(M);
 }
 
-bool LaredoInstrFunctionPass::runOnFunction(Function &F){
-    LIV->visit(F);
+bool PandaInstrFunctionPass::runOnFunction(Function &F){
+    PIV->visit(F);
     return true;
 }
 
 
 
 /***
- *** LaredoInstrumentVisitor
+ *** PandaInstrumentVisitor
  ***/
 
 
 
-LaredoInstrumentVisitor::~LaredoInstrumentVisitor(){
+PandaInstrumentVisitor::~PandaInstrumentVisitor(){
     delete_dynval_buffer(dynval_buffer);
 }
 
 /*
  * Return pointer to DynValBuffer
  */
-DynValBuffer *LaredoInstrumentVisitor::getDynvalBuffer(){
+DynValBuffer *PandaInstrumentVisitor::getDynvalBuffer(){
     return dynval_buffer;
 }
 
@@ -57,7 +57,7 @@ DynValBuffer *LaredoInstrumentVisitor::getDynvalBuffer(){
  * Call the logging function, logging the address of the load.  If it's loading
  * the root of a global value (likely CPUState), then we can ignore it.
  */
-void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
+void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
     Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
@@ -104,7 +104,7 @@ void LaredoInstrumentVisitor::visitLoadInst(LoadInst &I){
 }
 
 // Call the logging function, logging the address of the store
-void LaredoInstrumentVisitor::visitStoreInst(StoreInst &I){
+void PandaInstrumentVisitor::visitStoreInst(StoreInst &I){
     Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
@@ -158,7 +158,7 @@ void LaredoInstrumentVisitor::visitStoreInst(StoreInst &I){
  * condition to actually log the target taken.  We are also logging and
  * processing unconditional branches for the time being.
  */
-void LaredoInstrumentVisitor::visitBranchInst(BranchInst &I){
+void PandaInstrumentVisitor::visitBranchInst(BranchInst &I){
     BinaryOperator *BO;
     ZExtInst *ZEI;
     CallInst *CI;
@@ -212,7 +212,7 @@ void LaredoInstrumentVisitor::visitBranchInst(BranchInst &I){
 /*
  * Instrument select instructions similar to how we instrument branches.
  */
-void LaredoInstrumentVisitor::visitSelectInst(SelectInst &I){
+void PandaInstrumentVisitor::visitSelectInst(SelectInst &I){
     BinaryOperator *BO;
     ZExtInst *ZEI;
     CallInst *CI;
@@ -240,7 +240,7 @@ void LaredoInstrumentVisitor::visitSelectInst(SelectInst &I){
 /*
  * Just print out name so we can see which helpers are being called.
  */
-void LaredoInstrumentVisitor::visitCallInst(CallInst &I){
+void PandaInstrumentVisitor::visitCallInst(CallInst &I){
     /*assert(I.getCalledFunction()->hasName());
     std::string fnName = I.getCalledFunction()->getName().str();
     printf("HELPER %s\n", fnName.c_str());

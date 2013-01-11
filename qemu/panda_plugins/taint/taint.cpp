@@ -26,7 +26,7 @@ extern "C" {
 
 #include "tcg-llvm.h"
 
-#include "laredo.h"
+#include "llvm_taint_lib.h"
 #include "panda_dynval_inst.h"
 #include "taint_processor.h"
 
@@ -70,7 +70,7 @@ llvm::FunctionPassManager *taintfpm;
 
 // Taint and instrumentation function passes
 llvm::LaredoTaintFunctionPass *LTFP;
-llvm::LaredoInstrFunctionPass *LIFP;
+llvm::PandaInstrFunctionPass *PIFP;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -116,9 +116,9 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
     
     // Create instrumentation pass and add to function pass manager
-    llvm::FunctionPass *instfp = createLaredoInstrFunctionPass(mod);
+    llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
-    LIFP = static_cast<LaredoInstrFunctionPass*>(instfp);
+    PIFP = static_cast<PandaInstrFunctionPass*>(instfp);
 
     return 0;
 }
@@ -134,7 +134,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     LTFP->LTV->LST->initialize();
     taintfpm->run(*(tb->llvm_function));
     delete LTFP->LTV->LST;
-    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     clear_dynval_buffer(dynval_buffer);
     return 0;
 }
@@ -142,7 +142,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
 // Execute taint ops
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
-    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     rewind_dynval_buffer(dynval_buffer);
 
     //printf("%s\n", tb->llvm_function->getName().str().c_str());
@@ -345,10 +345,10 @@ void uninit_plugin(void *self) {
      */
     llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
     const llvm::PassInfo *pi =
-        //pr->getPassInfo(&llvm::LaredoInstrFunctionPass::ID);
-        pr->getPassInfo(llvm::StringRef("LaredoInstr"));
+        //pr->getPassInfo(&llvm::PandaInstrFunctionPass::ID);
+        pr->getPassInfo(llvm::StringRef("PandaInstr"));
     if (!pi){
-        printf("Unable to find 'LaredoInstr' pass in pass registry\n");
+        printf("Unable to find 'PandaInstr' pass in pass registry\n");
     }
     else {
         pr->unregisterPass(*pi);

@@ -241,20 +241,17 @@ void printloc(uintptr_t val){
 
 #endif //TARGET_ARM
 
-/*
- * TODO: mesh with laredo.h for logop enum
- */
 void printdynval(uintptr_t val, int op){
     if (memlog){
-        if (op == 1){
+        if (op == STORE){
             fprintf(memlog, "store ");
             printloc(val);
-        } else if (op == 0){
+        } else if (op == LOAD){
             fprintf(memlog, "load ");
             printloc(val);
-        } else if (op == 2){
+        } else if (op == BRANCHOP){
             fprintf(memlog, "condbranch %lu\n", val);
-        } else if (op == 3){
+        } else if (op == SELECT){
             fprintf(memlog, "select %lu\n", val);
         }
     }

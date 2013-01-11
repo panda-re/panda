@@ -2,7 +2,7 @@
  * This is the implementation of the things defined in laredo.h.
  */
 
-#include "laredo.h"
+#include "llvm_taint_lib.h"
 
 extern "C" {
 #include "guestarch.h"

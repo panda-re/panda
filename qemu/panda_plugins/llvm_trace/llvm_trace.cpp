@@ -68,7 +68,7 @@ extern FILE *memlog;
 }
 
 // Instrumentation function pass
-llvm::LaredoInstrFunctionPass *LIFP;
+llvm::PandaInstrFunctionPass *PIFP;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -114,9 +114,9 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
     
     // Create instrumentation pass and add to function pass manager
-    llvm::FunctionPass *instfp = createLaredoInstrFunctionPass(mod);
+    llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
-    LIFP = static_cast<LaredoInstrFunctionPass*>(instfp);
+    PIFP = static_cast<PandaInstrFunctionPass*>(instfp);
     
     return 0;
 }
@@ -125,7 +125,7 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
 
 int before_block_exec(CPUState *env, TranslationBlock *tb){
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
-    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     if (dynval_buffer->cur_size > 0){
         // Buffer wasn't flushed before, have to flush it now
         fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
@@ -138,7 +138,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
     // flush dynlog to file
     assert(memlog);
-    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
     clear_dynval_buffer(dynval_buffer);
     return 0;
@@ -280,7 +280,7 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    DynValBuffer *dynval_buffer = LIFP->LIV->getDynvalBuffer();
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     if (dynval_buffer->cur_size > 0){
         // Buffer wasn't flushed before, have to flush it now
         fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
@@ -297,10 +297,10 @@ void uninit_plugin(void *self) {
      */
     llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
     const llvm::PassInfo *pi =
-        //pr->getPassInfo(&llvm::LaredoInstrFunctionPass::ID);
-        pr->getPassInfo(llvm::StringRef("LaredoInstr"));
+        //pr->getPassInfo(&llvm::PandaInstrFunctionPass::ID);
+        pr->getPassInfo(llvm::StringRef("PandaInstr"));
     if (!pi){
-        printf("Unable to find 'LaredoInstr' pass in pass registry\n");
+        printf("Unable to find 'PandaInstr' pass in pass registry\n");
     }
     else {
         pr->unregisterPass(*pi);

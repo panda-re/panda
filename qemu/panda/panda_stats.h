@@ -1,5 +1,5 @@
-#ifndef __LAREDO_INSTRUMENTATION_H__
-#define __LAREDO_INSTRUMENTATION_H__
+#ifndef __PANDA_STATS_H__
+#define __PANDA_STATS__
 
 #include "taint_processor.h"
 
