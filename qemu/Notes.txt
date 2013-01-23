@@ -1,3 +1,24 @@
+=== Various notes on different decisions made ===
+
+== 5/14/12 Using with LLVM - rwhelan ==
+-When building LLVM, run 'REQUIRES_RTTI=1 make' to allow QEMU and LLVM libraries
+to link together properly.
+
+== 5/15/12 Global env in register - rwhelan ==
+-In order to accomodate compilation with Clang, the S2E guys disabled the
+register placement of the CPUState (as seen in dyngen-exec.h).  We decided to go
+along with this, even though we aren't compiling with Clang.  Now, it is
+declared in op_helper.c, with #ifdefs for CONFIG_LLVM dealing appropriately with
+the CPUState.
+
+== 5/16/12 LLVM with other architectures - rwhelan ==
+-In order to enable LLVM on the back end of new architectures, changes need to
+be made to target-*/helper.c, target-*/op_helper.c, and target-*/translate.c.
+To see what these changes are, grep for CONFIG_LLVM in these files for i386 or
+ARM.
+
+=== QEMU architecture/record+replay notes ===
+
 vl.c:
 - ioport stuff moved to ioport.c - see that file and associated routines
 - timer stuff moved to qemu-timer.c - see that file and associated routines
