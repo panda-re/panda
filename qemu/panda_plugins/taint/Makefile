@@ -6,17 +6,16 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
-#CFLAGS+=-O0 -g
-#CXXFLAGS+=-O0 -g
-
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp \
-    $(wildcard $(SRC_PATH)/panda/*.[ch]) $(wildcard $(SRC_PATH)/panda/*.cpp) 
+    $(wildcard $(SRC_PATH)/panda/*.[ch]) $(wildcard $(SRC_PATH)/panda/*.cpp) \
+    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.[cpp|h])
+
 
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/llvm_taint_lib.o: \
-    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.cpp \
+    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.[cpp|h]) \
     $(wildcard $(SRC_PATH)/panda/*.[ch]) \
     $(wildcard $(SRC_PATH)/panda/*.cpp)
 

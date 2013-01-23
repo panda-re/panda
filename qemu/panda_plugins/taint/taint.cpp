@@ -54,22 +54,15 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
-// XXX
-FILE *funclog;
-extern FILE *memlog;
+Shad *shadow; // Global shadow memory
 
 }
-
-// FIXME: get rid of these and fix up taint classes
-Shad *shad;
-TaintOpBuffer *tbuf;
-TaintTB *ttb;
 
 // Our pass manager to derive taint ops
 llvm::FunctionPassManager *taintfpm;
 
 // Taint and instrumentation function passes
-llvm::LaredoTaintFunctionPass *LTFP;
+llvm::PandaTaintFunctionPass *PTFP;
 llvm::PandaInstrFunctionPass *PIFP;
 
 /*
@@ -129,11 +122,7 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
 int before_block_exec(CPUState *env, TranslationBlock *tb){
     //fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
 
-    tob_clear(tbuf);
-    LTFP->LTV->LST = createLaredoSlotTracker(tb->llvm_function);
-    LTFP->LTV->LST->initialize();
     taintfpm->run(*(tb->llvm_function));
-    delete LTFP->LTV->LST;
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     clear_dynval_buffer(dynval_buffer);
     return 0;
@@ -146,9 +135,9 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     rewind_dynval_buffer(dynval_buffer);
 
     //printf("%s\n", tb->llvm_function->getName().str().c_str());
-    //LTFP->debugTaintOps();
+    //PTFP->debugTaintOps();
     //printf("\n\n");
-    execute_taint_ops(LTFP->ttb, LTFP->shad, dynval_buffer);
+    execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
 
     // Make sure there's nothing left in the buffer
     assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
@@ -212,9 +201,9 @@ static int user_creat(abi_long ret, void *p){
 static int user_read(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
         // log the address and size of a buffer to be tainted
-        fprintf(funclog, "taint,read,%ld,%ld\n", (uintptr_t)p,
-            (unsigned long)ret);
-        printf("taint,read,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
+        //fprintf(funclog, "taint,read,%ld,%ld\n", (uintptr_t)p,
+        //    (unsigned long)ret);
+        //printf("taint,read,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
     }
     return 0;
 }
@@ -222,9 +211,9 @@ static int user_read(abi_long ret, abi_long fd, void *p){
 static int user_write(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == outfd){
         // log the address and size of a buffer to be checked for taint
-        fprintf(funclog, "taint,write,%ld,%ld\n", (uintptr_t)p,
-            (unsigned long)ret);
-        printf("taint,write,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
+        //fprintf(funclog, "taint,write,%ld,%ld\n", (uintptr_t)p,
+        //    (unsigned long)ret);
+        //printf("taint,write,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
     }
     return 0;
 }
@@ -307,18 +296,9 @@ bool init_plugin(void *self) {
     uint64_t hd_size =  536870912;
     uint64_t io_size = 536870912;
     uint16_t num_vals = 2000; // LLVM virtual registers
-    // FIXME: never gets freed, nbd, but should happen at some point
-    shad = tp_init(hd_size, ram_size, io_size, num_vals);
-    
-    tbuf = tob_new(3*1048576); // 3MB
-    ttb = NULL;
-
-    if (shad == NULL){
+    shadow = tp_init(hd_size, ram_size, io_size, num_vals);
+    if (shadow == NULL){
         printf("Error initializing shadow memory...\n");
-        exit(1);
-    }
-    if (tbuf == NULL){
-        printf("Error initializing taint op buffer...\n");
         exit(1);
     }
 
@@ -326,9 +306,9 @@ bool init_plugin(void *self) {
     
     // Add the taint analysis pass to our taint pass manager
     llvm::FunctionPass *taintfp =
-        llvm::createLaredoTaintFunctionPass(/*dlog*/NULL, shad, tbuf, ttb,
-        /*tc*/NULL);
-    LTFP = static_cast<llvm::LaredoTaintFunctionPass*>(taintfp);
+        llvm::createPandaTaintFunctionPass(3*1048576/* global taint op buffer
+        size, 3MB */, /*taint cache file*/NULL);
+    PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();
  
@@ -355,6 +335,8 @@ void uninit_plugin(void *self) {
     }
 
     delete taintfpm; // Delete function pass manager and pass
+
+    tp_free(shadow);
 
     panda_disable_llvm();
     panda_disable_memcb();

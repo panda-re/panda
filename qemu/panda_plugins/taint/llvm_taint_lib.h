@@ -1,24 +1,17 @@
 
-#ifndef LLVM_LAREDOPASS_H
-#define LLVM_LAREDOPASS_H
+#ifndef LLVM_TAINT_LIB_H
+#define LLVM_TAINT_LIB_H
 
-#include "llvm/DerivedTypes.h"
-#include "llvm/Function.h"
+#include "stdio.h"
+
+#include <map>
+
 #include "llvm/Intrinsics.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/Assembly/Writer.h"
 #include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/IRBuilder.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <sstream>
-
-#include <stdio.h>
 
 extern "C" {
 #include "taint_processor.h"
@@ -28,13 +21,13 @@ extern "C" {
 
 namespace llvm {
 
-/* LaredoSlotTracker class
+/* PandaSlotTracker class
  * This is modeled after SlotTracker in lib/VMCore/AsmWriter.cpp which keeps
  * track of unnamed instructions, allowing them to be printed out like %2 = ...
  * We need a similar mechanism to keep track of unnamed instructions so we can
  * propagate taint between temporaries within LLVM functions.
  */
-class LaredoSlotTracker {
+class PandaSlotTracker {
 public:
     /// ValueMap - A mapping of Values to slot numbers.
     typedef DenseMap<const Value*, unsigned> ValueMap;
@@ -49,34 +42,32 @@ private:
     void processFunction();
 
 public:
-    LaredoSlotTracker(Function *F) : TheFunction(F),
+    PandaSlotTracker(Function *F) : TheFunction(F),
         FunctionProcessed(false), fNext(0) {}
     int getLocalSlot(const Value *V);
     void initialize();
 };
 
-LaredoSlotTracker *createLaredoSlotTracker(Function *F);
+PandaSlotTracker *createPandaSlotTracker(Function *F);
 
-/* LaredoTaintVisitor class
+class PandaTaintFunctionPass;
+
+/* PandaTaintVisitor class
  * This class implements our taint propagation policies for each LLVM
  * instruction.  Generally, it emits taint operations into the taint buffer to
  * be cached, and eventually processed by the taint processor.
  */
-class LaredoTaintVisitor : public InstVisitor<LaredoTaintVisitor> {
-    Shad *shad;
-    FILE *dlog; // file containing dynamic values
-    TaintOpBuffer *tbuf; // global tbuf
-    // taint cache for generated code and helper functions
-    std::map<std::string, TaintTB*> *ttbCache;
+class PandaTaintVisitor : public InstVisitor<PandaTaintVisitor> {
+    PandaTaintFunctionPass *PTFP; // PTFP that this visitor is a member of
+    TaintOpBuffer *tbuf; // global tbuf from PandaTaintFunctionPass
 public:
-    LaredoSlotTracker *LST;
+    PandaSlotTracker *PST;
 
-    LaredoTaintVisitor() : LST(NULL) {}
-    LaredoTaintVisitor(Shad *shadmem, FILE *log, TaintOpBuffer *taintbuf,
-            std::map<std::string, TaintTB*> *ttbc) :
-        shad(shadmem), dlog(log), tbuf(taintbuf), ttbCache(ttbc), LST(NULL) {}
+    PandaTaintVisitor() : PST(NULL) {}
+    
+    PandaTaintVisitor(PandaTaintFunctionPass *PTFP);
 
-    inline ~LaredoTaintVisitor() {}
+    ~PandaTaintVisitor() {}
 
     // Define most visitor functions
     #define HANDLE_INST(N, OPCODE, CLASS) void visit##OPCODE##Inst(CLASS&);
@@ -106,47 +97,47 @@ public:
     void storeHelper(Value *src, Value *dst, int len);
 };
 
-/* LaredoTaintFunctionPass class
+/* PandaTaintFunctionPass class
  * This is our implementation of a function pass, inheriting from the generic
  * LLVM FunctionPass.  This expects a taint op buffer to be filled, and
- * eventually cached and processed.  The LaredoTaintVisitor actually does the
+ * eventually cached and processed.  The PandaTaintVisitor actually does the
  * taint op calculations and population of taint op buffers.
  */
-class LaredoTaintFunctionPass : public FunctionPass {
+class PandaTaintFunctionPass : public FunctionPass {
+    size_t tbuf_size; // global tbuf size
     TaintOpBuffer *tbuf; // global tbuf
     // taint cache for generated code and helper functions
     std::map<std::string, TaintTB*> *ttbCache;
     FILE *taintCache; // persistent taint cache file for helpers
 public:
     static char ID;
-    LaredoTaintVisitor *LTV;
-    FILE *dlog; // file containing dynamic values
-    Shad *shad; // global shad
-    TaintTB *ttb; // global ttb
+    PandaTaintVisitor *PTV; // Our LLVM instruction visitor
+    TaintTB *ttb; // Taint translation block to be processed; either fetched
+                  // from the cache, or generated
 
-    LaredoTaintFunctionPass() : FunctionPass(ID),
-        LTV(new LaredoTaintVisitor()) {}
+    PandaTaintFunctionPass() : FunctionPass(ID),
+        PTV(new PandaTaintVisitor()) {}
 
-    LaredoTaintFunctionPass(FILE *log, Shad *shadmem,
-            TaintOpBuffer *taintbuf, TaintTB *tainttb, FILE *tc) :
-        FunctionPass(ID), tbuf(taintbuf),
+    PandaTaintFunctionPass(size_t tob_size, FILE *tc) : 
+        FunctionPass(ID), tbuf_size(tob_size), tbuf(tob_new(tbuf_size)),
         ttbCache(new std::map<std::string, TaintTB*>()), taintCache(tc),
-        LTV(new LaredoTaintVisitor(shadmem, log, tbuf, ttbCache)), dlog(log), 
-        shad(shadmem), ttb(tainttb) {}
+        PTV(new PandaTaintVisitor(this)) {}
 
-    inline ~LaredoTaintFunctionPass() {
+    ~PandaTaintFunctionPass() {
         std::map<std::string, TaintTB*>::iterator it;
         for (it = ttbCache->begin(); it != ttbCache->end(); it++){
             taint_tb_cleanup(it->second);
             ttbCache->erase(it);
         }
-        if (dlog){
-            fclose(dlog);
-        }
         delete ttbCache;
-        delete LTV;
+        delete PTV;
+        tob_delete(tbuf);
         cleanup_taint_stats();
     }
+
+    TaintOpBuffer *getTaintOpBuffer();
+
+    std::map<std::string, TaintTB*> *getTaintTBCache();
 
     // runOnFunction - Our custom function pass implementation
     bool runOnFunction(Function &F);
@@ -164,9 +155,7 @@ public:
     void writeTaintCache();
 };
 
-FunctionPass *createLaredoTaintFunctionPass(FILE *log, Shad *shad,
-                                        TaintOpBuffer *tbuf, TaintTB *ttb,
-                                        FILE *tc);
+FunctionPass *createPandaTaintFunctionPass(size_t tob_size, FILE *tc);
 
 } // End llvm namespace
 

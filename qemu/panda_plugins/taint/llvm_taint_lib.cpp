@@ -1,13 +1,10 @@
-/*
- * This is the implementation of the things defined in laredo.h.
- */
 
 #include "llvm_taint_lib.h"
 
 extern "C" {
 #include "guestarch.h"
-extern int next_step;
-extern int taken_branch;
+
+extern Shad *shadow;
 }
 
 using namespace llvm;
@@ -15,21 +12,28 @@ using namespace llvm;
 
 
 /***
- *** LaredoTaintFunctionPass
+ *** PandaTaintFunctionPass
  ***/
 
 
 
-char LaredoTaintFunctionPass::ID = 0;
-static RegisterPass<LaredoTaintFunctionPass>
-X("laredo", "Analyze each instruction in a function for taint operations");
+char PandaTaintFunctionPass::ID = 0;
+static RegisterPass<PandaTaintFunctionPass>
+X("PandaTaint", "Analyze each instruction in a function for taint operations");
 
-FunctionPass *llvm::createLaredoTaintFunctionPass(FILE *dlog,
-    Shad *shad, TaintOpBuffer *tbuf, TaintTB *ttb, FILE *tc) {
-    return new LaredoTaintFunctionPass(dlog, shad, tbuf, ttb, tc);
+FunctionPass *llvm::createPandaTaintFunctionPass(size_t tob_size, FILE *tc) {
+    return new PandaTaintFunctionPass(tob_size, tc);
 }
 
-bool LaredoTaintFunctionPass::runOnFunction(Function &F){
+TaintOpBuffer* PandaTaintFunctionPass::getTaintOpBuffer(){
+    return tbuf;
+}
+
+std::map<std::string, TaintTB*>* PandaTaintFunctionPass::getTaintTBCache(){
+    return ttbCache;
+}
+
+bool PandaTaintFunctionPass::runOnFunction(Function &F){
     
 #ifdef TAINTDEBUG
     printf("\n\n%s\n", F.getName().str().c_str());
@@ -58,17 +62,24 @@ bool LaredoTaintFunctionPass::runOnFunction(Function &F){
 
     else {
 
+        // create new ttb
         ttb = taint_tb_new(F.getName().str().c_str(),
             (int)F.getBasicBlockList().size());
 
         // clear global taint op buffer
         tob_clear(tbuf);
         
+        // create slot tracker to keep track of LLVM values
+        PTV->PST = createPandaSlotTracker(&F);
+        PTV->PST->initialize();
+
         // process taint starting with the entry BB
         Function::iterator bb = F.begin();
         //printf("Processing entry BB...\n");
-        LTV->visit(bb);
+        PTV->visit(bb);
+        assert(tbuf->size < tbuf_size); // make sure it didn't overflow
 
+        // Copy the tbuf ops into the ttb
         ttb->entry->label = 0;
         ttb->entry->ops = tob_new(tbuf->size);
         tob_clear(ttb->entry->ops);
@@ -84,10 +95,12 @@ bool LaredoTaintFunctionPass::runOnFunction(Function &F){
                 // clear global taint op buffer
                 tob_clear(tbuf);
 
-                ttb->tbbs[i]->label = LTV->LST->getLocalSlot(bb);
-                //printf("Processing BB %d...\n", LV->LST->getLocalSlot(bb));
-                LTV->visit(bb);
+                ttb->tbbs[i]->label = PTV->PST->getLocalSlot(bb);
+                //printf("Processing BB %d...\n", LV->PST->getLocalSlot(bb));
+                PTV->visit(bb);
+                assert(tbuf->size < tbuf_size); // make sure it didn't overflow
 
+                // Copy the tbuf ops into the ttb
                 ttb->tbbs[i]->ops = tob_new(tbuf->size);
                 tob_clear(ttb->tbbs[i]->ops);
                 memcpy(ttb->tbbs[i]->ops->start, tbuf->start, tbuf->size);
@@ -95,6 +108,9 @@ bool LaredoTaintFunctionPass::runOnFunction(Function &F){
                 i++;
             }
         }
+
+        // delete slot tracker
+        delete PTV->PST;
 
 #ifndef TAINTSTATS
         // don't cache during statistics gathering because we need to keep
@@ -104,20 +120,19 @@ bool LaredoTaintFunctionPass::runOnFunction(Function &F){
 #endif
     }
 
-    // clean up until we implement caching
     //taint_tb_cleanup(ttb);
     //spit_mem_usage();
 
     return false; // no modifications made to function
 }
 
-void LaredoTaintFunctionPass::debugTaintOps(){
+void PandaTaintFunctionPass::debugTaintOps(){
     int j = 0;
     tob_rewind(ttb->entry->ops);
     while (!(tob_end(ttb->entry->ops))) {
         TaintOp op = tob_op_read(ttb->entry->ops);
         printf("op %d ", j);
-        tob_op_print(shad, op);
+        tob_op_print(NULL, op);
         j++;
     }
 
@@ -130,7 +145,7 @@ void LaredoTaintFunctionPass::debugTaintOps(){
         while (!(tob_end(ttb->tbbs[i]->ops))) {
             TaintOp op = tob_op_read(ttb->tbbs[i]->ops);
             printf("op %d ", j);
-            tob_op_print(shad, op);
+            tob_op_print(NULL, op);
             j++;
         }
     }
@@ -139,45 +154,55 @@ void LaredoTaintFunctionPass::debugTaintOps(){
 /*
  * This probably isn't the safest code.  Please don't fuzz the cache file ;)
  */
-void LaredoTaintFunctionPass::readTaintCache(){
+void PandaTaintFunctionPass::readTaintCache(){
     size_t cacheSize;
     char name[50];
     int numBBs;
     TaintTB *filettb;
     uint32_t taintbufsize;
-    fread(&cacheSize, sizeof(size_t), 1, taintCache);
+    size_t n = 0;
+    n = fread(&cacheSize, sizeof(size_t), 1, taintCache);
+    assert(n);
     for (int i = 0; i < (int)cacheSize; i++){
-        fread(name, 50, 1, taintCache);
-        fread(&numBBs, sizeof(int), 1, taintCache);
+        n = fread(name, 50, 1, taintCache);
+        assert(n);
+        n = fread(&numBBs, sizeof(int), 1, taintCache);
+        assert(n);
         filettb = taint_tb_new(name, numBBs);
 #ifdef TAINTDEBUG
         printf("reading %s from cache\n", name);
 #endif
-        fread(&filettb->entry->label, sizeof(((TaintBB*)0)->label), 1,
+        n = fread(&filettb->entry->label, sizeof(((TaintBB*)0)->label), 1,
             taintCache);
-        fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+        assert(n);
+        n = fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+        assert(n);
         filettb->entry->ops = (TaintOpBuffer*)my_malloc(sizeof(TaintOpBuffer),
             poolid_taint_processor);
         filettb->entry->ops->size = taintbufsize;
         filettb->entry->ops->max_size = taintbufsize;
         filettb->entry->ops->start = (char*)my_malloc(taintbufsize,
             poolid_taint_processor);
-        fread(filettb->entry->ops->start, taintbufsize, 1, taintCache);
+        n = fread(filettb->entry->ops->start, taintbufsize, 1, taintCache);
+        assert(n);
 
         // read additional BBs if they exist
         if (numBBs > 1){
             for (int j = 0; j < numBBs-1; j++){
-                fread(&filettb->tbbs[j]->label, sizeof(((TaintBB*)0)->label), 1,
-                    taintCache);
-                fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+                n = fread(&filettb->tbbs[j]->label,
+                    sizeof(((TaintBB*)0)->label), 1, taintCache);
+                assert(n);
+                n = fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+                assert(n);
                 filettb->tbbs[j]->ops = (TaintOpBuffer*)my_malloc(
                     sizeof(TaintOpBuffer), poolid_taint_processor);
                 filettb->tbbs[j]->ops->size = taintbufsize;
                 filettb->tbbs[j]->ops->max_size = taintbufsize;
                 filettb->tbbs[j]->ops->start = (char*)my_malloc(taintbufsize,
                     poolid_taint_processor);
-                fread(filettb->tbbs[j]->ops->start, taintbufsize, 1,
+                n = fread(filettb->tbbs[j]->ops->start, taintbufsize, 1,
                     taintCache);
+                assert(n);
             }
         }
         
@@ -186,7 +211,7 @@ void LaredoTaintFunctionPass::readTaintCache(){
     }
 }
 
-void LaredoTaintFunctionPass::writeTaintCache(){
+void PandaTaintFunctionPass::writeTaintCache(){
     std::map<std::string, TaintTB*>::iterator it;
     size_t cacheSize = ttbCache->size();
     fwrite(&cacheSize, sizeof(size_t), 1, taintCache);
@@ -221,22 +246,22 @@ void LaredoTaintFunctionPass::writeTaintCache(){
 
 
 /***
- *** LaredoSlotTracker
+ *** PandaSlotTracker
  ***/
 
 
 
-LaredoSlotTracker *llvm::createLaredoSlotTracker(Function *F){
-    return new LaredoSlotTracker(F);
+PandaSlotTracker *llvm::createPandaSlotTracker(Function *F){
+    return new PandaSlotTracker(F);
 }
 
-void LaredoSlotTracker::initialize(){
+void PandaSlotTracker::initialize(){
     if (TheFunction && !FunctionProcessed){
         processFunction();
     }
 }
 
-void LaredoSlotTracker::processFunction(){
+void PandaSlotTracker::processFunction(){
     // Add arguments without names
     for(Function::arg_iterator AI = TheFunction->arg_begin(),
         AE = TheFunction->arg_end(); AI != AE; ++AI){
@@ -286,18 +311,18 @@ void LaredoSlotTracker::processFunction(){
     FunctionProcessed = true;
 }
 
-void LaredoSlotTracker::CreateFunctionSlot(const Value *V){
+void PandaSlotTracker::CreateFunctionSlot(const Value *V){
     assert(V->getType() != Type::getVoidTy(TheFunction->getContext()) && 
         !V->hasName() && "Doesn't need a slot!");
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
 }
 
-//void LaredoSlotTracker::CreateMetadataSlot(const MDNode *N){
+//void PandaSlotTracker::CreateMetadataSlot(const MDNode *N){
     // don't currently need this, but we will if we start using metadata
 //}
 
-int LaredoSlotTracker::getLocalSlot(const Value *V){
+int PandaSlotTracker::getLocalSlot(const Value *V){
     ValueMap::iterator FI = fMap.find(V);
     return FI == fMap.end() ? -1 : (int)FI->second; 
 }
@@ -305,16 +330,22 @@ int LaredoSlotTracker::getLocalSlot(const Value *V){
 
 
 /***
- *** LaredoTaintVisitor
+ *** PandaTaintVisitor
  ***/
 
 
+
+PandaTaintVisitor::PandaTaintVisitor(PandaTaintFunctionPass *PTFunPass){
+    PTFP = PTFunPass;
+    tbuf = PTFP->getTaintOpBuffer();
+    PST = NULL;
+}
 
 /*
  * Returns size in bytes of a generic LLVM value (could be operand or
  * instruction).
  */
-int LaredoTaintVisitor::getValueSize(Value *V){
+int PandaTaintVisitor::getValueSize(Value *V){
     if (V->getType()->isIntegerTy()){
         return ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
@@ -330,7 +361,7 @@ int LaredoTaintVisitor::getValueSize(Value *V){
 }
 
 // Delete taint at destination LLVM register
-void LaredoTaintVisitor::simpleDeleteTaintAtDest(int llvmReg){
+void PandaTaintVisitor::simpleDeleteTaintAtDest(int llvmReg){
     struct taint_op_struct op = {};
     struct addr_struct dst = {};
     op.typ = DELETEOP;
@@ -344,7 +375,7 @@ void LaredoTaintVisitor::simpleDeleteTaintAtDest(int llvmReg){
 }
 
 // Copy taint from LLVM source to dest byte by byte
-void LaredoTaintVisitor::simpleTaintCopy(int source, int dest, int bytes){
+void PandaTaintVisitor::simpleTaintCopy(int source, int dest, int bytes){
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
@@ -364,7 +395,7 @@ void LaredoTaintVisitor::simpleTaintCopy(int source, int dest, int bytes){
 }
 
 // Compute operations, byte by byte
-void LaredoTaintVisitor::simpleTaintCompute(int source0, AddrType source0ty,
+void PandaTaintVisitor::simpleTaintCompute(int source0, AddrType source0ty,
         int source1, AddrType source1ty, int dest, int bytes){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
@@ -390,25 +421,25 @@ void LaredoTaintVisitor::simpleTaintCompute(int source0, AddrType source0ty,
 }
 
 // Deals with taint ops for inttoptr and ptrtoint instructions
-void LaredoTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsize){
+void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsize){
     
     // If the sizes are equal, then it is a series of simple copy operations
     if (sourcesize == destsize){
-        simpleTaintCopy(LST->getLocalSlot(I.getOperand(0)),
-            LST->getLocalSlot(&I), destsize);
+        simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
+            PST->getLocalSlot(&I), destsize);
     }
 
     // If the destination is smaller than the source, then copy the least
     // significant bytes, and delete taint at the most significant
     else if (sourcesize > destsize){
-        simpleTaintCopy(LST->getLocalSlot(I.getOperand(0)),
-            LST->getLocalSlot(&I), destsize);
+        simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
+            PST->getLocalSlot(&I), destsize);
         
         struct taint_op_struct op = {};
         struct addr_struct dst = {};
         op.typ = DELETEOP;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = destsize; i < MAXREGSIZE; i++){
             dst.off = i;
             op.val.deletel.a = dst;
@@ -419,15 +450,15 @@ void LaredoTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsi
     // If the source is smaller than the destination, then copy the least
     // significant bytes, and delete taint at the bytes that are zero-extended
     else if (sourcesize < destsize){
-        simpleTaintCopy(LST->getLocalSlot(I.getOperand(0)),
-            LST->getLocalSlot(&I), sourcesize);
+        simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
+            PST->getLocalSlot(&I), sourcesize);
         
         // delete taint on extra bytes
         struct taint_op_struct op = {};
         struct addr_struct dst = {};
         op.typ = DELETEOP;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = sourcesize; i < MAXREGSIZE; i++){
             dst.off = i;
             op.val.deletel.a = dst;
@@ -442,14 +473,14 @@ void LaredoTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsi
 }
 
 // Deals with taint ops for integer add and subtract instructions
-void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
+void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
-    int operand0 = LST->getLocalSlot(arg0);
-    int operand1 = LST->getLocalSlot(arg1);
+    int operand0 = PST->getLocalSlot(arg0);
+    int operand1 = PST->getLocalSlot(arg1);
     int size = ceil(arg0->getType()->getScalarSizeInBits() / 8.0);
 
     // result gets taint from each source
@@ -492,7 +523,7 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(dstval);
+        dst.val.la = PST->getLocalSlot(dstval);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -501,9 +532,9 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         // compute(ci-1, ai, ci)
         // compute(bi, ci, ci)
         for (int i = 1; i < size; i++){
-            src0.val.la = LST->getLocalSlot(dstval);
+            src0.val.la = PST->getLocalSlot(dstval);
             src1.val.la = operand0;
-            dst.val.la = LST->getLocalSlot(dstval);
+            dst.val.la = PST->getLocalSlot(dstval);
             dst.off = i;
             src0.off = i - 1;
             src1.off = i;
@@ -513,8 +544,8 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
             tob_op_write(tbuf, op);
 
             src0.val.la = operand1;
-            src1.val.la = LST->getLocalSlot(dstval);
-            dst.val.la = LST->getLocalSlot(dstval);
+            src1.val.la = PST->getLocalSlot(dstval);
+            dst.val.la = PST->getLocalSlot(dstval);
             src0.off = i;
             src1.off = i;
             dst.off = i;
@@ -536,7 +567,7 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(dstval);
+        dst.val.la = PST->getLocalSlot(dstval);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -544,10 +575,10 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
 
         // compute(ci-1, bi, ci)
         for (int i = 1; i < size; i++){
-            src0.val.la = LST->getLocalSlot(dstval);
+            src0.val.la = PST->getLocalSlot(dstval);
             src1.val.la = operand1;
             src1.typ = LADDR;
-            dst.val.la = LST->getLocalSlot(dstval);
+            dst.val.la = PST->getLocalSlot(dstval);
             dst.off = i;
             src0.off = i - 1;
             src1.off = i;
@@ -594,7 +625,7 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         src1.val.con = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(dstval);
+        dst.val.la = PST->getLocalSlot(dstval);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -602,10 +633,10 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
 
         // compute(ci-1, ai, ci)
         for (int i = 1; i < size; i++){
-            src0.val.la = LST->getLocalSlot(dstval);
+            src0.val.la = PST->getLocalSlot(dstval);
             src1.val.la = operand0;
             src1.typ = LADDR;
-            dst.val.la = LST->getLocalSlot(dstval);
+            dst.val.la = PST->getLocalSlot(dstval);
             dst.off = i;
             src0.off = i - 1;
             src1.off = i;
@@ -620,7 +651,7 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
     else if (isa<Constant>(arg0) && isa<Constant>(arg1)){
         op.typ = DELETEOP;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(dstval);
+        dst.val.la = PST->getLocalSlot(dstval);
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
@@ -634,14 +665,14 @@ void LaredoTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
 }
 
 // Deals with taint ops for integer multiply instructions
-void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
+void PandaTaintVisitor::mulHelper(BinaryOperator &I){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
-    int operand0 = LST->getLocalSlot(I.getOperand(0));
-    int operand1 = LST->getLocalSlot(I.getOperand(1));
+    int operand0 = PST->getLocalSlot(I.getOperand(0));
+    int operand1 = PST->getLocalSlot(I.getOperand(1));
     int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
 
     // result gets taint from each source
@@ -685,13 +716,13 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
         tob_op_write(tbuf, op);
 
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
@@ -704,11 +735,11 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         src0.val.la = operand0;
         src0.off = 0;
         src1.typ = LADDR;
-        src1.val.la = LST->getLocalSlot(&I);
+        src1.val.la = PST->getLocalSlot(&I);
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -722,9 +753,9 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         // compute(ci-1, ai, ci)
         // compute(bi, ci, ci)
         for (int i = 1; i < size; i++){
-            src0.val.la = LST->getLocalSlot(&I);
+            src0.val.la = PST->getLocalSlot(&I);
             src1.val.la = operand0;
-            dst.val.la = LST->getLocalSlot(&I);
+            dst.val.la = PST->getLocalSlot(&I);
             dst.off = i;
             src0.off = i - 1;
             src1.off = i;
@@ -734,8 +765,8 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
             tob_op_write(tbuf, op);
 
             src0.val.la = operand1;
-            src1.val.la = LST->getLocalSlot(&I);
-            dst.val.la = LST->getLocalSlot(&I);
+            src1.val.la = PST->getLocalSlot(&I);
+            dst.val.la = PST->getLocalSlot(&I);
             src0.off = i;
             src1.off = i;
             dst.off = i;
@@ -758,7 +789,7 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -766,10 +797,10 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
 
         // compute(ci-1, bi, ci)
         for (int i = 1; i < size; i++){
-            src0.val.la = LST->getLocalSlot(&I);
+            src0.val.la = PST->getLocalSlot(&I);
             src1.val.la = operand1;
             src1.typ = LADDR;
-            dst.val.la = LST->getLocalSlot(&I);
+            dst.val.la = PST->getLocalSlot(&I);
             dst.off = i;
             src0.off = i - 1;
             src1.off = i;
@@ -817,13 +848,13 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
         tob_op_write(tbuf, op);
 
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
@@ -832,12 +863,12 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
         }
 
         // propagate accumulated taint in c0 to all result bytes
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
-        src1.val.la = LST->getLocalSlot(&I);
+        src1.val.la = PST->getLocalSlot(&I);
         src1.off = 0;
         op.val.compute.b = src1;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
@@ -849,7 +880,7 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
     else if (isa<Constant>(I.getOperand(0)) && isa<Constant>(I.getOperand(1))){
         op.typ = DELETEOP;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
@@ -865,14 +896,14 @@ void LaredoTaintVisitor::mulHelper(BinaryOperator &I){
 /*
  * XXX: Broken.  If you want a more accurate shift model, fix this.
  */
-void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
+void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
-    int operand0 = LST->getLocalSlot(I.getOperand(0));
-    int operand1 = LST->getLocalSlot(I.getOperand(1));
+    int operand0 = PST->getLocalSlot(I.getOperand(0));
+    int operand1 = PST->getLocalSlot(I.getOperand(1));
     int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
 
     // apply each byte of taint from shift amount to each byte of destination,
@@ -888,13 +919,13 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
         tob_op_write(tbuf, op);
 
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
@@ -903,12 +934,12 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         }
 
         // propagate accumulated taint in c0 to all result bytes
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
-        src1.val.la = LST->getLocalSlot(&I);
+        src1.val.la = PST->getLocalSlot(&I);
         src1.off = 0;
         op.val.compute.b = src1;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
@@ -918,8 +949,8 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         // copy each byte of operand 0 to each byte of destination through
         // compute ops
         src0.val.la = operand0;
-        src1.val.la = LST->getLocalSlot(&I);
-        dst.val.la = LST->getLocalSlot(&I);
+        src1.val.la = PST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 0; i < size; i++){
             src0.off = i;
             src1.off = i;
@@ -943,13 +974,13 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
         tob_op_write(tbuf, op);
 
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
@@ -958,12 +989,12 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         }
 
         // propagate accumulated taint in c0 to all result bytes
-        src0.val.la = LST->getLocalSlot(&I);
+        src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
-        src1.val.la = LST->getLocalSlot(&I);
+        src1.val.la = PST->getLocalSlot(&I);
         src1.off = 0;
         op.val.compute.b = src1;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
@@ -978,7 +1009,7 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
         src1.typ = LADDR;
         src1.val.la = operand0;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 0; i < size; i++){
             src0.off = i;
             src1.off = i;
@@ -994,7 +1025,7 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
     else if (isa<Constant>(I.getOperand(0)) && isa<Constant>(I.getOperand(1))){
         op.typ = DELETEOP;
         dst.typ = LADDR;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
@@ -1010,7 +1041,7 @@ void LaredoTaintVisitor::shiftHelper(BinaryOperator &I){
 /*
  * Applies union of each byte of each operand to each byte of result
  */
-void LaredoTaintVisitor::approxArithHelper(BinaryOperator &I){
+void PandaTaintVisitor::approxArithHelper(BinaryOperator &I){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
@@ -1023,20 +1054,20 @@ void LaredoTaintVisitor::approxArithHelper(BinaryOperator &I){
     op.typ = DELETEOP;
     dst.typ = LADDR;
     dst.off = 0;
-    dst.val.la = LST->getLocalSlot(&I) + 1;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
     tob_op_write(tbuf, op);
 
     for (int oper = 0; oper < 2; oper++){
         // Operand is a constant, therefore it can't be tainted
-        if (LST->getLocalSlot(I.getOperand(oper)) < 0){
+        if (PST->getLocalSlot(I.getOperand(oper)) < 0){
             constantArgs++;
 
             // both args were constants, need to delete taint
             if (constantArgs == 2){
                 op.typ = DELETEOP;
                 dst.typ = LADDR;
-                dst.val.la = LST->getLocalSlot(&I);
+                dst.val.la = PST->getLocalSlot(&I);
                 for (int i = 0; i < size; i++){
                     dst.off = i;
                     op.val.deletel.a = dst;
@@ -1051,14 +1082,14 @@ void LaredoTaintVisitor::approxArithHelper(BinaryOperator &I){
         // accumulate all of oper[i]'s taint into c0 of temp
         op.typ = COMPUTEOP;
         src0.typ = LADDR;
-        src0.val.la = LST->getLocalSlot(I.getOperand(oper));
+        src0.val.la = PST->getLocalSlot(I.getOperand(oper));
         src0.off = 0;
         src1.typ = LADDR;
-        src1.val.la = LST->getLocalSlot(&I)+1;
+        src1.val.la = PST->getLocalSlot(&I)+1;
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I) + 1;
+        dst.val.la = PST->getLocalSlot(&I) + 1;
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -1071,13 +1102,13 @@ void LaredoTaintVisitor::approxArithHelper(BinaryOperator &I){
     }
     
     // propagate accumulated taint in c0 to all result bytes
-    src0.val.la = LST->getLocalSlot(&I) + 1;
+    src0.val.la = PST->getLocalSlot(&I) + 1;
     src0.off = 0;
     op.val.compute.a = src0;
-    src1.val.la = LST->getLocalSlot(&I) + 1;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
     src1.off = 0;
     op.val.compute.b = src1;
-    dst.val.la = LST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(&I);
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
@@ -1086,24 +1117,24 @@ void LaredoTaintVisitor::approxArithHelper(BinaryOperator &I){
 }
 
 // Currently only used for and, or, and xor
-void LaredoTaintVisitor::simpleArithHelper(BinaryOperator &I){
-    int source0 = LST->getLocalSlot(I.getOperand(0));
+void PandaTaintVisitor::simpleArithHelper(BinaryOperator &I){
+    int source0 = PST->getLocalSlot(I.getOperand(0));
     AddrType source0ty = isa<Constant>(I.getOperand(0)) ? CONST : LADDR;
-    int source1 = LST->getLocalSlot(I.getOperand(1));
+    int source1 = PST->getLocalSlot(I.getOperand(1));
     AddrType source1ty = isa<Constant>(I.getOperand(1)) ? CONST : LADDR;
-    int dest = LST->getLocalSlot(&I);
+    int dest = PST->getLocalSlot(&I);
     int bytes = ceil(I.getType()->getScalarSizeInBits() / 8.0);
     simpleTaintCompute(source0, source0ty, source1, source1ty, dest, bytes);
 }
 
 // Terminator instructions
-void LaredoTaintVisitor::visitReturnInst(ReturnInst &I){
+void PandaTaintVisitor::visitReturnInst(ReturnInst &I){
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
 
     // need to copy taint to return register if it returns a value
-    int result = LST->getLocalSlot(I.getReturnValue());
+    int result = PST->getLocalSlot(I.getReturnValue());
     if (result > -1){
         src.typ = LADDR;
         src.val.la = result;
@@ -1122,7 +1153,7 @@ void LaredoTaintVisitor::visitReturnInst(ReturnInst &I){
     tob_op_write(tbuf, op);
 }
 
-void LaredoTaintVisitor::visitBranchInst(BranchInst &I){
+void PandaTaintVisitor::visitBranchInst(BranchInst &I){
     // write instruction boundary op
     struct taint_op_struct op = {};
     op.typ = INSNSTARTOP;
@@ -1132,20 +1163,20 @@ void LaredoTaintVisitor::visitBranchInst(BranchInst &I){
     op.val.insn_start.flag = INSNREADLOG;
     for (int i = 0; i < (int)I.getNumSuccessors(); i++){
         op.val.insn_start.branch_labels[i] =
-            LST->getLocalSlot(I.getSuccessor(i));
+            PST->getLocalSlot(I.getSuccessor(i));
     }
     tob_op_write(tbuf, op);
 }
 
-void LaredoTaintVisitor::visitSwitchInst(SwitchInst &I){}
-void LaredoTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
-void LaredoTaintVisitor::visitInvokeInst(InvokeInst &I){}
-void LaredoTaintVisitor::visitResumeInst(ResumeInst &I){}
-void LaredoTaintVisitor::visitUnwindInst(UnwindInst &I){}
-void LaredoTaintVisitor::visitUnreachableInst(UnreachableInst &I){}
+void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){}
+void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
+void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
+void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
+void PandaTaintVisitor::visitUnwindInst(UnwindInst &I){}
+void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){}
 
 // Binary operators
-void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
+void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
     switch (I.getOpcode()){
 
         case Instruction::Add:
@@ -1211,8 +1242,8 @@ void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     (I.getOperand(1))->getZExtValue();
                 if (con == 56){
                     //printf("hacked shl\n");
-                    int srcval = LST->getLocalSlot(I.getOperand(0));
-                    int dstval = LST->getLocalSlot(&I);
+                    int srcval = PST->getLocalSlot(I.getOperand(0));
+                    int dstval = PST->getLocalSlot(&I);
                     struct taint_op_struct op = {};
                     struct addr_struct src = {};
                     struct addr_struct dst = {};
@@ -1258,8 +1289,8 @@ void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     (I.getOperand(1))->getZExtValue();
                 if ((con > 0) && (con <= 8)){
                     //printf("hacked lshr\n");
-                    int srcval = LST->getLocalSlot(I.getOperand(0));
-                    int dstval = LST->getLocalSlot(&I);
+                    int srcval = PST->getLocalSlot(I.getOperand(0));
+                    int dstval = PST->getLocalSlot(&I);
                     struct taint_op_struct op = {};
                     struct addr_struct src = {};
                     struct addr_struct dst = {};
@@ -1283,8 +1314,8 @@ void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                 }
                 else if ((con >= 56) && (con < 64)){
                     //printf("hacked lshr\n");
-                    int srcval = LST->getLocalSlot(I.getOperand(0));
-                    int dstval = LST->getLocalSlot(&I);
+                    int srcval = PST->getLocalSlot(I.getOperand(0));
+                    int dstval = PST->getLocalSlot(&I);
                     struct taint_op_struct op = {};
                     struct addr_struct src = {};
                     struct addr_struct dst = {};
@@ -1327,8 +1358,8 @@ void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             if (isa<Constant>(I.getOperand(1))){
                 uint64_t con = static_cast<ConstantInt*>
                     (I.getOperand(1))->getZExtValue();
-                int srcval = LST->getLocalSlot(I.getOperand(0));
-                int dstval = LST->getLocalSlot(&I);
+                int srcval = PST->getLocalSlot(I.getOperand(0));
+                int dstval = PST->getLocalSlot(&I);
                 //printf("%lu\n", con);
                 if ((con > 0) && (con <= 255)){
                     simpleTaintCopy(srcval, dstval, 1);
@@ -1372,13 +1403,13 @@ void LaredoTaintVisitor::visitBinaryOperator(BinaryOperator &I){
 // Memory operators
 
 // Delete taint at destination register
-void LaredoTaintVisitor::visitAllocaInst(AllocaInst &I){
-    simpleDeleteTaintAtDest(LST->getLocalSlot(&I));
+void PandaTaintVisitor::visitAllocaInst(AllocaInst &I){
+    simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
 }
 
-void LaredoTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
+void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     // local is LLVM register destination of load
-    int local = LST->getLocalSlot(dstval);
+    int local = PST->getLocalSlot(dstval);
     
     struct addr_struct src = {};
     struct addr_struct dst = {};
@@ -1413,7 +1444,7 @@ void LaredoTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     struct addr_struct src1 = {};
 
     // Pointer is a constant, therefore it can't be tainted
-    if (LST->getLocalSlot(srcval) < 0){
+    if (PST->getLocalSlot(srcval) < 0){
         //printf("CONSTANT\n");
         return;
     }
@@ -1421,10 +1452,10 @@ void LaredoTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     // accumulate all of b's taint into one byte of temp register
     op.typ = COMPUTEOP;
     src0.typ = LADDR;
-    src0.val.la = LST->getLocalSlot(srcval);
+    src0.val.la = PST->getLocalSlot(srcval);
     src0.off = 0;
     src1.typ = LADDR;
-    src1.val.la = LST->getLocalSlot(srcval);
+    src1.val.la = PST->getLocalSlot(srcval);
     src1.off = 0;
     dst.typ = RET;
     dst.off = 0;
@@ -1445,9 +1476,9 @@ void LaredoTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     src0.typ = RET;
     src0.off = 0;
     op.val.compute.a = src0;
-    src1.val.la = LST->getLocalSlot(dstval);
+    src1.val.la = PST->getLocalSlot(dstval);
     src1.typ = LADDR;
-    dst.val.la = LST->getLocalSlot(dstval);
+    dst.val.la = PST->getLocalSlot(dstval);
     dst.typ = LADDR;
     for (int i = 0; i < len; i++){
         src1.off = i;
@@ -1459,14 +1490,14 @@ void LaredoTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
 #endif 
 }
 
-void LaredoTaintVisitor::visitLoadInst(LoadInst &I){
+void PandaTaintVisitor::visitLoadInst(LoadInst &I){
     /*
      * For source code analysis, loading a global value is likely the root
      * pointer of CPUState or a pointer for something inside of it, therefore it
      * isn't tainted.
      */
     if (isa<GlobalValue>(I.getPointerOperand())){
-        simpleDeleteTaintAtDest(LST->getLocalSlot(&I));
+        simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
         return;
     }
     
@@ -1476,7 +1507,7 @@ void LaredoTaintVisitor::visitLoadInst(LoadInst &I){
     loadHelper(I.getOperand(0), &I, len);
 }
 
-void LaredoTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
+void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
     // can't propagate taint from a constant
     bool srcConstant = isa<Constant>(srcval);
 
@@ -1500,7 +1531,7 @@ void LaredoTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
 #elif defined(TAINTED_POINTER)
     // if pointer is a constant, it can't be tainted so we don't include taint
     // ops to propagate tainted pointer
-    if (LST->getLocalSlot(dstval) < 0){
+    if (PST->getLocalSlot(dstval) < 0){
         op.val.insn_start.num_ops = len;
     }
     else {
@@ -1529,7 +1560,7 @@ void LaredoTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         dst.flag = READLOG;
         dst.val.ua = 0;
         src.typ = LADDR;
-        src.val.la = LST->getLocalSlot(srcval);
+        src.val.la = PST->getLocalSlot(srcval);
         for (int i = 0; i < len; i++){
             src.off = i;
             dst.off = i;
@@ -1544,14 +1575,14 @@ void LaredoTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
     struct addr_struct src1 = {};
     
     // Pointer is a constant, therefore it can't be tainted
-    if (LST->getLocalSlot(dstval) < 0){
+    if (PST->getLocalSlot(dstval) < 0){
         return;
     }
 
     // accumulate all of b's taint into temp[0]
     op.typ = COMPUTEOP;
     src0.typ = LADDR;
-    src0.val.la = LST->getLocalSlot(dstval);
+    src0.val.la = PST->getLocalSlot(dstval);
     src0.off = 0;
     src1.typ = RET;
     src1.off = 0;
@@ -1590,13 +1621,14 @@ void LaredoTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
  * store.
  */
 bool evenStore = false;
-void LaredoTaintVisitor::visitStoreInst(StoreInst &I){
+void PandaTaintVisitor::visitStoreInst(StoreInst &I){
 
     if (I.isVolatile()){
 #ifdef TAINTSTATS
         evenStore = !evenStore;
         if (evenStore){
-            dump_taint_stats(shad);
+            assert(shadow);
+            dump_taint_stats(shadow);
         }
 #endif
         return;
@@ -1607,22 +1639,22 @@ void LaredoTaintVisitor::visitStoreInst(StoreInst &I){
     storeHelper(I.getOperand(0), I.getOperand(1), len);
 }
 
-void LaredoTaintVisitor::visitFenceInst(FenceInst &I){}
-void LaredoTaintVisitor::visitAtomicCmpXchgInst(AtomicCmpXchgInst &I){}
-void LaredoTaintVisitor::visitAtomicRMWInst(AtomicRMWInst &I){}
+void PandaTaintVisitor::visitFenceInst(FenceInst &I){}
+void PandaTaintVisitor::visitAtomicCmpXchgInst(AtomicCmpXchgInst &I){}
+void PandaTaintVisitor::visitAtomicRMWInst(AtomicRMWInst &I){}
 
 /*
  * In TCG->LLVM translation, it seems like this instruction is only used to get
  * the pointer to the CPU state.  Because of this, we will just delete taint at
  * the destination LLVM register.
  */
-void LaredoTaintVisitor::visitGetElementPtrInst(GetElementPtrInst &I){
-    simpleDeleteTaintAtDest(LST->getLocalSlot(&I));
+void PandaTaintVisitor::visitGetElementPtrInst(GetElementPtrInst &I){
+    simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
 }
 
 // Cast operators
 
-void LaredoTaintVisitor::visitTruncInst(TruncInst &I){
+void PandaTaintVisitor::visitTruncInst(TruncInst &I){
     if (isa<Constant>(I.getOperand(0))){
         // Haven't seen this yet, assuming it won't happen
         printf("Error: trunc constant operand (FIXME)\n");
@@ -1631,8 +1663,8 @@ void LaredoTaintVisitor::visitTruncInst(TruncInst &I){
     }
 
     int destsize = ceil(I.getType()->getScalarSizeInBits() / 8.0);
-    int srcval = LST->getLocalSlot(I.getOperand(0));
-    int dstval = LST->getLocalSlot(&I);
+    int srcval = PST->getLocalSlot(I.getOperand(0));
+    int dstval = PST->getLocalSlot(&I);
     simpleTaintCopy(srcval, dstval, destsize);
     
     // delete taint on extra bytes
@@ -1640,7 +1672,7 @@ void LaredoTaintVisitor::visitTruncInst(TruncInst &I){
     struct addr_struct dst = {};
     op.typ = DELETEOP;
     dst.typ = LADDR;
-    dst.val.la = LST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(&I);
     for (int i = destsize; i < MAXREGSIZE; i++){
         dst.off = i;
         op.val.deletel.a = dst;
@@ -1648,7 +1680,7 @@ void LaredoTaintVisitor::visitTruncInst(TruncInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitZExtInst(ZExtInst &I){
+void PandaTaintVisitor::visitZExtInst(ZExtInst &I){
     if (isa<Constant>(I.getOperand(0))){
         // Haven't seen this yet, assuming it won't happen
         printf("Error: zext constant operand (FIXME)\n");
@@ -1658,15 +1690,15 @@ void LaredoTaintVisitor::visitZExtInst(ZExtInst &I){
     
     int sourcesize = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() /
         8.0);
-    int srcval = LST->getLocalSlot(I.getOperand(0));
-    int dstval = LST->getLocalSlot(&I);
+    int srcval = PST->getLocalSlot(I.getOperand(0));
+    int dstval = PST->getLocalSlot(&I);
     simpleTaintCopy(srcval, dstval, sourcesize);
 
     struct taint_op_struct op = {};
     struct addr_struct dst = {};
     op.typ = DELETEOP;
     dst.typ = LADDR;
-    dst.val.la = LST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(&I);
     for (int i = sourcesize; i < MAXREGSIZE; i++){
         dst.off = i;
         op.val.deletel.a = dst;
@@ -1674,7 +1706,7 @@ void LaredoTaintVisitor::visitZExtInst(ZExtInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitSExtInst(SExtInst &I){
+void PandaTaintVisitor::visitSExtInst(SExtInst &I){
     if (isa<Constant>(I.getOperand(0))){
         // Haven't seen this yet, assuming it won't happen
         printf("Error: sext constant operand (FIXME)\n");
@@ -1684,8 +1716,8 @@ void LaredoTaintVisitor::visitSExtInst(SExtInst &I){
     int sourcesize = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() /
         8.0);
     int destsize = ceil(I.getType()->getScalarSizeInBits() / 8.0);
-    int srcval = LST->getLocalSlot(I.getOperand(0));
-    int dstval = LST->getLocalSlot(&I);
+    int srcval = PST->getLocalSlot(I.getOperand(0));
+    int dstval = PST->getLocalSlot(&I);
     simpleTaintCopy(srcval, dstval, sourcesize);
     
     // apply compute taint to sign-extended bytes
@@ -1695,8 +1727,8 @@ void LaredoTaintVisitor::visitSExtInst(SExtInst &I){
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
     src0.typ = src1.typ = dst.typ = LADDR;
-    src0.val.la = src1.val.la = LST->getLocalSlot(I.getOperand(0));
-    dst.val.la = LST->getLocalSlot(&I);
+    src0.val.la = src1.val.la = PST->getLocalSlot(I.getOperand(0));
+    dst.val.la = PST->getLocalSlot(&I);
     for (int i = sourcesize; i < destsize; i++){
         src0.off = sourcesize - 1;
         src1.off = sourcesize - 1;
@@ -1708,14 +1740,14 @@ void LaredoTaintVisitor::visitSExtInst(SExtInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitFPToUIInst(FPToUIInst &I){}
-void LaredoTaintVisitor::visitFPToSIInst(FPToSIInst &I){}
-void LaredoTaintVisitor::visitUIToFPInst(UIToFPInst &I){}
-void LaredoTaintVisitor::visitSIToFPInst(SIToFPInst &I){}
-void LaredoTaintVisitor::visitFPTruncInst(FPTruncInst &I){}
-void LaredoTaintVisitor::visitFPExtInst(FPExtInst &I){}
+void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){}
+void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){}
+void PandaTaintVisitor::visitUIToFPInst(UIToFPInst &I){}
+void PandaTaintVisitor::visitSIToFPInst(SIToFPInst &I){}
+void PandaTaintVisitor::visitFPTruncInst(FPTruncInst &I){}
+void PandaTaintVisitor::visitFPExtInst(FPExtInst &I){}
 
-void LaredoTaintVisitor::visitPtrToIntInst(PtrToIntInst &I){
+void PandaTaintVisitor::visitPtrToIntInst(PtrToIntInst &I){
     if (isa<Constant>(I.getOperand(0))){
         // Haven't seen this yet, assuming it won't happen
         printf("Error: ptrtoint constant operand (FIXME)\n");
@@ -1729,7 +1761,7 @@ void LaredoTaintVisitor::visitPtrToIntInst(PtrToIntInst &I){
     intPtrHelper(I, sourcesize, destsize);
 }
 
-void LaredoTaintVisitor::visitIntToPtrInst(IntToPtrInst &I){
+void PandaTaintVisitor::visitIntToPtrInst(IntToPtrInst &I){
     if (isa<Constant>(I.getOperand(0))){
         // Haven't seen this yet, assuming it won't happen
         printf("Error: inttoptr constant operand (FIXME)\n");
@@ -1749,8 +1781,8 @@ void LaredoTaintVisitor::visitIntToPtrInst(IntToPtrInst &I){
  * way as getelementptr, and delete taint.  This may need to change if it is
  * used in other ways.
  */
-void LaredoTaintVisitor::visitBitCastInst(BitCastInst &I){
-    simpleDeleteTaintAtDest(LST->getLocalSlot(&I));
+void PandaTaintVisitor::visitBitCastInst(BitCastInst &I){
+    simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
 }
 
 // Other operators
@@ -1763,14 +1795,14 @@ void LaredoTaintVisitor::visitBitCastInst(BitCastInst &I){
  * condition, this could let us see if we can
  * potentially affect control flow.
  */
-void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
+void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
-    int operand0 = LST->getLocalSlot(I.getOperand(0));
-    int operand1 = LST->getLocalSlot(I.getOperand(1));
+    int operand0 = PST->getLocalSlot(I.getOperand(0));
+    int operand1 = PST->getLocalSlot(I.getOperand(1));
     int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
 
     // result byte gets union of each source byte
@@ -1784,7 +1816,7 @@ void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -1815,7 +1847,7 @@ void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -1866,7 +1898,7 @@ void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
         src1.val.con = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -1886,7 +1918,7 @@ void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
         op.typ = DELETEOP;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = LST->getLocalSlot(&I);
+        dst.val.la = PST->getLocalSlot(&I);
         op.val.deletel.a = dst;
         tob_op_write(tbuf, op);
     }
@@ -1896,22 +1928,22 @@ void LaredoTaintVisitor::visitICmpInst(ICmpInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitFCmpInst(FCmpInst &I){}
-void LaredoTaintVisitor::visitPHINode(PHINode &I){}
+void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){}
+void PandaTaintVisitor::visitPHINode(PHINode &I){}
 
 /*
  * Taint model for LLVM bswap intrinsic.
  */
-void LaredoTaintVisitor::bswapHelper(CallInst &I){
+void PandaTaintVisitor::bswapHelper(CallInst &I){
     int bytes = getValueSize(&I);
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
     op.typ = COPYOP;
     dst.typ = LADDR;
-    dst.val.la = LST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(&I);
     src.typ = LADDR;
-    src.val.la = LST->getLocalSlot(I.getArgOperand(0));
+    src.val.la = PST->getLocalSlot(I.getArgOperand(0));
     
     for (int i = 0; i < bytes; i++){
         src.off = i;
@@ -1922,7 +1954,7 @@ void LaredoTaintVisitor::bswapHelper(CallInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitCallInst(CallInst &I){
+void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
         assert(1==0);
@@ -1974,6 +2006,7 @@ void LaredoTaintVisitor::visitCallInst(CallInst &I){
         return;
     }
 
+    std::map<std::string, TaintTB*> *ttbCache = PTFP->getTaintTBCache();
     std::map<std::string, TaintTB*>::iterator it = ttbCache->find(calledName);
     if (it != ttbCache->end()){
 #ifdef TAINTDEBUG
@@ -2007,7 +2040,7 @@ void LaredoTaintVisitor::visitCallInst(CallInst &I){
             }
             else {
                 op.typ = COPYOP;
-                src.val.la = LST->getLocalSlot(arg);
+                src.val.la = PST->getLocalSlot(arg);
                 dst.val.la = i;
                 for (int j = 0; j < argBytes; j++){
                     src.off = j;
@@ -2026,7 +2059,7 @@ void LaredoTaintVisitor::visitCallInst(CallInst &I){
         tob_op_write(tbuf, op);
 
         // copy return reg to value in this frame, if applicable
-        int slot = LST->getLocalSlot(&I);
+        int slot = PST->getLocalSlot(&I);
         if (slot > -1){
             op.typ = COPYOP;
             memset(&src, 0, sizeof(src));
@@ -2057,7 +2090,7 @@ void LaredoTaintVisitor::visitCallInst(CallInst &I){
  * instruction. Currently we are just treating it like a branch, but with values
  * filled in instead of branch targets.
  */
-void LaredoTaintVisitor::visitSelectInst(SelectInst &I){
+void PandaTaintVisitor::visitSelectInst(SelectInst &I){
     // write instruction boundary op
     struct taint_op_struct op = {};
     op.typ = INSNSTARTOP;
@@ -2066,8 +2099,8 @@ void LaredoTaintVisitor::visitSelectInst(SelectInst &I){
     int srcbytelen = getValueSize(&I);
     op.val.insn_start.num_ops = srcbytelen;
     op.val.insn_start.flag = INSNREADLOG;
-    op.val.insn_start.branch_labels[0] = LST->getLocalSlot(I.getTrueValue());
-    op.val.insn_start.branch_labels[1] = LST->getLocalSlot(I.getFalseValue());
+    op.val.insn_start.branch_labels[0] = PST->getLocalSlot(I.getTrueValue());
+    op.val.insn_start.branch_labels[1] = PST->getLocalSlot(I.getFalseValue());
     tob_op_write(tbuf, op);
 
     // write taint ops
@@ -2079,7 +2112,7 @@ void LaredoTaintVisitor::visitSelectInst(SelectInst &I){
     src.typ = UNK;
     src.val.ua = 0;
     src.flag = READLOG;
-    dst.val.la = LST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(&I);
 
     for (int i = 0; i < srcbytelen; i++){
         src.off = i;
@@ -2090,27 +2123,27 @@ void LaredoTaintVisitor::visitSelectInst(SelectInst &I){
     }
 }
 
-void LaredoTaintVisitor::visitVAArgInst(VAArgInst &I){}
-void LaredoTaintVisitor::visitExtractElementInst(ExtractElementInst &I){}
-void LaredoTaintVisitor::visitInsertElementInst(InsertElementInst &I){}
-void LaredoTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I){}
+void PandaTaintVisitor::visitVAArgInst(VAArgInst &I){}
+void PandaTaintVisitor::visitExtractElementInst(ExtractElementInst &I){}
+void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I){}
+void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I){}
 
 /*
  * This may need to become more complex for more complex cases of this
  * instruction.
  */
-void LaredoTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
-    int src = LST->getLocalSlot(I.getAggregateOperand());
-    int dst = LST->getLocalSlot(&I);
+void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
+    int src = PST->getLocalSlot(I.getAggregateOperand());
+    int dst = PST->getLocalSlot(&I);
     int bytes = getValueSize(&I);
     simpleTaintCopy(src, dst, bytes);
 }
 
-void LaredoTaintVisitor::visitInsertValueInst(InsertValueInst &I){}
-void LaredoTaintVisitor::visitLandingPadInst(LandingPadInst &I){}
+void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){}
+void PandaTaintVisitor::visitLandingPadInst(LandingPadInst &I){}
 
 // Unhandled
-void LaredoTaintVisitor::visitInstruction(Instruction &I){
+void PandaTaintVisitor::visitInstruction(Instruction &I){
     printf("Error: Unhandled instruction\n");
     assert(1==0);
 }

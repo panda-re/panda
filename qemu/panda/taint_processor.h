@@ -107,6 +107,9 @@ typedef struct shad_struct {
 // returns a shadow memory to be used by taint processor
 Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size, uint32_t max_vals);
 
+// Delete a shadow memory
+void tp_free(Shad *shad);
+
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr a, Label l); 
 
@@ -193,6 +196,9 @@ typedef struct taint_op_struct {
 #include "panda_memlog.h"
 
 TaintOpBuffer *tob_new(uint32_t size);
+
+void tob_delete(TaintOpBuffer *tbuf);
+
 void tob_rewind(TaintOpBuffer *buf);
 //uint8_t tob_empty(TaintOpBuffer *buf);
 

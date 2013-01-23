@@ -96,6 +96,41 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
 }
 
 
+/*
+ * Delete a shadow memory
+ */
+void tp_free(Shad *shad){
+    shad_dir_free_64(shad->hd);
+    shad->hd = NULL;
+#ifdef TARGET_X86_64
+    shad_dir_free_64(shad->ram);
+#else
+    shad_dir_free_32(shad->ram);
+#endif
+    shad->ram = NULL;
+    shad_dir_free_64(shad->io);
+    shad->io = NULL;
+    my_free(shad->llv, (shad->num_vals * FUNCTIONFRAMES * MAXREGSIZE *
+        sizeof(LabelSet *)), poolid_taint_processor);
+    shad->llv = NULL;
+    my_free(shad->ret, (MAXREGSIZE * sizeof(LabelSet *)),
+        poolid_taint_processor);
+    shad->ret = NULL;
+    my_free(shad->grv, (NUMREGS * WORDSIZE * sizeof(LabelSet *)),
+        poolid_taint_processor);
+    shad->grv = NULL;
+    if (shad->gsv){
+        my_free(shad->gsv, (NUMSPECADDRS * sizeof(LabelSet *)),
+            poolid_taint_processor);
+        shad->gsv = NULL;
+    }
+    my_free(shad->ram_bitmap, (shad->mem_size >> 3), poolid_taint_processor);
+    shad->ram_bitmap = NULL;
+    my_free(shad, sizeof(Shad), poolid_taint_processor);
+    shad = NULL;
+}
+
+
 // returns a copy of the labelset associated with a.  or NULL if none.
 // so you'll need to call labelset_free on this pointer when done with it. 
 static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
@@ -523,6 +558,11 @@ TaintOpBuffer *tob_new(uint32_t size) {
     buf->start = (char *) my_malloc(size, poolid_taint_processor);
     buf->ptr = buf->start;
     return buf;
+}
+
+void tob_delete(TaintOpBuffer *tbuf){
+    my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
+    my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
 }
 
 void tob_rewind(TaintOpBuffer *buf) {
@@ -1114,6 +1154,12 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
             }
         }
     }
+
+#ifdef TAINTSTATS
+    // we're not caching these with TAINTSTATS so we need to clean up
+    taint_tb_cleanup(ttb);
+#endif
+
 }
 
 SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
