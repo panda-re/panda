@@ -717,32 +717,22 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 #endif
 
     assert(op.val.insn_start.flag == INSNREADLOG);
+    
+    // Make sure there is still something to read in the buffer
+    assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
+        < dynval_buf->cur_size);
 
     DynValEntry dventry;
     read_dynval_buffer(dynval_buf, &dventry);
 
+    if (dventry.entrytype == EXCEPTIONENTRY){
+        printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+        next_step = EXCEPT;
+        return;
+    }
+
     if (!strcmp(op.val.insn_start.name, "load")){
         
-        // XXX: figure out new exception logic
-        /*if (strstr(line, "load") == NULL){
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-            else{
-                fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                fprintf(stderr, "In: load\n");
-                fflush(stdout);
-                exit(1);
-            }
-        }
-        if (strstr(line, EXCEPTIONSTRING)){
-            printf("Memory exception\n");
-            next_step = EXCEPT;
-            return;
-        }*/
-
         if ((dventry.entrytype != ADDRENTRY)
                 || (dventry.entry.memaccess.op != LOAD)){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
@@ -812,26 +802,6 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     }
 
     else if (!strcmp(op.val.insn_start.name, "store")){
-
-        //XXX: figure out new exception logic
-        /*if (strstr(line, "store") == NULL){
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-            else{
-                fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                fprintf(stderr, "In: store\n");
-                fflush(stdout);
-                exit(1);
-            }
-        }
-        if (strstr(line, EXCEPTIONSTRING)){
-            printf("Memory exception\n");
-            next_step = EXCEPT;
-            return;
-        }*/
 
         if ((dventry.entrytype != ADDRENTRY)
                 || (dventry.entry.memaccess.op != STORE)){
@@ -996,26 +966,6 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
     else if (!strcmp(op.val.insn_start.name, "condbranch")){
         
-        //XXX: fix exception logic
-        /*if (strstr(line, "condbranch") == NULL){
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-            else {
-                fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                fprintf(stderr, "In: branch\n");
-                fflush(stdout);
-                exit(1);
-            }
-        }
-        if (strstr(line, EXCEPTIONSTRING)){
-            printf("Memory exception\n");
-            next_step = EXCEPT;
-            return;
-        }*/
-        
         if (dventry.entrytype != BRANCHENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
             fprintf(stderr, "In: branch\n");
@@ -1057,26 +1007,6 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
     else if (!strcmp(op.val.insn_start.name, "select")){
         
-        //XXX: fix exception logic
-        /*if (strstr(line, "select") == NULL){
-            if (strstr(line, EXCEPTIONSTRING)){
-                printf("Memory exception\n");
-                next_step = EXCEPT;
-                return;
-            }
-            else{
-                fprintf(stderr, "Error: traces don't align -- %s\n", line);
-                fprintf(stderr, "In: select\n");
-                fflush(stdout);
-                exit(1);
-            }
-        }
-        if (strstr(line, EXCEPTIONSTRING)){
-            printf("Memory exception\n");
-            next_step = EXCEPT;
-            return;
-        }*/
-
         if (dventry.entrytype != SELECTENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
             fprintf(stderr, "In: select\n");
@@ -1135,6 +1065,11 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             fprintf(stderr, "In: select\n");
             exit(1);
         }
+    }
+    
+    else {
+        fprintf(stderr, "Error: unknown error in dynamic log\n");
+        exit(1);
     }
 }
 

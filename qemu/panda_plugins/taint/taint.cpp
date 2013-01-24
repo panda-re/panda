@@ -71,15 +71,15 @@ llvm::PandaInstrFunctionPass *PIFP;
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
-    //printramaddr(addr, 1);
-    //printramaddr(0x4000000, 1);
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_dynval(dynval_buffer, ADDRENTRY, STORE, addr);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
-    //printramaddr(addr, 0);
-    //printramaddr(0x4000001, 0);
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_dynval(dynval_buffer, ADDRENTRY, LOAD, addr);
     return 0;
 }
 
@@ -145,7 +145,17 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 }
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
-    printdynval(0xDEADBEEF, 0);
+    printf("EXCEPTION - logging\n");
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_exception(dynval_buffer);
+    
+    // Then execute taint ops up until the exception occurs.  Execution of taint
+    // ops will stop at the point of the exception.
+    rewind_dynval_buffer(dynval_buffer);
+    execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
+
+    // Make sure there's nothing left in the buffer
+    assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
     return 0;
 }
 

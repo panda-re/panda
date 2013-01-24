@@ -327,7 +327,7 @@ static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
         write_dynval_buffer(dynval_buf, &dventry);
     }
     else {
-        // else, must be a virtual address
+        // else, must be a memory address
         DynValEntry dventry;
         memset(&dventry, 0, sizeof(DynValEntry));
         Addr addr;
@@ -380,7 +380,7 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         write_dynval_buffer(dynval_buf, &dventry);
     }
     else {
-        // else, must be a virtual address
+        // else, must be a memory address
         DynValEntry dventry;
         memset(&dventry, 0, sizeof(DynValEntry));
         Addr addr;
@@ -466,5 +466,13 @@ void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
                 break;
         }
     }
+}
+
+void log_exception(DynValBuffer *dynval_buf){
+    assert(dynval_buf);
+    DynValEntry dventry;
+    memset(&dventry, 0, sizeof(DynValEntry));
+    dventry.entrytype = EXCEPTIONENTRY;
+    write_dynval_buffer(dynval_buf, &dventry);
 }
 

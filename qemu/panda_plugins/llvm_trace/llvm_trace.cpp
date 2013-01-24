@@ -145,8 +145,9 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 }
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
-    //printdynval(0xDEADBEEF, 0);
-    //printf("RESTORE\n");
+    printf("EXCEPTION - logging\n");
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_exception(dynval_buffer);
     return 0;
 }
 

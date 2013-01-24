@@ -29,12 +29,12 @@ FILE *flog;          // Function log
 FILE *dlog;          // Dynamic value log
 BasicBlock *next_bb; // Taken branch for BB that needs to be processed next
 bool ret;            // Return flag
+bool except;         // Exception flag
 
 /* TestInstVisitor class
  * This class visits instructions for the TestFunctionPass.
  */
 class TestInstVisitor : public InstVisitor<TestInstVisitor> {
-
 public:
     TestInstVisitor(){}
     ~TestInstVisitor(){}
@@ -48,26 +48,44 @@ public:
 };
 
 void TestInstVisitor::visitLoadInst(LoadInst &I){
+    if (except){
+        return;
+    }
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
+    if (entry.entrytype == EXCEPTIONENTRY){
+        except = true;
+        return;
+    }
     assert((entry.entrytype == ADDRENTRY)
         && (entry.entry.memaccess.op == LOAD));
 }
 
 void TestInstVisitor::visitStoreInst(StoreInst &I){
-    if (I.isVolatile()){
+    if (I.isVolatile() || except){
         return; // These are part of the runtime system that we don't log
     }
 
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
+    if (entry.entrytype == EXCEPTIONENTRY){
+        except = true;
+        return;
+    }
     assert((entry.entrytype == ADDRENTRY)
         && (entry.entry.memaccess.op == STORE));
 }
 
 void TestInstVisitor::visitBranchInst(BranchInst &I){
+    if (except){
+        return;
+    }
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
+    if (entry.entrytype == EXCEPTIONENTRY){
+        except = true;
+        return;
+    }
     assert(entry.entrytype == BRANCHENTRY);
     next_bb = I.getSuccessor(entry.entry.branch.br);
 }
@@ -102,6 +120,7 @@ TestFunctionPass::~TestFunctionPass(){
 
 bool TestFunctionPass::runOnFunction(Function &F){
     ret = false;
+    except = false;
 
     // Process function starting with the entry basic block
     Function::iterator bb = F.begin();
@@ -109,7 +128,8 @@ bool TestFunctionPass::runOnFunction(Function &F){
 
     // If a function has multiple basic blocks, process them until we reach ret
     if (F.size() > 1){
-        while (!ret){ // Continue until we reach a return instruction
+        while (!ret && !except){ // Continue until we reach a return
+                                 // instruction or exception
             TIV->visit(next_bb);
         }
     }

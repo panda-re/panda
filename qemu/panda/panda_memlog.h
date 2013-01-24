@@ -31,11 +31,11 @@ typedef struct dyn_val_buffer_struct {
     char *ptr;
 } DynValBuffer;
 
-// XXX: add entry for exceptions too?
 typedef enum {
     ADDRENTRY,
     BRANCHENTRY,
-    SELECTENTRY
+    SELECTENTRY,
+    EXCEPTIONENTRY
 } DynValEntryType;
 
 #include "taint_processor.h"
@@ -70,6 +70,9 @@ void rewind_dynval_buffer(DynValBuffer *dynval_buf);
 // Log a dynamic value.  Called from guest code (translated or helper function).
 void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
     uintptr_t dynval);
+
+// Log that an exception occured
+void log_exception(DynValBuffer *dynval_buf);
 
 #endif
 
