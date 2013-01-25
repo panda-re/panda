@@ -18,12 +18,29 @@ FILE *plugin_log;
 
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
+#ifdef TARGET_I386
     unsigned char buf[2];
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
     if (buf[0] == 0x0F && buf[1] == 0x34)
         return true;
     else
         return false;
+#elif defined(TARGET_ARM)
+    unsigned char buf[4];
+    panda_virtual_memory_rw(env, pc, buf, 4, 0);
+    // Check for ARM mode syscall
+    if(env->thumb == 0){
+    // little-endian
+        if(buf[3] & 0xF){
+            return true;
+        }
+    } else { 
+    // check for Thumb mode syscall
+      if (buf[1] == 0xDF)
+        return true;
+    }
+    return false;
+#endif
 }
 
 // This will only be called for instructions where the
@@ -38,7 +55,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
 
 bool init_plugin(void *self) {
 // Don't bother if we're not on x86
-#ifdef TARGET_I386
+#if  defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
 
     pcb.insn_translate = translate_callback;
