@@ -285,6 +285,8 @@ void close_memlog(void){
  * Dynamic logging
  *****************************************************************************/
 
+#ifdef CONFIG_LLVM // These functions are for LLVM code
+
 bool regs_inited = false;
 
 static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
@@ -394,6 +396,8 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
     }
 }
 
+#endif // CONFIG_LLVM
+
 DynValBuffer *create_dynval_buffer(uint32_t size){
     DynValBuffer *buf = (DynValBuffer *) my_malloc(sizeof(DynValBuffer),
             poolid_dynamic_log);
@@ -434,6 +438,8 @@ void rewind_dynval_buffer(DynValBuffer *dynval_buf){
     dynval_buf->ptr = dynval_buf->start;
 }
 
+#ifdef CONFIG_LLVM // This function is for LLVM code
+
 void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
         uintptr_t dynval){
     assert(dynval_buf);
@@ -467,6 +473,8 @@ void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
         }
     }
 }
+
+#endif // CONFIG_LLVM
 
 void log_exception(DynValBuffer *dynval_buf){
     assert(dynval_buf);
