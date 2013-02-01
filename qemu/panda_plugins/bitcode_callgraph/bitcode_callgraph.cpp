@@ -19,18 +19,23 @@
 #include "llvm/Support/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 
-//#define PRINTCFG
+//#define PRINTCG
 
 using namespace llvm;
 
 class PandaCallGraphPass : public ModulePass {
-    void visitNode(CallGraphNode *node);
     int curdepth;
     int maxdepth;
     Function *currentFunc;
     Function *deepestFunc;
     std::set<Function*> externalFuncs;
     std::set<Function*> recursiveFuncs;
+    std::set<Function*> nullFuncs;
+    std::set<std::string> instrs;
+
+    void visitNode(CallGraphNode *node);
+    void getInstructions(Function *F);
+    void printReport(Module &M);
 public:
     static char ID;
     PandaCallGraphPass() : ModulePass(ID), curdepth(0), maxdepth(0) {
@@ -64,25 +69,25 @@ void PandaCallGraphPass::visitNode(CallGraphNode *node){
                 continue;
             }
             funcset.insert(f);
-#ifdef PRINTCFG
+#ifdef PRINTCG
             for (int j = 0; j < curdepth; j++) printf(" ");
             printf("%s ", f->getName().str().c_str());
 #endif
             if (i->second->getFunction()->isDeclaration()){
                 externalFuncs.insert(f);
-#ifdef PRINTCFG
+#ifdef PRINTCG
                 printf("-- EXTERNAL\n");
 #endif
             }
             else {
                 if (f == node->getFunction()){
                     recursiveFuncs.insert(f);
-#ifdef PRINTCFG
+#ifdef PRINTCG
                     printf("-- RECURSIVE\n");
 #endif
                 }
                 else {
-#ifdef PRINTCFG
+#ifdef PRINTCG
                     printf("\n");
 #endif
                     visitNode(i->second);
@@ -92,7 +97,8 @@ void PandaCallGraphPass::visitNode(CallGraphNode *node){
         else {
             // Call to an LLVM value or inline ASM (yes, you can inline ASM
             // in the IR)
-#ifdef PRINTCFG
+            nullFuncs.insert(node->getFunction());
+#ifdef PRINTCG
             for (int j = 0; j < curdepth; j++) printf(" ");
             printf("NULL FUNCTION\n");
 #endif
@@ -101,10 +107,15 @@ void PandaCallGraphPass::visitNode(CallGraphNode *node){
     curdepth--;
 }
 
-bool PandaCallGraphPass::runOnModule(Module &M){
-    CallGraph &CG = getAnalysis<CallGraph>();
-    
-    // Tell us which intrinsics are called
+void PandaCallGraphPass::getInstructions(Function *F){
+    for (Function::iterator i = F->begin(); i != F->end(); i++){
+        for (BasicBlock::iterator j = i->begin(); j != i->end(); j++){
+            instrs.insert(j->getOpcodeName());
+        }
+    }
+}
+
+void PandaCallGraphPass::printReport(Module &M){
     printf("=== Intrinsics called: ===\n");
     for (Module::iterator i = M.begin(); i != M.end(); i++){
         if (i->isDeclaration() && i->isIntrinsic()){
@@ -112,25 +123,7 @@ bool PandaCallGraphPass::runOnModule(Module &M){
         }
     }
     printf("\n\n");
-
-    // Look at call graph for each function in module
-    for (Module::iterator i = M.begin(); i != M.end(); i++){
-        if (i->isDeclaration()){
-            // If it's defined somewhere else that's not op_helper.c 
-            continue;
-        }
-
-#ifdef PRINTCFG
-        printf("=== %s ===\n", i->getName().str().c_str());
-#endif
-        currentFunc = i;
-        visitNode(CG[i]);
-
-#ifdef PRINTCFG
-        printf("\n\n");
-#endif
-    }
-
+    
     printf("=== External functions: ===\n");
     for (std::set<Function*>::iterator i = externalFuncs.begin();
             i != externalFuncs.end(); i++){
@@ -145,8 +138,48 @@ bool PandaCallGraphPass::runOnModule(Module &M){
     }
     printf("\n\n");
     
-    printf("=== Maximum call depth: ===\n%d, %s\n\n", maxdepth,
+    printf("=== Functions with null calls: ===\n");
+    for (std::set<Function*>::iterator i = nullFuncs.begin();
+            i != nullFuncs.end(); i++){
+        printf("%s\n", (*i)->getName().str().c_str());
+    }
+    printf("\n\n");
+    
+    printf("=== Maximum call depth: ===\n%d, %s\n\n\n", maxdepth,
         deepestFunc->getName().str().c_str());
+
+    printf("=== LLVM instructions: ===\n");
+    for (std::set<std::string>::iterator i = instrs.begin();
+            i != instrs.end(); i++){
+        printf("%s\n", (*i).c_str());
+    }
+    printf("\n\n");
+}
+
+bool PandaCallGraphPass::runOnModule(Module &M){
+    CallGraph &CG = getAnalysis<CallGraph>();
+    
+    // Look at call graph for each function in module
+    for (Module::iterator i = M.begin(); i != M.end(); i++){
+        if (i->isDeclaration()){
+            // If it's defined somewhere else that's not op_helper.c 
+            continue;
+        }
+
+#ifdef PRINTCG
+        printf("=== %s ===\n", i->getName().str().c_str());
+#endif
+        currentFunc = i;
+        visitNode(CG[i]);
+
+        getInstructions(i);
+
+#ifdef PRINTCG
+        printf("\n\n");
+#endif
+    }
+
+    printReport(M);
 
     return false; // doesn't modify
 }
