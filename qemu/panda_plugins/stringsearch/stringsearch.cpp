@@ -105,20 +105,23 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 #endif
 
     p.pc = pc;
+
+    string_pos &sp = text_tracker[p];
+
     for (unsigned int i = 0; i < size; i++) {
         uint8_t val = ((uint8_t *)buf)[i];
         for(int str_idx = 0; str_idx < num_strings; str_idx++) {
-            if (tofind[str_idx][text_tracker[p].val[str_idx]] == val)
-                text_tracker[p].val[str_idx]++;
+            if (tofind[str_idx][sp.val[str_idx]] == val)
+                sp.val[str_idx]++;
             else
-                text_tracker[p].val[str_idx] = 0;
+                sp.val[str_idx] = 0;
 
-            if (text_tracker[p].val[str_idx] == strlens[str_idx]) {
+            if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
                 printf("%s Match at: " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
                     (is_write ? "WRITE" : "READ"), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
-                text_tracker[p].val[str_idx] = 0;
+                sp.val[str_idx] = 0;
             }
         }
     }
