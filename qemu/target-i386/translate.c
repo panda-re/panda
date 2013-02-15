@@ -41,7 +41,6 @@
 #include "disas.h"
 #include "tcg-op.h"
 
-#include "panda_memlog.h"
 #include "rr_log.h"
 
 #include "helper.h"
@@ -7914,13 +7913,6 @@ static void gen_intermediate_code_internal(CPUState *env,
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
 
-    //int in_bad_block = 0;
-    // XXX: BDG debugging
-    //if (pc_start == 0x00000000866c4ec4) {
-    //    printf("Translating problematic block 0x00000000866c4ec4 with rr_icount %ld\n", env->rr_guest_instr_count);
-    //    in_bad_block = 1;
-    //}
-
     gen_icount_start();
     for(;;) {
         if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
@@ -7996,7 +7988,6 @@ static void gen_intermediate_code_internal(CPUState *env,
             //revert any changes that may have been made in the interim!
             gen_opc_ptr = saved_gen_opc_ptr;
             gen_opparam_ptr = saved_gen_opparam_ptr;
-            //if (in_bad_block) printf("Terminating block %#x early because we might cross a page boundary.\n", pc_start);
             //mz let's start translating from here next time
             gen_jmp_im(prev_pc_ptr - dc->cs_base);
             gen_eob(dc);
@@ -8036,7 +8027,7 @@ static void gen_intermediate_code_internal(CPUState *env,
             //mz NOTE: we cannot muck with size of translation block if search_pc
             //is set - must be the same as last translation!
             if (search_pc == 0 && tb->num_guest_insns == rr_num_instr_before_next_interrupt) {
-                //if (in_bad_block) printf("Terminating block %#x early because we have an interrupt coming up.\n", pc_start);
+                //printf("Terminating block %#x early because we have an interrupt coming up.\n", pc_start);
                 gen_jmp_im(pc_ptr - dc->cs_base);
                 gen_eob(dc);
                 break;
@@ -8119,6 +8110,15 @@ void gen_intermediate_code_pc(CPUState *env, TranslationBlock *tb)
 void restore_state_to_opc(CPUState *env, TranslationBlock *tb, int pc_pos)
 {
     int cc_op;
+
+#ifdef CONFIG_LLVM
+#ifdef CONFIG_LLVM_TRACE
+    if (execute_llvm && trace_llvm){
+        //printf("FAULT\n"); //rwhelan - indicate this for dynamic log
+        printdynval(0xDEADBEEF, 0);
+    }
+#endif
+#endif
 
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_OP)) {

@@ -39,10 +39,14 @@
 #if defined(CONFIG_LLVM)
 #include "tcg/tcg-llvm.h"
 const int has_llvm_engine = 1;
+#ifdef CONFIG_LLVM_TRACE
+extern FILE *funclog; //rwhelan: file for logging
+#endif
 #endif
 
 int generate_llvm = 0;
 int execute_llvm = 0;
+int trace_llvm = 0;
 
 // TRL 0810 record replay stuff 
 #include "rr_log.h"
@@ -709,29 +713,10 @@ int cpu_exec(CPUState *env)
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
 
-                if (panda_plugin_to_unload){
-                    panda_plugin_to_unload = false;
-                    int i;
-                    for (i = 0; i < MAX_PANDA_PLUGINS; i++){
-                        if (panda_plugins_to_unload[i]){
-                            panda_do_unload_plugin(i);
-                            panda_plugins_to_unload[i] = false;
-                        }
-                    }
-                }
-                
                 if(panda_flush_tb()) {
                     tb_flush(env);
                     tb_invalidated_flag = 1;
                 }
-
-                // XXX BDG: remove this before committing
-                //if(!logfile && env->rr_guest_instr_count >= 2805309400) {
-                //    // enable in_asm
-                //    cpu_set_log_filename("debug_asm.txt");
-                //    cpu_set_log( CPU_LOG_TB_IN_ASM | CPU_LOG_TB_OUT_ASM | CPU_LOG_TB_CPU | CPU_LOG_INT | CPU_LOG_EXEC );
-                //}
-                //if (env->rr_guest_instr_count == 2805309520) printf("rr_guest_instr_count == 2805309520, we are just about to crash\n");
 
                 spin_lock(&tb_lock);
 
@@ -744,14 +729,11 @@ int cpu_exec(CPUState *env)
                   (unsigned long long)rr_prog_point.pc,
                   (unsigned long long)rr_prog_point.secondary);
 
-                // PANDA instrumentation: before basic block exec (with option
-                // to invalidate tb)
+                // PANDA instrumentation: before basic block 
                 panda_cb_list *plist;
                 bool panda_invalidate_tb = false;
-                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
-                        plist != NULL; plist = plist->next) {
-                    panda_invalidate_tb |=
-                        plist->entry.before_block_exec_invalidate_opt(env, tb);
+                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
+                    panda_invalidate_tb |= plist->entry.before_block_exec(env, tb);
                 }
 
 #ifdef CONFIG_SOFTMMU
@@ -787,7 +769,7 @@ int cpu_exec(CPUState *env)
                 // (T0 & ~3) contains pointer to previous translation block.
                 // (T0 & 3) contains info about which branch we took (why 2 bits?)
                 // tb is current translation block.  
-                if ((rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
+                if (rr_mode != RR_REPLAY) {		
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                     }
@@ -807,6 +789,13 @@ int cpu_exec(CPUState *env)
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
 
+#ifdef CONFIG_LLVM_TRACE
+                // rwhelan: open function log file
+                if (unlikely(!funclog && execute_llvm && trace_llvm)){
+                    funclog = fopen("/tmp/llvm-functions.log", "w");
+                    setbuf(funclog, NULL);
+                }
+#endif
 
                 barrier();
 
@@ -843,18 +832,16 @@ int cpu_exec(CPUState *env)
                     //mz Actually jump into the generated code
                     /* execute the generated code */
 
-                    // PANDA instrumentation: before basic block exec
-                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
-                            plist != NULL; plist = plist->next) {
-                        plist->entry.before_block_exec(env, tb);
-                    }
-
 #if defined(CONFIG_LLVM)
+
+#ifdef CONFIG_LLVM_TRACE
+                    if (execute_llvm && trace_llvm){
+                        fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+                    }
+#endif
                     if(execute_llvm) {
-                        assert(tb->llvm_tc_ptr);
                         next_tb = tcg_llvm_qemu_tb_exec(env, tb);
                     } else {
-                        assert(tc_ptr);
                         next_tb = tcg_qemu_tb_exec(env, tc_ptr);
                     }
 #else
