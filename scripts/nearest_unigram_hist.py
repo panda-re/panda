@@ -21,11 +21,11 @@ def js_div(A,B):
 f = open(sys.argv[1])
 ulong_size = unpack("<i", f.read(4))[0]
 ulong_fmt = '<u%d' % ulong_size
-print "target_ulong size: %d" % ulong_size
-print "Loading data...",
+print >>sys.stderr, "target_ulong size: %d" % ulong_size
+print >>sys.stderr, "Loading data...",
 rectype = np.dtype( [ ('caller', ulong_fmt), ('pc', ulong_fmt), ('cr3', ulong_fmt), ('hist', '<I4', 256) ] )
 data = np.fromfile(f, dtype=rectype)
-print "done (%d tap entries loaded)" % data.size
+print >>sys.stderr, "done (%d tap entries loaded)" % data.size
 
 # Get rid of things with no very little data
 data = data[np.sum(data['hist'],axis=1) > 80]
@@ -45,7 +45,7 @@ training /= training.sum()
 #st = time.time()
 #dists = np.apply_along_axis(lambda x: js_div(training,x), 1, norm)
 #ed = time.time()
-#print "Old: %f seconds" % (ed-st)
+#print >>sys.stderr, "Old: %f seconds" % (ed-st)
 
 st = time.time()
 mid = (norm + training) / 2
@@ -56,7 +56,7 @@ right = np.nansum(np.log(norm/mid)*norm, axis=1)
 dists = (left + right) / 2
 ed = time.time()
 
-print "New: %f seconds" % (ed-st)
+print >>sys.stderr, "New: %f seconds" % (ed-st)
 #sys.exit(0)
 sorted_dists = np.argsort(dists)
 

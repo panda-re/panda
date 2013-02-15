@@ -722,9 +722,10 @@ static void rr_fill_queue(void) {
         }
         else if (log_entry->header.kind == RR_INTERRUPT_REQUEST) {
 #if RR_REPORT_PROGRESS
-            static uint64_t num = 0;
-            if ((++num % RR_PROGRESS_FREQ) == 0) {
+            static uint64_t num = 1;
+            if ((rr_prog_point.guest_instr_count / (double)rr_nondet_log->last_prog_point.guest_instr_count) * 100 >= num) {
               replay_progress();
+              num += 1;
             }
 #endif /* RR_REPORT_PROGRESS */
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;

@@ -89,7 +89,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     // Try to get the caller
 #if defined(TARGET_I386)
 #ifdef TARGET_X86_64 // In 64-bit mode we can't use EBP+4 for this.
-    if (env->hflags & HF_LMA_MASK)
+    if (!env->hflags & HF_LMA_MASK)
 #endif
         panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
 #elif defined(TARGET_ARM)

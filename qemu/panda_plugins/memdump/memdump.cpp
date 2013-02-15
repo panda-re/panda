@@ -21,6 +21,9 @@ extern "C" {
 #include <map>
 #include <list>
 #include <algorithm>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -44,11 +47,16 @@ struct prog_point {
     }
 };
 
-std::map<prog_point,FILE *> text_tracker;
-//FILE *text_memlog;
+struct fpos { unsigned long off; };
+std::map<prog_point,fpos> read_tracker;
+std::map<prog_point,fpos> write_tracker;
+FILE *read_log, *write_log;
+unsigned char *read_buf, *write_buf;
+unsigned long read_sz, write_sz;
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
+int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf,
+                       std::map<prog_point,fpos> &tracker, unsigned char *log) {
     prog_point p = {};
 #ifdef TARGET_I386
     panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
@@ -56,18 +64,21 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         p.cr3 = env->cr[3];
 #endif
     p.pc = pc;
-    if (text_tracker[p] == NULL) {
-        char path[256];
-        sprintf(path, "/scratch/tapdump/" TARGET_FMT_lx "." TARGET_FMT_lx "." TARGET_FMT_lx,
-            p.cr3, p.pc, p.caller);
-        text_tracker[p] = fopen(path, "wb");
-        if(text_tracker[p] == NULL) {
-            perror("fopen");
-        }
-    }
+    
+    //fseek(log, tracker[p].off, SEEK_SET);
+    //fwrite((unsigned char *)buf, size, 1, log);
+    memcpy(log+tracker[p].off, buf, size);
+    tracker[p].off += size;
 
-    fwrite((unsigned char *)buf, size, 1, text_tracker[p]);
     return 1;
+}
+
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return mem_callback(env, pc, addr, size, buf, write_tracker, write_buf);
+}
+
+int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return mem_callback(env, pc, addr, size, buf, read_tracker, read_buf);
 }
 
 bool init_plugin(void *self) {
@@ -80,19 +91,83 @@ bool init_plugin(void *self) {
     // Enable memory logging
     panda_enable_memcb();
 
-    pcb.virt_mem_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+    FILE *read_idx, *write_idx;
+    prog_point p = {};
+    unsigned long off = 0;
+    long size = 0;
+
+    read_idx = fopen("tap_reads.idx", "r");
+    if (read_idx) {
+        printf("Calculating read indices...\n");
+        fseek(read_idx, 4, SEEK_SET);
+        while (!feof(read_idx)) {
+            fread(&p, sizeof(p), 1, read_idx);
+            fread(&size, sizeof(long), 1, read_idx);
+            read_tracker[p].off = off;
+            off += size;
+        }
+
+        pcb.virt_mem_read = mem_read_callback;
+        panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
+
+        read_sz = off;
+        read_log = fopen("tap_reads.bin", "w+");
+        if (!read_log)
+            perror("fopen");
+        ftruncate(fileno(read_log), read_sz);
+
+        read_buf = (unsigned char *)mmap(NULL, read_sz, PROT_WRITE, MAP_SHARED, fileno(read_log), 0);
+        if (read_buf == MAP_FAILED) perror("mmap");
+        if (madvise(read_buf, read_sz, MADV_RANDOM) == -1)
+            perror("madvise");
+    }
+
+    // reset
+    off = 0;
+    size = 0;
+
+    write_idx = fopen("tap_writes.idx", "r");
+    if (write_idx) {
+        printf("Calculating write indices...\n");
+        fseek(write_idx, 4, SEEK_SET);
+        while (!feof(write_idx)) {
+            fread(&p, sizeof(p), 1, write_idx);
+            fread(&size, sizeof(long), 1, write_idx);
+            write_tracker[p].off = off;
+            off += size;
+        }
+
+        pcb.virt_mem_write = mem_write_callback;
+        panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+
+        write_sz = off;
+        write_log = fopen("tap_writes.bin", "w+");
+        if (!write_log)
+            perror("fopen");
+        ftruncate(fileno(write_log), write_sz);
+
+        write_buf = (unsigned char *)mmap(NULL, write_sz, PROT_WRITE, MAP_SHARED, fileno(write_log), 0);
+        if (write_buf == MAP_FAILED) perror("mmap");
+        if (madvise(write_buf, write_sz, MADV_RANDOM) == -1)
+            perror("madvise");
+    }
 
     return true;
 }
 
 void uninit_plugin(void *self) {
-    printf("Closing files...\n");
-    size_t i = 0;
-    size_t mapsize = text_tracker.size();
-    for(std::map<prog_point,FILE *>::iterator it = text_tracker.begin(); it != text_tracker.end(); it++) {
-        i++;
-        fclose(it->second);
-        if ((i & 0xfff) == 0) printf("%ld / %ld files closed\n", i, mapsize);
+    if (read_log) {
+        if(msync(read_buf, read_sz, MS_SYNC) == -1)
+            perror("msync");
+        if(munmap(read_buf, read_sz) == -1)
+            perror("munmap");
+        fclose(read_log);
+    }
+    if (write_log) {
+        if(msync(write_buf, write_sz, MS_SYNC) == -1)
+            perror("msync");
+        if(munmap(write_buf, write_sz) == -1)
+            perror("munmap");
+        fclose(write_log);
     }
 }
