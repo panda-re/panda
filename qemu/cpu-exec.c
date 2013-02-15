@@ -725,6 +725,14 @@ int cpu_exec(CPUState *env)
                     tb_invalidated_flag = 1;
                 }
 
+                // XXX BDG: remove this before committing
+                //if(!logfile && env->rr_guest_instr_count >= 2805309400) {
+                //    // enable in_asm
+                //    cpu_set_log_filename("debug_asm.txt");
+                //    cpu_set_log( CPU_LOG_TB_IN_ASM | CPU_LOG_TB_OUT_ASM | CPU_LOG_TB_CPU | CPU_LOG_INT | CPU_LOG_EXEC );
+                //}
+                //if (env->rr_guest_instr_count == 2805309520) printf("rr_guest_instr_count == 2805309520, we are just about to crash\n");
+
                 spin_lock(&tb_lock);
 
                 tb = tb_find_fast(env);
