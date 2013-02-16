@@ -30,7 +30,9 @@
 //#define DEBUG_MULDIV
 
 /* Long integer helpers */
-#if !defined(__x86_64__)
+// rwhelan: want to include these in helper function analysis, so compile C
+// instead of optimized ASM when LLVM is enabled
+#if !defined(__x86_64__) || defined(CONFIG_LLVM)
 static void add128 (uint64_t *plow, uint64_t *phigh, uint64_t a, uint64_t b)
 {
     *plow += a;

@@ -25,7 +25,7 @@
 
 #include "compiler.h"   /* QEMU_GNUC_PREREQ */
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) && !defined(CONFIG_LLVM)
 #define __HAVE_FAST_MULU64__
 static inline void mulu64(uint64_t *plow, uint64_t *phigh,
                           uint64_t a, uint64_t b)

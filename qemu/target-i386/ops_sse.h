@@ -104,7 +104,6 @@ void glue(helper_psllw, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_psrld, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -124,7 +123,6 @@ void glue(helper_psrld, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
-#endif
 
 void glue(helper_psrad, SUFFIX)(Reg *d, Reg *s)
 {
@@ -143,7 +141,6 @@ void glue(helper_psrad, SUFFIX)(Reg *d, Reg *s)
 #endif
 }
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -163,7 +160,6 @@ void glue(helper_pslld, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
-#endif
 
 void glue(helper_psrlq, SUFFIX)(Reg *d, Reg *s)
 {
@@ -183,7 +179,6 @@ void glue(helper_psrlq, SUFFIX)(Reg *d, Reg *s)
     }
 }
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
 {
     int shift;
@@ -201,7 +196,6 @@ void glue(helper_psllq, SUFFIX)(Reg *d, Reg *s)
 #endif
     }
 }
-#endif
 
 #if SHIFT == 1
 void glue(helper_psrldq, SUFFIX)(Reg *d, Reg *s)
@@ -364,16 +358,12 @@ static inline int satsw(int x)
 #define FAVG(a, b) ((a) + (b) + 1) >> 1
 #endif
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_B(helper_paddb, FADD)
-#endif
 SSE_HELPER_W(helper_paddw, FADD)
 SSE_HELPER_L(helper_paddl, FADD)
 SSE_HELPER_Q(helper_paddq, FADD)
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_B(helper_psubb, FSUB)
-#endif
 SSE_HELPER_W(helper_psubw, FSUB)
 SSE_HELPER_L(helper_psubl, FSUB)
 SSE_HELPER_Q(helper_psubq, FSUB)
@@ -389,30 +379,22 @@ SSE_HELPER_W(helper_psubusw, FSUBUW)
 SSE_HELPER_W(helper_psubsw, FSUBSW)
 
 SSE_HELPER_B(helper_pminub, FMINUB)
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_B(helper_pmaxub, FMAXUB)
-#endif
 
 SSE_HELPER_W(helper_pminsw, FMINSW)
 SSE_HELPER_W(helper_pmaxsw, FMAXSW)
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_Q(helper_pand, FAND)
 SSE_HELPER_Q(helper_por, FOR)
-#endif
 SSE_HELPER_Q(helper_pandn, FANDN)
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_Q(helper_pxor, FXOR)
 
 SSE_HELPER_B(helper_pcmpgtb, FCMPGTB)
-#endif
 SSE_HELPER_W(helper_pcmpgtw, FCMPGTW)
 SSE_HELPER_L(helper_pcmpgtl, FCMPGTL)
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 SSE_HELPER_B(helper_pcmpeqb, FCMPEQ)
-#endif
 SSE_HELPER_W(helper_pcmpeqw, FCMPEQ)
 SSE_HELPER_L(helper_pcmpeql, FCMPEQ)
 
@@ -490,7 +472,6 @@ void glue(helper_maskmov, SUFFIX) (Reg *d, Reg *s, target_ulong a0)
     }
 }
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
 {
     d->L(0) = val;
@@ -499,9 +480,7 @@ void glue(helper_movl_mm_T0, SUFFIX) (Reg *d, uint32_t val)
     d->Q(1) = 0;
 #endif
 }
-#endif
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 #ifdef TARGET_X86_64
 void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
 {
@@ -511,11 +490,9 @@ void glue(helper_movq_mm_T0, SUFFIX) (Reg *d, uint64_t val)
 #endif
 }
 #endif
-#endif
 
 #if SHIFT == 0
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_pshufw, SUFFIX) (Reg *d, Reg *s, int order)
 {
     Reg r;
@@ -525,7 +502,6 @@ void glue(helper_pshufw, SUFFIX) (Reg *d, Reg *s, int order)
     r.W(3) = s->W((order >> 6) & 3);
     *d = r;
 }
-#endif
 
 #else
 void helper_shufps(Reg *d, Reg *s, int order)
@@ -546,7 +522,6 @@ void helper_shufpd(Reg *d, Reg *s, int order)
     *d = r;
 }
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
 {
     Reg r;
@@ -556,7 +531,6 @@ void glue(helper_pshufd, SUFFIX) (Reg *d, Reg *s, int order)
     r.L(3) = s->L((order >> 6) & 3);
     *d = r;
 }
-#endif
 
 void glue(helper_pshuflw, SUFFIX) (Reg *d, Reg *s, int order)
 {
@@ -1044,7 +1018,6 @@ uint32_t helper_movmskpd(Reg *s)
 
 #endif
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 uint32_t glue(helper_pmovmskb, SUFFIX)(Reg *s)
 {
     uint32_t val;
@@ -1069,7 +1042,6 @@ uint32_t glue(helper_pmovmskb, SUFFIX)(Reg *s)
 #endif
     return val;
 }
-#endif
 
 void glue(helper_packsswb, SUFFIX) (Reg *d, Reg *s)
 {
@@ -1212,9 +1184,7 @@ void glue(helper_punpck ## base_name ## qdq, SUFFIX) (Reg *d, Reg *s)  \
 }                                                               \
 )
 
-#if !defined(CONFIG_LLVM_INSTR_HELPERS)
 UNPCK_OP(l, 0)
-#endif
 
 UNPCK_OP(h, 1)
 
