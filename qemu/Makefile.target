@@ -14,6 +14,7 @@ include $(HWDIR)/config.mak
 endif
 include ../config.replay
 include ../panda_plugins/config.panda
+include ../panda_tools/config.panda
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)
@@ -41,6 +42,9 @@ endif
 
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+TOOL_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
+TOOL_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
 PROGS=$(QEMU_PROG) $(RR_PRINT_PROG)
 STPFILES=
@@ -74,7 +78,7 @@ endif
 
 
 
-all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap
+all: $(PROGS) $(PLUGIN_SUBDIR_RULES) $(TOOL_SUBDIR_RULES) stap
 
 # Dummy command so that make thinks it has done something
 	@true
@@ -83,6 +87,7 @@ all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap
 # cpu emulator library
 tcg/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
 panda/panda_dynval_inst.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS) 
+panda/panda_helper_call_morph.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS) 
 libobj-y = exec.o translate-all.o cpu-exec.o translate.o
 libobj-y += rr_log.o
 libobj-y += panda_plugin.o
@@ -93,6 +98,8 @@ libobj-y += panda/my_mem.o panda/shad_dir_32.o
 libobj-y += panda/shad_dir_64.o
 libobj-y += panda/taint_processor.o
 libobj-$(CONFIG_LLVM) += panda/panda_dynval_inst.o
+libobj-$(CONFIG_LLVM) += panda/panda_helper_call_morph.o
+libobj-y += panda/panda_externals.o
 libobj-y += tcg/tcg.o tcg/optimize.o
 libobj-$(CONFIG_LLVM) += tcg/tcg-llvm.o
 libobj-$(CONFIG_TCG_INTERPRETER) += tci.o
@@ -163,7 +170,6 @@ $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y): $(GENERATED_HEADERS)
 
 obj-y += $(addprefix ../libuser/, $(user-obj-y))
 obj-y += $(addprefix ../libdis-user/, $(libdis-y))
-obj-y += $(llvminstobj-y)
 obj-y += $(libobj-y)
 
 endif #CONFIG_LINUX_USER
@@ -430,7 +436,6 @@ obj-y += $(addprefix ../libdis/, $(libdis-y))
 obj-y += $(libobj-y)
 obj-y += $(addprefix $(HWDIR)/, $(hw-obj-y))
 obj-y += $(addprefix ../, $(trace-obj-y))
-obj-y += $(llvminstobj-y)
 
 endif # CONFIG_SOFTMMU
 
@@ -439,54 +444,48 @@ ifdef CONFIG_LLVM
 #########################################################
 # LLVM library
 
-# regular bitcode -- always generate
+# regular bitcode
 llvm-y =
 
-# instrumented bitcode
-llvminst-y =
-
-# compiled bitcode
-llvminstobj-y =
+# morphed bitcode - morph call instructions and function names after bitcode is
+# linked together to make helper bitcode available for use by PANDA plugins
+llvmmorph-y =
 
 ifeq ($(TARGET_ARCH), i386)
-llvm-y += op_helper.bc1 cpuid.bc1 laredo_op_helper.bc1
-
-ifdef CONFIG_LLVM_INSTR_HELPERS
-llvminst-y += laredo_op_helper.bc
-llvminstobj-y += laredo_op_helper.o
-endif
+llvm-y += op_helper.bc2 cpuid.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
+llvmmorph-y += llvm-helpers.bc
 
 endif
 
 ifeq ($(TARGET_ARCH), x86_64)
-llvm-y += op_helper.bc1 cpuid.bc1 laredo_op_helper.bc1
-
-ifdef CONFIG_LLVM_INSTR_HELPERS
-llvminst-y += laredo_op_helper.bc
-llvminstobj-y += laredo_op_helper.o
-endif
+llvm-y += op_helper.bc2 cpuid.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
+llvmmorph-y += llvm-helpers.bc
 
 endif
 
 ifeq ($(TARGET_ARCH), arm)
-llvm-y += op_helper.bc1 laredo_op_helper.bc1
-
-ifdef CONFIG_LLVM_INSTR_HELPERS
-llvminst-y += laredo_op_helper.bc
-llvminstobj-y += laredo_op_helper.o
-endif
+llvm-y += op_helper.bc2
+llvmmorph-y += llvm-helpers.bc
 
 endif
 
-$(llvm-y): %.bc1: %.c $(GENERATED_HEADERS)
+$(llvm-y): %.bc2: %.c $(GENERATED_HEADERS)
 
-$(llvminst-y): %.bc: %.bc1
+llvm-helpers.bc1: $(llvm-y)
+	$(call quiet-command,$(LLVM_LINK) -o $@ $^,"  LLVM_LINK    $(TARGET_DIR)$@")
 
-$(llvminstobj-y): %.o: %.bc
+# Make explicit the fact that we need the tool present to do the morphing
+# This weird dependency ensures that make realizes the right times to run the
+# code morph
+panda_tools/helper_call_modifier: tool-helper_call_modifier $(libobj-y)
+$(llvmmorph-y): panda_tools/helper_call_modifier $(libobj-y)
 
-all: $(llvminstobj-y) $(llvminst-y) $(llvm-y)
+$(llvmmorph-y): %.bc: %.bc1
 
-endif
+# add this to the all target
+all: $(llvmmorph-y)
+
+endif # CONFIG_LLVM
 
 ifndef CONFIG_LINUX_USER
 ifndef CONFIG_BSD_USER
@@ -504,8 +503,11 @@ $(QEMU_PROG): $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y)
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
-plugin-%:
+plugin-%: $(libobj-y)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C ../panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
+
+tool-%: $(libobj-y)
+	$(call quiet-command,$(MAKE) $(TOOL_SUBDIR_MAKEFLAGS) -C ../panda_tools/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
@@ -519,8 +521,10 @@ qmp-commands-old.h: $(SRC_PATH)/qmp-commands.hx
 
 clean:
 	rm -f *.o *.a *~ $(PROGS) nwfpe/*.o fpu/*.o
-	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o panda/*.o *.bc1 *.bc
+	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o panda/*.o *.bc *.bc1 *.bc2
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
+	rm -f panda_plugins/* panda_tools/*
+
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp
 endif

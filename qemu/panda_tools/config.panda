@@ -1,0 +1,2 @@
+PANDA_TOOLS = bitcode_callgraph helper_call_modifier
+
