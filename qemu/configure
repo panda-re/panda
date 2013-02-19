@@ -722,10 +722,6 @@ for opt do
   ;;
   --with-llvm=*) llvmdir="$optarg"
   ;;
-  --enable-instr-helpers) llvm_instr_helpers="yes"
-  ;;
-  --with-laredo=*) laredodir="$optarg"
-  ;;
   --disable-kvm) kvm="no"
   ;;
   --enable-kvm) kvm="yes"
@@ -1091,8 +1087,6 @@ echo "  --enable-bluez           enable bluez stack connectivity"
 echo "  --disable-slirp          disable SLIRP userspace network connectivity"
 echo "  --enable-llvm            enable LLVM support (for all targets)"
 echo "  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
-echo "  --enable-instr-helpers   enable helpers instrumented with LLVM"
-echo "  --with-laredo=PATH       Laredo path (PATH/bin/ binaries must exist)"
 echo "  --disable-kvm            disable KVM acceleration support"
 echo "  --enable-kvm             enable KVM acceleration support"
 echo "  --enable-tcg-interpreter enable TCG with bytecode interpreter (TCI)"
@@ -2261,16 +2255,14 @@ if test "$llvm" != "no" ; then
     feature_not_found "clang (required to be built with LLVM)"
     exit 1
   fi
-fi
 
-if test "$llvm" != "no" -a "$llvm_instr_helpers" != "no"; then
-  if [ -e "$laredodir/bin/laredo-helper-analyzer" ] ; then
-        laredo_helper_analyzer=`cd $laredodir/bin/ && find \`pwd\` -name laredo-helper-analyzer`
+  if [ -e "$llvmdir/bin/llvm-link" ] ; then
+        llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
   fi
-  if [ -x "$laredo_helper_analyzer" ]; then
-    : laredo_helper_analyzer found
+  if [ -x "$llvm_link" ]; then
+    : llvm_link found
   else
-    feature_not_found "laredo-helper-analyzer (required for helper instrumentation)"
+    feature_not_found "llvm-link (required to be built with LLVM)"
     exit 1
   fi
 fi
@@ -3279,14 +3271,10 @@ if test "$llvm" = "yes" ; then
   fi
 
   echo "LLVMCC:=$clang" >> $config_host_mak
+  echo "LLVM_LINK:=$llvm_link" >> $config_host_mak
   echo "CONFIG_LLVM=y" >> $config_host_mak
   echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
   echo "LLVMDIR=$llvmdir" >> $config_host_mak
-
-  if test "$llvm_instr_helpers" = "yes" ; then
-    echo "LAREDOCC:=$laredo_helper_analyzer" >> $config_host_mak
-    echo "CONFIG_LLVM_INSTR_HELPERS=y" >> $config_host_mak
-  fi
 fi
 
 if test "$xen" = "yes" ; then
@@ -3545,6 +3533,8 @@ mkdir -p $target_dir/ide
 mkdir -p $target_dir/9pfs
 mkdir -p $target_dir/panda
 mkdir -p $target_dir/panda_plugins
+mkdir -p $target_dir/panda_tools
+
 if test "$target" = "arm-linux-user" -o "$target" = "armeb-linux-user" -o "$target" = "arm-bsd-user" -o "$target" = "armeb-bsd-user" ; then
   mkdir -p $target_dir/nwfpe
 fi
@@ -3973,6 +3963,10 @@ fi
 echo "LDFLAGS+=$ldflags" >> $config_target_mak
 echo "QEMU_CFLAGS+=$cflags" >> $config_target_mak
 echo "QEMU_INCLUDES+=$includes" >> $config_target_mak
+
+if test "$llvm" = "yes" ; then
+  echo "LLVM_HELPER_MORPH:=$source_path/$target_dir/panda_tools/helper_call_modifier" >> $config_target_mak
+fi
 
 done # for target in $targets
 

@@ -316,7 +316,6 @@ void HELPER(set_user_reg)(uint32_t regno, uint32_t val)
    The only way to do that in TCG is a conditional branch, which clobbers
    all our temporaries.  For now implement these as helper functions.  */
 
-#ifndef CONFIG_LLVM_INSTR_HELPERS
 uint32_t HELPER (add_cc)(uint32_t a, uint32_t b)
 {
     uint32_t result;
@@ -326,7 +325,6 @@ uint32_t HELPER (add_cc)(uint32_t a, uint32_t b)
     env->VF = (a ^ b ^ -1) & (a ^ result);
     return result;
 }
-#endif
 
 uint32_t HELPER(adc_cc)(uint32_t a, uint32_t b)
 {
@@ -343,7 +341,6 @@ uint32_t HELPER(adc_cc)(uint32_t a, uint32_t b)
     return result;
 }
 
-#ifndef CONFIG_LLVM_INSTR_HELPERS
 uint32_t HELPER(sub_cc)(uint32_t a, uint32_t b)
 {
     uint32_t result;
@@ -353,7 +350,6 @@ uint32_t HELPER(sub_cc)(uint32_t a, uint32_t b)
     env->VF = (a ^ b) & (a ^ result);
     return result;
 }
-#endif
 
 uint32_t HELPER(sbc_cc)(uint32_t a, uint32_t b)
 {
@@ -372,7 +368,6 @@ uint32_t HELPER(sbc_cc)(uint32_t a, uint32_t b)
 
 /* Similarly for variable shift instructions.  */
 
-#ifndef CONFIG_LLVM_INSTR_HELPERS
 uint32_t HELPER(shl)(uint32_t x, uint32_t i)
 {
     int shift = i & 0xff;
@@ -388,7 +383,6 @@ uint32_t HELPER(shr)(uint32_t x, uint32_t i)
         return 0;
     return (uint32_t)x >> shift;
 }
-#endif
 
 uint32_t HELPER(sar)(uint32_t x, uint32_t i)
 {
