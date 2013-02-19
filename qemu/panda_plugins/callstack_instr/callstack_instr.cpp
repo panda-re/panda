@@ -11,15 +11,23 @@ extern "C" {
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
 
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
 bool init_plugin(void *);
 void uninit_plugin(void *);
+
 }
 
 #include <stdio.h>
 #include <stdlib.h>
 
-// This is where we'll write out the syscall data
-FILE *plugin_log;
+#include <unordered_map>
+#include <vector>
+std::unordered_map<target_ulong, std::vector<target_ulong>> callstacks;
+#include <algorithm>
+
+unsigned long misses;
+unsigned long total;
 
 enum instr_type {
   INSTR_UNKNOWN = 0,
@@ -32,6 +40,33 @@ enum instr_type {
   INSTR_INT,
   INSTR_IRET,
 };
+
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf) {
+#ifdef TARGET_I386
+    total += 1;
+    std::vector<target_ulong> &v = callstacks[env->cr[3]];
+
+    // Don't try to do this until we have some callstack info
+    if (v.empty()) return 1;
+
+    // stackwalk caller
+    target_ulong sw_caller = 0;
+    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&sw_caller, 4, 0);
+
+    // shadow stack caller
+    target_ulong ss_caller = callstacks[env->cr[3]].back();
+
+    // Slight mismatch between 
+    int diff = ss_caller - sw_caller;
+    if (diff > 10 || diff < -10) {
+        //printf("Caller discrepancy: Stackwalk: " TARGET_FMT_lx " Shadow stack: " TARGET_FMT_lx "\n",
+        //    sw_caller, ss_caller);
+        misses += 1;
+    }
+#endif
+    return 1;
+}
 
 instr_type disas_instr(CPUState* env, target_ulong pc){
     unsigned char buf;
@@ -80,14 +115,6 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 #endif
 }
 
-#include <stack>
-#include <unordered_map>
-//std::map<target_ulong, std::stack<target_ulong>> callstacks;
-// Stacks don't let us read their contents
-#include <vector>
-std::unordered_map<target_ulong, std::vector<target_ulong>> callstacks;
-#include <algorithm>
-
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
@@ -99,8 +126,6 @@ int exec_callback(CPUState *env, target_ulong pc) {
       std::vector<target_ulong> &v = callstacks[env->cr[3]];
       if (!v.empty()) callstacks[env->cr[3]].pop_back();
     }
-    // On Windows, the system call id is in EAX
-    //fprintf(plugin_log, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
 #endif
     return 0;
 }
@@ -111,14 +136,20 @@ bool init_plugin(void *self) {
 #ifdef TARGET_I386
     panda_cb pcb;
 
+    panda_enable_memcb();
+    panda_enable_precise_pc();
+
     pcb.insn_translate = translate_callback;
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
+    pcb.virt_mem_write = mem_write_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 #endif
 
     return true;
 }
 
 void uninit_plugin(void *self) {
+    printf("Misses: %lu Total: %lu\n", misses, total); 
 }
