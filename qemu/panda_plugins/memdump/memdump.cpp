@@ -67,8 +67,9 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
     
     //fseek(log, tracker[p].off, SEEK_SET);
     //fwrite((unsigned char *)buf, size, 1, log);
-    memcpy(log+tracker[p].off, buf, size);
-    tracker[p].off += size;
+    fpos &fp = tracker[p];
+    memcpy(log+fp.off, buf, size);
+    fp.off += size;
 
     return 1;
 }

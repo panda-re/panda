@@ -68,20 +68,23 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         p.cr3 = env->cr[3];
 #endif
     p.pc = pc;
+
+    text_counter &tc = text_tracker[p];    
+
     for (unsigned int i = 0; i < size; i++) {
         unsigned char val = ((unsigned char *)buf)[i];
         //fprintf(text_memlog, TARGET_FMT_lx "." TARGET_FMT_lx " " TARGET_FMT_lx " %02x\n" , p.pc, p.caller, addr+i, val);
-        if (!text_tracker[p].started) {
-            text_tracker[p].prev_char = val;
-            text_tracker[p].started = true;
+        if (!tc.started) {
+            tc.prev_char = val;
+            tc.started = true;
         } 
         else {
             unsigned short bigram;
-            bigram = (text_tracker[p].prev_char << 8) | val;
-            text_tracker[p].hist[bigram]++;
-            text_tracker[p].prev_char = val;
+            bigram = (tc.prev_char << 8) | val;
+            tc.hist[bigram]++;
+            tc.prev_char = val;
         }
-        text_tracker[p].num_bytes++;
+        tc.num_bytes++;
     }
  
     return 1;
