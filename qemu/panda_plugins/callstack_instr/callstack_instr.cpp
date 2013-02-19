@@ -1,17 +1,22 @@
+#define __STDC_FORMAT_MACROS
+
+extern "C" {
+
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"
 
 #include "panda_plugin.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+}
+
+#include <stdio.h>
+#include <stdlib.h>
 
 // This is where we'll write out the syscall data
 FILE *plugin_log;
@@ -30,13 +35,13 @@ enum instr_type {
 
 instr_type disas_instr(CPUState* env, target_ulong pc){
     unsigned char buf;
-    panda_virtual_memory_rw(env, pc, buf, 1, 0);
+    panda_virtual_memory_rw(env, pc, &buf, 1, 0);
     // one byte
     if (buf == 0xFF || buf == 0xE8 || buf == 0x9A){ //call
       return INSTR_CALL;
     } else if (buf == 0xCF) {// iret
       return INSTR_IRET;
-    } else if (buf == 0xCA && buf == 0xCB || buf == 0xC2 || buf == 0xC3) {// ret
+    } else if (buf == 0xCA || buf == 0xCB || buf == 0xC2 || buf == 0xC3) {// ret
       return INSTR_RET;
     } else if (buf == 0xCC || buf == 0xCD || buf == 0xF1 || buf == 0xCE) {// int
       return INSTR_INT;
@@ -67,9 +72,8 @@ bool translate_callback(CPUState *env, target_ulong pc) {
   */
   
   /* if we're in THUMB mode, check for bl, etc */
-
+    return false;
 #elif defined(TARGET_I386)
-		  
     if(disas_instr(env, pc)!= INSTR_UNKNOWN)
         return true;
     return false;
@@ -92,7 +96,8 @@ int exec_callback(CPUState *env, target_ulong pc) {
     if (instr == INSTR_SYSRET || instr == INSTR_RET || instr == INSTR_IRET || instr == INSTR_SYSEXIT){
       callstacks[env->cr[3]].push_back(pc);
     }else if (instr == INSTR_SYSCALL || instr == INSTR_CALL || instr == INSTR_INT || instr == INSTR_SYSENTER){
-      callstacks[env->cr[3]].pop_back();
+      std::vector<target_ulong> &v = callstacks[env->cr[3]];
+      if (!v.empty()) callstacks[env->cr[3]].pop_back();
     }
     // On Windows, the system call id is in EAX
     //fprintf(plugin_log, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
@@ -101,6 +106,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
 }
 
 bool init_plugin(void *self) {
+    printf("Initializing plugin callstack_instr\n");
 // Don't bother if we're not on x86
 #ifdef TARGET_I386
     panda_cb pcb;
