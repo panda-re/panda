@@ -41,6 +41,9 @@ bool PandaCallMorphFunctionPass::runOnFunction(Function &F){
 
 void PandaHelperCallVisitor::visitCallInst(CallInst &I){
     assert(I.getCalledFunction());
+    if (I.getCalledFunction()->isIntrinsic()){
+        return; // Ignore intrinsics
+    }
     Module *m = I.getParent()->getParent()->getParent();
     assert(m);
     std::string origName = I.getCalledFunction()->getNameStr();

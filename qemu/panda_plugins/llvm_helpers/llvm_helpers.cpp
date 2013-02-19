@@ -43,7 +43,14 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    char bitcode[] = "x86_64-linux-user/llvm-helpers.bc";
+    // XXX: Assumes you are invoking QEMU from the root of the qemu/ directory
+    std::string bitcode = TARGET_ARCH;
+#if defined(CONFIG_SOFTMMU)
+    bitcode.append("-softmmu");
+#elif defined(CONFIG_LINUX_USER)
+    bitcode.append("-linux-user");
+#endif
+    bitcode.append("/llvm-helpers.bc");
     SMDiagnostic Err;
     Module *helpermod = ParseIRFile(bitcode, Err, ctx);
     if (!helpermod) {

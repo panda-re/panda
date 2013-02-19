@@ -452,19 +452,19 @@ llvm-y =
 llvmmorph-y =
 
 ifeq ($(TARGET_ARCH), i386)
-llvm-y += op_helper.bc2 cpuid.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
+llvm-y += op_helper.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
 llvmmorph-y += llvm-helpers.bc
 
 endif
 
 ifeq ($(TARGET_ARCH), x86_64)
-llvm-y += op_helper.bc2 cpuid.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
+llvm-y += op_helper.bc2 fpu/softfloat.bc2 helper.bc2 host-utils.bc2
 llvmmorph-y += llvm-helpers.bc
 
 endif
 
 ifeq ($(TARGET_ARCH), arm)
-llvm-y += op_helper.bc2
+llvm-y += op_helper.bc2 helper.bc2 neon_helper.bc2 fpu/softfloat.bc2
 llvmmorph-y += llvm-helpers.bc
 
 endif
