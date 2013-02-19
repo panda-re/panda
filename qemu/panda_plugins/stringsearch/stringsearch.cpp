@@ -76,7 +76,6 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
     else
         table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
 
-    table |= (address >> 18) & 0x3ffc;
     return table;
 }
 #endif

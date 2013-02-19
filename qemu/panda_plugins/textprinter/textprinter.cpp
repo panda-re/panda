@@ -49,14 +49,38 @@ struct prog_point {
 std::set<prog_point> tap_points;
 FILE *tap_buffers;
 
+#ifdef TARGET_ARM
+// ARM: stolen from target-arm/helper.c
+static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
+{   
+    uint32_t table;
+
+    if (address & env->cp15.c2_mask)
+        table = env->cp15.c2_base1 & 0xffffc000;
+    else
+        table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
+
+    return table;
+}
+#endif
+
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     prog_point p = {};
+
+    // Caller
 #ifdef TARGET_I386
     panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+#endif
+
+    // ASID
+#if defined(TARGET_I386)
     if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
         p.cr3 = env->cr[3];
+#elif defined(TARGET_ARM)
+    p.cr3 = arm_get_vaddr_table(env, addr);
 #endif
+
     p.pc = pc;
 
     // XXX disable CR3 check
