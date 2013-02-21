@@ -8,8 +8,8 @@ PLUGIN_NAME=callstack_instr
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-QEMU_CFLAGS+=-std=c++11
-# LIBS+=
+QEMU_CFLAGS+=-std=c++11 -g
+LIBS+=-ldistorm3
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
