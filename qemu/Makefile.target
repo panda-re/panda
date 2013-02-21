@@ -408,7 +408,13 @@ obj-arm-y += ../android/adb-qemud.o ../android/console.o ../shaper.o
 obj-arm-y += ../android/hw-qemud.o
 obj-arm-y += ../charpipe.o ../cbuffer.o
 obj-arm-y += ../android/net.o
-obj-arm-y += ../android/keycode-translator.o
+obj-arm-y += ../android/keycode-translator.o ../android/boot-properties.o
+obj-arm-y += ../telephony/android_modem.o ../telephony/sms.o ../telephony/gsm.o ../telephony/sim_card.o ../telephony/sysdeps_qemu.o ../telephony/remote_call.o
+obj-arm-y += ../android/utils/bufprint.o
+obj-arm-y += ../telephony/modem_driver.o
+obj-arm-y += ../android/gps.o
+obj-arm-y += ../android/camera/camera-service.o ../android/camera/camera-capture-linux.o ../android/camera/camera-format-converters.o
+
 
 obj-sh4-y = shix.o r2d.o sh7750.o sh7750_regnames.o tc58128.o
 obj-sh4-y += sh_timer.o sh_serial.o sh_intc.o sh_pci.o sm501.o

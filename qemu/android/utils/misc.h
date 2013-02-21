@@ -64,4 +64,61 @@ extern int    hex2int( const uint8_t*  hex, int  len );
 /* encodes an integer 'val' into 'len' hexadecimal charaters into 'hex' */
 extern void   int2hex( uint8_t*  hex, int  len, int  val );
 
+/** STRING PARAMETER PARSING
+ **/
+
+/* A strict 'int' version of the 'strtol'.
+ * This routine is implemented on top of the standard 'strtol' for 32/64 bit
+ * portability.
+ */
+extern int strtoi(const char *nptr, char **endptr, int base);
+
+/* Gets a parameter value out of the parameter string.
+ * Parameter format for this routine is as such:
+ *      "<name1>=<value1> <name2>=<value2> ... <nameN>=<valueN>"
+ * I.e.:
+ *  - Every parameter must have a name, and a value.
+ *  - Name and value must be separated with '='.
+ *  - No spaces are allowed around '=' separating name and value.
+ *  - Parameters must be separated with a single ' ' character.
+ *  - No '=' character is allowed in name and in value.
+ * Param:
+ *  params - String, containing the parameters.
+ *  name - Parameter name.
+ *  value - Upon success contains value for the given parameter.
+ *  val_size - Size of the 'value' string buffer.
+ * Return:
+ *  0 on success, -1 if requested parameter is not found, or (a positive) number
+ *  of bytes, required to make a copy of the parameter's value if 'value' string
+ *  was too small to contain it.
+ */
+extern int get_token_value(const char* params, const char* name, char* value, int val_size);
+
+/* Gets a parameter value out of the parameter string.
+ * This routine is similar to get_token_value, except it will always allocate
+ * a string buffer for the value.
+ * Param:
+ *  params - String, containing the parameters.
+ *  name - Parameter name.
+ *  value - Upon success contains an allocated string containint the value for
+ *      the given parameter. The caller is responsible for freeing the buffer
+ *      returned in this parameter on success.
+ * Return:
+ *  0 on success, -1 if requested parameter is not found, or -2 on
+ *  memory failure.
+ */
+extern int get_token_value_alloc(const char* params, const char* name, char** value);
+
+/* Gets an integer parameter value out of the parameter string.
+ * Param:
+ *  params - String, containing the parameters. See comments to get_token_value
+ *      routine on the parameters format.
+ *  name - Parameter name. Parameter value must be a decimal number.
+ *  value - Upon success contains integer value for the given parameter.
+ * Return:
+ *  0 on success, or -1 if requested parameter is not found, or -2 if parameter's
+ *  format was bad (i.e. value was not a decimal number).
+ */
+extern int get_token_value_int(const char* params, const char* name, int* value);
+
 #endif /* _ANDROID_UTILS_MISC_H */

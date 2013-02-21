@@ -13,7 +13,7 @@
 #include "libslirp.h"
 #include "qemu-common.h"
 #include "sysemu.h"
-//#include "modem_driver.h"
+#include "telephony/modem_driver.h"
 //#include "proxy_http.h"
 #include "sockets.h"
 
@@ -264,13 +264,15 @@ void  android_emulation_setup( void )
 
             /* setup first redirection for ADB, the Android Debug Bridge */
             {
-                if (adb_server_init(base_port+1))
+	        // Don't try to connect to 5555, let the QEMU port forwarding do it
+                if (0)//adb_server_init(base_port+1))
                     continue;
                 android_adb_service_init();
             }
 
             /* setup second redirection for the emulator console */
             if ( control_console_start( base_port ) < 0 ) {
+                D("control console failed");
             }
 
             D( "control console listening on port %d, ADB on port %d", base_port, base_port+1 );
@@ -284,7 +286,7 @@ void  android_emulation_setup( void )
         }
     }
 
-    //android_modem_init( base_port );
+    android_modem_init( base_port );
 
     /* Save base port. */
     android_base_port = base_port;

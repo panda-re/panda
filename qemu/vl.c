@@ -179,6 +179,11 @@ int main(int argc, char **argv)
 #include "cpus.h"
 #include "arch_init.h"
 
+
+#include "android/boot-properties.h"
+#include "android/camera/camera-service.h"
+#include "android/gps.h"
+
 #ifdef CONFIG_LLVM
 struct TCGLLVMContext;
 
@@ -2311,6 +2316,13 @@ int main(int argc, char **argv, char **envp)
     nb_nics = 0;
 
     autostart= 1;
+
+    boot_property_init_service();
+    boot_property_add("dalvik.vm.heapsize","48m");
+
+    android_qemud_get_channel( "gps", &android_gps_cs );
+    boot_property_add("qemu.sf.fake_camera", "both");
+    android_camera_service_init();
 
     /* first pass of option parsing */
     optind = 1;

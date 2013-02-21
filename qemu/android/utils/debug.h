@@ -20,6 +20,7 @@
     _VERBOSE_TAG(modem,        "emulated GSM modem")  \
     _VERBOSE_TAG(radio,        "emulated GSM AT Command channel") \
     _VERBOSE_TAG(keys,         "key bindings & presses") \
+    _VERBOSE_TAG(camera,         "camera bindings & presses") \
     _VERBOSE_TAG(slirp,        "internal router/firewall") \
     _VERBOSE_TAG(timezone,     "host timezone detection" ) \
     _VERBOSE_TAG(socket,       "network sockets") \

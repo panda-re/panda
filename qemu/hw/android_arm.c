@@ -23,6 +23,8 @@
 #endif  // CONFIG_MEMCHECK
 #include "android/android.h"
 
+#include "android/boot-properties.h"
+
 /* Board init.  */
 
 static struct arm_boot_info info = {

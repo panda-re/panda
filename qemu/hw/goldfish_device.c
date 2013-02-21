@@ -304,6 +304,8 @@ device_init(goldfish_register_devices)
 #  include <sys/stat.h>
 #endif
 
+#if defined(USE_GOLDFISH_BUFFERS)
+
 /** FORMATTED BUFFER PRINTING
  **
  **  bufprint() allows your to easily and safely append formatted string
@@ -546,6 +548,7 @@ bufprint_temp_file(char*  buff, char*  end, const char*  suffix)
     p = bufprint(p, end, PATH_SEP "%s", suffix);
     return p;
 }
+#endif
 
 /* Tempfile support */
 struct TempFile

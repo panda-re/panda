@@ -48,13 +48,13 @@
 static void
 xlog( const char*  format, ... )
 {
-    /*
+    
     va_list  args;
     va_start(args, format);
     fprintf(stderr, "NAND: ");
     vfprintf(stderr, format, args);
     va_end(args);
-    */
+    
 }
 
 /* Information on a single device/nand image used by the emulator
@@ -643,15 +643,18 @@ void nand_add_dev(const char *arg)
     }
 
     if(initfilename) {
+        uint64_t dev_bigger; 
         initfd = open(initfilename, O_BINARY | O_RDONLY);
         if(initfd < 0) {
             XLOG("could not open file %s, %s\n", initfilename, strerror(errno));
             exit(1);
         }
-        if(dev_size == 0) {
-            D("calculating dev_size from lseek\n");
-            dev_size = do_lseek(initfd, 0, SEEK_END);
-            do_lseek(initfd, 0, SEEK_SET);
+        //if(dev_size == 0) {
+        D("calculating dev_size from lseek of %s\n", initfilename);
+        dev_bigger = do_lseek(initfd, 0, SEEK_END);
+        do_lseek(initfd, 0, SEEK_SET);
+        if (dev_bigger > dev_size){
+            dev_size = dev_bigger;
         }
     }
 
@@ -758,7 +761,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             PANIC("Invalid data partition size: %jd", dataBytes);
         }
 
-        snprintf(tmp,sizeof(tmp),"userdata");
+        snprintf(tmp,sizeof(tmp),"userdata,size=0x%jx", dataBytes);
 
         if (dataImage && *dataImage) {
             if (filelock_create(dataImage) == NULL) {
@@ -833,7 +836,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),
-        DEFINE_PROP_UINT32("size", GoldfishDevice, size, 0xfff),
+        DEFINE_PROP_UINT32("size", GoldfishDevice, size, 0x1000),
         DEFINE_PROP_UINT32("irq", GoldfishDevice, irq, 0),
         DEFINE_PROP_UINT32("irq_count", GoldfishDevice, irq_count, 1),
         DEFINE_PROP_STRING("name", GoldfishDevice, name),
@@ -842,7 +845,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_UINT64("system_size", GoldfishNandDevice, system_size, 0x7100000),
         DEFINE_PROP_STRING("user_data_path", GoldfishNandDevice, user_data_path),
         DEFINE_PROP_STRING("user_data_init_path", GoldfishNandDevice, user_data_init_path),
-        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x4200000),
+        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x5000000),
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
         DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
         DEFINE_PROP_END_OF_LIST(),
