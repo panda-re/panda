@@ -101,6 +101,8 @@ static TCGv_i64 cpu_F0d, cpu_F1d;
 
 #include "gen-icount.h"
 
+#include "panda_plugin.h"
+
 static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
@@ -9989,6 +9991,18 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
 #endif
             tcg_gen_debug_insn_start(dc->pc);
+        }
+
+        // PANDA: ask if anyone wants execution notification
+        bool panda_exec_cb = false;
+        panda_cb_list *plist;
+        for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = plist->next) {
+            panda_exec_cb |= plist->entry.insn_translate(env, dc->pc);
+        }
+
+        // PANDA: Insert the instrumentation
+        if (unlikely(panda_exec_cb)) {
+            gen_helper_panda_insn_exec(tcg_const_tl(dc->pc));
         }
 
         if (dc->thumb) {

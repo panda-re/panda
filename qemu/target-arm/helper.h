@@ -1,5 +1,7 @@
 #include "def-helper.h"
 
+#include "panda_helper_defs.h"
+
 DEF_HELPER_1(clz, i32, i32)
 DEF_HELPER_1(sxtb16, i32, i32)
 DEF_HELPER_1(uxtb16, i32, i32)

@@ -20,12 +20,16 @@
 #include "dyngen-exec.h"
 #include "helper.h"
 
+#include "panda_plugin.h"
+
 #define SIGNBIT (uint32_t)0x80000000
 #define SIGNBIT64 ((uint64_t)1 << 63)
 
 #ifdef CONFIG_LLVM
 struct CPUARMState *env = 0;
 #endif
+
+#include "panda_helper_impl.h"
 
 #if !defined(CONFIG_USER_ONLY)
 static void raise_exception(int tt)
