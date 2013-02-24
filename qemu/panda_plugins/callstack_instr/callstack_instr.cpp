@@ -24,6 +24,11 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+// Public interface
+// Get up to n callers from the given address space at this moment
+// Callers are returned in callers[], most recent first
+int get_callers(target_ulong callers[], int n, target_ulong asid);
+
 }
 
 #include <stdio.h>
@@ -75,7 +80,6 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 #endif
 
 static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
-    return 0;
 #if defined(TARGET_I386)
     return env->cr[3];
 #elif defined(TARGET_ARM)
@@ -167,6 +171,13 @@ instr_type disas_block(CPUState* env, target_ulong pc, int size) {
             res = INSTR_CALL;
             goto done;
         }
+        else if (cur_instr[3] == 0xe1 &&
+                 cur_instr[2] == 0xa0 &&
+                 cur_instr[1] == 0xe0 &&
+                 cur_instr[0] == 0x0f) { // mov lr, pc
+            res = INSTR_CALL;
+            goto done;
+        }
         else
             continue;
     }
@@ -189,7 +200,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (v.empty()) return 1;
 
     // Search up to 10 down
-    for (int i = v.size()-1; i > (v.size()-10) && i >= 0; i--) {
+    for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
         if (tb->pc == v[i].pc) {
             //printf("Matched at depth %d\n", v.size()-i);
             v.erase(v.begin()+i, v.end());
@@ -219,6 +230,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
     instr_type tb_type = call_cache[tb->pc];
+
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
         callstacks[get_asid(env,tb->pc)].push_back(se);
@@ -231,10 +243,20 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
     return 1;
 }
 
+// Public interface implementation
+int get_callers(target_ulong callers[], int n, target_ulong asid) {
+    std::vector<stack_entry> &v = callstacks[asid];
+    auto rit = v.rbegin();
+    int i = 0;
+    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
+        callers[i] = rit->pc;
+    }
+    return i;
+}
+
 bool init_plugin(void *self) {
     printf("Initializing plugin callstack_instr\n");
 
-#if defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
 
     panda_enable_memcb();
@@ -249,7 +271,6 @@ bool init_plugin(void *self) {
     
     //pcb.virt_mem_write = mem_write_callback;
     //panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-#endif
 
     return true;
 }
