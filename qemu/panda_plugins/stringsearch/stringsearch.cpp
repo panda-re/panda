@@ -14,6 +14,7 @@ extern "C" {
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -34,6 +35,9 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+typedef int (* get_callers_t)(target_ulong callers[], int n, target_ulong asid);
+get_callers_t get_callers;
 
 }
 
@@ -85,27 +89,30 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        std::map<prog_point,string_pos> &text_tracker) {
     prog_point p = {};
 
-    // Try to get the caller
-//#if defined(TARGET_I386)
-//#ifdef TARGET_X86_64 // In 64-bit mode we can't use EBP+4 for this.
-//    if (!env->hflags & HF_LMA_MASK)
-//#endif
-//        panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-//#elif defined(TARGET_ARM)
-//    p.caller = env->regs[14];
-//#endif
-
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-#endif
 
     // Get address space identifier
+    target_ulong asid;
 #if defined(TARGET_I386)
+    asid = env->cr[3];
     if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
+        p.cr3 = asid;
 #elif defined(TARGET_ARM)
-    p.cr3 = arm_get_vaddr_table(env, addr);
+    asid = arm_get_vaddr_table(env, addr);
+    if((env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC)
+        p.cr3 = asid;
 #endif
+
+    // Try to get the caller
+    int n_callers = 0;
+    n_callers = get_callers(&p.caller, 1, asid);
+
+    if (n_callers == 0) {
+#ifdef TARGET_I386
+        // fall back to EBP on x86
+        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p.caller, word_size, 0);
+#endif
+    }
 
     p.pc = pc;
 
@@ -148,16 +155,6 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin stringsearch\n");
 
-    // Need this to get EIP with our callbacks
-    panda_enable_precise_pc();
-    // Enable memory logging
-    panda_enable_memcb();
-
-    pcb.virt_mem_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-    pcb.virt_mem_read = mem_read_callback;
-    //panda_register_callback(self, PANDA_CB_MEM_READ, pcb);
-
     std::ifstream search_strings("search_strings.txt");
     if (!search_strings) {
         printf("Couldn't open search_strings.txt; no strings to search for. Exiting.\n");
@@ -188,7 +185,32 @@ bool init_plugin(void *self) {
             break;
         }
     }
-    
+
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
+
+    // Need this to get EIP with our callbacks
+    panda_enable_precise_pc();
+    // Enable memory logging
+    panda_enable_memcb();
+
+    pcb.virt_mem_write = mem_write_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+    pcb.virt_mem_read = mem_read_callback;
+    //panda_register_callback(self, PANDA_CB_MEM_READ, pcb);
+
+
     return true;
 }
 

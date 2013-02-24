@@ -14,6 +14,7 @@ extern "C" {
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -29,6 +30,9 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+typedef int (* get_callers_t)(target_ulong callers[], int n, target_ulong asid);
+get_callers_t get_callers;
 
 }
 
@@ -68,24 +72,31 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     prog_point p = {};
 
-    // Caller
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+    // Get address space identifier
+    target_ulong asid;
+#if defined(TARGET_I386)
+    asid = env->cr[3];
+    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
+        p.cr3 = asid;
+#elif defined(TARGET_ARM)
+    asid = arm_get_vaddr_table(env, addr);
+    if((env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC)
+        p.cr3 = asid;
 #endif
 
-    // ASID
-#if defined(TARGET_I386)
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
-#elif defined(TARGET_ARM)
-    p.cr3 = arm_get_vaddr_table(env, addr);
+    // Try to get the caller
+    int n_callers = 0;
+    n_callers = get_callers(&p.caller, 1, asid);
+
+    if (n_callers == 0) {
+#ifdef TARGET_I386
+        // fall back to EBP on x86
+        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p.caller, word_size, 0);
 #endif
+    }
 
     p.pc = pc;
-
-    // XXX disable CR3 check
-    //p.cr3 = 0;
-    //p.caller = 0;
 
     if (tap_points.find(p) != tap_points.end()) {
         for (unsigned int i = 0; i < size; i++) {
@@ -103,11 +114,6 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin textprinter\n");
     
-    panda_enable_precise_pc();
-    panda_enable_memcb();    
-    pcb.virt_mem_write = mem_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-
     std::ifstream taps("tap_points.txt");
     if (!taps) {
         printf("Couldn't open tap_points.txt; no tap points defined. Exiting.\n");
@@ -118,10 +124,6 @@ bool init_plugin(void *self) {
     while (taps >> std::hex >> p.caller) {
         taps >> std::hex >> p.pc;
         taps >> std::hex >> p.cr3;
-
-        // XXX disable CR3 check
-        //p.cr3 = 0;
-        //p.caller = 0;
 
         printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
                p.caller, p.pc, p.cr3);
@@ -134,11 +136,30 @@ bool init_plugin(void *self) {
         printf("Couldn't open tap_buffers.txt for writing. Exiting.\n");
         return false;
     }
-    setbuf(tap_buffers, NULL);
+
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
+
+    panda_enable_precise_pc();
+    panda_enable_memcb();    
+    pcb.virt_mem_write = mem_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
     return true;
 }
 
 void uninit_plugin(void *self) {
     fclose(tap_buffers);
+
 }
