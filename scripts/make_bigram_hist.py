@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from progressbar import ProgressBar,Percentage,Bar
 import numpy as np
 from collections import Counter
 import sys
@@ -12,13 +11,11 @@ c = np.zeros(MAX_BIGRAM,dtype=np.int)
 files = glob.glob(sys.argv[1])
 if len(files) == 0: sys.exit(0)
 
-pbar = ProgressBar(widgets=[Percentage(), Bar()], maxval=len(files)-1).start()
-
 for (i,fname) in enumerate(files):
+    print fname
     s = open(fname).read()
-    x = np.fromstring(''.join(sum(zip(s,s[1:]),())),dtype='>H')
+    raw_data = ''.join(s[i]+s[i+1] for i in range(0,len(s)-1))
+    x = np.fromstring(raw_data,dtype='>H')
     c += np.bincount(x,minlength=MAX_BIGRAM)
-    pbar.update(i)
     
 c.tofile(sys.argv[2])
-pbar.finish()
