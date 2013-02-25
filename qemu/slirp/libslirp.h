@@ -2,6 +2,7 @@
 #define _LIBSLIRP_H
 
 #include "qemu-common.h"
+#include <netinet/in.h>
 
 struct Slirp;
 typedef struct Slirp Slirp;
