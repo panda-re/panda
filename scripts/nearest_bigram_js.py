@@ -5,7 +5,14 @@ import sys
 import numpy as np
 import scipy.sparse as sp
 from collections import Counter
+import itertools
+import time
 import struct
+try:
+    import numexpr as ne
+    have_numexpr = True
+except ImportError:
+    have_numexpr = False
 
 MAX_BIGRAM = 2**16
 
@@ -61,21 +68,35 @@ spdata.data /= row_sums[row_indices]
 
 
 print >>sys.stderr, "Loading training data..."
-training = np.fromfile(open(sys.argv[1]),dtype=np.int).astype(np.float)
+training = np.fromfile(open(sys.argv[1]),dtype=np.int).astype(np.float32)
 training /= training.sum()
 
+st = time.time()
 # \sum{H(P_i)}
 print >>sys.stderr, "Computing sum(H(Pi))..."
-htrain = -(training[training.nonzero()]*np.log2(training[training.nonzero()])).sum()
+st1 = time.time()
+htrain = -(training[training.nonzero()]*np.log(training[training.nonzero()])).sum()
 
 hcopy = spdata.copy()
-hcopy.data = hcopy.data*np.log2(hcopy.data)
+
+if have_numexpr:
+    x = hcopy.data
+    hcopy.data = ne.evaluate("x*log(x)")
+else:
+    hcopy.data = hcopy.data*np.log(hcopy.data)
+
 hents = hcopy.sum(axis=1)
 hents = -hents
 # Delete the copy; not using it any more
 del hcopy
-rhs = (hents + htrain) / 2
+if have_numexpr:
+    rhs = ne.evaluate("(hents + htrain) / 2")
+else:
+    rhs = (hents + htrain) / 2
+
 del hents
+ed1 = time.time()
+print >>sys.stderr, "Computed in %f seconds" % (ed1-st1)
 
 # H(\sum{P_i})
 print >>sys.stderr, "Computing H(sum(Pi))..."
@@ -83,22 +104,43 @@ print >>sys.stderr, "Computing H(sum(Pi))..."
 # Tile the training vector into an Nx65536 (sparse) matrix
 print >>sys.stderr, "Creating training matrix..."
 training = sp.csr_matrix(training.astype(np.float32))
-tdata = np.tile(training.data, spdata.shape[0])
-tcols = np.tile(training.indices, spdata.shape[0])
-trows = np.arange(spdata.shape[0],dtype=np.int32).repeat(len(training.indices))
-mtraining = sp.coo_matrix((tdata,[trows,tcols]), shape=spdata.shape).tocsr()
 
-spi = mtraining+spdata
-del mtraining
-spi.data /= 2
-spi.data = spi.data*np.log2(spi.data)
+# Create the CSR matrix directly
+stt = time.time()
+tindptr = np.arange(0, len(training.indices)*spdata.shape[0]+1, len(training.indices), dtype=np.int32)
+tindices = np.tile(training.indices, spdata.shape[0])
+tdata = np.tile(training.data, spdata.shape[0])
+mtraining = sp.csr_matrix((tdata, tindices, tindptr), shape=spdata.shape)
+edt = time.time()
+print >>sys.stderr, "Created in %f seconds" % (edt-stt)
+
+st2 = time.time()
+
+spi = spdata+mtraining
+
+if have_numexpr:
+    x = spi.data
+    spi.data = ne.evaluate("x/2")
+else:
+    spi.data /= 2
+
+if have_numexpr:
+    x = spi.data
+    spi.data = ne.evaluate("x*log(x)")
+else:
+    spi.data = spi.data*np.log(spi.data)
+
 lhs = spi.sum(axis=1)
 lhs = -lhs
 del spi
 
 dists = lhs - rhs
-
 dists = np.asarray(dists.T)[0]
+ed2 = time.time()
+print >>sys.stderr, "Computed in %f seconds" % (ed2-st2)
+
+ed = time.time()
+print >>sys.stderr, "Finished in %f seconds" % (ed-st)
 
 sorted_dists = np.argsort(dists)
 
