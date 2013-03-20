@@ -167,7 +167,7 @@ instr_type disas_block(CPUState* env, target_ulong pc, int size) {
             res = INSTR_RET;
             goto done;
         }
-        else if (cur_instr[3] == 0xeb) {// bl
+        else if ((cur_instr[3] & 0x0f) == 0x0b) {// bl
             res = INSTR_CALL;
             goto done;
         }

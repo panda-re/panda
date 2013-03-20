@@ -14,6 +14,7 @@ extern "C" {
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -30,6 +31,9 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+typedef int (* get_callers_t)(target_ulong callers[], int n, target_ulong asid);
+get_callers_t get_callers;
 
 }
 
@@ -57,16 +61,51 @@ struct prog_point {
 std::map<prog_point,text_counter> text_tracker;
 //FILE *text_memlog;
 
+#ifdef TARGET_ARM
+// ARM: stolen from target-arm/helper.c
+static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
+{   
+    uint32_t table;
+
+    if (address & env->cp15.c2_mask)
+        table = env->cp15.c2_base1 & 0xffffc000;
+    else
+        table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
+
+    return table;
+}
+#endif
+
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     bytes_written += size;
     num_writes++;
     prog_point p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
+
+    // Get address space identifier
+    target_ulong asid;
+#if defined(TARGET_I386)
+    asid = env->cr[3];
     if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
+        p.cr3 = asid;
+#elif defined(TARGET_ARM)
+    asid = arm_get_vaddr_table(env, addr);
+    if((env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC)
+        p.cr3 = asid;
 #endif
+
+    // Try to get the caller
+    int n_callers = 0;
+    n_callers = get_callers(&p.caller, 1, asid);
+
+    if (n_callers == 0) {
+#ifdef TARGET_I386
+        // fall back to EBP on x86
+        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p.caller, word_size, 0);
+#endif
+    }
+
     p.pc = pc;
 
     text_counter &tc = text_tracker[p];    
@@ -94,6 +133,20 @@ bool init_plugin(void *self) {
     panda_cb pcb;
 
     printf("Initializing plugin bigrams\n");
+
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();
