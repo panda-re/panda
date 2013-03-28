@@ -427,6 +427,8 @@ obj-android += ../android/utils/bufprint.o
 obj-android += ../telephony/modem_driver.o
 obj-android += ../android/gps.o
 obj-android += ../android/camera/camera-service.o ../android/camera/camera-capture-linux.o ../android/camera/camera-format-converters.o
+obj-android += ../android/hw-sensors.o
+obj-android += ../android/hw-control.o
 obj-arm-y += $(obj-android)
 
 

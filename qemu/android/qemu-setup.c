@@ -19,7 +19,7 @@
 
 #include "android/android.h"
 //#include "android/globals.h"
-//#include "android/hw-sensors.h"
+#include "android/hw-sensors.h"
 #include "android/utils/debug.h"
 //#include "android/utils/path.h"
 #include "android/utils/system.h"
@@ -321,7 +321,7 @@ void  android_emulation_setup( void )
         socket_close(s);
 
     /* initialize sensors, this must be done here due to timer issues */
-    //android_hw_sensors_init();
+    android_hw_sensors_init();
     /* cool, now try to run the "ddms ping" command, which will take care of pinging usage
     * if the user agreed for it. the emulator itself never sends anything to any outside
     * machine
