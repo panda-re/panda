@@ -18,10 +18,10 @@
 #include "kvm.h"
 #endif
 
-#define  DEBUG 1
+#define  DEBUG 0
 
 /* Set to 1 to debug i/o register reads/writes */
-#define DEBUG_REGS  1
+#define DEBUG_REGS  0
 
 #if DEBUG >= 1
 #  define D(...)  fprintf(stderr, __VA_ARGS__), fprintf(stderr, "\n")
@@ -29,7 +29,7 @@
 #  define D(...)  (void)0
 #endif
 
-#if DEBUG >= 0
+#if DEBUG >= 2
 #  define DD(...)  fprintf(stderr, __VA_ARGS__), fprintf(stderr, "\n")
 #else
 #  define DD(...)  (void)0

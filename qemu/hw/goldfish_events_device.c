@@ -270,7 +270,7 @@ static void events_put_keycode(void *x, int keycode)
     GoldfishEventsDevice *s = (GoldfishEventsDevice *) x;
     
     keycode = translateToAndroid(&(s->keycodeState),  keycode);
-    printf("Putting keycode %d being %d\n", keycode, keycode&0x1ff);
+    //printf("Putting keycode %d being %d\n", keycode, keycode&0x1ff);
     if(keycode < 0) return;
     //format
     //enqueue_event(s, EV_KEY, character/key, is_press)

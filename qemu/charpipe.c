@@ -13,7 +13,6 @@
 #include "cbuffer.h"
 
 #define  xxDEBUG
-#define DEBUG
 
 #ifdef DEBUG
 #  include <stdio.h>

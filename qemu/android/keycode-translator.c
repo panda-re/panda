@@ -116,7 +116,7 @@ int translateToAndroid(AndroidKeycodeState_t* state, int keycode){
     //First first, if state.hasBit7 is clear, and keycode == 0x80, set it and bail
     if((false == state->hasBit7) && (SCANCODE_EMUL0 == keycode)){
         state->hasBit7 = true;
-        printf("Setting escape bit\n");
+        //printf("Setting escape bit\n");
         return -1;
     }
     
@@ -141,6 +141,6 @@ int translateToAndroid(AndroidKeycodeState_t* state, int keycode){
     
     if (!isdown)
         return result;
-    printf("This is a keydown\n");
+    //printf("This is a keydown\n");
     return result | 0x200;
 }
