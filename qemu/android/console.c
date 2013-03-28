@@ -47,7 +47,7 @@
 #include <fcntl.h>
 #include "android/hw-events.h"
 //#include "user-events.h"
-//#include "android/hw-sensors.h"
+#include "android/hw-sensors.h"
 #include "android/keycode-array.h"
 #include "android/charmap.h"
 //#include "android/display-core.h"
@@ -1111,7 +1111,7 @@ do_cdma_prl_version( ControlClient client, char * args )
 /*****                                                                                 ******/
 /********************************************************************************************/
 /********************************************************************************************/
-#if 1
+
 static const struct {
     const char*         name;
     const char*         display;
@@ -1567,7 +1567,7 @@ static const CommandDefRec  gsm_commands[] =
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };
-#endif
+
 /********************************************************************************************/
 /********************************************************************************************/
 /*****                                                                                 ******/
@@ -1575,7 +1575,7 @@ static const CommandDefRec  gsm_commands[] =
 /*****                                                                                 ******/
 /********************************************************************************************/
 /********************************************************************************************/
-#if (0)
+
 static int
 do_sms_send( ControlClient  client, char*  args )
 {
@@ -1677,7 +1677,7 @@ static const CommandDefRec  sms_commands[] =
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };
-#endif
+
 static void
 do_control_write(void* data, const char* string)
 {
@@ -2254,7 +2254,7 @@ static const CommandDefRec  vm_commands[] =
 /*****                                                                                 ******/
 /********************************************************************************************/
 /********************************************************************************************/
-#if (1)
+
 static int
 do_geo_nmea( ControlClient  client, char*  args )
 {
@@ -2417,7 +2417,6 @@ static const CommandDefRec  geo_commands[] =
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };
-#endif
 
 /********************************************************************************************/
 /********************************************************************************************/
@@ -2429,7 +2428,6 @@ static const CommandDefRec  geo_commands[] =
 
 /* For sensors user prompt string size.*/
 #define SENSORS_INFO_SIZE 150
-#if (0)
 /* Get sensor data - (a,b,c) from sensor name */
 static int
 do_sensors_get( ControlClient client, char* args )
@@ -2612,7 +2610,7 @@ static const CommandDefRec sensor_commands[] =
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };
-#endif
+
 /********************************************************************************************/
 /********************************************************************************************/
 /*****                                                                                 ******/
@@ -2941,14 +2939,15 @@ static const CommandDefRec   main_commands[] =
     "allows you to send fake hardware events to the kernel\r\n", NULL,
     NULL, event_commands },
 
-    /*{ "geo", "Geo-location commands",
+    { "geo", "Geo-location commands",
       "allows you to change Geo-related settings, or to send GPS NMEA sentences\r\n", NULL,
-      NULL, geo_commands },*/
-#if (0)
+      NULL, geo_commands },
+
     { "gsm", "GSM related commands",
       "allows you to change GSM-related settings, or to make a new inbound phone call\r\n", NULL,
       NULL, gsm_commands },
 
+#if (0)
     { "cdma", "CDMA related commands",
       "allows you to change CDMA-related settings\r\n", NULL,
       NULL, cdma_commands },
@@ -2960,11 +2959,12 @@ static const CommandDefRec   main_commands[] =
       "allows you to manage the settings related to the network data connection of the\r\n"
       "emulated device.\r\n", NULL,
       NULL, network_commands },
+#endif
 
     { "power", "power related commands",
       "allows to change battery and AC power status\r\n", NULL,
       NULL, power_commands },
-#endif
+
     { "quit|exit", "quit control session", NULL, NULL,
       do_quit, NULL },
 
@@ -2973,11 +2973,11 @@ static const CommandDefRec   main_commands[] =
       "as an example, 'redir  tcp:5000:6000' will route any packet sent to the host's TCP port 5000\r\n"
       "to TCP port 6000 of the emulated device\r\n", NULL,
       NULL, redir_commands },
-#if (0)
+
     { "sms", "SMS related commands",
       "allows you to simulate an inbound SMS\r\n", NULL,
       NULL, sms_commands },
-#endif
+
     /*{ "avd", "control virtual device execution",
     "allows you to control (e.g. start/stop) the execution of the virtual device\r\n", NULL,
     NULL, vm_commands },
@@ -2990,9 +2990,9 @@ static const CommandDefRec   main_commands[] =
     "allows to connect to the QEMU virtual machine monitor\r\n", NULL,
     NULL, qemu_commands },
 
-    /*{ "sensor", "manage emulator sensors",
+    { "sensor", "manage emulator sensors",
       "allows you to request the emulator sensors\r\n", NULL,
-      NULL, sensor_commands },*/
+      NULL, sensor_commands },
 
     { NULL, NULL, NULL, NULL, NULL, NULL }
 };
