@@ -18,11 +18,24 @@ enum nand_cmd {
 	NAND_CMD_WRITE,
 	NAND_CMD_ERASE,
 	NAND_CMD_BLOCK_BAD_GET, // NAND_RESULT is 1 if block is bad, 0 if it is not
-	NAND_CMD_BLOCK_BAD_SET
+	NAND_CMD_BLOCK_BAD_SET,
+	NAND_CMD_READ_BATCH,    // BATCH OP extensions.
+	NAND_CMD_WRITE_BATCH,
+	NAND_CMD_ERASE_BATCH
+};
+
+struct batch_data{
+    uint32_t dev;
+    uint32_t addr_low;
+    uint32_t addr_high;
+    uint32_t transfer_size;
+    uint32_t data;
+    uint32_t result;
 };
 
 enum nand_dev_flags {
-	NAND_DEV_FLAG_READ_ONLY = 0x00000001
+    NAND_DEV_FLAG_READ_ONLY = 0x00000001,
+    NAND_DEV_FLAG_BATCH_CAP = 0x00000002
 };
 
 #define NAND_VERSION_CURRENT (1)
@@ -49,6 +62,8 @@ enum nand_reg {
 	NAND_TRANSFER_SIZE  = 0x04c,
 	NAND_ADDR_LOW       = 0x050,
 	NAND_ADDR_HIGH      = 0x054,
+	NAND_BATCH_ADDR_LOW = 0x058,
+	NAND_BATCH_ADDR_HIGH= 0x05c,
 };
 
 #endif
