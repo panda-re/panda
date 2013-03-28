@@ -10,6 +10,7 @@
 ** GNU General Public License for more details.
 */
 #include "hw.h"
+#include "blockdev.h"
 #include "goldfish_device.h"
 #include "goldfish_nand_reg.h"
 #include "goldfish_nand.h"
@@ -45,6 +46,8 @@
 
 #define  XLOG  xlog
 
+#define ANDROID_QCOW
+
 static void
 xlog( const char*  format, ... )
 {
@@ -63,7 +66,11 @@ typedef struct {
     char*      devname;      /* name for this device (not null-terminated, use len below) */
     size_t     devname_len;
     uint8_t*   data;         /* buffer for read/write actions to underlying image */
+#if defined(ANDROID_QCOW)
+    BlockDriverState *bdrv; /* back nand w/qcow */
+#else
     int        fd;
+#endif
     uint32_t   flags;
     uint32_t   page_size;
     uint32_t   extra_size;
@@ -212,12 +219,14 @@ static int  do_ftruncate(int  fd, size_t  size)
 static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, uint32_t total_len)
 {
     uint32_t len = total_len;
-    size_t read_len = dev->erase_size;
+    ssize_t read_len = dev->erase_size;
     int eof = 0;
 
     NAND_UPDATE_READ_THRESHOLD(total_len);
 
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
     while(len > 0) {
         if(read_len < dev->erase_size) {
             memset(dev->data, 0xff, dev->erase_size);
@@ -227,7 +236,11 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         if(len < read_len)
             read_len = len;
         if(!eof) {
+#if defined(ANDROID_QCOW)
+            read_len = bdrv_pread(dev->bdrv, addr , dev->data, read_len);
+#else
             read_len = do_read(dev->fd, dev->data, read_len);
+#endif
         }
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -236,6 +249,9 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         cpu_memory_rw_debug(cpu_single_env, data, dev->data, read_len, 1);
         data += read_len;
         len -= read_len;
+#if defined(ANDROID_QCOW)
+        addr += read_len;
+#endif
     }
     return total_len;
 }
@@ -248,7 +264,9 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
 
     NAND_UPDATE_WRITE_THRESHOLD(total_len);
 
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
     while(len > 0) {
         if(len < write_len)
             write_len = len;
@@ -257,13 +275,18 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
         cpu_memory_rw_debug(cpu_single_env, data, dev->data, write_len, 0);
+#if defined(ANDROID_QCOW)
+        ret = bdrv_pwrite(dev->bdrv,addr, dev->data, write_len);
+#else
         ret = do_write(dev->fd, dev->data, write_len);
+#endif
         if(ret < write_len) {
             XLOG("nand_dev_write_file, write failed: %s\n", strerror(errno));
             break;
         }
         data += write_len;
         len -= write_len;
+        addr += write_len;
     }
     return total_len - len;
 }
@@ -273,18 +296,26 @@ static uint32_t nand_dev_erase_file(nand_dev *dev, uint64_t addr, uint32_t total
     uint32_t len = total_len;
     size_t write_len = dev->erase_size;
     int ret;
-
+    
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
+    
     memset(dev->data, 0xff, dev->erase_size);
     while(len > 0) {
         if(len < write_len)
             write_len = len;
+#if defined(ANDROID_QCOW)
+        ret = bdrv_pwrite(dev->bdrv, addr, dev->data, write_len);
+#else
         ret = do_write(dev->fd, dev->data, write_len);
+#endif
         if(ret < write_len) {
             XLOG( "nand_dev_write_file, write failed: %s\n", strerror(errno));
             break;
         }
         len -= write_len;
+        addr += write_len;
     }
     return total_len - len;
 }
@@ -342,7 +373,11 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_read_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -358,7 +393,11 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_write_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -374,7 +413,11 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_erase_file(dev, addr, size);
         memset(&dev->data[addr], 0xff, size);
         return size;
@@ -667,14 +710,7 @@ void nand_add_dev(const char *arg)
     dev->page_size = page_size;
     dev->extra_size = extra_size;
     dev->erase_size = erase_pages * (page_size + extra_size);
-    pad = dev_size % dev->erase_size;
-    if (pad != 0) {
-        dev_size += (dev->erase_size - pad);
-        D("rounding devsize up to a full eraseunit, now %llx\n", dev_size);
-    }
-    dev->devname = devname;
-    dev->devname_len = devname_len;
-    dev->max_size = dev_size;
+    
     dev->data = malloc(dev->erase_size);
     if(dev->data == NULL)
         goto out_of_memory;
@@ -697,7 +733,30 @@ void nand_add_dev(const char *arg)
         } while(read_size == dev->erase_size);
         close(initfd);
     }
+#if defined ANDROID_QCOW
+    close(rwfd);
+
+    dev->bdrv = bdrv_new(rwfilename);
+    if (0 > bdrv_open(dev->bdrv, rwfilename, BDRV_O_RDWR | BDRV_O_CACHE_WB | BDRV_O_NO_FLUSH, NULL)) {
+    //if (0 > bdrv_file_open(&dev->bdrv,rwfilename, BDRV_O_RDWR)) {
+        XLOG("failed to open block driver %s\n", rwfilename);
+        exit(1);
+    }
+    dev_size = bdrv_getlength(dev->bdrv);
+#else
     dev->fd = rwfd;
+#endif
+    pad = dev_size % dev->erase_size;
+    if (pad != 0) {
+        //dev_size += (dev->erase_size - pad);
+        dev_size -= pad;
+        D("rounding devsize up to a full eraseunit, now %llx\n", dev_size);
+    }
+    dev->devname = devname;
+    dev->devname_len = devname_len;
+    dev->max_size = dev_size;
+    D("Dev size of %s is %llx\n", rwfilename, dev_size);
+    
 
     nand_dev_count++;
 
