@@ -131,6 +131,7 @@ static uint32_t nand_dev_count = 0;
 /* The controller is the single access point for all NAND images currently
  * attached to the system.
  */
+#if(0)
 typedef struct {
     uint32_t base;
 
@@ -145,6 +146,7 @@ typedef struct {
     uint32_t batch_addr_high;
     uint32_t result;
 } nand_dev_controller_state;
+#endif
 
 typedef struct GoldfishNandDevice {
     GoldfishDevice qdev;
@@ -333,7 +335,7 @@ static uint32_t nand_dev_erase_file(nand_dev *dev, uint64_t addr, uint32_t total
 #if !(defined __APPLE__ && defined __powerpc__)
 static
 #endif
-uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
+uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
 {
     uint32_t size;
     uint64_t addr;
@@ -436,7 +438,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 /* I/O write */
 static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 {
-    nand_dev_controller_state *s = (nand_dev_controller_state *)opaque;
+    GoldfishNandDevice *s = (GoldfishNandDevice *)opaque;
 
     switch (offset) {
     case NAND_DEV:
@@ -482,7 +484,7 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
 /* I/O read */
 static uint32_t nand_dev_read(void *opaque, target_phys_addr_t offset)
 {
-    nand_dev_controller_state *s = (nand_dev_controller_state *)opaque;
+    GoldfishNandDevice *s = (GoldfishNandDevice *)opaque;
     nand_dev *dev;
 
     switch (offset) {
