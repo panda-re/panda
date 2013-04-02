@@ -137,6 +137,32 @@ static inline RR_log_entry *alloc_new_entry(void)
     return new_entry;
 }
 
+static inline void free_entry_params(RR_log_entry *entry) 
+{
+    //mz cleanup associated resources
+    switch (entry->header.kind) {
+        case RR_SKIPPED_CALL:
+            switch (entry->variant.call_args.kind) {
+                case RR_CALL_CPU_MEM_RW:
+                    g_free(entry->variant.call_args.variant.cpu_mem_rw_args.buf);
+                    entry->variant.call_args.variant.cpu_mem_rw_args.buf = NULL;
+                    break;
+                case RR_CALL_CPU_MEM_UNMAP:
+                    g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
+                    entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
+                    break;
+            }
+            break;
+        case RR_INPUT_1:
+        case RR_INPUT_2:
+        case RR_INPUT_4:
+        case RR_INPUT_8:
+        case RR_INTERRUPT_REQUEST:
+        default:
+             break;
+    }
+}
+
 //mz fill an entry
 static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
@@ -194,17 +220,19 @@ static RR_log_entry *rr_read_item(void) {
                         assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) == 1);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
+                        //args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
-                        assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
+                        //assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
+                        fseek(rr_nondet_log->fp, args->variant.cpu_mem_rw_args.len, SEEK_CUR);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
                         assert(fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp) == 1);
                         //mz buffer length in args->variant.cpu_mem_unmap.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
+                        //args->variant.cpu_mem_unmap.buf = g_malloc(args->variant.cpu_mem_unmap.len);
                         //mz read the buffer
-                        assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
+                        //assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
+                        fseek(rr_nondet_log->fp, args->variant.cpu_mem_unmap.len, SEEK_CUR);
                         break;
                     case RR_CALL_CPU_REG_MEM_REGION:
                         assert(fread(&(args->variant.cpu_mem_reg_region_args), 
@@ -259,6 +287,7 @@ int main(int argc, char **argv) {
     while(!log_is_empty()) {
         RR_log_entry *log_entry = rr_read_item();
         rr_spit_log_entry(*log_entry);
+        g_free(log_entry);
     }
     return 0;
 }
