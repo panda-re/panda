@@ -6,6 +6,7 @@
 
 #include "cpu.h"
 #include "disas.h"
+#include "panda_plugin.h"
 
 /* Filled in by elfload.c.  Simplistic, but will do for now. */
 struct syminfo *syminfos = NULL;
@@ -32,7 +33,9 @@ target_read_memory (bfd_vma memaddr,
                     int length,
                     struct disassemble_info *info)
 {
-    cpu_memory_rw_debug(cpu_single_env, memaddr, myaddr, length, 0);
+    //cpu_memory_rw_debug(cpu_single_env, memaddr, myaddr, length, 0);
+    panda_virtual_memory_rw(cpu_single_env, memaddr, myaddr, length, 0);
+
     return 0;
 }
 
