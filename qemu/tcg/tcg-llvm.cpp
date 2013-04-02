@@ -389,13 +389,6 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager->add(
             new TargetData(*m_executionEngine->getTargetData()));
     
-    panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_LLVM_INIT]; plist != NULL;
-            plist = plist->next) {
-        plist->entry.llvm_init(m_executionEngine, m_functionPassManager,
-                               m_module);
-    }
-    
     /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
      * code size
      */
@@ -743,7 +736,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     if(!helperFunction) {
         helperFunction = Function::Create(
                 helperFunctionTy,
-                Function::PrivateLinkage, funcName, m_module);
+                Function::ExternalLinkage, funcName, m_module);
         m_executionEngine->addGlobalMapping(helperFunction,
                                             (void*) helperFuncAddr);
     }
@@ -832,7 +825,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             if(!helperFunc) {
                 helperFunc = Function::Create(
                         FunctionType::get(retType, argTypes, false),
-                        Function::PrivateLinkage, funcName, m_module);
+                        Function::ExternalLinkage, funcName, m_module);
                 m_executionEngine->addGlobalMapping(helperFunc,
                                                     (void*) helperAddrC);
             }
@@ -1441,6 +1434,11 @@ void TCGLLVMContext::writeModule(){
     raw_ostream *outfile;
     outfile = new raw_fd_ostream("/tmp/llvm-mod.bc", Error,
         raw_fd_ostream::F_Binary);
+    std::string err;
+    if (verifyModule(*getModule(), llvm::PrintMessageAction, &err)){
+        printf("%s\n", err.c_str());
+        exit(1);
+    }
     WriteBitcodeToFile(getModule(), *outfile);
     delete outfile;
 }

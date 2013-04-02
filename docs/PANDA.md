@@ -140,6 +140,14 @@ the LLVM IR, and that is executed on the LLVM JIT.  Currently, this only works
 when QEMU is starting up, but we are hoping to support dynamic configuration of
 code generation soon.
 
+    void panda_enable_llvm_helpers(void);
+    void panda_disable_llvm_helpers(void);
+
+These functions enable and disable the execution of QEMU helper functions in the
+LLVM JIT.  Call the enable function after calling panda_enable_llvm(), and call
+the disable function before calling panda_disable_llvm().
+
+
 ## Callbacks
 
 ---
@@ -474,30 +482,6 @@ before this callback will take effect.
 **Signature**:
 
 	int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
----
-
-**llvm_init**: Called on initialization of LLVM JIT.  Use for adding function
-passes to the JIT, linking external functions to the JIT, etc.  Add
-function passes here that will be run on generation of each new LLVM
-function.
-
-**Callback ID**: PANDA_CB_LLVM_INIT
-
-**Arguments**:
-
-* `void *exEngine`: void pointer to the LLVM execution engine (JIT)
-* `void *funPassMan`: void pointer to the LLVM function pass manager
-* `void *module`: void pointer to the JIT IR module
-       
-**Return value**: unused
-
-**Notes**:
-We use void pointers because of C++ constructs, cast properly in plugin.
-
-**Signature**:
-
-    int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
 
 ---
 
