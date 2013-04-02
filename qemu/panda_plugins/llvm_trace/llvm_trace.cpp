@@ -33,6 +33,7 @@ extern "C" {
 
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
+#include "llvm/Analysis/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "panda_dynval_inst.h"
@@ -47,7 +48,6 @@ void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
-int llvm_init(void *exEngine, void *funPassMan, void *module);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 #ifndef CONFIG_SOFTMMU
@@ -76,6 +76,7 @@ llvm::PandaInstrFunctionPass *PIFP;
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
+    // XXX
     //printramaddr(addr, 1);
     //printramaddr(0x4000000, 1);
     return 0;
@@ -83,6 +84,7 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
+    // XXX
     //printramaddr(addr, 0);
     //printramaddr(0x4000001, 0);
     return 0;
@@ -90,10 +92,10 @@ int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
 namespace llvm {
 
-int llvm_init(void *exEngine, void *funPassMan, void *module){
-    ExecutionEngine *ee = (ExecutionEngine *)exEngine;
-    FunctionPassManager *fpm = (FunctionPassManager *)funPassMan;
-    Module *mod = (Module *)module;
+static void llvm_init(){
+    ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
+    FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+    Module *mod = tcg_llvm_ctx->getModule();
     LLVMContext &ctx = mod->getContext();
 
     // Link logging function in with JIT
@@ -117,8 +119,6 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
     PIFP = static_cast<PandaInstrFunctionPass*>(instfp);
-    
-    return 0;
 }
 
 } // namespace llvm
@@ -252,8 +252,6 @@ bool init_plugin(void *self) {
     printf("Initializing plugin llvm_trace\n");
     panda_cb pcb;
     panda_enable_memcb();
-    pcb.llvm_init = llvm::llvm_init;
-    panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.after_block_exec = after_block_exec;
@@ -276,7 +274,26 @@ bool init_plugin(void *self) {
     if (!execute_llvm){
         panda_enable_llvm();
     }
-    
+    llvm::llvm_init();
+    panda_enable_llvm_helpers();
+
+    /*
+     * Run instrumentation pass over all helper functions that are now in the
+     * module, and verify module.
+     */
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
+        if (i->isDeclaration()){
+            continue;
+        }
+        PIFP->runOnFunction(*i);
+    }
+    std::string err;
+    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
+        printf("%s\n", err.c_str());
+        exit(1);
+    }
+
     return true;
 }
 
@@ -307,7 +324,11 @@ void uninit_plugin(void *self) {
         pr->unregisterPass(*pi);
     }
 
-    panda_disable_llvm();
+    panda_disable_llvm_helpers();
+
+    if (execute_llvm){
+        panda_disable_llvm();
+    }
     panda_disable_memcb();
     fclose(funclog);
     close_memlog();

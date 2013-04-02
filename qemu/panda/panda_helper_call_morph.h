@@ -1,6 +1,8 @@
 #ifndef PANDA_HELPER_CALL_MORPH_H
 #define PANDA_HELPER_CALL_MORPH_H
 
+#ifdef __cplusplus
+
 #include "llvm/LLVMContext.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/InstVisitor.h"
@@ -52,6 +54,27 @@ public:
 };
 
 } // End LLVM namespace
+
+#endif // __cplusplus
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * Start the process of including the execution of QEMU helper functions in the
+ * LLVM JIT.
+ */
+void init_llvm_helpers(void);
+
+/*
+ * Stop running QEMU helper functions in the JIT.
+ */
+void uninit_llvm_helpers(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
