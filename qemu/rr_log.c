@@ -1295,7 +1295,7 @@ void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   if (rr_debug_whisper()) {
     fprintf (logfile,"reading snapshot:\t%s\n", name_buf);
   }
-  printf ("loading snapsnot\n");
+  printf ("loading snapshot\n");
   //  vm_stop(0) RUN_STATE_RESTORE_VM);
   load_vmstate(name_buf);
   printf ("... done.\n");

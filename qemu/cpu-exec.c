@@ -368,6 +368,8 @@ int cpu_exec(CPUState *env)
             for(;;) {
                 //mz Set the program point here.
                 rr_set_program_point();
+                if(env->rr_guest_instr_count == 2193442693)
+                    printf("STOP. Hammertime.\n");
                 // cache interrupt request value.
                 interrupt_request = env->interrupt_request;
                 //mz Record and Replay.
@@ -729,7 +731,7 @@ int cpu_exec(CPUState *env)
 
                 tb = tb_find_fast(env);
 
-                qemu_log_mask(CPU_LOG_TB_IN_ASM, 
+                qemu_log_mask(CPU_LOG_RR, 
 			      "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
                   tb->pc,
 			      (unsigned long long)rr_prog_point.guest_instr_count, 
@@ -779,7 +781,7 @@ int cpu_exec(CPUState *env)
                 // (T0 & ~3) contains pointer to previous translation block.
                 // (T0 & 3) contains info about which branch we took (why 2 bits?)
                 // tb is current translation block.  
-                if ((rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
+                if (0 && (rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                     }
@@ -827,6 +829,14 @@ int cpu_exec(CPUState *env)
 
                 // Debug!
                 //rr_debug();
+                if (0 && env->rr_guest_instr_count >= 5000000000 && !logfile) {
+                    if (rr_mode == RR_RECORD)
+                        logfile = fopen("/scratch/debfailbootrec.log", "w");
+                    else if (rr_mode == RR_REPLAY)
+                        logfile = fopen("/scratch2/debfailbootrep.log", "w");
+                    loglevel = CPU_LOG_RR | CPU_LOG_TB_IN_ASM;
+                    printf("Enabling logging.\n");
+                }
 
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;

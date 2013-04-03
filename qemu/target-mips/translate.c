@@ -12418,6 +12418,7 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
     if (rr_in_replay())
         max_insns = max_insns < rr_num_instr_before_next_interrupt ?
                         max_insns : rr_num_instr_before_next_interrupt;
+    tb->num_guest_insns = 0;
 
     LOG_DISAS("\ntb %p idx %d hflags %04x\n", tb, ctx.mem_idx, ctx.hflags);
     gen_icount_start();
