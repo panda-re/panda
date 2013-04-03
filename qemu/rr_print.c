@@ -131,8 +131,8 @@ static void rr_spit_log_entry(RR_log_entry item) {
 //mz allocate a new entry (not filled yet)
 static inline RR_log_entry *alloc_new_entry(void) 
 {
-    RR_log_entry *new_entry = NULL;
-    new_entry = g_new(RR_log_entry, 1);
+    static RR_log_entry *new_entry = NULL;
+    if(!new_entry) new_entry = g_new(RR_log_entry, 1);
     memset(new_entry, 0, sizeof(RR_log_entry));
     return new_entry;
 }
@@ -284,10 +284,11 @@ void rr_create_replay_log (const char *filename) {
 int main(int argc, char **argv) {
     rr_create_replay_log(argv[1]);
     printf("RR Log with %llu instructions\n", (unsigned long long) rr_nondet_log->last_prog_point.guest_instr_count);
+    RR_log_entry *log_entry;
     while(!log_is_empty()) {
-        RR_log_entry *log_entry = rr_read_item();
+        log_entry = rr_read_item();
         rr_spit_log_entry(*log_entry);
-        g_free(log_entry);
     }
+    g_free(log_entry);
     return 0;
 }
