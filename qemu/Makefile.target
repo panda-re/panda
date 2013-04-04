@@ -429,6 +429,7 @@ obj-android += ../android/gps.o
 obj-android += ../android/camera/camera-service.o ../android/camera/camera-capture-linux.o ../android/camera/camera-format-converters.o
 obj-android += ../android/hw-sensors.o
 obj-android += ../android/hw-control.o
+obj-android += goldfish_mmc.o
 obj-arm-y += $(obj-android)
 
 

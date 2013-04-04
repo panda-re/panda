@@ -99,6 +99,11 @@ static void android_arm_init_(ram_addr_t ram_size,
     }
 
     goldfish_fb_create(gbus, 0);
+#ifdef HAS_AUDIO
+    //goldfish_audio_init(0xff004000, 0, audio_input_source);
+#endif
+
+    goldfish_mmc_create(gbus, 0xff005000, 0);
     goldfish_memlog_create(gbus, 0xff006000);
     goldfish_battery_create(gbus);
     goldfish_events_create(gbus, gf_int);
