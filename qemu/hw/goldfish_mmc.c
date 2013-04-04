@@ -171,6 +171,29 @@ typedef struct GoldfishMmcDevice {
     char* path;
 } GoldfishMmcDevice;
 
+static const VMStateDescription vmstate_goldfish_mmc = {
+    .name = "goldfish_mmc",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .minimum_version_id_old = 1,
+    .fields     = (VMStateField[]) {
+        VMSTATE_UINT32(buffer_address, GoldfishMmcDevice),
+        VMSTATE_UINT32(read_offset, GoldfishMmcDevice),
+        VMSTATE_UINT32(write_offset, GoldfishMmcDevice),
+        VMSTATE_UINT32(int_status, GoldfishMmcDevice),
+        VMSTATE_UINT32(int_enable, GoldfishMmcDevice),
+        VMSTATE_UINT32(arg, GoldfishMmcDevice),
+        VMSTATE_UINT32_ARRAY(resp, GoldfishMmcDevice, 4),
+        VMSTATE_UINT32(block_length, GoldfishMmcDevice),
+        VMSTATE_UINT32(block_count, GoldfishMmcDevice),
+        VMSTATE_INT32(is_SDHC, GoldfishMmcDevice),
+        // buf is used internally, not persisted across calls
+        // and it will be allocated before we get anywhere near loadvm
+        // likewise, path won't ever be touched after init
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 struct mmc_opcode {
     const char* name;
     int cmd;
@@ -579,12 +602,15 @@ DeviceState *goldfish_mmc_create(GoldfishBus *gbus, uint32_t base, int id)
     return dev;
 }
 
+
+
 static GoldfishDeviceInfo goldfish_mmc_info = {
     .init = goldfish_mmc_init,
     .readfn = goldfish_mmc_readfn,
     .writefn = goldfish_mmc_writefn,
     .qdev.name = "goldfish_mmc",
     .qdev.size = sizeof(GoldfishMmcDevice),
+    .qdev.vmsd = &vmstate_goldfish_mmc,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base",GoldfishDevice, base, 0) ,
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),

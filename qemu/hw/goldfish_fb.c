@@ -71,6 +71,76 @@ typedef struct GoldfishFBDevice {
     int      dpi;
 } GoldfishFBDevice;
 
+#define  GOLDFISH_FB_SAVE_VERSION  2
+
+static void goldfish_fb_save(QEMUFile*  f, void*  opaque)
+{
+    struct GoldfishFBDevice*  s = opaque;
+
+    DisplayState*  ds = s->ds;
+
+    qemu_put_be32(f, ds->surface->width);
+    qemu_put_be32(f, ds->surface->height);
+    qemu_put_be32(f, ds->surface->linesize);
+    qemu_put_byte(f, 0);
+
+    qemu_put_be32(f, s->fb_base);
+    qemu_put_byte(f, s->base_valid);
+    qemu_put_byte(f, s->need_update);
+    qemu_put_byte(f, s->need_int);
+    qemu_put_byte(f, s->set_rotation);
+    qemu_put_byte(f, s->blank);
+    qemu_put_be32(f, s->int_status);
+    qemu_put_be32(f, s->int_enable);
+    qemu_put_be32(f, s->rotation);
+    qemu_put_be32(f, s->dpi);
+}
+
+static int  goldfish_fb_load(QEMUFile*  f, void*  opaque, int  version_id)
+{
+    struct GoldfishFBDevice*   s   = opaque;
+    int                        ret = -1;
+    int                        ds_w, ds_h, ds_pitch, ds_rot;
+
+    if (version_id != GOLDFISH_FB_SAVE_VERSION)
+        goto Exit;
+
+    ds_w     = qemu_get_be32(f);
+    ds_h     = qemu_get_be32(f);
+    ds_pitch = qemu_get_be32(f);
+    ds_rot   = qemu_get_byte(f);
+
+    DisplayState*  ds = s->ds;
+
+    if (ds->surface->width != ds_w ||
+        ds->surface->height != ds_h ||
+        ds->surface->linesize != ds_pitch ||
+        ds_rot != 0)
+    {
+        /* XXX: We should be able to force a resize/rotation from here ? */
+        fprintf(stderr, "%s: framebuffer dimensions mismatch\n", __FUNCTION__);
+        goto Exit;
+    }
+
+    s->fb_base      = qemu_get_be32(f);
+    s->base_valid   = qemu_get_byte(f);
+    s->need_update  = qemu_get_byte(f);
+    s->need_int     = qemu_get_byte(f);
+    s->set_rotation = qemu_get_byte(f);
+    s->blank        = qemu_get_byte(f);
+    s->int_status   = qemu_get_be32(f);
+    s->int_enable   = qemu_get_be32(f);
+    s->rotation     = qemu_get_be32(f);
+    s->dpi          = qemu_get_be32(f);
+
+    /* force a refresh */
+    s->need_update = 1;
+
+    ret = 0;
+Exit:
+    return ret;
+}
+
 /* Type used to record a mapping from display surface pixel format to
  * HAL pixel format */
 typedef struct {
@@ -697,8 +767,8 @@ static int goldfish_fb_init(GoldfishDevice *dev)
 
     //goldfish_device_add(&s->dev, goldfish_fb_readfn, goldfish_fb_writefn, s);
 
-    //register_savevm( NULL, "goldfish_fb", 0, GOLDFISH_FB_SAVE_VERSION,
-    //                 goldfish_fb_save, goldfish_fb_load, s);
+    register_savevm( &s->dev.qdev, "goldfish_fb", 0, GOLDFISH_FB_SAVE_VERSION,
+                     goldfish_fb_save, goldfish_fb_load, s);
 
     return 0;
 }

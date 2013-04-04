@@ -131,23 +131,6 @@ static uint32_t nand_dev_count = 0;
 /* The controller is the single access point for all NAND images currently
  * attached to the system.
  */
-#if(0)
-typedef struct {
-    uint32_t base;
-
-    // register state
-    uint32_t dev;            /* offset in nand_devs for the device that is
-                              * currently being accessed */
-    uint32_t addr_low;
-    uint32_t addr_high;
-    uint32_t transfer_size;
-    uint32_t data;
-    uint32_t batch_addr_low;
-    uint32_t batch_addr_high;
-    uint32_t result;
-} nand_dev_controller_state;
-#endif
-
 typedef struct GoldfishNandDevice {
     GoldfishDevice qdev;
     char *system_path;
@@ -217,6 +200,174 @@ static int  do_ftruncate(int  fd, size_t  size)
     
     return ret;
 }
+#if(0)
+#define NAND_DEV_SAVE_DISK_BUF_SIZE 2048
+
+
+/**
+ * Copies the current contents of a disk image into the snapshot file.
+ *
+ * TODO optimize this using some kind of copy-on-write mechanism for
+ *      unchanged disk sections.
+ */
+static void  nand_dev_save_disk_state(QEMUFile *f, nand_dev *dev)
+{
+#ifndef ANDROID_QCOW
+    int buf_size = NAND_DEV_SAVE_DISK_BUF_SIZE;
+    uint8_t buffer[NAND_DEV_SAVE_DISK_BUF_SIZE] = {0};
+    int ret;
+    uint64_t total_copied = 0;
+
+    /* Size of file to restore, hence size of data block following.
+     * TODO Work out whether to use lseek64 here. */
+
+    ret = do_lseek(dev->fd, 0, SEEK_END);
+    if (ret < 0) {
+      XLOG("%s EOF seek failed: %s\n", __FUNCTION__, strerror(errno));
+      qemu_file_set_error(f);
+      return;
+    }
+    const uint64_t total_size = ret;
+    qemu_put_be64(f, total_size);
+
+    /* copy all data from the stream to the stored image */
+    ret = do_lseek(dev->fd, 0, SEEK_SET);
+    if (ret < 0) {
+        XLOG("%s seek failed: %s\n", __FUNCTION__, strerror(errno));
+        qemu_file_set_error(f);
+        return;
+    }
+    do {
+        ret = do_read(dev->fd, buffer, buf_size);
+        if (ret < 0) {
+            XLOG("%s read failed: %s\n", __FUNCTION__, strerror(errno));
+            qemu_file_set_error(f);
+            return;
+        }
+        qemu_put_buffer(f, buffer, ret);
+
+        total_copied += ret;
+    }
+    while (ret == buf_size && total_copied < dev->max_size);
+
+    /* TODO Maybe check that we've written total_size bytes */
+#endif
+}
+
+
+/**
+ * Saves the state of all disks managed by this controller to a snapshot file.
+ */
+static void nand_dev_save_disks(QEMUFile *f)
+{
+    int i;
+    for (i = 0; i < nand_dev_count; i++) {
+        nand_dev_save_disk_state(f, nand_devs + i);
+    }
+}
+
+/**
+ * Overwrites the contents of the disk image managed by this device with the
+ * contents as they were at the point the snapshot was made.
+ */
+static int  nand_dev_load_disk_state(QEMUFile *f, nand_dev *dev)
+{
+#ifndef ANDROID_QCOW
+    int buf_size = NAND_DEV_SAVE_DISK_BUF_SIZE;
+    uint8_t buffer[NAND_DEV_SAVE_DISK_BUF_SIZE] = {0};
+    int ret;
+
+    /* File size for restore and truncate */
+    uint64_t total_size = qemu_get_be64(f);
+    if (total_size > dev->max_size) {
+        XLOG("%s, restore failed: size required (%lld) exceeds device limit (%lld)\n",
+             __FUNCTION__, total_size, dev->max_size);
+        return -EIO;
+    }
+
+    /* overwrite disk contents with snapshot contents */
+    uint64_t next_offset = 0;
+    ret = do_lseek(dev->fd, 0, SEEK_SET);
+    if (ret < 0) {
+        XLOG("%s seek failed: %s\n", __FUNCTION__, strerror(errno));
+        return -EIO;
+    }
+    while (next_offset < total_size) {
+        /* snapshot buffer may not be an exact multiple of buf_size
+         * if necessary, adjust buffer size for last copy operation */
+        if (total_size - next_offset < buf_size) {
+            buf_size = total_size - next_offset;
+        }
+
+        ret = qemu_get_buffer(f, buffer, buf_size);
+        if (ret != buf_size) {
+            XLOG("%s read failed: expected %d bytes but got %d\n",
+                 __FUNCTION__, buf_size, ret);
+            return -EIO;
+        }
+        ret = do_write(dev->fd, buffer, buf_size);
+        if (ret != buf_size) {
+            XLOG("%s, write failed: %s\n", __FUNCTION__, strerror(errno));
+            return -EIO;
+        }
+
+        next_offset += buf_size;
+    }
+
+    ret = do_ftruncate(dev->fd, total_size);
+    if (ret < 0) {
+        XLOG("%s ftruncate failed: %s\n", __FUNCTION__, strerror(errno));
+        return -EIO;
+    }
+#endif
+
+    return 0;
+}
+
+/**
+ * Restores the state of all disks managed by this driver from a snapshot file.
+ */
+static int nand_dev_load_disks(QEMUFile *f)
+{
+    int i, ret;
+    for (i = 0; i < nand_dev_count; i++) {
+        ret = nand_dev_load_disk_state(f, nand_devs + i);
+        if (ret)
+            return ret; // abort on error
+    }
+
+    return 0;
+}
+
+static void  nand_dev_controller_state_save(QEMUFile *f, void  *opaque)
+{
+    nand_dev_controller_state* s = opaque;
+
+    qemu_put_struct(f, GoldfishNandDevice, s);
+
+    /* The guest will continue writing to the disk image after the state has
+     * been saved. To guarantee that the state is identical after resume, save
+     * a copy of the current disk state in the snapshot.
+     */
+    nand_dev_save_disks(f);
+}
+
+static int   nand_dev_controller_state_load(QEMUFile *f, void  *opaque, int  version_id)
+{
+    nand_dev_controller_state*  s = opaque;
+    int ret;
+
+    if (version_id != NAND_DEV_STATE_SAVE_VERSION)
+        return -1;
+
+    if ((ret = qemu_get_struct(f, nand_dev_controller_state_fields, s)))
+        return ret;
+    if ((ret = nand_dev_load_disks(f)))
+        return ret;
+
+    return 0;
+}
+#endif
 
 static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, uint32_t total_len)
 {
@@ -888,12 +1039,29 @@ DeviceState *goldfish_nand_create(GoldfishBus *gbus)
     return dev;
 }
 
+static const VMStateDescription vmstate_goldfish_nand = {
+    .name = "goldfish_nand",
+    .version_id = 1,
+    .fields = (VMStateField[]){
+        VMSTATE_UINT32(dev, GoldfishNandDevice),
+        VMSTATE_UINT32(addr_high, GoldfishNandDevice),
+        VMSTATE_UINT32(addr_low, GoldfishNandDevice),
+        VMSTATE_UINT32(transfer_size, GoldfishNandDevice),
+        VMSTATE_UINT32(data, GoldfishNandDevice),
+        VMSTATE_UINT32(batch_addr_high, GoldfishNandDevice),
+        VMSTATE_UINT32(batch_addr_low, GoldfishNandDevice),
+        VMSTATE_UINT32(result, GoldfishNandDevice),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static GoldfishDeviceInfo goldfish_nand_info = {
     .init = goldfish_nand_init,
     .readfn = nand_dev_readfn,
     .writefn = nand_dev_writefn,
     .qdev.name  = "goldfish_nand",
     .qdev.size  = sizeof(GoldfishNandDevice),
+    .qdev.vmsd  = &vmstate_goldfish_nand,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),

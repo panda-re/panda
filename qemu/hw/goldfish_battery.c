@@ -218,12 +218,28 @@ DeviceState *goldfish_battery_create(GoldfishBus *gbus)
     return dev;
 }
 
+static const VMStateDescription vmstate_goldfish_battery = {
+    .name = "goldfish_battery",
+    .version_id = 1,
+    .fields = (VMStateField []) {
+        VMSTATE_UINT32(int_status, GoldfishBatteryDevice),
+        VMSTATE_UINT32(int_enable, GoldfishBatteryDevice),
+        VMSTATE_INT32(ac_online, GoldfishBatteryDevice),
+        VMSTATE_INT32(status, GoldfishBatteryDevice),
+        VMSTATE_INT32(health, GoldfishBatteryDevice),
+        VMSTATE_INT32(present, GoldfishBatteryDevice),
+        VMSTATE_INT32(capacity, GoldfishBatteryDevice),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static GoldfishDeviceInfo goldfish_battery_info = {
     .init = goldfish_battery_init,
     .readfn = goldfish_battery_readfn,
     .writefn = goldfish_battery_writefn,
     .qdev.name  = "goldfish-battery",
     .qdev.size  = sizeof(GoldfishBatteryDevice),
+    .qdev.vmsd  = &vmstate_goldfish_battery,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),

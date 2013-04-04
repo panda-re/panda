@@ -227,7 +227,7 @@ pipe_save( Pipe* pipe, QEMUFile* file )
     } else {
         /* Otherwise, write a '1' then the service name */
         qemu_put_byte(file, 1);
-        //qemu_put_string(file, pipe->service->name);
+        qemu_put_string(file, pipe->service->name);
     }
 
     /* Now save other common data */
@@ -238,7 +238,7 @@ pipe_save( Pipe* pipe, QEMUFile* file )
     /* Write 1 + args, if any, or simply 0 otherwise */
     if (pipe->args != NULL) {
         qemu_put_byte(file, 1);
-        //qemu_put_string(file, pipe->args);
+        qemu_put_string(file, pipe->args);
     } else {
         qemu_put_byte(file, 0);
     }
@@ -258,7 +258,7 @@ pipe_load( PipeDevice* dev, QEMUFile* file )
 
     if (state != 0) {
         /* Pipe is associated with a service. */
-        char* name = "";//qemu_get_string(file);
+        char* name = qemu_get_string(file);
         if (name == NULL)
             return NULL;
 
@@ -275,7 +275,7 @@ pipe_load( PipeDevice* dev, QEMUFile* file )
     pipe->wanted  = qemu_get_byte(file);
     pipe->closed  = qemu_get_byte(file);
     if (qemu_get_byte(file) != 0) {
-        pipe->args = "";//qemu_get_string(file);
+        pipe->args = qemu_get_string(file);
     }
 
     pipe->service = service;
@@ -1262,7 +1262,9 @@ goldfish_pipe_load( QEMUFile* file, void* opaque, int version_id )
 }
 
 static int goldfish_pipe_init(GoldfishDevice *dev){
-        return 0;
+    register_savevm(&dev->qdev, "goldfish_pipe", 0, GOLDFISH_PIPE_SAVE_VERSION,
+                      goldfish_pipe_save, goldfish_pipe_load, dev);
+    return 0;
 }
 
 DeviceState *goldfish_pipe_create(GoldfishBus* gbus)
