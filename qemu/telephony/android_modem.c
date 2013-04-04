@@ -614,9 +614,9 @@ amodem_create( int  base_port, AModemUnsolFunc  unsol_func, void*  unsol_opaque 
     modem->sim = asimcard_create(base_port);
 
     sys_main_init();
-    /*register_savevm( "android_modem", 0, MODEM_DEV_STATE_SAVE_VERSION,
+    register_savevm( NULL, "android_modem", 0, MODEM_DEV_STATE_SAVE_VERSION,
                       android_modem_state_save,
-                      android_modem_state_load, modem);*/
+                      android_modem_state_load, modem);
 
 #if defined(USE_ANDROID_CONFIG)
     aconfig_save_file( modem->nvram_config, modem->nvram_config_filename );

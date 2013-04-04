@@ -2255,8 +2255,8 @@ _android_qemud_serial_init(void)
 
     qemud_multiplexer_init(_multiplexer, cs);
 
-    //register_savevm( "qemud", 0, QEMUD_SAVE_VERSION,
-     //                 qemud_save, qemud_load, _multiplexer);
+    register_savevm(NULL, "qemud", 0, QEMUD_SAVE_VERSION,
+                    qemud_save, qemud_load, _multiplexer);
 }
 
 extern void
