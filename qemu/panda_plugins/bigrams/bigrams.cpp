@@ -197,8 +197,8 @@ void uninit_plugin(void *self) {
             fwrite(&it2->first, sizeof(it2->first), 1, mem_report);   // Key: unsigned short
             fwrite(&it2->second, sizeof(it2->second), 1, mem_report); // Value: unsigned int
         }
-        printf("Wrote histogram with %d entries (%ld bytes)\n", 
-            hist_keys, (sizeof(unsigned short)+sizeof(unsigned long))*hist_keys + sizeof(prog_point) + sizeof(hist_keys));
+        //printf("Wrote histogram with %d entries (%ld bytes)\n", 
+        //    hist_keys, (sizeof(unsigned short)+sizeof(unsigned long))*hist_keys + sizeof(prog_point) + sizeof(hist_keys));
     }
     fclose(mem_report);
     
