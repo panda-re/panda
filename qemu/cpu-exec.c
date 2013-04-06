@@ -757,7 +757,7 @@ int cpu_exec(CPUState *env)
                 // (T0 & ~3) contains pointer to previous translation block.
                 // (T0 & 3) contains info about which branch we took (why 2 bits?)
                 // tb is current translation block.  
-                if (0 && (rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
+                if ((rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
                     if (next_tb != 0 && tb->page_addr[1] == -1) {
                         tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                     }
@@ -783,17 +783,6 @@ int cpu_exec(CPUState *env)
                 if (rr_replay_finished()) {
                     rr_end_replay_requested = 1;
                     break;
-                }
-
-                // Debug!
-                //rr_debug();
-                if (env->rr_guest_instr_count >= 10471850000 && !logfile) {
-                    if (rr_mode == RR_RECORD)
-                        logfile = fopen("/scratch/winfailbootrec.log", "w");
-                    else if (rr_mode == RR_REPLAY)
-                        logfile = fopen("/scratch2/winfailbootrep.log", "w");
-                    loglevel = CPU_LOG_RR | CPU_LOG_TB_IN_ASM | CPU_LOG_INT;
-                    printf("Enabling logging.\n");
                 }
 
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
