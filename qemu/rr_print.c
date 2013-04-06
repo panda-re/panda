@@ -284,11 +284,11 @@ void rr_create_replay_log (const char *filename) {
 int main(int argc, char **argv) {
     rr_create_replay_log(argv[1]);
     printf("RR Log with %llu instructions\n", (unsigned long long) rr_nondet_log->last_prog_point.guest_instr_count);
-    RR_log_entry *log_entry;
+    RR_log_entry *log_entry = NULL;
     while(!log_is_empty()) {
         log_entry = rr_read_item();
         rr_spit_log_entry(*log_entry);
     }
-    g_free(log_entry);
+    if (log_entry) g_free(log_entry);
     return 0;
 }
