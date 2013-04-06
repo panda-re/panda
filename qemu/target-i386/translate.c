@@ -7913,6 +7913,15 @@ static void gen_intermediate_code_internal(CPUState *env,
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
 
+    //bdg If search_pc is on, we need to make sure that we translate exactly
+    //bdg as many instructions as we did last time. Normally this wouldn't be
+    //bdg a problem, but during replay we may have terminated translation
+    //bdg early due to an upcoming interrupt. So during replay we add an extra
+    //bdg constraint that we can never translate more than we did the first
+    //bdg time through.
+    if (rr_mode == RR_REPLAY && search_pc)
+        max_insns = tb->icount;
+
     gen_icount_start();
     for(;;) {
         if (unlikely(!QTAILQ_EMPTY(&env->breakpoints))) {
