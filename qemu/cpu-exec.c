@@ -780,7 +780,7 @@ int cpu_exec(CPUState *env)
                 barrier();
 
                 // Check for termination in replay
-                if (rr_replay_finished()) {
+                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                     rr_end_replay_requested = 1;
                     break;
                 }
