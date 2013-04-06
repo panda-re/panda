@@ -78,7 +78,7 @@ typedef struct RR_log_t {
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 
-static inline uint8_t log_is_empty(void) {
+static inline uint8_t rr_log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
         return 1;
@@ -87,7 +87,6 @@ static inline uint8_t log_is_empty(void) {
         return 0;
     }
 }
-
 
 RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 
@@ -114,6 +113,13 @@ extern void log_all_cpu_states(void);
 /******************************************************************************************/
 /* UTILITIES */
 /******************************************************************************************/
+
+// Check if replay is really finished. Conditions:
+// 1) The log is empty
+// 2) The only thing in the queue is RR_LAST
+uint8_t rr_replay_finished(void) {
+    return rr_log_is_empty() && queue_head->header.kind == RR_LAST;
+}
 
 //mz "performance" counters - basically, how much of the log is taken up by
 //mz each kind of entry. 
@@ -581,7 +587,7 @@ static RR_log_entry *rr_read_item(void) {
 
     //mz read header
     rr_assert (rr_in_replay());
-    rr_assert ( ! log_is_empty());
+    rr_assert ( ! rr_log_is_empty());
     rr_assert (rr_nondet_log->fp != NULL);
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
@@ -691,7 +697,7 @@ static void rr_fill_queue(void) {
     //mz first, some sanity checks.  The queue should be empty when this is called.
     rr_assert(queue_head == NULL && queue_tail == NULL);
 
-    while ( ! log_is_empty()) {
+    while ( ! rr_log_is_empty()) {
         log_entry = rr_read_item();
 
         //mz add it to the queue
@@ -705,17 +711,9 @@ static void rr_fill_queue(void) {
         num_entries++;
 
         if (log_entry->header.kind == RR_LAST) {
-            //mz it should be OK to terminate replay here, as in record the
-            //last thing in the log before an RR_LAST should have been an
-            //INTERRUPT_REQUEST with EXCP_EXIT_DEBUG value to quit the
-            //cpu_exec() loop due to end_record command.
-            //
-            //mz from cpu-exec.c
-            rr_end_replay_requested = 1;
-            //mz need to get out of cpu loop so that we can process the end_replay request
-            //mz this will call cpu_loop_exit(), which longjmps
-            rr_quit_cpu_loop();
-            /* NOT REACHED */
+            // It's not really an interrupt, but needs to be set here so
+            // that we can execute any remaining code.
+            rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
         }
         else if (log_entry->header.kind == RR_SKIPPED_CALL && log_entry->header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT) {
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
@@ -1097,7 +1095,7 @@ void rr_destroy_log(void) {
 //mz display a measure of replay progress (using instruction counts and log size)
 void replay_progress(void) {
   if (rr_nondet_log) {
-    if (log_is_empty()) {
+    if (rr_log_is_empty()) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
     }
     else {

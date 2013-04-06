@@ -368,8 +368,6 @@ int cpu_exec(CPUState *env)
             for(;;) {
                 //mz Set the program point here.
                 rr_set_program_point();
-                if(env->rr_guest_instr_count == 2193442693)
-                    printf("STOP. Hammertime.\n");
                 // cache interrupt request value.
                 interrupt_request = env->interrupt_request;
                 //mz Record and Replay.
@@ -656,28 +654,6 @@ int cpu_exec(CPUState *env)
                     }
                 }
 
-#if 0
-                // Capture exit_request
-                saved_exit_request = env->exit_request;
-
-                rr_set_program_point();
-                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
-                if (rr_in_record()) {
-                    rr_exit_request(&saved_exit_request);
-                }
-                else if (rr_in_replay()) {
-                    if (!rr_use_live_exit_request) {
-                        rr_exit_request(&saved_exit_request);
-                    }
-                }
-
-                if (rr_debug_whisper()) {
-                      qemu_log_mask(CPU_LOG_RR, 
-                          "RR_CALLSITE_CPU_EXEC_00 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
-                }
-#endif
-
                 //bdg Replay skipped calls from the I/O thread here
                 if(rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
@@ -791,7 +767,7 @@ int cpu_exec(CPUState *env)
                     TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
                     There appears to be no equivalent in 1.0.1.  :<
                   */
-                }		
+                }
 
                 spin_unlock(&tb_lock);	       
 
@@ -801,40 +777,22 @@ int cpu_exec(CPUState *env)
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
 
-
                 barrier();
 
-#if 0
-                // Capture exit_request
-                saved_exit_request = env->exit_request;
-
-                rr_set_program_point();
-                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_000;
-                if (rr_in_record()) {
-                    rr_exit_request(&saved_exit_request);
+                // Check for termination in replay
+                if (rr_replay_finished()) {
+                    rr_end_replay_requested = 1;
+                    break;
                 }
-                else if (rr_in_replay()) {
-                    if (!rr_use_live_exit_request) {
-                        rr_exit_request(&saved_exit_request);
-                    }
-                }
-
-                if (rr_debug_whisper()) {
-                      qemu_log_mask(CPU_LOG_RR, 
-                          "RR_CALLSITE_CPU_EXEC_000 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
-                }
-
-#endif
 
                 // Debug!
                 //rr_debug();
-                if (0 && env->rr_guest_instr_count >= 5000000000 && !logfile) {
+                if (env->rr_guest_instr_count >= 10471850000 && !logfile) {
                     if (rr_mode == RR_RECORD)
-                        logfile = fopen("/scratch/debfailbootrec.log", "w");
+                        logfile = fopen("/scratch/winfailbootrec.log", "w");
                     else if (rr_mode == RR_REPLAY)
-                        logfile = fopen("/scratch2/debfailbootrep.log", "w");
-                    loglevel = CPU_LOG_RR | CPU_LOG_TB_IN_ASM;
+                        logfile = fopen("/scratch2/winfailbootrep.log", "w");
+                    loglevel = CPU_LOG_RR | CPU_LOG_TB_IN_ASM | CPU_LOG_INT;
                     printf("Enabling logging.\n");
                 }
 
