@@ -3618,6 +3618,19 @@ int main(int argc, char **argv, char **envp)
     panda_unload_plugins();
 
     bdrv_close_all();
+
+    // RR: end record / replay if necessary
+    if (rr_in_replay()) {
+        init_timer_alarm();
+        rr_do_end_replay(0);
+        rr_end_replay_requested = 0;
+        vm_stop(RUN_STATE_PAUSED);
+    }
+    else if (rr_in_record()) {
+        rr_do_end_record();
+        rr_end_record_requested = 0;
+    }
+
     pause_all_vcpus();
     net_cleanup();
     res_free();
