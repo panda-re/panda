@@ -366,6 +366,13 @@ int cpu_exec(CPUState *env)
 
             next_tb = 0; /* force lookup of first TB */
             for(;;) {
+                //bdg Replay skipped calls from the I/O thread here
+                if(rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                    rr_set_program_point();
+                    rr_replay_skipped_calls();
+                }
+            
                 //mz Set the program point here.
                 rr_set_program_point();
                 // cache interrupt request value.
@@ -423,7 +430,7 @@ int cpu_exec(CPUState *env)
                             env->hflags2 |= HF2_NMI_MASK;
                             do_interrupt_x86_hardirq(env, EXCP02_NMI, 1);
                             next_tb = 0;
-			} else if (interrupt_request & CPU_INTERRUPT_MCE) {
+                        } else if (interrupt_request & CPU_INTERRUPT_MCE) {
                             env->interrupt_request &= ~CPU_INTERRUPT_MCE;
                             do_interrupt_x86_hardirq(env, EXCP12_MCHK, 0);
                             next_tb = 0;
@@ -654,13 +661,6 @@ int cpu_exec(CPUState *env)
                     }
                 }
 
-                //bdg Replay skipped calls from the I/O thread here
-                if(rr_in_replay()) {
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_set_program_point();
-                    rr_replay_skipped_calls();
-                }
-
                 if (unlikely(env->exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
@@ -697,7 +697,7 @@ int cpu_exec(CPUState *env)
                         }
                     }
                 }
-                
+
                 if(panda_flush_tb()) {
                     tb_flush(env);
                     tb_invalidated_flag = 1;
@@ -705,6 +705,7 @@ int cpu_exec(CPUState *env)
 
                 spin_lock(&tb_lock);
 
+                //bdg WARNING! This can cause an exception
                 tb = tb_find_fast(env);
 
                 qemu_log_mask(CPU_LOG_RR, 
@@ -784,7 +785,7 @@ int cpu_exec(CPUState *env)
                     rr_end_replay_requested = 1;
                     break;
                 }
-
+                
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;
                     //mz setting program point just before call to gen_func()

@@ -715,10 +715,8 @@ static void rr_fill_queue(void) {
             // that we can execute any remaining code.
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
         }
-        else if (log_entry->header.kind == RR_SKIPPED_CALL && log_entry->header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT) {
-            rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
-        }
-        else if (log_entry->header.kind == RR_INTERRUPT_REQUEST) {
+        else if ((log_entry->header.kind == RR_SKIPPED_CALL && log_entry->header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT) ||
+                 log_entry->header.kind == RR_INTERRUPT_REQUEST) {
 #if RR_REPORT_PROGRESS
             static uint64_t num = 1;
             if ((rr_prog_point.guest_instr_count / (double)rr_nondet_log->last_prog_point.guest_instr_count) * 100 >= num) {
@@ -1017,6 +1015,9 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                     rr_assert(0);
             }
             add_to_recycle_list(current_item);
+            //bdg Now that we are also breaking on main loop skipped calls we have to 
+            //bdg refill the queue here
+            if (call_site == RR_CALLSITE_MAIN_LOOP_WAIT) rr_fill_queue();
         }
     } while ( ! replay_done);
 #endif
