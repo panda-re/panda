@@ -269,6 +269,26 @@ int cpu_exec(CPUState *env)
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+    RR_prog_point saved_prog_point = rr_prog_point;
+    int rr_loop_tries = 20;
+
+    //Debug
+    static target_phys_addr_t old_wonky_phys = 0;
+    static uint64_t old_wonky_phys_sum = 0;
+    static unsigned long int rr_dbgcount = 0;
+    if (rr_mode != RR_OFF && rr_dbgcount == 0) {
+        char rr_dbgcount_fname[256] = {0};
+        strcat(rr_dbgcount_fname, rr_requested_name);
+        strcat(rr_dbgcount_fname, ".count");
+        FILE *rr_dbgcount_file = fopen(rr_dbgcount_fname, "r");
+        if (rr_dbgcount_file) {
+            char rr_dbgcount_str[32] = {0};
+            fread(rr_dbgcount_str, 1, 31, rr_dbgcount_file);
+            rr_dbgcount = strtoul(rr_dbgcount_str, NULL, 0);
+            printf("Found count file; will begin logging at %lu.\n", rr_dbgcount);
+        }
+    }
+    
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (unlikely(rr_flush_tb())) {
@@ -785,7 +805,152 @@ int cpu_exec(CPUState *env)
                     rr_end_replay_requested = 1;
                     break;
                 }
-                
+
+                // Check for replay failure (otherwise infinite loop would result)
+                if (rr_mode == RR_REPLAY) {
+                    if (rr_prog_point.pc == saved_prog_point.pc &&
+                            rr_prog_point.secondary == saved_prog_point.secondary &&
+                            rr_prog_point.guest_instr_count == saved_prog_point.guest_instr_count) {
+                        rr_loop_tries--;
+                    }
+                    else {
+                        rr_loop_tries = 20;
+                        saved_prog_point = rr_prog_point;
+                    }
+
+                    if (!rr_loop_tries) {
+                        // Signal failure
+                        printf("Infinite loop detected during replay, aborting.\n");
+                        rr_do_end_replay(1);
+                    }
+                }
+
+#if 0
+#if defined(CONFIG_SOFTMMU) && defined(TARGET_I386)
+                target_phys_addr_t wonky_phys = 0;
+
+                static bool already_saved_mem = false;
+                if (env->cr[3] == 0x607e000) {
+                    bool something_changed = false;
+                    wonky_phys = cpu_get_phys_page_debug(env, 0x0000000000ac4800);
+
+                    if ((wonky_phys != (target_phys_addr_t)-1) && wonky_phys != old_wonky_phys) {
+                        printf("Mapping of vaddr 0xac4800 changed from " TARGET_FMT_lx " to " TARGET_FMT_lx "\n",
+                                old_wonky_phys, wonky_phys);
+                        something_changed = true;
+                        old_wonky_phys = wonky_phys;
+
+                        if (!already_saved_mem) {
+                            panda_memsavep("autoboot10_debsqueeze_amd64.mem");
+                            already_saved_mem = true;
+                        }
+                    }
+
+                    if ((wonky_phys != (target_phys_addr_t)-1)) {
+                        unsigned long wpd = cpu_get_physical_page_desc(wonky_phys);
+                        if (wpd != IO_MEM_UNASSIGNED) {
+                            void *wonky_ptr = qemu_get_ram_ptr(wpd & TARGET_PAGE_MASK);
+                            uint64_t wonky_phys_sum = 0;
+                            int memidx;
+                            for (memidx = 0; memidx < TARGET_PAGE_SIZE; memidx++) {
+                                wonky_phys_sum += ((unsigned char *)wonky_ptr)[memidx];
+                            }
+                            if (wonky_phys_sum != old_wonky_phys_sum) {
+                                printf("Wonky page contents changed, old sum = %08lx new sum = %08lx\n", 
+                                        old_wonky_phys_sum, wonky_phys_sum);
+                            something_changed = true;
+                            old_wonky_phys_sum = wonky_phys_sum;
+                            }
+                        }
+                        else {
+                            printf("wonky page is not in RAM!\n");
+                        }
+                    }
+
+                    if (something_changed) {
+                        rr_spit_prog_point(rr_prog_point);
+                    }
+
+                }
+
+                static uint64_t pagesum = 0;
+                uint64_t newpagesum = 0;
+                static void *the_page = (void *)0x7fffe3796000;
+                int memidx;
+                for (memidx = 0; memidx < TARGET_PAGE_SIZE; memidx++) {
+                    newpagesum += ((unsigned char *)the_page)[memidx];
+                }
+                if (newpagesum != pagesum) {
+                    printf("Value of memory at %p changed!\n", the_page);
+                    rr_spit_prog_point(rr_prog_point);
+                    pagesum = newpagesum;
+                }
+
+                static target_ulong printed_cr3s[512] = {0};
+                if ((env->hflags & HF_LMA_MASK) && (env->cr[0] & CR0_PG_MASK) && (env->cr[3] != 0)) {
+                    wonky_phys = cpu_get_phys_page_debug(env, 0x0000000000ac4800);
+
+                    if ((wonky_phys != (target_phys_addr_t)-1)) {
+                        // Have we already printed this one?
+                        int printed_cr3_index;
+                        int wonk_already_printed = 0;
+                        for(printed_cr3_index = 0; printed_cr3s[printed_cr3_index] != 0; printed_cr3_index++) {
+                            if (printed_cr3s[printed_cr3_index] == env->cr[3]) {
+                                wonk_already_printed = 1;
+                                break;
+                            }
+                        }
+                        if (!wonk_already_printed) {
+                            printed_cr3s[printed_cr3_index] = env->cr[3];
+                            unsigned long wpd = cpu_get_physical_page_desc(wonky_phys);
+                            if (wpd != IO_MEM_UNASSIGNED) {
+                                void *wonky_ptr = qemu_get_ram_ptr(wpd & TARGET_PAGE_MASK);
+                                printf("wonky page is in RAM: vaddr=" TARGET_FMT_lx " paddr=0x" TARGET_FMT_plx
+                                    " ram_ptr=%p pd=0x%08lx cr3=0x" TARGET_FMT_lx "\n",
+                                    0x0000000000ac4800L, wonky_phys, wonky_ptr, wpd, env->cr[3]);
+                            }
+                            else {
+                                printf("wonky page is not in RAM!\n");
+                            }
+                            printf("STOP. Hammertime.\n");
+                        }
+                    }
+                }
+#endif
+
+#if defined(CONFIG_SOFTMMU) && defined(TARGET_I386)
+                if (rr_dbgcount && env->rr_guest_instr_count == rr_dbgcount) {
+                    target_phys_addr_t guestpa = 0;
+                    printf("RAX=" TARGET_FMT_lx " R8=" TARGET_FMT_lx " RSI=" TARGET_FMT_lx "\n",
+                            env->regs[R_EAX], env->regs[8], env->regs[R_ESI]);
+                    guestpa = cpu_get_phys_page_debug(env, env->regs[R_EAX]+env->regs[8]);
+                    printf("RAX+R8=" TARGET_FMT_lx ", PhysAddr=" TARGET_FMT_lx ", CR3=" TARGET_FMT_lx "\n",
+                            env->regs[R_EAX]+env->regs[8], guestpa, env->cr[3]);
+                    printf("RSI=" TARGET_FMT_lx ", PhysAddr=" TARGET_FMT_lx ", CR3=" TARGET_FMT_lx "\n",
+                            env->regs[R_ESI], guestpa, env->cr[3]);
+                }
+#endif
+
+                // Debug!
+                //rr_debug();
+                if (rr_dbgcount && env->rr_guest_instr_count >= rr_dbgcount && !logfile) {
+                    char logfilename[256] = "/scratch";
+                    if (rr_mode == RR_RECORD) {
+                        strcat(logfilename, "/rec_");
+                        strcat(logfilename, rr_requested_name);
+                        strcat(logfilename, ".log");
+                    }
+                    else if (rr_mode == RR_REPLAY) {
+                        strcat(logfilename, "2/rep_");
+                        strcat(logfilename, rr_requested_name);
+                        strcat(logfilename, ".log");
+                    }
+                    logfile = fopen(logfilename, "w");
+                    loglevel = 0xffffffff;
+                    printf("Enabling logging in file %s.\n", logfilename);
+                    panda_do_flush_tb();
+                }
+#endif                
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;
                     //mz setting program point just before call to gen_func()
