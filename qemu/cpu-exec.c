@@ -269,6 +269,9 @@ int cpu_exec(CPUState *env)
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+    RR_prog_point saved_prog_point = rr_prog_point;
+    int rr_loop_tries = 20;
+    
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (unlikely(rr_flush_tb())) {
@@ -785,7 +788,26 @@ int cpu_exec(CPUState *env)
                     rr_end_replay_requested = 1;
                     break;
                 }
-                
+
+                // Check for replay failure (otherwise infinite loop would result)
+                if (rr_mode == RR_REPLAY) {
+                    if (rr_prog_point.pc == saved_prog_point.pc &&
+                            rr_prog_point.secondary == saved_prog_point.secondary &&
+                            rr_prog_point.guest_instr_count == saved_prog_point.guest_instr_count) {
+                        rr_loop_tries--;
+                    }
+                    else {
+                        rr_loop_tries = 20;
+                        saved_prog_point = rr_prog_point;
+                    }
+
+                    if (!rr_loop_tries) {
+                        // Signal failure
+                        printf("Infinite loop detected during replay, aborting.\n");
+                        rr_do_end_replay(1);
+                    }
+                }
+
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;
                     //mz setting program point just before call to gen_func()
