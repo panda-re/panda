@@ -23,12 +23,6 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
-// Public interface
-// Get up to n callers from the given address space at this moment
-// Callers are returned in callers[], most recent first
-int get_callers(target_ulong callers[], int n, target_ulong asid);
-
 }
 
 #include <stdio.h>
@@ -38,6 +32,21 @@ int get_callers(target_ulong callers[], int n, target_ulong asid);
 #include <map>
 #include <vector>
 #include <algorithm>
+
+#include "../common/prog_point.h"
+
+extern "C" {
+// Public interface
+
+// Get up to n callers from the given address space at this moment
+// Callers are returned in callers[], most recent first
+int get_callers(target_ulong callers[], int n, target_ulong asid);
+
+// Get the current program point: (Caller, PC, ASID)
+// This isn't quite the right place for it, but since it's awkward
+// right now to have a "utilities" library, this will have to do
+void get_prog_point(CPUState *env, prog_point *p);
+}
 
 unsigned long misses;
 unsigned long total;
@@ -252,6 +261,28 @@ int get_callers(target_ulong callers[], int n, target_ulong asid) {
         callers[i] = rit->pc;
     }
     return i;
+}
+
+void get_prog_point(CPUState *env, prog_point *p) {
+    if (!p) return;
+
+    // Get address space identifier
+    target_ulong asid = get_asid(env, env->panda_guest_pc);
+    p->cr3 = asid;
+
+    // Try to get the caller
+    int n_callers = 0;
+    n_callers = get_callers(&p->caller, 1, asid);
+
+    if (n_callers == 0) {
+#ifdef TARGET_I386
+        // fall back to EBP on x86
+        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
+#endif
+    }
+
+    p->pc = env->panda_guest_pc;
 }
 
 bool init_plugin(void *self) {
