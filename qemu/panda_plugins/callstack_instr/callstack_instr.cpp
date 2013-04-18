@@ -268,7 +268,16 @@ void get_prog_point(CPUState *env, prog_point *p) {
 
     // Get address space identifier
     target_ulong asid = get_asid(env, env->panda_guest_pc);
+    // Lump all kernel-mode CR3s together
+#if defined(TARGET_I386)
+    if((env->hflags & HF_CPL_MASK) != 0)
+        p->cr3 = asid;
+#elif defined(TARGET_ARM)
+    if((env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC)
+        p->cr3 = asid;
+#else // XXX: add kernel-mode detection for other archs here
     p->cr3 = asid;
+#endif
 
     // Try to get the caller
     int n_callers = 0;
