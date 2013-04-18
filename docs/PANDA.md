@@ -147,6 +147,10 @@ These functions enable and disable the execution of QEMU helper functions in the
 LLVM JIT.  Call the enable function after calling panda_enable_llvm(), and call
 the disable function before calling panda_disable_llvm().
 
+    void panda_memsavep(FILE *out);
+
+Saves a physical memory snapshot into the open file pointer `out`. This function
+is guaranteed not to perturb guest state.
 
 ## Callbacks
 
