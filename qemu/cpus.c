@@ -486,7 +486,7 @@ static void cpu_signal(int sig)
     }
     if (rr_in_replay()) {
         if (rr_debug_whisper()) {
-            fprintf(logfile, "cpu_signal called in replay mode, this had really better be a monitor request!!\n");
+            //fprintf(logfile, "cpu_signal called in replay mode, this had really better be a monitor request!!\n");
         }
         
         rr_use_live_exit_request = 1;

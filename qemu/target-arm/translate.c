@@ -9881,9 +9881,16 @@ static inline void gen_intermediate_code_internal(CPUState *env,
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
 
-    if (rr_in_replay())
+    // Terminate translation early if we have an interrupt coming up
+    if (!search_pc && rr_in_replay())
         max_insns = max_insns < rr_num_instr_before_next_interrupt ?
                         max_insns : rr_num_instr_before_next_interrupt;
+    // But during search_pc always translate the same number we did last time
+    if (search_pc)
+        max_insns = tb->icount;
+    // TBs get recycled, so clear this here
+    if (rr_mode != RR_OFF)
+        tb->num_guest_insns = 0;
 
     gen_icount_start();
 

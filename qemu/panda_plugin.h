@@ -395,6 +395,7 @@ void panda_enable_llvm_helpers(void);
 void panda_disable_llvm_helpers(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
+void panda_memsavep(FILE *f);
 
 extern bool panda_update_pc;
 extern bool panda_use_memcb;

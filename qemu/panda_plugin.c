@@ -206,6 +206,26 @@ void panda_disable_llvm_helpers(void){
 
 #endif
 
+void panda_memsavep(FILE *f) {
+#ifdef CONFIG_SOFTMMU
+    if (!f) return;
+    uint8_t mem_buf[TARGET_PAGE_SIZE];
+    uint8_t zero_buf[TARGET_PAGE_SIZE];
+    memset(zero_buf, 0, TARGET_PAGE_SIZE);
+    int res;
+    ram_addr_t addr;
+    for (addr = 0; addr < ram_size; addr += TARGET_PAGE_SIZE) {
+        res = panda_physical_memory_rw(addr, mem_buf, TARGET_PAGE_SIZE, 0);
+        if (res == -1) { // I/O. Just fill page with zeroes.
+            fwrite(zero_buf, TARGET_PAGE_SIZE, 1, f);
+        }
+        else {
+            fwrite(mem_buf, TARGET_PAGE_SIZE, 1, f);
+        }
+    }
+#endif
+}
+
 #ifdef CONFIG_SOFTMMU
 
 // QMP
