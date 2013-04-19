@@ -105,6 +105,11 @@ llvm-3.0/*/Release+Asserts/
 llvm-3.0/*/*/Release+Asserts/
 llvm-3.0/*/*/*/Release+Asserts/
 llvm-3.0/*/*/*/*/Release+Asserts/
+llvm-3.0/Debug+Asserts/
+llvm-3.0/*/Debug+Asserts/
+llvm-3.0/*/*/Debug+Asserts/
+llvm-3.0/*/*/*/Debug+Asserts/
+llvm-3.0/*/*/*/*/Debug+Asserts/
 llvm-3.0/tools/clang/docs/doxygen.cfg
 llvm-3.0/tools/clang/include/clang/AST/AttrImpl.inc
 llvm-3.0/tools/clang/include/clang/AST/Attrs.inc
@@ -155,6 +160,22 @@ llvm-3.0/tools/clang/tools/*/Release/.*
 llvm-3.0/tools/clang/unittests/*/Release/*
 llvm-3.0/tools/clang/unittests/*/Release/.*
 llvm-3.0/tools/clang/utils/TableGen/Release/.*
+llvm-3.0/tools/clang/include/clang/AST/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/AST/Debug+Asserts/*
+llvm-3.0/tools/clang/include/clang/Basic/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/Basic/Debug+Asserts/*
+llvm-3.0/tools/clang/include/clang/Driver/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/Driver/Debug+Asserts/*
+llvm-3.0/tools/clang/include/clang/Lex/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/Lex/Debug+Asserts/*
+llvm-3.0/tools/clang/include/clang/Parse/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/Parse/Debug+Asserts/*
+llvm-3.0/tools/clang/include/clang/Serialization/Debug+Asserts/.*
+llvm-3.0/tools/clang/include/clang/Serialization/Debug+Asserts/*
+llvm-3.0/tools/clang/lib/StaticAnalyzer/Checkers/Debug+Asserts/.*
+llvm-3.0/tools/clang/lib/StaticAnalyzer/Checkers/Debug+Asserts/*
+llvm-3.0/tools/clang/lib/StaticAnalyzer/Core/Debug+Asserts/.*
+llvm-3.0/tools/clang/lib/StaticAnalyzer/Frontend/Debug+Asserts/.*
 
 qemu/QMP/qmp-commands.txt
 qemu/config-all-devices.mak

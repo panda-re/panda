@@ -123,7 +123,6 @@ audio_win_int=""
 cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 llvm="no"
-llvm_instr_helpers="no"
 
 target_list=""
 
@@ -3001,7 +3000,6 @@ echo "Linux AIO support $linux_aio"
 echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
 echo "LLVM support      $llvm"
-echo "LLVM helpers      $llvm_instr_helpers"
 echo "KVM support       $kvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
