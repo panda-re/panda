@@ -33,7 +33,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-typedef int (* get_callers_t)(target_ulong callers[], int n, target_ulong asid);
+typedef int (* get_callers_t)(target_ulong callers[], int n, CPUState *env);
 get_callers_t get_callers;
 
 typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
@@ -56,8 +56,10 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     if (tap_points.find(p) != tap_points.end()) {
         tap_points.erase(p);
         target_ulong callers[16] = {0};
-        int nret = get_callers(callers, 16, p.cr3);
-        for (int i = 0; i < nret; i++) {
+        int nret = get_callers(callers, 16, env);
+        // Most recent callers are returned first, so print them
+        // out in reverse order
+        for (int i = nret-1; i > 0; i--) {
             fprintf(cs_file, TARGET_FMT_lx " ", callers[i]);
             printf(TARGET_FMT_lx " ", callers[i]);
         }
