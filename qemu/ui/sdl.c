@@ -874,16 +874,10 @@ static void handle_mousebutton(DisplayState *ds, SDL_Event *ev)
         dz = 0;
         if(bev->button == SDL_BUTTON_LEFT){
             int x, y;
-            #if 1
+
             x = ev->motion.x;
             y = ev->motion.y;
-            #elif 0
-            x = ev->motion.y
-            y = ev->motion.x;
-            #elif 1
-            x = 
-            #endif
-            
+
             if(ev->type == SDL_MOUSEBUTTONDOWN){
                 kbd_mouse_event(x, y, 0, 1);
                 is_dragging = true;
