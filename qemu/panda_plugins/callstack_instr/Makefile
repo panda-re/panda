@@ -8,6 +8,9 @@ PLUGIN_NAME=callstack_instr
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
+# -DUSE_STACK_HEURISTIC tries to detect thread switches by sudden
+# jumps in the stack pointer
+#QEMU_CFLAGS+=-std=c++11 -g -DUSE_STACK_HEURISTIC
 QEMU_CFLAGS+=-std=c++11 -g
 LIBS+=-ldistorm3
 
