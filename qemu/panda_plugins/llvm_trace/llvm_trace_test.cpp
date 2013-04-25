@@ -1,23 +1,22 @@
 
 /*
- * This test recreates an entire trace in LLVM format, and ensures that dynamic
- * values line up with their expected location in the bitcode.
- *
- * TODO: This doesn't support helper functions, but we will add support for them
- * here too.
+ * This test recreates an entire trace (including all helper functions) in LLVM
+ * format, and ensures that dynamic values in the log line up with their
+ * expected location in the bitcode.
  */
 
 #include "stdio.h"
 
+#include "llvm/Constants.h"
 #include "llvm/LLVMContext.h"
-#include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include "llvm/Value.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/InstVisitor.h"
 #include "llvm/Support/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include "llvm_trace_test.h"
 
 extern "C" {
 #include "panda_memlog.h"
@@ -27,30 +26,19 @@ using namespace llvm;
 
 FILE *flog;          // Function log
 FILE *dlog;          // Dynamic value log
-BasicBlock *next_bb; // Taken branch for BB that needs to be processed next
-bool ret;            // Return flag
-bool except;         // Exception flag
+bool except;         // Exception flag, global regardless of generated code or
+                     // helper function
 
-/* TestInstVisitor class
- * This class visits instructions for the TestFunctionPass.
- */
-class TestInstVisitor : public InstVisitor<TestInstVisitor> {
-public:
-    TestInstVisitor(){}
-    ~TestInstVisitor(){}
-
-    void visitLoadInst(LoadInst &I);
-    void visitStoreInst(StoreInst &I);
-    void visitBranchInst(BranchInst &I);
-    void visitReturnInst(ReturnInst &I);
-    //void visitSelectInst(SelectInst &I);
-    //void visitCallInst(CallInst &I);
-};
+/***
+ *** TestInstVisitor
+ ***/
 
 void TestInstVisitor::visitLoadInst(LoadInst &I){
     if (except){
         return;
     }
+
+    //printf("load\n");
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
     if (entry.entrytype == EXCEPTIONENTRY){
@@ -66,6 +54,7 @@ void TestInstVisitor::visitStoreInst(StoreInst &I){
         return; // These are part of the runtime system that we don't log
     }
 
+    //printf("store\n");
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
     if (entry.entrytype == EXCEPTIONENTRY){
@@ -80,6 +69,8 @@ void TestInstVisitor::visitBranchInst(BranchInst &I){
     if (except){
         return;
     }
+
+    //printf("branch\n");
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
     if (entry.entrytype == EXCEPTIONENTRY){
@@ -87,39 +78,87 @@ void TestInstVisitor::visitBranchInst(BranchInst &I){
         return;
     }
     assert(entry.entrytype == BRANCHENTRY);
-    next_bb = I.getSuccessor(entry.entry.branch.br);
+    TFP->setNextBB(I.getSuccessor(entry.entry.branch.br));
 }
 
 void TestInstVisitor::visitReturnInst(ReturnInst &I){
-    ret = true;
+    //printf("ret\n");
+    TFP->setRetFlag(true);
 }
 
-/* TestFunctionPass
- * This class is a test function pass responsible for analyzing an LLVM trace to
- * make sure the dynamic log lines up.
- */
-class TestFunctionPass : public FunctionPass {
-
-public:
-    static char ID;
-    TestInstVisitor *TIV;
-
-    TestFunctionPass() : FunctionPass(ID), TIV(new TestInstVisitor()) {}
-    ~TestFunctionPass();
-
-    bool runOnFunction(Function &F);
-
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-        AU.setPreservesAll();
+void TestInstVisitor::visitSelectInst(SelectInst &I){
+    if (except){
+        return;
     }
-};
 
-TestFunctionPass::~TestFunctionPass(){
-    delete TIV;
+    //printf("select\n");
+    DynValEntry entry;
+    size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
+    if (entry.entrytype == EXCEPTIONENTRY){
+        except = true;
+        return;
+    }
+    assert(entry.entrytype == SELECTENTRY);
+}
+
+void TestInstVisitor::visitCallInst(CallInst &I){
+    if (except){
+        return;
+    }
+    if ((I.getCalledFunction()->getName() == "log_dynval")
+        || (I.getCalledFunction()->isDeclaration())
+        || (I.getCalledFunction()->isIntrinsic())){
+        return;
+    }
+    
+    //printf("call %s\n", I.getCalledFunction()->getName().str().c_str());
+    TestFunctionPass *newTFP = new TestFunctionPass();
+    newTFP->runOnFunction(*I.getCalledFunction());
+    delete newTFP;
+}
+
+void TestInstVisitor::visitSwitchInst(SwitchInst &I){
+    if (except){
+        return;
+    }
+    
+    DynValEntry entry;
+    size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
+    if (entry.entrytype == EXCEPTIONENTRY){
+        except = true;
+        return;
+    }
+    assert(entry.entrytype == SWITCHENTRY);
+    //printf("switch %d\n", entry.entry.switchstmt.cond);
+    IntegerType *intType = IntegerType::get(getGlobalContext(), sizeof(int)*8);
+    ConstantInt *caseVal =
+        ConstantInt::get(intType, entry.entry.switchstmt.cond);
+    unsigned caseIndex = I.findCaseValue(caseVal);
+    TFP->setNextBB(I.getSuccessor(caseIndex));
+}
+
+/***
+ *** TestFunctionPass
+ ***/
+
+void TestFunctionPass::setNextBB(BasicBlock *bb){
+    next_bb = bb;
+}
+
+BasicBlock *TestFunctionPass::getNextBB(){
+    return next_bb;
+}
+
+void TestFunctionPass::setRetFlag(bool flag){
+    retFlag = flag;
+}
+
+bool TestFunctionPass::getRetFlag(){
+    return retFlag;
 }
 
 bool TestFunctionPass::runOnFunction(Function &F){
-    ret = false;
+    retFlag = false;
     except = false;
 
     // Process function starting with the entry basic block
@@ -128,8 +167,9 @@ bool TestFunctionPass::runOnFunction(Function &F){
 
     // If a function has multiple basic blocks, process them until we reach ret
     if (F.size() > 1){
-        while (!ret && !except){ // Continue until we reach a return
-                                 // instruction or exception
+        while (!retFlag && !except){ // Continue until we reach a return
+                                     // instruction or exception
+            //printf("visiting BB %s\n", next_bb->getName().str().c_str());
             TIV->visit(next_bb);
         }
     }
@@ -147,8 +187,6 @@ FunctionPass *createTestFunctionPass(){
 namespace {
     cl::opt<std::string> LogDir("d", cl::desc("directory containing logs"),
         cl::Required);
-    //cl::opt<std::string> CacheFile("c",
-    //    cl::desc("helper taint cache (optional)"), cl::Optional);
 }
 
 int main(int argc, char **argv){
@@ -189,19 +227,8 @@ int main(int argc, char **argv){
         exit(1);
     }
     
-    FunctionPassManager *FPasses = new FunctionPassManager(Mod);
-    
-    // Are we reading from the taint cache?
-    /*FILE *tc = NULL;
-    if (!CacheFile.empty()){
-        tc = fopen(CacheFile.c_str(), "r");
-        if (tc == NULL){
-            printf("Error opening taint cache file\n");
-            exit(1);
-        }
-    }*/
-
     // Initialize test function pass
+    FunctionPassManager *FPasses = new FunctionPassManager(Mod);
     FunctionPass *fp = static_cast<FunctionPass*>(createTestFunctionPass());
     FPasses->add(fp);
     FPasses->doInitialization();
@@ -230,6 +257,7 @@ int main(int argc, char **argv){
             exit(1);
         }
 
+        //printf("%s\n", F->getName().str().c_str());
         FPasses->run(*F); // Call runOnFunction()
     }
     fclose(flog);
