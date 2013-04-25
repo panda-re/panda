@@ -76,7 +76,7 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
             argValues.push_back(ConstantInt::get(ptrType,
                 (uintptr_t)dynval_buffer));
             argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
-            argValues.push_back(ConstantInt::get(intType, STORE));
+            argValues.push_back(ConstantInt::get(intType, LOAD));
             argValues.push_back(static_cast<Value*>(PTII));
             //argValues.push_back(static_cast<Value*>(I.getPointerOperand()));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
@@ -103,7 +103,7 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
             argValues.push_back(ConstantInt::get(ptrType,
                 (uintptr_t)dynval_buffer));
             argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
-            argValues.push_back(ConstantInt::get(intType, STORE));
+            argValues.push_back(ConstantInt::get(intType, LOAD));
             argValues.push_back(static_cast<Value*>(PTII));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
@@ -296,5 +296,37 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
     std::string fnName = I.getCalledFunction()->getName().str();
     printf("HELPER %s\n", fnName.c_str());
     fflush(stdout);*/
+}
+
+/*
+ * Instrument switch instructions to log the condition.
+ */
+void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
+    ZExtInst *ZEI;
+    CallInst *CI;
+    std::vector<Value*> argValues;
+    Function *F = mod->getFunction("log_dynval");
+    if (!F) {
+        printf("Instrumentation function not found\n");
+        assert(1==0);
+    }
+    if (I.getCondition()->getType() != wordType){
+        ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(I.getCondition(), wordType));
+        argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, SWITCHENTRY));
+        argValues.push_back(ConstantInt::get(intType, SWITCH));
+        argValues.push_back(static_cast<Value*>(ZEI));
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+        ZEI->insertBefore(static_cast<Instruction*>(CI));
+    }
+    else {
+        argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, SWITCHENTRY));
+        argValues.push_back(ConstantInt::get(intType, SWITCH));
+        argValues.push_back(static_cast<Value*>(I.getCondition()));
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+    }
 }
 

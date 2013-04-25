@@ -468,6 +468,12 @@ void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
                 write_dynval_buffer(dynval_buf, &dventry);
                 break;
 
+            case SWITCHENTRY:
+                dventry.entrytype = SWITCHENTRY;
+                dventry.entry.switchstmt.cond = dynval;
+                write_dynval_buffer(dynval_buf, &dventry);
+                break;
+
             default:
                 break;
         }
