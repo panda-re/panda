@@ -1134,7 +1134,7 @@ static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, cha
 }
 
 
-static inline void rr_reset_state(void *cpu_state) {
+void rr_reset_state(void *cpu_state) {
     //mz reset program point
     memset(&rr_prog_point, 0, sizeof(RR_prog_point));
     // set flag to signal that we'll be needing the tb flushed. 

@@ -1557,6 +1557,7 @@ static void main_loop(void)
         //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested && rr_in_record()) {
             rr_do_end_record();
+            rr_reset_state(first_cpu);
             rr_end_record_requested = 0;
         }
         if (rr_end_replay_requested && rr_in_replay()) {
