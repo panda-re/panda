@@ -59,7 +59,7 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         int nret = get_callers(callers, 16, env);
         // Most recent callers are returned first, so print them
         // out in reverse order
-        for (int i = nret-1; i > 0; i--) {
+        for (int i = nret-1; i >= 0; i--) {
             fprintf(cs_file, TARGET_FMT_lx " ", callers[i]);
             printf(TARGET_FMT_lx " ", callers[i]);
         }
