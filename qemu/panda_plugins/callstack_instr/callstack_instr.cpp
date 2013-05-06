@@ -19,25 +19,32 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
 int after_block_translate(CPUState *env, TranslationBlock *tb);
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
-// Public interface
-// Get up to n callers from the given address space at this moment
-// Callers are returned in callers[], most recent first
-int get_callers(target_ulong callers[], int n, target_ulong asid);
-
 }
 
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <unordered_map>
 #include <map>
+#include <set>
 #include <vector>
 #include <algorithm>
+
+#include "../common/prog_point.h"
+
+extern "C" {
+// Public interface
+
+// Get up to n callers from the given address space at this moment
+// Callers are returned in callers[], most recent first
+int get_callers(target_ulong callers[], int n, CPUState *env);
+
+// Get the current program point: (Caller, PC, ASID)
+// This isn't quite the right place for it, but since it's awkward
+// right now to have a "utilities" library, this will have to do
+void get_prog_point(CPUState *env, prog_point *p);
+}
 
 unsigned long misses;
 unsigned long total;
@@ -59,10 +66,37 @@ struct stack_entry {
     instr_type kind;
 };
 
-std::unordered_map<target_ulong, std::vector<stack_entry>> callstacks;
-std::unordered_map<target_ulong, instr_type> call_cache;
+#define MAX_STACK_DIFF 5000
+
+// Track the different stacks we have seen to handle multiple threads
+// within a single process.
+std::map<target_ulong,std::set<target_ulong>> stacks_seen;
+
+// Use a typedef here so we can switch between the stack heuristic and
+// the original code easily
+#ifdef USE_STACK_HEURISTIC
+typedef std::pair<target_ulong,target_ulong> stackid;
+target_ulong cached_sp = 0;
+target_ulong cached_asid = 0;
+#else
+typedef target_ulong stackid;
+#endif
+
+// stackid -> shadow stack
+std::map<stackid, std::vector<stack_entry>> callstacks;
+// EIP -> instr_type
+std::map<target_ulong, instr_type> call_cache;
 int last_ret_size = 0;
-unsigned long mem_hits, mem_total;
+
+static inline bool in_kernelspace(CPUState *env) {
+#if defined(TARGET_I386)
+    return ((env->hflags & HF_CPL_MASK) == 0);
+#elif defined(TARGET_ARM)
+    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+#else
+    return false;
+#endif
+}
 
 #ifdef TARGET_ARM
 // ARM: stolen from target-arm/helper.c
@@ -89,15 +123,65 @@ static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    std::vector<stack_entry> &v = callstacks[get_asid(env,addr)];
+static inline target_ulong get_stack_pointer(CPUState *env) {
+#if defined(TARGET_I386)
+    return env->regs[R_ESP];
+#elif defined(TARGET_ARM)
+    return env->regs[13];
+#else
+    return 0;
+#endif
+}
 
-    // Don't try to do this until we have some callstack info
-    if (!v.empty()) mem_hits += 1;
-    mem_total += 1;
+static stackid get_stackid(CPUState *env, target_ulong addr) {
+#ifdef USE_STACK_HEURISTIC
+    target_ulong asid;
+    
+    // Track all kernel-mode stacks together
+    if (in_kernelspace(env))
+        asid = 0;
+    else
+        asid = get_asid(env, addr);
 
-    return 1;
+    // Invalidate cached stack pointer on ASID change
+    if (cached_asid == 0 || cached_asid != asid) {
+        cached_sp = 0;
+        cached_asid = asid;
+    }
+
+    target_ulong sp = get_stack_pointer(env);
+
+    // We can short-circuit the search in most cases
+    if (std::abs(sp - cached_sp) < MAX_STACK_DIFF) {
+        return std::make_pair(asid, cached_sp);
+    }
+
+    auto &stackset = stacks_seen[asid];
+    if (stackset.empty()) {
+        stackset.insert(sp);
+        cached_sp = sp;
+        return std::make_pair(asid,sp);
+    }
+    else {
+        // Find the closest stack pointer we've seen
+        auto lb = std::lower_bound(stackset.begin(), stackset.end(), sp);
+        target_ulong stack1 = *lb;
+        lb--;
+        target_ulong stack2 = *lb;
+        target_ulong stack = (std::abs(stack1 - sp) < std::abs(stack2 - sp)) ? stack1 : stack2;
+        int diff = std::abs(stack-sp);
+        if (diff < MAX_STACK_DIFF) {
+            return std::make_pair(asid,stack);
+        }
+        else {
+            stackset.insert(sp);
+            cached_sp = sp;
+            return std::make_pair(asid,sp);
+        }
+    }
+#else
+    return get_asid(env, addr);
+#endif
 }
 
 instr_type disas_block(CPUState* env, target_ulong pc, int size) {
@@ -196,7 +280,7 @@ int after_block_translate(CPUState *env, TranslationBlock *tb) {
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     bool popped = false;
-    std::vector<stack_entry> &v = callstacks[get_asid(env,tb->pc)];
+    std::vector<stack_entry> &v = callstacks[get_stackid(env,tb->pc)];
     if (v.empty()) return 1;
 
     // Search up to 10 down
@@ -233,7 +317,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
 
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
-        callstacks[get_asid(env,tb->pc)].push_back(se);
+        callstacks[get_stackid(env,tb->pc)].push_back(se);
     }
     else if (tb_type == INSTR_RET) {
         //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
@@ -244,14 +328,39 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
 }
 
 // Public interface implementation
-int get_callers(target_ulong callers[], int n, target_ulong asid) {
-    std::vector<stack_entry> &v = callstacks[asid];
+int get_callers(target_ulong callers[], int n, CPUState *env) {
+    std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
     auto rit = v.rbegin();
     int i = 0;
     for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
         callers[i] = rit->pc;
     }
     return i;
+}
+
+void get_prog_point(CPUState *env, prog_point *p) {
+    if (!p) return;
+
+    // Get address space identifier
+    target_ulong asid = get_asid(env, env->panda_guest_pc);
+    // Lump all kernel-mode CR3s together
+
+    if(!in_kernelspace(env))
+        p->cr3 = asid;
+
+    // Try to get the caller
+    int n_callers = 0;
+    n_callers = get_callers(&p->caller, 1, env);
+
+    if (n_callers == 0) {
+#ifdef TARGET_I386
+        // fall back to EBP on x86
+        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
+        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
+#endif
+    }
+
+    p->pc = env->panda_guest_pc;
 }
 
 bool init_plugin(void *self) {
@@ -269,13 +378,9 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     
-    //pcb.virt_mem_write = mem_write_callback;
-    //panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-
     return true;
 }
 
 void uninit_plugin(void *self) {
     printf("Misses: %lu Total: %lu\n", misses, total); 
-    printf("Mem Hits: %lu Mem Total: %lu\n", mem_hits, mem_total); 
 }

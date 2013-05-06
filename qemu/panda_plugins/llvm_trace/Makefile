@@ -4,7 +4,7 @@ PLUGIN_NAME=llvm_trace
 include ../panda.mak
 
 # Include files and lib from LLVM
-CXXFLAGS+=$(LLVM_CXXFLAGS)
+CXXFLAGS+=$(LLVM_CXXFLAGS) -I$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
@@ -20,6 +20,7 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 
 # Testing tool for LLVM traces
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_test: \
+    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_test.h \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_test.cpp
 
 	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(CXXFLAGS) \

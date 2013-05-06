@@ -7,6 +7,7 @@
 #include "error.h"
 
 #ifdef CONFIG_LLVM
+#include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
 #include "tcg-llvm.h"
 #endif
@@ -194,7 +195,36 @@ void panda_disable_llvm(void){
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }
+
+void panda_enable_llvm_helpers(void){
+    init_llvm_helpers();
+}
+
+void panda_disable_llvm_helpers(void){
+    uninit_llvm_helpers();
+}
+
 #endif
+
+void panda_memsavep(FILE *f) {
+#ifdef CONFIG_SOFTMMU
+    if (!f) return;
+    uint8_t mem_buf[TARGET_PAGE_SIZE];
+    uint8_t zero_buf[TARGET_PAGE_SIZE];
+    memset(zero_buf, 0, TARGET_PAGE_SIZE);
+    int res;
+    ram_addr_t addr;
+    for (addr = 0; addr < ram_size; addr += TARGET_PAGE_SIZE) {
+        res = panda_physical_memory_rw(addr, mem_buf, TARGET_PAGE_SIZE, 0);
+        if (res == -1) { // I/O. Just fill page with zeroes.
+            fwrite(zero_buf, TARGET_PAGE_SIZE, 1, f);
+        }
+        else {
+            fwrite(mem_buf, TARGET_PAGE_SIZE, 1, f);
+        }
+    }
+#endif
+}
 
 #ifdef CONFIG_SOFTMMU
 

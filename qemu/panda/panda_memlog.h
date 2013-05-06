@@ -21,7 +21,8 @@ typedef enum {
     LOAD,
     STORE,
     BRANCHOP,
-    SELECT
+    SELECT,
+    SWITCH
 } LogOp;
 
 typedef struct dyn_val_buffer_struct {
@@ -35,6 +36,7 @@ typedef enum {
     ADDRENTRY,
     BRANCHENTRY,
     SELECTENTRY,
+    SWITCHENTRY,
     EXCEPTIONENTRY
 } DynValEntryType;
 
@@ -46,6 +48,7 @@ typedef struct dyn_val_entry_struct {
         struct {LogOp op; Addr addr;} memaccess;
         struct {bool br;} branch;
         struct {bool sel;} select;
+        struct {unsigned cond;} switchstmt;
     } entry;
 } DynValEntry;
 

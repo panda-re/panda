@@ -63,7 +63,7 @@ static inline void gen_op_update_rr_icount(void)
 
 static inline void gen_op_update_panda_pc(uint64_t new_pc)
 {
-    TCGv tmp_pc;
+    TCGv_i64 tmp_pc;
     tmp_pc = tcg_temp_new_i64();
     tcg_gen_movi_i64(tmp_pc, new_pc);
     tcg_gen_st_i64(tmp_pc, cpu_env, offsetof(CPUState, panda_guest_pc));

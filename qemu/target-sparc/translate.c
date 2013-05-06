@@ -5274,6 +5274,7 @@ static inline void gen_intermediate_code_internal(TranslationBlock * tb,
     if (rr_in_replay())
         max_insns = max_insns < rr_num_instr_before_next_interrupt ?
                         max_insns : rr_num_instr_before_next_interrupt;
+    tb->num_guest_insns = 0;
 
     gen_icount_start();
     do {

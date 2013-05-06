@@ -14,6 +14,7 @@ extern "C" {
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -21,6 +22,8 @@ extern "C" {
 #include <map>
 #include <list>
 #include <algorithm>
+
+#include "../common/prog_point.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -30,22 +33,10 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
+typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
+get_prog_point_t get_prog_point;
+
 }
-
-struct prog_point {
-    target_ulong caller;
-    target_ulong pc;
-    target_ulong cr3;
-    bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
-    }
-    bool operator ==(const prog_point &p) const {
-        return (this->pc == p.pc && this->caller == p.caller && this->cr3 == p.cr3);
-    }
-};
-
 struct recent_addr {
     prog_point p;
     target_ulong start_addr;
@@ -60,22 +51,42 @@ std::map<std::pair<prog_point,prog_point>,int> correlated;
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     prog_point p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
-#endif
-    p.pc = pc;
+    get_prog_point(env, &p);
 
-    for (int i = history_pos; i < HISTORY_SIZE; i++) {
+    for (int i = 0; i < HISTORY_SIZE; i++) {
+        if (history[i].p == p) continue;
         if (addr == history[i].end_addr)
             correlated[std::make_pair(history[i].p, p)]++;
         else if (addr+size == history[i].start_addr)
             correlated[std::make_pair(p, history[i].p)]++;
     }
 
-    history[history_pos] = {p, addr, addr+size};
-    history_pos = (history_pos + 1) % HISTORY_SIZE;
+    // Handle cases like rep stosd. We want to keep extending the
+    // range if the program point hasn't changed and the new range 
+    // is contiguous. If it's not contiguous, keep the most recent
+    // one. Either way, don't add to the history until the program
+    // point has actually changed.
+    if (history[history_pos].p == p) {
+        // Can we extend the old one?
+        if (history[history_pos].start_addr == addr+size) {
+            history[history_pos].start_addr = addr;
+        }
+        else if (history[history_pos].end_addr == addr) {
+            history[history_pos].end_addr = addr+size;
+        }
+        else {
+            // If not, replace it wholesale but do not update
+            // history_pos
+            history[history_pos].start_addr = addr;
+            history[history_pos].end_addr = addr+size;
+        }
+    }
+    else {
+        history_pos = (history_pos + 1) % HISTORY_SIZE;
+        history[history_pos].p = p;
+        history[history_pos].start_addr = addr;
+        history[history_pos].end_addr = addr+size;
+    }
  
     return 1;
 }
@@ -84,6 +95,20 @@ bool init_plugin(void *self) {
     panda_cb pcb;
 
     printf("Initializing plugin correlatetaps\n");
+
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_prog_point function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();

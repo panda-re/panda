@@ -31,30 +31,45 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+typedef int (* get_callers_t)(target_ulong callers[], int n, CPUState *env);
+get_callers_t get_callers;
 
 typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
 get_prog_point_t get_prog_point;
 
 }
 
-uint64_t mem_counter;
-
+FILE *cs_file;
 std::set<prog_point> tap_points;
-FILE *tap_buffers;
 
-int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+bool done = false;
+
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
+    if(done) return 1;
+
     prog_point p = {};
     get_prog_point(env, &p);
 
     if (tap_points.find(p) != tap_points.end()) {
-        for (unsigned int i = 0; i < size; i++) {
-            fprintf(tap_buffers, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx " %ld %02x\n",
-                    p.caller, p.pc, p.cr3, addr+i, mem_counter, ((unsigned char *)buf)[i]);
+        tap_points.erase(p);
+        target_ulong callers[16] = {0};
+        int nret = get_callers(callers, 16, env);
+        // Most recent callers are returned first, so print them
+        // out in reverse order
+        for (int i = nret-1; i >= 0; i--) {
+            fprintf(cs_file, TARGET_FMT_lx " ", callers[i]);
+            printf(TARGET_FMT_lx " ", callers[i]);
         }
+        fprintf(cs_file, TARGET_FMT_lx " ", p.pc);
+        fprintf(cs_file, TARGET_FMT_lx "\n", p.cr3);
+        printf(TARGET_FMT_lx " ", p.pc);
+        printf(TARGET_FMT_lx "\n", p.cr3);
     }
-    mem_counter++;
+    
+    if (tap_points.empty()) done = true;
 
     return 1;
 }
@@ -62,7 +77,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 bool init_plugin(void *self) {
     panda_cb pcb;
 
-    printf("Initializing plugin textprinter\n");
+    printf("Initializing plugin fullstack\n");
     
     std::ifstream taps("tap_points.txt");
     if (!taps) {
@@ -81,35 +96,39 @@ bool init_plugin(void *self) {
     }
     taps.close();
 
-    tap_buffers = fopen("tap_buffers.txt", "w");
-    if(!tap_buffers) {
-        printf("Couldn't open tap_buffers.txt for writing. Exiting.\n");
-        return false;
-    }
-
     void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
     if (!cs_plugin) {
         printf("Couldn't load callstack plugin\n");
         return false;
     }
     dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
     char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
+    dlerror();
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    err = dlerror();
     if (err) {
         printf("Couldn't find get_prog_point function in callstack library.\n");
         printf("Error: %s\n", err);
         return false;
     }
 
+
+    cs_file = fopen("tap_callstacks.txt", "wb");
+
     panda_enable_precise_pc();
     panda_enable_memcb();    
-    pcb.virt_mem_write = mem_callback;
+    pcb.virt_mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
     return true;
 }
 
 void uninit_plugin(void *self) {
-    fclose(tap_buffers);
-
+    fclose(cs_file);
 }

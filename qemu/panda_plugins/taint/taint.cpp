@@ -268,8 +268,8 @@ bool init_plugin(void *self) {
 
     panda_enable_memcb();
     panda_disable_tb_chaining();
-    pcb.llvm_init = llvm::llvm_init;
-    panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
+    //pcb.llvm_init = llvm::llvm_init;
+    //panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.after_block_exec = after_block_exec;

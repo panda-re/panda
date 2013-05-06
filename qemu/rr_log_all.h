@@ -42,6 +42,7 @@ extern volatile RR_mode rr_mode;
 void rr_create_record_log (const char *filename);
 void rr_create_replay_log (const char *filename);
 void rr_destroy_log(void);
+uint8_t rr_replay_finished(void);
 
 //mz Flags set by monitor to indicate requested record/replay action
 extern volatile int rr_replay_requested;
@@ -55,6 +56,7 @@ void rr_do_begin_record(const char *name, void *cpu_state);
 void rr_do_end_record(void);
 void rr_do_begin_replay(const char *name, void *cpu_state);
 void rr_do_end_replay(int is_error);
+void rr_reset_state(void *cpu_state);
 
 //mz display indication of replay progress
 extern void replay_progress(void);

@@ -269,6 +269,9 @@ int cpu_exec(CPUState *env)
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+    RR_prog_point saved_prog_point = rr_prog_point;
+    int rr_loop_tries = 20;
+    
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (unlikely(rr_flush_tb())) {
@@ -366,6 +369,13 @@ int cpu_exec(CPUState *env)
 
             next_tb = 0; /* force lookup of first TB */
             for(;;) {
+                //bdg Replay skipped calls from the I/O thread here
+                if(rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                    rr_set_program_point();
+                    rr_replay_skipped_calls();
+                }
+            
                 //mz Set the program point here.
                 rr_set_program_point();
                 // cache interrupt request value.
@@ -423,7 +433,7 @@ int cpu_exec(CPUState *env)
                             env->hflags2 |= HF2_NMI_MASK;
                             do_interrupt_x86_hardirq(env, EXCP02_NMI, 1);
                             next_tb = 0;
-			} else if (interrupt_request & CPU_INTERRUPT_MCE) {
+                        } else if (interrupt_request & CPU_INTERRUPT_MCE) {
                             env->interrupt_request &= ~CPU_INTERRUPT_MCE;
                             do_interrupt_x86_hardirq(env, EXCP12_MCHK, 0);
                             next_tb = 0;
@@ -654,35 +664,6 @@ int cpu_exec(CPUState *env)
                     }
                 }
 
-#if 0
-                // Capture exit_request
-                saved_exit_request = env->exit_request;
-
-                rr_set_program_point();
-                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_00;
-                if (rr_in_record()) {
-                    rr_exit_request(&saved_exit_request);
-                }
-                else if (rr_in_replay()) {
-                    if (!rr_use_live_exit_request) {
-                        rr_exit_request(&saved_exit_request);
-                    }
-                }
-
-                if (rr_debug_whisper()) {
-                      qemu_log_mask(CPU_LOG_RR, 
-                          "RR_CALLSITE_CPU_EXEC_00 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
-                }
-#endif
-
-                //bdg Replay skipped calls from the I/O thread here
-                if(rr_in_replay()) {
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_set_program_point();
-                    rr_replay_skipped_calls();
-                }
-
                 if (unlikely(env->exit_request)) {
                     env->exit_request = 0;
                     env->exception_index = EXCP_INTERRUPT;
@@ -719,7 +700,7 @@ int cpu_exec(CPUState *env)
                         }
                     }
                 }
-                
+
                 if(panda_flush_tb()) {
                     tb_flush(env);
                     tb_invalidated_flag = 1;
@@ -727,9 +708,10 @@ int cpu_exec(CPUState *env)
 
                 spin_lock(&tb_lock);
 
+                //bdg WARNING! This can cause an exception
                 tb = tb_find_fast(env);
 
-                qemu_log_mask(CPU_LOG_TB_IN_ASM, 
+                qemu_log_mask(CPU_LOG_RR, 
 			      "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
                   tb->pc,
 			      (unsigned long long)rr_prog_point.guest_instr_count, 
@@ -789,7 +771,7 @@ int cpu_exec(CPUState *env)
                     TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
                     There appears to be no equivalent in 1.0.1.  :<
                   */
-                }		
+                }
 
                 spin_unlock(&tb_lock);	       
 
@@ -799,34 +781,32 @@ int cpu_exec(CPUState *env)
                    starting execution if there is a pending interrupt. */
                 env->current_tb = tb;
 
-
                 barrier();
 
-#if 0
-                // Capture exit_request
-                saved_exit_request = env->exit_request;
-
-                rr_set_program_point();
-                rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_000;
-                if (rr_in_record()) {
-                    rr_exit_request(&saved_exit_request);
+                // Check for termination in replay
+                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+                    rr_end_replay_requested = 1;
+                    break;
                 }
-                else if (rr_in_replay()) {
-                    if (!rr_use_live_exit_request) {
-                        rr_exit_request(&saved_exit_request);
+
+                // Check for replay failure (otherwise infinite loop would result)
+                if (rr_mode == RR_REPLAY) {
+                    if (rr_prog_point.pc == saved_prog_point.pc &&
+                            rr_prog_point.secondary == saved_prog_point.secondary &&
+                            rr_prog_point.guest_instr_count == saved_prog_point.guest_instr_count) {
+                        rr_loop_tries--;
+                    }
+                    else {
+                        rr_loop_tries = 20;
+                        saved_prog_point = rr_prog_point;
+                    }
+
+                    if (!rr_loop_tries) {
+                        // Signal failure
+                        printf("Infinite loop detected during replay, aborting.\n");
+                        rr_do_end_replay(1);
                     }
                 }
-
-                if (rr_debug_whisper()) {
-                      qemu_log_mask(CPU_LOG_RR, 
-                          "RR_CALLSITE_CPU_EXEC_000 exit_request %d: env->eflags=%x env->hflags=%x env->hflags2=%x\n", 
-                          saved_exit_request, env->eflags, env->hflags, env->hflags2);
-                }
-
-#endif
-
-                // Debug!
-                //rr_debug();
 
                 if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
                     tc_ptr = tb->tc_ptr;

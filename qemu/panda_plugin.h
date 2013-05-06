@@ -27,7 +27,6 @@ typedef enum panda_cb_type {
     PANDA_CB_HD_WRITE,          // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
-    PANDA_CB_LLVM_INIT,         // On LLVM JIT initialization
     PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
 #ifndef CONFIG_SOFTMMU          // *** Only callbacks for QEMU user mode *** //
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
@@ -279,28 +278,6 @@ typedef union panda_cb {
     */
     int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-/* Callback ID: PANDA_CB_LLVM_INIT
-
-       llvm_init: Called on initialization of LLVM JIT.  Use for adding function
-        passes to the JIT, linking external functions to the JIT, etc.  Add
-        function passes here that will be run on generation of each new LLVM
-        function.
-       
-       Arguments:
-        void *exEngine: void pointer to the LLVM execution engine (JIT)
-        void *funPassMan: void pointer to the LLVM function pass manager
-        void *module: void pointer to the JIT IR module
-       
-       Return value:
-        unused
-
-       Notes:
-        We use void pointers because of C++ constructs, cast properly in plugin.
-*/
-#ifdef CONFIG_LLVM
-    int (*llvm_init)(void *exEngine, void *funPassMan, void *module);
-#endif
-
 /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
        cb_cpu_restore_state: called inside of cpu_restore_state(), when there is
@@ -414,8 +391,11 @@ void panda_enable_memcb(void);
 void panda_disable_memcb(void);
 void panda_enable_llvm(void);
 void panda_disable_llvm(void);
+void panda_enable_llvm_helpers(void);
+void panda_disable_llvm_helpers(void);
 void panda_enable_tb_chaining(void);
 void panda_disable_tb_chaining(void);
+void panda_memsavep(FILE *f);
 
 extern bool panda_update_pc;
 extern bool panda_use_memcb;

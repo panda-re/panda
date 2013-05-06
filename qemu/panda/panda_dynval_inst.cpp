@@ -63,25 +63,48 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
         printf("Instrumentation function not found\n");
         assert(1==0);
     }
-    if (!(isa<GlobalValue>(I.getPointerOperand()))){
-        if (isa<Constant>(static_cast<Instruction*>(
-                I.getPointerOperand())->getOperand(0))){
-            /*
-             * Loading from a constant looks something like this:
-             * load i32* inttoptr (i64 135193036 to i32*), sort of like an
-             * inttoptr instruction as an operand.  This is how we deal with
-             * logging that weirdness.
-             */
+    // XXX Not sure what this was here for...I think loading env which we
+    // probably don't need.  Keep commented out for now
+    //if (!(isa<GlobalValue>(I.getPointerOperand()))){
+        if (isa<GetElementPtrInst>(I.getPointerOperand())){
+            // Result from a getelementptr instruction
             CallInst *CI;
+            PtrToIntInst *PTII;
             std::vector<Value*> argValues;
-            uint64_t constaddr = static_cast<ConstantInt*>(
-                static_cast<Instruction*>(
-                    I.getPointerOperand())->getOperand(0))->getZExtValue();
+            PTII = static_cast<PtrToIntInst*>(
+                IRB.CreatePtrToInt(I.getPointerOperand(), ptrType));
             argValues.push_back(ConstantInt::get(ptrType,
                 (uintptr_t)dynval_buffer));
             argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
             argValues.push_back(ConstantInt::get(intType, LOAD));
-            argValues.push_back(ConstantInt::get(wordType, constaddr));
+            argValues.push_back(static_cast<Value*>(PTII));
+            //argValues.push_back(static_cast<Value*>(I.getPointerOperand()));
+            CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+            CI->insertBefore(static_cast<Instruction*>(&I));
+            PTII->insertBefore(static_cast<Instruction*>(CI));
+        }
+        else if (
+            // GetElementPtr ConstantExpr
+            (isa<ConstantExpr>(I.getPointerOperand()) &&
+                static_cast<ConstantExpr*>(I.getPointerOperand())->getOpcode()
+                == Instruction::GetElementPtr)
+            // IntToPtr ConstantExpr
+            || (isa<ConstantExpr>(I.getPointerOperand()) &&
+                static_cast<ConstantExpr*>(I.getPointerOperand())->getOpcode()
+                == Instruction::IntToPtr)
+            // env, or some other global variable
+            || (isa<GlobalVariable>(I.getPointerOperand()))
+            ){
+            CallInst *CI;
+            PtrToIntInst *PTII;
+            std::vector<Value*> argValues;
+            PTII = static_cast<PtrToIntInst*>(
+                IRB.CreatePtrToInt(I.getPointerOperand(), ptrType));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
+            argValues.push_back(ConstantInt::get(intType, LOAD));
+            argValues.push_back(static_cast<Value*>(PTII));
             CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
             CI->insertBefore(static_cast<Instruction*>(&I));
         }
@@ -100,7 +123,7 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
             CI->insertBefore(static_cast<Instruction*>(&I));
             PTII->insertBefore(static_cast<Instruction*>(CI));
         }
-    }
+    //}
 }
 
 // Call the logging function, logging the address of the store
@@ -114,7 +137,8 @@ void PandaInstrumentVisitor::visitStoreInst(StoreInst &I){
         // Stores to LLVM runtime that we don't care about
         return;
     }
-    else if (isa<Constant>(static_cast<Instruction*>(
+    else if (isa<ConstantExpr>(I.getPointerOperand()) &&
+                isa<Constant>(static_cast<Instruction*>(
                 I.getPointerOperand())->getOperand(0))){
         /*
          * Storing to a constant looks something like this:
@@ -132,6 +156,22 @@ void PandaInstrumentVisitor::visitStoreInst(StoreInst &I){
         argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
         argValues.push_back(ConstantInt::get(intType, STORE));
         argValues.push_back(ConstantInt::get(wordType, constaddr));
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+    }
+    else if (isa<GlobalVariable>(I.getPointerOperand())){
+    //else if (isa<GlobalValue>(I.getPointerOperand())){
+        // env, or some other global variable
+        CallInst *CI;
+        PtrToIntInst *PTII;
+        std::vector<Value*> argValues;
+        PTII = static_cast<PtrToIntInst*>(
+            IRB.CreatePtrToInt(I.getPointerOperand(), ptrType));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
+        argValues.push_back(ConstantInt::get(intType, STORE));
+        argValues.push_back(static_cast<Value*>(PTII));
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
         CI->insertBefore(static_cast<Instruction*>(&I));
     }
@@ -171,7 +211,18 @@ void PandaInstrumentVisitor::visitBranchInst(BranchInst &I){
     }
     if (I.isConditional()){
         condition = I.getCondition();
-        if (isa<Constant>(condition)){
+        if(isa<UndefValue>(condition)){
+            BO = static_cast<BinaryOperator*>(IRB.CreateNot(condition));
+            ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(BO, wordType));
+            argValues.push_back(ConstantInt::get(ptrType,
+                (uintptr_t)dynval_buffer));
+            argValues.push_back(ConstantInt::get(intType, BRANCHENTRY));
+            argValues.push_back(ConstantInt::get(intType, BRANCHOP));
+            argValues.push_back(static_cast<Value*>(ZEI));
+            CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+            CI->insertBefore(static_cast<Instruction*>(&I));
+        }
+        else if (isa<Constant>(condition)){
             CallInst *CI;
             std::vector<Value*> argValues;
             uint64_t constcond = static_cast<ConstantInt*>(
@@ -245,5 +296,37 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
     std::string fnName = I.getCalledFunction()->getName().str();
     printf("HELPER %s\n", fnName.c_str());
     fflush(stdout);*/
+}
+
+/*
+ * Instrument switch instructions to log the condition.
+ */
+void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
+    ZExtInst *ZEI;
+    CallInst *CI;
+    std::vector<Value*> argValues;
+    Function *F = mod->getFunction("log_dynval");
+    if (!F) {
+        printf("Instrumentation function not found\n");
+        assert(1==0);
+    }
+    if (I.getCondition()->getType() != wordType){
+        ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(I.getCondition(), wordType));
+        argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, SWITCHENTRY));
+        argValues.push_back(ConstantInt::get(intType, SWITCH));
+        argValues.push_back(static_cast<Value*>(ZEI));
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+        ZEI->insertBefore(static_cast<Instruction*>(CI));
+    }
+    else {
+        argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, SWITCHENTRY));
+        argValues.push_back(ConstantInt::get(intType, SWITCH));
+        argValues.push_back(static_cast<Value*>(I.getCondition()));
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+    }
 }
 

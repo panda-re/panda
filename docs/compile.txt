@@ -1,0 +1,7 @@
+In order to build PANDA, we have a build.sh script in both LLVM and QEMU
+directories with default options.  First, run build.sh in the LLVM directory,
+and then run build.sh in the QEMU directory.  Feel free to tweak the default
+options, but we recommend building LLVM and QEMU with the same compiler.  In
+order to build some of the PANDA plugins inside of the QEMU directory, a
+compiler that supports C++11 is required.
+

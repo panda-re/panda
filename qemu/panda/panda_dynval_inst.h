@@ -44,6 +44,7 @@ public:
     void visitBranchInst(BranchInst &I);
     void visitSelectInst(SelectInst &I);
     void visitCallInst(CallInst &I);
+    void visitSwitchInst(SwitchInst &I);
 };
 
 /* PandaInstrFunctionPass

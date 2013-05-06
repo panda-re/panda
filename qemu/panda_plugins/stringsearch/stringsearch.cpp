@@ -27,6 +27,8 @@ extern "C" {
 #define MAX_STRINGS 16
 #define MAX_STRLEN  256
 
+#include "../common/prog_point.h"
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -36,21 +38,10 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-typedef int (* get_callers_t)(target_ulong callers[], int n, target_ulong asid);
-get_callers_t get_callers;
+typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
+get_prog_point_t get_prog_point;
 
 }
-
-struct prog_point {
-    target_ulong caller;
-    target_ulong pc;
-    target_ulong cr3;
-    bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
-    }
-};
 
 // Silly: since we use these as map values, they have to be
 // copy constructible. Plain arrays aren't, but structs containing
@@ -69,52 +60,11 @@ uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
 
-#ifdef TARGET_ARM
-// ARM: stolen from target-arm/helper.c
-static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
-{   
-    uint32_t table;
-
-    if (address & env->cp15.c2_mask)
-        table = env->cp15.c2_base1 & 0xffffc000;
-    else
-        table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
-
-    return table;
-}
-#endif
-
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write,
                        std::map<prog_point,string_pos> &text_tracker) {
     prog_point p = {};
-
-
-    // Get address space identifier
-    target_ulong asid;
-#if defined(TARGET_I386)
-    asid = env->cr[3];
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = asid;
-#elif defined(TARGET_ARM)
-    asid = arm_get_vaddr_table(env, addr);
-    if((env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_SVC)
-        p.cr3 = asid;
-#endif
-
-    // Try to get the caller
-    int n_callers = 0;
-    n_callers = get_callers(&p.caller, 1, asid);
-
-    if (n_callers == 0) {
-#ifdef TARGET_I386
-        // fall back to EBP on x86
-        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
-        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p.caller, word_size, 0);
-#endif
-    }
-
-    p.pc = pc;
+    get_prog_point(env, &p);
 
     string_pos &sp = text_tracker[p];
 
@@ -192,10 +142,10 @@ bool init_plugin(void *self) {
         return false;
     }
     dlerror();
-    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
     char *err = dlerror();
     if (err) {
-        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Couldn't find get_prog_point function in callstack library.\n");
         printf("Error: %s\n", err);
         return false;
     }
