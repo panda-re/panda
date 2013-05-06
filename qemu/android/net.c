@@ -34,7 +34,7 @@ ip_packet_is_internal( const uint8_t*  data, size_t  size )
     return ( data[12] == 10 && data[16] == 10);
 }
 
-#ifdef CONFIG_ANDROID
+#ifdef CONFIG_ANDROID_2
 
 NetShaper  slirp_shaper_in;
 NetShaper  slirp_shaper_out;

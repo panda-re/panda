@@ -3534,6 +3534,22 @@ mkdir -p $target_dir/9pfs
 mkdir -p $target_dir/panda
 mkdir -p $target_dir/panda_plugins
 mkdir -p $target_dir/panda_tools
+mkdir -p $target_dir/android
+mkdir -p $target_dir/android/utils
+mkdir -p $target_dir/android/camera
+mkdir -p $target_dir/telephony
+mkdir -p $target_dir/introspection
+mkdir -p $target_dir/introspection/utils
+mkdir -p $target_dir/introspection/DroidScope
+mkdir -p $target_dir/introspection/DroidScope/dalvik
+mkdir -p $target_dir/introspection/DroidScope/dalvik/libdex
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm/interp
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm/oo
+mkdir -p $target_dir/introspection/DroidScope/DS_utils
+mkdir -p $target_dir/introspection/DroidScope/dalvikAPI
+mkdir -p $target_dir/introspection/DroidScope/linuxAPI
+
 
 if test "$target" = "arm-linux-user" -o "$target" = "armeb-linux-user" -o "$target" = "arm-bsd-user" -o "$target" = "armeb-bsd-user" ; then
   mkdir -p $target_dir/nwfpe

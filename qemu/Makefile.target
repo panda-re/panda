@@ -405,30 +405,30 @@ obj-android = android_arm.o goldfish_device.o goldfish_interrupt.o goldfish_time
 obj-android += goldfish_events_device.o
 obj-android += goldfish_tty.o goldfish_nand.o goldfish_fb.o goldfish_memlog.o
 obj-android += goldfish_battery.o goldfish_switch.o goldfish_pipe.o
-obj-android += ../android/utils/debug.o
-obj-android += ../android/utils/system.o
-obj-android += ../android/utils/misc.o
-obj-android += ../android/utils/stralloc.o
-obj-android += ../android/charmap.o
-obj-android += ../android/keycode-array.o
-obj-android += ../android/adb-server.o
-obj-android += ../sockets.o
-obj-android += ../iolooper-select.o
-obj-android += ../android/looper-qemu.o
-obj-android += ../android/utils/panic.o
-obj-android += ../android/qemu-setup.o
-obj-android += ../android/adb-qemud.o ../android/console.o ../shaper.o
-obj-android += ../android/hw-qemud.o
-obj-android += ../charpipe.o ../cbuffer.o
-obj-android += ../android/net.o
-obj-android += ../android/keycode-translator.o ../android/boot-properties.o
-obj-android += ../telephony/android_modem.o ../telephony/sms.o ../telephony/gsm.o ../telephony/sim_card.o ../telephony/sysdeps_qemu.o ../telephony/remote_call.o
-obj-android += ../android/utils/bufprint.o
-obj-android += ../telephony/modem_driver.o
-obj-android += ../android/gps.o
-obj-android += ../android/camera/camera-service.o ../android/camera/camera-capture-linux.o ../android/camera/camera-format-converters.o
-obj-android += ../android/hw-sensors.o
-obj-android += ../android/hw-control.o
+obj-android += android/utils/debug.o
+obj-android += android/utils/system.o
+obj-android += android/utils/misc.o
+obj-android += android/utils/stralloc.o
+obj-android += android/charmap.o
+obj-android += android/keycode-array.o
+obj-android += android/adb-server.o
+obj-android += sockets.o
+obj-android += iolooper-select.o
+obj-android += android/looper-qemu.o
+obj-android += android/utils/panic.o
+obj-android += android/qemu-setup.o
+obj-android += android/adb-qemud.o android/console.o shaper.o
+obj-android += android/hw-qemud.o
+obj-android += charpipe.o cbuffer.o
+obj-android += android/net.o
+obj-android += android/keycode-translator.o android/boot-properties.o
+obj-android += telephony/android_modem.o telephony/sms.o telephony/gsm.o telephony/sim_card.o telephony/sysdeps_qemu.o telephony/remote_call.o
+obj-android += android/utils/bufprint.o
+obj-android += telephony/modem_driver.o
+obj-android += android/gps.o
+obj-android += android/camera/camera-service.o android/camera/camera-capture-linux.o android/camera/camera-format-converters.o
+obj-android += android/hw-sensors.o
+obj-android += android/hw-control.o
 obj-android += goldfish_mmc.o
 obj-arm-y += $(obj-android)
 
@@ -523,6 +523,69 @@ obj-$(CONFIG_SMARTCARD_NSS) += $(addprefix ../libcacard/, $(libcacard-y))
 endif # CONFIG_BSD_USER
 endif # CONFIG_LINUX_USER
 
+##############################################################################
+### 
+### DECAF Sources
+###
+
+
+
+#obj-decaf =  ../introspection/DECAF_callback.o
+obj-decaf =  introspection/DECAF_cmds.o
+obj-decaf +=  introspection/DECAF_main.o
+obj-decaf +=  introspection/DECAF_vm_compress.o
+obj-decaf +=  introspection/DECAF_linux_vmi.o
+obj-decaf +=  introspection/utils/HashtableWrapper.o
+obj-decaf +=  introspection/utils/OutputWrapper.o
+obj-decaf +=  introspection/utils/SimpleCallback.o
+obj-decaf +=  introspection/utils/HelperFunctions.o
+obj-decaf +=  introspection/utils/TULStringMapWrapper.o
+#  procmod.cpp \
+#  hookapi.cpp \
+#  hooks/function_map.cpp \
+
+QEMU_CFLAGS += -I$(SRC_PATH)/introspection/
+LIBS += -lstdc++ 
+
+
+libobj-y += $(obj-decaf)
+### 
+### END DECAF Sources
+###
+##############################################################################
+
+##############################################################################
+###
+### DroidScope Sources
+###
+
+
+obj-droidscope =  introspection/DroidScope/DS_Init.o
+obj-droidscope +=  introspection/DroidScope/linuxAPI/Context.o
+obj-droidscope +=  introspection/DroidScope/linuxAPI/ModuleServer.o
+obj-droidscope +=  introspection/DroidScope/linuxAPI/ProcessInfo.o
+obj-droidscope +=  introspection/DroidScope/DS_utils/SymbolMap.o
+obj-droidscope +=  introspection/DroidScope/DS_utils/RangeList.o
+obj-droidscope +=  introspection/DroidScope/dalvik/libdex/InstrUtils.o
+#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikMterpOpcodes.o
+#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikPrinter.o
+#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikDisableJit.o
+obj-droidscope +=  introspection/DroidScope/dalvikAPI/AndroidHelperFunctions.o
+obj-droidscope +=  introspection/DroidScope/dalvikAPI/AndroidHelperFunctionsCPP.o
+
+libobj-y += $(obj-droidscope)
+QEMU_CFLAGS += -I$(SRC_PATH)/introspection/DroidScope/
+LIBS += -lstdc++
+
+
+
+###
+### END DroidSCope Sources
+###
+##############################################################################
+
+
+
 obj-$(CONFIG_GDBSTUB_XML) += gdbstub-xml.o
 
 $(QEMU_PROG): $(obj-y) $(obj-$(TARGET_BASE_ARCH)-y)
@@ -571,3 +634,6 @@ endif
 
 # Include automatically generated dependency files
 -include $(wildcard *.d */*.d)
+
+
+
