@@ -478,19 +478,19 @@ inline void linux_pt(Monitor* mon)
 
 #if (1)
 //reg 0 is c2_base0 and 1 is c2_base1
-void Context_PGDWriteCallback(DECAF_Callback_Params* params)
+void Context_PGDWriteCallback(CPUState *env, target_ulong oldval, target_ulong newval)
 {
-  struct timeval t;
-  gettimeofday(&t, NULL);
+  //struct timeval t;
+  //gettimeofday(&t, NULL);
 
-  DEFENSIVE_CHECK0(params == NULL);
 
   //TODO: Keep a record of what the current PGD is and the new PGD is
   // so that we don't do unnecessary updates - this applies to the
   // skipupdates flag that is set when system calls are made as well
   if (!bSkipNextPGDUpdate)
   {
-    updateProcessList(params->pgd.env, params->pgd.newPGD, UPDATE_PROCESSES | UPDATE_THREADS);
+    updateProcessList(env, newval, UPDATE_PROCESSES | UPDATE_THREADS);
+        //printf("%s is at [%x]\n", "fputs", getSymbolAddress(1, "/init", "free"));
   }
 
   //reset this flag
@@ -581,7 +581,7 @@ int contextBBCallback(CPUState* env, TranslationBlock* tb)
     FILE* foo = fopen("/dev/null","w");
     //printModuleList(foo, 31);
     //printProcessList(NULL);
-    printf("%s is at [%x]\n", "fputs", getSymbolAddress(397, "/lib/libdvm.so", "dvmAsmInstructionStart"));
+    printf("%s is at [%x]\n", "fputs", getSymbolAddress(341, "/lib/libdvm.so", "dvmAsmInstructionStart"));
     fclose(foo);
   }
 
@@ -614,6 +614,21 @@ int contextCondFunc (DECAF_callback_type_t cbType, gva_t curPC, gva_t nextPC)
 }
 #endif
 
+#define CURRENT_PGD(x) (x->cp15.c2_base0 & x->cp15.c2_base_mask)
+
+static int return_from_exec(CPUState *env){
+    updateProcessList(env, CURRENT_PGD(env), UPDATE_MODULES | UPDATE_PROCESSES | UPDATE_THREADS);
+    return 0;
+}
+
+static int return_from_fork(CPUState *env){
+    updateProcessList(env, CURRENT_PGD(env), UPDATE_PROCESSES | UPDATE_THREADS);
+    return 0;
+}
+static int return_from_clone(CPUState *env){
+    updateProcessList(env, CURRENT_PGD(env), UPDATE_PROCESSES | UPDATE_THREADS);
+    return 0;
+}
 #if (1)
 void context_init(void)
 {
@@ -625,8 +640,16 @@ void context_init(void)
 
   //contextCSHandle = panda_register_callback(NULL, DECAF_PGD_WRITE_CB, &Context_PGDWriteCallback, NULL);
   panda_cb callback;
-  callback.before_block_exec = contextBBCallback;
-  panda_register_callback(NULL, PANDA_CB_BEFORE_BLOCK_EXEC, callback);
+  //callback.before_block_exec = contextBBCallback;
+  //panda_register_callback(NULL, PANDA_CB_BEFORE_BLOCK_EXEC, callback);
+  callback.return_from_fork = return_from_fork;
+  panda_register_callback(NULL, PANDA_CB_VMI_AFTER_FORK, callback);
+  callback.return_from_exec = return_from_exec;
+  panda_register_callback(NULL, PANDA_CB_VMI_AFTER_EXEC, callback);
+  callback.return_from_clone = return_from_clone;
+  panda_register_callback(NULL, PANDA_CB_VMI_AFTER_CLONE, callback);
+  callback.after_PGD_write = Context_PGDWriteCallback;
+  panda_register_callback(NULL, PANDA_CB_VMI_PGD_CHANGED, callback);
 }
 
 void context_close(void)

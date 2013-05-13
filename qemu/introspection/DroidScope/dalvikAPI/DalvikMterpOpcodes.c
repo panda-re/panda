@@ -94,18 +94,14 @@ typedef struct _MterpInfo
 //TODO: Make a new hashmap for PIDs? This works as long as target_ulong is > than pid in size
 static OpaqueHashmap* mterpMap = NULL;
 
-void mterpBBCallback(DECAF_Callback_Params* params)
+void mterpBBCallback(CPUState *env, TranslationBlock *tb)
 {
-  if ( (mterpMap == NULL) || (params == NULL) )
+  if ( (mterpMap == NULL) || (env == NULL) )
   {
     return;
   }
 
-  CPUState* env = params->bb.env;
-  TranslationBlock* tb = params->bb.tb;
   Dalvik_Callback_Params dalvikparams;
-
-  DEFENSIVE_CHECK0((env == NULL) || (tb == NULL));
 
   MterpInfo* pInfo = NULL;
   if (OpaqueHashmap_getVal(mterpMap, getCurrentPID(), (void**)&pInfo) != 0)
@@ -318,7 +314,7 @@ void DalvikMterpOpcodes_init()
 #ifdef MTERP_USE_OPTIMIZED_BB
   //nothing to do here
 #else
-  mterpHandle = DECAF_register_callback(DECAF_BLOCK_BEGIN_CB, &mterpBBCallback, &mterpBBCondFunc);
+  mterpHandle = DECAF_register_callback(NULL, PANDA_CB_BEFORE_BLOCK_EXEC, mterpBBCallback);
   //flush the cache
   DECAF_flushTranslationCache();
 #endif

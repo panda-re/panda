@@ -11,6 +11,8 @@
 #include "hw/loader.h"
 #endif
 
+#include "panda_plugin.h"
+
 static uint32_t cortexa9_cp15_c0_c1[8] =
 { 0x1031, 0x11, 0x000, 0, 0x00100103, 0x20000000, 0x01230000, 0x00002111 };
 
@@ -1417,6 +1419,9 @@ void HELPER(set_cp15)(CPUState *env, uint32_t insn, uint32_t val)
     int op2;
     int crm;
 
+    panda_cb_list *plist;
+    target_ulong oldval;
+
     op1 = (insn >> 21) & 7;
     op2 = (insn >> 5) & 7;
     crm = insn & 0xf;
@@ -1479,9 +1484,17 @@ void HELPER(set_cp15)(CPUState *env, uint32_t insn, uint32_t val)
         } else {
 	    switch (op2) {
 	    case 0:
+                oldval = env->cp15.c2_base0;
+		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+                    plist->entry.after_PGD_write(env, oldval, val);
+		}
 		env->cp15.c2_base0 = val;
 		break;
 	    case 1:
+                oldval = env->cp15.c2_base1;
+		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+                    plist->entry.after_PGD_write(env, oldval, val);
+		}
 		env->cp15.c2_base1 = val;
 		break;
 	    case 2:

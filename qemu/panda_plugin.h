@@ -32,6 +32,12 @@ typedef enum panda_cb_type {
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
 #endif
+#ifdef CONFIG_PANDA_VMI
+    PANDA_CB_VMI_AFTER_FORK,    // After returning from fork()
+    PANDA_CB_VMI_AFTER_EXEC,    // After returning from exec()
+    PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
+    PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+#endif
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -350,6 +356,55 @@ typedef union panda_cb {
 
 #endif // CONFIG_SOFTMMU
 
+#ifdef CONFIG_PANDA_VMI
+    
+/* Callback ID: PANDA_CB_VMI_AFTER_FORK
+ * 
+ *      return_from_fork: Called after fork returns
+ *      Arguments:
+ *       void *cpu_env: pointer to CPUState
+ *      
+ *      Return value:
+ *       unused
+ */
+    int (*return_from_fork)(CPUState *env);
+
+/* Callback ID: PANDA_CB_VMI_AFTER_EXEC
+ * 
+ *      return_from_exec: Called after exec returns
+ *      Arguments:
+ *       CPUState *env: pointer to CPUState
+ * 
+ *      Return value:
+ *       unused
+ */
+    int (*return_from_exec)(CPUState *env);
+
+/* Callback ID: PANDA_CB_VMI_AFTER_CLONE
+ * 
+ *      return_from_exec: Called after clone returns
+ *      Arguments:
+ *       CPUState *env: pointer to CPUState
+ * 
+ *      Return value:
+ *       unused
+ */
+    int (*return_from_clone)(CPUState *env);
+
+/* Callback ID: PANDA_CB_VMI_PGD_CHANGED
+ * 
+ *      after_PGD_write: Called after new PGD written to CPU hw
+ *      Arguments:
+ *       CPUState* env: pointer to CPUState
+ *       target_ulong oldval: old PGD value
+ *       target_ulong newval: new PGD value
+ * 
+ *      Return value:
+ *       unused
+ */
+    int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+#endif // CONFIG_PANDA_VMI
+    
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner
