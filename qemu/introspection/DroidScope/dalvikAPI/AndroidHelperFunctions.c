@@ -19,11 +19,11 @@
  *  @Author Lok Yan
  */
 
-#include "DECAF_shared/DECAF_types.h"
-#include "DECAF_shared/DECAF_config.h"
+#include "introspection/DECAF_types.h"
+#include "introspection/DECAF_config.h"
 //#include "DECAF_shared/DECAF_main.h"
-#include "DECAF_shared/utils/OutputWrapper.h"
-#include "DECAF_shared/utils/TULStringMapWrapper.h"
+#include "introspection/utils/OutputWrapper.h"
+#include "introspection/utils/TULStringMapWrapper.h"
 
 #include "DalvikAPI.h"
 #include "dalvikAPI/DalvikConstants.h"
