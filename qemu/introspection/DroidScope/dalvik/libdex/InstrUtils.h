@@ -75,6 +75,7 @@ enum InstructionFormat {
 /*
  * Holds the contents of a decoded instruction.
  */
+#if (0)
 typedef struct DecodedInstruction {
     u4      vA;
     u4      vB;
@@ -83,7 +84,32 @@ typedef struct DecodedInstruction {
     u4      arg[5];         /* vC/D/E/F/G in invoke or filled-new-array */
     OpCode  opCode;
 } DecodedInstruction;
+#else
 
+enum InstructionIndexType{
+kIndexUnknown=0,
+kIndexNone=1,
+kIndexVaries=2,
+kIndexTypeRef=3,
+kIndexStringRef=4,
+kIndexMethodRef=5,
+kIndexFieldRef=6,
+kIndexInlineMethod=7,
+kIndexVtableOffset=8,
+kIndexFieldOffset=9,
+};
+
+struct DecodedInstruction{
+uint32_t vA;
+uint32_t vB;
+uint64_t vB_wide;
+uint32_t vC;
+uint32_t arg[5];
+enum OpCode opCode;
+enum InstructionIndexType indexType;
+} __attribute__((packed));
+typedef struct DecodedInstruction DecodedInstruction;
+#endif
 /*
  * Instruction width, a value in the range -3 to 5.
  */
