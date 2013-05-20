@@ -45,9 +45,9 @@
 
 #include "LinuxAPI.h"
 #include "linuxAPI/ProcessInfo.h"
-#include "DECAF_shared/DECAF_callback.h"
-#include "DECAF_shared/utils/SimpleCallback.h"
-#include "DECAF_shared/utils/OutputWrapper.h"
+#include "introspection/DECAF_callback.h"
+#include "introspection/utils/SimpleCallback.h"
+#include "introspection/utils/OutputWrapper.h"
 
 gpid_t curProcessPID = (-1);
 static gpa_t curProcessPGD = 0;

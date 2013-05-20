@@ -93,7 +93,7 @@ typedef struct _ProcessInfo
  * EVENTS API SECTION
  *****************************************************************************/
 
-#include "DECAF_shared/DECAF_processes.h"
+#include "introspection/DECAF_processes.h"
 
 /******************************************************************************
  * CONTROL API SECTION
@@ -378,6 +378,6 @@ int getModuleInfoByName(gpid_t pid, gva_t* pStartAddr, gva_t* pEndAddr, const ch
 
 //I just used the include here because there is a macro for static inline function definitions inside the h file.
 // this is just a little cleaner that is all
-#include "DECAF_shared/DECAF_linux_vmi.h"
+#include "introspection/DECAF_linux_vmi.h"
 
 #endif /* LINUXAPI_H_ */

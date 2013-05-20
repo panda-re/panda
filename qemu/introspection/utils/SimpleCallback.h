@@ -33,7 +33,7 @@
 #define SIMPLECALLBACK_H_
 
 #include <sys/queue.h>
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_types.h"
 
 #ifdef __cplusplus
 extern "C"

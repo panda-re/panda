@@ -28,7 +28,7 @@
 #include "DS_Common.h"
 #include "linuxAPI/ProcessInfo.h"
 #include "linuxAPI/ModuleInfo.h"
-#include "DECAF_shared/utils/OutputWrapper.h"
+#include "introspection/utils/OutputWrapper.h"
 
 //Implementation for the class
 ProcessInfo* ProcessInfoMap::findProcessByPID(gpid_t pid)

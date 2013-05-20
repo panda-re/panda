@@ -28,7 +28,7 @@ extern "C"
 {
 #endif
 
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_types.h"
 #include "LinuxAPI.h"
 
 /******************************************************************************

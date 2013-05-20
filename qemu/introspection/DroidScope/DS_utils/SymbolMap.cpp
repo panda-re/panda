@@ -26,8 +26,8 @@
 #include <iomanip>
 #include "DS_Common.h"
 #include "DS_utils/SymbolMap.h"
-#include "DECAF_shared/utils/HelperFunctions.h"
-#include "DECAF_shared/utils/PreallocatedHistory.h"
+#include "introspection/utils/HelperFunctions.h"
+#include "introspection/utils/PreallocatedHistory.h"
 
 using namespace std;
 

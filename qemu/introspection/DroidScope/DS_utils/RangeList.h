@@ -25,8 +25,8 @@
 #ifndef RANGE_LIST_H
 #define RANGE_LIST_H
 
-#include "DECAF_shared/utils/OutputWrapper.h"
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/utils/OutputWrapper.h"
+#include "introspection/DECAF_types.h"
 
 #ifndef RANGE_TYPE
 #define RANGE_TYPE target_ulong 

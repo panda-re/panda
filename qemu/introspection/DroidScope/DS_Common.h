@@ -26,7 +26,7 @@
 //#include <inttypes.h>
 //#include <stdio.h>
 //#include "cpu.h"
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_types.h"
 
 typedef enum {
   LOG_LEVEL_MINIMAL,

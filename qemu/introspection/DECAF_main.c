@@ -43,7 +43,7 @@ static void *plugin_handle = NULL;
 static char decaf_plugin_path[PATH_MAX] = "";
 static FILE *decaflog = NULL;
 
-#include "DECAF_shared/DECAF_mon_cmds_defs.h"
+#include "introspection/DECAF_mon_cmds_defs.h"
 
 mon_cmd_t DECAF_mon_cmds[] = {
   #include "DECAF_mon_cmds.h"
