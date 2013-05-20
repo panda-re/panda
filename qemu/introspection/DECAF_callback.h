@@ -30,7 +30,7 @@
 //LOK: for CPUState
 // #include "cpu.h" //Not needed - included in DECAF_callback_common.h
 // #include "DECAF_shared/DECAF_types.h" // not needed either
-#include "DECAF_shared/DECAF_callback_common.h"
+#include "introspection/DECAF_callback_common.h"
 
 #ifdef __cplusplus
 extern "C"

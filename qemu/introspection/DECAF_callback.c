@@ -30,10 +30,10 @@
 #include <inttypes.h>
 #include "qemu-common.h"
 #include "cpu-all.h"
-#include "DECAF_shared/DECAF_main.h"
-#include "DECAF_shared/DECAF_callback.h"
-#include "DECAF_shared/DECAF_callback_to_QEMU.h"
-#include "DECAF_shared/utils/HashtableWrapper.h"
+#include "introspection/DECAF_main.h"
+#include "introspection/DECAF_callback.h"
+#include "introspection/DECAF_callback_to_QEMU.h"
+#include "introspection/utils/HashtableWrapper.h"
 
 //LOK: The callback logic is separated into two parts
 //  1. the interface between QEMU and callback

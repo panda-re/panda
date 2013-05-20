@@ -31,7 +31,7 @@
 #ifndef _DECAF_PROCESSES_H 
 #define _DECAF_PROCESSES_H
 
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_types.h"
 
 #ifdef __cplusplus
 extern "C" {

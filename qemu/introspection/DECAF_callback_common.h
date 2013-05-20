@@ -31,7 +31,7 @@ extern "C"
 #endif
 
 #include "exec-all.h"
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_types.h"
 
 //#include "test_tlb_cb.h"
 

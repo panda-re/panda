@@ -28,12 +28,12 @@
 #include <dlfcn.h>
 #include "sysemu.h"
 
-#include "DECAF_shared/DECAF_config.h"
+#include "introspection/DECAF_config.h"
 
-#include "DECAF_shared/DECAF_main.h"
-#include "DECAF_shared/DECAF_main_internal.h"
-#include "DECAF_shared/DECAF_vm_compress.h"
-#include "DECAF_shared/DECAF_cmds.h"
+#include "introspection/DECAF_main.h"
+#include "introspection/DECAF_main_internal.h"
+#include "introspection/DECAF_vm_compress.h"
+#include "introspection/DECAF_cmds.h"
 //#include "DECAF_shared/procmod.h" //remove this later
 
 int should_monitor = 1;

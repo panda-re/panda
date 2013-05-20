@@ -33,8 +33,8 @@
 #include "qemu-common.h"
 #include "monitor.h"
 #include "cpu-defs.h"
-#include "DECAF_shared/DECAF_config.h"
-#include "DECAF_shared/DECAF_types.h"
+#include "introspection/DECAF_config.h"
+#include "introspection/DECAF_types.h"
 #include "blockdev.h"
 
 #ifdef __cplusplus
