@@ -180,10 +180,12 @@ int main(int argc, char **argv)
 #include "arch_init.h"
 
 
+#if defined(CONFIG_ANDROID)
 #include "android/boot-properties.h"
 #include "android/camera/camera-service.h"
 #include "android/gps.h"
 #include "telephony/modem_driver.h"
+#endif
 
 #ifdef CONFIG_LLVM
 struct TCGLLVMContext;
@@ -2318,6 +2320,7 @@ int main(int argc, char **argv, char **envp)
 
     autostart= 1;
 
+#if defined(CONFIG_ANDROID)
     boot_property_init_service();
     boot_property_add("dalvik.vm.heapsize","48m");
 
@@ -2347,6 +2350,8 @@ int main(int argc, char **argv, char **envp)
     }*/
     
     boot_property_add("qemu.hw.mainkeys","0");
+#endif
+
     /* first pass of option parsing */
     optind = 1;
     while (optind < argc) {
@@ -3209,7 +3214,9 @@ int main(int argc, char **argv, char **envp)
         }
     }
     loc_set_none();
+#if defined(CONFIG_ANDROID)
     DS_init();
+#endif
 
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the

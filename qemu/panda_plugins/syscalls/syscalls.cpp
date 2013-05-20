@@ -162,6 +162,7 @@ static inline bool in_kernelspace(CPUState *env) {
 }
 
 static int returned_check_callback(CPUState *env, TranslationBlock *tb){
+#if defined(CONFIG_PANDA_VMI)
     panda_cb_list *plist;
     for(auto& retVal :fork_returns){
         if (retVal.first == tb->pc && retVal.second == get_asid(env, tb->pc)){
@@ -197,6 +198,11 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
         }
     }
     clone_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+#else
+    fork_returns.clear();
+    exec_returns.clear();
+    clone_returns.clear();
+#endif
     return 0;
 }
 

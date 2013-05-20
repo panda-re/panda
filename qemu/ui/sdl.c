@@ -764,8 +764,7 @@ static void handle_keyup(DisplayState *ds, SDL_Event *ev)
         sdl_process_key(&ev->key);
     }
 }
-#define ANDROID
-#if !defined(ANDROID)
+#if !defined(CONFIG_ANDROID)
 static void handle_mousemotion(DisplayState *ds, SDL_Event *ev)
 {
     int max_x, max_y;

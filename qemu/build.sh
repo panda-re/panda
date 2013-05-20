@@ -5,6 +5,7 @@
 ./configure --target-list=arm-softmmu \
 --prefix=`pwd`/install \
 --disable-pie \
+--enable-android \
 --extra-cflags="-O2" \
 --extra-cxxflags="-O2" \
 && make -j8

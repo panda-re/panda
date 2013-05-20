@@ -36,8 +36,8 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_FORK,    // After returning from fork()
     PANDA_CB_VMI_AFTER_EXEC,    // After returning from exec()
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
-    PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
 #endif
+    PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -390,6 +390,7 @@ typedef union panda_cb {
  *       unused
  */
     int (*return_from_clone)(CPUState *env);
+#endif // CONFIG_PANDA_VMI
 
 /* Callback ID: PANDA_CB_VMI_PGD_CHANGED
  * 
@@ -403,7 +404,6 @@ typedef union panda_cb {
  *       unused
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
-#endif // CONFIG_PANDA_VMI
     
 } panda_cb;
 
