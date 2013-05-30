@@ -2601,7 +2601,9 @@ fi
 cat > $TMPC <<EOF
 #include <signal.h>
 #include <time.h>
-int main(void) { clockid_t id; return clock_gettime(id, NULL); }
+#include <mqueue.h>
+
+int main(void) { clockid_t id; mqd_t x; x = mq_open("name", O_RDONLY); mq_close(x); return clock_gettime(id, NULL); }
 EOF
 
 if compile_prog "" "" ; then
