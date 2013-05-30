@@ -7,6 +7,7 @@
 #include "helper.h"
 #include "qemu-common.h"
 #include "host-utils.h"
+#include "panda_plugin.h"
 #if !defined(CONFIG_USER_ONLY)
 #include "hw/loader.h"
 #endif
@@ -1457,7 +1458,8 @@ void HELPER(set_cp15)(CPUState *env, uint32_t insn, uint32_t val)
             if (env->cp15.c1_coproc != val) {
                 env->cp15.c1_coproc = val;
                 /* ??? Is this safe when called from within a TB?  */
-                tb_flush(env);
+                panda_do_flush_tb();
+                //tb_flush(env);
             }
             break;
         default:
