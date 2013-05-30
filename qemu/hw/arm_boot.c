@@ -238,7 +238,11 @@ void arm_load_kernel(CPUState *env, struct arm_boot_info *info)
                                   &is_linux);
     }
     if (kernel_size < 0) {
-        entry = info->loader_start + KERNEL_LOAD_ADDR;
+        if (!info->kernel_load_address)
+            entry = info->loader_start + KERNEL_LOAD_ADDR;
+        else
+            entry = info->kernel_load_address;
+
         kernel_size = load_image_targphys(info->kernel_filename, entry,
                                           ram_size - KERNEL_LOAD_ADDR);
         is_linux = 1;

@@ -71,6 +71,7 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
         FILE *f = fopen(path, "wb");
         panda_memsavep(f);
         fclose(f);
+        printf("Saved snapshot to '%s'\n.", path);
     }
     
     if (tap_points.empty()) done = true;

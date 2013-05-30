@@ -8,6 +8,6 @@ arm-linux-user,arm-softmmu \
 --disable-pie \
 --enable-llvm \
 --with-llvm=../llvm-3.0/Debug+Asserts \
---extra-cflags="-O2" \
+--extra-cflags="-DDEBUG_UNASSIGNED -O2" \
 --extra-cxxflags="-O2" \
 && make -j $(nproc)
