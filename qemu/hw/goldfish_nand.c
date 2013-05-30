@@ -48,6 +48,10 @@
 
 #define ANDROID_QCOW
 
+#if defined(ANDROID_QCOW)
+#include "block_int.h"
+#endif
+
 static void
 xlog( const char*  format, ... )
 {
@@ -895,7 +899,7 @@ void nand_add_dev(const char *arg)
         XLOG("failed to open block driver %s\n", rwfilename);
         exit(1);
     }
-    dev_size = bdrv_getlength(dev->bdrv);
+    dev_size = bdrv_getlength(dev->bdrv->file);
 #else
     dev->fd = rwfd;
 #endif
@@ -956,9 +960,9 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             }
             pstrcat(tmp,sizeof(tmp),",initfile=");
             pstrcat(tmp,sizeof(tmp),initImage);
-        } else {
+        } /*else {
             PANIC("Missing initial system image path!");
-        }
+        }*/
         nand_add_dev(tmp);
     }
 
