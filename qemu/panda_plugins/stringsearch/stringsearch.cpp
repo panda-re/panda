@@ -38,6 +38,9 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
+typedef int (* get_callers_t)(target_ulong callers[], int n, CPUState *env);
+get_callers_t get_callers;
+
 typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
 get_prog_point_t get_prog_point;
 
@@ -49,10 +52,17 @@ get_prog_point_t get_prog_point;
 struct match_strings {
     int val[MAX_STRINGS];
 };
-struct string_pos{
+struct string_pos {
     uint8_t val[MAX_STRINGS];
 };
+struct fullstack {
+    int n;
+    target_ulong callers[16];
+    target_ulong pc;
+    target_ulong asid;
+};
 
+std::map<prog_point,fullstack> matchstacks;
 std::map<prog_point,match_strings> matches;
 std::map<prog_point,string_pos> read_text_tracker;
 std::map<prog_point,string_pos> write_text_tracker;
@@ -82,6 +92,13 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                     (is_write ? "WRITE" : "READ"), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
+
+                // Also get the full stack here
+                fullstack f = {0};
+                f.n = get_callers(f.callers, 16, env);
+                f.pc = p.pc;
+                f.asid = p.cr3;
+                matchstacks[p] = f;
             }
         }
     }
@@ -142,8 +159,16 @@ bool init_plugin(void *self) {
         return false;
     }
     dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
     char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_callers function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
+    dlerror();
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    err = dlerror();
     if (err) {
         printf("Couldn't find get_prog_point function in callstack library.\n");
         printf("Error: %s\n", err);
@@ -158,7 +183,7 @@ bool init_plugin(void *self) {
     pcb.virt_mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
     pcb.virt_mem_read = mem_read_callback;
-    //panda_register_callback(self, PANDA_CB_MEM_READ, pcb);
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
 
 
     return true;
@@ -174,8 +199,16 @@ void uninit_plugin(void *self) {
     std::map<prog_point,match_strings>::iterator it;
     for(it = matches.begin(); it != matches.end(); it++) {
         // Print prog point
-        fprintf(mem_report, TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx,
-            it->first.caller, it->first.pc, it->first.cr3);
+
+        // Most recent callers are returned first, so print them
+        // out in reverse order
+        fullstack &f = matchstacks[it->first];
+        for (int i = f.n-1; i >= 0; i--) {
+            fprintf(mem_report, TARGET_FMT_lx " ", f.callers[i]);
+        }
+        fprintf(mem_report, TARGET_FMT_lx " ", f.pc);
+        fprintf(mem_report, TARGET_FMT_lx " ", f.asid);
+
         // Print strings that matched and how many times
         for(int i = 0; i < num_strings; i++)
             fprintf(mem_report, " %d", it->second.val[i]);

@@ -1,7 +1,34 @@
+
 In order to build PANDA, we have a build.sh script in both LLVM and QEMU
 directories with default options.  First, run build.sh in the LLVM directory,
 and then run build.sh in the QEMU directory.  Feel free to tweak the default
 options, but we recommend building LLVM and QEMU with the same compiler.  In
 order to build some of the PANDA plugins inside of the QEMU directory, a
 compiler that supports C++11 is required.
+
+
+5/2013 TRL
+
+PANDA is known to build on debian 7 linux with the following steps.
+
+1. Install some prereqs.
+
+apt-get install build-essential 
+apt-get build-dep qemu
+
+2. Compile LLVM part.
+
+cd panda/llvm-3.0
+sh ./build.sh
+
+This may take a while.
+
+3. Compile & install distorm
+
+follow instructions in distorm-read-only/INSTALL
+
+3. Compile Qemu part.
+
+cd panda/qemu
+sh ./build.sh
 

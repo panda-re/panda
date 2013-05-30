@@ -7,8 +7,8 @@ buf = ''
 prev_addr = -1
 
 for line in sys.stdin:
-    caller, pc, cr3, addr, n, val = line.strip().split()
-    caller = int(caller, 16)
+    callers, pc, cr3, addr, n, val = line.strip().rsplit(None,5)
+    callers = [int(caller, 16) for caller in callers.split()]
     pc = int(pc, 16)
     cr3 = int(cr3, 16)
     addr = int(addr, 16)

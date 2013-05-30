@@ -1,18 +1,13 @@
 #!/bin/sh
 
-#./configure --target-list=i386-softmmu,i386-linux-user,\
-#arm-linux-user,x86_64-linux-user,x86_64-softmmu \
-./configure --target-list=arm-softmmu \
+./configure --target-list=x86_64-softmmu,x86_64-linux-user,i386-linux-user,\
+arm-linux-user,arm-softmmu \
+--cc=gcc-4.7 \
+--cxx=g++-4.7 \
 --prefix=`pwd`/install \
 --disable-pie \
---enable-android \
+--enable-llvm \
+--with-llvm=../llvm-3.0/Debug+Asserts \
 --extra-cflags="-O2" \
 --extra-cxxflags="-O2" \
-&& make -j8
-
-#,x86_64-linux-user,x86_64-softmmu\
-#,arm-linux-user,arm-softmmu\
-
-#--enable-instr-helpers \
-#--with-laredo=../llvm-3.0/projects/laredo/Release+Debug+Asserts \
-
+&& make -j $(nproc)
