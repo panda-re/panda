@@ -2,6 +2,8 @@ syntax: glob
 *.o
 *.d
 *.swp
+*.a
+*~
 tags
 *gmon.out
 

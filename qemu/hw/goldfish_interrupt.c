@@ -160,12 +160,25 @@ DeviceState *goldfish_int_create(GoldfishBus *gbus, uint32_t base, qemu_irq pare
     return dev;
 }
 
+static const VMStateDescription vmstate_goldfish_int = {
+    .name = "goldfish_int",
+    .version_id = 1,
+    .fields = (VMStateField[]){
+        VMSTATE_UINT32(level, GoldfishInterruptDevice),
+        VMSTATE_UINT32(pending_count, GoldfishInterruptDevice),
+        VMSTATE_UINT32(irq_enabled, GoldfishInterruptDevice),
+        VMSTATE_UINT32(fiq_enabled, GoldfishInterruptDevice),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static GoldfishDeviceInfo goldfish_int_info = {
     .init = goldfish_int_init,
     .readfn = goldfish_int_readfn,
     .writefn = goldfish_int_writefn,
     .qdev.name  = "goldfish_int",
     .qdev.size  = sizeof(GoldfishInterruptDevice),
+    .qdev.vmsd  = &vmstate_goldfish_int,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, -1),
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),

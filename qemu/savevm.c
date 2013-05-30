@@ -617,6 +617,36 @@ int qemu_get_byte(QEMUFile *f)
     return result;
 }
 
+#ifdef CONFIG_ANDROID
+void qemu_put_string(QEMUFile *f, const char* str)
+{
+    /* We will encode NULL and the empty string in the same way */
+    int  slen;
+    if (str == NULL) {
+        str = "";
+    }
+    slen = strlen(str);
+    qemu_put_be32(f, slen);
+    qemu_put_buffer(f, (const uint8_t*)str, slen);
+}
+
+char* qemu_get_string(QEMUFile *f)
+{
+    int slen = qemu_get_be32(f);
+    char* str;
+    if (slen == 0)
+        return NULL;
+
+    str =g_malloc(slen+1);
+    if (qemu_get_buffer(f, (uint8_t*)str, slen) != slen) {
+        g_free(str);
+        return NULL;
+    }
+    str[slen] = '\0';
+    return str;
+}
+#endif
+
 int64_t qemu_ftell(QEMUFile *f)
 {
     return f->buf_offset - f->buf_size + f->buf_index;

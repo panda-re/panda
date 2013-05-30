@@ -179,6 +179,14 @@ int main(int argc, char **argv)
 #include "cpus.h"
 #include "arch_init.h"
 
+
+#if defined(CONFIG_ANDROID)
+#include "android/boot-properties.h"
+#include "android/camera/camera-service.h"
+#include "android/gps.h"
+#include "telephony/modem_driver.h"
+#endif
+
 #ifdef CONFIG_LLVM
 struct TCGLLVMContext;
 
@@ -2312,6 +2320,38 @@ int main(int argc, char **argv, char **envp)
 
     autostart= 1;
 
+#if defined(CONFIG_ANDROID)
+    boot_property_init_service();
+    boot_property_add("dalvik.vm.heapsize","48m");
+
+    android_qemud_get_channel( "gps", &android_gps_cs );
+    boot_property_add("qemu.sf.fake_camera", "both");
+    android_camera_service_init();
+
+    /*
+     * CharDriverState*  cs = qemu_chr_open("radio", android_op_radio, NULL);
+        if (cs == NULL) {
+            PANIC("unsupported character device specification: %s\n"
+                        "used -help-char-devices for list of available formats",
+                    android_op_radio);
+        }
+        android_qemud_set_channel( ANDROID_QEMUD_GSM, cs);
+     */
+    android_qemud_get_channel( "gsm", &android_modem_cs );
+
+    android_hw_control_init();
+    /* Initialize audio. */
+    /*if (android_op_audio) {
+        if ( !audio_check_backend_name( 0, android_op_audio ) ) {
+            PANIC("'%s' is not a valid audio output backend. see -help-audio-out",
+                    android_op_audio);
+        }
+        setenv("QEMU_AUDIO_DRV", android_op_audio, 1);
+    }*/
+    
+    boot_property_add("qemu.hw.mainkeys","0");
+#endif
+
     /* first pass of option parsing */
     optind = 1;
     while (optind < argc) {
@@ -3174,6 +3214,9 @@ int main(int argc, char **argv, char **envp)
         }
     }
     loc_set_none();
+#if defined(CONFIG_ANDROID)
+    DS_init();
+#endif
 
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the

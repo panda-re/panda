@@ -40,6 +40,35 @@ typedef struct GoldfishTTYDevice {
     uint32_t data_count;
 } GoldfishTTYDevice;
 
+#define  GOLDFISH_TTY_SAVE_VERSION  1
+
+static void  goldfish_tty_save(QEMUFile*  f, void*  opaque)
+{
+    GoldfishTTYDevice*  s = opaque;
+
+    qemu_put_be32( f, s->ptr );
+    qemu_put_be32( f, s->ptr_len );
+    qemu_put_byte( f, s->ready );
+    qemu_put_byte( f, s->data_count );
+    qemu_put_buffer( f, s->data, s->data_count );
+}
+
+static int  goldfish_tty_load(QEMUFile*  f, void*  opaque, int  version_id)
+{
+    GoldfishTTYDevice*  s = opaque;
+
+    if (version_id != GOLDFISH_TTY_SAVE_VERSION)
+        return -1;
+
+    s->ptr        = qemu_get_be32(f);
+    s->ptr_len    = qemu_get_be32(f);
+    s->ready      = qemu_get_byte(f);
+    s->data_count = qemu_get_byte(f);
+    qemu_get_buffer(f, s->data, s->data_count);
+
+    return 0;
+}
+
 static uint32_t goldfish_tty_read(void *opaque, target_phys_addr_t offset)
 {
     GoldfishTTYDevice *s = (GoldfishTTYDevice *)opaque;
@@ -178,10 +207,15 @@ static CPUWriteMemoryFunc *goldfish_tty_writefn[] = {
 
 static int goldfish_tty_init(GoldfishDevice *dev)
 {
+    static int instance_id = 0;
     GoldfishTTYDevice *tdev = (GoldfishTTYDevice *)dev;
     if(tdev->cs) {
         qemu_chr_add_handlers(tdev->cs, tty_can_receive, tty_receive, NULL, tdev);
     }
+    
+    register_savevm(&dev->qdev, "goldfish_tty", instance_id++,
+         GOLDFISH_TTY_SAVE_VERSION,
+         goldfish_tty_save, goldfish_tty_load, tdev);
 
     return 0;
 }

@@ -65,8 +65,8 @@ int goldfish_add_device_no_io(GoldfishDevice *dev)
         dev->irq = goldfish_free_irq;
         goldfish_free_irq += dev->irq_count;
     }
-    //printf("goldfish_add_device: %s, base %x %x, irq %d %d\n",
-    //       dev->name, dev->base, dev->size, dev->irq, dev->irq_count);
+    printf("goldfish_add_device: %s, base %x %x, irq %d %d\n",
+           dev->name, dev->base, dev->size, dev->irq, dev->irq_count);
     dev->next = NULL;
     if(last_device) {
         last_device->next = dev;
@@ -88,6 +88,7 @@ static int goldfish_device_add(GoldfishDevice *dev,
     // TODO: make sure that is the correct endian format
     iomemtype = cpu_register_io_memory(mem_read, mem_write, opaque, DEVICE_NATIVE_ENDIAN);
     cpu_register_physical_memory(dev->base, dev->size, iomemtype);
+    printf("%s: %x\t %x\n", dev->name, dev->base, iomemtype);
     return 0;
 }
 
@@ -303,6 +304,8 @@ device_init(goldfish_register_devices)
 #  include <sys/stat.h>
 #endif
 
+#if defined(USE_GOLDFISH_BUFFERS)
+
 /** FORMATTED BUFFER PRINTING
  **
  **  bufprint() allows your to easily and safely append formatted string
@@ -349,7 +352,7 @@ vbufprint( char*        buffer,
     return buffer + len;
 }
 
-static char*
+char*
 bufprint(char*  buffer, char*  end, const char*  fmt, ... )
 {
     va_list  args;
@@ -545,6 +548,7 @@ bufprint_temp_file(char*  buff, char*  end, const char*  suffix)
     p = bufprint(p, end, PATH_SEP "%s", suffix);
     return p;
 }
+#endif
 
 /* Tempfile support */
 struct TempFile

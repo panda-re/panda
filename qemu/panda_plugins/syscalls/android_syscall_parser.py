@@ -47,6 +47,9 @@ with open("android_arm_syscall_prototypes") as armcalls:
         print "//",callno, rettype, callname, args
         format = ""
         for arg in args:
+            # the .split() can leave us with args = ['']
+            if arg == '':
+                continue
             #print callno, rettype, callname, args
             argname = arg.split()[-1]
             if charre.search(arg) and not argname.endswith('buf') and argname != '...' and not argname.endswith('[]'):
@@ -87,6 +90,16 @@ with open("android_arm_syscall_prototypes") as armcalls:
                 record_64(ARM_ARGS[argno], ARM_ARGS[argno+1],args[i])
                 argno+=1
             argno+=1
+        if callname == 'fork':
+            print "call_fork_callback(env, pc);"
+        elif callname == 'execve':
+            print "call_exec_callback(env, pc);"
+        elif callname == 'clone':
+            print "call_clone_callback(env, pc);"
+        elif callname == 'do_mmap2':
+            print "call_mmap_callback(env, pc);"
+        elif callname == 'sys_prctl':
+            print "call_prctl_callback(env, pc);"
         print "finish_syscall();"
         print "break;"
     print "default:"

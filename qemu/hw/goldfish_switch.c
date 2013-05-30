@@ -33,6 +33,32 @@ typedef struct GoldfishSwitchDevice {
     void *writeopaque;
 } GoldfishSwitchDevice;
 
+#define  GOLDFISH_SWITCH_SAVE_VERSION  1
+
+static void  goldfish_switch_save(QEMUFile*  f, void*  opaque)
+{
+    struct GoldfishSwitchDevice*  s = opaque;
+
+    qemu_put_be32(f, s->state);
+    qemu_put_byte(f, s->state_changed);
+    qemu_put_byte(f, s->int_enable);
+}
+
+static int  goldfish_switch_load(QEMUFile*  f, void*  opaque, int  version_id)
+{
+    struct GoldfishSwitchDevice*  s = opaque;
+
+    if (version_id != GOLDFISH_SWITCH_SAVE_VERSION)
+        return -1;
+
+    s->state         = qemu_get_be32(f);
+    s->state_changed = qemu_get_byte(f);
+    s->int_enable    = qemu_get_byte(f);
+
+    return 0;
+}
+
+
 static uint32_t goldfish_switch_read(void *opaque, target_phys_addr_t offset)
 {
     GoldfishSwitchDevice *s = (GoldfishSwitchDevice *)opaque;
@@ -119,6 +145,8 @@ void goldfish_switch_set_state(void *opaque, uint32_t state)
 
 static int goldfish_switch_init(GoldfishDevice *dev)
 {
+    register_savevm(&dev->qdev, "goldfish_switch", 0, GOLDFISH_SWITCH_SAVE_VERSION,
+                    goldfish_switch_save, goldfish_switch_load, dev);
     return 0;
 }
 

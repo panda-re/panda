@@ -214,6 +214,11 @@ static inline void qemu_get_sbe64s(QEMUFile *f, int64_t *pv)
     qemu_get_be64s(f, (uint64_t *)pv);
 }
 
+#ifdef CONFIG_ANDROID
+void qemu_put_string(QEMUFile *f, const char* str);
+char* qemu_get_string(QEMUFile *f);
+#endif
+
 #ifdef NEED_CPU_H
 #if TARGET_LONG_BITS == 64
 #define qemu_put_betl qemu_put_be64

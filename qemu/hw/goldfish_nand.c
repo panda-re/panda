@@ -10,15 +10,17 @@
 ** GNU General Public License for more details.
 */
 #include "hw.h"
+#include "blockdev.h"
 #include "goldfish_device.h"
 #include "goldfish_nand_reg.h"
 #include "goldfish_nand.h"
+#include "android/utils/debug.h"
 
 #ifdef TARGET_I386
 #include "kvm.h"
 #endif
 
-#define  DEBUG  0
+#define  DEBUG  1
 #if DEBUG
 #  define  D(...)    VERBOSE_PRINT(init,__VA_ARGS__)
 #  define  D_ACTIVE  VERBOSE_CHECK(init)
@@ -44,16 +46,22 @@
 
 #define  XLOG  xlog
 
+#define ANDROID_QCOW
+
+#if defined(ANDROID_QCOW)
+#include "block_int.h"
+#endif
+
 static void
 xlog( const char*  format, ... )
 {
-    /*
+    
     va_list  args;
     va_start(args, format);
     fprintf(stderr, "NAND: ");
     vfprintf(stderr, format, args);
     va_end(args);
-    */
+    
 }
 
 /* Information on a single device/nand image used by the emulator
@@ -62,7 +70,11 @@ typedef struct {
     char*      devname;      /* name for this device (not null-terminated, use len below) */
     size_t     devname_len;
     uint8_t*   data;         /* buffer for read/write actions to underlying image */
+#if defined(ANDROID_QCOW)
+    BlockDriverState *bdrv; /* back nand w/qcow */
+#else
     int        fd;
+#endif
     uint32_t   flags;
     uint32_t   page_size;
     uint32_t   extra_size;
@@ -123,19 +135,6 @@ static uint32_t nand_dev_count = 0;
 /* The controller is the single access point for all NAND images currently
  * attached to the system.
  */
-typedef struct {
-    uint32_t base;
-
-    // register state
-    uint32_t dev;            /* offset in nand_devs for the device that is
-                              * currently being accessed */
-    uint32_t addr_low;
-    uint32_t addr_high;
-    uint32_t transfer_size;
-    uint32_t data;
-    uint32_t result;
-} nand_dev_controller_state;
-
 typedef struct GoldfishNandDevice {
     GoldfishDevice qdev;
     char *system_path;
@@ -157,6 +156,8 @@ typedef struct GoldfishNandDevice {
     uint32_t addr_high;
     uint32_t transfer_size;
     uint32_t data;
+    uint32_t batch_addr_low;
+    uint32_t batch_addr_high;
     uint32_t result;
 } GoldfishNandDevice;
 
@@ -193,15 +194,196 @@ static int  do_lseek(int  fd, off_t offset, int whence)
     return ret;
 }
 
+/* EINTR-proof ftruncate - due to SIGALRM in use elsewhere */
+static int  do_ftruncate(int  fd, size_t  size)
+{
+    int  ret;
+    do {
+        ret = ftruncate(fd, size);
+    } while (ret < 0 && errno == EINTR);
+    
+    return ret;
+}
+#if(0)
+#define NAND_DEV_SAVE_DISK_BUF_SIZE 2048
+
+
+/**
+ * Copies the current contents of a disk image into the snapshot file.
+ *
+ * TODO optimize this using some kind of copy-on-write mechanism for
+ *      unchanged disk sections.
+ */
+static void  nand_dev_save_disk_state(QEMUFile *f, nand_dev *dev)
+{
+#ifndef ANDROID_QCOW
+    int buf_size = NAND_DEV_SAVE_DISK_BUF_SIZE;
+    uint8_t buffer[NAND_DEV_SAVE_DISK_BUF_SIZE] = {0};
+    int ret;
+    uint64_t total_copied = 0;
+
+    /* Size of file to restore, hence size of data block following.
+     * TODO Work out whether to use lseek64 here. */
+
+    ret = do_lseek(dev->fd, 0, SEEK_END);
+    if (ret < 0) {
+      XLOG("%s EOF seek failed: %s\n", __FUNCTION__, strerror(errno));
+      qemu_file_set_error(f);
+      return;
+    }
+    const uint64_t total_size = ret;
+    qemu_put_be64(f, total_size);
+
+    /* copy all data from the stream to the stored image */
+    ret = do_lseek(dev->fd, 0, SEEK_SET);
+    if (ret < 0) {
+        XLOG("%s seek failed: %s\n", __FUNCTION__, strerror(errno));
+        qemu_file_set_error(f);
+        return;
+    }
+    do {
+        ret = do_read(dev->fd, buffer, buf_size);
+        if (ret < 0) {
+            XLOG("%s read failed: %s\n", __FUNCTION__, strerror(errno));
+            qemu_file_set_error(f);
+            return;
+        }
+        qemu_put_buffer(f, buffer, ret);
+
+        total_copied += ret;
+    }
+    while (ret == buf_size && total_copied < dev->max_size);
+
+    /* TODO Maybe check that we've written total_size bytes */
+#endif
+}
+
+
+/**
+ * Saves the state of all disks managed by this controller to a snapshot file.
+ */
+static void nand_dev_save_disks(QEMUFile *f)
+{
+    int i;
+    for (i = 0; i < nand_dev_count; i++) {
+        nand_dev_save_disk_state(f, nand_devs + i);
+    }
+}
+
+/**
+ * Overwrites the contents of the disk image managed by this device with the
+ * contents as they were at the point the snapshot was made.
+ */
+static int  nand_dev_load_disk_state(QEMUFile *f, nand_dev *dev)
+{
+#ifndef ANDROID_QCOW
+    int buf_size = NAND_DEV_SAVE_DISK_BUF_SIZE;
+    uint8_t buffer[NAND_DEV_SAVE_DISK_BUF_SIZE] = {0};
+    int ret;
+
+    /* File size for restore and truncate */
+    uint64_t total_size = qemu_get_be64(f);
+    if (total_size > dev->max_size) {
+        XLOG("%s, restore failed: size required (%lld) exceeds device limit (%lld)\n",
+             __FUNCTION__, total_size, dev->max_size);
+        return -EIO;
+    }
+
+    /* overwrite disk contents with snapshot contents */
+    uint64_t next_offset = 0;
+    ret = do_lseek(dev->fd, 0, SEEK_SET);
+    if (ret < 0) {
+        XLOG("%s seek failed: %s\n", __FUNCTION__, strerror(errno));
+        return -EIO;
+    }
+    while (next_offset < total_size) {
+        /* snapshot buffer may not be an exact multiple of buf_size
+         * if necessary, adjust buffer size for last copy operation */
+        if (total_size - next_offset < buf_size) {
+            buf_size = total_size - next_offset;
+        }
+
+        ret = qemu_get_buffer(f, buffer, buf_size);
+        if (ret != buf_size) {
+            XLOG("%s read failed: expected %d bytes but got %d\n",
+                 __FUNCTION__, buf_size, ret);
+            return -EIO;
+        }
+        ret = do_write(dev->fd, buffer, buf_size);
+        if (ret != buf_size) {
+            XLOG("%s, write failed: %s\n", __FUNCTION__, strerror(errno));
+            return -EIO;
+        }
+
+        next_offset += buf_size;
+    }
+
+    ret = do_ftruncate(dev->fd, total_size);
+    if (ret < 0) {
+        XLOG("%s ftruncate failed: %s\n", __FUNCTION__, strerror(errno));
+        return -EIO;
+    }
+#endif
+
+    return 0;
+}
+
+/**
+ * Restores the state of all disks managed by this driver from a snapshot file.
+ */
+static int nand_dev_load_disks(QEMUFile *f)
+{
+    int i, ret;
+    for (i = 0; i < nand_dev_count; i++) {
+        ret = nand_dev_load_disk_state(f, nand_devs + i);
+        if (ret)
+            return ret; // abort on error
+    }
+
+    return 0;
+}
+
+static void  nand_dev_controller_state_save(QEMUFile *f, void  *opaque)
+{
+    nand_dev_controller_state* s = opaque;
+
+    qemu_put_struct(f, GoldfishNandDevice, s);
+
+    /* The guest will continue writing to the disk image after the state has
+     * been saved. To guarantee that the state is identical after resume, save
+     * a copy of the current disk state in the snapshot.
+     */
+    nand_dev_save_disks(f);
+}
+
+static int   nand_dev_controller_state_load(QEMUFile *f, void  *opaque, int  version_id)
+{
+    nand_dev_controller_state*  s = opaque;
+    int ret;
+
+    if (version_id != NAND_DEV_STATE_SAVE_VERSION)
+        return -1;
+
+    if ((ret = qemu_get_struct(f, nand_dev_controller_state_fields, s)))
+        return ret;
+    if ((ret = nand_dev_load_disks(f)))
+        return ret;
+
+    return 0;
+}
+#endif
+
 static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, uint32_t total_len)
 {
     uint32_t len = total_len;
-    size_t read_len = dev->erase_size;
+    ssize_t read_len = dev->erase_size;
     int eof = 0;
 
     NAND_UPDATE_READ_THRESHOLD(total_len);
 
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
     while(len > 0) {
         if(read_len < dev->erase_size) {
             memset(dev->data, 0xff, dev->erase_size);
@@ -211,7 +393,11 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         if(len < read_len)
             read_len = len;
         if(!eof) {
+#if defined(ANDROID_QCOW)
+            read_len = bdrv_pread(dev->bdrv, addr , dev->data, read_len);
+#else
             read_len = do_read(dev->fd, dev->data, read_len);
+#endif
         }
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -220,6 +406,9 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         cpu_memory_rw_debug(cpu_single_env, data, dev->data, read_len, 1);
         data += read_len;
         len -= read_len;
+#if defined(ANDROID_QCOW)
+        addr += read_len;
+#endif
     }
     return total_len;
 }
@@ -232,7 +421,9 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
 
     NAND_UPDATE_WRITE_THRESHOLD(total_len);
 
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
     while(len > 0) {
         if(len < write_len)
             write_len = len;
@@ -241,13 +432,18 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
         cpu_memory_rw_debug(cpu_single_env, data, dev->data, write_len, 0);
+#if defined(ANDROID_QCOW)
+        ret = bdrv_pwrite(dev->bdrv,addr, dev->data, write_len);
+#else
         ret = do_write(dev->fd, dev->data, write_len);
+#endif
         if(ret < write_len) {
             XLOG("nand_dev_write_file, write failed: %s\n", strerror(errno));
             break;
         }
         data += write_len;
         len -= write_len;
+        addr += write_len;
     }
     return total_len - len;
 }
@@ -257,18 +453,26 @@ static uint32_t nand_dev_erase_file(nand_dev *dev, uint64_t addr, uint32_t total
     uint32_t len = total_len;
     size_t write_len = dev->erase_size;
     int ret;
-
+    
+#if !defined(ANDROID_QCOW)
     do_lseek(dev->fd, addr, SEEK_SET);
+#endif
+    
     memset(dev->data, 0xff, dev->erase_size);
     while(len > 0) {
         if(len < write_len)
             write_len = len;
+#if defined(ANDROID_QCOW)
+        ret = bdrv_pwrite(dev->bdrv, addr, dev->data, write_len);
+#else
         ret = do_write(dev->fd, dev->data, write_len);
+#endif
         if(ret < write_len) {
             XLOG( "nand_dev_write_file, write failed: %s\n", strerror(errno));
             break;
         }
         len -= write_len;
+        addr += write_len;
     }
     return total_len - len;
 }
@@ -286,12 +490,24 @@ static uint32_t nand_dev_erase_file(nand_dev *dev, uint64_t addr, uint32_t total
 #if !(defined __APPLE__ && defined __powerpc__)
 static
 #endif
-uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
+uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
 {
     uint32_t size;
     uint64_t addr;
     nand_dev *dev;
 
+    if (cmd == NAND_CMD_WRITE_BATCH || cmd == NAND_CMD_READ_BATCH ||
+        cmd == NAND_CMD_ERASE_BATCH) {
+        struct batch_data bd;
+        uint64_t bd_addr = ((uint64_t)s->batch_addr_high << 32) | s->batch_addr_low;
+
+        cpu_physical_memory_read(bd_addr, (void*)&bd, sizeof(struct batch_data));
+        s->dev = bd.dev;
+        s->addr_low = bd.addr_low;
+        s->addr_high = bd.addr_high;
+        s->transfer_size = bd.transfer_size;
+        s->data = bd.data;
+    }
     addr = s->addr_low | ((uint64_t)s->addr_high << 32);
     size = s->transfer_size;
     if(s->dev >= nand_dev_count)
@@ -308,12 +524,17 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env, s->data, (uint8_t*)dev->devname, size, 1);
         return size;
+    case NAND_CMD_READ_BATCH:
     case NAND_CMD_READ:
         if(addr >= dev->max_size)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_read_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -321,6 +542,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 1);
         return size;
+    case NAND_CMD_WRITE_BATCH:
     case NAND_CMD_WRITE:
         if(dev->flags & NAND_DEV_FLAG_READ_ONLY)
             return 0;
@@ -328,7 +550,11 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_write_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
@@ -336,6 +562,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 #endif
         cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 0);
         return size;
+    case NAND_CMD_ERASE_BATCH:
     case NAND_CMD_ERASE:
         if(dev->flags & NAND_DEV_FLAG_READ_ONLY)
             return 0;
@@ -343,7 +570,11 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
             return 0;
         if(size > dev->max_size - addr)
             size = dev->max_size - addr;
+#if defined(ANDROID_QCOW)
+        if(dev->bdrv != NULL)
+#else
         if(dev->fd >= 0)
+#endif
             return nand_dev_erase_file(dev, addr, size);
         memset(&dev->data[addr], 0xff, size);
         return size;
@@ -362,7 +593,7 @@ uint32_t nand_dev_do_cmd(nand_dev_controller_state *s, uint32_t cmd)
 /* I/O write */
 static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 {
-    nand_dev_controller_state *s = (nand_dev_controller_state *)opaque;
+    GoldfishNandDevice *s = (GoldfishNandDevice *)opaque;
 
     switch (offset) {
     case NAND_DEV:
@@ -377,6 +608,12 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
     case NAND_ADDR_LOW:
         s->addr_low = value;
         break;
+    case NAND_BATCH_ADDR_LOW:
+        s->batch_addr_low = value;
+        break;
+    case NAND_BATCH_ADDR_HIGH:
+        s->batch_addr_high = value;
+        break;
     case NAND_TRANSFER_SIZE:
         s->transfer_size = value;
         break;
@@ -385,6 +622,13 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
         break;
     case NAND_COMMAND:
         s->result = nand_dev_do_cmd(s, value);
+        if (value == NAND_CMD_WRITE_BATCH || value == NAND_CMD_READ_BATCH ||
+            value == NAND_CMD_ERASE_BATCH) {
+            struct batch_data bd;
+            uint64_t bd_addr = ((uint64_t)s->batch_addr_high << 32) | s->batch_addr_low;
+            bd.result = s->result;
+            cpu_physical_memory_write(bd_addr, (void*)&bd, sizeof(struct batch_data));
+        }
         break;
     default:
         cpu_abort(cpu_single_env, "nand_dev_write: Bad offset %x\n", offset);
@@ -395,7 +639,7 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
 /* I/O read */
 static uint32_t nand_dev_read(void *opaque, target_phys_addr_t offset)
 {
-    nand_dev_controller_state *s = (nand_dev_controller_state *)opaque;
+    GoldfishNandDevice *s = (GoldfishNandDevice *)opaque;
     nand_dev *dev;
 
     switch (offset) {
@@ -527,6 +771,7 @@ void nand_add_dev(const char *arg)
             if(arg_match("size", arg, arg_len)) {
                 char *ep;
                 dev_size = strtoull(value, &ep, 0);
+                D("Dev size 0x%X came from argument\n", dev_size);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
             }
@@ -598,14 +843,18 @@ void nand_add_dev(const char *arg)
     }
 
     if(initfilename) {
+        uint64_t dev_bigger; 
         initfd = open(initfilename, O_BINARY | O_RDONLY);
         if(initfd < 0) {
             XLOG("could not open file %s, %s\n", initfilename, strerror(errno));
             exit(1);
         }
-        if(dev_size == 0) {
-            dev_size = do_lseek(initfd, 0, SEEK_END);
-            do_lseek(initfd, 0, SEEK_SET);
+        //if(dev_size == 0) {
+        D("calculating dev_size from lseek of %s\n", initfilename);
+        dev_bigger = do_lseek(initfd, 0, SEEK_END);
+        do_lseek(initfd, 0, SEEK_SET);
+        if (dev_bigger > dev_size){
+            dev_size = dev_bigger;
         }
     }
 
@@ -618,18 +867,14 @@ void nand_add_dev(const char *arg)
     dev->page_size = page_size;
     dev->extra_size = extra_size;
     dev->erase_size = erase_pages * (page_size + extra_size);
-    pad = dev_size % dev->erase_size;
-    if (pad != 0) {
-        dev_size += (dev->erase_size - pad);
-        D("rounding devsize up to a full eraseunit, now %llx\n", dev_size);
-    }
-    dev->devname = devname;
-    dev->devname_len = devname_len;
-    dev->max_size = dev_size;
+    
     dev->data = malloc(dev->erase_size);
     if(dev->data == NULL)
         goto out_of_memory;
     dev->flags = read_only ? NAND_DEV_FLAG_READ_ONLY : 0;
+#ifdef TARGET_I386
+    dev->flags |= NAND_DEV_FLAG_BATCH_CAP;
+#endif
 
     if (initfd >= 0) {
         do {
@@ -645,7 +890,30 @@ void nand_add_dev(const char *arg)
         } while(read_size == dev->erase_size);
         close(initfd);
     }
+#if defined ANDROID_QCOW
+    close(rwfd);
+
+    dev->bdrv = bdrv_new(rwfilename);
+    if (0 > bdrv_open(dev->bdrv, rwfilename, BDRV_O_RDWR | BDRV_O_CACHE_WB | BDRV_O_NO_FLUSH, NULL)) {
+    //if (0 > bdrv_file_open(&dev->bdrv,rwfilename, BDRV_O_RDWR)) {
+        XLOG("failed to open block driver %s\n", rwfilename);
+        exit(1);
+    }
+    dev_size = bdrv_getlength(dev->bdrv->file);
+#else
     dev->fd = rwfd;
+#endif
+    pad = dev_size % dev->erase_size;
+    if (pad != 0) {
+        //dev_size += (dev->erase_size - pad);
+        dev_size -= pad;
+        D("rounding devsize up to a full eraseunit, now %llx\n", dev_size);
+    }
+    dev->devname = devname;
+    dev->devname_len = devname_len;
+    dev->max_size = dev_size;
+    D("Dev size of %s is %llx\n", rwfilename, dev_size);
+    
 
     nand_dev_count++;
 
@@ -674,7 +942,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             PANIC("Invalid system partition size: %jd", sysBytes);
         }
 
-        snprintf(tmp,sizeof(tmp),"system,size=0x%jx", sysBytes);
+        snprintf(tmp,sizeof(tmp),"system");
 
         if (sysImage && *sysImage) {
             if (filelock_create(sysImage) == NULL) {
@@ -692,9 +960,9 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             }
             pstrcat(tmp,sizeof(tmp),",initfile=");
             pstrcat(tmp,sizeof(tmp),initImage);
-        } else {
+        } /*else {
             PANIC("Missing initial system image path!");
-        }
+        }*/
         nand_add_dev(tmp);
     }
 
@@ -775,16 +1043,33 @@ DeviceState *goldfish_nand_create(GoldfishBus *gbus)
     return dev;
 }
 
+static const VMStateDescription vmstate_goldfish_nand = {
+    .name = "goldfish_nand",
+    .version_id = 1,
+    .fields = (VMStateField[]){
+        VMSTATE_UINT32(dev, GoldfishNandDevice),
+        VMSTATE_UINT32(addr_high, GoldfishNandDevice),
+        VMSTATE_UINT32(addr_low, GoldfishNandDevice),
+        VMSTATE_UINT32(transfer_size, GoldfishNandDevice),
+        VMSTATE_UINT32(data, GoldfishNandDevice),
+        VMSTATE_UINT32(batch_addr_high, GoldfishNandDevice),
+        VMSTATE_UINT32(batch_addr_low, GoldfishNandDevice),
+        VMSTATE_UINT32(result, GoldfishNandDevice),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static GoldfishDeviceInfo goldfish_nand_info = {
     .init = goldfish_nand_init,
     .readfn = nand_dev_readfn,
     .writefn = nand_dev_writefn,
     .qdev.name  = "goldfish_nand",
     .qdev.size  = sizeof(GoldfishNandDevice),
+    .qdev.vmsd  = &vmstate_goldfish_nand,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),
-        DEFINE_PROP_UINT32("size", GoldfishDevice, size, 0xfff),
+        DEFINE_PROP_UINT32("size", GoldfishDevice, size, 0x1000),
         DEFINE_PROP_UINT32("irq", GoldfishDevice, irq, 0),
         DEFINE_PROP_UINT32("irq_count", GoldfishDevice, irq_count, 1),
         DEFINE_PROP_STRING("name", GoldfishDevice, name),
@@ -793,7 +1078,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_UINT64("system_size", GoldfishNandDevice, system_size, 0x7100000),
         DEFINE_PROP_STRING("user_data_path", GoldfishNandDevice, user_data_path),
         DEFINE_PROP_STRING("user_data_init_path", GoldfishNandDevice, user_data_init_path),
-        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x4200000),
+        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x5000000),
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
         DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
         DEFINE_PROP_END_OF_LIST(),

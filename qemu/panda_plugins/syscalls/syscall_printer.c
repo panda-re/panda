@@ -14,6 +14,7 @@ break;
 // 2 unsigned long fork ['void']
 case 2 :
 record_syscall("fork");
+call_fork_callback(env, pc);
 finish_syscall();
 break;
 // 3 long sys_read ['unsigned int fd', ' char __user *buf', ' size_t count']
@@ -72,6 +73,7 @@ record_syscall("execve");
 log_string(env->regs[0], "const char *filename");
 log_pointer(env->regs[1], " char *const argv[]");
 log_pointer(env->regs[2], " char *const envp[]");
+call_exec_callback(env, pc);
 finish_syscall();
 break;
 // 12 long sys_chdir ['const char __user *filename']
@@ -594,6 +596,7 @@ log_pointer(env->regs[1], " void *child_stack");
 log_32(env->regs[2], " int flags");
 log_pointer(env->regs[3], " void *arg");
 log_pointer(env->regs[4], " ...");
+call_clone_callback(env, pc);
 finish_syscall();
 break;
 // 121 long sys_setdomainname ['char __user *name', ' int len']
@@ -927,6 +930,7 @@ log_32(env->regs[1], " unsigned long arg2");
 log_32(env->regs[2], " unsigned long arg3");
 log_32(env->regs[3], "unsigned long arg4");
 log_32(env->regs[4], " unsigned long arg5");
+call_prctl_callback(env, pc);
 finish_syscall();
 break;
 // 173 int sigreturn ['void']
@@ -1069,6 +1073,7 @@ log_32(env->regs[2], " unsigned long prot");
 log_32(env->regs[3], " unsigned long flags");
 log_32(env->regs[4], " unsigned long fd");
 log_32(env->regs[5], " unsigned long pgoff");
+call_mmap_callback(env, pc);
 finish_syscall();
 break;
 // 193 long sys_truncate64 ['const char __user *path', ' loff_t length']
@@ -2357,7 +2362,7 @@ record_syscall("sys_inotify_init1");
 log_32(env->regs[0], "int flags");
 finish_syscall();
 break;
-// 10420225 long ARM_breakpoint ['void']
+// 10420225 long ARM_breakpoint ['']
 case 10420225 :
 record_syscall("ARM_breakpoint");
 finish_syscall();
@@ -2370,12 +2375,12 @@ log_32(env->regs[1], " unsigned long end");
 log_32(env->regs[2], " unsigned long flags");
 finish_syscall();
 break;
-// 10420227 long ARM_user26_mode ['void']
+// 10420227 long ARM_user26_mode ['']
 case 10420227 :
 record_syscall("ARM_user26_mode");
 finish_syscall();
 break;
-// 10420228 long ARM_usr32_mode ['void']
+// 10420228 long ARM_usr32_mode ['']
 case 10420228 :
 record_syscall("ARM_usr32_mode");
 finish_syscall();
@@ -2394,7 +2399,7 @@ log_32(env->regs[1], " unsigned long src");
 log_pointer(env->regs[2], " unsigned long* dest");
 finish_syscall();
 break;
-// 10420224 long ARM_null_segfault ['void']
+// 10420224 long ARM_null_segfault ['']
 case 10420224 :
 record_syscall("ARM_null_segfault");
 finish_syscall();

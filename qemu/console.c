@@ -25,6 +25,8 @@
 #include "console.h"
 #include "qemu-timer.h"
 
+#include "android/hw-constants.h"
+
 //#define DEBUG_CONSOLE
 #define DEFAULT_BACKSCROLL 512
 #define MAX_CONSOLES 12
@@ -1345,8 +1347,8 @@ static struct DisplayAllocator default_allocator = {
 static void dumb_display_init(void)
 {
     DisplayState *ds = g_malloc0(sizeof(DisplayState));
-    int width = 640;
-    int height = 480;
+    int width = 460;
+    int height = 800;
 
     ds->allocator = &default_allocator;
     if (is_fixedsize_console()) {
@@ -1401,7 +1403,7 @@ DisplayState *graphic_console_init(vga_hw_update_ptr update,
 
     ds = (DisplayState *) g_malloc0(sizeof(DisplayState));
     ds->allocator = &default_allocator; 
-    ds->surface = qemu_create_displaysurface(ds, 640, 480);
+    ds->surface = qemu_create_displaysurface(ds, ANDROID_LCD_WIDTH, ANDROID_LCD_HEIGHT);
 
     s = new_console(ds, GRAPHIC_CONSOLE);
     if (s == NULL) {

@@ -34,6 +34,45 @@ typedef struct GoldfishTimerDevice {
     QEMUTimer *timer;
 } GoldfishTimerDevice;
 
+#define  GOLDFISH_TIMER_SAVE_VERSION  1
+
+static void  goldfish_timer_save(QEMUFile*  f, void*  opaque)
+{
+    struct GoldfishTimerDevice*  s   = opaque;
+
+    qemu_put_be64(f, s->now_ns);  /* in case the kernel is in the middle of a timer read */
+    qemu_put_byte(f, s->armed);
+    if (s->armed) {
+        int64_t  now_ns   = qemu_get_clock_ns(vm_clock);
+        int64_t  alarm_ns = (s->alarm_low_ns | (int64_t)s->alarm_high_ns << 32);
+        qemu_put_be64(f, alarm_ns - now_ns);
+    }
+}
+
+static int  goldfish_timer_load(QEMUFile*  f, void*  opaque, int  version_id)
+{
+    struct GoldfishTimerDevice*  s   = opaque;
+
+    if (version_id != GOLDFISH_TIMER_SAVE_VERSION)
+        return -1;
+
+    s->now_ns = qemu_get_be64(f);
+    s->armed  = qemu_get_byte(f);
+    if (s->armed) {
+        int64_t  now_tks   = qemu_get_clock_ns(vm_clock);
+        int64_t  diff_tks  = qemu_get_be64(f);
+        int64_t  alarm_tks = now_tks + diff_tks;
+
+        if (alarm_tks <= now_tks) {
+            goldfish_device_set_irq(&s->dev, 0, 1);
+            s->armed = 0;
+        } else {
+            qemu_mod_timer(s->timer, alarm_tks);
+        }
+    }
+    return 0;
+}
+
 static uint32_t goldfish_timer_read(void *opaque, target_phys_addr_t offset)
 {
     GoldfishTimerDevice *s = (GoldfishTimerDevice *)opaque;
@@ -94,6 +133,29 @@ typedef struct GoldfishRTCDevice {
     int32_t alarm_high;
     int64_t now;
 } GoldfishRTCDevice;
+
+/* we save the RTC for the case where the kernel is in the middle of a rtc_read
+ * (i.e. it has read the low 32-bit of s->now, but not the high 32-bits yet */
+#define  GOLDFISH_RTC_SAVE_VERSION  1
+
+static void  goldfish_rtc_save(QEMUFile*  f, void*  opaque)
+{
+    struct GoldfishRTCDevice*  s = opaque;
+
+    qemu_put_be64(f, s->now);
+}
+
+static int  goldfish_rtc_load(QEMUFile*  f, void*  opaque, int  version_id)
+{
+    struct  GoldfishRTCDevice*  s = opaque;
+
+    if (version_id != GOLDFISH_RTC_SAVE_VERSION)
+        return -1;
+
+    /* this is an old value that is not correct. but that's ok anyway */
+    s->now = qemu_get_be64(f);
+    return 0;
+}
 
 static uint32_t goldfish_rtc_read(void *opaque, target_phys_addr_t offset)
 {
@@ -161,7 +223,9 @@ static int goldfish_timer_init(GoldfishDevice *dev)
 {
     GoldfishTimerDevice *tdev = (GoldfishTimerDevice *)dev;
     tdev->timer = qemu_new_timer_ns(vm_clock, goldfish_timer_tick, tdev);
-
+    register_savevm(&dev->qdev, "goldfish_timer", 0, GOLDFISH_TIMER_SAVE_VERSION,
+                     goldfish_timer_save, goldfish_timer_load, tdev);
+    
     return 0;
 }
 
@@ -204,6 +268,8 @@ device_init(goldfish_timer_register);
 
 static int goldfish_rtc_init(GoldfishDevice *dev)
 {
+    register_savevm(&dev->qdev, "goldfish_rtc", 0, GOLDFISH_RTC_SAVE_VERSION,
+        goldfish_rtc_save, goldfish_rtc_load, dev);
     return 0;
 }
 

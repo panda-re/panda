@@ -123,6 +123,7 @@ audio_win_int=""
 cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 llvm="no"
+android="no"
 
 target_list=""
 
@@ -719,6 +720,8 @@ for opt do
   ;;
   --enable-llvm) llvm="yes"
   ;;
+  --enable-android) android="yes"
+  ;;
   --with-llvm=*) llvmdir="$optarg"
   ;;
   --disable-kvm) kvm="no"
@@ -1085,6 +1088,7 @@ echo "  --disable-bluez          disable bluez stack connectivity"
 echo "  --enable-bluez           enable bluez stack connectivity"
 echo "  --disable-slirp          disable SLIRP userspace network connectivity"
 echo "  --enable-llvm            enable LLVM support (for all targets)"
+echo "  --enable-android         enable Android-specific hardware"
 echo "  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
 echo "  --disable-kvm            disable KVM acceleration support"
 echo "  --enable-kvm             enable KVM acceleration support"
@@ -3000,6 +3004,7 @@ echo "Linux AIO support $linux_aio"
 echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
 echo "LLVM support      $llvm"
+echo "Android support   $android"
 echo "KVM support       $kvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
@@ -3275,6 +3280,11 @@ if test "$llvm" = "yes" ; then
   echo "LLVMDIR=$llvmdir" >> $config_host_mak
 fi
 
+if test "$android" = "yes" ; then
+  echo "CONFIG_ANDROID=y" >> $config_host_mak
+  echo "CONFIG_PANDA_VMI=y" >> $config_host_mak
+fi
+
 if test "$xen" = "yes" ; then
   echo "CONFIG_XEN_BACKEND=y" >> $config_host_mak
   echo "CONFIG_XEN_CTRL_INTERFACE_VERSION=$xen_ctrl_version" >> $config_host_mak
@@ -3532,6 +3542,22 @@ mkdir -p $target_dir/9pfs
 mkdir -p $target_dir/panda
 mkdir -p $target_dir/panda_plugins
 mkdir -p $target_dir/panda_tools
+mkdir -p $target_dir/android
+mkdir -p $target_dir/android/utils
+mkdir -p $target_dir/android/camera
+mkdir -p $target_dir/telephony
+mkdir -p $target_dir/introspection
+mkdir -p $target_dir/introspection/utils
+mkdir -p $target_dir/introspection/DroidScope
+mkdir -p $target_dir/introspection/DroidScope/dalvik
+mkdir -p $target_dir/introspection/DroidScope/dalvik/libdex
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm/interp
+mkdir -p $target_dir/introspection/DroidScope/dalvik/vm/oo
+mkdir -p $target_dir/introspection/DroidScope/DS_utils
+mkdir -p $target_dir/introspection/DroidScope/dalvikAPI
+mkdir -p $target_dir/introspection/DroidScope/linuxAPI
+
 
 if test "$target" = "arm-linux-user" -o "$target" = "armeb-linux-user" -o "$target" = "arm-bsd-user" -o "$target" = "armeb-bsd-user" ; then
   mkdir -p $target_dir/nwfpe
