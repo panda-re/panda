@@ -401,6 +401,7 @@ obj-arm-y += vexpress.o
 obj-arm-y += strongarm.o
 obj-arm-y += collie.o
 obj-arm-y += pl041.o lm4549.o 
+ifdef CONFIG_ANDROID
 obj-android = android_arm.o goldfish_device.o goldfish_interrupt.o goldfish_timer.o
 obj-android += goldfish_events_device.o
 obj-android += goldfish_tty.o goldfish_nand.o goldfish_fb.o goldfish_memlog.o
@@ -431,7 +432,7 @@ obj-android += android/hw-sensors.o
 obj-android += android/hw-control.o
 obj-android += goldfish_mmc.o
 obj-arm-y += $(obj-android)
-
+endif #CONFIG_ANDROID
 
 obj-sh4-y = shix.o r2d.o sh7750.o sh7750_regnames.o tc58128.o
 obj-sh4-y += sh_timer.o sh_serial.o sh_intc.o sh_pci.o sm501.o
@@ -528,7 +529,7 @@ endif # CONFIG_LINUX_USER
 ### DECAF Sources
 ###
 
-
+ifdef CONFIG_ANDROID
 
 #obj-decaf =  ../introspection/DECAF_callback.o
 obj-decaf =  introspection/DECAF_cmds.o
@@ -578,7 +579,7 @@ QEMU_CFLAGS += -I$(SRC_PATH)/introspection/DroidScope/
 LIBS += -lstdc++
 
 
-
+endif #CONFIG_ANDROID
 ###
 ### END DroidSCope Sources
 ###

@@ -1,5 +1,5 @@
 extern "C"{
-
+#define __STDC_FORMAT_MACROS
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"
@@ -7,7 +7,6 @@ extern "C"{
 
 
 #include "panda_plugin.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 }
@@ -91,6 +90,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 #endif
 }
 
+
 typedef std::pair<target_ulong, target_ulong> ReturnPoint;
 
 static std::list<ReturnPoint> fork_returns;
@@ -98,7 +98,7 @@ static std::list<ReturnPoint> exec_returns;
 static std::list<ReturnPoint> clone_returns;
 static std::list<ReturnPoint> prctl_returns;
 static std::list<ReturnPoint> mmap_returns;
-
+#if defined(TARGET_ARM)
 static void call_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
@@ -150,6 +150,8 @@ static void call_mmap_callback(CPUState *env, target_ulong pc){
     }
     mmap_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
+
+#endif //TARGET_ARM
 
 static inline bool in_kernelspace(CPUState *env) {
 #if defined(TARGET_I386)
