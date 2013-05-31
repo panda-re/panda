@@ -10,6 +10,7 @@
 #endif
 
 #define MAX_PANDA_PLUGINS 16
+#define MAX_PANDA_PLUGIN_ARGS 32
 
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
@@ -425,6 +426,7 @@ typedef struct panda_plugin {
 void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
 bool   panda_load_plugin(const char *filename);
+bool   panda_add_arg(const char *arg, int arglen);
 void * panda_get_plugin_by_name(const char *name);
 void   panda_do_unload_plugin(int index);
 void   panda_unload_plugin(int index);
@@ -458,5 +460,8 @@ extern panda_cb_list *panda_cbs[PANDA_CB_LAST];
 extern bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
 extern bool panda_plugin_to_unload;
 extern bool panda_tb_chaining;
+
+extern char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
+extern int panda_argc;
 
 #endif

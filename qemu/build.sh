@@ -7,7 +7,6 @@ arm-linux-user,arm-softmmu \
 --prefix=`pwd`/install \
 --disable-pie \
 --enable-llvm \
---enable-android \
 --with-llvm=../llvm-3.0/Debug+Asserts \
 --extra-cflags="-O2" \
 --extra-cxxflags="-O2" \

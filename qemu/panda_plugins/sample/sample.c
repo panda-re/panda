@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-bool before_block_callback(CPUState *env, TranslationBlock *tb);
+int before_block_callback(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
@@ -28,7 +28,7 @@ int guest_hypercall_callback(CPUState *env) {
     return 1;
 }
 
-bool before_block_callback(CPUState *env, TranslationBlock *tb) {
+int before_block_callback(CPUState *env, TranslationBlock *tb) {
     fprintf(plugin_log, "Next TB: " TARGET_FMT_lx 
 #ifdef TARGET_I386
         ", CR3=" TARGET_FMT_lx
@@ -38,7 +38,7 @@ bool before_block_callback(CPUState *env, TranslationBlock *tb) {
         env->cr[3],
 #endif
         "");
-    return false;
+    return 0;
 }
 
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
@@ -93,6 +93,29 @@ int exec_callback(CPUState *env, target_ulong pc) {
 bool init_plugin(void *self) {
     panda_cb pcb;
 
+    int i;
+    char *tblog_filename = NULL;
+    for (i = 0; i < panda_argc; i++) {
+        if (0 == strncmp(panda_argv[i], "sample", 6)) {
+            // Format is sample:key=value
+            // A real plugin would presumably dispatch on key, but we only have
+            // one option so we just 
+            tblog_filename = strrchr(panda_argv[i], '=');
+            if (tblog_filename) tblog_filename++;
+        }
+    }
+
+    if (!tblog_filename) {
+        fprintf(stderr, "Plugin 'sample' needs argument: -panda-arg sample:file=<file>\n");
+        return false;
+    }
+
+    plugin_log = fopen(tblog_filename, "w");    
+    if(!plugin_log) return false;
+
+    // In general you should always register your callbacks last, because
+    // if you return false your plugin will be unloaded and there may be stale
+    // pointers hanging around.
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
     pcb.after_block_exec = after_block_callback;
@@ -106,9 +129,7 @@ bool init_plugin(void *self) {
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
 
-    plugin_log = fopen("sample_tblog.txt", "w");    
-    if(!plugin_log) return false;
-    else return true;
+    return true;
 }
 
 void uninit_plugin(void *self) {

@@ -21,6 +21,10 @@
 // Array of pointers to PANDA callback lists, one per callback type
 panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
+// Storage for command line options
+char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
+int panda_argc;
+
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
 int nb_panda_plugins;
 bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
@@ -30,6 +34,12 @@ bool panda_please_flush_tb = false;
 bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
+
+bool panda_add_arg(const char *arg, int arglen) {
+    if (arglen > 255) return false;
+    strncpy(panda_argv[panda_argc++], arg, 255);
+    return true;
+}
 
 bool panda_load_plugin(const char *filename) {
     void *plugin = dlopen(filename, RTLD_NOW);

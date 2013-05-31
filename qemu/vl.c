@@ -197,6 +197,7 @@ extern const int has_llvm_engine;
 
 // PANDA: externed here because we don't want to pull in the target-specific
 // pieces of QEMU
+extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
 
@@ -2281,6 +2282,10 @@ int main(int argc, char **argv, char **envp)
     const char *trace_events = NULL;
     const char *trace_file = NULL;
 
+    // In order to load PANDA plugins all at once at the end
+    const char * panda_plugin_files[16] = {};
+    int nb_panda_plugins = 0;
+
     atexit(qemu_run_exit_notifiers);
     error_set_progname(argv[0]);
 
@@ -3204,9 +3209,13 @@ int main(int argc, char **argv, char **envp)
                 generate_llvm = 1;
                 break;
 #endif
+            case QEMU_OPTION_panda_arg:
+                if(!panda_add_arg(optarg, strlen(optarg))) {
+                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
+                }
+                break;
             case QEMU_OPTION_panda_plugin:
-                if(!panda_load_plugin(optarg))
-                    fprintf(stderr, "WARN: Unable to load plugin `%s'\n", optarg);
+                panda_plugin_files[nb_panda_plugins++] = optarg;
                 break;
             default:
                 os_parse_cmd_args(popt->index, optarg);
@@ -3217,6 +3226,13 @@ int main(int argc, char **argv, char **envp)
 #if defined(CONFIG_ANDROID)
     DS_init();
 #endif
+
+    // Now that all arguments are available, we can load plugins
+    int pp_idx;
+    for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
+        if(!panda_load_plugin(panda_plugin_files[pp_idx]))
+            fprintf(stderr, "WARN: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+    }
 
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the
