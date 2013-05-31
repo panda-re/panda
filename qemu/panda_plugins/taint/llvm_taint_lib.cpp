@@ -1932,7 +1932,139 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
     }
 }
 
-void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){}
+void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int operand0 = PST->getLocalSlot(I.getOperand(0));
+    int operand1 = PST->getLocalSlot(I.getOperand(1));
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    // result byte gets union of each source byte
+    if (!isa<Constant>(I.getOperand(0)) && !isa<Constant>(I.getOperand(1))){
+        // compute(a0, b0, c0)
+        src0.typ = LADDR;
+        src0.val.la = operand0;
+        src0.off = 0;
+        src1.typ = LADDR;
+        src1.val.la = operand1;
+        src1.off = 0;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I);
+        op.val.compute.a = src0;
+        op.val.compute.b = src1;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+
+        // compute(c0, ai, c0)
+        // compute(c0, bi, c0)
+        op.val.compute.a = dst;
+        for (int i = 1; i < size; i++){
+            src1.off = i;
+            src1.val.la = operand0;
+            op.val.compute.b = src1;
+            tob_op_write(tbuf, op);
+            src1.val.la = operand1;
+            op.val.compute.b = src1;
+            tob_op_write(tbuf, op);
+        }
+    }
+
+    // we don't actually care what the constant is for now
+    // result byte gets union of bytes in LLVM register source operand
+    else if (isa<Constant>(I.getOperand(0))){
+        // compute(a0, b0, c0)
+        src0.typ = CONST;
+        src0.val.con = 0;
+        src1.typ = LADDR;
+        src1.val.la = operand1;
+        src1.off = 0;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I);
+        op.val.compute.a = src0;
+        op.val.compute.b = src1;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+
+        // compute(c0, bi, c0)
+        op.val.compute.a = dst;
+        for (int i = 1; i < size; i++){
+            src1.off = i;
+            op.val.compute.b = src1;
+            tob_op_write(tbuf, op);
+        }
+    }
+
+    else if (isa<Constant>(I.getOperand(1))){
+
+
+        /**** TEST ****/
+        // label operand0
+        /*Addr a;
+        TaintOp op2;
+        op2.typ = LABELOP;
+        a.typ = LADDR;
+        a.val.la = operand0;
+        a.off = 0;
+        op2.val.label.l = 0;
+        op2.val.label.a = a;
+        tob_op_write(tbuf, op2);
+        a.off = 1;
+        op2.val.label.l = 1;
+        op2.val.label.a = a;
+        tob_op_write(tbuf, op2);
+        a.off = 2;
+        op2.val.label.l = 2;
+        op2.val.label.a = a;
+        tob_op_write(tbuf, op2);
+        a.off = 3;
+        op2.val.label.l = 3;
+        op2.val.label.a = a;
+        tob_op_write(tbuf, op2);*/
+        /**** TEST ****/
+
+        // compute(a0, b0, c0)
+        src0.typ = LADDR;
+        src0.val.la = operand0;
+        src0.off = 0;
+        src1.typ = CONST;
+        src1.val.con = 0;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I);
+        op.val.compute.a = src0;
+        op.val.compute.b = src1;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+
+        // compute(c0, ai, c0)
+        op.val.compute.a = dst;
+        for (int i = 1; i < size; i++){
+            src0.off = i;
+            op.val.compute.b = src0;
+            tob_op_write(tbuf, op);
+        }
+    }
+
+    // constant operands contain no taint
+    else if (isa<Constant>(I.getOperand(0)) && isa<Constant>(I.getOperand(1))){
+        op.typ = DELETEOP;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I);
+        op.val.deletel.a = dst;
+        tob_op_write(tbuf, op);
+    }
+
+    else {
+        assert(1==0);
+    }
+}
+
 void PandaTaintVisitor::visitPHINode(PHINode &I){}
 
 /*
