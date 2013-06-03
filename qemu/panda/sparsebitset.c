@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 // to test:
 // gcc -o sparsebitset_test sparsebitset.c my_mem.c -DSBS_TESTING
 // ./sparsebitset_test

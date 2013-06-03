@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 #ifndef __MY_MEM_H_
 #define __MY_MEM_H_
 

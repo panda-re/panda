@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 #ifndef __SHAD_DIR_H_
 #define __SHAD_DIR_H_
 

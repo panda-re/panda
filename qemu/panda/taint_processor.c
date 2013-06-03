@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 #include <stdio.h>
 #include "my_mem.h"

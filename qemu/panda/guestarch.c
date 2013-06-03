@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 /*
  * This file is responsible for implementing the architecture-specific details

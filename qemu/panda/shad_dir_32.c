@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 /*
 
   3-level directory->table->page map from addresses to labelsets.

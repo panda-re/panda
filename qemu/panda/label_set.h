@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 

@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 #ifndef __MY_BOOL__
 
 #define TRUE 1

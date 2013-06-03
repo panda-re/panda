@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 /*
  * This is the start of instrumentation code that we can run as we process
  * taint.  To start with, this implements the gathering of taint statistics for

@@ -1,4 +1,4 @@
-PANDA_PLUGINS = sample taintcap textfinder textprinter syscalls stringsearch \
+PANDA_PLUGINS = sample textfinder textprinter syscalls stringsearch \
     keyfind memstats taint memdump correlatetaps memsnap bufmon bigrams \
     tapindex
 

@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 /*
  * This is a tool that is used during the QEMU build process.  The idea is that

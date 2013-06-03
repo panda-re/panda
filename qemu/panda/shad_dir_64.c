@@ -1,3 +1,5 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 /*
   Same as shad_dir_32.c, mostly.  
 

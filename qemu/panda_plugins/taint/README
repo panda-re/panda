@@ -1,0 +1,3 @@
+For this release, this plugin does not fully work.  We are still in the process
+of porting this plugin to work online with support of all QEMU helper functions.
+

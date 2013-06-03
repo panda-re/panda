@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 /*
  * This function pass can be used in a plugin for generated code to change LLVM

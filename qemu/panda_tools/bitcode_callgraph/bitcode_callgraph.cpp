@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 /*
  * Not really a plugin per se, but rather a tool for analyzing call graphs of
