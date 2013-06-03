@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 void helper_panda_insn_exec(target_ulong pc) {
     // PANDA instrumentation: before basic block 
     panda_cb_list *plist;
