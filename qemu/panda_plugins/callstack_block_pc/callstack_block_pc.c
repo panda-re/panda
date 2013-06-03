@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"

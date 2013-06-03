@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <distorm.h>

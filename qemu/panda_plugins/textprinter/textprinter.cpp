@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS

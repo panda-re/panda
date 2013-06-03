@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 struct prog_point {
     target_ulong caller;
     target_ulong pc;

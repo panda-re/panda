@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 /*
  * llvm_trace PANDA plugin
  * Ryan Whelan
