@@ -1,4 +1,5 @@
 
+# /* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 # get numbers from /scratch/aospkernel/goldfish/arch/arm/include/asm/unistd.h
 NUMSOURCE = "/scratch/aospkernel/goldfish/arch/arm/include/asm/unistd.h"

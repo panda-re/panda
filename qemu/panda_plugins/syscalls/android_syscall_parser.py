@@ -1,3 +1,6 @@
+
+# /* PANDABEGINCOMMENT PANDAENDCOMMENT */
+
 """
 Output panda tool to parse system calls on Linux
 """
