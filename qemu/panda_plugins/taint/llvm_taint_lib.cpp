@@ -1744,7 +1744,72 @@ void PandaTaintVisitor::visitSExtInst(SExtInst &I){
     }
 }
 
-void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){}
+void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
+    //Assume that the cast will be to the same size destination
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    //Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    if (PST->getLocalSlot(I.getOperand(0)) < 0) {
+      // arg was constant, need to delete taint
+      op.typ = DELETEOP;
+      dst.typ = LADDR;
+      dst.val.la = PST->getLocalSlot(&I);
+      for (int i = 0; i < size; i++) {
+          dst.off = i;
+          op.val.deletel.a = dst;
+          tob_op_write(tbuf, op);
+      }
+      return;
+    }
+
+    // accumulate all of oper[1]'s taint into c0 of temp
+    op.typ = COMPUTEOP;
+    src0.typ = LADDR;
+    src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+    src0.off = 0;
+    src1.typ = LADDR;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.compute.a = src0;
+    op.val.compute.b = src1;
+    op.val.compute.c = dst;
+
+    for (int i = 0; i < size; i++){
+        src0.off = i;
+        op.val.compute.a = src0;
+        tob_op_write(tbuf, op);
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
+}
 
 void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
     //Assume that the cast will be to the same size destination
