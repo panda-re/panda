@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 #include "keyfind.h"
 
 /* Mostly taken from Wireshark

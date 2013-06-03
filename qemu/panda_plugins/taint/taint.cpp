@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 /*
  * PANDA taint analysis plugin
  * Ryan Whelan

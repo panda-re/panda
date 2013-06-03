@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 #include "config.h"
 #include "panda_plugin.h"
 #include "qemu-common.h"

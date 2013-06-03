@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 
 /*
  * This test recreates an entire trace (including all helper functions) in LLVM

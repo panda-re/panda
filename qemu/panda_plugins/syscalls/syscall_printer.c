@@ -1,3 +1,4 @@
+/* PANDABEGINCOMMENT PANDAENDCOMMENT */
 switch( env->regs[7] ){
 
 // 0 long sys_restart_syscall ['void']
