@@ -63,6 +63,8 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
+const char *default_basedir = "/tmp";
+const char *basedir = NULL;
 FILE *funclog;
 extern FILE *memlog;
 
@@ -77,17 +79,15 @@ llvm::PandaInstrFunctionPass *PIFP;
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
-    // XXX
-    //printramaddr(addr, 1);
-    //printramaddr(0x4000000, 1);
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_dynval(dynval_buffer, ADDRENTRY, STORE, addr);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
-    // XXX
-    //printramaddr(addr, 0);
-    //printramaddr(0x4000001, 0);
+    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+    log_dynval(dynval_buffer, ADDRENTRY, LOAD, addr);
     return 0;
 }
 
@@ -251,6 +251,28 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 
 bool init_plugin(void *self) {
     printf("Initializing plugin llvm_trace\n");
+
+    // Look for llvm_trace:base=dir
+    for (int i = 0; i < panda_argc; i++) {
+        if(0 == strncmp(panda_argv[i], "llvm_trace", 10)) {
+            basedir = strrchr(panda_argv[i], '=');
+            if (basedir) basedir++; // advance past '='
+        }
+    }
+    if (basedir == NULL) {
+        basedir = default_basedir;
+    }
+
+    // XXX: unsafe string manipulations
+    char memlog_path[256];
+    char funclog_path[256];
+    strcpy(memlog_path, basedir);
+    strcat(memlog_path, "/llvm-memlog.log");
+    open_memlog(memlog_path);
+    strcpy(funclog_path, basedir);
+    strcat(funclog_path, "/llvm-functions.log");
+    funclog = fopen(funclog_path, "w");
+
     panda_cb pcb;
     panda_enable_memcb();
     pcb.before_block_exec = before_block_exec;
@@ -268,9 +290,6 @@ bool init_plugin(void *self) {
     pcb.user_after_syscall = user_after_syscall;
     panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
-
-    open_memlog();
-    funclog = fopen("/tmp/llvm-functions.log", "w");
 
     if (!execute_llvm){
         panda_enable_llvm();
@@ -305,7 +324,11 @@ void uninit_plugin(void *self) {
         fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
     }
 
-    tcg_llvm_write_module(tcg_llvm_ctx);
+    // XXX: more unsafe string manipulation
+    char modpath[256];
+    strcpy(modpath, basedir);
+    strcat(modpath, "/llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_ctx, modpath);
 
     /*
      * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
@@ -334,4 +357,3 @@ void uninit_plugin(void *self) {
     fclose(funclog);
     close_memlog();
 }
-

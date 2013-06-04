@@ -12,7 +12,7 @@
 void printloc(uintptr_t);
 void printdynval(uintptr_t, int);
 void printramaddr(uintptr_t, int);
-void open_memlog(void);
+void open_memlog(char *path);
 void close_memlog(void);
 
 /*

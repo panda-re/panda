@@ -272,8 +272,8 @@ void printramaddr(uintptr_t physaddr, int store){
     }
 }
 
-void open_memlog(void){
-    memlog = fopen("/tmp/llvm-memlog.log", "w");
+void open_memlog(char *path){
+    memlog = fopen(path, "w");
 }
 
 void close_memlog(void){
