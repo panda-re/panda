@@ -280,7 +280,7 @@ static void armdummy_init(ram_addr_t ram_size,
     int board_id = 0x1337;
     target_phys_addr_t load_addr = 0x50000;
     CPUState *env;
-    ram_addr_t ram_offset;
+    ram_addr_t ram_offset = 0;
     if (!cpu_model)
         cpu_model = "arm1176";
     env = cpu_init(cpu_model);
