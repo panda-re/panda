@@ -2068,6 +2068,7 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
    //This instruction can be modeled as a simple floating point subtraction
    //TODO: Check if this actually needs to be cast
    approxArithHelper(I);
+   //Should this use the cast<> function defined by llvm
    //approxArithHelper(static_cast<BinaryOperator*>I);
 }
 
@@ -2281,7 +2282,48 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
     simpleTaintCopy(src, dst, bytes);
 }
 
-void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){}
+void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
+    int op0 = PST->getLocalSlot(I.getOperand(0));
+    int op1 = PST->getLocalSlot(I.getOperand(1));
+    int idx = I.getOperand(2);
+    int rst = PST->getLocalSlot(&I);
+    int bytes0 = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+    int bytes1 = ceil(I.getOperand(1)->getType()->getScalarSizeInBits() / 8.0);
+
+    //Only support 3 operands
+    assert(I.getNumOperands() == 3);
+    //Only support 64 bit + 64 bit and 64 bit + 16 bit
+    assert((bytes0 == 64) && (bytes1 == 64 || bytes1 == 16));
+
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = rst;
+    src.typ = LADDR;
+    src.val.la = op0;
+
+    for (int i = 0; i < bytes0; i++){
+        src.off = i;
+        dst.off = i;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+
+    src.val.la = op1;
+
+    for (int i = 0; i < bytes1; i++){
+        src.off = i;
+        //Hardcode 8 bytes because first element is always 64 bits
+        dst.off = i + 8*idx;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
 void PandaTaintVisitor::visitLandingPadInst(LandingPadInst &I){}
 
 // Unhandled
