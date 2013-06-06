@@ -30,6 +30,9 @@
 #include "monitor.h"
 #endif
 
+
+#include "panda_plugin.h"
+
 //#define DEBUG_MMU
 
 /* NOTE: must be called outside the CPU execute loop */
@@ -515,6 +518,14 @@ void cpu_x86_update_cr0(CPUX86State *env, uint32_t new_cr0)
    the PDPT */
 void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
 {
+    panda_cb_list *plist;
+    /* Do we want to exclude changes when paging is disabled?
+    target_ulong oldval;
+    oldval = env->cr[3]; */
+    for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+        plist->entry.after_PGD_write(env, env->cr[3], new_cr3);
+    }
+    
     env->cr[3] = new_cr3;
     if (env->cr[0] & CR0_PG_MASK) {
 #if defined(DEBUG_MMU)
