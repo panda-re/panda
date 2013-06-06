@@ -2610,6 +2610,11 @@ DEF("trace-llvm", 0, QEMU_OPTION_trace_llvm,
 #endif
 #endif
 
+#if defined(CONFIG_ANDROID)
+DEF("android", 0, QEMU_OPTION_android,
+"-android       use android-compatible input formats\n", QEMU_ARCH_ALL)
+#endif
+
 DEF("panda-plugin", HAS_ARG, QEMU_OPTION_panda_plugin,
     "-panda-plugin <file>\n"
     "                load PANDA plugin from <file>\n", QEMU_ARCH_ALL)

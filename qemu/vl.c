@@ -238,6 +238,9 @@ static int full_screen = 0;
 #ifdef CONFIG_SDL
 static int no_frame = 0;
 #endif
+#ifdef CONFIG_ANDROID
+static int android_input = 0;
+#endif
 int no_quit = 0;
 CharDriverState *serial_hds[MAX_SERIAL_PORTS];
 CharDriverState *parallel_hds[MAX_PARALLEL_PORTS];
@@ -2944,6 +2947,15 @@ int main(int argc, char **argv, char **envp)
                 fprintf(stderr, "SDL support is disabled\n");
                 exit(1);
 #endif
+            case QEMU_OPTION_android:
+#ifdef CONFIG_ANDROID
+                android_input=1;
+                cursor_hide = 0;
+                break;
+#else
+                fprintf(stderr, "Android support is disabled\n");
+                exit(1);
+#endif
             case QEMU_OPTION_pidfile:
                 pid_file = optarg;
                 break;
@@ -3577,7 +3589,11 @@ int main(int argc, char **argv, char **envp)
 #endif
 #if defined(CONFIG_SDL)
     case DT_SDL:
-        sdl_display_init(ds, full_screen, no_frame);
+        if(android_input){
+            sdl_android_display_init(ds, full_screen, no_frame);
+        } else {
+            sdl_display_init(ds, full_screen, no_frame);
+        }
         break;
 #elif defined(CONFIG_COCOA)
     case DT_SDL:
