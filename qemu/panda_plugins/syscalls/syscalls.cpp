@@ -11,6 +11,7 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
+
 extern "C"{
 #define __STDC_FORMAT_MACROS
 #include "config.h"
