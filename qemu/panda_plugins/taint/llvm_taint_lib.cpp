@@ -1777,7 +1777,7 @@ void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
     // accumulate all of oper[1]'s taint into c0 of temp
     op.typ = COMPUTEOP;
     src0.typ = LADDR;
-    src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+    src0.val.la = PST->getLocalSlot(I.getOperand(0));
     src0.off = 0;
     src1.typ = LADDR;
     src1.val.la = PST->getLocalSlot(&I) + 1;
@@ -1844,7 +1844,7 @@ void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
     // accumulate all of oper[1]'s taint into c0 of temp
     op.typ = COMPUTEOP;
     src0.typ = LADDR;
-    src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+    src0.val.la = PST->getLocalSlot(I.getOperand(0));
     src0.off = 0;
     src1.typ = LADDR;
     src1.val.la = PST->getLocalSlot(&I) + 1;
@@ -2067,9 +2067,81 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
 void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
    //This instruction can be modeled as a simple floating point subtraction
    //TODO: Check if this actually needs to be cast
-   approxArithHelper(I);
+   //approxArithHelper(I);
    //Should this use the cast<> function defined by llvm
-   //approxArithHelper(static_cast<BinaryOperator*>I);
+   //approxArithHelper(static_cast<BinaryOperator*>(&I));
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+    int constantArgs = 0;
+
+    // Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    for (int oper = 0; oper < 2; oper++){
+        // Operand is a constant, therefore it can't be tainted
+        if (PST->getLocalSlot(I.getOperand(oper)) < 0){
+            constantArgs++;
+
+            // both args were constants, need to delete taint
+            if (constantArgs == 2){
+                op.typ = DELETEOP;
+                dst.typ = LADDR;
+                dst.val.la = PST->getLocalSlot(&I);
+                for (int i = 0; i < size; i++){
+                    dst.off = i;
+                    op.val.deletel.a = dst;
+                    tob_op_write(tbuf, op);
+                }
+                return;
+            }
+
+            continue;
+        }
+
+        // accumulate all of oper[i]'s taint into c0 of temp
+        op.typ = COMPUTEOP;
+        src0.typ = LADDR;
+        src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+        src0.off = 0;
+        src1.typ = LADDR;
+        src1.val.la = PST->getLocalSlot(&I)+1;
+        src1.off = 0;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I) + 1;
+        op.val.compute.a = src0;
+        op.val.compute.b = src1;
+        op.val.compute.c = dst;
+
+        for (int i = 0; i < size; i++){
+            src0.off = i;
+            op.val.compute.a = src0;
+            tob_op_write(tbuf, op);
+        }
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
 }
 
 void PandaTaintVisitor::visitPHINode(PHINode &I){}
@@ -2285,7 +2357,8 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
 void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
     int op0 = PST->getLocalSlot(I.getOperand(0));
     int op1 = PST->getLocalSlot(I.getOperand(1));
-    int idx = I.getOperand(2);
+    llvm::ConstantInt* idx_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+    int idx = idx_ir->getSExtValue();
     int rst = PST->getLocalSlot(&I);
     int bytes0 = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
     int bytes1 = ceil(I.getOperand(1)->getType()->getScalarSizeInBits() / 8.0);
@@ -2293,7 +2366,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
     //Only support 3 operands
     assert(I.getNumOperands() == 3);
     //Only support 64 bit + 64 bit and 64 bit + 16 bit
-    assert((bytes0 == 64) && (bytes1 == 64 || bytes1 == 16));
+    assert((bytes0 == 8) && (bytes1 == 8 || bytes1 == 2));
 
     struct taint_op_struct op = {};
     struct addr_struct src = {};
