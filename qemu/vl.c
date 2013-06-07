@@ -3590,7 +3590,9 @@ int main(int argc, char **argv, char **envp)
 #if defined(CONFIG_SDL)
     case DT_SDL:
         if(android_input){
+#if defined(CONFIG_ANDROID)
             sdl_android_display_init(ds, full_screen, no_frame);
+#endif
         } else {
             sdl_display_init(ds, full_screen, no_frame);
         }
@@ -3610,9 +3612,11 @@ int main(int argc, char **argv, char **envp)
 #ifdef CONFIG_VNC
     /* init remote displays */
     if (vnc_display) {
+#if defined(CONFIG_ANDROID)
         if(android_input)
             vnc_android_display_init(ds);
         else
+#endif
             vnc_display_init(ds);
         if (vnc_display_open(ds, vnc_display) < 0)
             exit(1);
