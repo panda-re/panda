@@ -47,6 +47,14 @@ static DisplayChangeListener *dcl;
 
 static int vnc_cursor_define(VncState *vs);
 
+#if defined(CONFIG_ANDROID)
+// declaration so we can set as default
+static void pointer_event(VncState *vs, int button_mask, int x, int y);
+typedef void (*ppointer_event)(VncState *vs, int button_mask, int x, int y);
+static ppointer_event selected_pointer_event = pointer_event;
+
+#endif
+
 static char *addr_to_string(const char *format,
                             struct sockaddr_storage *sa,
                             socklen_t salen) {
@@ -1433,6 +1441,46 @@ static void pointer_event(VncState *vs, int button_mask, int x, int y)
     }
 }
 
+#if defined(CONFIG_ANDROID)
+static bool android_is_dragging = 0;
+static void android_pointer_event(VncState *vs, int button_mask, int x, int y)
+{
+    int buttons = 0;
+    int dz = 0;
+
+    if (button_mask & 0x01)
+        buttons |= MOUSE_EVENT_LBUTTON;
+    if (button_mask & 0x02)
+        buttons |= MOUSE_EVENT_MBUTTON;
+    if (button_mask & 0x04)
+        buttons |= MOUSE_EVENT_RBUTTON;
+    if (button_mask & 0x08)
+        dz = -1;
+    if (button_mask & 0x10)
+        dz = 1;
+    /* Send an event in three situations:
+     * 1) button released (x, y, 0, 0), finger up
+     * 2) button pressed (x, y, 0, 1), finger down
+     * 3) dragging (relx, rely, 0, 1)
+     */
+    
+    // button released
+    if(buttons == 0 && dz == 0){
+        kbd_mouse_event(x, y, 0, 0);
+        android_is_dragging = 0;
+    } else if(android_is_dragging) {
+        // dragging pressed
+        kbd_mouse_event(x, y, 0, 1);
+    } else if(buttons & 0x01){
+        kbd_mouse_event(x, y, 0, 1);
+        android_is_dragging = 1;
+    }
+    
+    
+    
+}
+#endif
+
 static void reset_keys(VncState *vs)
 {
     int i;
@@ -1960,8 +2008,11 @@ static int protocol_client_msg(VncState *vs, uint8_t *data, size_t len)
     case VNC_MSG_CLIENT_POINTER_EVENT:
         if (len == 1)
             return 6;
-
+#if defined(CONFIG_ANDROID)
+        selected_pointer_event(vs, read_u8(data, 1), read_u16(data, 2), read_u16(data, 4));
+#else
         pointer_event(vs, read_u8(data, 1), read_u16(data, 2), read_u16(data, 4));
+#endif
         break;
     case VNC_MSG_CLIENT_CUT_TEXT:
         if (len == 1)
@@ -2604,6 +2655,15 @@ static void vnc_listen_read(void *opaque)
         vnc_connect(vs, csock, 0);
     }
 }
+
+#if defined(CONFIG_ANDROID)
+void vnc_android_display_init(DisplayState *ds)
+{
+    vnc_display_init(ds);
+    selected_pointer_event = android_pointer_event;
+    
+}
+#endif
 
 void vnc_display_init(DisplayState *ds)
 {
