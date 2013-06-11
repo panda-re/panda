@@ -2571,6 +2571,15 @@ static void do_loadvm(Monitor *mon, const QDict *qdict)
     }
 }
 
+void monitor_send_interrupt(Monitor *mon, const QDict *qdict) 
+{
+    CPUState *env;
+
+    for (env = first_cpu; env != NULL; env = env->next_cpu) {
+        cpu_interrupt(env, CPU_INTERRUPT_HARD);
+    }
+}
+
 int monitor_get_fd(Monitor *mon, const char *fdname)
 {
     mon_fd_t *monfd;

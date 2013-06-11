@@ -2623,6 +2623,14 @@ DEF("panda-arg", HAS_ARG, QEMU_OPTION_panda_arg,
     "-panda-arg <plugin:opt=val>\n"
     "                pass <opt=val> to <plugin>\n", QEMU_ARCH_ALL)
 
+DEF("random-seed", HAS_ARG, QEMU_OPTION_random_seed, \
+    "-random-seed n  set random seed\n", QEMU_ARCH_ALL)
+STEXI
+@item -random-seed @var{n}
+@findex -random-seed
+Set the seed used with srand().
+ETEXI
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table

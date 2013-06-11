@@ -154,7 +154,29 @@ static uint64_t armdummy_bootargs_read(void *opaque, target_phys_addr_t addr,
         case 0x8:
             return 0x3;
         case 0x90:
-            return 0;
+            // Device ID. One of:
+            // 0x201 <Khanplete> 
+            // 0x202 <Jackal>
+            // 0x203 <Mercury>
+            // 0x204 <TanzanitePlus> 
+            // 0x205 <Sapphire>
+            // 0x206 <MonoKhanplete> 
+            // 0x207 <JAZ>
+            // 0x208 <Annapurna> 
+            // 0x209 <Frosty>
+            // 0x20a <Rudolph>
+            // 0x20b <Denali>
+            // 0x20c <Everest>
+            // 0x20d <TwoKhan>
+            // 0x20e <Tahiti>
+            // 0x20f <Fiji>
+            // 0x210 <Camas>
+            // 0x211 <Azalea>
+            // 0x212 <Redwood>
+            // 0x213 <Cypress>
+
+            // Our board is <Jackal>
+            return 0x00000202;
         case 0xa0:
             // Memory size
             return 0x40cbe000;

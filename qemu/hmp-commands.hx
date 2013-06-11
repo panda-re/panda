@@ -1437,4 +1437,12 @@ ETEXI
         .help       = "send a command to a PANDA plugin",
         .mhandler.cmd = hmp_panda_plugin_cmd,
     },
+
+    {
+        .name       = "interrupt",
+        .args_type  = "",
+        .params     = "",
+        .help       = "send an interrupt to the CPU",
+        .mhandler.cmd = monitor_send_interrupt,
+    },
         

@@ -3229,6 +3229,13 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins++] = optarg;
                 break;
+            case QEMU_OPTION_random_seed:
+                {
+                    int seed = strtol(optarg, NULL, 0);
+                    fprintf(stderr, "Setting random seed to %d\n", seed);
+                    srand(seed);
+                }
+                break;
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
