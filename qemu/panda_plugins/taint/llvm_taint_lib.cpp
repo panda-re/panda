@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #include "llvm_taint_lib.h"
@@ -2078,11 +2078,7 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
 }
 
 void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
-   //This instruction can be modeled as a simple floating point subtraction
-   //TODO: Check if this actually needs to be cast
-   //approxArithHelper(I);
-   //Should this use the cast<> function defined by llvm
-   //approxArithHelper(static_cast<BinaryOperator*>(&I));
+    //This instruction can be modeled as a simple floating point subtraction
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
@@ -2157,7 +2153,42 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
     }
 }
 
-void PandaTaintVisitor::visitPHINode(PHINode &I){}
+void PandaTaintVisitor::visitPHINode(PHINode &I){
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    int len = getValueSize(&I);
+    char name[4] = "phi";
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = len;
+    op.val.insn_start.flag = INSNREADLOG;
+
+    //TODO: This should be a new constant not 40
+    assert(I.getNumIncomingValues() < 40);
+
+    for (int i = 0; i < (int)I.getNumIncomingValues(); i++){
+      op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
+      op.val.insn_start.phi_blocks[i] = PST->getLocalSlot(I.getIncomingBlock(i));
+    }
+
+    tob_op_write(tbuf, op);
+
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
+    src.typ = UNK;
+    src.val.ua = 0;
+    src.flag = READLOG;
+
+    for (int i = 0; i < len; i++){
+        src.off = i;
+        dst.off = i;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
 
 /*
  * Taint model for LLVM bswap intrinsic.
