@@ -1080,16 +1080,10 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
     else if (!strcmp(op.val.insn_start.name, "phi")){
-      //Don't know exactly what this does, ask Ryan
-      //char *saved_buf_ptr = buf->ptr;
-      TaintOp *cur_op = (TaintOp*) buf->ptr;
+        char *saved_buf_ptr = buf->ptr;
+        TaintOp *cur_op = (TaintOp*) buf->ptr;
 
-      if (dventry.entrytype != BRANCHENTRY){
-        fprintf(stderr, "Error: dynamic log doesn't align\n");
-        fprintf(stderr, "In: phi\n");
-        exit(1);
-      }
-      else if (dventry.entrytype == BRANCHENTRY) {
+      
         /*** Fix up taint op buffer here ***/
         int phiSource = 0;
         int i;
@@ -1097,39 +1091,39 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             i < sizeof(op.val.insn_start.phi_blocks)/sizeof(op.val.insn_start.phi_blocks[0]);
             i++)
         {
-          if(taken_branch == op.val.insn_start.phi_blocks[i]) {
-            //This is the source llvm register for the phi isntruction
-            //We need to copy taint from here to destination
-            phiSource = op.val.insn_start.phi_vals[i];
-            break;
-          }
+            if(taken_branch == op.val.insn_start.phi_blocks[i]) {
+                //This is the source llvm register for the phi isntruction
+                //We need to copy taint from here to destination
+                phiSource = op.val.insn_start.phi_vals[i];
+                break;
+            }
         }
-
-        //Ask Ryan about num_ops
         
         for (i = 0; i < op.val.insn_start.num_ops; i++){
-          switch (cur_op->typ){
-            case COPYOP:
-              if (dventry.entry.memaccess.addr.typ == LADDR){
-                cur_op->val.copy.a.flag = 0;
-                cur_op->val.copy.a.typ = LADDR;
-                cur_op->val.copy.a.val.la = phiSource;
-              }
-              else {
+            switch (cur_op->typ){
+                case COPYOP:
+                if (dventry.entry.memaccess.addr.typ == LADDR){
+                    cur_op->val.copy.a.flag = 0;
+                    cur_op->val.copy.a.typ = LADDR;
+                    cur_op->val.copy.a.val.la = phiSource;
+                }
+                else {
+                    assert(1==0);
+                }
+                break;
+                default:
+                //Taint ops for phi only consist of copy ops
                 assert(1==0);
-              }
-              break;
-            default:
-              //Taint ops for phi only consist of copy ops
-              assert(1==0);
-          }
+            }
+        
+            cur_op++;
+      
         }
-      }
+
+        buf->ptr = saved_buf_ptr;
+
     }
-    else {
-        fprintf(stderr, "Error: unknown error in dynamic log\n");
-        exit(1);
-    }
+    
 }
 
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){

@@ -2164,8 +2164,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     op.val.insn_start.num_ops = len;
     op.val.insn_start.flag = INSNREADLOG;
 
-    //TODO: This should be a new constant not 40
-    assert(I.getNumIncomingValues() < 40);
+    assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
     for (int i = 0; i < (int)I.getNumIncomingValues(); i++){
       op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));

@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 #define FUNCNAMELENGTH 50
 #define FUNCTIONFRAMES 2 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
+#define MAXPHIBLOCKS 40 // Maximum number of phi blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
@@ -200,8 +201,8 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
-        int phi_vals[40];
-        int phi_blocks[40];
+        int phi_vals[MAXPHIBLOCKS];
+        int phi_blocks[MAXPHIBLOCKS];
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;
