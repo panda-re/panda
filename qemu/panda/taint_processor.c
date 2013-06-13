@@ -1081,7 +1081,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     }
     else if (!strcmp(op.val.insn_start.name, "phi")){
       //Don't know exactly what this does, ask Ryan
-      char *saved_buf_ptr = buf->ptr;
+      //char *saved_buf_ptr = buf->ptr;
       TaintOp *cur_op = (TaintOp*) buf->ptr;
 
       if (dventry.entrytype != BRANCHENTRY){
@@ -1091,7 +1091,8 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
       }
       else if (dventry.entrytype == BRANCHENTRY) {
         /*** Fix up taint op buffer here ***/
-        int phiSource;
+        int phiSource = 0;
+        int i;
         for(i = 0;
             i < sizeof(op.val.insn_start.phi_blocks)/sizeof(op.val.insn_start.phi_blocks[0]);
             i++)
@@ -1105,7 +1106,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
 
         //Ask Ryan about num_ops
-        int i;
+        
         for (i = 0; i < op.val.insn_start.num_ops; i++){
           switch (cur_op->typ){
             case COPYOP:
