@@ -2947,14 +2947,14 @@ int main(int argc, char **argv, char **envp)
                 fprintf(stderr, "SDL support is disabled\n");
                 exit(1);
 #endif
-            case QEMU_OPTION_android:
 #ifdef CONFIG_ANDROID
+            case QEMU_OPTION_android:
                 android_input=1;
                 cursor_hide = 0;
                 break;
 #else
-                fprintf(stderr, "Android support is disabled\n");
-                exit(1);
+                //fprintf(stderr, "Android support is disabled\n");
+                //exit(1);
 #endif
             case QEMU_OPTION_pidfile:
                 pid_file = optarg;
@@ -3589,13 +3589,12 @@ int main(int argc, char **argv, char **envp)
 #endif
 #if defined(CONFIG_SDL)
     case DT_SDL:
-        if(android_input){
 #if defined(CONFIG_ANDROID)
+        if(android_input){
             sdl_android_display_init(ds, full_screen, no_frame);
+        } else 
 #endif
-        } else {
             sdl_display_init(ds, full_screen, no_frame);
-        }
         break;
 #elif defined(CONFIG_COCOA)
     case DT_SDL:
