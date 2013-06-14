@@ -38,6 +38,7 @@ public:
     void visitStoreInst(StoreInst &I);
     void visitBranchInst(BranchInst &I);
     void visitReturnInst(ReturnInst &I);
+    void visitUnreachable(UnreachableInst &I);
     void visitSelectInst(SelectInst &I);
     void visitCallInst(CallInst &I);
     void visitSwitchInst(SwitchInst &I);
