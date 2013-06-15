@@ -313,6 +313,7 @@ static void armdummy_init(ram_addr_t ram_size,
     ram_offset = qemu_ram_alloc(NULL, "armdummy.ram", ram_size);
     cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
 
+#if 0
     // Serial port (debug interface)
     DeviceState *dev = qdev_create(NULL, "armdummy-uart");
     qdev_prop_set_chr(dev, "chardev", serial_hds[0]);
@@ -333,6 +334,7 @@ static void armdummy_init(ram_addr_t ram_size,
     dev = qdev_create(NULL, "armdummy-boardinfo");
     qdev_init_nofail(dev);
     sysbus_mmio_map(sysbus_from_qdev(dev), 0, BOARDINFO_BASE);
+#endif
 
     armdummy_binfo.ram_size = ram_size;
     armdummy_binfo.kernel_filename = kernel_filename;
