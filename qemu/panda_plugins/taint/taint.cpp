@@ -26,6 +26,7 @@ extern "C" {
 
 #include "panda_plugin.h"
 #include "panda_memlog.h"
+#include "panda_stats.h"
 
 #ifndef CONFIG_SOFTMMU
 #include "syscall_defs.h"
@@ -35,6 +36,7 @@ extern "C" {
 
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
+#include "llvm/Analysis/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "tcg-llvm.h"
@@ -52,7 +54,6 @@ void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
-int llvm_init(void *exEngine, void *funPassMan, void *module);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 
 #ifndef CONFIG_SOFTMMU
@@ -78,6 +79,27 @@ llvm::FunctionPassManager *taintfpm;
 llvm::PandaTaintFunctionPass *PTFP;
 llvm::PandaInstrFunctionPass *PIFP;
 
+// Global count of taint labels
+int count = 0;
+
+// Apply taint to a buffer of memory
+void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
+    struct addr_struct a = {};
+    a.typ = MADDR;
+    a.val.ma = addr;
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+        a.off = i;
+        op.val.label.a = a;
+        op.val.label.l = i + count; // byte label
+        //op.val.label.l = 1; // binary label
+        tob_op_write(tbuf, op);
+    }
+    tob_process(tbuf, shad, NULL);
+    count += length;
+}
+
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
  * accesses are captured by IR instrumentation.
@@ -98,10 +120,10 @@ int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
 namespace llvm {
 
-int llvm_init(void *exEngine, void *funPassMan, void *module){
-    ExecutionEngine *ee = (ExecutionEngine *)exEngine;
-    FunctionPassManager *fpm = (FunctionPassManager *)funPassMan;
-    Module *mod = (Module *)module;
+static void llvm_init(){
+    ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
+    FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+    Module *mod = tcg_llvm_ctx->getModule();
     LLVMContext &ctx = mod->getContext();
 
     // Link logging function in with JIT
@@ -125,15 +147,13 @@ int llvm_init(void *exEngine, void *funPassMan, void *module){
     llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
     PIFP = static_cast<PandaInstrFunctionPass*>(instfp);
-
-    return 0;
 }
 
 } // namespace llvm
 
 // Derive taint ops
 int before_block_exec(CPUState *env, TranslationBlock *tb){
-    //fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
+    //printf("%s\n", tcg_llvm_get_func_name(tb));
 
     taintfpm->run(*(tb->llvm_function));
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
@@ -194,7 +214,7 @@ static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
                 && (strncmp(file, "/proc", 5) != 0)
-                && (strncmp(file, "/dev", 4) != 0)
+                //&& (strncmp(file, "/dev", 4) != 0)
                 && (strncmp(file, "/usr", 4) != 0)
                 && (strstr(file, "openssl.cnf") == 0)
                 && (strstr(file, "xpdfrc") == 0)){
@@ -223,20 +243,16 @@ static int user_creat(abi_long ret, void *p){
 
 static int user_read(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
-        // log the address and size of a buffer to be tainted
-        //fprintf(funclog, "taint,read,%ld,%ld\n", (uintptr_t)p,
-        //    (unsigned long)ret);
-        //printf("taint,read,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
+        TaintOpBuffer *tempBuf = tob_new(3*1048576 /* 1MB */);
+        add_taint(shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
+        tob_delete(tempBuf);
     }
     return 0;
 }
 
 static int user_write(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == outfd){
-        // log the address and size of a buffer to be checked for taint
-        //fprintf(funclog, "taint,write,%ld,%ld\n", (uintptr_t)p,
-        //    (unsigned long)ret);
-        //printf("taint,write,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
+        bufplot(shadow, (uint64_t)p /*pointer*/, ret /*length*/);
     }
     return 0;
 }
@@ -270,19 +286,10 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 #endif // CONFIG_SOFTMMU
 
 bool init_plugin(void *self) {
-
-    /*
-     * PANDA plugin initialization
-     */
-
     printf("Initializing taint plugin\n");
-
     panda_cb pcb;
-
     panda_enable_memcb();
     panda_disable_tb_chaining();
-    //pcb.llvm_init = llvm::llvm_init;
-    //panda_register_callback(self, PANDA_CB_LLVM_INIT, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.after_block_exec = after_block_exec;
@@ -295,13 +302,31 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
 #ifndef CONFIG_SOFTMMU
-    // Disabled until we fix
-    //pcb.user_after_syscall = user_after_syscall;
-    //panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
+    pcb.user_after_syscall = user_after_syscall;
+    panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
 
     if (!execute_llvm){
         panda_enable_llvm();
+    }
+    llvm::llvm_init();
+    panda_enable_llvm_helpers();
+
+    /*
+     * Run instrumentation pass over all helper functions that are now in the
+     * module, and verify module.
+     */
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
+        if (i->isDeclaration()){
+            continue;
+        }
+        PIFP->runOnFunction(*i);
+    }
+    std::string err;
+    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
+        printf("%s\n", err.c_str());
+        exit(1);
     }
 
     /*
@@ -329,12 +354,20 @@ bool init_plugin(void *self) {
     
     // Add the taint analysis pass to our taint pass manager
     llvm::FunctionPass *taintfp =
-        llvm::createPandaTaintFunctionPass(3*1048576/* global taint op buffer
+        llvm::createPandaTaintFunctionPass(5*1048576/* global taint op buffer
         size, 3MB */, /*taint cache file*/NULL);
     PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();
- 
+
+    // Populate taint cache with helper function taint ops
+    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
+        if (i->isDeclaration()){
+            continue;
+        }
+        PTFP->runOnFunction(*i);
+    }
+
     return true;
 }
 

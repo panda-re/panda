@@ -368,7 +368,9 @@ int PandaTaintVisitor::getValueSize(Value *V){
     }
     else {
         // those are all that's supported for now
-        assert(1==0);
+        //assert(1==0);
+        printf("Error for getValueSize()\n");
+        //    V->getParent()->getParent()->getName().str().c_str());
         return -1;
     }
 }
@@ -1181,7 +1183,36 @@ void PandaTaintVisitor::visitBranchInst(BranchInst &I){
     tob_op_write(tbuf, op);
 }
 
-void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){}
+void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
+    // write instruction boundary op
+    struct taint_op_struct op = {};
+    op.typ = INSNSTARTOP;
+    char name[7] = "switch";
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = 0;
+    op.val.insn_start.flag = INSNREADLOG;
+    /* If a switch has more than MAXSWITCHSTMTS successors, we need to fix.
+     * Some helper functions have ~40 cases for switch statements, so that's why
+     * we need to do this.
+     */
+    assert(I.getNumSuccessors() < MAXSWITCHSTMTS);
+    for (int i = 0; i < (int)I.getNumSuccessors(); i++){
+        if (i == 0){
+            // Default case
+            op.val.insn_start.switch_conds[i] = 0;
+            op.val.insn_start.switch_labels[i] =
+                PST->getLocalSlot(I.getDefaultDest());
+        }
+        else {
+            op.val.insn_start.switch_conds[i] =
+                I.getCaseValue(i)->getSExtValue();
+            op.val.insn_start.switch_labels[i] =
+                PST->getLocalSlot(I.getSuccessor(i));
+        }
+    }
+    tob_op_write(tbuf, op);
+}
+
 void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
 void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
@@ -1248,9 +1279,9 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
              * taint more precisely.  Make this more generic when we have more
              * time.
              */
-            if ((!isa<Constant>(I.getOperand(0)))
+            if (0 /*(!isa<Constant>(I.getOperand(0)))
                 && (isa<Constant>(I.getOperand(1)))
-                && (getValueSize(&I) == 8)){
+                && (getValueSize(&I) == 8)*/){
                 uint64_t con = static_cast<ConstantInt*>
                     (I.getOperand(1))->getZExtValue();
                 if (con == 56){
@@ -1295,9 +1326,9 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
              * FIXME: Hack to account for some constant operands.  Make this
              * more generic when we have more time.
              */
-            if ((!isa<Constant>(I.getOperand(0)))
+            if (0 /*(!isa<Constant>(I.getOperand(0)))
                 && (isa<Constant>(I.getOperand(1)))
-                && (getValueSize(&I) == 8)){
+                && (getValueSize(&I) == 8)*/){
                 uint64_t con = static_cast<ConstantInt*>
                     (I.getOperand(1))->getZExtValue();
                 if ((con > 0) && (con <= 8)){
@@ -1368,7 +1399,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
         case Instruction::And:
             // TODO: think about more precise propagation when we have constants
             // on hand.  this goes for shift also.
-            if (isa<Constant>(I.getOperand(1))){
+            if (0 /*isa<Constant>(I.getOperand(1))*/){
                 uint64_t con = static_cast<ConstantInt*>
                     (I.getOperand(1))->getZExtValue();
                 int srcval = PST->getLocalSlot(I.getOperand(0));
@@ -1509,10 +1540,12 @@ void PandaTaintVisitor::visitLoadInst(LoadInst &I){
      * pointer of CPUState or a pointer for something inside of it, therefore it
      * isn't tainted.
      */
-    if (isa<GlobalValue>(I.getPointerOperand())){
+    // XXX: We are commenting this out now since global values may be referenced
+    // in helper functions
+    /*if (isa<GlobalValue>(I.getPointerOperand())){
         simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
         return;
-    }
+    }*/
     
     // get source operand length
     int len = ceil(static_cast<SequentialType*>(I.getOperand(0)->
@@ -1970,8 +2003,12 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
 void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
-        assert(1==0);
-        return; // doesn't have name, we can't process it
+        //assert(1==0);
+        // XXX: doesn't have a static name, therefore we can't process it.
+        // Might be ok for now, but we might need to revisit.
+        printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
+            I.getParent()->getParent()->getName().str().c_str());
+        return;
     }
     std::string calledName = called->getName().str();
     
@@ -1987,8 +2024,10 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     }
     else if (I.getCalledFunction()->getIntrinsicID()
             != Intrinsic::not_intrinsic){
-        printf("Error: unsupported intrinsic\n");
-        assert(1==0);
+        printf("Note: unsupported intrinsic %s in %s.\n",
+            I.getCalledFunction()->getName().str().c_str(),
+            I.getParent()->getParent()->getName().str().c_str());
+        //assert(1==0);
     }
     else if (!calledName.compare("__ldb_mmu_panda")
             || !calledName.compare("__ldw_mmu_panda")

@@ -30,9 +30,6 @@ PANDAENDCOMMENT */
 uint8_t taintedfunc;
 #endif
 
-//#undef NDEBUG
-//#include <assert.h>
-
 /* XXX: Note, there is currently only support for copying taint into a new stack
  * frame, i.e. through tp_copy() and tp_delete(), not anything else.
  */
@@ -1018,6 +1015,48 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
 
+    else if (!strcmp(op.val.insn_start.name, "switch")){
+        
+        if (dventry.entrytype != SWITCHENTRY){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: switch\n");
+            exit(1);
+        }
+
+        else if (dventry.entrytype == SWITCHENTRY) {
+
+            /*** Fix up taint op buffer here ***/
+
+            int64_t switchCond = dventry.entry.switchstmt.cond;
+            bool found = 0;
+
+            int i;
+            for (i = 0; i < MAXSWITCHSTMTS; i++){
+                if (op.val.insn_start.switch_conds[i] == switchCond){
+                    taken_branch = op.val.insn_start.switch_labels[i];
+                    found = 1;
+#ifdef TAINTDEBUG
+                    printf("Taken branch: %d\n", taken_branch);
+#endif
+                    break;
+                }
+            }
+
+            // handle default case in switch
+            if (!found){
+                taken_branch = op.val.insn_start.switch_labels[0];
+            }
+
+            next_step = SWITCHSTEP;
+        }
+        
+        else {
+            fprintf(stderr, "Error: unknown error in dynamic log\n");
+            fprintf(stderr, "In: switch\n");
+            exit(1);
+        }
+    }
+
     else if (!strcmp(op.val.insn_start.name, "select")){
         
         if (dventry.entrytype != SELECTENTRY){
@@ -1088,6 +1127,9 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
     // execute taint ops starting with the entry BB
+    assert(ttb);
+    assert(shad);
+    assert(dynval_buf);
     next_step = RETURN;
     tob_process(ttb->entry->ops, shad, dynval_buf);
 

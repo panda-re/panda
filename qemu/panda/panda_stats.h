@@ -13,7 +13,7 @@
 PANDAENDCOMMENT */
 
 #ifndef __PANDA_STATS_H__
-#define __PANDA_STATS__
+#define __PANDA_STATS_H__
 
 #include "taint_processor.h"
 
