@@ -1213,7 +1213,6 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
     tob_op_write(tbuf, op);
 }
 
-void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){}
 void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
 void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
