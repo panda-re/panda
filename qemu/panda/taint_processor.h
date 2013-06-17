@@ -15,8 +15,9 @@
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
 #define FUNCNAMELENGTH 50
-#define FUNCTIONFRAMES 2 // handle 2 frames for now, but increase it soon
+#define FUNCTIONFRAMES 10 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
+#define MAXSWITCHSTMTS 45 // Maximum size of LLVM switch statements
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
@@ -187,6 +188,12 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
+
+        /* We need to keep track of switch conditions (cases) and their
+         * corresponding basic block labels
+         */
+        int64_t switch_conds[MAXSWITCHSTMTS];
+        int switch_labels[MAXSWITCHSTMTS];
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;
@@ -223,7 +230,7 @@ float tob_full_frac(TaintOpBuffer *buf);
 void tob_clear(TaintOpBuffer *buf);
 
 // stuff for control flow in trace
-enum {RETURN, BRANCH, EXCEPT};
+enum {RETURN, BRANCH, SWITCHSTEP, EXCEPT};
 
 void print_addr(Shad *shad, Addr a);
 

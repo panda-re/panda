@@ -63,8 +63,8 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
         printf("Instrumentation function not found\n");
         assert(1==0);
     }
-    // XXX Not sure what this was here for...I think loading env which we
-    // probably don't need.  Keep commented out for now
+    // We used to ignore global values, but I think we will keep it now since
+    // global QEMU values may be referenced in helper functions
     //if (!(isa<GlobalValue>(I.getPointerOperand()))){
         if (isa<GetElementPtrInst>(I.getPointerOperand())){
             // Result from a getelementptr instruction
@@ -299,7 +299,7 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
 }
 
 /*
- * Instrument switch instructions to log the condition.
+ * Instrument switch instructions to log the index of the taken branch.
  */
 void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
     ZExtInst *ZEI;
