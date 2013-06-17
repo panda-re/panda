@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 /*
@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 #define FUNCNAMELENGTH 50
 #define FUNCTIONFRAMES 2 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
+#define MAXPHIBLOCKS 40 // Maximum number of phi blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
@@ -124,10 +125,10 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size, uint32_t ma
 void tp_free(Shad *shad);
 
 // label -- associate label l with address a
-void tp_label(Shad *shad, Addr a, Label l); 
+void tp_label(Shad *shad, Addr a, Label l);
 
 // untaint -- discard label set associated with a
-void tp_delete(Shad *shad, Addr a); 
+void tp_delete(Shad *shad, Addr a);
 
 // copy -- b gets whatever label set is currently associated with a
 void tp_copy(Shad *shad, Addr a, Addr b);
@@ -180,7 +181,7 @@ typedef enum {
     LABELOP,
     DELETEOP,
     COPYOP,
-    COMPUTEOP, 
+    COMPUTEOP,
     INSNSTARTOP,
     CALLOP,
     RETOP
@@ -200,6 +201,8 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
+        int phi_vals[MAXPHIBLOCKS];
+        int phi_blocks[MAXPHIBLOCKS];
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;
