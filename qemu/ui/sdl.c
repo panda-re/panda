@@ -69,6 +69,9 @@ typedef void (*phandle_mousemotion)(DisplayState *ds, SDL_Event *ev);
 typedef void (*phandle_mousebutton)(DisplayState *ds, SDL_Event *ev);
 static phandle_mousemotion selected_mousemotion = handle_mousemotion;
 static phandle_mousebutton selected_mousebutton = handle_mousebutton;
+
+// this would be fine outside of CONFIG_ANDROID, but I don't trust the optimizer
+static bool force_16bit_pixels = 0;
 #endif
 
 static void sdl_update(DisplayState *ds, int x, int y, int w, int h)
@@ -200,7 +203,13 @@ static DisplaySurface* sdl_create_displaysurface(int width, int height)
         return surface;
     }
 
-    if (host_format.BitsPerPixel == 16)
+    if ((host_format.BitsPerPixel == 16) ||
+#if defined(CONFIG_ANDROID)
+        force_16bit_pixels
+#else
+        false
+#endif
+    )
         do_sdl_resize(width, height, 16);
     else
         do_sdl_resize(width, height, 32);
@@ -1034,6 +1043,7 @@ static void sdl_cleanup(void)
 
 #if defined(CONFIG_ANDROID)
 void sdl_android_display_init(DisplayState *ds, int full_screen, int no_frame){
+    force_16bit_pixels = true;
     sdl_display_init(ds, full_screen, no_frame);
     selected_mousebutton = android_handle_mousebutton;
     selected_mousemotion = android_handle_mousemotion;
