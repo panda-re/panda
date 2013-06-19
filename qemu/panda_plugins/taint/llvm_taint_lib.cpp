@@ -2251,7 +2251,7 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
 void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
-        assert(1==0);
+        //assert(1==0);
         return; // doesn't have name, we can't process it
         // Might be ok for now, but we might need to revisit.
         printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
