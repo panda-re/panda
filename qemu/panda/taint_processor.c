@@ -727,21 +727,19 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 #endif
 
     DynValEntry dventry;
-
     if(op.val.insn_start.flag == INSNREADLOG) {
-        // Make sure there is still something to read in the buffer
-        assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
-            < dynval_buf->cur_size);
+      // Make sure there is still something to read in the buffer
+      assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
+          < dynval_buf->cur_size);
 
-        
-        read_dynval_buffer(dynval_buf, &dventry);
-        if (dventry.entrytype == EXCEPTIONENTRY){
-            printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
-            next_step = EXCEPT;
-            return;
-        }
+      read_dynval_buffer(dynval_buf, &dventry);
+
+      if (dventry.entrytype == EXCEPTIONENTRY){
+          printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+          next_step = EXCEPT;
+          return;
+      }
     }
-    
 
     if (!strcmp(op.val.insn_start.name, "load")){
 
@@ -1018,7 +1016,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     }
 
     else if (!strcmp(op.val.insn_start.name, "switch")){
-        
+
         if (dventry.entrytype != SWITCHENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
             fprintf(stderr, "In: switch\n");
@@ -1051,7 +1049,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
             next_step = SWITCHSTEP;
         }
-        
+
         else {
             fprintf(stderr, "Error: unknown error in dynamic log\n");
             fprintf(stderr, "In: switch\n");
@@ -1123,7 +1121,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     else if (!strcmp(op.val.insn_start.name, "phi")){
         char *saved_buf_ptr = buf->ptr;
         TaintOp *cur_op = (TaintOp*) buf->ptr;
-      
+
         /*** Fix up taint op buffer here ***/
         int phiSource = 0;
         int i;
@@ -1138,28 +1136,29 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
                 break;
             }
         }
-        
-        for (i = 0; i < op.val.insn_start.num_ops; i++){
-            switch (cur_op->typ){
-                case COPYOP:
-                    // TODO comment this function
+
+        //Skip copy operations if phiSource is a constant (-1)
+        if(phiSource == -1) {
+          //Move buffer pointer past copy operations
+          buf->ptr = cur_op + op.val.insn_start.num_ops;
+        } else {
+          //Patch up source for copy operations
+          for (i = 0; i < op.val.insn_start.num_ops; i++){
+              switch (cur_op->typ){
+                  case COPYOP:
                     cur_op->val.copy.a.flag = 0;
                     cur_op->val.copy.a.typ = LADDR;
                     cur_op->val.copy.a.val.la = phiSource;
                     break;
-                default:
-                //Taint ops for phi only consist of copy ops
+                  default:
+                    //Taint ops for phi only consist of copy ops
                     assert(1==0);
-            }
-        
-            cur_op++;
-      
+              }
+              cur_op++;
+          }
+          buf->ptr = saved_buf_ptr;
         }
-
-        buf->ptr = saved_buf_ptr;
-
     }
-    
 }
 
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
