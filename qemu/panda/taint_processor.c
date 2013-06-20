@@ -726,20 +726,22 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     printf("Fixing up taint op buffer for: %s\n", op.val.insn_start.name);
 #endif
 
-    assert(op.val.insn_start.flag == INSNREADLOG);
-
-    // Make sure there is still something to read in the buffer
-    assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
-        < dynval_buf->cur_size);
-
     DynValEntry dventry;
-    read_dynval_buffer(dynval_buf, &dventry);
 
-    if (dventry.entrytype == EXCEPTIONENTRY){
-        printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
-        next_step = EXCEPT;
-        return;
+    if(op.val.insn_start.flag == INSNREADLOG) {
+        // Make sure there is still something to read in the buffer
+        assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
+            < dynval_buf->cur_size);
+
+        
+        read_dynval_buffer(dynval_buf, &dventry);
+        if (dventry.entrytype == EXCEPTIONENTRY){
+            printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+            next_step = EXCEPT;
+            return;
+        }
     }
+    
 
     if (!strcmp(op.val.insn_start.name, "load")){
 
@@ -1121,7 +1123,6 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
     else if (!strcmp(op.val.insn_start.name, "phi")){
         char *saved_buf_ptr = buf->ptr;
         TaintOp *cur_op = (TaintOp*) buf->ptr;
-
       
         /*** Fix up taint op buffer here ***/
         int phiSource = 0;
@@ -1141,18 +1142,14 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         for (i = 0; i < op.val.insn_start.num_ops; i++){
             switch (cur_op->typ){
                 case COPYOP:
-                if (dventry.entry.memaccess.addr.typ == LADDR){
+                    // TODO comment this function
                     cur_op->val.copy.a.flag = 0;
                     cur_op->val.copy.a.typ = LADDR;
                     cur_op->val.copy.a.val.la = phiSource;
-                }
-                else {
-                    assert(1==0);
-                }
-                break;
+                    break;
                 default:
                 //Taint ops for phi only consist of copy ops
-                assert(1==0);
+                    assert(1==0);
             }
         
             cur_op++;

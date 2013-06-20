@@ -31,7 +31,7 @@ PANDAENDCOMMENT */
 #define FUNCTIONFRAMES 10 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
 #define MAXSWITCHSTMTS 45 // Maximum size of LLVM switch statements
-#define MAXPHIBLOCKS 40 // Maximum number of phi blocks supported
+#define MAXPHIBLOCKS 45 // Maximum number of phi blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 

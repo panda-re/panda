@@ -243,7 +243,7 @@ static int user_creat(abi_long ret, void *p){
 
 static int user_read(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
-        TaintOpBuffer *tempBuf = tob_new(3*1048576 /* 1MB */);
+        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
         add_taint(shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
         tob_delete(tempBuf);
     }

@@ -97,7 +97,7 @@ void usage() {
 }
 
 int read_float(float *f2) {
-  std::ifstream in("float_test_input.txt");
+  std::ifstream in("panda_plugins/taint/tests/user_mode/float_test_input.txt");
   if(in.good()) {
     in >> *f2;
     std::cout << "Reading floating point number: " << std::fixed << *f2 << std::endl;
@@ -110,7 +110,7 @@ int read_float(float *f2) {
 }
 
 int write_float(float *f3) {
-  std::ofstream out("float_test_output.txt");
+  std::ofstream out("panda_plugins/taint/tests/user_mode/float_test_output.txt");
   if(out.good()) {
     std::cout << "Writing floating point number: " << std::fixed << *f3 << std::endl;
     out << *f3;
@@ -123,7 +123,7 @@ int write_float(float *f3) {
 }
 
 int write_int(int *f3) {
-  std::ofstream out("float_test_output.txt");
+  std::ofstream out("panda_plugins/taint/tests/user_mode/float_test_output.txt");
   if(out.good()) {
     std::cout << "Writing int number: " << std::fixed << *f3 << std::endl;
     out << *f3;
@@ -136,7 +136,7 @@ int write_int(int *f3) {
 }
 
 int write_uint(uint *f3) {
-  std::ofstream out("float_test_output.txt");
+  std::ofstream out("panda_plugins/taint/tests/user_mode/float_test_output.txt");
   if(out.good()) {
     std::cout << "Writing unsigned int number: " << std::fixed << *f3 << std::endl;
     out << *f3;

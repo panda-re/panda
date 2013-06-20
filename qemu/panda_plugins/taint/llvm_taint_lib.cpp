@@ -371,7 +371,7 @@ int PandaTaintVisitor::getValueSize(Value *V){
     }
     else {
         // those are all that's supported for now
-        assert(1==0);
+        //assert(1==0);
         printf("Error for getValueSize()\n");
         //    V->getParent()->getParent()->getName().str().c_str());
         return -1;
@@ -2198,7 +2198,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = len;
-    op.val.insn_start.flag = INSNREADLOG;
+    //op.val.insn_start.flag = INSNREADLOG;
 
     assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
@@ -2443,16 +2443,19 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
 void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
     int op0 = PST->getLocalSlot(I.getOperand(0));
     int op1 = PST->getLocalSlot(I.getOperand(1));
-    llvm::ConstantInt* idx_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
-    int idx = idx_ir->getSExtValue();
+    int idx = 0;
+    if (I.getNumOperands() > 2) {
+        llvm::ConstantInt* idx_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+        idx = idx_ir->getSExtValue();
+    }
     int rst = PST->getLocalSlot(&I);
     int bytes0 = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
     int bytes1 = ceil(I.getOperand(1)->getType()->getScalarSizeInBits() / 8.0);
 
-    //Only support 3 operands
-    assert(I.getNumOperands() == 3);
+    //Only support 2 or 3 operands
+    assert(I.getNumOperands() == 2 || I.getNumOperands() == 3);
     //Only support 64 bit + 64 bit and 64 bit + 16 bit
-    assert((bytes0 == 8) && (bytes1 == 8 || bytes1 == 2));
+    assert((bytes0 == 8 || bytes0 == 0) && (bytes1 == 8 || bytes1 == 2));
 
     struct taint_op_struct op = {};
     struct addr_struct src = {};
