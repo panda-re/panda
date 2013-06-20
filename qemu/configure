@@ -274,7 +274,7 @@ QEMU_CFLAGS="-fno-strict-aliasing $QEMU_CFLAGS"
 CFLAGS="-g $CFLAGS"
 CXXFLAGS="-g $CXXFLAGS"
 QEMU_CFLAGS="-Wall -Wundef -Wwrite-strings -Wmissing-prototypes $QEMU_CFLAGS"
-QEMU_CFLAGS="-Wstrict-prototypes -Wredundant-decls $QEMU_CFLAGS"
+QEMU_CFLAGS="-Wstrict-prototypes $QEMU_CFLAGS"
 QEMU_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $QEMU_CFLAGS"
 QEMU_CFLAGS="-D_FORTIFY_SOURCE=2 $QEMU_CFLAGS"
 QEMU_INCLUDES="-I. -I\$(SRC_PATH) -I\$(SRC_PATH)/fpu"
@@ -2216,7 +2216,7 @@ fi
 
 if test "$llvm" != "no" ; then
   cat > $TMPCXX << EOF
-#include <llvm/LLVMContext.h>
+#include <llvm/IR/LLVMContext.h>
 int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
 EOF
   if test "$llvmdir" != ""; then
@@ -2224,7 +2224,8 @@ EOF
   else
       llvm_config="llvm-config"
   fi
-  llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
+  #llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
+  llvm_components=""
   llvm_cxxflags=`$llvm_config $llvm_components --cflags 2> /dev/null`
 
   llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`

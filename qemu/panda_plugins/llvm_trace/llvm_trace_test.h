@@ -15,9 +15,9 @@ PANDAENDCOMMENT */
 #ifndef LLVM_TRACE_TEST_H
 #define LLVM_TRACE_TEST_H
 
-#include "llvm/BasicBlock.h"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/InstVisitor.h"
+#include "llvm/InstVisitor.h"
 
 using namespace llvm;
 

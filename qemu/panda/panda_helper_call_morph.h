@@ -17,9 +17,9 @@ PANDAENDCOMMENT */
 
 #ifdef __cplusplus
 
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/InstVisitor.h"
+#include "llvm/InstVisitor.h"
 
 namespace llvm {
 

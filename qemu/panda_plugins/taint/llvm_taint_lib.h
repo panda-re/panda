@@ -19,12 +19,12 @@ PANDAENDCOMMENT */
 
 #include <map>
 
-#include "llvm/Intrinsics.h"
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/Support/InstVisitor.h"
-#include "llvm/Support/IRBuilder.h"
+#include "llvm/InstVisitor.h"
+#include "llvm/IR/IRBuilder.h"
 
 extern "C" {
 #include "taint_processor.h"
@@ -84,7 +84,7 @@ public:
 
     // Define most visitor functions
     #define HANDLE_INST(N, OPCODE, CLASS) void visit##OPCODE##Inst(CLASS&);
-    #include "llvm/Instruction.def"
+    #include "llvm/IR/Instruction.def"
     
     // We missed some...
     void visitReturnInst(ReturnInst &I);

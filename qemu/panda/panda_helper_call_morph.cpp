@@ -22,12 +22,13 @@ PANDAENDCOMMENT */
 #include "stdio.h"
 
 #include "llvm/Linker.h"
-#include "llvm/Module.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/IR/Module.h"
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/Support/IRReader.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "config.h"
@@ -84,7 +85,7 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I){
     // Call LLVM version of helper
     Module *m = I.getParent()->getParent()->getParent();
     assert(m);
-    std::string origName = I.getCalledFunction()->getNameStr();
+    std::string origName = I.getCalledFunction()->getName();
     std::string newName = origName.append("_llvm");
     Function *newFunction = m->getFunction(newName);
     assert(newFunction);
@@ -146,7 +147,7 @@ void init_llvm_helpers(){
     llvm::SMDiagnostic Err;
     llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
     if (!helpermod) {
-        Err.Print("qemu", llvm::errs());
+        Err.print("qemu", llvm::errs());
         exit(1);
     }
     std::string err;

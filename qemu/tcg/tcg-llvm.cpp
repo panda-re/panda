@@ -124,22 +124,22 @@ static char *qemu_st_helper_names[5] = {
 
 }
 
-#include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/DerivedTypes.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/JITMemoryManager.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/JIT.h>
-#include <llvm/LLVMContext.h>
-#include <llvm/Module.h>
+
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <llvm/PassManager.h>
-#include <llvm/Intrinsics.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
+#include <llvm/IR/DataLayout.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h>
-#include <llvm/Support/IRBuilder.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/Threading.h>
 
 #include <llvm/Support/DynamicLibrary.h>
@@ -284,7 +284,7 @@ public:
 
 /* Custom JITMemoryManager in order to capture the size of
  * the last generated function */
-class TJITMemoryManager: public JITMemoryManager {
+class TJITMemoryManager: public SectionMemoryManager {
     JITMemoryManager* m_base;
     ptrdiff_t m_lastFunctionSize;
 public:
@@ -387,7 +387,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
 
     m_functionPassManager = new FunctionPassManager(m_module);
     m_functionPassManager->add(
-            new TargetData(*m_executionEngine->getTargetData()));
+            new DataLayout(*m_executionEngine->getDataLayout()));
     
     /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
      * code size
@@ -1492,7 +1492,7 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 {
     static char buf[500];
     if(tb->llvm_function) {
-        strncpy(buf, tb->llvm_function->getNameStr().c_str(), sizeof(buf));
+        strncpy(buf, tb->llvm_function->getName().str().c_str(), sizeof(buf));
     } else {
         buf[0] = 0;
     }

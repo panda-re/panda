@@ -1196,6 +1196,22 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
      * we need to do this.
      */
     assert(I.getNumSuccessors() < MAXSWITCHSTMTS);
+
+    // Default case
+    op.val.insn_start.switch_conds[0] = 0;
+    op.val.insn_start.switch_labels[0] =
+        PST->getLocalSlot(I.getDefaultDest());
+
+    // The others
+    int i = 1;
+    for (llvm::SwitchInst::CaseIt it = I.case_begin(); it != I.case_end(); i++, it++){
+        op.val.insn_start.switch_conds[i] =
+            it.getCaseValue()->getSExtValue();
+        op.val.insn_start.switch_labels[i] =
+            PST->getLocalSlot(it.getCaseSuccessor());
+    }
+
+    /*
     for (int i = 0; i < (int)I.getNumSuccessors(); i++){
         if (i == 0){
             // Default case
@@ -1210,14 +1226,16 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
                 PST->getLocalSlot(I.getSuccessor(i));
         }
     }
+    */
     tob_op_write(tbuf, op);
 }
 
 void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
 void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
-void PandaTaintVisitor::visitUnwindInst(UnwindInst &I){}
 void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){}
+// BDG: UnwindInst doesn't exist any more 
+//void PandaTaintVisitor::visitUnwindInst(UnwindInst &I){}
 
 // Binary operators
 void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){

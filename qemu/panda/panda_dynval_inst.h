@@ -15,10 +15,10 @@ PANDAENDCOMMENT */
 #ifndef PANDA_DYNVAL_INST_H
 #define PANDA_DYNVAL_INST_H
 
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
-#include "llvm/Support/InstVisitor.h"
-#include "llvm/Support/IRBuilder.h"
+#include "llvm/InstVisitor.h"
+#include "llvm/IR/IRBuilder.h"
 
 extern "C" {
 #include "panda_memlog.h"

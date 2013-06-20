@@ -20,13 +20,13 @@ PANDAENDCOMMENT */
 
 #include "stdio.h"
 
-#include "llvm/Constants.h"
-#include "llvm/LLVMContext.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/PassManager.h"
-#include "llvm/Value.h"
+#include "llvm/IR/Value.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/IRReader.h"
+#include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "llvm_trace_test.h"
@@ -187,7 +187,7 @@ void TestInstVisitor::visitSwitchInst(SwitchInst &I){
     IntegerType *intType = IntegerType::get(getGlobalContext(), sizeof(int)*8);
     ConstantInt *caseVal =
         ConstantInt::get(intType, entry.entry.switchstmt.cond);
-    unsigned caseIndex = I.findCaseValue(caseVal);
+    unsigned caseIndex = I.findCaseValue(caseVal).getCaseIndex();
     TFP->setNextBB(I.getSuccessor(caseIndex));
 }
 
@@ -261,7 +261,7 @@ int main(int argc, char **argv){
     Module *Mod = ParseIRFile(strncat(directory, "/llvm-mod.bc", 12), Err,
         Context);
     if (!Mod) {
-        Err.Print(argv[0], errs());
+        Err.print(argv[0], errs());
         exit(1);
     }
     
