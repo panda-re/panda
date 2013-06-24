@@ -1140,7 +1140,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         //Skip copy operations if phiSource is a constant (-1)
         if(phiSource == -1) {
           //Move buffer pointer past copy operations
-          buf->ptr = cur_op + op.val.insn_start.num_ops;
+          buf->ptr = (char*)(cur_op + (op.val.insn_start.num_ops*sizeof(TaintOp)));
         } else {
           //Patch up source for copy operations
           for (i = 0; i < op.val.insn_start.num_ops; i++){
