@@ -360,19 +360,22 @@ PandaTaintVisitor::PandaTaintVisitor(PandaTaintFunctionPass *PTFunPass){
  */
 int PandaTaintVisitor::getValueSize(Value *V){
     if (V->getType()->isIntegerTy()){
-        return ceil(V->getType()->getScalarSizeInBits() / 8.0);
+        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
     else if (V->getType()->isPointerTy()){
-        return ceil(static_cast<SequentialType*>(V->getType())->
+        return (int)ceil(static_cast<SequentialType*>(V->getType())->
             getElementType()->getScalarSizeInBits() / 8.0);
     } 
     else if (V->getType()->isFloatingPointTy()){
-        return ceil(V->getType()->getScalarSizeInBits() / 8.0);
+        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
+    }
+    else if (V->getType()->isStructTy()){
+        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
     else {
         // those are all that's supported for now
         //assert(1==0);
-        printf("Error for getValueSize()\n");
+        printf("Error in getValueSize() for type %i\n", V->getType()->getTypeID());
         //    V->getParent()->getParent()->getName().str().c_str());
         return -1;
     }
