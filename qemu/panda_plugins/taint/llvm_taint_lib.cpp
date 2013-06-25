@@ -2251,6 +2251,35 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
     }
 }
 
+/*
+ * Taint model for LLVM memcpy intrinsic.
+ */
+void PandaTaintVisitor::memcpyHelper(CallInst &I){
+    llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+    int bytes = bytes_ir->getSExtValue();
+
+    llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
+    int align = align_ir->getSExtValue();
+    //printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
+    src.typ = LADDR;
+    src.val.la = PST->getLocalSlot(I.getArgOperand(1));
+
+    for (int i = 0; i < bytes; i++){
+        src.off = i;
+        dst.off = i + align;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
 void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
@@ -2274,6 +2303,11 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         bswapHelper(I);
         return;
     }
+    // Needs to use logging!
+    // else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
+    //     memcpyHelper(I);
+    //     return;
+    // }
     else if (I.getCalledFunction()->getIntrinsicID()
             != Intrinsic::not_intrinsic){
         printf("Note: unsupported intrinsic %s in %s.\n",

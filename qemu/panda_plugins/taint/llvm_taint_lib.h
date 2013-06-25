@@ -106,6 +106,7 @@ public:
     void approxArithHelper(BinaryOperator &I);
     void simpleArithHelper(BinaryOperator &I);
     void bswapHelper(CallInst &I);
+    void memcpyHelper(CallInst &I);
     void loadHelper(Value *src, Value *dst, int len);
     void storeHelper(Value *src, Value *dst, int len);
 };
