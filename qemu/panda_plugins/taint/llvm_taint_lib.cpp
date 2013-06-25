@@ -365,7 +365,7 @@ int PandaTaintVisitor::getValueSize(Value *V){
     else if (V->getType()->isPointerTy()){
         return (int)ceil(static_cast<SequentialType*>(V->getType())->
             getElementType()->getScalarSizeInBits() / 8.0);
-    } 
+    }
     else if (V->getType()->isFloatingPointTy()){
         return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
@@ -2197,11 +2197,21 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     struct addr_struct src = {};
     struct addr_struct dst = {};
     int len = getValueSize(&I);
+
+    //Delete taint at destination
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < len; i++){
+        dst.off = i;
+        op.val.deletel.a = dst;
+        tob_op_write(tbuf, op);
+    }
+
     char name[4] = "phi";
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = len;
-    //op.val.insn_start.flag = INSNREADLOG;
 
     assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
@@ -2217,7 +2227,6 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     dst.val.la = PST->getLocalSlot(&I);
     src.typ = UNK;
     src.val.ua = 0;
-    src.flag = READLOG;
 
     for (int i = 0; i < len; i++){
         src.off = i;
