@@ -153,6 +153,11 @@ void panda_unregister_callbacks(void *plugin) {
                     // List is now empty
                     panda_cbs[i] = NULL;
                 }
+                if (panda_cbs[i] == plist) {
+                    // this was the head
+                    panda_cbs[i] = plist->next;
+                }
+
                 // Advance the pointer
                 plist = plist->next;
                 // Free the entry we just unlinked
