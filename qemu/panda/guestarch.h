@@ -12,6 +12,16 @@
  * 
 PANDAENDCOMMENT */
 
+
+
+/* 
+ * XXX
+ * XXX Note: changing this file could very easily break other code that uses it.
+ * XXX
+ */
+
+
+
 #ifndef GUESTARCH_H
 #define GUESTARCH_H
 
@@ -48,7 +58,7 @@ extern uintptr_t eip_reg;
  * XMM and MMX registers can be accessed at offsets inside of them, so log the
  * specific byte accessed for these registers.  XMM registers are 16 bytes.
  * Floating point registers are 10 bytes.  XMM_T0 and MMX_T0 don't correspond to
- * actual hardware, but they are a part of the CPUState.
+ * actual hardware, but they are a part of the CPUState.  Same with FT0.
  */
 enum SpecAddrs {
     FT0_0 = 12,
