@@ -370,7 +370,13 @@ int PandaTaintVisitor::getValueSize(Value *V){
         return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
     else if (V->getType()->isStructTy()){
-        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
+        StructType *S = cast<StructType>(V->getType());
+        int size = 0;
+        for (int i = 0, elements = S->getNumElements(); i < elements; i++) {
+            //TODO: Handle the case where getElementType returns a derived type
+            size += (int)ceil(S->getElementType(i)->getScalarSizeInBits() / 8.0);
+        }
+        return size;
     }
     else {
         // those are all that's supported for now
