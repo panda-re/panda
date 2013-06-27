@@ -97,7 +97,7 @@ int write_int(int *f3) {
   std::ofstream out("panda_plugins/taint/tests/user_mode/int_test_output.txt");
   if(out.good()) {
     std::cout << "Writing integer: " << std::fixed << *f3 << std::endl;
-    out << *f3;
+    out << *f3 << std::endl;
     out.close();
     return 0;
   } else {
