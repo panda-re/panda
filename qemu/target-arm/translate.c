@@ -1,6 +1,4 @@
-/*
- *  ARM translation
- *
+/* *  ARM translation *
  *  Copyright (c) 2003 Fabrice Bellard
  *  Copyright (c) 2005-2007 CodeSourcery
  *  Copyright (c) 2007 OpenedHand, Ltd.
@@ -87,6 +85,7 @@ static TCGv_ptr cpu_env;
 /* We reuse the same 64-bit temporaries for efficiency.  */
 static TCGv_i64 cpu_V0, cpu_V1, cpu_M0;
 static TCGv_i32 cpu_R[16];
+static TCGv_i32 cpu_CF, cpu_NF, cpu_VF, cpu_ZF;
 static TCGv_i32 cpu_exclusive_addr;
 static TCGv_i32 cpu_exclusive_val;
 static TCGv_i32 cpu_exclusive_high;
@@ -119,6 +118,11 @@ void arm_translate_init(void)
                                           offsetof(CPUState, regs[i]),
                                           regnames[i]);
     }
+    cpu_CF = tcg_global_mem_new_i32(TCG_AREG0, offsetof(CPUARMState, CF), "CF");
+    cpu_NF = tcg_global_mem_new_i32(TCG_AREG0, offsetof(CPUARMState, NF), "NF");
+    cpu_VF = tcg_global_mem_new_i32(TCG_AREG0, offsetof(CPUARMState, VF), "VF");
+    cpu_ZF = tcg_global_mem_new_i32(TCG_AREG0, offsetof(CPUARMState, ZF), "ZF");
+
     cpu_exclusive_addr = tcg_global_mem_new_i32(TCG_AREG0,
         offsetof(CPUState, exclusive_addr), "exclusive_addr");
     cpu_exclusive_val = tcg_global_mem_new_i32(TCG_AREG0,
@@ -373,53 +377,69 @@ static void gen_add16(TCGv t0, TCGv t1)
     tcg_temp_free_i32(t1);
 }
 
-#define gen_set_CF(var) tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, CF))
-
 /* Set CF to the top bit of var.  */
 static void gen_set_CF_bit31(TCGv var)
 {
-    TCGv tmp = tcg_temp_new_i32();
-    tcg_gen_shri_i32(tmp, var, 31);
-    gen_set_CF(tmp);
-    tcg_temp_free_i32(tmp);
+    tcg_gen_shri_i32(cpu_CF, var, 31);
 }
 
 /* Set N and Z flags from var.  */
 static inline void gen_logic_CC(TCGv var)
 {
-    tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, NF));
-    tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, ZF));
+    tcg_gen_mov_i32(cpu_NF, var);
+    tcg_gen_mov_i32(cpu_ZF, var);
 }
 
 /* T0 += T1 + CF.  */
 static void gen_adc(TCGv t0, TCGv t1)
 {
-    TCGv tmp;
     tcg_gen_add_i32(t0, t0, t1);
-    tmp = load_cpu_field(CF);
-    tcg_gen_add_i32(t0, t0, tmp);
-    tcg_temp_free_i32(tmp);
+    tcg_gen_add_i32(t0, t0, cpu_CF);
 }
 
 /* dest = T0 + T1 + CF. */
 static void gen_add_carry(TCGv dest, TCGv t0, TCGv t1)
 {
-    TCGv tmp;
     tcg_gen_add_i32(dest, t0, t1);
-    tmp = load_cpu_field(CF);
-    tcg_gen_add_i32(dest, dest, tmp);
-    tcg_temp_free_i32(tmp);
+    tcg_gen_add_i32(t0, t0, cpu_CF);
 }
 
 /* dest = T0 - T1 + CF - 1.  */
 static void gen_sub_carry(TCGv dest, TCGv t0, TCGv t1)
 {
-    TCGv tmp;
     tcg_gen_sub_i32(dest, t0, t1);
-    tmp = load_cpu_field(CF);
-    tcg_gen_add_i32(dest, dest, tmp);
+    tcg_gen_add_i32(dest, dest, cpu_CF);
     tcg_gen_subi_i32(dest, dest, 1);
+}
+
+/* dest = T0 + T1. Compute C, N, V and Z flags */
+static void gen_add_CC(TCGv dest, TCGv t0, TCGv t1)
+{
+    TCGv tmp;
+    tcg_gen_add_i32(cpu_NF, t0, t1);
+    tcg_gen_mov_i32(cpu_ZF, cpu_NF);
+    tcg_gen_setcond_i32(TCG_COND_LTU, cpu_CF, cpu_NF, t0);
+    tcg_gen_xor_i32(cpu_VF, cpu_NF, t0);
+    tmp = tcg_temp_new_i32();
+    tcg_gen_xor_i32(tmp, t0, t1);
+    tcg_gen_andc_i32(cpu_VF, cpu_VF, tmp);
     tcg_temp_free_i32(tmp);
+    tcg_gen_mov_i32(dest, cpu_NF);
+}
+
+/* dest = T0 - T1. Compute C, N, V and Z flags */
+static void gen_sub_CC(TCGv dest, TCGv t0, TCGv t1)
+{
+    TCGv tmp;
+    tcg_gen_sub_i32(cpu_NF, t0, t1);
+    tcg_gen_mov_i32(cpu_ZF, cpu_NF);
+    tcg_gen_setcond_i32(TCG_COND_GEU, cpu_CF, t0, t1);
+    tcg_gen_xor_i32(cpu_VF, cpu_NF, t0);
+    tmp = tcg_temp_new_i32();
+    tcg_gen_xor_i32(tmp, t0, t1);
+    tcg_gen_and_i32(cpu_VF, cpu_VF, tmp);
+    tcg_temp_free_i32(tmp);
+    tcg_gen_mov_i32(dest, cpu_NF);
 }
 
 /* FIXME:  Implement this natively.  */
@@ -427,16 +447,14 @@ static void gen_sub_carry(TCGv dest, TCGv t0, TCGv t1)
 
 static void shifter_out_im(TCGv var, int shift)
 {
-    TCGv tmp = tcg_temp_new_i32();
     if (shift == 0) {
-        tcg_gen_andi_i32(tmp, var, 1);
+        tcg_gen_andi_i32(cpu_CF, var, 1);
     } else {
-        tcg_gen_shri_i32(tmp, var, shift);
-        if (shift != 31)
-            tcg_gen_andi_i32(tmp, tmp, 1);
+        tcg_gen_shri_i32(cpu_CF, var, shift);
+        if (shift != 31) {
+            tcg_gen_andi_i32(cpu_CF, cpu_CF, 1);
+        }
     }
-    gen_set_CF(tmp);
-    tcg_temp_free_i32(tmp);
 }
 
 /* Shift by immediate.  Includes special handling for shift == 0.  */
@@ -453,8 +471,7 @@ static inline void gen_arm_shift_im(TCGv var, int shiftop, int shift, int flags)
     case 1: /* LSR */
         if (shift == 0) {
             if (flags) {
-                tcg_gen_shri_i32(var, var, 31);
-                gen_set_CF(var);
+                tcg_gen_shri_i32(cpu_CF, var, 31);
             }
             tcg_gen_movi_i32(var, 0);
         } else {
@@ -478,11 +495,11 @@ static inline void gen_arm_shift_im(TCGv var, int shiftop, int shift, int flags)
                 shifter_out_im(var, shift - 1);
             tcg_gen_rotri_i32(var, var, shift); break;
         } else {
-            TCGv tmp = load_cpu_field(CF);
+            TCGv tmp = tcg_temp_new_i32();
             if (flags)
                 shifter_out_im(var, 0);
             tcg_gen_shri_i32(var, var, 1);
-            tcg_gen_shli_i32(tmp, tmp, 31);
+            tcg_gen_shli_i32(tmp, cpu_CF, 31);
             tcg_gen_or_i32(var, var, tmp);
             tcg_temp_free_i32(tmp);
         }
@@ -607,99 +624,75 @@ static void gen_thumb2_parallel_addsub(int op1, int op2, TCGv a, TCGv b)
 static void gen_test_cc(int cc, int label)
 {
     TCGv tmp;
-    TCGv tmp2;
     int inv;
 
     switch (cc) {
     case 0: /* eq: Z */
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0, label);
         break;
     case 1: /* ne: !Z */
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_NE, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0, label);
         break;
     case 2: /* cs: C */
-        tmp = load_cpu_field(CF);
-        tcg_gen_brcondi_i32(TCG_COND_NE, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_CF, 0, label);
         break;
     case 3: /* cc: !C */
-        tmp = load_cpu_field(CF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_CF, 0, label);
         break;
     case 4: /* mi: N */
-        tmp = load_cpu_field(NF);
-        tcg_gen_brcondi_i32(TCG_COND_LT, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_LT, cpu_NF, 0, label);
         break;
     case 5: /* pl: !N */
-        tmp = load_cpu_field(NF);
-        tcg_gen_brcondi_i32(TCG_COND_GE, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_GE, cpu_NF, 0, label);
         break;
     case 6: /* vs: V */
-        tmp = load_cpu_field(VF);
-        tcg_gen_brcondi_i32(TCG_COND_LT, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_LT, cpu_VF, 0, label);
         break;
     case 7: /* vc: !V */
-        tmp = load_cpu_field(VF);
-        tcg_gen_brcondi_i32(TCG_COND_GE, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_GE, cpu_VF, 0, label);
         break;
     case 8: /* hi: C && !Z */
         inv = gen_new_label();
-        tmp = load_cpu_field(CF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, inv);
-        tcg_temp_free_i32(tmp);
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_NE, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_CF, 0, inv);
+        tcg_gen_brcondi_i32(TCG_COND_NE, cpu_ZF, 0, label);
         gen_set_label(inv);
         break;
     case 9: /* ls: !C || Z */
-        tmp = load_cpu_field(CF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, label);
-        tcg_temp_free_i32(tmp);
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_CF, 0, label);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0, label);
         break;
     case 10: /* ge: N == V -> N ^ V == 0 */
-        tmp = load_cpu_field(VF);
-        tmp2 = load_cpu_field(NF);
-        tcg_gen_xor_i32(tmp, tmp, tmp2);
-        tcg_temp_free_i32(tmp2);
+        tmp = tcg_temp_new_i32();
+        tcg_gen_xor_i32(tmp, cpu_VF, cpu_NF);
         tcg_gen_brcondi_i32(TCG_COND_GE, tmp, 0, label);
+        tcg_temp_free_i32(tmp);
         break;
     case 11: /* lt: N != V -> N ^ V != 0 */
-        tmp = load_cpu_field(VF);
-        tmp2 = load_cpu_field(NF);
-        tcg_gen_xor_i32(tmp, tmp, tmp2);
-        tcg_temp_free_i32(tmp2);
+        tmp = tcg_temp_new_i32();
+        tcg_gen_xor_i32(tmp, cpu_VF, cpu_NF);
         tcg_gen_brcondi_i32(TCG_COND_LT, tmp, 0, label);
+        tcg_temp_free_i32(tmp);
         break;
     case 12: /* gt: !Z && N == V */
         inv = gen_new_label();
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, inv);
-        tcg_temp_free_i32(tmp);
-        tmp = load_cpu_field(VF);
-        tmp2 = load_cpu_field(NF);
-        tcg_gen_xor_i32(tmp, tmp, tmp2);
-        tcg_temp_free_i32(tmp2);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0, inv);
+        tmp = tcg_temp_new_i32();
+        tcg_gen_xor_i32(tmp, cpu_VF, cpu_NF);
         tcg_gen_brcondi_i32(TCG_COND_GE, tmp, 0, label);
+        tcg_temp_free_i32(tmp);
         gen_set_label(inv);
         break;
     case 13: /* le: Z || N != V */
-        tmp = load_cpu_field(ZF);
-        tcg_gen_brcondi_i32(TCG_COND_EQ, tmp, 0, label);
-        tcg_temp_free_i32(tmp);
-        tmp = load_cpu_field(VF);
-        tmp2 = load_cpu_field(NF);
-        tcg_gen_xor_i32(tmp, tmp, tmp2);
-        tcg_temp_free_i32(tmp2);
+        tcg_gen_brcondi_i32(TCG_COND_EQ, cpu_ZF, 0, label);
+        tmp = tcg_temp_new_i32();
+        tcg_gen_xor_i32(tmp, cpu_VF, cpu_NF);
         tcg_gen_brcondi_i32(TCG_COND_LT, tmp, 0, label);
+        tcg_temp_free_i32(tmp);
         break;
     default:
         fprintf(stderr, "Bad condition code 0x%x\n", cc);
         abort();
     }
-    tcg_temp_free_i32(tmp);
 }
 
 static const uint8_t table_logic_cc[16] = {
@@ -7181,11 +7174,11 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 if (IS_USER(s)) {
                     goto illegal_op;
                 }
-                gen_helper_sub_cc(tmp, tmp, tmp2);
+                gen_sub_CC(tmp, tmp, tmp2);
                 gen_exception_return(s, tmp);
             } else {
                 if (set_cc) {
-                    gen_helper_sub_cc(tmp, tmp, tmp2);
+                    gen_sub_CC(tmp, tmp, tmp2);
                 } else {
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
                 }
@@ -7194,7 +7187,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             break;
         case 0x03:
             if (set_cc) {
-                gen_helper_sub_cc(tmp, tmp2, tmp);
+                gen_sub_CC(tmp, tmp2, tmp);
             } else {
                 tcg_gen_sub_i32(tmp, tmp2, tmp);
             }
@@ -7202,7 +7195,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             break;
         case 0x04:
             if (set_cc) {
-                gen_helper_add_cc(tmp, tmp, tmp2);
+                gen_add_CC(tmp, tmp, tmp2);
             } else {
                 tcg_gen_add_i32(tmp, tmp, tmp2);
             }
@@ -7248,13 +7241,13 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             break;
         case 0x0a:
             if (set_cc) {
-                gen_helper_sub_cc(tmp, tmp, tmp2);
+                gen_sub_CC(tmp, tmp, tmp2);
             }
             tcg_temp_free_i32(tmp);
             break;
         case 0x0b:
             if (set_cc) {
-                gen_helper_add_cc(tmp, tmp, tmp2);
+                gen_add_CC(tmp, tmp, tmp2);
             }
             tcg_temp_free_i32(tmp);
             break;
@@ -8041,7 +8034,7 @@ gen_thumb2_data_op(DisasContext *s, int op, int conds, uint32_t shifter_out, TCG
         break;
     case 8: /* add */
         if (conds)
-            gen_helper_add_cc(t0, t0, t1);
+            gen_add_CC(t0, t0, t1);
         else
             tcg_gen_add_i32(t0, t0, t1);
         break;
@@ -8059,13 +8052,13 @@ gen_thumb2_data_op(DisasContext *s, int op, int conds, uint32_t shifter_out, TCG
         break;
     case 13: /* sub */
         if (conds)
-            gen_helper_sub_cc(t0, t0, t1);
+            gen_sub_CC(t0, t0, t1);
         else
             tcg_gen_sub_i32(t0, t0, t1);
         break;
     case 14: /* rsb */
         if (conds)
-            gen_helper_sub_cc(t0, t1, t0);
+            gen_sub_CC(t0, t1, t0);
         else
             tcg_gen_sub_i32(t0, t1, t0);
         break;
@@ -9191,12 +9184,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 if (s->condexec_mask)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
                 else
-                    gen_helper_sub_cc(tmp, tmp, tmp2);
+                    gen_sub_CC(tmp, tmp, tmp2);
             } else {
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
                 else
-                    gen_helper_add_cc(tmp, tmp, tmp2);
+                    gen_add_CC(tmp, tmp, tmp2);
             }
             tcg_temp_free_i32(tmp2);
             store_reg(s, rd, tmp);
@@ -9227,7 +9220,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             tcg_gen_movi_i32(tmp2, insn & 0xff);
             switch (op) {
             case 1: /* cmp */
-                gen_helper_sub_cc(tmp, tmp, tmp2);
+                gen_sub_CC(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp);
                 tcg_temp_free_i32(tmp2);
                 break;
@@ -9235,7 +9228,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
                 else
-                    gen_helper_add_cc(tmp, tmp, tmp2);
+                    gen_add_CC(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
                 break;
@@ -9243,7 +9236,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 if (s->condexec_mask)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
                 else
-                    gen_helper_sub_cc(tmp, tmp, tmp2);
+                    gen_sub_CC(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
                 break;
@@ -9279,7 +9272,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             case 1: /* cmp */
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
-                gen_helper_sub_cc(tmp, tmp, tmp2);
+                gen_sub_CC(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 tcg_temp_free_i32(tmp);
                 break;
@@ -9392,14 +9385,14 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             if (s->condexec_mask)
                 tcg_gen_neg_i32(tmp, tmp2);
             else
-                gen_helper_sub_cc(tmp, tmp, tmp2);
+                gen_sub_CC(tmp, tmp, tmp2);
             break;
         case 0xa: /* cmp */
-            gen_helper_sub_cc(tmp, tmp, tmp2);
+            gen_sub_CC(tmp, tmp, tmp2);
             rd = 16;
             break;
         case 0xb: /* cmn */
-            gen_helper_add_cc(tmp, tmp, tmp2);
+            gen_add_CC(tmp, tmp, tmp2);
             rd = 16;
             break;
         case 0xc: /* orr */
