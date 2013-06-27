@@ -51,7 +51,17 @@ extern uintptr_t eip_reg;
  * actual hardware, but they are a part of the CPUState.
  */
 enum SpecAddrs {
-    XMM_T0_0 = 12,
+    FT0_0 = 12,
+    FT0_1,
+    FT0_2,
+    FT0_3,
+    FT0_4,
+    FT0_5,
+    FT0_6,
+    FT0_7,
+    FT0_8,
+    FT0_9,
+    XMM_T0_0,
     XMM_T0_1,
     XMM_T0_2,
     XMM_T0_3,
@@ -337,10 +347,20 @@ extern uintptr_t rip_reg;
  * XMM and MMX registers can be accessed at offsets inside of them, so log the
  * specific byte accessed for these registers.  XMM registers are 16 bytes.
  * Floating point registers are 10 bytes.  XMM_T0 and MMX_T0 don't correspond to
- * actual hardware, but they are a part of the CPUState.
+ * actual hardware, but they are a part of the CPUState.  Same with FT0.
  */
 enum SpecAddrs {
-    XMM_T0_0 = 20,
+    FT0_0 = 20,
+    FT0_1,
+    FT0_2,
+    FT0_3,
+    FT0_4,
+    FT0_5,
+    FT0_6,
+    FT0_7,
+    FT0_8,
+    FT0_9,
+    XMM_T0_0,
     XMM_T0_1,
     XMM_T0_2,
     XMM_T0_3,

@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
  */
 
 #include "stdio.h"
+#include "math.h"
 
 #include "cpu.h"
 #include "config.h"
@@ -58,45 +59,112 @@ void init_regs(void){
 }
 
 int get_cpustate_val(uintptr_t dynval){
-    if (dynval == eax_reg){
-        return R_EAX;
+    if (dynval < ((uintptr_t)env + offsetof(CPUX86State, eflags))){
+        if (dynval == eax_reg){
+            return R_EAX;
+        }
+        else if (dynval == ecx_reg){
+            return R_ECX;
+        }
+        else if (dynval == edx_reg){
+            return R_EDX;
+        }
+        else if (dynval == ebx_reg){
+            return R_EBX;
+        }
+        else if (dynval == esp_reg){
+            return R_ESP;
+        }
+        else if (dynval == ebp_reg){
+            return R_EBP;
+        }
+        else if (dynval == esi_reg){
+            return R_ESI;
+        }
+        else if (dynval == edi_reg){
+            return R_EDI;
+        }
+        else if (dynval == cc_op_reg){
+            return CC_OP_REG;
+        }
+        else if (dynval == cc_src_reg){
+            return CC_SRC_REG;
+        }
+        else if (dynval == cc_dst_reg){
+            return CC_DST_REG;
+        }
+        else if (dynval == eip_reg){
+            return EIP_REG;
+        }
     }
-    else if (dynval == ecx_reg){
-        return R_ECX;
+    else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
+                + (sizeof(XMMReg) * CPU_NB_REGS)))){
+        // inside XMM regs
+        // print the proper enum to be used by the trace analyzer
+
+        // get XMM register
+        int xmmreg =
+            floor(((dynval - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0])))
+            / sizeof(XMMReg)));
+        // get offset within register
+        int xmmoff =
+            (dynval - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0]))) %
+            sizeof(XMMReg);
+        // get enum that can be be processed by trace analyzer
+        int xmmenum = XMMREGS_0_0 + xmmreg*16 + xmmoff;
+
+        return xmmenum;
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, ft0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, ft0)
+                + sizeof(floatx80)))){
+        // inside ft0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, ft0)) + FT0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)
+                + sizeof(XMMReg)))){
+        // inside xmm_t0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, xmm_t0)) + XMM_T0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)
+                + sizeof(MMXReg)))){
+        // inside mmx_t0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, mmx_t0)) + MMX_T0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, fpregs)
+                + (sizeof(FPReg) * 8)))){
+        // inside FP regs
+        // print the proper enum as seen above to be used by the trace analyzer
+
+        // get FP register
+        int fpreg =
+            floor(((dynval - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) /
+            sizeof(FPReg)));
+        // get offset within register
+        int fpoff =
+            (dynval - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) %
+            sizeof(FPReg);
+        // get enum that can be be processed by trace analyzer
+        int fpenum = FPREGS_0_0 + fpreg*10 + fpoff;
+
+        return fpenum;
     }
-    else if (dynval == edx_reg){
-        return R_EDX;
-    }
-    else if (dynval == ebx_reg){
-        return R_EBX;
-    }
-    else if (dynval == esp_reg){
-        return R_ESP;
-    }
-    else if (dynval == ebp_reg){
-        return R_EBP;
-    }
-    else if (dynval == esi_reg){
-        return R_ESI;
-    }
-    else if (dynval == edi_reg){
-        return R_EDI;
-    }
-    else if (dynval == cc_op_reg){
-        return CC_OP_REG;
-    }
-    else if (dynval == cc_src_reg){
-        return CC_SRC_REG;
-    }
-    else if (dynval == cc_dst_reg){
-        return CC_DST_REG;
-    }
-    else if (dynval == eip_reg){
-        return EIP_REG;
-    }
+
     else {
         return -1; // irrelevant part of CPUstate
     }
+
+    return -1; // make compiler happy
 }
 
 void printreg(Addr a){
@@ -272,6 +340,69 @@ int get_cpustate_val(uintptr_t dynval){
     else if (dynval == rip_reg){
         return RIP_REG;
     }
+    else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
+                + (sizeof(XMMReg) * CPU_NB_REGS)))){
+        // inside XMM regs
+        // print the proper enum to be used by the trace analyzer
+
+        // get XMM register
+        int xmmreg =
+            floor(((dynval - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0])))
+            / sizeof(XMMReg)));
+        // get offset within register
+        int xmmoff =
+            (dynval - ((uintptr_t)env + offsetof(CPUX86State, xmm_regs[0]))) %
+            sizeof(XMMReg);
+        // get enum that can be be processed by trace analyzer
+        int xmmenum = XMMREGS_0_0 + xmmreg*16 + xmmoff;
+
+        return xmmenum;
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, ft0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, ft0)
+                + sizeof(floatx80)))){
+        // inside ft0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, ft0)) + FT0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_t0)
+                + sizeof(XMMReg)))){
+        // inside xmm_t0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, xmm_t0)) + XMM_T0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, mmx_t0)
+                + sizeof(MMXReg)))){
+        // inside mmx_t0
+        // print the proper enum to be used by the trace analyzer
+        return (dynval - ((uintptr_t)env +
+            offsetof(CPUX86State, mmx_t0)) + MMX_T0_0);
+
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs)))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, fpregs)
+                + (sizeof(FPReg) * 8)))){
+        // inside FP regs
+        // print the proper enum as seen above to be used by the trace analyzer
+
+        // get FP register
+        int fpreg =
+            floor(((dynval - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) /
+            sizeof(FPReg)));
+        // get offset within register
+        int fpoff =
+            (dynval - ((uintptr_t)env + offsetof(CPUX86State, fpregs[0]))) %
+            sizeof(FPReg);
+        // get enum that can be be processed by trace analyzer
+        int fpenum = FPREGS_0_0 + fpreg*10 + fpoff;
+
+        return fpenum;
+    }
+
     else {
         return -1; // irrelevant part of CPUstate
     }

@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #include "llvm_taint_lib.h"
@@ -53,7 +53,7 @@ std::map<std::string, TaintTB*>* PandaTaintFunctionPass::getTaintTBCache(){
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F){
-    
+
 #ifdef TAINTDEBUG
     printf("\n\n%s\n", F.getName().str().c_str());
 #endif
@@ -87,7 +87,7 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F){
 
         // clear global taint op buffer
         tob_clear(tbuf);
-        
+
         // create slot tracker to keep track of LLVM values
         PTV->PST = createPandaSlotTracker(&F);
         PTV->PST->initialize();
@@ -158,7 +158,7 @@ void PandaTaintFunctionPass::debugTaintOps(){
     // show taint ops for all BBs
     for (int i = 0; i < ttb->numBBs-1; i++){
         printf("\nBB %d:\n", ttb->tbbs[i]->label);
-        
+
         j = 0;
         tob_rewind(ttb->tbbs[i]->ops);
         while (!(tob_end(ttb->tbbs[i]->ops))) {
@@ -224,7 +224,7 @@ void PandaTaintFunctionPass::debugTaintOps(){
                 assert(n);
             }
         }
-        
+
         ttbCache->insert(std::pair<std::string, TaintTB*>(
             std::string(name), filettb));
     }
@@ -306,13 +306,13 @@ void PandaSlotTracker::processFunction(){
                 CreateFunctionSlot(BB);
             }
         }
-        for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E; 
+        for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;
             ++I) {
             if (I->getType() != Type::getVoidTy(TheFunction->getContext()) &&
                 !I->hasName()){
                 CreateFunctionSlot(I);
             }
-            else if (I->getType() != Type::getVoidTy(TheFunction->getContext()) 
+            else if (I->getType() != Type::getVoidTy(TheFunction->getContext())
                 && I->hasName()){
                 I->setName("");
                 CreateFunctionSlot(I);
@@ -331,7 +331,7 @@ void PandaSlotTracker::processFunction(){
 }
 
 void PandaSlotTracker::CreateFunctionSlot(const Value *V){
-    assert(V->getType() != Type::getVoidTy(TheFunction->getContext()) && 
+    assert(V->getType() != Type::getVoidTy(TheFunction->getContext()) &&
         !V->hasName() && "Doesn't need a slot!");
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
@@ -343,7 +343,7 @@ void PandaSlotTracker::CreateFunctionSlot(const Value *V){
 
 int PandaSlotTracker::getLocalSlot(const Value *V){
     ValueMap::iterator FI = fMap.find(V);
-    return FI == fMap.end() ? -1 : (int)FI->second; 
+    return FI == fMap.end() ? -1 : (int)FI->second;
 }
 
 
@@ -366,16 +366,28 @@ PandaTaintVisitor::PandaTaintVisitor(PandaTaintFunctionPass *PTFunPass){
  */
 int PandaTaintVisitor::getValueSize(Value *V){
     if (V->getType()->isIntegerTy()){
-        return ceil(V->getType()->getScalarSizeInBits() / 8.0);
+        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
     }
     else if (V->getType()->isPointerTy()){
-        return ceil(static_cast<SequentialType*>(V->getType())->
+        return (int)ceil(static_cast<SequentialType*>(V->getType())->
             getElementType()->getScalarSizeInBits() / 8.0);
+    }
+    else if (V->getType()->isFloatingPointTy()){
+        return (int)ceil(V->getType()->getScalarSizeInBits() / 8.0);
+    }
+    else if (V->getType()->isStructTy()){
+        StructType *S = cast<StructType>(V->getType());
+        int size = 0;
+        for (int i = 0, elements = S->getNumElements(); i < elements; i++) {
+            //TODO: Handle the case where getElementType returns a derived type
+            size += (int)ceil(S->getElementType(i)->getScalarSizeInBits() / 8.0);
+        }
+        return size;
     }
     else {
         // those are all that's supported for now
         //assert(1==0);
-        printf("Error for getValueSize()\n");
+        printf("Error in getValueSize() for type %i\n", V->getType()->getTypeID());
         //    V->getParent()->getParent()->getName().str().c_str());
         return -1;
     }
@@ -443,7 +455,7 @@ void PandaTaintVisitor::simpleTaintCompute(int source0, AddrType source0ty,
 
 // Deals with taint ops for inttoptr and ptrtoint instructions
 void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsize){
-    
+
     // If the sizes are equal, then it is a series of simple copy operations
     if (sourcesize == destsize){
         simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
@@ -455,7 +467,7 @@ void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsiz
     else if (sourcesize > destsize){
         simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
             PST->getLocalSlot(&I), destsize);
-        
+
         struct taint_op_struct op = {};
         struct addr_struct dst = {};
         op.typ = DELETEOP;
@@ -473,7 +485,7 @@ void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsiz
     else if (sourcesize < destsize){
         simpleTaintCopy(PST->getLocalSlot(I.getOperand(0)),
             PST->getLocalSlot(&I), sourcesize);
-        
+
         // delete taint on extra bytes
         struct taint_op_struct op = {};
         struct addr_struct dst = {};
@@ -982,7 +994,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
             tob_op_write(tbuf, op);
         }
     }
-    
+
     // we don't actually care what the constant is for now
     // each result byte gets taint of each byte of shift amount
     else if (isa<Constant>(I.getOperand(0))){
@@ -1022,7 +1034,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
             tob_op_write(tbuf, op);
         }
     }
-    
+
     // for now, copy taint to each destination byte through compute ops
     else if (isa<Constant>(I.getOperand(1))){
         src0.typ = LADDR;
@@ -1053,7 +1065,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
             tob_op_write(tbuf, op);
         }
     }
-    
+
     else {
         assert(1==0);
     }
@@ -1121,7 +1133,7 @@ void PandaTaintVisitor::approxArithHelper(BinaryOperator &I){
             tob_op_write(tbuf, op);
         }
     }
-    
+
     // propagate accumulated taint in c0 to all result bytes
     src0.val.la = PST->getLocalSlot(&I) + 1;
     src0.off = 0;
@@ -1169,7 +1181,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I){
             tob_op_write(tbuf, op);
         }
     }
-    
+
     op.typ = RETOP;
     tob_op_write(tbuf, op);
 }
@@ -1235,14 +1247,16 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             break;
 
         case Instruction::FAdd:
+            approxArithHelper(I);
             break;
-        
+
         case Instruction::Sub:
             addSubHelper(I.getOperand(0), I.getOperand(1), &I);
             //simpleArithHelper(I);
             break;
 
         case Instruction::FSub:
+            approxArithHelper(I);
             break;
 
         case Instruction::Mul:
@@ -1252,6 +1266,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             break;
 
         case Instruction::FMul:
+            approxArithHelper(I);
             break;
 
         case Instruction::UDiv:
@@ -1263,6 +1278,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             break;
 
         case Instruction::FDiv:
+            approxArithHelper(I);
             break;
 
         case Instruction::URem:
@@ -1272,10 +1288,10 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
         case Instruction::SRem:
             approxArithHelper(I);
             break;
-        
+
         case Instruction::FRem:
             break;
-        
+
         case Instruction::Shl:
             //shiftHelper(I);
             //simpleArithHelper(I);
@@ -1413,7 +1429,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                 //printf("%lu\n", con);
                 if ((con > 0) && (con <= 255)){
                     simpleTaintCopy(srcval, dstval, 1);
-                    
+
                     // delete taint on extra bytes
                     struct taint_op_struct op = {};
                     struct addr_struct dst = {};
@@ -1460,7 +1476,7 @@ void PandaTaintVisitor::visitAllocaInst(AllocaInst &I){
 void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     // local is LLVM register destination of load
     int local = PST->getLocalSlot(dstval);
-    
+
     struct addr_struct src = {};
     struct addr_struct dst = {};
     struct taint_op_struct op = {};
@@ -1537,7 +1553,7 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
         op.val.compute.c = dst;
         tob_op_write(tbuf, op);
     }
-#endif 
+#endif
 }
 
 void PandaTaintVisitor::visitLoadInst(LoadInst &I){
@@ -1552,7 +1568,7 @@ void PandaTaintVisitor::visitLoadInst(LoadInst &I){
         simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
         return;
     }*/
-    
+
     // get source operand length
     int len = ceil(static_cast<SequentialType*>(I.getOperand(0)->
         getType())->getElementType()->getScalarSizeInBits() / 8.0);
@@ -1625,7 +1641,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
 #ifdef TAINTED_POINTER
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
-    
+
     // Pointer is a constant, therefore it can't be tainted
     if (PST->getLocalSlot(dstval) < 0){
         return;
@@ -1718,7 +1734,7 @@ void PandaTaintVisitor::visitTruncInst(TruncInst &I){
     int srcval = PST->getLocalSlot(I.getOperand(0));
     int dstval = PST->getLocalSlot(&I);
     simpleTaintCopy(srcval, dstval, destsize);
-    
+
     // delete taint on extra bytes
     struct taint_op_struct op = {};
     struct addr_struct dst = {};
@@ -1739,7 +1755,7 @@ void PandaTaintVisitor::visitZExtInst(ZExtInst &I){
         assert(1==0);
         return;
     }
-    
+
     int sourcesize = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() /
         8.0);
     int srcval = PST->getLocalSlot(I.getOperand(0));
@@ -1771,7 +1787,7 @@ void PandaTaintVisitor::visitSExtInst(SExtInst &I){
     int srcval = PST->getLocalSlot(I.getOperand(0));
     int dstval = PST->getLocalSlot(&I);
     simpleTaintCopy(srcval, dstval, sourcesize);
-    
+
     // apply compute taint to sign-extended bytes
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
@@ -1792,8 +1808,140 @@ void PandaTaintVisitor::visitSExtInst(SExtInst &I){
     }
 }
 
-void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){}
-void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){}
+void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
+    //Assume that the cast will be to the same size destination
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    //Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    if (PST->getLocalSlot(I.getOperand(0)) < 0) {
+      // arg was constant, need to delete taint
+      op.typ = DELETEOP;
+      dst.typ = LADDR;
+      dst.val.la = PST->getLocalSlot(&I);
+      for (int i = 0; i < size; i++) {
+          dst.off = i;
+          op.val.deletel.a = dst;
+          tob_op_write(tbuf, op);
+      }
+      return;
+    }
+
+    // accumulate all of oper[1]'s taint into c0 of temp
+    op.typ = COMPUTEOP;
+    src0.typ = LADDR;
+    src0.val.la = PST->getLocalSlot(I.getOperand(0));
+    src0.off = 0;
+    src1.typ = LADDR;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.compute.a = src0;
+    op.val.compute.b = src1;
+    op.val.compute.c = dst;
+
+    for (int i = 0; i < size; i++){
+        src0.off = i;
+        op.val.compute.a = src0;
+        tob_op_write(tbuf, op);
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
+    //Assume that the cast will be to the same size destination
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    //Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    if (PST->getLocalSlot(I.getOperand(0)) < 0) {
+      // arg was constant, need to delete taint
+      op.typ = DELETEOP;
+      dst.typ = LADDR;
+      dst.val.la = PST->getLocalSlot(&I);
+      for (int i = 0; i < size; i++) {
+          dst.off = i;
+          op.val.deletel.a = dst;
+          tob_op_write(tbuf, op);
+      }
+      return;
+    }
+
+    // accumulate all of oper[1]'s taint into c0 of temp
+    op.typ = COMPUTEOP;
+    src0.typ = LADDR;
+    src0.val.la = PST->getLocalSlot(I.getOperand(0));
+    src0.off = 0;
+    src1.typ = LADDR;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.compute.a = src0;
+    op.val.compute.b = src1;
+    op.val.compute.c = dst;
+
+    for (int i = 0; i < size; i++){
+        src0.off = i;
+        op.val.compute.a = src0;
+        tob_op_write(tbuf, op);
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
 void PandaTaintVisitor::visitUIToFPInst(UIToFPInst &I){}
 void PandaTaintVisitor::visitSIToFPInst(SIToFPInst &I){}
 void PandaTaintVisitor::visitFPTruncInst(FPTruncInst &I){}
@@ -1980,8 +2128,126 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
     }
 }
 
-void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){}
-void PandaTaintVisitor::visitPHINode(PHINode &I){}
+void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
+    //This instruction can be modeled as a simple floating point subtraction
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+    int constantArgs = 0;
+
+    // Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    for (int oper = 0; oper < 2; oper++){
+        // Operand is a constant, therefore it can't be tainted
+        if (PST->getLocalSlot(I.getOperand(oper)) < 0){
+            constantArgs++;
+
+            // both args were constants, need to delete taint
+            if (constantArgs == 2){
+                op.typ = DELETEOP;
+                dst.typ = LADDR;
+                dst.val.la = PST->getLocalSlot(&I);
+                for (int i = 0; i < size; i++){
+                    dst.off = i;
+                    op.val.deletel.a = dst;
+                    tob_op_write(tbuf, op);
+                }
+                return;
+            }
+
+            continue;
+        }
+
+        // accumulate all of oper[i]'s taint into c0 of temp
+        op.typ = COMPUTEOP;
+        src0.typ = LADDR;
+        src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+        src0.off = 0;
+        src1.typ = LADDR;
+        src1.val.la = PST->getLocalSlot(&I)+1;
+        src1.off = 0;
+        dst.typ = LADDR;
+        dst.off = 0;
+        dst.val.la = PST->getLocalSlot(&I) + 1;
+        op.val.compute.a = src0;
+        op.val.compute.b = src1;
+        op.val.compute.c = dst;
+
+        for (int i = 0; i < size; i++){
+            src0.off = i;
+            op.val.compute.a = src0;
+            tob_op_write(tbuf, op);
+        }
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+void PandaTaintVisitor::visitPHINode(PHINode &I){
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    int len = getValueSize(&I);
+
+    //Delete taint at destination
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < len; i++){
+        dst.off = i;
+        op.val.deletel.a = dst;
+        tob_op_write(tbuf, op);
+    }
+
+    char name[4] = "phi";
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = len;
+
+    assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
+
+    for (int i = 0; i < (int)I.getNumIncomingValues(); i++){
+      op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
+      op.val.insn_start.phi_blocks[i] = PST->getLocalSlot(I.getIncomingBlock(i));
+    }
+
+    tob_op_write(tbuf, op);
+
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
+    src.typ = UNK;
+    src.val.ua = 0;
+
+    for (int i = 0; i < len; i++){
+        src.off = i;
+        dst.off = i;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
 
 /*
  * Taint model for LLVM bswap intrinsic.
@@ -1996,10 +2262,39 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
     dst.val.la = PST->getLocalSlot(&I);
     src.typ = LADDR;
     src.val.la = PST->getLocalSlot(I.getArgOperand(0));
-    
+
     for (int i = 0; i < bytes; i++){
         src.off = i;
         dst.off = bytes-i-1;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+/*
+ * Taint model for LLVM memcpy intrinsic.
+ */
+void PandaTaintVisitor::memcpyHelper(CallInst &I){
+    llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+    int bytes = bytes_ir->getSExtValue();
+
+    llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
+    int align = align_ir->getSExtValue();
+    //printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
+    src.typ = LADDR;
+    src.val.la = PST->getLocalSlot(I.getArgOperand(1));
+
+    for (int i = 0; i < bytes; i++){
+        src.off = i;
+        dst.off = i + align;
         op.val.copy.a = src;
         op.val.copy.b = dst;
         tob_op_write(tbuf, op);
@@ -2010,14 +2305,15 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
         //assert(1==0);
-        // XXX: doesn't have a static name, therefore we can't process it.
+        return; // doesn't have name, we can't process it
         // Might be ok for now, but we might need to revisit.
         printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
             I.getParent()->getParent()->getName().str().c_str());
         return;
+
     }
     std::string calledName = called->getName().str();
-    
+
     // Check to see if it's a supported intrinsic
     if (I.getCalledFunction()->getIntrinsicID()
             == Intrinsic::uadd_with_overflow){
@@ -2028,6 +2324,11 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         bswapHelper(I);
         return;
     }
+    // Needs to use logging!
+    // else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
+    //     memcpyHelper(I);
+    //     return;
+    // }
     else if (I.getCalledFunction()->getIntrinsicID()
             != Intrinsic::not_intrinsic){
         printf("Note: unsupported intrinsic %s in %s.\n",
@@ -2089,7 +2390,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         printf("found %s in cache\n", it->first.c_str());
 #endif
         /*** Process call taint here ***/
-        
+
         struct taint_op_struct op = {};
         struct addr_struct src = {};
         struct addr_struct dst = {};
@@ -2215,7 +2516,52 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I){
     simpleTaintCopy(src, dst, bytes);
 }
 
-void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){}
+void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
+    int op0 = PST->getLocalSlot(I.getOperand(0));
+    int op1 = PST->getLocalSlot(I.getOperand(1));
+    int idx = 0;
+    if (I.getNumOperands() > 2) {
+        llvm::ConstantInt* idx_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+        idx = idx_ir->getSExtValue();
+    }
+    int rst = PST->getLocalSlot(&I);
+    int bytes0 = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+    int bytes1 = ceil(I.getOperand(1)->getType()->getScalarSizeInBits() / 8.0);
+
+    //Only support 2 or 3 operands
+    assert(I.getNumOperands() == 2 || I.getNumOperands() == 3);
+    //Only support 64 bit + 64 bit and 64 bit + 16 bit
+    assert((bytes0 == 8 || bytes0 == 0) && (bytes1 == 8 || bytes1 == 2));
+
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    dst.val.la = rst;
+    src.typ = LADDR;
+    src.val.la = op0;
+
+    for (int i = 0; i < bytes0; i++){
+        src.off = i;
+        dst.off = i;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+
+    src.val.la = op1;
+
+    for (int i = 0; i < bytes1; i++){
+        src.off = i;
+        //Hardcode 8 bytes because first element is always 64 bits
+        dst.off = i + 8*idx;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
 void PandaTaintVisitor::visitLandingPadInst(LandingPadInst &I){}
 
 // Unhandled
