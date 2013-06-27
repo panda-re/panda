@@ -34,8 +34,14 @@ char PandaTaintFunctionPass::ID = 0;
 static RegisterPass<PandaTaintFunctionPass>
 X("PandaTaint", "Analyze each instruction in a function for taint operations");
 
-FunctionPass *llvm::createPandaTaintFunctionPass(size_t tob_size, FILE *tc) {
-    return new PandaTaintFunctionPass(tob_size, tc);
+/*
+ * Most of the time, existingTtbCache should be just passed as NULL so one is
+ * created in the constructor.  Otherwise, pass in an existing one that was
+ * created previously.
+ */
+FunctionPass *llvm::createPandaTaintFunctionPass(size_t tob_size,
+        std::map<std::string, TaintTB*> *existingTtbCache) {
+    return new PandaTaintFunctionPass(tob_size, existingTtbCache);
 }
 
 TaintOpBuffer* PandaTaintFunctionPass::getTaintOpBuffer(){
@@ -167,7 +173,7 @@ void PandaTaintFunctionPass::debugTaintOps(){
 /*
  * This probably isn't the safest code.  Please don't fuzz the cache file ;)
  */
-void PandaTaintFunctionPass::readTaintCache(){
+/*void PandaTaintFunctionPass::readTaintCache(){
     size_t cacheSize;
     char name[50];
     int numBBs;
@@ -254,7 +260,7 @@ void PandaTaintFunctionPass::writeTaintCache(){
             }
         }
     }
-}
+}*/
 
 
 
@@ -2060,6 +2066,24 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
 
     std::map<std::string, TaintTB*> *ttbCache = PTFP->getTaintTBCache();
     std::map<std::string, TaintTB*>::iterator it = ttbCache->find(calledName);
+
+    /*
+     * If it's not currently in the cache and it's something that should be in
+     * the cache (per the if statement), then we need to create a new function
+     * pass and put it in the cache.
+     */
+    if (it == ttbCache->end() && I.getCalledFunction()
+        && !I.getCalledFunction()->isDeclaration()
+        && !I.getCalledFunction()->isIntrinsic()){
+
+        FunctionPass *newPTFP =
+            createPandaTaintFunctionPass(5*1048576, ttbCache);
+        newPTFP->runOnFunction(*I.getCalledFunction());
+        it = ttbCache->find(calledName);
+        delete newPTFP;
+        assert(it != ttbCache->end());
+    }
+
     if (it != ttbCache->end()){
 #ifdef TAINTDEBUG
         printf("found %s in cache\n", it->first.c_str());
