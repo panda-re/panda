@@ -106,6 +106,7 @@ public:
     void approxArithHelper(BinaryOperator &I);
     void simpleArithHelper(BinaryOperator &I);
     void bswapHelper(CallInst &I);
+    void memcpyHelper(CallInst &I);
     void loadHelper(Value *src, Value *dst, int len);
     void storeHelper(Value *src, Value *dst, int len);
 };
@@ -121,7 +122,7 @@ class PandaTaintFunctionPass : public FunctionPass {
     TaintOpBuffer *tbuf; // global tbuf
     // taint cache for generated code and helper functions
     std::map<std::string, TaintTB*> *ttbCache;
-    FILE *taintCache; // persistent taint cache file for helpers
+    bool createdTtbCache;
 public:
     static char ID;
     PandaTaintVisitor *PTV; // Our LLVM instruction visitor
@@ -131,18 +132,34 @@ public:
     PandaTaintFunctionPass() : FunctionPass(ID),
         PTV(new PandaTaintVisitor()) {}
 
-    PandaTaintFunctionPass(size_t tob_size, FILE *tc) : 
+    PandaTaintFunctionPass(size_t tob_size,
+            std::map<std::string, TaintTB*> *existingTtbCache) : 
         FunctionPass(ID), tbuf_size(tob_size), tbuf(tob_new(tbuf_size)),
-        ttbCache(new std::map<std::string, TaintTB*>()), taintCache(tc),
-        PTV(new PandaTaintVisitor(this)) {}
+        createdTtbCache(false), PTV(new PandaTaintVisitor(this)){
+
+        /*
+         * We either create the ttbCache, or simply populate the one that was
+         * passed in.
+         */
+        if (existingTtbCache == NULL){
+            ttbCache = new std::map<std::string, TaintTB*>();
+            createdTtbCache = true;
+        }
+        else {
+            ttbCache = existingTtbCache;
+        }
+    }
 
     ~PandaTaintFunctionPass() {
-        std::map<std::string, TaintTB*>::iterator it;
-        for (it = ttbCache->begin(); it != ttbCache->end(); it++){
-            taint_tb_cleanup(it->second);
-            ttbCache->erase(it);
+        // If we created this ttbCache, we delete it
+        if (createdTtbCache){
+            std::map<std::string, TaintTB*>::iterator it;
+            for (it = ttbCache->begin(); it != ttbCache->end(); it++){
+                taint_tb_cleanup(it->second);
+                ttbCache->erase(it);
+            }
+            delete ttbCache;
         }
-        delete ttbCache;
         delete PTV;
         tob_delete(tbuf);
         cleanup_taint_stats();
@@ -164,11 +181,12 @@ public:
     
     // Functions for reading/writing persistent taint cache for use with helper
     // functions
-    void readTaintCache();
-    void writeTaintCache();
+    //void readTaintCache();
+    //void writeTaintCache();
 };
 
-FunctionPass *createPandaTaintFunctionPass(size_t tob_size, FILE *tc);
+FunctionPass *createPandaTaintFunctionPass(size_t tob_size,
+    std::map<std::string, TaintTB*> *existingTtbCache);
 
 } // End llvm namespace
 

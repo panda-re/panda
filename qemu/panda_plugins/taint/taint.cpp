@@ -243,7 +243,7 @@ static int user_creat(abi_long ret, void *p){
 
 static int user_read(abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
-        TaintOpBuffer *tempBuf = tob_new(3*1048576 /* 1MB */);
+        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
         add_taint(shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
         tob_delete(tempBuf);
     }
@@ -355,7 +355,7 @@ bool init_plugin(void *self) {
     // Add the taint analysis pass to our taint pass manager
     llvm::FunctionPass *taintfp =
         llvm::createPandaTaintFunctionPass(5*1048576/* global taint op buffer
-        size, 3MB */, /*taint cache file*/NULL);
+        size, 5MB */, NULL /* existing taint cache */);
     PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();

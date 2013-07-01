@@ -895,6 +895,61 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #undef __OP_BRCOND_C
 #undef __OP_BRCOND
 
+#define __OP_SETCOND_C(tcg_cond, cond)                              \
+            case tcg_cond:                                          \
+                v = m_builder.CreateICmp ## cond(v1, v2);           \
+            break;
+
+#define __OP_SETCOND(opc_name, bits)                                \
+    case opc_name: {                                                \
+        Value* retptr = getPtrForValue(args[0]);                    \
+        Value* ret = m_builder.CreateLoad(retptr);                  \
+        Value* v1  = getValue(args[1]);                             \
+        Value* v2  = getValue(args[2]);                             \
+        assert(ret->getType() == intType(bits));                    \
+        assert(v1->getType() == intType(bits));                     \
+        assert(v2->getType() == intType(bits));                     \
+        switch(args[3]) {                                           \
+            __OP_SETCOND_C(TCG_COND_EQ,   EQ)                       \
+            __OP_SETCOND_C(TCG_COND_NE,   NE)                       \
+            __OP_SETCOND_C(TCG_COND_LT,  SLT)                       \
+            __OP_SETCOND_C(TCG_COND_GE,  SGE)                       \
+            __OP_SETCOND_C(TCG_COND_LE,  SLE)                       \
+            __OP_SETCOND_C(TCG_COND_GT,  SGT)                       \
+            __OP_SETCOND_C(TCG_COND_LTU, ULT)                       \
+            __OP_SETCOND_C(TCG_COND_GEU, UGE)                       \
+            __OP_SETCOND_C(TCG_COND_LEU, ULE)                       \
+            __OP_SETCOND_C(TCG_COND_GTU, UGT)                       \
+            default:                                                \
+                tcg_abort();                                        \
+        }                                                           \
+        BasicBlock* bb = BasicBlock::Create(m_context, "setZero");  \
+        BasicBlock* finished = BasicBlock::Create(m_context, "done");\
+        BasicBlock* bbSet = BasicBlock::Create(m_context, "setOne");\
+        m_builder.CreateCondBr(v, bbSet, bb);                       \
+        m_tbFunction->getBasicBlockList().push_back(bbSet);         \
+        m_builder.SetInsertPoint(bbSet);                            \
+        setValue(args[0], ConstantInt::get(intType(bits), 1));      \
+        delValue(args[0]);                                          \
+        m_builder.CreateBr(finished);                               \
+        m_tbFunction->getBasicBlockList().push_back(bb);            \
+        m_builder.SetInsertPoint(bb);                               \
+        setValue(args[0], ConstantInt::get(intType(bits), 0));      \
+        delValue(args[0]);                                          \
+        m_builder.CreateBr(finished);                               \
+        m_tbFunction->getBasicBlockList().push_back(finished);      \
+        m_builder.SetInsertPoint(finished);                         \
+    } break;
+    
+    __OP_SETCOND(INDEX_op_setcond_i32, 32)
+    
+#if TCG_TARGET_REG_BITS == 64
+    __OP_SETCOND(INDEX_op_setcond_i64, 64)
+#endif
+
+#undef __OP_SETCOND_C
+#undef __OP_SETCOND
+
     case INDEX_op_set_label:
         assert(getLabel(args[0])->getParent() == 0);
         startNewBasicBlock(getLabel(args[0]));
