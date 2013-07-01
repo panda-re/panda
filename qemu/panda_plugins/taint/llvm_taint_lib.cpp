@@ -1234,8 +1234,6 @@ void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
 void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
 void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){}
-// BDG: UnwindInst doesn't exist any more 
-//void PandaTaintVisitor::visitUnwindInst(UnwindInst &I){}
 
 // Binary operators
 void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){

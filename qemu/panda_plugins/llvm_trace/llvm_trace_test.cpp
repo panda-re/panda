@@ -21,6 +21,7 @@ PANDAENDCOMMENT */
 #include "stdio.h"
 
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/PassManager.h"
 #include "llvm/IR/Value.h"
@@ -187,8 +188,8 @@ void TestInstVisitor::visitSwitchInst(SwitchInst &I){
     IntegerType *intType = IntegerType::get(getGlobalContext(), sizeof(int)*8);
     ConstantInt *caseVal =
         ConstantInt::get(intType, entry.entry.switchstmt.cond);
-    unsigned caseIndex = I.findCaseValue(caseVal).getCaseIndex();
-    TFP->setNextBB(I.getSuccessor(caseIndex));
+    SwitchInst::CaseIt caseIndex = I.findCaseValue(caseVal);
+    TFP->setNextBB(I.getSuccessor(caseIndex.getSuccessorIndex()));
 }
 
 /***

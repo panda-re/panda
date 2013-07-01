@@ -72,7 +72,7 @@ int main(int argc, char **argv){
         assert(m);
         if (!f->isDeclaration()){ // internal functions only
             ValueToValueMapTy VMap;
-            Function *newFunc = CloneFunction(f,VMap,false);
+            Function *newFunc = CloneFunction(f, VMap, false);
             std::string origName = f->getName();
             std::string newName = origName.append("_llvm");
             newFunc->setName(newName);
@@ -83,14 +83,9 @@ int main(int argc, char **argv){
              * that causes the program to segfault.  More information available
              * here: http://llvm.org/bugs/show_bug.cgi?id=11089
              */
-            const AttributeSet PAL = newFunc->getAttributes();
-            AttrBuilder B(Attribute::StackProtectReq);
-            const AttributeSet PALnew =
-                PAL.removeAttributes(newFunc->getContext(), AttributeSet::FunctionIndex,
-                        AttributeSet::get(newFunc->getContext(),
-                        AttributeSet::FunctionIndex, B));
-            newFunc->setAttributes(PALnew);
-            //newFunc->removeFnAttr(Attribute::StackProtectReq);
+            const AttributeSet AS = newFunc->getAttributes();
+            newFunc->setAttributes(AS.removeAttribute(newFunc->getContext(),
+                AttributeSet::FunctionIndex, Attribute::StackProtectReq));
             // push to the front so the iterator doesn't see them again
             m->getFunctionList().push_front(newFunc);
             f->replaceAllUsesWith(newFunc);
