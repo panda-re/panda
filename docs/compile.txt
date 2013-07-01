@@ -18,7 +18,7 @@ apt-get build-dep qemu
 
 2. Compile LLVM part.
 
-cd panda/llvm-3.0
+cd panda/llvm-3.3
 sh ./build.sh
 
 This may take a while.
