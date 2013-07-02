@@ -12,6 +12,16 @@
  * 
 PANDAENDCOMMENT */
 
+
+
+/* 
+ * XXX
+ * XXX Note: changing this file could very easily break other code that uses it.
+ * XXX
+ */
+
+
+
 /*
  * This file is responsible for implementing the architecture-specific details
  * for the taint processor, such as printing taint ops, and determining where in
@@ -96,6 +106,9 @@ int get_cpustate_val(uintptr_t dynval){
         else if (dynval == eip_reg){
             return EIP_REG;
         }
+        else {
+            return -1; // error
+        }
     }
     else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
             && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
@@ -163,8 +176,6 @@ int get_cpustate_val(uintptr_t dynval){
     else {
         return -1; // irrelevant part of CPUstate
     }
-
-    return -1; // make compiler happy
 }
 
 void printreg(Addr a){
@@ -212,7 +223,10 @@ void printreg(Addr a){
 }
 
 void printspec(Addr a){
-    if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
+    if ((a.val.gs >= FT0_0) && (a.val.gs < XMM_T0_0)){
+        printf("g_ft0[%d]", a.off);
+    }
+    else if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
         printf("g_xmm_t0[%d]", a.off);
     }
     else if ((a.val.gs >= MMX_T0_0) && (a.val.gs < FPREGS_0_0)){
@@ -280,65 +294,70 @@ void init_regs(void){
 }
 
 int get_cpustate_val(uintptr_t dynval){
-    if (dynval == rax_reg){
-        return R_EAX;
-    }
-    else if (dynval == rcx_reg){
-        return R_ECX;
-    }
-    else if (dynval == rdx_reg){
-        return R_EDX;
-    }
-    else if (dynval == rbx_reg){
-        return R_EBX;
-    }
-    else if (dynval == rsp_reg){
-        return R_ESP;
-    }
-    else if (dynval == rbp_reg){
-        return R_EBP;
-    }
-    else if (dynval == rsi_reg){
-        return R_ESI;
-    }
-    else if (dynval == rdi_reg){
-        return R_EDI;
-    }
-    else if (dynval == r8_reg){
-        return R8;
-    }
-    else if (dynval == r9_reg){
-        return R9;
-    }
-    else if (dynval == r10_reg){
-        return R10;
-    }
-    else if (dynval == r11_reg){
-        return R11;
-    }
-    else if (dynval == r12_reg){
-        return R12;
-    }
-    else if (dynval == r13_reg){
-        return R13;
-    }
-    else if (dynval == r14_reg){
-        return R14;
-    }
-    else if (dynval == r15_reg){
-        return R15;
-    }
-    else if (dynval == cc_op_reg){
-        return CC_OP_REG;
-    }
-    else if (dynval == cc_src_reg){
-        return CC_SRC_REG;
-    }
-    else if (dynval == cc_dst_reg){
-        return CC_DST_REG;
-    }
-    else if (dynval == rip_reg){
-        return RIP_REG;
+    if (dynval < ((uintptr_t)env + offsetof(CPUX86State, eflags))){
+        if (dynval == rax_reg){
+            return R_EAX;
+        }
+        else if (dynval == rcx_reg){
+            return R_ECX;
+        }
+        else if (dynval == rdx_reg){
+            return R_EDX;
+        }
+        else if (dynval == rbx_reg){
+            return R_EBX;
+        }
+        else if (dynval == rsp_reg){
+            return R_ESP;
+        }
+        else if (dynval == rbp_reg){
+            return R_EBP;
+        }
+        else if (dynval == rsi_reg){
+            return R_ESI;
+        }
+        else if (dynval == rdi_reg){
+            return R_EDI;
+        }
+        else if (dynval == r8_reg){
+            return R8;
+        }
+        else if (dynval == r9_reg){
+            return R9;
+        }
+        else if (dynval == r10_reg){
+            return R10;
+        }
+        else if (dynval == r11_reg){
+            return R11;
+        }
+        else if (dynval == r12_reg){
+            return R12;
+        }
+        else if (dynval == r13_reg){
+            return R13;
+        }
+        else if (dynval == r14_reg){
+            return R14;
+        }
+        else if (dynval == r15_reg){
+            return R15;
+        }
+        else if (dynval == cc_op_reg){
+            return CC_OP_REG;
+        }
+        else if (dynval == cc_src_reg){
+            return CC_SRC_REG;
+        }
+        else if (dynval == cc_dst_reg){
+            return CC_DST_REG;
+        }
+        else if (dynval == rip_reg){
+            return RIP_REG;
+        }
+        else {
+            return -1; // error
+        }
     }
     else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
             && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
@@ -477,7 +496,10 @@ void printreg(Addr a){
 }
 
 void printspec(Addr a){
-    if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
+    if ((a.val.gs >= FT0_0) && (a.val.gs < XMM_T0_0)){
+        printf("g_ft0[%d]", a.off);
+    }
+    else if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
         printf("g_xmm_t0[%d]", a.off);
     }
     else if ((a.val.gs >= MMX_T0_0) && (a.val.gs < FPREGS_0_0)){
