@@ -2125,7 +2125,7 @@ static inline void tcg_gen_movcond_i32(TCGCond cond, TCGv_i32 ret,
     if (TCG_TARGET_HAS_movcond_i32) {
         tcg_gen_op6i_i32(INDEX_op_movcond_i32, ret, c1, c2, v1, v2, cond);
     } else {
-        TCGv_i32 t0 = tcg_temp_new_i32();
+        TCGv_i32 t0 = tcg_temp_local_new_i32();
         TCGv_i32 t1 = tcg_temp_new_i32();
         tcg_gen_setcond_i32(cond, t0, c1, c2);
         tcg_gen_neg_i32(t0, t0);
