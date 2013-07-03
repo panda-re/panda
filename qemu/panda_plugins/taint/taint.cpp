@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 /*
  * PANDA taint analysis plugin
@@ -55,6 +55,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
+int guest_hypercall_callback(CPUState *env);
 
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
@@ -142,7 +143,7 @@ static void llvm_init(){
             Function::ExternalLinkage, "log_dynval", mod);
     logFunc->addFnAttr(Attribute::AlwaysInline);
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
-    
+
     // Create instrumentation pass and add to function pass manager
     llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
@@ -181,7 +182,7 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     printf("EXCEPTION - logging\n");
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     log_exception(dynval_buffer);
-    
+
     // Then execute taint ops up until the exception occurs.  Execution of taint
     // ops will stop at the point of the exception.
     rewind_dynval_buffer(dynval_buffer);
@@ -189,6 +190,46 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
 
     // Make sure there's nothing left in the buffer
     assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
+    return 0;
+}
+
+int guest_hypercall_callback(CPUState *env) {
+    //if(env->regs[R_EAX] == 0xdeadbeef) {
+    //    if (env->regs[R_EBX] == 0) {                // Taint label and start tracing
+    //        target_ulong buf_start = env->regs[R_ECX];
+    //        target_ulong buf_len = env->regs[R_EDX];
+
+    //        //if(!funclog) {
+    //        //    funclog = fopen("/tmp/llvm-functions.log", "w");
+    //        //    setbuf(funclog, NULL);
+    //        //}
+
+    //        //fprintf(funclog, "label " TARGET_FMT_lu " " TARGET_FMT_lu "\n",
+    //        //    buf_start, buf_len);
+    //        //printf("label " TARGET_FMT_lx " " TARGET_FMT_lu "\n",
+    //        //    buf_start, buf_len);
+
+    //        //execute_llvm = 1;
+    //        //generate_llvm = 1;
+    //        //trace_llvm = 1;
+
+    //        // Need this because existing TBs do not contain LLVM code
+    //        //panda_do_flush_tb();
+    //    }
+    //    else if (env->regs[R_EBX] == 1) {           // Taint query + stop tracing
+    //        target_ulong buf_start = env->regs[R_ECX];
+    //        target_ulong buf_len = env->regs[R_EDX];
+
+    //        //fprintf(funclog, "query " TARGET_FMT_lu " " TARGET_FMT_lu "\n",
+    //        //    buf_start, buf_len);
+    //        //printf("query " TARGET_FMT_lx " " TARGET_FMT_lu "\n",
+    //        //    buf_start, buf_len);
+    //        //execute_llvm = 0;
+    //        //generate_llvm = 0;
+    //        //trace_llvm = 0;
+    //    }
+    //}
+    printf("HERE WOOOHHOOOO\n");
     return 0;
 }
 
@@ -209,7 +250,7 @@ int outfd = -1;
 static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
               abi_long flagarg){
     const char *file = path((const char*)p);
-    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl); 
+    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl);
     if (ret > 0){
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
@@ -300,6 +341,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_PHYS_MEM_WRITE, pcb);
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(self, PANDA_CB_CPU_RESTORE_STATE, pcb);
+    pcb.guest_hypercall = guest_hypercall_callback;
+    panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
 
 #ifndef CONFIG_SOFTMMU
     pcb.user_after_syscall = user_after_syscall;
@@ -351,7 +394,7 @@ bool init_plugin(void *self) {
     }
 
     taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
-    
+
     // Add the taint analysis pass to our taint pass manager
     llvm::FunctionPass *taintfp =
         llvm::createPandaTaintFunctionPass(5*1048576/* global taint op buffer
