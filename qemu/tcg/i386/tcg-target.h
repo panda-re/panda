@@ -36,6 +36,8 @@
 # define TCG_TARGET_NB_REGS 8
 #endif
 
+#include "config-host.h"
+
 typedef enum {
     TCG_REG_EAX = 0,
     TCG_REG_ECX,
@@ -91,6 +93,13 @@ typedef enum {
 #define TCG_TARGET_HAS_nand_i32         0
 #define TCG_TARGET_HAS_nor_i32          0
 #define TCG_TARGET_HAS_deposit_i32      1
+#if (defined(__x86_64__) || defined(__i686__)) && !defined(CONFIG_LLVM)
+/* Use cmov only if the compiler is already doing so.  */
+/* But disable it if LLVM is enabled */
+#define TCG_TARGET_HAS_movcond_i32      1
+#else
+#define TCG_TARGET_HAS_movcond_i32      0
+#endif
 
 #if TCG_TARGET_REG_BITS == 64
 #define TCG_TARGET_HAS_div2_i64         1
@@ -112,6 +121,11 @@ typedef enum {
 #define TCG_TARGET_HAS_nand_i64         0
 #define TCG_TARGET_HAS_nor_i64          0
 #define TCG_TARGET_HAS_deposit_i64      1
+#if defined(CONFIG_LLVM)
+#define TCG_TARGET_HAS_movcond_i64      0
+#else // CONFIG_LLVM
+#define TCG_TARGET_HAS_movcond_i64      1
+#endif // CONFIG_LLVM
 #endif
 
 #define TCG_TARGET_deposit_i32_valid(ofs, len) \

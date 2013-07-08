@@ -279,15 +279,6 @@ static void gen_sbfx(TCGv var, int shift, int width)
     }
 }
 
-/* Bitfield insertion.  Insert val into base.  Clobbers base and val.  */
-static void gen_bfi(TCGv dest, TCGv base, TCGv val, int shift, uint32_t mask)
-{
-    tcg_gen_andi_i32(val, val, mask);
-    tcg_gen_shli_i32(val, val, shift);
-    tcg_gen_andi_i32(base, base, ~(mask << shift));
-    tcg_gen_or_i32(dest, base, val);
-}
-
 /* Return (b << 32) + a. Mark inputs as dead */
 static TCGv_i64 gen_addq_msw(TCGv_i64 a, TCGv b)
 {
@@ -442,6 +433,37 @@ static void gen_sub_CC(TCGv dest, TCGv t0, TCGv t1)
     tcg_gen_mov_i32(dest, cpu_NF);
 }
 
+#define GEN_SHIFT(name)                                               \
+static void gen_##name(TCGv dest, TCGv t0, TCGv t1)                   \
+{                                                                     \
+    TCGv tmp1, tmp2, tmp3;                                            \
+    tmp1 = tcg_temp_new_i32();                                        \
+    tcg_gen_andi_i32(tmp1, t1, 0xff);                                 \
+    tmp2 = tcg_const_i32(0);                                          \
+    tmp3 = tcg_const_i32(0x1f);                                       \
+    tcg_gen_movcond_i32(TCG_COND_GTU, tmp2, tmp1, tmp3, tmp2, t0);    \
+    tcg_temp_free_i32(tmp3);                                          \
+    tcg_gen_andi_i32(tmp1, tmp1, 0x1f);                               \
+    tcg_gen_##name##_i32(dest, tmp2, tmp1);                           \
+    tcg_temp_free_i32(tmp2);                                          \
+    tcg_temp_free_i32(tmp1);                                          \
+}
+GEN_SHIFT(shl)
+GEN_SHIFT(shr)
+#undef GEN_SHIFT
+
+static void gen_sar(TCGv dest, TCGv t0, TCGv t1)
+{
+    TCGv tmp1, tmp2;
+    tmp1 = tcg_temp_new_i32();
+    tcg_gen_andi_i32(tmp1, t1, 0xff);
+    tmp2 = tcg_const_i32(0x1f);
+    tcg_gen_movcond_i32(TCG_COND_GTU, tmp1, tmp1, tmp2, tmp2, tmp1);
+    tcg_temp_free_i32(tmp2);
+    tcg_gen_sar_i32(dest, t0, tmp1);
+    tcg_temp_free_i32(tmp1);
+}
+
 /* FIXME:  Implement this natively.  */
 #define tcg_gen_abs_i32(t0, t1) gen_helper_abs(t0, t1)
 
@@ -518,9 +540,15 @@ static inline void gen_arm_shift_reg(TCGv var, int shiftop,
         }
     } else {
         switch (shiftop) {
-        case 0: gen_helper_shl(var, var, shift); break;
-        case 1: gen_helper_shr(var, var, shift); break;
-        case 2: gen_helper_sar(var, var, shift); break;
+        case 0:
+            gen_shl(var, var, shift);
+            break;
+        case 1:
+            gen_shr(var, var, shift);
+            break;
+        case 2:
+            gen_sar(var, var, shift);
+            break;
         case 3: tcg_gen_andi_i32(shift, shift, 0x1f);
                 tcg_gen_rotr_i32(var, var, shift); break;
         }
@@ -2845,12 +2873,12 @@ static int disas_vfp_insn(CPUState * env, DisasContext *s, uint32_t insn)
                         switch (size) {
                         case 0:
                             tmp2 = neon_load_reg(rn, pass);
-                            gen_bfi(tmp, tmp2, tmp, offset, 0xff);
+                            tcg_gen_deposit_i32(tmp, tmp2, tmp, offset, 8);
                             tcg_temp_free_i32(tmp2);
                             break;
                         case 1:
                             tmp2 = neon_load_reg(rn, pass);
-                            gen_bfi(tmp, tmp2, tmp, offset, 0xffff);
+                            tcg_gen_deposit_i32(tmp, tmp2, tmp, offset, 16);
                             tcg_temp_free_i32(tmp2);
                             break;
                         case 2:
@@ -4206,7 +4234,8 @@ static int disas_neon_ls_insn(CPUState * env, DisasContext *s, uint32_t insn)
                     }
                     if (size != 2) {
                         tmp2 = neon_load_reg(rd, pass);
-                        gen_bfi(tmp, tmp2, tmp, shift, size ? 0xffff : 0xff);
+                        tcg_gen_deposit_i32(tmp, tmp2, tmp,
+                                            shift, size ? 16 : 8);
                         tcg_temp_free_i32(tmp2);
                     }
                     neon_store_reg(rd, pass, tmp);
@@ -7762,7 +7791,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                         }
                         if (i != 32) {
                             tmp2 = load_reg(s, rd);
-                            gen_bfi(tmp, tmp2, tmp, shift, (1u << i) - 1);
+                            tcg_gen_deposit_i32(tmp, tmp2, tmp, shift, i);
                             tcg_temp_free_i32(tmp2);
                         }
                         store_reg(s, rd, tmp);
@@ -8873,7 +8902,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                         imm = imm + 1 - shift;
                         if (imm != 32) {
                             tmp2 = load_reg(s, rd);
-                            gen_bfi(tmp, tmp2, tmp, shift, (1u << imm) - 1);
+                            tcg_gen_deposit_i32(tmp, tmp2, tmp, shift, imm);
                             tcg_temp_free_i32(tmp2);
                         }
                         break;
@@ -9333,7 +9362,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             break;
         case 0x2: /* lsl */
             if (s->condexec_mask) {
-                gen_helper_shl(tmp2, tmp2, tmp);
+                gen_shl(tmp2, tmp2, tmp);
             } else {
                 gen_helper_shl_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
@@ -9341,7 +9370,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             break;
         case 0x3: /* lsr */
             if (s->condexec_mask) {
-                gen_helper_shr(tmp2, tmp2, tmp);
+                gen_shr(tmp2, tmp2, tmp);
             } else {
                 gen_helper_shr_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
@@ -9349,7 +9378,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             break;
         case 0x4: /* asr */
             if (s->condexec_mask) {
-                gen_helper_sar(tmp2, tmp2, tmp);
+                gen_sar(tmp2, tmp2, tmp);
             } else {
                 gen_helper_sar_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);

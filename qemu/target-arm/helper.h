@@ -2,9 +2,9 @@
 
 #include "panda_helper_defs.h"
 
-DEF_HELPER_1(clz, i32, i32)
-DEF_HELPER_1(sxtb16, i32, i32)
-DEF_HELPER_1(uxtb16, i32, i32)
+DEF_HELPER_FLAGS_1(clz, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32)
+DEF_HELPER_FLAGS_1(sxtb16, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32)
+DEF_HELPER_FLAGS_1(uxtb16, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32)
 
 DEF_HELPER_2(add_setq, i32, i32, i32)
 DEF_HELPER_2(add_saturate, i32, i32, i32)
@@ -12,10 +12,10 @@ DEF_HELPER_2(sub_saturate, i32, i32, i32)
 DEF_HELPER_2(add_usaturate, i32, i32, i32)
 DEF_HELPER_2(sub_usaturate, i32, i32, i32)
 DEF_HELPER_1(double_saturate, i32, s32)
-DEF_HELPER_2(sdiv, s32, s32, s32)
-DEF_HELPER_2(udiv, i32, i32, i32)
-DEF_HELPER_1(rbit, i32, i32)
-DEF_HELPER_1(abs, i32, i32)
+DEF_HELPER_FLAGS_2(sdiv, TCG_CALL_CONST | TCG_CALL_PURE, s32, s32, s32)
+DEF_HELPER_FLAGS_2(udiv, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32, i32)
+DEF_HELPER_FLAGS_1(rbit, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32)
+DEF_HELPER_FLAGS_1(abs, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32)
 
 #define PAS_OP(pfx)  \
     DEF_HELPER_3(pfx ## add8, i32, i32, i32, ptr) \
@@ -47,11 +47,12 @@ DEF_HELPER_2(usat, i32, i32, i32)
 DEF_HELPER_2(ssat16, i32, i32, i32)
 DEF_HELPER_2(usat16, i32, i32, i32)
 
-DEF_HELPER_2(usad8, i32, i32, i32)
+DEF_HELPER_FLAGS_2(usad8, TCG_CALL_CONST | TCG_CALL_PURE, i32, i32, i32)
 
 DEF_HELPER_1(logicq_cc, i32, i64)
 
-DEF_HELPER_3(sel_flags, i32, i32, i32, i32)
+DEF_HELPER_FLAGS_3(sel_flags, TCG_CALL_CONST | TCG_CALL_PURE,
+                   i32, i32, i32, i32)
 DEF_HELPER_1(exception, void, i32)
 DEF_HELPER_0(wfi, void)
 
@@ -148,9 +149,6 @@ DEF_HELPER_4(neon_tbl, i32, i32, i32, i32, i32)
 DEF_HELPER_2(adc_cc, i32, i32, i32)
 DEF_HELPER_2(sbc_cc, i32, i32, i32)
 
-DEF_HELPER_2(shl, i32, i32, i32)
-DEF_HELPER_2(shr, i32, i32, i32)
-DEF_HELPER_2(sar, i32, i32, i32)
 DEF_HELPER_2(shl_cc, i32, i32, i32)
 DEF_HELPER_2(shr_cc, i32, i32, i32)
 DEF_HELPER_2(sar_cc, i32, i32, i32)
