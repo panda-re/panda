@@ -121,7 +121,11 @@ typedef enum {
 #define TCG_TARGET_HAS_nand_i64         0
 #define TCG_TARGET_HAS_nor_i64          0
 #define TCG_TARGET_HAS_deposit_i64      1
+#if defined(CONFIG_LLVM)
+#define TCG_TARGET_HAS_movcond_i64      0
+#else // CONFIG_LLVM
 #define TCG_TARGET_HAS_movcond_i64      1
+#endif // CONFIG_LLVM
 #endif
 
 #define TCG_TARGET_deposit_i32_valid(ofs, len) \
