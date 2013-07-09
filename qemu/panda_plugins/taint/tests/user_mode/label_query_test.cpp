@@ -5,36 +5,76 @@
 #include <string.h>
 #include <cpuid.h>
 
-void label_buffer(unsigned, unsigned);
-void query_buffer(unsigned, unsigned, unsigned);
+void label_buffer(unsigned long, unsigned long);
+void query_buffer(unsigned long, unsigned long);
 
 int main(int argc, char* argv[]) {
-  unsigned buffer = 1;
+  unsigned long buffer = 1;
 
   label_buffer(buffer, sizeof(buffer));
-  //query_buffer(&buffer, sizeof(buffer), 0);
-  //vm_guest_util_done();
+  query_buffer(buffer, sizeof(buffer));
 
   printf("Completed successfully\n");
 
   return 0;
 }
 
-void label_buffer(unsigned buf, unsigned buf_len) {
-  unsigned level = 0;
-  unsigned eax = 0;
-  unsigned ebx;
-  unsigned ecx;
-  unsigned edx;
-  //unsigned ebx = buf;
-  //unsigned ecx = buf_len;
-  //unsigned edx = 0;
+void label_buffer(unsigned long buf, unsigned long len) {
+  unsigned long rax = 0xDEADBEEF;
+  unsigned long rbx = 0;
+  unsigned long rcx = buf;
+  unsigned long rdx = len;
 
-  __get_cpuid(level, &eax, &ebx, &ecx, &edx);
-  printf("Max instruction ID: %i\n", eax);
+  asm ("push %%rax \t\n\
+        push %%rbx \t\n\
+        push %%rcx \t\n\
+        push %%rdx \t\n\
+        mov  %0, %%rax \t\n\
+        mov  %1, %%rbx \t\n\
+        mov  %2, %%rcx \t\n\
+        mov  %3, %%rdx \t\n\
+        cpuid \t\n\
+        pop  %%rax \t\n\
+        pop  %%rbx \t\n\
+        pop  %%rcx \t\n\
+        pop  %%rdx \t\n\
+      "
+      : /* no output registers */
+      : "r" (rax), "r" (rbx), "r" (&rcx), "r" (rdx)
+      : /* no clobbered registers */
+      );
+  printf("Address to be labeled: %p\n", &rcx);
+  printf("Size in bytes: %lu\n", rdx);
   return;
 }
 
-void query_buffer(unsigned buf, unsigned len, unsigned offset) {
+//TODO: Refactor so there is only one assembly
+void query_buffer(unsigned long buf, unsigned long len) {
+  unsigned long rax = 0xDEADBEEF;
+  unsigned long rbx = 1;
+  unsigned long rcx = buf;
+  unsigned long rdx = len;
+
+  asm ("push %%rax \t\n\
+        push %%rbx \t\n\
+        push %%rcx \t\n\
+        push %%rdx \t\n\
+        mov  %0, %%rax \t\n\
+        mov  %1, %%rbx \t\n\
+        mov  %2, %%rcx \t\n\
+        mov  %3, %%rdx \t\n\
+        cpuid \t\n\
+        pop  %%rax \t\n\
+        pop  %%rbx \t\n\
+        pop  %%rcx \t\n\
+        pop  %%rdx \t\n\
+      "
+      : /* no output registers */
+      : "r" (rax), "r" (rbx), "r" (&rcx), "r" (rdx)
+      : /* no clobbered registers */
+      );
+
+  printf("Address to be queried: %p\n", &rcx);
+  printf("Size in bytes: %lu\n", rdx);
   return;
 }

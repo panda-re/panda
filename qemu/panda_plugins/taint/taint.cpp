@@ -85,6 +85,8 @@ int count = 0;
 
 // Apply taint to a buffer of memory
 void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
+    printf("add_taint addr: %lX\n", addr);
+    printf("add_taint len: %i\n", length);
     struct addr_struct a = {};
     a.typ = MADDR;
     a.val.ma = addr;
@@ -194,43 +196,26 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
 }
 
 int guest_hypercall_callback(CPUState *env) {
-    //if(env->regs[R_EAX] == 0xdeadbeef) {
-    //    if (env->regs[R_EBX] == 0) {                // Taint label and start tracing
-    //        target_ulong buf_start = env->regs[R_ECX];
-    //        target_ulong buf_len = env->regs[R_EDX];
+#ifdef TARGET_I386
+  if(env->regs[R_EAX] == 0xdeadbeef) {
+    target_ulong buf_start = env->regs[R_ECX];
+    target_ulong buf_len = env->regs[R_EDX];
 
-    //        //if(!funclog) {
-    //        //    funclog = fopen("/tmp/llvm-functions.log", "w");
-    //        //    setbuf(funclog, NULL);
-    //        //}
-
-    //        //fprintf(funclog, "label " TARGET_FMT_lu " " TARGET_FMT_lu "\n",
-    //        //    buf_start, buf_len);
-    //        //printf("label " TARGET_FMT_lx " " TARGET_FMT_lu "\n",
-    //        //    buf_start, buf_len);
-
-    //        //execute_llvm = 1;
-    //        //generate_llvm = 1;
-    //        //trace_llvm = 1;
-
-    //        // Need this because existing TBs do not contain LLVM code
-    //        //panda_do_flush_tb();
-    //    }
-    //    else if (env->regs[R_EBX] == 1) {           // Taint query + stop tracing
-    //        target_ulong buf_start = env->regs[R_ECX];
-    //        target_ulong buf_len = env->regs[R_EDX];
-
-    //        //fprintf(funclog, "query " TARGET_FMT_lu " " TARGET_FMT_lu "\n",
-    //        //    buf_start, buf_len);
-    //        //printf("query " TARGET_FMT_lx " " TARGET_FMT_lu "\n",
-    //        //    buf_start, buf_len);
-    //        //execute_llvm = 0;
-    //        //generate_llvm = 0;
-    //        //trace_llvm = 0;
-    //    }
-    //}
-    printf("HERE WOOOHHOOOO\n");
-    return 0;
+    if(env->regs[R_EBX] == 0) { //Taint label
+      TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
+      add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+      tob_delete(tempBuf);
+    }
+    else if(env->regs[R_EBX] == 1) { //Query taint on label
+      bufplot2(shadow, (uint64_t)buf_start, (int)buf_len);
+    }
+    //printf("EAX: %lX\n", env->regs[R_EAX]);
+    //printf("EBX: %lX\n", env->regs[R_EBX]);
+    //printf("ECX: %lX\n", env->regs[R_ECX]);
+    //printf("EDX: %lX\n", env->regs[R_EDX]);
+  }
+#endif
+    return 1;
 }
 
 #ifndef CONFIG_SOFTMMU
