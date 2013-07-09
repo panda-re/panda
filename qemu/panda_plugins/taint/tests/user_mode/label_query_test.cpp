@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cpuid.h>
+#include <inttypes.h>
 
 void label_buffer(unsigned long, unsigned long);
 void query_buffer(unsigned long, unsigned long);
@@ -11,8 +12,8 @@ void query_buffer(unsigned long, unsigned long);
 int main(int argc, char* argv[]) {
   unsigned long buffer = 1;
 
-  label_buffer(buffer, sizeof(buffer));
-  query_buffer(buffer, sizeof(buffer));
+  label_buffer((uint64_t)&buffer, sizeof(unsigned long));
+  query_buffer((uint64_t)&buffer, sizeof(unsigned long));
 
   printf("Completed successfully\n");
 
@@ -40,10 +41,10 @@ void label_buffer(unsigned long buf, unsigned long len) {
         pop  %%rdx \t\n\
       "
       : /* no output registers */
-      : "r" (rax), "r" (rbx), "r" (&rcx), "r" (rdx)
+      : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx)
       : /* no clobbered registers */
       );
-  printf("Address to be labeled: %p\n", &rcx);
+  printf("Address to be labeled: 0x%lx\n", rcx);
   printf("Size in bytes: %lu\n", rdx);
   return;
 }
@@ -70,11 +71,11 @@ void query_buffer(unsigned long buf, unsigned long len) {
         pop  %%rdx \t\n\
       "
       : /* no output registers */
-      : "r" (rax), "r" (rbx), "r" (&rcx), "r" (rdx)
+      : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx)
       : /* no clobbered registers */
       );
 
-  printf("Address to be queried: %p\n", &rcx);
+  printf("Address to be queried: 0x%lx\n", rcx);
   printf("Size in bytes: %lu\n", rdx);
   return;
 }

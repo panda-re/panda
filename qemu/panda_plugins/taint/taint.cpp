@@ -202,6 +202,7 @@ int guest_hypercall_callback(CPUState *env) {
     target_ulong buf_len = env->regs[R_EDX];
 
     if(env->regs[R_EBX] == 0) { //Taint label
+      printf("hypercall buf_start is 0x%lx\n", buf_start);
       TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
       add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
       tob_delete(tempBuf);
