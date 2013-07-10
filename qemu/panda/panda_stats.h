@@ -22,7 +22,4 @@ void bufplot(Shad *shad, uint64_t addr, int length);
 void dump_taint_stats(Shad *shad);
 void cleanup_taint_stats(void);
 
-//TODO: DELETE THIS
-void bufplot2(Shad *shad, uint64_t addr, int length);
 #endif
-

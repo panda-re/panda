@@ -85,8 +85,6 @@ int count = 0;
 
 // Apply taint to a buffer of memory
 void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
-    printf("add_taint addr: %lX\n", addr);
-    printf("add_taint len: %i\n", length);
     struct addr_struct a = {};
     a.typ = MADDR;
     a.val.ma = addr;
@@ -202,18 +200,13 @@ int guest_hypercall_callback(CPUState *env) {
     target_ulong buf_len = env->regs[R_EDX];
 
     if(env->regs[R_EBX] == 0) { //Taint label
-      printf("hypercall buf_start is 0x%lx\n", buf_start);
       TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
       add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
       tob_delete(tempBuf);
     }
     else if(env->regs[R_EBX] == 1) { //Query taint on label
-      bufplot2(shadow, (uint64_t)buf_start, (int)buf_len);
+      bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
     }
-    //printf("EAX: %lX\n", env->regs[R_EAX]);
-    //printf("EBX: %lX\n", env->regs[R_EBX]);
-    //printf("ECX: %lX\n", env->regs[R_ECX]);
-    //printf("EDX: %lX\n", env->regs[R_EDX]);
   }
 #endif
     return 1;

@@ -87,42 +87,6 @@ void bufplot(Shad *shad, uint64_t addr, int length){
     fclose(bufplotlog);
 }
 
-//TODO: DELETE AFTER TESTING
-void bufplot2(Shad *shad, uint64_t addr, int length){
-    printf("query_taint addr: %lX\n", addr);
-    printf("query_taint len: %i\n", length);
-    printf("\"Address\",\"Label\",\"Type\"\n");
-    printf("query_taint test: %i\n", 0);
-    uint64_t i;
-    printf("query_taint test: %i\n", 1);
-    for (i = addr; i < addr+length; i++){
-      printf("query_taint test: %i\n", 2);
-#ifdef TARGET_X86_64
-        printf("query_taint test: %i\n", 3);
-        LabelSet *ls = shad_dir_find_64(shad->ram, i);
-        if (ls){
-          printf("query_taint test: %i\n", 4);
-            unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
-                printf("%lu,%d,%d\n", i, ls->set->members[j],
-                    ls->type);
-            }
-        }
-#else
-        printf("query_taint test: %i\n", 5);
-        if (get_ram_bit(shad, i)){
-          printf("query_taint test: %i\n", 6);
-            LabelSet *ls = shad_dir_find_32(shad->ram, i);
-            unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
-                printf("%lu,%d,%d\n", i, ls->set->members[j],
-                    ls->type);
-            }
-        }
-#endif
-    }
-}
-
 /*
  * Dump the number of tainted bytes of guest memory to a file on an instruction
  * interval defined by INSTR_INTERVAL.
@@ -151,4 +115,3 @@ void cleanup_taint_stats(void){
         fclose(taintstats);
     }
 }
-
