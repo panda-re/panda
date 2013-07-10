@@ -85,7 +85,7 @@ typedef struct DecodedInstruction {
     OpCode  opCode;
 } DecodedInstruction;
 #else
-
+#include <stdint.h>
 enum InstructionIndexType{
 kIndexUnknown=0,
 kIndexNone=1,
