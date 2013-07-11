@@ -2321,7 +2321,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
         //assert(1==0);
-        return; // doesn't have name, we can't process it
+        //return; // doesn't have name, we can't process it
         // Might be ok for now, but we might need to revisit.
         printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
             I.getParent()->getParent()->getName().str().c_str());
@@ -2372,12 +2372,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         // guest store in whole-system mode
         int len = getValueSize(I.getArgOperand(1));
         storeHelper(I.getArgOperand(1), I.getArgOperand(0), len);
-        return;
-    }
-
-    // Ignore instrumentation functions
-    else if (!strcmp(calledName.c_str(), "printdynval")
-            || !strcmp(calledName.c_str(), "printramaddr")){
         return;
     }
 

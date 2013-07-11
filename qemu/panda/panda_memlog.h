@@ -17,19 +17,8 @@ PANDAENDCOMMENT */
 
 #include "inttypes.h"
 
-/*
- * File-based logging
- */
-
-void printloc(uintptr_t);
-void printdynval(uintptr_t, int);
-void printramaddr(uintptr_t, int);
 void open_memlog(char *path);
 void close_memlog(void);
-
-/*
- * Dynamic logging
- */
 
 typedef enum {
     LOAD,
