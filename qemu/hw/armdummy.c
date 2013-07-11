@@ -1,8 +1,5 @@
 /*
- * ARM Versatile Platform/Application Baseboard System emulation.
- *
- * Copyright (c) 2005-2007 CodeSourcery.
- * Written by Paul Brook
+ * ARM generic (JSON device config) emulation.
  *
  * This code is licensed under the GPL.
  */
@@ -18,280 +15,89 @@
 #include "boards.h"
 #include "blockdev.h"
 
+// For parsing the device memory map
+#include "qstring.h"
+#include "qint.h"
+#include "qdict.h"
+#include "qlist.h"
+#include "qfloat.h"
+#include "qbool.h"
+#include "qjson.h"
+
 static struct arm_boot_info armdummy_binfo;
+static QDict *dev_dict;
 
 typedef struct {
     SysBusDevice busdev;
     MemoryRegion iomem;
-    CharDriverState *chr;
-} ARMDummyUARTState;
+    QDict *devinfo;
+    char *name;
+} ARMFlexibleDeviceState;
 
-typedef struct {
-    SysBusDevice busdev;
-    MemoryRegion iomem;
-} ARMDummyBootArgsState;
-
-typedef struct {
-    SysBusDevice busdev;
-    MemoryRegion iomem;
-} ARMDummyBoardInfoState;
-
-#define BOOTARGS_BASE   0x0b050000
-#define BOARDINFO_BASE  0xbd030100
-#define UART_BASE       0xbd370400
-#define UART2_BASE      0xbd3e0c00
-#define UART_DR 0x14
-#define UART_CR 0x04
-
-static uint64_t armdummy_boardinfo_read(void *opaque, target_phys_addr_t addr,
+static uint64_t armdummy_read(void *opaque, target_phys_addr_t addr,
                                     unsigned size)
 {
-    switch (addr) {
-    case 0x100:
-        return 0x00002600;
-    default:
-        printf("%s: Bad register 0x" TARGET_FMT_plx "\n", __func__, addr);
-        return 0;
-    }
-}
+    ARMFlexibleDeviceState *s = opaque;
+    // Addr is relative to the base, so we make it absolute
+    int64_t base = qdict_get_int(s->devinfo, "base");
+    uint64_t real_addr = base+addr;
 
-static void armdummy_boardinfo_write(void *opaque, target_phys_addr_t addr,
-                                 uint64_t value, unsigned size)
-{
-    printf("%s: Unsupported write to 0x" TARGET_FMT_plx " size %u value %lx\n", __func__, addr, size, value);
-}
-
-static const MemoryRegionOps armdummy_boardinfo_ops = {
-    .read = armdummy_boardinfo_read,
-    .write = armdummy_boardinfo_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
-};
-
-static uint64_t armdummy_uart_read(void *opaque, target_phys_addr_t addr,
-                                    unsigned size)
-{
-    //ARMDummyUARTState *s = opaque;
-    switch (addr) {
-    case UART_CR:
-        // We only know of one value here, which should be 0x4
-        return 0x4;
-    case UART_DR:
-        // XXX Unimplemented
-        return 0;
-    default:
-        printf("%s: Bad register 0x" TARGET_FMT_plx "\n", __func__, addr);
-        return 0;
-    }
-}
-
-static void armdummy_uart_write(void *opaque, target_phys_addr_t addr,
-                                 uint64_t value, unsigned size)
-{
-    ARMDummyUARTState *s = opaque;
-    uint8_t val = 0;
-
-    switch (addr) {
-    case UART_DR:
-        if (s->chr) {
-            val = value & 0xFF;
-            qemu_chr_fe_write(s->chr, &val, 1);
-        }
-        break;
-    default:
-        printf("%s: Bad register 0x" TARGET_FMT_plx "\n", __func__, addr);
-    }
-}
-
-static const MemoryRegionOps armdummy_uart_ops = {
-    .read = armdummy_uart_read,
-    .write = armdummy_uart_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
-};
-
-static int armdummy_uart_can_receive(void *opaque) {
-    // XXX Unimplemented
-    return 1;
-}
-
-static void armdummy_uart_receive(void *opaque, const uint8_t *buf, int size) {
-    // XXX Unimplemented
-    return;
-}
-
-static void armdummy_uart_event(void *opaque, int event)
-{
-    // XXX Unimplemented
-    return;
-}
-
-
-static int armdummy_uart_init(SysBusDevice *dev)
-{
-    ARMDummyUARTState *s = FROM_SYSBUS(ARMDummyUARTState, dev);
-
-    memory_region_init_io(&s->iomem, &armdummy_uart_ops, s, "uart", 0x18);
-    sysbus_init_mmio_region(dev, &s->iomem);
-
-    if (s->chr) {
-        qemu_chr_add_handlers(s->chr,
-                        armdummy_uart_can_receive,
-                        armdummy_uart_receive,
-                        armdummy_uart_event,
-                        s);
-    }
-
-    return 0;
-}
-
-static uint64_t armdummy_bootargs_read(void *opaque, target_phys_addr_t addr,
-                                    unsigned size)
-{
-    switch (addr) {
-        case 0x0:
-            // "UEFI"
-            return 0x55454649;
-        case 0x4:
-        case 0x8:
-            return 0x3;
-        case 0x90:
-            // Device ID. One of:
-            // 0x201 <Khanplete> 
-            // 0x202 <Jackal>
-            // 0x203 <Mercury>
-            // 0x204 <TanzanitePlus> 
-            // 0x205 <Sapphire>
-            // 0x206 <MonoKhanplete> 
-            // 0x207 <JAZ>
-            // 0x208 <Annapurna> 
-            // 0x209 <Frosty>
-            // 0x20a <Rudolph>
-            // 0x20b <Denali>
-            // 0x20c <Everest>
-            // 0x20d <TwoKhan>
-            // 0x20e <Tahiti>
-            // 0x20f <Fiji>
-            // 0x210 <Camas>
-            // 0x211 <Azalea>
-            // 0x212 <Redwood>
-            // 0x213 <Cypress>
-
-            // Our board is <Jackal>
-            return 0x00000202;
-        case 0xa0:
-            // Memory size
-            return 0x40cbe000;
-        case 0xa4:
-            // ACPI location
-            return 0x3fd5e000;
-        case 0xb0:
-            // Only constraint known: != 0
-            return 1;
-        case 0xbc:
-            // Memory start
-            return 0x12d88000+0x2D000000;
-        default:
-        {
-            uint64_t val = 0;
-            printf("%s: Bad register 0x" TARGET_FMT_plx ", returning %lx\n", __func__, addr, val);
-            return val;
+    QList *addrs = qdict_get_qlist(s->devinfo, "memory");
+    QListEntry *entry;
+    QTAILQ_FOREACH(entry, &addrs->head, next) {
+        QDict *memdict = qobject_to_qdict(entry->value);
+        int64_t mem_addr = qdict_get_int(memdict, "address");
+        if (mem_addr == real_addr) {
+            // TODO: support getting more than one value here
+            // For now just return the first entry in the list.
+            QList *vals = qdict_get_qlist(memdict, "values");
+            return qint_get_int(qobject_to_qint(qlist_peek(vals)));
         }
     }
+    
+    printf("%s (%s): Bad register 0x" TARGET_FMT_plx "\n", __func__, s->name, addr);
+    return 0;
 }
 
-static void armdummy_bootargs_write(void *opaque, target_phys_addr_t addr,
+static void armdummy_write(void *opaque, target_phys_addr_t addr,
                                  uint64_t value, unsigned size)
 {
-    printf("%s: Unsupported write to 0x" TARGET_FMT_plx " size %u value %lx\n", __func__, addr, size, value);
+    ARMFlexibleDeviceState *s = opaque;
+    printf("%s (%s): Unsupported write to 0x" TARGET_FMT_plx " size %u value %lx\n",
+            __func__, s->name, addr, size, value);
 }
 
-static const MemoryRegionOps armdummy_bootargs_ops = {
-    .read = armdummy_bootargs_read,
-    .write = armdummy_bootargs_write,
+static const MemoryRegionOps armdummy_ops = {
+    .read = armdummy_read,
+    .write = armdummy_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static int armdummy_bootargs_init(SysBusDevice *dev) {
-    ARMDummyBootArgsState *s = FROM_SYSBUS(ARMDummyBootArgsState, dev);
-
-    memory_region_init_io(&s->iomem, &armdummy_bootargs_ops, s, "bootargs", 0xd0);
-    sysbus_init_mmio_region(dev, &s->iomem);
-
+static int armdummy_dev_init(SysBusDevice *dev) {
     return 0;
 }
 
-static int armdummy_boardinfo_init(SysBusDevice *dev) {
-    ARMDummyBoardInfoState *s = FROM_SYSBUS(ARMDummyBoardInfoState, dev);
+static void armdummy_real_dev_init(ARMFlexibleDeviceState *s, char *name, QDict *info) {
+    s->name = name;
+    s->devinfo = info;
 
-    memory_region_init_io(&s->iomem, &armdummy_boardinfo_ops, s, "boardinfo", 0x4);
-    sysbus_init_mmio_region(dev, &s->iomem);
+    // Get the size. This is a little silly, but basically loop over
+    // the addresses we know about, take the max, and then subtract the
+    // base. Add sizeof(target_ulong) for good measure.
+    int64_t base = qdict_get_int(info, "base");
+    int64_t max_addr = base;
+    QList *addrs = qdict_get_qlist(info, "memory");
+    QListEntry *entry;
+    QTAILQ_FOREACH(entry, &addrs->head, next) {
+        QDict *memdict = qobject_to_qdict(entry->value);
+        int64_t addr = qdict_get_int(memdict, "address");
+        max_addr = MAX(max_addr, addr);
+    }
 
-    return 0;
+    memory_region_init_io(&s->iomem, &armdummy_ops, s, s->name,
+            (max_addr - base)+sizeof(target_ulong));
+    sysbus_init_mmio_region(&s->busdev, &s->iomem);
 }
-
-static const VMStateDescription vmstate_armdummy_uart_regs = {
-    .name = "armdummy-uart",
-    .version_id = 0,
-    .minimum_version_id = 0,
-    .minimum_version_id_old = 0,
-    .fields = (VMStateField[]) {
-        VMSTATE_END_OF_LIST(),
-    },
-};
-
-static const VMStateDescription vmstate_armdummy_bootargs = {
-    .name = "armdummy-bootargs",
-    .version_id = 0,
-    .minimum_version_id = 0,
-    .minimum_version_id_old = 0,
-    .fields = (VMStateField[]) {
-        VMSTATE_END_OF_LIST(),
-    },
-};
-
-static const VMStateDescription vmstate_armdummy_boardinfo = {
-    .name = "armdummy-boardinfo",
-    .version_id = 0,
-    .minimum_version_id = 0,
-    .minimum_version_id_old = 0,
-    .fields = (VMStateField[]) {
-        VMSTATE_END_OF_LIST(),
-    },
-};
-
-static SysBusDeviceInfo armdummy_boardinfo_info = {
-    .init       = armdummy_boardinfo_init,
-    .qdev.name  = "armdummy-boardinfo",
-    .qdev.desc  = "Dummy ARM BoardInfo device",
-    .qdev.size  = sizeof(ARMDummyBoardInfoState),
-    .qdev.vmsd  = &vmstate_armdummy_boardinfo,
-    .qdev.props = (Property[]) {
-        DEFINE_PROP_END_OF_LIST(),
-    }
-};
-
-static SysBusDeviceInfo armdummy_bootargs_info = {
-    .init       = armdummy_bootargs_init,
-    .qdev.name  = "armdummy-bootargs",
-    .qdev.desc  = "Dummy ARM BootArgs device",
-    .qdev.size  = sizeof(ARMDummyBootArgsState),
-    .qdev.vmsd  = &vmstate_armdummy_bootargs,
-    .qdev.props = (Property[]) {
-        DEFINE_PROP_END_OF_LIST(),
-    }
-};
-
-static SysBusDeviceInfo armdummy_uart_info = {
-    .init       = armdummy_uart_init,
-    .qdev.name  = "armdummy-uart",
-    .qdev.desc  = "Dummy ARM UART controller",
-    .qdev.size  = sizeof(ARMDummyUARTState),
-    .qdev.vmsd  = &vmstate_armdummy_uart_regs,
-    .qdev.props = (Property[]) {
-        DEFINE_PROP_CHR("chardev", ARMDummyUARTState, chr),
-        DEFINE_PROP_END_OF_LIST(),
-    }
-};
-
 
 static void armdummy_init(ram_addr_t ram_size,
                      const char *boot_device,
@@ -313,28 +119,22 @@ static void armdummy_init(ram_addr_t ram_size,
     ram_offset = qemu_ram_alloc(NULL, "armdummy.ram", ram_size);
     cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
 
-#if 0
-    // Serial port (debug interface)
-    DeviceState *dev = qdev_create(NULL, "armdummy-uart");
-    qdev_prop_set_chr(dev, "chardev", serial_hds[0]);
-    qdev_init_nofail(dev);
-    sysbus_mmio_map(sysbus_from_qdev(dev), 0, UART_BASE);
+    const QDictEntry *dev_entry;
+    for (dev_entry = qdict_first(dev_dict);
+         dev_entry != NULL; dev_entry = qdict_next(dev_dict, dev_entry)) {
+        DeviceState *dev = qdev_create(NULL, dev_entry->key);
+        qdev_init_nofail(dev);
+        QDict *dev_entry_dict = qobject_to_qdict(dev_entry->value);
 
-    dev = qdev_create(NULL, "armdummy-uart");
-    qdev_prop_set_chr(dev, "chardev", serial_hds[1]);
-    qdev_init_nofail(dev);
-    sysbus_mmio_map(sysbus_from_qdev(dev), 0, UART2_BASE);
-
-    // Unknown device that holds "bootargs"
-    dev = qdev_create(NULL, "armdummy-bootargs");
-    qdev_init_nofail(dev);
-    sysbus_mmio_map(sysbus_from_qdev(dev), 0, BOOTARGS_BASE);
-
-    // Unknown device that holds just the board info (so far)
-    dev = qdev_create(NULL, "armdummy-boardinfo");
-    qdev_init_nofail(dev);
-    sysbus_mmio_map(sysbus_from_qdev(dev), 0, BOARDINFO_BASE);
-#endif
+        int64_t base = qdict_get_int(dev_entry_dict, "base");
+        SysBusDevice *sb_dev = sysbus_from_qdev(dev);
+        // Init the SysBusDevice state while we have the info in hand
+        ARMFlexibleDeviceState *s = FROM_SYSBUS(ARMFlexibleDeviceState, sb_dev);
+        // XXX: Stupid.
+        armdummy_real_dev_init(s, dev_entry->key, dev_entry_dict);
+        // Has to be done here because otherwise nb_mmio == 0
+        sysbus_mmio_map(sb_dev, 0, base);
+    }
 
     armdummy_binfo.ram_size = ram_size;
     armdummy_binfo.kernel_filename = kernel_filename;
@@ -360,9 +160,48 @@ machine_init(armdummy_machine_init);
 
 static void armdummy_register_devices(void)
 {
-    sysbus_register_withprop(&armdummy_uart_info);
-    sysbus_register_withprop(&armdummy_bootargs_info);
-    sysbus_register_withprop(&armdummy_boardinfo_info);
+    // Read in the JSON file
+    FILE *json_file = fopen("device_memory.json", "r");
+    size_t json_file_size;
+    fseek(json_file, 0, SEEK_END);
+    json_file_size = ftell(json_file);
+    rewind(json_file);
+    char *json_buf = g_new0(char, json_file_size+1);
+    assert(fread(json_buf, sizeof(char), json_file_size, json_file) == json_file_size);
+    fclose(json_file);
+
+    // Parse
+    QObject *dev_js = qobject_from_json(json_buf);
+    dev_dict = qobject_to_qdict(dev_js); // global
+    assert(dev_dict != NULL);
+
+    const QDictEntry *dev_entry;
+    for (dev_entry = qdict_first(dev_dict);
+         dev_entry != NULL; dev_entry = qdict_next(dev_dict, dev_entry)) {
+        // For each device listed:
+        // Allocate a SysBusDeviceInfo
+        // Allocate a VMStateDescription
+        printf("processing device %s\n", dev_entry->key);
+
+        QDict *dev_entry_dict = qobject_to_qdict(dev_entry->value);
+        assert(dev_entry_dict != NULL);
+
+        VMStateDescription *dev_vmstate = g_new0(VMStateDescription,1);
+        dev_vmstate->name = dev_entry->key;
+        dev_vmstate->version_id = 0;
+        dev_vmstate->minimum_version_id = 0;
+        dev_vmstate->minimum_version_id_old = 0;
+        dev_vmstate->fields = g_new0(VMStateField,1); // empty list
+
+        SysBusDeviceInfo *dev_info = g_new0(SysBusDeviceInfo,1);
+        dev_info->init       = armdummy_dev_init;
+        dev_info->qdev.name  = dev_entry->key;
+        dev_info->qdev.desc  = qdict_get_str(dev_entry_dict, "description");
+        dev_info->qdev.size  = sizeof(ARMFlexibleDeviceState);
+        dev_info->qdev.vmsd  = dev_vmstate;
+        dev_info->qdev.props = g_new0(Property,1); // empty list
+        sysbus_register_withprop(dev_info);
+    }
 }
 
 device_init(armdummy_register_devices)

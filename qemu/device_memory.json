@@ -1,0 +1,9 @@
+{ 
+    "dev_0xbd370404" : {
+        "description": "Automatically generated device at 0xbd370404",
+        "base": 3174499328,
+        "memory": [
+            {"address": 3174499332, "values": [4], "size": 4}
+        ]
+    }
+}
