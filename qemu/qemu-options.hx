@@ -2618,6 +2618,10 @@ DEF("panda-arg", HAS_ARG, QEMU_OPTION_panda_arg,
     "-panda-arg <plugin:opt=val>\n"
     "                pass <opt=val> to <plugin>\n", QEMU_ARCH_ALL)
 
+DEF("tubtf", 0, QEMU_OPTION_tubtf,
+"-tubtf          use Tim's uncomplicated binary trace format for traces", QEMU_ARCH_ALL)
+
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table

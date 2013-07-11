@@ -37,6 +37,9 @@ extern "C" {
 
 #include "panda_plugin.h"
 #include "panda_memlog.h"
+#include "panda_common.h"
+#include "tubtf.h"
+
 
 #ifndef CONFIG_SOFTMMU
 #include "syscall_defs.h"
@@ -51,6 +54,7 @@ extern "C" {
 
 #include "panda_dynval_inst.h"
 #include "tcg-llvm.h"
+
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -79,6 +83,11 @@ const char *default_basedir = "/tmp";
 const char *basedir = NULL;
 FILE *funclog;
 extern FILE *memlog;
+
+
+// defined in tubtf.c
+extern int tubtf_on;
+
 
 }
 
@@ -136,24 +145,38 @@ static void llvm_init(){
 
 } // namespace llvm
 
+
+
 int before_block_exec(CPUState *env, TranslationBlock *tb){
+
+  if (tubtf_on) {
+    char *llvm_fn_name = (char *) tcg_llvm_get_func_name(tb);
+    uint32_t pc, unk;
+    sscanf(llvm_fn_name, "tcg-llvm-tb-%d-%x", &unk, &pc);
+    env->panda_guest_pc = pc;
+    tubtf_write_el_64(panda_current_asid(env), pc, TUBTFE_LLVM_FN, unk, 0, 0, 0);
+  }
+  else {
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     if (dynval_buffer->cur_size > 0){
         // Buffer wasn't flushed before, have to flush it now
-        fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
+      fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
     }
     clear_dynval_buffer(dynval_buffer);
+  }
     return 0;
 }
 
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
+  if (tubtf_on == 0) {
     // flush dynlog to file
     assert(memlog);
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
     clear_dynval_buffer(dynval_buffer);
+  }
     return 0;
 }
 
@@ -214,22 +237,26 @@ static int user_creat(abi_long ret, void *p){
 }
 
 static int user_read(abi_long ret, abi_long fd, void *p){
+  if (tubtf_on == 0) {
     if (ret > 0 && fd == infd){
         // log the address and size of a buffer to be tainted
         fprintf(funclog, "taint,read,%ld,%ld\n", (uintptr_t)p,
             (unsigned long)ret);
         printf("taint,read,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
     }
+  }
     return 0;
 }
 
 static int user_write(abi_long ret, abi_long fd, void *p){
+  if (tubtf_on == 0) {
     if (ret > 0 && fd == outfd){
         // log the address and size of a buffer to be checked for taint
         fprintf(funclog, "taint,write,%ld,%ld\n", (uintptr_t)p,
             (unsigned long)ret);
         printf("taint,write,%ld,%ld\n", (uintptr_t)p, (unsigned long)ret);
     }
+  }
     return 0;
 }
 
@@ -275,15 +302,24 @@ bool init_plugin(void *self) {
         basedir = default_basedir;
     }
 
-    // XXX: unsafe string manipulations
-    char memlog_path[256];
-    char funclog_path[256];
-    strcpy(memlog_path, basedir);
-    strcat(memlog_path, "/llvm-memlog.log");
-    open_memlog(memlog_path);
-    strcpy(funclog_path, basedir);
-    strcat(funclog_path, "/llvm-functions.log");
-    funclog = fopen(funclog_path, "w");
+    if (tubtf_on) {
+      char tubtf_path[256];
+      strcpy(tubtf_path, basedir);
+      strcat(tubtf_path, "/tubtf.log");
+      tubtf_open(tubtf_path, TUBTF_COLW_64);     
+      panda_enable_precise_pc();
+    }
+    else {
+      // XXX: unsafe string manipulations
+      char memlog_path[256];
+      char funclog_path[256];
+      strcpy(memlog_path, basedir);
+      strcat(memlog_path, "/llvm-memlog.log");
+      open_memlog(memlog_path);
+      strcpy(funclog_path, basedir);
+      strcat(funclog_path, "/llvm-functions.log");
+      funclog = fopen(funclog_path, "w");
+    }
 
     panda_cb pcb;
     panda_enable_memcb();
@@ -330,11 +366,16 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
+  if (tubtf_on) {
+    tubtf_close();
+  }
+  else {
     DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
     if (dynval_buffer->cur_size > 0){
         // Buffer wasn't flushed before, have to flush it now
         fwrite(dynval_buffer->start, dynval_buffer->cur_size, 1, memlog);
     }
+  }
 
     // XXX: more unsafe string manipulation
     char modpath[256];
@@ -366,6 +407,9 @@ void uninit_plugin(void *self) {
         panda_disable_llvm();
     }
     panda_disable_memcb();
-    fclose(funclog);
-    close_memlog();
+    
+    if (tubtf_on == 0) {
+      fclose(funclog);
+      close_memlog();
+    }
 }

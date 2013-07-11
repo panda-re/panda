@@ -279,6 +279,9 @@ uint8_t *boot_splash_filedata;
 int boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
 
+// defined in panda/tubtf.c
+extern int tubtf_on;
+
 typedef struct FWBootEntry FWBootEntry;
 
 struct FWBootEntry {
@@ -3229,6 +3232,11 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins++] = optarg;
                 break;
+
+	    case QEMU_OPTION_tubtf:
+	      printf ("tubtf logging on\n");
+	      tubtf_on = 1;
+
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
