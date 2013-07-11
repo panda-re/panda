@@ -67,7 +67,7 @@ typedef uint64_t Ret;      // LLVM return value, also temp register
 typedef enum {HADDR, MADDR, IADDR, LADDR, GREG, GSPEC, UNK, CONST, RET} AddrType;
 
 typedef enum {
-    IRRELEVANT=-1,  // memory access to CPU state we don't care about
+    IRRELEVANT=5,  // memory access to CPU state we don't care about
     EXCEPTION=1,    // indicates that there was a memory exception
     READLOG,        // indicates that we need to read from dynamic log
     FUNCARG         // indicates that we need to copy to the current frame + 1

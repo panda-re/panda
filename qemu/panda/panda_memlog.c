@@ -22,6 +22,20 @@ PANDAENDCOMMENT */
 #include "guestarch.h"
 #include "panda_memlog.h"
 
+#include "panda_common.h"
+
+#include "tubtf.h"
+#include "taint_processor.h"
+
+extern TubtfTrace *tubtf;
+
+// if this is 1 then we log tubtf style
+// otherwise the DynvalEntry struct is just blitted to file
+extern int tubtf_on;
+
+
+
+
 FILE *memlog;
 
 void open_memlog(char *path){
@@ -69,13 +83,9 @@ static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else if (val < NUMREGS){
+        else {
             addr.typ = GREG;
-            addr.val.gr = val;
-        }
-        else if (val >= NUMREGS){
-            addr.typ = GSPEC;
-            addr.val.gs = val;
+            addr.val.gr = get_cpustate_val(dynval);
         }
         dventry.entrytype = ADDRENTRY;
         dventry.entry.memaccess.op = LOAD;
@@ -126,13 +136,9 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else if (val <= NUMREGS){
+        else {
             addr.typ = GREG;
-            addr.val.gr = val;
-        }
-        else if (val > NUMREGS){
-            addr.typ = GSPEC;
-            addr.val.gs = val;
+            addr.val.gr = get_cpustate_val(dynval);
         }
         dventry.entrytype = ADDRENTRY;
         dventry.entry.memaccess.op = STORE;
@@ -172,19 +178,113 @@ void delete_dynval_buffer(DynValBuffer *dynval_buf){
     dynval_buf = NULL;
 }
 
+
+
 void write_dynval_buffer(DynValBuffer *dynval_buf, DynValEntry *entry){
+  if (tubtf_on) {
+    // XXX Fixme: note that when using tubt format, we still create that DynValBuffer.  Waste of memory
+    uint64_t cr3, pc, typ;
+    uint64_t arg1, arg2, arg3, arg4;
+    arg1 = arg2 = arg3 = arg4 = 0;
+    assert (tubtf->colw == TUBTF_COLW_64);
+    uint32_t element_size = tubtf_element_size();
+    // assert that there must be enough room in dynval buffer
+    uint32_t bytes_used = dynval_buf->ptr - dynval_buf->start;
+    uint32_t bytes_left = dynval_buf->max_size - bytes_used;
+    assert (bytes_left > element_size);
+    cr3 = panda_current_asid(env);  // virtual address space -- cr3 for x86 
+    pc = panda_current_pc(env);     
+    typ = 0;
+    switch (entry->entrytype) {
+    case ADDRENTRY:
+      {
+	LogOp op = entry->entry.memaccess.op;
+	assert (op == LOAD ||op == STORE);
+	Addr *a = &(entry->entry.memaccess.addr); 
+	typ = TUBTFE_LLVM_DV_LOAD;
+	if (op == STORE) {
+	  typ = TUBTFE_LLVM_DV_STORE;
+	}
+	// a->type fits easily in a byte -- 1 .. 5
+	arg1 = (a->typ) | ((a->flag & 0xff) << 8) | (a->off << 16);
+	uint64_t val;
+
+	switch (a->typ) {
+	case HADDR:
+	  val = a->val.ha;
+	  break;
+	case MADDR:
+	  val = a->val.ma;
+	  break;
+	case IADDR:
+	  val = a->val.ia;
+	  break;
+	case LADDR:
+	  val = a->val.la;
+	  break;
+	case GREG:
+	  val = a->val.gr;
+	  break;
+	case GSPEC:
+	  val = a->val.gs;
+	  break;
+	case UNK:
+	  val = a->val.ua;
+	  break;
+	case CONST:
+	  val = a->val.con;
+	  break;
+	case RET:
+	  val = a->val.ret;
+	  break;
+	default:
+	  assert (1==0);
+	}
+	arg2 = val;
+	break;
+      }
+    case BRANCHENTRY:
+      {
+	typ = TUBTFE_LLVM_DV_BRANCH;
+	arg1 = entry->entry.branch.br;
+	break;
+      }
+    case SELECTENTRY:
+      {
+	typ = TUBTFE_LLVM_DV_SELECT;
+	arg1 = entry->entry.select.sel;
+	break;
+      }
+    case SWITCHENTRY:
+      {
+	typ = TUBTFE_LLVM_DV_SWITCH;
+	arg1 = entry->entry.switchstmt.cond;
+	break;
+      }
+    case EXCEPTIONENTRY:
+      {
+	typ = TUBTFE_LLVM_EXCEPTION;
+      }
+    }    
+    tubtf_write_el_64(cr3, pc, typ, arg1, arg2, arg3, arg4);
+  }
+  else {
     uint32_t bytes_used = dynval_buf->ptr - dynval_buf->start;
     assert(dynval_buf->max_size - bytes_used >= sizeof(DynValEntry));
     memcpy(dynval_buf->ptr, entry, sizeof(DynValEntry));
     dynval_buf->ptr += sizeof(DynValEntry);
     dynval_buf->cur_size = dynval_buf->ptr - dynval_buf->start;
+  }
 }
 
+
+
 void read_dynval_buffer(DynValBuffer *dynval_buf, DynValEntry *entry){
-    uint32_t bytes_used = dynval_buf->ptr - dynval_buf->start;
-    assert(dynval_buf->max_size - bytes_used >= sizeof(DynValEntry));
-    memcpy(entry, dynval_buf->ptr, sizeof(DynValEntry));
-    dynval_buf->ptr += sizeof(DynValEntry);
+  assert (tubtf_on == 0);
+  uint32_t bytes_used = dynval_buf->ptr - dynval_buf->start;
+  assert(dynval_buf->max_size - bytes_used >= sizeof(DynValEntry));
+  memcpy(entry, dynval_buf->ptr, sizeof(DynValEntry));
+  dynval_buf->ptr += sizeof(DynValEntry);
 }
 
 void clear_dynval_buffer(DynValBuffer *dynval_buf){
