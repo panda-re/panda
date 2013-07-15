@@ -1251,7 +1251,19 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
 void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I){}
 void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
-void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){}
+
+/*
+ * Treat unreachable the same way as return.  This matters, for example, when
+ * there is a call to cpu_loop_exit() in a helper function, followed by an
+ * unreachable instruction.  Functions that end with unreachable return void, so
+ * we don't have to worry about taint transfer, we just have to tell the taint
+ * processor we are returning.
+ */
+void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){
+    struct taint_op_struct op = {};
+    op.typ = RETOP;
+    tob_op_write(tbuf, op);
+}
 
 // Binary operators
 void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
