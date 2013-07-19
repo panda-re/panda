@@ -83,9 +83,13 @@ static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else {
+        else if (val <= NUMREGS){
             addr.typ = GREG;
-            addr.val.gr = get_cpustate_val(dynval);
+            addr.val.gr = val;
+        }
+        else if (val > NUMREGS){
+            addr.typ = GSPEC;
+            addr.val.gs = val;
         }
         dventry.entrytype = ADDRENTRY;
         dventry.entry.memaccess.op = LOAD;
@@ -136,9 +140,13 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else {
+        else if (val <= NUMREGS){
             addr.typ = GREG;
-            addr.val.gr = get_cpustate_val(dynval);
+            addr.val.gr = val;
+        }
+        else if (val > NUMREGS){
+            addr.typ = GSPEC;
+            addr.val.gs = val;
         }
         dventry.entrytype = ADDRENTRY;
         dventry.entry.memaccess.op = STORE;

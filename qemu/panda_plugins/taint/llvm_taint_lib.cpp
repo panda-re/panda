@@ -2329,6 +2329,75 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     }
 }
 
+/*
+ * Taint model for floating point math functions like sin(), cos(), etc.  Very
+ * similar to approxArithHelper().
+ */
+void PandaTaintVisitor::floatHelper(CallInst &I){
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    // Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    // Operand is a constant, therefore it can't be tainted
+    if (PST->getLocalSlot(I.getArgOperand(0)) < 0){
+        op.typ = DELETEOP;
+        dst.typ = LADDR;
+        dst.val.la = PST->getLocalSlot(&I);
+        for (int i = 0; i < size; i++){
+            dst.off = i;
+            op.val.deletel.a = dst;
+            tob_op_write(tbuf, op);
+        }
+        return;
+    }
+
+    // accumulate all of oper[i]'s taint into c0 of temp
+    op.typ = COMPUTEOP;
+    src0.typ = LADDR;
+    src0.val.la = PST->getLocalSlot(I.getArgOperand(0));
+    src0.off = 0;
+    src1.typ = LADDR;
+    src1.val.la = PST->getLocalSlot(&I)+1;
+    src1.off = 0;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.compute.a = src0;
+    op.val.compute.b = src1;
+    op.val.compute.c = dst;
+
+    for (int i = 0; i < size; i++){
+        src0.off = i;
+        op.val.compute.a = src0;
+        tob_op_write(tbuf, op);
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
 void PandaTaintVisitor::visitCallInst(CallInst &I){
     Function *called = I.getCalledFunction();
     if (!called) {
@@ -2384,6 +2453,28 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         // guest store in whole-system mode
         int len = getValueSize(I.getArgOperand(1));
         storeHelper(I.getArgOperand(1), I.getArgOperand(0), len);
+        return;
+    }
+    else if (!calledName.compare("sin")
+            || !calledName.compare("cos")
+            || !calledName.compare("tan")
+            || !calledName.compare("log")
+            || !calledName.compare("__isinf")
+            || !calledName.compare("__isnan")
+            || !calledName.compare("rint")
+            || !calledName.compare("floor")
+            || !calledName.compare("abs")
+            || !calledName.compare("ceil")
+            || !calledName.compare("exp2")){
+        
+        floatHelper(I);
+        return;
+    }
+    else if (!calledName.compare("ldexp")
+            || !calledName.compare("atan2")){
+        
+        // treat these the same
+        //approxArithHelper(I);
         return;
     }
 

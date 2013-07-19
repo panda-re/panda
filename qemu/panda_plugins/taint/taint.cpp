@@ -376,8 +376,8 @@ bool init_plugin(void *self) {
 
     // Add the taint analysis pass to our taint pass manager
     llvm::FunctionPass *taintfp =
-        llvm::createPandaTaintFunctionPass(5*1048576/* global taint op buffer
-        size, 5MB */, NULL /* existing taint cache */);
+        llvm::createPandaTaintFunctionPass(10*1048576/* global taint op buffer
+        size, 10MB */, NULL /* existing taint cache */);
     PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();

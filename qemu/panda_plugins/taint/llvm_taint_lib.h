@@ -109,6 +109,7 @@ public:
     void memcpyHelper(CallInst &I);
     void loadHelper(Value *src, Value *dst, int len);
     void storeHelper(Value *src, Value *dst, int len);
+    void floatHelper(CallInst &I);
 };
 
 /* PandaTaintFunctionPass class

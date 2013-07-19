@@ -6,6 +6,7 @@
 
 #include "stdio.h"
 #include "assert.h"
+#include "math.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -27,7 +28,7 @@ int main(int argc, char const *argv[]) {
 
   // Option handler
   int option = atoi(argv[1]);
-  if (option < 1 || option > 7) {
+  if (option < 1 || option > 8) {
     usage();
     return -1;
   }
@@ -76,6 +77,11 @@ int main(int argc, char const *argv[]) {
       u3 = static_cast<uint>(f2);
       res = write_uint(&u3);
       break;
+    case 8:
+      // sin, cos, etc.
+      f3 = sin(f2);
+      res = write_float(&f3);
+      break;
     default:
       //ERROR should not happen
       return -1;
@@ -97,6 +103,7 @@ void usage() {
   std::cout << "\t5 - fcmp" << std::endl;
   std::cout << "\t6 - fptosi" << std::endl;
   std::cout << "\t7 - fptoui" << std::endl;
+  std::cout << "\t8 - sin" << std::endl;
 }
 
 int read_float(float *f2) {
