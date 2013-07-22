@@ -392,7 +392,7 @@ static void gen_adc(TCGv t0, TCGv t1)
 static void gen_add_carry(TCGv dest, TCGv t0, TCGv t1)
 {
     tcg_gen_add_i32(dest, t0, t1);
-    tcg_gen_add_i32(t0, t0, cpu_CF);
+    tcg_gen_add_i32(dest, dest, cpu_CF);
 }
 
 /* dest = T0 - T1 + CF - 1.  */
