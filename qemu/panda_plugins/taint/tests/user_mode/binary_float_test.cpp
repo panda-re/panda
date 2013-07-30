@@ -87,7 +87,7 @@ int main(int argc, char const *argv[]) {
       return -1;
       break;
   }
-  
+
   if (res) return -1;
 
   return 0;
@@ -120,7 +120,7 @@ int read_float(float *f2) {
     return 1;
   }
 }
-  
+
 int write_float(float *f3) {
   std::ofstream out("panda_plugins/taint/tests/user_mode/float_test_output.txt");
   if(out.good()) {

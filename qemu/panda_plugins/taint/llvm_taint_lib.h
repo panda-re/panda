@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #ifndef LLVM_TAINT_LIB_H
@@ -77,7 +77,7 @@ public:
     PandaSlotTracker *PST;
 
     PandaTaintVisitor() : PST(NULL) {}
-    
+
     PandaTaintVisitor(PandaTaintFunctionPass *PTFP);
 
     ~PandaTaintVisitor() {}
@@ -85,7 +85,7 @@ public:
     // Define most visitor functions
     #define HANDLE_INST(N, OPCODE, CLASS) void visit##OPCODE##Inst(CLASS&);
     #include "llvm/IR/Instruction.def"
-    
+
     // We missed some...
     void visitReturnInst(ReturnInst &I);
     void visitBranchInst(BranchInst &I);
@@ -107,6 +107,8 @@ public:
     void simpleArithHelper(BinaryOperator &I);
     void bswapHelper(CallInst &I);
     void memcpyHelper(CallInst &I);
+    void memsetHelper(CallInst &I);
+    void ctlzHelper(CallInst &I);
     void loadHelper(Value *src, Value *dst, int len);
     void storeHelper(Value *src, Value *dst, int len);
     void floatHelper(CallInst &I);
@@ -134,7 +136,7 @@ public:
         PTV(new PandaTaintVisitor()) {}
 
     PandaTaintFunctionPass(size_t tob_size,
-            std::map<std::string, TaintTB*> *existingTtbCache) : 
+            std::map<std::string, TaintTB*> *existingTtbCache) :
         FunctionPass(ID), tbuf_size(tob_size), tbuf(tob_new(tbuf_size)),
         createdTtbCache(false), PTV(new PandaTaintVisitor(this)){
 
@@ -179,7 +181,7 @@ public:
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
         AU.setPreservesAll();
     }
-    
+
     // Functions for reading/writing persistent taint cache for use with helper
     // functions
     //void readTaintCache();

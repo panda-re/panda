@@ -22,13 +22,9 @@ extern Shad *shadow;
 
 using namespace llvm;
 
-
-
 /***
  *** PandaTaintFunctionPass
  ***/
-
-
 
 char PandaTaintFunctionPass::ID = 0;
 static RegisterPass<PandaTaintFunctionPass>
@@ -262,13 +258,9 @@ void PandaTaintFunctionPass::writeTaintCache(){
     }
 }*/
 
-
-
 /***
  *** PandaSlotTracker
  ***/
-
-
 
 PandaSlotTracker *llvm::createPandaSlotTracker(Function *F){
     return new PandaSlotTracker(F);
@@ -346,13 +338,9 @@ int PandaSlotTracker::getLocalSlot(const Value *V){
     return FI == fMap.end() ? -1 : (int)FI->second;
 }
 
-
-
 /***
  *** PandaTaintVisitor
  ***/
-
-
 
 PandaTaintVisitor::PandaTaintVisitor(PandaTaintFunctionPass *PTFunPass){
     PTFP = PTFunPass;
@@ -711,7 +699,6 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
     // result gets taint from each source
     if (!isa<Constant>(I.getOperand(0)) && !isa<Constant>(I.getOperand(1))){
 
-
         /**** TEST ****/
         // label operand0
         /*Addr a;
@@ -736,9 +723,6 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         op2.val.label.a = a;
         tob_op_write(tbuf, op2);*/
         /**** TEST ****/
-
-
-
 
         // accumulate all of a's taint into c0
         src0.typ = LADDR;
@@ -2302,6 +2286,9 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
 
 /*
  * Taint model for LLVM memcpy intrinsic.
+ * TODO: Logging?? I am not sure we need to do logging as I can't think of a situation where we don't know the src and dest at runtime
+ * What the src and dest are pointing to may change but the addresses stay the same
+ * Can this functin be used for memset also?
  */
 void PandaTaintVisitor::memcpyHelper(CallInst &I){
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
@@ -2309,15 +2296,17 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
 
     llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
     int align = align_ir->getSExtValue();
-    //printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+    printf("Alignment value: %i, bytes number: %i\n", align, bytes);
 
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
     op.typ = COPYOP;
     dst.typ = LADDR;
+    //Is this getting where the argument is stored or the actual argument? The arguments are pointers (addresses to the place to be copied)
     dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
     src.typ = LADDR;
+    //Is this getting where the argument is stored or the actual argument? The arguments are pointers
     src.val.la = PST->getLocalSlot(I.getArgOperand(1));
 
     for (int i = 0; i < bytes; i++){
@@ -2325,6 +2314,105 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
         dst.off = i + align;
         op.val.copy.a = src;
         op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+/*
+ * Taint model for LLVM memset intrinsic.
+ */
+void PandaTaintVisitor::memsetHelper(CallInst &I){
+    llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
+    int bytes = bytes_ir->getSExtValue();
+
+    llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
+    int align = align_ir->getSExtValue();
+    printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+
+    struct taint_op_struct op = {};
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    //Is this getting where the argument is stored or the actual argument? The arguments are pointers (addresses to the place to be copied)
+    dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
+    src.typ = LADDR;
+    //Is this getting where the argument is stored or the actual argument? The arguments are pointers
+    src.val.la = PST->getLocalSlot(I.getArgOperand(1));
+
+    for (int i = 0; i < bytes; i++){
+        src.off = i;
+        dst.off = i + align;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+/*
+ * Taint model for LLVM ctlz intrinsic.
+ */
+void PandaTaintVisitor::ctlzHelper(CallInst &I){
+    struct taint_op_struct op = {};
+    struct addr_struct src0 = {};
+    struct addr_struct src1 = {};
+    struct addr_struct dst = {};
+    op.typ = COMPUTEOP;
+    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+
+    // Delete taint in accumulator (next register which hasn't been used yet)
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    // Operand is a constant, therefore it can't be tainted
+    if (PST->getLocalSlot(I.getArgOperand(0)) < 0){
+        op.typ = DELETEOP;
+        dst.typ = LADDR;
+        dst.val.la = PST->getLocalSlot(&I);
+        for (int i = 0; i < size; i++){
+            dst.off = i;
+            op.val.deletel.a = dst;
+            tob_op_write(tbuf, op);
+        }
+        return;
+    }
+
+    // accumulate all of oper[i]'s taint into c0 of temp
+    op.typ = COMPUTEOP;
+    src0.typ = LADDR;
+    src0.val.la = PST->getLocalSlot(I.getArgOperand(0));
+    src0.off = 0;
+    src1.typ = LADDR;
+    src1.val.la = PST->getLocalSlot(&I)+1;
+    src1.off = 0;
+    dst.typ = LADDR;
+    dst.off = 0;
+    dst.val.la = PST->getLocalSlot(&I) + 1;
+    op.val.compute.a = src0;
+    op.val.compute.b = src1;
+    op.val.compute.c = dst;
+
+    for (int i = 0; i < size; i++){
+        src0.off = i;
+        op.val.compute.a = src0;
+        tob_op_write(tbuf, op);
+    }
+
+    // propagate accumulated taint in c0 to all result bytes
+    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.off = 0;
+    op.val.compute.a = src0;
+    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.off = 0;
+    op.val.compute.b = src1;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < size; i++){
+        dst.off = i;
+        op.val.compute.c = dst;
         tob_op_write(tbuf, op);
     }
 }
@@ -2407,7 +2495,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
             I.getParent()->getParent()->getName().str().c_str());
         return;
-
     }
     std::string calledName = called->getName().str();
 
@@ -2421,11 +2508,18 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         bswapHelper(I);
         return;
     }
-    // Needs to use logging!
-    // else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
+    //else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
     //     memcpyHelper(I);
     //     return;
-    // }
+    //}
+    //else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memset){
+    //     memsetHelper(I);
+    //     return;
+    //}
+    else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::ctlz){
+         ctlzHelper(I);
+         return;
+    }
     else if (I.getCalledFunction()->getIntrinsicID()
             != Intrinsic::not_intrinsic){
         printf("Note: unsupported intrinsic %s in %s.\n",
@@ -2466,13 +2560,13 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
             || !calledName.compare("abs")
             || !calledName.compare("ceil")
             || !calledName.compare("exp2")){
-        
+
         floatHelper(I);
         return;
     }
     else if (!calledName.compare("ldexp")
             || !calledName.compare("atan2")){
-        
+
         // treat these the same
         //approxArithHelper(I);
         return;
@@ -2683,8 +2777,6 @@ void PandaTaintVisitor::visitInstruction(Instruction &I){
     assert(1==0);
 }
 
-
-
 /*
  * Old LLVM code graveyard
  */
@@ -2705,4 +2797,3 @@ void PandaTaintVisitor::visitInstruction(Instruction &I){
 //raw_string_ostream line2(line);
 //I.print(line2);
 //printf("%s\n", line.c_str());
-
