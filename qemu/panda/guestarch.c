@@ -359,8 +359,8 @@ int get_cpustate_val(uintptr_t dynval){
             return -1; // error
         }
     }
-    else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)))
-            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs)
+    else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs[0])))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, xmm_regs[0])
                 + (sizeof(XMMReg) * CPU_NB_REGS)))){
         // inside XMM regs
         // print the proper enum to be used by the trace analyzer
@@ -402,8 +402,8 @@ int get_cpustate_val(uintptr_t dynval){
         return (dynval - ((uintptr_t)env +
             offsetof(CPUX86State, mmx_t0)) + MMX_T0_0);
 
-    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs)))
-            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, fpregs)
+    } else if ((dynval >= (((uintptr_t)env) + offsetof(CPUX86State, fpregs[0])))
+            && (dynval < (((uintptr_t)env) + offsetof(CPUX86State, fpregs[0])
                 + (sizeof(FPReg) * 8)))){
         // inside FP regs
         // print the proper enum as seen above to be used by the trace analyzer
