@@ -306,7 +306,7 @@ enum SpecAddrs {
 };
 
 #define NUMREGS 12
-#define NUMSPECADDRS (XMMREGS_7_15-XMM_T0_0)
+#define NUMSPECADDRS (XMMREGS_7_15-FT0_0)
 #define WORDSIZE 4
 #define LENDIAN
 
@@ -733,7 +733,7 @@ enum SpecAddrs {
 };
 
 #define NUMREGS 20
-#define NUMSPECADDRS (XMMREGS_15_15-XMM_T0_0)
+#define NUMSPECADDRS (XMMREGS_15_15-FT0_0)
 #define WORDSIZE 8
 #define LENDIAN
 

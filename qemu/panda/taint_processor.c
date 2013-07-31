@@ -93,8 +93,12 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
             sizeof(LabelSet *), poolid_taint_processor);
     // architecture-dependent size defined in guestarch.h
     if (NUMSPECADDRS){
-        shad->gsv = (LabelSet **) my_calloc(NUMSPECADDRS, sizeof(LabelSet*),
-            poolid_taint_processor);
+        /*
+         * +NUMREGS is necessary offset for how we process these according to
+         * enums
+         */
+        shad->gsv = (LabelSet **) my_calloc(NUMSPECADDRS+NUMREGS,
+            sizeof(LabelSet*), poolid_taint_processor);
     }
     else {
         shad->gsv = NULL;
@@ -130,7 +134,7 @@ void tp_free(Shad *shad){
         poolid_taint_processor);
     shad->grv = NULL;
     if (shad->gsv){
-        my_free(shad->gsv, (NUMSPECADDRS * sizeof(LabelSet *)),
+        my_free(shad->gsv, ((NUMSPECADDRS+NUMREGS) * sizeof(LabelSet *)),
             poolid_taint_processor);
         shad->gsv = NULL;
     }
