@@ -1058,33 +1058,34 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
 /*
  * Applies union of each byte of each operand to each byte of result
  */
-void PandaTaintVisitor::approxArithHelper(BinaryOperator &I){
+void PandaTaintVisitor::approxArithHelper(Value *op0, Value *op1, Value *dest){
     struct taint_op_struct op = {};
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
     struct addr_struct dst = {};
     op.typ = COMPUTEOP;
-    int size = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
+    int size = ceil(op0->getType()->getScalarSizeInBits() / 8.0);
     int constantArgs = 0;
 
     // Delete taint in accumulator (next register which hasn't been used yet)
     op.typ = DELETEOP;
     dst.typ = LADDR;
     dst.off = 0;
-    dst.val.la = PST->getLocalSlot(&I) + 1;
+    dst.val.la = PST->getLocalSlot(dest) + 1;
     op.val.deletel.a = dst;
     tob_op_write(tbuf, op);
 
     for (int oper = 0; oper < 2; oper++){
         // Operand is a constant, therefore it can't be tainted
-        if (PST->getLocalSlot(I.getOperand(oper)) < 0){
+        Value *curop = !oper ? op0 : op1;
+        if (PST->getLocalSlot(curop) < 0){
             constantArgs++;
 
             // both args were constants, need to delete taint
             if (constantArgs == 2){
                 op.typ = DELETEOP;
                 dst.typ = LADDR;
-                dst.val.la = PST->getLocalSlot(&I);
+                dst.val.la = PST->getLocalSlot(dest);
                 for (int i = 0; i < size; i++){
                     dst.off = i;
                     op.val.deletel.a = dst;
@@ -1099,14 +1100,14 @@ void PandaTaintVisitor::approxArithHelper(BinaryOperator &I){
         // accumulate all of oper[i]'s taint into c0 of temp
         op.typ = COMPUTEOP;
         src0.typ = LADDR;
-        src0.val.la = PST->getLocalSlot(I.getOperand(oper));
+        src0.val.la = PST->getLocalSlot(curop);
         src0.off = 0;
         src1.typ = LADDR;
-        src1.val.la = PST->getLocalSlot(&I)+1;
+        src1.val.la = PST->getLocalSlot(dest)+1;
         src1.off = 0;
         dst.typ = LADDR;
         dst.off = 0;
-        dst.val.la = PST->getLocalSlot(&I) + 1;
+        dst.val.la = PST->getLocalSlot(dest) + 1;
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
@@ -1119,13 +1120,13 @@ void PandaTaintVisitor::approxArithHelper(BinaryOperator &I){
     }
 
     // propagate accumulated taint in c0 to all result bytes
-    src0.val.la = PST->getLocalSlot(&I) + 1;
+    src0.val.la = PST->getLocalSlot(dest) + 1;
     src0.off = 0;
     op.val.compute.a = src0;
-    src1.val.la = PST->getLocalSlot(&I) + 1;
+    src1.val.la = PST->getLocalSlot(dest) + 1;
     src1.off = 0;
     op.val.compute.b = src1;
-    dst.val.la = PST->getLocalSlot(&I);
+    dst.val.la = PST->getLocalSlot(dest);
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
@@ -1259,7 +1260,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             break;
 
         case Instruction::FAdd:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::Sub:
@@ -1268,37 +1269,37 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
             break;
 
         case Instruction::FSub:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::Mul:
             //mulHelper(I);
             //simpleArithHelper(I);
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::FMul:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::UDiv:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::SDiv:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::FDiv:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::URem:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::SRem:
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::FRem:
@@ -1344,11 +1345,11 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     }
                 }
                 else {
-                    approxArithHelper(I);
+                    approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
                 }
             }
             else {
-                approxArithHelper(I);
+                approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             }
             break;
 
@@ -1416,18 +1417,18 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     }
                 }
                 else {
-                    approxArithHelper(I);
+                    approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
                 }
             }
             else {
-                approxArithHelper(I);
+                approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             }
             break;
 
         case Instruction::AShr:
             //shiftHelper(I);
             //simpleArithHelper(I);
-            approxArithHelper(I);
+            approxArithHelper(I.getOperand(0), I.getOperand(1), &I);
             break;
 
         case Instruction::And:
@@ -2419,7 +2420,7 @@ void PandaTaintVisitor::ctlzHelper(CallInst &I){
 
 /*
  * Taint model for floating point math functions like sin(), cos(), etc.  Very
- * similar to approxArithHelper().
+ * similar to approxArithHelper(), except it takes only one operand.
  */
 void PandaTaintVisitor::floatHelper(CallInst &I){
     struct taint_op_struct op = {};
@@ -2567,8 +2568,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     else if (!calledName.compare("ldexp")
             || !calledName.compare("atan2")){
 
-        // treat these the same
-        //approxArithHelper(I);
+        approxArithHelper(I.getArgOperand(0), I.getArgOperand(1), &I);
         return;
     }
 

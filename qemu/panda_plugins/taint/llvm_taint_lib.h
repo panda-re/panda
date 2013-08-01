@@ -103,7 +103,7 @@ public:
     void addSubHelper(Value *arg0, Value *arg1, Value *dst);
     void mulHelper(BinaryOperator &I);
     void shiftHelper(BinaryOperator &I);
-    void approxArithHelper(BinaryOperator &I);
+    void approxArithHelper(Value *op0, Value *op1, Value *dest);
     void simpleArithHelper(BinaryOperator &I);
     void bswapHelper(CallInst &I);
     void memcpyHelper(CallInst &I);
