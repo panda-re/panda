@@ -2286,9 +2286,6 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
 
 /*
  * Taint model for LLVM memcpy intrinsic.
- * TODO: Logging?? I am not sure we need to do logging as I can't think of a situation where we don't know the src and dest at runtime
- * What the src and dest are pointing to may change but the addresses stay the same
- * Can this functin be used for memset also?
  */
 void PandaTaintVisitor::memcpyHelper(CallInst &I){
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
@@ -2303,10 +2300,8 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     struct addr_struct dst = {};
     op.typ = COPYOP;
     dst.typ = LADDR;
-    //Is this getting where the argument is stored or the actual argument? The arguments are pointers (addresses to the place to be copied)
     dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
     src.typ = LADDR;
-    //Is this getting where the argument is stored or the actual argument? The arguments are pointers
     src.val.la = PST->getLocalSlot(I.getArgOperand(1));
 
     for (int i = 0; i < bytes; i++){
@@ -2332,19 +2327,34 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
-    op.typ = COPYOP;
-    dst.typ = LADDR;
-    //Is this getting where the argument is stored or the actual argument? The arguments are pointers (addresses to the place to be copied)
-    dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
-    src.typ = LADDR;
-    //Is this getting where the argument is stored or the actual argument? The arguments are pointers
-    src.val.la = PST->getLocalSlot(I.getArgOperand(1));
 
+    //TODO: IS THIS NEEDED, memset doesnt return anything
+    //Delete taint at destination
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
     for (int i = 0; i < bytes; i++){
-        src.off = i;
-        dst.off = i + align;
-        op.val.copy.a = src;
-        op.val.copy.b = dst;
+        dst.off = i;
+        op.val.deletel.a = dst;
+        tob_op_write(tbuf, op);
+    }
+
+    //Second operand is a constant
+    assert(PST->getLocalSlot(I.getArgOperand(1)) < 0);
+
+    char name[4] = "memset";
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = bytes;
+
+    tob_op_write(tbuf, op);
+
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.val.la = PST->getLocalSlot(&I);
+    for (int i = 0; i < len; i++){
+        dst.off = i;
+        op.val.deletel.a = dst;
         tob_op_write(tbuf, op);
     }
 }
