@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #include "stdio.h"
@@ -343,3 +343,63 @@ void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
     }
 }
 
+void PandaInstrumentVisitor::visitMemSetInst(MemSetInst &I){
+    Function *F = mod->getFunction("log_dynval");
+    if (!F) {
+        printf("Instrumentation function not found\n");
+        assert(1==0);
+    }
+    PtrToIntInst *PTII;
+    CallInst *CI;
+    std::vector<Value*> argValues;
+    PTII = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
+        I.getOperand(0), wordType));
+    argValues.push_back(ConstantInt::get(ptrType,
+        (uintptr_t)dynval_buffer));
+    argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
+    argValues.push_back(ConstantInt::get(intType, STORE));
+    argValues.push_back(static_cast<Value*>(PTII));
+    CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+    CI->insertBefore(static_cast<Instruction*>(&I));
+    PTII->insertBefore(static_cast<Instruction*>(CI));
+}
+
+void PandaInstrumentVisitor::visitMemCpyInst(MemCpyInst &I){
+    Function *F = mod->getFunction("log_dynval");
+    if (!F) {
+        printf("Instrumentation function not found\n");
+        assert(1==0);
+    }
+    PtrToIntInst *PTII_SRC;
+    PtrToIntInst *PTII_DST;
+    CallInst *CI_SRC;
+    CallInst *CI_DST;
+    std::vector<Value*> argValues_src;
+    std::vector<Value*> argValues_dst;
+
+    PTII_DST = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
+        I.getOperand(0), wordType));
+    argValues_dst.push_back(ConstantInt::get(ptrType,
+        (uintptr_t)dynval_buffer));
+    argValues_dst.push_back(ConstantInt::get(intType, ADDRENTRY));
+    argValues_dst.push_back(ConstantInt::get(intType, LOAD));
+    argValues_dst.push_back(static_cast<Value*>(PTII_DST));
+
+    PTII_SRC = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
+        I.getOperand(1), wordType));
+    argValues_src.push_back(ConstantInt::get(ptrType,
+        (uintptr_t)dynval_buffer));
+    argValues_src.push_back(ConstantInt::get(intType, ADDRENTRY));
+    argValues_src.push_back(ConstantInt::get(intType, STORE));
+    argValues_src.push_back(static_cast<Value*>(PTII_SRC));
+
+    //The load must come first in the dynamic log
+    CI_DST = IRB.CreateCall(F, ArrayRef<Value*>(argValues_dst));
+    CI_DST->insertBefore(static_cast<Instruction*>(&I));
+    PTII_DST->insertBefore(static_cast<Instruction*>(CI_DST));
+
+    //The store must come second in the dynamic log
+    CI_SRC = IRB.CreateCall(F, ArrayRef<Value*>(argValues_src));
+    CI_SRC->insertBefore(static_cast<Instruction*>(&I));
+    PTII_SRC->insertBefore(static_cast<Instruction*>(CI_SRC));
+}
