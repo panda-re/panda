@@ -1163,6 +1163,169 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
           buf->ptr = saved_buf_ptr;
         }
     }
+    else if (!strcmp(op.val.insn_start.name, "memset")){
+        if ((dventry.entrytype != ADDRENTRY)
+                || (dventry.entry.memaccess.op != STORE)){
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: memset\n");
+            exit(1);
+        }
+        else if ((dventry.entrytype == ADDRENTRY)
+                && (dventry.entry.memaccess.op == STORE)) {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+                switch (cur_op->typ){
+                    case DELETEOP:
+                        if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
+                            // do nothing for delete at address we aren't
+                            // tracking
+                            cur_op->val.deletel.a.flag = IRRELEVANT;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = GREG;
+                            cur_op->val.deletel.a.val.gr =
+                                dventry.entry.memaccess.addr.val.gr;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = GSPEC;
+                            cur_op->val.deletel.a.val.gs =
+                                dventry.entry.memaccess.addr.val.gs;
+                        }
+                        else if (dventry.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = MADDR;
+                            cur_op->val.deletel.a.val.ma =
+                                dventry.entry.memaccess.addr.val.ma;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+
+                    default:
+                        // taint ops for memset only consist of delete ops
+                        assert(1==0);
+                }
+                cur_op++;
+            }
+            buf->ptr = saved_buf_ptr;
+        }
+    }
+    else if (!strcmp(op.val.insn_start.name, "memcpy")){
+        /*
+         *MemCpy has two values in the dynamic log, the src and the dst.
+         *The src is modeled as a LOAD and comes first in the log.
+         *The dst is modeled as a STORE and comes second in the log.
+         */
+
+        DynValEntry dventry_src = dventry;
+        DynValEntry dventry_dst;
+        // Make sure there is still something to read in the buffer
+        assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
+            < dynval_buf->cur_size);
+
+        //TODO: CHECK IF I NEED A NEW DYNVAL_BUFFER
+        read_dynval_buffer(dynval_buf, &dventry_dst);
+
+        if (dventry_dst.entrytype == EXCEPTIONENTRY){
+            printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+            next_step = EXCEPT;
+            return;
+        }
+
+        if ((dventry_src.entrytype != ADDRENTRY) ||
+             (dventry_src.entry.memaccess.op != LOAD) ||
+             (dventry_dst.entrytype != ADDRENTRY) ||
+             (dventry_dst.entry.memaccess.op != STORE)) {
+            fprintf(stderr, "Error: dynamic log doesn't align\n");
+            fprintf(stderr, "In: memcpy\n");
+            exit(1);
+        } else {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+                switch (cur_op->typ){
+                    case COPYOP:
+                        if (dventry_src.entry.memaccess.addr.flag == IRRELEVANT){
+                            // store to irrelevant part of CPU state
+                            // delete taint at the destination
+                            cur_op->val.copy.a.flag = IRRELEVANT;
+                        }
+                        else if (dventry_src.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = GREG;
+                            cur_op->val.copy.a.val.gr =
+                                dventry_src.entry.memaccess.addr.val.gr;
+                        }
+                        else if (dventry_src.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = GSPEC;
+                            cur_op->val.copy.a.val.gs =
+                                dventry_src.entry.memaccess.addr.val.gs;
+                        }
+                        else if (dventry_src.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = MADDR;
+                            cur_op->val.copy.a.val.ma =
+                                dventry_src.entry.memaccess.addr.val.ma;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+
+                        if (dventry_dst.entry.memaccess.addr.flag == IRRELEVANT){
+                            // store to irrelevant part of CPU state
+                            // delete taint at the destination
+                            cur_op->val.copy.b.flag = IRRELEVANT;
+                        }
+                        else if (dventry_dst.entry.memaccess.addr.typ == GREG){
+                            // guest register
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = GREG;
+                            cur_op->val.copy.b.val.gr =
+                                dventry_dst.entry.memaccess.addr.val.gr;
+                        }
+                        else if (dventry_dst.entry.memaccess.addr.typ == GSPEC){
+                            // guest special address
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = GSPEC;
+                            cur_op->val.copy.b.val.gs =
+                                dventry_dst.entry.memaccess.addr.val.gs;
+                        }
+                        else if (dventry_dst.entry.memaccess.addr.typ == MADDR){
+                            // guest RAM
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = MADDR;
+                            cur_op->val.copy.b.val.ma =
+                                dventry_dst.entry.memaccess.addr.val.ma;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+
+                        break;
+                    default:
+                        // taint ops for memcpy only consist of copy ops
+                        assert(1==0);
+                }
+                cur_op++;
+            }
+            buf->ptr = saved_buf_ptr;
+        }
+    }
 }
 
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){

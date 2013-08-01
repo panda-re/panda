@@ -2291,22 +2291,30 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
     int bytes = bytes_ir->getSExtValue();
 
-    llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
-    int align = align_ir->getSExtValue();
-    printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+    printf("Bytes number: %i\n", bytes);
 
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
+
+    char name[7] = "memcpy";
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = bytes;
+
+    tob_op_write(tbuf, op);
+
     op.typ = COPYOP;
-    dst.typ = LADDR;
-    dst.val.la = PST->getLocalSlot(I.getArgOperand(0));
-    src.typ = LADDR;
-    src.val.la = PST->getLocalSlot(I.getArgOperand(1));
+    dst.typ = UNK;
+    dst.val.ua = 0;
+    dst.flag = READLOG;
+    src.typ = UNK;
+    src.val.la = 0;
+    src.flag = READLOG;
 
     for (int i = 0; i < bytes; i++){
         src.off = i;
-        dst.off = i + align;
+        dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
         tob_op_write(tbuf, op);
@@ -2320,29 +2328,15 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
     int bytes = bytes_ir->getSExtValue();
 
-    llvm::ConstantInt* align_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(3));
-    int align = align_ir->getSExtValue();
-    printf("Alignment value: %i, bytes number: %i\n", align, bytes);
+    printf("Bytes number: %i\n", bytes);
 
     struct taint_op_struct op = {};
-    struct addr_struct src = {};
     struct addr_struct dst = {};
-
-    //TODO: IS THIS NEEDED, memset doesnt return anything
-    //Delete taint at destination
-    op.typ = DELETEOP;
-    dst.typ = LADDR;
-    dst.val.la = PST->getLocalSlot(&I);
-    for (int i = 0; i < bytes; i++){
-        dst.off = i;
-        op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
-    }
 
     //Second operand is a constant
     assert(PST->getLocalSlot(I.getArgOperand(1)) < 0);
 
-    char name[4] = "memset";
+    char name[7] = "memset";
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = bytes;
@@ -2350,9 +2344,10 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     tob_op_write(tbuf, op);
 
     op.typ = DELETEOP;
-    dst.typ = LADDR;
-    dst.val.la = PST->getLocalSlot(&I);
-    for (int i = 0; i < len; i++){
+    dst.typ = UNK;
+    dst.val.ua = 0;
+    dst.flag = READLOG;
+    for (int i = 0; i < bytes; i++){
         dst.off = i;
         op.val.deletel.a = dst;
         tob_op_write(tbuf, op);
@@ -2518,14 +2513,14 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         bswapHelper(I);
         return;
     }
-    //else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
-    //     memcpyHelper(I);
-    //     return;
-    //}
-    //else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memset){
-    //     memsetHelper(I);
-    //     return;
-    //}
+    else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy){
+         memcpyHelper(I);
+         return;
+    }
+    else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::memset){
+         memsetHelper(I);
+         return;
+    }
     else if (I.getCalledFunction()->getIntrinsicID() == Intrinsic::ctlz){
          ctlzHelper(I);
          return;
