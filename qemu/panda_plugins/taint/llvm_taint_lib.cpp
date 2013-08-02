@@ -2291,7 +2291,7 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
     int bytes = bytes_ir->getSExtValue();
 
-    printf("Bytes number: %i\n", bytes);
+    printf("Memcpy Bytes number: %i\n", bytes);
 
     struct taint_op_struct op = {};
     struct addr_struct src = {};
@@ -2325,10 +2325,16 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
  * Taint model for LLVM memset intrinsic.
  */
 void PandaTaintVisitor::memsetHelper(CallInst &I){
+    //FIXME: There is a bug here that make bytes_ir point to an invalid address so getSExtValue() crashes the system
     llvm::ConstantInt* bytes_ir = dyn_cast<llvm::ConstantInt>(I.getOperand(2));
     int bytes = bytes_ir->getSExtValue();
 
-    printf("Bytes number: %i\n", bytes);
+    if (bytes > 100) {
+      printf("Note: Taint proccessor ignoring memset greater than 100 bytes, probably in cpu state reset\n");
+      return;
+    }
+
+    printf("Memset Bytes number: %i\n", bytes);
 
     struct taint_op_struct op = {};
     struct addr_struct dst = {};
