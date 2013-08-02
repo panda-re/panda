@@ -149,7 +149,6 @@ static char *qemu_st_helper_names[5] = {
 #include <sstream>
 
 //#undef NDEBUG
-//#define DEBUGSTRINGS
 
 extern "C" {
     TCGLLVMContext* tcg_llvm_ctx = 0;
@@ -456,11 +455,7 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
                     m_tbFunction->arg_begin(), m_globalsIdx[idx]);
             m_memValuesPtr[idx] = m_builder.CreatePointerCast(
                     v, tcgPtrType(temp.type)
-#ifndef NDEBUG
-#ifdef DEBUGSTRINGS
                     , StringRef(temp.name) + "_ptr"
-#endif
-#endif
                     );
 
         } else {
@@ -471,11 +466,7 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
                             wordType(), temp.mem_offset));
             m_memValuesPtr[idx] =
                 m_builder.CreateIntToPtr(v, tcgPtrType(temp.type)
-#ifndef NDEBUG
-#ifdef DEBUGSTRINGS
                         , StringRef(temp.name) + "_ptr"
-#endif
-#endif
                         );
         }
     }
@@ -523,21 +514,13 @@ Value* TCGLLVMContextPrivate::getValue(int idx)
     if(m_values[idx] == NULL) {
         if(idx < m_tcgContext->nb_globals) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
-#ifndef NDEBUG
-#ifdef DEBUGSTRINGS
                     , StringRef(m_tcgContext->temps[idx].name) + "_v"
-#endif
-#endif
                     );
         } else if(m_tcgContext->temps[idx].temp_local) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx));
-#ifndef NDEBUG
-#ifdef DEBUGSTRINGS
             std::ostringstream name;
             name << "loc" << (idx - m_tcgContext->nb_globals) << "_v";
             m_values[idx]->setName(name.str());
-#endif
-#endif
         } else {
             // Temp value was not previousely assigned
             assert(false); // XXX: or return zero constant ?
@@ -553,8 +536,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
     m_values[idx] = v;
 
     if(!v->hasName() && !isa<Constant>(v)) {
-#ifndef NDEBUG
-#ifdef DEBUGSTRINGS
         if(idx < m_tcgContext->nb_globals)
             v->setName(StringRef(m_tcgContext->temps[idx].name) + "_v");
         if(m_tcgContext->temps[idx].temp_local) {
@@ -566,8 +547,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
             name << "tmp" << (idx - m_tcgContext->nb_globals) << "_v";
             v->setName(name.str());
         }
-#endif
-#endif
     }
 
     if(idx < m_tcgContext->nb_globals) {

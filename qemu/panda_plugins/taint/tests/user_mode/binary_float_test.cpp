@@ -28,7 +28,7 @@ int main(int argc, char const *argv[]) {
 
   // Option handler
   int option = atoi(argv[1]);
-  if (option < 1 || option > 8) {
+  if (option < 1 || option > 10) {
     usage();
     return -1;
   }
@@ -82,6 +82,14 @@ int main(int argc, char const *argv[]) {
       f3 = sin(f2);
       res = write_float(&f3);
       break;
+    case 9:
+      f3 = ldexp(f2, 2);
+      res = write_float(&f3);
+      break;
+    case 10:
+      f3 = atan2(f2, 2);
+      res = write_float(&f3);
+      break;
     default:
       //ERROR should not happen
       return -1;
@@ -104,6 +112,8 @@ void usage() {
   std::cout << "\t6 - fptosi" << std::endl;
   std::cout << "\t7 - fptoui" << std::endl;
   std::cout << "\t8 - sin" << std::endl;
+  std::cout << "\t9 - ldexp" << std::endl;
+  std::cout << "\t10 - atan2" << std::endl;
 }
 
 int read_float(float *f2) {
