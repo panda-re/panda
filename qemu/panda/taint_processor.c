@@ -1232,7 +1232,6 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
             < dynval_buf->cur_size);
 
-        //TODO: CHECK IF I NEED A NEW DYNVAL_BUFFER
         read_dynval_buffer(dynval_buf, &dventry_dst);
 
         if (dventry_dst.entrytype == EXCEPTIONENTRY){

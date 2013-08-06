@@ -349,6 +349,21 @@ void PandaInstrumentVisitor::visitMemSetInst(MemSetInst &I){
         printf("Instrumentation function not found\n");
         assert(1==0);
     }
+
+    int bytes = 0;
+    Value *length = I.getLength();
+    if (ConstantInt* CI = dyn_cast<ConstantInt>(length)) {
+        if (CI->getBitWidth() <= 64) {
+            bytes = CI->getSExtValue();
+        }
+    }
+
+    if (bytes > 100) {
+        //This mostly happens in cpu state reset
+        printf("Note: dyn log ignoring memset greater than 100 bytes\n");
+        return;
+    }
+
     PtrToIntInst *PTII;
     CallInst *CI;
     std::vector<Value*> argValues;

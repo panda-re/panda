@@ -2297,11 +2297,6 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
         }
     }
 
-    if (bytes > 100) {
-      printf("Note: ignoring memcpy greater than 100 bytes, probably in cpu state reset\n");
-      return;
-    }
-
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
@@ -2310,6 +2305,7 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = bytes;
+    op.val.insn_start.flag = INSNREADLOG;
 
     tob_op_write(tbuf, op);
 
@@ -2343,7 +2339,8 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     }
 
     if (bytes > 100) {
-      printf("Note: ignoring memset greater than 100 bytes, probably in cpu state reset\n");
+      //This happens mostly in cpu state reset
+      printf("Note: taint ignoring memset greater than 100 bytes\n");
       return;
     }
 
@@ -2357,6 +2354,7 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = bytes;
+    op.val.insn_start.flag = INSNREADLOG;
 
     tob_op_write(tbuf, op);
 
