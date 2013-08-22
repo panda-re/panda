@@ -71,6 +71,7 @@ DynValBuffer *PandaInstrumentVisitor::getDynvalBuffer(){
  * the root of a global value (likely CPUState), then we can ignore it.
  */
 void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
+    return;
     Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
@@ -141,6 +142,7 @@ void PandaInstrumentVisitor::visitLoadInst(LoadInst &I){
 
 // Call the logging function, logging the address of the store
 void PandaInstrumentVisitor::visitStoreInst(StoreInst &I){
+    return;
     Function *F = mod->getFunction("log_dynval");
     if (!F) {
         printf("Instrumentation function not found\n");
@@ -225,6 +227,7 @@ void PandaInstrumentVisitor::visitBranchInst(BranchInst &I){
     if (I.isConditional()){
         condition = I.getCondition();
         if(isa<UndefValue>(condition)){
+            assert(0 && "Undef value when logging conditional");
             BO = static_cast<BinaryOperator*>(IRB.CreateNot(condition));
             ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(BO, wordType));
             argValues.push_back(ConstantInt::get(ptrType,

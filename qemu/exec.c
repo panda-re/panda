@@ -3374,8 +3374,8 @@ ram_addr_t qemu_ram_addr_from_host_nofail(void *ptr)
 
 static uint32_t unassigned_mem_readb(void *opaque, target_phys_addr_t addr)
 {
-    uint32_t rand_val = 0;
-    //uint32_t rand_val = (uint32_t) rand();
+    uint32_t rand_val = (uint32_t) rand();
+    rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx " val %02x PC=" TARGET_FMT_lx "\n", addr, rand_val & 0xFF, cpu_single_env->panda_guest_pc);
 #endif
@@ -3387,8 +3387,8 @@ static uint32_t unassigned_mem_readb(void *opaque, target_phys_addr_t addr)
 
 static uint32_t unassigned_mem_readw(void *opaque, target_phys_addr_t addr)
 {
-    uint32_t rand_val = 0;
-    //uint32_t rand_val = (uint32_t) rand();
+    uint32_t rand_val = (uint32_t) rand();
+    rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx " val %04x PC=" TARGET_FMT_lx "\n", addr, rand_val & 0xFFFF, cpu_single_env->panda_guest_pc);
 #endif
@@ -3400,8 +3400,8 @@ static uint32_t unassigned_mem_readw(void *opaque, target_phys_addr_t addr)
 
 static uint32_t unassigned_mem_readl(void *opaque, target_phys_addr_t addr)
 {
-    uint32_t rand_val = 0;
-    //uint32_t rand_val = (uint32_t) rand();
+    uint32_t rand_val = (uint32_t) rand();
+    rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx " val %08x PC=" TARGET_FMT_lx "\n", addr, rand_val, cpu_single_env->panda_guest_pc);
 #endif

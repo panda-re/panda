@@ -55,8 +55,10 @@ static uint64_t armdummy_read(void *opaque, target_phys_addr_t addr,
         }
     }
     
-    printf("%s (%s): Bad register 0x" TARGET_FMT_plx "\n", __func__, s->name, addr);
-    return 0;
+    uint32_t rand_val = (uint32_t) rand();
+    rand_val = 0;
+    printf("%s (%s): Bad register 0x" TARGET_FMT_plx ", returning %x\n", __func__, s->name, addr, rand_val);
+    return rand_val;
 }
 
 static void armdummy_write(void *opaque, target_phys_addr_t addr,
@@ -172,6 +174,7 @@ static void armdummy_register_devices(void)
 
     // Parse
     QObject *dev_js = qobject_from_json(json_buf);
+    assert(dev_js != NULL);
     dev_dict = qobject_to_qdict(dev_js); // global
     assert(dev_dict != NULL);
 

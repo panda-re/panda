@@ -5,5 +5,29 @@
         "memory": [
             {"address": 3174499332, "values": [4], "size": 4}
         ]
+    },
+    "dev_0xbd030364" : {
+        "description": "Automatically generated device at 0xbd030364",
+        "base": 3171090432,
+        "memory": [
+            {"address": 3171091300, "values": [4278288639], "size": 4},
+            {"address": 3171091340, "values": [65536], "size": 4}
+        ]
+    },
+    "dev_0xb050004" : {
+        "description": "Automatically generated device at 0xb050004",
+        "base": 184877056,
+        "memory": [
+            {"address": 184877060, "values": [3], "size": 2},
+            {"address": 184877056, "values": [1430603337], "size": 4},
+            {"address": 184877232, "values": [1], "size": 4}
+        ]
+    },
+    "dev_0xbd370804" : {
+        "description": "Automatically generated device at 0xbd370804",
+        "base": 3174500352,
+        "memory": [
+            {"address": 3174500356, "values": [4], "size": 4}
+        ]
     }
 }
