@@ -397,7 +397,7 @@ void PandaInstrumentVisitor::visitMemCpyInst(MemCpyInst &I){
     argValues_dst.push_back(ConstantInt::get(ptrType,
         (uintptr_t)dynval_buffer));
     argValues_dst.push_back(ConstantInt::get(intType, ADDRENTRY));
-    argValues_dst.push_back(ConstantInt::get(intType, LOAD));
+    argValues_dst.push_back(ConstantInt::get(intType, STORE));
     argValues_dst.push_back(static_cast<Value*>(PTII_DST));
 
     PTII_SRC = static_cast<PtrToIntInst*>(IRB.CreatePtrToInt(
@@ -405,16 +405,16 @@ void PandaInstrumentVisitor::visitMemCpyInst(MemCpyInst &I){
     argValues_src.push_back(ConstantInt::get(ptrType,
         (uintptr_t)dynval_buffer));
     argValues_src.push_back(ConstantInt::get(intType, ADDRENTRY));
-    argValues_src.push_back(ConstantInt::get(intType, STORE));
+    argValues_src.push_back(ConstantInt::get(intType, LOAD));
     argValues_src.push_back(static_cast<Value*>(PTII_SRC));
 
     //The load must come first in the dynamic log
-    CI_DST = IRB.CreateCall(F, ArrayRef<Value*>(argValues_dst));
-    CI_DST->insertBefore(static_cast<Instruction*>(&I));
-    PTII_DST->insertBefore(static_cast<Instruction*>(CI_DST));
-
-    //The store must come second in the dynamic log
     CI_SRC = IRB.CreateCall(F, ArrayRef<Value*>(argValues_src));
     CI_SRC->insertBefore(static_cast<Instruction*>(&I));
     PTII_SRC->insertBefore(static_cast<Instruction*>(CI_SRC));
+
+    //The store must come second in the dynamic log
+    CI_DST = IRB.CreateCall(F, ArrayRef<Value*>(argValues_dst));
+    CI_DST->insertBefore(static_cast<Instruction*>(&I));
+    PTII_DST->insertBefore(static_cast<Instruction*>(CI_DST));
 }

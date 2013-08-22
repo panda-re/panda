@@ -2603,8 +2603,19 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         && !I.getCalledFunction()->isDeclaration()
         && !I.getCalledFunction()->isIntrinsic()){
 
+        StringRef name = called->getName();
+        if (name.startswith("__ld") ||
+            name.startswith("__st") ||
+            name.startswith("slow_")) {
+          return;
+        }
+
+
         FunctionPass *newPTFP =
-            createPandaTaintFunctionPass(5*1048576, ttbCache);
+            createPandaTaintFunctionPass(10*1048576, ttbCache);
+
+
+
         newPTFP->runOnFunction(*I.getCalledFunction());
         it = ttbCache->find(calledName);
         delete newPTFP;
