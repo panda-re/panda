@@ -28,7 +28,8 @@ CC=gcc-4.7 CXX=g++-4.7 ./configure --enable-optimized --disable-assertions --ena
 follow instructions in distorm-read-only/INSTALL
 
 3. Compile the QEMU part.  Note that if you want to use LLVM, you may need to
-specify the location where your LLVM build is located.
+specify the location where your LLVM build is located at the '--with-llvm'
+option in qemu/build.sh.
 
 cd panda/qemu
 sh ./build.sh
