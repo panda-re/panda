@@ -191,6 +191,9 @@ struct TCGLLVMContextPrivate {
     /* Function for current translation block */
     Function *m_tbFunction;
 
+    /* CPUState pointer for current function */
+    Value *m_envPtr;
+
     /* Current temp m_values */
     Value* m_values[TCG_MAX_TEMPS];
 
@@ -202,6 +205,15 @@ struct TCGLLVMContextPrivate {
     int m_globalsIdx[TCG_MAX_TEMPS];
 
     BasicBlock* m_labels[TCG_MAX_LABELS];
+
+    /* Pointers to QEMU CPU state versions of globals or local temps */
+    Value* m_origMemValuesPtr[TCG_MAX_TEMPS];
+    
+    /* Keep track of which registers are present in the current function */
+    //bool m_origMemValuesPtrBools[TCG_MAX_TEMPS];
+    
+    Value *m_stackVars[TCG_MAX_TEMPS]; // Stack vars (CPU regs) XXX change size
+    bool m_stackVarsDefined[TCG_MAX_TEMPS]; // Stack vars defined (stored to)
 
 public:
     TCGLLVMContextPrivate();
@@ -253,6 +265,9 @@ public:
     Value* getValue(int idx);
     void setValue(int idx, Value *v);
     void delValue(int idx);
+
+    Value* getValueAtFunctionStart(int idx);
+    void setValueAtFunctionStart(int idx, Value *v);
 
     Value* getPtrForValue(int idx);
     void delPtrForValue(int idx);
@@ -364,7 +379,12 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
     std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
     std::memset(m_labels, 0, sizeof(m_labels));
-
+    std::memset(m_origMemValuesPtr, 0, sizeof(m_origMemValuesPtr));
+    //std::memset(m_origMemValuesPtrBools, 0, sizeof(m_origMemValuesPtrBools));
+    std::memset(m_stackVars, 0, sizeof(m_stackVars));
+    std::memset(m_stackVarsDefined, 0, sizeof(m_stackVarsDefined));
+    m_envPtr = NULL;
+    
     InitializeNativeTarget();
 
     m_module = new Module("tcg-llvm", m_context);
@@ -378,7 +398,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      * our log processing.
      */
     m_executionEngine = ExecutionEngine::createJIT(
-            m_module, &error, m_jitMemoryManager, CodeGenOpt::None);
+            m_module, &error, m_jitMemoryManager, CodeGenOpt::None); //XXX
     if(m_executionEngine == NULL) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);
@@ -391,10 +411,14 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
      * code size
      */
-     //PassManagerBuilder PMBuilder;
-     //PMBuilder.OptLevel = 2;
-     //PMBuilder.SizeLevel = 2;
-     //PMBuilder.populateFunctionPassManager(*m_functionPassManager);
+    /*PassManagerBuilder PMBuilder;
+    PMBuilder.OptLevel = 2;
+    //PMBuilder.SizeLevel = 2;
+    PMBuilder.populateFunctionPassManager(*m_functionPassManager);
+
+    m_functionPassManager->add(createDeadInstEliminationPass());
+    m_functionPassManager->add(createDeadInstEliminationPass());*/
+
 
     /*m_functionPassManager->add(createReassociatePass());
     m_functionPassManager->add(createConstantPropagationPass());
@@ -406,7 +430,8 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager->add(createDeadInstEliminationPass());
     */
 
-    //m_functionPassManager->add(new SelectRemovalPass());
+    m_functionPassManager->add(createDeadInstEliminationPass());
+    m_functionPassManager->add(createPromoteMemoryToRegisterPass());
 
 
     /* Note: another good place to look for optimization passes is in
@@ -447,20 +472,42 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 
     assert(idx < s->nb_globals || s->temps[idx].temp_local);
     
-    if(m_memValuesPtr[idx] == NULL) {
+    //else if (m_stackVarsDefined[0]  && (idx < s->nb_globals) && !strcmp(temp.name, "rax")){
+    //else if (m_stackVarsDefined[5] && (idx == 5)){
+    if (idx < s->nb_globals && idx >= 5){
+        return m_stackVars[idx];
+    }
+    
+    else if (m_memValuesPtr[idx] == NULL) {
         assert(idx < s->nb_globals);
 
         if(temp.fixed_reg) {
-            Value *v = m_builder.CreateConstGEP1_32(
-                    m_tbFunction->arg_begin(), m_globalsIdx[idx]);
-            m_memValuesPtr[idx] = m_builder.CreatePointerCast(
-                    v, tcgPtrType(temp.type)
-                    , StringRef(temp.name) + "_ptr"
-                    );
+            if (idx == 0 && m_envPtr == NULL){
+                Value *v = m_builder.CreateConstGEP1_32(
+                        m_tbFunction->arg_begin(), m_globalsIdx[idx],
+                        StringRef("env_ptr"));
+                m_envPtr = v;
+                m_memValuesPtr[idx] = m_envPtr;
+            }
+            else {
+                Value *v = m_builder.CreateConstGEP1_32(
+                        m_tbFunction->arg_begin(), m_globalsIdx[idx]);
+                m_memValuesPtr[idx] = m_builder.CreatePointerCast(
+                        v, tcgPtrType(temp.type)
+                        , StringRef(temp.name) + "_ptr"
+                        );
+            }
 
         } else {
-            Value *v = getValue(m_globalsIdx[idx]);
-            assert(v->getType() == wordType());
+            Value *v;
+            if (m_envPtr == NULL){
+                v = getValue(m_globalsIdx[idx]);
+                assert(v->getType() == wordType());
+                m_envPtr = v;
+            }
+            else {
+                v = m_envPtr;
+            }
 
             v = m_builder.CreateAdd(v, ConstantInt::get(
                             wordType(), temp.mem_offset));
@@ -469,9 +516,14 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
                         , StringRef(temp.name) + "_ptr"
                         );
         }
+        //m_origMemValuesPtr[idx] = m_memValuesPtr[idx];
+        //m_origMemValuesPtrBools[idx] = true;
+        return m_memValuesPtr[idx];
     }
-
-    return m_memValuesPtr[idx];
+    
+    else {
+        return m_memValuesPtr[idx];
+    }
 }
 
 inline void TCGLLVMContextPrivate::delValue(int idx)
@@ -511,11 +563,16 @@ unsigned TCGLLVMContextPrivate::getValueBits(int idx)
 Value* TCGLLVMContextPrivate::getValue(int idx)
 {
 
-    if(m_values[idx] == NULL) {
+    if ((m_values[idx] == NULL) || (idx < m_tcgContext->nb_globals)) {
         if(idx < m_tcgContext->nb_globals) {
-            m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
-                    , StringRef(m_tcgContext->temps[idx].name) + "_v"
-                    );
+            if (idx == 0 && m_envPtr != NULL){
+                m_values[idx] = m_envPtr;
+            }
+            else {
+                m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
+                        , StringRef(m_tcgContext->temps[idx].name) + "_v"
+                        );
+            }
         } else if(m_tcgContext->temps[idx].temp_local) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx));
             std::ostringstream name;
@@ -525,9 +582,62 @@ Value* TCGLLVMContextPrivate::getValue(int idx)
             // Temp value was not previousely assigned
             assert(false); // XXX: or return zero constant ?
         }
+        return m_values[idx];
     }
 
-    return m_values[idx];
+    /*else if (m_values[idx] != NULL && (idx < m_tcgContext->nb_globals) &&
+            //!strcmp(m_tcgContext->temps[idx].name, "rax")){
+            (idx == 5)){
+        if (!m_stackVarsDefined[5]){
+            // If the stack value hasn't been defined, we have to load from
+            // CPUState
+            m_values[idx] = m_builder.CreateLoad(m_origMemValuesPtr[idx]
+                    , StringRef(m_tcgContext->temps[idx].name) + "_v"
+                    );
+        }
+        else {
+            m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
+                    , StringRef(m_tcgContext->temps[idx].name) + "_v"
+                    );
+        }
+        //printf("rax index %d\n", idx);
+        //return m_builder.CreateLoad(m_stackVars[0], StringRef("rax_stack2") + "_v");
+        return m_values[idx];
+    }*/
+    
+    else {
+        return m_values[idx];
+    }
+}
+
+Value* TCGLLVMContextPrivate::getValueAtFunctionStart(int idx){
+    TCGContext *s = m_tcgContext;
+    TCGTemp &temp = s->temps[idx];
+
+    Value *v;
+    if (m_envPtr == NULL){
+        v = getValue(m_globalsIdx[idx]);
+        assert(v->getType() == wordType());
+        m_envPtr = v;
+    }
+    else {
+        v = m_envPtr;
+    }
+
+    v = m_builder.CreateAdd(v, ConstantInt::get(
+                    wordType(), temp.mem_offset));
+    m_memValuesPtr[idx] =
+        m_builder.CreateIntToPtr(v, tcgPtrType(temp.type)
+                , StringRef(temp.name) + "_ptr"
+                );
+
+    //m_memValuesPtr[idx] = m_builder.CreatePointerCast(v, tcgPtrType(temp.type));
+    //m_memValuesPtr[idx]->setName(StringRef(temp.name) + "_ptr");
+    Value *val = m_builder.CreateLoad(m_memValuesPtr[idx]
+            , StringRef(temp.name) + "_v");
+    m_origMemValuesPtr[idx] = m_memValuesPtr[idx];
+    //m_origMemValuesPtrBools[idx] = true;
+    return val;
 }
 
 void TCGLLVMContextPrivate::setValue(int idx, Value *v)
@@ -552,7 +662,25 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
     if(idx < m_tcgContext->nb_globals) {
 
         // We need to save a global copy of a value
-        m_builder.CreateStore(v, getPtrForValue(idx));
+        /*Value *val;
+        //FIXME!!
+        //if (idx == 5 && m_stackVarsDefined[0]){
+        if ((idx == 5) && (m_origMemValuesPtrBools[5] == true)){
+            val = m_stackVars[5];
+            //m_origMemValuesPtr[5] = getPtrForValue(idx);
+            //m_origMemValuesPtrBools[5] = true;
+        }
+        else {
+            val = getPtrForValue(idx);
+        }
+        m_builder.CreateStore(v, val);*/
+        Value *val = getPtrForValue(idx);
+        //if (val == m_stackVars[5]){
+        if (idx >= 5)
+            m_stackVarsDefined[idx] = true;
+        //}
+
+        m_builder.CreateStore(v, val);
 
         if(m_tcgContext->temps[idx].fixed_reg) {
             /* Invalidate all dependent global vals and pointers */
@@ -560,7 +688,9 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
                 if(i != idx && !m_tcgContext->temps[idx].fixed_reg &&
                                     m_globalsIdx[i] == idx) {
                     delValue(i);
+                    //if (i == 5) continue;
                     delPtrForValue(i);
+                    printf("WEIRD CODE\n");
                 }
             }
         }
@@ -569,6 +699,22 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
         // We need to save an in-memory copy of a value
         m_builder.CreateStore(v, getPtrForValue(idx));
     }
+}
+
+/*
+ * Should only be used for CPUState globals at the beginning of the function
+ */
+void TCGLLVMContextPrivate::setValueAtFunctionStart(int idx, Value *v)
+{
+    assert(idx < m_tcgContext->nb_globals);
+    delValue(idx);
+    //m_values[idx] = v;
+
+    if(!v->hasName() && !isa<Constant>(v)) {
+        v->setName(StringRef(m_tcgContext->temps[idx].name) + "_v");
+    }
+    
+    m_builder.CreateStore(v, m_stackVars[idx]);
 }
 
 void TCGLLVMContextPrivate::initGlobalsAndLocalTemps()
@@ -648,12 +794,16 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
     m_builder.SetInsertPoint(bb);
 
     /* Invalidate all temps */
-    for(int i=0; i<TCG_MAX_TEMPS; ++i)
+    for(int i=0; i<TCG_MAX_TEMPS; ++i){
+        //if (i == 5) continue;
         delValue(i);
+    }
 
     /* Invalidate all pointers to globals */
-    for(int i=0; i<m_tcgContext->nb_globals; ++i)
+    for(int i=0; i<m_tcgContext->nb_globals; ++i){
+        if (i >= 5) continue; //XXX might need this 8/19
         delPtrForValue(i);
+    }
 }
 
 /*
@@ -809,6 +959,17 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                                                     (void*) helperAddrC);
             }
 
+            /* Store stack variables back to CPUState */
+            for (int i = 5; i < m_tcgContext->nb_globals; i++){
+                if (/*m_origMemValuesPtrBools[5] &&*/ m_stackVarsDefined[i]){
+                    Value *v = m_builder.CreateLoad(m_stackVars[i]
+                            , StringRef(m_tcgContext->temps[i].name) + "_v"
+                            );
+                    m_builder.CreateStore(v, m_origMemValuesPtr[i]);
+                    //m_stackVarsDefined[5] = false;
+                }
+            }
+
             result = m_builder.CreateCall(helperFunc,
                                           ArrayRef<Value*>(argValues));
 
@@ -822,8 +983,26 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                     delValue(i);
 
             /* Invalidate all pointers to globals */
-            for(int i=0; i<m_tcgContext->nb_globals; ++i)
+            for(int i=0; i<m_tcgContext->nb_globals; ++i){
+                //FIXME XXX is this necessary?
+                if (i >= 5) continue;
                 delPtrForValue(i);
+                //if (i == 5){
+                    //m_memValuesPtr[i] = m_origMemValuesPtr[i];
+                    //m_origMemValuesPtrBools[5] = false;
+                    //m_stackVarsDefined[5] = false;
+                //}
+            }
+
+            /* Load all globals back into the stack */
+            for (int i = 5; i < m_tcgContext->nb_globals; i++){
+                Value *v = m_builder.CreateLoad(m_origMemValuesPtr[i],
+                    StringRef(m_tcgContext->temps[i].name) + "_v");
+                //delValue(5);
+                //m_values[5] = v;
+                m_builder.CreateStore(v, m_stackVars[i]);
+                //m_stackVarsDefined[5] = false;
+            }
 
             if(nb_oargs == 1)
                 setValue(args[1], result);
@@ -940,8 +1119,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
     case INDEX_op_mov_i32:
         // Move operation may perform truncation of the value
-        assert(getValue(args[1])->getType() == intType(32) ||
-                getValue(args[1])->getType() == intType(64));
+        //assert(getValue(args[1])->getType() == intType(32) ||
+        //        getValue(args[1])->getType() == intType(64));
         setValue(args[0],
                 m_builder.CreateTrunc(getValue(args[1]), intType(32)));
         break;
@@ -952,7 +1131,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         break;
 
     case INDEX_op_mov_i64:
-        assert(getValue(args[1])->getType() == intType(64));
+        //assert(getValue(args[1])->getType() == intType(64));
         setValue(args[0], getValue(args[1]));
         break;
 #endif
@@ -1225,6 +1404,14 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #endif
 
     case INDEX_op_exit_tb:
+        /* Store stack variables back to CPUState - RAX for now */
+        for (int i = 5; i < m_tcgContext->nb_globals; i++){
+            if (/*m_origMemValuesPtrBools[5] &&*/ m_stackVarsDefined[i]){
+                Value *v = m_builder.CreateLoad(m_stackVars[i],
+                    StringRef(m_tcgContext->temps[i].name) + "_v");
+                m_builder.CreateStore(v, m_origMemValuesPtr[i]);
+            }
+        }
         m_builder.CreateRet(ConstantInt::get(wordType(), args[0]));
         break;
 
@@ -1342,6 +1529,20 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Prepare globals and temps information */
     initGlobalsAndLocalTemps();
 
+    /* Allocate stack variables - RAX for now */
+    //std::memset(m_origMemValuesPtrBools, 0, sizeof(m_origMemValuesPtrBools));
+    std::memset(m_origMemValuesPtr, 0, sizeof(m_origMemValuesPtr));
+    std::memset(m_stackVars, 0, sizeof(m_stackVars));
+    std::memset(m_stackVarsDefined, 0, sizeof(m_stackVarsDefined));
+    m_envPtr = NULL;
+    
+    for (int i = 5; i < m_tcgContext->nb_globals; i++){
+        m_stackVars[i] = m_builder.CreateAlloca(wordType(), 0,
+            StringRef(m_tcgContext->temps[i].name) + "_stack");
+        Value *v = getValueAtFunctionStart(i); // RAX
+        setValueAtFunctionStart(i, v);
+    }
+
     /* Generate code for each opc */
     const TCGArg *args = gen_opparam_buf;
     for(int opc_index=0; ;++opc_index) {
@@ -1372,8 +1573,17 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     }
 
     /* Finalize function */
-    if(!isa<ReturnInst>(m_tbFunction->back().back()))
+    if(!isa<ReturnInst>(m_tbFunction->back().back())){
+        /* Store stack variables back to CPUState - RAX for now */
+        for (int i = 5; i < m_tcgContext->nb_globals; i++){
+            if (/*m_origMemValuesPtrBools[5] &&*/ m_stackVarsDefined[i]){
+                Value *v = m_builder.CreateLoad(m_stackVars[i],
+                    StringRef(m_tcgContext->temps[i].name) + "_v");
+                m_builder.CreateStore(v, m_origMemValuesPtr[i]);
+            }
+        }
         m_builder.CreateRet(ConstantInt::get(wordType(), 0));
+    }
 
     /* Clean up unused m_values */
     for(int i=0; i<TCG_MAX_TEMPS; ++i)
