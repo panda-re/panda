@@ -2550,7 +2550,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     else if (!calledName.compare("__ldb_mmu_panda")
             || !calledName.compare("__ldw_mmu_panda")
             || !calledName.compare("__ldl_mmu_panda")
-            || !calledName.compare("__ldq_mmu_panda")
             || !calledName.compare("__ldq_mmu_panda")){
 
         // guest load in whole-system mode
@@ -2561,7 +2560,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
     else if (!calledName.compare("__stb_mmu_panda")
             || !calledName.compare("__stw_mmu_panda")
             || !calledName.compare("__stl_mmu_panda")
-            || !calledName.compare("__stq_mmu_panda")
             || !calledName.compare("__stq_mmu_panda")){
 
         // guest store in whole-system mode
