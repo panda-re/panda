@@ -966,7 +966,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                             , StringRef(m_tcgContext->temps[i].name) + "_v"
                             );
                     m_builder.CreateStore(v, m_origMemValuesPtr[i]);
-                    //m_stackVarsDefined[5] = false;
+                    m_stackVarsDefined[i] = false;
                 }
             }
 
