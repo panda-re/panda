@@ -39,31 +39,35 @@ Usage
 Record and replay is controlled with four QEMU monitor commands:
 begin_record, end_record, begin_replay, end_replay:
 
-* begin_record <name>
-    Starts a recording session, saved as <name>. Note that there is
+* `begin_record <name>`
+
+    Starts a recording session, saved as `<name>`. Note that there is
     currently no safeguard to prevent overwriting previous recordings,
     so be careful to choose a unique name.
 
     The recording log consists of two parts: the snapshot, which is
-    stored in the QCOW under the name <name>-rr-snp, and the recording
-    log, which is named <name>-rr-nondet.log.
+    stored in the QCOW under the name `<name>-rr-snp`, and the recording
+    log, which is named `<name>-rr-nondet.log`.
 
-* end_record
+* `end_record`
+
     Ends an active recording session. The guest will be paused, but can
     be resumed and another recording can be made once the guest is
     resumed.
 
-* begin_replay <name>
-    Begin a replay of the session named <name>. Note that QEMU not must
+* `begin_replay <name>`
+
+    Begin a replay of the session named `<name>`. Note that QEMU not must
     be halted for this to work. You may find it convenient to use the
     following trick to get a replay started:
 
-      (echo "begin_replay <name>" ; cat) | qemu-system-arm -monitor stdio
+    `(echo "begin_replay <name>" ; cat) | qemu-system-arm -monitor stdio`
     
     This will start up QEMU and place the monitor on stdin, and
     immediately tell QEMU to start replay.
 
-* end_replay
+* `end_replay`
+
     End an active replay. Normally the replay will just finish on its
     own, but if you want to end it early you can use this command.
 
