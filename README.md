@@ -13,13 +13,13 @@ Instructions for building PANDA can be found in docs/compile.txt.
 PANDA Plugins
 ----
 Details about the architecture-neutral plugin interface can be found in
-docs/PANDA.md.  Existing plugins and tools can be found in qemu/panda_plugins
-and qemu/panda_tools.
+docs/PANDA.md.  Existing plugins and tools can be found in qemu/panda\_plugins
+and qemu/panda\_tools.
 
 Record/Replay
 ----
-PANDA currently supports whole-system record/replay execution of x86, x86_64,
-and ARM guests.  Documentation can be found in XXX
+PANDA currently supports whole-system record/replay execution of x86, x86\_64,
+and ARM guests.  Documentation can be found in docs/record\_replay.md
 
 Android Support
 ----

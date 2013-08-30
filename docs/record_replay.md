@@ -1,12 +1,12 @@
 Introduction
-============
+----
 
 PANDA supports whole system deterministic record and replay in whole
 system mode on the i386, x86_64, and arm targets. We hope to add more
 soon; for example, partial SPARC support exists but is not yet reliable.
 
 Background
-==========
+----
 
 Deterministic record and replay is a technique for capturing the
 *non-deterministic inputs* to a system -- that is, the things that would
@@ -34,7 +34,7 @@ the replayed execution, one can do analyses that simply aren't possible
 to do live.
 
 Usage
-=====
+----
 
 Record and replay is controlled with four QEMU monitor commands:
 begin_record, end_record, begin_replay, end_replay:
