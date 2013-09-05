@@ -1200,13 +1200,13 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
      */
     assert(I.getNumSuccessors() < MAXSWITCHSTMTS);
 
-    // Default case
-    op.val.insn_start.switch_conds[0] = 0;
-    op.val.insn_start.switch_labels[0] =
+    // Put default case at end of array
+    op.val.insn_start.switch_conds[MAXSWITCHSTMTS-1] = 0xDEADBEEF;
+    op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1] =
         PST->getLocalSlot(I.getDefaultDest());
 
-    // The others
-    int i = 1;
+    // Other cases
+    int i = 0;
     for (llvm::SwitchInst::CaseIt it = I.case_begin(); it != I.case_end(); i++, it++){
         op.val.insn_start.switch_conds[i] =
             it.getCaseValue()->getSExtValue();
@@ -1214,22 +1214,14 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
             PST->getLocalSlot(it.getCaseSuccessor());
     }
 
-    /*
-    for (int i = 0; i < (int)I.getNumSuccessors(); i++){
-        if (i == 0){
-            // Default case
-            op.val.insn_start.switch_conds[i] = 0;
-            op.val.insn_start.switch_labels[i] =
-                PST->getLocalSlot(I.getDefaultDest());
-        }
-        else {
-            op.val.insn_start.switch_conds[i] =
-                I.getCaseValue(i)->getSExtValue();
-            op.val.insn_start.switch_labels[i] =
-                PST->getLocalSlot(I.getSuccessor(i));
-        }
+    // Fill remaining choices with garbage so things work correctly in
+    // taint_processor.c.  We do getNumSuccessors()-1 because that number
+    // includes the default case, which we already took care of.
+    for (i = I.getNumSuccessors()-1; i < MAXSWITCHSTMTS-1; i++){
+        op.val.insn_start.switch_conds[i] = 0xDEADBEEF;
+        op.val.insn_start.switch_labels[i] = 0xDEADBEEF;
     }
-    */
+
     tob_op_write(tbuf, op);
 }
 

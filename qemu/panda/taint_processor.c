@@ -1035,22 +1035,26 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             bool found = 0;
 
             int i;
-            for (i = 0; i < MAXSWITCHSTMTS; i++){
+            for (i = 0; i < MAXSWITCHSTMTS-1; i++){
                 if (op.val.insn_start.switch_conds[i] == switchCond){
                     taken_branch = op.val.insn_start.switch_labels[i];
                     found = 1;
-#ifdef TAINTDEBUG
-                    printf("Taken branch: %d\n", taken_branch);
-#endif
+                    break;
+                }
+                else if (op.val.insn_start.switch_labels[i] == 0xDEADBEEF){
+                    // Stop looping until MAXSWITCHSTMTS and go to not found
                     break;
                 }
             }
 
             // handle default case in switch
             if (!found){
-                taken_branch = op.val.insn_start.switch_labels[0];
+                taken_branch = op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1];
             }
-
+#ifdef TAINTDEBUG
+            printf("Switch cond: %ld\n", switchCond);
+            printf("Taken branch: %d\n", taken_branch);
+#endif
             next_step = SWITCHSTEP;
         }
 
