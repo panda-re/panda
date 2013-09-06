@@ -272,6 +272,7 @@ public:
     Value* getPtrForValue(int idx);
     void delPtrForValue(int idx);
     void initGlobalsAndLocalTemps();
+    void findUsedGuestRegs();
     unsigned getValueBits(int idx);
 
     void invalidateCachedMemory();
@@ -757,6 +758,65 @@ void TCGLLVMContextPrivate::initGlobalsAndLocalTemps()
                 tcgType(s->temps[i].type), 0/*, pName.str()*/);
         }
     }
+}
+
+/*
+ * Loop through TCG ops, looking at mov instructions to determine which guest
+ * registers are used/defined in the TB.  Based on information for printing TCG
+ * ops from tcg/tcg.c.
+ */
+void TCGLLVMContextPrivate::findUsedGuestRegs(){
+    const TCGArg *args = gen_opparam_buf;
+    const TCGOpDef *opDef;
+    uint16_t opc;
+    for(int opc_index=0; ;++opc_index) {
+        opc = gen_opc_buf[opc_index];
+        opDef = &tcg_op_defs[opc];
+
+        if (opc == INDEX_op_end){
+            break;
+        }
+        else if (opc == INDEX_op_mov_i32){
+            // do stuff - look at args[0] and [1]
+            printf("%s %s, %s\n", tcg_op_defs[opc].name,
+                m_tcgContext->temps[args[0]].name,
+                m_tcgContext->temps[args[1]].name);
+            // increment arg ptr appropriately
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+        else if (opc == INDEX_op_mov_i64){
+            // do stuff - look at args[0] and [1]
+            printf("%s %s, %s\n", tcg_op_defs[opc].name,
+                m_tcgContext->temps[args[0]].name,
+                m_tcgContext->temps[args[1]].name);
+
+            // increment arg ptr appropriately
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+        /*
+         * XXX also need to do stuff with ext and deposit that can define regs
+         * add too?  do we just need to make this general?
+         */
+        else if (opc == INDEX_op_call){
+            TCGArg arg = *args++;
+            int nb_oargs = arg >> 16;
+            int nb_iargs = arg & 0xffff;
+            printf("call oargs %d iargs %d\n", nb_oargs, nb_iargs);
+            args += nb_oargs + nb_iargs + opDef->nb_cargs;
+        }
+        else if (opc == INDEX_op_nopn) {
+            // increment arg ptr appropriately
+            int nb_cargs = *args;
+            args += nb_cargs;
+        }
+        else {
+            // increment arg ptr appropriately
+            // XXX some check to see if args are CPU registers
+            printf("%s\n", tcg_op_defs[opc].name);
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+    }
+    printf("\n\n");
 }
 
 inline BasicBlock* TCGLLVMContextPrivate::getLabel(int idx)
@@ -1542,6 +1602,9 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         Value *v = getValueAtFunctionStart(i); // RAX
         setValueAtFunctionStart(i, v);
     }
+
+    /* Determine which guest registers are used in the TB */
+    findUsedGuestRegs();
 
     /* Generate code for each opc */
     const TCGArg *args = gen_opparam_buf;
