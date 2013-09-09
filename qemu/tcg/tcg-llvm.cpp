@@ -778,17 +778,25 @@ void TCGLLVMContextPrivate::findUsedGuestRegs(){
         }
         else if (opc == INDEX_op_mov_i32){
             // do stuff - look at args[0] and [1]
-            printf("%s %s, %s\n", tcg_op_defs[opc].name,
-                m_tcgContext->temps[args[0]].name,
-                m_tcgContext->temps[args[1]].name);
+            for (int i = 0; i < 2; i++){
+                if ((args[i] >= 5) &&
+                        (args[i] < (unsigned int)m_tcgContext->nb_globals)){
+                    printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
+                        m_tcgContext->temps[args[i]].name);
+                }
+            }
             // increment arg ptr appropriately
             args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
         }
         else if (opc == INDEX_op_mov_i64){
             // do stuff - look at args[0] and [1]
-            printf("%s %s, %s\n", tcg_op_defs[opc].name,
-                m_tcgContext->temps[args[0]].name,
-                m_tcgContext->temps[args[1]].name);
+            for (int i = 0; i < 2; i++){
+                if ((args[i] >= 5) &&
+                        (args[i] < (unsigned int)m_tcgContext->nb_globals)){
+                    printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
+                        m_tcgContext->temps[args[i]].name);
+                }
+            }
 
             // increment arg ptr appropriately
             args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
