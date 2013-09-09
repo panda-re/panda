@@ -51,7 +51,7 @@ typedef struct dyn_val_entry_struct {
         struct {LogOp op; Addr addr;} memaccess;
         struct {bool br;} branch;
         struct {bool sel;} select;
-        struct {unsigned cond;} switchstmt;
+        struct {int64_t cond;} switchstmt;
     } entry;
 } DynValEntry;
 

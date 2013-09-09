@@ -315,7 +315,7 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
  * Instrument switch instructions to log the index of the taken branch.
  */
 void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
-    ZExtInst *ZEI;
+    SExtInst *SEI;
     CallInst *CI;
     std::vector<Value*> argValues;
     Function *F = mod->getFunction("log_dynval");
@@ -324,14 +324,14 @@ void PandaInstrumentVisitor::visitSwitchInst(SwitchInst &I){
         assert(1==0);
     }
     if (I.getCondition()->getType() != wordType){
-        ZEI = static_cast<ZExtInst*>(IRB.CreateZExt(I.getCondition(), wordType));
+        SEI = static_cast<SExtInst*>(IRB.CreateSExt(I.getCondition(), wordType));
         argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
         argValues.push_back(ConstantInt::get(intType, SWITCHENTRY));
         argValues.push_back(ConstantInt::get(intType, SWITCH));
-        argValues.push_back(static_cast<Value*>(ZEI));
+        argValues.push_back(static_cast<Value*>(SEI));
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
         CI->insertBefore(static_cast<Instruction*>(&I));
-        ZEI->insertBefore(static_cast<Instruction*>(CI));
+        SEI->insertBefore(static_cast<Instruction*>(CI));
     }
     else {
         argValues.push_back(ConstantInt::get(ptrType, (uintptr_t)dynval_buffer));
