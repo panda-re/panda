@@ -212,6 +212,7 @@ struct TCGLLVMContextPrivate {
     /* Keep track of which registers are present in the current function */
     //bool m_origMemValuesPtrBools[TCG_MAX_TEMPS];
     
+    bool m_usedGuestRegs[TCG_MAX_TEMPS]; // Used guest regs in a TB
     Value *m_stackVars[TCG_MAX_TEMPS]; // Stack vars (CPU regs) XXX change size
     bool m_stackVarsDefined[TCG_MAX_TEMPS]; // Stack vars defined (stored to)
 
@@ -399,7 +400,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      * our log processing.
      */
     m_executionEngine = ExecutionEngine::createJIT(
-            m_module, &error, m_jitMemoryManager, CodeGenOpt::None); //XXX
+            m_module, &error, m_jitMemoryManager, CodeGenOpt::Aggressive); //XXX
     if(m_executionEngine == NULL) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);
@@ -431,8 +432,9 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager->add(createDeadInstEliminationPass());
     */
 
-    m_functionPassManager->add(createDeadInstEliminationPass());
+    //m_functionPassManager->add(createDeadInstEliminationPass());
     m_functionPassManager->add(createPromoteMemoryToRegisterPass());
+    m_functionPassManager->add(createDeadInstEliminationPass());
 
 
     /* Note: another good place to look for optimization passes is in
@@ -776,25 +778,67 @@ void TCGLLVMContextPrivate::findUsedGuestRegs(){
         if (opc == INDEX_op_end){
             break;
         }
-        else if (opc == INDEX_op_mov_i32){
-            // do stuff - look at args[0] and [1]
+        else if (opc == INDEX_op_mov_i32 || opc == INDEX_op_movi_i32){
+            // do stuff - look at args[0] and [1] - m_usedGuestRegs[]
             for (int i = 0; i < 2; i++){
                 if ((args[i] >= 5) &&
                         (args[i] < (unsigned int)m_tcgContext->nb_globals)){
-                    printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
-                        m_tcgContext->temps[args[i]].name);
+                    //printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
+                    //    m_tcgContext->temps[args[i]].name);
+                    m_usedGuestRegs[args[i]] = true;
                 }
             }
             // increment arg ptr appropriately
             args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
         }
-        else if (opc == INDEX_op_mov_i64){
+        else if (opc == INDEX_op_mov_i64 || opc == INDEX_op_movi_i64){
             // do stuff - look at args[0] and [1]
             for (int i = 0; i < 2; i++){
                 if ((args[i] >= 5) &&
                         (args[i] < (unsigned int)m_tcgContext->nb_globals)){
-                    printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
-                        m_tcgContext->temps[args[i]].name);
+                    //printf("GLOBAL op %s reg %s\n", tcg_op_defs[opc].name,
+                    //    m_tcgContext->temps[args[i]].name);
+                    m_usedGuestRegs[args[i]] = true;
+                }
+            }
+
+            // increment arg ptr appropriately
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+        else if (opc == INDEX_op_ext32u_i64){
+            // do stuff - look at args[0] and [1]
+            for (int i = 0; i < 2; i++){
+                if ((args[i] >= 5) &&
+                        (args[i] < (unsigned int)m_tcgContext->nb_globals)){
+                    //printf("GLOBAL op ext32u_i64 %s reg %s\n", tcg_op_defs[opc].name,
+                    //    m_tcgContext->temps[args[i]].name);
+                    m_usedGuestRegs[args[i]] = true;
+                }
+            }
+
+            // increment arg ptr appropriately
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+        else if (opc == INDEX_op_deposit_i32 || opc == INDEX_op_deposit_i64){
+            // do stuff - look at args[0] for now
+            if ((args[0] >= 5) &&
+                    (args[0] < (unsigned int)m_tcgContext->nb_globals)){
+                //printf("GLOBAL op deposit %s reg %s\n", tcg_op_defs[opc].name,
+                //    m_tcgContext->temps[args[0]].name);
+                m_usedGuestRegs[args[0]] = true;
+            }
+
+            // increment arg ptr appropriately
+            args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
+        }
+        else if (opc == INDEX_op_shr_i64){
+            // do stuff - look at args[0] and [1]
+            for (int i = 0; i < 3; i++){
+                if ((args[i] >= 5) &&
+                        (args[i] < (unsigned int)m_tcgContext->nb_globals)){
+                    //printf("GLOBAL op ext32u_i64 %s reg %s\n", tcg_op_defs[opc].name,
+                    //    m_tcgContext->temps[args[i]].name);
+                    m_usedGuestRegs[args[i]] = true;
                 }
             }
 
@@ -809,7 +853,7 @@ void TCGLLVMContextPrivate::findUsedGuestRegs(){
             TCGArg arg = *args++;
             int nb_oargs = arg >> 16;
             int nb_iargs = arg & 0xffff;
-            printf("call oargs %d iargs %d\n", nb_oargs, nb_iargs);
+            //printf("call oargs %d iargs %d\n", nb_oargs, nb_iargs);
             args += nb_oargs + nb_iargs + opDef->nb_cargs;
         }
         else if (opc == INDEX_op_nopn) {
@@ -820,11 +864,11 @@ void TCGLLVMContextPrivate::findUsedGuestRegs(){
         else {
             // increment arg ptr appropriately
             // XXX some check to see if args are CPU registers
-            printf("%s\n", tcg_op_defs[opc].name);
+            //printf("%s\n", tcg_op_defs[opc].name);
             args += opDef->nb_oargs + opDef->nb_iargs + opDef->nb_cargs;
         }
     }
-    printf("\n\n");
+    //printf("\n\n");
 }
 
 inline BasicBlock* TCGLLVMContextPrivate::getLabel(int idx)
@@ -1064,12 +1108,14 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
             /* Load all globals back into the stack */
             for (int i = 5; i < m_tcgContext->nb_globals; i++){
-                Value *v = m_builder.CreateLoad(m_origMemValuesPtr[i],
-                    StringRef(m_tcgContext->temps[i].name) + "_v");
-                //delValue(5);
-                //m_values[5] = v;
-                m_builder.CreateStore(v, m_stackVars[i]);
-                //m_stackVarsDefined[5] = false;
+                if (m_usedGuestRegs[i]){
+                    Value *v = m_builder.CreateLoad(m_origMemValuesPtr[i],
+                        StringRef(m_tcgContext->temps[i].name) + "_v");
+                    //delValue(5);
+                    //m_values[5] = v;
+                    m_builder.CreateStore(v, m_stackVars[i]);
+                    //m_stackVarsDefined[5] = false;
+                }
             }
 
             if(nb_oargs == 1)
@@ -1597,22 +1643,27 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Prepare globals and temps information */
     initGlobalsAndLocalTemps();
 
+    /* Make env always available in each function */
+    m_envPtr = NULL;
+    m_values[0] = getValueAtFunctionStart(0);
+
+    /* Determine which guest registers are used in the TB */
+    std::memset(m_usedGuestRegs, 0, sizeof(m_usedGuestRegs));
+    findUsedGuestRegs();
+    
     /* Allocate stack variables - RAX for now */
     //std::memset(m_origMemValuesPtrBools, 0, sizeof(m_origMemValuesPtrBools));
     std::memset(m_origMemValuesPtr, 0, sizeof(m_origMemValuesPtr));
     std::memset(m_stackVars, 0, sizeof(m_stackVars));
     std::memset(m_stackVarsDefined, 0, sizeof(m_stackVarsDefined));
-    m_envPtr = NULL;
-    
     for (int i = 5; i < m_tcgContext->nb_globals; i++){
-        m_stackVars[i] = m_builder.CreateAlloca(wordType(), 0,
-            StringRef(m_tcgContext->temps[i].name) + "_stack");
-        Value *v = getValueAtFunctionStart(i); // RAX
-        setValueAtFunctionStart(i, v);
+        if (m_usedGuestRegs[i]){
+            m_stackVars[i] = m_builder.CreateAlloca(wordType(), 0,
+                StringRef(m_tcgContext->temps[i].name) + "_stack");
+            Value *v = getValueAtFunctionStart(i); // RAX
+            setValueAtFunctionStart(i, v);
+        }
     }
-
-    /* Determine which guest registers are used in the TB */
-    findUsedGuestRegs();
 
     /* Generate code for each opc */
     const TCGArg *args = gen_opparam_buf;
@@ -1622,7 +1673,8 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         if(opc == INDEX_op_end)
             break;
 
-        if(opc == INDEX_op_debug_insn_start) {
+        //XXX
+        /*if(opc == INDEX_op_debug_insn_start) {
             // volatile store of current OPC index
             m_builder.CreateStore(ConstantInt::get(wordType(), opc_index),
                 m_builder.CreateIntToPtr(
@@ -1637,7 +1689,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
                         (uint64_t) &tcg_llvm_runtime.last_pc),
                     wordPtrType()),
                 true);
-        }
+        }*/
 
         args += generateOperation(opc, args);
         //llvm::errs() << *m_tbFunction << "\n";
