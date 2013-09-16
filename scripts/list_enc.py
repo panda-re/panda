@@ -54,7 +54,15 @@ for label, plist in sessions.items():
     for pkt in plist:
         if Raw not in pkt: continue
         client_send = pkt.dport in TLS_PORTS
-        tls_rec = TLSv1RecordLayer(str(pkt[Raw]))
+        pkt_data = str(pkt[Raw])
+
+        # Special handling for SSLv2 client hello, which is used for backward compatibility
+        if (ord(pkt_data[0]) & 0x80) and ord(pkt_data[2]) == 1:
+            info['client_random'] = pkt_data[-0x20:]
+            continue
+        
+        tls_rec = TLSv1RecordLayer(pkt_data)
+
         if (tls_rec.major_version,tls_rec.minor_version) not in VALID_TLS_VERSIONS: continue
         else:
             info['version'] = VALID_TLS_VERSIONS[(tls_rec.major_version,tls_rec.minor_version)]
@@ -85,20 +93,18 @@ for label, plist in sessions.items():
         if f not in info:
             print "DEBUG: Session %s missing %s" % (label, f)
             failed = True
-    if failed:
-            plist.summary()
-            continue
 
     print "# ==== %s ====" % label
-    print "Client-Random: %s" % info['client_random'].encode('hex')
-    print "Server-Random: %s" % info['server_random'].encode('hex')
-    print "Content-Type:  %s" % info['client_enc'][0].encode('hex')
-    print "Version:       %s" % info['client_enc'][1].encode('hex')
-    print "Enc-Msg:       %s" % info['client_enc'][2].encode('hex')
-    print "Cipher:        %s" % CIPHER_SUITES[info['cipher_suite']][0]
-    print "MAC:           %s" % CIPHER_SUITES[info['cipher_suite']][1]
-    print "Ciphersuite:   %s" % info['cipher_suite']
-    print "Session-ID:    %s" % info['session_id'].encode('hex')
+    print "Client-Random: %s" % (info['client_random'].encode('hex') if 'client_random' in info else "[MISSING]")
+    print "Server-Random: %s" % (info['server_random'].encode('hex') if 'server_random' in info else "[MISSING]")
+    print "Content-Type:  %s" % (info['client_enc'][0].encode('hex') if 'client_enc' in info else "[MISSING]")
+    print "Version:       %s" % (info['client_enc'][1].encode('hex') if 'client_enc' in info else "[MISSING]")
+    print "Enc-Msg:       %s" % (info['client_enc'][2].encode('hex') if 'client_enc' in info else "[MISSING]")
+    print "Cipher:        %s" % (CIPHER_SUITES[info['cipher_suite']][0] if 'cipher_suite' in info else "[MISSING]")
+    print "MAC:           %s" % (CIPHER_SUITES[info['cipher_suite']][1] if 'cipher_suite' in info else "[MISSING]")
+    print "Ciphersuite:   %s" % (info['cipher_suite'] if 'cipher_suite' in info else "[MISSING]")
+    print "Session-ID:    %s" % (info['session_id'].encode('hex') if 'session_id' in info else "[MISSING]")
 
-    successful += 1
+    if not failed:
+        successful += 1
 print "# END: Found necessary info in %d of %d sessions." % (successful, len(sessions))

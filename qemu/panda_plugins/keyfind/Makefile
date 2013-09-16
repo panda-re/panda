@@ -7,8 +7,6 @@ PLUGIN_NAME=keyfind
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-CXX=g++-4.7
-
 # If you need custom CFLAGS or LIBS, set them up here
 QEMU_CFLAGS+=-std=c++11
 LIBS+=-lssl

@@ -33,6 +33,10 @@ extern "C" {
 #include <set>
 #include <map>
 
+#include <dlfcn.h>
+
+#include "../common/prog_point.h"
+    
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -42,6 +46,9 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int before_block_translate_cb(CPUState *env, target_ulong pc);
 int after_block_translate_cb(CPUState *env, TranslationBlock *tb);
+
+typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
+get_prog_point_t get_prog_point;
 
 }
 
@@ -79,30 +86,7 @@ StringInfo g_enc_msg;
 const EVP_CIPHER *g_ciph = NULL;
 const EVP_MD *g_md = NULL;
 
-struct prog_point {
-    target_ulong caller;
-    target_ulong pc;
-    target_ulong cr3;
-    bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
-    }
-    bool operator ==(const prog_point &p) const {
-        return (this->pc == p.pc && this->caller == p.caller && this->cr3 == p.cr3);
-    }
-};
-
-struct hash_prog_point{
-    size_t operator()(const prog_point &p) const
-    {
-        size_t h1 = std::hash<target_ulong>()(p.caller);
-        size_t h2 = std::hash<target_ulong>()(p.pc);
-        size_t h3 = std::hash<target_ulong>()(p.cr3);
-        return h1 ^ h2 ^ h3;
-    }
-};
-    
+bool have_candidates = true;
 std::unordered_set <prog_point, hash_prog_point > candidates;
 
 // Optimization
@@ -222,15 +206,10 @@ bool check_key(StringInfo *master_secret, StringInfo *client_random, StringInfo 
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     prog_point p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-    if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
-#endif
-    p.pc = pc;
+    get_prog_point(env, &p);
 
     // Only use candidates found in config (pre-filtered for key-ness)
-    if (candidates.find(p) == candidates.end()) {
+    if (have_candidates && candidates.find(p) == candidates.end()) {
         //printf("Skipping " TARGET_FMT_lx "\n", p.pc);
         return 1;
     }
@@ -280,11 +259,23 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 bool enabled_memcb = false;
 int instrumented, total;
 int before_block_translate_cb(CPUState *env, target_ulong pc) {
+    // Don't bother with any of this if we don't have any canidates;
+    // in this case precise pc and memcb will always be on.
+    if (!have_candidates) return 1;
+    
     target_ulong tb_cr3 = 0;
-#ifdef TARGET_I386
+#if defined(TARGET_I386)
     if ((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
        tb_cr3 = env->cr[3];
+#elif defined(TARGET_ARM)
+    if ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC) {
+        if (pc & env->cp15.c2_mask)
+            tb_cr3 = env->cp15.c2_base1 & 0xffffc000;
+        else
+            tb_cr3 = env->cp15.c2_base0 & env->cp15.c2_base_mask;
+    }
 #endif
+
     if (cr3s.find(tb_cr3) == cr3s.end()) return 1;
 
     // Slightly tricky: we ask for the lower bound of the TB start and
@@ -313,6 +304,8 @@ int before_block_translate_cb(CPUState *env, target_ulong pc) {
 }
 
 int after_block_translate_cb(CPUState *env, TranslationBlock *tb) {
+    if (!have_candidates) return 1;
+
     if (enabled_memcb) {
         // Check our assumption
         if (tb->size > ASSUMED_TB_SIZE) {
@@ -332,17 +325,20 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin keyfind\n");
 
-    // Need this to get EIP with our callbacks
-    // panda_enable_precise_pc();
-    // Enable memory logging
-    // panda_enable_memcb();
-
-    pcb.virt_mem_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-    pcb.before_block_translate = before_block_translate_cb;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
-    pcb.after_block_translate = after_block_translate_cb;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
+    // Needed to get accurate callstacks cross-platform
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_prog_point function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
 
     // SSL stuff
     // Init list of ciphers & digests
@@ -351,31 +347,33 @@ bool init_plugin(void *self) {
     // Read and parse list of candidate taps
     std::ifstream taps("keyfind_candidates.txt");
     if (!taps) {
-        printf("Couldn't open keyfind_candidates.txt; no key tap candidates defined. Exiting.\n");
-        return false;
+        printf("Couldn't open keyfind_candidates.txt; no key tap candidates defined.\n");
+        printf("We will proceed, but it may be SLOW.\n");
+        have_candidates = false;
     }
+    else {
+        std::unordered_set <target_ulong> eipset;
+        prog_point p = {};
+        while (taps >> std::hex >> p.caller) {
+            taps >> std::hex >> p.pc;
+            taps >> std::hex >> p.cr3;
 
-    std::unordered_set <target_ulong> eipset;
-    prog_point p = {};
-    while (taps >> std::hex >> p.caller) {
-        taps >> std::hex >> p.pc;
-        taps >> std::hex >> p.cr3;
+            eipset.insert(p.pc);
+            cr3s.insert(p.cr3);
 
-        eipset.insert(p.pc);
-        cr3s.insert(p.cr3);
+            //printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
+            //       p.caller, p.pc, p.cr3);
+            candidates.insert(p);
+        }
+        printf("keyfind: Will check for keys on %ld taps.\n", candidates.size());
+        taps.close();
 
-        //printf("Adding tap point (" TARGET_FMT_lx "," TARGET_FMT_lx "," TARGET_FMT_lx ")\n",
-        //       p.caller, p.pc, p.cr3);
-        candidates.insert(p);
+        // Sort EIPs
+        for(auto ii : eipset) {
+            eips.push_back(ii);
+        }
+        std::sort(eips.begin(), eips.end());
     }
-    printf("keyfind: Will check for keys on %ld taps.\n", candidates.size());
-    taps.close();
-
-    // Sort EIPs
-    for(auto ii : eipset) {
-        eips.push_back(ii);
-    }
-    std::sort(eips.begin(), eips.end());
 
     // Read and parse the configuration file
     std::ifstream config("keyfind_config.txt");
@@ -486,18 +484,22 @@ bool init_plugin(void *self) {
              EVP_CIPHER_iv_length(g_ciph)*2;
     ssl_data_alloc(&g_keydata, needed);
     ssl_data_alloc(&g_out, g_enc_msg.data_len);
- 
-    return true;
-    /*
-    bool match = check_key(&g_master_secret, &g_client_random, &g_server_random,
-                           &g_enc_msg, &g_version, &g_content_type, g_md, g_ciph);
-    if (match)
-        fprintf(stderr, "MAC matches\n");
-    else
-        fprintf(stderr, "MAC failed\n");
 
-    return 0;
-    */
+    if (!have_candidates) {
+        panda_enable_memcb();
+        panda_enable_precise_pc();
+        enabled_memcb = true;
+    }
+
+    // Enable our callbacks
+    pcb.virt_mem_write = mem_write_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+    pcb.before_block_translate = before_block_translate_cb;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
+    pcb.after_block_translate = after_block_translate_cb;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
+
+    return true;
 }
 
 void uninit_plugin(void *self) {
