@@ -575,6 +575,20 @@ TaintOpBuffer *tob_new(uint32_t size) {
 }
 
 void tob_delete(TaintOpBuffer *tbuf){
+    //Make sure we are at the beginning of the buffer
+    tob_rewind(tbuf);
+    //Free up dynamically allocated arrays in phi and switch ops
+    while (!(tob_end(tbuf))) {
+        TaintOp op = tob_op_read(tbuf);
+        if (!strcmp(op.val.insn_start.name, "phi")){
+            int len = op.val.insn_start.phi_len;
+            my_free(op.val.insn_start.phi_vals, sizeof(int)*len, poolid_taint_processor);
+            op.val.insn_start.phi_vals = NULL;
+            my_free(op.val.insn_start.phi_labels, sizeof(int)*len, poolid_taint_processor);
+            op.val.insn_start.phi_labels = NULL;
+        }
+    }
+
     my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
     my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
 }
@@ -1131,13 +1145,12 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         TaintOp *cur_op = (TaintOp*) buf->ptr;
 
         /*** Fix up taint op buffer here ***/
-        int phiSource = 0;
+        int phiSource = 0xDEADBEEF;
+        int len = op.val.insn_start.phi_len;
         int i;
-        for(i = 0;
-            i < sizeof(op.val.insn_start.phi_blocks)/sizeof(op.val.insn_start.phi_blocks[0]);
-            i++)
+        for(i = 0; i < len; i++)
         {
-            if(taken_branch == op.val.insn_start.phi_blocks[i]) {
+            if(taken_branch == op.val.insn_start.phi_labels[i]) {
                 //This is the source llvm register for the phi isntruction
                 //We need to copy taint from here to destination
                 phiSource = op.val.insn_start.phi_vals[i];
@@ -1145,10 +1158,12 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             }
         }
 
-        //Skip copy operations if phiSource is a constant (-1)
-        if(phiSource == -1) {
-          //Move buffer pointer past copy operations
-          buf->ptr = (char*)(cur_op + (op.val.insn_start.num_ops*sizeof(TaintOp)));
+        if (phiSource == 0xDEADBEEF) {
+            fprintf(stderr, "Error: Phi labels and taken branch don't align\n");
+            exit(1);
+        } else if(phiSource == -1) {
+            //Skip copy operations if phiSource is a constant (-1)
+            buf->ptr = cur_op + op.val.insn_start.num_ops;
         } else {
           //Patch up source for copy operations
           for (i = 0; i < op.val.insn_start.num_ops; i++){
@@ -1540,11 +1555,8 @@ void taint_tb_cleanup(TaintTB *ttb){
     if (ttb->numBBs > 1){
         int i;
         for (i = 0; i < ttb->numBBs-1; i++){
-            my_free(ttb->tbbs[i]->ops->start, ttb->tbbs[i]->ops->max_size,
-                    poolid_taint_processor);
+            tob_delete(ttb->tbbs[i]->ops);
             ttb->tbbs[i]->ops->start = NULL;
-            my_free(ttb->tbbs[i]->ops, sizeof(TaintOpBuffer),
-                    poolid_taint_processor);
             ttb->tbbs[i]->ops = NULL;
             my_free(ttb->tbbs[i], sizeof(TaintBB), poolid_taint_processor);
             ttb->tbbs[i] = NULL;
@@ -1556,4 +1568,3 @@ void taint_tb_cleanup(TaintTB *ttb){
     my_free(ttb, sizeof(TaintTB), poolid_taint_processor);
     ttb = NULL;
 }
-

@@ -31,7 +31,7 @@ PANDAENDCOMMENT */
 #define FUNCTIONFRAMES 10 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
 #define MAXSWITCHSTMTS 75 // Maximum size of LLVM switch statements
-#define MAXPHIBLOCKS 45 // Maximum number of phi blocks supported
+#define MAXPHIBLOCKS 45 // Maximum number of LLVM phi predecessor blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
@@ -202,11 +202,15 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
-        int phi_vals[MAXPHIBLOCKS];
-        int phi_blocks[MAXPHIBLOCKS];
+        int phi_len;
+        int *phi_vals;
+        int *phi_labels;
         /* We need to keep track of switch conditions (cases) and their
          * corresponding basic block labels
          */
+        //int switch_len;
+        //int64_t *switch_conds;
+        //int *switch_labels;
         int64_t switch_conds[MAXSWITCHSTMTS];
         int switch_labels[MAXSWITCHSTMTS];
     } insn_start;

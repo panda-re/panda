@@ -2213,13 +2213,13 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
-    int len = getValueSize(&I);
+    int size = getValueSize(&I);
 
     //Delete taint at destination
     op.typ = DELETEOP;
     dst.typ = LADDR;
     dst.val.la = PST->getLocalSlot(&I);
-    for (int i = 0; i < len; i++){
+    for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.deletel.a = dst;
         tob_op_write(tbuf, op);
@@ -2228,13 +2228,18 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     char name[4] = "phi";
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
-    op.val.insn_start.num_ops = len;
+    op.val.insn_start.num_ops = size;
 
     assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
-    for (int i = 0; i < (int)I.getNumIncomingValues(); i++){
-      op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
-      op.val.insn_start.phi_blocks[i] = PST->getLocalSlot(I.getIncomingBlock(i));
+    int len = (int)I.getNumIncomingValues();
+    op.val.insn_start.phi_len = len;
+    op.val.insn_start.phi_vals = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
+    op.val.insn_start.phi_labels = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
+
+    for (int i = 0; i < len; i++){
+        op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
+        op.val.insn_start.phi_labels[i] = PST->getLocalSlot(I.getIncomingBlock(i));
     }
 
     tob_op_write(tbuf, op);
@@ -2245,7 +2250,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     src.typ = UNK;
     src.val.ua = 0;
 
-    for (int i = 0; i < len; i++){
+    for (int i = 0; i < size; i++){
         src.off = i;
         dst.off = i;
         op.val.copy.a = src;
