@@ -359,7 +359,8 @@ hours to run with `keyfind` enabled. This is what the output looks like:
     0 / 0 blocks instrumented.
     Misses: 61850 Total: 9584516
 
-This output somewhat cryptically tells us that the code we want is at
+This output somewhat cryptically tells us that the program point
+(the code we want to hook to extract the master secret) is at
 
     00000000b7e82bad 00000000b7d3cb16 000000000e101000
 
@@ -516,5 +517,6 @@ Zee (North) Bridge: Mining Memory Accesses for
 Introspection](http://www.cc.gatech.edu/~brendan/tzb_author.pdf)), we
 found the key generation code for seven applications across three
 operating systems and three different hardware architectures. This
-flexibility demonstrates how valuable it is that PANDA is both
-whole-system and architecture neutral.
+flexibility demonstrates how valuable it is that PANDA is whole-system,
+architecture neutral, and traces can be recorded and later replayed
+under instrumentation.
