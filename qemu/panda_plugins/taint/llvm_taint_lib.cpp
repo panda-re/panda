@@ -2232,12 +2232,12 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
 
     assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
-    int len = (int)I.getNumIncomingValues();
+    unsigned len = I.getNumIncomingValues();
     op.val.insn_start.phi_len = len;
     op.val.insn_start.phi_vals = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
     op.val.insn_start.phi_labels = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
 
-    for (int i = 0; i < len; i++){
+    for (unsigned i = 0; i < len; i++){
         op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
         op.val.insn_start.phi_labels[i] = PST->getLocalSlot(I.getIncomingBlock(i));
     }

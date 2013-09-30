@@ -202,7 +202,7 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
-        int phi_len;
+        unsigned phi_len;
         int *phi_vals;
         int *phi_labels;
         /* We need to keep track of switch conditions (cases) and their

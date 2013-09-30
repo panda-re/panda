@@ -575,22 +575,34 @@ TaintOpBuffer *tob_new(uint32_t size) {
 }
 
 void tob_delete(TaintOpBuffer *tbuf){
+    my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
+    tbuf->start = NULL;
+    my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
+    tbuf = NULL;
+}
+
+void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     //Make sure we are at the beginning of the buffer
     tob_rewind(tbuf);
     //Free up dynamically allocated arrays in phi and switch ops
     while (!(tob_end(tbuf))) {
         TaintOp op = tob_op_read(tbuf);
-        if (!strcmp(op.val.insn_start.name, "phi")){
-            int len = op.val.insn_start.phi_len;
-            my_free(op.val.insn_start.phi_vals, sizeof(int)*len, poolid_taint_processor);
-            op.val.insn_start.phi_vals = NULL;
-            my_free(op.val.insn_start.phi_labels, sizeof(int)*len, poolid_taint_processor);
-            op.val.insn_start.phi_labels = NULL;
+
+        if (op.typ == INSNSTARTOP){
+            if (!strcmp(op.val.insn_start.name, "phi")){
+                unsigned len = op.val.insn_start.phi_len;
+                my_free(op.val.insn_start.phi_vals, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.phi_vals = NULL;
+                my_free(op.val.insn_start.phi_labels, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.phi_labels = NULL;
+            }
         }
     }
 
     my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
+    tbuf->start = NULL;
     my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
+    tbuf = NULL;
 }
 
 void tob_rewind(TaintOpBuffer *buf) {
@@ -1544,20 +1556,13 @@ SB_INLINE TaintTB *taint_tb_new(const char *name, int numBBs){
 void taint_tb_cleanup(TaintTB *ttb){
     my_free(ttb->name, strlen(ttb->name)+1, poolid_taint_processor);
     ttb->name = NULL;
-    my_free(ttb->entry->ops->start, ttb->entry->ops->max_size,
-            poolid_taint_processor);
-    ttb->entry->ops->start = NULL;
-    my_free(ttb->entry->ops, sizeof(TaintOpBuffer),
-            poolid_taint_processor);
-    ttb->entry->ops = NULL;
+    tob_delete_iterate_ops(ttb->entry->ops);
     my_free(ttb->entry, sizeof(TaintBB), poolid_taint_processor);
     ttb->entry = NULL;
     if (ttb->numBBs > 1){
         int i;
-        for (i = 0; i < ttb->numBBs-1; i++){
-            tob_delete(ttb->tbbs[i]->ops);
-            ttb->tbbs[i]->ops->start = NULL;
-            ttb->tbbs[i]->ops = NULL;
+        for (i = 0; i < (ttb->numBBs) - 1; i++){
+            tob_delete_iterate_ops(ttb->tbbs[i]->ops);
             my_free(ttb->tbbs[i], sizeof(TaintBB), poolid_taint_processor);
             ttb->tbbs[i] = NULL;
         }
