@@ -1175,7 +1175,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             exit(1);
         } else if(phiSource == -1) {
             //Skip copy operations if phiSource is a constant (-1)
-            buf->ptr = cur_op + op.val.insn_start.num_ops;
+            buf->ptr = (char*)(cur_op + op.val.insn_start.num_ops);
         } else {
           //Patch up source for copy operations
           for (i = 0; i < op.val.insn_start.num_ops; i++){
