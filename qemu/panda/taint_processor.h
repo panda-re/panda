@@ -208,11 +208,9 @@ typedef struct taint_op_struct {
         /* We need to keep track of switch conditions (cases) and their
          * corresponding basic block labels
          */
-        //int switch_len;
-        //int64_t *switch_conds;
-        //int *switch_labels;
-        int64_t switch_conds[MAXSWITCHSTMTS];
-        int switch_labels[MAXSWITCHSTMTS];
+        unsigned switch_len;
+        int64_t *switch_conds;
+        int *switch_labels;
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;

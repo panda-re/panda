@@ -1194,16 +1194,18 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = 0;
     op.val.insn_start.flag = INSNREADLOG;
+
     /* If a switch has more than MAXSWITCHSTMTS successors, we need to fix.
      * Some helper functions have ~40 cases for switch statements, so that's why
      * we need to do this.
      */
-    assert(I.getNumSuccessors() < MAXSWITCHSTMTS);
+    unsigned successors = I.getNumSuccessors();
+    int len = successors + 1;
+    assert(successors < MAXSWITCHSTMTS);
 
-    // Put default case at end of array
-    op.val.insn_start.switch_conds[MAXSWITCHSTMTS-1] = 0xDEADBEEF;
-    op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1] =
-        PST->getLocalSlot(I.getDefaultDest());
+    op.val.insn_start.switch_len = len;
+    op.val.insn_start.switch_conds = (int64_t*)my_malloc(len * sizeof(int64_t), poolid_taint_processor);
+    op.val.insn_start.switch_labels = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
 
     // Other cases
     int i = 0;
@@ -1214,13 +1216,10 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
             PST->getLocalSlot(it.getCaseSuccessor());
     }
 
-    // Fill remaining choices with garbage so things work correctly in
-    // taint_processor.c.  We do getNumSuccessors()-1 because that number
-    // includes the default case, which we already took care of.
-    for (i = I.getNumSuccessors()-1; i < MAXSWITCHSTMTS-1; i++){
-        op.val.insn_start.switch_conds[i] = 0xDEADBEEF;
-        op.val.insn_start.switch_labels[i] = 0xDEADBEEF;
-    }
+    // Put default case at end of array
+    op.val.insn_start.switch_conds[len-1] = 0xDEADBEEF;
+    op.val.insn_start.switch_labels[len-1] =
+        PST->getLocalSlot(I.getDefaultDest());
 
     tob_op_write(tbuf, op);
 }

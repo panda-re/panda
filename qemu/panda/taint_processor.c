@@ -595,6 +595,12 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
                 op.val.insn_start.phi_vals = NULL;
                 my_free(op.val.insn_start.phi_labels, len * sizeof(int), poolid_taint_processor);
                 op.val.insn_start.phi_labels = NULL;
+            } else if (!strcmp(op.val.insn_start.name, "switch")){
+                unsigned len = op.val.insn_start.switch_len;
+                my_free(op.val.insn_start.switch_conds, len * sizeof(int64_t), poolid_taint_processor);
+                op.val.insn_start.switch_conds = NULL;
+                my_free(op.val.insn_start.switch_labels, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.switch_labels = NULL;
             }
         }
     }
@@ -1060,22 +1066,19 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             int64_t switchCond = dventry.entry.switchstmt.cond;
             bool found = 0;
 
-            int i;
-            for (i = 0; i < MAXSWITCHSTMTS-1; i++){
+            unsigned len = op.val.insn_start.switch_len;
+            unsigned i;
+            for (i = 0; i < (len-1); i++){
                 if (op.val.insn_start.switch_conds[i] == switchCond){
                     taken_branch = op.val.insn_start.switch_labels[i];
                     found = 1;
-                    break;
-                }
-                else if (op.val.insn_start.switch_labels[i] == 0xDEADBEEF){
-                    // Stop looping until MAXSWITCHSTMTS and go to not found
                     break;
                 }
             }
 
             // handle default case in switch
             if (!found){
-                taken_branch = op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1];
+                taken_branch = op.val.insn_start.switch_labels[len-1];
             }
 #ifdef TAINTDEBUG
             printf("Switch cond: %ld\n", switchCond);
@@ -1172,7 +1175,8 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
         if (phiSource == 0xDEADBEEF) {
             fprintf(stderr, "Error: Phi labels and taken branch don't align\n");
-            exit(1);
+            buf->ptr = (char*)(cur_op + op.val.insn_start.num_ops);
+            //exit(1);
         } else if(phiSource == -1) {
             //Skip copy operations if phiSource is a constant (-1)
             buf->ptr = (char*)(cur_op + op.val.insn_start.num_ops);
