@@ -936,6 +936,8 @@ static inline void tcg_out_goto_label(TCGContext *s, int cond, int label_index)
 
 #include "../../softmmu_defs.h"
 
+#include "panda_plugin.h"
+
 static void *qemu_ld_helpers[4] = {
     __ldb_mmu,
     __ldw_mmu,
@@ -949,6 +951,22 @@ static void *qemu_st_helpers[4] = {
     __stl_mmu,
     __stq_mmu,
 };
+
+// For PANDA memory instrumentation
+static void *qemu_ld_helpers_panda[4] = {
+    __ldb_mmu_panda,
+    __ldw_mmu_panda,
+    __ldl_mmu_panda,
+    __ldq_mmu_panda,
+};
+
+static void *qemu_st_helpers_panda[4] = {
+    __stb_mmu_panda,
+    __stw_mmu_panda,
+    __stl_mmu_panda,
+    __stq_mmu_panda,
+};
+
 #endif
 
 #define TLB_SHIFT	(CPU_TLB_ENTRY_BITS + CPU_TLB_BITS)
@@ -1082,7 +1100,10 @@ static inline void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, int opc)
                     TCG_REG_R1, 0, addr_reg2, SHIFT_IMM_LSL(0));
     tcg_out_dat_imm(s, COND_AL, ARITH_MOV, TCG_REG_R2, 0, mem_index);
 # endif
-    tcg_out_call(s, (tcg_target_long) qemu_ld_helpers[s_bits]);
+    if(panda_use_memcb)
+        tcg_out_call(s, (tcg_target_long) qemu_ld_helpers_panda[s_bits]);
+    else
+        tcg_out_call(s, (tcg_target_long) qemu_ld_helpers[s_bits]);
 
     switch (opc) {
     case 0 | 4:
@@ -1347,8 +1368,10 @@ static inline void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, int opc)
         break;
     }
 # endif
-
-    tcg_out_call(s, (tcg_target_long) qemu_st_helpers[s_bits]);
+    if(panda_use_memcb)
+        tcg_out_call(s, (tcg_target_long) qemu_st_helpers_panda[s_bits]);
+    else
+        tcg_out_call(s, (tcg_target_long) qemu_st_helpers[s_bits]);
     if (opc == 3)
         tcg_out_dat_imm(s, COND_AL, ARITH_ADD, TCG_REG_R13, TCG_REG_R13, 0x10);
 
