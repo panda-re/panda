@@ -1196,13 +1196,8 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
     op.val.insn_start.num_ops = 0;
     op.val.insn_start.flag = INSNREADLOG;
     op.val.insn_start.cur_branch_bb = PST->getLocalSlot(I.getParent());
-    /* If a switch has more than MAXSWITCHSTMTS successors, we need to fix.
-     * Some helper functions have ~40 cases for switch statements, so that's why
-     * we need to do this.
-     */
     unsigned successors = I.getNumSuccessors();
     int len = successors + 1;
-    assert(successors < MAXSWITCHSTMTS);
 
     op.val.insn_start.switch_len = len;
     op.val.insn_start.switch_conds = (int64_t*)my_malloc(len * sizeof(int64_t), poolid_taint_processor);
@@ -2229,8 +2224,6 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = size;
-
-    assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
     unsigned len = I.getNumIncomingValues();
     op.val.insn_start.phi_len = len;

@@ -28,10 +28,8 @@ PANDAENDCOMMENT */
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
 #define FUNCNAMELENGTH 50
-#define FUNCTIONFRAMES 10 // handle 2 frames for now, but increase it soon
+#define FUNCTIONFRAMES 10 // handle 10 frames for now, should be sufficient
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
-#define MAXSWITCHSTMTS 75 // Maximum size of LLVM switch statements
-#define MAXPHIBLOCKS 45 // Maximum number of LLVM phi predecessor blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 

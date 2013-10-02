@@ -592,15 +592,19 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
         if (op.typ == INSNSTARTOP){
             if (!strcmp(op.val.insn_start.name, "phi")){
                 unsigned len = op.val.insn_start.phi_len;
-                my_free(op.val.insn_start.phi_vals, len * sizeof(int), poolid_taint_processor);
+                my_free(op.val.insn_start.phi_vals,
+                    len * sizeof(int), poolid_taint_processor);
                 op.val.insn_start.phi_vals = NULL;
-                my_free(op.val.insn_start.phi_labels, len * sizeof(int), poolid_taint_processor);
+                my_free(op.val.insn_start.phi_labels,
+                    len * sizeof(int), poolid_taint_processor);
                 op.val.insn_start.phi_labels = NULL;
             } else if (!strcmp(op.val.insn_start.name, "switch")){
                 unsigned len = op.val.insn_start.switch_len;
-                my_free(op.val.insn_start.switch_conds, len * sizeof(int64_t), poolid_taint_processor);
+                my_free(op.val.insn_start.switch_conds,
+                    len * sizeof(int64_t), poolid_taint_processor);
                 op.val.insn_start.switch_conds = NULL;
-                my_free(op.val.insn_start.switch_labels, len * sizeof(int), poolid_taint_processor);
+                my_free(op.val.insn_start.switch_labels,
+                    len * sizeof(int), poolid_taint_processor);
                 op.val.insn_start.switch_labels = NULL;
             }
         }
