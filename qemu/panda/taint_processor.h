@@ -202,6 +202,8 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
+        // For switches/branches, log the bb it is in for phi
+        int cur_branch_bb;
         int phi_vals[MAXPHIBLOCKS];
         int phi_blocks[MAXPHIBLOCKS];
         /* We need to keep track of switch conditions (cases) and their

@@ -36,6 +36,7 @@ uint8_t taintedfunc;
 
 // stuff for control flow in traces
 int next_step;
+int previous_branch; // keep a history of 1
 int taken_branch;
 
 uint32_t max_ref_count = 0;
@@ -994,12 +995,14 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
              * optional false branch is target[1], so that is how we log it
              */
             if (dventry.entry.branch.br == false){
+                previous_branch = op.val.insn_start.cur_branch_bb;
                 taken_branch = op.val.insn_start.branch_labels[0];
 #ifdef TAINTDEBUG
                 printf("Taken branch: %d\n", taken_branch);
 #endif
             }
             else if (dventry.entry.branch.br == true) {
+                previous_branch = op.val.insn_start.cur_branch_bb;
                 taken_branch = op.val.insn_start.branch_labels[1];
 #ifdef TAINTDEBUG
                 printf("Taken branch: %d\n", taken_branch);
@@ -1008,7 +1011,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             else {
                 assert(1==0);
             }
-
+            
             next_step = BRANCH;
         }
 
@@ -1037,6 +1040,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             int i;
             for (i = 0; i < MAXSWITCHSTMTS-1; i++){
                 if (op.val.insn_start.switch_conds[i] == switchCond){
+                    previous_branch = op.val.insn_start.cur_branch_bb;
                     taken_branch = op.val.insn_start.switch_labels[i];
                     found = 1;
                     break;
@@ -1049,6 +1053,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
             // handle default case in switch
             if (!found){
+                previous_branch = op.val.insn_start.cur_branch_bb;
                 taken_branch = op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1];
             }
 #ifdef TAINTDEBUG
@@ -1131,24 +1136,30 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         TaintOp *cur_op = (TaintOp*) buf->ptr;
 
         /*** Fix up taint op buffer here ***/
-        int phiSource = 0;
+        int phiSource = 0xDEADBEEF;
         int i;
-        for(i = 0;
-            i < sizeof(op.val.insn_start.phi_blocks)/sizeof(op.val.insn_start.phi_blocks[0]);
-            i++)
-        {
-            if(taken_branch == op.val.insn_start.phi_blocks[i]) {
-                //This is the source llvm register for the phi isntruction
+        for(i = 0; i < MAXPHIBLOCKS; i++){
+            if(previous_branch == op.val.insn_start.phi_blocks[i]) {
+                //This is the source llvm register for the phi instruction
                 //We need to copy taint from here to destination
                 phiSource = op.val.insn_start.phi_vals[i];
                 break;
             }
         }
 
+        if (phiSource == 0xDEADBEEF){
+            /* This means a match wasn't found between the previous basic block
+             * executed and one of the predecessor basic blocks in the phi
+             * instruction.  This should never happen.
+             */
+            assert(0);
+        }
+
         //Skip copy operations if phiSource is a constant (-1)
         if(phiSource == -1) {
           //Move buffer pointer past copy operations
-          buf->ptr = (char*)(cur_op + (op.val.insn_start.num_ops*sizeof(TaintOp)));
+          cur_op += op.val.insn_start.num_ops;
+          buf->ptr = (char*)cur_op;
         } else {
           //Patch up source for copy operations
           for (i = 0; i < op.val.insn_start.num_ops; i++){

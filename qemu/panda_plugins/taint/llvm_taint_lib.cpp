@@ -1179,6 +1179,7 @@ void PandaTaintVisitor::visitBranchInst(BranchInst &I){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = 0;
     op.val.insn_start.flag = INSNREADLOG;
+    op.val.insn_start.cur_branch_bb = PST->getLocalSlot(I.getParent());
     for (int i = 0; i < (int)I.getNumSuccessors(); i++){
         op.val.insn_start.branch_labels[i] =
             PST->getLocalSlot(I.getSuccessor(i));
@@ -1194,6 +1195,7 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = 0;
     op.val.insn_start.flag = INSNREADLOG;
+    op.val.insn_start.cur_branch_bb = PST->getLocalSlot(I.getParent());
     /* If a switch has more than MAXSWITCHSTMTS successors, we need to fix.
      * Some helper functions have ~40 cases for switch statements, so that's why
      * we need to do this.
