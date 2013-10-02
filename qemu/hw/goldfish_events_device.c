@@ -555,12 +555,28 @@ DeviceState *goldfish_events_create(GoldfishBus *gbus, DeviceState *goldfish_int
     return dev;
 }
 
+static const VMStateDescription vmstate_goldfish_events = {
+    .name = "goldfish_events",
+    .version_id = 1,
+    .fields = (VMStateField[]){
+        VMSTATE_INT32(pending,GoldfishEventsDevice),
+        VMSTATE_INT32(page, GoldfishEventsDevice),
+        VMSTATE_BOOL(hasBit7, GoldfishEventsDevice),
+        VMSTATE_UINT32_ARRAY(events, GoldfishEventsDevice, MAX_EVENTS),
+        VMSTATE_UINT32(first, GoldfishEventsDevice),
+        VMSTATE_UINT32(last, GoldfishEventsDevice),
+        VMSTATE_UINT32(state, GoldfishEventsDevice),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static GoldfishDeviceInfo goldfish_events_info = {
     .init = goldfish_events_init,
     .readfn = events_readfn,
     .writefn = events_writefn,
     .qdev.name  = "goldfish_events",
     .qdev.size  = sizeof(GoldfishEventsDevice),
+    .qdev.vmsd  = &vmstate_goldfish_events,
     .qdev.props = (Property[]) {
         DEFINE_PROP_UINT32("base", GoldfishDevice, base, 0),
         DEFINE_PROP_UINT32("id", GoldfishDevice, id, 0),
