@@ -577,7 +577,39 @@ TaintOpBuffer *tob_new(uint32_t size) {
 
 void tob_delete(TaintOpBuffer *tbuf){
     my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
+    tbuf->start = NULL;
     my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
+    tbuf = NULL;
+}
+
+void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
+    //Make sure we are at the beginning of the buffer
+    tob_rewind(tbuf);
+    //Free up dynamically allocated arrays in phi and switch ops
+    while (!(tob_end(tbuf))) {
+        TaintOp op = tob_op_read(tbuf);
+
+        if (op.typ == INSNSTARTOP){
+            if (!strcmp(op.val.insn_start.name, "phi")){
+                unsigned len = op.val.insn_start.phi_len;
+                my_free(op.val.insn_start.phi_vals, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.phi_vals = NULL;
+                my_free(op.val.insn_start.phi_labels, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.phi_labels = NULL;
+            } else if (!strcmp(op.val.insn_start.name, "switch")){
+                unsigned len = op.val.insn_start.switch_len;
+                my_free(op.val.insn_start.switch_conds, len * sizeof(int64_t), poolid_taint_processor);
+                op.val.insn_start.switch_conds = NULL;
+                my_free(op.val.insn_start.switch_labels, len * sizeof(int), poolid_taint_processor);
+                op.val.insn_start.switch_labels = NULL;
+            }
+        }
+    }
+
+    my_free(tbuf->start, tbuf->max_size, poolid_taint_processor);
+    tbuf->start = NULL;
+    my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
+    tbuf = NULL;
 }
 
 void tob_rewind(TaintOpBuffer *buf) {
@@ -1037,16 +1069,13 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             int64_t switchCond = dventry.entry.switchstmt.cond;
             bool found = 0;
 
-            int i;
-            for (i = 0; i < MAXSWITCHSTMTS-1; i++){
+            unsigned len = op.val.insn_start.switch_len;
+            unsigned i;
+            for (i = 0; i < (len-1); i++){
                 if (op.val.insn_start.switch_conds[i] == switchCond){
                     previous_branch = op.val.insn_start.cur_branch_bb;
                     taken_branch = op.val.insn_start.switch_labels[i];
                     found = 1;
-                    break;
-                }
-                else if (op.val.insn_start.switch_labels[i] == 0xDEADBEEF){
-                    // Stop looping until MAXSWITCHSTMTS and go to not found
                     break;
                 }
             }
@@ -1054,7 +1083,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             // handle default case in switch
             if (!found){
                 previous_branch = op.val.insn_start.cur_branch_bb;
-                taken_branch = op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1];
+                taken_branch = op.val.insn_start.switch_labels[len-1];
             }
 #ifdef TAINTDEBUG
             printf("Switch cond: %ld\n", switchCond);
@@ -1137,9 +1166,11 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
         /*** Fix up taint op buffer here ***/
         int phiSource = 0xDEADBEEF;
+        int len = op.val.insn_start.phi_len;
         int i;
-        for(i = 0; i < MAXPHIBLOCKS; i++){
-            if(previous_branch == op.val.insn_start.phi_blocks[i]) {
+        for(i = 0; i < len; i++)
+        {
+            if(previous_branch == op.val.insn_start.phi_labels[i]) {
                 //This is the source llvm register for the phi instruction
                 //We need to copy taint from here to destination
                 phiSource = op.val.insn_start.phi_vals[i];
@@ -1540,23 +1571,13 @@ SB_INLINE TaintTB *taint_tb_new(const char *name, int numBBs){
 void taint_tb_cleanup(TaintTB *ttb){
     my_free(ttb->name, strlen(ttb->name)+1, poolid_taint_processor);
     ttb->name = NULL;
-    my_free(ttb->entry->ops->start, ttb->entry->ops->max_size,
-            poolid_taint_processor);
-    ttb->entry->ops->start = NULL;
-    my_free(ttb->entry->ops, sizeof(TaintOpBuffer),
-            poolid_taint_processor);
-    ttb->entry->ops = NULL;
+    tob_delete_iterate_ops(ttb->entry->ops);
     my_free(ttb->entry, sizeof(TaintBB), poolid_taint_processor);
     ttb->entry = NULL;
     if (ttb->numBBs > 1){
         int i;
-        for (i = 0; i < ttb->numBBs-1; i++){
-            my_free(ttb->tbbs[i]->ops->start, ttb->tbbs[i]->ops->max_size,
-                    poolid_taint_processor);
-            ttb->tbbs[i]->ops->start = NULL;
-            my_free(ttb->tbbs[i]->ops, sizeof(TaintOpBuffer),
-                    poolid_taint_processor);
-            ttb->tbbs[i]->ops = NULL;
+        for (i = 0; i < (ttb->numBBs) - 1; i++){
+            tob_delete_iterate_ops(ttb->tbbs[i]->ops);
             my_free(ttb->tbbs[i], sizeof(TaintBB), poolid_taint_processor);
             ttb->tbbs[i] = NULL;
         }
@@ -1567,4 +1588,3 @@ void taint_tb_cleanup(TaintTB *ttb){
     my_free(ttb, sizeof(TaintTB), poolid_taint_processor);
     ttb = NULL;
 }
-

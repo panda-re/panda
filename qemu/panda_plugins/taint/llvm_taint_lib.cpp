@@ -1200,12 +1200,13 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
      * Some helper functions have ~40 cases for switch statements, so that's why
      * we need to do this.
      */
-    assert(I.getNumSuccessors() < MAXSWITCHSTMTS);
+    unsigned successors = I.getNumSuccessors();
+    int len = successors + 1;
+    assert(successors < MAXSWITCHSTMTS);
 
-    // Put default case at end of array
-    op.val.insn_start.switch_conds[MAXSWITCHSTMTS-1] = 0xDEADBEEF;
-    op.val.insn_start.switch_labels[MAXSWITCHSTMTS-1] =
-        PST->getLocalSlot(I.getDefaultDest());
+    op.val.insn_start.switch_len = len;
+    op.val.insn_start.switch_conds = (int64_t*)my_malloc(len * sizeof(int64_t), poolid_taint_processor);
+    op.val.insn_start.switch_labels = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
 
     // Other cases
     int i = 0;
@@ -1216,13 +1217,10 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
             PST->getLocalSlot(it.getCaseSuccessor());
     }
 
-    // Fill remaining choices with garbage so things work correctly in
-    // taint_processor.c.  We do getNumSuccessors()-1 because that number
-    // includes the default case, which we already took care of.
-    for (i = I.getNumSuccessors()-1; i < MAXSWITCHSTMTS-1; i++){
-        op.val.insn_start.switch_conds[i] = 0xDEADBEEF;
-        op.val.insn_start.switch_labels[i] = 0xDEADBEEF;
-    }
+    // Put default case at end of array
+    op.val.insn_start.switch_conds[len-1] = 0xDEADBEEF;
+    op.val.insn_start.switch_labels[len-1] =
+        PST->getLocalSlot(I.getDefaultDest());
 
     tob_op_write(tbuf, op);
 }
@@ -2215,13 +2213,13 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     struct taint_op_struct op = {};
     struct addr_struct src = {};
     struct addr_struct dst = {};
-    int len = getValueSize(&I);
+    int size = getValueSize(&I);
 
     //Delete taint at destination
     op.typ = DELETEOP;
     dst.typ = LADDR;
     dst.val.la = PST->getLocalSlot(&I);
-    for (int i = 0; i < len; i++){
+    for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.deletel.a = dst;
         tob_op_write(tbuf, op);
@@ -2230,13 +2228,18 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     char name[4] = "phi";
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
-    op.val.insn_start.num_ops = len;
+    op.val.insn_start.num_ops = size;
 
     assert(I.getNumIncomingValues() < MAXPHIBLOCKS);
 
-    for (int i = 0; i < (int)I.getNumIncomingValues(); i++){
-      op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
-      op.val.insn_start.phi_blocks[i] = PST->getLocalSlot(I.getIncomingBlock(i));
+    unsigned len = I.getNumIncomingValues();
+    op.val.insn_start.phi_len = len;
+    op.val.insn_start.phi_vals = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
+    op.val.insn_start.phi_labels = (int*)my_malloc(len * sizeof(int), poolid_taint_processor);
+
+    for (unsigned i = 0; i < len; i++){
+        op.val.insn_start.phi_vals[i] = PST->getLocalSlot(I.getIncomingValue(i));
+        op.val.insn_start.phi_labels[i] = PST->getLocalSlot(I.getIncomingBlock(i));
     }
 
     tob_op_write(tbuf, op);
@@ -2247,7 +2250,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     src.typ = UNK;
     src.val.ua = 0;
 
-    for (int i = 0; i < len; i++){
+    for (int i = 0; i < size; i++){
         src.off = i;
         dst.off = i;
         op.val.copy.a = src;

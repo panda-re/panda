@@ -31,7 +31,7 @@ PANDAENDCOMMENT */
 #define FUNCTIONFRAMES 10 // handle 2 frames for now, but increase it soon
 #define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
 #define MAXSWITCHSTMTS 75 // Maximum size of LLVM switch statements
-#define MAXPHIBLOCKS 45 // Maximum number of phi blocks supported
+#define MAXPHIBLOCKS 45 // Maximum number of LLVM phi predecessor blocks supported
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
@@ -204,13 +204,15 @@ typedef struct taint_op_struct {
         int branch_labels[2];
         // For switches/branches, log the bb it is in for phi
         int cur_branch_bb;
-        int phi_vals[MAXPHIBLOCKS];
-        int phi_blocks[MAXPHIBLOCKS];
+        unsigned phi_len;
+        int *phi_vals;
+        int *phi_labels;
         /* We need to keep track of switch conditions (cases) and their
          * corresponding basic block labels
          */
-        int64_t switch_conds[MAXSWITCHSTMTS];
-        int switch_labels[MAXSWITCHSTMTS];
+        unsigned switch_len;
+        int64_t *switch_conds;
+        int *switch_labels;
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;
@@ -222,6 +224,8 @@ typedef struct taint_op_struct {
 TaintOpBuffer *tob_new(uint32_t size);
 
 void tob_delete(TaintOpBuffer *tbuf);
+
+void tob_delete_iterate_ops(TaintOpBuffer *tbuf);
 
 void tob_rewind(TaintOpBuffer *buf);
 //uint8_t tob_empty(TaintOpBuffer *buf);
