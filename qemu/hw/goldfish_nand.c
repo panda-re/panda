@@ -403,7 +403,7 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         if (kvm_enabled())
             cpu_synchronize_state(cpu_single_env, 0);
 #endif
-        cpu_memory_rw_debug(cpu_single_env, data, dev->data, read_len, 1);
+        cpu_memory_rw(cpu_single_env, data, dev->data, read_len, 1);
         data += read_len;
         len -= read_len;
 #if defined(ANDROID_QCOW)
@@ -431,7 +431,7 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
         if (kvm_enabled())
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
-        cpu_memory_rw_debug(cpu_single_env, data, dev->data, write_len, 0);
+        cpu_memory_rw(cpu_single_env, data, dev->data, write_len, 0);
 #if defined(ANDROID_QCOW)
         ret = bdrv_pwrite(dev->bdrv,addr, dev->data, write_len);
 #else
@@ -522,7 +522,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
         if (kvm_enabled())
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
-        cpu_memory_rw_debug(cpu_single_env, s->data, (uint8_t*)dev->devname, size, 1);
+        cpu_memory_rw(cpu_single_env, s->data, (uint8_t*)dev->devname, size, 1);
         return size;
     case NAND_CMD_READ_BATCH:
     case NAND_CMD_READ:
@@ -540,7 +540,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
         if (kvm_enabled())
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
-        cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 1);
+        cpu_memory_rw(cpu_single_env,s->data, &dev->data[addr], size, 1);
         return size;
     case NAND_CMD_WRITE_BATCH:
     case NAND_CMD_WRITE:
@@ -560,7 +560,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
         if (kvm_enabled())
                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
-        cpu_memory_rw_debug(cpu_single_env,s->data, &dev->data[addr], size, 0);
+        cpu_memory_rw(cpu_single_env,s->data, &dev->data[addr], size, 0);
         return size;
     case NAND_CMD_ERASE_BATCH:
     case NAND_CMD_ERASE:
