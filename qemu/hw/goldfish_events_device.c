@@ -62,7 +62,7 @@ typedef struct GoldfishEventsDevice {
     unsigned last;
     unsigned state;
     
-    AndroidKeycodeState_t keycodeState;
+    bool hasBit7;
 
     const char *name;
 
@@ -269,7 +269,7 @@ static void events_put_keycode(void *x, int keycode)
 {
     GoldfishEventsDevice *s = (GoldfishEventsDevice *) x;
     
-    keycode = translateToAndroid(&(s->keycodeState),  keycode);
+    keycode = translateToAndroid(&(s->hasBit7),  keycode);
     //printf("Putting keycode %d being %d\n", keycode, keycode&0x1ff);
     if(keycode < 0) return;
     //format
@@ -550,7 +550,7 @@ DeviceState *goldfish_events_create(GoldfishBus *gbus, DeviceState *goldfish_int
     //cpu_register_physical_memory(edev->base, 0xfff, iomemtype);
     edev->irq = qdev_get_gpio_in(goldfish_int_dev, gdev->irq); 
     
-    edev->keycodeState.hasBit7 = false;
+    edev->hasBit7 = false;
 
     return dev;
 }

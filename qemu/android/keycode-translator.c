@@ -112,10 +112,10 @@ skin_keyboard_key_to_code(
 
 // console.h says keycode is an int
 //C++ would make this more pleasant
-int translateToAndroid(AndroidKeycodeState_t* state, int keycode){
+int translateToAndroid(bool* hasBit7, int keycode){
     //First first, if state.hasBit7 is clear, and keycode == 0x80, set it and bail
-    if((false == state->hasBit7) && (SCANCODE_EMUL0 == keycode)){
-        state->hasBit7 = true;
+    if((false == *hasBit7) && (SCANCODE_EMUL0 == keycode)){
+        *hasBit7 = true;
         //printf("Setting escape bit\n");
         return -1;
     }
@@ -127,9 +127,9 @@ int translateToAndroid(AndroidKeycodeState_t* state, int keycode){
         isdown = false;
         keycode = keycode &~0x80;
     }
-    if(state->hasBit7){
+    if(*hasBit7){
         //keycode = keycode | 0x80;
-        state->hasBit7 = false;
+        *hasBit7 = false;
     }
     
     
