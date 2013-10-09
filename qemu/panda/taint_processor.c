@@ -570,6 +570,7 @@ TaintOpBuffer *tob_new(uint32_t size) {
     TaintOpBuffer *buf = (TaintOpBuffer *) my_malloc(sizeof(TaintOpBuffer),
             poolid_taint_processor);
     buf->max_size = size;
+    buf->size = 0;
     buf->start = (char *) my_malloc(size, poolid_taint_processor);
     buf->ptr = buf->start;
     return buf;
@@ -1047,7 +1048,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             else {
                 assert(1==0);
             }
-            
+
             next_step = BRANCH;
         }
 

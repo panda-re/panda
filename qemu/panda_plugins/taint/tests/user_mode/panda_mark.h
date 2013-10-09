@@ -11,7 +11,8 @@ void cpu_id(unsigned long buf, unsigned long len, int action) {
   unsigned long rcx = buf;
   unsigned long rdx = len;
 
-  asm ("push %%rax \t\n\
+  asm __volatile__
+      ("push %%rax \t\n\
         push %%rbx \t\n\
         push %%rcx \t\n\
         push %%rdx \t\n\
@@ -24,10 +25,10 @@ void cpu_id(unsigned long buf, unsigned long len, int action) {
         pop  %%rbx \t\n\
         pop  %%rcx \t\n\
         pop  %%rdx \t\n\
-      "
+       "
       : /* no output registers */
-      : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx)
-      : /* no clobbered registers */
+      : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx) /* input operands */
+      : "rax", "rbx", "rcx", "rdx" /* clobbered registers */
       );
   return;
 }
