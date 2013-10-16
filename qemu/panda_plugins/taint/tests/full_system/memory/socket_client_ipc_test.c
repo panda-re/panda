@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include "panda_mark.h"
 
 void error(const char *msg)
 {
@@ -19,11 +20,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in serv_addr;
     struct hostent *server;
     int opt=1;
-
-    char buffer[256];
-    char buffer2[256];
-    bzero(buffer,256);
-    bzero(buffer2,256);
 
     if (argc < 2) {
        fprintf(stderr,"usage %s port [hostname]\n", argv[0]);
@@ -53,30 +49,13 @@ int main(int argc, char *argv[])
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
         error("ERROR connecting");
 
-    // File manipulation
-    printf("Please enter the file location: ");
-    fgets(buffer2,255,stdin);
-    strtok(buffer2, "\n");
-    FILE *fp;
-    fp = fopen(buffer2,"r");
-    if ( fp == 0 ) {
-        printf( "ERROR could not open file\n" );
-        close(sockfd);
-        exit(0);
-    }
-
-    int x;
-    int i = 0;
-    // Reads from file
-    while  ( ( x = fgetc(fp) ) != EOF && i < 255) {
-        buffer[i] = x;
-        i++;
-    }
-    buffer[i] = '\0';
-    fclose(fp);
+    char buffer[256] = "The quick brown fox jumps over the lazy dog";
+    printf("Client Buffer: %s\n",buffer);
+    //Label buffer
+    label_buffer((uint64_t)&buffer, 256);
 
     // Writes to socket
-    n = write(sockfd,buffer,strlen(buffer));
+    n = write(sockfd, buffer, strlen(buffer));
     if (n < 0)
          error("ERROR writing to socket");
 
