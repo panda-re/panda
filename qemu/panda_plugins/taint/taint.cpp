@@ -83,6 +83,10 @@ llvm::PandaInstrFunctionPass *PIFP;
 // Global count of taint labels
 int count = 0;
 
+// For now, taint becomes enabled when a label operation first occurs, and
+// becomes disabled when a query operation subsequently occurs
+bool taintEnabled = false;
+
 // Apply taint to a buffer of memory
 void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
     struct addr_struct a = {};
@@ -165,31 +169,35 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
 // Execute taint ops
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
-    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-    rewind_dynval_buffer(dynval_buffer);
+    if (taintEnabled){
+        DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+        rewind_dynval_buffer(dynval_buffer);
 
-    //printf("%s\n", tb->llvm_function->getName().str().c_str());
-    //PTFP->debugTaintOps();
-    //printf("\n\n");
-    execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
+        //printf("%s\n", tb->llvm_function->getName().str().c_str());
+        //PTFP->debugTaintOps();
+        //printf("\n\n");
+        execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
 
-    // Make sure there's nothing left in the buffer
-    assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
+        // Make sure there's nothing left in the buffer
+        assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
+    }
     return 0;
 }
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
-    printf("EXCEPTION - logging\n");
-    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-    log_exception(dynval_buffer);
+    if (taintEnabled){
+        printf("EXCEPTION - logging\n");
+        DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+        log_exception(dynval_buffer);
 
-    // Then execute taint ops up until the exception occurs.  Execution of taint
-    // ops will stop at the point of the exception.
-    rewind_dynval_buffer(dynval_buffer);
-    execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
+        // Then execute taint ops up until the exception occurs.  Execution of taint
+        // ops will stop at the point of the exception.
+        rewind_dynval_buffer(dynval_buffer);
+        execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
 
-    // Make sure there's nothing left in the buffer
-    assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
+        // Make sure there's nothing left in the buffer
+        assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
+    }
     return 0;
 }
 
@@ -200,12 +208,23 @@ int guest_hypercall_callback(CPUState *env) {
     target_ulong buf_len = env->regs[R_EDX];
 
     if(env->regs[R_EBX] == 0) { //Taint label
+      taintEnabled = true;
       TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
+#ifndef CONFIG_SOFTMMU
       add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+#else
+      add_taint(shadow, tempBuf, cpu_get_phys_addr(env, buf_start),
+        (int)buf_len);
+#endif //CONFIG_SOFTMMU
       tob_delete(tempBuf);
     }
     else if(env->regs[R_EBX] == 1) { //Query taint on label
+#ifndef CONFIG_SOFTMMU
       bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
+#else
+      bufplot(shadow, cpu_get_phys_addr(env, buf_start), (int)buf_len);
+#endif //CONFIG_SOFTMMU
+      taintEnabled = false;
     }
   }
 #endif
