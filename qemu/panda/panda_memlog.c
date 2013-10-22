@@ -83,11 +83,11 @@ static void log_dyn_load(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else if (val <= NUMREGS){
+        else if (val < NUMREGS){
             addr.typ = GREG;
             addr.val.gr = val;
         }
-        else if (val > NUMREGS){
+        else if (val >= NUMREGS){
             addr.typ = GSPEC;
             addr.val.gs = val;
         }
@@ -140,11 +140,11 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
         if (val < 0){
             addr.flag = IRRELEVANT;
         }
-        else if (val <= NUMREGS){
+        else if (val < NUMREGS){
             addr.typ = GREG;
             addr.val.gr = val;
         }
-        else if (val > NUMREGS){
+        else if (val >= NUMREGS){
             addr.typ = GSPEC;
             addr.val.gs = val;
         }
