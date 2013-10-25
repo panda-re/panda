@@ -35,4 +35,18 @@ Telnet to localhost 5554 and you'll have a console with interactive help. This
 is the same as the Android emulator. It enables text messages, phone calls,
 GPS, etc. 
 
+Introspection (DroidScope)
+----
+Code from the [DroidScope/DECAF project](http://code.google.com/p/decaf-platform/) has been integrated into Panda. Some of it is functional. It has not yet been migrated to loadable plugins.
 
+#Linux-level introspection
+Currently, the DroidScope code for the Linux layer works (with the Linux kernel structure definitions hard-coded to the ones for the stable Android Goldfish kernel).
+Every time the current page table base changes, the DroidScope code updates its shadow process list, if necessary. This process list can also track threads and loaded modules, and can use symbols extracted by the [tools](http://code.google.com/p/decaf-platform/source/browse/?r=181#svn%2Fbranches%2FDroidScope%2Fqemu%2Fobjs) provided by the DroidScope team.
+
+If Panda’s system call tracer plugin is loaded, the DroidScope code will also be notified explicitly of fork(), clone(), and exec() calls, and will parse the process's module list after exec().
+
+To actually use this data, you’ll need to modify context.c, or duplicate much of its code in a copy of the system call tracer plugin.
+You can also run Panda in GDB, break in, and execute “call printProcessList(0)” to print the process list to Panda’s stdout. The module and thread lists are similar.
+
+#Dalvik-level introspection
+DroidScope’s Dalvik/Android specific code is tied to Android 2.3, as you believed. It appears that Dalvik has changed significantly since then. We plan on implementing support for 4.x at some point, but we don’t know when that will happen.
