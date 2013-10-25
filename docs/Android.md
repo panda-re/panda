@@ -49,4 +49,4 @@ To actually use this data, you’ll need to modify context.c, or duplicate much 
 You can also run Panda in GDB, break in, and execute “call printProcessList(0)” to print the process list to Panda’s stdout. The module and thread lists are similar.
 
 ###Dalvik-level introspection
-DroidScope’s Dalvik/Android specific code is tied to Android 2.3, as you believed. It appears that Dalvik has changed significantly since then. We plan on implementing support for 4.x at some point, but we don’t know when that will happen.
+DroidScope’s Dalvik/Android specific code is currently tied to Android 2.3. It appears that Dalvik has changed significantly since then. We plan on implementing support for 4.x at some point, but we don’t know when that will happen.
