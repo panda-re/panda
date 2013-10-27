@@ -7026,6 +7026,10 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
             gen_op_set_cc_op(s->cc_op);
         gen_jmp_im(pc_start - s->cs_base);
         gen_helper_cpuid();
+        // rwhelan: end block here in case we want to do something crazy in a
+        // hypercall (like, for example, switch the JIT to LLVM)
+        gen_jmp_im(s->pc - s->cs_base);
+        gen_eob(s);
         break;
     case 0xf4: /* hlt */
         if (s->cpl != 0) {

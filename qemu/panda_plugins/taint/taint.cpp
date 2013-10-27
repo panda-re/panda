@@ -69,16 +69,19 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
-Shad *shadow; // Global shadow memory
+Shad *shadow = NULL; // Global shadow memory
 
 }
 
+// Pointer passed in init_plugin()
+void *plugin_ptr = NULL;
+
 // Our pass manager to derive taint ops
-llvm::FunctionPassManager *taintfpm;
+llvm::FunctionPassManager *taintfpm = NULL;
 
 // Taint and instrumentation function passes
-llvm::PandaTaintFunctionPass *PTFP;
-llvm::PandaInstrFunctionPass *PIFP;
+llvm::PandaTaintFunctionPass *PTFP = NULL;
+llvm::PandaInstrFunctionPass *PIFP = NULL;
 
 // Global count of taint labels
 int count = 0;
@@ -86,6 +89,12 @@ int count = 0;
 // For now, taint becomes enabled when a label operation first occurs, and
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
+
+// Lets us know right when taint was enabled
+bool taintJustEnabled = false;
+
+// Lets us know right when taint was disabled
+bool taintJustDisabled = false;
 
 // Apply taint to a buffer of memory
 void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
@@ -156,19 +165,111 @@ static void llvm_init(){
 
 } // namespace llvm
 
+void enable_taint(){
+    panda_cb pcb;
+    pcb.before_block_exec = before_block_exec;
+    panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.after_block_exec = after_block_exec;
+    panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    pcb.phys_mem_read = phys_mem_read_callback;
+    panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_READ, pcb);
+    pcb.phys_mem_write = phys_mem_write_callback;
+    panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_WRITE, pcb);
+    pcb.cb_cpu_restore_state = cb_cpu_restore_state;
+    panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
+    
+    if (!execute_llvm){
+        panda_enable_llvm();
+    }
+    llvm::llvm_init();
+    panda_enable_llvm_helpers();
+
+    /*
+     * Run instrumentation pass over all helper functions that are now in the
+     * module, and verify module.
+     */
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
+        if (i->isDeclaration()){
+            continue;
+        }
+        PIFP->runOnFunction(*i);
+    }
+    std::string err;
+    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
+        printf("%s\n", err.c_str());
+        exit(1);
+    }
+
+    /*
+     * Taint processor initialization
+     */
+
+    //uint32_t ram_size = 536870912; // 500MB each
+#ifdef TARGET_X86_64
+    // this is only for the fast bitmap which we currently aren't using for
+    // 64-bit, it only supports 32-bit
+    //XXX FIXME
+    uint64_t ram_size = 0;
+#else
+    uint32_t ram_size = 0xffffffff; //guest address space -- QEMU user mode
+#endif
+    uint64_t hd_size =  536870912;
+    uint64_t io_size = 536870912;
+    uint16_t num_vals = 2000; // LLVM virtual registers //XXX assert this
+    shadow = tp_init(hd_size, ram_size, io_size, num_vals);
+    if (shadow == NULL){
+        printf("Error initializing shadow memory...\n");
+        exit(1);
+    }
+
+    taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
+
+    // Add the taint analysis pass to our taint pass manager
+    llvm::FunctionPass *taintfp =
+        llvm::createPandaTaintFunctionPass(15*1048576/* global taint op buffer
+        size, 10MB */, NULL /* existing taint cache */);
+    PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
+    taintfpm->add(taintfp);
+    taintfpm->doInitialization();
+
+    // Populate taint cache with helper function taint ops
+    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
+        if (i->isDeclaration()){
+            continue;
+        }
+        PTFP->runOnFunction(*i);
+    }
+}
+
 // Derive taint ops
 int before_block_exec(CPUState *env, TranslationBlock *tb){
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
-    taintfpm->run(*(tb->llvm_function));
-    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-    clear_dynval_buffer(dynval_buffer);
+    if (taintEnabled){
+        taintfpm->run(*(tb->llvm_function));
+        DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
+        clear_dynval_buffer(dynval_buffer);
+    }
     return 0;
 }
 
 // Execute taint ops
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
+    if (taintJustEnabled){
+        // need to wait until the next TB to start executing taint ops
+        taintJustEnabled = false;
+        return 0;
+    }
+    if (taintJustDisabled){
+        taintJustDisabled = false;
+        execute_llvm = 0;
+        generate_llvm = 0;
+        panda_do_flush_tb();
+        panda_disable_memcb();
+        return 0;
+    }
     if (taintEnabled){
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         rewind_dynval_buffer(dynval_buffer);
@@ -208,7 +309,14 @@ int guest_hypercall_callback(CPUState *env) {
     target_ulong buf_len = env->regs[R_EDX];
 
     if(env->regs[R_EBX] == 0) { //Taint label
-      taintEnabled = true;
+      if (!taintEnabled){
+          printf("Taint plugin: Label operation detected\n");
+          printf("Enabling taint processing\n");
+          taintJustEnabled = true;
+          taintEnabled = true;
+          enable_taint();
+      }
+
       TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
 #ifndef CONFIG_SOFTMMU
       add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
@@ -224,7 +332,10 @@ int guest_hypercall_callback(CPUState *env) {
 #else
       bufplot(shadow, cpu_get_phys_addr(env, buf_start), (int)buf_len);
 #endif //CONFIG_SOFTMMU
+      printf("Taint plugin: Query operation detected\n");
+      printf("Disabling taint processing\n");
       taintEnabled = false;
+      taintJustDisabled = true;
     }
   }
 #endif
@@ -326,19 +437,10 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 
 bool init_plugin(void *self) {
     printf("Initializing taint plugin\n");
+    plugin_ptr = self;
     panda_cb pcb;
     panda_enable_memcb();
     panda_disable_tb_chaining();
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    pcb.after_block_exec = after_block_exec;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    pcb.phys_mem_read = phys_mem_read_callback;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_READ, pcb);
-    pcb.phys_mem_write = phys_mem_write_callback;
-    panda_register_callback(self, PANDA_CB_PHYS_MEM_WRITE, pcb);
-    pcb.cb_cpu_restore_state = cb_cpu_restore_state;
-    panda_register_callback(self, PANDA_CB_CPU_RESTORE_STATE, pcb);
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
 
@@ -346,68 +448,6 @@ bool init_plugin(void *self) {
     pcb.user_after_syscall = user_after_syscall;
     panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
-
-    if (!execute_llvm){
-        panda_enable_llvm();
-    }
-    llvm::llvm_init();
-    panda_enable_llvm_helpers();
-
-    /*
-     * Run instrumentation pass over all helper functions that are now in the
-     * module, and verify module.
-     */
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
-    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
-        if (i->isDeclaration()){
-            continue;
-        }
-        PIFP->runOnFunction(*i);
-    }
-    std::string err;
-    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        printf("%s\n", err.c_str());
-        exit(1);
-    }
-
-    /*
-     * Taint processor initialization
-     */
-
-    //uint32_t ram_size = 536870912; // 500MB each
-#ifdef TARGET_X86_64
-    // this is only for the fast bitmap which we currently aren't using for
-    // 64-bit, it only supports 32-bit
-    uint64_t ram_size = 0;
-#else
-    uint32_t ram_size = 0xffffffff; //guest address space -- QEMU user mode
-#endif
-    uint64_t hd_size =  536870912;
-    uint64_t io_size = 536870912;
-    uint16_t num_vals = 2000; // LLVM virtual registers
-    shadow = tp_init(hd_size, ram_size, io_size, num_vals);
-    if (shadow == NULL){
-        printf("Error initializing shadow memory...\n");
-        exit(1);
-    }
-
-    taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
-
-    // Add the taint analysis pass to our taint pass manager
-    llvm::FunctionPass *taintfp =
-        llvm::createPandaTaintFunctionPass(15*1048576/* global taint op buffer
-        size, 10MB */, NULL /* existing taint cache */);
-    PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
-    taintfpm->add(taintfp);
-    taintfpm->doInitialization();
-
-    // Populate taint cache with helper function taint ops
-    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
-        if (i->isDeclaration()){
-            continue;
-        }
-        PTFP->runOnFunction(*i);
-    }
 
     return true;
 }
@@ -431,9 +471,9 @@ void uninit_plugin(void *self) {
         pr->unregisterPass(*pi);
     }
 
-    delete taintfpm; // Delete function pass manager and pass
+    if (taintfpm) delete taintfpm; // Delete function pass manager and pass
 
-    tp_free(shadow);
+    if (shadow) tp_free(shadow);
 
     panda_disable_llvm();
     panda_disable_memcb();

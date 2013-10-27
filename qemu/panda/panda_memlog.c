@@ -174,6 +174,7 @@ DynValBuffer *create_dynval_buffer(uint32_t size){
     DynValBuffer *buf = (DynValBuffer *) my_malloc(sizeof(DynValBuffer),
             poolid_dynamic_log);
     buf->max_size = size;
+    buf->cur_size = 0;
     buf->start = (char *) my_malloc(size, poolid_dynamic_log);
     buf->ptr = buf->start;
     return buf;

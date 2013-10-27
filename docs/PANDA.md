@@ -329,16 +329,19 @@ unused
 
 **Notes**:
 
-On x86, this is called whenever CPUID is executed. Plugins then
-check for magic values in the registers to determine if it really
-is a guest hypercall. Parameters can be passed in other registers.
+On x86, this is called whenever CPUID is executed. Plugins then check for magic
+values in the registers to determine if it really is a guest hypercall.
+Parameters can be passed in other registers.  We have modified translate.c to
+make CPUID instructions end translation blocks.  This is useful, if, for
+example, you want to have a hypercall that turns on LLVM and enables heavyweight
+instrumentation at a specific point in execution.
 
 S2E accomplishes this by using a (currently) undefined opcode. We
 have instead opted to use an existing instruction to make development
 easier (we can use inline asm rather than defining the raw bytes).
 
 AMD's SVM and Intel's VT define hypercalls, but they are privileged
-instructinos, meaning the guest must be in ring 0 to execute them.
+instructions, meaning the guest must be in ring 0 to execute them.
 
 **Signature**:
 
