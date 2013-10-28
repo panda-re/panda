@@ -21,10 +21,10 @@ void cpu_id(unsigned long buf, unsigned long len, int action) {
         mov  %2, %%rcx \t\n\
         mov  %3, %%rdx \t\n\
         cpuid \t\n\
-        pop  %%rax \t\n\
-        pop  %%rbx \t\n\
-        pop  %%rcx \t\n\
         pop  %%rdx \t\n\
+        pop  %%rcx \t\n\
+        pop  %%rbx \t\n\
+        pop  %%rax \t\n\
        "
       : /* no output registers */
       : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx) /* input operands */
