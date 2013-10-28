@@ -2304,7 +2304,7 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     dst.val.ua = 0;
     dst.flag = READLOG;
     src.typ = UNK;
-    src.val.la = 0;
+    src.val.ua = 0;
     src.flag = READLOG;
 
     for (int i = 0; i < bytes; i++){
