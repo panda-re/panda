@@ -11,9 +11,10 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+
 /*
  * PANDA taint analysis plugin
- * Ryan Whelan
+ * Ryan Whelan, Tim Leek, Sam Coe, Nathan VanBenschoten
  */
 
 // This needs to be defined before anything is included in order to get
