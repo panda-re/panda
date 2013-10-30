@@ -85,8 +85,9 @@ Organization
 
 Building
 --------
-The taint plugin and associated artifacts are compiled as part of our QEMU build process, and plugins are built 
-for each architecture in `panda/qemu/<architecture>/panda_plugins/panda_taint.so`.
+The taint plugin and associated artifacts are compiled as part of our QEMU build
+process, and plugins are built for each architecture in
+`panda/qemu/<architecture>/panda_plugins/panda_taint.so`.
 
 Using
 --------
