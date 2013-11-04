@@ -611,7 +611,17 @@ int cpu_arm_handle_mmu_fault (CPUState *env, target_ulong address, int rw,
 void HELPER(set_cp)(CPUState *env, uint32_t insn, uint32_t val)
 {
     int op1 = (insn >> 8) & 0xf;
-    cpu_abort(env, "cp%i insn %08x\n", op1, insn);
+    if (op1 == 7){
+        // PANDA instrumentation: guest hypercall
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL;
+                plist = plist->next){
+            plist->entry.guest_hypercall(env);
+        }
+    }
+    else {
+        cpu_abort(env, "cp%i insn %08x\n", op1, insn);
+    }
     return;
 }
 

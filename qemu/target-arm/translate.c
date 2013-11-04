@@ -2464,6 +2464,34 @@ static int disas_dsp_insn(CPUState *env, DisasContext *s, uint32_t insn)
     return 1;
 }
 
+static inline void gen_goto_tb(DisasContext *s, int n, uint32_t dest)
+{
+    TranslationBlock *tb;
+
+    tb = s->tb;
+    if ((tb->pc & TARGET_PAGE_MASK) == (dest & TARGET_PAGE_MASK)) {
+        tcg_gen_goto_tb(n);
+        gen_set_pc_im(dest);
+        tcg_gen_exit_tb((tcg_target_long)tb + n);
+    } else {
+        gen_set_pc_im(dest);
+        tcg_gen_exit_tb(0);
+    }
+}
+
+static inline void gen_jmp (DisasContext *s, uint32_t dest)
+{
+    if (unlikely(s->singlestep_enabled)) {
+        /* An indirect jump so that we still trigger the debug exception.  */
+        if (s->thumb)
+            dest |= 1;
+        gen_bx_im(s, dest);
+    } else {
+        gen_goto_tb(s, 0, dest);
+        s->is_jmp = DISAS_TB_JUMP;
+    }
+}
+
 /* Disassemble system coprocessor instruction.  Return nonzero if
    instruction is not defined.  */
 static int disas_cp_insn(CPUState *env, DisasContext *s, uint32_t insn)
@@ -2471,6 +2499,22 @@ static int disas_cp_insn(CPUState *env, DisasContext *s, uint32_t insn)
     TCGv tmp, tmp2;
     uint32_t rd = (insn >> 12) & 0xf;
     uint32_t cp = (insn >> 8) & 0xf;
+
+    if ((cp == 7) && !(insn & ARM_CP_RW_BIT)){
+        // rwhelan: This is a PANDA hypercall that will work in user mode and
+        // whole-system mode
+        gen_set_pc_im(s->pc);
+        tmp = load_reg(s, rd);
+        tmp2 = tcg_const_i32(insn);
+        gen_helper_set_cp(cpu_env, tmp2, tmp);
+        // rwhelan: end block here in case we want to do something crazy in a
+        // hypercall (like, for example, switch the JIT to LLVM)
+        gen_jmp(s, s->pc);
+        tcg_temp_free(tmp2);
+        tcg_temp_free_i32(tmp);
+        return 0;
+    }
+
     if (IS_USER(s)) {
         return 1;
     }
@@ -3568,34 +3612,6 @@ static int disas_vfp_insn(CPUState * env, DisasContext *s, uint32_t insn)
         return 1;
     }
     return 0;
-}
-
-static inline void gen_goto_tb(DisasContext *s, int n, uint32_t dest)
-{
-    TranslationBlock *tb;
-
-    tb = s->tb;
-    if ((tb->pc & TARGET_PAGE_MASK) == (dest & TARGET_PAGE_MASK)) {
-        tcg_gen_goto_tb(n);
-        gen_set_pc_im(dest);
-        tcg_gen_exit_tb((tcg_target_long)tb + n);
-    } else {
-        gen_set_pc_im(dest);
-        tcg_gen_exit_tb(0);
-    }
-}
-
-static inline void gen_jmp (DisasContext *s, uint32_t dest)
-{
-    if (unlikely(s->singlestep_enabled)) {
-        /* An indirect jump so that we still trigger the debug exception.  */
-        if (s->thumb)
-            dest |= 1;
-        gen_bx_im(s, dest);
-    } else {
-        gen_goto_tb(s, 0, dest);
-        s->is_jmp = DISAS_TB_JUMP;
-    }
 }
 
 static inline void gen_mulxy(TCGv t0, TCGv t1, int x, int y)

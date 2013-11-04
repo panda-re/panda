@@ -343,6 +343,12 @@ easier (we can use inline asm rather than defining the raw bytes).
 AMD's SVM and Intel's VT define hypercalls, but they are privileged
 instructions, meaning the guest must be in ring 0 to execute them.
 
+For hypercalls in ARM, we use the MCR instruction (move to coprocessor from ARM
+register), moving to coprocessor 7.  CP 7 is reserved by ARM, and isn't
+implemented in QEMU.  The MCR instruction is present in all versions of ARM, and
+it is an unprivileged instruction in this scenario.  Plugins can also check for
+magic values in registers on ARM.
+
 **Signature**:
 
 	int (*guest_hypercall)(CPUState *env);
