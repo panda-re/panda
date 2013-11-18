@@ -312,6 +312,35 @@ static inline void rr_write_item(void) {
                         fwrite(&(args->variant.cpu_mem_reg_region_args), 
                                sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
                         break;
+                    case RR_CALL_PIRATE_LOG_OP_WRITE_0:
+                        fwrite(&(args->variant.pirate_log_op_write_0_args), 
+                               sizeof(args->variant.pirate_log_op_write_0_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_PIRATE_LOG_OP_WRITE_8:
+                        fwrite(&(args->variant.pirate_log_op_write_8_args),
+                               sizeof(args->variant.pirate_log_op_write_8_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_PIRATE_LOG_OP_WRITE_81:
+                        fwrite(&(args->variant.pirate_log_op_write_81_args),
+                           sizeof(args->variant.pirate_log_op_write_81_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_PIRATE_LOG_OP_WRITE_884:
+                        fwrite(&(args->variant.pirate_log_op_write_884_args), 
+                           sizeof(args->variant.pirate_log_op_write_884_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_PIRATE_LOG_OP_WRITE_84:
+                        fwrite(&(args->variant.pirate_log_op_write_84_args), 
+                           sizeof(args->variant.pirate_log_op_write_84_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_PIRATE_HANDLE_PACKET:
+                        assert(args->variant.pirate_handle_packet_args.buf != NULL || 
+                                args->variant.pirate_handle_packet_args.size == 0);
+                        fwrite(&(args->variant.pirate_handle_packet_args), 
+			       sizeof(args->variant.pirate_handle_packet_args), 1, rr_nondet_log->fp);
+                        //mz write the buffer
+                        fwrite(args->variant.pirate_handle_packet_args.buf, 1, 
+			       args->variant.pirate_handle_packet_args.size, rr_nondet_log->fp);
+                        break;
                     default:
                         //mz unimplemented
                         rr_assert(0);
@@ -497,6 +526,133 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
 
     rr_write_item();
 }
+
+
+
+void rr_record_pirate_log_op_write_0_call(RR_callsite_id call_site, 
+                                               uint32_t opnum) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_0;
+    item->variant.call_args.variant.pirate_log_op_write_0_args.opnum = opnum;
+
+    rr_write_item();
+}
+
+
+void rr_record_pirate_log_op_write_8_call(RR_callsite_id call_site, 
+                                               uint32_t opnum,
+                                               uint64_t a0) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_8;
+    item->variant.call_args.variant.pirate_log_op_write_8_args.opnum = opnum;
+    item->variant.call_args.variant.pirate_log_op_write_8_args.a0 = a0;
+
+    rr_write_item();
+}
+
+
+void rr_record_pirate_log_op_write_81_call(RR_callsite_id call_site,
+                                                uint32_t opnum,
+                                                uint64_t a0,
+                                                uint64_t a1) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_81;
+    item->variant.call_args.variant.pirate_log_op_write_81_args.opnum = opnum;
+    item->variant.call_args.variant.pirate_log_op_write_81_args.a0 = a0;
+    item->variant.call_args.variant.pirate_log_op_write_81_args.a1 = a1;
+
+    rr_write_item();
+}
+
+
+void rr_record_pirate_log_op_write_884_call(RR_callsite_id call_site,
+                                                 uint32_t opnum,
+                                                 uint64_t a0,
+                                                 uint64_t a1,
+                                                 uint32_t a2) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_884;
+    item->variant.call_args.variant.pirate_log_op_write_884_args.opnum = opnum;
+    item->variant.call_args.variant.pirate_log_op_write_884_args.a0 = a0;
+    item->variant.call_args.variant.pirate_log_op_write_884_args.a1 = a1;
+    item->variant.call_args.variant.pirate_log_op_write_884_args.a2 = a2;
+
+    rr_write_item();
+}
+
+
+void rr_record_pirate_log_op_write_84_call(RR_callsite_id call_site, uint32_t opnum, uint64_t a0, uint32_t a1)
+{
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_84;
+    item->variant.call_args.variant.pirate_log_op_write_84_args.opnum = opnum;
+    item->variant.call_args.variant.pirate_log_op_write_84_args.a0 = a0;
+    item->variant.call_args.variant.pirate_log_op_write_84_args.a1 = a1;
+
+    rr_write_item();
+}
+
+void rr_record_pirate_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
+{
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_PIRATE_HANDLE_PACKET;
+    item->variant.call_args.variant.pirate_handle_packet_args.buf = buf;
+    item->variant.call_args.variant.pirate_handle_packet_args.size = size;
+    item->variant.call_args.variant.pirate_handle_packet_args.direction = direction;
+
+    rr_write_item();
+}
+
+
+
 
 //mz record a marker for end of the log
 static void rr_record_end_of_log(void) {

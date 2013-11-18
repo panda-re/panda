@@ -52,6 +52,11 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+    PANDA_CB_BEFORE_IN,         // Before an in
+    PANDA_CB_AFTER_IN,          // After an in 
+    PANDA_CB_BEFORE_OUT,        // Before an out
+    PANDA_CB_AFTER_OUT,         // After an out
+
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -418,6 +423,76 @@ typedef union panda_cb {
  *       unused
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+
+/* Callback ID: PANDA_CB_BEFORE_IN
+ * 
+ *      before_in: Called immediately prior to cpu_in[bwl] but ONLY for
+ *      helper_in[bwl] in op_helper.c.  There are a few other calls to cpu_in 
+ *      and friends but in monitor and kvm and xen.  So probably ok.  
+ *      NB: Only implemented for target-i386 for now
+ *      Arguments:
+ *       CPUState* env: pointer to CPUState
+ *       size: size of in in bytes
+ *       port: port number
+ *
+ *      Return value:
+ *       unused
+ */
+    int (*before_in)(CPUState *env, target_ulong size, target_ulong port); 
+
+/* Callback ID: PANDA_CB_AFTER_IN
+ * 
+ *      after_in: Called immediately after cpu_in[bwl] but ONLY for
+ *      helper_in[bwl] in op_helper.c.  There are a few other calls to cpu_in 
+ *      and friends but in monitor and kvm and xen.  So probably ok.  
+ *      NB: Only implemented for target-i386 for now
+ *      Arguments:
+ *       CPUState* env: pointer to CPUState
+ *       size: size of in in bytes
+ *       port: port number
+ *       data: data returned by in
+ *
+ *      Return value:
+ *       unused
+ */
+    int (*after_in)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
+
+
+/* Callback ID: PANDA_CB_BEFORE_OUT
+ * 
+ *      before_out: Called immediately prior to cpu_out[bwl] but ONLY for
+ *      helper_out[bwl] in op_helper.c.  There are a few other calls to cpu_out 
+ *      and friends but in monitor and kvm and xen.  So probably ok.  
+ *      NB: Only implemented for target-i386 for now
+ *      Arguments:
+ *       CPUState* env: pointer to CPUState
+ *       size: size of out in bytes
+ *       port: port number
+ *       data: data going out
+ *
+ *      Return value:
+ *       unused
+ */
+  int (*before_out)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
+
+/* Callback ID: PANDA_CB_AFTER_OUT
+ * 
+ *      after_out: Called immediately after cpu_out[bwl] but ONLY for
+ *      helper_out[bwl] in op_helper.c.  There are a few other calls to cpu_out 
+ *      and friends but in monitor and kvm and xen.  So probably ok.  
+ *      NB: Only implemented for target-i386 for now
+ *      Arguments:
+ *       CPUState* env: pointer to CPUState
+ *       size: size of out in bytes
+ *       port: port number
+ *       data: data going out
+ *
+ *      Return value:
+ *       unused
+ */
+    int (*after_out)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
+
+
     
 } panda_cb;
 
