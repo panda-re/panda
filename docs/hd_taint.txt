@@ -1,0 +1,217 @@
+
+PANDA Version 
+
+Here is a map of all the information flows getting data to and from the hard drive.
+Note, there are obviously flows between RAM and Regs.  But these aren't exclusive to HD.
+
+
++--------+    A    +--------+    C    +-------+
+|        | ------> |        | ------> |       |
+| Hard   |         | I/O    |         |  RAM  |
+| Drive  | <------ | Buffer | <------ |       |
+|        |    B    |        |    D    |       |
++--------+         +--------+         +-------+
+                     ^   |
+                     |   | E
+                     |   |    +-------+    G    +-------+
+                   F |   +--> |       | ------> |       |
+                     |        |  Port |         | Reg   |
+                     +------- | 0x1f0 | <------ | T0/T1 |
+                              |       |    H    |       |
+                              +-------+         +-------+
+
+
+A: Transfer from HD to ide device IO buffer.
+
+   During record, in hw/ide/core.c, we insert an entry into the replay log about 
+   the transfer.  
+
+   This happens in both ide_sector_read, 
+ 
+   rr_record_pirate_log_op_write_884_call
+     (RR_CALLSITE_IDE_SECTOR_READ,
+     IFLO_HD_TRANSFER_1,
+     HD_BASE_ADDR + sector_num*512,
+     (uint64_t) s->io_buffer,
+     n*512);
+
+   and in ide_dma_cb
+
+   rr_record_pirate_log_op_write_884_call
+     (RR_CALLSITE_IDE_READ_DMA_CB,
+     IFLO_HD_TRANSFER_2,
+     HD_BASE_ADDR + sector_num*512,
+     (uint64_t) s->io_buffer, n*512);
+
+   What is getting recorded here is enough information to reconstruct the
+   taint transfer during replay.  Note that neither ide_sector_read nor
+   ide_dma_cb will get called during replay since devices don't get "run"
+   in replay.  So how does this work?  These replay log items are marked 
+   as "skipped calls".  There is a macro defined in rr_log.h,
+   RR_DO_RECORD_OR_REPLAY, which, during replay, immediately prior to 
+   executing the specified replay action, also executes any such 
+   "skipped calls" waiting in the replay log for the current program point.  
+
+   Thus, during replay, the following code in vl.c
+
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/main_loop_wait(timeout),
+            /*record=*/RR_NO_ACTION,
+            /*replay=*/main_loop_wait(timeout),
+            /*location=*/RR_CALLSITE_MAIN_LOOP);
+
+   will execute all skipped calls that were logged during record whilst devices 
+   ran in main_loop_wait.  And when the skipped call for ide_sector_read, e.g., is 
+   executed in replay, it will result in a call to 
+
+   iferret_log_op_write_884(IFLO_HD_TRANSFER_1, HD_BASE_ADDR + sector_num*512,
+     (uint64_t) s->io_buffer, n*512);
+
+   This inserts an entry into the taint op buffer for transfering taint from
+   the HD to the IO buffer.  Note that this transfer actually happens when the
+   taint op buffer is processed in iferret_info_flow.c
+
+   NB: I/O buffer is really an address in Qemu process address space.
+   We assume that iferret is compiled for and running on a 64-bit host.  
+   
+
+B: Transfer from IO buffer to HD
+
+   Similar to A, but in reverse.
+
+   ide_sector_write
+
+   ppirrl_record_iferret_log_op_write_884_call(RR_CALLSITE_IDE_SECTOR_WRITE, 
+     IFLO_HD_TRANSFER_3, (uint64_t) s->io_buffer, 
+     HD_BASE_ADDR + sector_num*512, n*512);
+
+   ide_write_dma_cb  
+
+   ppirrl_record_iferret_log_op_write_884_call(RR_CALLSITE_IDE_WRITE_DMA_CB, 
+     IFLO_HD_TRANSFER_4, (uint64_t) s->io_buffer, 
+     HD_BASE_ADDR + sector_num*512, n*512);
+
+
+C: Transfer from IO buffer to RAM directly via DMA
+
+   During record, in ide.c, in dma_buf_rw, when is_write!=0, we call 
+   cpu_physical_memory_write(...).  cpu_physical_memory_write() is defined in 
+   cpu_all.h, and just calls cpu_physical_memory_rw(), defined in exec.c.  
+   cpu_physical_memory_rw() does the actual DMA, but also, when we are recording,
+   it writes an entry to the replay log when it calls 
+
+   rr_device_mem_rw_call_record(addr, buf, len, is_write);
+
+   which just calls 
+
+   ppirrl_record_cpu_mem_rw_call(rr_skipped_callsite_location, addr, buf, len, is_write);
+
+   which, as in A & B, above, records a skipped call.  
+
+   In replay, [where does this skipped call get replayed, exactly?] the log entry results
+   in a call to cpu_physical_memory_rw in ppirrl_replay_skipped_calls (rr_log.c).
+   This, in turn, since we are now in replay, causes the following to get written
+   to the taint op buffer:
+
+   iferret_log_op_write_8844(IFLO_CPU_PHYSICAL_MEMORY_RW, (uint64_t) ptr, 
+     (uint64_t) buf, l, is_write);
+
+   Which works similarly to in A, in terms of later causing taint transfer to happen.   
+
+
+D: Transfer from RAM directly to IO buffer via DMA
+
+   Analogous to C, but opposite direction.  cpu_physical_memory_read this time.
+   
+
+E: Transfer from IO buffer to port for output
+
+   During record, in ide.c, in ide_data_readw, we call 
+
+   ppirrl_record_iferret_log_op_write_8_call(RR_CALLSITE_IDE_DATA_READW, 
+     IFLO_HD_TRANSFER_2_SRC, (uint64_t) s->data_ptr);
+   
+   Again, this is recorded as a skipped call.
+
+   In replay [again, where does this skipped call get replayed?], this will result in
+   a call to 
+
+   iferret_log_op_write_8(IFLO_HD_TRANSFER_2_SRC, p) where p is the address within the IO buffer from 
+   which the 2 bytes came, s->data_ptr.
+
+   Note that, here, we have only the src of the taint transfer in hand.  Thus, the taint
+   processor has to record this src address (p) for later use with the second half
+   of this transfer (some kind of _DEST).
+
+   ide_data_readl  is similar
+
+   ppirrl_record_iferret_log_op_write_8_call(RR_CALLSITE_IDE_DATA_READL, 
+     IFLO_HD_TRANSFER_4_SRC, (uint64_t) s->data_ptr);
+
+   
+F: Transfer from port to IO buffer
+
+   During record, in ide.c, in ide_data_writew, we call 
+
+   ppirrl_record_iferret_log_op_write_81_call(RR_CALLSITE_IDE_DATA_WRITEW, 
+     IFLO_HD_TRANSFER_1_DEST, (uint64_t) s->data_ptr, 2);
+
+   which is recorded as a skipped call.  
+
+   In replay, this results in a call to
+   
+   iferret_log_op_write_81(IFLO_HD_TRANSFER_1_DEST, p, 2)
+
+   Note that this log entry provides the destination of a transfer and
+   must have been preceded by an entry that provided the source of a
+   transfer.  So with this entry, we execute a full taint transfer.
+
+   ide_data_writel is simlar.
+
+   ppirrl_record_iferret_log_op_write_81_call(RR_CALLSITE_IDE_DATA_WRITEL, 
+     IFLO_HD_TRANSFER_3_DEST, (uint64_t) s->data_ptr, 4);
+
+
+G: Transfer from port to a register
+
+   In ops_template.h, in the fn op_inw_T0_T1, if something is tainted 
+   (some labeling event occurred in the past), then we just go ahead and
+   write a taint op to the taint op buffer for processing:
+
+   iferret_log_info_flow_op_write_81(IFLO_HD_TRANSFER_6_DEST, T1_BASE, 2);
+
+   This is part of a taint transfer initiated by E above.  Here we have the 
+   destination, which is the register T1, in this case.  
+
+   Note that there are no checks if we are in record or replay.  That is
+   because this code executes both during record and replay, as it isnt
+   device code.  We rely on the fact that taint is only tracked during replay
+   to ensure that it will only do something during replay and only after
+   some taint labels have been applied.  
+
+   port	-> T1, i.e., T1 = in(port=T0)
+
+   op_inw_T0_T1                 IFLO_HD_TRANSFER_6_DEST
+   op_inl_T0_T1                 IFLO_HD_TRANSFER_7_DEST
+
+   port -> T0, i.e., T0	= in(port=DX)
+
+   op_inw_DX_T0                 IFLO_HD_TRANSFER_8_DEST	
+   op_inl_DX_T0                 IFLO_HD_TRANSFER_9_DEST
+
+
+H: Transfer from register to port
+ 
+   in ops_template.h
+
+   T1 -> port, i.e., out(port=T0, T1)
+
+   op_outb_T0_T1                IFLO_HD_TRANSFER_SRC_5B_T1_BASE
+   op_outw_T0_T1                IFLO_HD_TRANSFER_SRC_5W_T1_BASE
+   op_outl_T0_T1                IFLO_HD_TRANSFER_SRC_5L_T1_BASE
+
+   T0 -> port, i.e., out(port=DX, T0)
+
+   op_outb_DX_T0                IFLO_HD_TRANSFER_SRC_10B_T0_BASE
+   op_outw_DX_T0                IFLO_HD_TRANSFER_SRC_10W_T0_BASE
+   op_outl_DX_T0                IFLO_HD_TRANSFER_SRC_10L_T0_BASE
