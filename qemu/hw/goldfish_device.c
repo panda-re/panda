@@ -163,7 +163,7 @@ static void goldfish_device_bus_write(void *opaque, target_phys_addr_t offset, u
                 if(kvm_enabled())
                     cpu_synchronize_state(cpu_single_env, 0);
 #endif
-                cpu_memory_rw_debug(cpu_single_env, value, (void*)s->current->name, strlen(s->current->name), 1);
+                cpu_memory_rw(cpu_single_env, value, (void*)s->current->name, strlen(s->current->name), 1);
             }
             break;
         default:

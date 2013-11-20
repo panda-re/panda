@@ -133,7 +133,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
                             if (kvm_enabled())
                                 cpu_synchronize_state(cpu_single_env, 0);
 #endif
-                            cpu_memory_rw_debug(cpu_single_env, buf, (uint8_t*)temp, to_write, 0);
+                            cpu_memory_rw(cpu_single_env, buf, (uint8_t*)temp, to_write, 0);
                             qemu_chr_fe_write(s->cs, (const uint8_t*)temp, to_write);
                             buf += to_write;
                             len -= to_write;
@@ -149,7 +149,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
                     if (kvm_enabled())
                         cpu_synchronize_state(cpu_single_env, 0);
 #endif
-                    cpu_memory_rw_debug(cpu_single_env,s->ptr, s->data, s->ptr_len,1);
+                    cpu_memory_rw(cpu_single_env,s->ptr, s->data, s->ptr_len,1);
                     //printf("goldfish_tty_write: read %d bytes to %x\n", s->ptr_len, s->ptr);
                     if(s->data_count > s->ptr_len)
                         memmove(s->data, s->data + s->ptr_len, s->data_count - s->ptr_len);
