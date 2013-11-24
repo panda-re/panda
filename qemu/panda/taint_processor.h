@@ -227,6 +227,8 @@ TaintOpBuffer *tob_new(uint32_t size);
 
 void tob_delete(TaintOpBuffer *tbuf);
 
+void tob_resize(TaintOpBuffer **ptbuf);
+
 void tob_delete_iterate_ops(TaintOpBuffer *tbuf);
 
 void tob_rewind(TaintOpBuffer *buf);
