@@ -610,6 +610,31 @@ void tob_delete(TaintOpBuffer *tbuf){
     tbuf = NULL;
 }
 
+
+
+// if this taint op buffer is close to full (more than 80%),
+// double it in size
+void tob_resize(TaintOpBuffer **ptbuf) {
+  TaintOpBuffer *tbuf = *ptbuf;
+  if (tob_full_frac(tbuf) > 0.8) {
+    printf ("Doubling size of taint buffer (probably I/O one)\n");
+    // fresh buffer twice size of original
+    TaintOpBuffer *tbuf_bigger = tob_new(tbuf->max_size * 2);
+    // copy ops over
+    memcpy(tbuf_bigger->start, tbuf->start, tbuf->size);
+    // set current size 
+    tbuf_bigger->size = tbuf->size;
+    // and pointer
+    tbuf_bigger->ptr = tbuf_bigger->start + (tbuf_bigger->size);
+    // discard contents of old buffer
+    tob_delete(tbuf);
+    // and re-point
+    *ptbuf = tbuf_bigger;
+  }
+}
+
+
+
 void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     //Make sure we are at the beginning of the buffer
     tob_rewind(tbuf);
