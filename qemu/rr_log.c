@@ -41,6 +41,8 @@
 #include "sysemu.h"
 #include "rr_log.h"
 
+#include "panda_plugin.h"
+
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -312,25 +314,9 @@ static inline void rr_write_item(void) {
                         fwrite(&(args->variant.cpu_mem_reg_region_args), 
                                sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
                         break;
-                    case RR_CALL_PIRATE_LOG_OP_WRITE_0:
-                        fwrite(&(args->variant.pirate_log_op_write_0_args), 
-                               sizeof(args->variant.pirate_log_op_write_0_args), 1, rr_nondet_log->fp);
-                        break;
-                    case RR_CALL_PIRATE_LOG_OP_WRITE_8:
-                        fwrite(&(args->variant.pirate_log_op_write_8_args),
-                               sizeof(args->variant.pirate_log_op_write_8_args), 1, rr_nondet_log->fp);
-                        break;
-                    case RR_CALL_PIRATE_LOG_OP_WRITE_81:
-                        fwrite(&(args->variant.pirate_log_op_write_81_args),
-                           sizeof(args->variant.pirate_log_op_write_81_args), 1, rr_nondet_log->fp);
-                        break;
-                    case RR_CALL_PIRATE_LOG_OP_WRITE_884:
-                        fwrite(&(args->variant.pirate_log_op_write_884_args), 
-                           sizeof(args->variant.pirate_log_op_write_884_args), 1, rr_nondet_log->fp);
-                        break;
-                    case RR_CALL_PIRATE_LOG_OP_WRITE_84:
-                        fwrite(&(args->variant.pirate_log_op_write_84_args), 
-                           sizeof(args->variant.pirate_log_op_write_84_args), 1, rr_nondet_log->fp);
+                    case RR_CALL_PIRATE_HD_TRANSFER:
+		        fwrite(&(args->variant.pirate_hd_transfer_args), 
+                               sizeof(args->variant.pirate_hd_transfer_args), 1, rr_nondet_log->fp);
                         break;
                     case RR_CALL_PIRATE_HANDLE_PACKET:
                         assert(args->variant.pirate_handle_packet_args.buf != NULL || 
@@ -529,8 +515,9 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
 
 
 
-void rr_record_pirate_log_op_write_0_call(RR_callsite_id call_site, 
-                                               uint32_t opnum) {
+void rr_record_pirate_hd_transfer(RR_callsite_id call_site,
+				  Pirate_hd_transfer transfer_type,
+				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -540,97 +527,16 @@ void rr_record_pirate_log_op_write_0_call(RR_callsite_id call_site,
     item->header.callsite_loc = call_site;
     item->header.prog_point = rr_prog_point;
 
-    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_0;
-    item->variant.call_args.variant.pirate_log_op_write_0_args.opnum = opnum;
+    item->variant.call_args.kind = RR_CALL_PIRATE_HD_TRANSFER;;
+    item->variant.call_args.variant.pirate_hd_transfer.transfer_type = transfer_type;
+    item->variant.call_args.variant.pirate_hd_transfer.src_addr = src_addr;
+    item->variant.call_args.variant.pirate_hd_transfer.dest_addr = dest_addr;
+    item->variant.call_args.variant.pirate_hd_transfer.num_bytes = num_bytes;
 
     rr_write_item();
 }
 
 
-void rr_record_pirate_log_op_write_8_call(RR_callsite_id call_site, 
-                                               uint32_t opnum,
-                                               uint64_t a0) {
-    RR_log_entry *item = &(rr_nondet_log->current_item);
-    //mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    //item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
-
-    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_8;
-    item->variant.call_args.variant.pirate_log_op_write_8_args.opnum = opnum;
-    item->variant.call_args.variant.pirate_log_op_write_8_args.a0 = a0;
-
-    rr_write_item();
-}
-
-
-void rr_record_pirate_log_op_write_81_call(RR_callsite_id call_site,
-                                                uint32_t opnum,
-                                                uint64_t a0,
-                                                uint64_t a1) {
-    RR_log_entry *item = &(rr_nondet_log->current_item);
-    //mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    //item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
-
-    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_81;
-    item->variant.call_args.variant.pirate_log_op_write_81_args.opnum = opnum;
-    item->variant.call_args.variant.pirate_log_op_write_81_args.a0 = a0;
-    item->variant.call_args.variant.pirate_log_op_write_81_args.a1 = a1;
-
-    rr_write_item();
-}
-
-
-void rr_record_pirate_log_op_write_884_call(RR_callsite_id call_site,
-                                                 uint32_t opnum,
-                                                 uint64_t a0,
-                                                 uint64_t a1,
-                                                 uint32_t a2) {
-    RR_log_entry *item = &(rr_nondet_log->current_item);
-    //mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    //item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
-
-    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_884;
-    item->variant.call_args.variant.pirate_log_op_write_884_args.opnum = opnum;
-    item->variant.call_args.variant.pirate_log_op_write_884_args.a0 = a0;
-    item->variant.call_args.variant.pirate_log_op_write_884_args.a1 = a1;
-    item->variant.call_args.variant.pirate_log_op_write_884_args.a2 = a2;
-
-    rr_write_item();
-}
-
-
-void rr_record_pirate_log_op_write_84_call(RR_callsite_id call_site, uint32_t opnum, uint64_t a0, uint32_t a1)
-{
-    RR_log_entry *item = &(rr_nondet_log->current_item);
-    //mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    //item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
-
-    item->variant.call_args.kind = RR_CALL_PIRATE_LOG_OP_WRITE_84;
-    item->variant.call_args.variant.pirate_log_op_write_84_args.opnum = opnum;
-    item->variant.call_args.variant.pirate_log_op_write_84_args.a0 = a0;
-    item->variant.call_args.variant.pirate_log_op_write_84_args.a1 = a1;
-
-    rr_write_item();
-}
 
 void rr_record_pirate_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
 {
@@ -825,6 +731,13 @@ static RR_log_entry *rr_read_item(void) {
                               sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) == 1);
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_reg_region_args);
                         break;
+		     
+		    case RR_CALL_PIRATE_HD_TRANSFER:
+		        rr_assert(fread(&(args->variant.pirate_hd_transfer_args),
+			      sizeof(args->variant.pirate_hd_transfer_args), 1, rr_nondet_log->fp) == 1);
+			rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.pirate_hd_transfer_args);
+			break;
+
                     default:
                         //mz unimplemented
                         rr_assert(0);
@@ -1163,9 +1076,24 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                                 /*is_write=*/1,
                                 args->variant.cpu_mem_unmap.len
                                 );
-
                     }
                     break;
+	        case RR_PIRATE_HD_TRANSFER:
+		  {
+		    // run all callbacks registered for hd transfer
+		    RR_pirate_hd_transfer *hdt = &(args->variant.pirate_hd_transfer_args);
+		    panda_cb_list *plist;
+		    for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
+		      plist->entry.replay_hd_transfer
+			(cpu_single_env, 
+			 hdt->type,
+			 hdt->src_addr,
+			 hdt->dest_addr,
+			 hdt->num_bytes);
+		    }
+		  }
+		  break;
+
                 default:
                     //mz sanity check
                     rr_assert(0);

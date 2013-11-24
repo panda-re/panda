@@ -503,9 +503,9 @@ void ide_sector_read(IDEState *s)
 	// HD -> IO_BUFFER
 	uint8_t *p;
 	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
-	  rr_record_pirate_log_op_write_884_call
+	  rr_record_pirate_hd_transfer
 	    (RR_CALLSITE_IDE_SECTOR_READ, 
-	     IFLO_HD_TRANSFER_1, 
+	     PIRATE_HD_TRANSFER_HD_TO_IOB,
 	     HD_BASE_ADDR + sector_num*512, 
 	     (uint64_t) s->io_buffer,
 	     n*512);	  
@@ -515,7 +515,7 @@ void ide_sector_read(IDEState *s)
         bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
         ret = bdrv_read(s->bs, sector_num, s->io_buffer, n);
 
-	// TRL hd taint      
+	// TRL hd taint debug
 	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
 	  dump_buffer("ide_sector_read",p,n*512);
 	}
@@ -642,11 +642,12 @@ handle_rw_error:
       // TRL hd taint
       // HD -> IO_BUFFER
       if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
-	rr_record_pirate_log_op_write_884_call 
-	  (RR_CALLSITE_IDE_READ_DMA_CB, 
-	   IFLO_HD_TRANSFER_2, 
+	rr_record_pirate_hd_transfer
+	  (RR_CALLSITE_IDE_DMA_CB,
+	   PIRATE_HD_TRANSFER_HD_TO_IOB,
 	   HD_BASE_ADDR + sector_num*512,
-	   (uint64_t) s->io_buffer, n*512);
+	   (uint64_t) s->io_buffer, 
+	   n*512);
       }
 
         // TRL hd taint debug
@@ -664,11 +665,12 @@ handle_rw_error:
       // TRL hd taint
       // IO_BUFFER -> HD      
       if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
-	rr_record_pirate_log_op_write_884_call
-	  (RR_CALLSITE_IDE_WRITE_DMA_CB, 
-	   IFLO_HD_TRANSFER_4,
+	rr_record_pirate_hd_transfer
+	  (RR_CALLSITE_IDE_DMA_CB,
+	   PIRATE_HD_TRANSFER_IOB_TO_HD,
 	   (uint64_t) s->io_buffer, 
-	   HD_BASE_ADDR + sector_num*512, n*512);
+	   HD_BASE_ADDR + sector_num*512, 
+	   n*512);
       }
       
 #ifdef IFERRET_DEBUG
@@ -748,11 +750,12 @@ void ide_sector_write(IDEState *s)
     // TRL hd taint
     // IO_BUFFER -> HD
     if ((!s->is_cdrom) && (rr_in_record())) {
-      rr_record_pirate_log_op_write_884_call
+      rr_record_pirate_hd_transfer
 	(RR_CALLSITE_IDE_SECTOR_WRITE, 
-	 IFLO_HD_TRANSFER_3,
+	 PIRATE_HD_TRANSFER_IOB_TO_HD,
 	 (uint64_t) s->io_buffer,
-	 HD_BASE_ADDR + sector_num*512, n*512);
+	 HD_BASE_ADDR + sector_num*512, 
+	 n*512);
     }
 
     bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
@@ -1752,10 +1755,12 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
     // this is a transfer from port to io_buffer
     // 0x1f0 is hd
     if ((addr == 0x1f0) && (rr_in_record())) {
-      rr_record_pirate_log_op_write_81_call
+      rr_record_pirate_hd_transfer
 	(RR_CALLSITE_IDE_DATA_WRITEW,
-	 IFLO_HD_TRANSFER_1_DEST,
-	 (uint64_t) s->data_ptr, 2);
+	 PIRATE_HD_TRANSFER_PORT_TO_IOB,
+	 0x1f0,
+	 (uint64_t) s->data_ptr, 
+	 2);
     }
 
     p = s->data_ptr;
@@ -1782,10 +1787,12 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
     // TRL hd taint
     // this is transfer from io_buffer to port 
     if ((addr == 0x1f0) && (rr_in_record())) {
-      rr_record_pirate_log_op_write_8_call
-	(RR_CALLSITE_IDE_DATA_READW,
-	 IFLO_HD_TRANSFER_2_SRC,
-	 (uint64_t) s->data_ptr);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READW,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 
+	 0x1f0, 
+	 2);
     }
     
     p = s->data_ptr;
@@ -1812,10 +1819,12 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
     // TRL hd taint
     // this is a transfer from port to io_buffer
     if ((addr == 0x1f0) && (rr_in_record())) {      
-      rr_record_pirate_log_op_write_81_call
-	(RR_CALLSITE_IDE_DATA_WRITEL, 
-	 IFLO_HD_TRANSFER_3_DEST, 
-	 (uint64_t) s->data_ptr, 4);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEL,
+         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+	 0x1f0, 
+         (uint64_t) s->data_ptr, 
+	 4);
     }
 
     p = s->data_ptr;
@@ -1842,10 +1851,12 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
     // TRL hd taint
     // this is transfer from io_buffer to port 
     if ((addr == 0x1f0) && (rr_in_record())) {      
-      rr_record_pirate_log_op_write_8_call
-	(RR_CALLSITE_IDE_DATA_READL,
-	 IFLO_HD_TRANSFER_4_SRC,
-	 (uint64_t) s->data_ptr);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READL,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 
+	 0x1f0,
+	 4);
     }
 
     p = s->data_ptr;

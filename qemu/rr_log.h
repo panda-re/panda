@@ -38,6 +38,32 @@ typedef struct {
     target_phys_addr_t len;
 } RR_cpu_mem_unmap;
 
+
+
+typedef enum {
+  PIRATE_HD_TRANSFER_HD_TO_IOB,
+  PIRATE_HD_TRANSFER_IOB_TO_HD,
+  PIRATE_HD_TRANSFER_PORT_TO_IOB,
+  PIRATE_HD_TRANSFER_IOB_TO_PORT
+} Pirate_hd_transfer;
+
+
+static const char *pirate_hd_transfer_str[] = {
+  "PIRATE_HD_TRANSFER_HD_TO_IOB",
+  "PIRATE_HD_TRANSFER_IOB_TO_HD",
+  "PIRATE_HD_TRANSFER_PORT_TO_IOB",
+  "PIRATE_HD_TRANSFER_IOB_TO_PORT"
+} Pirate_hd_transfer;
+
+
+// structure for arguments to pirate_hd_transfer
+typedef struct {
+  Pirate_hd_transfer type;   
+  uint64_t src_addr;
+  uint64_t dest_addr;
+  uint32_t num_bytes;
+} RR_pirate_hd_transfer;
+
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write);
@@ -72,6 +98,7 @@ typedef struct {
         RR_cpu_reg_mem_region_args cpu_mem_reg_region_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
+        RR_pirate_hd_transfer pirate_hd_transfer_args;
     } variant;
 } RR_skipped_call_args;
 

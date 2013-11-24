@@ -671,70 +671,34 @@ void helper_check_iol(uint32_t t0)
 
 void helper_outb(uint32_t port, uint32_t data)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.before_out(env, 1, port, data);
-  }
   cpu_outb(port, data & 0xff);
-  for(plist = panda_cbs[PANDA_CB_AFTER_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.after_out(env, 1, port, data);
-  }
 }
 
 target_ulong helper_inb(uint32_t port)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.before_in(env, 1, port);
-  }
   target_ulong retval = cpu_inb(port);  
-  for(plist = panda_cbs[PANDA_CB_AFTER_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.after_in(env, 1, port, retval);
-  }
   return retval;
 }
 
 void helper_outw(uint32_t port, uint32_t data)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.before_out(env, 2, port, data);
-  }
   cpu_outw(port, data & 0xffff);
-  for(plist = panda_cbs[PANDA_CB_AFTER_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.after_out(env, 2, port, data);
-  }
 }
 
 target_ulong helper_inw(uint32_t port)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.before_in(env, 2, port);
-  }
   target_ulong retval = cpu_inw(port);
-  for(plist = panda_cbs[PANDA_CB_AFTER_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.after_in(env, 2, port, retval);
-  }
   return retval;
 }
 
 void helper_outl(uint32_t port, uint32_t data)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.before_out(env, 4, port, data);
-  }
   cpu_outl(port, data);
-  for(plist = panda_cbs[PANDA_CB_AFTER_OUT]; plist != NULL; plist = plist->next) {
-    plist->entry.after_out(env, 4, port, data);
-  }
 }
 
 target_ulong helper_inl(uint32_t port)
 {
-  for(plist = panda_cbs[PANDA_CB_BEFORE_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.before_in(env, 4, port);
-  }
   target_ulong retval = cpu_inl(port);
-  for(plist = panda_cbs[PANDA_CB_AFTER_IN]; plist != NULL; plist = plist->next) {
-    plist->entry.after_in(env, 4, port, retval);
-  }
   return retval;
 }
 

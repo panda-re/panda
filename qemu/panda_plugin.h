@@ -52,10 +52,10 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
-    PANDA_CB_BEFORE_IN,         // Before an in
-    PANDA_CB_AFTER_IN,          // After an in 
-    PANDA_CB_BEFORE_OUT,        // Before an out
-    PANDA_CB_AFTER_OUT,         // After an out
+
+    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
+
+    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
 
     PANDA_CB_LAST,
 } panda_cb_type;
@@ -424,73 +424,39 @@ typedef union panda_cb {
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
 
-/* Callback ID: PANDA_CB_BEFORE_IN
- * 
- *      before_in: Called immediately prior to cpu_in[bwl] but ONLY for
- *      helper_in[bwl] in op_helper.c.  There are a few other calls to cpu_in 
- *      and friends but in monitor and kvm and xen.  So probably ok.  
- *      NB: Only implemented for target-i386 for now
- *      Arguments:
- *       CPUState* env: pointer to CPUState
- *       size: size of in in bytes
- *       port: port number
- *
- *      Return value:
- *       unused
+/* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,   
+ 
+       In replay only, some kind of data transfer involving hard drive.
+       NB: We are neither before nor after, really.  In replay the transfer
+       doesn't really happen.  We are *at* the point at which it happened, really.
+       Arguments:
+        CPUState* env: pointer to CPUState
+        uint32_t type:        type of transfer  (Pirate_hd_transfer)
+        uint64_t src_addr:    address for src
+        uint64_t dest_addr:   address for dest
+        uint32_t num_bytes:   size of transfer in bytes
+      
+       Return value:
+        unused
  */
-    int (*before_in)(CPUState *env, target_ulong size, target_ulong port); 
+  int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
-/* Callback ID: PANDA_CB_AFTER_IN
- * 
- *      after_in: Called immediately after cpu_in[bwl] but ONLY for
- *      helper_in[bwl] in op_helper.c.  There are a few other calls to cpu_in 
- *      and friends but in monitor and kvm and xen.  So probably ok.  
- *      NB: Only implemented for target-i386 for now
- *      Arguments:
- *       CPUState* env: pointer to CPUState
- *       size: size of in in bytes
- *       port: port number
- *       data: data returned by in
- *
- *      Return value:
- *       unused
- */
-    int (*after_in)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
+/* Callback ID:     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,
+
+   In replay only, we are about to dma from some qemu buffer to guest memory
+   
+   Arguments:
+   CPUState* env:       pointer to CPUState                   
+   uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
+   uint64_t src         src of dma
+   uint64_t dest        dest of dma
+   uint32_t num_bytes:  size of transfer
+*/
+  int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
-/* Callback ID: PANDA_CB_BEFORE_OUT
- * 
- *      before_out: Called immediately prior to cpu_out[bwl] but ONLY for
- *      helper_out[bwl] in op_helper.c.  There are a few other calls to cpu_out 
- *      and friends but in monitor and kvm and xen.  So probably ok.  
- *      NB: Only implemented for target-i386 for now
- *      Arguments:
- *       CPUState* env: pointer to CPUState
- *       size: size of out in bytes
- *       port: port number
- *       data: data going out
- *
- *      Return value:
- *       unused
- */
-  int (*before_out)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
 
-/* Callback ID: PANDA_CB_AFTER_OUT
- * 
- *      after_out: Called immediately after cpu_out[bwl] but ONLY for
- *      helper_out[bwl] in op_helper.c.  There are a few other calls to cpu_out 
- *      and friends but in monitor and kvm and xen.  So probably ok.  
- *      NB: Only implemented for target-i386 for now
- *      Arguments:
- *       CPUState* env: pointer to CPUState
- *       size: size of out in bytes
- *       port: port number
- *       data: data going out
- *
- *      Return value:
- *       unused
- */
-    int (*after_out)(CPUState *env, target_ulong size, target_ulong port, target_ulong data); 
+
 
 
     

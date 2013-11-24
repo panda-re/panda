@@ -28,44 +28,50 @@ A: Transfer from HD to ide device IO buffer.
 
    This happens in both ide_sector_read, 
  
-   rr_record_pirate_log_op_write_884_call
-     (RR_CALLSITE_IDE_SECTOR_READ,
-     IFLO_HD_TRANSFER_1,
-     HD_BASE_ADDR + sector_num*512,
-     (uint64_t) s->io_buffer,
-     n*512);
+        rr_record_pirate_hd_transfer
+          (RR_CALLSITE_IDE_SECTOR_READ,
+           PIRATE_HD_TRANSFER_HD_TO_IOB,
+           HD_BASE_ADDR + sector_num*512,
+           (uint64_t) s->io_buffer,
+           n*512);
 
    and in ide_dma_cb
 
-   rr_record_pirate_log_op_write_884_call
-     (RR_CALLSITE_IDE_READ_DMA_CB,
-     IFLO_HD_TRANSFER_2,
-     HD_BASE_ADDR + sector_num*512,
-     (uint64_t) s->io_buffer, n*512);
+        rr_record_pirate_hd_transfer
+          (RR_CALLSITE_IDE_DMA_CB,
+           PIRATE_HD_TRANSFER_HD_TO_IOB,
+           HD_BASE_ADDR + sector_num*512,
+           (uint64_t) s->io_buffer, n*512);
 
    What is getting recorded here is enough information to reconstruct the
    taint transfer during replay.  Note that neither ide_sector_read nor
    ide_dma_cb will get called during replay since devices don't get "run"
-   in replay.  So how does this work?  These replay log items are marked 
-   as "skipped calls".  There is a macro defined in rr_log.h,
-   RR_DO_RECORD_OR_REPLAY, which, during replay, immediately prior to 
-   executing the specified replay action, also executes any such 
-   "skipped calls" waiting in the replay log for the current program point.  
+   in replay.  So how does this work?  These replay log items are entered 
+   in the log as "skipped calls".  
 
-   Thus, during replay, the following code in vl.c
+   During replay, the following code in cpu-exec.c 
 
-        RR_DO_RECORD_OR_REPLAY(
-            /*action=*/main_loop_wait(timeout),
-            /*record=*/RR_NO_ACTION,
-            /*replay=*/main_loop_wait(timeout),
-            /*location=*/RR_CALLSITE_MAIN_LOOP);
+   if (rr_in_replay()) {
+     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+     rr_set_program_point();
+     rr_replay_skipped_calls();
+   }
 
-   will execute all skipped calls that were logged during record whilst devices 
-   ran in main_loop_wait.  And when the skipped call for ide_sector_read, e.g., is 
-   executed in replay, it will result in a call to 
+   will execute all skipped calls that were logged in the io thread during record. 
+   When the skipped call for IFLO_HD_TRANSFER_HD_TO_IOB, e.g., is "executed" in replay, it 
+   results in a taint op being added to the taint op buffer for io thread.  
+   Here is the code in rr_log.c that constructs the bulk taint copy and adds 
+   it to the buffer.
 
-   iferret_log_op_write_884(IFLO_HD_TRANSFER_1, HD_BASE_ADDR + sector_num*512,
-     (uint64_t) s->io_buffer, n*512);
+   TaintOp top;
+   top.typ = BULKCOPYOP;
+   top.bulkcopy.a = aaa;
+   top.bulkcopy.b = bbb;
+   top.bulkcopy.l = lll;
+   tob_op_write(pand_tob_io_thread, &top);
+
+   The actual taint transfer happens when 
+
 
    This inserts an entry into the taint op buffer for transfering taint from
    the HD to the IO buffer.  Note that this transfer actually happens when the
@@ -81,63 +87,74 @@ B: Transfer from IO buffer to HD
 
    ide_sector_write
 
-   ppirrl_record_iferret_log_op_write_884_call(RR_CALLSITE_IDE_SECTOR_WRITE, 
-     IFLO_HD_TRANSFER_3, (uint64_t) s->io_buffer, 
-     HD_BASE_ADDR + sector_num*512, n*512);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_SECTOR_WRITE,
+         PIRATE_HD_TRANSFER_IOB_TO_HD,
+         (uint64_t) s->io_buffer,
+         HD_BASE_ADDR + sector_num*512, n*512);
 
-   ide_write_dma_cb  
+   ide_dma_cb  
 
-   ppirrl_record_iferret_log_op_write_884_call(RR_CALLSITE_IDE_WRITE_DMA_CB, 
-     IFLO_HD_TRANSFER_4, (uint64_t) s->io_buffer, 
-     HD_BASE_ADDR + sector_num*512, n*512);
-
+        rr_record_pirate_hd_transfer
+          (RR_CALLSITE_IDE_DMA_CB,
+           PIRATE_HD_TRANSFER_IOB_TO_HD,
+           (uint64_t) s->io_buffer,
+           HD_BASE_ADDR + sector_num*512, n*512);
 
 C: Transfer from IO buffer to RAM directly via DMA
 
-   During record, in ide.c, in dma_buf_rw, when is_write!=0, we call 
-   cpu_physical_memory_write(...).  cpu_physical_memory_write() is defined in 
-   cpu_all.h, and just calls cpu_physical_memory_rw(), defined in exec.c.  
-   cpu_physical_memory_rw() does the actual DMA, but also, when we are recording,
+   During record, in hw/ide/pci.c, bmdma_rw_buf calls pci_dma_write or pci_dma_read,
+   which call pci_dma_rw, which finally calls cpu_physical_memory_rw.
+   cpu_physical_memory_rw does the actual DMA, but also, when we are recording,
    it writes an entry to the replay log when it calls 
 
-   rr_device_mem_rw_call_record(addr, buf, len, is_write);
+   rr_device_mem_rw_call_record which just calls rr_record_cpu_mem_rw_call
+   to record a skipped call to cpu_physical_memory_rw
 
-   which just calls 
+   In replay, that rr log entry results in a call to cpu_physical_memory_rw in rr_replay_skipped_calls_internal.
+   This, in turn, activates the appropriate panda callbacks 
 
-   ppirrl_record_cpu_mem_rw_call(rr_skipped_callsite_location, addr, buf, len, is_write);
+                if (rr_mode == RR_REPLAY) {
+                  // run all callbacks registered for cpu_physical_memory_rw ram case             
+                  panda_cb_list *plist;
+                  for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+                    plist->entry.replay_before_cpu_physical_mem_rw_ram
+                      (env, is_write, buf, dest, l);
+                  }
 
-   which, as in A & B, above, records a skipped call.  
+   For taint transfer, in taint.cpp,  the following function gets registered under PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM
 
-   In replay, [where does this skipped call get replayed, exactly?] the log entry results
-   in a call to cpu_physical_memory_rw in ppirrl_replay_skipped_calls (rr_log.c).
-   This, in turn, since we are now in replay, causes the following to get written
-   to the taint op buffer:
+    cb_replay_cpu_physical_mem_rw_ram(CPUState *env,
+     uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) 
 
-   iferret_log_op_write_8844(IFLO_CPU_PHYSICAL_MEMORY_RW, (uint64_t) ptr, 
-     (uint64_t) buf, l, is_write);
+   And this is what adds a bulk copy taint op to the TaintOpBuffer tob_io_thread corresponding to
+   the dma.  
 
-   Which works similarly to in A, in terms of later causing taint transfer to happen.   
+   Note that the taint ops in tob_io_thread get consumed in XXX.
 
 
 D: Transfer from RAM directly to IO buffer via DMA
 
    Analogous to C, but opposite direction.  cpu_physical_memory_read this time.
+   Also look in bmdma_rw_buf
    
 
 E: Transfer from IO buffer to port for output
 
-   During record, in ide.c, in ide_data_readw, we call 
+   During record, in ide/core.c, in ide_data_readw, we call 
 
-   ppirrl_record_iferret_log_op_write_8_call(RR_CALLSITE_IDE_DATA_READW, 
-     IFLO_HD_TRANSFER_2_SRC, (uint64_t) s->data_ptr);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READW,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 2);
    
    Again, this is recorded as a skipped call.
 
    In replay [again, where does this skipped call get replayed?], this will result in
    a call to 
 
-   iferret_log_op_write_8(IFLO_HD_TRANSFER_2_SRC, p) where p is the address within the IO buffer from 
-   which the 2 bytes came, s->data_ptr.
+   iferret_log_op_write_8(IFLO_HD_TRANSFER_2_SRC, p) 
+   where p is the address within the IO buffer from which the 2 bytes came, s->data_ptr.
 
    Note that, here, we have only the src of the taint transfer in hand.  Thus, the taint
    processor has to record this src address (p) for later use with the second half
@@ -145,16 +162,19 @@ E: Transfer from IO buffer to port for output
 
    ide_data_readl  is similar
 
-   ppirrl_record_iferret_log_op_write_8_call(RR_CALLSITE_IDE_DATA_READL, 
-     IFLO_HD_TRANSFER_4_SRC, (uint64_t) s->data_ptr);
-
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READL,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 4);
    
 F: Transfer from port to IO buffer
 
    During record, in ide.c, in ide_data_writew, we call 
 
-   ppirrl_record_iferret_log_op_write_81_call(RR_CALLSITE_IDE_DATA_WRITEW, 
-     IFLO_HD_TRANSFER_1_DEST, (uint64_t) s->data_ptr, 2);
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEW,
+         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+         (uint64_t) s->data_ptr, 2);
 
    which is recorded as a skipped call.  
 
@@ -167,6 +187,11 @@ F: Transfer from port to IO buffer
    transfer.  So with this entry, we execute a full taint transfer.
 
    ide_data_writel is simlar.
+
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEL,
+         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+         (uint64_t) s->data_ptr, 4);
 
    ppirrl_record_iferret_log_op_write_81_call(RR_CALLSITE_IDE_DATA_WRITEL, 
      IFLO_HD_TRANSFER_3_DEST, (uint64_t) s->data_ptr, 4);

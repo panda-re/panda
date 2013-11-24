@@ -57,6 +57,15 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
 
+// for hd taint
+int cb_replay_hd_transfer_taint
+(CPUState *env, 
+ uint32_t type,
+ uint64_t src_addr, 
+ uint64_t dest_addr,
+ uint32_t num_bytes);
+
+
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        int num, abi_long arg1, abi_long arg2, abi_long arg3,
@@ -177,7 +186,14 @@ void enable_taint(){
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_WRITE, pcb);
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
+
+    // for hd taint
+    pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
+    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
+    pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
+    panda_register_callback(plugin_ptr, PANDA_CB_CPU_BEFORE_PHYSICAL_MEM_RW_RAM, pcb);
     
+
     if (!execute_llvm){
         panda_enable_llvm();
     }
@@ -247,6 +263,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
     if (taintEnabled){
+      // process taint ops in io thread taint op buffer
+      // NB: we don't need a dynval buffer here.
+      tob_process(tob_io_thread, shadow, NULL);
+
         taintfpm->run(*(tb->llvm_function));
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         clear_dynval_buffer(dynval_buffer);
@@ -282,8 +302,79 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
         // Make sure there's nothing left in the buffer
         assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
     }
+
+    // rewind the io thread taint op buffer
+    tob_rewind(tob_io_thread);
+
     return 0;
 }
+
+// this is for much of the hd taint transfers.
+// this gets called from rr_log.c, rr_replay_skipped_calls, RR_PIRATE_HD_TRANSFER case.
+int cb_replay_hd_transfer_taint(CPUState *env, 
+				uint32_t type,
+				uint64_t src_addr, 
+				uint64_t dest_addr,
+				uint32_t num_bytes) {
+  // Replay hd transfer as taint transfer
+  if (taintEnabled) {
+    TaintOp top;
+    top.typ = BULKCOPY;
+    top.bulkcopy.l = args->variant.pirate_hd_transfer_args.num_bytes;
+    RR_pirate_hd_transfer *hdt = &(args->variant.pirate_hd_transfer_args);
+    switch (hdt->type) {
+    case PIRATE_HD_TRANSFER_HD_TO_IOB:
+      top.bulkcopy.a = HAddr(hdt->src_addr);
+      top.bulkcopy.b = IAddr(hdt->dest_addr);
+      break;
+    case PIRATE_HD_TRANSFER_IOB_TO_HD:
+      top.bulkcopy.a = IAddr(hdt->src_addr);
+      top.bulkcopy.b = HAddr(hdt->dest_addr);
+      break;
+    case PIRATE_HD_TRANSFER_PORT_TO_IOB:
+      top.bulkcopy.a = PAddr(hdt->src_addr);
+      top.bulkcopy.b = IAddr(hdt->dest_addr);
+      break;
+    case PIRATE_HD_TRANSFER_IOB_TO_PORT:
+      top.bulkcopy.a = IAddr(hdt->src_addr);
+      top.bulkcopy.b = PAddr(hdt->dest_addr);
+      break;
+    default:
+      printf ("Impossible pirate hd transfer type: %d\n", hdt->type);
+      assert (1==0);
+    }
+    // add bulk copy corresponding to this hd transfer to buffer
+    // of taint ops for io thread.  
+    tob_op_write(tob_io_thread, &top);    
+  }
+}
+
+
+// this does a bunch of the dmas in hd taint transfer
+int cb_replay_cpu_physical_mem_rw_ram
+  (CPUState *env, 
+   uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+  // Replay dmas in hd taint transfer
+  if (taintEnabled) {
+    top.typ = BULKCOPY;
+    top.bulkcopy.l = args->variant.replay_before_cpu_physical_mem_rw_ram.num_bytes;
+    if (is_write) {
+      // its a "write", i.e., transfer from IO buffer to RAM
+      top.bulkcopy.a = IAddr(args->variant.replay_before_cpu_physical_mem_rw_ram.src);
+      top.bulkcopy.b = MAddr(args->variant.replay_before_cpu_physical_mem_rw_ram.dest);
+    }
+    else {
+      // its a "read", i.e., transfer from RAM to IO buffer
+      top.bulkcopy.a = MAddr(args->variant.replay_before_cpu_physical_mem_rw_ram.src);
+      top.bulkcopy.b = IAddr(args->variant.replay_before_cpu_physical_mem_rw_ram.dest);
+    }
+    // add bulk copy corresponding to this hd transfer to buffer
+    // of taint ops for io thread.  
+    tob_op_write(tob_io_thread, &top);    
+  }    
+}
+
+
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     if (taintEnabled){

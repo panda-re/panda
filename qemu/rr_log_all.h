@@ -115,6 +115,7 @@ typedef enum {
     RR_CALL_CPU_MEM_RW,             // cpu_physical_memory_rw()
     RR_CALL_CPU_REG_MEM_REGION,     // cpu_register_physical_memory()
     RR_CALL_CPU_MEM_UNMAP,          // cpu_physical_memory_unmap()
+    RR_CALL_PIRATE_HD_TRANSFER,     // hd transfer
     RR_CALL_LAST
 } RR_skipped_call_kind;
 
@@ -122,6 +123,7 @@ static const char *skipped_call_kind_str[] = {
     "RR_CALL_CPU_MEM_RW",
     "RR_CALL_CPU_REG_MEM_REGION",
     "RR_CALL_CPU_MEM_UNMAP",
+    "RR_CALL_PIRATE_HD_TRANSFER",
     "RR_CALL_LAST"
 };
 
@@ -223,6 +225,13 @@ typedef enum {
   RR_CALLSITE_IOPORT_WRITE,
   RR_CALLSITE_SPARC_CPU_EXEC_1,
   RR_CALLSITE_MIPS_CPU_EXEC_1,
+  RR_CALLSITE_IDE_SECTOR_READ,
+  RR_CALLSITE_IDE_SECTOR_WRITE,
+  RR_CALLSITE_IDE_DMA_CB,
+  RR_CALLSITE_IDE_DATA_WRITEW,
+  RR_CALLSITE_IDE_DATA_WRITEL,
+  RR_CALLSITE_IDE_DATA_READW,
+  RR_CALLSITE_IDE_DATA_READL,
   RR_CALLSITE_LAST,
 } RR_callsite_id;
 
@@ -276,8 +285,17 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IOPORT_WRITE",
   "RR_CALLSITE_SPARC_CPU_EXEC_1",
   "RR_CALLSITE_MIPS_CPU_EXEC_1",
+  "RR_CALLSITE_IDE_SECTOR_READ",
+  "RR_CALLSITE_IDE_SECTOR_WRITE",
+  "RR_CALLSITE_IDE_DMA_CB",
+  "RR_CALLSITE_IDE_DATA_WRITEW",
+  "RR_CALLSITE_IDE_DATA_WRITEL",
+  "RR_CALLSITE_IDE_DATA_READW",
+  "RR_CALLSITE_IDE_DATA_READL",
+  "RR_CALLSITE_IDE_SECTOR_READ",
   "RR_CALLSITE_LAST"
 };
+
 
 static inline const char *get_callsite_string(RR_callsite_id cid)
 {

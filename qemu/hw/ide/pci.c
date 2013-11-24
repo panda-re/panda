@@ -104,6 +104,10 @@ static int bmdma_rw_buf(IDEDMA *dma, int is_write)
     } prd;
     int l, len;
 
+    // TRL this means we want recorded cpu_physical_mem_rw skipped calls
+    // to be replayed at this callsite, I hope.
+    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+
     for(;;) {
         l = s->io_buffer_size - s->io_buffer_index;
         if (l <= 0)

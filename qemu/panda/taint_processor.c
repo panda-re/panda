@@ -41,6 +41,33 @@ int taken_branch;
 
 uint32_t max_ref_count = 0;
 
+// if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
+// else throw up
+Addr addr_add(Addr a, uint32_t o) {
+  switch (a.typ) {
+  case HADDR:
+    a.val.ha += o;
+    break;
+  case MADDR:
+    a.val.ma += o;
+    break;
+  case IADDR:
+    a.val.ia += o;
+    break;
+  case PADDR:
+    a.val.pa += o;
+    break;
+  default:
+    // Thou shalt not.
+    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
+    assert (1==0);
+    break;
+  }
+  return a;
+}
+    
+
+
 SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
     uint8_t taint_byte = shad->ram_bitmap[addr >> 3];
     return (taint_byte & (1 << (addr & 7)));
@@ -1478,7 +1505,20 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     break;
                 }
 
-            case COMPUTEOP:
+ 
+	   case BULKCOPYOP:
+	     // TRL this is used by hd taint.  idea is to 
+	     // specify a src and dest and a number of bytes to copy
+	     {
+	       uint32_t i;
+	       for (i=0; i<op.val.bulkcopy.l; i++) {
+		 tp_copy(shad, addr_add(op.val.bulkcopy.a, i), addr_add(op.val.bulkcopy.b, i));
+	       }
+	       
+	       break;
+	     }
+
+           case COMPUTEOP:
                 {
                     /* if it's a compute to an address we aren't tracking, do
                      * nothing
