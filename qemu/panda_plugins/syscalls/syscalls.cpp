@@ -341,6 +341,13 @@ int exec_callback(CPUState *env, target_ulong pc) {
 extern "C" {
 
 bool init_plugin(void *self) {
+    plugin_log = fopen("/scratch/syscalls.txt", "w");    
+    if(!plugin_log) {
+        fprintf(stderr, "Couldn't open /scratch/syscalls.txt. Abort.\n");
+        return false;
+    }
+    else return true;
+
 // Don't bother if we're not on x86
 #if  defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
@@ -353,9 +360,6 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 #endif
 
-    plugin_log = fopen("/scratch/syscalls.txt", "w");    
-    if(!plugin_log) return false;
-    else return true;
 }
 
 void uninit_plugin(void *self) {
