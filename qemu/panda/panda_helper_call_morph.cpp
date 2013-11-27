@@ -70,6 +70,7 @@ bool PandaCallMorphFunctionPass::runOnFunction(Function &F){
 void PandaHelperCallVisitor::visitCallInst(CallInst &I){
     assert(I.getCalledFunction());
     if (I.getCalledFunction()->isIntrinsic()
+            || !I.getCalledFunction()->hasName()
             || I.getCalledFunction()->getName().equals("log_dynval")
             || I.getCalledFunction()->getName().equals("__ldb_mmu_panda")
             || I.getCalledFunction()->getName().equals("__ldl_mmu_panda")
@@ -78,8 +79,14 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I){
             || I.getCalledFunction()->getName().equals("__stb_mmu_panda")
             || I.getCalledFunction()->getName().equals("__stl_mmu_panda")
             || I.getCalledFunction()->getName().equals("__stw_mmu_panda")
-            || I.getCalledFunction()->getName().equals("__stq_mmu_panda")){
-        return; // Ignore intrinsics, declarations, and memory functions
+            || I.getCalledFunction()->getName().equals("__stq_mmu_panda")
+            || I.getCalledFunction()->getName().equals("helper_inb")
+            || I.getCalledFunction()->getName().equals("helper_inw")
+            || I.getCalledFunction()->getName().equals("helper_inl")
+            || I.getCalledFunction()->getName().equals("helper_outb")
+            || I.getCalledFunction()->getName().equals("helper_outw")
+            || I.getCalledFunction()->getName().equals("helper_outl")){
+        return; // Ignore intrinsics, declarations, memory, and I/O  functions
     }
     
     // Call LLVM version of helper

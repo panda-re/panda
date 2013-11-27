@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 #include "panda_dynval_inst.h"
 
 extern "C" {
+#include "config.h"
 #include "panda_memlog.h"
 }
 
@@ -301,14 +302,66 @@ void PandaInstrumentVisitor::visitSelectInst(SelectInst &I){
     BO->insertBefore(static_cast<Instruction*>(ZEI));
 }
 
-/*
- * Just print out name so we can see which helpers are being called.
- */
 void PandaInstrumentVisitor::visitCallInst(CallInst &I){
-    /*assert(I.getCalledFunction()->hasName());
+/* Currently, we only need to instrument helper_in*() and helper_out*() for x86
+ * 32 and 64 bit
+ */
+#if defined(TARGET_I386)
+    CallInst *CI;
+    ZExtInst *ZEI;
+    std::vector<Value*> argValues;
+    Function *F = mod->getFunction("log_dynval");
+    if (!F) {
+        printf("Instrumentation function not found\n");
+        assert(1==0);
+    }
+    if (!I.getCalledFunction() || !I.getCalledFunction()->hasName()){
+        return;
+    }
     std::string fnName = I.getCalledFunction()->getName().str();
-    printf("HELPER %s\n", fnName.c_str());
-    fflush(stdout);*/
+    if (!fnName.compare("helper_inb")
+        || !fnName.compare("helper_inw")
+        || !fnName.compare("helper_inl")){
+        // looks like %tmp1_v7 = call i64 @helper_inb(i32 146)
+        // arg is port number. we'll treat it as a load from the port into the
+        // LLVM register
+        
+        ZEI = static_cast<ZExtInst*>
+            (IRB.CreateZExt(I.getArgOperand(0), ptrType));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
+        argValues.push_back(ConstantInt::get(intType, LOAD));
+        // Zero-extend because the arg is a uint32_t
+        argValues.push_back(ZEI);
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+        if (!isa<Constant>(I.getArgOperand(0))){
+            ZEI->insertBefore(CI);
+        }
+    }
+    else if (!fnName.compare("helper_outb")
+        || !fnName.compare("helper_outw")
+        || !fnName.compare("helper_outl")){
+        // looks like call void @helper_outb(i32 146, i32 %tmp7_v)
+        // args are port number, data.  we'll treat it as a store from the
+        // temporary to the port.
+        
+        ZEI = static_cast<ZExtInst*>
+            (IRB.CreateZExt(I.getArgOperand(0), ptrType));
+        argValues.push_back(ConstantInt::get(ptrType,
+            (uintptr_t)dynval_buffer));
+        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
+        argValues.push_back(ConstantInt::get(intType, STORE));
+        // Zero-extend because the arg is a uint32_t
+        argValues.push_back(ZEI);
+        CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
+        CI->insertBefore(static_cast<Instruction*>(&I));
+        if (!isa<Constant>(I.getArgOperand(0))){
+            ZEI->insertBefore(CI);
+        }
+    }
+#endif //TARGET_I386
 }
 
 /*

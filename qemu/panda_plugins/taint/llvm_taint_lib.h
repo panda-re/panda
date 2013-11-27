@@ -111,6 +111,8 @@ public:
     void ctlzHelper(CallInst &I);
     void loadHelper(Value *src, Value *dst, int len);
     void storeHelper(Value *src, Value *dst, int len);
+    void portLoadHelper(Value *src, Value *dst, int len);
+    void portStoreHelper(Value *src, Value *dst, int len);
     void floatHelper(CallInst &I);
 };
 

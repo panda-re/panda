@@ -2578,6 +2578,48 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         approxArithHelper(I.getArgOperand(0), I.getArgOperand(1), &I);
         return;
     }
+    else if (!calledName.compare(0, 9, "helper_in")) {
+        /*
+         * The last character of the instruction name determines the size of data transfer
+         * b = single byte
+         * w = 2 bytes
+         * l - 4 bytes
+         */
+        char type = *calledName.rbegin();
+        int len;
+        if (type == 'b') {
+            len = 1;
+        } else if (type == 'w') {
+            len = 2;
+        } else {
+            len = 4;
+        }
+
+        /* helper_in instructions will be modeled as loads with various lengths */
+        portLoadHelper(I.getArgOperand(0), &I, len);
+        return;
+    }
+    else if (!calledName.compare(0, 10, "helper_out")) {
+        /*
+         * The last character of the instruction name determines the size of data transfer
+         * b = single byte
+         * w = 2 bytes
+         * l - 4 bytes
+         */
+        char type = *calledName.rbegin();
+        int len;
+        if (type == 'b') {
+            len = 1;
+        } else if (type == 'w') {
+            len = 2;
+        } else {
+            len = 4;
+        }
+
+        /* helper_out instructions will be modeled as stores with various lengths */
+        portStoreHelper(I.getArgOperand(1), I.getArgOperand(0), len);
+        return;
+    }
 
     std::map<std::string, TaintTB*> *ttbCache = PTFP->getTaintTBCache();
     std::map<std::string, TaintTB*>::iterator it = ttbCache->find(calledName);
@@ -2674,6 +2716,92 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
 #endif
         // if it's not in the cache, ignore taint operations
         return;
+    }
+}
+
+// this is essentially a copy of loadHelper without the tainted pointer code
+void PandaTaintVisitor::portLoadHelper(Value *srcval, Value *dstval, int len){
+    // local is LLVM register destination of load
+    int local = PST->getLocalSlot(dstval);
+
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    struct taint_op_struct op = {};
+    char name[5] = "load";
+
+    // write instruction boundary op
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = len;
+    op.val.insn_start.flag = INSNREADLOG;
+    tob_op_write(tbuf, op);
+
+    // write taint ops
+    op.typ = COPYOP;
+    dst.typ = LADDR;
+    src.typ = UNK;
+    src.val.ua = 0;
+    src.flag = READLOG;
+    dst.val.la = local;
+
+    for (int i = 0; i < len; i++){
+        src.off = i;
+        dst.off = i;
+        op.val.copy.a = src;
+        op.val.copy.b = dst;
+        tob_op_write(tbuf, op);
+    }
+}
+
+// this is essentially a copy of storeHelper without the tainted pointer code
+void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len){
+    // can't propagate taint from a constant
+    bool srcConstant = isa<Constant>(srcval);
+
+    struct addr_struct src = {};
+    struct addr_struct dst = {};
+    struct taint_op_struct op = {};
+    char name[6] = "store";
+
+    // delete taint in temp[0] for use later on
+    op.typ = DELETEOP;
+    dst.typ = RET;
+    dst.off = 0;
+    op.val.deletel.a = dst;
+    tob_op_write(tbuf, op);
+
+    // write instruction boundary op
+    op.typ = INSNSTARTOP;
+    strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
+    op.val.insn_start.num_ops = len;
+    op.val.insn_start.flag = INSNREADLOG;
+    tob_op_write(tbuf, op);
+
+    if (srcConstant){
+        op.typ = DELETEOP;
+        dst.typ = UNK;
+        dst.val.ua = 0;
+        dst.flag = READLOG;
+        for (int i = 0; i < len; i++){
+            dst.off = i;
+            op.val.deletel.a = dst;
+            tob_op_write(tbuf, op);
+        }
+    }
+    else {
+        op.typ = COPYOP;
+        dst.typ = UNK;
+        dst.flag = READLOG;
+        dst.val.ua = 0;
+        src.typ = LADDR;
+        src.val.la = PST->getLocalSlot(srcval);
+        for (int i = 0; i < len; i++){
+            src.off = i;
+            dst.off = i;
+            op.val.copy.a = src;
+            op.val.copy.b = dst;
+            tob_op_write(tbuf, op);
+        }
     }
 }
 
