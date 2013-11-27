@@ -1386,12 +1386,12 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     for(int i=0; i<TCG_MAX_LABELS; ++i)
         delLabel(i);
 
-#ifndef NDEBUG
-    verifyFunction(*m_tbFunction);
-#endif
-
     // run all specified function passes
     m_functionPassManager->run(*m_tbFunction);
+
+//#ifndef NDEBUG
+    verifyFunction(*m_tbFunction);
+//#endif
 
     tb->llvm_function = m_tbFunction;
 
