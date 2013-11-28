@@ -195,7 +195,7 @@ typedef struct taint_op_struct {
     struct {Addr a; Label l;} label;
     struct {Addr a;} deletel;
     struct {Addr a, b;} copy;
-    struct {Addr a; Addr b; uint32_t l} bulkcopy;
+    struct {Addr a; Addr b; uint32_t l;} bulkcopy;
     struct {Addr a, b, c;} compute;
     struct {
         char name[15];
@@ -222,6 +222,12 @@ typedef struct taint_op_struct {
 } TaintOp;
 
 #include "panda_memlog.h"
+
+
+Addr make_haddr(uint64_t a);
+Addr make_maddr(uint64_t a);
+Addr make_iaddr(uint64_t a);
+Addr make_paddr(uint64_t a);
 
 TaintOpBuffer *tob_new(uint32_t size);
 

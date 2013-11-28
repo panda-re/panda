@@ -57,6 +57,8 @@ typedef enum panda_cb_type {
 
     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
 
+    PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -455,6 +457,19 @@ typedef union panda_cb {
   int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
+  /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
+
+     In replay only, we have a packet (incoming / outgoing) in hand.
+     
+     Arguments:
+     CPUState *env          pointer to CPUState
+     uint8_t *buf           buffer containing packet data
+     int size               num bytes in buffer
+     uint8_t direction      XXX read or write.  not sure which is which.
+     uint64_t old_buf_addr  XXX this is a mystery
+  */
+
+  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
 
 
 

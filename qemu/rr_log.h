@@ -8,10 +8,12 @@
 */
 
 // Hack to enable QEMU user mode to compile
+
 #if !defined(CONFIG_SOFTMMU)
 typedef uint32_t target_phys_addr_t;
 typedef uint32_t ram_addr_t;
 #endif
+
 
 #include "rr_log_all.h"
 
@@ -39,47 +41,62 @@ typedef struct {
 } RR_cpu_mem_unmap;
 
 
-
 typedef enum {
-  PIRATE_HD_TRANSFER_HD_TO_IOB,
-  PIRATE_HD_TRANSFER_IOB_TO_HD,
-  PIRATE_HD_TRANSFER_PORT_TO_IOB,
-  PIRATE_HD_TRANSFER_IOB_TO_PORT
-} Pirate_hd_transfer;
+  HD_TRANSFER_HD_TO_IOB,
+  HD_TRANSFER_IOB_TO_HD,
+  HD_TRANSFER_PORT_TO_IOB,
+  HD_TRANSFER_IOB_TO_PORT
+} Hd_transfer_type;
 
 
-static const char *pirate_hd_transfer_str[] = {
-  "PIRATE_HD_TRANSFER_HD_TO_IOB",
-  "PIRATE_HD_TRANSFER_IOB_TO_HD",
-  "PIRATE_HD_TRANSFER_PORT_TO_IOB",
-  "PIRATE_HD_TRANSFER_IOB_TO_PORT"
-} Pirate_hd_transfer;
+/*
+static const char *hd_transfer_str[] = {
+  "HD_TRANSFER_HD_TO_IOB",
+  "HD_TRANSFER_IOB_TO_HD",
+  "HD_TRANSFER_PORT_TO_IOB",
+  "HD_TRANSFER_IOB_TO_PORT"
+};
+*/
 
 
-// structure for arguments to pirate_hd_transfer
+// structure for arguments to hd_transfer
 typedef struct {
-  Pirate_hd_transfer type;   
+  Hd_transfer_type type;   
   uint64_t src_addr;
   uint64_t dest_addr;
   uint32_t num_bytes;
-} RR_pirate_hd_transfer;
+} RR_hd_transfer_args;
+
+// structure for args to handle_packet
+typedef struct {
+  uint8_t *buf;
+  uint32_t size;
+  uint8_t direction;
+} RR_handle_packet_args;
+  
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write);
 
+void rr_record_hd_transfer(RR_callsite_id call_site, Hd_transfer_type transfer_type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction);
+
+
+
 static inline void rr_cpu_physical_memory_unmap_record(target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write) {
-    rr_record_cpu_mem_unmap(rr_skipped_callsite_location, addr, buf, len, is_write);
+  rr_record_cpu_mem_unmap((RR_callsite_id) rr_skipped_callsite_location, addr, buf, len, is_write);
 }
 
 //mz XXX addr should be target_phys_addr_t
 static inline void rr_device_mem_rw_call_record(target_phys_addr_t addr, uint8_t *buf, int len, int is_write) {
-    rr_record_cpu_mem_rw_call(rr_skipped_callsite_location, addr, buf, len, is_write);
+    rr_record_cpu_mem_rw_call((RR_callsite_id) rr_skipped_callsite_location, addr, buf, len, is_write);
 }
 
 //mz XXX addr should be target_phys_addr_t
 static inline void rr_reg_mem_call_record(target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset) {
-    rr_record_cpu_reg_io_mem_region(rr_skipped_callsite_location, start_addr, size, phys_offset);
+    rr_record_cpu_reg_io_mem_region((RR_callsite_id) rr_skipped_callsite_location, start_addr, size, phys_offset);
 }
 
 //mz using uint8_t for kind and callsite_loc to control space - enums default to int.
@@ -98,8 +115,11 @@ typedef struct {
         RR_cpu_reg_mem_region_args cpu_mem_reg_region_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
-        RR_pirate_hd_transfer pirate_hd_transfer_args;
+        RR_hd_transfer_args hd_transfer_args;
+        RR_handle_packet_args handle_packet_args;
     } variant;
+    //mz XXX HACK 
+  uint64_t old_buf_addr;
 } RR_skipped_call_args;
 
 // an item in a program-point indexed record/replay log

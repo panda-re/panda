@@ -41,9 +41,45 @@ int taken_branch;
 
 uint32_t max_ref_count = 0;
 
+Addr make_haddr(uint64_t a) {
+  Addr ha;
+  ha.typ = HADDR;
+  ha.val.ha = a;
+  ha.off = 0;
+  ha.flag = 0;
+  return ha;
+}
+
+Addr make_maddr(uint64_t a) {
+  Addr ma;
+  ma.typ = MADDR;
+  ma.val.ma = a;
+  ma.off = 0;
+  ma.flag = 0;
+  return ma;
+}
+
+Addr make_iaddr(uint64_t a) {
+  Addr ia;
+  ia.typ = IADDR;
+  ia.val.ia = a;
+  ia.off = 0;
+  ia.flag = 0;
+  return ia;
+}
+
+Addr make_paddr(uint64_t a) {
+  Addr pa;
+  pa.typ = PADDR;
+  pa.val.pa = a;
+  pa.off = 0;
+  pa.flag = 0;
+  return pa;
+}
+
 // if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
 // else throw up
-Addr addr_add(Addr a, uint32_t o) {
+static Addr addr_add(Addr a, uint32_t o) {
   switch (a.typ) {
   case HADDR:
     a.val.ha += o;

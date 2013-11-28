@@ -4181,7 +4181,7 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
 		  panda_cb_list *plist;
 		  for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
 		    plist->entry.replay_before_cpu_physical_mem_rw_ram
-		      (env, is_write, buf, dest, l);
+		      (cpu_single_env, is_write, (uint64_t) buf, (uint64_t) ptr, l);
 		  }
 		}
                 memcpy(ptr, buf, l);
@@ -4249,7 +4249,7 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
 		  panda_cb_list *plist;
 		  for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
 		    plist->entry.replay_before_cpu_physical_mem_rw_ram
-		      (env, is_write, buf, dest, l);
+		      (cpu_single_env, is_write, (uint64_t) buf, (uint64_t) dest, l);
 		  }
 		}
                 memcpy(buf, dest, l);
