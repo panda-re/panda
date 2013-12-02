@@ -4176,6 +4176,14 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                 addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);
                 /* RAM case */
                 ptr = qemu_get_ram_ptr(addr1);
+                if (rr_mode == RR_REPLAY) {
+		  // run all callbacks registered for cpu_physical_memory_rw ram case		  
+		  panda_cb_list *plist;
+		  for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+		    plist->entry.replay_before_cpu_physical_mem_rw_ram
+		      (cpu_single_env, is_write, (uint64_t) buf, (uint64_t) ptr, l);
+		  }
+		}
                 memcpy(ptr, buf, l);
                 if (!cpu_physical_memory_is_dirty(addr1)) {
                     /* invalidate code */
@@ -4235,7 +4243,16 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
             } else {
                 /* RAM case */
                 ptr = qemu_get_ram_ptr(pd & TARGET_PAGE_MASK);
-                memcpy(buf, ptr + (addr & ~TARGET_PAGE_MASK), l);
+		uint8_t *dest =  ptr + (addr & ~TARGET_PAGE_MASK);
+		if (rr_mode == RR_REPLAY) {
+		  // run all callbacks registered for cpu_physical_memory_rw ram case		  
+		  panda_cb_list *plist;
+		  for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+		    plist->entry.replay_before_cpu_physical_mem_rw_ram
+		      (cpu_single_env, is_write, (uint64_t) buf, (uint64_t) dest, l);
+		  }
+		}
+                memcpy(buf, dest, l);
                 qemu_put_ram_ptr(ptr);
             }
         }

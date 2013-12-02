@@ -41,6 +41,69 @@ int taken_branch;
 
 uint32_t max_ref_count = 0;
 
+Addr make_haddr(uint64_t a) {
+  Addr ha;
+  ha.typ = HADDR;
+  ha.val.ha = a;
+  ha.off = 0;
+  ha.flag = 0;
+  return ha;
+}
+
+Addr make_maddr(uint64_t a) {
+  Addr ma;
+  ma.typ = MADDR;
+  ma.val.ma = a;
+  ma.off = 0;
+  ma.flag = 0;
+  return ma;
+}
+
+Addr make_iaddr(uint64_t a) {
+  Addr ia;
+  ia.typ = IADDR;
+  ia.val.ia = a;
+  ia.off = 0;
+  ia.flag = 0;
+  return ia;
+}
+
+Addr make_paddr(uint64_t a) {
+  Addr pa;
+  pa.typ = PADDR;
+  pa.val.pa = a;
+  pa.off = 0;
+  pa.flag = 0;
+  return pa;
+}
+
+// if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
+// else throw up
+static Addr addr_add(Addr a, uint32_t o) {
+  switch (a.typ) {
+  case HADDR:
+    a.val.ha += o;
+    break;
+  case MADDR:
+    a.val.ma += o;
+    break;
+  case IADDR:
+    a.val.ia += o;
+    break;
+  case PADDR:
+    a.val.pa += o;
+    break;
+  default:
+    // Thou shalt not.
+    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
+    assert (1==0);
+    break;
+  }
+  return a;
+}
+    
+
+
 SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
     uint8_t taint_byte = shad->ram_bitmap[addr >> 3];
     return (taint_byte & (1 << (addr & 7)));
@@ -607,6 +670,31 @@ void tob_delete(TaintOpBuffer *tbuf){
     my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
     tbuf = NULL;
 }
+
+
+
+// if this taint op buffer is close to full (more than 80%),
+// double it in size
+void tob_resize(TaintOpBuffer **ptbuf) {
+  TaintOpBuffer *tbuf = *ptbuf;
+  if (tob_full_frac(tbuf) > 0.8) {
+    printf ("Doubling size of taint buffer (probably I/O one)\n");
+    // fresh buffer twice size of original
+    TaintOpBuffer *tbuf_bigger = tob_new(tbuf->max_size * 2);
+    // copy ops over
+    memcpy(tbuf_bigger->start, tbuf->start, tbuf->size);
+    // set current size 
+    tbuf_bigger->size = tbuf->size;
+    // and pointer
+    tbuf_bigger->ptr = tbuf_bigger->start + (tbuf_bigger->size);
+    // discard contents of old buffer
+    tob_delete(tbuf);
+    // and re-point
+    *ptbuf = tbuf_bigger;
+  }
+}
+
+
 
 void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     //Make sure we are at the beginning of the buffer
@@ -1591,7 +1679,20 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     break;
                 }
 
-            case COMPUTEOP:
+ 
+	   case BULKCOPYOP:
+	     // TRL this is used by hd taint.  idea is to 
+	     // specify a src and dest and a number of bytes to copy
+	     {
+	       uint32_t i;
+	       for (i=0; i<op.val.bulkcopy.l; i++) {
+		 tp_copy(shad, addr_add(op.val.bulkcopy.a, i), addr_add(op.val.bulkcopy.b, i));
+	       }
+	       
+	       break;
+	     }
+
+           case COMPUTEOP:
                 {
                     /* if it's a compute to an address we aren't tracking, do
                      * nothing

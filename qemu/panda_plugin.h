@@ -52,6 +52,13 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+
+    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
+
+    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
+
+    PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -418,6 +425,55 @@ typedef union panda_cb {
  *       unused
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+
+/* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,   
+ 
+       In replay only, some kind of data transfer involving hard drive.
+       NB: We are neither before nor after, really.  In replay the transfer
+       doesn't really happen.  We are *at* the point at which it happened, really.
+       Arguments:
+        CPUState* env: pointer to CPUState
+        uint32_t type:        type of transfer  (Pirate_hd_transfer)
+        uint64_t src_addr:    address for src
+        uint64_t dest_addr:   address for dest
+        uint32_t num_bytes:   size of transfer in bytes
+      
+       Return value:
+        unused
+ */
+  int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+/* Callback ID:     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,
+
+   In replay only, we are about to dma from some qemu buffer to guest memory
+   
+   Arguments:
+   CPUState* env:       pointer to CPUState                   
+   uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
+   uint64_t src         src of dma
+   uint64_t dest        dest of dma
+   uint32_t num_bytes:  size of transfer
+*/
+  int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+
+  /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
+
+     In replay only, we have a packet (incoming / outgoing) in hand.
+     
+     Arguments:
+     CPUState *env          pointer to CPUState
+     uint8_t *buf           buffer containing packet data
+     int size               num bytes in buffer
+     uint8_t direction      XXX read or write.  not sure which is which.
+     uint64_t old_buf_addr  XXX this is a mystery
+  */
+
+  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
+
+
+
+
     
 } panda_cb;
 

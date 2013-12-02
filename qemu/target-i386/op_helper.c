@@ -671,32 +671,35 @@ void helper_check_iol(uint32_t t0)
 
 void helper_outb(uint32_t port, uint32_t data)
 {
-    cpu_outb(port, data & 0xff);
+  cpu_outb(port, data & 0xff);
 }
 
 target_ulong helper_inb(uint32_t port)
 {
-    return cpu_inb(port);
+  target_ulong retval = cpu_inb(port);  
+  return retval;
 }
 
 void helper_outw(uint32_t port, uint32_t data)
 {
-    cpu_outw(port, data & 0xffff);
+  cpu_outw(port, data & 0xffff);
 }
 
 target_ulong helper_inw(uint32_t port)
 {
-    return cpu_inw(port);
+  target_ulong retval = cpu_inw(port);
+  return retval;
 }
 
 void helper_outl(uint32_t port, uint32_t data)
 {
-    cpu_outl(port, data);
+  cpu_outl(port, data);
 }
 
 target_ulong helper_inl(uint32_t port)
 {
-    return cpu_inl(port);
+  target_ulong retval = cpu_inl(port);
+  return retval;
 }
 
 static inline unsigned int get_sp_mask(unsigned int e2)

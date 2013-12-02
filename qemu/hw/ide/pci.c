@@ -29,6 +29,10 @@
 #include "block.h"
 #include "dma.h"
 
+#if defined(CONFIG_SOFTMMU) 
+#include "rr_log.h"
+#endif
+
 #include <hw/ide/pci.h>
 
 #define BMDMA_PAGE_SIZE 4096
@@ -103,6 +107,12 @@ static int bmdma_rw_buf(IDEDMA *dma, int is_write)
         uint32_t size;
     } prd;
     int l, len;
+
+#if defined(CONFIG_SOFTMMU) 
+    // TRL this means we want recorded cpu_physical_mem_rw skipped calls
+    // to be replayed at this callsite, I hope.
+    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+#endif
 
     for(;;) {
         l = s->io_buffer_size - s->io_buffer_index;

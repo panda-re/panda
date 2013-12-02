@@ -185,6 +185,7 @@ typedef enum {
     LABELOP,
     DELETEOP,
     COPYOP,
+    BULKCOPYOP,
     COMPUTEOP,
     INSNSTARTOP,
     CALLOP,
@@ -197,6 +198,7 @@ typedef struct taint_op_struct {
     struct {Addr a; Label l;} label;
     struct {Addr a;} deletel;
     struct {Addr a, b;} copy;
+    struct {Addr a; Addr b; uint32_t l;} bulkcopy;
     struct {Addr a, b, c;} compute;
     struct {
         char name[15];
@@ -224,9 +226,17 @@ typedef struct taint_op_struct {
 
 #include "panda_memlog.h"
 
+
+Addr make_haddr(uint64_t a);
+Addr make_maddr(uint64_t a);
+Addr make_iaddr(uint64_t a);
+Addr make_paddr(uint64_t a);
+
 TaintOpBuffer *tob_new(uint32_t size);
 
 void tob_delete(TaintOpBuffer *tbuf);
+
+void tob_resize(TaintOpBuffer **ptbuf);
 
 void tob_delete_iterate_ops(TaintOpBuffer *tbuf);
 

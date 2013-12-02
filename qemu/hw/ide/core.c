@@ -33,7 +33,35 @@
 #include "blockdev.h"
 #include "block_int.h"
 
+#if defined(CONFIG_SOFTMMU) 
+#include "rr_log.h"
+#endif
+
 #include <hw/ide/internal.h>
+
+
+#if defined(CONFIG_SOFTMMU) 
+// TRL hd taint
+static void dump_buffer(char *msg, uint8_t *p, uint32_t n) {
+#ifdef HD_TAINT_DEBUG
+  int i;
+  printf ("%s: buffer[%d]=[",msg,n);
+  for (i=0; i<n; i++) {
+    printf ("%02x ",p[i]);
+  }
+  printf ("]\n");
+  printf ("%s: buffer[%d]=[",msg,n);
+  for (i=0; i<n; i++) {
+    if (isprint(p[i])) 
+      printf ("%c",p[i]);
+    else 
+      printf (".");
+  }
+  printf ("]\n");
+#endif
+}
+#endif
+
 
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
@@ -476,8 +504,31 @@ void ide_sector_read(IDEState *s)
         if (n > s->req_nb_sectors)
             n = s->req_nb_sectors;
 
+#if defined(CONFIG_SOFTMMU) 
+	// TRL hd taint
+	// HD -> IO_BUFFER
+	uint8_t *p;
+	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+	  rr_record_pirate_hd_transfer
+	    (RR_CALLSITE_IDE_SECTOR_READ, 
+	     PIRATE_HD_TRANSFER_HD_TO_IOB,
+	     HD_BASE_ADDR + sector_num*512, 
+	     (uint64_t) s->io_buffer,
+	     n*512);	  
+	  *p = s->io_buffer;
+	}
+#endif
+
         bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
         ret = bdrv_read(s->bs, sector_num, s->io_buffer, n);
+
+#if defined(CONFIG_SOFTMMU) 
+	// TRL hd taint debug
+	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+	  dump_buffer("ide_sector_read",p,n*512);
+	}
+#endif
+
         bdrv_acct_done(s->bs, &s->acct);
         if (ret != 0) {
             if (ide_handle_rw_error(s, -ret,
@@ -596,14 +647,59 @@ handle_rw_error:
 
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
+      {
+#if defined(CONFIG_SOFTMMU) 
+      // TRL hd taint
+      // HD -> IO_BUFFER
+      if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+	rr_record_pirate_hd_transfer
+	  (RR_CALLSITE_IDE_DMA_CB,
+	   PIRATE_HD_TRANSFER_HD_TO_IOB,
+	   HD_BASE_ADDR + sector_num*512,
+	   (uint64_t) s->io_buffer, 
+	   n*512);
+      }
+        // TRL hd taint debug
+        uint8_t *p = s->io_buffer;
+#endif
+
         s->bus->dma->aiocb = dma_bdrv_read(s->bs, &s->sg, sector_num,
                                            ide_dma_cb, s);
-        break;
+
+#if defined(CONFIG_SOFTMMU) 
+	// TRL hd taint
+	dump_buffer("ide_dma_cb IDE_DMA_READ", p, n*512);
+#endif
+    }	
+	break;
     case IDE_DMA_WRITE:
+      
+#if defined(CONFIG_SOFTMMU) 
+      // TRL hd taint
+      // IO_BUFFER -> HD      
+      if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+	rr_record_pirate_hd_transfer
+	  (RR_CALLSITE_IDE_DMA_CB,
+	   PIRATE_HD_TRANSFER_IOB_TO_HD,
+	   (uint64_t) s->io_buffer, 
+	   HD_BASE_ADDR + sector_num*512, 
+	   n*512);
+      }
+#endif
+      
+#ifdef IFERRET_DEBUG
+    printf ("ide_dma_cb WRITE: hd sector_num=%llx size=%d\n", (unsigned long long) sector_num, n); 
+    print_trace();
+#endif
+
         s->bus->dma->aiocb = dma_bdrv_write(s->bs, &s->sg, sector_num,
                                             ide_dma_cb, s);
         break;
     case IDE_DMA_TRIM:
+      
+      // XXX TRL
+      // No idea what this is doing.  Is there some taint ramification? 
+      // should we be logging something if recording in order to replay & not lose taint? 
         s->bus->dma->aiocb = dma_bdrv_io(s->bs, &s->sg, sector_num,
                                          ide_issue_trim, ide_dma_cb, s, true);
         break;
@@ -664,6 +760,19 @@ void ide_sector_write(IDEState *s)
     n = s->nsector;
     if (n > s->req_nb_sectors)
         n = s->req_nb_sectors;
+
+#if defined(CONFIG_SOFTMMU) 
+    // TRL hd taint
+    // IO_BUFFER -> HD
+    if ((!s->is_cdrom) && (rr_in_record())) {
+      rr_record_pirate_hd_transfer
+	(RR_CALLSITE_IDE_SECTOR_WRITE, 
+	 PIRATE_HD_TRANSFER_IOB_TO_HD,
+	 (uint64_t) s->io_buffer,
+	 HD_BASE_ADDR + sector_num*512, 
+	 n*512);
+    }
+#endif
 
     bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
     ret = bdrv_write(s->bs, sector_num, s->io_buffer, n);
@@ -1658,6 +1767,20 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+#if defined(CONFIG_SOFTMMU) 
+    // TRL hd taint
+    // this is a transfer from port to io_buffer
+    // 0x1f0 is hd
+    if ((addr == 0x1f0) && (rr_in_record())) {
+      rr_record_pirate_hd_transfer
+	(RR_CALLSITE_IDE_DATA_WRITEW,
+	 PIRATE_HD_TRANSFER_PORT_TO_IOB,
+	 0x1f0,
+	 (uint64_t) s->data_ptr, 
+	 2);
+    }
+#endif
+
     p = s->data_ptr;
     *(uint16_t *)p = le16_to_cpu(val);
     p += 2;
@@ -1679,6 +1802,19 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
         return 0;
     }
 
+#if defined(CONFIG_SOFTMMU) 
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    if ((addr == 0x1f0) && (rr_in_record())) {
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READW,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 
+	 0x1f0, 
+	 2);
+    }
+#endif
+    
     p = s->data_ptr;
     ret = cpu_to_le16(*(uint16_t *)p);
     p += 2;
@@ -1700,6 +1836,19 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+#if defined(CONFIG_SOFTMMU) 
+    // TRL hd taint
+    // this is a transfer from port to io_buffer
+    if ((addr == 0x1f0) && (rr_in_record())) {      
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEL,
+         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+	 0x1f0, 
+         (uint64_t) s->data_ptr, 
+	 4);
+    }
+#endif
+
     p = s->data_ptr;
     *(uint32_t *)p = le32_to_cpu(val);
     p += 4;
@@ -1720,6 +1869,19 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
     if (!(s->status & DRQ_STAT) || !ide_is_pio_out(s)) {
         return 0;
     }
+
+#if defined(CONFIG_SOFTMMU) 
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    if ((addr == 0x1f0) && (rr_in_record())) {      
+      rr_record_pirate_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READL,
+         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 
+	 0x1f0,
+	 4);
+    }
+#endif
 
     p = s->data_ptr;
     ret = cpu_to_le32(*(uint32_t *)p);
