@@ -2763,13 +2763,6 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len){
     struct taint_op_struct op = {};
     char name[6] = "store";
 
-    // delete taint in temp[0] for use later on
-    op.typ = DELETEOP;
-    dst.typ = RET;
-    dst.off = 0;
-    op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
-
     // write instruction boundary op
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);

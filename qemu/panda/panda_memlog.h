@@ -22,7 +22,9 @@ void close_memlog(void);
 
 typedef enum {
     LOAD,
+    PLOAD, // port load
     STORE,
+    PSTORE, // port store
     BRANCHOP,
     SELECT,
     SWITCH
@@ -37,6 +39,7 @@ typedef struct dyn_val_buffer_struct {
 
 typedef enum {
     ADDRENTRY,
+    PADDRENTRY, // for x86 I/O ports
     BRANCHENTRY,
     SELECTENTRY,
     SWITCHENTRY,
@@ -49,6 +52,7 @@ typedef struct dyn_val_entry_struct {
     DynValEntryType entrytype;
     union {
         struct {LogOp op; Addr addr;} memaccess;
+        struct {LogOp op; Addr addr;} portaccess;
         struct {bool br;} branch;
         struct {bool sel;} select;
         struct {int64_t cond;} switchstmt;

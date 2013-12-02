@@ -55,6 +55,7 @@ PANDAENDCOMMENT */
 typedef uint64_t HAddr;    // hard drive
 typedef uint64_t MAddr;    // physical ram
 typedef uint64_t IAddr;    // io buffers (net & hd)
+typedef uint64_t PAddr;    // port addresses (x86-specific)
 typedef uint64_t LAddr;    // local values
 typedef uint64_t GReg;     // guest general purpose register
 typedef uint64_t GSpec;    // guest special address, like floating point regs
@@ -62,7 +63,8 @@ typedef uint64_t Unk;      // unknown type that needs to be fixed up
 typedef uint64_t Const;    // constant that we currently treat as untainted
 typedef uint64_t Ret;      // LLVM return value, also temp register
 
-typedef enum {HADDR, MADDR, IADDR, LADDR, GREG, GSPEC, UNK, CONST, RET} AddrType;
+typedef enum {HADDR, MADDR, IADDR, PADDR, LADDR, GREG, GSPEC,
+    UNK, CONST, RET} AddrType;
 
 typedef enum {
     IRRELEVANT=5,  // memory access to CPU state we don't care about
@@ -81,6 +83,7 @@ typedef struct addr_struct {
     HAddr ha;
     MAddr ma;
     IAddr ia;
+    PAddr pa;
     LAddr la;
     GReg gr;
     GSpec gs;
@@ -100,6 +103,7 @@ typedef struct shad_struct {
   uint64_t hd_size;
   uint32_t mem_size;
   uint64_t io_size;
+  uint32_t port_size;
   uint32_t num_vals;
   uint32_t guest_regs;
   SdDir64 *hd;
@@ -109,6 +113,7 @@ typedef struct shad_struct {
   SdDir32 *ram;
 #endif
   SdDir64 *io;
+  SdDir32 *ports;
   LabelSet **llv;  // LLVM registers, with multiple frames
   LabelSet **ret;  // LLVM return value, also temp register
   LabelSet **grv;  // guest general purpose registers

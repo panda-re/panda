@@ -330,8 +330,8 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
             (IRB.CreateZExt(I.getArgOperand(0), ptrType));
         argValues.push_back(ConstantInt::get(ptrType,
             (uintptr_t)dynval_buffer));
-        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
-        argValues.push_back(ConstantInt::get(intType, LOAD));
+        argValues.push_back(ConstantInt::get(intType, PADDRENTRY));
+        argValues.push_back(ConstantInt::get(intType, PLOAD));
         // Zero-extend because the arg is a uint32_t
         argValues.push_back(ZEI);
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));
@@ -351,8 +351,8 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
             (IRB.CreateZExt(I.getArgOperand(0), ptrType));
         argValues.push_back(ConstantInt::get(ptrType,
             (uintptr_t)dynval_buffer));
-        argValues.push_back(ConstantInt::get(intType, ADDRENTRY));
-        argValues.push_back(ConstantInt::get(intType, STORE));
+        argValues.push_back(ConstantInt::get(intType, PADDRENTRY));
+        argValues.push_back(ConstantInt::get(intType, PSTORE));
         // Zero-extend because the arg is a uint32_t
         argValues.push_back(ZEI);
         CI = IRB.CreateCall(F, ArrayRef<Value*>(argValues));

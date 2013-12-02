@@ -168,6 +168,23 @@ static void log_dyn_store(DynValBuffer *dynval_buf, uintptr_t dynval){
     }
 }
 
+static void log_paddr(DynValBuffer *dynval_buf, uintptr_t dynval, uint32_t op){
+    if (unlikely(!regs_inited)){
+        init_regs();
+        regs_inited = true;
+    }
+    DynValEntry dventry;
+    memset(&dventry, 0, sizeof(DynValEntry));
+    Addr addr;
+    memset(&addr, 0, sizeof(Addr));
+    addr.typ = PADDR;
+    addr.val.pa = dynval;
+    dventry.entrytype = PADDRENTRY;
+    dventry.entry.portaccess.op = op;
+    dventry.entry.portaccess.addr = addr;
+    write_dynval_buffer(dynval_buf, &dventry);
+}
+
 #endif // CONFIG_LLVM
 
 DynValBuffer *create_dynval_buffer(uint32_t size){
@@ -252,6 +269,29 @@ void write_dynval_buffer(DynValBuffer *dynval_buf, DynValEntry *entry){
 	arg2 = val;
 	break;
       }
+    case PADDRENTRY:
+      {
+	LogOp op = entry->entry.portaccess.op;
+	assert (op == PLOAD ||op == PSTORE);
+	Addr *a = &(entry->entry.portaccess.addr); 
+	typ = TUBTFE_LLVM_DV_LOAD;
+	if (op == STORE) {
+	  typ = TUBTFE_LLVM_DV_STORE;
+	}
+	// a->type fits easily in a byte -- 1 .. 5
+	arg1 = (a->typ) | ((a->flag & 0xff) << 8) | (a->off << 16);
+	uint64_t val;
+
+	switch (a->typ) {
+	case PADDR:
+	  val = a->val.pa;
+	  break;
+	default:
+	  assert (1==0);
+	}
+	arg2 = val;
+	break;
+      }
     case BRANCHENTRY:
       {
 	typ = TUBTFE_LLVM_DV_BRANCH;
@@ -320,6 +360,15 @@ void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
                 }
                 else if (op == STORE){
                     log_dyn_store(dynval_buf, dynval);
+                }
+                break;
+            
+            case PADDRENTRY:
+                if (op == PLOAD || op == PSTORE){
+                    log_paddr(dynval_buf, dynval, op);
+                }
+                else {
+                    assert(1==0);
                 }
                 break;
 

@@ -74,6 +74,8 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
     shad->hd_size = hd_size;
     shad->mem_size = mem_size;
     shad->io_size = io_size;
+    shad->port_size = 0xffff * 4; // assume a max port size of 4 bytes,
+        // and 0xffff max ports according to Intel manual
     shad->num_vals = max_vals;
     shad->guest_regs = NUMREGS;
     shad->hd = shad_dir_new_64(12,12,16);
@@ -83,6 +85,7 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
     shad->ram = shad_dir_new_32(10,10,12);
 #endif
     shad->io = shad_dir_new_64(12,12,16);
+    shad->ports = shad_dir_new_32(10,10,12);
 
     // we're working with LLVM values that can be up to 128 bits
     shad->llv = (LabelSet **) my_calloc(max_vals * FUNCTIONFRAMES * MAXREGSIZE,
@@ -125,6 +128,8 @@ void tp_free(Shad *shad){
     shad->ram = NULL;
     shad_dir_free_64(shad->io);
     shad->io = NULL;
+    shad_dir_free_32(shad->ports);
+    shad->ports = NULL;
     my_free(shad->llv, (shad->num_vals * FUNCTIONFRAMES * MAXREGSIZE *
         sizeof(LabelSet *)), poolid_taint_processor);
     shad->llv = NULL;
@@ -174,6 +179,11 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
         case IADDR:
             {
                 ls = shad_dir_find_64(shad->io, a.val.ia+a.off);
+                break;
+            }
+        case PADDR:
+            {
+                ls = shad_dir_find_32(shad->ports, a.val.ia+a.off);
                 break;
             }
         // multipliers are for register and stack frame indexing in shadow
@@ -261,6 +271,11 @@ SB_INLINE void tp_delete(Shad *shad, Addr a) {
         case IADDR:
             {
                 shad_dir_remove_64(shad->io, a.val.ia+a.off);
+                break;
+            }
+        case PADDR:
+            {
+                shad_dir_remove_32(shad->ports, a.val.ia+a.off);
                 break;
             }
         case LADDR:
@@ -353,6 +368,11 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
                 shad_dir_add_64(shad->io, a.val.ia+a.off, ls);
                 break;
             }
+        case PADDR:
+            {
+                shad_dir_add_32(shad->ports, a.val.ia+a.off, ls);
+                break;
+            }
         case LADDR:
             {
                 // need to call labelset_copy to increment ref count
@@ -422,6 +442,8 @@ SB_INLINE uint8_t addrs_equal(Addr a, Addr b) {
             return a.val.ma+a.off == b.val.ma+b.off;
         case IADDR:
             return a.val.ia+a.off == b.val.ia+b.off;
+        case PADDR:
+            return a.val.pa+a.off == b.val.pa+b.off;
         case LADDR:
             return (a.val.la == b.val.la)
                    && (a.off == b.off)
@@ -449,6 +471,9 @@ void print_addr(Shad *shad, Addr a) {
             break;
         case IADDR:
             printf ("i0x%llx", (long long unsigned int) a.val.ia+a.off);
+            break;
+        case PADDR:
+            printf ("p0x%llx", (long long unsigned int) a.val.pa+a.off);
             break;
         case LADDR:
             if (!shad){
@@ -785,8 +810,10 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
     if (!strcmp(op.val.insn_start.name, "load")){
 
-        if ((dventry.entrytype != ADDRENTRY)
-                || (dventry.entry.memaccess.op != LOAD)){
+        // Check to see if it's either a regular load or port load
+        if (((dventry.entrytype != ADDRENTRY) && (dventry.entrytype != PADDRENTRY))
+                || ((dventry.entry.memaccess.op != LOAD)
+                    && (dventry.entry.memaccess.op != PLOAD))){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
             fprintf(stderr, "In: load\n");
             exit(1);
@@ -845,6 +872,43 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
             buf->ptr = saved_buf_ptr;
         }
+        
+        else if ((dventry.entrytype == PADDRENTRY)
+                && (dventry.entry.portaccess.op == PLOAD)) {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+                // For port accesses, we assume that data is only moved between
+                // ports and guest registers.  If this assumption is wrong then
+                // we will fail here.
+                switch (cur_op->typ){
+                    case COPYOP:
+                        if (dventry.entry.memaccess.addr.typ == PADDR){
+                            // guest register
+                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.typ = PADDR;
+                            cur_op->val.copy.a.val.pa =
+                                dventry.entry.portaccess.addr.val.pa;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+
+                    default:
+                        // taint ops for port load only consist of copy ops
+                        assert(1==0);
+                }
+
+                cur_op++;
+            }
+
+            buf->ptr = saved_buf_ptr;
+        }
+        
 
         else {
             fprintf(stderr, "Error: unknown error in dynamic log\n");
@@ -855,8 +919,10 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
     else if (!strcmp(op.val.insn_start.name, "store")){
 
-        if ((dventry.entrytype != ADDRENTRY)
-                || (dventry.entry.memaccess.op != STORE)){
+        // Check to see if it's either a regular store or port store
+        if (((dventry.entrytype != ADDRENTRY) && (dventry.entrytype != PADDRENTRY))
+                || ((dventry.entry.memaccess.op != STORE)
+                    && (dventry.entry.memaccess.op != PSTORE))){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
             fprintf(stderr, "In: store\n");
             exit(1);
@@ -1000,6 +1066,53 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
                     default:
                         // rest are unhandled for now
+                        assert(1==0);
+                }
+
+                cur_op++;
+            }
+
+            buf->ptr = saved_buf_ptr;
+        }
+        
+        else if ((dventry.entrytype == PADDRENTRY)
+                && (dventry.entry.portaccess.op == PSTORE)) {
+            /*** Fix up taint op buffer here ***/
+            char *saved_buf_ptr = buf->ptr;
+            TaintOp *cur_op = (TaintOp*) buf->ptr;
+
+            int i;
+            for (i = 0; i < op.val.insn_start.num_ops; i++){
+                // For port accesses, we assume that data is only moved between
+                // ports and guest registers.  If this assumption is wrong then
+                // we will fail here.
+                switch (cur_op->typ){
+                    case COPYOP:
+                        if (dventry.entry.portaccess.addr.typ == PADDR){
+                            // guest register
+                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.typ = PADDR;
+                            cur_op->val.copy.b.val.pa =
+                                dventry.entry.portaccess.addr.val.pa;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+                    case DELETEOP:
+                        if (dventry.entry.portaccess.addr.typ == PADDR){
+                            // guest register
+                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.typ = PADDR;
+                            cur_op->val.deletel.a.val.pa =
+                                dventry.entry.portaccess.addr.val.pa;
+                        }
+                        else {
+                            assert(1==0);
+                        }
+                        break;
+                    default:
+                        // Ops for port store only consist of copy ops
                         assert(1==0);
                 }
 
