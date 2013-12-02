@@ -79,7 +79,7 @@ A: Transfer from HD to ide device IO buffer.
    construct a taint op for the bulk taint copy and add it to the taint op buffer
    tob_op_thread.
 
-   Note that the taint ops in tob_io_thread get consumed in XXX.
+   Note that the taint ops in tob_io_thread get consumed in before_block_exec().
 
 
 B: Transfer from IO buffer to HD
@@ -140,7 +140,7 @@ C: Transfer from IO buffer to RAM directly via DMA
    And this is what adds a bulk copy taint op to the TaintOpBuffer tob_io_thread corresponding to
    the dma.  If is_write=1 it adds a copy corresponding to IO -> RAM.  Else, it adds a copy in the other direction.  
 
-   Note that the taint ops in tob_io_thread get consumed in XXX.
+   Note that the taint ops in tob_io_thread get consumed in before_block_exec().
 
 
 D: Transfer from RAM directly to IO buffer via DMA
@@ -185,6 +185,7 @@ F: Transfer from port to IO buffer
 
 G: Transfer from port to a register
 
+   iFerret functionality:
    In ops_template.h, in the fn op_inw_T0_T1, if something is tainted 
    (some labeling event occurred in the past), then we just go ahead and
    write a taint op to the taint op buffer for processing:
@@ -210,9 +211,24 @@ G: Transfer from port to a register
    op_inw_DX_T0                 IFLO_HD_TRANSFER_8_DEST	
    op_inl_DX_T0                 IFLO_HD_TRANSFER_9_DEST
 
+   Updated PANDA functionality:
+   In code that has been translated from TCG to LLVM, we see calls to
+   helper_inb(), helper_inw(), and helper_inl().  It looks something like this:
+        %tmp1_v7 = call i64 @helper_inb(i32 146)
+   where the argument is port number.  We treat this as a load from the port into
+   the LLVM register.  In the PandaInstrumentVisitor LLVM pass, we log this
+   accordingly as usual by inserting code to call log_dynval() as a load in
+   panda/panda_dynval_inst.cpp.  Our taint model consists of simple copy
+   operations from the port into the register, which can be seen in
+   portLoadHelper() in panda_plugins/taint/llvm_taint_lib.cpp.  As with other
+   load and store operations, we reconcile the actual port logged dynamically
+   and fix up the associated taint operations in process_insn_start_op() in
+   panda/taint_processor.c.
+
 
 H: Transfer from register to port
  
+   iFerret functionality:
    in ops_template.h
 
    T1 -> port, i.e., out(port=T0, T1)
@@ -226,3 +242,13 @@ H: Transfer from register to port
    op_outb_DX_T0                IFLO_HD_TRANSFER_SRC_10B_T0_BASE
    op_outw_DX_T0                IFLO_HD_TRANSFER_SRC_10W_T0_BASE
    op_outl_DX_T0                IFLO_HD_TRANSFER_SRC_10L_T0_BASE
+
+   Updated PANDA functionality:
+   In code that has been translated from TCG to LLVM, we see calls to
+   helper_outb(), helper_outw(), and helper_outl().  It looks something like
+   this:
+        call void @helper_outb(i32 146, i32 %tmp7_v)
+   where the arguments are port number, data.  We treat this as a store from the
+   LLVM register into the port.  The handling is similar to the handling case G
+   described above, except in the reverse direction.
+
