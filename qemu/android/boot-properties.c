@@ -347,6 +347,7 @@ boot_property_init_service( void )
             return;
         }
         D("registered '%s' qemud service", SERVICE_NAME);
+        _inited = 1;
     }
 }
 
