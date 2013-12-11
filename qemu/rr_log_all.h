@@ -332,10 +332,19 @@ static inline int rr_prog_point_compare(RR_prog_point current,
       if (current.pc == recorded.pc && current.secondary == recorded.secondary) {
           return 0;
       }
+      else if(current.pc == 0 && current.guest_instr_count == 0){
+          return 0;
+      }
       else {
-          //mz XXX we need to fix this, but in some cases instruction counts
-          //may be the same for several program points (e.g. for hlt
-          //instruction the instruction count does not get presently updated).
+          //jh old record/replay translated ops in the order:
+          // increment instr count, do micro ops, update PC to next instruction
+          // PANDA increments the instr count, sets the RR PC to the current instruction,
+          // and executes the instruction. We no longer have wierd cases like hlt on x86
+          // that don't account for themselves. The PC's definition has also changed from
+          // next instruction to previous instruction, which is why we sometimes need the
+          // bootstrap code above for pc == 0, instr count == 0
+
+          //mz
           //rr_spit_queue_head();
           //rr_signal_disagreement(current, recorded);
           //mz we don't come back from rr_do_end_replay() - this is just to clean things up.
