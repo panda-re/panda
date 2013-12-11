@@ -54,7 +54,7 @@
 
 /* Buffer descriptor for sendBuffers() and recvBuffers() callbacks */
 typedef struct GoldfishPipeBuffer {
-    uint8_t*  data;
+    target_phys_addr_t addr;
     size_t    size;
 } GoldfishPipeBuffer;
 

@@ -372,7 +372,7 @@ pipeConnector_sendBuffers( void* opaque, const GoldfishPipeBuffer* buffers, int 
             avail = buffers[0].size;
 
         if (avail > 0) {
-            memcpy(pcon->buffer + pcon->buffpos, buffers[0].data, avail);
+            cpu_memory_rw(cpu_single_env, buffers[0].addr, pcon->buffer + pcon->buffpos, avail, 0);
             pcon->buffpos += avail;
             ret += avail;
         }
@@ -539,8 +539,10 @@ zeroPipe_recvBuffers( void* opaque, GoldfishPipeBuffer* buffers, int numBuffers 
 {
     int  ret = 0;
     while (numBuffers > 0) {
+        char zeros[buffers[0].addr];
+        memset(zeros, 0, buffers[0].addr);
         ret += buffers[0].size;
-        memset(buffers[0].data, 0, buffers[0].size);
+        cpu_memory_rw(cpu_single_env,buffers[0].addr, zeros, buffers[0].size, 1);
         buffers++;
         numBuffers--;
     }
@@ -672,11 +674,11 @@ pingPongPipe_sendBuffers( void* opaque, const GoldfishPipeBuffer* buffers, int n
             wpos -= pipe->size;
         }
         if (wpos + avail <= pipe->size) {
-            memcpy(pipe->buffer + wpos, buff->data, avail);
+            cpu_memory_rw(cpu_single_env,buff->addr, pipe->buffer + wpos, avail,0);
         } else {
             int  avail2 = pipe->size - wpos;
-            memcpy(pipe->buffer + wpos, buff->data, avail2);
-            memcpy(pipe->buffer, buff->data + avail2, avail - avail2);
+            cpu_memory_rw(cpu_single_env,buff->addr, pipe->buffer + wpos, avail2,0);
+            cpu_memory_rw(cpu_single_env,buff->addr + avail2, pipe->buffer, avail-avail2,0);
         }
         pipe->count += avail;
         ret += avail;
@@ -710,11 +712,11 @@ pingPongPipe_recvBuffers( void* opaque, GoldfishPipeBuffer* buffers, int numBuff
         int rpos = pipe->pos;
 
         if (rpos + avail <= pipe->size) {
-            memcpy(buffers[0].data, pipe->buffer + rpos, avail);
+            cpu_memory_rw(cpu_single_env,buffers[0].addr,pipe->buffer + rpos, avail,1);
         } else {
             int  avail2 = pipe->size - rpos;
-            memcpy(buffers[0].data, pipe->buffer + rpos, avail2);
-            memcpy(buffers[0].data + avail2, pipe->buffer, avail - avail2);
+            cpu_memory_rw(cpu_single_env,buffers[0].addr, pipe->buffer + rpos, avail2,1);
+            cpu_memory_rw(cpu_single_env,buffers[0].addr+ avail2, pipe->buffer, avail - avail2,1);
         }
         pipe->count -= avail;
         pipe->pos   += avail;
@@ -1013,15 +1015,16 @@ pipeDevice_doCommand( PipeDevice* dev, uint32_t command )
         /* Translate virtual address into physical one, into emulator memory. */
         GoldfishPipeBuffer  buffer;
         uint32_t            address = dev->address;
-        uint32_t            page    = address & TARGET_PAGE_MASK;
-        target_phys_addr_t  phys;
+        //uint32_t            page    = address & TARGET_PAGE_MASK;
+        //target_phys_addr_t  phys;
 #ifdef CONFIG_KVM
         if(kvm_enabled()) {
             cpu_synchronize_state(env, 0);
         }
 #endif
-        phys = cpu_get_phys_page_debug(env, page);
-        buffer.data = qemu_get_ram_ptr(phys) + (address - page);
+        buffer.addr = address;
+        //phys = cpu_get_phys_page_debug(env, page);
+        //buffer.data = qemu_get_ram_ptr(phys) + (address - page);
         buffer.size = dev->size;
         dev->status = pipe->funcs->recvBuffers(pipe->opaque, &buffer, 1);
         DD("%s: CMD_READ_BUFFER channel=0x%x address=0x%08x size=%d > status=%d",
@@ -1033,15 +1036,16 @@ pipeDevice_doCommand( PipeDevice* dev, uint32_t command )
         /* Translate virtual address into physical one, into emulator memory. */
         GoldfishPipeBuffer  buffer;
         uint32_t            address = dev->address;
-        uint32_t            page    = address & TARGET_PAGE_MASK;
-        target_phys_addr_t  phys;
+        //uint32_t            page    = address & TARGET_PAGE_MASK;
+        //target_phys_addr_t  phys;
 #ifdef CONFIG_KVM
         if(kvm_enabled()) {
             cpu_synchronize_state(env, 0);
         }
 #endif
-        phys = cpu_get_phys_page_debug(env, page);
-        buffer.data = qemu_get_ram_ptr(phys) + (address - page);
+        //phys = cpu_get_phys_page_debug(env, page);
+        //buffer.data = qemu_get_ram_ptr(phys) + (address - page);
+        buffer.addr = address;
         buffer.size = dev->size;
         dev->status = pipe->funcs->sendBuffers(pipe->opaque, &buffer, 1);
         DD("%s: CMD_WRITE_BUFFER channel=0x%x address=0x%08x size=%d > status=%d",

@@ -1986,9 +1986,13 @@ _qemudPipe_sendBuffers(void* opaque,
 
     if (numBuffers == 1) {
         /* Simple case: all data are in one buffer. */
-        D("%s: %s", __FUNCTION__, quote_bytes((char*)buffers->data, buffers->size));
-        qemud_client_recv(client, buffers->data, buffers->size);
+        uint8_t* msg = malloc(buffers->size);
+        // no checks for allocation failure?
+        cpu_memory_rw(cpu_single_env, buffers->addr, msg, buffers->size,0);
+        D("%s: %s", __FUNCTION__, quote_bytes((char*)msg, buffers->size));
+        qemud_client_recv(client, msg, buffers->size);
         transferred = buffers->size;
+        free(msg);
     } else {
         /* If there are multiple buffers involved, collect all data in one buffer
          * before calling the high level client. */
@@ -2000,7 +2004,7 @@ _qemudPipe_sendBuffers(void* opaque,
         msg = malloc(transferred);
         wrk = msg;
         for (n = 0; n < numBuffers; n++) {
-            memcpy(wrk, buffers[n].data, buffers[n].size);
+            cpu_memory_rw(cpu_single_env, buffers[n].addr, wrk, buffers[n].size, 0);
             wrk += buffers[n].size;
         }
         D("%s: %s", __FUNCTION__, quote_bytes((char*)msg, transferred));
@@ -2042,7 +2046,7 @@ _qemudPipe_recvBuffers(void* opaque, GoldfishPipeBuffer* buffers, int numBuffers
         QemudPipeMessage* msg = *msg_list;
         /* Message data fiting the current pipe's buffer. */
         size_t to_copy = min(msg->size - msg->offset, buff->size - off_in_buff);
-        memcpy(buff->data + off_in_buff, msg->message + msg->offset, to_copy);
+        cpu_memory_rw(cpu_single_env, buff->addr + off_in_buff, msg->message + msg->offset, to_copy, 1);
         /* Update offsets. */
         off_in_buff += to_copy;
         msg->offset += to_copy;
