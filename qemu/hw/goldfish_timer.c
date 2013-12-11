@@ -32,6 +32,7 @@ typedef struct GoldfishTimerDevice {
     int64_t now_ns;
     int     armed;
     QEMUTimer *timer;
+    int64_t fishy_offset;
 } GoldfishTimerDevice;
 
 #define  GOLDFISH_TIMER_SAVE_VERSION  1
@@ -41,6 +42,7 @@ static void  goldfish_timer_save(QEMUFile*  f, void*  opaque)
     struct GoldfishTimerDevice*  s   = opaque;
 
     qemu_put_be64(f, s->now_ns);  /* in case the kernel is in the middle of a timer read */
+    qemu_put_be64(f, s->fishy_offset);
     qemu_put_byte(f, s->armed);
     if (s->armed) {
         int64_t  now_ns   = qemu_get_clock_ns(vm_clock);
@@ -57,9 +59,11 @@ static int  goldfish_timer_load(QEMUFile*  f, void*  opaque, int  version_id)
         return -1;
 
     s->now_ns = qemu_get_be64(f);
+    s->fishy_offset = qemu_get_be64(f);
     s->armed  = qemu_get_byte(f);
+    int64_t  now_tks   = qemu_get_clock_ns(vm_clock);
+    s->fishy_offset += (now_tks - s->now_ns);
     if (s->armed) {
-        int64_t  now_tks   = qemu_get_clock_ns(vm_clock);
         int64_t  diff_tks  = qemu_get_be64(f);
         int64_t  alarm_tks = now_tks + diff_tks;
 
@@ -78,7 +82,7 @@ static uint32_t goldfish_timer_read(void *opaque, target_phys_addr_t offset)
     GoldfishTimerDevice *s = (GoldfishTimerDevice *)opaque;
     switch(offset) {
         case TIMER_TIME_LOW:
-            s->now_ns = qemu_get_clock_ns(vm_clock);
+            s->now_ns = qemu_get_clock_ns(vm_clock) - s->fishy_offset;
             return s->now_ns;
         case TIMER_TIME_HIGH:
             return s->now_ns >> 32;
@@ -95,7 +99,7 @@ static void goldfish_timer_write(void *opaque, target_phys_addr_t offset, uint32
     switch(offset) {
         case TIMER_ALARM_LOW:
             s->alarm_low_ns = value_ns;
-            alarm_ns = (s->alarm_low_ns | (int64_t)s->alarm_high_ns << 32);
+            alarm_ns = (s->alarm_low_ns | (int64_t)s->alarm_high_ns << 32) + s->fishy_offset;
             now_ns   = qemu_get_clock_ns(vm_clock);
             if (alarm_ns <= now_ns) {
                 goldfish_device_set_irq(&s->dev, 0, 1);
@@ -223,6 +227,7 @@ static int goldfish_timer_init(GoldfishDevice *dev)
 {
     GoldfishTimerDevice *tdev = (GoldfishTimerDevice *)dev;
     tdev->timer = qemu_new_timer_ns(vm_clock, goldfish_timer_tick, tdev);
+    tdev->fishy_offset = 0;
     register_savevm(&dev->qdev, "goldfish_timer", 0, GOLDFISH_TIMER_SAVE_VERSION,
                      goldfish_timer_save, goldfish_timer_load, tdev);
     
