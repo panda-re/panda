@@ -2559,11 +2559,17 @@ static int do_closefd(Monitor *mon, const QDict *qdict, QObject **ret_data)
     return -1;
 }
 
+extern uint8_t rr_please_flush_tb;
+/* Android segfaults after a loadvm without the TB cache being flushed.
+ * Dalvik's JIT cache (on Android's ashmem shared memory) seems
+ * very unhappy with QEMU's freshly-initialized TB cache.
+ * We reach into a bit of record/replay code here to force
+ * the TB to be flushed before any code is executed. */
 static void do_loadvm(Monitor *mon, const QDict *qdict)
 {
     int saved_vm_running  = runstate_is_running();
     const char *name = qdict_get_str(qdict, "name");
-
+    rr_please_flush_tb = 1;
     vm_stop(RUN_STATE_RESTORE_VM);
 
     if (load_vmstate(name) == 0 && saved_vm_running) {
