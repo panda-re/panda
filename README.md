@@ -24,10 +24,7 @@ and ARM guests.  Documentation can be found in docs/record\_replay.md
 Android Support
 ----
 PANDA supports ARMv7 Android guests, running on the Goldfish emulated platform.
-Configuring with --enable-android will enable this feature. Currently this requires
-a long unwieldy command line (eg. -android -global goldfish\_nand.system\_path=...
--global goldfish\_nand.user\_data\_path=... etc). A conversion script which translates
-an AVD file and its flash images into a set of QCOW2 files will be provided soon.
+Documentation can be found in docs/Android.md
 
 Publications
 ----
