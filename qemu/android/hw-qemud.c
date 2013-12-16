@@ -953,7 +953,7 @@ qemud_serial_client_save(QEMUFile* f, QemudClient* c)
 {
     /* save generic information */
     qemud_service_save_name(f, c->service);
-    //qemu_put_string(f, c->param);
+    qemu_put_string(f, c->param);
     qemu_put_be32(f, c->ProtocolSelector.Serial.channel);
 
     /* save client-specific state */
@@ -984,7 +984,7 @@ qemud_serial_client_load(QEMUFile* f, QemudService* current_services, int versio
     char *service_name = qemud_service_load_name(f);
     if (service_name == NULL)
         return -EIO;
-    const char* param = "";//qemu_get_string(f);
+    const char* param = qemu_get_string(f);
     /* get current service instance */
     QemudService *sv = qemud_service_find(current_services, service_name);
     if (sv == NULL) {
@@ -2102,7 +2102,7 @@ _qemudPipe_save(void* opaque, QEMUFile* f )
 
     /* save generic information */
     qemud_service_save_name(f, c->service);
-    //qemu_put_string(f, c->param);
+    qemu_put_string(f, c->param);
 
     /* Save pending messages. */
     while (msg != NULL) {
@@ -2146,7 +2146,7 @@ _qemudPipe_load(void* hwpipe, void* pipeOpaque, const char* args, QEMUFile* f)
     }
 
     /* Load saved parameters. */
-    param = "";//qemu_get_string(f);
+    param = qemu_get_string(f);
 
     /* re-connect client */
     QemudClient* c = qemud_service_connect_client(sv, -1, param);
