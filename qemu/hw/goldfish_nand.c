@@ -899,11 +899,14 @@ void nand_add_dev(const char *arg)
         XLOG("failed to open block driver %s\n", rwfilename);
         exit(1);
     }
-    dev_size = 0;
+    if(0 == dev_size){
+      //    dev_size = 0;
     //dev_size = bdrv_getlength(dev->bdrv->file); // gets allocated file size
     // This is how qemu-img gets the virtual disk size:
-    bdrv_get_geometry(dev->bdrv, &dev_size);
-    dev_size *= 512;
+      bdrv_get_geometry(dev->bdrv, &dev_size);
+      D("geometry says there are %d blocks\n", dev_size);
+      dev_size *= 512;
+    }
 #else
     dev->fd = rwfd;
 #endif
