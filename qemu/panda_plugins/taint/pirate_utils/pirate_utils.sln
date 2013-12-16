@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pirate_label", "pirate_label\pirate_label.vcxproj", "{BB544A62-AF2E-4E85-BA2D-DCA5A124931A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pirate_query", "pirate_query\pirate_query.vcxproj", "{F109937F-983A-43E2-AB37-BB08C00E3DAA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB544A62-AF2E-4E85-BA2D-DCA5A124931A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BB544A62-AF2E-4E85-BA2D-DCA5A124931A}.Debug|Win32.Build.0 = Debug|Win32
+		{BB544A62-AF2E-4E85-BA2D-DCA5A124931A}.Release|Win32.ActiveCfg = Release|Win32
+		{BB544A62-AF2E-4E85-BA2D-DCA5A124931A}.Release|Win32.Build.0 = Release|Win32
+		{F109937F-983A-43E2-AB37-BB08C00E3DAA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F109937F-983A-43E2-AB37-BB08C00E3DAA}.Debug|Win32.Build.0 = Debug|Win32
+		{F109937F-983A-43E2-AB37-BB08C00E3DAA}.Release|Win32.ActiveCfg = Release|Win32
+		{F109937F-983A-43E2-AB37-BB08C00E3DAA}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
