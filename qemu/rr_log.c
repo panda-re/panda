@@ -1154,6 +1154,12 @@ void rr_reset_state(void *cpu_state) {
 
 #include "error.h"
 void qmp_begin_record(const char *file_name, Error **errp) {
+  rr_record_requested = 1;
+  rr_requested_name = g_strdup(file_name);
+}
+
+void qmp_begin_record_from(const char *file_name, Error **errp) {
+  rr_record_requested = 2;
   rr_requested_name = g_strdup(file_name);
 }
 
@@ -1181,7 +1187,6 @@ void hmp_begin_record(Monitor *mon, const QDict *qdict)
 {
   Error *err;
   const char *file_name = qdict_get_try_str(qdict, "file_name");
-  rr_record_requested = 1;
   qmp_begin_record(file_name, &err);
 }
 
@@ -1190,8 +1195,7 @@ void hmp_begin_record_from(Monitor *mon, const QDict *qdict)
 {
   Error *err;
   const char *file_name = qdict_get_try_str(qdict, "file_name");
-  rr_record_requested = 2;
-  qmp_begin_record(file_name, &err);
+  qmp_begin_record_from(file_name, &err);
 }
 
 void hmp_begin_replay(Monitor *mon, const QDict *qdict)
@@ -1238,7 +1242,7 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
     do_savevm_aux(get_monitor(), name_buf);
     log_all_cpu_states();
   } else if (rr_record_requested == 2) {
-    printf ("loading snapshot:\t%s\n", name_buf);
+    printf ("loading snapshot:\t%s\n", rr_name);
     load_vmstate(rr_name);
   }
 

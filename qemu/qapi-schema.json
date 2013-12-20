@@ -898,6 +898,14 @@
 { 'command': 'begin_record', 'data': { 'filename': 'str' } }
 
 ##
+# @begin_record_from
+#
+# Requests that we revert to a snapshot and begin recording for later replay
+#
+##
+{ 'command': 'begin_record_from', 'data': { 'filename': 'str' } }
+
+##
 # @begin_replay
 #
 # Requests that we begin replaying 

@@ -2605,6 +2605,14 @@ DEF("android", 0, QEMU_OPTION_android,
 "-android       use android-compatible input formats\n", QEMU_ARCH_ALL)
 #endif
 
+DEF("record-from", HAS_ARG, QEMU_OPTION_record_from,
+    "-record-from <snapshot>\n"
+    "                load snapshot <snapshot> and begin recording\n", QEMU_ARCH_ALL)
+
+DEF("replay", HAS_ARG, QEMU_OPTION_replay,
+    "-replay <snapshot>\n"
+    "                replay the recording that starts at <snapshot>\n", QEMU_ARCH_ALL)
+
 DEF("panda-plugin", HAS_ARG, QEMU_OPTION_panda_plugin,
     "-panda-plugin <file>\n"
     "                load PANDA plugin from <file>\n", QEMU_ARCH_ALL)

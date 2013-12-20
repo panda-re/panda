@@ -2270,6 +2270,8 @@ int main(int argc, char **argv, char **envp)
     int optind;
     const char *optarg;
     const char *loadvm = NULL;
+    const char *replay_name = NULL;
+    const char *record_name = NULL;
     QEMUMachine *machine;
     const char *cpu_model;
     const char *pid_file = NULL;
@@ -3224,6 +3226,14 @@ int main(int argc, char **argv, char **envp)
                 generate_llvm = 1;
                 break;
 #endif
+	    case QEMU_OPTION_record_from:
+                record_name = optarg;
+	        break;
+
+	    case QEMU_OPTION_replay:
+	        replay_name = optarg;
+	        break;
+
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
                     fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
@@ -3671,11 +3681,31 @@ int main(int argc, char **argv, char **envp)
     qemu_run_machine_init_done_notifiers();
 
     qemu_system_reset(VMRESET_SILENT);
+    {
+        int loads = 0;
+        loads += loadvm != NULL;
+        loads += record_name != NULL;
+        loads += replay_name != NULL;
+        if (loads > 1){
+            fprintf(stderr, "only one of loadvm, record-from, and replay may be set\n");
+            exit(1);
+        }
+    }
+
     if (loadvm) {
         if (load_vmstate(loadvm) < 0) {
             autostart = 0;
         }
     }
+    if(record_name){
+        Error *err;
+        qmp_begin_record_from(record_name, &err);
+    }
+    if(replay_name){
+        Error *err;
+        qmp_begin_replay(replay_name, &err);
+    }
+
 
     if (incoming) {
         runstate_set(RUN_STATE_INMIGRATE);
@@ -3692,18 +3722,9 @@ int main(int argc, char **argv, char **envp)
     os_setup_post();
 
     resume_all_vcpus();
-    
-    //mz 11.12.2009 we have to do that after we loadvm, as it needs the
-    //timers!  
-    if (rr_replay_requested || rr_in_replay()) {
-        quit_timers();
-    }
 
     main_loop();
 
-    //mz 05.2012 it looks like quit_timers() gets registered using atexit(),
-    //so we don't need to quit them manually anymore
-    
     // PANDA: unload plugins
     panda_unload_plugins();
 
