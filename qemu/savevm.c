@@ -1974,7 +1974,7 @@ static int del_existing_snapshots(Monitor *mon, const char *name)
     return 0;
 }
 
-void do_savevm_aux(Monitor *mon, const char *name)
+int do_savevm_aux(Monitor *mon, const char *name)
 {
     BlockDriverState *bs, *bs1;
     QEMUSnapshotInfo sn1, *sn = &sn1, old_sn1, *old_sn = &old_sn1;
@@ -1989,6 +1989,7 @@ void do_savevm_aux(Monitor *mon, const char *name)
     struct timeval tv;
     struct tm tm;
 #endif
+    int retcode = 0;
 
 
     /* Verify if there is a device that doesn't support snapshots and is writable */
@@ -2002,14 +2003,14 @@ void do_savevm_aux(Monitor *mon, const char *name)
         if (!bdrv_can_snapshot(bs)) {
             monitor_printf(mon, "Device '%s' is writable but does not support snapshots.\n",
                                bdrv_get_device_name(bs));
-            return;
+            return -5;
         }
     }
 
     bs = bdrv_snapshots();
     if (!bs) {
         monitor_printf(mon, "No block device can accept snapshots\n");
-        return;
+        return -4;
     }
 
     saved_vm_running = runstate_is_running();
@@ -2057,6 +2058,7 @@ void do_savevm_aux(Monitor *mon, const char *name)
     f = qemu_fopen_bdrv(bs, 1);
     if (!f) {
         monitor_printf(mon, "Could not open VM state file\n");
+        retcode = -1;
         goto the_end;
     }
     ret = qemu_savevm_state(mon, f);
@@ -2064,6 +2066,7 @@ void do_savevm_aux(Monitor *mon, const char *name)
     qemu_fclose(f);
     if (ret < 0) {
         monitor_printf(mon, "Error %d while writing VM\n", ret);
+        retcode = -2;
         goto the_end;
     }
 
@@ -2078,6 +2081,7 @@ void do_savevm_aux(Monitor *mon, const char *name)
             if (ret < 0) {
                 monitor_printf(mon, "Error while creating snapshot on '%s'\n",
                                bdrv_get_device_name(bs1));
+                retcode = -3;
             }
         }
     }
@@ -2085,6 +2089,8 @@ void do_savevm_aux(Monitor *mon, const char *name)
  the_end:
     if (saved_vm_running)
         vm_start();
+
+    return retcode;
 }
 
 void do_savevm(Monitor *mon, const QDict *qdict) {

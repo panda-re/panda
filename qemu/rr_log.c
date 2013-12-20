@@ -1222,7 +1222,7 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 static time_t rr_start_time;
 
 //mz file_name_full should be full path to desired record/replay log file
-void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
+int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
 #ifdef CONFIG_SOFTMMU 
  char name_buf[1024];
   // decompose file_name_base into path & file. 
@@ -1230,6 +1230,7 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   char *rr_name_base = g_strdup(file_name_full);
   char *rr_path = dirname(rr_path_base);
   char *rr_name = basename(rr_name_base);
+  int snapshot_ret;
   if (rr_debug_whisper()) {
     fprintf (logfile,"Begin vm record for file_name_full = %s\n", file_name_full);    
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1239,11 +1240,11 @@ void rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   if (rr_record_requested == 1) {
     rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
-    do_savevm_aux(get_monitor(), name_buf);
+    snapshot_ret = do_savevm_aux(get_monitor(), name_buf);
     log_all_cpu_states();
   } else if (rr_record_requested == 2) {
     printf ("loading snapshot:\t%s\n", rr_name);
-    load_vmstate(rr_name);
+    snapshot_ret = load_vmstate(rr_name);
   }
 
   // save the time so we can report how long record takes
@@ -1296,12 +1297,13 @@ void rr_do_end_record(void) {
 }
 
 // file_name_full should be full path to the record/replay log
-void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
+int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 #ifdef CONFIG_SOFTMMU
   char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path = g_strdup(file_name_full);
   char *rr_name = g_strdup(file_name_full);
+  int snapshot_ret;
   rr_path = dirname(rr_path);
   rr_name = basename(rr_name);
   if (rr_debug_whisper()) {
@@ -1315,7 +1317,7 @@ void rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   }
   printf ("loading snapshot\n");
   //  vm_stop(0) RUN_STATE_RESTORE_VM);
-  load_vmstate(name_buf);
+  snapshot_ret = load_vmstate(name_buf);
   printf ("... done.\n");
   log_all_cpu_states();
 

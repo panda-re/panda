@@ -52,9 +52,9 @@ extern volatile int rr_end_replay_requested;
 extern const char *rr_requested_name;
 
 // used from monitor.c 
-void rr_do_begin_record(const char *name, void *cpu_state);
+int  rr_do_begin_record(const char *name, void *cpu_state);
 void rr_do_end_record(void);
-void rr_do_begin_replay(const char *name, void *cpu_state);
+int  rr_do_begin_replay(const char *name, void *cpu_state);
 void rr_do_end_replay(int is_error);
 void rr_reset_state(void *cpu_state);
 
