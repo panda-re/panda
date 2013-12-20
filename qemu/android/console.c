@@ -38,6 +38,7 @@
 //#include "tcpdump.h"
 #include "net.h"
 #include "monitor.h"
+#include "qmp-commands.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -2928,7 +2929,8 @@ static int
 do_kill( ControlClient  client, char*  args )
 {
     control_write( client, "OK: killing emulator, bye bye\r\n" );
-    exit(0);
+    qmp_quit(NULL);
+    return 0; // make the compiler happy
 }
 
 static const CommandDefRec   main_commands[] =
