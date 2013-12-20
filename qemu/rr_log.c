@@ -1241,14 +1241,14 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   // first take a snapshot or load snapshot
 
   if (rr_record_requested == 2) {
-    printf ("loading snapshot:\t%s\n", rr_name);
+    printf ("loading snapshot:\t%s\n", rr_snapshot_name);
     snapshot_ret = load_vmstate(rr_snapshot_name);
     g_free(rr_snapshot_name); rr_snapshot_name = NULL;
   }
   if (rr_record_requested  == 1 || rr_record_requested == 2) {
     rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
-    snapshot_ret = do_savevm_aux(get_monitor(), name_buf);
+    snapshot_ret = do_savevm_rr(get_monitor(), name_buf);
     log_all_cpu_states();
   }
 
@@ -1322,7 +1322,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   }
   printf ("loading snapshot\n");
   //  vm_stop(0) RUN_STATE_RESTORE_VM);
-  snapshot_ret = load_vmstate(name_buf);
+  snapshot_ret = load_vmstate_rr(name_buf);
   printf ("... done.\n");
   log_all_cpu_states();
 
