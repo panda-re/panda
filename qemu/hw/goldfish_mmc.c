@@ -579,10 +579,22 @@ static CPUWriteMemoryFunc *goldfish_mmc_writefn[] = {
 static int goldfish_mmc_init(GoldfishDevice* dev)
 {
     GoldfishMmcDevice* s = (GoldfishMmcDevice*)dev;
+    const char* image_path = s->path;
     s->bs = bdrv_new("sdcard");
-    if (0 > bdrv_open(s->bs, s->path, BDRV_O_RDWR | BDRV_O_CACHE_WB | BDRV_O_NO_FLUSH, NULL)) {
+
+    if(!image_path  || !(*image_path)){
+        TempFile* tmp = tempfile_create();
+        if (NULL == tmp){
+            printf("Could not create temp file for sdcard image: %s\n", strerror(errno));
+            exit(1);
+        }
+        image_path = tempfile_path(tmp);
+    }
+
+    if (0 > bdrv_open(s->bs, image_path, BDRV_O_RDWR | BDRV_O_CACHE_WB | BDRV_O_NO_FLUSH, NULL)) {
     //if (0 > bdrv_file_open(&dev->bdrv,rwfilename, BDRV_O_RDWR)) {
      //   XLOG("failed to open block driver %s\n", rwfilename);
+        printf("Failed to open block device %s\n", image_path);
         exit(1);
     }
     s->buf = qemu_memalign(512,512);
