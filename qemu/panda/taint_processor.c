@@ -588,7 +588,8 @@ void print_addr(Shad *shad, Addr a) {
 // copy -- b gets whatever label set is currently associated with a
 SB_INLINE void tp_copy(Shad *shad, Addr a, Addr b) {
     assert (shad != NULL);
-    assert (!(addrs_equal(a,b)));
+    //assert (!(addrs_equal(a,b)));
+    if (addrs_equal(a, b)) return;
     LabelSet *ls_a = tp_labelset_get(shad, a);
     if (labelset_is_empty(ls_a)) {
         // a not tainted -- remove taint on b
