@@ -903,7 +903,7 @@
 # Requests that we revert to a snapshot and begin recording for later replay
 #
 ##
-{ 'command': 'begin_record_from', 'data': { 'filename': 'str' } }
+{ 'command': 'begin_record_from', 'data': { 'snapshot': 'str', 'filename': 'str' } }
 
 ##
 # @begin_replay

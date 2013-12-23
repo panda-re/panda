@@ -99,6 +99,7 @@ volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
 const char * rr_requested_name = NULL;
+const char * rr_snapshot_name  = NULL;
 
 //mz FIFO queue of log entries read from the log file
 static RR_log_entry *queue_head;
@@ -1158,8 +1159,9 @@ void qmp_begin_record(const char *file_name, Error **errp) {
   rr_requested_name = g_strdup(file_name);
 }
 
-void qmp_begin_record_from(const char *file_name, Error **errp) {
+void qmp_begin_record_from(const char *snapshot, const char *file_name, Error **errp) {
   rr_record_requested = 2;
+  rr_snapshot_name = g_strdup(snapshot);
   rr_requested_name = g_strdup(file_name);
 }
 
@@ -1194,8 +1196,9 @@ void hmp_begin_record(Monitor *mon, const QDict *qdict)
 void hmp_begin_record_from(Monitor *mon, const QDict *qdict)
 {
   Error *err;
+  const char *snapshot =  qdict_get_try_str(qdict, "snapshot");
   const char *file_name = qdict_get_try_str(qdict, "file_name");
-  qmp_begin_record_from(file_name, &err);
+  qmp_begin_record_from(snapshot, file_name, &err);
 }
 
 void hmp_begin_replay(Monitor *mon, const QDict *qdict)
@@ -1239,7 +1242,8 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
 
   if (rr_record_requested == 2) {
     printf ("loading snapshot:\t%s\n", rr_name);
-    snapshot_ret = load_vmstate(rr_name);
+    snapshot_ret = load_vmstate(rr_snapshot_name);
+    g_free(rr_snapshot_name); rr_snapshot_name = NULL;
   }
   if (rr_record_requested  == 1 || rr_record_requested == 2) {
     rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
