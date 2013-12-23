@@ -1237,14 +1237,15 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   }
   // first take a snapshot or load snapshot
 
-  if (rr_record_requested == 1) {
+  if (rr_record_requested == 2) {
+    printf ("loading snapshot:\t%s\n", rr_name);
+    snapshot_ret = load_vmstate(rr_name);
+  }
+  if (rr_record_requested  == 1 || rr_record_requested == 2) {
     rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
     snapshot_ret = do_savevm_aux(get_monitor(), name_buf);
     log_all_cpu_states();
-  } else if (rr_record_requested == 2) {
-    printf ("loading snapshot:\t%s\n", rr_name);
-    snapshot_ret = load_vmstate(rr_name);
   }
 
   // save the time so we can report how long record takes
