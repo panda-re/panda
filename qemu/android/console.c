@@ -1430,7 +1430,7 @@ static int
 do_gsm_signal( ControlClient  client, char*  args )
 {
       enum { SIGNAL_RSSI = 0, SIGNAL_BER, NUM_SIGNAL_PARAMS };
-      char*   p = args;
+      const char*   p = args;
       int     top_param = -1;
       int     params[ NUM_SIGNAL_PARAMS ];
 
@@ -2276,7 +2276,7 @@ do_geo_fix( ControlClient  client, char*  args )
 {
     // GEO_SAT2 provides bug backwards compatibility.
     enum { GEO_LONG = 0, GEO_LAT, GEO_ALT, GEO_SAT, GEO_SAT2, NUM_GEO_PARAMS };
-    char*   p = args;
+    const char*   p = args;
     int     top_param = -1;
     double  params[ NUM_GEO_PARAMS ];
     int     n_satellites = 1;
