@@ -1552,11 +1552,15 @@ static void main_loop(void)
 
         if (__builtin_expect(rr_record_requested, 0)) {
             //block signals
+            int status = 0;
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_record(rr_requested_name, first_cpu);
+            status = rr_do_begin_record(rr_requested_name, first_cpu);
             rr_record_requested = 0;
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
+            if (status != 0){
+                vm_stop(RUN_STATE_PAUSED);
+            }
         }
 
         if (__builtin_expect(rr_replay_requested, 0)) {
