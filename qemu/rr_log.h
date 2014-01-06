@@ -7,14 +7,8 @@
    mode.
 */
 
-// Hack to enable QEMU user mode to compile
-
-#if !defined(CONFIG_SOFTMMU)
-typedef uint32_t target_phys_addr_t;
-typedef uint32_t ram_addr_t;
-#endif
-
-
+#include "cpu.h"
+#include "targphys.h"
 #include "rr_log_all.h"
 
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state);
@@ -41,32 +35,6 @@ typedef struct {
 } RR_cpu_mem_unmap;
 
 
-typedef enum {
-  HD_TRANSFER_HD_TO_IOB,
-  HD_TRANSFER_IOB_TO_HD,
-  HD_TRANSFER_PORT_TO_IOB,
-  HD_TRANSFER_IOB_TO_PORT
-} Hd_transfer_type;
-
-
-/*
-static const char *hd_transfer_str[] = {
-  "HD_TRANSFER_HD_TO_IOB",
-  "HD_TRANSFER_IOB_TO_HD",
-  "HD_TRANSFER_PORT_TO_IOB",
-  "HD_TRANSFER_IOB_TO_PORT"
-};
-*/
-
-
-// structure for arguments to hd_transfer
-typedef struct {
-  Hd_transfer_type type;   
-  uint64_t src_addr;
-  uint64_t dest_addr;
-  uint32_t num_bytes;
-} RR_hd_transfer_args;
-
 // structure for args to handle_packet
 typedef struct {
   uint8_t *buf;
@@ -79,11 +47,7 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, target_phys_addr_t addr
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write);
 
-void rr_record_hd_transfer(RR_callsite_id call_site, Hd_transfer_type transfer_type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-
 void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction);
-
-
 
 static inline void rr_cpu_physical_memory_unmap_record(target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write) {
   rr_record_cpu_mem_unmap((RR_callsite_id) rr_skipped_callsite_location, addr, buf, len, is_write);

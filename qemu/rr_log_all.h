@@ -632,4 +632,34 @@ void rr_debug_log_prog_point(RR_prog_point pp);
 void rr_print_history(void);
 void rr_spit_prog_point(RR_prog_point pp);
 
+/* Hard drive stuff.  Belongs here since it's target-independent. */
+
+typedef enum {
+  HD_TRANSFER_HD_TO_IOB,
+  HD_TRANSFER_IOB_TO_HD,
+  HD_TRANSFER_PORT_TO_IOB,
+  HD_TRANSFER_IOB_TO_PORT
+} Hd_transfer_type;
+
+/*
+static const char *hd_transfer_str[] = {
+  "HD_TRANSFER_HD_TO_IOB",
+  "HD_TRANSFER_IOB_TO_HD",
+  "HD_TRANSFER_PORT_TO_IOB",
+  "HD_TRANSFER_IOB_TO_PORT"
+};
+*/
+
+// structure for arguments to hd_transfer
+typedef struct {
+  Hd_transfer_type type;   
+  uint64_t src_addr;
+  uint64_t dest_addr;
+  uint32_t num_bytes;
+} RR_hd_transfer_args;
+
+void rr_record_hd_transfer(RR_callsite_id call_site,
+    Hd_transfer_type transfer_type, uint64_t src_addr, uint64_t dest_addr,
+    uint32_t num_bytes);
+
 #endif
