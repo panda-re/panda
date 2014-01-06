@@ -46,7 +46,9 @@ extern "C" {
 #include "panda_dynval_inst.h"
 #include "taint_processor.h"
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -326,6 +328,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     return 0;
 }
 
+#ifdef CONFIG_SOFTMMU
 // this is for much of the hd taint transfers.
 // this gets called from rr_log.c, rr_replay_skipped_calls, RR_HD_TRANSFER case.
 int cb_replay_hd_transfer_taint(CPUState *env, 
@@ -340,18 +343,22 @@ int cb_replay_hd_transfer_taint(CPUState *env,
     top.val.bulkcopy.l = num_bytes;
     switch (type) {
     case HD_TRANSFER_HD_TO_IOB:
+      printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
       top.val.bulkcopy.a = make_haddr(src_addr);
       top.val.bulkcopy.b = make_iaddr(dest_addr);
       break;
     case HD_TRANSFER_IOB_TO_HD:
+      printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
       top.val.bulkcopy.a = make_iaddr(src_addr);
       top.val.bulkcopy.b = make_haddr(dest_addr);
       break;
     case HD_TRANSFER_PORT_TO_IOB:
+      printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
       top.val.bulkcopy.a = make_paddr(src_addr);
       top.val.bulkcopy.b = make_iaddr(dest_addr);
       break;
     case HD_TRANSFER_IOB_TO_PORT:
+      printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
       top.val.bulkcopy.a = make_iaddr(src_addr);
       top.val.bulkcopy.b = make_paddr(dest_addr);
       break;
@@ -383,11 +390,13 @@ int cb_replay_cpu_physical_mem_rw_ram
     top.val.bulkcopy.l = num_bytes;
     if (is_write) {
       // its a "write", i.e., transfer from IO buffer to RAM
+      printf("cpu_physical_mem_rw IO->RAM\n");
       top.val.bulkcopy.a = make_iaddr(src_addr);
       top.val.bulkcopy.b = make_maddr(dest_addr);
     }
     else {
       // its a "read", i.e., transfer from RAM to IO buffer
+      printf("cpu_physical_mem_rw RAM->IO\n");
       top.val.bulkcopy.a = make_maddr(src_addr);
       top.val.bulkcopy.b = make_iaddr(dest_addr);
     }
@@ -399,12 +408,12 @@ int cb_replay_cpu_physical_mem_rw_ram
   }    
   return 0;
 }
-
+#endif
 
 
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     if (taintEnabled){
-        printf("EXCEPTION - logging\n");
+        //printf("EXCEPTION - logging\n");
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         log_exception(dynval_buffer);
 
@@ -419,6 +428,7 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     return 0;
 }
 
+#if 0 // old version
 int guest_hypercall_callback(CPUState *env){
 #ifdef TARGET_I386
     if (env->regs[R_EAX] == 0xdeadbeef){
@@ -455,6 +465,60 @@ int guest_hypercall_callback(CPUState *env){
             taintEnabled = false;
             taintJustDisabled = true;
         }
+    }
+#endif // TARGET_I386
+    return 1;
+}
+#endif
+
+// XXX: Support all features of label and query program
+int guest_hypercall_callback(CPUState *env){
+#ifdef TARGET_I386
+    target_ulong buf_start = env->regs[R_EBX];
+    target_ulong buf_len = env->regs[R_ECX];
+    
+    // call to iferret to label data
+    // EBX contains addr of that data
+    // ECX contains size of data
+    // EDI is a pointer to a buffer containing the label string
+    // ESI contains the length of that label
+    // EDX = starting offset (for positional labels only)
+    if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
+        if (!taintEnabled){
+            printf("Taint plugin: Label operation detected\n");
+            printf("Enabling taint processing\n");
+            taintJustEnabled = true;
+            taintEnabled = true;
+            enable_taint();
+        }
+
+        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 5MB */);
+#ifndef CONFIG_SOFTMMU
+        add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+#else
+        add_taint(shadow, tempBuf, cpu_get_phys_addr(env, buf_start),
+            (int)buf_len);
+#endif //CONFIG_SOFTMMU
+        tob_delete(tempBuf);
+    }
+
+    //mz Query taint on this buffer
+    //mz EBX = start of buffer (VA)
+    //mz ECX = size of buffer (bytes)
+    // EDI is a pointer to a buffer containing the filename or another name for this query
+    // ESI contains the length of that string
+    // EDX = starting offset - for file queries
+    else if (env->regs[R_EAX] == 9){ //Query taint on label
+#ifndef CONFIG_SOFTMMU
+        bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
+#else
+        bufplot(shadow, cpu_get_phys_addr(env, buf_start), (int)buf_len);
+#endif //CONFIG_SOFTMMU
+        printf("Taint plugin: Query operation detected\n");
+        printf("Disabling taint processing\n");
+        taintEnabled = false;
+        taintJustDisabled = true;
+        printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
 #endif // TARGET_I386
     return 1;

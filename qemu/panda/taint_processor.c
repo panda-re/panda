@@ -410,6 +410,9 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
         case HADDR:
             {
                 shad_dir_add_64(shad->hd, a.val.ha+a.off, ls);
+                printf("Labelset put on HD: 0x%lx\n", (uint64_t)(a.val.ha+a.off));
+                labelset_spit(ls);
+                printf("\n");
                 break;
             }
         case MADDR:
@@ -420,6 +423,9 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
                  * whole-system though.
                  */
                 shad_dir_add_64(shad->ram, a.val.ma+a.off, ls);
+                printf("Labelset put in RAM: 0x%lx\n", (uint64_t)(a.val.ma+a.off));
+                labelset_spit(ls);
+                printf("\n");
 #else
                 shad_dir_add_32(shad->ram, a.val.ma+a.off, ls);
                 set_ram_bit(shad, a.val.ma+a.off);
@@ -428,18 +434,27 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case IADDR:
             {
+                printf("Labelset put in IO: 0x%lx\n", (uint64_t)(a.val.ia+a.off));
+                labelset_spit(ls);
+                printf("\n");
                 shad_dir_add_64(shad->io, a.val.ia+a.off, ls);
                 break;
             }
         case PADDR:
             {
-                shad_dir_add_32(shad->ports, a.val.ia+a.off, ls);
+                printf("Labelset put in port: 0x%lx\n", (uint64_t)(a.val.pa+a.off));
+                labelset_spit(ls);
+                printf("\n");
+                shad_dir_add_32(shad->ports, a.val.pa+a.off, ls);
                 break;
             }
         case LADDR:
             {
                 // need to call labelset_copy to increment ref count
                 LabelSet *ls_copy = labelset_copy(ls);
+                printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a.val.la+a.off));
+                labelset_spit(ls);
+                printf("\n");
                 if (a.flag == FUNCARG){
                     // put in new function frame
                     assert((shad->current_frame + 1) < FUNCTIONFRAMES);
@@ -458,6 +473,9 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
         case GREG:
             {
                 // need to call labelset_copy to increment ref count
+                printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a.val.gr+a.off));
+                labelset_spit(ls);
+                printf("\n");
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->grv[a.val.gr * WORDSIZE + a.off] = ls_copy;
                 break;
@@ -465,12 +483,18 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
         case GSPEC:
             {
                 // SpecAddr enum is offset by the number of guest registers
+                printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a.val.gs+a.off));
+                labelset_spit(ls);
+                printf("\n");
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->gsv[a.val.gs - NUMREGS + a.off] = ls_copy;
                 break;
             }
         case RET:
             {
+                printf("Labelset put in ret\n");
+                labelset_spit(ls);
+                printf("\n");
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->ret[a.off] = ls_copy;
                 break;
@@ -891,7 +915,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
       read_dynval_buffer(dynval_buf, &dventry);
 
       if (dventry.entrytype == EXCEPTIONENTRY){
-          printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+          //printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
           next_step = EXCEPT;
           return;
       }
