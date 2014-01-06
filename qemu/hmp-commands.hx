@@ -1382,7 +1382,7 @@ ETEXI
     {
         .name       = "begin_record_from",
         .args_type  = "snapshot:s,file_name:s",
-        .params     = "[file_name]",
+        .params     = "[snapshot] [file_name]",
         .help       = "begin recording from given snapshot for later replay",
         .mhandler.cmd = hmp_begin_record_from,
     },
