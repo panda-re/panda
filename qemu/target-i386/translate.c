@@ -41,7 +41,9 @@
 #include "disas.h"
 #include "tcg-op.h"
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
 
 #include "helper.h"
 #define GEN_HELPER 1
@@ -7904,11 +7906,13 @@ static void gen_intermediate_code_internal(CPUState *env,
 
     prev_pc_ptr = pc_ptr;
 
+#ifdef CONFIG_SOFTMMU
     //mz for record and replay, let's start each block with EIP = pc_start.
     //mz this way, we can chain in record and not chain in replay.
     if (rr_mode != RR_OFF) {
         gen_jmp_im(pc_start - dc->cs_base);
     }
+#endif
 
     dc->is_first_instr = 1;
 
@@ -7917,6 +7921,7 @@ static void gen_intermediate_code_internal(CPUState *env,
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
 
+#ifdef CONFIG_SOFTMMU
     //bdg If search_pc is on, we need to make sure that we translate exactly
     //bdg as many instructions as we did last time. Normally this wouldn't be
     //bdg a problem, but during replay we may have terminated translation
@@ -7925,6 +7930,7 @@ static void gen_intermediate_code_internal(CPUState *env,
     //bdg time through.
     if (rr_mode == RR_REPLAY && search_pc)
         max_insns = tb->icount;
+#endif
 
     gen_icount_start();
     for(;;) {
@@ -7965,13 +7971,20 @@ static void gen_intermediate_code_internal(CPUState *env,
             if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP)))
 #endif
                 tcg_gen_debug_insn_start(pc_ptr);
+
             //mz let's count this instruction
-            if (rr_mode != RR_OFF || panda_update_pc) {
+            if (
+#ifdef CONFIG_SOFTMMU
+                rr_mode != RR_OFF ||
+#endif
+                panda_update_pc) {
                 gen_op_update_panda_pc(pc_ptr);
             }
+#ifdef CONFIG_SOFTMMU
             if (rr_mode != RR_OFF) {
                 gen_op_update_rr_icount();
             }
+#endif
 
             // PANDA: ask if anyone wants execution notification
             bool panda_exec_cb = false;
@@ -8035,6 +8048,7 @@ static void gen_intermediate_code_internal(CPUState *env,
             break;
         }
 
+#ifdef CONFIG_SOFTMMU
         if (rr_mode == RR_REPLAY) {
             //mz make sure we'll terminate in time for next interrupt
             //mz NOTE: we cannot muck with size of translation block if search_pc
@@ -8052,6 +8066,7 @@ static void gen_intermediate_code_internal(CPUState *env,
             gen_op_add_eip(pc_ptr - prev_pc_ptr);
             // rw - think this needs to be gen_op_add_reg_im()
         }
+#endif
         dc->is_first_instr = 0;
 #if 0
         //mz TEST: randomly terminate translation blocks in replay

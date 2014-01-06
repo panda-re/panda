@@ -21,7 +21,11 @@
 #include "cpu.h"
 #include "dyngen-exec.h"
 #include "host-utils.h"
+
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
+
 #include "ioport.h"
 #include "qemu-common.h"
 #include "qemu-log.h"
@@ -3156,11 +3160,15 @@ void helper_rdtsc(void)
     }
     helper_svm_check_intercept_param(SVM_EXIT_RDTSC, 0);
 
+#ifdef CONFIG_SOFTMMU
     RR_DO_RECORD_OR_REPLAY(
         /*action=*/val = cpu_get_tsc(env) + env->tsc_offset,
         /*record=*/rr_input_8(&val),
         /*replay=*/rr_input_8(&val),
         /*location=*/RR_CALLSITE_RDTSC);
+#else
+        val = cpu_get_tsc(env) + env->tsc_offset;
+#endif
 
     EAX = (uint32_t)(val);
     EDX = (uint32_t)(val >> 32);

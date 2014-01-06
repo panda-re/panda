@@ -71,7 +71,9 @@
 #include "trace.h"
 #endif
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
 #include "panda_plugin.h"
 
 #ifdef CONFIG_LLVM
@@ -2789,9 +2791,11 @@ void cpu_register_physical_memory_log(target_phys_addr_t start_addr,
     ram_addr_t orig_size = size;
     subpage_t *subpage;
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_record() && rr_record_in_progress) {
         rr_reg_mem_call_record(start_addr, size, phys_offset);
     }
+#endif
 
     assert(size);
     cpu_notify_set_memory(start_addr, size, phys_offset, log_dirty);
@@ -5081,11 +5085,13 @@ void cpu_io_recompile(CPUState *env, void *retaddr)
                   retaddr);
     }
     
+#ifdef CONFIG_SOFTMMU
     if (rr_debug_whisper()) {
         qemu_log_mask(CPU_LOG_RR,
             "Called cpu_io_recompile to retranslate TB at pc=%p\n",
             retaddr);
     }
+#endif
 
     n = env->icount_decr.u16.low + tb->icount;
     cpu_restore_state(tb, env, (unsigned long)retaddr);
