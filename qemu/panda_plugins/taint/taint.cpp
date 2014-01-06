@@ -64,14 +64,14 @@ int guest_hypercall_callback(CPUState *env);
 
 // for hd taint
 int cb_replay_hd_transfer_taint
-  (CPUState *env, 
+  (CPUState *env,
    uint32_t type,
-   uint64_t src_addr, 
+   uint64_t src_addr,
    uint64_t dest_addr,
    uint32_t num_bytes);
 
 int cb_replay_cpu_physical_mem_rw_ram
-  (CPUState *env, 
+  (CPUState *env,
    uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
@@ -205,11 +205,12 @@ void enable_taint(){
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
     // for hd taint
+#ifdef CONFIG_SOFTMMU
     pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
     pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
-    
+#endif
 
     if (!execute_llvm){
         panda_enable_llvm();
@@ -331,9 +332,9 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 #ifdef CONFIG_SOFTMMU
 // this is for much of the hd taint transfers.
 // this gets called from rr_log.c, rr_replay_skipped_calls, RR_HD_TRANSFER case.
-int cb_replay_hd_transfer_taint(CPUState *env, 
+int cb_replay_hd_transfer_taint(CPUState *env,
 				uint32_t type,
-				uint64_t src_addr, 
+				uint64_t src_addr,
 				uint64_t dest_addr,
 				uint32_t num_bytes) {
   // Replay hd transfer as taint transfer
@@ -369,8 +370,8 @@ int cb_replay_hd_transfer_taint(CPUState *env,
     // make the taint op buffer bigger if necessary
     tob_resize(&tob_io_thread);
     // add bulk copy corresponding to this hd transfer to buffer
-    // of taint ops for io thread.  
-    tob_op_write(tob_io_thread, top);    
+    // of taint ops for io thread.
+    tob_op_write(tob_io_thread, top);
   }
   return 0;
 }
@@ -378,11 +379,11 @@ int cb_replay_hd_transfer_taint(CPUState *env,
 
 // this does a bunch of the dmas in hd taint transfer
 int cb_replay_cpu_physical_mem_rw_ram
-  (CPUState *env, 
+  (CPUState *env,
    uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
-  // NB: 
+  // NB:
   // is_write == 1 means write from qemu buffer to guest RAM.
-  // is_write == 0 means RAM -> qemu buffer    
+  // is_write == 0 means RAM -> qemu buffer
   // Replay dmas in hd taint transfer
   if (taintEnabled) {
     TaintOp top;
@@ -403,9 +404,9 @@ int cb_replay_cpu_physical_mem_rw_ram
     // make the taint op buffer bigger if necessary
     tob_resize(&tob_io_thread);
     // add bulk copy corresponding to this hd transfer to buffer
-    // of taint ops for io thread.  
-    tob_op_write(tob_io_thread, top);    
-  }    
+    // of taint ops for io thread.
+    tob_op_write(tob_io_thread, top);
+  }
   return 0;
 }
 #endif
@@ -476,7 +477,7 @@ int guest_hypercall_callback(CPUState *env){
 #ifdef TARGET_I386
     target_ulong buf_start = env->regs[R_EBX];
     target_ulong buf_len = env->regs[R_ECX];
-    
+
     // call to iferret to label data
     // EBX contains addr of that data
     // ECX contains size of data
