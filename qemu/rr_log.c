@@ -320,6 +320,7 @@ static inline void rr_write_item(void) {
                                sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
                         break;
                     case RR_CALL_HD_TRANSFER:
+                        printf("WRITING RR_CALL_HD_TRANSFER TO RR LOG\n");
 		        fwrite(&(args->variant.hd_transfer_args), 
                                sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp);
                         break;
@@ -523,6 +524,7 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
 void rr_record_hd_transfer(RR_callsite_id call_site,
 				  Hd_transfer_type transfer_type,
 				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    printf("IN rr_record_hd_transfer()\n");
     RR_log_entry *item = &(rr_nondet_log->current_item);
     //mz just in case
     memset(item, 0, sizeof(RR_log_entry));
@@ -532,7 +534,7 @@ void rr_record_hd_transfer(RR_callsite_id call_site,
     item->header.callsite_loc = call_site;
     item->header.prog_point = rr_prog_point;
 
-    item->variant.call_args.kind = RR_CALL_HD_TRANSFER;;
+    item->variant.call_args.kind = RR_CALL_HD_TRANSFER;
     item->variant.call_args.variant.hd_transfer_args.type = transfer_type;
     item->variant.call_args.variant.hd_transfer_args.src_addr = src_addr;
     item->variant.call_args.variant.hd_transfer_args.dest_addr = dest_addr;
@@ -742,6 +744,7 @@ static RR_log_entry *rr_read_item(void) {
                         break;
 		     
 		    case RR_CALL_HD_TRANSFER:
+                        printf("READ RR_CALL_HD_TRANSFER FROM LOG\n");
 		        rr_assert(fread(&(args->variant.hd_transfer_args),
 			      sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
 			rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.hd_transfer_args);
@@ -1106,6 +1109,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 	        case RR_CALL_HD_TRANSFER:
 		  {
 		    // run all callbacks registered for hd transfer
+                    printf("REPLAYING RR_CALL_HD_TRANSFER\n");
 		    RR_hd_transfer_args *hdt = &(args->variant.hd_transfer_args);
 		    panda_cb_list *plist;
 		    for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
