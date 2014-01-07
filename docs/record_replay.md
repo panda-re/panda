@@ -46,8 +46,8 @@ begin_record, end_record, begin_replay, end_replay:
     so be careful to choose a unique name.
 
     The recording log consists of two parts: the snapshot, which is
-    stored in the QCOW under the name `<name>-rr-snp`, and the recording
-    log, which is named `<name>-rr-nondet.log`.
+    named `<name>-rr-snp`, and the recording log, which is named
+    `<name>-rr-nondet.log`.
 
 * `end_record`
 
@@ -58,13 +58,7 @@ begin_record, end_record, begin_replay, end_replay:
 * `begin_replay <name>`
 
     Begin a replay of the session named `<name>`. Note that QEMU not must
-    be halted for this to work. You may find it convenient to use the
-    following trick to get a replay started:
-
-    `(echo "begin_replay <name>" ; cat) | qemu-system-arm -monitor stdio`
-    
-    This will start up QEMU and place the monitor on stdin, and
-    immediately tell QEMU to start replay.
+    be halted for this to work.
 
 * `end_replay`
 
@@ -74,14 +68,53 @@ begin_record, end_record, begin_replay, end_replay:
     Quitting QEMU (either by pressing ^C or typing "quit" in the
     monitor) will also end the replay.
 
-Note that you *must* have at least one QCOW disk for record and replay
-to work, because QEMU snapshots are used to create the starting state
-for the recording session. If the system you are trying to emulate
-doesn't have a hard disk, you can just create an empty QCOW and pass it
-to QEMU with -hda; the guest system won't see it, but this will give
-QEMU a place to store snapshots.
+Alternatively, one can start replays from the command line using the
+`-replay <name>` option. 
 
 Of course, just running a replay isn't very useful by itself, so you
 will probably want to run the replay with some plugins enabled that
 perform some analysis on the replayed execution. See docs/PANDA.md for
 more details.
+
+Migrating Recordings from Older Versions of PANDA
+----
+
+Prior to commit 9139261d70, snapshot data was stored in the QCOW itself.
+To enable sharing of record/replay logs without sharing the QCOW, this
+has changed so that the snapshot is stored in a separate file, named
+`<name>-rr-snp`.
+
+Of course, this means that recordings made before commit 9139261d70
+cannot be directly used with the current version of PANDA. Luckily, it's
+easy to convert existing snapshots to the new format. Assuming your
+recording is named `foo`, stored in `hd.qcow2`, and was created using
+QEMU architecture `$ARCH` with memory size `$MEM` the command is:
+
+    echo -e 'migrate exec:cat>foo-rr-snp\nq" | qemu-system-$ARCH -m $MEM -hda hd.qcow2 -monitor stdio -vnc :0 -S -loadvm foo-rr-snp
+
+Naturally, you should adjust `foo`, `$ARCH`, `$MEM`, and `hd.qcow2` to
+match your particular situation. Once the command finishes, `foo-rr-snp`
+should exist in the current directory. Assuming that `foo-rr-nondet.log`
+is also in the current directory, you can then run the replay with:
+
+    qemu-system-$ARCH -m $MEM -vnc :0 -replay foo
+
+Note that the QCOW is no longer required.
+
+Sharing Recordings
+----
+
+To make it easier to share record/replay logs, PANDA has two scripts,
+`rrpack.py` and `rrunpack.py`, that bundle up and compress a recording.
+These can be found in the `scripts` directory. To pack up a recording,
+just use:
+
+    scripts/rrpack.py <name>
+
+This will bundle up `<name>-rr-snp` and `<name>-rr-nondet.log` and put
+them into PANDA's packed record/replay format in a file named
+`<name>.rr`. This file can be unpacked and verified using:
+
+    scripts/rrunpack.py <name>.rr
+
+A central repository for sharing record/replay logs will be available soon.
