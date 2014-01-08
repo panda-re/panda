@@ -1122,10 +1122,9 @@ void replay_progress(void) {
 
 // rr_name is the current rec/replay name. 
 // here we compute the snapshot name to use for rec/replay 
-// NB: path not used here.
-static inline void rr_get_snapshot_name (char *rr_name, char *snapshot_name, size_t snapshot_name_len) {
+static inline void rr_get_snapshot_file_name (char *rr_name, char *rr_path, char *snapshot_name, size_t snapshot_name_len) {
   rr_assert (rr_name != NULL);
-  snprintf(snapshot_name, snapshot_name_len, "%s-rr-snp", rr_name);
+  snprintf(snapshot_name, snapshot_name_len, "%s/%s-rr-snp", rr_path, rr_name);
 }
 
 
@@ -1246,7 +1245,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
     g_free(rr_snapshot_name); rr_snapshot_name = NULL;
   }
   if (rr_record_requested  == 1 || rr_record_requested == 2) {
-    rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
+    rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
     snapshot_ret = do_savevm_rr(get_monitor(), name_buf);
     log_all_cpu_states();
@@ -1316,7 +1315,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
   }
   // first retrieve snapshot
-  rr_get_snapshot_name(rr_name, name_buf, sizeof(name_buf));
+  rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
   if (rr_debug_whisper()) {
     fprintf (logfile,"reading snapshot:\t%s\n", name_buf);
   }
