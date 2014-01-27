@@ -12,8 +12,10 @@
 #ifndef NAND_DEVICE_H
 #define NAND_DEVICE_H
 
+#define MAX_NAND_DEVS 5
+
 void nand_dev_init(uint32_t base);
-void nand_add_dev(const char *arg);
+//void nand_add_dev(const char *arg);
 void parse_nand_limits(char*  limits);
 
 typedef struct {

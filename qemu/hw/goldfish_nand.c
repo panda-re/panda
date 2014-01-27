@@ -129,8 +129,6 @@ nand_threshold_update( nand_threshold*  t, uint32_t  len )
 
 #endif /* !NAND_THRESHOLD */
 
-static nand_dev *nand_devs = NULL;
-static uint32_t nand_dev_count = 0;
 
 /* The controller is the single access point for all NAND images currently
  * attached to the system.
@@ -159,6 +157,8 @@ typedef struct GoldfishNandDevice {
     uint32_t batch_addr_low;
     uint32_t batch_addr_high;
     uint32_t result;
+    uint32_t nand_dev_count;
+    nand_dev nand_devs[MAX_NAND_DEVS];
 } GoldfishNandDevice;
 
 /* EINTR-proof read - due to SIGALRM in use elsewhere */
@@ -510,9 +510,9 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
     }
     addr = s->addr_low | ((uint64_t)s->addr_high << 32);
     size = s->transfer_size;
-    if(s->dev >= nand_dev_count)
+    if(s->dev >= s->nand_dev_count)
         return 0;
-    dev = nand_devs + s->dev;
+    dev = s->nand_devs + s->dev;
 
     switch(cmd) {
     case NAND_CMD_GET_DEV_NAME:
@@ -598,7 +598,7 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
     switch (offset) {
     case NAND_DEV:
         s->dev = value;
-        if(s->dev >= nand_dev_count) {
+        if(s->dev >= s->nand_dev_count) {
             cpu_abort(cpu_single_env, "nand_dev_write: Bad dev %x\n", value);
         }
         break;
@@ -646,15 +646,15 @@ static uint32_t nand_dev_read(void *opaque, target_phys_addr_t offset)
     case NAND_VERSION:
         return NAND_VERSION_CURRENT;
     case NAND_NUM_DEV:
-        return nand_dev_count;
+        return s->nand_dev_count;
     case NAND_RESULT:
         return s->result;
     }
 
-    if(s->dev >= nand_dev_count)
+    if(s->dev >= s->nand_dev_count)
         return 0;
 
-    dev = nand_devs + s->dev;
+    dev = s->nand_devs + s->dev;
 
     switch (offset) {
     case NAND_DEV_FLAGS:
@@ -706,13 +706,13 @@ static int arg_match(const char *a, const char *b, size_t b_len)
     return b_len == 0;
 }
 
-void nand_add_dev(const char *arg)
+void nand_add_dev(GoldfishNandDevice* s, const char *arg)
 {
     uint64_t dev_size = 0;
     const char *next_arg;
     const char *value;
     size_t arg_len, value_len;
-    nand_dev *new_devs, *dev;
+    nand_dev *dev;
     char *devname = NULL;
     size_t devname_len = 0;
     char *initfilename = NULL;
@@ -858,11 +858,9 @@ void nand_add_dev(const char *arg)
         }
     }
 
-    new_devs = realloc(nand_devs, sizeof(nand_devs[0]) * (nand_dev_count + 1));
-    if(new_devs == NULL)
-        goto out_of_memory;
-    nand_devs = new_devs;
-    dev = &new_devs[nand_dev_count];
+    if(s->nand_dev_count >= MAX_NAND_DEVS)
+        goto too_many_nands;
+    dev = s->nand_devs +s->nand_dev_count;
 
     dev->page_size = page_size;
     dev->extra_size = extra_size;
@@ -922,7 +920,7 @@ void nand_add_dev(const char *arg)
     D("Dev size of %s is %llx\n", rwfilename, dev_size);
     
 
-    nand_dev_count++;
+    s->nand_dev_count++;
 
     return;
 
@@ -932,6 +930,10 @@ out_of_memory:
 
 bad_arg_and_value:
     XLOG("bad arg: %.*s=%.*s\n", arg_len, arg, value_len, value);
+    exit(1);
+    
+too_many_nands:
+    XLOG("Too many NAND devices, max is %d\n", MAX_NAND_DEVS);
     exit(1);
 }
 
@@ -970,7 +972,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
         } /*else {
             PANIC("Missing initial system image path!");
         }*/
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
 
     /* Initialize data partition image */
@@ -1006,7 +1008,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             pstrcat(tmp, sizeof(tmp), ",initfile=");
             pstrcat(tmp, sizeof(tmp), initImage);
         }
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
 
     /* Initialize cache partition */
@@ -1033,7 +1035,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
                 pstrcat(tmp, sizeof(tmp), partPath);
             }
         }
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
     return 0;
 }
@@ -1050,9 +1052,24 @@ DeviceState *goldfish_nand_create(GoldfishBus *gbus)
     return dev;
 }
 
+static const VMStateDescription vmstate_nand_dev = {
+    .name = "goldfish_nand_dev",
+    .version_id = 1,
+    .fields = (VMStateField[]){
+        VMSTATE_VBUFFER_UINT64(devname, nand_dev, 1, NULL, 0, devname_len),
+        VMSTATE_VBUFFER_UINT32(data, nand_dev, 1, NULL, 0, erase_size),
+        VMSTATE_UINT32(flags, nand_dev),
+        VMSTATE_UINT32(page_size, nand_dev),
+        VMSTATE_UINT32(extra_size, nand_dev),
+        VMSTATE_UINT64(max_size, nand_dev),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static const VMStateDescription vmstate_goldfish_nand = {
     .name = "goldfish_nand",
-    .version_id = 1,
+    .version_id = 2,
+    .minimum_version_id = 1,
     .fields = (VMStateField[]){
         VMSTATE_UINT32(dev, GoldfishNandDevice),
         VMSTATE_UINT32(addr_high, GoldfishNandDevice),
@@ -1062,6 +1079,9 @@ static const VMStateDescription vmstate_goldfish_nand = {
         VMSTATE_UINT32(batch_addr_high, GoldfishNandDevice),
         VMSTATE_UINT32(batch_addr_low, GoldfishNandDevice),
         VMSTATE_UINT32(result, GoldfishNandDevice),
+        VMSTATE_UINT32(nand_dev_count, GoldfishNandDevice),
+        VMSTATE_STRUCT_ARRAY(nand_devs, GoldfishNandDevice, MAX_NAND_DEVS, 2,
+                             vmstate_nand_dev, nand_dev),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -1088,6 +1108,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x5000000),
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
         DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
+        DEFINE_PROP_UINT32("nand_dev_count", GoldfishNandDevice, nand_dev_count, 0),
         DEFINE_PROP_END_OF_LIST(),
     },
 };
