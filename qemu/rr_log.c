@@ -40,6 +40,7 @@
 #include "hmp.h"
 #include "sysemu.h"
 #include "rr_log.h"
+#include "panda_plugin.h"
 
 
 /******************************************************************************************/
@@ -1321,6 +1322,11 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   }
   printf ("loading snapshot\n");
   //  vm_stop(0) RUN_STATE_RESTORE_VM);
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_BEFORE_REPLAY_LOADVM]; plist != NULL;
+            plist = plist->next) {
+        plist->entry.before_loadvm();
+    }
   snapshot_ret = load_vmstate_rr(name_buf);
   printf ("... done.\n");
   log_all_cpu_states();

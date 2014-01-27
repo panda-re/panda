@@ -42,6 +42,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
+    PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm
 #ifndef CONFIG_SOFTMMU          // *** Only callbacks for QEMU user mode *** //
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
@@ -313,6 +314,20 @@ typedef union panda_cb {
 */
     int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 
+/* Callback ID: PANDA_CB_BEFORE_LOADVM
+ *      before_loadvm: called at start of replay, before loadvm is called
+ *      This allows us to hook devices' loadvm handlers (remember to unregister
+ *      the existing handler for the device first)
+ * 
+ *      Arguments:
+ * 
+ *      Return value:
+ *       unused
+ * 
+ */
+    int (*before_loadvm)(void);
+    
+    
 /* User-mode only callbacks:
  * We currently only support syscalls.  If you are particularly concerned about
  * arguments, look to linux-user/syscall.c for how to process them.
