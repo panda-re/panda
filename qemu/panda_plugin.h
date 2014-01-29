@@ -53,6 +53,7 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -435,7 +436,19 @@ typedef union panda_cb {
  *       unused
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
-    
+
+/* Callback ID:     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,
+
+   In replay only, we are about to dma between qemu buffer and guest memory
+
+   Arguments:
+   CPUState* env:       pointer to CPUState
+   uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
+   uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
+   uint64_t paddr       "physical" address of guest RAM
+   uint32_t num_bytes:  size of transfer
+*/
+    int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner
