@@ -322,50 +322,6 @@ void  android_emulation_setup( void )
 
     /* initialize sensors, this must be done here due to timer issues */
     android_hw_sensors_init();
-    /* cool, now try to run the "ddms ping" command, which will take care of pinging usage
-    * if the user agreed for it. the emulator itself never sends anything to any outside
-    * machine
-    */
-    {
-
-        #  define  _ANDROID_PING_PROGRAM   "ddms"
-        #  define MY_PATH_MAX 512
-        char         tmp[MY_PATH_MAX];
-        //const char*  appdir = get_app_dir();
-        const char* appdir = "/home/josh/android-sdk-linux/tools";
-        
-        if (snprintf( tmp, MY_PATH_MAX, "%s%s%s", appdir, "/",
-            _ANDROID_PING_PROGRAM ) >= MY_PATH_MAX) {
-            dprint( "Application directory too long: %s", appdir);
-        return;
-        }
-        
-        /* if the program isn't there, don't bother */
-        D( "ping program: %s", tmp);
-        //if (path_exists(tmp)) {
-            
-            int  pid;
-            
-            /* disable SIGALRM for the fork(), the periodic signal seems to
-            * interefere badly with the fork() implementation on Linux running
-            * under VMWare.
-            */
-            BEGIN_NOSIGALRM
-            pid = fork();
-            if (pid == 0) {
-                int  fd = open("/dev/null", O_WRONLY);
-                dup2(fd, 1);
-                dup2(fd, 2);
-                execl( tmp, _ANDROID_PING_PROGRAM, "ping", "emulator", VERSION_STRING, NULL );
-            }
-            END_NOSIGALRM
-            
-            /* don't do anything in the parent or in case of error */
-            strncat( tmp, " ping emulator " VERSION_STRING, MY_PATH_MAX - strlen(tmp) );
-            D( "ping command: %s", tmp );
-
-        //}
-    }
    
 }
 
