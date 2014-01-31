@@ -589,6 +589,7 @@ static int goldfish_mmc_init(GoldfishDevice* dev)
             exit(1);
         }
         image_path = tempfile_path(tmp);
+        printf("Using tmpfile for SD card: %s\n", image_path);
     }
 
     if (0 > bdrv_open(s->bs, image_path, BDRV_O_RDWR | BDRV_O_CACHE_WB | BDRV_O_NO_FLUSH, NULL)) {
