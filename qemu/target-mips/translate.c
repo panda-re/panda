@@ -12720,9 +12720,15 @@ static void mips_tcg_init(void)
 
 #include "translate_init.c"
 
+#ifdef CONFIG_LLVM
+extern CPUMIPSState *env;
+#endif
+
 CPUMIPSState *cpu_mips_init (const char *cpu_model)
 {
+#ifndef CONFIG_LLVM
     CPUMIPSState *env;
+#endif
     const mips_def_t *def;
 
     def = cpu_mips_find_by_name(cpu_model);

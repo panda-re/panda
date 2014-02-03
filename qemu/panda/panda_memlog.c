@@ -255,6 +255,26 @@ void printloc(uintptr_t val){
 
 #endif //TARGET_ARM
 
+#ifdef TARGET_MIPS
+
+void printloc(uintptr_t val){
+    if ((val >= ((uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[0]))) &&
+            (val <= ((uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[31])))){
+        fprintf(memlog, "%d\n",
+            (int)(val - (uintptr_t)(env + offsetof(CPUMIPSState, active_tc.gpr))) / 4);
+    }
+    else if (val == offsetof(CPUMIPSState, active_tc.PC)) {
+        fprintf(memlog, "%d\n", 32);
+    }
+    
+    else {
+        fprintf(memlog, "-1\n");
+    }
+}
+
+#endif //TARGET_MIPS
+
+
 void printdynval(uintptr_t val, int op){
     if (memlog){
         if (op == STORE){

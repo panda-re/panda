@@ -490,6 +490,232 @@ void printspec(Addr a){}
 
 #endif
 
+#ifdef TARGET_MIPS
+
+uintptr_t r0_reg = (uintptr_t)NULL;
+uintptr_t r1_reg = (uintptr_t)NULL;
+uintptr_t r2_reg = (uintptr_t)NULL;
+uintptr_t r3_reg = (uintptr_t)NULL;
+uintptr_t r4_reg = (uintptr_t)NULL;
+uintptr_t r5_reg = (uintptr_t)NULL;
+uintptr_t r6_reg = (uintptr_t)NULL;
+uintptr_t r7_reg = (uintptr_t)NULL;
+uintptr_t r8_reg = (uintptr_t)NULL;
+uintptr_t r9_reg = (uintptr_t)NULL;
+uintptr_t r10_reg = (uintptr_t)NULL;
+uintptr_t r11_reg = (uintptr_t)NULL;
+uintptr_t r12_reg = (uintptr_t)NULL;
+uintptr_t r13_reg = (uintptr_t)NULL;
+uintptr_t r14_reg = (uintptr_t)NULL;
+uintptr_t r15_reg = (uintptr_t)NULL;
+uintptr_t r16_reg = (uintptr_t)NULL;
+uintptr_t r17_reg = (uintptr_t)NULL;
+uintptr_t r18_reg = (uintptr_t)NULL;
+uintptr_t r19_reg = (uintptr_t)NULL;
+uintptr_t r20_reg = (uintptr_t)NULL;
+uintptr_t r21_reg = (uintptr_t)NULL;
+uintptr_t r22_reg = (uintptr_t)NULL;
+uintptr_t r23_reg = (uintptr_t)NULL;
+uintptr_t r24_reg = (uintptr_t)NULL;
+uintptr_t r25_reg = (uintptr_t)NULL;
+uintptr_t r26_reg = (uintptr_t)NULL;
+uintptr_t r27_reg = (uintptr_t)NULL;
+uintptr_t r28_reg = (uintptr_t)NULL;
+uintptr_t r29_reg = (uintptr_t)NULL;
+uintptr_t r30_reg = (uintptr_t)NULL;
+uintptr_t r31_reg = (uintptr_t)NULL;
+uintptr_t rpc_reg = (uintptr_t)NULL;
+
+void init_regs(void){
+    r0_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[0]);
+    r1_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[1]);
+    r2_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[2]);
+    r3_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[3]);
+    r4_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[4]);
+    r5_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[5]);
+    r6_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[6]);
+    r7_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[7]);
+    r8_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[8]);
+    r9_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[9]);
+    r10_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[10]);
+    r11_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[11]);
+    r12_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[12]);
+    r13_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[13]);
+    r14_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[14]);
+    r15_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[15]);
+    r16_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[16]);
+    r17_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[17]);
+    r18_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[18]);
+    r19_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[19]);
+    r20_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[20]);
+    r21_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[21]);
+    r22_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[22]);
+    r23_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[23]);
+    r24_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[24]);
+    r25_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[25]);
+    r26_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[26]);
+    r27_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[27]);
+    r28_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[28]);
+    r29_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[29]);
+    r30_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[30]);
+    r31_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.gpr[31]);
+    rpc_reg = (uintptr_t)env + offsetof(CPUMIPSState, active_tc.PC);
+
+}
+
+int get_cpustate_val(uintptr_t dynval){
+    if (dynval == r0_reg){
+        return 0;
+    }
+    else if (dynval == r1_reg){
+        return 1;
+    }
+    else if (dynval == r2_reg){
+        return 2;
+    }
+    else if (dynval == r3_reg){
+        return 3;
+    }
+    else if (dynval == r4_reg){
+        return 4;
+    }
+    else if (dynval == r5_reg){
+        return 5;
+    }
+    else if (dynval == r6_reg){
+        return 6;
+    }
+    else if (dynval == r7_reg){
+        return 7;
+    }
+    else if (dynval == r8_reg){
+        return 8;
+    }
+    else if (dynval == r9_reg){
+        return 9;
+    }
+    else if (dynval == r10_reg){
+        return 10;
+    }
+    else if (dynval == r11_reg){
+        return 11;
+    }
+    else if (dynval == r12_reg){
+        return 12;
+    }
+    else if (dynval == r13_reg){
+        return 13;
+    }
+    else if (dynval == r14_reg){
+        return 14;
+    }
+    else if (dynval == r15_reg){
+        return 15;
+    }
+    else if (dynval == r16_reg){
+        return 16;
+    }
+    else if (dynval == r17_reg){
+        return 17;
+    }
+    else if (dynval == r18_reg){
+        return 18;
+    }
+    else if (dynval == r19_reg){
+        return 19;
+    }
+    else if (dynval == r20_reg){
+        return 20;
+    }
+    else if (dynval == r21_reg){
+        return 21;
+    }
+    else if (dynval == r22_reg){
+        return 22;
+    }
+    else if (dynval == r23_reg){
+        return 23;
+    }
+    else if (dynval == r24_reg){
+        return 24;
+    }
+    else if (dynval == r25_reg){
+        return 25;
+    }
+    else if (dynval == r26_reg){
+        return 26;
+    }
+    else if (dynval == r27_reg){
+        return 27;
+    }
+    else if (dynval == r28_reg){
+        return 28;
+    }
+    else if (dynval == r29_reg){
+        return 29;
+    }
+    else if (dynval == r30_reg){
+        return 30;
+    }
+    else if (dynval == r31_reg){
+        return 31;
+    }
+    else if (dynval == rpc_reg){
+        return 32;
+    }
+    else {
+        return -1; // irrelevant part of CPUstate
+    }
+}
+
+void printreg(Addr a){
+    switch(a.val.gr){
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 15:
+        case 16:
+        case 17:
+        case 18:
+        case 19:
+        case 20:
+        case 21:
+        case 22:
+        case 23:
+        case 24:
+        case 25:
+        case 26:
+        case 27:
+        case 28:
+        case 29:
+        case 30:
+        case 31:
+            printf("g_r%d[%d]", (int)a.val.gr, a.off);
+            break;
+        case 32:
+            printf("g_pc[%d]", a.off);
+            break;
+        default:
+            assert(1==0);
+    }
+}
+
+void printspec(Addr a){}
+
+#endif
+
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
     TaintOpBuffer *buf){
     struct addr_struct src = {0,{0},0,0};

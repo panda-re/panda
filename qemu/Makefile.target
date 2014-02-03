@@ -328,6 +328,7 @@ obj-lm32-y += framebuffer.o
 
 obj-mips-y = mips_r4k.o mips_jazz.o mips_malta.o mips_mipssim.o
 obj-mips-y += mips_addr.o mips_timer.o mips_int.o
+obj-mips-y += mips_dummy.o
 obj-mips-y += vga.o
 obj-mips-y += jazz_led.o
 obj-mips-y += gt64xxx.o mc146818rtc.o
@@ -495,6 +496,12 @@ endif
 
 ifeq ($(TARGET_ARCH), arm)
 llvm-y += op_helper.bc2 helper.bc2 neon_helper.bc2 fpu/softfloat.bc2
+llvmmorph-y += llvm-helpers.bc
+
+endif
+
+ifeq ($(TARGET_ARCH), mips)
+llvm-y += op_helper.bc2 helper.bc2
 llvmmorph-y += llvm-helpers.bc
 
 endif

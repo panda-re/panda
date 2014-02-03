@@ -54,7 +54,7 @@ extern "C" {
 
 // To support other architectures, make similar minor changes to op_helper.c
 // These functions perform logging of dynamic values
-#if (defined(TARGET_I386) || defined(TARGET_ARM))
+#if (defined(TARGET_I386) || defined(TARGET_ARM) || defined(TARGET_MIPS))
 static void *qemu_panda_ld_helpers[5] = {
     (void*) __ldb_mmu_panda,
     (void*) __ldw_mmu_panda,

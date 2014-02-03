@@ -32,6 +32,10 @@
 static inline void cpu_mips_tlb_flush (CPUState *env, int flush_global);
 #endif
 
+#ifdef CONFIG_LLVM
+CPUMIPSState *env = 0;
+#endif
+
 static inline void compute_hflags(CPUState *env)
 {
     env->hflags &= ~(MIPS_HFLAG_COP1X | MIPS_HFLAG_64 | MIPS_HFLAG_CP0 |
@@ -2308,6 +2312,24 @@ static void do_unaligned_access (target_ulong addr, int is_write, int is_user, v
 
 #define SHIFT 3
 #include "softmmu_template.h"
+
+#undef MMUSUFFIX
+#define MMUSUFFIX _mmu_panda
+#define MMU_INSTR
+
+#define SHIFT 0
+#include "softmmu_template.h"
+
+#define SHIFT 1
+#include "softmmu_template.h"
+
+#define SHIFT 2
+#include "softmmu_template.h"
+
+#define SHIFT 3
+#include "softmmu_template.h"
+
+#undef MMU_INSTR
 
 static void do_unaligned_access (target_ulong addr, int is_write, int is_user, void *retaddr)
 {
