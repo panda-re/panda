@@ -40,6 +40,7 @@
 static void bmdma_start_dma(IDEDMA *dma, IDEState *s,
                             BlockDriverCompletionFunc *dma_cb)
 {
+    printf("bmdma_start_dma\n");
     BMDMAState *bm = DO_UPCAST(BMDMAState, dma, dma);
 
     bm->unit = s->unit;
@@ -51,6 +52,7 @@ static void bmdma_start_dma(IDEDMA *dma, IDEState *s,
     bm->nsector = s->nsector;
 
     if (bm->status & BM_STATUS_DMAING) {
+        // RW: Calls ida_dma_cb in hw/ide/core.c
         bm->dma_cb(bmdma_active_if(bm), 0);
     }
 }
@@ -100,6 +102,7 @@ static int bmdma_prepare_buf(IDEDMA *dma, int is_write)
 /* return 0 if buffer completed */
 static int bmdma_rw_buf(IDEDMA *dma, int is_write)
 {
+    printf("bmdma_rw_buf\n");
     BMDMAState *bm = DO_UPCAST(BMDMAState, dma, dma);
     IDEState *s = bmdma_active_if(bm);
     struct {
@@ -138,9 +141,11 @@ static int bmdma_rw_buf(IDEDMA *dma, int is_write)
             l = bm->cur_prd_len;
         if (l > 0) {
             if (is_write) {
+                printf("HD pci_dma_write\n");
                 pci_dma_write(&bm->pci_dev->dev, bm->cur_prd_addr,
                               s->io_buffer + s->io_buffer_index, l);
             } else {
+                printf("HD pci_dma_read\n");
                 pci_dma_read(&bm->pci_dev->dev, bm->cur_prd_addr,
                              s->io_buffer + s->io_buffer_index, l);
             }
@@ -346,7 +351,7 @@ static uint64_t bmdma_addr_read(void *opaque, dma_addr_t addr,
 
     data = (bm->addr >> (addr * 8)) & mask;
 #ifdef DEBUG_IDE
-    printf("%s: 0x%08x\n", __func__, (unsigned)*data);
+    printf("%s: 0x%08x\n", __func__, data);
 #endif
     return data;
 }

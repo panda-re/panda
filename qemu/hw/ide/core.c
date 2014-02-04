@@ -37,11 +37,13 @@
 
 #include <hw/ide/internal.h>
 
+#define HD_TAINT_DEBUG
+
 // rwhelan: is this ok?  trying for now
 #define HD_BASE_ADDR 0
 
 // TRL hd taint
-static void dump_buffer(char *msg, uint8_t *p, uint32_t n) {
+static void dump_buffer(const char *msg, uint8_t *p, uint32_t n) {
 #ifdef HD_TAINT_DEBUG
   int i;
   printf ("%s: buffer[%d]=[",msg,n);
@@ -58,6 +60,35 @@ static void dump_buffer(char *msg, uint8_t *p, uint32_t n) {
   }
   printf ("]\n");
 #endif
+}
+
+// RW dump scatter-gather buffer
+static void dump_sg_buffer(IDEState *s, const char *msg, int64_t sector_num,
+        int num_sectors, int num_bytes) {
+    #ifdef HD_TAINT_DEBUG
+    int i, j;
+    uint8_t *p;
+    assert(s);
+    assert(s->sg.size == num_bytes);
+    printf("%s: sector %ld, %d bytes=[", msg, sector_num, num_bytes);
+
+    for (i = 0; i < s->sg.nsg; i++){
+        printf("SG[%d] - base=0x%lx, len=%ld:[\n", i, (uint64_t)s->sg.sg[i].base,
+            (uint64_t)s->sg.sg[i].len);
+        p = (uint8_t *)qemu_get_ram_ptr(s->sg.sg[i].base);
+        for (j = 0; j < s->sg.sg[i].len; j++){
+            if (isprint(p[j])){
+                printf ("%c", p[j]);
+            }
+            else {
+                printf (".");
+            }
+        }
+        printf("]\n");
+    }
+
+    printf ("]\n");
+    #endif
 }
 
 /* These values were based on a Seagate ST3500418AS but have been modified
@@ -411,6 +442,7 @@ static inline void ide_abort_command(IDEState *s)
 void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
                         EndTransferFunc *end_transfer_func)
 {
+    printf("ide_transfer_start\n");
     s->end_transfer_func = end_transfer_func;
     s->data_ptr = buf;
     s->data_end = buf + size;
@@ -422,6 +454,7 @@ void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
 
 void ide_transfer_stop(IDEState *s)
 {
+    printf("ide_transfer_stop\n");
     s->end_transfer_func = ide_transfer_stop;
     s->data_ptr = s->io_buffer;
     s->data_end = s->io_buffer;
@@ -484,6 +517,7 @@ static void ide_rw_error(IDEState *s) {
 
 void ide_sector_read(IDEState *s)
 {
+    printf("ide_sector_read\n");
     int64_t sector_num;
     int ret, n;
 
@@ -511,7 +545,6 @@ void ide_sector_read(IDEState *s)
 	     HD_BASE_ADDR + sector_num*512, 
 	     (uint64_t) s->io_buffer,
 	     n*512);	  
-	  *p = s->io_buffer;
 	}
 
         bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
@@ -519,6 +552,7 @@ void ide_sector_read(IDEState *s)
 
 	// TRL hd taint debug
 	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+	  p = s->io_buffer;
 	  dump_buffer("ide_sector_read",p,n*512);
 	}
 
@@ -627,6 +661,7 @@ handle_rw_error:
     n = s->nsector;
     s->io_buffer_index = 0;
     s->io_buffer_size = n * 512;
+    // RW: calls bmdma_prepare_buf in hw/ide/pci.c
     if (s->bus->dma->ops->prepare_buf(s->bus->dma, ide_cmd_is_read(s)) == 0) {
         /* The PRDs were too short. Reset the Active bit, but don't raise an
          * interrupt. */
@@ -641,6 +676,7 @@ handle_rw_error:
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
       {
+      printf("IDE_DMA_READ\n");
       // TRL hd taint
       // HD -> IO_BUFFER
       if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
@@ -651,20 +687,19 @@ handle_rw_error:
 	   (uint64_t) s->io_buffer, 
 	   n*512);
       }
-        // TRL hd taint debug
-        uint8_t *p = s->io_buffer;
 
         s->bus->dma->aiocb = dma_bdrv_read(s->bs, &s->sg, sector_num,
                                            ide_dma_cb, s);
 
-	// TRL hd taint
-	dump_buffer("ide_dma_cb IDE_DMA_READ", p, n*512);
+        // TRL hd taint
+	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
     }	
 	break;
     
     case IDE_DMA_WRITE:
       // TRL hd taint
-      // IO_BUFFER -> HD      
+      // IO_BUFFER -> HD
+      printf("IDE_DMA_WRITE\n");
       if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
 	rr_record_hd_transfer
 	  (RR_CALLSITE_IDE_DMA_CB,
@@ -681,6 +716,10 @@ handle_rw_error:
 
         s->bus->dma->aiocb = dma_bdrv_write(s->bs, &s->sg, sector_num,
                                             ide_dma_cb, s);
+	
+        // TRL hd taint
+	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
+        
         break;
     case IDE_DMA_TRIM:
       
@@ -725,6 +764,7 @@ static void ide_sector_start_dma(IDEState *s, enum ide_dma_cmd dma_cmd)
         break;
     }
 
+    // RW: Calls bmdma_start_dma in hw/ide/pci.c
     s->bus->dma->ops->start_dma(s->bus->dma, s, ide_dma_cb);
 }
 
@@ -750,6 +790,7 @@ void ide_sector_write(IDEState *s)
 
     // TRL hd taint
     // IO_BUFFER -> HD
+    uint8_t *p;
     if ((s->drive_kind == IDE_HD) && (rr_in_record())) {
       rr_record_hd_transfer
 	(RR_CALLSITE_IDE_SECTOR_WRITE, 
@@ -761,6 +802,13 @@ void ide_sector_write(IDEState *s)
 
     bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
     ret = bdrv_write(s->bs, sector_num, s->io_buffer, n);
+    
+    // TRL hd taint debug
+    if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+      p = s->io_buffer;
+      dump_buffer("ide_sector_write",p,n*512);
+    }
+    
     bdrv_acct_done(s->bs, &s->acct);
 
     if (ret != 0) {
