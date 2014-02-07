@@ -1086,10 +1086,18 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         v = m_builder.CreateOr(v,                                   \
                 m_builder.CreateZExt(                               \
                     getValue(args[2]), intType(bits*2)));           \
-        setValue(args[0], m_builder.Create ## signE ## Div(         \
-                v, getValue(args[4])));                             \
-        setValue(args[1], m_builder.Create ## signE ## Rem(         \
-                v, getValue(args[4])));                             \
+        setValue(args[0], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Div(                   \
+                    v, m_builder.CreateZExt(                        \
+                        getValue(args[4]), intType(bits*2))         \
+                    ),                                              \
+                    intType(bits)));                                \
+        setValue(args[1], m_builder.CreateTrunc(                    \
+                m_builder.Create ## signE ## Rem(                   \
+                    v, m_builder.CreateZExt(                        \
+                        getValue(args[4]), intType(bits*2))         \
+                    ),                                              \
+                intType(bits)));                                \
         break;
 
 #define __ARITH_OP_ROT(opc_name, op1, op2, bits)                    \
@@ -1130,7 +1138,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     __ARITH_OP(INDEX_op_sub_i32, Sub, 32)
     __ARITH_OP(INDEX_op_mul_i32, Mul, 32)
 
-#ifdef TCG_TARGET_HAS_div_i32
+#if TCG_TARGET_HAS_div_i32
     __ARITH_OP(INDEX_op_div_i32,  SDiv, 32)
     __ARITH_OP(INDEX_op_divu_i32, UDiv, 32)
     __ARITH_OP(INDEX_op_rem_i32,  SRem, 32)
