@@ -84,7 +84,14 @@ static int64_t load_kernel(void)
     
     // load_image_targphys arg 3 does NOTHING
     load_image_targphys(loaderparams.kernel_filename, 0x1000, ram_size);
+
+    int flash_size = get_image_size(loaderparams.initrd_filename);
+    MemoryRegion *flash;
+    flash = g_new(MemoryRegion, 1);
+    memory_region_init_ram(flash, NULL, "mips_dummy.flash", flash_size);
+    memory_region_add_subregion(get_system_memory(), 0x1fc00000, flash);
     load_image_targphys(loaderparams.initrd_filename, 0x1fc00000 , 5);
+ 
     return 0x80001000;
     
 
@@ -116,6 +123,7 @@ static void main_cpu_reset(void *opaque)
 
     cpu_reset(env);
     env->active_tc.PC = s->vector;
+    env->active_tc.gpr[29] = 0x803A39C0;
 }
 
 static const int sector_len = 32 * 1024;
@@ -171,11 +179,12 @@ void mips_dummy_init (ram_addr_t ram_siize,
     memory_region_init_io(iomem, &mips_qemu_ops, NULL, "mips-qemu", 0x10000);
     memory_region_add_subregion(address_space_mem, 0x1fbf0000, iomem);
 
+#if 0
     /* Try to load a BIOS image. If this fails, we continue regardless,
        but initialize the hardware ourselves. When a kernel gets
        preloaded we also initialize the hardware, since the BIOS wasn't
        run. */
-    /*if (bios_name == NULL)
+    if (bios_name == NULL)
         bios_name = BIOS_FILENAME;
     filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, bios_name);
     if (filename) {
@@ -204,15 +213,15 @@ void mips_dummy_init (ram_addr_t ram_siize,
             fprintf(stderr, "qemu: Error registering flash memory.\n");
 	}
     }
-    else {*.
-	/* not fatal *//*
+    else {
+	/* not fatal */
         fprintf(stderr, "qemu: Warning, could not load MIPS bios '%s'\n",
 		bios_name);
     }
     if (filename) {
         g_free(filename);
     }
-    */
+#endif
 
     if (kernel_filename) {
         loaderparams.ram_size = ram_size;
