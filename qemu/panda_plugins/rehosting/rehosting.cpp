@@ -40,6 +40,7 @@ uint32_t target_block;
 bool first_block = true;
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
+    last_basic_block = tb->pc;
     if (unlikely(((0 == target_block) && first_block) ||
 		 (tb->pc == target_block))) {
         first_block = false;
