@@ -3,11 +3,13 @@
 #include "assert.h"
 #include "aes.h"
 #include "panda_mark.h"
-#define SIZE 80 //Must be a multiple of 16
+
+unsigned char* ReadFile(char*);
+unsigned long fileLen;
 
 void main(int argc, char* argv[]) {
-    if (argc != 2) {
-        printf("Not enough arguments\n");
+    if (argc != 3) {
+        printf("Usage: <input file> <encryption type>\n");
         return;
     }
 
@@ -17,56 +19,55 @@ void main(int argc, char* argv[]) {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     unsigned char iv2[] =
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    unsigned char input[SIZE];
-    unsigned char tmp[SIZE];
-    unsigned char output[SIZE];
 
-    //Initialize input
-    int i;
-    for (i = 0; i < SIZE; i++) {
-        input[i] = 0;
+    unsigned char* input = ReadFile(argv[1]);
+    if (input == NULL) {
+        return;
     }
-
-    //Initialize output
-    memset(tmp, 0, sizeof(tmp));
-    memset(output, 0, sizeof(output));
+    unsigned char* tmp =(unsigned char*)malloc(fileLen+1);
+    unsigned char* output =(unsigned char*)malloc(fileLen+1);
+    if (!tmp || !output)
+    {
+        fprintf(stderr, "Memory error!\n");
+        return;
+    }
 
     //Set up AES Context
     aes_context *ctx = malloc(sizeof(aes_context));
     assert(ctx);
     aes_setkey_enc(ctx, key, 128);
 
-    int type = atoi(argv[1]);
+    int type = atoi(argv[2]);
     switch (type) {
         int len;
         int j;
         case 0:
-            label_buffer((uint64_t)&input, SIZE);
-            len = SIZE / 16;
+            label_buffer((uint64_t)&input, fileLen);
+            len = fileLen / 16;
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_ENCRYPT, &(input[j*16]), &(output[j*16]));
             }
             break;
         case 1:
-            len = SIZE / 16;
+            len = fileLen / 16;
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_ENCRYPT, &(input[j*16]), &(tmp[j*16]));
             }
-            label_buffer((uint64_t)&tmp, SIZE);
+            label_buffer((uint64_t)&tmp, fileLen);
             aes_setkey_dec(ctx, key, 128);
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_DECRYPT, &(tmp[j*16]), &(output[j*16]));
             }
             break;
         case 2:
-            label_buffer((uint64_t)&input, SIZE);
-            aes_crypt_cbc(ctx, AES_ENCRYPT, SIZE, iv, input, output);
+            label_buffer((uint64_t)&input, fileLen);
+            aes_crypt_cbc(ctx, AES_ENCRYPT, fileLen, iv, input, output);
             break;
         case 3:
-            aes_crypt_cbc(ctx, AES_ENCRYPT, SIZE, iv, input, tmp);
-            label_buffer((uint64_t)&tmp, SIZE);
+            aes_crypt_cbc(ctx, AES_ENCRYPT, fileLen, iv, input, tmp);
+            label_buffer((uint64_t)&tmp, fileLen);
             aes_setkey_dec(ctx, key, 128);
-            aes_crypt_cbc(ctx, AES_DECRYPT, SIZE, iv2, tmp, output);
+            aes_crypt_cbc(ctx, AES_DECRYPT, fileLen, iv2, tmp, output);
             break;
         default:
             printf("Invalid argument\n");
@@ -75,14 +76,49 @@ void main(int argc, char* argv[]) {
 
     if (type == 1 || type ==3) {
         int i;
-        for (i = 0; i < SIZE; i++) {
+        for (i = 0; i < fileLen; i++) {
             assert(input[i] == output[i]);
         }
     }
 
     //Query output buffer
-    query_buffer((uint64_t)&output, SIZE);
+    query_buffer((uint64_t)&output, fileLen);
 
     //Clean up AES
     free(ctx);
+    free(input);
+    free(tmp);
+    free(output);
+}
+
+unsigned char* ReadFile(char *name) {
+    FILE *file;
+    unsigned char *buffer;
+
+    //Open file
+    file = fopen(name, "rb");
+    if (!file)
+    {
+        fprintf(stderr, "Unable to open file %s\n", name);
+        return NULL;
+    }
+
+    //Get file length
+    fseek(file, 0, SEEK_END);
+    fileLen=ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    //Allocate memory
+    buffer=(unsigned char *)malloc(fileLen+1);
+    if (!buffer)
+    {
+        fprintf(stderr, "Memory error!\n");
+        fclose(file);
+        return NULL;
+    }
+
+    //Read file contents into buffer
+    fread(buffer, fileLen, 1, file);
+    fclose(file);
+    return buffer;
 }
