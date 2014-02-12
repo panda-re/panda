@@ -35,12 +35,16 @@ void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 }
 
+
+uint32_t target_block;
 bool first_block = true;
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (unlikely(first_block)) {
+
+    if (unlikely(((0 == target_block) && first_block) ||
+		 (tb->pc == target_block))) {
         first_block = false;
 
-        printf("Saving CPU state...\n");
+        printf("Saving CPU state... at block %#X\n", tb->pc);
         FILE *cpuf = fopen("cpu_boot_state.env","wb");
         if (!fwrite(env, sizeof(CPUState), 1, cpuf)) {
             perror("fwrite");
@@ -66,6 +70,20 @@ bool init_plugin(void *self) {
 
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    target_block = 0;
+    int i;
+    char* foo = NULL;
+    for (i = 0; i < panda_argc; i++) {
+      if (0 == strncmp(panda_argv[i], "rehosting", 6)) {
+	foo = strrchr(panda_argv[i], '=');
+	if (foo) foo++;
+      }
+    }
+    if(foo){
+        target_block = strtoul(foo, NULL, 0);
+    }
+
 
     return true;
 }
