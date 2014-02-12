@@ -3377,7 +3377,7 @@ static uint32_t unassigned_mem_readb(void *opaque, target_phys_addr_t addr)
     uint32_t rand_val = (uint32_t) rand();
     rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
-    printf("Unassigned mem read " TARGET_FMT_plx " val %02x PC=" TARGET_FMT_lx "\n", addr, rand_val & 0xFF, cpu_single_env->panda_guest_pc);
+    printf("Unassigned mem read " TARGET_FMT_plx " val %02x PC=" TARGET_FMT_lx  " last basic block=" TARGET_FMT_lx  "\n", addr, rand_val & 0xFF, cpu_single_env->panda_guest_pc, last_basic_block);
 #endif
 #if defined(TARGET_ALPHA) || defined(TARGET_SPARC) || defined(TARGET_MICROBLAZE)
     cpu_unassigned_access(cpu_single_env, addr, 0, 0, 0, 1);
@@ -3390,7 +3390,7 @@ static uint32_t unassigned_mem_readw(void *opaque, target_phys_addr_t addr)
     uint32_t rand_val = (uint32_t) rand();
     rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
-    printf("Unassigned mem read " TARGET_FMT_plx " val %04x PC=" TARGET_FMT_lx "\n", addr, rand_val & 0xFFFF, cpu_single_env->panda_guest_pc);
+    printf("Unassigned mem read " TARGET_FMT_plx " val %04x PC=" TARGET_FMT_lx " last basic block=" TARGET_FMT_lx  "\n", addr, rand_val & 0xFFFF, cpu_single_env->panda_guest_pc, last_basic_block);
 #endif
 #if defined(TARGET_ALPHA) || defined(TARGET_SPARC) || defined(TARGET_MICROBLAZE)
     cpu_unassigned_access(cpu_single_env, addr, 0, 0, 0, 2);
@@ -3403,7 +3403,7 @@ static uint32_t unassigned_mem_readl(void *opaque, target_phys_addr_t addr)
     uint32_t rand_val = (uint32_t) rand();
     rand_val = 0;
 #ifdef DEBUG_UNASSIGNED
-    printf("Unassigned mem read " TARGET_FMT_plx " val %08x PC=" TARGET_FMT_lx "\n", addr, rand_val, cpu_single_env->panda_guest_pc);
+    printf("Unassigned mem read " TARGET_FMT_plx " val %08x PC=" TARGET_FMT_lx " last basic block=" TARGET_FMT_lx  "\n", addr, rand_val, cpu_single_env->panda_guest_pc, last_basic_block);
 #endif
 #if defined(TARGET_ALPHA) || defined(TARGET_SPARC) || defined(TARGET_MICROBLAZE)
     cpu_unassigned_access(cpu_single_env, addr, 0, 0, 0, 4);

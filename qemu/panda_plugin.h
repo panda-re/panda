@@ -476,5 +476,5 @@ extern bool panda_tb_chaining;
 
 extern char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
 extern int panda_argc;
-
+extern uint32_t last_basic_block;
 #endif

@@ -48,6 +48,8 @@ bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
 
+uint32_t last_basic_block = 0;
+
 bool panda_add_arg(const char *arg, int arglen) {
     if (arglen > 255) return false;
     strncpy(panda_argv[panda_argc++], arg, 255);
