@@ -48,6 +48,7 @@ static uint64_t armdummy_read(void *opaque, target_phys_addr_t addr,
 
     QList *addrs = qdict_get_qlist(s->devinfo, "memory");
     QListEntry *entry;
+    printf("Attempting read from base %#lX offset %#X address %#lX size %d\n", base, addr, real_addr, size);
     QTAILQ_FOREACH(entry, &addrs->head, next) {
         QDict *memdict = qobject_to_qdict(entry->value);
         int64_t mem_addr = qdict_get_int(memdict, "address");
@@ -55,7 +56,9 @@ static uint64_t armdummy_read(void *opaque, target_phys_addr_t addr,
             // TODO: support getting more than one value here
             // For now just return the first entry in the list.
             QList *vals = qdict_get_qlist(memdict, "values");
-            return qint_get_int(qobject_to_qint(qlist_peek(vals)));
+            uint64_t retval =  qint_get_int(qobject_to_qint(qlist_peek(vals)));
+	    printf("Reading from %#X size %d value  %#lX\n", addr, size, retval);
+	    return retval;
         }
     }
     
@@ -167,6 +170,7 @@ static int64_t load_kernel(void)
     load_image_targphys(loaderparams.kernel_filename, 0x1000, ram_size);
 
     int flash_size = get_image_size(loaderparams.initrd_filename);
+    printf("Flash size: %#x\n", flash_size);
     MemoryRegion *flash;
     flash = g_new(MemoryRegion, 1);
     memory_region_init_ram(flash, NULL, "mips_dummy.flash", flash_size);
@@ -257,8 +261,8 @@ void mips_dummy_init (ram_addr_t ram_siize,
 
     memory_region_add_subregion(address_space_mem, 0, ram);
 
-    memory_region_init_io(iomem, &mips_qemu_ops, NULL, "mips-qemu", 0x10000);
-    memory_region_add_subregion(address_space_mem, 0x1fbf0000, iomem);
+    //    memory_region_init_io(iomem, &mips_qemu_ops, NULL, "mips-qemu", 0x10000);
+    //memory_region_add_subregion(address_space_mem, 0x1fbf0000, iomem);
 
 #if 0
     /* Try to load a BIOS image. If this fails, we continue regardless,

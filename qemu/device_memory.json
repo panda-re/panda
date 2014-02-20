@@ -16,8 +16,14 @@
     {"address": 3171091300, "values": [4294967295], "size": 4},
     {"address": 3171091340, "values": [1], "size": 4}
   ]
-}  
+},
 
+"dev_0x1ff20000" : {
+  "description": "unknown",
+  "base": 535892000,
+  "memory": [
+   {"address": 535892000, "values": [1212437040], "size":4}
+  ]
 
-
+}
 }

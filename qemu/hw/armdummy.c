@@ -41,7 +41,7 @@ static uint64_t armdummy_read(void *opaque, target_phys_addr_t addr,
     // Addr is relative to the base, so we make it absolute
     int64_t base = qdict_get_int(s->devinfo, "base");
     uint64_t real_addr = base+addr;
-
+    printf("IN ARM DUMMY\n");
     QList *addrs = qdict_get_qlist(s->devinfo, "memory");
     QListEntry *entry;
     QTAILQ_FOREACH(entry, &addrs->head, next) {

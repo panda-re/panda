@@ -1,7 +1,6 @@
 #!/bin/sh
 
-./configure --target-list=x86_64-softmmu,x86_64-linux-user,i386-linux-user,\
-arm-linux-user,arm-softmmu,mipsel-softmmu \
+./configure --target-list=mipsel-softmmu \
 --cc=gcc-4.7 \
 --cxx=g++-4.7 \
 --prefix=`pwd`/install \

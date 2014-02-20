@@ -46,6 +46,7 @@ typedef enum RunState
 #include <set>
 #include <list>
 #include <algorithm>
+#include <map>
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -55,15 +56,20 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 
 bool before_block_exec(CPUState *env, TranslationBlock *tb);
+uint32_t get_hits_for_block(uint32_t block);
 }
 
+uint32_t increment_hits_for_block(uint32_t block);
 
 uint32_t target_block;
+uint32_t target_count = 1;
 bool first_block = true;
 bool before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     last_basic_block = tb->pc;
-    if (unlikely(((0 == target_block) || (tb->pc == target_block))
+    uint32_t hits = increment_hits_for_block(tb->pc);
+
+    if (unlikely( ( (0 == target_block) || ((tb->pc == target_block) && hits == target_count )  )
             && first_block)) {
         first_block = false;
 
@@ -98,12 +104,23 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
 
     target_block = 0;
+    target_count = 0;
     int i;
     char* foo = NULL;
     for (i = 0; i < panda_argc; i++) {
-      if (0 == strncmp(panda_argv[i], "rehosting", 6)) {
-	foo = strrchr(panda_argv[i], '=');
-	if (foo) foo++;
+      if (0 == strncmp(panda_argv[i], "rehosting", 9)) {
+	char* bar = strchr(panda_argv[i], ':');
+	if(bar){
+	  bar++;
+	  if(0 == strncmp(bar, "target_pc", 9)){
+	    foo = strrchr(panda_argv[i], '=');
+	    if (foo) foo++;
+	  }else if (0 == strncmp(bar, "target_count", 12)){
+	    bar = strrchr(bar, '=');
+	    if(bar) bar++;
+	    target_count = strtoul(bar, NULL, 0);
+	  }
+	}
       }
     }
     if(foo){
