@@ -121,8 +121,9 @@ TaintOpBuffer *tob_io_thread;
 uint32_t       tob_io_thread_max_size = 1024 * 1024;
 
 
-
+#include "cpu-all.h"
 // Apply taint to a buffer of memory
+// XXX FIXME calling cpu_get_phys_addr here is a hack
 void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
     struct addr_struct a = {};
     a.typ = MADDR;
@@ -130,7 +131,8 @@ void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
     struct taint_op_struct op = {};
     op.typ = LABELOP;
     for (int i = 0; i < length; i++){
-        a.off = i;
+        //a.off = i;
+        a.val.ma = cpu_get_phys_addr(cpu_single_env, addr+i);
         op.val.label.a = a;
         op.val.label.l = i + count; // byte label
         //op.val.label.l = 1; // binary label
@@ -281,9 +283,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
     if (taintEnabled){
-      // process taint ops in io thread taint op buffer
-      // NB: we don't need a dynval buffer here.
-      tob_process(tob_io_thread, shadow, NULL);
+        // process taint ops in io thread taint op buffer
+        // NB: we don't need a dynval buffer here.
+        tob_process(tob_io_thread, shadow, NULL);
+        tob_clear(tob_io_thread);
 
         taintfpm->run(*(tb->llvm_function));
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
@@ -320,62 +323,66 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
         // Make sure there's nothing left in the buffer
         assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
     }
-
-    if (taintEnabled) {
-      // rewind the io thread taint op buffer
-      tob_rewind(tob_io_thread);
-    }
-
     return 0;
 }
 
 #ifdef CONFIG_SOFTMMU
 // this is for much of the hd taint transfers.
 // this gets called from rr_log.c, rr_replay_skipped_calls, RR_HD_TRANSFER case.
-int cb_replay_hd_transfer_taint(CPUState *env,
-				uint32_t type,
-				uint64_t src_addr,
-				uint64_t dest_addr,
-				uint32_t num_bytes) {
-  // Replay hd transfer as taint transfer
-  if (taintEnabled) {
-    TaintOp top;
-    top.typ = BULKCOPYOP;
-    top.val.bulkcopy.l = num_bytes;
-    switch (type) {
-    case HD_TRANSFER_HD_TO_IOB:
-      printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
-      top.val.bulkcopy.a = make_haddr(src_addr);
-      top.val.bulkcopy.b = make_iaddr(dest_addr);
-      break;
-    case HD_TRANSFER_IOB_TO_HD:
-      printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
-      top.val.bulkcopy.a = make_iaddr(src_addr);
-      top.val.bulkcopy.b = make_haddr(dest_addr);
-      break;
-    case HD_TRANSFER_PORT_TO_IOB:
-      printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
-      top.val.bulkcopy.a = make_paddr(src_addr);
-      top.val.bulkcopy.b = make_iaddr(dest_addr);
-      break;
-    case HD_TRANSFER_IOB_TO_PORT:
-      printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
-      top.val.bulkcopy.a = make_iaddr(src_addr);
-      top.val.bulkcopy.b = make_paddr(dest_addr);
-      break;
-    default:
-      printf ("Impossible hd transfer type: %d\n", type);
-      assert (1==0);
+int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
+        uint64_t dest_addr, uint32_t num_bytes) {
+    // Replay hd transfer as taint transfer
+    if (taintEnabled) {
+        TaintOp top;
+        top.typ = BULKCOPYOP;
+        top.val.bulkcopy.l = num_bytes;
+        switch (type) {
+            case HD_TRANSFER_HD_TO_IOB:
+                printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
+                top.val.bulkcopy.a = make_haddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
+                break;
+            case HD_TRANSFER_IOB_TO_HD:
+                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_haddr(dest_addr);
+                break;
+            case HD_TRANSFER_PORT_TO_IOB:
+                printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
+                top.val.bulkcopy.a = make_paddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
+                break;
+            case HD_TRANSFER_IOB_TO_PORT:
+                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_paddr(dest_addr);
+                break;
+            case HD_TRANSFER_HD_TO_RAM:
+                printf("replay_hd_transfer HD_TRANSFER_HD_TO_RAM\n");
+                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                    src_addr, dest_addr, num_bytes);
+                top.val.bulkcopy.a = make_haddr(src_addr);
+                top.val.bulkcopy.b = make_maddr(dest_addr);
+                break;
+            case HD_TRANSFER_RAM_TO_HD:
+                printf("replay_hd_transfer HD_TRANSFER_RAM_TO_HD\n");
+                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                    src_addr, dest_addr, num_bytes);
+                top.val.bulkcopy.a = make_maddr(src_addr);
+                top.val.bulkcopy.b = make_haddr(dest_addr);
+                break;
+            default:
+                printf ("Impossible hd transfer type: %d\n", type);
+                assert (1==0);
+        }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tob_io_thread);
+        // add bulk copy corresponding to this hd transfer to buffer
+        // of taint ops for io thread.
+        tob_op_write(tob_io_thread, top);
     }
-    // make the taint op buffer bigger if necessary
-    tob_resize(&tob_io_thread);
-    // add bulk copy corresponding to this hd transfer to buffer
-    // of taint ops for io thread.
-    tob_op_write(tob_io_thread, top);
-  }
-  return 0;
+    return 0;
 }
-
 
 // this does a bunch of the dmas in hd taint transfer
 int cb_replay_cpu_physical_mem_rw_ram
@@ -497,8 +504,7 @@ int guest_hypercall_callback(CPUState *env){
 #ifndef CONFIG_SOFTMMU
         add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
 #else
-        add_taint(shadow, tempBuf, cpu_get_phys_addr(env, buf_start),
-            (int)buf_len);
+        add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
 #endif //CONFIG_SOFTMMU
         tob_delete(tempBuf);
     }
@@ -513,7 +519,7 @@ int guest_hypercall_callback(CPUState *env){
 #ifndef CONFIG_SOFTMMU
         bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
 #else
-        bufplot(shadow, cpu_get_phys_addr(env, buf_start), (int)buf_len);
+        bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
 #endif //CONFIG_SOFTMMU
         printf("Taint plugin: Query operation detected\n");
         printf("Disabling taint processing\n");

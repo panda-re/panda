@@ -1704,18 +1704,28 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     break;
                 }
 
- 
 	   case BULKCOPYOP:
-	     // TRL this is used by hd taint.  idea is to 
-	     // specify a src and dest and a number of bytes to copy
-	     {
-	       uint32_t i;
-	       for (i=0; i<op.val.bulkcopy.l; i++) {
-		 tp_copy(shad, addr_add(op.val.bulkcopy.a, i), addr_add(op.val.bulkcopy.b, i));
-	       }
-	       
-	       break;
-	     }
+                // TRL this is used by hd taint.  idea is to 
+                // specify a src and dest and a number of bytes to copy
+                {
+                    uint32_t i;
+                    for (i=0; i<op.val.bulkcopy.l; i++) {
+#ifdef TAINTDEBUG
+                        uint8_t foo = 0;
+                        if (tp_query(shad, op.val.bulkcopy.a)) {
+                            printf ("  [src is tainted]"); foo = 1;
+                        }
+                        if (tp_query(shad, op.val.bulkcopy.b)) {
+                            printf ("  [dest was tainted]"); foo = 1;
+                        }
+                        if (foo) printf("\n");
+#endif
+                        tp_copy(shad, addr_add(op.val.bulkcopy.a, i),
+                            addr_add(op.val.bulkcopy.b, i));
+                    }
+
+                    break;
+                }
 
            case COMPUTEOP:
                 {

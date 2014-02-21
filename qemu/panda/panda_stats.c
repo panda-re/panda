@@ -58,14 +58,17 @@ void memplot(Shad *shad){
     fclose(memplotlog);
 }
 
+#include "cpu-all.h"
 // Prints out taint of write() buffer
+// XXX FIXME calling cpu_get_phys_addr() here is a hack
 void bufplot(Shad *shad, uint64_t addr, int length){
     FILE *bufplotlog = fopen("writebuf.csv", "w");
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
     uint64_t i;
     for (i = addr; i < addr+length; i++){
 #ifdef TARGET_X86_64
-        LabelSet *ls = shad_dir_find_64(shad->ram, i);
+        LabelSet *ls = shad_dir_find_64(shad->ram,
+            cpu_get_phys_addr(cpu_single_env, i));
         if (ls){
             unsigned int j;
             for (j = 0; j < ls->set->current_size; j++){

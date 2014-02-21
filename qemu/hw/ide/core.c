@@ -64,7 +64,7 @@ static void dump_buffer(const char *msg, uint8_t *p, uint32_t n) {
 
 // RW dump scatter-gather buffer
 static void dump_sg_buffer(IDEState *s, const char *msg, int64_t sector_num,
-        int num_sectors, int num_bytes) {
+        int num_sectors, int num_bytes){
     #ifdef HD_TAINT_DEBUG
     int i, j;
     uint8_t *p;
@@ -89,6 +89,30 @@ static void dump_sg_buffer(IDEState *s, const char *msg, int64_t sector_num,
 
     printf ("]\n");
     #endif
+}
+
+// RW record scatter-gather DMA transfers for taint
+static void rr_record_sg_transfer(IDEState *s, Hd_transfer_type type,
+        int64_t sector_num, int num_sectors){
+    assert(s);
+    assert(s->sg.size == num_sectors * 512);
+    int i;
+    int64_t cur_sector = sector_num;
+    for (i = 0; i < s->sg.nsg; i++){
+        if (type == HD_TRANSFER_RAM_TO_HD){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                s->sg.sg[i].base, cur_sector * 512, s->sg.sg[i].len);
+        }
+        else if (type == HD_TRANSFER_HD_TO_RAM){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                cur_sector * 512, s->sg.sg[i].base, s->sg.sg[i].len);
+        }
+        else {
+            // Wrong transfer type
+            assert(0);
+        }
+        cur_sector += s->sg.sg[i].len / 512;
+    }
 }
 
 /* These values were based on a Seagate ST3500418AS but have been modified
@@ -449,6 +473,9 @@ void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
     if (!(s->status & ERR_STAT)) {
         s->status |= DRQ_STAT;
     }
+    // RW calls bmdma_transfer_start in hw/ide/pci.c, which just returns 0?  I
+    // think this just sets parameters in IDEState that are looked at when IRQ
+    // is processed later on.  Seems to be used for port I/O.
     s->bus->dma->ops->start_transfer(s->bus->dma);
 }
 
@@ -551,7 +578,7 @@ void ide_sector_read(IDEState *s)
         ret = bdrv_read(s->bs, sector_num, s->io_buffer, n);
 
 	// TRL hd taint debug
-	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+	if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
 	  p = s->io_buffer;
 	  dump_buffer("ide_sector_read",p,n*512);
 	}
@@ -675,57 +702,38 @@ handle_rw_error:
 
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
-      {
-      printf("IDE_DMA_READ\n");
-      // TRL hd taint
-      // HD -> IO_BUFFER
-      if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
-	rr_record_hd_transfer
-	  (RR_CALLSITE_IDE_DMA_CB,
-	   HD_TRANSFER_HD_TO_IOB,
-	   HD_BASE_ADDR + sector_num*512,
-	   (uint64_t) s->io_buffer, 
-	   n*512);
-      }
+        printf("ide_dma_cb IDE_DMA_READ\n");
+        // RW hd taint
+        // HD -> RAM
+        if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+            rr_record_sg_transfer(s, HD_TRANSFER_HD_TO_RAM, sector_num, n);
+        }
+        // RW hd taint debug
+	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
 
         s->bus->dma->aiocb = dma_bdrv_read(s->bs, &s->sg, sector_num,
                                            ide_dma_cb, s);
-
-        // TRL hd taint
-	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
-    }	
 	break;
     
     case IDE_DMA_WRITE:
-      // TRL hd taint
-      // IO_BUFFER -> HD
-      printf("IDE_DMA_WRITE\n");
-      if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
-	rr_record_hd_transfer
-	  (RR_CALLSITE_IDE_DMA_CB,
-	   HD_TRANSFER_IOB_TO_HD,
-	   (uint64_t) s->io_buffer, 
-	   HD_BASE_ADDR + sector_num*512, 
-	   n*512);
-      }
+        // RW hd taint
+        // RAM -> HD
+        printf("ide_dma_cb IDE_DMA_WRITE\n");
+        if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+            rr_record_sg_transfer(s, HD_TRANSFER_RAM_TO_HD, sector_num, n);
+        }
+        // RW hd taint debug
+	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
       
-#ifdef IFERRET_DEBUG
-    printf ("ide_dma_cb WRITE: hd sector_num=%llx size=%d\n", (unsigned long long) sector_num, n); 
-    print_trace();
-#endif
-
         s->bus->dma->aiocb = dma_bdrv_write(s->bs, &s->sg, sector_num,
                                             ide_dma_cb, s);
-	
-        // TRL hd taint
-	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
-        
         break;
+
     case IDE_DMA_TRIM:
       
-      // XXX TRL
-      // No idea what this is doing.  Is there some taint ramification? 
-      // should we be logging something if recording in order to replay & not lose taint? 
+        // XXX TRL
+        // No idea what this is doing.  Is there some taint ramification? 
+        // should we be logging something if recording in order to replay & not lose taint? 
         s->bus->dma->aiocb = dma_bdrv_io(s->bs, &s->sg, sector_num,
                                          ide_issue_trim, ide_dma_cb, s, true);
         break;
@@ -804,7 +812,7 @@ void ide_sector_write(IDEState *s)
     ret = bdrv_write(s->bs, sector_num, s->io_buffer, n);
     
     // TRL hd taint debug
-    if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+    if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
       p = s->io_buffer;
       dump_buffer("ide_sector_write",p,n*512);
     }
