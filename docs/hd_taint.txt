@@ -1,10 +1,17 @@
 
 PANDA Version 
 
-Here is a map of all the information flows getting data to and from the hard drive.
-Note, there are obviously flows between RAM and Regs.  But these aren't exclusive to HD.
+Here is a map of all the information flows getting data to and from the hard
+drive.  Note, there are obviously flows between RAM and Regs.  But these aren't
+exclusive to HD.
 
 
+                        J 
+   +----------------------------------------+
+   |                                        |
+   |   +--------------------------------+   |
+   |   |                I               |   |
+   v   |                                v   |
 +--------+    A    +--------+    C    +-------+
 |        | ------> |        | ------> |       |
 | Hard   |         | I/O    |         |  RAM  |
@@ -28,24 +35,24 @@ A: Transfer from HD to ide device IO buffer.
 
    This happens in both ide_sector_read, 
  
-        rr_record_pirate_hd_transfer
+        rr_record_hd_transfer
           (RR_CALLSITE_IDE_SECTOR_READ,
-           PIRATE_HD_TRANSFER_HD_TO_IOB,
+           HD_TRANSFER_HD_TO_IOB,
            HD_BASE_ADDR + sector_num*512,
            (uint64_t) s->io_buffer,
            n*512);
 
    and in ide_dma_cb
 
-        rr_record_pirate_hd_transfer
+        rr_record_hd_transfer
           (RR_CALLSITE_IDE_DMA_CB,
-           PIRATE_HD_TRANSFER_HD_TO_IOB,
+           HD_TRANSFER_HD_TO_IOB,
            HD_BASE_ADDR + sector_num*512,
            (uint64_t) s->io_buffer, 
            n*512);
 
-   The function rr_record_pirate_hd_transfer lives in rr_log.c.  
-   It writes to the replay log a skipped call to RR_CALL_PIRATE_HD_TRANSFER.
+   The function rr_record_hd_transfer lives in rr_log.c.  
+   It writes to the replay log a skipped call to RR_CALL_HD_TRANSFER.
 
    During replay, the following code in cpu-exec.c 
 
@@ -56,13 +63,13 @@ A: Transfer from HD to ide device IO buffer.
    }
 
    will execute all skipped calls that were logged in the io thread during record. 
-   When the skipped call to RR_CALL_PIRATE_HD_TRANSFER is "executed" in replay, it 
+   When the skipped call to RR_CALL_HD_TRANSFER is "executed" in replay, it 
    executes the folowing code in rr_log.c's rr_replay_skipped_calls_internal():
 
-   case RR_PIRATE_HD_TRANSFER:
+   case RR_CALL_HD_TRANSFER:
    {
      // run all callbacks registered for hd transfer                                                                   
-     RR_pirate_hd_transfer *hdt = &(args->variant.pirate_hd_transfer_args);
+     RR_hd_transfer *hdt = &(args->variant.hd_transfer_args);
      panda_cb_list *plist;
      for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
        plist->entry.replay_hd_transfer
@@ -90,18 +97,18 @@ B: Transfer from IO buffer to HD
 
    ide_sector_write() has
 
-      rr_record_pirate_hd_transfer
+      rr_record_hd_transfer
         (RR_CALLSITE_IDE_SECTOR_WRITE,
-         PIRATE_HD_TRANSFER_IOB_TO_HD,
+         HD_TRANSFER_IOB_TO_HD,
          (uint64_t) s->io_buffer,
          HD_BASE_ADDR + sector_num*512, 
          n*512);
 
    ide_dma_cb() has
 
-        rr_record_pirate_hd_transfer
+        rr_record_hd_transfer
           (RR_CALLSITE_IDE_DMA_CB,
-           PIRATE_HD_TRANSFER_IOB_TO_HD,
+           HD_TRANSFER_IOB_TO_HD,
            (uint64_t) s->io_buffer,
            HD_BASE_ADDR + sector_num*512, 
            n*512);
@@ -142,6 +149,10 @@ C: Transfer from IO buffer to RAM directly via DMA
 
    Note that the taint ops in tob_io_thread get consumed in before_block_exec().
 
+   Updated note: The code path described here in C and D is still present, but
+   is used very infrequently.  DMA now most commonly occurs through the
+   mechanism described in I and J.
+
 
 D: Transfer from RAM directly to IO buffer via DMA
 
@@ -153,9 +164,9 @@ E: Transfer from IO buffer to port for output
 
    During record, in ide/core.c, in ide_data_readw, we call 
 
-      rr_record_pirate_hd_transfer
+      rr_record_hd_transfer
         (RR_CALLSITE_IDE_DATA_READW,
-         PIRATE_HD_TRANSFER_IOB_TO_PORT,
+         HD_TRANSFER_IOB_TO_PORT,
          (uint64_t) s->data_ptr, 2);
    
    Again, this is recorded as a skipped call.  From here on, things
@@ -170,16 +181,16 @@ F: Transfer from port to IO buffer
 
    During record, in ide.c, in ide_data_writew, we call 
 
-      rr_record_pirate_hd_transfer
+      rr_record_hd_transfer
         (RR_CALLSITE_IDE_DATA_WRITEW,
-         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+         HD_TRANSFER_PORT_TO_IOB,
          (uint64_t) s->data_ptr, 2);
 
    ide_data_writel is simlar.
 
-      rr_record_pirate_hd_transfer
+      rr_record_hd_transfer
         (RR_CALLSITE_IDE_DATA_WRITEL,
-         PIRATE_HD_TRANSFER_PORT_TO_IOB,
+         HD_TRANSFER_PORT_TO_IOB,
          (uint64_t) s->data_ptr, 4);
 
 
@@ -251,4 +262,24 @@ H: Transfer from register to port
    where the arguments are port number, data.  We treat this as a store from the
    LLVM register into the port.  The handling is similar to the handling case G
    described above, except in the reverse direction.
+
+
+I: Transfer from hard drive directly to RAM via scatter-gather DMA
+
+   Scatter-gather DMA, or vectored I/O is the most common mechanism for data to
+   pass between hard drive sectors and physical memory in the current version of
+   QEMU.  This is carried out in hw/ide/core.c in ide_dma_cb() under the
+   IDE_DMA_READ case.  rr_record_sg_transfer() was implemented to iterate
+   through the vector of I/O operations and enter them into the record/replay
+   log sequentially for eventual generation of taint operations.  Each entry in
+   the vector consists of a physical address and length.  These operations
+   happen over contiguous sectors, so the sector is set at the beginning of the
+   transfer, and incremented according to the parameters of each entry in the
+   vector.
+
+
+J: Transfer from RAM directly to hard drive via scatter-gather DMA
+
+   Same as above, except that this is carried out in the IDE_DMA_WRITE case in
+   ide_dma_cb() in hw/ide/core.c.
 
