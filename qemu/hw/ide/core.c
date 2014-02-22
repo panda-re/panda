@@ -39,26 +39,23 @@
 
 #define HD_TAINT_DEBUG
 
-// rwhelan: is this ok?  trying for now
-#define HD_BASE_ADDR 0
-
 // TRL hd taint
 static void dump_buffer(const char *msg, uint8_t *p, uint32_t n) {
 #ifdef HD_TAINT_DEBUG
-  int i;
-  printf ("%s: buffer[%d]=[",msg,n);
-  for (i=0; i<n; i++) {
-    printf ("%02x ",p[i]);
-  }
-  printf ("]\n");
-  printf ("%s: buffer[%d]=[",msg,n);
-  for (i=0; i<n; i++) {
-    if (isprint(p[i])) 
-      printf ("%c",p[i]);
-    else 
-      printf (".");
-  }
-  printf ("]\n");
+    int i;
+    printf ("%s: buffer[%d]=[",msg,n);
+    for (i=0; i<n; i++) {
+        printf ("%02x ",p[i]);
+    }
+    printf ("]\n");
+    printf ("%s: buffer[%d]=[",msg,n);
+    for (i=0; i<n; i++) {
+        if (isprint(p[i])) 
+            printf ("%c",p[i]);
+        else 
+            printf (".");
+    }
+    printf ("]\n");
 #endif
 }
 
@@ -566,12 +563,12 @@ void ide_sector_read(IDEState *s)
 	// HD -> IO_BUFFER
 	uint8_t *p;
 	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
-	  rr_record_hd_transfer
-	    (RR_CALLSITE_IDE_SECTOR_READ, 
-	     HD_TRANSFER_HD_TO_IOB,
-	     HD_BASE_ADDR + sector_num*512, 
-	     (uint64_t) s->io_buffer,
-	     n*512);	  
+            rr_record_hd_transfer
+                (RR_CALLSITE_IDE_SECTOR_READ, 
+                 HD_TRANSFER_HD_TO_IOB,
+                 sector_num*512, 
+                 (uint64_t) s->io_buffer,
+                 n*512);	  
 	}
 
         bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
@@ -579,8 +576,8 @@ void ide_sector_read(IDEState *s)
 
 	// TRL hd taint debug
 	if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
-	  p = s->io_buffer;
-	  dump_buffer("ide_sector_read",p,n*512);
+            p = s->io_buffer;
+            dump_buffer("ide_sector_read",p,n*512);
 	}
 
         bdrv_acct_done(s->bs, &s->acct);
@@ -732,8 +729,15 @@ handle_rw_error:
     case IDE_DMA_TRIM:
       
         // XXX TRL
-        // No idea what this is doing.  Is there some taint ramification? 
-        // should we be logging something if recording in order to replay & not lose taint? 
+        // No idea what this is doing.  Is there some taint ramification?
+        // should we be logging something if recording in order to replay & not
+        // lose taint?
+        //
+        // RJW
+        // I don't think there's a taint ramification.  This is an emulation of
+        // the standard disk TRIM command, telling the hardware that these
+        // sectors aren't needed anymore. qcow2_discard_clusters is the function
+        // that eventually ends up being called.
         s->bus->dma->aiocb = dma_bdrv_io(s->bs, &s->sg, sector_num,
                                          ide_issue_trim, ide_dma_cb, s, true);
         break;
@@ -800,12 +804,12 @@ void ide_sector_write(IDEState *s)
     // IO_BUFFER -> HD
     uint8_t *p;
     if ((s->drive_kind == IDE_HD) && (rr_in_record())) {
-      rr_record_hd_transfer
-	(RR_CALLSITE_IDE_SECTOR_WRITE, 
-	 HD_TRANSFER_IOB_TO_HD,
-	 (uint64_t) s->io_buffer,
-	 HD_BASE_ADDR + sector_num*512, 
-	 n*512);
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_SECTOR_WRITE, 
+             HD_TRANSFER_IOB_TO_HD,
+             (uint64_t) s->io_buffer,
+             sector_num*512, 
+             n*512);
     }
 
     bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
@@ -813,8 +817,8 @@ void ide_sector_write(IDEState *s)
     
     // TRL hd taint debug
     if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
-      p = s->io_buffer;
-      dump_buffer("ide_sector_write",p,n*512);
+        p = s->io_buffer;
+        dump_buffer("ide_sector_write",p,n*512);
     }
     
     bdrv_acct_done(s->bs, &s->acct);
@@ -1812,12 +1816,12 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
     // this is a transfer from port to io_buffer
     // 0x1f0 is hd
     if ((addr == 0x1f0) && (rr_in_record())) {
-      rr_record_hd_transfer
-	(RR_CALLSITE_IDE_DATA_WRITEW,
-	 HD_TRANSFER_PORT_TO_IOB,
-	 0x1f0,
-	 (uint64_t) s->data_ptr, 
-	 2);
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEW,
+             HD_TRANSFER_PORT_TO_IOB,
+             0x1f0,
+             (uint64_t) s->data_ptr, 
+             2);
     }
 
     p = s->data_ptr;
@@ -1844,12 +1848,12 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
     // TRL hd taint
     // this is transfer from io_buffer to port 
     if ((addr == 0x1f0) && (rr_in_record())) {
-      rr_record_hd_transfer
-        (RR_CALLSITE_IDE_DATA_READW,
-         HD_TRANSFER_IOB_TO_PORT,
-         (uint64_t) s->data_ptr, 
-	 0x1f0, 
-	 2);
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READW,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             0x1f0, 
+             2);
     }
     
     p = s->data_ptr;
@@ -1876,12 +1880,12 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
     // TRL hd taint
     // this is a transfer from port to io_buffer
     if ((addr == 0x1f0) && (rr_in_record())) {      
-      rr_record_hd_transfer
-        (RR_CALLSITE_IDE_DATA_WRITEL,
-         HD_TRANSFER_PORT_TO_IOB,
-	 0x1f0, 
-         (uint64_t) s->data_ptr, 
-	 4);
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEL,
+             HD_TRANSFER_PORT_TO_IOB,
+             0x1f0, 
+             (uint64_t) s->data_ptr, 
+             4);
     }
 
     p = s->data_ptr;
@@ -1908,12 +1912,12 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
     // TRL hd taint
     // this is transfer from io_buffer to port 
     if ((addr == 0x1f0) && (rr_in_record())) {      
-      rr_record_hd_transfer
-        (RR_CALLSITE_IDE_DATA_READL,
-         HD_TRANSFER_IOB_TO_PORT,
-         (uint64_t) s->data_ptr, 
-	 0x1f0,
-	 4);
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READL,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             0x1f0,
+             4);
     }
 
     p = s->data_ptr;
