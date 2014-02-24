@@ -1003,6 +1003,9 @@ static void ide_clear_hob(IDEBus *bus)
     bus->ifs[1].select &= ~(1 << 7);
 }
 
+// RW This function seems like it's in charge of setting HD status or sending HD
+// commands, and I don't think we care about the potential taintedness of this
+// now.  We are properly handling other port I/O.
 void ide_ioport_write(void *opaque, uint32_t addr, uint32_t val)
 {
     IDEBus *bus = opaque;
@@ -1652,6 +1655,9 @@ void ide_exec_cmd(IDEBus *bus, uint32_t val)
     }
 }
 
+// RW This function seems like it's in charge of reading HD status, and I don't
+// think we care about the potential taintedness of this now.  We are properly
+// handling other port I/O.
 uint32_t ide_ioport_read(void *opaque, uint32_t addr1)
 {
     IDEBus *bus = opaque;
@@ -1730,6 +1736,9 @@ uint32_t ide_ioport_read(void *opaque, uint32_t addr1)
     return ret;
 }
 
+// RW This function seems like it's in charge of reading HD status, and I don't
+// think we care about the potential taintedness of this now.  We are properly
+// handling other port I/O.
 uint32_t ide_status_read(void *opaque, uint32_t addr)
 {
     IDEBus *bus = opaque;
@@ -1747,6 +1756,9 @@ uint32_t ide_status_read(void *opaque, uint32_t addr)
     return ret;
 }
 
+// RW This function seems like it's in charge of setting HD status or sending HD
+// commands, and I don't think we care about the potential taintedness of this
+// now.  We are properly handling other port I/O.
 void ide_cmd_write(void *opaque, uint32_t addr, uint32_t val)
 {
     IDEBus *bus = opaque;
@@ -1814,12 +1826,14 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
 
     // TRL hd taint
     // this is a transfer from port to io_buffer
-    // 0x1f0 is hd
-    if ((addr == 0x1f0) && (rr_in_record())) {
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_WRITEW,
              HD_TRANSFER_PORT_TO_IOB,
-             0x1f0,
+             addr,
              (uint64_t) s->data_ptr, 
              2);
     }
@@ -1847,12 +1861,15 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
 
     // TRL hd taint
     // this is transfer from io_buffer to port 
-    if ((addr == 0x1f0) && (rr_in_record())) {
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_READW,
              HD_TRANSFER_IOB_TO_PORT,
              (uint64_t) s->data_ptr, 
-             0x1f0, 
+             addr, 
              2);
     }
     
@@ -1879,11 +1896,14 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
 
     // TRL hd taint
     // this is a transfer from port to io_buffer
-    if ((addr == 0x1f0) && (rr_in_record())) {      
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_WRITEL,
              HD_TRANSFER_PORT_TO_IOB,
-             0x1f0, 
+             addr, 
              (uint64_t) s->data_ptr, 
              4);
     }
@@ -1911,12 +1931,15 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
 
     // TRL hd taint
     // this is transfer from io_buffer to port 
-    if ((addr == 0x1f0) && (rr_in_record())) {      
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
         rr_record_hd_transfer
             (RR_CALLSITE_IDE_DATA_READL,
              HD_TRANSFER_IOB_TO_PORT,
              (uint64_t) s->data_ptr, 
-             0x1f0,
+             addr,
              4);
     }
 
