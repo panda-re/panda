@@ -433,7 +433,7 @@ typedef union panda_cb {
        doesn't really happen.  We are *at* the point at which it happened, really.
        Arguments:
         CPUState* env: pointer to CPUState
-        uint32_t type:        type of transfer  (Pirate_hd_transfer)
+        uint32_t type:        type of transfer  (Hd_transfer_type)
         uint64_t src_addr:    address for src
         uint64_t dest_addr:   address for dest
         uint32_t num_bytes:   size of transfer in bytes
