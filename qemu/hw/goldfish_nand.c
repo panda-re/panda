@@ -46,6 +46,10 @@
 
 #define  XLOG  xlog
 
+#define DEFAULT_PAGE_SIZE       2048
+#define DEFAULT_EXTRA_SIZE      64
+#define DEFAULT_ERASE_PAGES     64
+#define GOLDFISH_NAND_MAX_DEVNAME_BYTES 128
 
 #if defined(ANDROID_QCOW)
 #include "block_int.h"
@@ -672,9 +676,9 @@ void nand_add_dev(GoldfishNandDevice* s, const char *arg)
     int read_only = 0;
     int pad;
     ssize_t read_size;
-    uint32_t page_size = 2048;
-    uint32_t extra_size = 64;
-    uint32_t erase_pages = 64;
+    uint32_t page_size = DEFAULT_PAGE_SIZE;
+    uint32_t extra_size = DEFAULT_EXTRA_SIZE;
+    uint32_t erase_pages = DEFAULT_ERASE_PAGES;
 
     //VERBOSE_PRINT(init, "%s: %s", __FUNCTION__, arg);
 
@@ -707,6 +711,11 @@ void nand_add_dev(GoldfishNandDevice* s, const char *arg)
                 goto out_of_memory;
             memcpy(devname, arg, arg_len);
             devname[arg_len] = 0;
+            if (arg_len >= GOLDFISH_NAND_MAX_DEVNAME_BYTES){
+                // loadvm will not go well...
+                XLOG("Please increase GOLDFISH_NAND_MAX_DEVNAME_BYTES to more than %#x\n", arg_len);
+                exit(1);
+            }
         }
         else if(value == NULL) {
             if(arg_match("readonly", arg, arg_len)) {
@@ -730,18 +739,27 @@ void nand_add_dev(GoldfishNandDevice* s, const char *arg)
                 page_size = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(page_size != DEFAULT_PAGE_SIZE){
+                    
+                }
             }
             else if(arg_match("extrasize", arg, arg_len)) {
                 char *ep;
                 extra_size = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(extra_size != DEFAULT_EXTRA_SIZE){
+                    
+                }
             }
             else if(arg_match("erasepages", arg, arg_len)) {
                 char *ep;
                 erase_pages = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(erase_pages != DEFAULT_EXTRA_SIZE){
+                    
+                }
             }
             else if(arg_match("initfile", arg, arg_len)) {
                 initfilename = malloc(value_len + 1);
@@ -815,6 +833,13 @@ void nand_add_dev(GoldfishNandDevice* s, const char *arg)
     dev->page_size = page_size;
     dev->extra_size = extra_size;
     dev->erase_size = erase_pages * (page_size + extra_size);
+    if(dev->erase_size > (DEFAULT_ERASE_PAGES * (DEFAULT_PAGE_SIZE + DEFAULT_EXTRA_SIZE))){
+        // loadvm will scribble over the heap.
+        XLOG("Goldfish NAND  %s erase block size %#x is larger than allocated space %#x, loadvm will segfault\n",
+            dev->devname, dev->erase_size,
+            (DEFAULT_ERASE_PAGES * (DEFAULT_PAGE_SIZE + DEFAULT_EXTRA_SIZE)));
+        exit(1);
+    }
     
     dev->data = malloc(dev->erase_size);
     if(dev->data == NULL)
@@ -1002,9 +1027,22 @@ DeviceState *goldfish_nand_create(GoldfishBus *gbus)
     return dev;
 }
 
+static int nand_dev_pre_load(void* opaque){
+  nand_dev* dev = (nand_dev*)opaque;
+  // We need to force-allocate the data and devname buffers
+  // because QEMU thinks they are already valid
+  // It's easier to fix this here than to try to hack
+  // loadvm to support this
+    
+  dev->devname = malloc(GOLDFISH_NAND_MAX_DEVNAME_BYTES);
+  dev->data = malloc(DEFAULT_ERASE_PAGES * (DEFAULT_EXTRA_SIZE+ DEFAULT_PAGE_SIZE));
+  return 0;
+}
+
 static const VMStateDescription vmstate_nand_dev = {
     .name = "goldfish_nand_dev",
     .version_id = 1,
+    .pre_load = nand_dev_pre_load,
     .fields = (VMStateField[]){
         VMSTATE_UINT64(devname_len, nand_dev),
         VMSTATE_UINT32(erase_size, nand_dev),
