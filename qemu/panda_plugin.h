@@ -478,6 +478,7 @@ void   panda_unload_plugins(void);
 // Doesn't exist in user mode
 #ifdef CONFIG_SOFTMMU
 int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
+target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr);
 #endif
 
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);

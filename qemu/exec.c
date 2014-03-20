@@ -5031,6 +5031,18 @@ int cpu_memory_rw(CPUState *env, target_ulong addr,
     return 0;
 }
 
+target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr){
+    target_ulong page;
+    target_phys_addr_t phys_addr;
+    page = addr & TARGET_PAGE_MASK;
+    phys_addr = cpu_get_phys_page_debug(env, page);
+    /* if no physical page mapped, return an error */
+    if (phys_addr == -1)
+        return -1;
+    phys_addr += (addr & ~TARGET_PAGE_MASK);
+    return phys_addr;
+}
+
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                         uint8_t *buf, int len, int is_write)
 {
