@@ -18,31 +18,6 @@
 
 #include "goldfish_mmc.h"
 
-
-typedef struct GoldfishMmcDevice {
-    GoldfishDevice dev;
-    BlockDriverState *bs;
-    // pointer to our buffer
-    uint32_t buffer_address;
-    // offsets for read and write operations
-    uint32_t read_offset, write_offset;
-    // buffer status flags
-    uint32_t int_status;
-    // irq enable mask for int_status
-    uint32_t int_enable;
-
-    // MMC command argument
-    uint32_t arg;
-    uint32_t resp[4];
-
-    uint32_t block_length;
-    uint32_t block_count;
-    int is_SDHC;
-
-    uint8_t* buf;
-    char* path;
-} GoldfishMmcDevice;
-
 static const VMStateDescription vmstate_goldfish_mmc = {
     .name = "goldfish_mmc",
     .version_id = 1,
