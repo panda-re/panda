@@ -318,6 +318,8 @@ typedef union panda_cb {
  *      before_loadvm: called at start of replay, before loadvm is called
  *      This allows us to hook devices' loadvm handlers (remember to unregister
  *      the existing handler for the device first)
+ *
+ *      See the example in the sample plugin.
  * 
  *      Arguments:
  * 

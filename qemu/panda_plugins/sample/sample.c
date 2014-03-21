@@ -19,6 +19,12 @@ PANDAENDCOMMENT */
 
 #include "panda_plugin.h"
 
+// definitions for BEFORE_LOADVM handler
+#include "hw/goldfish_device.h"
+#include "hw/goldfish_nand.h"
+#include "hw/goldfish_mmc.h"
+
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,6 +34,7 @@ int guest_hypercall_callback(CPUState *env);
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
 int monitor_callback(Monitor *mon, const char *cmd);
+int before_loadvm_callback(void);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -103,6 +110,55 @@ int exec_callback(CPUState *env, target_ulong pc) {
     return 1;
 }
 
+
+/* For interposing on loadvm, we need an exact copy of the struct used 
+ * by the device for serialization. In this case, we are capturing the
+ * state of the goldfish_nand and goldfish_mmc devices, which use structs
+ * defined in header files */
+GoldfishNandDevice __GoldfishNandDevice; //store NAND state here
+GoldfishMmcDevice  __GoldfishMmcDevice;  //store MMC state here
+int before_loadvm_callback(void){
+  // register ourselves as the loadvm handler for mmc and nand!!
+  // NOTE: this example assumes one instance of each of the devices of interest.
+  // If there are more, take care to handle each instance.
+  struct DeviceInfo *info;
+  const struct VMStateDescription* nand_vmsd = NULL, *mmc_vmsd = NULL;
+
+  /* First, find the VMSDs for the existing devices.
+     Device initialization must have already occured for the list to be populated,
+     and the device must be present.
+     Devices that have explicit load and save functions instead of a declarative VMSD
+     still end up having a VMSD, so this should work in all cases.
+     
+     Look up the device by it's string ID.*/
+  for (info = device_info_list; info != NULL; info = info->next) {
+    // the fields are name, fw_name, and alias
+    if(info->name && 0 == strncmp(info->name, "goldfish_nand", strlen("goldfish_nand"))){
+      nand_vmsd = info->vmsd;
+    }else if (info->name && 0 == strncmp(info->name, "goldfish_mmc", strlen("goldfish_mmc"))){
+      mmc_vmsd = info->vmsd;
+    }
+  }
+
+  if(!nand_vmsd || !mmc_vmsd){
+    fprintf(stderr, "example: Failed to find VMSD for NAND or MMC\n");
+    exit(1);
+  }
+
+  // Remove all existing handlers for this device.
+  vmstate_unregister_all(nand_vmsd);
+  vmstate_unregister_all(mmc_vmsd);
+
+  // Re-register handlers, using our structs as the location to dump state to.
+  // If there are multiple copies of a device, make sure to register multiple times,
+  // and use separate copies of the struct for any data you want to keep.
+  vmstate_register(NULL,0,nand_vmsd,&__GoldfishNandDevice);
+  vmstate_register(NULL,0,mmc_vmsd,&__GoldfishMmcDevice);
+
+  return 0;
+}
+
+
 bool init_plugin(void *self) {
     panda_cb pcb;
 
@@ -141,6 +197,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
+    pcb.before_loadvm = before_loadvm_callback;
+    panda_register_callback(self, PANDA_CB_BEFORE_REPLAY_LOADVM, pcb);
 
     return true;
 }
