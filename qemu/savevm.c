@@ -1356,6 +1356,21 @@ void vmstate_unregister(DeviceState *dev, const VMStateDescription *vmsd,
     }
 }
 
+void vmstate_unregister_all(const VMStateDescription *vmsd)
+{
+    SaveStateEntry *se, *new_se;
+
+    QTAILQ_FOREACH_SAFE(se, &savevm_handlers, entry, new_se) {
+        if (se->vmsd == vmsd) {
+            QTAILQ_REMOVE(&savevm_handlers, se, entry);
+            if (se->compat) {
+                g_free(se->compat);
+            }
+            g_free(se);
+        }
+    }
+}
+
 static void vmstate_subsection_save(QEMUFile *f, const VMStateDescription *vmsd,
                                     void *opaque);
 static int vmstate_subsection_load(QEMUFile *f, const VMStateDescription *vmsd,

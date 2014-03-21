@@ -948,4 +948,5 @@ int vmstate_register_with_alias_id(DeviceState *dev, int instance_id,
                                    int required_for_version);
 void vmstate_unregister(DeviceState *dev, const VMStateDescription *vmsd,
                         void *opaque);
+void vmstate_unregister_all(const VMStateDescription *vmsd);
 #endif
