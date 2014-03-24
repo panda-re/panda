@@ -843,6 +843,15 @@ void tob_op_print(Shad *shad, TaintOp op) {
                 printf ("\n");
                 break;
             }
+        case BULKCOPYOP:
+            {
+                printf("bulk copy ");
+                print_addr(shad, op.val.bulkcopy.a);
+                printf(" ");
+                print_addr(shad, op.val.bulkcopy.b);
+                printf("Len: %u\n", op.val.bulkcopy.l);
+                break;
+            }
         case COMPUTEOP:
             {
                 printf ("compute ");
