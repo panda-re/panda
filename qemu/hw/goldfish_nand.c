@@ -1006,6 +1006,8 @@ static const VMStateDescription vmstate_nand_dev = {
     .name = "goldfish_nand_dev",
     .version_id = 1,
     .fields = (VMStateField[]){
+        VMSTATE_UINT64(devname_len, nand_dev),
+        VMSTATE_UINT32(erase_size, nand_dev),
         VMSTATE_VBUFFER_UINT64(devname, nand_dev, 1, NULL, 0, devname_len),
         VMSTATE_VBUFFER_UINT32(data, nand_dev, 1, NULL, 0, erase_size),
         VMSTATE_UINT32(flags, nand_dev),
