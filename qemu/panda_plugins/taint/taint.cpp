@@ -340,36 +340,48 @@ int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
         top.val.bulkcopy.l = num_bytes;
         switch (type) {
             case HD_TRANSFER_HD_TO_IOB:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
+#endif
                 top.val.bulkcopy.a = make_haddr(src_addr);
                 top.val.bulkcopy.b = make_iaddr(dest_addr);
                 break;
             case HD_TRANSFER_IOB_TO_HD:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
+#endif
                 top.val.bulkcopy.a = make_iaddr(src_addr);
                 top.val.bulkcopy.b = make_haddr(dest_addr);
                 break;
             case HD_TRANSFER_PORT_TO_IOB:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
+#endif
                 top.val.bulkcopy.a = make_paddr(src_addr);
                 top.val.bulkcopy.b = make_iaddr(dest_addr);
                 break;
             case HD_TRANSFER_IOB_TO_PORT:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
+#endif
                 top.val.bulkcopy.a = make_iaddr(src_addr);
                 top.val.bulkcopy.b = make_paddr(dest_addr);
                 break;
             case HD_TRANSFER_HD_TO_RAM:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_HD_TO_RAM\n");
                 printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
                     src_addr, dest_addr, num_bytes);
+#endif
                 top.val.bulkcopy.a = make_haddr(src_addr);
                 top.val.bulkcopy.b = make_maddr(dest_addr);
                 break;
             case HD_TRANSFER_RAM_TO_HD:
+#ifdef TAINTDEBUG
                 printf("replay_hd_transfer HD_TRANSFER_RAM_TO_HD\n");
                 printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
                     src_addr, dest_addr, num_bytes);
+#endif
                 top.val.bulkcopy.a = make_maddr(src_addr);
                 top.val.bulkcopy.b = make_haddr(dest_addr);
                 break;

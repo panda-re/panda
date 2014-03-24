@@ -37,7 +37,7 @@
 
 #include <hw/ide/internal.h>
 
-#define HD_TAINT_DEBUG
+//#define HD_TAINT_DEBUG
 
 // TRL hd taint
 static void dump_buffer(const char *msg, uint8_t *p, uint32_t n) {
@@ -463,7 +463,6 @@ static inline void ide_abort_command(IDEState *s)
 void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
                         EndTransferFunc *end_transfer_func)
 {
-    printf("ide_transfer_start\n");
     s->end_transfer_func = end_transfer_func;
     s->data_ptr = buf;
     s->data_end = buf + size;
@@ -478,7 +477,6 @@ void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
 
 void ide_transfer_stop(IDEState *s)
 {
-    printf("ide_transfer_stop\n");
     s->end_transfer_func = ide_transfer_stop;
     s->data_ptr = s->io_buffer;
     s->data_end = s->io_buffer;
@@ -699,7 +697,6 @@ handle_rw_error:
 
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
-        printf("ide_dma_cb IDE_DMA_READ\n");
         // RW hd taint
         // HD -> RAM
         if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
@@ -715,7 +712,6 @@ handle_rw_error:
     case IDE_DMA_WRITE:
         // RW hd taint
         // RAM -> HD
-        printf("ide_dma_cb IDE_DMA_WRITE\n");
         if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
             rr_record_sg_transfer(s, HD_TRANSFER_RAM_TO_HD, sector_num, n);
         }

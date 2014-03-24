@@ -35,7 +35,6 @@
 static void bmdma_start_dma(IDEDMA *dma, IDEState *s,
                             BlockDriverCompletionFunc *dma_cb)
 {
-    printf("bmdma_start_dma\n");
     BMDMAState *bm = DO_UPCAST(BMDMAState, dma, dma);
 
     bm->unit = s->unit;
