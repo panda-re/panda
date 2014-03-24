@@ -178,7 +178,7 @@ void enable_taint(){
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_WRITE, pcb);
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
-    
+
     if (!execute_llvm){
         panda_enable_llvm();
     }
@@ -318,7 +318,7 @@ int guest_hypercall_callback(CPUState *env){
                 enable_taint();
             }
 
-            TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 5MB */);
+            TaintOpBuffer *tempBuf = tob_new(500*1048576 /* 5MB */);
 #ifndef CONFIG_SOFTMMU
             add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
 #else
