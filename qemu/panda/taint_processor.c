@@ -153,12 +153,12 @@ void tp_free(Shad *shad){
 
 // returns a copy of the labelset associated with a.  or NULL if none.
 // so you'll need to call labelset_free on this pointer when done with it.
-static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
+static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr *a) {
     LabelSet *ls = NULL;
-    switch (a.typ) {
+    switch (a->typ) {
         case HADDR:
             {
-                ls = shad_dir_find_64(shad->hd, a.val.ha+a.off);
+                ls = shad_dir_find_64(shad->hd, a->val.ha+a->off);
                 break;
             }
         case MADDR:
@@ -168,53 +168,53 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
                  * is too big to represent.  We can still use it for
                  * whole-system though.
                  */
-                ls = shad_dir_find_64(shad->ram, a.val.ma+a.off);
+                ls = shad_dir_find_64(shad->ram, a->val.ma+a->off);
 #else
-                if (get_ram_bit(shad, a.val.ma+a.off)) {
-                    ls = shad_dir_find_32(shad->ram, a.val.ma+a.off);
+                if (get_ram_bit(shad, a->val.ma+a->off)) {
+                    ls = shad_dir_find_32(shad->ram, a->val.ma+a->off);
                 }
 #endif
                 break;
             }
         case IADDR:
             {
-                ls = shad_dir_find_64(shad->io, a.val.ia+a.off);
+                ls = shad_dir_find_64(shad->io, a->val.ia+a->off);
                 break;
             }
         case PADDR:
             {
-                ls = shad_dir_find_32(shad->ports, a.val.ia+a.off);
+                ls = shad_dir_find_32(shad->ports, a->val.ia+a->off);
                 break;
             }
         // multipliers are for register and stack frame indexing in shadow
         // register space
         case LADDR:
             {
-                if (a.flag == FUNCARG){
+                if (a->flag == FUNCARG){
                     assert((shad->current_frame + 1) < FUNCTIONFRAMES);
                     ls = labelset_copy(
                         shad->llv[shad->num_vals*(shad->current_frame + 1) +
-                                  a.val.la*MAXREGSIZE +
-                                  a.off]);
+                                  a->val.la*MAXREGSIZE +
+                                  a->off]);
                 }
                 else {
                     assert(shad->current_frame < FUNCTIONFRAMES);
                     ls = labelset_copy(
                         shad->llv[shad->num_vals*shad->current_frame +
-                                  a.val.la*MAXREGSIZE +
-                                  a.off]);
+                                  a->val.la*MAXREGSIZE +
+                                  a->off]);
                 }
                 break;
             }
         case GREG:
             {
-                ls = labelset_copy(shad->grv[a.val.gr * WORDSIZE + a.off]);
+                ls = labelset_copy(shad->grv[a->val.gr * WORDSIZE + a->off]);
                 break;
             }
         case GSPEC:
             {
                 // SpecAddr enum is offset by the number of guest registers
-                ls = labelset_copy(shad->gsv[a.val.gs - NUMREGS + a.off]);
+                ls = labelset_copy(shad->gsv[a->val.gs - NUMREGS + a->off]);
                 break;
             }
         case CONST:
@@ -224,7 +224,7 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
             }
         case RET:
             {
-                ls = labelset_copy(shad->ret[a.off]);
+                ls = labelset_copy(shad->ret[a->off]);
                 break;
             }
         default:
@@ -235,7 +235,7 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr a) {
 
 
 // returns TRUE (1) iff a has a non-empty taint set
-SB_INLINE uint8_t tp_query(Shad *shad, Addr a) {
+SB_INLINE uint8_t tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
     LabelSet *ls = tp_labelset_get(shad, a);
     return !(labelset_is_empty(ls));
@@ -243,13 +243,14 @@ SB_INLINE uint8_t tp_query(Shad *shad, Addr a) {
 
 
 // untaint -- discard label set associated with a
-SB_INLINE void tp_delete(Shad *shad, Addr a) {
+SB_INLINE void tp_delete(Shad *shad, Addr *a) {
+
     assert (shad != NULL);
-    switch (a.typ) {
+    switch (a->typ) {
         case HADDR:
             {
                 // NB: just returns if nothing there
-                shad_dir_remove_64(shad->hd, a.val.ha+a.off);
+                shad_dir_remove_64(shad->hd, a->val.ha+a->off);
                 break;
             }
         case MADDR:
@@ -259,72 +260,72 @@ SB_INLINE void tp_delete(Shad *shad, Addr a) {
                  * is too big to represent.  We can still use it for
                  * whole-system though.
                  */
-                shad_dir_remove_64(shad->ram, a.val.ma+a.off);
+                shad_dir_remove_64(shad->ram, a->val.ma+a->off);
 #else
-                if (get_ram_bit(shad, a.val.ma+a.off)) {
-                    shad_dir_remove_32(shad->ram, a.val.ma+a.off);
-                    clear_ram_bit(shad, a.val.ma+a.off);
+                if (get_ram_bit(shad, a->val.ma+a->off)) {
+                    shad_dir_remove_32(shad->ram, a->val.ma+a->off);
+                    clear_ram_bit(shad, a->val.ma+a->off);
                 }
 #endif
                 break;
             }
         case IADDR:
             {
-                shad_dir_remove_64(shad->io, a.val.ia+a.off);
+                shad_dir_remove_64(shad->io, a->val.ia+a->off);
                 break;
             }
         case PADDR:
             {
-                shad_dir_remove_32(shad->ports, a.val.ia+a.off);
+                shad_dir_remove_32(shad->ports, a->val.ia+a->off);
                 break;
             }
         case LADDR:
             {
-                if (a.flag == FUNCARG){
+                if (a->flag == FUNCARG){
                     // free the labelset and remove reference
                     LabelSet *ls =
                         shad->llv[shad->num_vals*(shad->current_frame + 1) +
-                                  a.val.la*MAXREGSIZE +
-                                  a.off];
+                                  a->val.la*MAXREGSIZE +
+                                  a->off];
                     labelset_free(ls);
                     shad->llv[shad->num_vals*(shad->current_frame + 1) +
-                              a.val.la*MAXREGSIZE +
-                              a.off] = NULL;
+                              a->val.la*MAXREGSIZE +
+                              a->off] = NULL;
                 }
                 else {
                     // free the labelset and remove reference
                     LabelSet *ls =
                         shad->llv[shad->num_vals*shad->current_frame +
-                                  a.val.la*MAXREGSIZE +
-                                  a.off];
+                                  a->val.la*MAXREGSIZE +
+                                  a->off];
                     labelset_free(ls);
                     shad->llv[shad->num_vals*shad->current_frame +
-                              a.val.la*MAXREGSIZE +
-                              a.off] = NULL;
+                              a->val.la*MAXREGSIZE +
+                              a->off] = NULL;
                 }
                 break;
             }
         case GREG:
             {
                 // free the labelset and remove reference
-                LabelSet *ls = shad->grv[a.val.gr * WORDSIZE + a.off];
+                LabelSet *ls = shad->grv[a->val.gr * WORDSIZE + a->off];
                 labelset_free(ls);
-                shad->grv[a.val.gr * WORDSIZE + a.off] = NULL;
+                shad->grv[a->val.gr * WORDSIZE + a->off] = NULL;
                 break;
             }
         case GSPEC:
             {
                 // SpecAddr enum is offset by the number of guest registers
-                LabelSet *ls = shad->gsv[a.val.gs - NUMREGS + a.off];
+                LabelSet *ls = shad->gsv[a->val.gs - NUMREGS + a->off];
                 labelset_free(ls);
-                shad->gsv[a.val.gs - NUMREGS + a.off] = NULL;
+                shad->gsv[a->val.gs - NUMREGS + a->off] = NULL;
                 break;
             }
         case RET:
             {
-                LabelSet *ls = shad->ret[a.off];
+                LabelSet *ls = shad->ret[a->off];
                 labelset_free(ls);
-                shad->ret[a.off] = NULL;
+                shad->ret[a->off] = NULL;
                 break;
             }
         default:
@@ -335,7 +336,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr a) {
 
 // here we are storing a copy of ls in the shadow memory.
 // so ls is caller's to free
-static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
+static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     assert (shad != NULL);
     tp_delete(shad, a);
 
@@ -343,10 +344,10 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
     taintedfunc = 1;
 #endif
 
-    switch (a.typ) {
+    switch (a->typ) {
         case HADDR:
             {
-                shad_dir_add_64(shad->hd, a.val.ha+a.off, ls);
+                shad_dir_add_64(shad->hd, a->val.ha+a->off, ls);
                 break;
             }
         case MADDR:
@@ -356,39 +357,39 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
                  * is too big to represent.  We can still use it for
                  * whole-system though.
                  */
-                shad_dir_add_64(shad->ram, a.val.ma+a.off, ls);
+                shad_dir_add_64(shad->ram, a->val.ma+a->off, ls);
 #else
-                shad_dir_add_32(shad->ram, a.val.ma+a.off, ls);
-                set_ram_bit(shad, a.val.ma+a.off);
+                shad_dir_add_32(shad->ram, a->val.ma+a->off, ls);
+                set_ram_bit(shad, a->val.ma+a->off);
 #endif
                 break;
             }
         case IADDR:
             {
-                shad_dir_add_64(shad->io, a.val.ia+a.off, ls);
+                shad_dir_add_64(shad->io, a->val.ia+a->off, ls);
                 break;
             }
         case PADDR:
             {
-                shad_dir_add_32(shad->ports, a.val.ia+a.off, ls);
+                shad_dir_add_32(shad->ports, a->val.ia+a->off, ls);
                 break;
             }
         case LADDR:
             {
                 // need to call labelset_copy to increment ref count
                 LabelSet *ls_copy = labelset_copy(ls);
-                if (a.flag == FUNCARG){
+                if (a->flag == FUNCARG){
                     // put in new function frame
                     assert((shad->current_frame + 1) < FUNCTIONFRAMES);
                     shad->llv[shad->num_vals*(shad->current_frame + 1) +
-                              a.val.la*MAXREGSIZE +
-                              a.off] = ls_copy;
+                              a->val.la*MAXREGSIZE +
+                              a->off] = ls_copy;
                 }
                 else {
                     assert(shad->current_frame < FUNCTIONFRAMES);
                     shad->llv[shad->num_vals*shad->current_frame +
-                              a.val.la*MAXREGSIZE +
-                              a.off] = ls_copy;
+                              a->val.la*MAXREGSIZE +
+                              a->off] = ls_copy;
                 }
                 break;
             }
@@ -396,20 +397,20 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             {
                 // need to call labelset_copy to increment ref count
                 LabelSet *ls_copy = labelset_copy(ls);
-                shad->grv[a.val.gr * WORDSIZE + a.off] = ls_copy;
+                shad->grv[a->val.gr * WORDSIZE + a->off] = ls_copy;
                 break;
             }
         case GSPEC:
             {
                 // SpecAddr enum is offset by the number of guest registers
                 LabelSet *ls_copy = labelset_copy(ls);
-                shad->gsv[a.val.gs - NUMREGS + a.off] = ls_copy;
+                shad->gsv[a->val.gs - NUMREGS + a->off] = ls_copy;
                 break;
             }
         case RET:
             {
                 LabelSet *ls_copy = labelset_copy(ls);
-                shad->ret[a.off] = ls_copy;
+                shad->ret[a->off] = ls_copy;
                 break;
             }
         default:
@@ -419,7 +420,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
 
 
 // label -- associate label l with address a
-SB_INLINE void tp_label(Shad *shad, Addr a, Label l) {
+SB_INLINE void tp_label(Shad *shad, Addr *a, Label l) {
     assert (shad != NULL);
     LabelSet *ls = tp_labelset_get(shad, a);
     if (!ls){
@@ -432,48 +433,48 @@ SB_INLINE void tp_label(Shad *shad, Addr a, Label l) {
 }
 
 
-SB_INLINE uint8_t addrs_equal(Addr a, Addr b) {
-    if (a.typ != b.typ)
+SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
+    if (a->typ != b->typ)
         return FALSE;
-    switch (a.typ) {
+    switch (a->typ) {
         case HADDR:
-            return a.val.ha+a.off == b.val.ha+b.off;
+            return a->val.ha+a->off == b->val.ha+b->off;
         case MADDR:
-            return a.val.ma+a.off == b.val.ma+b.off;
+            return a->val.ma+a->off == b->val.ma+b->off;
         case IADDR:
-            return a.val.ia+a.off == b.val.ia+b.off;
+            return a->val.ia+a->off == b->val.ia+b->off;
         case PADDR:
-            return a.val.pa+a.off == b.val.pa+b.off;
+            return a->val.pa+a->off == b->val.pa+b->off;
         case LADDR:
-            return (a.val.la == b.val.la)
-                   && (a.off == b.off)
-                   && (a.flag == b.flag);
+            return (a->val.la == b->val.la)
+                   && (a->off == b->off)
+                   && (a->flag == b->flag);
         case GREG:
-            return (a.val.gr == b.val.gr) && (a.off == b.off);
+            return (a->val.gr == b->val.gr) && (a->off == b->off);
         case GSPEC:
-            return (a.val.gs == b.val.gs) && (a.off == b.off);
+            return (a->val.gs == b->val.gs) && (a->off == b->off);
         case RET:
-            return (a.off == b.off);
+            return (a->off == b->off);
         default:
             assert (1==0);
     }
 }
 
 
-void print_addr(Shad *shad, Addr a) {
+void print_addr(Shad *shad, Addr *a) {
     uint32_t current_frame;
-    switch(a.typ) {
+    switch(a->typ) {
         case HADDR:
-            printf ("h0x%llx", (long long unsigned int) a.val.ha+a.off);
+            printf ("h0x%llx", (long long unsigned int) a->val.ha+a->off);
             break;
         case MADDR:
-            printf ("m0x%llx", (long long unsigned int) a.val.ma+a.off);
+            printf ("m0x%llx", (long long unsigned int) a->val.ma+a->off);
             break;
         case IADDR:
-            printf ("i0x%llx", (long long unsigned int) a.val.ia+a.off);
+            printf ("i0x%llx", (long long unsigned int) a->val.ia+a->off);
             break;
         case PADDR:
-            printf ("p0x%llx", (long long unsigned int) a.val.pa+a.off);
+            printf ("p0x%llx", (long long unsigned int) a->val.pa+a->off);
             break;
         case LADDR:
             if (!shad){
@@ -483,13 +484,13 @@ void print_addr(Shad *shad, Addr a) {
                 current_frame = shad->current_frame;
             }
 
-            if (a.flag == FUNCARG){
+            if (a->flag == FUNCARG){
                 printf ("[%d]l%lld[%d]", current_frame + 1,
-                    (long long unsigned int) a.val.la, a.off);
+                    (long long unsigned int) a->val.la, a->off);
             }
             else {
                 printf ("[%d]l%lld[%d]", current_frame,
-                    (long long unsigned int) a.val.la, a.off);
+                    (long long unsigned int) a->val.la, a->off);
             }
             break;
         case GREG:
@@ -499,11 +500,11 @@ void print_addr(Shad *shad, Addr a) {
             printspec(a);
             break;
         case UNK:
-            if (a.flag == IRRELEVANT){
+            if (a->flag == IRRELEVANT){
                 printf("irrelevant");
             }
-            //else if (a.flag == READLOG) {
-            else if (a.typ == UNK){
+            //else if (a->flag == READLOG) {
+            else if (a->typ == UNK){
                 printf("unknown");
             }
             else {
@@ -514,7 +515,7 @@ void print_addr(Shad *shad, Addr a) {
             printf("constant");
             break;
         case RET:
-            printf("ret[%d]", a.off);
+            printf("ret[%d]", a->off);
             break;
         default:
             assert (1==0);
@@ -523,7 +524,7 @@ void print_addr(Shad *shad, Addr a) {
 
 
 // copy -- b gets whatever label set is currently associated with a
-SB_INLINE void tp_copy(Shad *shad, Addr a, Addr b) {
+SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
     assert (shad != NULL);
     assert (!(addrs_equal(a,b)));
     LabelSet *ls_a = tp_labelset_get(shad, a);
@@ -549,7 +550,8 @@ SB_INLINE void tp_copy(Shad *shad, Addr a, Addr b) {
 
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
-SB_INLINE void tp_compute(Shad *shad, Addr a, Addr b, Addr c) {
+SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
+  return;
     assert (shad != NULL);
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
@@ -613,7 +615,8 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     tob_rewind(tbuf);
     //Free up dynamically allocated arrays in phi and switch ops
     while (!(tob_end(tbuf))) {
-        TaintOp op = tob_op_read(tbuf);
+      TaintOp op;
+      tob_op_read(tbuf, &op);
 
         if (op.typ == INSNSTARTOP){
             if (!strcmp(op.val.insn_start.name, "phi")){
@@ -680,76 +683,59 @@ static SB_INLINE void tob_read(TaintOpBuffer *buf, char *stuff,
 }
 
 
-static SB_INLINE void tob_addr_write(TaintOpBuffer *buf, Addr a) {
-
-    tob_write(buf, (char*) &a, sizeof(Addr));
-
-    /* Old code used to selectively write parts of struct. Note: processing
-     * taint ops in this way was causing some performance degradation, most
-     * likely due to unaligned addresses.  Just write the entire struct and let
-     * the compiler take care of optimization.
-     */
+static SB_INLINE void tob_addr_write(TaintOpBuffer *buf, Addr *a) {
+    tob_write(buf, (char*) a, sizeof(Addr));
 }
 
-static SB_INLINE Addr tob_addr_read(TaintOpBuffer *buf) {
-    Addr a;
-
-    tob_read(buf, (char*) &a, sizeof(Addr));
-
-    /* Old code used to selectively write parts of struct. Note: processing
-     * taint ops in this way was causing some performance degradation, most
-     * likely due to unaligned addresses.  Just write the entire struct and let
-     * the compiler take care of optimization.
-     */
-
-    return a;
+static SB_INLINE void tob_addr_read(TaintOpBuffer *buf, Addr *a) {
+    tob_read(buf, (char*) a, sizeof(Addr));
 }
 
-void tob_op_print(Shad *shad, TaintOp op) {
-    switch (op.typ) {
+void tob_op_print(Shad *shad, TaintOp *op) {
+    switch (op->typ) {
         case LABELOP:
             {
                 printf ("label ");
-                print_addr(shad, op.val.label.a);
-                printf (" %d\n", op.val.label.l);
+                print_addr(shad, &(op->val.label.a));
+                printf (" %d\n", op->val.label.l);
                 break;
             }
         case DELETEOP:
             {
                 printf ("delete ");
-                print_addr(shad, op.val.deletel.a);
+                print_addr(shad, &(op->val.deletel.a));
                 printf ("\n");
                 break;
             }
         case COPYOP:
             {
                 printf ("copy ");
-                print_addr(shad, op.val.copy.a);
+                print_addr(shad, &(op->val.copy.a));
                 printf (" ");
-                print_addr(shad, op.val.copy.b);
+		print_addr(shad, &(op->val.copy.b));
                 printf ("\n");
                 break;
             }
         case COMPUTEOP:
             {
                 printf ("compute ");
-                print_addr(shad, op.val.compute.a);
+                print_addr(shad, &(op->val.compute.a));
                 printf (" ");
-                print_addr(shad, op.val.compute.b);
+                print_addr(shad, &(op->val.compute.b));
                 printf (" ");
-                print_addr(shad, op.val.compute.c);
+                print_addr(shad, &(op->val.compute.c));
                 printf ("\n");
                 break;
             }
         case INSNSTARTOP:
             {
-                printf("insn_start: %s, %d ops\n", op.val.insn_start.name,
-                        op.val.insn_start.num_ops);
+                printf("insn_start: %s, %d ops\n", op->val.insn_start.name,
+                        op->val.insn_start.num_ops);
                 break;
             }
         case CALLOP:
             {
-                printf("call %s\n", op.val.call.name);
+                printf("call %s\n", op->val.call.name);
                 break;
             }
         case RETOP:
@@ -764,37 +750,22 @@ void tob_op_print(Shad *shad, TaintOp op) {
 
 
 
-SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp op) {
-    tob_write(buf, (char*)&op, sizeof(TaintOp));
-
-    /* Old code used to selectively write parts of struct. Note: processing
-     * taint ops in this way was causing some performance degradation, most
-     * likely due to unaligned addresses.  Just write the entire struct and let
-     * the compiler take care of optimization.
-     */
+SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
+    tob_write(buf, (char*) op, sizeof(TaintOp));
 }
 
-SB_INLINE TaintOp tob_op_read(TaintOpBuffer *buf) {
-    TaintOp op;
-    tob_read(buf, (char*) &op, sizeof(TaintOp));
-
-    /* Old code used to selectively write parts of struct. Note: processing
-     * taint ops in this way was causing some performance degradation, most
-     * likely due to unaligned addresses.  Just write the entire struct and let
-     * the compiler take care of optimization.
-     */
-
-    return op;
+SB_INLINE void tob_op_read(TaintOpBuffer *buf, TaintOp *op) {
+    tob_read(buf, (char*) op, sizeof(TaintOp));
 }
 
-void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
+void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
         DynValBuffer *dynval_buf){
 #ifdef TAINTDEBUG
-    printf("Fixing up taint op buffer for: %s\n", op.val.insn_start.name);
+    printf("Fixing up taint op buffer for: %s\n", op->val.insn_start.name);
 #endif
 
     DynValEntry dventry;
-    if(op.val.insn_start.flag == INSNREADLOG) {
+    if(op->val.insn_start.flag == INSNREADLOG) {
       // Make sure there is still something to read in the buffer
       assert(((uintptr_t)(dynval_buf->ptr) - (uintptr_t)(dynval_buf->start))
           < dynval_buf->cur_size);
@@ -808,7 +779,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
       }
     }
 
-    if (!strcmp(op.val.insn_start.name, "load")){
+    if (!strcmp(op->val.insn_start.name, "load")){
 
         // Check to see if it's either a regular load or port load
         if (((dventry.entrytype != ADDRENTRY) && (dventry.entrytype != PADDRENTRY))
@@ -826,7 +797,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             TaintOp *cur_op = (TaintOp*) buf->ptr;
 
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
 
                 switch (cur_op->typ){
                     case COPYOP:
@@ -880,7 +851,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             TaintOp *cur_op = (TaintOp*) buf->ptr;
 
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
                 // For port accesses, we assume that data is only moved between
                 // ports and guest registers.  If this assumption is wrong then
                 // we will fail here.
@@ -917,7 +888,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
 
-    else if (!strcmp(op.val.insn_start.name, "store")){
+    else if (!strcmp(op->val.insn_start.name, "store")){
 
         // Check to see if it's either a regular store or port store
         if (((dventry.entrytype != ADDRENTRY) && (dventry.entrytype != PADDRENTRY))
@@ -935,7 +906,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             TaintOp *cur_op = (TaintOp*) buf->ptr;
 
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
 
                 switch (cur_op->typ){
                     case COPYOP:
@@ -1082,7 +1053,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             TaintOp *cur_op = (TaintOp*) buf->ptr;
 
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
                 // For port accesses, we assume that data is only moved between
                 // ports and guest registers.  If this assumption is wrong then
                 // we will fail here.
@@ -1129,7 +1100,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
 
-    else if (!strcmp(op.val.insn_start.name, "condbranch")){
+    else if (!strcmp(op->val.insn_start.name, "condbranch")){
 
         if (dventry.entrytype != BRANCHENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
@@ -1145,15 +1116,15 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
              * optional false branch is target[1], so that is how we log it
              */
             if (dventry.entry.branch.br == false){
-                previous_branch = op.val.insn_start.cur_branch_bb;
-                taken_branch = op.val.insn_start.branch_labels[0];
+                previous_branch = op->val.insn_start.cur_branch_bb;
+                taken_branch = op->val.insn_start.branch_labels[0];
 #ifdef TAINTDEBUG
                 printf("Taken branch: %d\n", taken_branch);
 #endif
             }
             else if (dventry.entry.branch.br == true) {
-                previous_branch = op.val.insn_start.cur_branch_bb;
-                taken_branch = op.val.insn_start.branch_labels[1];
+                previous_branch = op->val.insn_start.cur_branch_bb;
+                taken_branch = op->val.insn_start.branch_labels[1];
 #ifdef TAINTDEBUG
                 printf("Taken branch: %d\n", taken_branch);
 #endif
@@ -1172,7 +1143,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
 
-    else if (!strcmp(op.val.insn_start.name, "switch")){
+    else if (!strcmp(op->val.insn_start.name, "switch")){
 
         if (dventry.entrytype != SWITCHENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
@@ -1187,12 +1158,12 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             int64_t switchCond = dventry.entry.switchstmt.cond;
             bool found = 0;
 
-            unsigned len = op.val.insn_start.switch_len;
+            unsigned len = op->val.insn_start.switch_len;
             unsigned i;
             for (i = 0; i < (len-1); i++){
-                if (op.val.insn_start.switch_conds[i] == switchCond){
-                    previous_branch = op.val.insn_start.cur_branch_bb;
-                    taken_branch = op.val.insn_start.switch_labels[i];
+                if (op->val.insn_start.switch_conds[i] == switchCond){
+                    previous_branch = op->val.insn_start.cur_branch_bb;
+                    taken_branch = op->val.insn_start.switch_labels[i];
                     found = 1;
                     break;
                 }
@@ -1200,8 +1171,8 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 
             // handle default case in switch
             if (!found){
-                previous_branch = op.val.insn_start.cur_branch_bb;
-                taken_branch = op.val.insn_start.switch_labels[len-1];
+                previous_branch = op->val.insn_start.cur_branch_bb;
+                taken_branch = op->val.insn_start.switch_labels[len-1];
             }
 #ifdef TAINTDEBUG
             printf("Switch cond: %ld\n", switchCond);
@@ -1217,7 +1188,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         }
     }
 
-    else if (!strcmp(op.val.insn_start.name, "select")){
+    else if (!strcmp(op->val.insn_start.name, "select")){
 
         if (dventry.entrytype != SELECTENTRY){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
@@ -1232,12 +1203,12 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             char *saved_buf_ptr = buf->ptr;
 
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
                 // fill in src value
                 cur_op->val.copy.a.flag = 0;
                 cur_op->val.copy.a.typ = LADDR;
                 if (dventry.entry.select.sel == false){
-                    if (op.val.insn_start.branch_labels[0] == -1){
+                    if (op->val.insn_start.branch_labels[0] == -1){
                         // select value was a constant, so we delete taint
                         // at dest
                         cur_op->typ = DELETEOP;
@@ -1246,11 +1217,11 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
                     }
                     else {
                         cur_op->val.copy.a.val.la =
-                            op.val.insn_start.branch_labels[0];
+                            op->val.insn_start.branch_labels[0];
                     }
                 }
                 else if (dventry.entry.select.sel == true){
-                    if (op.val.insn_start.branch_labels[1] == -1){
+                    if (op->val.insn_start.branch_labels[1] == -1){
                         // select value was a constant, so we delete taint
                         // at dest
                         cur_op->typ = DELETEOP;
@@ -1259,7 +1230,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
                     }
                     else {
                         cur_op->val.copy.a.val.la =
-                            op.val.insn_start.branch_labels[1];
+                            op->val.insn_start.branch_labels[1];
                     }
                 }
                 else {
@@ -1278,20 +1249,20 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             exit(1);
         }
     }
-    else if (!strcmp(op.val.insn_start.name, "phi")){
+    else if (!strcmp(op->val.insn_start.name, "phi")){
         char *saved_buf_ptr = buf->ptr;
         TaintOp *cur_op = (TaintOp*) buf->ptr;
 
         /*** Fix up taint op buffer here ***/
         int phiSource = 0xDEADBEEF;
-        int len = op.val.insn_start.phi_len;
+        int len = op->val.insn_start.phi_len;
         int i;
         for(i = 0; i < len; i++)
         {
-            if(previous_branch == op.val.insn_start.phi_labels[i]) {
+            if(previous_branch == op->val.insn_start.phi_labels[i]) {
                 //This is the source llvm register for the phi instruction
                 //We need to copy taint from here to destination
-                phiSource = op.val.insn_start.phi_vals[i];
+                phiSource = op->val.insn_start.phi_vals[i];
                 break;
             }
         }
@@ -1307,11 +1278,11 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
         //Skip copy operations if phiSource is a constant (-1)
         if(phiSource == -1) {
           //Move buffer pointer past copy operations
-          cur_op += op.val.insn_start.num_ops;
+          cur_op += op->val.insn_start.num_ops;
           buf->ptr = (char*)cur_op;
         } else {
           //Patch up source for copy operations
-          for (i = 0; i < op.val.insn_start.num_ops; i++){
+          for (i = 0; i < op->val.insn_start.num_ops; i++){
               switch (cur_op->typ){
                   case COPYOP:
                     cur_op->val.copy.a.flag = 0;
@@ -1327,7 +1298,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
           buf->ptr = saved_buf_ptr;
         }
     }
-    else if (!strcmp(op.val.insn_start.name, "memset")){
+    else if (!strcmp(op->val.insn_start.name, "memset")){
         if ((dventry.entrytype != ADDRENTRY)
                 || (dventry.entry.memaccess.op != STORE)){
             fprintf(stderr, "Error: dynamic log doesn't align\n");
@@ -1340,7 +1311,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             char *saved_buf_ptr = buf->ptr;
             TaintOp *cur_op = (TaintOp*) buf->ptr;
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
                 switch (cur_op->typ){
                     case DELETEOP:
                         if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
@@ -1383,7 +1354,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             buf->ptr = saved_buf_ptr;
         }
     }
-    else if (!strcmp(op.val.insn_start.name, "memcpy")){
+    else if (!strcmp(op->val.insn_start.name, "memcpy")){
         /*
          *MemCpy has two values in the dynamic log, the src and the dst.
          *The src is modeled as a LOAD and comes first in the log.
@@ -1416,7 +1387,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
             char *saved_buf_ptr = buf->ptr;
             TaintOp *cur_op = (TaintOp*) buf->ptr;
             int i;
-            for (i = 0; i < op.val.insn_start.num_ops; i++){
+            for (i = 0; i < op->val.insn_start.num_ops; i++){
                 switch (cur_op->typ){
                     case COPYOP:
                         if (dventry_src.entry.memaccess.addr.flag == IRRELEVANT){
@@ -1492,6 +1463,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
 }
 
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
+
     // execute taint ops starting with the entry BB
     assert(ttb);
     assert(shad);
@@ -1524,7 +1496,8 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
     tob_rewind(buf);
     i = 0;
     while (!(tob_end(buf))) {
-        TaintOp op = tob_op_read(buf);
+      TaintOp op;
+      tob_op_read(buf, &op);
 #ifdef TAINTDEBUG
         printf("op %d ", i);
         tob_op_print(shad, op);
@@ -1532,7 +1505,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         switch (op.typ) {
             case LABELOP:
                 {
-                    tp_label(shad, op.val.label.a, op.val.label.l);
+		  tp_label(shad, &(op.val.label.a), op.val.label.l);
                     break;
                 }
 
@@ -1545,11 +1518,11 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                         break;
                     }
 #ifdef TAINTDEBUG
-                    if (tp_query(shad, op.val.deletel.a)) {
+                    if (tp_query(shad, &(op.val.deletel.a))) {
                         printf ("  [removes taint]\n");
                     }
 #endif
-                    tp_delete(shad, op.val.deletel.a);
+		    tp_delete(shad, &(op.val.deletel.a));
                     break;
                 }
 
@@ -1566,7 +1539,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                             }
                             if (foo) printf("\n");
 #endif
-                        tp_delete(shad, op.val.copy.b);
+			    tp_delete(shad, &(op.val.copy.b));
                         break;
                     }
 
@@ -1587,7 +1560,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     }
                     if (foo) printf("\n");
 #endif
-                    tp_copy(shad, op.val.copy.a, op.val.copy.b);
+		    tp_copy(shad, &(op.val.copy.a), &(op.val.copy.b));
                     break;
                 }
 
@@ -1624,14 +1597,14 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     }
                     if (foo) printf("\n");
 #endif
-                    tp_compute(shad, op.val.compute.a, op.val.compute.b,
-                            op.val.compute.c);
+		    tp_compute(shad, &(op.val.compute.a), &(op.val.compute.b),
+			       &(op.val.compute.c));
                     break;
                 }
 
             case INSNSTARTOP:
                 {
-                    process_insn_start_op(op, buf, dynval_buf);
+		    process_insn_start_op(&op, buf, dynval_buf);
                     if (next_step == EXCEPT){
                         return;
                     }

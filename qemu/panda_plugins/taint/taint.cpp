@@ -109,7 +109,7 @@ void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
         op.val.label.a = a;
         op.val.label.l = i + count; // byte label
         //op.val.label.l = 1; // binary label
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
     tob_process(tbuf, shad, NULL);
     count += length;
