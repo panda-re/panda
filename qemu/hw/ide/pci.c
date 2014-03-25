@@ -96,7 +96,6 @@ static int bmdma_prepare_buf(IDEDMA *dma, int is_write)
 /* return 0 if buffer completed */
 static int bmdma_rw_buf(IDEDMA *dma, int is_write)
 {
-    printf("bmdma_rw_buf\n");
     BMDMAState *bm = DO_UPCAST(BMDMAState, dma, dma);
     IDEState *s = bmdma_active_if(bm);
     struct {
@@ -129,11 +128,9 @@ static int bmdma_rw_buf(IDEDMA *dma, int is_write)
             l = bm->cur_prd_len;
         if (l > 0) {
             if (is_write) {
-                printf("HD pci_dma_write\n");
                 pci_dma_write(&bm->pci_dev->dev, bm->cur_prd_addr,
                               s->io_buffer + s->io_buffer_index, l);
             } else {
-                printf("HD pci_dma_read\n");
                 pci_dma_read(&bm->pci_dev->dev, bm->cur_prd_addr,
                              s->io_buffer + s->io_buffer_index, l);
             }

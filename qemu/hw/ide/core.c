@@ -539,7 +539,6 @@ static void ide_rw_error(IDEState *s) {
 
 void ide_sector_read(IDEState *s)
 {
-    printf("ide_sector_read\n");
     int64_t sector_num;
     int ret, n;
 
@@ -703,11 +702,11 @@ handle_rw_error:
             rr_record_sg_transfer(s, HD_TRANSFER_HD_TO_RAM, sector_num, n);
         }
         // RW hd taint debug
-	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
+        dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
 
         s->bus->dma->aiocb = dma_bdrv_read(s->bs, &s->sg, sector_num,
                                            ide_dma_cb, s);
-	break;
+        break;
     
     case IDE_DMA_WRITE:
         // RW hd taint
@@ -716,7 +715,7 @@ handle_rw_error:
             rr_record_sg_transfer(s, HD_TRANSFER_RAM_TO_HD, sector_num, n);
         }
         // RW hd taint debug
-	dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
+        dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
       
         s->bus->dma->aiocb = dma_bdrv_write(s->bs, &s->sg, sector_num,
                                             ide_dma_cb, s);
