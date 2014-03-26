@@ -42,6 +42,8 @@
 #include "rr_log.h"
 #include "panda_plugin.h"
 
+#include "panda_plugin.h"
+
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -299,20 +301,38 @@ static inline void rr_write_item(void) {
                     case RR_CALL_CPU_MEM_RW:
                         rr_assert(args->variant.cpu_mem_rw_args.buf != NULL || 
                                 args->variant.cpu_mem_rw_args.len == 0);
-                        fwrite(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp);
+                        fwrite(&(args->variant.cpu_mem_rw_args), 
+			       sizeof(args->variant.cpu_mem_rw_args), 
+			       1, rr_nondet_log->fp);
                         //mz write the buffer
-                        fwrite(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
+                        fwrite(args->variant.cpu_mem_rw_args.buf, 1, 
+			       args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
                         //bdg same deal as RR_CALL_CPU_MEM_RW
                         rr_assert(args->variant.cpu_mem_unmap.buf != NULL || 
                                 args->variant.cpu_mem_unmap.len == 0);
-                        fwrite(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
-                        fwrite(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+                        fwrite(&(args->variant.cpu_mem_unmap),
+			       sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
+                        fwrite(args->variant.cpu_mem_unmap.buf, 1, 
+			       args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
                         break;
                     case RR_CALL_CPU_REG_MEM_REGION:
                         fwrite(&(args->variant.cpu_mem_reg_region_args), 
                                sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_HD_TRANSFER:
+		        fwrite(&(args->variant.hd_transfer_args), 
+                               sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp);
+                        break;
+                    case RR_CALL_HANDLE_PACKET:
+                        assert(args->variant.handle_packet_args.buf != NULL || 
+                                args->variant.handle_packet_args.size == 0);
+                        fwrite(&(args->variant.handle_packet_args), 
+			       sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->fp);
+                        //mz write the buffer
+                        fwrite(args->variant.handle_packet_args.buf, 1, 
+			       args->variant.handle_packet_args.size, rr_nondet_log->fp);
                         break;
                     default:
                         //mz unimplemented
@@ -500,6 +520,53 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
     rr_write_item();
 }
 
+
+
+void rr_record_hd_transfer(RR_callsite_id call_site,
+				  Hd_transfer_type transfer_type,
+				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_HD_TRANSFER;
+    item->variant.call_args.variant.hd_transfer_args.type = transfer_type;
+    item->variant.call_args.variant.hd_transfer_args.src_addr = src_addr;
+    item->variant.call_args.variant.hd_transfer_args.dest_addr = dest_addr;
+    item->variant.call_args.variant.hd_transfer_args.num_bytes = num_bytes;
+
+    rr_write_item();
+}
+
+
+
+void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
+{
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_HANDLE_PACKET;
+    item->variant.call_args.variant.handle_packet_args.buf = buf;
+    item->variant.call_args.variant.handle_packet_args.size = size;
+    item->variant.call_args.variant.handle_packet_args.direction = direction;
+
+    rr_write_item();
+}
+
+
+
+
 //mz record a marker for end of the log
 static void rr_record_end_of_log(void) {
     RR_log_entry *item = &(rr_nondet_log->current_item);
@@ -536,6 +603,10 @@ static inline void free_entry_params(RR_log_entry *entry)
                     g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
                     entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
                     break;
+	        case RR_CALL_HANDLE_PACKET:
+	            g_free(entry->variant.call_args.variant.handle_packet_args.buf);
+		    entry->variant.call_args.variant.handle_packet_args.buf = NULL;
+		    break;
             }
             break;
         case RR_INPUT_1:
@@ -671,6 +742,29 @@ static RR_log_entry *rr_read_item(void) {
                               sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) == 1);
                         rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.cpu_mem_reg_region_args);
                         break;
+		     
+		    case RR_CALL_HD_TRANSFER:
+		        rr_assert(fread(&(args->variant.hd_transfer_args),
+			      sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
+			rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.hd_transfer_args);
+			break;
+		    
+		    case RR_CALL_HANDLE_PACKET:
+  		        rr_assert(fread(&(args->variant.handle_packet_args), 
+					sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->fp) == 1);
+		        rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.handle_packet_args);
+			//mz XXX HACK
+			args->old_buf_addr = (uint64_t) args->variant.handle_packet_args.buf;
+			//mz buffer length in args->variant.cpu_mem_rw_args.len 
+			//mz always allocate a new one. we free it when the item is added to the recycle list
+			args->variant.handle_packet_args.buf = 
+			  g_malloc(args->variant.handle_packet_args.size);
+			//mz read the buffer 
+			assert (fread(args->variant.handle_packet_args.buf, 
+				      1, args->variant.handle_packet_args.size, rr_nondet_log->fp) == 1);
+			rr_size_of_log_entries[item->header.kind] += args->variant.handle_packet_args.size;
+			break;
+
                     default:
                         //mz unimplemented
                         rr_assert(0);
@@ -1009,10 +1103,42 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                                 /*is_write=*/1,
                                 args->variant.cpu_mem_unmap.len
                                 );
-
                     }
                     break;
-                default:
+	        case RR_CALL_HD_TRANSFER:
+		  {
+		    // run all callbacks registered for hd transfer
+		    RR_hd_transfer_args *hdt = &(args->variant.hd_transfer_args);
+		    panda_cb_list *plist;
+		    for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
+		      plist->entry.replay_hd_transfer
+			(cpu_single_env, 
+			 hdt->type,
+			 hdt->src_addr,
+			 hdt->dest_addr,
+			 hdt->num_bytes);
+		    }
+		  }
+		  break;
+
+	        case RR_CALL_HANDLE_PACKET:
+		  {
+		    // run all callbacks registered for packet handling
+		    RR_handle_packet_args *hp = &(args->variant.handle_packet_args);
+		    panda_cb_list *plist;
+		    for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET]; plist != NULL; plist = plist->next) {
+		      plist->entry.replay_handle_packet
+			(cpu_single_env, 
+			 hp->buf,
+			 hp->size, 
+			 hp->direction, 
+			 (uint64_t) args->old_buf_addr);
+		    }
+		
+	      }
+	      break;
+
+	    default:
                     //mz sanity check
                     rr_assert(0);
             }

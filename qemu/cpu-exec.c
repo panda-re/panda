@@ -44,16 +44,21 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 
+#ifdef CONFIG_SOFTMMU
 // TRL 0810 record replay stuff 
 #include "rr_log.h"
+#endif
+
 #include <signal.h>
 
 #include "panda_plugin.h"
 
+#ifdef CONFIG_SOFTMMU
 //mz need this here because CPU_LOG_RR constant is not available in rr_log.[ch]
 int is_cpu_log_rr_set(void) {
     return (loglevel & CPU_LOG_RR);
 }
+#endif
 
 int tb_invalidated_flag;
 
@@ -233,7 +238,7 @@ static void cpu_handle_debug_exception(CPUState *env)
 }
 
 
-
+#ifdef CONFIG_SOFTMMU
 void rr_set_program_point(void) {
     if (cpu_single_env) {
 #if defined( TARGET_I386 )
@@ -255,7 +260,7 @@ void rr_quit_cpu_loop(void) {
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state) {
   cpu_state->rr_guest_instr_count = 0;
 }
-
+#endif
 
 
 /* main execution loop */
@@ -269,6 +274,7 @@ int cpu_exec(CPUState *env)
     uint8_t *tc_ptr;
     unsigned long next_tb;
 
+#ifdef CONFIG_SOFTMMU
     RR_prog_point saved_prog_point = rr_prog_point;
     int rr_loop_tries = 20;
     
@@ -284,11 +290,14 @@ int cpu_exec(CPUState *env)
     //qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags = %x\n", env->hflags);
     //    qemu_log_mask(CPU_LOG_RR, "head of cpu_exec: env1->hflags & HF_HALTED_MASK = %x\n",
     //		  env->hflags & HF_HALTED_MASK);
+#endif
 
     if (env->halted) {
+#ifdef CONFIG_SOFTMMU
         if (!rr_in_replay() && !cpu_has_work(env)) {
             return EXCP_HALTED;
         }
+#endif
 
         env->halted = 0;
     }
@@ -339,8 +348,10 @@ int cpu_exec(CPUState *env)
 	    // NB: we can only be here if we came from immediately before
 	    // the if (setjmp...)  stmt.  
 	    // the else block gets executed when we longjmp(env->jmp_env)
+#ifdef CONFIG_SOFTMMU
             //mz Set the program point here.
             rr_set_program_point();
+#endif
             /* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
                 if (env->exception_index >= EXCP_INTERRUPT) {
@@ -369,6 +380,7 @@ int cpu_exec(CPUState *env)
 
             next_tb = 0; /* force lookup of first TB */
             for(;;) {
+#ifdef CONFIG_SOFTMMU
                 //bdg Replay skipped calls from the I/O thread here
                 if(rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
@@ -378,8 +390,10 @@ int cpu_exec(CPUState *env)
             
                 //mz Set the program point here.
                 rr_set_program_point();
+#endif
                 // cache interrupt request value.
                 interrupt_request = env->interrupt_request;
+#ifdef CONFIG_SOFTMMU
                 //mz Record and Replay.
                 //mz it is important to do this in the order written, as
                 //during record env->interrupt_request can be changed at any
@@ -392,6 +406,7 @@ int cpu_exec(CPUState *env)
                 if (rr_in_replay()) {
                     env->interrupt_request = interrupt_request;
                 }
+#endif
                 if (unlikely(interrupt_request)) {
                     if (unlikely(env->singlestep_enabled & SSTEP_NOIRQ)) {
                         /* Mask out external interrupts for this step. */
@@ -446,6 +461,7 @@ int cpu_exec(CPUState *env)
                             int intno;
                             svm_check_intercept(env, SVM_EXIT_INTR);
                             env->interrupt_request &= ~(CPU_INTERRUPT_HARD | CPU_INTERRUPT_VIRQ);
+#ifdef CONFIG_SOFTMMU
                             // dont bother calling this if we are replaying       
                             // ... just obtain "intno" from (or record it to) 
                             // non-deterministic inputs log
@@ -454,6 +470,10 @@ int cpu_exec(CPUState *env)
                                 /*record=*/rr_input_4((uint32_t *)&intno),
                                 /*replay=*/rr_input_4((uint32_t *)&intno),
                                 /*location=*/RR_CALLSITE_CPU_EXEC_2);
+#else
+                            // for user mode, cpu_get_pic_interrupt returns -1
+                            intno = -1;
+#endif
                             //mz servicing hardware interrupt
                             qemu_log_mask(CPU_LOG_TB_IN_ASM, "Servicing hardware INT=0x%02x\n", intno);
                             do_interrupt_x86_hardirq(env, intno, 1);
@@ -648,11 +668,14 @@ int cpu_exec(CPUState *env)
                         next_tb = 0;
                     }
 #endif
+
+#ifdef CONFIG_SOFTMMU
                     //mz set program point after handling interrupts.
                     rr_set_program_point();
                     //mz record the value again in case do_interrupt has set EXITTB flag
                     rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
                     rr_interrupt_request((int *)&env->interrupt_request);
+#endif
 
                    /* Don't use the cached interrupt_request value,
                       do_interrupt may have updated the EXITTB flag. */
@@ -711,12 +734,14 @@ int cpu_exec(CPUState *env)
                 //bdg WARNING! This can cause an exception
                 tb = tb_find_fast(env);
 
+#ifdef CONFIG_SOFTMMU
                 qemu_log_mask(CPU_LOG_RR, 
 			      "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
                   tb->pc,
 			      (unsigned long long)rr_prog_point.guest_instr_count, 
                   (unsigned long long)rr_prog_point.pc,
                   (unsigned long long)rr_prog_point.secondary);
+#endif
 
                 // PANDA instrumentation: before basic block exec (with option
                 // to invalidate tb)
@@ -761,11 +786,17 @@ int cpu_exec(CPUState *env)
                 // (T0 & ~3) contains pointer to previous translation block.
                 // (T0 & 3) contains info about which branch we took (why 2 bits?)
                 // tb is current translation block.  
-                if ((rr_mode != RR_REPLAY) && (panda_tb_chaining == true)){
-                    if (next_tb != 0 && tb->page_addr[1] == -1) {
-                        tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
+#ifdef CONFIG_SOFTMMU
+                if (rr_mode != RR_REPLAY){
+#endif
+                    if ((panda_tb_chaining == true)){
+                        if (next_tb != 0 && tb->page_addr[1] == -1) {
+                            tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
+                        }
                     }
+#ifdef CONFIG_SOFTMMU
                 }
+#endif
                 else {
                   /*
                     TRL In 0.9.1, here, in the else branch, we BREAK_CHAIN.
@@ -783,6 +814,7 @@ int cpu_exec(CPUState *env)
 
                 barrier();
 
+#ifdef CONFIG_SOFTMMU
                 // Check for termination in replay
                 if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                     rr_end_replay_requested = 1;
@@ -807,64 +839,73 @@ int cpu_exec(CPUState *env)
                         rr_do_end_replay(1);
                     }
                 }
-
-                if (likely(!env->exit_request) && (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0)) {
-                    tc_ptr = tb->tc_ptr;
-                    //mz setting program point just before call to gen_func()
-                    rr_set_program_point();
-                    //mz Actually jump into the generated code
-                    /* execute the generated code */
-
-                    // PANDA instrumentation: before basic block exec
-                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
-                            plist != NULL; plist = plist->next) {
-                        plist->entry.before_block_exec(env, tb);
-                    }
-
-#if defined(CONFIG_LLVM)
-                    if(execute_llvm) {
-                        assert(tb->llvm_tc_ptr);
-                        next_tb = tcg_llvm_qemu_tb_exec(env, tb);
-                    } else {
-                        assert(tc_ptr);
-                        next_tb = tcg_qemu_tb_exec(env, tc_ptr);
-                    }
-#else
-                    next_tb = tcg_qemu_tb_exec(env, tc_ptr);
 #endif
 
-                    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
-                        plist->entry.after_block_exec(env, tb, (TranslationBlock *)(next_tb & ~3));
-                    }
+#ifdef CONFIG_SOFTMMU
+                if (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0) {
+#endif
+                    if (likely(!env->exit_request)) {
+                        tc_ptr = tb->tc_ptr;
+                        //mz setting program point just before call to gen_func()
+#ifdef CONFIG_SOFTMMU
+                        rr_set_program_point();
+#endif
+                        //mz Actually jump into the generated code
+                        /* execute the generated code */
 
-                    if ((next_tb & 3) == 2) {
-                        /* Instruction counter expired.  */
-                        int insns_left;
-                        tb = (TranslationBlock *)(long)(next_tb & ~3);
-                        /* Restore PC.  */
-                        cpu_pc_from_tb(env, tb);
-                        insns_left = env->icount_decr.u32;
-                        if (env->icount_extra && insns_left >= 0) {
-                            /* Refill decrementer and continue execution.  */
-                            env->icount_extra += insns_left;
-                            if (env->icount_extra > 0xffff) {
-                                insns_left = 0xffff;
-                            } else {
-                                insns_left = env->icount_extra;
-                            }
-                            env->icount_extra -= insns_left;
-                            env->icount_decr.u16.low = insns_left;
+                        // PANDA instrumentation: before basic block exec
+                        for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
+                                plist != NULL; plist = plist->next) {
+                            plist->entry.before_block_exec(env, tb);
+                        }
+
+#if defined(CONFIG_LLVM)
+                        if(execute_llvm) {
+                            assert(tb->llvm_tc_ptr);
+                            next_tb = tcg_llvm_qemu_tb_exec(env, tb);
                         } else {
-                            if (insns_left > 0) {
-                                /* Execute remaining instructions.  */
-                                cpu_exec_nocache(env, insns_left, tb);
+                            assert(tc_ptr);
+                            next_tb = tcg_qemu_tb_exec(env, tc_ptr);
+                        }
+#else
+                        next_tb = tcg_qemu_tb_exec(env, tc_ptr);
+#endif
+
+                        for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
+                            plist->entry.after_block_exec(env, tb, (TranslationBlock *)(next_tb & ~3));
+                        }
+
+                        if ((next_tb & 3) == 2) {
+                            /* Instruction counter expired.  */
+                            int insns_left;
+                            tb = (TranslationBlock *)(long)(next_tb & ~3);
+                            /* Restore PC.  */
+                            cpu_pc_from_tb(env, tb);
+                            insns_left = env->icount_decr.u32;
+                            if (env->icount_extra && insns_left >= 0) {
+                                /* Refill decrementer and continue execution.  */
+                                env->icount_extra += insns_left;
+                                if (env->icount_extra > 0xffff) {
+                                    insns_left = 0xffff;
+                                } else {
+                                    insns_left = env->icount_extra;
+                                }
+                                env->icount_extra -= insns_left;
+                                env->icount_decr.u16.low = insns_left;
+                            } else {
+                                if (insns_left > 0) {
+                                    /* Execute remaining instructions.  */
+                                    cpu_exec_nocache(env, insns_left, tb);
+                                }
+                                env->exception_index = EXCP_INTERRUPT;
+                                next_tb = 0;
+                                cpu_loop_exit(env);
                             }
-                            env->exception_index = EXCP_INTERRUPT;
-                            next_tb = 0;
-                            cpu_loop_exit(env);
                         }
                     }
+#ifdef CONFIG_SOFTMMU
                 }
+#endif
                 env->current_tb = NULL;
                 /* reset soft MMU for next block (it can currently
                    only be set by a memory fault) */

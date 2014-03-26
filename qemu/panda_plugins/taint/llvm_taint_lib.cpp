@@ -2578,7 +2578,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         approxArithHelper(I.getArgOperand(0), I.getArgOperand(1), &I);
         return;
     }
-    else if (!calledName.compare(0, 9, "helper_in") && calledName.size() == 10) {
+    else if (!calledName.compare(0, 9, "helper_in") && calledName.size() == 10){
         /*
          * The last character of the instruction name determines the size of data transfer
          * b = single byte
@@ -2599,7 +2599,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         portLoadHelper(I.getArgOperand(0), &I, len);
         return;
     }
-    else if (!calledName.compare(0, 10, "helper_out") && calledName.size() == 11) {
+    else if (!calledName.compare(0, 10, "helper_out") && calledName.size() == 11){
         /*
          * The last character of the instruction name determines the size of data transfer
          * b = single byte

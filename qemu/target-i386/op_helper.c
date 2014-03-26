@@ -21,7 +21,11 @@
 #include "cpu.h"
 #include "dyngen-exec.h"
 #include "host-utils.h"
+
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
+
 #include "ioport.h"
 #include "qemu-common.h"
 #include "qemu-log.h"
@@ -671,32 +675,35 @@ void helper_check_iol(uint32_t t0)
 
 void helper_outb(uint32_t port, uint32_t data)
 {
-    cpu_outb(port, data & 0xff);
+  cpu_outb(port, data & 0xff);
 }
 
 target_ulong helper_inb(uint32_t port)
 {
-    return cpu_inb(port);
+  target_ulong retval = cpu_inb(port);  
+  return retval;
 }
 
 void helper_outw(uint32_t port, uint32_t data)
 {
-    cpu_outw(port, data & 0xffff);
+  cpu_outw(port, data & 0xffff);
 }
 
 target_ulong helper_inw(uint32_t port)
 {
-    return cpu_inw(port);
+  target_ulong retval = cpu_inw(port);
+  return retval;
 }
 
 void helper_outl(uint32_t port, uint32_t data)
 {
-    cpu_outl(port, data);
+  cpu_outl(port, data);
 }
 
 target_ulong helper_inl(uint32_t port)
 {
-    return cpu_inl(port);
+  target_ulong retval = cpu_inl(port);
+  return retval;
 }
 
 static inline unsigned int get_sp_mask(unsigned int e2)
@@ -3153,11 +3160,15 @@ void helper_rdtsc(void)
     }
     helper_svm_check_intercept_param(SVM_EXIT_RDTSC, 0);
 
+#ifdef CONFIG_SOFTMMU
     RR_DO_RECORD_OR_REPLAY(
         /*action=*/val = cpu_get_tsc(env) + env->tsc_offset,
         /*record=*/rr_input_8(&val),
         /*replay=*/rr_input_8(&val),
         /*location=*/RR_CALLSITE_RDTSC);
+#else
+        val = cpu_get_tsc(env) + env->tsc_offset;
+#endif
 
     EAX = (uint32_t)(val);
     EDX = (uint32_t)(val >> 32);

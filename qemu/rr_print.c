@@ -109,6 +109,14 @@ static void rr_spit_log_entry(RR_log_entry item) {
                     case RR_CALL_CPU_MEM_UNMAP:
                         callbytes = sizeof(args->variant.cpu_mem_unmap) + args->variant.cpu_mem_unmap.len;
                         break;
+                    case RR_CALL_HD_TRANSFER:
+                        callbytes = sizeof(args->variant.hd_transfer_args);
+                        printf("This is a HD transfer. Source: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                            args->variant.hd_transfer_args.src_addr,
+                            args->variant.hd_transfer_args.dest_addr,
+                            args->variant.hd_transfer_args.num_bytes);
+
+                        break;
                 }
                 printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
                         get_skipped_call_kind_string(item.variant.call_args.kind),
@@ -237,6 +245,10 @@ static RR_log_entry *rr_read_item(void) {
                     case RR_CALL_CPU_REG_MEM_REGION:
                         assert(fread(&(args->variant.cpu_mem_reg_region_args), 
                               sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_HD_TRANSFER:
+                        assert(fread(&(args->variant.hd_transfer_args),
+                              sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
                         break;
                     default:
                         //mz unimplemented

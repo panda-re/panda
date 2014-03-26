@@ -116,6 +116,8 @@ typedef enum {
     RR_CALL_CPU_MEM_RW,             // cpu_physical_memory_rw()
     RR_CALL_CPU_REG_MEM_REGION,     // cpu_register_physical_memory()
     RR_CALL_CPU_MEM_UNMAP,          // cpu_physical_memory_unmap()
+    RR_CALL_HD_TRANSFER,     // hd transfer
+    RR_CALL_HANDLE_PACKET,   // packet stuff
     RR_CALL_LAST
 } RR_skipped_call_kind;
 
@@ -123,6 +125,8 @@ static const char *skipped_call_kind_str[] = {
     "RR_CALL_CPU_MEM_RW",
     "RR_CALL_CPU_REG_MEM_REGION",
     "RR_CALL_CPU_MEM_UNMAP",
+    "RR_CALL_HD_TRANSFER",
+    "RR_CALL_HANDLE_PACKET",
     "RR_CALL_LAST"
 };
 
@@ -224,6 +228,13 @@ typedef enum {
   RR_CALLSITE_IOPORT_WRITE,
   RR_CALLSITE_SPARC_CPU_EXEC_1,
   RR_CALLSITE_MIPS_CPU_EXEC_1,
+  RR_CALLSITE_IDE_SECTOR_READ,
+  RR_CALLSITE_IDE_SECTOR_WRITE,
+  RR_CALLSITE_IDE_DMA_CB,
+  RR_CALLSITE_IDE_DATA_WRITEW,
+  RR_CALLSITE_IDE_DATA_WRITEL,
+  RR_CALLSITE_IDE_DATA_READW,
+  RR_CALLSITE_IDE_DATA_READL,
   RR_CALLSITE_LAST,
 } RR_callsite_id;
 
@@ -277,8 +288,17 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IOPORT_WRITE",
   "RR_CALLSITE_SPARC_CPU_EXEC_1",
   "RR_CALLSITE_MIPS_CPU_EXEC_1",
+  "RR_CALLSITE_IDE_SECTOR_READ",
+  "RR_CALLSITE_IDE_SECTOR_WRITE",
+  "RR_CALLSITE_IDE_DMA_CB",
+  "RR_CALLSITE_IDE_DATA_WRITEW",
+  "RR_CALLSITE_IDE_DATA_WRITEL",
+  "RR_CALLSITE_IDE_DATA_READW",
+  "RR_CALLSITE_IDE_DATA_READL",
+  "RR_CALLSITE_IDE_SECTOR_READ",
   "RR_CALLSITE_LAST"
 };
+
 
 static inline const char *get_callsite_string(RR_callsite_id cid)
 {
@@ -369,10 +389,10 @@ static inline int rr_prog_point_compare(RR_prog_point current,
 static inline void rr_interrupt_request(int *interrupt_request) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_interrupt_request(rr_skipped_callsite_location, *interrupt_request);
+	  rr_record_interrupt_request((RR_callsite_id) rr_skipped_callsite_location, *interrupt_request);
             break;
         case RR_REPLAY:
-	  rr_replay_interrupt_request(rr_skipped_callsite_location, (uint32_t *) interrupt_request);
+	  rr_replay_interrupt_request((RR_callsite_id) rr_skipped_callsite_location, (uint32_t *) interrupt_request);
             break;
         default:
             break;
@@ -382,10 +402,10 @@ static inline void rr_interrupt_request(int *interrupt_request) {
 static inline void rr_exit_request(uint32_t *exit_request) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_exit_request(rr_skipped_callsite_location, *exit_request);
+            rr_record_exit_request((RR_callsite_id) rr_skipped_callsite_location, *exit_request);
             break;
         case RR_REPLAY:
-            rr_replay_exit_request(rr_skipped_callsite_location, (uint32_t *) exit_request);
+            rr_replay_exit_request((RR_callsite_id) rr_skipped_callsite_location, (uint32_t *) exit_request);
             break;
         default:
             break;
@@ -395,10 +415,10 @@ static inline void rr_exit_request(uint32_t *exit_request) {
 static inline void rr_debug(void) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_debug(rr_skipped_callsite_location);
+            rr_record_debug((RR_callsite_id) rr_skipped_callsite_location);
             break;
         case RR_REPLAY:
-            rr_replay_debug(rr_skipped_callsite_location);
+            rr_replay_debug((RR_callsite_id) rr_skipped_callsite_location);
             break;
         default:
             break;
@@ -409,10 +429,10 @@ static inline void rr_debug(void) {
 static inline void rr_input_1(uint8_t *val) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_input_1(rr_skipped_callsite_location, *val);
+            rr_record_input_1((RR_callsite_id) rr_skipped_callsite_location, *val);
             break;
         case RR_REPLAY:
-            rr_replay_input_1(rr_skipped_callsite_location, val);
+            rr_replay_input_1((RR_callsite_id) rr_skipped_callsite_location, val);
             break;
         default:
             break;
@@ -422,10 +442,10 @@ static inline void rr_input_1(uint8_t *val) {
 static inline void rr_input_2(uint16_t *val) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_input_2(rr_skipped_callsite_location, *val);
+            rr_record_input_2((RR_callsite_id) rr_skipped_callsite_location, *val);
             break;
         case RR_REPLAY:
-            rr_replay_input_2(rr_skipped_callsite_location, val);
+            rr_replay_input_2((RR_callsite_id) rr_skipped_callsite_location, val);
             break;
         default:
             break;
@@ -435,10 +455,10 @@ static inline void rr_input_2(uint16_t *val) {
 static inline void rr_input_4(uint32_t *val) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_input_4(rr_skipped_callsite_location, *val);
+            rr_record_input_4((RR_callsite_id) rr_skipped_callsite_location, *val);
             break;
         case RR_REPLAY:
-            rr_replay_input_4(rr_skipped_callsite_location, val);
+            rr_replay_input_4((RR_callsite_id) rr_skipped_callsite_location, val);
             break;
         default:
             break;
@@ -448,10 +468,10 @@ static inline void rr_input_4(uint32_t *val) {
 static inline void rr_input_8(uint64_t *val) {
     switch (rr_mode) {
         case RR_RECORD:
-            rr_record_input_8(rr_skipped_callsite_location, *val);
+            rr_record_input_8((RR_callsite_id) rr_skipped_callsite_location, *val);
             break;
         case RR_REPLAY:
-            rr_replay_input_8(rr_skipped_callsite_location, val);
+            rr_replay_input_8((RR_callsite_id) rr_skipped_callsite_location, val);
             break;
         default:
             break;
@@ -465,7 +485,7 @@ static inline void rr_input_8(uint64_t *val) {
 #define rr_input_shift_3 rr_input_8
 
 static inline void rr_replay_skipped_calls(void) {
-    rr_replay_skipped_calls_internal(rr_skipped_callsite_location);
+    rr_replay_skipped_calls_internal((RR_callsite_id) rr_skipped_callsite_location);
 }
 
 //mz 11.04.2009  Macros to use for a block of code to be replayed
@@ -621,5 +641,37 @@ static inline void rr_set_debug_noisy(void) {
 void rr_debug_log_prog_point(RR_prog_point pp);
 void rr_print_history(void);
 void rr_spit_prog_point(RR_prog_point pp);
+
+/* Hard drive stuff.  Belongs here since it's target-independent. */
+
+typedef enum {
+  HD_TRANSFER_HD_TO_IOB,
+  HD_TRANSFER_IOB_TO_HD,
+  HD_TRANSFER_PORT_TO_IOB,
+  HD_TRANSFER_IOB_TO_PORT,
+  HD_TRANSFER_HD_TO_RAM,
+  HD_TRANSFER_RAM_TO_HD
+} Hd_transfer_type;
+
+/*
+static const char *hd_transfer_str[] = {
+  "HD_TRANSFER_HD_TO_IOB",
+  "HD_TRANSFER_IOB_TO_HD",
+  "HD_TRANSFER_PORT_TO_IOB",
+  "HD_TRANSFER_IOB_TO_PORT"
+};
+*/
+
+// structure for arguments to hd_transfer
+typedef struct {
+  Hd_transfer_type type;   
+  uint64_t src_addr;
+  uint64_t dest_addr;
+  uint32_t num_bytes;
+} RR_hd_transfer_args;
+
+void rr_record_hd_transfer(RR_callsite_id call_site,
+    Hd_transfer_type transfer_type, uint64_t src_addr, uint64_t dest_addr,
+    uint32_t num_bytes);
 
 #endif

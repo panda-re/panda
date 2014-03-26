@@ -71,7 +71,9 @@
 #include "trace.h"
 #endif
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
 #include "panda_plugin.h"
 
 #ifdef CONFIG_LLVM
@@ -2789,9 +2791,11 @@ void cpu_register_physical_memory_log(target_phys_addr_t start_addr,
     ram_addr_t orig_size = size;
     subpage_t *subpage;
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_record() && rr_record_in_progress) {
         rr_reg_mem_call_record(start_addr, size, phys_offset);
     }
+#endif
 
     assert(size);
     cpu_notify_set_memory(start_addr, size, phys_offset, log_dirty);
@@ -4245,6 +4249,7 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                 uint8_t *dest =  ptr + (addr & ~TARGET_PAGE_MASK);
                 if (rr_mode == RR_REPLAY) {
                     // run all callbacks registered for cpu_physical_memory_rw ram case
+                    // XXX is passing pd here correct?
                     panda_cb_list *plist;
                     for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
                         plist->entry.replay_before_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, pd, l);
@@ -5091,11 +5096,13 @@ void cpu_io_recompile(CPUState *env, void *retaddr)
                   retaddr);
     }
     
+#ifdef CONFIG_SOFTMMU
     if (rr_debug_whisper()) {
         qemu_log_mask(CPU_LOG_RR,
             "Called cpu_io_recompile to retranslate TB at pc=%p\n",
             retaddr);
     }
+#endif
 
     n = env->icount_decr.u16.low + tb->icount;
     cpu_restore_state(tb, env, (unsigned long)retaddr);

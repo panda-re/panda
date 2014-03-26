@@ -25,12 +25,17 @@ PANDAENDCOMMENT */
 
 extern "C" {
 
+#include "qemu-common.h"
+#include "cpu-all.h"
+#ifndef CONFIG_SOFTMMU
+#include "syscall_defs.h"
+#endif
+
 #include "panda_plugin.h"
 #include "panda_memlog.h"
 #include "panda_stats.h"
-
-#ifndef CONFIG_SOFTMMU
-#include "syscall_defs.h"
+#ifdef CONFIG_SOFTMMU
+#include "rr_log.h"
 #endif
 
 }
@@ -58,6 +63,19 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
 
+// for hd taint
+int cb_replay_hd_transfer_taint
+  (CPUState *env,
+   uint32_t type,
+   uint64_t src_addr,
+   uint64_t dest_addr,
+   uint32_t num_bytes);
+
+int cb_replay_cpu_physical_mem_rw_ram
+  (CPUState *env,
+   uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        int num, abi_long arg1, abi_long arg2, abi_long arg3,
@@ -69,6 +87,8 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
+
+
 
 Shad *shadow = NULL; // Global shadow memory
 
@@ -97,15 +117,23 @@ bool taintJustEnabled = false;
 // Lets us know right when taint was disabled
 bool taintJustDisabled = false;
 
+// Globals needed for taint io buffer
+TaintOpBuffer *tob_io_thread;
+uint32_t       tob_io_thread_max_size = 1024 * 1024;
+
 // Apply taint to a buffer of memory
-void add_taint(Shad *shad, TaintOpBuffer *tbuf, uint64_t addr, int length){
+void add_taint(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
     struct addr_struct a = {};
     a.typ = MADDR;
-    a.val.ma = addr;
     struct taint_op_struct op = {};
     op.typ = LABELOP;
     for (int i = 0; i < length; i++){
-        a.off = i;
+#ifdef CONFIG_SOFTMMU
+        a.val.ma = cpu_get_phys_addr(env, addr + i);
+#else
+        a.val.ma = addr + i;
+#endif // CONFIG_SOFTMMU
         op.val.label.a = a;
         op.val.label.l = i + count; // byte label
         //op.val.label.l = 1; // binary label
@@ -178,6 +206,14 @@ void enable_taint(){
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_WRITE, pcb);
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
+    
+    // for hd taint
+#ifdef CONFIG_SOFTMMU
+    pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
+    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
+    pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
+    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
+#endif
 
     if (!execute_llvm){
         panda_enable_llvm();
@@ -248,6 +284,11 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
     if (taintEnabled){
+        // process taint ops in io thread taint op buffer
+        // NB: we don't need a dynval buffer here.
+        tob_process(tob_io_thread, shadow, NULL);
+        tob_clear(tob_io_thread);
+
         taintfpm->run(*(tb->llvm_function));
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         clear_dynval_buffer(dynval_buffer);
@@ -286,9 +327,114 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     return 0;
 }
 
+#ifdef CONFIG_SOFTMMU
+// this is for much of the hd taint transfers.
+// this gets called from rr_log.c, rr_replay_skipped_calls, RR_CALL_HD_TRANSFER
+// case.
+int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
+        uint64_t dest_addr, uint32_t num_bytes) {
+    // Replay hd transfer as taint transfer
+    if (taintEnabled) {
+        TaintOp top;
+        top.typ = BULKCOPYOP;
+        top.val.bulkcopy.l = num_bytes;
+        switch (type) {
+            case HD_TRANSFER_HD_TO_IOB:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
+#endif
+                top.val.bulkcopy.a = make_haddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
+                break;
+            case HD_TRANSFER_IOB_TO_HD:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
+#endif
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_haddr(dest_addr);
+                break;
+            case HD_TRANSFER_PORT_TO_IOB:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
+#endif
+                top.val.bulkcopy.a = make_paddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
+                break;
+            case HD_TRANSFER_IOB_TO_PORT:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
+#endif
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_paddr(dest_addr);
+                break;
+            case HD_TRANSFER_HD_TO_RAM:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_HD_TO_RAM\n");
+                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                    src_addr, dest_addr, num_bytes);
+#endif
+                top.val.bulkcopy.a = make_haddr(src_addr);
+                top.val.bulkcopy.b = make_maddr(dest_addr);
+                break;
+            case HD_TRANSFER_RAM_TO_HD:
+#ifdef TAINTDEBUG
+                printf("replay_hd_transfer HD_TRANSFER_RAM_TO_HD\n");
+                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
+                    src_addr, dest_addr, num_bytes);
+#endif
+                top.val.bulkcopy.a = make_maddr(src_addr);
+                top.val.bulkcopy.b = make_haddr(dest_addr);
+                break;
+            default:
+                printf ("Impossible hd transfer type: %d\n", type);
+                assert (1==0);
+        }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tob_io_thread);
+        // add bulk copy corresponding to this hd transfer to buffer
+        // of taint ops for io thread.
+        tob_op_write(tob_io_thread, top);
+    }
+    return 0;
+}
+
+// this does a bunch of the dmas in hd taint transfer
+int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
+        uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes){
+    // NB:
+    // is_write == 1 means write from qemu buffer to guest RAM.
+    // is_write == 0 means RAM -> qemu buffer
+    // Replay dmas in hd taint transfer
+    if (taintEnabled) {
+        TaintOp top;
+        top.typ = BULKCOPYOP;
+        top.val.bulkcopy.l = num_bytes;
+        if (is_write) {
+            // its a "write", i.e., transfer from IO buffer to RAM
+            printf("cpu_physical_mem_rw IO->RAM\n");
+            top.val.bulkcopy.a = make_iaddr(src_addr);
+            top.val.bulkcopy.b = make_maddr(dest_addr);
+        }
+        else {
+            // its a "read", i.e., transfer from RAM to IO buffer
+            printf("cpu_physical_mem_rw RAM->IO\n");
+            top.val.bulkcopy.a = make_maddr(src_addr);
+            top.val.bulkcopy.b = make_iaddr(dest_addr);
+        }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tob_io_thread);
+        // add bulk copy corresponding to this hd transfer to buffer
+        // of taint ops for io thread.
+        tob_op_write(tob_io_thread, top);
+    }
+    return 0;
+}
+#endif
+
+
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     if (taintEnabled){
-        printf("EXCEPTION - logging\n");
+        //printf("EXCEPTION - logging\n");
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         log_exception(dynval_buffer);
 
@@ -303,6 +449,7 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     return 0;
 }
 
+#if 0 // old version
 int guest_hypercall_callback(CPUState *env){
 #ifdef TARGET_I386
     if (env->regs[R_EAX] == 0xdeadbeef){
@@ -339,6 +486,51 @@ int guest_hypercall_callback(CPUState *env){
             taintEnabled = false;
             taintJustDisabled = true;
         }
+    }
+#endif // TARGET_I386
+    return 1;
+}
+#endif
+
+// XXX: Support all features of label and query program
+int guest_hypercall_callback(CPUState *env){
+#ifdef TARGET_I386
+    target_ulong buf_start = env->regs[R_EBX];
+    target_ulong buf_len = env->regs[R_ECX];
+
+    // call to iferret to label data
+    // EBX contains addr of that data
+    // ECX contains size of data
+    // EDI is a pointer to a buffer containing the label string
+    // ESI contains the length of that label
+    // EDX = starting offset (for positional labels only)
+    if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
+        if (!taintEnabled){
+            printf("Taint plugin: Label operation detected\n");
+            printf("Enabling taint processing\n");
+            taintJustEnabled = true;
+            taintEnabled = true;
+            enable_taint();
+        }
+
+        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 5MB */);
+        add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        tob_delete(tempBuf);
+    }
+
+    //mz Query taint on this buffer
+    //mz EBX = start of buffer (VA)
+    //mz ECX = size of buffer (bytes)
+    // EDI is a pointer to a buffer containing the filename or another name for this query
+    // ESI contains the length of that string
+    // EDX = starting offset - for file queries
+    else if (env->regs[R_EAX] == 9){ //Query taint on label
+        bufplot(env, shadow, (uint64_t)buf_start, (int)buf_len);
+        printf("Taint plugin: Query operation detected\n");
+        printf("Disabling taint processing\n");
+        taintEnabled = false;
+        taintJustDisabled = true;
+        printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
 #endif // TARGET_I386
     return 1;
@@ -393,18 +585,18 @@ static int user_creat(abi_long ret, void *p){
     return 0;
 }
 
-static int user_read(abi_long ret, abi_long fd, void *p){
+static int user_read(CPUState *env, abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == infd){
         TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
-        add_taint(shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
+        add_taint(env, shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
         tob_delete(tempBuf);
     }
     return 0;
 }
 
-static int user_write(abi_long ret, abi_long fd, void *p){
+static int user_write(CPUState *env, abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == outfd){
-        bufplot(shadow, (uint64_t)p /*pointer*/, ret /*length*/);
+        bufplot(env, shadow, (uint64_t)p /*pointer*/, ret /*length*/);
     }
     return 0;
 }
@@ -413,12 +605,13 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        int num, abi_long arg1, abi_long arg2, abi_long arg3,
                        abi_long arg4, abi_long arg5, abi_long arg6,
                        abi_long arg7, abi_long arg8, void *p, abi_long ret){
+    CPUState *env = (CPUState *)cpu_env;
     switch (num){
         case TARGET_NR_read:
-            user_read(ret, arg1, p);
+            user_read(env, ret, arg1, p);
             break;
         case TARGET_NR_write:
-            user_write(ret, arg1, p);
+            user_write(env, ret, arg1, p);
             break;
         case TARGET_NR_open:
             user_open(fcntl_flags_tbl, ret, p, arg2);
@@ -437,6 +630,8 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 
 #endif // CONFIG_SOFTMMU
 
+
+
 bool init_plugin(void *self) {
     printf("Initializing taint plugin\n");
     plugin_ptr = self;
@@ -450,6 +645,8 @@ bool init_plugin(void *self) {
     pcb.user_after_syscall = user_after_syscall;
     panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
 #endif
+
+    tob_io_thread = tob_new(tob_io_thread_max_size);
 
     return true;
 }
@@ -474,8 +671,8 @@ void uninit_plugin(void *self) {
     }
 
     if (taintfpm) delete taintfpm; // Delete function pass manager and pass
-
     if (shadow) tp_free(shadow);
+    if (tob_io_thread) tob_delete(tob_io_thread);
 
     panda_disable_llvm();
     panda_disable_memcb();

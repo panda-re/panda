@@ -569,7 +569,80 @@ arguments, be sure to process them in similar ways.
                               arg3, abi_long arg4, abi_long arg5, abi_long arg6,
                               abi_long arg7, abi_long arg8, void *p,
                               abi_long ret);
+---
 
+**replay_hd_transfer**: Called during a replay of a hard drive transfer action
+
+**Callback ID**: PANDA_CB_REPLAY_HD_TRANSFER 
+ 
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState
+* `uint32_t type`: type of transfer (Hd_transfer_type)
+* `uint64_t src_addr`: address for src
+* `uint64_t dest_addr`: address for dest
+* `uint32_t num_bytes`: size of transfer in bytes
+      
+**Return value**: unused
+
+**Notes**:
+In replay only, some kind of data transfer involving hard drive.  NB: We are
+neither before nor after, really.  In replay the transfer doesn't really happen.
+We are *at* the point at which it happened, really.  Even though the transfer
+doesn't happen in replay, useful instrumentations (such as taint analysis) can
+still be applied accurately.
+
+**Signature**:
+
+    int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                              uint64_t dest_addr, uint32_t num_bytes);
+---
+
+**replay_before_cpu_physical_mem_rw_ram**: In replay only, we are about to dma
+from some qemu buffer to guest memory
+
+**Callback ID**: PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM
+
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState                   
+* `uint32_t is_write`: type of transfer going on (is_write == 1 means IO -> RAM else RAM -> IO)
+* `uint64_t src_addr`: src of dma
+* `uint64_t dest_addr`: dest of dma
+* `uint32_t num_bytes`: size of transfer
+
+**Return value**: unused
+
+**Notes**:
+In the current version of QEMU, this appears to be a less commonly used method
+of performing DMA with the hard drive device.  For the hard drive, the most
+common DMA mechanism can be seen in the PANDA_CB_REPLAY_HD_TRANSFER_TYPE under
+type HD_TRANSFER_HD_TO_RAM (and vice versa).  Other devices still appear to use
+cpu_physical_memory_rw() though.
+
+**Signature**:
+
+    int (*replay_before_cpu_physical_mem_rw_ram)(
+            CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
+            uint32_t num_bytes);
+---
+
+**replay_handle_packet**: TODO: This will be used for network packet replay.
+
+**Callback ID**:   PANDA_CB_REPLAY_HANDLE_PACKET
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+* `uint8_t *buf`: buffer containing packet data
+* `int size`: num bytes in buffer
+* `uint8_t direction`: XXX read or write.  not sure which is which.
+* `uint64_t old_buf_addr`: XXX this is a mystery
+
+**Signature**:
+
+    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
+                                uint8_t direction, uint64_t old_buf_addr);
 ---
 
 ## Sample Plugin: Syscall Monitor
