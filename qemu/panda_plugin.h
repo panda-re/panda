@@ -458,16 +458,16 @@ typedef union panda_cb {
 
 /* Callback ID:     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,
 
-   In replay only, we are about to dma from some qemu buffer to guest memory
-   
+   In replay only, we are about to dma between qemu buffer and guest memory
+
    Arguments:
-   CPUState* env:       pointer to CPUState                   
+   CPUState* env:       pointer to CPUState
    uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
-   uint64_t src         src of dma
-   uint64_t dest        dest of dma
+   uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
+   uint64_t paddr       "physical" address of guest RAM
    uint32_t num_bytes:  size of transfer
 */
-  int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+    int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
   /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,

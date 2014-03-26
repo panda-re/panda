@@ -4247,12 +4247,13 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                 /* RAM case */
                 ptr = qemu_get_ram_ptr(pd & TARGET_PAGE_MASK);
                 uint8_t *dest =  ptr + (addr & ~TARGET_PAGE_MASK);
+                ram_addr_t addr1;
+                addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);
                 if (rr_mode == RR_REPLAY) {
                     // run all callbacks registered for cpu_physical_memory_rw ram case
-                    // XXX is passing pd here correct?
                     panda_cb_list *plist;
                     for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
-                        plist->entry.replay_before_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, pd, l);
+                        plist->entry.replay_before_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, addr1, l);
                     }
                 }
                 memcpy(buf, dest, l);

@@ -73,7 +73,7 @@ int cb_replay_hd_transfer_taint
 
 int cb_replay_cpu_physical_mem_rw_ram
   (CPUState *env,
-   uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+   uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
 #ifndef CONFIG_SOFTMMU
@@ -400,7 +400,7 @@ int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
 
 // this does a bunch of the dmas in hd taint transfer
 int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
-        uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes){
+        uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes){
     // NB:
     // is_write == 1 means write from qemu buffer to guest RAM.
     // is_write == 0 means RAM -> qemu buffer
@@ -412,14 +412,14 @@ int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
         if (is_write) {
             // its a "write", i.e., transfer from IO buffer to RAM
             printf("cpu_physical_mem_rw IO->RAM\n");
-            top.val.bulkcopy.a = make_iaddr(src_addr);
+            top.val.bulkcopy.a = make_iaddr((uint64_t)src_addr);
             top.val.bulkcopy.b = make_maddr(dest_addr);
         }
         else {
             // its a "read", i.e., transfer from RAM to IO buffer
             printf("cpu_physical_mem_rw RAM->IO\n");
-            top.val.bulkcopy.a = make_maddr(src_addr);
-            top.val.bulkcopy.b = make_iaddr(dest_addr);
+            top.val.bulkcopy.a = make_maddr(dest_addr);
+            top.val.bulkcopy.b = make_iaddr((uint64_t)src_addr);
         }
         // make the taint op buffer bigger if necessary
         tob_resize(&tob_io_thread);
