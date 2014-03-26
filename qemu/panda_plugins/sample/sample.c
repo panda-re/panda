@@ -19,10 +19,12 @@ PANDAENDCOMMENT */
 
 #include "panda_plugin.h"
 
+#ifdef CONFIG_ANDROID
 // definitions for BEFORE_LOADVM handler
 #include "hw/goldfish_device.h"
 #include "hw/goldfish_nand.h"
 #include "hw/goldfish_mmc.h"
+#endif
 
 
 #include <stdio.h>
@@ -110,6 +112,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
     return 1;
 }
 
+#ifdef CONFIG_ANDROID
 
 /* For interposing on loadvm, we need an exact copy of the struct used 
  * by the device for serialization. In this case, we are capturing the
@@ -158,6 +161,7 @@ int before_loadvm_callback(void){
   return 0;
 }
 
+#endif // CONFIG_ANDROID
 
 bool init_plugin(void *self) {
     panda_cb pcb;
@@ -197,8 +201,10 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
+#ifdef CONFIG_ANDROID
     pcb.before_loadvm = before_loadvm_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_REPLAY_LOADVM, pcb);
+#endif
 
     return true;
 }
