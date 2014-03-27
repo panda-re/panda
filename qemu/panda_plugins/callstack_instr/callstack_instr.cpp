@@ -45,6 +45,7 @@ void uninit_plugin(void *);
 #include <algorithm>
 
 #include "../common/prog_point.h"
+#include "callstack_api.h"
 
 extern "C" {
 // Public interface
@@ -57,6 +58,15 @@ int get_callers(target_ulong callers[], int n, CPUState *env);
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *env, prog_point *p);
+
+// Register a function to be called when a call happens (currently only one)
+void add_on_call(on_call_t fptr);
+on_call_t on_call_func = NULL;
+
+// Register a function to be called when a return happens (currently only one)
+void add_on_ret(on_ret_t fptr);
+on_ret_t  on_ret_func = NULL;
+
 }
 
 unsigned long misses;
@@ -331,6 +341,13 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
         callstacks[get_stackid(env,tb->pc)].push_back(se);
+        if (on_call_func != NULL) {
+            target_ulong pc, cs_base;
+            int flags;
+            // This retrieves the pc in an architecture-neutral way
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            on_call_func(pc);
+        }
     }
     else if (tb_type == INSTR_RET) {
         //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
@@ -374,6 +391,14 @@ void get_prog_point(CPUState *env, prog_point *p) {
     }
 
     p->pc = env->panda_guest_pc;
+}
+
+void add_on_call(on_call_t fptr) {
+    on_call_func = fptr;
+}
+
+void add_on_ret(on_ret_t fptr) {
+    on_ret_func = fptr;
 }
 
 bool init_plugin(void *self) {

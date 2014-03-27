@@ -27,13 +27,13 @@ extern "C" {
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <math.h>
 #include <map>
-#include <list>
-#include <algorithm>
+
+#include "../common/prog_point.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -44,58 +44,61 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
+typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
+get_prog_point_t get_prog_point;
 }
 
 uint64_t bytes_read, bytes_written;
 uint64_t num_reads, num_writes;
 
 struct text_counter { unsigned int hist[256]; };
-struct prog_point {
-    target_ulong caller;
-    target_ulong pc;
-    target_ulong cr3;
-    bool operator <(const prog_point &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
-    }
-};
 
-std::map<prog_point,text_counter> text_tracker;
-//FILE *text_memlog;
+std::map<prog_point,text_counter> read_tracker;
+std::map<prog_point,text_counter> write_tracker;
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
-                       target_ulong size, void *buf) {
-    bytes_written += size;
-    num_writes++;
+static int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf, std::map<prog_point,text_counter> &tracker) {
     prog_point p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
-#endif
-    p.pc = pc;
-    text_counter &tc = text_tracker[p];
+
+    get_prog_point(env, &p);
+
+    text_counter &tc = tracker[p];
     for (unsigned int i = 0; i < size; i++) {
         unsigned char val = ((unsigned char *)buf)[i];
-        //fprintf(text_memlog, TARGET_FMT_lx "." TARGET_FMT_lx " " TARGET_FMT_lx " %02x\n" , p.pc, p.caller, addr+i, val);
         tc.hist[val]++;
     }
  
     return 1;
 }
 
+int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+                       target_ulong size, void *buf) {
+    return mem_callback(env, pc, addr, size, buf, write_tracker);
+}
+
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
-    bytes_read += size;
-    num_reads++;
-    return 1;
+    return mem_callback(env, pc, addr, size, buf, read_tracker);
 }
 
 bool init_plugin(void *self) {
     panda_cb pcb;
 
     printf("Initializing plugin textfinder\n");
+
+    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
+    if (!cs_plugin) {
+        printf("Couldn't load callstack plugin\n");
+        return false;
+    }
+    dlerror();
+    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
+    char *err = dlerror();
+    if (err) {
+        printf("Couldn't find get_prog_point function in callstack library.\n");
+        printf("Error: %s\n", err);
+        return false;
+    }
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();
@@ -107,91 +110,41 @@ bool init_plugin(void *self) {
     pcb.virt_mem_write = mem_write_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
-    //text_memlog = fopen("text_memlog.txt", "w");
-
     return true;
 }
 
-// Wilson score interval. Text is +1, non-text is -1
-double confidence(int ups, int downs) {
-    int n = ups + downs;
+void write_report(FILE *report, std::map<prog_point,text_counter> &tracker) {
+    // Cross platform support: need to know how big a target_ulong is
+    uint32_t target_ulong_size = sizeof(target_ulong);
+    fwrite(&target_ulong_size, sizeof(uint32_t), 1, report);
 
-    if (n == 0)
-        return 0;
-
-    double z = 1.6;  // 1.0 = 85%, 1.6 = 95%
-    double phat = ((double)ups) / n;
-    return sqrt(phat+z*z/(2*n)-z*((phat*(1-phat)+z*z/(4*n))/n))/(1+z*z/n);
-}
-
-int num_text(text_counter t) {
-    int sum = 0;
-    for (int i = 0; i < 256; i++)
-        if (isprint(i)) sum += t.hist[i];
-    return sum;
-}
-
-int num_nontext(text_counter t) {
-    int sum = 0;
-    for (int i = 0; i < 256; i++)
-        if (!isprint(i)) sum += t.hist[i];
-    return sum;
-}
-
-bool confidence_compare(std::pair<prog_point,text_counter> first,
-                        std::pair<prog_point,text_counter> second) {
-    int first_text = num_text(first.second);
-    int first_nontext = num_nontext(first.second);
-    int second_text = num_text(second.second);
-    int second_nontext = num_nontext(second.second);
-    return confidence(first_text, first_nontext) < confidence(second_text, second_nontext);
-}
-
-double byte_entropy(text_counter t) {
-    int sum = 0;
-    for (int i = 0; i < 256; i++) {
-        sum += t.hist[i];
+    std::map<prog_point,text_counter>::iterator it;
+    for(it = tracker.begin(); it != tracker.end(); it++) {
+        fwrite(&it->first, sizeof(prog_point), 1, report);
+        fwrite(&it->second, sizeof(text_counter), 1, report);
     }
-    double ent = 0.0;
-    for (int i = 0; i < 256; i++) {
-        double p_i = t.hist[i] / (double)sum;
-        if (t.hist[i] != 0)
-            ent += -(p_i*(log(p_i)/log(2.0)));
-    }
-    return ent;
 }
 
 void uninit_plugin(void *self) {
-    std::list<std::pair<prog_point,text_counter> > display_map;
+    FILE *mem_report;
 
-    printf("Memory statistics: %lu loads, %lu stores, %lu bytes read, %lu bytes written.\n",
-        num_reads, num_writes, bytes_read, bytes_written
-    );
-
-    // In order to sort this properly
-    for(std::map<prog_point,text_counter>::iterator it = text_tracker.begin(); it != text_tracker.end(); it++) {
-        display_map.push_back(std::make_pair(it->first, it->second));
-    }
-    //display_map.sort(confidence_compare);
-
-    FILE *mem_report = fopen("mem_report.bin", "w");
+    // Reads
+    mem_report = fopen("unigram_mem_read_report.bin", "w");
     if(!mem_report) {
         printf("Couldn't write report:\n");
         perror("fopen");
         return;
     }
-
-    // Cross platform support: need to know how big a target_ulong is
-    uint32_t target_ulong_size = sizeof(target_ulong);
-    fwrite(&target_ulong_size, sizeof(uint32_t), 1, mem_report);
-
-    //fprintf(mem_report, "PC          Text/Non-text\n");
-    std::list<std::pair<prog_point,text_counter> >::iterator it;
-    for(it = display_map.begin(); it != display_map.end(); it++) {
-        fwrite(&it->first, sizeof(prog_point), 1, mem_report);
-        fwrite(&it->second, sizeof(text_counter), 1, mem_report);
-    }
+    write_report(mem_report, read_tracker);
     fclose(mem_report);
-    
-    //fclose(text_memlog);
+
+    // Writes
+    mem_report = fopen("unigram_mem_write_report.bin", "w");
+    if(!mem_report) {
+        printf("Couldn't write report:\n");
+        perror("fopen");
+        return;
+    }    
+    write_report(mem_report, write_tracker);
+    fclose(mem_report);
 }

@@ -35,7 +35,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-//int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 }
 
@@ -44,7 +44,7 @@ int read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_
 bool enabled_memcb = false;
 prog_point tap_point;
 FILE *read_tap_buffers;
-//FILE *write_tap_buffers;
+FILE *write_tap_buffers;
 
 int before_block_translate_cb(CPUState *env, target_ulong pc) {
     if (pc <= tap_point.pc && tap_point.pc < pc+ASSUMED_TB_SIZE) {
@@ -87,9 +87,9 @@ static inline int mem_callback(CPUState *env, target_ulong pc, target_ulong addr
 int read_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
     return mem_callback(env, pc, addr, size, buf, read_tap_buffers);
 }
-//int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf ) {
-//    return mem_callback(env, pc, addr, size, buf, write_tap_buffers);
-//}
+int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf ) {
+    return mem_callback(env, pc, addr, size, buf, write_tap_buffers);
+}
 
 bool init_plugin(void *self) {
     panda_cb pcb;
@@ -110,11 +110,11 @@ bool init_plugin(void *self) {
 
     taps.close();
 
-//    write_tap_buffers = fopen("write_tap_buffers.txt", "w");
-//    if(!write_tap_buffers) {
-//        printf("Couldn't open write_tap_buffers.txt for writing. Exiting.\n");
-//        return false;
-//    }
+    write_tap_buffers = fopen("write_tap_buffers.txt", "w");
+    if(!write_tap_buffers) {
+        printf("Couldn't open write_tap_buffers.txt for writing. Exiting.\n");
+        return false;
+    }
     read_tap_buffers = fopen("read_tap_buffers.txt", "w");
     if(!read_tap_buffers) {
         printf("Couldn't open read_tap_buffers.txt for writing. Exiting.\n");
@@ -123,10 +123,10 @@ bool init_plugin(void *self) {
 
 //    panda_enable_precise_pc();
 //    panda_enable_memcb();    
-//    pcb.virt_mem_write = write_mem_callback;
-//    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-    pcb.virt_mem_read = read_mem_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
+    pcb.virt_mem_write = write_mem_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+//    pcb.virt_mem_read = read_mem_callback;
+//    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
     pcb.before_block_translate = before_block_translate_cb;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
     pcb.after_block_translate = after_block_translate_cb;
