@@ -27,7 +27,10 @@
 #include "tcg-op.h"
 #include "qemu-log.h"
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
+
 #include "panda_plugin.h"
 
 #include "helper.h"
@@ -9919,16 +9922,21 @@ static inline void gen_intermediate_code_internal(CPUState *env,
     if (max_insns == 0)
         max_insns = CF_COUNT_MASK;
 
+#ifdef CONFIG_SOFTMMU
     // Terminate translation early if we have an interrupt coming up
     if (!search_pc && rr_in_replay())
         max_insns = max_insns < rr_num_instr_before_next_interrupt ?
                         max_insns : rr_num_instr_before_next_interrupt;
+#endif
     // But during search_pc always translate the same number we did last time
     if (search_pc)
         max_insns = tb->icount;
+
+#ifdef CONFIG_SOFTMMU
     // TBs get recycled, so clear this here
     if (rr_mode != RR_OFF)
         tb->num_guest_insns = 0;
+#endif
 
     gen_icount_start();
 
@@ -10021,14 +10029,20 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
-        if (rr_mode != RR_OFF || panda_update_pc) {
+        if (
+#ifdef CONFIG_SOFTMMU
+            rr_mode != RR_OFF ||
+#endif
+            panda_update_pc) {
             gen_op_update_panda_pc(dc->pc);
         }
-        
+
+#ifdef CONFIG_SOFTMMU
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
             tb->num_guest_insns++;
         }
+#endif
 
 #if defined(CONFIG_LLVM)
         if (generate_llvm | unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {

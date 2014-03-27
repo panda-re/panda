@@ -41,6 +41,69 @@ int taken_branch;
 
 uint32_t max_ref_count = 0;
 
+Addr make_haddr(uint64_t a) {
+  Addr ha;
+  ha.typ = HADDR;
+  ha.val.ha = a;
+  ha.off = 0;
+  ha.flag = 0;
+  return ha;
+}
+
+Addr make_maddr(uint64_t a) {
+  Addr ma;
+  ma.typ = MADDR;
+  ma.val.ma = a;
+  ma.off = 0;
+  ma.flag = 0;
+  return ma;
+}
+
+Addr make_iaddr(uint64_t a) {
+  Addr ia;
+  ia.typ = IADDR;
+  ia.val.ia = a;
+  ia.off = 0;
+  ia.flag = 0;
+  return ia;
+}
+
+Addr make_paddr(uint64_t a) {
+  Addr pa;
+  pa.typ = PADDR;
+  pa.val.pa = a;
+  pa.off = 0;
+  pa.flag = 0;
+  return pa;
+}
+
+// if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
+// else throw up
+static Addr addr_add(Addr a, uint32_t o) {
+  switch (a.typ) {
+  case HADDR:
+    a.val.ha += o;
+    break;
+  case MADDR:
+    a.val.ma += o;
+    break;
+  case IADDR:
+    a.val.ia += o;
+    break;
+  case PADDR:
+    a.val.pa += o;
+    break;
+  default:
+    // Thou shalt not.
+    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
+    assert (1==0);
+    break;
+  }
+  return a;
+}
+    
+
+
 SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
     uint8_t taint_byte = shad->ram_bitmap[addr >> 3];
     return (taint_byte & (1 << (addr & 7)));
@@ -347,6 +410,11 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
         case HADDR:
             {
                 shad_dir_add_64(shad->hd, a.val.ha+a.off, ls);
+#ifdef TAINTDEBUG
+                printf("Labelset put on HD: 0x%lx\n", (uint64_t)(a.val.ha+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 break;
             }
         case MADDR:
@@ -357,7 +425,12 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
                  * whole-system though.
                  */
                 shad_dir_add_64(shad->ram, a.val.ma+a.off, ls);
-#else
+#ifdef TAINTDEBUG
+                printf("Labelset put in RAM: 0x%lx\n", (uint64_t)(a.val.ma+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
+#else // TARGET_X86_64
                 shad_dir_add_32(shad->ram, a.val.ma+a.off, ls);
                 set_ram_bit(shad, a.val.ma+a.off);
 #endif
@@ -365,16 +438,31 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case IADDR:
             {
+#ifdef TAINTDEBUG
+                printf("Labelset put in IO: 0x%lx\n", (uint64_t)(a.val.ia+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 shad_dir_add_64(shad->io, a.val.ia+a.off, ls);
                 break;
             }
         case PADDR:
             {
-                shad_dir_add_32(shad->ports, a.val.ia+a.off, ls);
+#ifdef TAINTDEBUG
+                printf("Labelset put in port: 0x%lx\n", (uint64_t)(a.val.pa+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
+                shad_dir_add_32(shad->ports, a.val.pa+a.off, ls);
                 break;
             }
         case LADDR:
             {
+#ifdef TAINTDEBUG
+                printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a.val.la+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 // need to call labelset_copy to increment ref count
                 LabelSet *ls_copy = labelset_copy(ls);
                 if (a.flag == FUNCARG){
@@ -394,6 +482,11 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case GREG:
             {
+#ifdef TAINTDEBUG
+                printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a.val.gr+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 // need to call labelset_copy to increment ref count
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->grv[a.val.gr * WORDSIZE + a.off] = ls_copy;
@@ -401,6 +494,11 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case GSPEC:
             {
+#ifdef TAINTDEBUG
+                printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a.val.gs+a.off));
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 // SpecAddr enum is offset by the number of guest registers
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->gsv[a.val.gs - NUMREGS + a.off] = ls_copy;
@@ -408,6 +506,11 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr a, LabelSet *ls) {
             }
         case RET:
             {
+#ifdef TAINTDEBUG
+                printf("Labelset put in ret\n");
+                labelset_spit(ls);
+                printf("\n");
+#endif
                 LabelSet *ls_copy = labelset_copy(ls);
                 shad->ret[a.off] = ls_copy;
                 break;
@@ -525,7 +628,8 @@ void print_addr(Shad *shad, Addr a) {
 // copy -- b gets whatever label set is currently associated with a
 SB_INLINE void tp_copy(Shad *shad, Addr a, Addr b) {
     assert (shad != NULL);
-    assert (!(addrs_equal(a,b)));
+    //assert (!(addrs_equal(a,b)));
+    if (addrs_equal(a, b)) return;
     LabelSet *ls_a = tp_labelset_get(shad, a);
     if (labelset_is_empty(ls_a)) {
         // a not tainted -- remove taint on b
@@ -607,6 +711,31 @@ void tob_delete(TaintOpBuffer *tbuf){
     my_free(tbuf, sizeof(TaintOpBuffer), poolid_taint_processor);
     tbuf = NULL;
 }
+
+
+
+// if this taint op buffer is close to full (more than 80%),
+// double it in size
+void tob_resize(TaintOpBuffer **ptbuf) {
+  TaintOpBuffer *tbuf = *ptbuf;
+  if (tob_full_frac(tbuf) > 0.8) {
+    printf ("Doubling size of taint buffer (probably I/O one)\n");
+    // fresh buffer twice size of original
+    TaintOpBuffer *tbuf_bigger = tob_new(tbuf->max_size * 2);
+    // copy ops over
+    memcpy(tbuf_bigger->start, tbuf->start, tbuf->size);
+    // set current size 
+    tbuf_bigger->size = tbuf->size;
+    // and pointer
+    tbuf_bigger->ptr = tbuf_bigger->start + (tbuf_bigger->size);
+    // discard contents of old buffer
+    tob_delete(tbuf);
+    // and re-point
+    *ptbuf = tbuf_bigger;
+  }
+}
+
+
 
 void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     //Make sure we are at the beginning of the buffer
@@ -730,6 +859,15 @@ void tob_op_print(Shad *shad, TaintOp op) {
                 printf ("\n");
                 break;
             }
+        case BULKCOPYOP:
+            {
+                printf("bulk copy ");
+                print_addr(shad, op.val.bulkcopy.a);
+                printf(" ");
+                print_addr(shad, op.val.bulkcopy.b);
+                printf("Len: %u\n", op.val.bulkcopy.l);
+                break;
+            }
         case COMPUTEOP:
             {
                 printf ("compute ");
@@ -802,7 +940,7 @@ void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
       read_dynval_buffer(dynval_buf, &dventry);
 
       if (dventry.entrytype == EXCEPTIONENTRY){
-          printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
+          //printf("EXCEPTION FOUND IN DYNAMIC LOG\n");
           next_step = EXCEPT;
           return;
       }
@@ -1591,7 +1729,30 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     break;
                 }
 
-            case COMPUTEOP:
+	   case BULKCOPYOP:
+                // TRL this is used by hd taint.  idea is to 
+                // specify a src and dest and a number of bytes to copy
+                {
+                    uint32_t i;
+                    for (i=0; i<op.val.bulkcopy.l; i++) {
+#ifdef TAINTDEBUG
+                        uint8_t foo = 0;
+                        if (tp_query(shad, op.val.bulkcopy.a)) {
+                            printf ("  [src is tainted]"); foo = 1;
+                        }
+                        if (tp_query(shad, op.val.bulkcopy.b)) {
+                            printf ("  [dest was tainted]"); foo = 1;
+                        }
+                        if (foo) printf("\n");
+#endif
+                        tp_copy(shad, addr_add(op.val.bulkcopy.a, i),
+                            addr_add(op.val.bulkcopy.b, i));
+                    }
+
+                    break;
+                }
+
+           case COMPUTEOP:
                 {
                     /* if it's a compute to an address we aren't tracking, do
                      * nothing

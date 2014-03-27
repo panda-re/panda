@@ -1,7 +1,7 @@
 PIRATE: Platform for IR-based Analyses of Tainted Execution
 ========
 
-*Last updated 10/30/13*
+*Last updated 2/24/14*
 
 This is our implementation of architecture-independent dynamic taint analysis.
 To perform this analysis, we rely on dynamic code translation to the LLVM
@@ -31,13 +31,14 @@ Supported/Tested Systems
 --------
 While our system hasn't undergone significant testing, we currently expect it to
 work for any user program or operating system that can boot in QEMU 1.0.1
-(including Windows 7 + 8) for x86, x86_64, and ARM architectures.  One exception
-is Android, but we expect to be able to support Android once current work to
-support Android in our record/replay system is completed.
+(including Windows 7 + 8) for x86, x86_64, and ARM architectures (including
+Android, since that is a supported platform in PANDA).
 
 Adding additional support for other architectures that QEMU supports should be a
 minimal porting effort that takes advantage of our alredy-existing information
 flow models based on LLVM.
+
+Hard drive taint is now supported for x86/64 systems.
 
 Organization
 --------
@@ -103,13 +104,14 @@ the recording with the heavyweight taint analysis enabled.
 Current/Ongoing Development
 --------
 
-1. Hard drive, network, I/O tracking    
-    * PIRATE doesn't currently support taint tracking involving the hard drive,
-    network, or other I/O devices.  We are currently working on porting this up
-    from our older QEMU-based taint analysis system.
+1. Network taint
+    * PIRATE doesn't currently support taint tracking involving the
+    network.  We are currently working on porting this up from our older
+    QEMU-based taint analysis system.  Support for hard drive taint was recently
+    completed and tested for x86/64 systems.
     
 2. Optimization
-    * We are planning on profiling the taint plugin, characterizing performance
-    overheads, and optimizing accordingly.  We also plan on optimizing our
-    taint operations.
+    * We are currently profiling the taint plugin, characterizing performance
+    overheads, and optimizing accordingly.  We also plan on optimizing our taint
+    operations.
 

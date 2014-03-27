@@ -42,6 +42,7 @@ typedef enum panda_cb_type {
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
     PANDA_CB_MONITOR,           // Monitor callback
     PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
+    PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm
 #ifndef CONFIG_SOFTMMU          // *** Only callbacks for QEMU user mode *** //
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
@@ -52,6 +53,9 @@ typedef enum panda_cb_type {
     PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
+    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
+    PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
     PANDA_CB_LAST,
 } panda_cb_type;
 
@@ -313,6 +317,22 @@ typedef union panda_cb {
 */
     int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
 
+/* Callback ID: PANDA_CB_BEFORE_LOADVM
+ *      before_loadvm: called at start of replay, before loadvm is called
+ *      This allows us to hook devices' loadvm handlers (remember to unregister
+ *      the existing handler for the device first)
+ *
+ *      See the example in the sample plugin.
+ * 
+ *      Arguments:
+ * 
+ *      Return value:
+ *       unused
+ * 
+ */
+    int (*before_loadvm)(void);
+    
+    
 /* User-mode only callbacks:
  * We currently only support syscalls.  If you are particularly concerned about
  * arguments, look to linux-user/syscall.c for how to process them.
@@ -418,7 +438,52 @@ typedef union panda_cb {
  *       unused
  */
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
-    
+
+/* Callback ID:     PANDA_CB_REPLAY_HD_TRANSFER,   
+ 
+       In replay only, some kind of data transfer involving hard drive.
+       NB: We are neither before nor after, really.  In replay the transfer
+       doesn't really happen.  We are *at* the point at which it happened, really.
+       Arguments:
+        CPUState* env: pointer to CPUState
+        uint32_t type:        type of transfer  (Hd_transfer_type)
+        uint64_t src_addr:    address for src
+        uint64_t dest_addr:   address for dest
+        uint32_t num_bytes:   size of transfer in bytes
+      
+       Return value:
+        unused
+ */
+  int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+/* Callback ID:     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,
+
+   In replay only, we are about to dma between qemu buffer and guest memory
+
+   Arguments:
+   CPUState* env:       pointer to CPUState
+   uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
+   uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
+   uint64_t paddr       "physical" address of guest RAM
+   uint32_t num_bytes:  size of transfer
+*/
+    int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+
+  /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
+
+     In replay only, we have a packet (incoming / outgoing) in hand.
+     
+     Arguments:
+     CPUState *env          pointer to CPUState
+     uint8_t *buf           buffer containing packet data
+     int size               num bytes in buffer
+     uint8_t direction      XXX read or write.  not sure which is which.
+     uint64_t old_buf_addr  XXX this is a mystery
+  */
+
+  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
+
 } panda_cb;
 
 // Doubly linked list that stores a callback, along with its owner
@@ -448,6 +513,7 @@ void   panda_unload_plugins(void);
 // Doesn't exist in user mode
 #ifdef CONFIG_SOFTMMU
 int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
+target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr);
 #endif
 
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);

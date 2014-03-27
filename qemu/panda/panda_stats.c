@@ -21,6 +21,13 @@ PANDAENDCOMMENT */
 #include "stdint.h"
 #include "stdio.h"
 
+#include "qemu-common.h"
+#include "cpu-all.h"
+
+// Compiler hack, these will get redefined
+#undef TRUE
+#undef FALSE
+
 #include "bitvector_label_set.c"
 #include "panda_stats.h"
 
@@ -59,13 +66,19 @@ void memplot(Shad *shad){
 }
 
 // Prints out taint of write() buffer
-void bufplot(Shad *shad, uint64_t addr, int length){
+void bufplot(CPUState *env, Shad *shad, uint64_t addr, int length){
     FILE *bufplotlog = fopen("writebuf.csv", "w");
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
     uint64_t i;
     for (i = addr; i < addr+length; i++){
 #ifdef TARGET_X86_64
+
+#ifdef CONFIG_SOFTMMU
+        LabelSet *ls = shad_dir_find_64(shad->ram,
+            cpu_get_phys_addr(env, i));
+#else // CONFIG_SOFTMMU
         LabelSet *ls = shad_dir_find_64(shad->ram, i);
+#endif // CONFIG_SOFTMMU
         if (ls){
             unsigned int j;
             for (j = 0; j < ls->set->current_size; j++){
@@ -73,16 +86,23 @@ void bufplot(Shad *shad, uint64_t addr, int length){
                     ls->type);
             }
         }
-#else
+#else // TARGET_X86_64
+
+#ifdef CONFIG_SOFTMMU
+        uint64_t physaddr = cpu_get_phys_addr(env, i);
+        if (get_ram_bit(shad, physaddr)){
+            LabelSet *ls = shad_dir_find_32(shad->ram, physaddr);
+#else // CONFIG_SOFTMMU
         if (get_ram_bit(shad, i)){
             LabelSet *ls = shad_dir_find_32(shad->ram, i);
+#endif // CONFIG_SOFTMMU
             unsigned int j;
             for (j = 0; j < ls->set->current_size; j++){
                 fprintf(bufplotlog, "%lu,%d,%d\n", i, ls->set->members[j],
                     ls->type);
             }
         }
-#endif
+#endif // TARGET_X86_64
     }
     fclose(bufplotlog);
 }

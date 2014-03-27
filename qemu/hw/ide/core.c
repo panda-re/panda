@@ -33,7 +33,84 @@
 #include "blockdev.h"
 #include "block_int.h"
 
+#include "rr_log_all.h"
+
 #include <hw/ide/internal.h>
+
+//#define HD_TAINT_DEBUG
+
+// TRL hd taint
+static void dump_buffer(const char *msg, uint8_t *p, uint32_t n) {
+#ifdef HD_TAINT_DEBUG
+    int i;
+    printf ("%s: buffer[%d]=[",msg,n);
+    for (i=0; i<n; i++) {
+        printf ("%02x ",p[i]);
+    }
+    printf ("]\n");
+    printf ("%s: buffer[%d]=[",msg,n);
+    for (i=0; i<n; i++) {
+        if (isprint(p[i])) 
+            printf ("%c",p[i]);
+        else 
+            printf (".");
+    }
+    printf ("]\n");
+#endif
+}
+
+// RW dump scatter-gather buffer
+static void dump_sg_buffer(IDEState *s, const char *msg, int64_t sector_num,
+        int num_sectors, int num_bytes){
+    #ifdef HD_TAINT_DEBUG
+    int i, j;
+    uint8_t *p;
+    assert(s);
+    assert(s->sg.size == num_bytes);
+    printf("%s: sector %ld, %d bytes=[", msg, sector_num, num_bytes);
+
+    for (i = 0; i < s->sg.nsg; i++){
+        printf("SG[%d] - base=0x%lx, len=%ld:[\n", i, (uint64_t)s->sg.sg[i].base,
+            (uint64_t)s->sg.sg[i].len);
+        p = (uint8_t *)qemu_get_ram_ptr(s->sg.sg[i].base);
+        for (j = 0; j < s->sg.sg[i].len; j++){
+            if (isprint(p[j])){
+                printf ("%c", p[j]);
+            }
+            else {
+                printf (".");
+            }
+        }
+        printf("]\n");
+    }
+
+    printf ("]\n");
+    #endif
+}
+
+// RW record scatter-gather DMA transfers for taint
+static void rr_record_sg_transfer(IDEState *s, Hd_transfer_type type,
+        int64_t sector_num, int num_sectors){
+    assert(s);
+    assert(s->sg.size == num_sectors * 512);
+    int i;
+    int64_t cur_sector = sector_num;
+    for (i = 0; i < s->sg.nsg; i++){
+        if (type == HD_TRANSFER_RAM_TO_HD){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                s->sg.sg[i].base, cur_sector * 512, s->sg.sg[i].len);
+        }
+        else if (type == HD_TRANSFER_HD_TO_RAM){
+            rr_record_hd_transfer(RR_CALLSITE_IDE_DMA_CB, type,
+                cur_sector * 512, s->sg.sg[i].base, s->sg.sg[i].len);
+        }
+        else {
+            // Wrong transfer type
+            assert(0);
+        }
+        cur_sector += s->sg.sg[i].len / 512;
+    }
+}
 
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
@@ -392,6 +469,9 @@ void ide_transfer_start(IDEState *s, uint8_t *buf, int size,
     if (!(s->status & ERR_STAT)) {
         s->status |= DRQ_STAT;
     }
+    // RW calls bmdma_transfer_start in hw/ide/pci.c, which just returns 0?  I
+    // think this just sets parameters in IDEState that are looked at when IRQ
+    // is processed later on.  Seems to be used for port I/O.
     s->bus->dma->ops->start_transfer(s->bus->dma);
 }
 
@@ -476,8 +556,27 @@ void ide_sector_read(IDEState *s)
         if (n > s->req_nb_sectors)
             n = s->req_nb_sectors;
 
+	// TRL hd taint
+	// HD -> IO_BUFFER
+	uint8_t *p;
+	if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {	    
+            rr_record_hd_transfer
+                (RR_CALLSITE_IDE_SECTOR_READ, 
+                 HD_TRANSFER_HD_TO_IOB,
+                 sector_num*512, 
+                 (uint64_t) s->io_buffer,
+                 n*512);	  
+	}
+
         bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
         ret = bdrv_read(s->bs, sector_num, s->io_buffer, n);
+
+	// TRL hd taint debug
+	if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
+            p = s->io_buffer;
+            dump_buffer("ide_sector_read",p,n*512);
+	}
+
         bdrv_acct_done(s->bs, &s->acct);
         if (ret != 0) {
             if (ide_handle_rw_error(s, -ret,
@@ -583,6 +682,7 @@ handle_rw_error:
     n = s->nsector;
     s->io_buffer_index = 0;
     s->io_buffer_size = n * 512;
+    // RW: calls bmdma_prepare_buf in hw/ide/pci.c
     if (s->bus->dma->ops->prepare_buf(s->bus->dma, ide_cmd_is_read(s)) == 0) {
         /* The PRDs were too short. Reset the Active bit, but don't raise an
          * interrupt. */
@@ -596,14 +696,43 @@ handle_rw_error:
 
     switch (s->dma_cmd) {
     case IDE_DMA_READ:
+        // RW hd taint
+        // HD -> RAM
+        if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+            rr_record_sg_transfer(s, HD_TRANSFER_HD_TO_RAM, sector_num, n);
+        }
+        // RW hd taint debug
+        dump_sg_buffer(s, "ide_dma_cb IDE_DMA_READ", sector_num, n, n*512);
+
         s->bus->dma->aiocb = dma_bdrv_read(s->bs, &s->sg, sector_num,
                                            ide_dma_cb, s);
         break;
+    
     case IDE_DMA_WRITE:
+        // RW hd taint
+        // RAM -> HD
+        if ((!(s->drive_kind == IDE_CD)) && (rr_in_record())) {
+            rr_record_sg_transfer(s, HD_TRANSFER_RAM_TO_HD, sector_num, n);
+        }
+        // RW hd taint debug
+        dump_sg_buffer(s, "ide_dma_cb IDE_DMA_WRITE", sector_num, n, n*512);
+      
         s->bus->dma->aiocb = dma_bdrv_write(s->bs, &s->sg, sector_num,
                                             ide_dma_cb, s);
         break;
+
     case IDE_DMA_TRIM:
+      
+        // XXX TRL
+        // No idea what this is doing.  Is there some taint ramification?
+        // should we be logging something if recording in order to replay & not
+        // lose taint?
+        //
+        // RJW
+        // I don't think there's a taint ramification.  This is an emulation of
+        // the standard disk TRIM command, telling the hardware that these
+        // sectors aren't needed anymore. qcow2_discard_clusters is the function
+        // that eventually ends up being called.
         s->bus->dma->aiocb = dma_bdrv_io(s->bs, &s->sg, sector_num,
                                          ide_issue_trim, ide_dma_cb, s, true);
         break;
@@ -642,6 +771,7 @@ static void ide_sector_start_dma(IDEState *s, enum ide_dma_cmd dma_cmd)
         break;
     }
 
+    // RW: Calls bmdma_start_dma in hw/ide/pci.c
     s->bus->dma->ops->start_dma(s->bus->dma, s, ide_dma_cb);
 }
 
@@ -665,8 +795,27 @@ void ide_sector_write(IDEState *s)
     if (n > s->req_nb_sectors)
         n = s->req_nb_sectors;
 
+    // TRL hd taint
+    // IO_BUFFER -> HD
+    uint8_t *p;
+    if ((s->drive_kind == IDE_HD) && (rr_in_record())) {
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_SECTOR_WRITE, 
+             HD_TRANSFER_IOB_TO_HD,
+             (uint64_t) s->io_buffer,
+             sector_num*512, 
+             n*512);
+    }
+
     bdrv_acct_start(s->bs, &s->acct, n * BDRV_SECTOR_SIZE, BDRV_ACCT_READ);
     ret = bdrv_write(s->bs, sector_num, s->io_buffer, n);
+    
+    // TRL hd taint debug
+    if ((!(s->drive_kind == IDE_CD)) /*&& (rr_in_record())*/) {	    
+        p = s->io_buffer;
+        dump_buffer("ide_sector_write",p,n*512);
+    }
+    
     bdrv_acct_done(s->bs, &s->acct);
 
     if (ret != 0) {
@@ -849,6 +998,9 @@ static void ide_clear_hob(IDEBus *bus)
     bus->ifs[1].select &= ~(1 << 7);
 }
 
+// RW This function seems like it's in charge of setting HD status or sending HD
+// commands, and I don't think we care about the potential taintedness of this
+// now.  We are properly handling other port I/O.
 void ide_ioport_write(void *opaque, uint32_t addr, uint32_t val)
 {
     IDEBus *bus = opaque;
@@ -1498,6 +1650,9 @@ void ide_exec_cmd(IDEBus *bus, uint32_t val)
     }
 }
 
+// RW This function seems like it's in charge of reading HD status, and I don't
+// think we care about the potential taintedness of this now.  We are properly
+// handling other port I/O.
 uint32_t ide_ioport_read(void *opaque, uint32_t addr1)
 {
     IDEBus *bus = opaque;
@@ -1576,6 +1731,9 @@ uint32_t ide_ioport_read(void *opaque, uint32_t addr1)
     return ret;
 }
 
+// RW This function seems like it's in charge of reading HD status, and I don't
+// think we care about the potential taintedness of this now.  We are properly
+// handling other port I/O.
 uint32_t ide_status_read(void *opaque, uint32_t addr)
 {
     IDEBus *bus = opaque;
@@ -1593,6 +1751,9 @@ uint32_t ide_status_read(void *opaque, uint32_t addr)
     return ret;
 }
 
+// RW This function seems like it's in charge of setting HD status or sending HD
+// commands, and I don't think we care about the potential taintedness of this
+// now.  We are properly handling other port I/O.
 void ide_cmd_write(void *opaque, uint32_t addr, uint32_t val)
 {
     IDEBus *bus = opaque;
@@ -1658,6 +1819,20 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+    // TRL hd taint
+    // this is a transfer from port to io_buffer
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEW,
+             HD_TRANSFER_PORT_TO_IOB,
+             addr,
+             (uint64_t) s->data_ptr, 
+             2);
+    }
+
     p = s->data_ptr;
     *(uint16_t *)p = le16_to_cpu(val);
     p += 2;
@@ -1679,6 +1854,20 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
         return 0;
     }
 
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READW,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             addr, 
+             2);
+    }
+    
     p = s->data_ptr;
     ret = cpu_to_le16(*(uint16_t *)p);
     p += 2;
@@ -1700,6 +1889,20 @@ void ide_data_writel(void *opaque, uint32_t addr, uint32_t val)
         return;
     }
 
+    // TRL hd taint
+    // this is a transfer from port to io_buffer
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_WRITEL,
+             HD_TRANSFER_PORT_TO_IOB,
+             addr, 
+             (uint64_t) s->data_ptr, 
+             4);
+    }
+
     p = s->data_ptr;
     *(uint32_t *)p = le32_to_cpu(val);
     p += 4;
@@ -1719,6 +1922,20 @@ uint32_t ide_data_readl(void *opaque, uint32_t addr)
      * during PIO in is indeterminate, return 0 and don't move forward. */
     if (!(s->status & DRQ_STAT) || !ide_is_pio_out(s)) {
         return 0;
+    }
+
+    // TRL hd taint
+    // this is transfer from io_buffer to port 
+    // 0x1f0-0x1f7, 0x3f6-0x3f7 is hd
+    if ((rr_in_record())
+            && (((addr >= 0x1f0) && (addr <= 0x1f7))
+                || (addr == 0x3f6) || (addr == 0x3f7))){
+        rr_record_hd_transfer
+            (RR_CALLSITE_IDE_DATA_READL,
+             HD_TRANSFER_IOB_TO_PORT,
+             (uint64_t) s->data_ptr, 
+             addr,
+             4);
     }
 
     p = s->data_ptr;

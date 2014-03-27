@@ -46,7 +46,10 @@
 
 #define  XLOG  xlog
 
-#define ANDROID_QCOW
+#define DEFAULT_PAGE_SIZE       2048
+#define DEFAULT_EXTRA_SIZE      64
+#define DEFAULT_ERASE_PAGES     64
+#define GOLDFISH_NAND_MAX_DEVNAME_BYTES 128
 
 #if defined(ANDROID_QCOW)
 #include "block_int.h"
@@ -64,24 +67,6 @@ xlog( const char*  format, ... )
     
 }
 
-/* Information on a single device/nand image used by the emulator
- */
-typedef struct {
-    char*      devname;      /* name for this device (not null-terminated, use len below) */
-    size_t     devname_len;
-    uint8_t*   data;         /* buffer for read/write actions to underlying image */
-#if defined(ANDROID_QCOW)
-    BlockDriverState *bdrv; /* back nand w/qcow */
-#else
-    int        fd;
-#endif
-    uint32_t   flags;
-    uint32_t   page_size;
-    uint32_t   extra_size;
-    uint32_t   erase_size;   /* size of the data buffer mentioned above */
-    uint64_t   max_size;     /* Capacity limit for the image. The actual underlying
-                              * file may be smaller. */
-} nand_dev;
 
 nand_threshold    android_nand_write_threshold;
 nand_threshold    android_nand_read_threshold;
@@ -129,37 +114,6 @@ nand_threshold_update( nand_threshold*  t, uint32_t  len )
 
 #endif /* !NAND_THRESHOLD */
 
-static nand_dev *nand_devs = NULL;
-static uint32_t nand_dev_count = 0;
-
-/* The controller is the single access point for all NAND images currently
- * attached to the system.
- */
-typedef struct GoldfishNandDevice {
-    GoldfishDevice qdev;
-    char *system_path;
-    char *system_init_path;
-    uint64_t system_size;
-
-    char *user_data_path;
-    char *user_data_init_path;
-    uint64_t user_data_size;
-    
-    char *cache_path;
-    uint64_t cache_size;
-    uint32_t base;
-
-    // register state
-    uint32_t dev;            /* offset in nand_devs for the device that is
-                              * currently being accessed */
-    uint32_t addr_low;
-    uint32_t addr_high;
-    uint32_t transfer_size;
-    uint32_t data;
-    uint32_t batch_addr_low;
-    uint32_t batch_addr_high;
-    uint32_t result;
-} GoldfishNandDevice;
 
 /* EINTR-proof read - due to SIGALRM in use elsewhere */
 static int  do_read(int  fd, void*  buf, size_t  size)
@@ -510,9 +464,9 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
     }
     addr = s->addr_low | ((uint64_t)s->addr_high << 32);
     size = s->transfer_size;
-    if(s->dev >= nand_dev_count)
+    if(s->dev >= s->nand_dev_count)
         return 0;
-    dev = nand_devs + s->dev;
+    dev = s->nand_devs + s->dev;
 
     switch(cmd) {
     case NAND_CMD_GET_DEV_NAME:
@@ -598,7 +552,7 @@ static void nand_dev_write(void *opaque, target_phys_addr_t offset, uint32_t val
     switch (offset) {
     case NAND_DEV:
         s->dev = value;
-        if(s->dev >= nand_dev_count) {
+        if(s->dev >= s->nand_dev_count) {
             cpu_abort(cpu_single_env, "nand_dev_write: Bad dev %x\n", value);
         }
         break;
@@ -646,15 +600,15 @@ static uint32_t nand_dev_read(void *opaque, target_phys_addr_t offset)
     case NAND_VERSION:
         return NAND_VERSION_CURRENT;
     case NAND_NUM_DEV:
-        return nand_dev_count;
+        return s->nand_dev_count;
     case NAND_RESULT:
         return s->result;
     }
 
-    if(s->dev >= nand_dev_count)
+    if(s->dev >= s->nand_dev_count)
         return 0;
 
-    dev = nand_devs + s->dev;
+    dev = s->nand_devs + s->dev;
 
     switch (offset) {
     case NAND_DEV_FLAGS:
@@ -706,13 +660,13 @@ static int arg_match(const char *a, const char *b, size_t b_len)
     return b_len == 0;
 }
 
-void nand_add_dev(const char *arg)
+void nand_add_dev(GoldfishNandDevice* s, const char *arg)
 {
     uint64_t dev_size = 0;
     const char *next_arg;
     const char *value;
     size_t arg_len, value_len;
-    nand_dev *new_devs, *dev;
+    nand_dev *dev;
     char *devname = NULL;
     size_t devname_len = 0;
     char *initfilename = NULL;
@@ -722,9 +676,9 @@ void nand_add_dev(const char *arg)
     int read_only = 0;
     int pad;
     ssize_t read_size;
-    uint32_t page_size = 2048;
-    uint32_t extra_size = 64;
-    uint32_t erase_pages = 64;
+    uint32_t page_size = DEFAULT_PAGE_SIZE;
+    uint32_t extra_size = DEFAULT_EXTRA_SIZE;
+    uint32_t erase_pages = DEFAULT_ERASE_PAGES;
 
     //VERBOSE_PRINT(init, "%s: %s", __FUNCTION__, arg);
 
@@ -757,6 +711,11 @@ void nand_add_dev(const char *arg)
                 goto out_of_memory;
             memcpy(devname, arg, arg_len);
             devname[arg_len] = 0;
+            if (arg_len >= GOLDFISH_NAND_MAX_DEVNAME_BYTES){
+                // loadvm will not go well...
+                XLOG("Please increase GOLDFISH_NAND_MAX_DEVNAME_BYTES to more than %#x\n", arg_len);
+                exit(1);
+            }
         }
         else if(value == NULL) {
             if(arg_match("readonly", arg, arg_len)) {
@@ -780,18 +739,27 @@ void nand_add_dev(const char *arg)
                 page_size = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(page_size != DEFAULT_PAGE_SIZE){
+                    
+                }
             }
             else if(arg_match("extrasize", arg, arg_len)) {
                 char *ep;
                 extra_size = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(extra_size != DEFAULT_EXTRA_SIZE){
+                    
+                }
             }
             else if(arg_match("erasepages", arg, arg_len)) {
                 char *ep;
                 erase_pages = strtoul(value, &ep, 0);
                 if(ep != value + value_len)
                     goto bad_arg_and_value;
+                if(erase_pages != DEFAULT_EXTRA_SIZE){
+                    
+                }
             }
             else if(arg_match("initfile", arg, arg_len)) {
                 initfilename = malloc(value_len + 1);
@@ -858,15 +826,20 @@ void nand_add_dev(const char *arg)
         }
     }
 
-    new_devs = realloc(nand_devs, sizeof(nand_devs[0]) * (nand_dev_count + 1));
-    if(new_devs == NULL)
-        goto out_of_memory;
-    nand_devs = new_devs;
-    dev = &new_devs[nand_dev_count];
+    if(s->nand_dev_count >= MAX_NAND_DEVS)
+        goto too_many_nands;
+    dev = s->nand_devs +s->nand_dev_count;
 
     dev->page_size = page_size;
     dev->extra_size = extra_size;
     dev->erase_size = erase_pages * (page_size + extra_size);
+    if(dev->erase_size > (DEFAULT_ERASE_PAGES * (DEFAULT_PAGE_SIZE + DEFAULT_EXTRA_SIZE))){
+        // loadvm will scribble over the heap.
+        XLOG("Goldfish NAND  %s erase block size %#x is larger than allocated space %#x, loadvm will segfault\n",
+            dev->devname, dev->erase_size,
+            (DEFAULT_ERASE_PAGES * (DEFAULT_PAGE_SIZE + DEFAULT_EXTRA_SIZE)));
+        exit(1);
+    }
     
     dev->data = malloc(dev->erase_size);
     if(dev->data == NULL)
@@ -899,11 +872,14 @@ void nand_add_dev(const char *arg)
         XLOG("failed to open block driver %s\n", rwfilename);
         exit(1);
     }
-    dev_size = 0;
+    if(0 == dev_size){
+      //    dev_size = 0;
     //dev_size = bdrv_getlength(dev->bdrv->file); // gets allocated file size
     // This is how qemu-img gets the virtual disk size:
-    bdrv_get_geometry(dev->bdrv, &dev_size);
-    dev_size *= 512;
+      bdrv_get_geometry(dev->bdrv, &dev_size);
+      D("geometry says there are %d blocks\n", dev_size);
+      dev_size *= 512;
+    }
 #else
     dev->fd = rwfd;
 #endif
@@ -919,7 +895,7 @@ void nand_add_dev(const char *arg)
     D("Dev size of %s is %llx\n", rwfilename, dev_size);
     
 
-    nand_dev_count++;
+    s->nand_dev_count++;
 
     return;
 
@@ -929,6 +905,10 @@ out_of_memory:
 
 bad_arg_and_value:
     XLOG("bad arg: %.*s=%.*s\n", arg_len, arg, value_len, value);
+    exit(1);
+    
+too_many_nands:
+    XLOG("Too many NAND devices, max is %d\n", MAX_NAND_DEVS);
     exit(1);
 }
 
@@ -967,7 +947,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
         } /*else {
             PANIC("Missing initial system image path!");
         }*/
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
 
     /* Initialize data partition image */
@@ -1003,7 +983,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             pstrcat(tmp, sizeof(tmp), ",initfile=");
             pstrcat(tmp, sizeof(tmp), initImage);
         }
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
 
     /* Initialize cache partition */
@@ -1030,7 +1010,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
                 pstrcat(tmp, sizeof(tmp), partPath);
             }
         }
-        nand_add_dev(tmp);
+        nand_add_dev(s, tmp);
     }
     return 0;
 }
@@ -1047,9 +1027,39 @@ DeviceState *goldfish_nand_create(GoldfishBus *gbus)
     return dev;
 }
 
+static int nand_dev_pre_load(void* opaque){
+  nand_dev* dev = (nand_dev*)opaque;
+  // We need to force-allocate the data and devname buffers
+  // because QEMU thinks they are already valid
+  // It's easier to fix this here than to try to hack
+  // loadvm to support this
+    
+  dev->devname = malloc(GOLDFISH_NAND_MAX_DEVNAME_BYTES);
+  dev->data = malloc(DEFAULT_ERASE_PAGES * (DEFAULT_EXTRA_SIZE+ DEFAULT_PAGE_SIZE));
+  return 0;
+}
+
+static const VMStateDescription vmstate_nand_dev = {
+    .name = "goldfish_nand_dev",
+    .version_id = 1,
+    .pre_load = nand_dev_pre_load,
+    .fields = (VMStateField[]){
+        VMSTATE_UINT64(devname_len, nand_dev),
+        VMSTATE_UINT32(erase_size, nand_dev),
+        VMSTATE_VBUFFER_UINT64(devname, nand_dev, 1, NULL, 0, devname_len),
+        VMSTATE_VBUFFER_UINT32(data, nand_dev, 1, NULL, 0, erase_size),
+        VMSTATE_UINT32(flags, nand_dev),
+        VMSTATE_UINT32(page_size, nand_dev),
+        VMSTATE_UINT32(extra_size, nand_dev),
+        VMSTATE_UINT64(max_size, nand_dev),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 static const VMStateDescription vmstate_goldfish_nand = {
     .name = "goldfish_nand",
-    .version_id = 1,
+    .version_id = 2,
+    .minimum_version_id = 1,
     .fields = (VMStateField[]){
         VMSTATE_UINT32(dev, GoldfishNandDevice),
         VMSTATE_UINT32(addr_high, GoldfishNandDevice),
@@ -1059,6 +1069,9 @@ static const VMStateDescription vmstate_goldfish_nand = {
         VMSTATE_UINT32(batch_addr_high, GoldfishNandDevice),
         VMSTATE_UINT32(batch_addr_low, GoldfishNandDevice),
         VMSTATE_UINT32(result, GoldfishNandDevice),
+        VMSTATE_UINT32(nand_dev_count, GoldfishNandDevice),
+        VMSTATE_STRUCT_ARRAY(nand_devs, GoldfishNandDevice, MAX_NAND_DEVS, 2,
+                             vmstate_nand_dev, nand_dev),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -1085,6 +1098,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x5000000),
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
         DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
+        DEFINE_PROP_UINT32("nand_dev_count", GoldfishNandDevice, nand_dev_count, 0),
         DEFINE_PROP_END_OF_LIST(),
     },
 };

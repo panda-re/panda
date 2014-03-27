@@ -28,7 +28,6 @@
 #include <hw/isa.h>
 #include "block.h"
 #include "dma.h"
-
 #include <hw/ide/pci.h>
 
 #define BMDMA_PAGE_SIZE 4096
@@ -47,6 +46,7 @@ static void bmdma_start_dma(IDEDMA *dma, IDEState *s,
     bm->nsector = s->nsector;
 
     if (bm->status & BM_STATUS_DMAING) {
+        // RW: Calls ida_dma_cb in hw/ide/core.c
         bm->dma_cb(bmdma_active_if(bm), 0);
     }
 }
@@ -336,7 +336,7 @@ static uint64_t bmdma_addr_read(void *opaque, dma_addr_t addr,
 
     data = (bm->addr >> (addr * 8)) & mask;
 #ifdef DEBUG_IDE
-    printf("%s: 0x%08x\n", __func__, (unsigned)*data);
+    printf("%s: 0x%08x\n", __func__, data);
 #endif
     return data;
 }

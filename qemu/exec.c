@@ -71,7 +71,9 @@
 #include "trace.h"
 #endif
 
+#ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
+#endif
 #include "panda_plugin.h"
 
 #ifdef CONFIG_LLVM
@@ -2789,9 +2791,11 @@ void cpu_register_physical_memory_log(target_phys_addr_t start_addr,
     ram_addr_t orig_size = size;
     subpage_t *subpage;
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_record() && rr_record_in_progress) {
         rr_reg_mem_call_record(start_addr, size, phys_offset);
     }
+#endif
 
     assert(size);
     cpu_notify_set_memory(start_addr, size, phys_offset, log_dirty);
@@ -4176,6 +4180,13 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                 addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);
                 /* RAM case */
                 ptr = qemu_get_ram_ptr(addr1);
+                if (rr_mode == RR_REPLAY) {
+                    // run all callbacks registered for cpu_physical_memory_rw ram case
+                    panda_cb_list *plist;
+                    for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+                        plist->entry.replay_before_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, addr1, l);
+                    }
+                }
                 memcpy(ptr, buf, l);
                 if (!cpu_physical_memory_is_dirty(addr1)) {
                     /* invalidate code */
@@ -4235,7 +4246,17 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
             } else {
                 /* RAM case */
                 ptr = qemu_get_ram_ptr(pd & TARGET_PAGE_MASK);
-                memcpy(buf, ptr + (addr & ~TARGET_PAGE_MASK), l);
+                uint8_t *dest =  ptr + (addr & ~TARGET_PAGE_MASK);
+                ram_addr_t addr1;
+                addr1 = (pd & TARGET_PAGE_MASK) + (addr & ~TARGET_PAGE_MASK);
+                if (rr_mode == RR_REPLAY) {
+                    // run all callbacks registered for cpu_physical_memory_rw ram case
+                    panda_cb_list *plist;
+                    for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+                        plist->entry.replay_before_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, addr1, l);
+                    }
+                }
+                memcpy(buf, dest, l);
                 qemu_put_ram_ptr(ptr);
             }
         }
@@ -5016,6 +5037,18 @@ int cpu_memory_rw(CPUState *env, target_ulong addr,
     return 0;
 }
 
+target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr){
+    target_ulong page;
+    target_phys_addr_t phys_addr;
+    page = addr & TARGET_PAGE_MASK;
+    phys_addr = cpu_get_phys_page_debug(env, page);
+    /* if no physical page mapped, return an error */
+    if (phys_addr == -1)
+        return -1;
+    phys_addr += (addr & ~TARGET_PAGE_MASK);
+    return phys_addr;
+}
+
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
                         uint8_t *buf, int len, int is_write)
 {
@@ -5064,11 +5097,13 @@ void cpu_io_recompile(CPUState *env, void *retaddr)
                   retaddr);
     }
     
+#ifdef CONFIG_SOFTMMU
     if (rr_debug_whisper()) {
         qemu_log_mask(CPU_LOG_RR,
             "Called cpu_io_recompile to retranslate TB at pc=%p\n",
             retaddr);
     }
+#endif
 
     n = env->icount_decr.u16.low + tb->icount;
     cpu_restore_state(tb, env, (unsigned long)retaddr);

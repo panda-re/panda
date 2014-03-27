@@ -617,6 +617,18 @@ extern const VMStateInfo vmstate_info_unused_buffer;
     .start        = (_start),                                        \
 }
 
+// JEH: needed for Android NAND stuff
+#define VMSTATE_VBUFFER_UINT64(_field, _state, _version, _test, _start, _field_size) { \
+    .name         = (stringify(_field)),                             \
+    .version_id   = (_version),                                      \
+    .field_exists = (_test),                                         \
+    .size_offset  = vmstate_offset_value(_state, _field_size, uint64_t),\
+    .info         = &vmstate_info_buffer,                            \
+    .flags        = VMS_VBUFFER|VMS_POINTER,                         \
+    .offset       = offsetof(_state, _field),                        \
+    .start        = (_start),                                        \
+}
+
 #define VMSTATE_BUFFER_UNSAFE_INFO(_field, _state, _version, _info, _size) { \
     .name       = (stringify(_field)),                               \
     .version_id = (_version),                                        \
@@ -948,4 +960,5 @@ int vmstate_register_with_alias_id(DeviceState *dev, int instance_id,
                                    int required_for_version);
 void vmstate_unregister(DeviceState *dev, const VMStateDescription *vmsd,
                         void *opaque);
+void vmstate_unregister_all(const VMStateDescription *vmsd);
 #endif
