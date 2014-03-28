@@ -178,67 +178,67 @@ int get_cpustate_val(uintptr_t dynval){
     }
 }
 
-void printreg(Addr a){
+void printreg(Addr *a){
 
-    switch(a.val.gr){
+    switch(a->val.gr){
         case R_EAX:
-            printf("g_eax[%d]", a.off);
+            printf("g_eax[%d]", a->off);
             break;
         case R_ECX:
-            printf("g_ecx[%d]", a.off);
+            printf("g_ecx[%d]", a->off);
             break;
         case R_EDX:
-            printf("g_edx[%d]", a.off);
+            printf("g_edx[%d]", a->off);
             break;
         case R_EBX:
-            printf("g_ebx[%d]", a.off);
+            printf("g_ebx[%d]", a->off);
             break;
         case R_ESP:
-            printf("g_esp[%d]", a.off);
+            printf("g_esp[%d]", a->off);
             break;
         case R_EBP:
-            printf("g_ebp[%d]", a.off);
+            printf("g_ebp[%d]", a->off);
             break;
         case R_ESI:
-            printf("g_esi[%d]", a.off);
+            printf("g_esi[%d]", a->off);
             break;
         case R_EDI:
-            printf("g_edi[%d]", a.off);
+            printf("g_edi[%d]", a->off);
             break;
         case CC_OP_REG:
-            printf("g_cc_op[%d]", a.off);
+            printf("g_cc_op[%d]", a->off);
             break;
         case CC_SRC_REG:
-            printf("g_cc_src[%d]", a.off);
+            printf("g_cc_src[%d]", a->off);
             break;
         case CC_DST_REG:
-            printf("g_cc_dst[%d]", a.off);
+            printf("g_cc_dst[%d]", a->off);
             break;
         case EIP_REG:
-            printf("g_eip[%d]", a.off);
+            printf("g_eip[%d]", a->off);
             break;
         default:
             assert(1==0);
     }
 }
 
-void printspec(Addr a){
-    if ((a.val.gs >= FT0_0) && (a.val.gs < XMM_T0_0)){
-        printf("g_ft0[%d]", a.off);
+void printspec(Addr *a){
+    if ((a->val.gs >= FT0_0) && (a->val.gs < XMM_T0_0)){
+        printf("g_ft0[%d]", a->off);
     }
-    else if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
-        printf("g_xmm_t0[%d]", a.off);
+    else if ((a->val.gs >= XMM_T0_0) && (a->val.gs < MMX_T0_0)){
+        printf("g_xmm_t0[%d]", a->off);
     }
-    else if ((a.val.gs >= MMX_T0_0) && (a.val.gs < FPREGS_0_0)){
-        printf("g_mmx_t0[%d]", a.off);
+    else if ((a->val.gs >= MMX_T0_0) && (a->val.gs < FPREGS_0_0)){
+        printf("g_mmx_t0[%d]", a->off);
     }
-    else if ((a.val.gs >= FPREGS_0_0) && (a.val.gs < XMMREGS_0_0)){
-        int fpreg = (a.val.gs - FPREGS_0_0) / 10; // fpregs are 10 bytes
-        printf("g_st%d[%d]", fpreg, a.off);
+    else if ((a->val.gs >= FPREGS_0_0) && (a->val.gs < XMMREGS_0_0)){
+        int fpreg = (a->val.gs - FPREGS_0_0) / 10; // fpregs are 10 bytes
+        printf("g_st%d[%d]", fpreg, a->off);
     }
-    else if ((a.val.gs >= XMMREGS_0_0) && (a.val.gs <= XMMREGS_7_15)){
-        int fpreg = (a.val.gs - XMMREGS_0_0) / 16; // xmm regs are 16 bytes
-        printf("g_xmm%d[%d]", fpreg, a.off);
+    else if ((a->val.gs >= XMMREGS_0_0) && (a->val.gs <= XMMREGS_7_15)){
+        int fpreg = (a->val.gs - XMMREGS_0_0) / 16; // xmm regs are 16 bytes
+        printf("g_xmm%d[%d]", fpreg, a->off);
     }
     else {
         assert(1==0);
@@ -427,91 +427,91 @@ int get_cpustate_val(uintptr_t dynval){
     }
 }
 
-void printreg(Addr a){
+void printreg(Addr *a){
 
-    switch(a.val.gr){
+    switch(a->val.gr){
         case R_EAX:
-            printf("g_rax[%d]", a.off);
+            printf("g_rax[%d]", a->off);
             break;
         case R_ECX:
-            printf("g_rcx[%d]", a.off);
+            printf("g_rcx[%d]", a->off);
             break;
         case R_EDX:
-            printf("g_rdx[%d]", a.off);
+            printf("g_rdx[%d]", a->off);
             break;
         case R_EBX:
-            printf("g_rbx[%d]", a.off);
+            printf("g_rbx[%d]", a->off);
             break;
         case R_ESP:
-            printf("g_rsp[%d]", a.off);
+            printf("g_rsp[%d]", a->off);
             break;
         case R_EBP:
-            printf("g_rbp[%d]", a.off);
+            printf("g_rbp[%d]", a->off);
             break;
         case R_ESI:
-            printf("g_rsi[%d]", a.off);
+            printf("g_rsi[%d]", a->off);
             break;
         case R_EDI:
-            printf("g_rdi[%d]", a.off);
+            printf("g_rdi[%d]", a->off);
             break;
         case R8:
-            printf("g_r8[%d]", a.off);
+            printf("g_r8[%d]", a->off);
             break;
         case R9:
-            printf("g_r9[%d]", a.off);
+            printf("g_r9[%d]", a->off);
             break;
         case R10:
-            printf("g_r10[%d]", a.off);
+            printf("g_r10[%d]", a->off);
             break;
         case R11:
-            printf("g_r11[%d]", a.off);
+            printf("g_r11[%d]", a->off);
             break;
         case R12:
-            printf("g_r12[%d]", a.off);
+            printf("g_r12[%d]", a->off);
             break;
         case R13:
-            printf("g_r13[%d]", a.off);
+            printf("g_r13[%d]", a->off);
             break;
         case R14:
-            printf("g_r14[%d]", a.off);
+            printf("g_r14[%d]", a->off);
             break;
         case R15:
-            printf("g_r15[%d]", a.off);
+            printf("g_r15[%d]", a->off);
             break;
         case CC_OP_REG:
-            printf("g_cc_op[%d]", a.off);
+            printf("g_cc_op[%d]", a->off);
             break;
         case CC_SRC_REG:
-            printf("g_cc_src[%d]", a.off);
+            printf("g_cc_src[%d]", a->off);
             break;
         case CC_DST_REG:
-            printf("g_cc_dst[%d]", a.off);
+            printf("g_cc_dst[%d]", a->off);
             break;
         case RIP_REG:
-            printf("g_rip[%d]", a.off);
+            printf("g_rip[%d]", a->off);
             break;
         default:
             assert(1==0);
     }
 }
 
-void printspec(Addr a){
-    if ((a.val.gs >= FT0_0) && (a.val.gs < XMM_T0_0)){
-        printf("g_ft0[%d]", a.off);
+void printspec(Addr *a){
+    if ((a->val.gs >= FT0_0) && (a->val.gs < XMM_T0_0)){
+        printf("g_ft0[%d]", a->off);
     }
-    else if ((a.val.gs >= XMM_T0_0) && (a.val.gs < MMX_T0_0)){
-        printf("g_xmm_t0[%d]", a.off);
+    else if ((a->val.gs >= XMM_T0_0) && (a->val.gs < MMX_T0_0)){
+        printf("g_xmm_t0[%d]", a->off);
     }
-    else if ((a.val.gs >= MMX_T0_0) && (a.val.gs < FPREGS_0_0)){
-        printf("g_mmx_t0[%d]", a.off);
+    else if ((a->val.gs >= MMX_T0_0) && (a->val.gs < FPREGS_0_0)){
+        printf("g_mmx_t0[%d]", a->off);
     }
-    else if ((a.val.gs >= FPREGS_0_0) && (a.val.gs < XMMREGS_0_0)){
-        int fpreg = (a.val.gs - FPREGS_0_0) / 10; // fpregs are 10 bytes
-        printf("g_st%d[%d]", fpreg, a.off);
+    else if ((a->val.gs >= FPREGS_0_0) && (a->val.gs < XMMREGS_0_0)){
+        int fpreg = (a->val.gs - FPREGS_0_0) / 10; // fpregs are 10 bytes
+        printf("g_st%d[%d]", fpreg, a->off);
     }
-    else if ((a.val.gs >= XMMREGS_0_0) && (a.val.gs <= XMMREGS_15_15)){
-        int fpreg = (a.val.gs - XMMREGS_0_0) / 16; // xmm regs are 16 bytes
-        printf("g_xmm%d[%d]", fpreg, a.off);
+    else if ((a->val.gs >= XMMREGS_0_0) && (a->val.gs <= XMMREGS_15_15)){
+        int fpreg = (a->val.gs - XMMREGS_0_0) / 16; // xmm regs are 16 bytes
+        printf("g_xmm%d[%d]", fpreg, a->off);
     }
     else {
         assert(1==0);
@@ -612,8 +612,8 @@ int get_cpustate_val(uintptr_t dynval){
     }
 }
 
-void printreg(Addr a){
-    switch(a.val.gr){
+void printreg(Addr *a){
+    switch(a->val.gr){
         case 0:
         case 1:
         case 2:
@@ -629,17 +629,17 @@ void printreg(Addr a){
         case 12:
         case 13:
         case 14:
-            printf("g_r%d[%d]", (int)a.val.gr, a.off);
+            printf("g_r%d[%d]", (int)a->val.gr, a->off);
             break;
         case 15:
-            printf("g_pc[%d]", a.off);
+            printf("g_pc[%d]", a->off);
             break;
         default:
             assert(1==0);
     }
 }
 
-void printspec(Addr a){}
+void printspec(Addr *a){}
 
 #endif
 
@@ -660,7 +660,7 @@ void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
         src.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(buf, op);
+        tob_op_write(buf, &op);
     }
 }
 
@@ -680,7 +680,7 @@ void guestLoadTaint(GReg guestSrc, LAddr localDst, int len, TaintOpBuffer *buf){
         src.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(buf, op);
+        tob_op_write(buf, &op);
     }
 }
 
@@ -695,7 +695,7 @@ void guestDeleteTaint(GReg guestDst, int len, TaintOpBuffer *buf){
     for (i = 0; i < len; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(buf, op);
+        tob_op_write(buf, &op);
     }
 }
 

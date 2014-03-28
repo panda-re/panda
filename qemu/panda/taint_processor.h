@@ -129,21 +129,21 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size, uint32_t ma
 void tp_free(Shad *shad);
 
 // label -- associate label l with address a
-void tp_label(Shad *shad, Addr a, Label l);
+void tp_label(Shad *shad, Addr *a, Label l);
 
 // untaint -- discard label set associated with a
-void tp_delete(Shad *shad, Addr a);
+void tp_delete(Shad *shad, Addr *a);
 
 // copy -- b gets whatever label set is currently associated with a
-void tp_copy(Shad *shad, Addr a, Addr b);
+void tp_copy(Shad *shad, Addr *a, Addr *b);
 
 // compute -- c gets union of label sets currently associated with a and b
-void tp_compute(Shad *shad, Addr a, Addr b, Addr c);
+void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c);
 
 // query -- returns TRUE (1) iff a is tainted
-uint8_t tp_query(Shad *shad, Addr a);
+uint8_t tp_query(Shad *shad, Addr *a);
 
-uint8_t addrs_equal(Addr a, Addr b);
+uint8_t addrs_equal(Addr *a, Addr *b);
 
 uint8_t get_ram_bit(Shad *shad, uint32_t addr);
 
@@ -244,10 +244,10 @@ void tob_rewind(TaintOpBuffer *buf);
 //uint8_t tob_empty(TaintOpBuffer *buf);
 
 // write op to buffer
-void tob_op_write(TaintOpBuffer *buf, TaintOp op);
+void tob_op_write(TaintOpBuffer *buf, TaintOp *op);
 
 // read op from buffer
-TaintOp tob_op_read(TaintOpBuffer *buf);
+void tob_op_read(TaintOpBuffer *buf, TaintOp **op);
 
 // execute a function or taint translation block of taint ops
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf);
@@ -255,7 +255,7 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf);
 // process ops in taint op buffer (called by execute)
 void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf);
 
-void tob_op_print(Shad *shad, TaintOp op);
+void tob_op_print(Shad *shad, TaintOp *op);
 
 uint8_t tob_end(TaintOpBuffer *buf);
 
@@ -266,9 +266,9 @@ void tob_clear(TaintOpBuffer *buf);
 // stuff for control flow in trace
 enum {RETURN, BRANCH, SWITCHSTEP, EXCEPT};
 
-void print_addr(Shad *shad, Addr a);
+void print_addr(Shad *shad, Addr *a);
 
-void process_insn_start_op(TaintOp op, TaintOpBuffer *buf,
+void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
     DynValBuffer *dynval_buf);
 
 #endif

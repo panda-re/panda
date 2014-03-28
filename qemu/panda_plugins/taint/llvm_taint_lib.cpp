@@ -145,7 +145,8 @@ void PandaTaintFunctionPass::debugTaintOps(){
     int j = 0;
     tob_rewind(ttb->entry->ops);
     while (!(tob_end(ttb->entry->ops))) {
-        TaintOp op = tob_op_read(ttb->entry->ops);
+        TaintOp *op;
+        tob_op_read(ttb->entry->ops, &op);
         printf("op %d ", j);
         tob_op_print(NULL, op);
         j++;
@@ -158,7 +159,8 @@ void PandaTaintFunctionPass::debugTaintOps(){
         j = 0;
         tob_rewind(ttb->tbbs[i]->ops);
         while (!(tob_end(ttb->tbbs[i]->ops))) {
-            TaintOp op = tob_op_read(ttb->tbbs[i]->ops);
+	    TaintOp *op;
+	    tob_op_read(ttb->tbbs[i]->ops, &op);
             printf("op %d ", j);
             tob_op_print(NULL, op);
             j++;
@@ -391,7 +393,7 @@ void PandaTaintVisitor::simpleDeleteTaintAtDest(int llvmReg){
     for (int i = 0; i < MAXREGSIZE; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -411,7 +413,7 @@ void PandaTaintVisitor::simpleTaintCopy(int source, int dest, int bytes){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -437,7 +439,7 @@ void PandaTaintVisitor::simpleTaintCompute(int source0, AddrType source0ty,
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -464,7 +466,7 @@ void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsiz
         for (int i = destsize; i < MAXREGSIZE; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -483,7 +485,7 @@ void PandaTaintVisitor::intPtrHelper(Instruction &I, int sourcesize, int destsiz
         for (int i = sourcesize; i < MAXREGSIZE; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -518,19 +520,19 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         a.off = 0;
         op2.val.label.l = 0;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 1;
         op2.val.label.l = 1;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 2;
         op2.val.label.l = 2;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 3;
         op2.val.label.l = 3;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);*/
+        tob_op_write(tbuf, &op2);*/
         /**** TEST ****/
 
 
@@ -548,7 +550,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(ci-1, ai, ci)
         // compute(bi, ci, ci)
@@ -562,7 +564,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
 
             src0.val.la = operand1;
             src1.val.la = PST->getLocalSlot(dstval);
@@ -573,7 +575,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -592,7 +594,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(ci-1, bi, ci)
         for (int i = 1; i < size; i++){
@@ -606,7 +608,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -623,19 +625,19 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         a.off = 0;
         op2.val.label.l = 0;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 1;
         op2.val.label.l = 1;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 2;
         op2.val.label.l = 2;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 3;
         op2.val.label.l = 3;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);*/
+        tob_op_write(tbuf, &op2);*/
         /**** TEST ****/
 
         // compute(a0, b0, c0)
@@ -650,7 +652,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(ci-1, ai, ci)
         for (int i = 1; i < size; i++){
@@ -664,7 +666,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -676,7 +678,7 @@ void PandaTaintVisitor::addSubHelper(Value *arg0, Value *arg1, Value *dstval){
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -709,19 +711,19 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         a.off = 0;
         op2.val.label.l = 0;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 1;
         op2.val.label.l = 1;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 2;
         op2.val.label.l = 2;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 3;
         op2.val.label.l = 3;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);*/
+        tob_op_write(tbuf, &op2);*/
         /**** TEST ****/
 
         // accumulate all of a's taint into c0
@@ -737,14 +739,14 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
 
         // compute(a0, c0, c0)
@@ -760,12 +762,12 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(b0, c0, c0)
         src0.val.la = operand1;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(ci-1, ai, ci)
         // compute(bi, ci, ci)
@@ -779,7 +781,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
 
             src0.val.la = operand1;
             src1.val.la = PST->getLocalSlot(&I);
@@ -790,7 +792,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -810,7 +812,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(ci-1, bi, ci)
         for (int i = 1; i < size; i++){
@@ -824,7 +826,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -841,19 +843,19 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         a.off = 0;
         op2.val.label.l = 0;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 1;
         op2.val.label.l = 1;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 2;
         op2.val.label.l = 2;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 3;
         op2.val.label.l = 3;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);*/
+        tob_op_write(tbuf, &op2);*/
         /**** TEST ****/
 
         // accumulate all of a's taint into c0
@@ -869,14 +871,14 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
 
         // propagate accumulated taint in c0 to all result bytes
@@ -889,7 +891,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -901,7 +903,7 @@ void PandaTaintVisitor::mulHelper(BinaryOperator &I){
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -940,14 +942,14 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
 
         // propagate accumulated taint in c0 to all result bytes
@@ -960,7 +962,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
 
         // copy each byte of operand 0 to each byte of destination through
@@ -975,7 +977,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -995,14 +997,14 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         src0.val.la = PST->getLocalSlot(&I);
         op.val.compute.a = src0;
         for (int i = 1; i < size; i++){
             src1.off = i;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
 
         // propagate accumulated taint in c0 to all result bytes
@@ -1015,7 +1017,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
         for (int i = 1; i < size; i++){
             dst.off = i;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -1034,7 +1036,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
             op.val.compute.a = src0;
             op.val.compute.b = src1;
             op.val.compute.c = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -1046,7 +1048,7 @@ void PandaTaintVisitor::shiftHelper(BinaryOperator &I){
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -1073,7 +1075,7 @@ void PandaTaintVisitor::approxArithHelper(Value *op0, Value *op1, Value *dest){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(dest) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     for (int oper = 0; oper < 2; oper++){
         // Operand is a constant, therefore it can't be tainted
@@ -1089,7 +1091,7 @@ void PandaTaintVisitor::approxArithHelper(Value *op0, Value *op1, Value *dest){
                 for (int i = 0; i < size; i++){
                     dst.off = i;
                     op.val.deletel.a = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
                 }
                 return;
             }
@@ -1115,7 +1117,7 @@ void PandaTaintVisitor::approxArithHelper(Value *op0, Value *op1, Value *dest){
         for (int i = 0; i < size; i++){
             src0.off = i;
             op.val.compute.a = src0;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -1130,7 +1132,7 @@ void PandaTaintVisitor::approxArithHelper(Value *op0, Value *op1, Value *dest){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -1163,12 +1165,12 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I){
             dst.off = i;
             op.val.copy.a = src;
             op.val.copy.b = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
     op.typ = RETOP;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 }
 
 void PandaTaintVisitor::visitBranchInst(BranchInst &I){
@@ -1184,7 +1186,7 @@ void PandaTaintVisitor::visitBranchInst(BranchInst &I){
         op.val.insn_start.branch_labels[i] =
             PST->getLocalSlot(I.getSuccessor(i));
     }
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 }
 
 void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
@@ -1217,7 +1219,7 @@ void PandaTaintVisitor::visitSwitchInst(SwitchInst &I){
     op.val.insn_start.switch_labels[len-1] =
         PST->getLocalSlot(I.getDefaultDest());
 
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 }
 
 void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I){}
@@ -1234,7 +1236,7 @@ void PandaTaintVisitor::visitResumeInst(ResumeInst &I){}
 void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I){
     struct taint_op_struct op = {};
     op.typ = RETOP;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 }
 
 // Binary operators
@@ -1322,13 +1324,13 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     dst.val.la = dstval;
                     op.val.copy.a = src;
                     op.val.copy.b = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
 
                     op.typ = DELETEOP;
                     for (int i = 0; i < 7; i++){
                         dst.off = i;
                         op.val.deletel.a = dst;
-                        tob_op_write(tbuf, op);
+                        tob_op_write(tbuf, &op);
                     }
                 }
                 else {
@@ -1370,13 +1372,13 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                         dst.off = i-1;
                         op.val.copy.a = src;
                         op.val.copy.b = dst;
-                        tob_op_write(tbuf, op);
+                        tob_op_write(tbuf, &op);
                     }
 
                     op.typ = DELETEOP;
                     dst.off = 7;
                     op.val.deletel.a = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
                 }
                 else if ((con >= 56) && (con < 64)){
                     //printf("hacked lshr\n");
@@ -1394,13 +1396,13 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     dst.val.la = dstval;
                     op.val.copy.a = src;
                     op.val.copy.b = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
 
                     op.typ = DELETEOP;
                     for (int i = 1; i < 8; i++){
                         dst.off = i;
                         op.val.deletel.a = dst;
-                        tob_op_write(tbuf, op);
+                        tob_op_write(tbuf, &op);
                     }
                 }
                 else {
@@ -1439,7 +1441,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I){
                     for (int i = 1; i < MAXREGSIZE; i++){
                         dst.off = i;
                         op.val.deletel.a = dst;
-                        tob_op_write(tbuf, op);
+                        tob_op_write(tbuf, &op);
                     }
                 }
                 else {
@@ -1487,7 +1489,7 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = len;
     op.val.insn_start.flag = INSNREADLOG;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // write taint ops
     op.typ = COPYOP;
@@ -1502,7 +1504,7 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
 #ifdef TAINTED_POINTER
@@ -1528,14 +1530,14 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     op.val.compute.a = src0;
     op.val.compute.b = src1;
     op.val.compute.c = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     src1.typ = RET;
     op.val.compute.b = src1;
     for (int i = 1; i < len; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in temp[0] to all result bytes
@@ -1551,7 +1553,7 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
         dst.off = i;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 #endif
 }
@@ -1589,7 +1591,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
     dst.typ = RET;
     dst.off = 0;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // write instruction boundary op
     op.typ = INSNSTARTOP;
@@ -1609,7 +1611,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
 #endif
 
     op.val.insn_start.flag = INSNREADLOG;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     if (srcConstant){
         op.typ = DELETEOP;
@@ -1619,7 +1621,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         for (int i = 0; i < len; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
     else {
@@ -1634,7 +1636,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
             dst.off = i;
             op.val.copy.a = src;
             op.val.copy.b = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -1663,7 +1665,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
     for (int i = 0; i < len; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in temp[0] to all result bytes
@@ -1677,7 +1679,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         dst.off = i;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 #endif
 }
@@ -1744,7 +1746,7 @@ void PandaTaintVisitor::visitTruncInst(TruncInst &I){
     for (int i = destsize; i < MAXREGSIZE; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -1770,7 +1772,7 @@ void PandaTaintVisitor::visitZExtInst(ZExtInst &I){
     for (int i = sourcesize; i < MAXREGSIZE; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -1804,7 +1806,7 @@ void PandaTaintVisitor::visitSExtInst(SExtInst &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -1823,7 +1825,7 @@ void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     if (PST->getLocalSlot(I.getOperand(0)) < 0) {
       // arg was constant, need to delete taint
@@ -1833,7 +1835,7 @@ void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
       for (int i = 0; i < size; i++) {
           dst.off = i;
           op.val.deletel.a = dst;
-          tob_op_write(tbuf, op);
+          tob_op_write(tbuf, &op);
       }
       return;
     }
@@ -1856,7 +1858,7 @@ void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
     for (int i = 0; i < size; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in c0 to all result bytes
@@ -1871,7 +1873,7 @@ void PandaTaintVisitor::visitFPToUIInst(FPToUIInst &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -1890,7 +1892,7 @@ void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     if (PST->getLocalSlot(I.getOperand(0)) < 0) {
       // arg was constant, need to delete taint
@@ -1900,7 +1902,7 @@ void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
       for (int i = 0; i < size; i++) {
           dst.off = i;
           op.val.deletel.a = dst;
-          tob_op_write(tbuf, op);
+          tob_op_write(tbuf, &op);
       }
       return;
     }
@@ -1923,7 +1925,7 @@ void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
     for (int i = 0; i < size; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in c0 to all result bytes
@@ -1938,7 +1940,7 @@ void PandaTaintVisitor::visitFPToSIInst(FPToSIInst &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2020,7 +2022,7 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(c0, ai, c0)
         // compute(c0, bi, c0)
@@ -2029,10 +2031,10 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
             src1.off = i;
             src1.val.la = operand0;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
             src1.val.la = operand1;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -2051,14 +2053,14 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(c0, bi, c0)
         op.val.compute.a = dst;
         for (int i = 1; i < size; i++){
             src1.off = i;
             op.val.compute.b = src1;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -2075,19 +2077,19 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
         a.off = 0;
         op2.val.label.l = 0;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 1;
         op2.val.label.l = 1;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 2;
         op2.val.label.l = 2;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);
+        tob_op_write(tbuf, &op2);
         a.off = 3;
         op2.val.label.l = 3;
         op2.val.label.a = a;
-        tob_op_write(tbuf, op2);*/
+        tob_op_write(tbuf, &op2);*/
         /**** TEST ****/
 
         // compute(a0, b0, c0)
@@ -2102,14 +2104,14 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
         op.val.compute.a = src0;
         op.val.compute.b = src1;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // compute(c0, ai, c0)
         op.val.compute.a = dst;
         for (int i = 1; i < size; i++){
             src0.off = i;
             op.val.compute.b = src0;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -2120,7 +2122,7 @@ void PandaTaintVisitor::visitICmpInst(ICmpInst &I){
         dst.off = 0;
         dst.val.la = PST->getLocalSlot(&I);
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     else {
@@ -2144,7 +2146,7 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     for (int oper = 0; oper < 2; oper++){
         // Operand is a constant, therefore it can't be tainted
@@ -2159,7 +2161,7 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
                 for (int i = 0; i < size; i++){
                     dst.off = i;
                     op.val.deletel.a = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
                 }
                 return;
             }
@@ -2185,7 +2187,7 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
         for (int i = 0; i < size; i++){
             src0.off = i;
             op.val.compute.a = src0;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 
@@ -2200,7 +2202,7 @@ void PandaTaintVisitor::visitFCmpInst(FCmpInst &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2217,7 +2219,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     char name[4] = "phi";
@@ -2235,7 +2237,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
         op.val.insn_start.phi_labels[i] = PST->getLocalSlot(I.getIncomingBlock(i));
     }
 
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     op.typ = COPYOP;
     dst.typ = LADDR;
@@ -2248,7 +2250,7 @@ void PandaTaintVisitor::visitPHINode(PHINode &I){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2271,7 +2273,7 @@ void PandaTaintVisitor::bswapHelper(CallInst &I){
         dst.off = bytes-i-1;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2297,7 +2299,7 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
     op.val.insn_start.num_ops = bytes;
     op.val.insn_start.flag = INSNREADLOG;
 
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     op.typ = COPYOP;
     dst.typ = UNK;
@@ -2312,7 +2314,7 @@ void PandaTaintVisitor::memcpyHelper(CallInst &I){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2346,7 +2348,7 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     op.val.insn_start.num_ops = bytes;
     op.val.insn_start.flag = INSNREADLOG;
 
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     op.typ = DELETEOP;
     dst.typ = UNK;
@@ -2355,7 +2357,7 @@ void PandaTaintVisitor::memsetHelper(CallInst &I){
     for (int i = 0; i < bytes; i++){
         dst.off = i;
         op.val.deletel.a = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2376,7 +2378,7 @@ void PandaTaintVisitor::ctlzHelper(CallInst &I){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // Operand is a constant, therefore it can't be tainted
     if (PST->getLocalSlot(I.getArgOperand(0)) < 0){
@@ -2386,7 +2388,7 @@ void PandaTaintVisitor::ctlzHelper(CallInst &I){
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
         return;
     }
@@ -2409,7 +2411,7 @@ void PandaTaintVisitor::ctlzHelper(CallInst &I){
     for (int i = 0; i < size; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in c0 to all result bytes
@@ -2423,7 +2425,7 @@ void PandaTaintVisitor::ctlzHelper(CallInst &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2445,7 +2447,7 @@ void PandaTaintVisitor::floatHelper(CallInst &I){
     dst.off = 0;
     dst.val.la = PST->getLocalSlot(&I) + 1;
     op.val.deletel.a = dst;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // Operand is a constant, therefore it can't be tainted
     if (PST->getLocalSlot(I.getArgOperand(0)) < 0){
@@ -2455,7 +2457,7 @@ void PandaTaintVisitor::floatHelper(CallInst &I){
         for (int i = 0; i < size; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
         return;
     }
@@ -2478,7 +2480,7 @@ void PandaTaintVisitor::floatHelper(CallInst &I){
     for (int i = 0; i < size; i++){
         src0.off = i;
         op.val.compute.a = src0;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     // propagate accumulated taint in c0 to all result bytes
@@ -2492,7 +2494,7 @@ void PandaTaintVisitor::floatHelper(CallInst &I){
     for (int i = 0; i < size; i++){
         dst.off = i;
         op.val.compute.c = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2669,7 +2671,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
                 for (int j = 0; j < argBytes; j++){
                     dst.off = j;
                     op.val.deletel.a = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
                 }
             }
             else {
@@ -2681,7 +2683,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
                     dst.off = j;
                     op.val.copy.a = src;
                     op.val.copy.b = dst;
-                    tob_op_write(tbuf, op);
+                    tob_op_write(tbuf, &op);
                 }
             }
         }
@@ -2690,7 +2692,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
         op.typ = CALLOP;
         strncpy(op.val.call.name, it->first.c_str(), FUNCNAMELENGTH);
         op.val.call.ttb = it->second;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
 
         // copy return reg to value in this frame, if applicable
         int slot = PST->getLocalSlot(&I);
@@ -2706,7 +2708,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
                 dst.off = i;
                 op.val.copy.a = src;
                 op.val.copy.b = dst;
-                tob_op_write(tbuf, op);
+                tob_op_write(tbuf, &op);
             }
         }
     }
@@ -2734,7 +2736,7 @@ void PandaTaintVisitor::portLoadHelper(Value *srcval, Value *dstval, int len){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = len;
     op.val.insn_start.flag = INSNREADLOG;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // write taint ops
     op.typ = COPYOP;
@@ -2749,7 +2751,7 @@ void PandaTaintVisitor::portLoadHelper(Value *srcval, Value *dstval, int len){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2768,7 +2770,7 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len){
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
     op.val.insn_start.num_ops = len;
     op.val.insn_start.flag = INSNREADLOG;
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     if (srcConstant){
         op.typ = DELETEOP;
@@ -2778,7 +2780,7 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len){
         for (int i = 0; i < len; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
     else {
@@ -2793,7 +2795,7 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len){
             dst.off = i;
             op.val.copy.a = src;
             op.val.copy.b = dst;
-            tob_op_write(tbuf, op);
+            tob_op_write(tbuf, &op);
         }
     }
 }
@@ -2814,7 +2816,7 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I){
     op.val.insn_start.flag = INSNREADLOG;
     op.val.insn_start.branch_labels[0] = PST->getLocalSlot(I.getTrueValue());
     op.val.insn_start.branch_labels[1] = PST->getLocalSlot(I.getFalseValue());
-    tob_op_write(tbuf, op);
+    tob_op_write(tbuf, &op);
 
     // write taint ops
     memset(&op, 0, sizeof(op));
@@ -2832,7 +2834,7 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
@@ -2883,7 +2885,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
         dst.off = i;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 
     src.val.la = op1;
@@ -2894,7 +2896,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I){
         dst.off = i + 8*idx;
         op.val.copy.a = src;
         op.val.copy.b = dst;
-        tob_op_write(tbuf, op);
+        tob_op_write(tbuf, &op);
     }
 }
 
