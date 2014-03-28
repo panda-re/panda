@@ -525,6 +525,7 @@ void print_addr(Shad *shad, Addr *a) {
 
 // copy -- b gets whatever label set is currently associated with a
 SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
+  
     assert (shad != NULL);
     assert (!(addrs_equal(a,b)));
     LabelSet *ls_a = tp_labelset_get(shad, a);
@@ -551,7 +552,7 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
-  return;
+  
     assert (shad != NULL);
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
@@ -615,26 +616,26 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     tob_rewind(tbuf);
     //Free up dynamically allocated arrays in phi and switch ops
     while (!(tob_end(tbuf))) {
-      TaintOp op;
+      TaintOp *op;
       tob_op_read(tbuf, &op);
 
-        if (op.typ == INSNSTARTOP){
-            if (!strcmp(op.val.insn_start.name, "phi")){
-                unsigned len = op.val.insn_start.phi_len;
-                my_free(op.val.insn_start.phi_vals,
+        if (op->typ == INSNSTARTOP){
+            if (!strcmp(op->val.insn_start.name, "phi")){
+                unsigned len = op->val.insn_start.phi_len;
+                my_free(op->val.insn_start.phi_vals,
                     len * sizeof(int), poolid_taint_processor);
-                op.val.insn_start.phi_vals = NULL;
-                my_free(op.val.insn_start.phi_labels,
+                op->val.insn_start.phi_vals = NULL;
+                my_free(op->val.insn_start.phi_labels,
                     len * sizeof(int), poolid_taint_processor);
-                op.val.insn_start.phi_labels = NULL;
-            } else if (!strcmp(op.val.insn_start.name, "switch")){
-                unsigned len = op.val.insn_start.switch_len;
-                my_free(op.val.insn_start.switch_conds,
+                op->val.insn_start.phi_labels = NULL;
+            } else if (!strcmp(op->val.insn_start.name, "switch")){
+                unsigned len = op->val.insn_start.switch_len;
+                my_free(op->val.insn_start.switch_conds,
                     len * sizeof(int64_t), poolid_taint_processor);
-                op.val.insn_start.switch_conds = NULL;
-                my_free(op.val.insn_start.switch_labels,
+                op->val.insn_start.switch_conds = NULL;
+                my_free(op->val.insn_start.switch_labels,
                     len * sizeof(int), poolid_taint_processor);
-                op.val.insn_start.switch_labels = NULL;
+                op->val.insn_start.switch_labels = NULL;
             }
         }
     }
@@ -645,7 +646,7 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     tbuf = NULL;
 }
 
-void tob_rewind(TaintOpBuffer *buf) {
+SB_INLINE void tob_rewind(TaintOpBuffer *buf) {
     buf->ptr = buf->start;
 }
 
@@ -654,7 +655,7 @@ void tob_clear(TaintOpBuffer *buf) {
     buf->ptr = buf->start;
 }
 
-uint8_t tob_end(TaintOpBuffer *buf) {
+SB_INLINE uint8_t tob_end(TaintOpBuffer *buf) {
     return (buf->ptr >= buf->start + buf->size);
 }
 
@@ -673,11 +674,18 @@ static SB_INLINE void tob_write(TaintOpBuffer *buf, char *stuff,
 }
 
 
-static SB_INLINE void tob_read(TaintOpBuffer *buf, char *stuff,
+/*
+  NB: set pointer *stuff to point to current taint buffer pointer.
+  And assume caller wont modify anything there.
+  
+*/
+
+static SB_INLINE void tob_read(TaintOpBuffer *buf, char **stuff,
         uint32_t stuff_size) {
     uint64_t bytes_used = buf->ptr - buf->start;
     assert (buf->max_size - bytes_used >= stuff_size);
-    memcpy(stuff, buf->ptr, stuff_size);
+    //  memcpy(stuff, buf->ptr, stuff_size);
+    *stuff = (char *) buf->ptr;
     buf->ptr += stuff_size;
     buf->size = max(buf->ptr - buf->start, buf->size);
 }
@@ -687,9 +695,12 @@ static SB_INLINE void tob_addr_write(TaintOpBuffer *buf, Addr *a) {
     tob_write(buf, (char*) a, sizeof(Addr));
 }
 
-static SB_INLINE void tob_addr_read(TaintOpBuffer *buf, Addr *a) {
-    tob_read(buf, (char*) a, sizeof(Addr));
+/* UNUSED
+// *ap is a pointer to an addr. 
+static SB_INLINE void tob_addr_read(TaintOpBuffer *buf, Addr **ap) {
+    tob_read(buf, (char**) ap, sizeof(Addr));
 }
+*/
 
 void tob_op_print(Shad *shad, TaintOp *op) {
     switch (op->typ) {
@@ -754,11 +765,12 @@ SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
     tob_write(buf, (char*) op, sizeof(TaintOp));
 }
 
-SB_INLINE void tob_op_read(TaintOpBuffer *buf, TaintOp *op) {
-    tob_read(buf, (char*) op, sizeof(TaintOp));
+// *aop is pointer to a taint op
+SB_INLINE void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
+    tob_read(buf, (char**) aop, sizeof(TaintOp));
 }
 
-void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
+SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
         DynValBuffer *dynval_buf){
 #ifdef TAINTDEBUG
     printf("Fixing up taint op buffer for: %s\n", op->val.insn_start.name);
@@ -1492,20 +1504,23 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 
 SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         DynValBuffer *dynval_buf) {
+
     uint32_t i;
     tob_rewind(buf);
     i = 0;
     while (!(tob_end(buf))) {
-      TaintOp op;
+      TaintOp *op;
       tob_op_read(buf, &op);
+
+
 #ifdef TAINTDEBUG
         printf("op %d ", i);
-        tob_op_print(shad, op);
+        tob_op_print(shad, *op);
 #endif
-        switch (op.typ) {
+        switch (op->typ) {
             case LABELOP:
                 {
-		  tp_label(shad, &(op.val.label.a), op.val.label.l);
+		  tp_label(shad, &(op->val.label.a), op->val.label.l);
                     break;
                 }
 
@@ -1514,15 +1529,15 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     /* if it's a delete of an address we aren't tracking,
                      * do nothing
                      */
-                    if (op.val.copy.a.flag == IRRELEVANT){
+                    if (op->val.copy.a.flag == IRRELEVANT){
                         break;
                     }
 #ifdef TAINTDEBUG
-                    if (tp_query(shad, &(op.val.deletel.a))) {
+                    if (tp_query(shad, &(op->val.deletel.a))) {
                         printf ("  [removes taint]\n");
                     }
 #endif
-		    tp_delete(shad, &(op.val.deletel.a));
+		    tp_delete(shad, &(op->val.deletel.a));
                     break;
                 }
 
@@ -1531,36 +1546,36 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     /* if source is address we aren't tracking, then delete the
                      * taint at dest
                      */
-                    if (op.val.copy.a.flag == IRRELEVANT){
+                    if (op->val.copy.a.flag == IRRELEVANT){
 #ifdef TAINTDEBUG
                             uint8_t foo = 0;
-                            if (tp_query(shad, op.val.copy.b)){
+                            if (tp_query(shad, op->val.copy.b)){
                                 printf ("  [dest was tainted]"); foo = 1;
                             }
                             if (foo) printf("\n");
 #endif
-			    tp_delete(shad, &(op.val.copy.b));
+			    tp_delete(shad, &(op->val.copy.b));
                         break;
                     }
 
                     /* if it's a copy to an address we aren't tracking, do
                      * nothing
                      */
-                    if (op.val.copy.b.flag == IRRELEVANT){
+                    if (op->val.copy.b.flag == IRRELEVANT){
                         break;
                     }
 
 #ifdef TAINTDEBUG
                     uint8_t foo = 0;
-                    if (tp_query(shad, op.val.copy.a)) {
+                    if (tp_query(shad, op->val.copy.a)) {
                         printf ("  [src is tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op.val.copy.b)) {
+                    if (tp_query(shad, op->val.copy.b)) {
                         printf ("  [dest was tainted]"); foo = 1;
                     }
                     if (foo) printf("\n");
 #endif
-		    tp_copy(shad, &(op.val.copy.a), &(op.val.copy.b));
+		    tp_copy(shad, &(op->val.copy.a), &(op->val.copy.b));
                     break;
                 }
 
@@ -1569,7 +1584,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     /* if it's a compute to an address we aren't tracking, do
                      * nothing
                      */
-                    if (op.val.compute.c.flag == IRRELEVANT){
+                    if (op->val.compute.c.flag == IRRELEVANT){
                         break;
                     }
 
@@ -1577,34 +1592,34 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                      * is tainted but it points to a guest register, do nothing
                      */
 #ifdef TAINTED_POINTER
-                    if (op.val.compute.c.typ == GREG){
+                    if (op->val.compute.c.typ == GREG){
                         break;
-                    } else if (op.val.compute.c.typ == GSPEC){
+                    } else if (op->val.compute.c.typ == GSPEC){
                         break;
                     }
 #endif
 
 #ifdef TAINTDEBUG
                     uint8_t foo = 0;
-                    if (tp_query(shad, op.val.compute.a)) {
+                    if (tp_query(shad, op->val.compute.a)) {
                         printf ("  [src1 was tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op.val.compute.b)) {
+                    if (tp_query(shad, op->val.compute.b)) {
                         printf ("  [src2 was tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op.val.compute.c)) {
+                    if (tp_query(shad, op->val.compute.c)) {
                         printf ("  [dest was tainted]"); foo = 1;
                     }
                     if (foo) printf("\n");
 #endif
-		    tp_compute(shad, &(op.val.compute.a), &(op.val.compute.b),
-			       &(op.val.compute.c));
+		    tp_compute(shad, &(op->val.compute.a), &(op->val.compute.b),
+			       &(op->val.compute.c));
                     break;
                 }
 
             case INSNSTARTOP:
                 {
-		    process_insn_start_op(&op, buf, dynval_buf);
+		  process_insn_start_op(op, buf, dynval_buf);
                     if (next_step == EXCEPT){
                         return;
                     }
@@ -1614,7 +1629,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
             case CALLOP:
                 {
                     shad->current_frame = shad->current_frame + 1;
-                    execute_taint_ops(op.val.call.ttb, shad, dynval_buf);
+		    execute_taint_ops(op->val.call.ttb, shad, dynval_buf);
                     break;
                 }
 

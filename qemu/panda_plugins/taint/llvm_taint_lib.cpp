@@ -145,10 +145,10 @@ void PandaTaintFunctionPass::debugTaintOps(){
     int j = 0;
     tob_rewind(ttb->entry->ops);
     while (!(tob_end(ttb->entry->ops))) {
-        TaintOp op;
+        TaintOp *op;
         tob_op_read(ttb->entry->ops, &op);
         printf("op %d ", j);
-        tob_op_print(NULL, &op);
+        tob_op_print(NULL, op);
         j++;
     }
 
@@ -159,10 +159,10 @@ void PandaTaintFunctionPass::debugTaintOps(){
         j = 0;
         tob_rewind(ttb->tbbs[i]->ops);
         while (!(tob_end(ttb->tbbs[i]->ops))) {
-	    TaintOp op;
+	    TaintOp *op;
 	    tob_op_read(ttb->tbbs[i]->ops, &op);
             printf("op %d ", j);
-            tob_op_print(NULL, &op);
+            tob_op_print(NULL, op);
             j++;
         }
     }

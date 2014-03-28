@@ -237,7 +237,7 @@ void tob_rewind(TaintOpBuffer *buf);
 void tob_op_write(TaintOpBuffer *buf, TaintOp *op);
 
 // read op from buffer
-void tob_op_read(TaintOpBuffer *buf, TaintOp *op);
+void tob_op_read(TaintOpBuffer *buf, TaintOp **op);
 
 // execute a function or taint translation block of taint ops
 void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf);
