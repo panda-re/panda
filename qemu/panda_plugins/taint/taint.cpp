@@ -393,7 +393,7 @@ int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
         tob_resize(&tob_io_thread);
         // add bulk copy corresponding to this hd transfer to buffer
         // of taint ops for io thread.
-        tob_op_write(tob_io_thread, top);
+        tob_op_write(tob_io_thread, &top);
     }
     return 0;
 }
@@ -425,7 +425,7 @@ int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
         tob_resize(&tob_io_thread);
         // add bulk copy corresponding to this hd transfer to buffer
         // of taint ops for io thread.
-        tob_op_write(tob_io_thread, top);
+        tob_op_write(tob_io_thread, &top);
     }
     return 0;
 }

@@ -103,6 +103,30 @@ static Addr addr_add(Addr a, uint32_t o) {
 }
     
 
+// increment addr a in place
+static void addr_inc(Addr *a) {
+  switch (a->typ) {
+  case HADDR:
+    a->val.ha++;
+    break;
+  case MADDR:
+    a->val.ma++;
+    break;
+  case IADDR:
+    a->val.ia++;
+    break;
+  case PADDR:
+    a->val.pa++;
+    break;
+  default:
+    // Thou shalt not.
+    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
+    assert (1==0);
+    break;
+  }
+}
+
+
 
 SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
     uint8_t taint_byte = shad->ram_bitmap[addr >> 3];
@@ -861,10 +885,10 @@ void tob_op_print(Shad *shad, TaintOp *op) {
         case BULKCOPYOP:
             {
                 printf("bulk copy ");
-                print_addr(shad, op.val.bulkcopy.a);
+                print_addr(shad, &(op->val.bulkcopy.a));
                 printf(" ");
-                print_addr(shad, op.val.bulkcopy.b);
-                printf("Len: %u\n", op.val.bulkcopy.l);
+                print_addr(shad, &(op->val.bulkcopy.b));
+                printf("Len: %u\n", op->val.bulkcopy.l);
                 break;
             }
         case COMPUTEOP:
@@ -1724,19 +1748,25 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                 // specify a src and dest and a number of bytes to copy
                 {
                     uint32_t i;
-                    for (i=0; i<op.val.bulkcopy.l; i++) {
+		    Addr a,b;
+		    a = op->val.bulkcopy.a;
+		    b = op->val.bulkcopy.b;
+                    for (i=0; i<op->val.bulkcopy.l; i++) {
 #ifdef TAINTDEBUG
                         uint8_t foo = 0;
-                        if (tp_query(shad, op.val.bulkcopy.a)) {
+                        if (tp_query(shad, &(op->val.bulkcopy.a))) {
                             printf ("  [src is tainted]"); foo = 1;
                         }
-                        if (tp_query(shad, op.val.bulkcopy.b)) {
+                        if (tp_query(shad, &(op->val.bulkcopy.b))) {
                             printf ("  [dest was tainted]"); foo = 1;
                         }
                         if (foo) printf("\n");
 #endif
-                        tp_copy(shad, addr_add(op.val.bulkcopy.a, i),
-                            addr_add(op.val.bulkcopy.b, i));
+			tp_copy(shad, &a, &b);
+			addr_inc(&a);
+			addr_inc(&b);
+			//                        tp_copy(shad, addr_add(op->val.bulkcopy.a, i),
+			//				addr_add(op->val.bulkcopy.b, i));
                     }
 
                     break;
