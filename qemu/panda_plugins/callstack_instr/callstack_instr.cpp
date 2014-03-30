@@ -69,9 +69,6 @@ on_ret_t  on_ret_func = NULL;
 
 }
 
-unsigned long misses;
-unsigned long total;
-
 enum instr_type {
   INSTR_UNKNOWN = 0,
   INSTR_CALL,
@@ -107,6 +104,8 @@ typedef target_ulong stackid;
 
 // stackid -> shadow stack
 std::map<stackid, std::vector<stack_entry>> callstacks;
+// stackid -> function entry points
+std::map<stackid, std::vector<target_ulong>> function_stacks;
 // EIP -> instr_type
 std::map<target_ulong, instr_type> call_cache;
 int last_ret_size = 0;
@@ -302,8 +301,8 @@ int after_block_translate(CPUState *env, TranslationBlock *tb) {
 }
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    bool popped = false;
     std::vector<stack_entry> &v = callstacks[get_stackid(env,tb->pc)];
+    std::vector<target_ulong> &w = function_stacks[get_stackid(env,tb->pc)];
     if (v.empty()) return 1;
 
     // Search up to 10 down
@@ -311,25 +310,15 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         if (tb->pc == v[i].pc) {
             //printf("Matched at depth %d\n", v.size()-i);
             v.erase(v.begin()+i, v.end());
-            popped = true;
+
+            // ret callback
+            if (on_ret_func) {
+                on_ret_func(w[i]);
+            }
+            w.erase(w.begin()+i, w.end());
+
             break;
         }
-    }
-
-    if (popped) {
-        target_ulong sw_caller = 0;
-#if defined(TARGET_I386)
-        int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
-        //printf("I think the last ret was a ret %#x\n", last_ret_size);
-        panda_virtual_memory_rw(env, env->regs[R_ESP]-word_size-last_ret_size, (uint8_t *)&sw_caller, word_size, 0);
-#elif defined(TARGET_ARM)
-        sw_caller = env->regs[14]; // R14 is the link register
-#endif
-        if (sw_caller != tb->pc) { 
-            //printf("MISS: " TARGET_FMT_lx " != " TARGET_FMT_lx "\n", tb->pc, sw_caller);
-            misses += 1;
-        }
-        total += 1;
     }
 
     return 0;
@@ -346,6 +335,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
             int flags;
             // This retrieves the pc in an architecture-neutral way
             cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            function_stacks[get_stackid(env,tb->pc)].push_back(pc);
             on_call_func(pc);
         }
     }
@@ -420,5 +410,4 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    printf("Misses: %lu Total: %lu\n", misses, total); 
 }
