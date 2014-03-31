@@ -206,7 +206,7 @@ void enable_taint(){
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_WRITE, pcb);
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
-    
+
     // for hd taint
 #ifdef CONFIG_SOFTMMU
     pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
@@ -513,7 +513,7 @@ int guest_hypercall_callback(CPUState *env){
             enable_taint();
         }
 
-        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 5MB */);
+        TaintOpBuffer *tempBuf = tob_new(buf_len * sizeof(TaintOp));
         add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
         tob_delete(tempBuf);
     }
