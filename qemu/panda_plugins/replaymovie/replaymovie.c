@@ -27,16 +27,17 @@ int before_block_callback(CPUState *env, TranslationBlock *tb);
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+int num = 0;
+
 int before_block_callback(CPUState *env, TranslationBlock *tb) {
     assert(rr_in_replay());
     char fname[256] = {0};
-    static int num = 1;
     static uint64_t total_insns = 0;
     if (total_insns == 0) total_insns = replay_get_total_num_instructions();
     if ((rr_prog_point.guest_instr_count / (double)total_insns) * 100 >= num) {
-      snprintf(fname, 255, "replay_movie_%03d.ppm", (int)num);
-      vga_hw_screen_dump(fname);
-      num += 1;
+        snprintf(fname, 255, "replay_movie_%03d.ppm", (int)num);
+        vga_hw_screen_dump(fname);
+        num += 1;
     }
     return 1;
 }
@@ -54,5 +55,9 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
+    // Save the last frame
+    char fname[256] = {0};
+    snprintf(fname, 255, "replay_movie_%03d.ppm", (int)num);
+    vga_hw_screen_dump(fname);
     printf("Unloading replaymovie plugin.\n");
 }
