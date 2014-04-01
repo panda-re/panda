@@ -54,6 +54,10 @@ extern "C" {
 // Callers are returned in callers[], most recent first
 int get_callers(target_ulong callers[], int n, CPUState *env);
 
+// Get up to n functions from the given address space at this moment
+// Functions are returned in functions[], most recent first
+int get_functions(target_ulong functions[], int n, CPUState *env);
+
 // Get the current program point: (Caller, PC, ASID)
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
@@ -206,6 +210,9 @@ static stackid get_stackid(CPUState *env, target_ulong addr) {
 #endif
 }
 
+// TODO: we should eventually replace this ugly disassembly with something
+// simpler, i.e. checking at the end of a basic block whether a return address
+// (tb->pc+tb->size) is next on the stack or in the link register
 instr_type disas_block(CPUState* env, target_ulong pc, int size) {
     unsigned char *buf = (unsigned char *) malloc(size);
     int err = panda_virtual_memory_rw(env, pc, buf, size, 0);
@@ -313,7 +320,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
             // ret callback
             if (on_ret_func) {
-                on_ret_func(w[i]);
+                on_ret_func(env, w[i]);
             }
             w.erase(w.begin()+i, w.end());
 
@@ -330,13 +337,16 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
         callstacks[get_stackid(env,tb->pc)].push_back(se);
+
+        // Also track the function that gets called
+        target_ulong pc, cs_base;
+        int flags;
+        // This retrieves the pc in an architecture-neutral way
+        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+        function_stacks[get_stackid(env,tb->pc)].push_back(pc);
+
         if (on_call_func != NULL) {
-            target_ulong pc, cs_base;
-            int flags;
-            // This retrieves the pc in an architecture-neutral way
-            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-            function_stacks[get_stackid(env,tb->pc)].push_back(pc);
-            on_call_func(pc);
+            on_call_func(env, pc);
         }
     }
     else if (tb_type == INSTR_RET) {
@@ -350,6 +360,9 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
 // Public interface implementation
 int get_callers(target_ulong callers[], int n, CPUState *env) {
     std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
+    if (v.empty()) {
+        return 0;
+    }
     auto rit = v.rbegin();
     int i = 0;
     for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
@@ -357,6 +370,20 @@ int get_callers(target_ulong callers[], int n, CPUState *env) {
     }
     return i;
 }
+
+int get_functions(target_ulong functions[], int n, CPUState *env) {
+    std::vector<target_ulong> &v = function_stacks[get_stackid(env,env->panda_guest_pc)];
+    if (v.empty()) {
+        return 0;
+    }
+    auto rit = v.rbegin();
+    int i = 0;
+    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
+        functions[i] = *rit;
+    }
+    return i;
+}
+
 
 void get_prog_point(CPUState *env, prog_point *p) {
     if (!p) return;
