@@ -42,7 +42,7 @@ void main(int argc, char* argv[]) {
         int len;
         int j;
         case 0:
-            label_buffer((uint64_t)&input, fileLen);
+            label_buffer((uint64_t)input, fileLen);
             len = fileLen / 16;
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_ENCRYPT, &(input[j*16]), &(output[j*16]));
@@ -53,19 +53,19 @@ void main(int argc, char* argv[]) {
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_ENCRYPT, &(input[j*16]), &(tmp[j*16]));
             }
-            label_buffer((uint64_t)&tmp, fileLen);
+            label_buffer((uint64_t)tmp, fileLen);
             aes_setkey_dec(ctx, key, 128);
             for (j = 0; j < len; j++) {
                 aes_crypt_ecb(ctx, AES_DECRYPT, &(tmp[j*16]), &(output[j*16]));
             }
             break;
         case 2:
-            label_buffer((uint64_t)&input, fileLen);
+            label_buffer((uint64_t)input, fileLen);
             aes_crypt_cbc(ctx, AES_ENCRYPT, fileLen, iv, input, output);
             break;
         case 3:
             aes_crypt_cbc(ctx, AES_ENCRYPT, fileLen, iv, input, tmp);
-            label_buffer((uint64_t)&tmp, fileLen);
+            label_buffer((uint64_t)tmp, fileLen);
             aes_setkey_dec(ctx, key, 128);
             aes_crypt_cbc(ctx, AES_DECRYPT, fileLen, iv2, tmp, output);
             break;
