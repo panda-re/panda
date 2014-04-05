@@ -547,16 +547,53 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     }
 }
 
+SB_INLINE void addr_spit(Addr *a) {
+  switch (a->typ) {
+  case HADDR:    printf ("(h%lx", a->val.ha);    break;
+  case MADDR:    printf ("(m%lx", a->val.ma);    break;
+  case IADDR:    printf ("(i%lx", a->val.ia);    break;
+  case PADDR:    printf ("(p%lx", a->val.pa);    break;
+  case LADDR:    printf ("(l%lx", a->val.la);    break;
+  case GREG:     printf ("(r%lx", a->val.gr);    break;
+  case GSPEC:    printf ("(s%lx", a->val.gs);    break;
+  case UNK:      printf ("(u");    break;
+  case CONST:    printf ("(c");    break;
+  case RET:      printf ("(r");    break;
+  default: assert (1==0);
+  }
+  printf (",%d,%x)", a->off, a->flag);
+}
+
+    
 
 // label -- associate label l with address a
 SB_INLINE void tp_label(Shad *shad, Addr *a, Label l) {
     assert (shad != NULL);
+    
+    /*
+    printf ("tp_label ");
+    addr_spit(a);
+    printf (" %d\n", l);
+    */
+
     LabelSet *ls = tp_labelset_get(shad, a);
+
+    /*
+    if (!(labelset_is_empty(ls))) {
+      printf ("*** not empty: ");
+      labelset_spit(ls);
+      printf("\n");
+    }      
+    
+    */
+
+
     if (!ls){
         ls = labelset_new();
         labelset_set_type(ls, LST_COPY);
     }
     labelset_add(ls, l);
+    
     tp_labelset_put(shad, a, ls);
     labelset_free(ls);
 }
@@ -682,7 +719,7 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
-  
+  return;
     assert (shad != NULL);
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
@@ -1669,10 +1706,14 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         DynValBuffer *dynval_buf) {
 
-    uint32_t i;
+  //    uint32_t ii;
     tob_rewind(buf);
-    i = 0;
+    //    ii = 0;
     while (!(tob_end(buf))) {
+
+      //      if ((ii % 10000) == 0) {
+      //	printf ("i=%d\n", ii);
+      //      }
       TaintOp *op;
       tob_op_read(buf, &op);
 
@@ -1684,6 +1725,8 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         switch (op->typ) {
             case LABELOP:
                 {
+		  //		  tob_op_print(shad, op);
+		  
 		  tp_label(shad, &(op->val.label.a), op->val.label.l);
                     break;
                 }
@@ -1840,7 +1883,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
             default:
                 assert (1==0);
         }
-        i++;
+	//        ii++;
     }
     tob_rewind(buf);
 }
