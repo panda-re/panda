@@ -23,6 +23,10 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 #endif
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 extern "C" {
 
 #include "qemu-common.h"
@@ -31,6 +35,7 @@ extern "C" {
 #include "syscall_defs.h"
 #endif
 
+#include <sys/time.h>
 #include "panda_plugin.h"
 #include "panda_memlog.h"
 #include "panda_stats.h"
@@ -130,17 +135,37 @@ void add_taint(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
     op.typ = LABELOP;
     for (int i = 0; i < length; i++){
 #ifdef CONFIG_SOFTMMU
-        a.val.ma = cpu_get_phys_addr(env, addr + i);
+
+      target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
+
+      if (pa == -1) {
+	printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr +i);
+	continue;
+      }
+      assert (pa != -1);
+      a.val.ma = pa;
+
 #else
         a.val.ma = addr + i;
 #endif // CONFIG_SOFTMMU
         op.val.label.a = a;
         op.val.label.l = i + count; // byte label
         //op.val.label.l = 1; // binary label
-        tob_op_write(tbuf, &op);
+        tob_op_write(tbuf, &op);	
+
+
     }
+    assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
+    struct timeval gtd1, gtd2;
+    gettimeofday(&gtd1, NULL);
     tob_process(tbuf, shad, NULL);
-    count += length;
+    gettimeofday(&gtd2, NULL);
+    printf ("add_taint @ 0x%lx, %d bytes\n", addr, length);
+    printf ("time required: %f seconds\n",
+	    ((float)(gtd2.tv_sec - gtd1.tv_sec)) +
+	    ((float)(gtd2.tv_usec - gtd1.tv_usec)) / 1000000.0);
+    
+   count += length;
 }
 
 /*
@@ -504,6 +529,7 @@ int guest_hypercall_callback(CPUState *env){
     // EDI is a pointer to a buffer containing the label string
     // ESI contains the length of that label
     // EDX = starting offset (for positional labels only)
+
     if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
         if (!taintEnabled){
             printf("Taint plugin: Label operation detected\n");
@@ -513,10 +539,15 @@ int guest_hypercall_callback(CPUState *env){
             enable_taint();
         }
 
-        TaintOpBuffer *tempBuf = tob_new(buf_len * sizeof(TaintOp));
-        add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+
+        TaintOpBuffer *tempBuf = tob_new( buf_len * sizeof(TaintOp));
+	
+	
+	add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+		//add_taint(env, shadow, tempBuf, (uint64_t)buf_start, 4);
         tob_delete(tempBuf);
-    }
+
+    }    
 
     //mz Query taint on this buffer
     //mz EBX = start of buffer (VA)
