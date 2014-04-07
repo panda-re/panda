@@ -13,15 +13,12 @@
 PANDAENDCOMMENT */
 
 #include <stdio.h>
+#include "taint_processor.h"
 #include "my_mem.h"
 #include "my_bool.h"
-#include "bitvector_label_set.c"
-#include "shad_dir_32.h"
-#include "shad_dir_64.h"
 #include "max.h"
 #include "guestarch.h"
-#include "taint_processor.h"
-#include "panda_memlog.h"
+#include "bitvector_label_set.cpp"
 
 #define SB_INLINE inline
 
@@ -46,7 +43,7 @@ Addr make_haddr(uint64_t a) {
   ha.typ = HADDR;
   ha.val.ha = a;
   ha.off = 0;
-  ha.flag = 0;
+  ha.flag = (AddrFlag) 0;
   return ha;
 }
 
@@ -55,7 +52,7 @@ Addr make_maddr(uint64_t a) {
   ma.typ = MADDR;
   ma.val.ma = a;
   ma.off = 0;
-  ma.flag = 0;
+  ma.flag = (AddrFlag) 0;
   return ma;
 }
 
@@ -64,7 +61,7 @@ Addr make_iaddr(uint64_t a) {
   ia.typ = IADDR;
   ia.val.ia = a;
   ia.off = 0;
-  ia.flag = 0;
+  ia.flag = (AddrFlag) 0;
   return ia;
 }
 
@@ -73,7 +70,7 @@ Addr make_paddr(uint64_t a) {
   pa.typ = PADDR;
   pa.val.pa = a;
   pa.off = 0;
-  pa.flag = 0;
+  pa.flag = (AddrFlag) 0;
   return pa;
 }
 
@@ -101,7 +98,7 @@ static Addr addr_add(Addr a, uint32_t o) {
   }
   return a;
 }
-    
+
 
 // increment addr a in place
 static void addr_inc(Addr *a) {
@@ -654,7 +651,7 @@ void print_addr(Shad *shad, Addr *a) {
 
 // copy -- b gets whatever label set is currently associated with a
 SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
-  
+
     assert (shad != NULL);
     //assert (!(addrs_equal(a,b)));
     if (addrs_equal(a, b)) return;
@@ -682,7 +679,8 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
-  
+    return;
+
     assert (shad != NULL);
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
@@ -753,7 +751,7 @@ void tob_resize(TaintOpBuffer **ptbuf) {
     TaintOpBuffer *tbuf_bigger = tob_new(tbuf->max_size * 2);
     // copy ops over
     memcpy(tbuf_bigger->start, tbuf->start, tbuf->size);
-    // set current size 
+    // set current size
     tbuf_bigger->size = tbuf->size;
     // and pointer
     tbuf_bigger->ptr = tbuf_bigger->start + (tbuf_bigger->size);
@@ -832,7 +830,7 @@ static SB_INLINE void tob_write(TaintOpBuffer *buf, char *stuff,
 /*
   NB: set pointer *stuff to point to current taint buffer pointer.
   And assume caller wont modify anything there.
-  
+
 */
 
 static SB_INLINE void tob_read(TaintOpBuffer *buf, char **stuff,
@@ -851,7 +849,7 @@ static SB_INLINE void tob_addr_write(TaintOpBuffer *buf, Addr *a) {
 }
 
 /* UNUSED
-// *ap is a pointer to an addr. 
+// *ap is a pointer to an addr.
 static SB_INLINE void tob_addr_read(TaintOpBuffer *buf, Addr **ap) {
     tob_read(buf, (char**) ap, sizeof(Addr));
 }
@@ -984,14 +982,14 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = GREG;
                             cur_op->val.copy.a.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = GSPEC;
                             cur_op->val.copy.a.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
@@ -999,7 +997,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = MADDR;
                             cur_op->val.copy.a.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
@@ -1019,7 +1017,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
 
             buf->ptr = saved_buf_ptr;
         }
-        
+
         else if ((dventry.entrytype == PADDRENTRY)
                 && (dventry.entry.portaccess.op == PLOAD)) {
             /*** Fix up taint op buffer here ***/
@@ -1035,7 +1033,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                     case COPYOP:
                         if (dventry.entry.memaccess.addr.typ == PADDR){
                             // guest register
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = PADDR;
                             cur_op->val.copy.a.val.pa =
                                 dventry.entry.portaccess.addr.val.pa;
@@ -1055,7 +1053,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
 
             buf->ptr = saved_buf_ptr;
         }
-        
+
 
         else {
             fprintf(stderr, "Error: unknown error in dynamic log\n");
@@ -1093,21 +1091,21 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = GREG;
                             cur_op->val.copy.b.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = GSPEC;
                             cur_op->val.copy.b.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = MADDR;
                             cur_op->val.copy.b.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
@@ -1140,11 +1138,11 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                             // guest register
                             // a register should never be a tainted pointer,
                             // so this is ignored in tob_process()
-                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.flag = (AddrFlag) 0;
                             cur_op->val.compute.b.typ = GREG;
                             cur_op->val.compute.b.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
-                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.flag = (AddrFlag) 0;
                             cur_op->val.compute.c.typ = GREG;
                             cur_op->val.compute.c.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
@@ -1153,22 +1151,22 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                             // special address
                             // a register should never be a tainted pointer,
                             // so this is ignored in tob_process()
-                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.flag = (AddrFlag) 0;
                             cur_op->val.compute.b.typ = GSPEC;
                             cur_op->val.compute.b.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
-                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.flag = (AddrFlag) 0;
                             cur_op->val.compute.c.typ = GSPEC;
                             cur_op->val.compute.c.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.compute.b.flag = 0;
+                            cur_op->val.compute.b.flag = (AddrFlag) 0;
                             cur_op->val.compute.b.typ = MADDR;
                             cur_op->val.compute.b.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
-                            cur_op->val.compute.c.flag = 0;
+                            cur_op->val.compute.c.flag = (AddrFlag) 0;
                             cur_op->val.compute.c.typ = MADDR;
                             cur_op->val.compute.c.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
@@ -1187,21 +1185,21 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = GREG;
                             cur_op->val.deletel.a.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = GSPEC;
                             cur_op->val.deletel.a.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = MADDR;
                             cur_op->val.deletel.a.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
@@ -1221,7 +1219,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
 
             buf->ptr = saved_buf_ptr;
         }
-        
+
         else if ((dventry.entrytype == PADDRENTRY)
                 && (dventry.entry.portaccess.op == PSTORE)) {
             /*** Fix up taint op buffer here ***/
@@ -1237,7 +1235,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                     case COPYOP:
                         if (dventry.entry.portaccess.addr.typ == PADDR){
                             // guest register
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = PADDR;
                             cur_op->val.copy.b.val.pa =
                                 dventry.entry.portaccess.addr.val.pa;
@@ -1249,7 +1247,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                     case DELETEOP:
                         if (dventry.entry.portaccess.addr.typ == PADDR){
                             // guest register
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = PADDR;
                             cur_op->val.deletel.a.val.pa =
                                 dventry.entry.portaccess.addr.val.pa;
@@ -1381,7 +1379,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
             int i;
             for (i = 0; i < op->val.insn_start.num_ops; i++){
                 // fill in src value
-                cur_op->val.copy.a.flag = 0;
+                cur_op->val.copy.a.flag = (AddrFlag) 0;
                 cur_op->val.copy.a.typ = LADDR;
                 if (dventry.entry.select.sel == false){
                     if (op->val.insn_start.branch_labels[0] == -1){
@@ -1461,7 +1459,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
           for (i = 0; i < op->val.insn_start.num_ops; i++){
               switch (cur_op->typ){
                   case COPYOP:
-                    cur_op->val.copy.a.flag = 0;
+                    cur_op->val.copy.a.flag = (AddrFlag) 0;
                     cur_op->val.copy.a.typ = LADDR;
                     cur_op->val.copy.a.val.la = phiSource;
                     break;
@@ -1497,21 +1495,21 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = GREG;
                             cur_op->val.deletel.a.val.gr =
                                 dventry.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = GSPEC;
                             cur_op->val.deletel.a.val.gs =
                                 dventry.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.deletel.a.flag = 0;
+                            cur_op->val.deletel.a.flag = (AddrFlag) 0;
                             cur_op->val.deletel.a.typ = MADDR;
                             cur_op->val.deletel.a.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
@@ -1573,21 +1571,21 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry_src.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = GREG;
                             cur_op->val.copy.a.val.gr =
                                 dventry_src.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry_src.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = GSPEC;
                             cur_op->val.copy.a.val.gs =
                                 dventry_src.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry_src.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.copy.a.flag = 0;
+                            cur_op->val.copy.a.flag = (AddrFlag) 0;
                             cur_op->val.copy.a.typ = MADDR;
                             cur_op->val.copy.a.val.ma =
                                 dventry_src.entry.memaccess.addr.val.ma;
@@ -1603,21 +1601,21 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         else if (dventry_dst.entry.memaccess.addr.typ == GREG){
                             // guest register
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = GREG;
                             cur_op->val.copy.b.val.gr =
                                 dventry_dst.entry.memaccess.addr.val.gr;
                         }
                         else if (dventry_dst.entry.memaccess.addr.typ == GSPEC){
                             // guest special address
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = GSPEC;
                             cur_op->val.copy.b.val.gs =
                                 dventry_dst.entry.memaccess.addr.val.gs;
                         }
                         else if (dventry_dst.entry.memaccess.addr.typ == MADDR){
                             // guest RAM
-                            cur_op->val.copy.b.flag = 0;
+                            cur_op->val.copy.b.flag = (AddrFlag) 0;
                             cur_op->val.copy.b.typ = MADDR;
                             cur_op->val.copy.b.val.ma =
                                 dventry_dst.entry.memaccess.addr.val.ma;
@@ -1744,7 +1742,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                 }
 
 	   case BULKCOPYOP:
-                // TRL this is used by hd taint.  idea is to 
+                // TRL this is used by hd taint.  idea is to
                 // specify a src and dest and a number of bytes to copy
                 {
                     uint32_t i;
@@ -1849,17 +1847,17 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 /*** taint translation block stuff ***/
 
 SB_INLINE TaintTB *taint_tb_new(const char *name, int numBBs){
-    TaintTB *ttb = my_malloc(sizeof(TaintTB), poolid_taint_processor);
-    ttb->name = my_malloc(strlen(name)+1, poolid_taint_processor);
+    TaintTB *ttb = (TaintTB*) my_malloc(sizeof(TaintTB), poolid_taint_processor);
+    ttb->name = (char*) my_malloc(strlen(name)+1, poolid_taint_processor);
     strncpy(ttb->name, name, strlen(name)+1);
     ttb->numBBs = numBBs;
-    ttb->entry = my_malloc(sizeof(TaintBB), poolid_taint_processor);
+    ttb->entry = (TaintBB*) my_malloc(sizeof(TaintBB), poolid_taint_processor);
     if (numBBs > 1){
-        ttb->tbbs = my_malloc((numBBs-1) * sizeof(TaintBB*),
+        ttb->tbbs = (TaintBB**) my_malloc((numBBs-1) * sizeof(TaintBB*),
                 poolid_taint_processor);
         int i;
         for (i = 0; i < numBBs-1; i++){
-            ttb->tbbs[i] = my_malloc(sizeof(TaintBB), poolid_taint_processor);
+            ttb->tbbs[i] = (TaintBB*) my_malloc(sizeof(TaintBB), poolid_taint_processor);
         }
     } else {
         ttb->tbbs = NULL;

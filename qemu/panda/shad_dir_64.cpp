@@ -1,19 +1,19 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 /*
-  Same as shad_dir_32.c, mostly.  
+  Same as shad_dir_32.c, mostly.
 
   5-level map from addresses to labelsets.
   Accommodates 64-bit addresses
@@ -26,17 +26,13 @@ PANDAENDCOMMENT */
 
  */
 
-
 #include <stdint.h>
+#include "shad_dir_64.h"
 #include "my_bool.h"
 #include "my_mem.h"
-#include "label_set.h"
-#include "shad_dir_64.h"
+#include "bitvector_label_set.cpp"
 
-
-#include "bitvector_label_set.c"
-
-//#define SB_INLINE inline
+#define SB_INLINE //inline
 
 // 64-bit addresses
 // create a new table
@@ -83,7 +79,7 @@ static SB_INLINE void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
 
 /*
   creates initial, empty page directory.
-  this is a mapping from addresses, which are unsigned integers of width 
+  this is a mapping from addresses, which are unsigned integers of width
   (i.e. number of bytes) addr_size, to pointers to labelsets.
   top num_dir_bits of addr are the directory index
   next num_table_bits of addr are table index
@@ -91,7 +87,7 @@ static SB_INLINE void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
 */
 SdDir64 *shad_dir_new_64
      (uint32_t num_dir_bits,
-      uint32_t num_table_bits, 
+      uint32_t num_table_bits,
       uint32_t num_page_bits) {
   assert (num_dir_bits < 32 && num_table_bits < 32 && num_page_bits < 32);
   SdDir64 *shad_dir = (SdDir64 *) my_calloc(1, sizeof(SdDir64), poolid_shad_dir);
@@ -118,7 +114,7 @@ SdDir64 *shad_dir_new_64
 
 /*
   macro to iterate over shadow memory pages.
-  at the point "do_this" text gets inserted, the following useful 
+  at the point "do_this" text gets inserted, the following useful
   iteration variables are defined
   "table" points to the SdTable for the current page
   "page" points to the SdPage for the current page
@@ -163,19 +159,19 @@ SdDir64 *shad_dir_new_64
 /*
   Iterates over pages of labelsets in shadow memory.
   Applies app(pa, page), where pa is base address of the page in guest
-  physical memory and "page" is a pointer to the SdPage struct for that 
+  physical memory and "page" is a pointer to the SdPage struct for that
   shadow page.
   "stuff2" is a ptr to something the app fn needs
 */
 static SB_INLINE void __shad_dir_page_iter_64
-     (SdDir64 *shad_dir, 
-      int (*app)(uint64_t pa, SdPage *page, void *stuff1), 
+     (SdDir64 *shad_dir,
+      int (*app)(uint64_t pa, SdPage *page, void *stuff1),
       void *stuff2) {
-  SD_PAGE_ITER( 
+  SD_PAGE_ITER(
 	  { int iter_finished;
-	    iter_finished = 
+	    iter_finished =
 	      app(page_base_addr, page, stuff2);
-	    if (iter_finished != 0) return; } 
+	    if (iter_finished != 0) return; }
 	   )
 }
 
@@ -187,20 +183,20 @@ static SB_INLINE void __shad_dir_page_iter_64
   "stuff2" is a ptr to something the app fn needs
 */
 void shad_dir_iter_64
-     (SdDir64 *shad_dir, 
+     (SdDir64 *shad_dir,
       int (*app)(uint64_t addr, LabelSet *labels, void *stuff1),
       void *stuff2) {
   SD_PAGE_ITER(
 	  { int iter_finished;
 	    unsigned int ai;
-	    for (ai=0; ai<shad_dir->page_size; ai++) {	
+	    for (ai=0; ai<shad_dir->page_size; ai++) {
 	      uint64_t addr;
 	      addr = page_base_addr | ai;
 	      LabelSet *ls = label_set_array[ai];
 	      iter_finished = 0;
-	      if (ls != NULL) 
+	      if (ls != NULL)
 		iter_finished = app(addr, ls, stuff2);
-	      if (iter_finished != 0) return; 
+	      if (iter_finished != 0) return;
 	    } }
 	  )
 }
@@ -209,12 +205,12 @@ void shad_dir_iter_64
 // returns the number of addr to labelset mappings
 uint32_t shad_dir_occ_64(SdDir64 *shad_dir) {
   uint32_t occ = 0;
-  SD_PAGE_ITER( 
+  SD_PAGE_ITER(
 	  occ += page->num_non_empty;
          )
-  return occ;  
+  return occ;
 }
-		 
+
 
 int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
   uint32_t i;
@@ -225,8 +221,8 @@ int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
 }
- 
- 
+
+
 // release all memory associated with this shad pages
 void shad_dir_free_64(SdDir64 *shad_dir) {
   __shad_dir_page_iter_64
@@ -270,13 +266,13 @@ void shad_dir_free_64(SdDir64 *shad_dir) {
   LabelSet **label_set_array = page->labels;      \
   uint32_t offset = (addr & shad_dir->page_mask); \
   LabelSet *ls = label_set_array[offset];         \
-  if (ls == NULL) { no_labelset_action ; }	  
+  if (ls == NULL) { no_labelset_action ; }
 
 
 
 // add table to the directory
 static SB_INLINE SdTable *__shad_dir_add_table_to_dir_64(SdDir64 *shad_dir, uint32_t di) {
-  SdTable *table = __shad_dir_table_new_64(shad_dir, 1); 
+  SdTable *table = __shad_dir_table_new_64(shad_dir, 1);
   shad_dir->table[di] = table;
   shad_dir->num_non_empty++;
   return table;
@@ -284,7 +280,7 @@ static SB_INLINE SdTable *__shad_dir_add_table_to_dir_64(SdDir64 *shad_dir, uint
 
 
 
-// add either a table of tables or a table of pages. 
+// add either a table of tables or a table of pages.
 // table_table==0 means add a table of tables. else add a table of pages
 static SB_INLINE SdTable *__shad_dir_add_something_to_table_64
   (SdDir64 *shad_dir, SdTable *table_last, uint32_t ti, uint8_t table_table) {
@@ -302,12 +298,12 @@ static SB_INLINE SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTa
   table->num_non_empty ++;
   return page;
 }
-  
+
 
 
 // faking out the macro to tolerate comma
 //#define TABLETI table, ti
-  
+
 
 
 
@@ -315,11 +311,11 @@ static SB_INLINE SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTa
 /*
   add this mapping from addr to ls_new
   if a prior mapping exists, remove it first
-  labelset is *not* copied.  We copy its slots.  
+  labelset is *not* copied.  We copy its slots.
 */
 SB_INLINE void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new) {
   // get ls, the labelset currently associated with this addr
-  SD_GET_LABELSET_64( 
+  SD_GET_LABELSET_64(
     addr,
     table1 = __shad_dir_add_table_to_dir_64(shad_dir, di),
     table2 = __shad_dir_add_something_to_table_64(shad_dir, table1, t1i, 1),
@@ -338,12 +334,12 @@ SB_INLINE void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_ne
   LabelSet *ls_new_copy = labelset_copy(ls_new);
   label_set_array[offset] = ls_new_copy;
 }
-    
+
 
 // remove this mapping from addr to labelset
 SB_INLINE void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
   // get ls, the labelset currently associated with addr
-  SD_GET_LABELSET_64( 
+  SD_GET_LABELSET_64(
     addr,
     return,
     return,
@@ -361,7 +357,7 @@ SB_INLINE void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
   if (page->num_non_empty == 0) {
     // page empty -- release it
     __shad_dir_page_free_64(shad_dir, page);
-    table3->page[t3i] = NULL;    
+    table3->page[t3i] = NULL;
     table3->num_non_empty--;
     assert (table3->num_non_empty >= 0);
     if (table3->num_non_empty == 0) {
@@ -392,7 +388,7 @@ SB_INLINE void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
 // Return TRUE if this addr has a labelset (possibly empty), FALSE otherwise
 SB_INLINE uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
   // 64-bit addrs
-  SD_GET_LABELSET_64( 
+  SD_GET_LABELSET_64(
     addr,
     return FALSE,
     return FALSE,
@@ -408,7 +404,7 @@ SB_INLINE uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
 // Returns NULL if none
 SB_INLINE LabelSet *shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
   // get ls, the labelset currently associated with addr
-  SD_GET_LABELSET_64( 
+  SD_GET_LABELSET_64(
     addr,
     return NULL,
     return NULL,
@@ -446,13 +442,13 @@ void shad_dir_save_64(void * /* QEMUFile * */ f, SdDir64 *shad_dir) {
   shad_dir_iter_64(shad_dir, shad_dir_save_aux_64, f);
 }
 
-  
+
 // unmarshall shad_dir from file
 SdDir64 *shad_dir_load_64(void * /* QEMUFile * */ f) {
   uint32_t num_dir_bits = qemu_get_be32(f);
   uint32_t num_table_bits = qemu_get_be32(f);
   uint32_t num_page_bits = qemu_get_be32(f);
-  SdDir64 *shad_dir = 
+  SdDir64 *shad_dir =
     shad_dir_new_64(num_dir_bits, num_table_bits, num_page_bits);
   uint32_t occ = qemu_get_be32(f);
   int i;

@@ -95,7 +95,6 @@ libobj-y += panda/panda_memlog.o
 libobj-y += panda/panda_common.o
 libobj-y += panda/tubtf.o
 libobj-y += panda/bitvector_label_set.o panda/guestarch.o
-libobj-y += panda/panda_stats.o
 libobj-y += panda/my_mem.o panda/shad_dir_32.o
 libobj-y += panda/shad_dir_64.o
 libobj-y += panda/taint_processor.o

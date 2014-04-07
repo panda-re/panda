@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 /*
@@ -31,10 +31,7 @@ PANDAENDCOMMENT */
 #include "llvm/Support/raw_ostream.h"
 
 #include "llvm_trace_test.h"
-
-extern "C" {
 #include "panda_memlog.h"
-}
 
 using namespace llvm;
 
@@ -128,7 +125,7 @@ void TestInstVisitor::visitCallInst(CallInst &I){
     if (except){
         return;
     }
-    
+
     if ((I.getCalledFunction()->getName() == "__ldb_mmu_panda")
         || (I.getCalledFunction()->getName() == "__ldl_mmu_panda")
         || (I.getCalledFunction()->getName() == "__ldw_mmu_panda")
@@ -148,7 +145,7 @@ void TestInstVisitor::visitCallInst(CallInst &I){
         || (I.getCalledFunction()->getName() == "__stl_mmu_panda")
         || (I.getCalledFunction()->getName() == "__stw_mmu_panda")
         || (I.getCalledFunction()->getName() == "__stq_mmu_panda")){
-    
+
         DynValEntry entry;
         size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
         if (entry.entrytype == EXCEPTIONENTRY){
@@ -165,7 +162,7 @@ void TestInstVisitor::visitCallInst(CallInst &I){
         || (I.getCalledFunction()->isIntrinsic())){
         return;
     }
-    
+
     //printf("call %s\n", I.getCalledFunction()->getName().str().c_str());
     TestFunctionPass *newTFP = new TestFunctionPass();
     newTFP->runOnFunction(*I.getCalledFunction());
@@ -176,7 +173,7 @@ void TestInstVisitor::visitSwitchInst(SwitchInst &I){
     if (except){
         return;
     }
-    
+
     DynValEntry entry;
     size_t n = fread(&entry, sizeof(DynValEntry), 1, dlog);
     if (entry.entrytype == EXCEPTIONENTRY){
@@ -246,7 +243,7 @@ namespace {
 
 int main(int argc, char **argv){
     cl::ParseCommandLineOptions(argc, argv, "llvm_trace_test\n");
-    
+
     char directory[250];
     strncpy(directory, LogDir.c_str(), 250);
     int len = strlen(directory);
@@ -254,18 +251,18 @@ int main(int argc, char **argv){
         printf("Directory name too long\n");
         exit(1);
     }
-    
+
     LLVMContext &Context = getGlobalContext();
 
     // Load the bitcode...
-    SMDiagnostic Err;     
+    SMDiagnostic Err;
     Module *Mod = ParseIRFile(strncat(directory, "/llvm-mod.bc", 12), Err,
         Context);
     if (!Mod) {
         Err.print(argv[0], errs());
         exit(1);
     }
-    
+
     // Load dynamic log
     directory[len] = '\0';
     dlog = fopen(strncat(directory, "/llvm-memlog.log", 16), "r");
@@ -281,7 +278,7 @@ int main(int argc, char **argv){
         printf("Could not find log of LLVM functions in specified directory\n");
         exit(1);
     }
-    
+
     // Initialize test function pass
     FunctionPassManager *FPasses = new FunctionPassManager(Mod);
     FunctionPass *fp = static_cast<FunctionPass*>(createTestFunctionPass());
@@ -295,7 +292,7 @@ int main(int argc, char **argv){
     while (true){
         strncpy(funcline, "\0", 1);
         char *s = fgets(funcline, sizeof(funcline), flog);
-        
+
         if (feof(flog)){
             break; // Done processing trace
         }

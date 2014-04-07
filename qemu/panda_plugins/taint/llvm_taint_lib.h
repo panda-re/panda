@@ -16,21 +16,16 @@ PANDAENDCOMMENT */
 #define LLVM_TAINT_LIB_H
 
 #include "stdio.h"
-
 #include <map>
-
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/InstVisitor.h"
 #include "llvm/IR/IRBuilder.h"
-
-extern "C" {
 #include "taint_processor.h"
 #include "panda_stats.h"
 #include "panda_memlog.h"
-}
 
 namespace llvm {
 

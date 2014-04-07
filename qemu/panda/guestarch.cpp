@@ -1,20 +1,20 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 
 
-/* 
+/*
  * XXX
  * XXX Note: changing this file could very easily break other code that uses it.
  * XXX
@@ -48,7 +48,7 @@ uintptr_t esp_reg = (uintptr_t)NULL;
 uintptr_t ebp_reg = (uintptr_t)NULL;
 uintptr_t esi_reg = (uintptr_t)NULL;
 uintptr_t edi_reg = (uintptr_t)NULL;
-uintptr_t cc_op_reg = (uintptr_t)NULL;  // 
+uintptr_t cc_op_reg = (uintptr_t)NULL;  //
 uintptr_t cc_src_reg = (uintptr_t)NULL; // maybe we should remove these until
 uintptr_t cc_dst_reg = (uintptr_t)NULL; // we need them
 uintptr_t eip_reg = (uintptr_t)NULL;
@@ -265,7 +265,7 @@ uintptr_t r12_reg = (uintptr_t)NULL;
 uintptr_t r13_reg = (uintptr_t)NULL;
 uintptr_t r14_reg = (uintptr_t)NULL;
 uintptr_t r15_reg = (uintptr_t)NULL;
-uintptr_t cc_op_reg = (uintptr_t)NULL;  // 
+uintptr_t cc_op_reg = (uintptr_t)NULL;  //
 uintptr_t cc_src_reg = (uintptr_t)NULL; // maybe we should remove these until
 uintptr_t cc_dst_reg = (uintptr_t)NULL; // we need them
 uintptr_t rip_reg = (uintptr_t)NULL;
@@ -645,8 +645,8 @@ void printspec(Addr *a){}
 
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
     TaintOpBuffer *buf){
-    struct addr_struct src = {0,{0},0,0};
-    struct addr_struct dst = {0,{0},0,0};
+    struct addr_struct src = {(AddrType) 0,{0},0,(AddrFlag) 0};
+    struct addr_struct dst = {(AddrType) 0,{0},0,(AddrFlag) 0};
     TaintOp op;
     memset(&op, 0, sizeof(TaintOp));
     op.typ = COPYOP;
@@ -665,8 +665,8 @@ void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
 }
 
 void guestLoadTaint(GReg guestSrc, LAddr localDst, int len, TaintOpBuffer *buf){
-    struct addr_struct src = {0,{0},0,0};
-    struct addr_struct dst = {0,{0},0,0};
+    struct addr_struct src = {(AddrType) 0,{0},0,(AddrFlag) 0};
+    struct addr_struct dst = {(AddrType) 0,{0},0,(AddrFlag) 0};
     TaintOp op;
     memset(&op, 0, sizeof(TaintOp));
     op.typ = COPYOP;
@@ -685,7 +685,7 @@ void guestLoadTaint(GReg guestSrc, LAddr localDst, int len, TaintOpBuffer *buf){
 }
 
 void guestDeleteTaint(GReg guestDst, int len, TaintOpBuffer *buf){
-    struct addr_struct dst = {0,{0},0,0};
+    struct addr_struct dst = {(AddrType) 0,{0},0, (AddrFlag) 0};
     TaintOp op;
     memset(&op, 0, sizeof(TaintOp));
     op.typ = DELETEOP;

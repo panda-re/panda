@@ -31,22 +31,20 @@ extern "C" {
 #include "syscall_defs.h"
 #endif
 
-#include "panda_plugin.h"
-#include "panda_memlog.h"
-#include "panda_stats.h"
 #ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
 #endif
 
 }
 
+#include "panda_stats.h"
+#include "panda_plugin.h"
+#include "panda_memlog.h"
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-
 #include "tcg-llvm.h"
-
 #include "llvm_taint_lib.h"
 #include "panda_dynval_inst.h"
 #include "taint_processor.h"
