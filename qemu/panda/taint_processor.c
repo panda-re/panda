@@ -39,6 +39,10 @@ int next_step;
 int previous_branch; // keep a history of 1
 int taken_branch;
 
+
+uint32_t max_taintset_card = 0;
+uint32_t max_taintset_compute_number = 0;
+
 uint32_t max_ref_count = 0;
 
 Addr make_haddr(uint64_t a) {
@@ -427,6 +431,18 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     assert (shad != NULL);
     tp_delete(shad, a);
 
+
+    if ((max_taintset_compute_number != 0) && (ls->type > max_taintset_compute_number)) {
+      // discard taint set that has become computationally too distant from input
+      return;
+    }
+
+    if ((max_taintset_card !=0) && (labelset_card(ls) > max_taintset_card)) {
+      // discard taint set with cardinality too high
+      return;
+    }
+
+
 #ifdef TAINTSTATS
     taintedfunc = 1;
 #endif
@@ -719,7 +735,7 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
-  return;
+
     assert (shad != NULL);
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));

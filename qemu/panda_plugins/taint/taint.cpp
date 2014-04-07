@@ -56,9 +56,17 @@ extern "C" {
 #include "panda_dynval_inst.h"
 #include "taint_processor.h"
 
+
+
+// defined in panda/taint_processor.c
+extern uint32_t max_taintset_card;
+extern uint32_t max_taintset_compute_number;
+
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
+
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -678,6 +686,28 @@ bool init_plugin(void *self) {
 #endif
 
     tob_io_thread = tob_new(tob_io_thread_max_size);
+
+
+    int i;
+    for (i = 0; i < panda_argc; i++) {
+      if (0 == strncmp(panda_argv[i], "max_taintset_card", 17)) {
+	// Format is sample:key=value                                                                                                                                                                                 
+	char *str = strchr(panda_argv[i], '=');
+	if (str) {
+	  max_taintset_card = atoi(str+1);
+	  printf ("max_taintset_card = %d\n", max_taintset_card);
+	}
+      }
+      if (0 == strncmp(panda_argv[i], "max_taintset_compute_number", 24)) {
+	// Format is sample:key=value                                                                                                                                                                                 
+	char *str = strchr(panda_argv[i], '=');
+	if (str) {
+	  max_taintset_compute_number = atoi(str+1);
+	  printf ("max_taintset_card = %d\n", max_taintset_compute_number);
+	}
+      }
+    }
+
 
     return true;
 }
