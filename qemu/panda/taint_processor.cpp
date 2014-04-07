@@ -1441,7 +1441,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
             }
         }
 
-        if (phiSource == 0xDEADBEEF){
+        if (phiSource == (int)0xDEADBEEF){
             /* This means a match wasn't found between the previous basic block
              * executed and one of the predecessor basic blocks in the phi
              * instruction.  This should never happen.
