@@ -38,6 +38,8 @@ void uninit_plugin(void *);
 // This is where we'll write out the syscall data
 FILE *plugin_log;
 
+#include "weak_callbacks.hpp"
+
 std::vector<target_ulong> relevant_ASIDs;
 
 // ARM OABI has the syscall number embedded in the swi: swi #90xxxx
@@ -113,7 +115,7 @@ static std::list<ReturnPoint> clone_returns;
 static std::list<ReturnPoint> prctl_returns;
 static std::list<ReturnPoint> mmap_returns;
 #if defined(TARGET_ARM)
-static void call_fork_callback(CPUState *env, target_ulong pc){
+void call_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -124,7 +126,7 @@ static void call_fork_callback(CPUState *env, target_ulong pc){
     fork_returns.push_back(std::make_pair(pc + offset, get_asid(env, pc)));
 }
 
-static void call_exec_callback(CPUState *env, target_ulong pc){
+void call_exec_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -135,7 +137,7 @@ static void call_exec_callback(CPUState *env, target_ulong pc){
     //exec_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-static void call_clone_callback(CPUState *env, target_ulong pc){
+void call_clone_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -145,7 +147,7 @@ static void call_clone_callback(CPUState *env, target_ulong pc){
     clone_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-static void call_prctl_callback(CPUState *env, target_ulong pc){
+void call_prctl_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -155,7 +157,7 @@ static void call_prctl_callback(CPUState *env, target_ulong pc){
     prctl_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-static void call_mmap_callback(CPUState *env, target_ulong pc){
+void call_mmap_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -230,10 +232,10 @@ void finish_syscall(){}
 //void log_32(target_ulong value, const char* argname);
 //void log64(target_ulong high, target_ulong low, const char* argname){}
 std::function<void (const char*)> record_syscall;
-std::function<void (target_ulong, const char*)> log_string;
-std::function<void (target_ulong, const char*)> log_pointer;
-std::function<void (target_ulong, const char*)> log_32;
-std::function<void (target_ulong, target_ulong, const char*)> log_64;
+std::function<std::string  (target_ulong, const char*)> log_string;
+std::function<target_ulong (target_ulong, const char*)> log_pointer;
+std::function<uint32_t     (target_ulong, const char*)> log_32;
+std::function<uint64_t     (target_ulong, target_ulong, const char*)> log_64;
 
 static inline bool is_watched(CPUState *env){
     target_ulong pc;
@@ -290,7 +292,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
       syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", callname, pc, env->regs[7], env->thumb);
     };
 
-    log_string = [&env, &pc](target_ulong src, const char* argname){
+    log_string = [&env, &pc](target_ulong src, const char* argname) -> std::string{
       std::string value;
       char buff[4097];
       buff[4096] = 0;
@@ -313,18 +315,22 @@ int exec_callback(CPUState *env, target_ulong pc) {
 	}
       }while(true);
       syscall_fprintf(env, "STR, NAME=%s, VALUE=%s\n", argname, value.c_str());
+      return value;
     };
 
-    log_pointer = [&env, &pc](target_ulong addr, const char* argname){
+    log_pointer = [&env, &pc](target_ulong addr, const char* argname) -> target_ulong {
       syscall_fprintf(env, "PTR, NAME=%s, VALUE=" TARGET_FMT_lx"\n",argname, addr);
+      return addr;
     };
 
     log_32 = [&env,&pc](target_ulong value, const char* argname){
       syscall_fprintf(env, "I32, NAME=%s, VALUE=" TARGET_FMT_lx"\n", argname, value);
+      return value;
     };
 
     log_64 = [&env,&pc](target_ulong high, target_ulong low, const char* argname){
       syscall_fprintf(env, "I64, NAME=%s, VALUE=%llx\n", argname, ((unsigned long long)high << 32) | low );
+      return ((unsigned long long)high << 32) | low;
     };
 
 #include "syscall_printer.c"

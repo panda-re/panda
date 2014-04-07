@@ -33,23 +33,76 @@ types_32 = ["int", "long", "size_t", 'u32', 'off_t', 'timer_t', '__s32', 'key_t'
 types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t']
 types_pointer = ['cap_user_data_t', 'cap_user_header_t', '...']
 
-print "switch(", ARM_CALLNO, "){\n"
+alltext = ""
 
+alltext += "switch( " + ARM_CALLNO + " ){\n"
 
-def copy_string(source, fname):
-    print "log_string(%s, \"%s\");" % (source,fname)
+alltext+= "// we use std::string so that we only do lookups into guest memory once and cache the result\n"
 
-def record_address(source, fname):
-    print "log_pointer(%s, \"%s\");" %(source, fname)
+def copy_string(dest, source, fname):
+    global alltext
+    alltext+= "std::string %s = log_string(%s, \"%s\");\n" % (dest, source,fname)
+
+def record_address(dest, source, fname):
+    global alltext
+    alltext+= "target_ulong %s = log_pointer(%s, \"%s\");\n" %(dest, source, fname)
     
-def record_32(source, fname):
-    print "log_32(%s, \"%s\");" %(source, fname)
+def record_32(dest, source, fname):
+    global alltext
+    alltext+= "uint32_t %s = log_32(%s, \"%s\");\n" %(dest, source, fname)
 
-def record_64(highsource, lowsource, fname):
-    print "log_64(%s, %s, \"%s\");" %(highsource, lowsource, fname)
+def record_64(dest, highsource, lowsource, fname):
+    global alltext
+    alltext+= "uint64_t %s = log_64(%s, %s, \"%s\");\n" %(dest, highsource, lowsource, fname)
+
+CHAR_STAR = 'CHAR_STAR'
+POINTER   = 'POINTER'
+BYTES_8   = '8BYTE'
+BYTES_4   = '4BYTE'
+BYTES_2   = '2BYTE'
+ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'std::string', # pointer
+                          POINTER:    'target_ulong', # pointer
+                          BYTES_8:    'uint64_t',
+                          BYTES_4:    'uint32_t',
+                          BYTES_2:    'uint16_t',
+                        }
+
+CPP_RESERVED = {"new": "anew"}
+
+class Argument(object):
+    def __init__(self):
+        self._type = None
+        self._name = None
+        self.var  = None
     
+    @property
+    def type(self):
+        return self._type
+    
+    @type.setter
+    def type(self, newtype):
+        assert(newtype in ARG_TYPE_TRANSLATIONS.keys())
+        self._type = newtype
+    
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, newname):
+        if newname.startswith('*'):
+            newname = newname[1:]
+        if newname in CPP_RESERVED:
+            newname = CPP_RESERVED[newname]
+        if newname is ')':
+            newname = "fn"
+        if newname.endswith('[]'):
+            newname = newname[:-2]
+        self._name = newname
+
+callback_defs = set()
 # Goldfish kernel doesn't support OABI layer. Yay!
-with open("android_arm_syscall_prototypes") as armcalls:
+with open("android_arm_prototypes.txt") as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
     charre = re.compile("char.*\*")
     for line in armcalls:
@@ -59,65 +112,117 @@ with open("android_arm_syscall_prototypes") as armcalls:
         rettype = fields.group(2)
         callname = fields.group(3)
         args = fields.group(4).split(',')
-        print "//",callno, rettype, callname, args
-        format = ""
-        for arg in args:
+        arg_types = []
+        alltext += "// " + str(callno)+" "+ str(rettype)+" "+ str(callname)+" "+ str(args) + '\n'
+        for argno, arg in enumerate(args):
             # the .split() can leave us with args = ['']
             if arg == '':
                 continue
-            #print callno, rettype, callname, args
-            argname = arg.split()[-1]
+            #alltext += callno, rettype, callname, args
+            thisarg = Argument()
+            if arg.endswith('*') or len(arg.split()) == 1:
+                # no argname, just type
+                argname = "arg{0}".format(argno)
+            else:
+                argname = arg.split()[-1]
+            thisarg.name = argname
             if charre.search(arg) and not argname.endswith('buf') and argname != '...' and not argname.endswith('[]'):
-                format += 's'
+                thisarg.type = CHAR_STAR
+                arg_types.append(thisarg)
             elif '*' in arg or any([x in arg for x in types_pointer]):
-                format += 'p'
+                thisarg.type = POINTER
+                arg_types.append(thisarg)
             elif any([x in arg for x in types_64]):
-                format += '8'
+                thisarg.type = BYTES_8
+                arg_types.append(thisarg)
             elif any([x in arg for x in types_32]) or any([x in arg for x in types_16]):
-                format += '4'
+                thisarg.type = BYTES_4
+                arg_types.append(thisarg)
             elif arg.strip() == 'void':
                 pass
             elif arg.strip() == 'unsigned' or (len(arg.split()) is 2 and arg.split()[0] == 'unsigned'):
-                format += '4'
+                thisarg.type = BYTES_4
+                arg_types.append(thisarg)
             else:
-                print "unknown:", arg
-        print "case", callno, ":"
-        print "record_syscall(\"%s\");" % callname
+                alltext += "unknown:", arg
+        alltext += "case " + callno + ": {\n"
+        alltext += "record_syscall(\"%s\");\n" % callname
         argno = 0
-        for i, val in enumerate(format):
+        for i, val in enumerate(arg_types):
+            arg_type = val.type
+            arg_name = val.name
             if argno >= len(ARM_ARGS):
-                print "// out of registers. Use the stack!"
+                alltext += "// out of registers. Use the stack!"+'\n'
                 break
-            if val == 's':
-                copy_string(ARM_ARGS[argno], args[i])
-            elif val == 'p':
-                record_address(ARM_ARGS[argno], args[i])
-            elif val == '4':
-                record_32(ARM_ARGS[argno], args[i])
-            elif val == '8':
+            if arg_type == CHAR_STAR:
+                copy_string(arg_name, ARM_ARGS[argno], args[i])
+            elif arg_type == POINTER:
+                record_address(arg_name, ARM_ARGS[argno], args[i])
+            elif arg_type == BYTES_4:
+                record_32(arg_name, ARM_ARGS[argno], args[i])
+            elif arg_type == BYTES_8:
                 # alignment sadness. Linux tried to make sure none of these happen
                 if (argno % 2) == 1:
-                    print "// skipping arg for alignment"
+                    alltext += "// skipping arg for alignment"+'\n'
                     argno+= 1
                     if argno >= len(ARM_ARGS):
-                        print "// out of registers. Use the stack!"
+                        alltext += "// out of registers. Use the stack!"+'\n'
                         break
-                record_64(ARM_ARGS[argno], ARM_ARGS[argno+1],args[i])
+                record_64(arg_name, ARM_ARGS[argno], ARM_ARGS[argno+1],args[i])
                 argno+=1
             argno+=1
-        if callname == 'fork':
-            print "call_fork_callback(env, pc);"
-        elif callname == 'execve':
-            print "call_exec_callback(env, pc);"
-        elif callname == 'clone':
-            print "call_clone_callback(env, pc);"
-        elif callname == 'do_mmap2':
-            print "call_mmap_callback(env, pc);"
-        elif callname == 'sys_prctl':
-            print "call_prctl_callback(env, pc);"
-        print "finish_syscall();"
-        print "break;"
-    print "default:"
-    print "record_syscall(\"UNKNOWN\");"
-    print "}"
+        # figure out callback definition
+        callback_fn = "call_{0}_callback".format(callname)
+        _args = ",".join(['env', 'pc'] + [x.name for i, x in enumerate(arg_types)])
+        _args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
+        callback_call = callback_fn+"(" +_args+");"
+        callback_def  = callback_fn+"(" + _args_types+")"
+        # call the callback
+        alltext += callback_call+'\n'
+        #remember to define a weak symbol for the callback later
+        callback_defs.add(callback_def)
+            
+        alltext += "finish_syscall();"+'\n'
+        alltext += "}; break;"+'\n'
+    alltext += "default:"+'\n'
+    alltext += "record_syscall(\"UNKNOWN\");"+'\n'
+    alltext += "}"+'\n'
+weak_callbacks = ""
+weak_callbacks+= """
+#include "weak_callbacks.hpp"
+extern "C"{
+#include "qemu-common.h"
+}
+
+// weak-defined default empty callbacks for all syscalls
+"""
+for callback_def in callback_defs:
+    weak_callbacks += "void __attribute__((weak)) {0} {{ }}\n".format(callback_def)
+weak_callbacks+= """
+
+"""
+with open("weak_callbacks.cpp", "w") as weakfile:
+    weakfile.write(weak_callbacks)
+
+weak_callbacks = ""
+weak_callbacks+= """
+#include <string>
+
+extern "C" {
+#include "cpu.h"
+}
+
+// weak-defined default empty callbacks for all syscalls
+"""
+for callback_def in callback_defs:
+    weak_callbacks += "void __attribute__((weak)) {0};\n".format(callback_def)
+weak_callbacks+= """
+
+"""
+with open("weak_callbacks.hpp", "w") as weakfile:
+    weakfile.write(weak_callbacks)
+
+
+print alltext
+print ""
         

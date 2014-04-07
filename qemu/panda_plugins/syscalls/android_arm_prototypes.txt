@@ -85,7 +85,7 @@
 116 long sys_sysinfo(struct sysinfo __user *info);
 118 long sys_fsync(unsigned int fd);
 119 int sigreturn(void);
-120 unsigned long clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);
+120 unsigned long clone(unsigned long clone_flags, unsigned long newsp, int __user *parent_tidptr, int tls_val, int __user *child_tidptr, struct pt_regs *regs);
 121 long sys_setdomainname(char __user *name, int len);
 122 long sys_newuname(struct new_utsname __user *name);
 124 long sys_adjtimex(struct timex __user *txc_p);
