@@ -543,4 +543,22 @@ extern bool panda_tb_chaining;
 extern char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
 extern int panda_argc;
 
+// Struct for holding a parsed key/value pair from
+// a -panda-arg plugin:key=value style argument.
+typedef struct panda_arg {
+    char *argptr;   // For internal use only
+    char *key;      // Pointer to the key string
+    char *value;    // Pointer to the value string
+} panda_arg;
+
+typedef struct panda_arg_list {
+    int nargs;
+    panda_arg *list;
+} panda_arg_list;
+
+// Parse out arguments and return them to caller
+panda_arg_list *panda_get_args(const char *plugin_name);
+// Free a list of parsed arguments
+void panda_free_args(panda_arg_list *args);
+
 #endif

@@ -163,18 +163,36 @@ int before_loadvm_callback(void){
 
 #endif // CONFIG_ANDROID
 
+panda_arg_list *args;
+
 bool init_plugin(void *self) {
     panda_cb pcb;
 
     int i;
     char *tblog_filename = NULL;
-    for (i = 0; i < panda_argc; i++) {
-        if (0 == strncmp(panda_argv[i], "sample", 6)) {
-            // Format is sample:key=value
-            // A real plugin would presumably dispatch on key, but we only have
-            // one option so we just 
-            tblog_filename = strrchr(panda_argv[i], '=');
-            if (tblog_filename) tblog_filename++;
+    args = panda_get_args("sample");
+    if (args != NULL) {
+        for (i = 0; i < args->nargs; i++) {
+            // Format is sample:file=<file>
+            if (0 == strncmp(args->list[i].key, "file", 4)) {
+                tblog_filename = args->list[i].value;
+            }
+            else if (0 == strncmp(args->list[i].key, "easter", 9)) {
+                // Second parameter just to show how it's done
+                if (0 == strncmp(args->list[i].value, "egg", 3)) {
+                    printf(
+                        "    _____    \n"
+                        "  .'     '.  \n"
+                        " /         \\\n"
+                        "Y           Y\n"
+                        "|v^v^v^v^v^v|\n"
+                        "|===========|\n"
+                        "|v^v^v^v^v^v|\n"
+                        "Y           Y\n"
+                        " \\         /\n"
+                        "  '._____.'  \n");
+                }
+            }
         }
     }
 
@@ -211,6 +229,7 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     printf("Unloading sample plugin.\n");
+    panda_free_args(args);
     fflush(plugin_log);
     fclose(plugin_log);
 }

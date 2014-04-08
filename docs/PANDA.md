@@ -98,6 +98,29 @@ This can be used to allow one plugin to call functions another, since the handle
 
 Load a PANDA plugin. The `filename` parameter is currently interpreted as a simple filename; no searching is done (this may change in the future). This can be used to allow one plugin to load another.
 
+### Argument handling
+
+PANDA allows plugins to receive options on the command line. Each option should look like `-panda-arg <plugin_name>:<key>=<value>`.
+
+    typedef struct panda_arg {
+        char *argptr;   // For internal use only
+        char *key;      // Pointer to the key string
+        char *value;    // Pointer to the value string
+    } panda_arg;
+
+    typedef struct panda_arg_list {
+        int nargs;
+        panda_arg *list;
+    } panda_arg_list;
+
+    panda_arg_list *panda_get_args(const char *plugin_name);
+
+Retrieves a list of just the PANDA arguments that match `plugin_name`. The arguments are returned in a `panda_arg_list` structure, where the `nargs` member gives the length of the `list` of individual `panda_arg` structures. Each `panda_arg` has a `key`/`value` pair. Note that calling `panda_get_args` allocates memory to store the list, which should be freed after use with `panda_free_args`.
+
+    void panda_free_args(panda_arg_list *args);
+
+Frees an argument list created with `panda_get_args`.
+
 ### Runtime QEMU Control
 
 	void panda_do_flush_tb(void);
