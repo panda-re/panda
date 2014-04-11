@@ -46,5 +46,6 @@ struct ReturnPoint {
     std::function<void(CallbackData*, CPUState*, target_asid)> callback;
 };
 
+void appendReturnPoint(ReturnPoint&& rp);
 
 #endif

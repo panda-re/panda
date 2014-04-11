@@ -128,6 +128,13 @@ static std::list<ReturnPoint> exec_returns;
 static std::list<ReturnPoint> clone_returns;
 static std::list<ReturnPoint> prctl_returns;
 static std::list<ReturnPoint> mmap_returns;
+// always return to same process
+static std::list<ReturnPoint> other_returns;
+
+void appendReturnPoint(ReturnPoint&& rp){
+    other_returns.push_back(std::move(rp));
+}
+
 #if defined(TARGET_ARM)
 void call_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
@@ -242,10 +249,19 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
         }
     }
     clone_returns.remove_if(is_empty);
+    
+    for(auto& retVal : other_returns){
+        if(retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
+            retVal.callback(retVal.opaque.get(), env, retVal.process_id);
+            retVal.retaddr = retVal.process_id = 0;
+        }
+    }
+    other_returns.remove_if(is_empty);
 #else
     fork_returns.clear();
     exec_returns.clear();
     clone_returns.clear();
+    other_returns.clear();
 #endif
     return 0;
 }
