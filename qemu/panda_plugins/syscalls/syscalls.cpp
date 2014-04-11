@@ -51,6 +51,9 @@ std::vector<target_asid> relevant_ASIDs;
 // ARM: stolen from target-arm/helper.c
 static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 {   
+#if (TARGET_LONG_BITS == 64)
+#error 64-bit ARM is not yet supported
+#endif
     uint32_t table;
 
     if (address & env->cp15.c2_mask)
