@@ -76,6 +76,17 @@ static inline target_asid get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
+static inline target_ulong get_return_val(CPUState *env){
+#if defined(TARGET_I386)   
+    return env->regs[R_EAX];
+#elif defined(TARGET_ARM)
+    return env->regs[0];
+#else
+#error "Not Implemented"
+#endif
+    
+}
+
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
 #ifdef TARGET_I386
