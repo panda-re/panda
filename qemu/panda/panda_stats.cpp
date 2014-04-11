@@ -28,7 +28,7 @@ PANDAENDCOMMENT */
 #undef TRUE
 #undef FALSE
 
-#include "bitvector_label_set.c"
+#include "bitvector_label_set.cpp"
 #include "panda_stats.h"
 
 #define INSTR_INTERVAL 10000
@@ -40,6 +40,7 @@ uint64_t instr_count = 0;
 void memplot(Shad *shad){
     FILE *memplotlog = fopen("memory.csv", "w");
     fprintf(memplotlog, "\"Address\",\"Label\",\"Type\"\n");
+    /*
     unsigned int i;
     for (i = 0; i < 0xffffffff; i++){
 #ifdef TARGET_X86_64
@@ -62,6 +63,7 @@ void memplot(Shad *shad){
         }
 #endif
     }
+    */
     fclose(memplotlog);
 }
 
@@ -69,6 +71,7 @@ void memplot(Shad *shad){
 void bufplot(CPUState *env, Shad *shad, uint64_t addr, int length){
     FILE *bufplotlog = fopen("writebuf.csv", "w");
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
+    /*
     uint64_t i;
     for (i = addr; i < addr+length; i++){
 #ifdef TARGET_X86_64
@@ -104,6 +107,7 @@ void bufplot(CPUState *env, Shad *shad, uint64_t addr, int length){
         }
 #endif // TARGET_X86_64
     }
+    */
     fclose(bufplotlog);
 }
 

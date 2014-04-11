@@ -14,6 +14,7 @@ PANDAENDCOMMENT */
 
 #include <stdio.h>
 #include "taint_processor.h"
+#include "config.h"
 #include "my_mem.h"
 #include "my_bool.h"
 #include "max.h"

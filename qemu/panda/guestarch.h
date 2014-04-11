@@ -1,20 +1,20 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 
 
-/* 
+/*
  * XXX
  * XXX Note: changing this file could very easily break other code that uses it.
  * XXX
@@ -26,7 +26,6 @@ PANDAENDCOMMENT */
 #define GUESTARCH_H
 
 #include "cpu.h"
-
 #include "taint_processor.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -52,7 +51,7 @@ extern uintptr_t eip_reg;
 #define CC_DST_REG 10
 #define EIP_REG 11
 
-/* 
+/*
  * We assume that this enum starts right after guest registers.
  *
  * XMM and MMX registers can be accessed at offsets inside of them, so log the
@@ -351,7 +350,7 @@ extern uintptr_t rip_reg;
 #define CC_DST_REG 18
 #define RIP_REG 19
 
-/* 
+/*
  * We assume that this enum starts right after guest registers.
  *
  * XMM and MMX registers can be accessed at offsets inside of them, so log the
