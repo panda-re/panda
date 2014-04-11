@@ -28,6 +28,9 @@ extern "C"{
 #include <string>
 #include <list>
 #include <algorithm>
+#include <memory>
+
+#include "syscalls.hpp"
 
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
@@ -39,8 +42,6 @@ void uninit_plugin(void *);
 FILE *plugin_log;
 
 #include "weak_callbacks.hpp"
-
-typedef target_ulong target_asid;
 
 std::vector<target_asid> relevant_ASIDs;
 
@@ -66,7 +67,7 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 }
 #endif
 
-static inline target_asid get_asid(CPUState *env, target_ulong addr) {
+target_asid get_asid(CPUState *env, target_ulong addr) {
 #if defined(TARGET_I386)
     return env->cr[3];
 #elif defined(TARGET_ARM)
@@ -76,7 +77,7 @@ static inline target_asid get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
-static inline target_ulong get_return_val(CPUState *env){
+target_ulong get_return_val(CPUState *env){
 #if defined(TARGET_I386)   
     return env->regs[R_EAX];
 #elif defined(TARGET_ARM)
@@ -122,9 +123,6 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 #endif
 }
 
-
-typedef std::pair<target_ulong, target_asid> ReturnPoint;
-
 static std::list<ReturnPoint> fork_returns;
 static std::list<ReturnPoint> exec_returns;
 static std::list<ReturnPoint> clone_returns;
@@ -139,48 +137,56 @@ void call_fork_callback(CPUState *env, target_ulong pc){
         offset = 2;
     }
     // pc + offset or env->regs[14] ?
-    fork_returns.push_back(std::make_pair(pc + offset, get_asid(env, pc)));
+    fork_returns.push_back(ReturnPoint(pc + offset, get_asid(env, pc)));
 }
 
-void call_exec_callback(CPUState *env, target_ulong pc){
+void call_execve_callback(CPUState *env, target_ulong pc,
+    std::string filename,target_ulong argv,target_ulong envp)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    exec_returns.push_back(std::make_pair(pc+offset,  get_asid(env, pc)));
+    exec_returns.push_back(ReturnPoint(pc+offset,  get_asid(env, pc)));
     //exec_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-void call_clone_callback(CPUState *env, target_ulong pc){
+void call_clone_callback(CPUState *env, target_ulong pc,
+    target_ulong fn,target_ulong child_stack,uint32_t flags,target_ulong arg,target_ulong arg4)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    clone_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    clone_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
 }
 
-void call_prctl_callback(CPUState *env, target_ulong pc){
+void call_sys_prctl_callback(CPUState *env, target_ulong pc,
+    uint32_t option,uint32_t arg2,uint32_t arg3,uint32_t arg4,uint32_t arg5)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    prctl_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    prctl_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
 }
 
-void call_mmap_callback(CPUState *env, target_ulong pc){
+void call_do_mmap2_callback(CPUState *env, target_ulong pc,
+    uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    mmap_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    mmap_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
 }
 
 #endif //TARGET_ARM
@@ -195,43 +201,47 @@ static inline bool in_kernelspace(CPUState *env) {
 #endif
 }
 
+static bool is_empty(ReturnPoint& pt){ 
+    return (pt.retaddr == 0 && pt.process_id == 0);
+}
+
 static int returned_check_callback(CPUState *env, TranslationBlock *tb){
 #if defined(CONFIG_PANDA_VMI)
     panda_cb_list *plist;
     for(auto& retVal :fork_returns){
-        if (retVal.first == tb->pc && retVal.second == get_asid(env, tb->pc)){
+        if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_FORK]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_fork(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    fork_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    fork_returns.remove_if(is_empty);
     for(auto& retVal :exec_returns){
-        if(retVal.second == get_asid(env, tb->pc) && !in_kernelspace(env)){
-        //if (retVal.first == tb->pc /*&& retVal.second == get_asid(env, tb->pc)*/){
+        if(retVal.process_id == get_asid(env, tb->pc) && !in_kernelspace(env)){
+        //if (retVal.retaddr == tb->pc /*&& retVal.process_id == get_asid(env, tb->pc)*/){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_EXEC]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_exec(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    exec_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    exec_returns.remove_if(is_empty);
     for(auto& retVal :clone_returns){
-        if (retVal.first == tb->pc /*&& retVal.second == get_asid(env, tb->pc)*/){
+        if (retVal.retaddr == tb->pc /*&& retVal.process_id == get_asid(env, tb->pc)*/){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_CLONE]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_clone(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    clone_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    clone_returns.remove_if(is_empty);
 #else
     fork_returns.clear();
     exec_returns.clear();
