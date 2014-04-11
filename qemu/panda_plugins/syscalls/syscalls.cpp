@@ -40,7 +40,9 @@ FILE *plugin_log;
 
 #include "weak_callbacks.hpp"
 
-std::vector<target_ulong> relevant_ASIDs;
+typedef target_ulong target_asid;
+
+std::vector<target_asid> relevant_ASIDs;
 
 // ARM OABI has the syscall number embedded in the swi: swi #90xxxx
 //#define CAPTURE_ARM_OABI 0
@@ -61,7 +63,7 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 }
 #endif
 
-static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
+static inline target_asid get_asid(CPUState *env, target_ulong addr) {
 #if defined(TARGET_I386)
     return env->cr[3];
 #elif defined(TARGET_ARM)
@@ -107,7 +109,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 }
 
 
-typedef std::pair<target_ulong, target_ulong> ReturnPoint;
+typedef std::pair<target_ulong, target_asid> ReturnPoint;
 
 static std::list<ReturnPoint> fork_returns;
 static std::list<ReturnPoint> exec_returns;
