@@ -1,9 +1,8 @@
-#include "panda_plugin.h"
-#include "panda_common.h"
-
 #include <assert.h>
 #include <stdint.h>
 
+#include "panda_plugin.h"
+#include "panda_common.h"
 
 target_ulong panda_current_pc(CPUState *env) {
   assert (panda_update_pc);

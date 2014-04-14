@@ -28,14 +28,17 @@ PANDAENDCOMMENT */
  * the CPUState memory accesses are.
  */
 
-#include "guestarch.h"
-
 #include "stdio.h"
 #include "math.h"
 
+extern "C" {
+#include "cpu.h"
 #include "config.h"
 #include "dyngen-exec.h"
 #include "qemu-common.h"
+}
+
+#include "guestarch.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 

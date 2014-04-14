@@ -25,7 +25,10 @@ PANDAENDCOMMENT */
 #ifndef GUESTARCH_H
 #define GUESTARCH_H
 
+extern "C" {
 #include "cpu.h"
+}
+
 #include "taint_processor.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)

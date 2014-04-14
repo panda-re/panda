@@ -13,13 +13,15 @@
 PANDAENDCOMMENT */
 
 #include <stdio.h>
-#include "taint_processor.h"
-#include "config.h"
 #include "my_mem.h"
 #include "my_bool.h"
+#include "bitvector_label_set.cpp"
+#include "shad_dir_32.h"
+#include "shad_dir_64.h"
 #include "max.h"
 #include "guestarch.h"
-#include "bitvector_label_set.cpp"
+#include "taint_processor.h"
+#include "panda_memlog.h"
 
 #define SB_INLINE inline
 

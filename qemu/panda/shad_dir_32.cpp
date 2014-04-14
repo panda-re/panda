@@ -59,6 +59,7 @@ PANDAENDCOMMENT */
 #include <stdint.h>
 #include "my_bool.h"
 #include "my_mem.h"
+#include "label_set.h"
 #include "shad_dir_32.h"
 #include "bitvector_label_set.cpp"
 
@@ -394,8 +395,9 @@ SD32_INLINE LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr) {
 #ifndef SD_TESTING
 
 // this is where all the qemu_put and qemu_get come from
+extern "C" {
 #include "hw/hw.h"
-
+}
 
 int shad_dir_save_aux_32(uint32_t addr, LabelSet *ls, void *f) {
   qemu_put_be32(f, addr);

@@ -14,14 +14,18 @@
 
 #include "math.h"
 #include "stdio.h"
-#include "panda_memlog.h"
+
+extern"C" {
 #include "config.h"
 #include "qemu-common.h"
 #include "dyngen-exec.h"
+}
+
 #include "guestarch.h"
+#include "panda_memlog.h"
 #include "panda_common.h"
 #include "tubtf.h"
-#include "my_mem.h"
+#include "taint_processor.h"
 
 extern TubtfTrace *tubtf;
 

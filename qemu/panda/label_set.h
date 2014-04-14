@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 
 #include <set>
 #include <stdint.h>
+#include "my_mem.h"
 
 #define LST_DUNNO 0
 #define LST_COPY 1

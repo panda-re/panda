@@ -12,6 +12,7 @@
  *
  PANDAENDCOMMENT */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include "my_mem.h"

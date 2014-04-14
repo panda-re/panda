@@ -21,8 +21,10 @@ PANDAENDCOMMENT */
 #include "stdint.h"
 #include "stdio.h"
 
+extern "C" {
 #include "qemu-common.h"
 #include "cpu-all.h"
+}
 
 // Compiler hack, these will get redefined
 #undef TRUE

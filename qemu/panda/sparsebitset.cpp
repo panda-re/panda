@@ -1,6 +1,8 @@
 #include <climits>
 #include <iostream>
 #include <algorithm>
+#include "my_mem.h"
+#include "my_bool.h"
 #include "label_set.h"
 
 #define SB_INLINE inline

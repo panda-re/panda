@@ -25,22 +25,21 @@
    ./sparsebitset_label_set_test
 */
 
-#include <climits>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <string.h>
 #include "my_mem.h"
 #include "my_bool.h"
 #include "max.h"
 #include "label_set.h"
+#include "sparsebitset.cpp"
 
 #ifdef BVLS_TESTING
 #include "prob.h"
 static uint8_t bv_debug = 0;
 #endif
-
-#include "sparsebitset.cpp"
 
 #define SB_INLINE inline
 

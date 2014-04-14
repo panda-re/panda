@@ -1,7 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include "tubtf.h"
 
 // yes, this is a global.  I assume you only want one trace.
