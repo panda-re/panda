@@ -7,7 +7,7 @@ arm-linux-user,arm-softmmu \
 --prefix=`pwd`/install \
 --disable-pie \
 --enable-llvm \
---with-llvm=../../llvm-3.3/Debug+Asserts \
---extra-cflags="-O2 -w" \
---extra-cxxflags="-O2 -w" \
+--with-llvm=../llvm-3.3/Debug+Asserts \
+--extra-cflags="-O2" \
+--extra-cxxflags="-O2" \
 && make -j $(nproc)
