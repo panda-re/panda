@@ -25,6 +25,7 @@
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 
+
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
 #define FUNCNAMELENGTH 50

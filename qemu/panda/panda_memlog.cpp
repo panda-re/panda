@@ -12,8 +12,8 @@
  *
  PANDAENDCOMMENT */
 
-#include "math.h"
-#include "stdio.h"
+#include <math.h>
+#include <stdio.h>
 
 extern"C" {
 #include "config.h"

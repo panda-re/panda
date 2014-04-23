@@ -12,10 +12,12 @@
  *
 PANDAENDCOMMENT */
 
-#include "stdio.h"
+#include <stdio.h>
 #include "panda_dynval_inst.h"
 #include "panda_memlog.h"
+extern "C" {
 #include "config.h"
+}
 
 using namespace llvm;
 

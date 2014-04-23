@@ -926,7 +926,8 @@ void tob_op_print(Shad *shad, TaintOp *op) {
 
 
 
-SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
+//SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
+void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
     tob_write(buf, (char*) op, sizeof(TaintOp));
 }
 

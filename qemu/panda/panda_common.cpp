@@ -1,7 +1,9 @@
 #include <assert.h>
 #include <stdint.h>
 
+extern "C" {
 #include "panda_plugin.h"
+}
 #include "panda_common.h"
 
 target_ulong panda_current_pc(CPUState *env) {

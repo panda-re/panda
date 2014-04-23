@@ -24,7 +24,6 @@ PANDAENDCOMMENT */
 #endif
 
 extern "C" {
-
 #include "qemu-common.h"
 #include "cpu-all.h"
 #ifndef CONFIG_SOFTMMU
@@ -35,10 +34,10 @@ extern "C" {
 #include "rr_log.h"
 #endif
 
+#include "panda_plugin.h"
 }
 
 #include "panda_stats.h"
-#include "panda_plugin.h"
 #include "panda_memlog.h"
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
@@ -52,7 +51,6 @@ extern "C" {
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
-
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
@@ -73,7 +71,6 @@ int cb_replay_cpu_physical_mem_rw_ram
   (CPUState *env,
    uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
-
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        int num, abi_long arg1, abi_long arg2, abi_long arg3,
@@ -86,10 +83,7 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
-
-
 Shad *shadow = NULL; // Global shadow memory
-
 }
 
 // Pointer passed in init_plugin()

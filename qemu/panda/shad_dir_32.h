@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
 #include "shad_dir.h"
 
 // the top-level directory is an array of pointers to page tables
-typedef struct sd_dir_struct32 {
+typedef struct SdDir32 {
   uint32_t num_dir_bits;
   uint32_t num_table_bits;
   uint32_t num_page_bits;

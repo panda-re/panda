@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
  * code generated from TCG.
  */
 
-#include "stdio.h"
+#include <stdio.h>
 
 #include "llvm/Linker.h"
 #include "llvm/Support/SourceMgr.h"
@@ -31,7 +31,9 @@ PANDAENDCOMMENT */
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 
+extern "C" {
 #include "config.h"
+}
 #include "tcg-llvm.h"
 #include "panda_externals.h"
 #include "panda_helper_call_morph.h"

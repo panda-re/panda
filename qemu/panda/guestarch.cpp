@@ -28,8 +28,8 @@ PANDAENDCOMMENT */
  * the CPUState memory accesses are.
  */
 
-#include "stdio.h"
-#include "math.h"
+#include <stdio.h>
+#include <math.h>
 
 extern "C" {
 #include "cpu.h"

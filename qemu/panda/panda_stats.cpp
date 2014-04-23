@@ -18,8 +18,8 @@ PANDAENDCOMMENT */
  * the guest memory as we process taint.
  */
 
-#include "stdint.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdio.h>
 
 extern "C" {
 #include "qemu-common.h"

@@ -37,7 +37,9 @@
 #include "sparsebitset.cpp"
 
 #ifdef BVLS_TESTING
+extern "C" {
 #include "prob.h"
+}
 static uint8_t bv_debug = 0;
 #endif
 
@@ -45,7 +47,7 @@ static uint8_t bv_debug = 0;
 
 extern uint32_t max_ref_count;
 
-static const char *label_set_type_str[] = {"copy","add", "compute","dunno"};
+static const char *label_set_type_str[] = {"copy","add","compute","dunno"};
 
 static SB_INLINE const char *labelset_type_str(LabelSetType type) {
     return label_set_type_str[type];

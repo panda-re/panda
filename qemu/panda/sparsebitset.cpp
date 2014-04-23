@@ -23,7 +23,7 @@ static SB_INLINE uint32_t bitset_get_max_num_elements(void) {
 }
 
 // destroy this bitset
-static SB_INLINE void bitset_free(BitSet &bs) {
+static SB_INLINE void bitset_free(BitSet& bs) {
     delete &bs;
 }
 

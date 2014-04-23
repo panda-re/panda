@@ -15,7 +15,7 @@ PANDAENDCOMMENT */
 #ifndef PANDA_MEMLOG_H
 #define PANDA_MEMLOG_H
 
-#include "inttypes.h"
+#include <inttypes.h>
 
 void open_memlog(char *path);
 void close_memlog(void);
