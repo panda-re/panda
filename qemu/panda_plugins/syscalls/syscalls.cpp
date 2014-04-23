@@ -169,7 +169,7 @@ void call_clone_callback(CPUState *env, target_ulong pc,
     } else {
         offset = 2;
     }
-    clone_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
+    clone_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 void call_sys_prctl_callback(CPUState *env, target_ulong pc,
@@ -181,7 +181,7 @@ void call_sys_prctl_callback(CPUState *env, target_ulong pc,
     } else {
         offset = 2;
     }
-    prctl_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
+    prctl_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 void call_do_mmap2_callback(CPUState *env, target_ulong pc,
@@ -193,7 +193,7 @@ void call_do_mmap2_callback(CPUState *env, target_ulong pc,
     } else {
         offset = 2;
     }
-    mmap_returns.push_back(ReturnPoint(env->regs[14], get_asid(env, pc)));
+    mmap_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 #endif //TARGET_ARM
