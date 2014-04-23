@@ -317,6 +317,13 @@ public:
     target_ulong new_fd;
 };
 
+class ReadCallbackData : public CallbackData {
+public:
+    target_ulong fd;
+    target_ulong guest_buffer;
+    uint32_t len;
+};
+
 
 static char* getName(target_asid asid){
     char* comm = "";
@@ -458,6 +465,21 @@ void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
 
 void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint64_t offset,uint32_t count) { }
 
+static void read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    ReadCallbackData* data = dynamic_cast<ReadCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    string filename = asid_to_fds[asid][data->fd];
+    if (filename.empty()){
+        
+    }
+    auto retval = get_return_val(env);
+    char* comm = getName(asid);
+    cout << "Process " << comm << " finished reading " << filename << " return value " << retval <<  endl;
+}
+
 void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
@@ -466,6 +488,9 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
         name =  asid_to_fds[asid][fd];
     }
     cout << "Process " << comm << " " << "Reading from " << name << endl;
+    ReadCallbackData *data = new ReadCallbackData;
+    data->fd = fd;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { 
     target_asid asid = get_asid(env, pc);
