@@ -40,7 +40,6 @@
 #include "hmp.h"
 #include "sysemu.h"
 #include "rr_log.h"
-#include "panda_plugin.h"
 
 #include "panda_plugin.h"
 
@@ -761,7 +760,8 @@ static RR_log_entry *rr_read_item(void) {
 			  g_malloc(args->variant.handle_packet_args.size);
 			//mz read the buffer 
 			assert (fread(args->variant.handle_packet_args.buf, 
-				      1, args->variant.handle_packet_args.size, rr_nondet_log->fp) == 1);
+				      args->variant.handle_packet_args.size, 1,
+                                      rr_nondet_log->fp) == 1 /*> 0*/);
 			rr_size_of_log_entries[item->header.kind] += args->variant.handle_packet_args.size;
 			break;
 
@@ -1131,12 +1131,12 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 			(cpu_single_env, 
 			 hp->buf,
 			 hp->size, 
-			 hp->direction, 
-			 (uint64_t) args->old_buf_addr);
+			 hp->direction,
+                         args->old_buf_addr);
 		    }
 		
-	      }
-	      break;
+	          }
+	          break;
 
 	    default:
                     //mz sanity check
@@ -1145,7 +1145,11 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
             add_to_recycle_list(current_item);
             //bdg Now that we are also breaking on main loop skipped calls we have to 
             //bdg refill the queue here
-            if (call_site == RR_CALLSITE_MAIN_LOOP_WAIT) rr_fill_queue();
+            // RW ...but only if the queue is actually empty at this point
+            if ((call_site == RR_CALLSITE_MAIN_LOOP_WAIT)
+                    && (queue_head == NULL)){ // RW queue is empty
+                rr_fill_queue();
+            }
         }
     } while ( ! replay_done);
 #endif

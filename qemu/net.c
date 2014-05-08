@@ -37,6 +37,8 @@
 #include "hw/qdev.h"
 #include "iov.h"
 
+//#define DEBUG_NET
+
 static QTAILQ_HEAD(, VLANState) vlans;
 static QTAILQ_HEAD(, VLANClientState) non_vlan_clients;
 

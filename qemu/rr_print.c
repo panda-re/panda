@@ -250,6 +250,12 @@ static RR_log_entry *rr_read_item(void) {
                         assert(fread(&(args->variant.hd_transfer_args),
                               sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
                         break;
+                    case RR_CALL_HANDLE_PACKET:
+                        assert(fread(&(args->variant.handle_packet_args),
+                              sizeof(args->variant.handle_packet_args), 1, rr_nondet_log->fp) == 1);
+                        fseek(rr_nondet_log->fp,
+                            args->variant.handle_packet_args.size, SEEK_CUR);
+                        break;
                     default:
                         //mz unimplemented
                         assert(0);

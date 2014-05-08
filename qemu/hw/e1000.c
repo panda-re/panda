@@ -35,7 +35,10 @@
 
 #include "e1000_hw.h"
 
-#define E1000_DEBUG
+#include "panda/network.h"
+#include "rr_log_all.h"
+
+//#define E1000_DEBUG
 
 #ifdef E1000_DEBUG
 enum {
@@ -151,6 +154,35 @@ static const char phy_regcap[0x20] = {
     [PHY_AUTONEG_ADV] = PHY_RW,	[M88E1000_RX_ERR_CNTR] = PHY_R,
     [PHY_ID2] = PHY_R,		[M88E1000_PHY_SPEC_STATUS] = PHY_R
 };
+
+#if defined(E1000_DEBUG)
+// RW Yanked from net.c
+static void hex_dump(FILE *f, const uint8_t *buf, int size)
+{
+    int len, i, j, c;
+
+    for(i=0;i<size;i+=16) {
+        len = size - i;
+        if (len > 16)
+            len = 16;
+        fprintf(f, "%08x ", i);
+        for(j=0;j<16;j++) {
+            if (j < len)
+                fprintf(f, " %02x", buf[i+j]);
+            else
+                fprintf(f, "   ");
+        }
+        fprintf(f, " ");
+        for(j=0;j<len;j++) {
+            c = buf[i+j];
+            if (c < ' ' || c > '~')
+                c = '.';
+            fprintf(f, "%c", c);
+        }
+        fprintf(f, "\n");
+    }
+}
+#endif
 
 static void
 set_interrupt_cause(E1000State *s, int index, uint32_t val)
@@ -397,9 +429,26 @@ xmit_seg(E1000State *s)
         memmove(tp->vlan, tp->data, 4);
         memmove(tp->data, tp->data + 4, 8);
         memcpy(tp->data + 8, tp->vlan_header, 4);
+#ifdef E1000_DEBUG
+        printf("e1000 process_tx_desc in_xmit_seg\n");
+        hex_dump(stdout, tp->data, tp->size);
+#endif
+        if (rr_in_record()){
+            rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_1, tp->data,
+                tp->size, PANDA_NET_TX);
+        }
         qemu_send_packet(&s->nic->nc, tp->vlan, tp->size + 4);
-    } else
+    } else {
+#ifdef E1000_DEBUG
+        printf("e1000 process_tx_desc in_xmit_seg\n");
+        hex_dump(stdout, tp->data, tp->size);
+#endif
+        if (rr_in_record()){
+            rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_2, tp->data,
+                tp->size, PANDA_NET_TX);
+        }
         qemu_send_packet(&s->nic->nc, tp->data, tp->size);
+    }
     s->mac_reg[TPT]++;
     s->mac_reg[GPTC]++;
     n = s->mac_reg[TOTL];
@@ -468,12 +517,21 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
                 bytes = msh - tp->size;
 
             bytes = MIN(sizeof(tp->data) - tp->size, bytes);
+            // RW DMA read for packet send?
             pci_dma_read(&s->dev, addr, tp->data + tp->size, bytes);
+#ifdef E1000_DEBUG
+            //printf("e1000 process_tx_desc\n");
+            //hex_dump(stdout, tp->data+tp->size, bytes);
+#endif
             if ((sz = tp->size + bytes) >= hdr && tp->size < hdr)
                 memmove(tp->header, tp->data, hdr);
             tp->size = sz;
             addr += bytes;
             if (sz == msh) {
+#ifdef E1000_DEBUG
+                //printf("e1000 process_tx_desc xmit_seg\n");
+                //hex_dump(stdout, tp->data, tp->size);
+#endif
                 xmit_seg(s);
                 memmove(tp->data, tp->header, hdr);
                 tp->size = hdr;
@@ -484,14 +542,24 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
         DBGOUT(TXERR, "TCP segmentaion Error\n");
     } else {
         split_size = MIN(sizeof(tp->data) - tp->size, split_size);
+        // RW DMA read for packet send?
         pci_dma_read(&s->dev, addr, tp->data + tp->size, split_size);
+#ifdef E1000_DEBUG
+        //printf("e1000 process_tx_desc\n");
+        //hex_dump(stdout, tp->data+tp->size, split_size);
+#endif
         tp->size += split_size;
     }
 
     if (!(txd_lower & E1000_TXD_CMD_EOP))
         return;
-    if (!(tp->tse && tp->cptse && tp->size < hdr))
+    if (!(tp->tse && tp->cptse && tp->size < hdr)){
+#ifdef E1000_DEBUG
+        //printf("e1000 process_tx_desc xmit_seg\n");
+        //hex_dump(stdout, tp->data, tp->size);
+#endif
         xmit_seg(s);
+    }
     tp->tso_frames = 0;
     tp->sum_needed = 0;
     tp->vlan_needed = 0;
@@ -537,6 +605,7 @@ start_xmit(E1000State *s)
     while (s->mac_reg[TDH] != s->mac_reg[TDT]) {
         base = tx_desc_base(s) +
                sizeof(struct e1000_tx_desc) * s->mac_reg[TDH];
+        // RW read descriptor from DMA
         pci_dma_read(&s->dev, base, (void *)&desc, sizeof(desc));
 
         DBGOUT(TX, "index %d: %p : %x %x\n", s->mac_reg[TDH],
@@ -717,6 +786,7 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
             desc_size = s->rxbuf_size;
         }
         base = rx_desc_base(s) + sizeof(desc) * s->mac_reg[RDH];
+        // RW read the receive descriptor from DMA
         pci_dma_read(&s->dev, base, (void *)&desc, sizeof(desc));
         desc.special = vlan_special;
         desc.status |= (vlan_status | E1000_RXD_STAT_DD);
@@ -726,6 +796,17 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
                 if (copy_size > s->rxbuf_size) {
                     copy_size = s->rxbuf_size;
                 }
+#ifdef E1000_DEBUG
+                printf("e1000 e1000_receive\n");
+                hex_dump(stdout, (void *)(buf + desc_offset + vlan_offset),
+                    copy_size);
+#endif
+                if (rr_in_record()){
+                    rr_record_handle_packet_call(RR_CALLSITE_E1000_RECEIVE,
+                        (void *)(buf + desc_offset + vlan_offset), copy_size,
+                        PANDA_NET_RX);
+                }
+                // RW write into the receive buffer in DMA
                 pci_dma_write(&s->dev, le64_to_cpu(desc.buffer_addr),
                                  (void *)(buf + desc_offset + vlan_offset),
                                  copy_size);
@@ -742,6 +823,7 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
         } else { // as per intel docs; skip descriptors with null buf addr
             DBGOUT(RX, "Null RX descriptor!!\n");
         }
+        // RW write back the receive descriptor
         pci_dma_write(&s->dev, base, (void *)&desc, sizeof(desc));
 
         if (++s->mac_reg[RDH] * sizeof(desc) >= s->mac_reg[RDLEN])

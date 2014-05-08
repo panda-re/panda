@@ -482,7 +482,8 @@ typedef union panda_cb {
      uint64_t old_buf_addr  XXX this is a mystery
   */
 
-  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
+  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t
+    direction, uint64_t old_buf_addr);
 
 } panda_cb;
 
