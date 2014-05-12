@@ -54,4 +54,6 @@ struct ReturnPoint {
 
 void appendReturnPoint(ReturnPoint&& rp);
 
+void registerExecPreCallback(std::function<void(CPUState*, target_ulong)> callback);
+
 #endif

@@ -45,6 +45,12 @@ FILE *plugin_log;
 
 std::vector<target_asid> relevant_ASIDs;
 
+std::vector<std::function<void(CPUState*, target_ulong)>> preExecCallbacks;
+
+void registerExecPreCallback(std::function<void(CPUState*, target_ulong)> callback){
+    preExecCallbacks.push_back(callback);
+}
+
 // ARM OABI has the syscall number embedded in the swi: swi #90xxxx
 //#define CAPTURE_ARM_OABI 0
 
@@ -307,6 +313,11 @@ static void syscall_fprintf(CPUState* env, const char* __format, ...){
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
+    // run any code we need to update our state
+    for(const auto callback : preExecCallbacks){
+        callback(env, pc);
+    }
+    
 #ifdef TARGET_I386
     // On Windows, the system call id is in EAX
     syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
