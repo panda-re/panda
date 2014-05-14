@@ -116,8 +116,9 @@ typedef enum {
     RR_CALL_CPU_MEM_RW,             // cpu_physical_memory_rw()
     RR_CALL_CPU_REG_MEM_REGION,     // cpu_register_physical_memory()
     RR_CALL_CPU_MEM_UNMAP,          // cpu_physical_memory_unmap()
-    RR_CALL_HD_TRANSFER,     // hd transfer
-    RR_CALL_HANDLE_PACKET,   // packet stuff
+    RR_CALL_HD_TRANSFER,            // hd transfer
+    RR_CALL_NET_TRANSFER,           // network transfer in device
+    RR_CALL_HANDLE_PACKET,          // packet handling on send/receive
     RR_CALL_LAST
 } RR_skipped_call_kind;
 
@@ -235,9 +236,15 @@ typedef enum {
   RR_CALLSITE_IDE_DATA_WRITEL,
   RR_CALLSITE_IDE_DATA_READW,
   RR_CALLSITE_IDE_DATA_READL,
-  RR_CALLSITE_E1000_RECEIVE,
+  RR_CALLSITE_E1000_RECEIVE_1,
+  RR_CALLSITE_E1000_RECEIVE_2,
+  RR_CALLSITE_E1000_RECEIVE_3,
   RR_CALLSITE_E1000_XMIT_SEG_1,
   RR_CALLSITE_E1000_XMIT_SEG_2,
+  RR_CALLSITE_E1000_PROCESS_TX_DESC_1,
+  RR_CALLSITE_E1000_PROCESS_TX_DESC_2,
+  RR_CALLSITE_E1000_TXDESC_WRITEBACK,
+  RR_CALLSITE_E1000_START_XMIT,
   RR_CALLSITE_LAST,
 } RR_callsite_id;
 
@@ -298,9 +305,15 @@ static const char *callsite_str[] = {
   "RR_CALLSITE_IDE_DATA_WRITEL",
   "RR_CALLSITE_IDE_DATA_READW",
   "RR_CALLSITE_IDE_DATA_READL",
-  "RR_CALLSITE_E1000_RECEIVE",
+  "RR_CALLSITE_E1000_RECEIVE_1",
+  "RR_CALLSITE_E1000_RECEIVE_2",
+  "RR_CALLSITE_E1000_RECEIVE_3",
   "RR_CALLSITE_E1000_XMIT_SEG_1",
   "RR_CALLSITE_E1000_XMIT_SEG_2",
+  "RR_CALLSITE_E1000_PROCESS_TX_DESC_1",
+  "RR_CALLSITE_E1000_PROCESS_TX_DESC_2",
+  "RR_CALLSITE_E1000_TXDESC_WRITEBACK",
+  "RR_CALLSITE_E1000_START_XMIT",
   "RR_CALLSITE_LAST"
 };
 
@@ -681,6 +694,19 @@ void rr_record_hd_transfer(RR_callsite_id call_site,
 
 /* Network stuff. */
 
+typedef enum {
+  NET_TRANSFER_RAM_TO_IOB,
+  NET_TRANSFER_IOB_TO_RAM
+} Net_transfer_type;
+
+// structure for arguments to net_transfer
+typedef struct {
+  Net_transfer_type type;
+  uint64_t src_addr;
+  uint64_t dest_addr;
+  uint32_t num_bytes;
+} RR_net_transfer_args;
+
 // structure for args to handle_packet
 typedef struct {
   uint8_t *buf;
@@ -691,4 +717,9 @@ typedef struct {
 void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf,
     int size, uint8_t direction);
 
+void rr_record_net_transfer(RR_callsite_id call_site,
+    Net_transfer_type transfer_type, uint64_t src_addr, uint64_t dest_addr,
+    uint32_t num_bytes);
+
 #endif
+

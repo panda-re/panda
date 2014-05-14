@@ -324,6 +324,10 @@ static inline void rr_write_item(void) {
 		        fwrite(&(args->variant.hd_transfer_args), 
                                sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp);
                         break;
+                    case RR_CALL_NET_TRANSFER:
+		        fwrite(&(args->variant.net_transfer_args), 
+                               sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp);
+                        break;
                     case RR_CALL_HANDLE_PACKET:
                         assert(args->variant.handle_packet_args.buf != NULL || 
                                 args->variant.handle_packet_args.size == 0);
@@ -543,6 +547,27 @@ void rr_record_hd_transfer(RR_callsite_id call_site,
 }
 
 
+void rr_record_net_transfer(RR_callsite_id call_site,
+				  Net_transfer_type transfer_type,
+				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    RR_log_entry *item = &(rr_nondet_log->current_item);
+    //mz just in case
+    memset(item, 0, sizeof(RR_log_entry));
+
+    item->header.kind = RR_SKIPPED_CALL;
+    //item->header.qemu_loc = rr_qemu_location;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point;
+
+    item->variant.call_args.kind = RR_CALL_NET_TRANSFER;
+    item->variant.call_args.variant.net_transfer_args.type = transfer_type;
+    item->variant.call_args.variant.net_transfer_args.src_addr = src_addr;
+    item->variant.call_args.variant.net_transfer_args.dest_addr = dest_addr;
+    item->variant.call_args.variant.net_transfer_args.num_bytes = num_bytes;
+
+    rr_write_item();
+}
+
 
 void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
 {
@@ -562,8 +587,6 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int si
 
     rr_write_item();
 }
-
-
 
 
 //mz record a marker for end of the log
@@ -746,6 +769,12 @@ static RR_log_entry *rr_read_item(void) {
 		        rr_assert(fread(&(args->variant.hd_transfer_args),
 			      sizeof(args->variant.hd_transfer_args), 1, rr_nondet_log->fp) == 1);
 			rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.hd_transfer_args);
+			break;
+		    
+                    case RR_CALL_NET_TRANSFER:
+		        rr_assert(fread(&(args->variant.net_transfer_args),
+			      sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp) == 1);
+			rr_size_of_log_entries[item->header.kind] += sizeof(args->variant.net_transfer_args);
 			break;
 		    
 		    case RR_CALL_HANDLE_PACKET:
@@ -1137,6 +1166,25 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 		
 	          }
 	          break;
+
+                case RR_CALL_NET_TRANSFER:
+                  {
+                    // run all callbacks registered for transfers within network
+                    // card (E1000)
+                    RR_net_transfer_args *nta =
+                        &(args->variant.net_transfer_args);
+                    panda_cb_list *plist;
+                    for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
+                            plist != NULL; plist = plist->next) {
+                      plist->entry.replay_net_transfer
+                        (cpu_single_env, 
+                         nta->type,
+                         nta->src_addr,
+                         nta->dest_addr,
+                         nta->num_bytes);
+                    }
+                  }
+                  break;
 
 	    default:
                     //mz sanity check

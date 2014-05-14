@@ -39,6 +39,7 @@ extern "C" {
 #include "panda_plugin.h"
 #include "panda_memlog.h"
 #include "panda_stats.h"
+#include "panda/network.h"
 #ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
 #endif
@@ -83,6 +84,13 @@ int cb_replay_hd_transfer_taint
    uint64_t src_addr,
    uint64_t dest_addr,
    uint32_t num_bytes);
+
+int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
+    uint64_t old_buf_addr);
+
+// for network taint
+int cb_replay_net_transfer_taint(CPUState *env, uint32_t type,
+   uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 int cb_replay_cpu_physical_mem_rw_ram
   (CPUState *env,
@@ -240,10 +248,14 @@ void enable_taint(){
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
-    // for hd taint
+    // for hd and network taint
 #ifdef CONFIG_SOFTMMU
     pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
+    pcb.replay_handle_packet = handle_packet;
+    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
+    pcb.replay_net_transfer = cb_replay_net_transfer_taint;
+    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
     pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
 #endif
@@ -431,6 +443,47 @@ int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
     return 0;
 }
 
+int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
+        uint64_t old_buf_addr){
+    switch (direction){
+        case PANDA_NET_RX:
+            printf("RX packet\n");
+            break;
+        case PANDA_NET_TX:
+            printf("TX packet\n");
+            break;
+        default:
+            assert(0);
+    }
+    return 0;
+}
+
+// this is for much of the network taint transfers.
+// this gets called from rr_log.c, rr_replay_skipped_calls, RR_CALL_NET_TRANSFER
+// case.
+int cb_replay_net_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
+        uint64_t dest_addr, uint32_t num_bytes){
+    // Replay network transfer as taint transfer
+    if (taintEnabled) {
+        //TaintOp top;
+        //top.typ = BULKCOPYOP;
+        //top.val.bulkcopy.l = num_bytes;
+        switch (type) {
+            case NET_TRANSFER_RAM_TO_IOB:
+                printf("NET_TRANSFER_RAM_TO_IOB src: 0x%lx, dest 0x%lx, len %d\n",
+                    src_addr, dest_addr, num_bytes);
+                break;
+            case NET_TRANSFER_IOB_TO_RAM:
+                printf("NET_TRANSFER_IOB_TO_RAM src: 0x%lx, dest 0x%lx, len %d\n",
+                    src_addr, dest_addr, num_bytes);
+                break;
+            default:
+                assert(0);
+        }
+    }
+    return 0;
+}
+
 // this does a bunch of the dmas in hd taint transfer
 int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
         uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes){
@@ -443,14 +496,10 @@ int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
         top.typ = BULKCOPYOP;
         top.val.bulkcopy.l = num_bytes;
         if (is_write) {
-            // its a "write", i.e., transfer from IO buffer to RAM
-            printf("cpu_physical_mem_rw IO->RAM\n");
             top.val.bulkcopy.a = make_iaddr((uint64_t)src_addr);
             top.val.bulkcopy.b = make_maddr(dest_addr);
         }
         else {
-            // its a "read", i.e., transfer from RAM to IO buffer
-            printf("cpu_physical_mem_rw RAM->IO\n");
             top.val.bulkcopy.a = make_maddr(dest_addr);
             top.val.bulkcopy.b = make_iaddr((uint64_t)src_addr);
         }
@@ -679,6 +728,14 @@ bool init_plugin(void *self) {
     panda_disable_tb_chaining();
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
+
+    // XXX RW just for testing
+    //pcb.replay_handle_packet = handle_packet;
+    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
+    //pcb.replay_net_transfer = cb_replay_net_transfer_taint;
+    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
+    //pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
+    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
 
 #ifndef CONFIG_SOFTMMU
     pcb.user_after_syscall = user_after_syscall;

@@ -69,6 +69,7 @@ typedef struct {
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
         RR_hd_transfer_args hd_transfer_args;
+        RR_net_transfer_args net_transfer_args;
         RR_handle_packet_args handle_packet_args;
     } variant;
     //mz XXX HACK 
