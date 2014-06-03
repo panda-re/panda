@@ -10,8 +10,11 @@ project out of Syracuse University.
 Building
 ----
 Build PANDA as normal, with two changes:
+
 1. Only build the arm_softmmu architecture
 2. Pass the "--enable-android" flag to configure
+
+Pandroid can only be built on a 64-bit OS.
 
 Preparing an image
 ----
