@@ -232,7 +232,7 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
     }
     exec_returns.remove_if(is_empty);
     for(auto& retVal :clone_returns){
-        if (retVal.retaddr == tb->pc /*&& retVal.process_id == get_asid(env, tb->pc)*/){
+        if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_CLONE]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_clone(env);
