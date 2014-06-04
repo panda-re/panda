@@ -437,7 +437,12 @@ void call_sys_dup3_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_
 }
 
 // close
-void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) { }
+void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
+    target_asid asid = get_asid(env, pc);
+    char* comm = getName(asid);
+    cout << "Process " << comm << " closed " << asid_to_fds[asid][fd] << " FD " << fd << endl;
+    
+}
 
 void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint64_t offset,uint32_t count) { }
 
