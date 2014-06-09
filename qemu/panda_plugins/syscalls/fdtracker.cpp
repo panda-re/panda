@@ -514,6 +514,7 @@ static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid a
     
 }
 
+#define SYSCALLS_FDS_TRACK_SOCKETS
 #if defined(SYSCALLS_FDS_TRACK_SOCKETS)
 // SOCKET OPERATIONS --------------------------------------------------------------------
 // AF_UNIX, AF_LOCAL, etc
