@@ -347,6 +347,9 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
         dirname += mymap[data->base_fd];
     }
     dirname += "/" + data->path;
+    if(dirname.length() > 1 &&
+        dirname[0] == '/' && dirname[1] == '/')
+        dirname.erase(0,1); //remove leading slash
     mymap[get_return_val(env)] = dirname;
     char* comm = getName(asid);
     if (NULL_FD != data->base_fd)
