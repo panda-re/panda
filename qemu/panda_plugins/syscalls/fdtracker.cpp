@@ -575,9 +575,40 @@ void call_sys_socket_callback(CPUState* env,target_ulong pc,uint32_t domain,uint
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, socket_callback));
 }
 /*
-send, sendto, sendmsg - 
-recv, recvfrom, recvmsg - gets datas!
-listen
+send, sendto, sendmsg - */
+void call_sys_send_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t arg3){
+    call_sys_write_callback(env, pc, fd,buf, len);
+}
+void call_sys_sendto_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t arg3,target_ulong arg4,uint32_t arg5){
+    call_sys_write_callback(env, pc, fd,buf, len);   
+}
+void call_sys_sendmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong msg,uint32_t flags){
+    target_asid asid = get_asid(env, pc);
+    char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
+    if (asid_to_fds[asid].count(fd) > 0){
+        name =  asid_to_fds[asid][fd];
+    }
+    cout << "Process " << comm << " " << "sending msg to " << name << endl;  
+}
+
+/*recv, recvfrom, recvmsg - gets datas!*/
+void call_sys_recvmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong msg,uint32_t flags){
+    target_asid asid = get_asid(env, pc);
+    char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
+    if (asid_to_fds[asid].count(fd) > 0){
+        name =  asid_to_fds[asid][fd];
+    }
+    cout << "Process " << comm << " " << "recving msg from " << name << endl;    
+}
+void call_sys_recvfrom_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t flags,target_ulong arg4,target_ulong arg5){
+    call_sys_read_callback(env, pc, fd, buf, len);
+}
+void call_sys_recv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t flags){
+    call_sys_read_callback(env, pc, fd, buf, len);
+}
+/*listen
 socketpair - two new fds
 */
 void call_sys_socketpair_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol,target_ulong sd_array){
@@ -638,4 +669,9 @@ void call_sys_fcntl_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t 
         data->new_fd = NULL_FD;
         appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, dup_callback));
     }
+}
+void call_sys_sendfile64_callback(CPUState* env,target_ulong pc,uint32_t out_fd,uint32_t in_fd,target_ulong offset,uint32_t count){
+    target_asid asid = get_asid(env, pc);
+    char* conn = getName(asid);
+    cout << conn << " copying data from " << asid_to_fds[asid][in_fd] << " to " << asid_to_fds[asid][out_fd] << endl;
 }
