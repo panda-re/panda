@@ -465,6 +465,8 @@ void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     char* comm = getName(asid);
     cout << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid][fd] << endl;
 }
+#include <fstream>
+ofstream devnull("/scratch/nulls");
 void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
@@ -473,6 +475,11 @@ void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
         name =  asid_to_fds[asid][fd];
     }
     cout << "Process " << comm << " " << "Writing to " << name << endl;
+    if (0 == name.compare("/dev/null") || 0 == name.compare("//dev/null")){
+        uint8_t mybuf[count];
+        panda_virtual_memory_rw(env, buf, mybuf, count, 0);
+        devnull << mybuf << endl;
+    }
 }
 void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) { 
     target_asid asid = get_asid(env, pc);
