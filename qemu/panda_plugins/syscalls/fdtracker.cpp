@@ -485,6 +485,35 @@ void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_u
     cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid][fd] << endl;
 }
 
+/* Sockpair() handling code code is also used for pipe() and must be
+ * outside the ifdef(SYSCALLS_FDS_TRACK_SOCKETS)'d region */
+class SockpairCallbackData : public CallbackData{
+public:
+    target_ulong sd_array;
+    uint32_t domain;
+};
+static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    SockpairCallbackData* data = dynamic_cast<SockpairCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    target_ulong retval = get_return_val(env);
+    //"On success, zero is returned.  On error, -1 is returned, and errno is set appropriately."
+    if(0 != retval){
+        return;
+    }
+    // sd_array is an array of ints, length 2. NOT target_ulong
+    int sd_array[2];
+    // On Linux, sizeof(int) != sizeof(long)
+    panda_virtual_memory_rw(env, data->sd_array, reinterpret_cast<uint8_t*>(sd_array), 2*sizeof(int), 0);
+    char* comm = getName(asid);
+    cout << "Creating pipe in process " << comm << endl;
+    asid_to_fds[asid][sd_array[0]] = "<pipe>";
+    asid_to_fds[asid][sd_array[1]] = "<pipe>";
+    
+}
+
 #if defined(SYSCALLS_FDS_TRACK_SOCKETS)
 // SOCKET OPERATIONS --------------------------------------------------------------------
 // AF_UNIX, AF_LOCAL, etc
@@ -550,32 +579,6 @@ recv, recvfrom, recvmsg - gets datas!
 listen
 socketpair - two new fds
 */
-class SockpairCallbackData : public CallbackData{
-public:
-    target_ulong sd_array;
-    uint32_t domain;
-};
-static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid asid){
-    SockpairCallbackData* data = dynamic_cast<SockpairCallbackData*>(opaque);
-    if(!data){
-        fprintf(stderr, "oops\n");
-        return;
-    }
-    target_ulong retval = get_return_val(env);
-    //"On success, zero is returned.  On error, -1 is returned, and errno is set appropriately."
-    if(0 != retval){
-        return;
-    }
-    // sd_array is an array of ints, length 2. NOT target_ulong
-    int sd_array[2];
-    // On Linux, sizeof(int) != sizeof(long)
-    panda_virtual_memory_rw(env, data->sd_array, reinterpret_cast<uint8_t*>(sd_array), 2*sizeof(int), 0);
-    char* comm = getName(asid);
-    cout << "Creating pipe in process " << comm << endl;
-    asid_to_fds[asid][sd_array[0]] = "<pipe>";
-    asid_to_fds[asid][sd_array[1]] = "<pipe>";
-    
-}
 void call_sys_socketpair_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol,target_ulong sd_array){
     SockpairCallbackData *data = new SockpairCallbackData;
     data->domain = domain;
@@ -610,3 +613,28 @@ void call_sys_accept_callback(CPUState* env,target_ulong pc,uint32_t sockfd,targ
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, accept_callback));
 }
 #endif // SYSCALLS_FDS_TRACK_SOCKETS
+
+void call_sys_pipe_callback(CPUState* env,target_ulong pc,target_ulong arg0){
+    SockpairCallbackData *data = new SockpairCallbackData;
+    data->domain = 0;
+    data->sd_array = arg0;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sockpair_callback));
+}
+void call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong arg0,uint32_t arg1){
+    SockpairCallbackData *data = new SockpairCallbackData;
+    data->domain = 0;
+    data->sd_array = arg0;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sockpair_callback));
+}
+//void call_sys_truncate_callback(CPUState* env,target_ulong pc,std::string path,uint32_t length);
+//void call_sys_ftruncate_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t length);
+/*cmd == F_DUPFD, returns new fd
+  cmd == F_DUPFD_CLOEXEC same */
+void call_sys_fcntl_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t cmd,uint32_t arg){
+    if (cmd == F_DUPFD || cmd == F_DUPFD_CLOEXEC){
+        DupCallbackData* data = new DupCallbackData;
+        data->old_fd = fd;
+        data->new_fd = NULL_FD;
+        appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, dup_callback));
+    }
+}
