@@ -24,7 +24,7 @@ extern "C" {
 #include "disas.h"
 
 #include "panda_plugin.h"
-
+#include "stringsearch.h"
 }
 
 #include <dlfcn.h>
@@ -37,8 +37,6 @@ extern "C" {
 #include <sstream>
 #include <string>
 
-#define MAX_STRINGS 16
-#define MAX_STRLEN  256
 
 #include "../common/prog_point.h"
 
@@ -56,6 +54,9 @@ get_callers_t get_callers;
 
 typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
 get_prog_point_t get_prog_point;
+
+// register a fn to be called when string search matches
+void add_on_ssm(on_ssm_t fptr);
 
 }
 
@@ -82,6 +83,10 @@ std::map<prog_point,string_pos> write_text_tracker;
 uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
+
+// this is the callback for when a string search matches
+on_ssm_t on_ssm_func = NULL;
+
 
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write,
@@ -112,6 +117,12 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.pc = p.pc;
                 f.asid = p.cr3;
                 matchstacks[p] = f;
+
+		// call i-found-a-match plugin function here.
+		if (on_ssm_func != NULL) {
+		  on_ssm_func(env, pc, addr, tofind[str_idx], strlens[str_idx], is_write);
+		}
+
             }
         }
     }
@@ -129,6 +140,12 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
+
+
+void add_on_ssm(on_ssm_t fptr) {
+  on_ssm_func = fptr;
+}
+
 
 bool init_plugin(void *self) {
     panda_cb pcb;
