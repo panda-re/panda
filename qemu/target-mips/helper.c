@@ -263,6 +263,11 @@ target_phys_addr_t cpu_get_phys_page_debug(CPUState *env, target_ulong addr)
         return -1;
     return phys_addr;
 }
+
+target_phys_addr_t cpu_get_phys_addr(CPUState *env, target_ulong addr){
+    return cpu_get_phys_page_debug(env, addr);
+}
+
 #endif
 
 int cpu_mips_handle_mmu_fault (CPUState *env, target_ulong address, int rw,

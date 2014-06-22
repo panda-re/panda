@@ -765,6 +765,49 @@ extern uintptr_t r15_reg;
 
 #endif
 
+#ifdef TARGET_MIPS
+
+extern uintptr_t r0_reg;
+extern uintptr_t r1_reg;
+extern uintptr_t r2_reg;
+extern uintptr_t r3_reg;
+extern uintptr_t r4_reg;
+extern uintptr_t r5_reg;
+extern uintptr_t r6_reg;
+extern uintptr_t r7_reg;
+extern uintptr_t r8_reg;
+extern uintptr_t r9_reg;
+extern uintptr_t r10_reg;
+extern uintptr_t r11_reg;
+extern uintptr_t r12_reg;
+extern uintptr_t r13_reg;
+extern uintptr_t r14_reg;
+extern uintptr_t r15_reg;
+extern uintptr_t r16_reg;
+extern uintptr_t r17_reg;
+extern uintptr_t r18_reg;
+extern uintptr_t r19_reg;
+extern uintptr_t r20_reg;
+extern uintptr_t r21_reg;
+extern uintptr_t r22_reg;
+extern uintptr_t r23_reg;
+extern uintptr_t r24_reg;
+extern uintptr_t r25_reg;
+extern uintptr_t r26_reg;
+extern uintptr_t r27_reg;
+extern uintptr_t r29_reg;
+extern uintptr_t r30_reg;
+extern uintptr_t r31_reg;
+extern uintptr_t r32_reg;
+extern uintptr_t r33_reg;
+
+#define NUMREGS 33
+#define NUMSPECADDRS 0
+#define WORDSIZE 4
+#define LENDIAN // FIXME: this is configurable in ARM
+
+#endif
+
 void init_regs(void);
 int get_cpustate_val(uintptr_t dynval);
 

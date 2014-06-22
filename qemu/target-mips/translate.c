@@ -12458,13 +12458,39 @@ gen_intermediate_code_internal (CPUState *env, TranslationBlock *tb,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
-        if (rr_mode != RR_OFF || panda_update_pc) {
+        if (
+#ifdef CONFIG_SOFTMMU
+            rr_mode != RR_OFF ||
+#endif
+            panda_update_pc) {
             gen_op_update_panda_pc(ctx.pc);
         }
 
+#ifdef CONFIG_SOFTMMU
         if (rr_mode != RR_OFF) {
             gen_op_update_rr_icount();
             tb->num_guest_insns++;
+        }
+#endif
+
+#if defined(CONFIG_LLVM)
+        if (generate_llvm | unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
+#else
+        if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP))) {
+#endif
+            tcg_gen_debug_insn_start(ctx.pc);
+        }
+
+        // PANDA: ask if anyone wants execution notification
+        bool panda_exec_cb = false;
+        panda_cb_list *plist;
+        for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = plist->next) {
+            panda_exec_cb |= plist->entry.insn_translate(env, ctx.pc);
+        }
+
+        // PANDA: Insert the instrumentation
+        if (unlikely(panda_exec_cb)) {
+            gen_helper_panda_insn_exec(tcg_const_tl(ctx.pc));
         }
 
         is_branch = 0;
@@ -12720,9 +12746,15 @@ static void mips_tcg_init(void)
 
 #include "translate_init.c"
 
+#ifdef CONFIG_LLVM
+extern CPUMIPSState *env;
+#endif
+
 CPUMIPSState *cpu_mips_init (const char *cpu_model)
 {
+#ifndef CONFIG_LLVM
     CPUMIPSState *env;
+#endif
     const mips_def_t *def;
 
     def = cpu_mips_find_by_name(cpu_model);

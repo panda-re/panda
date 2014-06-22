@@ -24,6 +24,14 @@
 
 #include "helper.h"
 
+#include "panda_plugin.h"
+
+#ifdef CONFIG_LLVM
+struct CPUMIPSState *env = 0;
+#endif
+
+#include "panda_helper_impl.h"
+
 #if !defined(CONFIG_USER_ONLY)
 #include "softmmu_exec.h"
 #endif /* !defined(CONFIG_USER_ONLY) */
@@ -2308,6 +2316,26 @@ static void do_unaligned_access (target_ulong addr, int is_write, int is_user, v
 
 #define SHIFT 3
 #include "softmmu_template.h"
+
+// Added for PANDA
+#undef MMUSUFFIX
+#define MMUSUFFIX _mmu_panda
+#define MMU_INSTR
+
+#define SHIFT 0
+#include "softmmu_template.h"
+
+#define SHIFT 1
+#include "softmmu_template.h"
+
+#define SHIFT 2
+#include "softmmu_template.h"
+
+#define SHIFT 3
+#include "softmmu_template.h"
+
+#undef MMU_INSTR
+
 
 static void do_unaligned_access (target_ulong addr, int is_write, int is_user, void *retaddr)
 {

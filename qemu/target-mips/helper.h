@@ -1,5 +1,7 @@
 #include "def-helper.h"
 
+#include "panda_helper_defs.h"
+
 DEF_HELPER_2(raise_exception_err, void, i32, int)
 DEF_HELPER_1(raise_exception, void, i32)
 
