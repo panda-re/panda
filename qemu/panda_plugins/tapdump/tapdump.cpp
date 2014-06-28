@@ -93,7 +93,7 @@ int write_mem_callback(CPUState *env, target_ulong pc, target_ulong addr, target
 bool init_plugin(void *self) {
     panda_cb pcb;
 
-    printf("Initializing plugin textprinter\n");
+    printf("Initializing plugin tapdump\n");
     
     std::ifstream taps("tap_points.txt");
     if (!taps) {

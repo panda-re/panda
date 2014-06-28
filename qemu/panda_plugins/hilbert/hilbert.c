@@ -134,9 +134,11 @@ void do_pan_mode(void);
 #define SIZE 256
 #define SCALE 3
 
+#define HEXDUMP_WIDTH 8
+
 void hexDump (const char *desc, void *addr, int len, int offset) {
     int i;
-    unsigned char buff[17];
+    unsigned char buff[HEXDUMP_WIDTH+1];
     unsigned char *pc = (unsigned char*)addr;
 
     // Output description if given.
@@ -145,9 +147,9 @@ void hexDump (const char *desc, void *addr, int len, int offset) {
 
     // Process every byte in the data.
     for (i = 0; i < len; i++) {
-        // Multiple of 16 means new line (with line offset).
+        // Multiple of HEXDUMP_WIDTH means new line (with line offset).
 
-        if ((i % 16) == 0) {
+        if ((i % HEXDUMP_WIDTH) == 0) {
             // Just don't print ASCII for the zeroth line.
             if (i != 0)
                 printf ("  %s\n", buff);
@@ -161,14 +163,14 @@ void hexDump (const char *desc, void *addr, int len, int offset) {
 
         // And store a printable ASCII character for later.
         if ((pc[i] < 0x20) || (pc[i] > 0x7e))
-            buff[i % 16] = '.';
+            buff[i % HEXDUMP_WIDTH] = '.';
         else
-            buff[i % 16] = pc[i];
-        buff[(i % 16) + 1] = '\0';
+            buff[i % HEXDUMP_WIDTH] = pc[i];
+        buff[(i % HEXDUMP_WIDTH) + 1] = '\0';
     }
 
-    // Pad out last line if not exactly 16 characters.
-    while ((i % 16) != 0) {
+    // Pad out last line if not exactly HEXDUMP_WIDTH characters.
+    while ((i % HEXDUMP_WIDTH) != 0) {
         printf ("   ");
         i++;
     }
@@ -267,6 +269,8 @@ SDL_Surface *win;
 int fast_forward_counter;
 bool fast_forwarding = false;
 
+bool viz_paused = false; // When true, no rendering done
+
 int phys_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf) {
     if (!fast_forwarding) {
@@ -284,6 +288,10 @@ int phys_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_write_graphics(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf) {
     point points[16];
+
+    if (viz_paused) {
+        goto check_keypress;
+    }
 
     bool should_recenter = false;
     bool would_recenter = false;
@@ -349,6 +357,9 @@ int phys_mem_write_graphics(CPUState *env, target_ulong pc, target_ulong addr,
 
     // Check for mouse click and dump memory
     SDL_Event event;
+
+check_keypress:
+
     if (SDL_PollEvent(&event)) {
         switch(event.type) {
             case SDL_MOUSEBUTTONUP:
@@ -372,6 +383,11 @@ int phys_mem_write_graphics(CPUState *env, target_ulong pc, target_ulong addr,
                     fast_forward_counter = FF_INTERVAL*10;
                     fast_forwarding = true;
                 }
+                else if (event.key.keysym.sym == SDLK_g) {
+                    view_lag = VIEW_LAG_THRESH;
+                    fast_forward_counter = FF_INTERVAL/10;
+                    fast_forwarding = true;
+                }
                 else if (event.key.keysym.sym == SDLK_q) {
                     qemu_system_shutdown_request();
                 }
@@ -380,6 +396,16 @@ int phys_mem_write_graphics(CPUState *env, target_ulong pc, target_ulong addr,
                     do_pan_mode();
                     view_lag = VIEW_LAG_THRESH;
                     printf("Leaving pan mode.\n");
+                }
+                else if (event.key.keysym.sym == SDLK_x) {
+                    if (viz_paused) {
+                        printf("Unpausing visualization.\n");
+                        viz_paused = false;
+                    }
+                    else {
+                        printf("Pausing visualization.\n");
+                        viz_paused = true;
+                    }
                 }
                 break;
             case SDL_QUIT:

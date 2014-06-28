@@ -84,7 +84,7 @@ int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
 bool init_plugin(void *self) {
     panda_cb pcb;
 
-    printf("Initializing plugin textfinder\n");
+    printf("Initializing plugin unigrams\n");
 
     void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
     if (!cs_plugin) {
