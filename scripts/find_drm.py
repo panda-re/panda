@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from collections import Counter
-import scipy.stats
 import numpy as np
 import unigram_hist
 import sys
