@@ -54,9 +54,10 @@ typedef enum panda_cb_type {
 #endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
     PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
+    PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
-    PANDA_CB_LAST,
+    PANDA_CB_LAST
 } panda_cb_type;
 
 // Union of all possible callback function types
@@ -482,7 +483,26 @@ typedef union panda_cb {
      uint64_t old_buf_addr  XXX this is a mystery
   */
 
-  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t direction, uint64_t old_buf_addr);
+  int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size, uint8_t
+    direction, uint64_t old_buf_addr);
+
+/* Callback ID:     PANDA_CB_REPLAY_NET_TRANSFER,   
+ 
+       In replay only, some kind of data transfer within the network card
+       (currently, only the E1000 is supported).  NB: We are neither before nor
+       after, really.  In replay the transfer doesn't really happen.  We are
+       *at* the point at which it happened, really.
+       Arguments:
+        CPUState* env:        pointer to CPUState
+        uint32_t type:        type of transfer  (Net_transfer_type)
+        uint64_t src_addr:    address for src
+        uint64_t dest_addr:   address for dest
+        uint32_t num_bytes:   size of transfer in bytes
+      
+       Return value:
+        unused
+ */
+  int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 } panda_cb;
 

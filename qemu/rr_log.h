@@ -34,20 +34,9 @@ typedef struct {
     target_phys_addr_t len;
 } RR_cpu_mem_unmap;
 
-
-// structure for args to handle_packet
-typedef struct {
-  uint8_t *buf;
-  uint32_t size;
-  uint8_t direction;
-} RR_handle_packet_args;
-  
-
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site, target_phys_addr_t start_addr, ram_addr_t size, ram_addr_t phys_offset);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write);
-
-void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction);
 
 static inline void rr_cpu_physical_memory_unmap_record(target_phys_addr_t addr, uint8_t *buf, target_phys_addr_t len, int is_write) {
   rr_record_cpu_mem_unmap((RR_callsite_id) rr_skipped_callsite_location, addr, buf, len, is_write);
@@ -80,6 +69,7 @@ typedef struct {
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
         RR_hd_transfer_args hd_transfer_args;
+        RR_net_transfer_args net_transfer_args;
         RR_handle_packet_args handle_packet_args;
     } variant;
     //mz XXX HACK 

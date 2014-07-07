@@ -24,6 +24,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * RW: Note: This includes PANDA instrumentation for network callbacks.  For
+ * calls to pci_dma_write(), instrumentation needs to occur after the call.
+ * This is especially true for taint, since order of operations needs to be
+ * correct with the physical_memory_rw callback.
+ */
 
 #include "hw.h"
 #include "pci.h"
@@ -35,7 +41,10 @@
 
 #include "e1000_hw.h"
 
-#define E1000_DEBUG
+#include "panda/network.h"
+#include "rr_log_all.h"
+
+//#define E1000_DEBUG
 
 #ifdef E1000_DEBUG
 enum {
@@ -151,6 +160,35 @@ static const char phy_regcap[0x20] = {
     [PHY_AUTONEG_ADV] = PHY_RW,	[M88E1000_RX_ERR_CNTR] = PHY_R,
     [PHY_ID2] = PHY_R,		[M88E1000_PHY_SPEC_STATUS] = PHY_R
 };
+
+#if defined(E1000_DEBUG)
+// RW Yanked from net.c
+static void hex_dump(FILE *f, const uint8_t *buf, int size)
+{
+    int len, i, j, c;
+
+    for(i=0;i<size;i+=16) {
+        len = size - i;
+        if (len > 16)
+            len = 16;
+        fprintf(f, "%08x ", i);
+        for(j=0;j<16;j++) {
+            if (j < len)
+                fprintf(f, " %02x", buf[i+j]);
+            else
+                fprintf(f, "   ");
+        }
+        fprintf(f, " ");
+        for(j=0;j<len;j++) {
+            c = buf[i+j];
+            if (c < ' ' || c > '~')
+                c = '.';
+            fprintf(f, "%c", c);
+        }
+        fprintf(f, "\n");
+    }
+}
+#endif
 
 static void
 set_interrupt_cause(E1000State *s, int index, uint32_t val)
@@ -394,12 +432,31 @@ xmit_seg(E1000State *s)
     if (tp->sum_needed & E1000_TXD_POPTS_IXSM)
         putsum(tp->data, tp->size, tp->ipcso, tp->ipcss, tp->ipcse);
     if (tp->vlan_needed) {
+        // RW TODO add VLAN support if necessary.  Doesn't seem necessary right
+        // now.
         memmove(tp->vlan, tp->data, 4);
         memmove(tp->data, tp->data + 4, 8);
         memcpy(tp->data + 8, tp->vlan_header, 4);
+#ifdef E1000_DEBUG
+        printf("e1000 process_tx_desc in_xmit_seg\n");
+        hex_dump(stdout, tp->data, tp->size);
+#endif
+        if (rr_in_record()){
+            rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_1, tp->vlan,
+                tp->size + 4, PANDA_NET_TX);
+        }
         qemu_send_packet(&s->nic->nc, tp->vlan, tp->size + 4);
-    } else
+    } else {
+#ifdef E1000_DEBUG
+        printf("e1000 process_tx_desc in_xmit_seg\n");
+        hex_dump(stdout, tp->data, tp->size);
+#endif
+        if (rr_in_record()){
+            rr_record_handle_packet_call(RR_CALLSITE_E1000_XMIT_SEG_2, tp->data,
+                tp->size, PANDA_NET_TX);
+        }
         qemu_send_packet(&s->nic->nc, tp->data, tp->size);
+    }
     s->mac_reg[TPT]++;
     s->mac_reg[GPTC]++;
     n = s->mac_reg[TOTL];
@@ -468,13 +525,30 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
                 bytes = msh - tp->size;
 
             bytes = MIN(sizeof(tp->data) - tp->size, bytes);
+            // RW DMA read for packet send?
+            // taint transfer mem->io
+            if (rr_in_record()){
+                rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_1,
+                    NET_TRANSFER_RAM_TO_IOB, addr,
+                    (uint64_t)(tp->data + tp->size), bytes);
+            }
             pci_dma_read(&s->dev, addr, tp->data + tp->size, bytes);
             if ((sz = tp->size + bytes) >= hdr && tp->size < hdr)
+            {
+                if (rr_in_record()){
+                    rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_1,
+                        NET_TRANSFER_IOB_TO_IOB, tp->data, tp->header, hdr);
+                }
                 memmove(tp->header, tp->data, hdr);
+            }
             tp->size = sz;
             addr += bytes;
             if (sz == msh) {
                 xmit_seg(s);
+                if (rr_in_record()){
+                    rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_2,
+                        NET_TRANSFER_IOB_TO_IOB, tp->header, tp->data, hdr);
+                }
                 memmove(tp->data, tp->header, hdr);
                 tp->size = hdr;
             }
@@ -484,14 +558,22 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
         DBGOUT(TXERR, "TCP segmentaion Error\n");
     } else {
         split_size = MIN(sizeof(tp->data) - tp->size, split_size);
+        // RW DMA read for packet send?
+        // taint transfer mem->io
+        if (rr_in_record()){
+            rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_2,
+                NET_TRANSFER_RAM_TO_IOB, addr, (uint64_t)(tp->data + tp->size),
+                split_size);
+        }
         pci_dma_read(&s->dev, addr, tp->data + tp->size, split_size);
         tp->size += split_size;
     }
 
     if (!(txd_lower & E1000_TXD_CMD_EOP))
         return;
-    if (!(tp->tse && tp->cptse && tp->size < hdr))
+    if (!(tp->tse && tp->cptse && tp->size < hdr)){
         xmit_seg(s);
+    }
     tp->tso_frames = 0;
     tp->sum_needed = 0;
     tp->vlan_needed = 0;
@@ -511,6 +593,14 @@ txdesc_writeback(E1000State *s, dma_addr_t base, struct e1000_tx_desc *dp)
     dp->upper.data = cpu_to_le32(txd_upper);
     pci_dma_write(&s->dev, base + ((char *)&dp->upper - (char *)dp),
                   (void *)&dp->upper, sizeof(dp->upper));
+    // RW write descriptor to DMA
+    // taint transfer io->mem
+    if (rr_in_record()){
+        rr_record_net_transfer(RR_CALLSITE_E1000_TXDESC_WRITEBACK,
+            NET_TRANSFER_IOB_TO_RAM, (uint64_t)(&dp->upper),
+            (uint64_t)(base + ((char *)&dp->upper - (char *)dp)),
+            sizeof(dp->upper));
+    }
     return E1000_ICR_TXDW;
 }
 
@@ -537,6 +627,12 @@ start_xmit(E1000State *s)
     while (s->mac_reg[TDH] != s->mac_reg[TDT]) {
         base = tx_desc_base(s) +
                sizeof(struct e1000_tx_desc) * s->mac_reg[TDH];
+        // RW read descriptor from DMA
+        // taint transfer mem->io
+        if (rr_in_record()){
+            rr_record_net_transfer(RR_CALLSITE_E1000_START_XMIT,
+                NET_TRANSFER_RAM_TO_IOB, base, (uint64_t)(&desc), sizeof(desc));
+        }
         pci_dma_read(&s->dev, base, (void *)&desc, sizeof(desc));
 
         DBGOUT(TX, "index %d: %p : %x %x\n", s->mac_reg[TDH],
@@ -687,7 +783,12 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
 
     /* Pad to minimum Ethernet frame length */
     if (size < sizeof(min_buf)) {
+        if (rr_in_record()){
+            rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1,
+                NET_TRANSFER_IOB_TO_IOB, min_buf, buf, size);
+        }
         memcpy(min_buf, buf, size);
+        // RW shouldn't need to worry about this memset for taint
         memset(&min_buf[size], 0, sizeof(min_buf) - size);
         buf = min_buf;
         size = sizeof(min_buf);
@@ -698,6 +799,7 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
 
     if (vlan_enabled(s) && is_vlan_packet(s, buf)) {
         vlan_special = cpu_to_le16(be16_to_cpup((uint16_t *)(buf + 14)));
+        // RW TODO enable VLAN if necessary
         memmove((uint8_t *)buf + 4, buf, 12);
         vlan_status = E1000_RXD_STAT_VP;
         vlan_offset = 4;
@@ -717,6 +819,12 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
             desc_size = s->rxbuf_size;
         }
         base = rx_desc_base(s) + sizeof(desc) * s->mac_reg[RDH];
+        // RW read the receive descriptor from DMA
+        // taint transfer mem->io
+        if (rr_in_record()){
+            rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_1,
+                NET_TRANSFER_RAM_TO_IOB, base, (uint64_t)(&desc), sizeof(desc));
+        }
         pci_dma_read(&s->dev, base, (void *)&desc, sizeof(desc));
         desc.special = vlan_special;
         desc.status |= (vlan_status | E1000_RXD_STAT_DD);
@@ -726,9 +834,27 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
                 if (copy_size > s->rxbuf_size) {
                     copy_size = s->rxbuf_size;
                 }
+#ifdef E1000_DEBUG
+                printf("e1000 e1000_receive\n");
+                hex_dump(stdout, (void *)(buf + desc_offset + vlan_offset),
+                    copy_size);
+#endif
+                // RW write into the receive buffer in DMA
+                // taint transfer io->mem
                 pci_dma_write(&s->dev, le64_to_cpu(desc.buffer_addr),
                                  (void *)(buf + desc_offset + vlan_offset),
                                  copy_size);
+                if (rr_in_record()){
+                    // RW First, handle packet
+                    rr_record_handle_packet_call(RR_CALLSITE_E1000_RECEIVE_2,
+                        (void *)(buf + desc_offset + vlan_offset), copy_size,
+                        PANDA_NET_RX);
+                    // Then, record the DMA
+                    rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_2,
+                        NET_TRANSFER_IOB_TO_RAM,
+                        (uint64_t)(buf + desc_offset + vlan_offset),
+                        le64_to_cpu(desc.buffer_addr), copy_size);
+                }
             }
             desc_offset += desc_size;
             desc.length = cpu_to_le16(desc_size);
@@ -743,6 +869,12 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
             DBGOUT(RX, "Null RX descriptor!!\n");
         }
         pci_dma_write(&s->dev, base, (void *)&desc, sizeof(desc));
+        // RW write back the receive descriptor
+        // taint transfer io->mem
+        if (rr_in_record()){
+            rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_3,
+                NET_TRANSFER_IOB_TO_RAM, (uint64_t)(&desc), base, sizeof(desc));
+        }
 
         if (++s->mac_reg[RDH] * sizeof(desc) >= s->mac_reg[RDLEN])
             s->mac_reg[RDH] = 0;
