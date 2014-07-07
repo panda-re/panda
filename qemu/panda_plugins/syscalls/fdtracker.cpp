@@ -27,6 +27,7 @@ PANDAENDCOMMENT */
 #include "weak_callbacks.hpp"
 #include "syscalls.hpp"
 #include <iostream>
+#include <stdexcept>
 
 extern "C" {
 #include <fcntl.h>
@@ -404,7 +405,11 @@ static void dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
         new_fd = get_return_val(env);
     }
     char* comm = getName(asid);
-    cout << "Process " << comm << " duplicating FD for " << asid_to_fds[asid][data->old_fd] << endl;
+    try{
+        cout << "Process " << comm << " duplicating FD for " << asid_to_fds[asid].at(data->old_fd) << " to " << new_fd << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing dup source FD " << data->old_fd << " to " << new_fd<< endl;
+    }
     asid_to_fds[asid][new_fd] = asid_to_fds[asid][data->old_fd];
 }
 
@@ -443,7 +448,11 @@ void call_sys_dup3_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_
 void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-    cout << "Process " << comm << " closed " << asid_to_fds[asid][fd] << " FD " << fd << endl;
+   try{
+         cout << "Process " << comm << " closed " << asid_to_fds[asid].at(fd) << " FD " << fd << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing closing FD " << fd << endl;
+    }
     
 }
 
@@ -461,12 +470,20 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
 void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { 
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-    cout << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid][fd] << endl;
+    try{
+        cout << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid].at(fd) << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing read FD " << fd << endl;
+    }
 }
 void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-    cout << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid][fd] << endl;
+    try{
+        cout << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid].at(fd) << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing readp FD " << fd << endl;
+    }
 }
 #include <fstream>
 ofstream devnull("/scratch/nulls");
@@ -487,12 +504,20 @@ void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
 void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) { 
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-    cout << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid][fd] << endl;
+    try{
+        cout << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid].at(fd) << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing writep FD " << fd << endl;
+    }
 }
 void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-    cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid][fd] << endl;
+    try{
+        cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid].at(fd) << endl;
+    }catch( const std::out_of_range& oor){
+        cout << "Process " << comm << " missing writev FD " << fd << endl;
+    }
 }
 
 /* Sockpair() handling code code is also used for pipe() and must be
