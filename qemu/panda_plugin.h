@@ -57,7 +57,7 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
-    PANDA_CB_LAST,
+    PANDA_CB_LAST
 } panda_cb_type;
 
 // Union of all possible callback function types

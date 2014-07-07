@@ -65,44 +65,67 @@ void memplot(Shad *shad){
     fclose(memplotlog);
 }
 
-// Prints out taint of write() buffer
-void bufplot(CPUState *env, Shad *shad, uint64_t addr, int length){
-    FILE *bufplotlog = fopen("writebuf.csv", "w");
+// Prints out taint of memory buffer
+// FIXME TODO: fix this broken thing, merge in Tim's taint callback stuff, an
+// improved version of this will be a taint plugin 'query' callback
+void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
+    FILE *bufplotlog = fopen("taint_query.csv", "a+");
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
     uint64_t i;
-    for (i = addr; i < addr+length; i++){
+    LabelSet *ls;
+
+    if (addr->typ == IADDR){
+        for (i = addr->val.ia; i < addr->val.ia+length; i++){
+            ls = shad_dir_find_64(shad->io, i);
+            if (ls){
+                unsigned int j;
+                for (j = 0; j < ls->set->current_size; j++){
+                    fprintf(bufplotlog, "IO %lu,%d,%d\n", i, ls->set->members[j],
+                        ls->type);
+                }
+            }
+        }
+    }
+
+    else if (addr->typ == MADDR){
+        for (i = addr->val.ma; i < addr->val.ma+length; i++){
 #ifdef TARGET_X86_64
 
 #ifdef CONFIG_SOFTMMU
-        LabelSet *ls = shad_dir_find_64(shad->ram,
-            cpu_get_phys_addr(env, i));
+            ls = shad_dir_find_64(shad->ram, cpu_get_phys_addr(env, i));
 #else // CONFIG_SOFTMMU
-        LabelSet *ls = shad_dir_find_64(shad->ram, i);
+            LabelSet *ls = shad_dir_find_64(shad->ram, i);
 #endif // CONFIG_SOFTMMU
-        if (ls){
-            unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
-                fprintf(bufplotlog, "%lu,%d,%d\n", i, ls->set->members[j],
-                    ls->type);
+            if (ls){
+                unsigned int j;
+                for (j = 0; j < ls->set->current_size; j++){
+                    fprintf(bufplotlog, "RAM %lu,%d,%d\n", i, ls->set->members[j],
+                        ls->type);
+                }
             }
-        }
 #else // TARGET_X86_64
 
 #ifdef CONFIG_SOFTMMU
-        uint64_t physaddr = cpu_get_phys_addr(env, i);
-        if (get_ram_bit(shad, physaddr)){
-            LabelSet *ls = shad_dir_find_32(shad->ram, physaddr);
+            uint64_t physaddr = cpu_get_phys_addr(env, i);
+            if (get_ram_bit(shad, physaddr)){
+                LabelSet *ls = shad_dir_find_32(shad->ram, physaddr);
 #else // CONFIG_SOFTMMU
-        if (get_ram_bit(shad, i)){
-            LabelSet *ls = shad_dir_find_32(shad->ram, i);
+            if (get_ram_bit(shad, i)){
+                LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
-            unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
-                fprintf(bufplotlog, "%lu,%d,%d\n", i, ls->set->members[j],
-                    ls->type);
+                unsigned int j;
+                for (j = 0; j < ls->set->current_size; j++){
+                    fprintf(bufplotlog, "%lu,%d,%d\n", i, ls->set->members[j],
+                        ls->type);
+                }
             }
-        }
 #endif // TARGET_X86_64
+        }
+    }
+
+    else {
+        // Other address types not supported
+        assert(0);
     }
     fclose(bufplotlog);
 }

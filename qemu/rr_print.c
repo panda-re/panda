@@ -256,6 +256,10 @@ static RR_log_entry *rr_read_item(void) {
                         fseek(rr_nondet_log->fp,
                             args->variant.handle_packet_args.size, SEEK_CUR);
                         break;
+                    case RR_CALL_NET_TRANSFER:
+                        assert(fread(&(args->variant.net_transfer_args),
+                              sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp) == 1);
+                        break;
                     default:
                         //mz unimplemented
                         assert(0);

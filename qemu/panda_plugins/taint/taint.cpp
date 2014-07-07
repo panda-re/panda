@@ -58,6 +58,14 @@ extern "C" {
 #include "taint_processor.h"
 
 
+// Enable callbacks that deal with network taint
+bool use_network_taint = 0;
+
+// Label all incoming network traffic as tainted
+bool taint_label_incoming_network_traffic = 0;
+
+// Query all outgoing network traffic for taint
+bool taint_query_outgoing_network_traffic = 0;
 
 // defined in panda/taint_processor.c
 extern uint32_t max_taintset_card;
@@ -172,14 +180,15 @@ void add_taint(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
 
     }
     assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
-    struct timeval gtd1, gtd2;
-    gettimeofday(&gtd1, NULL);
+    /*struct timeval gtd1, gtd2;
+    gettimeofday(&gtd1, NULL);*/
     tob_process(tbuf, shad, NULL);
-    gettimeofday(&gtd2, NULL);
-    printf ("add_taint @ 0x%lx, %d bytes\n", addr, length);
+    /*gettimeofday(&gtd2, NULL);
+    printf ("add_taint @ 0x%lx, %d bytes\n", cpu_get_phys_addr(env, addr),
+        length);
     printf ("time required: %f seconds\n",
 	    ((float)(gtd2.tv_sec - gtd1.tv_sec)) +
-	    ((float)(gtd2.tv_usec - gtd1.tv_usec)) / 1000000.0);
+	    ((float)(gtd2.tv_usec - gtd1.tv_usec)) / 1000000.0);*/
     
    count += length;
 }
@@ -252,10 +261,10 @@ void enable_taint(){
 #ifdef CONFIG_SOFTMMU
     pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
-    pcb.replay_handle_packet = handle_packet;
-    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
-    pcb.replay_net_transfer = cb_replay_net_transfer_taint;
-    panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
+    if (use_network_taint){
+        pcb.replay_net_transfer = cb_replay_net_transfer_taint;
+        panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
+    }
     pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
 #endif
@@ -447,10 +456,52 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
         uint64_t old_buf_addr){
     switch (direction){
         case PANDA_NET_RX:
+        {
+#ifdef TAINTDEBUG
             printf("RX packet\n");
-            break;
+            printf("Buf: 0x%lx, Old Buf: 0x%lx, Size %d\n",
+                (uint64_t)buf, old_buf_addr, size);
+#endif
+            if (taint_label_incoming_network_traffic){
+                if (!taintEnabled){
+                    printf("Taint plugin: Label operation detected (network)\n");
+                    printf("Enabling taint processing\n");
+                    taintJustEnabled = true;
+                    taintEnabled = true;
+                    enable_taint();
+                }
+                
+                Addr a = make_iaddr(old_buf_addr);
+                struct taint_op_struct op = {};
+                op.typ = LABELOP;
+                for (int i = 0; i < size; i++){
+                    a.val.ia = old_buf_addr + i;
+                    op.val.label.a = a;
+                    op.val.label.l = i + count; // byte label
+                    //op.val.label.l = 1; // binary label
+                    // make the taint op buffer bigger if necessary
+                    tob_resize(&tob_io_thread);
+                    tob_op_write(tob_io_thread, &op);	
+                }
+                count += size;
+                break;
+            }
+        }
         case PANDA_NET_TX:
+#ifdef TAINTDEBUG
             printf("TX packet\n");
+            printf("Buf: 0x%lx, Old Buf: 0x%lx, Size %d\n",
+                (uint64_t)buf, old_buf_addr, size);
+#endif
+            if (taintEnabled && taint_query_outgoing_network_traffic){
+                TaintOp top;
+                top.typ = QUERYOP;
+                top.val.query.l = size;
+                top.val.query.a = make_iaddr(old_buf_addr);
+                // make the taint op buffer bigger if necessary
+                tob_resize(&tob_io_thread);
+                tob_op_write(tob_io_thread, &top);
+            }
             break;
         default:
             assert(0);
@@ -465,21 +516,42 @@ int cb_replay_net_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr
         uint64_t dest_addr, uint32_t num_bytes){
     // Replay network transfer as taint transfer
     if (taintEnabled) {
-        //TaintOp top;
-        //top.typ = BULKCOPYOP;
-        //top.val.bulkcopy.l = num_bytes;
+        TaintOp top;
+        top.typ = BULKCOPYOP;
+        top.val.bulkcopy.l = num_bytes;
         switch (type) {
             case NET_TRANSFER_RAM_TO_IOB:
+#ifdef TAINTDEBUG
                 printf("NET_TRANSFER_RAM_TO_IOB src: 0x%lx, dest 0x%lx, len %d\n",
                     src_addr, dest_addr, num_bytes);
+#endif
+                top.val.bulkcopy.a = make_maddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
                 break;
             case NET_TRANSFER_IOB_TO_RAM:
+#ifdef TAINTDEBUG
                 printf("NET_TRANSFER_IOB_TO_RAM src: 0x%lx, dest 0x%lx, len %d\n",
                     src_addr, dest_addr, num_bytes);
+#endif
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_maddr(dest_addr);
+                break;
+            case NET_TRANSFER_IOB_TO_IOB:
+#ifdef TAINTDEBUG
+                printf("NET_TRANSFER_IOB_TO_IOB src: 0x%lx, dest 0x%lx, len %d\n",
+                    src_addr, dest_addr, num_bytes);
+#endif
+                top.val.bulkcopy.a = make_iaddr(src_addr);
+                top.val.bulkcopy.b = make_iaddr(dest_addr);
                 break;
             default:
                 assert(0);
         }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tob_io_thread);
+        // add bulk copy corresponding to this hd transfer to buffer
+        // of taint ops for io thread.
+        tob_op_write(tob_io_thread, &top);
     }
     return 0;
 }
@@ -613,12 +685,15 @@ int guest_hypercall_callback(CPUState *env){
     // ESI contains the length of that string
     // EDX = starting offset - for file queries
     else if (env->regs[R_EAX] == 9){ //Query taint on label
-        bufplot(env, shadow, (uint64_t)buf_start, (int)buf_len);
-        printf("Taint plugin: Query operation detected\n");
-        printf("Disabling taint processing\n");
-        taintEnabled = false;
-        taintJustDisabled = true;
-        printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
+        if (taintEnabled){
+            printf("Taint plugin: Query operation detected\n");
+            Addr a = make_maddr(buf_start);
+            bufplot(env, shadow, &a, (int)buf_len);
+        }
+        //printf("Disabling taint processing\n");
+        //taintEnabled = false;
+        //taintJustDisabled = true;
+        //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
 #endif // TARGET_I386
     return 1;
@@ -684,7 +759,8 @@ static int user_read(CPUState *env, abi_long ret, abi_long fd, void *p){
 
 static int user_write(CPUState *env, abi_long ret, abi_long fd, void *p){
     if (ret > 0 && fd == outfd){
-        bufplot(env, shadow, (uint64_t)p /*pointer*/, ret /*length*/);
+        Addr a = make_maddr((uint64_t)p);
+        bufplot(env, shadow, &a /*pointer*/, ret /*length*/);
     }
     return 0;
 }
@@ -728,15 +804,10 @@ bool init_plugin(void *self) {
     panda_disable_tb_chaining();
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
-
-    // XXX RW just for testing
-    //pcb.replay_handle_packet = handle_packet;
-    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
-    //pcb.replay_net_transfer = cb_replay_net_transfer_taint;
-    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
-    //pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
-    //panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
-
+    if (use_network_taint){
+        pcb.replay_handle_packet = handle_packet;
+        panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
+    }
 #ifndef CONFIG_SOFTMMU
     pcb.user_after_syscall = user_after_syscall;
     panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
