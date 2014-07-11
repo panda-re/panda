@@ -44,6 +44,10 @@ const int has_llvm_engine = 1;
 int generate_llvm = 0;
 int execute_llvm = 0;
 
+// Needed to prevent before_block_exec_invalidate_opt from
+// running more than once
+bool bb_invalidate_done = false;
+
 #ifdef CONFIG_SOFTMMU
 // TRL 0810 record replay stuff 
 #include "rr_log.h"
@@ -745,12 +749,19 @@ int cpu_exec(CPUState *env)
 
                 // PANDA instrumentation: before basic block exec (with option
                 // to invalidate tb)
+                // Note: we can hit this point multiple times without actually having
+                // executed the block in question if there are interrupts pending.
+                // So we guard the callback execution with bb_invalidate_done, which
+                // will get cleared when we actually get to execute the basic block.
                 panda_cb_list *plist;
                 bool panda_invalidate_tb = false;
-                for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
-                        plist != NULL; plist = plist->next) {
-                    panda_invalidate_tb |=
-                        plist->entry.before_block_exec_invalidate_opt(env, tb);
+                if (unlikely(bb_invalidate_done)) {
+                    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
+                            plist != NULL; plist = plist->next) {
+                        panda_invalidate_tb |=
+                            plist->entry.before_block_exec_invalidate_opt(env, tb);
+                    }
+                    bb_invalidate_done = true;
                 }
 
 #ifdef CONFIG_SOFTMMU
@@ -852,6 +863,10 @@ int cpu_exec(CPUState *env)
 #endif
                         //mz Actually jump into the generated code
                         /* execute the generated code */
+
+                        // If we got here we are definitely going to exec
+                        // this block. Clear the before_bb_invalidate_opt flag
+                        bb_invalidate_done = false;
 
                         // PANDA instrumentation: before basic block exec
                         for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
