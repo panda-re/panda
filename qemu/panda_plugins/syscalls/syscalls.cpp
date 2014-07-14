@@ -274,6 +274,53 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
 }
 
 
+
+namespace syscalls {
+    
+string::string(CPUState* env, target_ulong pc, target_ulong vaddr):
+    vaddr(vaddr), env(env), pc(pc)
+{
+    resolve();
+}
+
+bool string::resolve()
+{
+    // TARGET_PAGE_SIZE doesn't account for large pages, but most of QEMU doesn't anyway
+    char buff[TARGET_PAGE_SIZE + 1];
+    buff[TARGET_PAGE_SIZE] = 0;
+    unsigned short len = TARGET_PAGE_SIZE - (vaddr &  (TARGET_PAGE_SIZE -1));
+    if(len == 0) len = TARGET_PAGE_SIZE;
+    do{
+    // keep copying pages until the string terminates
+        int ret = panda_virtual_memory_rw(env, vaddr, (uint8_t*)buff, len, 0);
+        if(ret < 0){ // not mapped
+          return false;
+        }
+        if(strlen(buff) > len){
+
+          data.append(buff, len);
+          vaddr += len;
+          len = TARGET_PAGE_SIZE;
+        }else {
+          data += buff;
+          break;
+        }
+    }while(true);
+    
+    return true;
+}
+
+std::string& string::value()
+{
+    if(data.empty())
+        resolve();
+    return data;
+}
+
+
+};
+
+
 //void record_syscall(const char* callname);
 void finish_syscall(){}
 //void log_string(target_ulong src, const char* argname);
@@ -281,7 +328,7 @@ void finish_syscall(){}
 //void log_32(target_ulong value, const char* argname);
 //void log64(target_ulong high, target_ulong low, const char* argname){}
 std::function<void (const char*)> record_syscall;
-std::function<std::string  (target_ulong, const char*)> log_string;
+std::function<syscalls::string  (target_ulong, const char*)> log_string;
 std::function<target_ulong (target_ulong, const char*)> log_pointer;
 std::function<uint32_t     (target_ulong, const char*)> log_32;
 std::function<uint64_t     (target_ulong, target_ulong, const char*)> log_64;
@@ -346,30 +393,10 @@ int exec_callback(CPUState *env, target_ulong pc) {
       syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", callname, pc, env->regs[7], env->thumb);
     };
 
-    log_string = [&env, &pc](target_ulong src, const char* argname) -> std::string{
-      std::string value;
-      char buff[4097];
-      buff[4096] = 0;
-      unsigned short len = 4096 - (src & 0xFFF);
-      if(len == 0) len = 4096;
-      do{
-	// keep copying pages until the string terminates
-	int ret = panda_virtual_memory_rw(env, src, (uint8_t*)buff, len, 0);
-	if(ret < 0){ // not mapped
-	  break;
-	}
-	if(strlen(buff) > len){
-
-	  value.append(buff, len);
-	  src += len;
-	  len = 4096;
-	}else {
-	  value += buff;
-	  break;
-	}
-      }while(true);
-      syscall_fprintf(env, "STR, NAME=%s, VALUE=%s\n", argname, value.c_str());
-      return value;
+    log_string = [&env, &pc](target_ulong src, const char* argname) -> syscalls::string{
+      syscalls::string arg(env, pc, src);
+      syscall_fprintf(env, "STRING, NAME=%s, VALUE=%s\n", argname, arg.value().c_str()); 
+      return arg;
     };
 
     log_pointer = [&env, &pc](target_ulong addr, const char* argname) -> target_ulong {

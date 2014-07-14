@@ -307,8 +307,9 @@ static StaticBlock staticBlock;
 
 class OpenCallbackData : public CallbackData {
 public:
-    string path;
+    syscalls::string path;
     target_ulong base_fd;
+    OpenCallbackData(syscalls::string& apath): path(apath) {}
 };
 
 class DupCallbackData: public CallbackData {
@@ -354,7 +355,7 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     if(NULL_FD != data->base_fd){
         dirname += mymap[data->base_fd];
     }
-    dirname += "/" + data->path;
+    dirname += "/" + data->path.value();
     if(dirname.length() > 1 &&
         dirname[0] == '/' && dirname[1] == '/')
         dirname.erase(0,1); //remove leading slash
@@ -366,32 +367,32 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
 }
 
 //mkdirs
-void call_sys_mkdirat_callback(CPUState* env,target_ulong pc,uint32_t dfd,std::string pathname,uint32_t mode) { 
+void call_sys_mkdirat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscalls::string pathname,uint32_t mode) { 
     //mkdirat does not return an FD
-    /*OpenCallbackData* data = new OpenCallbackData;
+    /*OpenCallbackData* data = new OpenCallbackData(pathname);
     data->path = pathname;
     data->base_fd = dfd;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));*/
 }
 
-void call_sys_mkdir_callback(CPUState* env,target_ulong pc,std::string pathname,uint32_t mode) { 
+void call_sys_mkdir_callback(CPUState* env,target_ulong pc,syscalls::string pathname,uint32_t mode) { 
     // mkdir does not return an FD
-    /*OpenCallbackData* data = new OpenCallbackData;
+    /*OpenCallbackData* data = new OpenCallbackData(pathname);
     data->path = pathname;
     data->base_fd = NULL_FD;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));*/
 }
 //opens
 
-void call_sys_open_callback(CPUState *env, target_ulong pc, std::string filename,uint32_t flags,uint32_t mode){
-    OpenCallbackData* data = new OpenCallbackData;
+void call_sys_open_callback(CPUState *env, target_ulong pc, syscalls::string filename,uint32_t flags,uint32_t mode){
+    OpenCallbackData* data = new OpenCallbackData(filename);
     data->path = filename;
     data->base_fd = NULL_FD;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));
 }
 
-void call_sys_openat_callback(CPUState* env,target_ulong pc,uint32_t dfd,std::string filename,uint32_t flags,uint32_t mode){
-    OpenCallbackData* data = new OpenCallbackData;
+void call_sys_openat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscalls::string filename,uint32_t flags,uint32_t mode){
+    OpenCallbackData* data = new OpenCallbackData(filename);
     data->path = filename;
     data->base_fd = dfd;
     if (dfd == AT_FDCWD)
@@ -718,7 +719,7 @@ void call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong arg0,uin
     data->sd_array = arg0;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sockpair_callback));
 }
-//void call_sys_truncate_callback(CPUState* env,target_ulong pc,std::string path,uint32_t length);
+//void call_sys_truncate_callback(CPUState* env,target_ulong pc,syscalls::string path,uint32_t length);
 //void call_sys_ftruncate_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t length);
 /*cmd == F_DUPFD, returns new fd
   cmd == F_DUPFD_CLOEXEC same */

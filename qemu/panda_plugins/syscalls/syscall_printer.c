@@ -40,7 +40,7 @@ finish_syscall();
 // 5 long sys_open ['const char __user *filename', 'int flags', ' int mode']
 case 5: {
 record_syscall("sys_open");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t flags = log_32(env->regs[1], "int flags");
 uint32_t mode = log_32(env->regs[2], " int mode");
 call_sys_open_callback(env,pc,filename,flags,mode);
@@ -56,7 +56,7 @@ finish_syscall();
 // 8 long sys_creat ['const char __user *pathname', ' int mode']
 case 8: {
 record_syscall("sys_creat");
-std::string pathname = log_string(env->regs[0], "const char __user *pathname");
+syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
 uint32_t mode = log_32(env->regs[1], " int mode");
 call_sys_creat_callback(env,pc,pathname,mode);
 finish_syscall();
@@ -64,22 +64,22 @@ finish_syscall();
 // 9 long sys_link ['const char __user *oldname', 'const char __user *newname']
 case 9: {
 record_syscall("sys_link");
-std::string oldname = log_string(env->regs[0], "const char __user *oldname");
-std::string newname = log_string(env->regs[1], "const char __user *newname");
+syscalls::string oldname = log_string(env->regs[0], "const char __user *oldname");
+syscalls::string newname = log_string(env->regs[1], "const char __user *newname");
 call_sys_link_callback(env,pc,oldname,newname);
 finish_syscall();
 }; break;
 // 10 long sys_unlink ['const char __user *pathname']
 case 10: {
 record_syscall("sys_unlink");
-std::string pathname = log_string(env->regs[0], "const char __user *pathname");
+syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
 call_sys_unlink_callback(env,pc,pathname);
 finish_syscall();
 }; break;
 // 11 unsigned long execve ['const char *filename', ' char *const argv[]', ' char *const envp[]']
 case 11: {
 record_syscall("execve");
-std::string filename = log_string(env->regs[0], "const char *filename");
+syscalls::string filename = log_string(env->regs[0], "const char *filename");
 target_ulong argv = log_pointer(env->regs[1], " char *const argv[]");
 target_ulong envp = log_pointer(env->regs[2], " char *const envp[]");
 call_execve_callback(env,pc,filename,argv,envp);
@@ -88,14 +88,14 @@ finish_syscall();
 // 12 long sys_chdir ['const char __user *filename']
 case 12: {
 record_syscall("sys_chdir");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 call_sys_chdir_callback(env,pc,filename);
 finish_syscall();
 }; break;
 // 14 long sys_mknod ['const char __user *filename', ' int mode', 'unsigned dev']
 case 14: {
 record_syscall("sys_mknod");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t mode = log_32(env->regs[1], " int mode");
 uint32_t dev = log_32(env->regs[2], "unsigned dev");
 call_sys_mknod_callback(env,pc,filename,mode,dev);
@@ -104,7 +104,7 @@ finish_syscall();
 // 15 long sys_chmod ['const char __user *filename', ' mode_t mode']
 case 15: {
 record_syscall("sys_chmod");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t mode = log_32(env->regs[1], " mode_t mode");
 call_sys_chmod_callback(env,pc,filename,mode);
 finish_syscall();
@@ -112,7 +112,7 @@ finish_syscall();
 // 16 long sys_lchown16 ['const char __user *filename', 'old_uid_t user', ' old_gid_t group']
 case 16: {
 record_syscall("sys_lchown16");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t user = log_32(env->regs[1], "old_uid_t user");
 uint32_t group = log_32(env->regs[2], " old_gid_t group");
 call_sys_lchown16_callback(env,pc,filename,user,group);
@@ -136,9 +136,9 @@ finish_syscall();
 // 21 long sys_mount ['char __user *dev_name', ' char __user *dir_name', 'char __user *type', ' unsigned long flags', 'void __user *data']
 case 21: {
 record_syscall("sys_mount");
-std::string dev_name = log_string(env->regs[0], "char __user *dev_name");
-std::string dir_name = log_string(env->regs[1], " char __user *dir_name");
-std::string type = log_string(env->regs[2], "char __user *type");
+syscalls::string dev_name = log_string(env->regs[0], "char __user *dev_name");
+syscalls::string dir_name = log_string(env->regs[1], " char __user *dir_name");
+syscalls::string type = log_string(env->regs[2], "char __user *type");
 uint32_t flags = log_32(env->regs[3], " unsigned long flags");
 target_ulong data = log_pointer(env->regs[4], "void __user *data");
 call_sys_mount_callback(env,pc,dev_name,dir_name,type,flags,data);
@@ -176,7 +176,7 @@ finish_syscall();
 // 33 long sys_access ['const char __user *filename', ' int mode']
 case 33: {
 record_syscall("sys_access");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t mode = log_32(env->regs[1], " int mode");
 call_sys_access_callback(env,pc,filename,mode);
 finish_syscall();
@@ -205,15 +205,15 @@ finish_syscall();
 // 38 long sys_rename ['const char __user *oldname', 'const char __user *newname']
 case 38: {
 record_syscall("sys_rename");
-std::string oldname = log_string(env->regs[0], "const char __user *oldname");
-std::string newname = log_string(env->regs[1], "const char __user *newname");
+syscalls::string oldname = log_string(env->regs[0], "const char __user *oldname");
+syscalls::string newname = log_string(env->regs[1], "const char __user *newname");
 call_sys_rename_callback(env,pc,oldname,newname);
 finish_syscall();
 }; break;
 // 39 long sys_mkdir ['const char __user *pathname', ' int mode']
 case 39: {
 record_syscall("sys_mkdir");
-std::string pathname = log_string(env->regs[0], "const char __user *pathname");
+syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
 uint32_t mode = log_32(env->regs[1], " int mode");
 call_sys_mkdir_callback(env,pc,pathname,mode);
 finish_syscall();
@@ -221,7 +221,7 @@ finish_syscall();
 // 40 long sys_rmdir ['const char __user *pathname']
 case 40: {
 record_syscall("sys_rmdir");
-std::string pathname = log_string(env->regs[0], "const char __user *pathname");
+syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
 call_sys_rmdir_callback(env,pc,pathname);
 finish_syscall();
 }; break;
@@ -281,14 +281,14 @@ finish_syscall();
 // 51 long sys_acct ['const char __user *name']
 case 51: {
 record_syscall("sys_acct");
-std::string name = log_string(env->regs[0], "const char __user *name");
+syscalls::string name = log_string(env->regs[0], "const char __user *name");
 call_sys_acct_callback(env,pc,name);
 finish_syscall();
 }; break;
 // 52 long sys_umount ['char __user *name', ' int flags']
 case 52: {
 record_syscall("sys_umount");
-std::string name = log_string(env->regs[0], "char __user *name");
+syscalls::string name = log_string(env->regs[0], "char __user *name");
 uint32_t flags = log_32(env->regs[1], " int flags");
 call_sys_umount_callback(env,pc,name,flags);
 finish_syscall();
@@ -329,7 +329,7 @@ finish_syscall();
 // 61 long sys_chroot ['const char __user *filename']
 case 61: {
 record_syscall("sys_chroot");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 call_sys_chroot_callback(env,pc,filename);
 finish_syscall();
 }; break;
@@ -411,7 +411,7 @@ finish_syscall();
 // 74 long sys_sethostname ['char __user *name', ' int len']
 case 74: {
 record_syscall("sys_sethostname");
-std::string name = log_string(env->regs[0], "char __user *name");
+syscalls::string name = log_string(env->regs[0], "char __user *name");
 uint32_t len = log_32(env->regs[1], " int len");
 call_sys_sethostname_callback(env,pc,name,len);
 finish_syscall();
@@ -467,15 +467,15 @@ finish_syscall();
 // 83 long sys_symlink ['const char __user *old', ' const char __user *new']
 case 83: {
 record_syscall("sys_symlink");
-std::string old = log_string(env->regs[0], "const char __user *old");
-std::string anew = log_string(env->regs[1], " const char __user *new");
+syscalls::string old = log_string(env->regs[0], "const char __user *old");
+syscalls::string anew = log_string(env->regs[1], " const char __user *new");
 call_sys_symlink_callback(env,pc,old,anew);
 finish_syscall();
 }; break;
 // 85 long sys_readlink ['const char __user *path', 'char __user *buf', ' int bufsiz']
 case 85: {
 record_syscall("sys_readlink");
-std::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
 target_ulong buf = log_pointer(env->regs[1], "char __user *buf");
 uint32_t bufsiz = log_32(env->regs[2], " int bufsiz");
 call_sys_readlink_callback(env,pc,path,buf,bufsiz);
@@ -484,14 +484,14 @@ finish_syscall();
 // 86 long sys_uselib ['const char __user *library']
 case 86: {
 record_syscall("sys_uselib");
-std::string library = log_string(env->regs[0], "const char __user *library");
+syscalls::string library = log_string(env->regs[0], "const char __user *library");
 call_sys_uselib_callback(env,pc,library);
 finish_syscall();
 }; break;
 // 87 long sys_swapon ['const char __user *specialfile', ' int swap_flags']
 case 87: {
 record_syscall("sys_swapon");
-std::string specialfile = log_string(env->regs[0], "const char __user *specialfile");
+syscalls::string specialfile = log_string(env->regs[0], "const char __user *specialfile");
 uint32_t swap_flags = log_32(env->regs[1], " int swap_flags");
 call_sys_swapon_callback(env,pc,specialfile,swap_flags);
 finish_syscall();
@@ -517,7 +517,7 @@ finish_syscall();
 // 92 long sys_truncate ['const char __user *path', 'unsigned long length']
 case 92: {
 record_syscall("sys_truncate");
-std::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
 uint32_t length = log_32(env->regs[1], "unsigned long length");
 call_sys_truncate_callback(env,pc,path,length);
 finish_syscall();
@@ -567,7 +567,7 @@ finish_syscall();
 // 99 long sys_statfs ['const char __user * path', 'struct statfs __user *buf']
 case 99: {
 record_syscall("sys_statfs");
-std::string path = log_string(env->regs[0], "const char __user * path");
+syscalls::string path = log_string(env->regs[0], "const char __user * path");
 target_ulong buf = log_pointer(env->regs[1], "struct statfs __user *buf");
 call_sys_statfs_callback(env,pc,path,buf);
 finish_syscall();
@@ -609,7 +609,7 @@ finish_syscall();
 // 106 long sys_newstat ['char __user *filename', 'struct stat __user *statbuf']
 case 106: {
 record_syscall("sys_newstat");
-std::string filename = log_string(env->regs[0], "char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[1], "struct stat __user *statbuf");
 call_sys_newstat_callback(env,pc,filename,statbuf);
 finish_syscall();
@@ -617,7 +617,7 @@ finish_syscall();
 // 107 long sys_newlstat ['char __user *filename', 'struct stat __user *statbuf']
 case 107: {
 record_syscall("sys_newlstat");
-std::string filename = log_string(env->regs[0], "char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[1], "struct stat __user *statbuf");
 call_sys_newlstat_callback(env,pc,filename,statbuf);
 finish_syscall();
@@ -649,7 +649,7 @@ finish_syscall();
 // 115 long sys_swapoff ['const char __user *specialfile']
 case 115: {
 record_syscall("sys_swapoff");
-std::string specialfile = log_string(env->regs[0], "const char __user *specialfile");
+syscalls::string specialfile = log_string(env->regs[0], "const char __user *specialfile");
 call_sys_swapoff_callback(env,pc,specialfile);
 finish_syscall();
 }; break;
@@ -688,7 +688,7 @@ finish_syscall();
 // 121 long sys_setdomainname ['char __user *name', ' int len']
 case 121: {
 record_syscall("sys_setdomainname");
-std::string name = log_string(env->regs[0], "char __user *name");
+syscalls::string name = log_string(env->regs[0], "char __user *name");
 uint32_t len = log_32(env->regs[1], " int len");
 call_sys_setdomainname_callback(env,pc,name,len);
 finish_syscall();
@@ -730,14 +730,14 @@ case 128: {
 record_syscall("sys_init_module");
 target_ulong umod = log_pointer(env->regs[0], "void __user *umod");
 uint32_t len = log_32(env->regs[1], " unsigned long len");
-std::string uargs = log_string(env->regs[2], "const char __user *uargs");
+syscalls::string uargs = log_string(env->regs[2], "const char __user *uargs");
 call_sys_init_module_callback(env,pc,umod,len,uargs);
 finish_syscall();
 }; break;
 // 129 long sys_delete_module ['const char __user *name_user', 'unsigned int flags']
 case 129: {
 record_syscall("sys_delete_module");
-std::string name_user = log_string(env->regs[0], "const char __user *name_user");
+syscalls::string name_user = log_string(env->regs[0], "const char __user *name_user");
 uint32_t flags = log_32(env->regs[1], "unsigned int flags");
 call_sys_delete_module_callback(env,pc,name_user,flags);
 finish_syscall();
@@ -746,7 +746,7 @@ finish_syscall();
 case 131: {
 record_syscall("sys_quotactl");
 uint32_t cmd = log_32(env->regs[0], "unsigned int cmd");
-std::string special = log_string(env->regs[1], " const char __user *special");
+syscalls::string special = log_string(env->regs[1], " const char __user *special");
 uint32_t id = log_32(env->regs[2], "qid_t id");
 target_ulong addr = log_pointer(env->regs[3], " void __user *addr");
 call_sys_quotactl_callback(env,pc,cmd,special,id,addr);
@@ -1150,7 +1150,7 @@ finish_syscall();
 // 182 long sys_chown16 ['const char __user *filename', 'old_uid_t user', ' old_gid_t group']
 case 182: {
 record_syscall("sys_chown16");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t user = log_32(env->regs[1], "old_uid_t user");
 uint32_t group = log_32(env->regs[2], " old_gid_t group");
 call_sys_chown16_callback(env,pc,filename,user,group);
@@ -1227,7 +1227,7 @@ finish_syscall();
 // 193 long sys_truncate64 ['const char __user *path', ' loff_t length']
 case 193: {
 record_syscall("sys_truncate64");
-std::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
 // skipping arg for alignment
 uint64_t length = log_64(env->regs[2], env->regs[3], " loff_t length");
 call_sys_truncate64_callback(env,pc,path,length);
@@ -1245,7 +1245,7 @@ finish_syscall();
 // 195 long sys_stat64 ['char __user *filename', 'struct stat64 __user *statbuf']
 case 195: {
 record_syscall("sys_stat64");
-std::string filename = log_string(env->regs[0], "char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[1], "struct stat64 __user *statbuf");
 call_sys_stat64_callback(env,pc,filename,statbuf);
 finish_syscall();
@@ -1253,7 +1253,7 @@ finish_syscall();
 // 196 long sys_lstat64 ['char __user *filename', 'struct stat64 __user *statbuf']
 case 196: {
 record_syscall("sys_lstat64");
-std::string filename = log_string(env->regs[0], "char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[1], "struct stat64 __user *statbuf");
 call_sys_lstat64_callback(env,pc,filename,statbuf);
 finish_syscall();
@@ -1269,7 +1269,7 @@ finish_syscall();
 // 198 long sys_lchown ['const char __user *filename', 'uid_t user', ' gid_t group']
 case 198: {
 record_syscall("sys_lchown");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t user = log_32(env->regs[1], "uid_t user");
 uint32_t group = log_32(env->regs[2], " gid_t group");
 call_sys_lchown_callback(env,pc,filename,user,group);
@@ -1379,7 +1379,7 @@ finish_syscall();
 // 212 long sys_chown ['const char __user *filename', 'uid_t user', ' gid_t group']
 case 212: {
 record_syscall("sys_chown");
-std::string filename = log_string(env->regs[0], "const char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
 uint32_t user = log_32(env->regs[1], "uid_t user");
 uint32_t group = log_32(env->regs[2], " gid_t group");
 call_sys_chown_callback(env,pc,filename,user,group);
@@ -1425,8 +1425,8 @@ finish_syscall();
 // 218 long sys_pivot_root ['const char __user *new_root', 'const char __user *put_old']
 case 218: {
 record_syscall("sys_pivot_root");
-std::string new_root = log_string(env->regs[0], "const char __user *new_root");
-std::string put_old = log_string(env->regs[1], "const char __user *put_old");
+syscalls::string new_root = log_string(env->regs[0], "const char __user *new_root");
+syscalls::string put_old = log_string(env->regs[1], "const char __user *put_old");
 call_sys_pivot_root_callback(env,pc,new_root,put_old);
 finish_syscall();
 }; break;
@@ -1435,7 +1435,7 @@ case 219: {
 record_syscall("sys_mincore");
 uint32_t start = log_32(env->regs[0], "unsigned long start");
 uint32_t len = log_32(env->regs[1], " size_t len");
-std::string vec = log_string(env->regs[2], "unsigned char __user * vec");
+syscalls::string vec = log_string(env->regs[2], "unsigned char __user * vec");
 call_sys_mincore_callback(env,pc,start,len,vec);
 finish_syscall();
 }; break;
@@ -1476,8 +1476,8 @@ finish_syscall();
 // 226 long sys_setxattr ['const char __user *path', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
 case 226: {
 record_syscall("sys_setxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 uint32_t flags = log_32(env->regs[4], " int flags");
@@ -1487,8 +1487,8 @@ finish_syscall();
 // 227 long sys_lsetxattr ['const char __user *path', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
 case 227: {
 record_syscall("sys_lsetxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 uint32_t flags = log_32(env->regs[4], " int flags");
@@ -1499,7 +1499,7 @@ finish_syscall();
 case 228: {
 record_syscall("sys_fsetxattr");
 uint32_t fd = log_32(env->regs[0], "int fd");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 uint32_t flags = log_32(env->regs[4], " int flags");
@@ -1509,8 +1509,8 @@ finish_syscall();
 // 229 long sys_getxattr ['const char __user *path', ' const char __user *name', 'void __user *value', ' size_t size']
 case 229: {
 record_syscall("sys_getxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 call_sys_getxattr_callback(env,pc,path,name,value,size);
@@ -1519,8 +1519,8 @@ finish_syscall();
 // 230 long sys_lgetxattr ['const char __user *path', ' const char __user *name', 'void __user *value', ' size_t size']
 case 230: {
 record_syscall("sys_lgetxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 call_sys_lgetxattr_callback(env,pc,path,name,value,size);
@@ -1530,7 +1530,7 @@ finish_syscall();
 case 231: {
 record_syscall("sys_fgetxattr");
 uint32_t fd = log_32(env->regs[0], "int fd");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
 call_sys_fgetxattr_callback(env,pc,fd,name,value,size);
@@ -1539,8 +1539,8 @@ finish_syscall();
 // 232 long sys_listxattr ['const char __user *path', ' char __user *list', 'size_t size']
 case 232: {
 record_syscall("sys_listxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string list = log_string(env->regs[1], " char __user *list");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string list = log_string(env->regs[1], " char __user *list");
 uint32_t size = log_32(env->regs[2], "size_t size");
 call_sys_listxattr_callback(env,pc,path,list,size);
 finish_syscall();
@@ -1548,8 +1548,8 @@ finish_syscall();
 // 233 long sys_llistxattr ['const char __user *path', ' char __user *list', 'size_t size']
 case 233: {
 record_syscall("sys_llistxattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string list = log_string(env->regs[1], " char __user *list");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string list = log_string(env->regs[1], " char __user *list");
 uint32_t size = log_32(env->regs[2], "size_t size");
 call_sys_llistxattr_callback(env,pc,path,list,size);
 finish_syscall();
@@ -1558,7 +1558,7 @@ finish_syscall();
 case 234: {
 record_syscall("sys_flistxattr");
 uint32_t fd = log_32(env->regs[0], "int fd");
-std::string list = log_string(env->regs[1], " char __user *list");
+syscalls::string list = log_string(env->regs[1], " char __user *list");
 uint32_t size = log_32(env->regs[2], " size_t size");
 call_sys_flistxattr_callback(env,pc,fd,list,size);
 finish_syscall();
@@ -1566,16 +1566,16 @@ finish_syscall();
 // 235 long sys_removexattr ['const char __user *path', 'const char __user *name']
 case 235: {
 record_syscall("sys_removexattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], "const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], "const char __user *name");
 call_sys_removexattr_callback(env,pc,path,name);
 finish_syscall();
 }; break;
 // 236 long sys_lremovexattr ['const char __user *path', 'const char __user *name']
 case 236: {
 record_syscall("sys_lremovexattr");
-std::string path = log_string(env->regs[0], "const char __user *path");
-std::string name = log_string(env->regs[1], "const char __user *name");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string name = log_string(env->regs[1], "const char __user *name");
 call_sys_lremovexattr_callback(env,pc,path,name);
 finish_syscall();
 }; break;
@@ -1583,7 +1583,7 @@ finish_syscall();
 case 237: {
 record_syscall("sys_fremovexattr");
 uint32_t fd = log_32(env->regs[0], "int fd");
-std::string name = log_string(env->regs[1], " const char __user *name");
+syscalls::string name = log_string(env->regs[1], " const char __user *name");
 call_sys_fremovexattr_callback(env,pc,fd,name);
 finish_syscall();
 }; break;
@@ -1818,7 +1818,7 @@ finish_syscall();
 // 266 long sys_statfs64 ['const char __user *path', ' size_t sz', 'struct statfs64 __user *buf']
 case 266: {
 record_syscall("sys_statfs64");
-std::string path = log_string(env->regs[0], "const char __user *path");
+syscalls::string path = log_string(env->regs[0], "const char __user *path");
 uint32_t sz = log_32(env->regs[1], " size_t sz");
 target_ulong buf = log_pointer(env->regs[2], "struct statfs64 __user *buf");
 call_sys_statfs64_callback(env,pc,path,sz,buf);
@@ -1845,7 +1845,7 @@ finish_syscall();
 // 269 long sys_utimes ['char __user *filename', 'struct timeval __user *utimes']
 case 269: {
 record_syscall("sys_utimes");
-std::string filename = log_string(env->regs[0], "char __user *filename");
+syscalls::string filename = log_string(env->regs[0], "char __user *filename");
 target_ulong utimes = log_pointer(env->regs[1], "struct timeval __user *utimes");
 call_sys_utimes_callback(env,pc,filename,utimes);
 finish_syscall();
@@ -1894,7 +1894,7 @@ finish_syscall();
 // 274 long sys_mq_open ['const char __user *name', ' int oflag', ' mode_t mode', ' struct mq_attr __user *attr']
 case 274: {
 record_syscall("sys_mq_open");
-std::string name = log_string(env->regs[0], "const char __user *name");
+syscalls::string name = log_string(env->regs[0], "const char __user *name");
 uint32_t oflag = log_32(env->regs[1], " int oflag");
 uint32_t mode = log_32(env->regs[2], " mode_t mode");
 target_ulong attr = log_pointer(env->regs[3], " struct mq_attr __user *attr");
@@ -1904,7 +1904,7 @@ finish_syscall();
 // 275 long sys_mq_unlink ['const char __user *name']
 case 275: {
 record_syscall("sys_mq_unlink");
-std::string name = log_string(env->regs[0], "const char __user *name");
+syscalls::string name = log_string(env->regs[0], "const char __user *name");
 call_sys_mq_unlink_callback(env,pc,name);
 finish_syscall();
 }; break;
@@ -1912,7 +1912,7 @@ finish_syscall();
 case 276: {
 record_syscall("sys_mq_timedsend");
 uint32_t mqdes = log_32(env->regs[0], "mqd_t mqdes");
-std::string msg_ptr = log_string(env->regs[1], " const char __user *msg_ptr");
+syscalls::string msg_ptr = log_string(env->regs[1], " const char __user *msg_ptr");
 uint32_t msg_len = log_32(env->regs[2], " size_t msg_len");
 uint32_t msg_prio = log_32(env->regs[3], " unsigned int msg_prio");
 target_ulong abs_timeout = log_pointer(env->regs[4], " const struct timespec __user *abs_timeout");
@@ -1923,7 +1923,7 @@ finish_syscall();
 case 277: {
 record_syscall("sys_mq_timedreceive");
 uint32_t mqdes = log_32(env->regs[0], "mqd_t mqdes");
-std::string msg_ptr = log_string(env->regs[1], " char __user *msg_ptr");
+syscalls::string msg_ptr = log_string(env->regs[1], " char __user *msg_ptr");
 uint32_t msg_len = log_32(env->regs[2], " size_t msg_len");
 target_ulong msg_prio = log_pointer(env->regs[3], " unsigned int __user *msg_prio");
 target_ulong abs_timeout = log_pointer(env->regs[4], " const struct timespec __user *abs_timeout");
@@ -2088,7 +2088,7 @@ record_syscall("sys_setsockopt");
 uint32_t fd = log_32(env->regs[0], "int fd");
 uint32_t level = log_32(env->regs[1], " int level");
 uint32_t optname = log_32(env->regs[2], " int optname");
-std::string optval = log_string(env->regs[3], "char __user *optval");
+syscalls::string optval = log_string(env->regs[3], "char __user *optval");
 uint32_t optlen = log_32(env->regs[4], " int optlen");
 call_sys_setsockopt_callback(env,pc,fd,level,optname,optval,optlen);
 finish_syscall();
@@ -2099,7 +2099,7 @@ record_syscall("sys_getsockopt");
 uint32_t fd = log_32(env->regs[0], "int fd");
 uint32_t level = log_32(env->regs[1], " int level");
 uint32_t optname = log_32(env->regs[2], " int optname");
-std::string optval = log_string(env->regs[3], "char __user *optval");
+syscalls::string optval = log_string(env->regs[3], "char __user *optval");
 target_ulong optlen = log_pointer(env->regs[4], " int __user *optlen");
 call_sys_getsockopt_callback(env,pc,fd,level,optname,optval,optlen);
 finish_syscall();
@@ -2192,7 +2192,7 @@ finish_syscall();
 case 305: {
 record_syscall("sys_shmat");
 uint32_t shmid = log_32(env->regs[0], "int shmid");
-std::string shmaddr = log_string(env->regs[1], " char __user *shmaddr");
+syscalls::string shmaddr = log_string(env->regs[1], " char __user *shmaddr");
 uint32_t shmflg = log_32(env->regs[2], " int shmflg");
 call_sys_shmat_callback(env,pc,shmid,shmaddr,shmflg);
 finish_syscall();
@@ -2200,7 +2200,7 @@ finish_syscall();
 // 306 long sys_shmdt ['char __user *shmaddr']
 case 306: {
 record_syscall("sys_shmdt");
-std::string shmaddr = log_string(env->regs[0], "char __user *shmaddr");
+syscalls::string shmaddr = log_string(env->regs[0], "char __user *shmaddr");
 call_sys_shmdt_callback(env,pc,shmaddr);
 finish_syscall();
 }; break;
@@ -2225,8 +2225,8 @@ finish_syscall();
 // 309 long sys_add_key ['const char __user *_type', 'const char __user *_description', 'const void __user *_payload', 'size_t plen', 'key_serial_t destringid']
 case 309: {
 record_syscall("sys_add_key");
-std::string _type = log_string(env->regs[0], "const char __user *_type");
-std::string _description = log_string(env->regs[1], "const char __user *_description");
+syscalls::string _type = log_string(env->regs[0], "const char __user *_type");
+syscalls::string _description = log_string(env->regs[1], "const char __user *_description");
 target_ulong _payload = log_pointer(env->regs[2], "const void __user *_payload");
 uint32_t plen = log_32(env->regs[3], "size_t plen");
 uint32_t destringid = log_32(env->regs[4], "key_serial_t destringid");
@@ -2236,9 +2236,9 @@ finish_syscall();
 // 310 long sys_request_key ['const char __user *_type', 'const char __user *_description', 'const char __user *_callout_info', 'key_serial_t destringid']
 case 310: {
 record_syscall("sys_request_key");
-std::string _type = log_string(env->regs[0], "const char __user *_type");
-std::string _description = log_string(env->regs[1], "const char __user *_description");
-std::string _callout_info = log_string(env->regs[2], "const char __user *_callout_info");
+syscalls::string _type = log_string(env->regs[0], "const char __user *_type");
+syscalls::string _description = log_string(env->regs[1], "const char __user *_description");
+syscalls::string _callout_info = log_string(env->regs[2], "const char __user *_callout_info");
 uint32_t destringid = log_32(env->regs[3], "key_serial_t destringid");
 call_sys_request_key_callback(env,pc,_type,_description,_callout_info,destringid);
 finish_syscall();
@@ -2291,7 +2291,7 @@ finish_syscall();
 case 317: {
 record_syscall("sys_inotify_add_watch");
 uint32_t fd = log_32(env->regs[0], "int fd");
-std::string path = log_string(env->regs[1], " const char __user *path");
+syscalls::string path = log_string(env->regs[1], " const char __user *path");
 uint32_t mask = log_32(env->regs[2], "u32 mask");
 call_sys_inotify_add_watch_callback(env,pc,fd,path,mask);
 finish_syscall();
@@ -2340,7 +2340,7 @@ finish_syscall();
 case 322: {
 record_syscall("sys_openat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " const char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
 uint32_t flags = log_32(env->regs[2], " int flags");
 uint32_t mode = log_32(env->regs[3], "int mode");
 call_sys_openat_callback(env,pc,dfd,filename,flags,mode);
@@ -2350,7 +2350,7 @@ finish_syscall();
 case 323: {
 record_syscall("sys_mkdirat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string pathname = log_string(env->regs[1], " const char __user * pathname");
+syscalls::string pathname = log_string(env->regs[1], " const char __user * pathname");
 uint32_t mode = log_32(env->regs[2], " int mode");
 call_sys_mkdirat_callback(env,pc,dfd,pathname,mode);
 finish_syscall();
@@ -2359,7 +2359,7 @@ finish_syscall();
 case 324: {
 record_syscall("sys_mknodat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " const char __user * filename");
+syscalls::string filename = log_string(env->regs[1], " const char __user * filename");
 uint32_t mode = log_32(env->regs[2], " int mode");
 uint32_t dev = log_32(env->regs[3], "unsigned dev");
 call_sys_mknodat_callback(env,pc,dfd,filename,mode,dev);
@@ -2369,7 +2369,7 @@ finish_syscall();
 case 325: {
 record_syscall("sys_fchownat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " const char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
 uint32_t user = log_32(env->regs[2], " uid_t user");
 uint32_t group = log_32(env->regs[3], "gid_t group");
 uint32_t flag = log_32(env->regs[4], " int flag");
@@ -2380,7 +2380,7 @@ finish_syscall();
 case 326: {
 record_syscall("sys_futimesat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong utimes = log_pointer(env->regs[2], "struct timeval __user *utimes");
 call_sys_futimesat_callback(env,pc,dfd,filename,utimes);
 finish_syscall();
@@ -2389,7 +2389,7 @@ finish_syscall();
 case 327: {
 record_syscall("sys_fstatat64");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[2], "struct stat64 __user *statbuf");
 uint32_t flag = log_32(env->regs[3], " int flag");
 call_sys_fstatat64_callback(env,pc,dfd,filename,statbuf,flag);
@@ -2399,7 +2399,7 @@ finish_syscall();
 case 328: {
 record_syscall("sys_unlinkat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string pathname = log_string(env->regs[1], " const char __user * pathname");
+syscalls::string pathname = log_string(env->regs[1], " const char __user * pathname");
 uint32_t flag = log_32(env->regs[2], " int flag");
 call_sys_unlinkat_callback(env,pc,dfd,pathname,flag);
 finish_syscall();
@@ -2408,9 +2408,9 @@ finish_syscall();
 case 329: {
 record_syscall("sys_renameat");
 uint32_t olddfd = log_32(env->regs[0], "int olddfd");
-std::string oldname = log_string(env->regs[1], " const char __user * oldname");
+syscalls::string oldname = log_string(env->regs[1], " const char __user * oldname");
 uint32_t newdfd = log_32(env->regs[2], "int newdfd");
-std::string newname = log_string(env->regs[3], " const char __user * newname");
+syscalls::string newname = log_string(env->regs[3], " const char __user * newname");
 call_sys_renameat_callback(env,pc,olddfd,oldname,newdfd,newname);
 finish_syscall();
 }; break;
@@ -2418,9 +2418,9 @@ finish_syscall();
 case 330: {
 record_syscall("sys_linkat");
 uint32_t olddfd = log_32(env->regs[0], "int olddfd");
-std::string oldname = log_string(env->regs[1], " const char __user *oldname");
+syscalls::string oldname = log_string(env->regs[1], " const char __user *oldname");
 uint32_t newdfd = log_32(env->regs[2], "int newdfd");
-std::string newname = log_string(env->regs[3], " const char __user *newname");
+syscalls::string newname = log_string(env->regs[3], " const char __user *newname");
 uint32_t flags = log_32(env->regs[4], " int flags");
 call_sys_linkat_callback(env,pc,olddfd,oldname,newdfd,newname,flags);
 finish_syscall();
@@ -2428,9 +2428,9 @@ finish_syscall();
 // 331 long sys_symlinkat ['const char __user * oldname', 'int newdfd', ' const char __user * newname']
 case 331: {
 record_syscall("sys_symlinkat");
-std::string oldname = log_string(env->regs[0], "const char __user * oldname");
+syscalls::string oldname = log_string(env->regs[0], "const char __user * oldname");
 uint32_t newdfd = log_32(env->regs[1], "int newdfd");
-std::string newname = log_string(env->regs[2], " const char __user * newname");
+syscalls::string newname = log_string(env->regs[2], " const char __user * newname");
 call_sys_symlinkat_callback(env,pc,oldname,newdfd,newname);
 finish_syscall();
 }; break;
@@ -2438,7 +2438,7 @@ finish_syscall();
 case 332: {
 record_syscall("sys_readlinkat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string path = log_string(env->regs[1], " const char __user *path");
+syscalls::string path = log_string(env->regs[1], " const char __user *path");
 target_ulong buf = log_pointer(env->regs[2], " char __user *buf");
 uint32_t bufsiz = log_32(env->regs[3], "int bufsiz");
 call_sys_readlinkat_callback(env,pc,dfd,path,buf,bufsiz);
@@ -2448,7 +2448,7 @@ finish_syscall();
 case 333: {
 record_syscall("sys_fchmodat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " const char __user * filename");
+syscalls::string filename = log_string(env->regs[1], " const char __user * filename");
 uint32_t mode = log_32(env->regs[2], "mode_t mode");
 call_sys_fchmodat_callback(env,pc,dfd,filename,mode);
 finish_syscall();
@@ -2457,7 +2457,7 @@ finish_syscall();
 case 334: {
 record_syscall("sys_faccessat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " const char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
 uint32_t mode = log_32(env->regs[2], " int mode");
 call_sys_faccessat_callback(env,pc,dfd,filename,mode);
 finish_syscall();
@@ -2563,7 +2563,7 @@ finish_syscall();
 case 348: {
 record_syscall("sys_utimensat");
 uint32_t dfd = log_32(env->regs[0], "int dfd");
-std::string filename = log_string(env->regs[1], " char __user *filename");
+syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong utimes = log_pointer(env->regs[2], "struct timespec __user *utimes");
 uint32_t flags = log_32(env->regs[3], " int flags");
 call_sys_utimensat_callback(env,pc,dfd,filename,utimes,flags);

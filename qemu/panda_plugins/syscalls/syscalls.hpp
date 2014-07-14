@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <limits>
+#include <string>
 
 extern "C" {
 // get definitions of QEMU types
@@ -57,5 +58,25 @@ void appendReturnPoint(ReturnPoint&& rp);
 void registerExecPreCallback(std::function<void(CPUState*, target_ulong)> callback);
 
 extern void* syscalls_plugin_self;
+
+namespace syscalls {
+    class string {
+        /**
+         * Magically/lazily resolves a char* to a string when initialized or accessed,
+         * since from empirical data we can't rely on the data being mapped into
+         * RAM before the syscall starts.
+         */
+    private:
+        std::string data;
+        target_ulong vaddr;
+        CPUState* env;
+        target_ulong pc;
+        bool resolve();
+    public:
+        string(CPUState* env, target_ulong pc, target_ulong vaddr);
+        std::string& value();
+    };
+
+};
 
 #endif

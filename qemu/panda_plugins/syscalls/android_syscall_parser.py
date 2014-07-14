@@ -41,7 +41,7 @@ alltext+= "// we use std::string so that we only do lookups into guest memory on
 
 def copy_string(dest, source, fname):
     global alltext
-    alltext+= "std::string %s = log_string(%s, \"%s\");\n" % (dest, source,fname)
+    alltext+= "syscalls::string %s = log_string(%s, \"%s\");\n" % (dest, source,fname)
 
 def record_address(dest, source, fname):
     global alltext
@@ -60,7 +60,7 @@ POINTER   = 'POINTER'
 BYTES_8   = '8BYTE'
 BYTES_4   = '4BYTE'
 BYTES_2   = '2BYTE'
-ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'std::string', # pointer
+ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           POINTER:    'target_ulong', # pointer
                           BYTES_8:    'uint64_t',
                           BYTES_4:    'uint32_t',
@@ -207,7 +207,7 @@ with open("weak_callbacks.cpp", "w") as weakfile:
 weak_callbacks = ""
 weak_callbacks+= """
 #include <string>
-
+#include "syscalls.hpp"
 extern "C" {
 #include "cpu.h"
 }
