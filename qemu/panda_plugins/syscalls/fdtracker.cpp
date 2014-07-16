@@ -27,6 +27,7 @@ PANDAENDCOMMENT */
 #include "weak_callbacks.hpp"
 #include "syscalls.hpp"
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
 
 extern "C" {
@@ -302,6 +303,7 @@ struct StaticBlock {
     }
 };
 static StaticBlock staticBlock;
+static ofstream    fdlog("/scratch/fdlog.txt");
 
 #endif
 
@@ -363,7 +365,7 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     char* comm = getName(asid);
     if (NULL_FD != data->base_fd)
         dirname += " using OPENAT";
-    cout << "Process " << comm << " opened " << dirname << " as FD " << get_return_val(env) <<  endl;
+    fdlog << "Process " << comm << " opened " << dirname << " as FD " << get_return_val(env) <<  endl;
 }
 
 //mkdirs
@@ -414,9 +416,9 @@ static void dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     }
     char* comm = getName(asid);
     try{
-        cout << "Process " << comm << " duplicating FD for " << asid_to_fds[asid].at(data->old_fd) << " to " << new_fd << endl;
+        fdlog << "Process " << comm << " duplicating FD for " << asid_to_fds[asid].at(data->old_fd) << " to " << new_fd << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing dup source FD " << data->old_fd << " to " << new_fd<< endl;
+        fdlog << "Process " << comm << " missing dup source FD " << data->old_fd << " to " << new_fd<< endl;
     }
     asid_to_fds[asid][new_fd] = asid_to_fds[asid][data->old_fd];
 }
@@ -456,10 +458,10 @@ void call_sys_dup3_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_
 void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
-   try{
-         cout << "Process " << comm << " closed " << asid_to_fds[asid].at(fd) << " FD " << fd << endl;
+    try{
+        fdlog << "Process " << comm << " closed " << asid_to_fds[asid].at(fd) << " FD " << fd << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing closing FD " << fd << endl;
+        fdlog << "Process " << comm << " missing closing FD " << fd << endl;
     }
     
 }
@@ -478,7 +480,7 @@ static void read_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     }
     auto retval = get_return_val(env);
     char* comm = getName(asid);
-    cout << "Process " << comm << " finished reading " << filename << " return value " << retval <<  endl;
+    fdlog << "Process " << comm << " finished reading " << filename << " return value " << retval <<  endl;
 }
 
 void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
@@ -488,7 +490,7 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
     if (asid_to_fds[asid].count(fd) > 0){
         name =  asid_to_fds[asid][fd];
     }
-    cout << "Process " << comm << " " << "Reading from " << name << endl;
+    fdlog << "Process " << comm << " " << "Reading from " << name << endl;
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
@@ -497,21 +499,21 @@ void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
     try{
-        cout << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid].at(fd) << endl;
+        fdlog << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid].at(fd) << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing read FD " << fd << endl;
+        fdlog << "Process " << comm << " missing read FD " << fd << endl;
     }
 }
 void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
     try{
-        cout << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid].at(fd) << endl;
+        fdlog << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid].at(fd) << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing readp FD " << fd << endl;
+        fdlog << "Process " << comm << " missing readp FD " << fd << endl;
     }
 }
-#include <fstream>
+
 ofstream devnull("/scratch/nulls");
 void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
     target_asid asid = get_asid(env, pc);
@@ -520,7 +522,7 @@ void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
     if (asid_to_fds[asid].count(fd) > 0){
         name =  asid_to_fds[asid][fd];
     }
-    cout << "Process " << comm << " " << "Writing to " << name << endl;
+    fdlog << "Process " << comm << " " << "Writing to " << name << endl;
     if (0 == name.compare("/dev/null") || 0 == name.compare("//dev/null")){
         uint8_t mybuf[count];
         panda_virtual_memory_rw(env, buf, mybuf, count, 0);
@@ -531,18 +533,18 @@ void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
     try{
-        cout << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid].at(fd) << endl;
+        fdlog << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid].at(fd) << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing writep FD " << fd << endl;
+        fdlog << "Process " << comm << " missing writep FD " << fd << endl;
     }
 }
 void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
     try{
-        cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid].at(fd) << endl;
+        fdlog << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid].at(fd) << endl;
     }catch( const std::out_of_range& oor){
-        cout << "Process " << comm << " missing writev FD " << fd << endl;
+        fdlog << "Process " << comm << " missing writev FD " << fd << endl;
     }
 }
 
@@ -569,7 +571,7 @@ static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid a
     // On Linux, sizeof(int) != sizeof(long)
     panda_virtual_memory_rw(env, data->sd_array, reinterpret_cast<uint8_t*>(sd_array), 2*sizeof(int), 0);
     char* comm = getName(asid);
-    cout << "Creating pipe in process " << comm << endl;
+    fdlog << "Creating pipe in process " << comm << endl;
     asid_to_fds[asid][sd_array[0]] = "<pipe>";
     asid_to_fds[asid][sd_array[1]] = "<pipe>";
     
@@ -616,14 +618,14 @@ struct sockaddr {
 */
 void call_sys_bind_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
     char* conn = getName(get_asid(env, pc));
-    cout << "Process " << conn << " binding FD " << sockfd << endl;   
+    fdlog << "Process " << conn << " binding FD " << sockfd << endl;   
 }
 /*
 connect - updates name?
 */
 void call_sys_connect_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
     char* conn = getName(get_asid(env, pc));
-    cout << "Process " << conn << " connecting FD " << sockfd << endl;
+    fdlog << "Process " << conn << " connecting FD " << sockfd << endl;
 }
 /*
 socket - fd
@@ -650,7 +652,7 @@ void call_sys_sendmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     if (asid_to_fds[asid].count(fd) > 0){
         name =  asid_to_fds[asid][fd];
     }
-    cout << "Process " << comm << " " << "sending msg to " << name << endl;  
+    fdlog << "Process " << comm << " " << "sending msg to " << name << endl;  
 }
 
 /*recv, recvfrom, recvmsg - gets datas!*/
@@ -661,7 +663,7 @@ void call_sys_recvmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     if (asid_to_fds[asid].count(fd) > 0){
         name =  asid_to_fds[asid][fd];
     }
-    cout << "Process " << comm << " " << "recving msg from " << name << endl;    
+    fdlog << "Process " << comm << " " << "recving msg from " << name << endl;
 }
 void call_sys_recvfrom_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t flags,target_ulong arg4,target_ulong arg5){
     call_sys_read_callback(env, pc, fd, buf, len);
@@ -701,7 +703,7 @@ static void accept_callback(CallbackData* opaque, CPUState* env, target_asid asi
 
 void call_sys_accept_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong arg1,target_ulong arg2) { 
     char* conn = getName(get_asid(env, pc));
-    cout << "Process " << conn << " accepting on FD " << sockfd << endl;
+    fdlog << "Process " << conn << " accepting on FD " << sockfd << endl;
     AcceptCallbackData* data = new AcceptCallbackData;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, accept_callback));
 }
@@ -734,5 +736,5 @@ void call_sys_fcntl_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t 
 void call_sys_sendfile64_callback(CPUState* env,target_ulong pc,uint32_t out_fd,uint32_t in_fd,target_ulong offset,uint32_t count){
     target_asid asid = get_asid(env, pc);
     char* conn = getName(asid);
-    cout << conn << " copying data from " << asid_to_fds[asid][in_fd] << " to " << asid_to_fds[asid][out_fd] << endl;
+    fdlog << conn << " copying data from " << asid_to_fds[asid][in_fd] << " to " << asid_to_fds[asid][out_fd] << endl;
 }
