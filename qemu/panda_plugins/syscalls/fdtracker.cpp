@@ -317,6 +317,20 @@ public:
 };
 
 
+static char* getName(target_asid asid){
+    char* comm = "";
+#ifdef CONFIG_PANDA_VMI
+    ProcessInfo* me = findProcessByPGD(asid);
+    if(me){
+        if(me->strName[0] != '\0')
+            comm = me->strName;
+        else
+            comm = findProcessByPGD(asid)->strComm;
+    }
+#endif
+    return comm;
+}
+
 static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     OpenCallbackData* data = dynamic_cast<OpenCallbackData*>(opaque);
     if (-1 == get_return_val(env)){
@@ -334,6 +348,10 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     }
     dirname += "/" + data->path;
     mymap[get_return_val(env)] = dirname;
+    char* comm = getName(asid);
+    if (NULL_FD != data->base_fd)
+        dirname += " using OPENAT";
+    cout << "Process " << comm << " opened " << dirname << " as FD " << get_return_val(env) <<  endl;
 }
 
 //mkdirs
@@ -382,6 +400,8 @@ static void dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     }else{
         new_fd = get_return_val(env);
     }
+    char* comm = getName(asid);
+    cout << "Process " << comm << " duplicating FD for " << asid_to_fds[asid][data->old_fd] << endl;
     asid_to_fds[asid][new_fd] = asid_to_fds[asid][data->old_fd];
 }
 
@@ -423,25 +443,39 @@ void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint6
 
 void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
     target_asid asid = get_asid(env, pc);
-    cout << "Reading from " << asid_to_fds[asid][fd] << endl;
+    char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
+    if (asid_to_fds[asid].count(fd) > 0){
+        name =  asid_to_fds[asid][fd];
+    }
+    cout << "Process " << comm << " " << "Reading from " << name << endl;
 }
 void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { 
     target_asid asid = get_asid(env, pc);
-    cout << "Reading v from " << asid_to_fds[asid][fd] << endl;
+    char* comm = getName(asid);
+    cout << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid][fd] << endl;
 }
 void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) {
-        target_asid asid = get_asid(env, pc);
-        cout << "Reading p64 from " << asid_to_fds[asid][fd] << endl;
+    target_asid asid = get_asid(env, pc);
+    char* comm = getName(asid);
+    cout << "Process " << comm << " " << "Reading p64 from " << asid_to_fds[asid][fd] << endl;
 }
 void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
     target_asid asid = get_asid(env, pc);
-    cout << "Writing to " << asid_to_fds[asid][fd] << endl;
+    char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
+    if (asid_to_fds[asid].count(fd) > 0){
+        name =  asid_to_fds[asid][fd];
+    }
+    cout << "Process " << comm << " " << "Writing to " << name << endl;
 }
 void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) { 
     target_asid asid = get_asid(env, pc);
-    cout << "Writing pv64 to " << asid_to_fds[asid][fd] << endl;
+    char* comm = getName(asid);
+    cout << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid][fd] << endl;
 }
 void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) {
     target_asid asid = get_asid(env, pc);
-    cout << "Writing v to " << asid_to_fds[asid][fd] << endl;
+    char* comm = getName(asid);
+    cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid][fd] << endl;
 }
