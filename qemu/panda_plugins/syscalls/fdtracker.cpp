@@ -37,6 +37,25 @@ const target_ulong NULL_FD = 0;
 
 using namespace std;
 
+static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
+#if defined(TARGET_ARM)
+    // Normal syscalls: return addr is stored in LR
+    return mask_retaddr_to_pc(env->regs[14]);
+
+    // Fork, exec
+    uint8_t offset = 0;
+    if(env->thumb == 0){
+        offset = 4;
+    } else {
+        offset = 2;
+    }
+    return pc + offset;
+#elif defined(TARGET_I386)
+    
+#else
+    
+#endif
+}
 
 typedef map<int, string> fdmap;
 
@@ -45,6 +64,8 @@ map<target_ulong, fdmap> asid_to_fds;
 #if defined(CONFIG_PANDA_VMI)
 extern "C" {
 #include "introspection/DroidScope/LinuxAPI.h"
+// sched.h contains only preprocessor defines to constant literals
+#include <linux/sched.h>
 }
 
 //#define TEST_FORK
@@ -161,9 +182,118 @@ static void preExecForkCopier(CPUState* env, target_ulong pc){
 #endif
 }
 
+//#define TEST_CLONE
+#ifdef TEST_CLONE
+map<target_ulong, bool> tracked_clones;
+#endif
+
+
+/* Clone is weird. We don't care about all of them.
+   Instead of registering an AFTER_CLONE callback, we'll just
+   use the plugin's internal callback mechanism so we can skip ones
+   we don't want (which are distinguished by the arguments)*/
+
+class CloneCallbackData : public CallbackData {   
+};
+
+list<target_asid> outstanding_clone_child_asids;
+map<target_ulong, target_asid> outstanding_clone_child_pids;
+
+static void clone_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    CloneCallbackData* data = dynamic_cast<CloneCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    // return value is TID = PID of child
+    target_ulong child_pid = get_return_val(env);
+    if(0 == child_pid){
+        // I am the child.
+        // This should never happen
+        cerr << "Called after-clone callback in child, not parent!" << endl;
+    } else if (-1 == child_pid){
+        // call failed
+    } else {
+        ProcessInfo* child = findProcessByPID(child_pid);
+        if(nullptr == child){
+            // child hasn't run yet!
+            target_ulong pc;
+            target_ulong cs_base;
+            int flags;
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+
+            // log that this ASID is the parent of the child's PID
+            outstanding_clone_child_pids[child_pid] = asid;
+#ifdef TEST_CLONE
+            tracked_clones[child_pid] = false;
+#endif
+        } else {
+            //we're in the parent and the child has run
+            target_ulong pc;
+            target_ulong cs_base;
+            int flags;
+            cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+            // sanity check: make sure it's really a new process, not a thread
+            if(child->pgd == asid){
+                cerr << "Attempted to track a clone that was thread-like" << endl;
+                return;
+            }
+            copy_fds(asid, child->pgd);
+            outstanding_clone_child_asids.remove(child->pgd);
+#ifdef TEST_CLONE
+            tracked_clones[child_pid] = true;
+#endif
+        }
+    }
+}
+
+// if flags includes CLONE_FILES then the parent and child will continue to share a single FD table
+// if flags includes CLONE_THREAD, then we don't care about the call.
+void call_clone_callback(CPUState* env,target_ulong pc,uint32_t clone_flags,uint32_t newsp,
+                         target_ulong parent_tidptr,uint32_t tls_val,
+                         target_ulong child_tidptr,target_ulong regs) {
+    if (CLONE_THREAD & clone_flags){
+        return;
+    }
+    if (CLONE_FILES & clone_flags){
+        cerr << "ERROR ERROR UNIMPLEMENTED!" << endl;
+    }
+    CloneCallbackData *data = new CloneCallbackData;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, clone_callback));
+}
+
+static void preExecCloneCopier(CPUState* env, target_ulong pc){
+#ifdef TEST_CLONE
+    for(auto clone : tracked_clones){
+        cout << "Cloned process " << clone.first << ": " << clone.second << endl;
+    }
+#endif
+    //is this process in outstanding_child_pids?
+    if (outstanding_clone_child_pids.empty()) {
+        return;
+    }
+    target_asid my_asid = get_asid(env, pc);
+    ProcessInfo* my_proc = findProcessByPGD(my_asid);
+    if(nullptr == my_proc){
+        // VMI doen't know about me yet... weird
+        return;
+    }
+    auto it = outstanding_clone_child_pids.find(my_proc->pid);
+    if (it == outstanding_clone_child_pids.end()){
+        return;
+    }
+    // this is a process we're looking for!
+    copy_fds(it->second, my_asid);
+    outstanding_clone_child_pids.erase(it);
+#ifdef TEST_CLONE
+    tracked_clones[my_proc->pid] = true;
+#endif
+}
+
 struct StaticBlock {
     StaticBlock(){
         registerExecPreCallback(preExecForkCopier);
+        registerExecPreCallback(preExecCloneCopier);
         panda_cb pcb;
 
         pcb.return_from_fork = return_from_fork;
@@ -186,26 +316,6 @@ public:
     target_ulong new_fd;
 };
 
-static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
-#if defined(TARGET_ARM)
-    // Normal syscalls: return addr is stored in LR
-    return mask_retaddr_to_pc(env->regs[14]);
-
-    
-    // Fork, exec
-    uint8_t offset = 0;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
-        offset = 2;
-    }
-    return pc + offset;
-#elif defined(TARGET_I386)
-    
-#else
-    
-#endif
-}
 
 static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     OpenCallbackData* data = dynamic_cast<OpenCallbackData*>(opaque);
