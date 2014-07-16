@@ -40,6 +40,7 @@ void uninit_plugin(void *);
 }
 // This is where we'll write out the syscall data
 FILE *plugin_log;
+void* syscalls_plugin_self;
 
 #include "weak_callbacks.hpp"
 
@@ -417,7 +418,7 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 #endif
-
+    syscalls_plugin_self = self;
     return true;
 }
 
