@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 extern "C"{
@@ -29,6 +29,10 @@ extern "C"{
 #include <list>
 #include <algorithm>
 
+// the previous output file was /scratch/syscalls.txt
+// this just writes syscalls.txt to the current working directory
+#define DEFAULT_LOG_FILE "syscalls.txt"
+
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
 extern "C" {
@@ -46,13 +50,13 @@ std::vector<target_ulong> relevant_ASIDs;
 #ifdef TARGET_ARM
 // ARM: stolen from target-arm/helper.c
 static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
-{   
+{
     uint32_t table;
 
     if (address & env->cp15.c2_mask)
         table = env->cp15.c2_base1 & 0xffffc000;
     else
-        
+
         table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
 
     return table;
@@ -60,7 +64,7 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 #endif
 
 static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) || defined(TARGET_X86_64)
     return env->cr[3];
 #elif defined(TARGET_ARM)
     return arm_get_vaddr_table(env, addr);
@@ -69,14 +73,22 @@ static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
-// Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
-#ifdef TARGET_I386
+#if defined(TARGET_X86_64)
     unsigned char buf[2];
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
-    if (buf[0]== 0x0F && buf[1] == 0x34)
+    // Check if the instruction is syscall (0F 05)
+    if (buf[0]== 0x0F && buf[1] == 0x05) {
         return true;
-    else
+    } else
+        return false;
+#elif defined(TARGET_I386)
+    unsigned char buf[2];
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    // Check if the instruction is sysenter (0F 34)
+    if (buf[0]== 0x0F && buf[1] == 0x34) {
+        return true;
+    } else
         return false;
 #elif defined(TARGET_ARM)
     unsigned char buf[4];
@@ -93,7 +105,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 	  return true;
 #endif
 	}
-    } else { 
+    } else {
       panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // check for Thumb mode syscall
       if (buf[1] == 0xDF && buf[0] == 0){
@@ -168,7 +180,7 @@ static void call_mmap_callback(CPUState *env, target_ulong pc){
 #endif //TARGET_ARM
 
 static inline bool in_kernelspace(CPUState *env) {
-#if defined(TARGET_I386)
+#if defined(TARGET_I386) || defined(TARGET_X86_64)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
     return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
@@ -239,7 +251,7 @@ static inline bool is_watched(CPUState *env){
     target_ulong pc;
 #if defined(TARGET_ARM)
     pc = env->regs[15];
-#elif defined(TARGET_I386)
+#elif defined(TARGET_I386) || defined(TARGET_X86_64)
     pc = env->eip;
 #endif
     if(relevant_ASIDs.empty())
@@ -263,7 +275,7 @@ static void syscall_fprintf(CPUState* env, const char* __format, ...){
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
-#ifdef TARGET_I386
+#if defined(TARGET_I386) || defined(TARGET_X86_64)
     // On Windows, the system call id is in EAX
     syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
 #elif defined(TARGET_ARM)
@@ -340,16 +352,37 @@ int exec_callback(CPUState *env, target_ulong pc) {
 
 extern "C" {
 
+panda_arg_list *args;
+
 bool init_plugin(void *self) {
-    plugin_log = fopen("/scratch/syscalls.txt", "w");    
+
+    int i;
+    char *sclog_filename = NULL;
+    args = panda_get_args("syscalls");
+    if (args != NULL) {
+        for (i = 0; i < args->nargs; i++) {
+            // Format is syscall:file=<file>
+            if (0 == strncmp(args->list[i].key, "file", 4)) {
+                sclog_filename = args->list[i].value;
+            }
+        }
+    }
+    if (!sclog_filename) {
+        fprintf(stderr, "warning: Plugin 'syscalls' uses argument: -panda-arg syscalls:file=<file>\nusing default log file %s\n", DEFAULT_LOG_FILE);
+        char *scdef=new char[strlen(DEFAULT_LOG_FILE)+1];
+        strcpy(scdef,DEFAULT_LOG_FILE);
+        sclog_filename=scdef;
+    }
+
+    plugin_log = fopen(sclog_filename, "w");
     if(!plugin_log) {
-        fprintf(stderr, "Couldn't open /scratch/syscalls.txt. Abort.\n");
+        fprintf(stderr, "Couldn't open %s. Abort.\n",sclog_filename);
         return false;
     }
-    else return true;
 
-// Don't bother if we're not on x86
-#if  defined(TARGET_I386) || defined(TARGET_ARM)
+// Don't bother if we're not on a supported target
+#if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+
     panda_cb pcb;
 
     pcb.insn_translate = translate_callback;
@@ -358,6 +391,15 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    return true;
+
+#else
+
+    fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
+
+    return false;
+
 #endif
 
 }
