@@ -18,12 +18,11 @@ extern "C"{
 #include "qemu-common.h"
 #include "cpu.h"
 
-
-
 #include "panda_plugin.h"
 #include <stdio.h>
 #include <stdlib.h>
 }
+
 #include <functional>
 #include <string>
 #include <list>
@@ -64,7 +63,7 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 #endif
 
 static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
-#if defined(TARGET_I386) || defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     return env->cr[3];
 #elif defined(TARGET_ARM)
     return arm_get_vaddr_table(env, addr);
@@ -74,43 +73,42 @@ static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
 }
 
 bool translate_callback(CPUState *env, target_ulong pc) {
-#if defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     unsigned char buf[2];
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
         return true;
-    } else
-        return false;
-#elif defined(TARGET_I386)
-    unsigned char buf[2];
-    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    }
     // Check if the instruction is sysenter (0F 34)
-    if (buf[0]== 0x0F && buf[1] == 0x34) {
+    else if (buf[0]== 0x0F && buf[1] == 0x34) {
         return true;
-    } else
+    }
+    else {
         return false;
+    }
 #elif defined(TARGET_ARM)
     unsigned char buf[4];
 
     // Check for ARM mode syscall
-    if(env->thumb == 0){
+    if(env->thumb == 0) {
         panda_virtual_memory_rw(env, pc, buf, 4, 0);
-	// EABI
-        if( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ){
-	  //if( (buf[3] ==  0xEF) ){
+        // EABI
+        if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
             return true;
+        }
 #if defined(CAPTURE_ARM_OABI)
-        }else if(((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
-	  return true;
+        else if (((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
+            return true;
+        }
 #endif
-	}
-    } else {
-      panda_virtual_memory_rw(env, pc, buf, 2, 0);
-    // check for Thumb mode syscall
-      if (buf[1] == 0xDF && buf[0] == 0){
-        return true;
-      }
+    }
+    else {
+        panda_virtual_memory_rw(env, pc, buf, 2, 0);
+        // check for Thumb mode syscall
+        if (buf[1] == 0xDF && buf[0] == 0){
+            return true;
+        }
     }
     return false;
 #endif
@@ -180,7 +178,7 @@ static void call_mmap_callback(CPUState *env, target_ulong pc){
 #endif //TARGET_ARM
 
 static inline bool in_kernelspace(CPUState *env) {
-#if defined(TARGET_I386) || defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
     return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
@@ -251,7 +249,7 @@ static inline bool is_watched(CPUState *env){
     target_ulong pc;
 #if defined(TARGET_ARM)
     pc = env->regs[15];
-#elif defined(TARGET_I386) || defined(TARGET_X86_64)
+#elif defined(TARGET_I386)
     pc = env->eip;
 #endif
     if(relevant_ASIDs.empty())
@@ -275,7 +273,7 @@ static void syscall_fprintf(CPUState* env, const char* __format, ...){
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
-#if defined(TARGET_I386) || defined(TARGET_X86_64)
+#if defined(TARGET_I386)
     // On Windows, the system call id is in EAX
     syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
 #elif defined(TARGET_ARM)
@@ -381,7 +379,7 @@ bool init_plugin(void *self) {
     }
 
 // Don't bother if we're not on a supported target
-#if defined(TARGET_I386) || defined(TARGET_X86_64) || defined(TARGET_ARM)
+#if defined(TARGET_I386) || defined(TARGET_ARM)
 
     panda_cb pcb;
 
