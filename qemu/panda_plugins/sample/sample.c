@@ -181,6 +181,7 @@ bool init_plugin(void *self) {
                 // Second parameter just to show how it's done
                 if (0 == strncmp(args->list[i].value, "egg", 3)) {
                     printf(
+                        "\n"
                         "    _____    \n"
                         "  .'     '.  \n"
                         " /         \\\n"
