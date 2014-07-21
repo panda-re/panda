@@ -3,7 +3,8 @@
 # Set your plugin name here. It does not have to correspond to the name
 # of the directory in which your plugin resides.
 PLUGIN_NAME=syscalls
-ENABLE_FDTRACKER=1
+# uncomment to enable FDTRACKER module
+#ENABLE_FDTRACKER=1
 
 # Include the PANDA Makefile rules
 include ../panda.mak
