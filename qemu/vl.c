@@ -3253,7 +3253,7 @@ int main(int argc, char **argv, char **envp)
         }
     }
     loc_set_none();
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_PANDA_VMI) && defined(CONFIG_ANDROID)
     DS_init();
 #endif
 

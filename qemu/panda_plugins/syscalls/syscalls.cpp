@@ -27,6 +27,9 @@ extern "C"{
 #include <string>
 #include <list>
 #include <algorithm>
+#include <memory>
+
+#include "syscalls.hpp"
 
 // the previous output file was /scratch/syscalls.txt
 // this just writes syscalls.txt to the current working directory
@@ -40,8 +43,17 @@ void uninit_plugin(void *);
 }
 // This is where we'll write out the syscall data
 FILE *plugin_log;
+void* syscalls_plugin_self;
 
-std::vector<target_ulong> relevant_ASIDs;
+#include "weak_callbacks.hpp"
+
+std::vector<target_asid> relevant_ASIDs;
+
+std::vector<std::function<void(CPUState*, target_ulong)>> preExecCallbacks;
+
+void registerExecPreCallback(std::function<void(CPUState*, target_ulong)> callback){
+    preExecCallbacks.push_back(callback);
+}
 
 // ARM OABI has the syscall number embedded in the swi: swi #90xxxx
 //#define CAPTURE_ARM_OABI 0
@@ -50,6 +62,9 @@ std::vector<target_ulong> relevant_ASIDs;
 // ARM: stolen from target-arm/helper.c
 static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 {
+#if (TARGET_LONG_BITS == 64)
+#error 64-bit ARM is not yet supported
+#endif
     uint32_t table;
 
     if (address & env->cp15.c2_mask)
@@ -62,7 +77,7 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
 }
 #endif
 
-static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
+target_asid get_asid(CPUState *env, target_ulong addr) {
 #if defined(TARGET_I386)
     return env->cr[3];
 #elif defined(TARGET_ARM)
@@ -72,6 +87,18 @@ static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
+target_ulong get_return_val(CPUState *env){
+#if defined(TARGET_I386)   
+    return env->regs[R_EAX];
+#elif defined(TARGET_ARM)
+    return env->regs[0];
+#else
+#error "Not Implemented"
+#endif
+    
+}
+
+// Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
 #if defined(TARGET_I386)
     unsigned char buf[2];
@@ -114,16 +141,20 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 #endif
 }
 
-
-typedef std::pair<target_ulong, target_ulong> ReturnPoint;
-
 static std::list<ReturnPoint> fork_returns;
 static std::list<ReturnPoint> exec_returns;
 static std::list<ReturnPoint> clone_returns;
 static std::list<ReturnPoint> prctl_returns;
 static std::list<ReturnPoint> mmap_returns;
+// always return to same process
+static std::list<ReturnPoint> other_returns;
+
+void appendReturnPoint(ReturnPoint&& rp){
+    other_returns.push_back(std::move(rp));
+}
+
 #if defined(TARGET_ARM)
-static void call_fork_callback(CPUState *env, target_ulong pc){
+void call_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -131,48 +162,56 @@ static void call_fork_callback(CPUState *env, target_ulong pc){
         offset = 2;
     }
     // pc + offset or env->regs[14] ?
-    fork_returns.push_back(std::make_pair(pc + offset, get_asid(env, pc)));
+    fork_returns.push_back(ReturnPoint(pc + offset, get_asid(env, pc)));
 }
 
-static void call_exec_callback(CPUState *env, target_ulong pc){
+void call_execve_callback(CPUState *env, target_ulong pc,
+    std::string filename,target_ulong argv,target_ulong envp)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    exec_returns.push_back(std::make_pair(pc+offset,  get_asid(env, pc)));
+    exec_returns.push_back(ReturnPoint(pc+offset,  get_asid(env, pc)));
     //exec_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-static void call_clone_callback(CPUState *env, target_ulong pc){
+void call_clone_callback(CPUState *env, target_ulong pc,
+    target_ulong fn,target_ulong child_stack,uint32_t flags,target_ulong arg,target_ulong arg4)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    clone_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    clone_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
-static void call_prctl_callback(CPUState *env, target_ulong pc){
+void call_sys_prctl_callback(CPUState *env, target_ulong pc,
+    uint32_t option,uint32_t arg2,uint32_t arg3,uint32_t arg4,uint32_t arg5)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    prctl_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    prctl_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
-static void call_mmap_callback(CPUState *env, target_ulong pc){
+void call_do_mmap2_callback(CPUState *env, target_ulong pc,
+    uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff)
+{
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
     } else {
         offset = 2;
     }
-    mmap_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
+    mmap_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 #endif //TARGET_ARM
@@ -187,50 +226,110 @@ static inline bool in_kernelspace(CPUState *env) {
 #endif
 }
 
+static bool is_empty(ReturnPoint& pt){ 
+    return (pt.retaddr == 0 && pt.process_id == 0);
+}
+
 static int returned_check_callback(CPUState *env, TranslationBlock *tb){
 #if defined(CONFIG_PANDA_VMI)
     panda_cb_list *plist;
     for(auto& retVal :fork_returns){
-        if (retVal.first == tb->pc && retVal.second == get_asid(env, tb->pc)){
+        if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_FORK]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_fork(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    fork_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    fork_returns.remove_if(is_empty);
     for(auto& retVal :exec_returns){
-        if(retVal.second == get_asid(env, tb->pc) && !in_kernelspace(env)){
-        //if (retVal.first == tb->pc /*&& retVal.second == get_asid(env, tb->pc)*/){
+        if(retVal.process_id == get_asid(env, tb->pc) && !in_kernelspace(env)){
+        //if (retVal.retaddr == tb->pc /*&& retVal.process_id == get_asid(env, tb->pc)*/){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_EXEC]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_exec(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    exec_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    exec_returns.remove_if(is_empty);
     for(auto& retVal :clone_returns){
-        if (retVal.first == tb->pc /*&& retVal.second == get_asid(env, tb->pc)*/){
+        if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
            for(plist = panda_cbs[PANDA_CB_VMI_AFTER_CLONE]; plist != NULL; plist = plist->next) {
                 plist->entry.return_from_clone(env);
             }
            // set to 0,0 so we can remove after we finish iterating
-           retVal.first = retVal.second = 0;
+           retVal.retaddr = retVal.process_id = 0;
         }
     }
-    clone_returns.remove(std::make_pair<target_ulong, target_ulong>(0,0));
+    clone_returns.remove_if(is_empty);
+    
+    for(auto& retVal : other_returns){
+        if(retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
+            retVal.callback(retVal.opaque.get(), env, retVal.process_id);
+            retVal.retaddr = retVal.process_id = 0;
+        }
+    }
+    other_returns.remove_if(is_empty);
 #else
     fork_returns.clear();
     exec_returns.clear();
     clone_returns.clear();
+    other_returns.clear();
 #endif
     return 0;
 }
+
+
+
+namespace syscalls {
+    
+string::string(CPUState* env, target_ulong pc, target_ulong vaddr):
+    vaddr(vaddr), env(env), pc(pc)
+{
+    resolve();
+}
+
+bool string::resolve()
+{
+    // TARGET_PAGE_SIZE doesn't account for large pages, but most of QEMU doesn't anyway
+    char buff[TARGET_PAGE_SIZE + 1];
+    buff[TARGET_PAGE_SIZE] = 0;
+    unsigned short len = TARGET_PAGE_SIZE - (vaddr &  (TARGET_PAGE_SIZE -1));
+    if(len == 0) len = TARGET_PAGE_SIZE;
+    do{
+    // keep copying pages until the string terminates
+        int ret = panda_virtual_memory_rw(env, vaddr, (uint8_t*)buff, len, 0);
+        if(ret < 0){ // not mapped
+          return false;
+        }
+        if(strlen(buff) > len){
+
+          data.append(buff, len);
+          vaddr += len;
+          len = TARGET_PAGE_SIZE;
+        }else {
+          data += buff;
+          break;
+        }
+    }while(true);
+    
+    return true;
+}
+
+std::string& string::value()
+{
+    if(data.empty())
+        resolve();
+    return data;
+}
+
+
+};
 
 
 //void record_syscall(const char* callname);
@@ -240,10 +339,10 @@ void finish_syscall(){}
 //void log_32(target_ulong value, const char* argname);
 //void log64(target_ulong high, target_ulong low, const char* argname){}
 std::function<void (const char*)> record_syscall;
-std::function<void (target_ulong, const char*)> log_string;
-std::function<void (target_ulong, const char*)> log_pointer;
-std::function<void (target_ulong, const char*)> log_32;
-std::function<void (target_ulong, target_ulong, const char*)> log_64;
+std::function<syscalls::string  (target_ulong, const char*)> log_string;
+std::function<target_ulong (target_ulong, const char*)> log_pointer;
+std::function<uint32_t     (target_ulong, const char*)> log_32;
+std::function<uint64_t     (target_ulong, target_ulong, const char*)> log_64;
 
 static inline bool is_watched(CPUState *env){
     target_ulong pc;
@@ -273,6 +372,11 @@ static void syscall_fprintf(CPUState* env, const char* __format, ...){
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
+    // run any code we need to update our state
+    for(const auto callback : preExecCallbacks){
+        callback(env, pc);
+    }
+    
 #if defined(TARGET_I386)
     // On Windows, the system call id is in EAX
     syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
@@ -300,49 +404,33 @@ int exec_callback(CPUState *env, target_ulong pc) {
       syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", callname, pc, env->regs[7], env->thumb);
     };
 
-    log_string = [&env, &pc](target_ulong src, const char* argname){
-      std::string value;
-      char buff[4097];
-      buff[4096] = 0;
-      unsigned short len = 4096 - (src & 0xFFF);
-      if(len == 0) len = 4096;
-      do{
-	// keep copying pages until the string terminates
-	int ret = panda_virtual_memory_rw(env, src, (uint8_t*)buff, len, 0);
-	if(ret < 0){ // not mapped
-	  break;
-	}
-	if(strlen(buff) > len){
-
-	  value.append(buff, len);
-	  src += len;
-	  len = 4096;
-	}else {
-	  value += buff;
-	  break;
-	}
-      }while(true);
-      syscall_fprintf(env, "STR, NAME=%s, VALUE=%s\n", argname, value.c_str());
+    log_string = [&env, &pc](target_ulong src, const char* argname) -> syscalls::string{
+      syscalls::string arg(env, pc, src);
+      syscall_fprintf(env, "STRING, NAME=%s, VALUE=%s\n", argname, arg.value().c_str()); 
+      return arg;
     };
 
-    log_pointer = [&env, &pc](target_ulong addr, const char* argname){
+    log_pointer = [&env, &pc](target_ulong addr, const char* argname) -> target_ulong {
       syscall_fprintf(env, "PTR, NAME=%s, VALUE=" TARGET_FMT_lx"\n",argname, addr);
+      return addr;
     };
 
     log_32 = [&env,&pc](target_ulong value, const char* argname){
       syscall_fprintf(env, "I32, NAME=%s, VALUE=" TARGET_FMT_lx"\n", argname, value);
+      return value;
     };
 
     log_64 = [&env,&pc](target_ulong high, target_ulong low, const char* argname){
       syscall_fprintf(env, "I64, NAME=%s, VALUE=%llx\n", argname, ((unsigned long long)high << 32) | low );
+      return ((unsigned long long)high << 32) | low;
     };
 
-#include "syscall_printer.c"
 
     // syscall is in R7
     //syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", pc, env->regs[7], env->thumb);
 #endif
 
+#include "syscall_printer.cpp"
     return 0;
 }
 
@@ -399,7 +487,8 @@ bool init_plugin(void *self) {
     return false;
 
 #endif
-
+    syscalls_plugin_self = self;
+    return true;
 }
 
 void uninit_plugin(void *self) {
