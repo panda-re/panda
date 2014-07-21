@@ -479,3 +479,129 @@ void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_u
     char* comm = getName(asid);
     cout << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid][fd] << endl;
 }
+
+#if defined(SYSCALLS_FDS_TRACK_SOCKETS)
+// SOCKET OPERATIONS --------------------------------------------------------------------
+// AF_UNIX, AF_LOCAL, etc
+#include <sys/socket.h>
+//kernel source says sa_family_t is an unsigned short
+
+typedef map<int, sa_family_t> sdmap;
+
+map<target_ulong, sdmap> asid_to_sds;
+
+class SocketCallbackData : public CallbackData{
+public:
+    string socketname;
+    sa_family_t domain;
+};
+
+static void socket_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    SocketCallbackData* data = dynamic_cast<SocketCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    target_ulong new_sd = get_return_val(env);
+    auto& mymap = asid_to_fds[asid];
+    mymap[new_sd] = data->socketname;
+    if(AF_UNSPEC != data->domain){
+        auto& mysdmap = asid_to_sds[asid];
+        mysdmap[new_sd] = data->domain;
+    }
+}
+
+/*
+bind - updates name?
+struct sockaddr {
+               sa_family_t sa_family;
+               char        sa_data[14];
+           }
+*/
+void call_sys_bind_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
+    char* conn = getName(get_asid(env, pc));
+    cout << "Process " << conn << " binding FD " << sockfd << endl;   
+}
+/*
+connect - updates name?
+*/
+void call_sys_connect_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
+    char* conn = getName(get_asid(env, pc));
+    cout << "Process " << conn << " connecting FD " << sockfd << endl;
+}
+/*
+socket - fd
+Return value should be labeled "unbound socket"
+*/
+void call_sys_socket_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol){
+    SocketCallbackData* data = new SocketCallbackData;
+    data->socketname = "unbound socket";
+    data->domain = domain;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, socket_callback));
+}
+/*
+send, sendto, sendmsg - 
+recv, recvfrom, recvmsg - gets datas!
+listen
+socketpair - two new fds
+*/
+class SockpairCallbackData : public CallbackData{
+public:
+    target_ulong sd_array;
+    uint32_t domain;
+};
+static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    SockpairCallbackData* data = dynamic_cast<SockpairCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    target_ulong retval = get_return_val(env);
+    //"On success, zero is returned.  On error, -1 is returned, and errno is set appropriately."
+    if(0 != retval){
+        return;
+    }
+    // sd_array is an array of ints, length 2. NOT target_ulong
+    int sd_array[2];
+    // On Linux, sizeof(int) != sizeof(long)
+    panda_virtual_memory_rw(env, data->sd_array, reinterpret_cast<uint8_t*>(sd_array), 2*sizeof(int), 0);
+    char* comm = getName(asid);
+    cout << "Creating pipe in process " << comm << endl;
+    asid_to_fds[asid][sd_array[0]] = "<pipe>";
+    asid_to_fds[asid][sd_array[1]] = "<pipe>";
+    
+}
+void call_sys_socketpair_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol,target_ulong sd_array){
+    SockpairCallbackData *data = new SockpairCallbackData;
+    data->domain = domain;
+    data->sd_array = sd_array;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sockpair_callback));
+}
+/*
+accept, accept4 - new fd*/
+class AcceptCallbackData : public CallbackData{
+public:
+    
+};
+
+static void accept_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+    AcceptCallbackData* data = dynamic_cast<AcceptCallbackData*>(opaque);
+    if(!data){
+        fprintf(stderr, "oops\n");
+        return;
+    }
+    target_ulong retval = get_return_val(env);
+    if (-1 == retval){
+        return;
+    }
+    asid_to_fds[asid][retval]= "SOCKET ACCEPTED";
+    
+}
+
+void call_sys_accept_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong arg1,target_ulong arg2) { 
+    char* conn = getName(get_asid(env, pc));
+    cout << "Process " << conn << " accepting on FD " << sockfd << endl;
+    AcceptCallbackData* data = new AcceptCallbackData;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, accept_callback));
+}
+#endif // SYSCALLS_FDS_TRACK_SOCKETS
