@@ -5,6 +5,7 @@ extern "C"{
 }
 
 // weak-defined default empty callbacks for all syscalls
+#ifdef TARGET_ARM
 void __attribute__((weak)) call_sys_mknodat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscalls::string filename,uint32_t mode,uint32_t dev) { }
 void __attribute__((weak)) call_sys_uselib_callback(CPUState* env,target_ulong pc,syscalls::string library) { }
 void __attribute__((weak)) call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { }
@@ -324,4 +325,4 @@ void __attribute__((weak)) call_sys_sigprocmask_callback(CPUState* env,target_ul
 void __attribute__((weak)) call_sys_getrusage_callback(CPUState* env,target_ulong pc,uint32_t who,target_ulong ru) { }
 void __attribute__((weak)) call_sys_munlockall_callback(CPUState* env,target_ulong pc) { }
 
-
+#endif

@@ -22,10 +22,19 @@ import re
 ARM_CALLNO = "env->regs[7]"
 ARM_ARGS = ["env->regs[0]", "env->regs[1]", "env->regs[2]", "env->regs[3]", "env->regs[4]", "env->regs[5]", "env->regs[6]"]
 ARM_SP = "env->regs[13]"
+ARM_GUARD = "#ifdef TARGET_ARM"
 
 X86_CALLNO = "EAX"
 X86_ARGS = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
+X86_SP = "ESP"
+# Linux's syscall ABI doesn't change between IA32 and AMD64
+X86_GUARD = "TARGET_I386"
 
+MODE = "ARM"
+
+# set arch/OS specific args by mode
+for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
+    locals()[x] = locals()["_".join([MODE, x])]
 
 types_64 = ["loff_t", 'u64']
 types_32 = ["int", "long", "size_t", 'u32', 'off_t', 'timer_t', '__s32', 'key_t', 
@@ -34,8 +43,9 @@ types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t']
 types_pointer = ['cap_user_data_t', 'cap_user_header_t', '...']
 
 alltext = ""
+alltext += GUARD + "\n"
 
-alltext += "switch( " + ARM_CALLNO + " ){\n"
+alltext += "switch( " + CALLNO + " ){\n"
 
 alltext+= "// we use std::string so that we only do lookups into guest memory once and cache the result\n"
 
@@ -151,24 +161,24 @@ with open("android_arm_prototypes.txt") as armcalls:
         for i, val in enumerate(arg_types):
             arg_type = val.type
             arg_name = val.name
-            if argno >= len(ARM_ARGS):
+            if argno >= len(ARGS):
                 alltext += "// out of registers. Use the stack!"+'\n'
                 break
             if arg_type == CHAR_STAR:
-                copy_string(arg_name, ARM_ARGS[argno], args[i])
+                copy_string(arg_name, ARGS[argno], args[i])
             elif arg_type == POINTER:
-                record_address(arg_name, ARM_ARGS[argno], args[i])
+                record_address(arg_name, ARGS[argno], args[i])
             elif arg_type == BYTES_4:
-                record_32(arg_name, ARM_ARGS[argno], args[i])
+                record_32(arg_name, ARGS[argno], args[i])
             elif arg_type == BYTES_8:
                 # alignment sadness. Linux tried to make sure none of these happen
                 if (argno % 2) == 1:
                     alltext += "// skipping arg for alignment"+'\n'
                     argno+= 1
-                    if argno >= len(ARM_ARGS):
+                    if argno >= len(ARGS):
                         alltext += "// out of registers. Use the stack!"+'\n'
                         break
-                record_64(arg_name, ARM_ARGS[argno], ARM_ARGS[argno+1],args[i])
+                record_64(arg_name, ARGS[argno], ARGS[argno+1],args[i])
                 argno+=1
             argno+=1
         # figure out callback definition
@@ -187,6 +197,7 @@ with open("android_arm_prototypes.txt") as armcalls:
     alltext += "default:"+'\n'
     alltext += "record_syscall(\"UNKNOWN\");"+'\n'
     alltext += "}"+'\n'
+alltext+= "#endif\n"
 weak_callbacks = ""
 weak_callbacks+= """
 #include "weak_callbacks.hpp"
@@ -196,10 +207,11 @@ extern "C"{
 
 // weak-defined default empty callbacks for all syscalls
 """
+weak_callbacks += GUARD + "\n"
 for callback_def in callback_defs:
     weak_callbacks += "void __attribute__((weak)) {0} {{ }}\n".format(callback_def)
 weak_callbacks+= """
-
+#endif
 """
 with open("weak_callbacks.cpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
@@ -214,15 +226,15 @@ extern "C" {
 
 // weak-defined default empty callbacks for all syscalls
 """
+weak_callbacks += GUARD + "\n"
 for callback_def in callback_defs:
     weak_callbacks += "void __attribute__((weak)) {0};\n".format(callback_def)
 weak_callbacks+= """
-
+#endif
 """
 with open("weak_callbacks.hpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
+with open("syscall_printer.cpp", "w") as dispatchfile:
+    dispatchfile.write(alltext)
 
-print alltext
-print ""
-        

@@ -414,12 +414,12 @@ int exec_callback(CPUState *env, target_ulong pc) {
       return ((unsigned long long)high << 32) | low;
     };
 
-#include "syscall_printer.cpp"
 
     // syscall is in R7
     //syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", pc, env->regs[7], env->thumb);
 #endif
 
+#include "syscall_printer.cpp"
     return 0;
 }
 

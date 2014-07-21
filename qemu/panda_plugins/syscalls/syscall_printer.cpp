@@ -1,3 +1,4 @@
+#ifdef TARGET_ARM
 switch( env->regs[7] ){
 // we use std::string so that we only do lookups into guest memory once and cache the result
 // 0 long sys_restart_syscall ['void']
@@ -2722,5 +2723,4 @@ finish_syscall();
 default:
 record_syscall("UNKNOWN");
 }
-
-
+#endif
