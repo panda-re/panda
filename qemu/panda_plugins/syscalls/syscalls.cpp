@@ -231,6 +231,7 @@ static bool is_empty(ReturnPoint& pt){
 }
 
 static int returned_check_callback(CPUState *env, TranslationBlock *tb){
+    // First, check if any of the PANDA VMI callbacks needs to be triggered
 #if defined(CONFIG_PANDA_VMI)
     panda_cb_list *plist;
     for(auto& retVal :fork_returns){
@@ -267,7 +268,14 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
         }
     }
     clone_returns.remove_if(is_empty);
-    
+
+#else
+    fork_returns.clear();
+    exec_returns.clear();
+    clone_returns.clear();
+#endif
+
+    //check if any of the internally tracked syscalls has returned
     for(auto& retVal : other_returns){
         if(retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
             retVal.callback(retVal.opaque.get(), env, retVal.process_id);
@@ -275,12 +283,6 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
         }
     }
     other_returns.remove_if(is_empty);
-#else
-    fork_returns.clear();
-    exec_returns.clear();
-    clone_returns.clear();
-    other_returns.clear();
-#endif
     return 0;
 }
 

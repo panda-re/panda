@@ -53,9 +53,9 @@ static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     }
     return pc + offset;
 #elif defined(TARGET_I386)
-    
+#error "return address calculation not implemented for x86 in fdtracker"
 #else
-    
+#error "return address calculation not implemented for this architecture in fdtracker"
 #endif
 }
 
@@ -292,6 +292,8 @@ static void preExecCloneCopier(CPUState* env, target_ulong pc){
 #endif
 }
 
+/* hack to integrate the fork and clone tracker code with
+   the syscalls plugin at startup, without modifying the plugin proper */
 struct StaticBlock {
     StaticBlock(){
         registerExecPreCallback(preExecForkCopier);
@@ -303,9 +305,17 @@ struct StaticBlock {
     }
 };
 static StaticBlock staticBlock;
-static ofstream    fdlog("/scratch/fdlog.txt");
+#else //defined CONFIG_PANDA_VMI
+struct StaticBlock {
+    StaticBlock(){
+        cerr << "WARNING: CONFIG_PANDA_VMI is not defined. File descriptors will not be tracked across clone and fork!" << endl;
+    }
+};
+static StaticBlock staticBlock;
 
-#endif
+#endif //defined CONFIG_PANDA_VMI
+
+static ofstream    fdlog("/scratch/fdlog.txt");
 
 class OpenCallbackData : public CallbackData {
 public:
