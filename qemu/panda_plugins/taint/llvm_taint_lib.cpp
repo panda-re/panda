@@ -13,11 +13,13 @@
 PANDAENDCOMMENT */
 
 #include "llvm_taint_lib.h"
+#include "/home/tleek/software/llvm-3.3.src/include/llvm/Support/raw_ostream.h"
 
 extern "C" {
 #include "guestarch.h"
 
 extern Shad *shadow;
+extern int tainted_pointer ;
 }
 
 using namespace llvm;
@@ -101,6 +103,14 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F){
         memcpy(ttb->entry->ops->start, tbuf->start, tbuf->size);
         ttb->entry->ops->size = tbuf->size;
 
+
+	if (qemu_loglevel_mask(CPU_LOG_TAINT_OPS)) {
+	  qemu_log("OUT (TAINT OPS) (main) \n");
+	  fprintf_tob(shadow, ttb->entry->ops, logfile);
+	  qemu_log_flush();
+	}
+
+
         // process other taint BBs if they exist
         int i = 0;
         if (ttb->numBBs > 1){
@@ -120,6 +130,15 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F){
                 tob_clear(ttb->tbbs[i]->ops);
                 memcpy(ttb->tbbs[i]->ops->start, tbuf->start, tbuf->size);
                 ttb->tbbs[i]->ops->size = tbuf->size;
+
+		if (qemu_loglevel_mask(CPU_LOG_TAINT_OPS)) {
+		  qemu_log("OUT (TAINT OPS) (other) %d\n", i);
+		  fprintf_tob(shadow, ttb->tbbs[i]->ops, logfile);
+		  qemu_log_flush();
+		}
+
+
+
                 i++;
             }
         }
@@ -1475,7 +1494,7 @@ void PandaTaintVisitor::visitAllocaInst(AllocaInst &I){
     simpleDeleteTaintAtDest(PST->getLocalSlot(&I));
 }
 
-void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
+void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len, int is_mmu){
     // local is LLVM register destination of load
     int local = PST->getLocalSlot(dstval);
 
@@ -1487,7 +1506,11 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
     // write instruction boundary op
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
-    op.val.insn_start.num_ops = len;
+    op.val.insn_start.num_ops = len;  
+    if (is_mmu) {
+      // NB: we need one ld callback per copy
+      op.val.insn_start.num_ops += len;  
+    }
     op.val.insn_start.flag = INSNREADLOG;
     tob_op_write(tbuf, &op);
 
@@ -1507,7 +1530,18 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
         tob_op_write(tbuf, &op);
     }
 
-#ifdef TAINTED_POINTER
+    // taint ops for ld callbacks
+    if (is_mmu) {
+        op.typ = LDCALLBACKOP;    
+        for (int i = 0; i < len; i++){   
+            src.off = i;
+            op.val.ldcallback.a = src;
+	    tob_op_write(tbuf, &op);
+	}
+    }
+
+    if (tainted_pointer) {
+
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
 
@@ -1555,7 +1589,8 @@ void PandaTaintVisitor::loadHelper(Value *srcval, Value *dstval, int len){
         op.val.compute.c = dst;
         tob_op_write(tbuf, &op);
     }
-#endif
+    } // tainted_pointer on
+
 }
 
 void PandaTaintVisitor::visitLoadInst(LoadInst &I){
@@ -1574,10 +1609,10 @@ void PandaTaintVisitor::visitLoadInst(LoadInst &I){
     // get source operand length
     int len = ceil(static_cast<SequentialType*>(I.getOperand(0)->
         getType())->getElementType()->getScalarSizeInBits() / 8.0);
-    loadHelper(I.getOperand(0), &I, len);
+    loadHelper(I.getOperand(0), &I, len, 0);
 }
 
-void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
+void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len, int is_mmu){
     // can't propagate taint from a constant
     bool srcConstant = isa<Constant>(srcval);
 
@@ -1596,20 +1631,26 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
     // write instruction boundary op
     op.typ = INSNSTARTOP;
     strncpy(op.val.insn_start.name, name, OPNAMELENGTH);
-#if !defined(TAINTED_POINTER)
-    op.val.insn_start.num_ops = len;
-#elif defined(TAINTED_POINTER)
-    // if pointer is a constant, it can't be tainted so we don't include taint
-    // ops to propagate tainted pointer
-    if (PST->getLocalSlot(dstval) < 0){
+    if (!tainted_pointer) {
         op.val.insn_start.num_ops = len;
     }
     else {
-        // need INSNSTART to fill in tainted pointer ops too
-        op.val.insn_start.num_ops = len * 3;
-    }
-#endif
+        // tainted pointer mode is on
+        // if pointer is a constant, it can't be tainted so we don't include taint
+        // ops to propagate tainted pointer
+        if (PST->getLocalSlot(dstval) < 0){
+            op.val.insn_start.num_ops = len;
+	}
+	else  {
+            // need INSNSTART to fill in tainted pointer ops too
+            op.val.insn_start.num_ops = len * 3;
+	}
+    } // !tainted_pointer
 
+    if (is_mmu) {
+      // NB: len more ops for ld callbacks
+      op.val.insn_start.num_ops += len;
+    }
     op.val.insn_start.flag = INSNREADLOG;
     tob_op_write(tbuf, &op);
 
@@ -1621,7 +1662,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         for (int i = 0; i < len; i++){
             dst.off = i;
             op.val.deletel.a = dst;
-            tob_op_write(tbuf, &op);
+	    tob_op_write(tbuf, &op);
         }
     }
     else {
@@ -1640,7 +1681,19 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         }
     }
 
-#ifdef TAINTED_POINTER
+    // taint ops for st callbacks
+    if (is_mmu) {
+        op.typ = STCALLBACKOP;	
+        for (int i = 0; i < len; i++){
+  	    dst.off = i;
+	    op.val.stcallback.a = dst;
+	    tob_op_write(tbuf, &op);
+	}
+    }
+
+
+    if (tainted_pointer) {
+
     struct addr_struct src0 = {};
     struct addr_struct src1 = {};
 
@@ -1681,7 +1734,7 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
         op.val.compute.c = dst;
         tob_op_write(tbuf, &op);
     }
-#endif
+    }
 }
 
 /*
@@ -1692,6 +1745,27 @@ void PandaTaintVisitor::storeHelper(Value *srcval, Value *dstval, int len){
  */
 bool evenStore = false;
 void PandaTaintVisitor::visitStoreInst(StoreInst &I){
+
+
+  // look for magic taint pc update info
+  MDNode *md = I.getMetadata("pcupdate.md");
+  if (md != NULL) {
+    // found store instruction that contains PC.  
+    // translate that into a taint processor instruction
+    // so that taint processor can know the pc too
+    Value *srcval = I.getOperand(0);
+    assert (isa<Constant>(srcval));
+    uint64_t pc = * ((cast<ConstantInt>(srcval))->getValue().getRawData());
+    //    printf ("pc=0x%lx\n", pc);
+    TaintOp op;
+    op.typ = PCOP;
+    op.val.pc = pc;
+    tob_op_write(tbuf, &op);
+  }
+
+  
+  
+
 
     if (I.isVolatile()){
 #ifdef TAINTSTATS
@@ -1706,7 +1780,7 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I){
 
     // get source operand length
     int len = ceil(I.getOperand(0)->getType()->getScalarSizeInBits() / 8.0);
-    storeHelper(I.getOperand(0), I.getOperand(1), len);
+    storeHelper(I.getOperand(0), I.getOperand(1), len, 0);
 }
 
 void PandaTaintVisitor::visitFenceInst(FenceInst &I){}
@@ -2546,7 +2620,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
 
         // guest load in whole-system mode
         int len = getValueSize(&I);
-        loadHelper(I.getArgOperand(0), &I, len);
+        loadHelper(I.getArgOperand(0), &I, len, 1);
         return;
     }
     else if (!calledName.compare("__stb_mmu_panda")
@@ -2556,7 +2630,28 @@ void PandaTaintVisitor::visitCallInst(CallInst &I){
 
         // guest store in whole-system mode
         int len = getValueSize(I.getArgOperand(1));
-        storeHelper(I.getArgOperand(1), I.getArgOperand(0), len);
+
+	/*
+	printf ("calling storeHelper.  mmu = 1.\n");
+
+	// printf an instruction
+	std::string line;   
+	raw_string_ostream line2(line);
+	I.print(line2); 
+	printf("%s\n", line.c_str());  
+                                                                                                                
+	printf ("arg1\n");
+	I.getArgOperand(1)->dump();
+	printf ("\n");
+	printf ("arg0\n");
+	I.getArgOperand(0)->dump();
+	printf ("\n");
+	*/
+
+	
+
+	//	printf ("arg1 = [%s]\n", ((I.getArgOperand(1))));
+	storeHelper(/*src=*/ I.getArgOperand(1), /*dest=*/I.getArgOperand(0), len, 1);
         return;
     }
     else if (!calledName.compare("sin")

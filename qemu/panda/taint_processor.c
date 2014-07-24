@@ -34,16 +34,41 @@ uint8_t taintedfunc;
  * frame, i.e. through tp_copy() and tp_delete(), not anything else.
  */
 
+int tainted_pointer;
+
 // stuff for control flow in traces
 int next_step;
 int previous_branch; // keep a history of 1
 int taken_branch;
 
 
+// if set, then we delete taint on dest instead of compute
+int compute_is_delete = 0;
+
 uint32_t max_taintset_card = 0;
 uint32_t max_taintset_compute_number = 0;
 
 uint32_t max_ref_count = 0;
+
+uint64_t tp_pc = 0;
+
+
+tp_callback_t tp_store_callback = NULL;
+tp_callback_t tp_load_callback  = NULL;
+
+
+
+void tp_add_store_callback(tp_callback_t cb) {
+  tp_store_callback = cb;
+}
+
+void tp_add_load_callback(tp_callback_t cb) {
+  tp_load_callback = cb;
+}
+
+
+
+
 
 Addr make_haddr(uint64_t a) {
   Addr ha;
@@ -333,9 +358,93 @@ SB_INLINE uint8_t tp_query(Shad *shad, Addr *a) {
 }
 
 
+
+// returns label set cardinality
+uint32_t tp_query_ram(Shad *shad, uint64_t pa) {
+  Addr ra;
+  ra.typ = MADDR;
+  ra.val.ma = pa;
+  ra.off = 0;
+  ra.flag = 0;
+  if (tp_query(shad, &ra)) {
+    LabelSet *ls = tp_labelset_get(shad, &ra);    
+    uint32_t c = labelset_card(ls);
+    assert (c > 0);
+    return c;
+  }
+  // not tainted
+  return 0;
+}
+
+
+
+// returns label set cardinality
+uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
+  Addr ra;
+  ra.typ = GREG;
+  ra.val.gr = reg_num;
+  ra.off = offset;
+  ra.flag = 0;
+  if (tp_query(shad, &ra)) {
+    LabelSet *ls = tp_labelset_get(shad, &ra);    
+    uint32_t c = labelset_card(ls);
+    assert (c > 0);
+    return c;
+  }
+  // not tainted
+  return 0;
+}
+
+
+
+
+
+
+SB_INLINE void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  LabelSet *ls = tp_labelset_get(shad, a);
+  if (!labelset_is_empty(ls)) {
+    labelset_iter(ls, app, stuff2);
+  }
+}
+
+void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  Addr ra;
+  ra.typ = MADDR;
+  ra.val.ma = pa;
+  ra.off = 0;
+  ra.flag = 0;
+  tp_ls_iter(shad, &ra, app, stuff2);
+}
+
+
+void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  Addr ra;
+  ra.typ = GREG; 
+  ra.val.gr = reg_num;
+  ra.off = offset;
+  ra.flag = 0;
+  tp_ls_iter(shad, &ra, app, stuff2);
+}
+
+
+// returns number of tainted addrs in ram
+uint32_t tp_occ_ram(Shad *shad) {
+  printf ("here i am shad=0x%x\n", shad);
+  fflush(stdout);
+  if (shad->ram) {
+    uint32_t x = shad_dir_occ_64(shad->ram);
+    printf ("x=%d\n", x);
+    return x;
+  }
+  else {
+    return 0;
+  }
+}
+
+
+
 // untaint -- discard label set associated with a
 SB_INLINE void tp_delete(Shad *shad, Addr *a) {
-
     assert (shad != NULL);
     switch (a->typ) {
         case HADDR:
@@ -584,6 +693,7 @@ SB_INLINE void addr_spit(Addr *a) {
 
 // label -- associate label l with address a
 SB_INLINE void tp_label(Shad *shad, Addr *a, Label l) {
+
     assert (shad != NULL);
     
     /*
@@ -614,6 +724,26 @@ SB_INLINE void tp_label(Shad *shad, Addr *a, Label l) {
     labelset_free(ls);
 }
 
+void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l) {
+  Addr ra;
+  ra.typ = MADDR;
+  ra.val.ma = pa;
+  ra.off = 0;
+  ra.flag = 0;
+  tp_label(shad, &ra, l);
+}
+
+void tp_delete_ram(Shad *shad, uint64_t pa) {
+
+  Addr ra;
+  ra.typ = MADDR;
+  ra.val.ma = pa;
+  ra.off = 0;
+  ra.flag = 0;
+  tp_delete(shad, &ra);
+}
+
+
 
 SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
     if (a->typ != b->typ)
@@ -643,6 +773,73 @@ SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
 }
 
 
+
+void fprintf_addr(Shad *shad, Addr *a, void *fp) {
+  uint32_t current_frame;
+  switch(a->typ) {
+  case HADDR:
+    fprintf(fp,"h0x%llx", (long long unsigned int) a->val.ha+a->off);
+    break;
+  case MADDR:
+    fprintf(fp,"m0x%llx", (long long unsigned int) a->val.ma+a->off);
+    break;
+  case IADDR:
+    fprintf(fp,"i0x%llx", (long long unsigned int) a->val.ia+a->off);
+    break;
+  case PADDR:
+    fprintf(fp,"p0x%llx", (long long unsigned int) a->val.pa+a->off);
+    break;
+  case LADDR:
+    if (!shad){
+      current_frame = 0; // not executing taint ops, assume frame 0
+    }
+    else {
+      current_frame = shad->current_frame;
+    }
+
+    if (a->flag == FUNCARG){
+      fprintf(fp,"[%d]l%lld[%d]", current_frame + 1,
+	      (long long unsigned int) a->val.la, a->off);
+    }
+    else {
+      fprintf(fp,"[%d]l%lld[%d]", current_frame,
+	      (long long unsigned int) a->val.la, a->off);
+    }
+    break;
+  case GREG:
+    //    printreg(a);
+    break;
+  case GSPEC:
+    //    printspec(a);
+    break;
+  case UNK:
+    if (a->flag == IRRELEVANT){
+      fprintf(fp,"irrelevant");
+    }
+    //else if (a->flag == READLOG) {
+    else if (a->typ == UNK){ 
+      fprintf(fp,"unknown");
+    }
+    else {
+      assert(1==0);
+    }
+    break;
+  case CONST:
+    fprintf(fp,"constant");
+    break;
+  case RET:
+    fprintf(fp,"ret[%d]", a->off);
+    break;
+  default:
+    assert (1==0);
+  }
+}
+
+void print_addr(Shad *shad, Addr *a) {
+  fprintf_addr(shad, a, stdout);
+}
+ 
+/*
 void print_addr(Shad *shad, Addr *a) {
     uint32_t current_frame;
     switch(a->typ) {
@@ -703,11 +900,11 @@ void print_addr(Shad *shad, Addr *a) {
             assert (1==0);
     }
 }
+*/
 
 
 // copy -- b gets whatever label set is currently associated with a
 SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
-  
     assert (shad != NULL);
     //assert (!(addrs_equal(a,b)));
     if (addrs_equal(a, b)) return;
@@ -735,8 +932,11 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 // compute -- c gets union of label sets currently associated with a and b
 // delete previous association
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
-
-    assert (shad != NULL);
+    assert (shad != NULL);    
+    if (compute_is_delete) {      
+      tp_delete (shad, c);
+      return;
+    }
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
     //assert (!(addrs_equal(b,c)));
@@ -910,6 +1110,123 @@ static SB_INLINE void tob_addr_read(TaintOpBuffer *buf, Addr **ap) {
 }
 */
 
+
+
+void fprintf_tob_op(Shad *shad, TaintOp *op, void *fp) {
+  switch (op->typ) {
+  case LABELOP:
+    {
+      fprintf(fp,"label ");
+      fprintf_addr(shad, &(op->val.label.a), fp);
+      fprintf(fp," %d\n", op->val.label.l);
+      break;
+    }
+  case DELETEOP:
+    {
+      fprintf(fp,"delete ");
+      fprintf_addr(shad, &(op->val.deletel.a), fp);
+      fprintf(fp,"\n");
+      break;
+    }
+  case COPYOP:
+    {
+      fprintf(fp,"copy ");
+      fprintf_addr(shad, &(op->val.copy.a), fp);
+      fprintf(fp," ");
+      fprintf_addr(shad, &(op->val.copy.b), fp);
+      fprintf(fp,"\n");
+      break;
+    }
+  case BULKCOPYOP:
+    {
+      fprintf(fp,"bulk copy ");
+      fprintf_addr(shad, &(op->val.bulkcopy.a), fp);
+      fprintf(fp," ");
+      fprintf_addr(shad, &(op->val.bulkcopy.b), fp);
+      fprintf(fp,"Len: %u\n", op->val.bulkcopy.l);
+      break;
+    }
+  case COMPUTEOP:
+    {
+      fprintf(fp,"compute ");
+      fprintf_addr(shad, &(op->val.compute.a), fp);
+      fprintf(fp," ");
+      fprintf_addr(shad, &(op->val.compute.b), fp);
+      fprintf(fp," ");
+      fprintf_addr(shad, &(op->val.compute.c), fp); 
+      fprintf(fp,"\n");
+      break;
+    }
+  case INSNSTARTOP:
+    {
+      fprintf(fp,"insn_start: %s, %d ops\n", op->val.insn_start.name,
+	      op->val.insn_start.num_ops);
+      break;
+    } 
+  case PCOP:
+    {
+      fprintf(fp,"pc op: %lx\n", op->val.pc);
+      break;
+    }
+ case LDCALLBACKOP:
+    {
+      fprintf(fp,"ldcallback\n");
+      break;
+    }
+
+  case STCALLBACKOP:
+    {
+      fprintf(fp,"stcallback\n");
+      break;
+    }
+
+
+
+  case CALLOP:
+    {
+      fprintf(fp,"call %s\n", op->val.call.name);
+      break;
+    }
+  case RETOP:
+    {
+      fprintf(fp,"return\n");
+      break;
+    }
+  default:
+    printf ("hmm.  i see a taint op i dont recognize. type is %d\n", op->typ);
+
+    assert (1==0);
+  }
+}
+
+void tob_op_print(Shad *shad, TaintOp *op) {
+  fprintf_tob_op(shad, op, stdout);
+} 
+ 
+
+void fprintf_tob(Shad *shad, TaintOpBuffer *buf, void *fp) {
+  TaintOp *op = buf->start;
+  int num_ops = buf->size / (sizeof(TaintOp));
+  int i;
+  for (i=0; i<num_ops; i++) {
+    fprintf_tob_op(shad, op, fp);
+    op ++;
+  }
+}
+
+
+void tob_print(Shad *shad, TaintOpBuffer *buf) {
+  fprintf_tob(shad, buf, stdout);
+}
+ 
+
+
+
+
+
+
+
+/*
 void tob_op_print(Shad *shad, TaintOp *op) {
     switch (op->typ) {
         case LABELOP:
@@ -955,6 +1272,11 @@ void tob_op_print(Shad *shad, TaintOp *op) {
                 printf ("\n");
                 break;
             }
+        case PCOP:
+            {
+ 	        printf ("pc = 0x%lx\n", op->val.pc);
+	        break;
+	    }
         case INSNSTARTOP:
             {
                 printf("insn_start: %s, %d ops\n", op->val.insn_start.name,
@@ -975,7 +1297,7 @@ void tob_op_print(Shad *shad, TaintOp *op) {
             assert (1==0);
     }
 }
-
+*/
 
 
 SB_INLINE void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
@@ -1056,12 +1378,27 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                             cur_op->val.copy.a.typ = MADDR;
                             cur_op->val.copy.a.val.ma =
                                 dventry.entry.memaccess.addr.val.ma;
-                        }
+                        }			
                         else {
                             assert(1==0);
                         }
                         break;
-
+		    case LDCALLBACKOP:
+		      {
+			if (tp_load_callback) {
+			  if (dventry.entry.memaccess.addr.typ == MADDR) {
+			    // load callback.  fill in the address
+			    cur_op->val.ldcallback.a.flag = 0;
+			    cur_op->val.ldcallback.a.typ = MADDR;
+			    cur_op->val.ldcallback.a.val.ma = 
+			      dventry.entry.memaccess.addr.val.ma;
+			  }
+			}
+			break;
+		      }
+		    case STCALLBACKOP:
+		      // really shouldnt happen
+		      assert (1==0);		      
                     default:
                         // taint ops for load only consist of copy ops
                         assert(1==0);
@@ -1170,11 +1507,26 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         }
                         break;
 
-#ifdef TAINTED_POINTER
+		    case STCALLBACKOP:
+		      {
+			if (tp_store_callback) {
+			  if (dventry.entry.memaccess.addr.typ == MADDR){
+			    cur_op->val.stcallback.a.flag = 0;
+			    cur_op->val.stcallback.a.typ = MADDR;
+			    cur_op->val.stcallback.a.val.ma =
+			      dventry.entry.memaccess.addr.val.ma;
+			  }
+			}
+			break;
+		      }     
+		      
                     /* this only assumes we are in tainted pointer mode,
                      * with the associated taint models
                      */
                     case COMPUTEOP:
+		      
+		      if (tainted_pointer) {
+		      
                         if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
                             // store to irrelevant part of CPU state
                             // delete taint at the destination
@@ -1229,8 +1581,9 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         else {
                             assert(1==0);
                         }
+		      } // tainted_pointer on
+			
                         break;
-#endif
 
                     case DELETEOP:
                         if (dventry.entry.memaccess.addr.flag == IRRELEVANT){
@@ -1722,9 +2075,12 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         DynValBuffer *dynval_buf) {
 
-  //    uint32_t ii;
+
+  uint32_t ii;
     tob_rewind(buf);
-    //    ii = 0;
+
+
+    ii = 0;
     while (!(tob_end(buf))) {
 
       //      if ((ii % 10000) == 0) {
@@ -1735,8 +2091,8 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
 
 #ifdef TAINTDEBUG
-        printf("op %d ", i);
-        tob_op_print(shad, *op);
+        printf("op %d ", ii);
+        tob_op_print(shad, op);
 #endif
         switch (op->typ) {
             case LABELOP:
@@ -1799,9 +2155,33 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     if (foo) printf("\n");
 #endif
 		    tp_copy(shad, &(op->val.copy.a), &(op->val.copy.b));
-                    break;
-                }
+		    break;
+		}
 
+ 	    case LDCALLBACKOP:
+	      {
+		if (tp_load_callback) {
+		  // semantically right after ld has happened.
+		  uint64_t ld_addr = op->val.ldcallback.a.val.ma + op->val.ldcallback.a.off;
+		  //				printf ("ld callback pc=0x%lx  ld_addr=0x%lx\n", tp_pc, ld_addr);
+		  tp_load_callback(tp_pc, ld_addr);
+		}
+		break;
+	      }
+		    
+
+ 	    case STCALLBACKOP:
+	      {
+		if (tp_store_callback) {
+		  // semantically right after st has happened.
+		  uint64_t st_addr = op->val.stcallback.a.val.ma + op->val.stcallback.a.off;
+		  //		printf ("st callback pc=0x%lx  st_addr=0x%lx\n", tp_pc, st_addr);
+		  tp_store_callback(tp_pc, st_addr);
+		}
+		break;
+	      }
+		    
+		
 	   case BULKCOPYOP:
                 // TRL this is used by hd taint.  idea is to 
                 // specify a src and dest and a number of bytes to copy
@@ -1843,13 +2223,14 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     /* in tainted pointer mode, if for some reason the pointer
                      * is tainted but it points to a guest register, do nothing
                      */
-#ifdef TAINTED_POINTER
-                    if (op->val.compute.c.typ == GREG){
-                        break;
-                    } else if (op->val.compute.c.typ == GSPEC){
-                        break;
-                    }
-#endif
+
+		    if (tainted_pointer) {
+		      if (op->val.compute.c.typ == GREG){
+                            break;
+		        } else if (op->val.compute.c.typ == GSPEC){
+                            break;
+		        }
+		    } // tainted_pointer is on
 
 #ifdef TAINTDEBUG
                     uint8_t foo = 0;
@@ -1868,6 +2249,16 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 			       &(op->val.compute.c));
                     break;
                 }
+
+
+            case PCOP:
+                {
+ 		    // set taint processor's pc to correct value for
+		    // current instruction
+		    tp_pc = op->val.pc;
+		    //		    printf ("tp_pc = 0x%lx\n", tp_pc);
+	            break;
+		}
 
             case INSNSTARTOP:
                 {
@@ -1899,7 +2290,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
             default:
                 assert (1==0);
         }
-	//        ii++;
+	        ii++;
     }
     tob_rewind(buf);
 }
@@ -1946,3 +2337,5 @@ void taint_tb_cleanup(TaintTB *ttb){
     my_free(ttb, sizeof(TaintTB), poolid_taint_processor);
     ttb = NULL;
 }
+
+

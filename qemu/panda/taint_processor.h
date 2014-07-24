@@ -44,8 +44,11 @@ PANDAENDCOMMENT */
  * taint, even if the pointer is also tainted.  Without tainted data, it
  * would propagate the taint of the pointer, if it exists.  This should be
  * done behind the scenes in the taint processor.
+ 
+ NB: this is enabled, at run time by a global: tainted_pointer = 1 
+
  */
-#define TAINTED_POINTER
+
 
 //#define TAINTSTATS
 
@@ -94,6 +97,9 @@ typedef struct addr_struct {
   uint16_t off;   // offset within local registers and guest registers
   AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
+
+
+
 
 
 typedef uint32_t Label;
@@ -147,6 +153,23 @@ uint8_t addrs_equal(Addr *a, Addr *b);
 
 uint8_t get_ram_bit(Shad *shad, uint32_t addr);
 
+void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l);
+
+uint32_t tp_query_ram(Shad *shad, uint64_t pa) ;
+
+uint32_t tp_query_reg(Shad *shad, int reg_num, int offset);
+
+void tp_delete_ram(Shad *shad, uint64_t pa) ;
+
+void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+
+void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+
+// returns number of tainted addrs in ram
+uint32_t tp_occ_ram(Shad *shad);
+
+
+
 typedef struct taint_op_buffer_struct {
   char *start;        // beginning of ops
   uint32_t max_size;  // max size
@@ -187,6 +210,9 @@ typedef enum {
     COPYOP,
     BULKCOPYOP,
     COMPUTEOP,
+    PCOP,
+    LDCALLBACKOP,
+    STCALLBACKOP,
     INSNSTARTOP,
     CALLOP,
     RETOP
@@ -200,6 +226,9 @@ typedef struct taint_op_struct {
     struct {Addr a, b;} copy;
     struct {Addr a; Addr b; uint32_t l;} bulkcopy;
     struct {Addr a, b, c;} compute;
+    uint64_t pc;   // special op that just knows the current program counter
+    struct {Addr a;} ldcallback;  
+    struct {Addr a;} stcallback;
     struct {
         char name[15];
         int num_ops;
@@ -257,6 +286,9 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf);
 
 void tob_op_print(Shad *shad, TaintOp *op);
 
+void fprintf_tob(Shad *shad, TaintOpBuffer *buf, void *fp);
+
+
 uint8_t tob_end(TaintOpBuffer *buf);
 
 float tob_full_frac(TaintOpBuffer *buf);
@@ -270,5 +302,20 @@ void print_addr(Shad *shad, Addr *a);
 
 void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
     DynValBuffer *dynval_buf);
+
+// the type of a taint processor callback
+// you get the program counter and a virtual memory address 
+// (either being loaded from or stored to)
+typedef void (*tp_callback_t) (uint64_t tp_pc, uint64_t addr);
+
+// scb will get called, inside the taint processor 
+// whenever a copy operation corresponding to a store is being processed
+void tp_add_store_callback(tp_callback_t scb);
+
+// lcb will get called, inside the taint processor 
+// whenever a copy operation corresponding to a load is being processed
+void tp_add_load_callback(tp_callback_t lcb);
+
+
 
 #endif

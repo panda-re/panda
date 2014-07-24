@@ -466,6 +466,7 @@ void run_on_cpu(CPUState *env, void (*func)(void *data), void *data);
 #define CPU_LOG_OPEN_FILE  (1 << 11)
 #define CPU_LOG_LLVM_IR    (1 << 12)
 #define CPU_LOG_LLVM_ASM   (1 << 13)
+#define CPU_LOG_TAINT_OPS  (1 << 14)
 
 /* define log items */
 typedef struct CPULogItem {

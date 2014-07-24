@@ -109,8 +109,8 @@ public:
     void memcpyHelper(CallInst &I);
     void memsetHelper(CallInst &I);
     void ctlzHelper(CallInst &I);
-    void loadHelper(Value *src, Value *dst, int len);
-    void storeHelper(Value *src, Value *dst, int len);
+    void loadHelper(Value *src, Value *dst, int len, int is_mmu);
+    void storeHelper(Value *src, Value *dst, int len, int is_mmu);
     void portLoadHelper(Value *src, Value *dst, int len);
     void portStoreHelper(Value *src, Value *dst, int len);
     void floatHelper(CallInst &I);

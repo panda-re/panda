@@ -1359,12 +1359,18 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
                     wordPtrType()),
                 true);
             // volatile store of current PC
-            m_builder.CreateStore(ConstantInt::get(wordType(), args[0]),
+	    llvm::Instruction *i = 
+	      m_builder.CreateStore(ConstantInt::get(wordType(), args[0]),
                 m_builder.CreateIntToPtr(
                     ConstantInt::get(wordType(),
                         (uint64_t) &tcg_llvm_runtime.last_pc),
                     wordPtrType()),
-                true);
+                true);	    
+	    // TRL 2014 hack to annotate that last instruction as the one
+	    // that sets PC
+	    LLVMContext& C = i->getContext();
+	    MDNode* N = MDNode::get(C, MDString::get(C, "pcupdate"));
+	    i->setMetadata("pcupdate.md", N);
         }
 
         args += generateOperation(opc, args);
