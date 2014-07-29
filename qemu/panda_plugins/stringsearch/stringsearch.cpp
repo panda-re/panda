@@ -39,6 +39,7 @@ extern "C" {
 
 
 #include "../common/prog_point.h"
+#include "panda_plugin_plugin.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -55,8 +56,8 @@ get_callers_t get_callers;
 typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
 get_prog_point_t get_prog_point;
 
-// register a fn to be called when string search matches
-void add_on_ssm(on_ssm_t fptr);
+// prototype for the register-this-callback fn
+PPP_PROT_REG_CB(on_ssm);
 
 }
 
@@ -84,9 +85,11 @@ uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
 
-// this is the callback for when a string search matches
-on_ssm_t on_ssm_func = NULL;
+// this creates BOTH the global for this callback fn (on_ssm_func)
+// and the function used by other plugins to register a fn (add_on_ssm)
+PPP_CB_BOILERPLATE(on_ssm)
 
+// this creates the 
 
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write,
@@ -118,10 +121,8 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.asid = p.cr3;
                 matchstacks[p] = f;
 
-		// call i-found-a-match plugin function here.
-		if (on_ssm_func != NULL) {
-		  on_ssm_func(env, pc, addr, tofind[str_idx], strlens[str_idx], is_write);
-		}
+		// call the i-found-a-match registered callbacks here
+		PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
 
             }
         }
@@ -141,10 +142,6 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
 
-
-void add_on_ssm(on_ssm_t fptr) {
-  on_ssm_func = fptr;
-}
 
 
 bool init_plugin(void *self) {

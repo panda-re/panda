@@ -29,6 +29,8 @@ extern "C" {
 #include "taint_api.h"
 
 #include "../stringsearch/stringsearch.h"
+#include "panda_plugin_plugin.h"
+
 
 }
 
@@ -75,9 +77,9 @@ void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
     return;
   }
   if (pc == the_pc) {
-    printf ("\n************************************************************************\n");
+    printf ("\n****************************************************************************\n");
     printf ("applying taint labels to search string of length %d  @ p=0x%x\n", the_len, the_buf);    
-    printf ("************************************************************************\n");    
+    printf ("******************************************************************************\n");    
     // label that buffer 
     int i;
     for (i=0; i<the_len; i++) {
@@ -133,24 +135,13 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 
 
 
-void (*add_on_ssm)(on_ssm_t fptr);
-
 
 
 bool init_plugin(void *self) {
-
-  // all this plugin does is register the tstringsearch_match fn 
-  // to be called by stringsearch plugin when there is a match
-  dlerror();
-  void *ss_plugin = panda_get_plugin_by_name("panda_stringsearch.so");
-  if (!ss_plugin) {
-    printf("Couldn't load stringsearch plugin\n");   
-    return false;
-  }
-  // and use it to find fn we use to add 
-  add_on_ssm = (void (*)(on_ssm_t)) dlsym(ss_plugin, "add_on_ssm");
-  add_on_ssm(tstringsearch_match);
-    
+  /*
+    register the tstringsearch_match fn to be called at the on_ssm site within panda_stringsearch
+   */
+  PPP_REG_CB("stringsearch", on_ssm, tstringsearch_match) ;
   return true;
 }
 
