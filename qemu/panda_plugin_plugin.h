@@ -71,7 +71,8 @@ void ppp_add_##cb_name(cb_name##_t fptr) {			\
 }									\
 									\
 void ppp_add_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
-  ppp_##cb_name##_cb[slot_num] = fptr;				\
+  assert (slot_num < PPP_MAX_CB);					\
+  ppp_##cb_name##_cb[slot_num] = fptr;					\
   ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);	\
 }									
 
