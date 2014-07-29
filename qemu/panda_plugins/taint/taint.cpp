@@ -35,7 +35,7 @@ extern "C" {
 #include "syscall_defs.h"
 #endif
 
-#include "mytimer.h"
+
 
 #include <sys/time.h>
 #include "panda_plugin.h"
