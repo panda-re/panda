@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include "hw/goldfish_mmc.h"
 #endif
 
+// This is a C file, so we don't need "extern C"
+#include "sample_int.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,6 +164,17 @@ int before_loadvm_callback(void){
 }
 
 #endif // CONFIG_ANDROID
+
+int sample_function(CPUState *env){
+    printf("sample was passed a cpustate\n");
+    return 0;
+}
+
+int other_sample_function(CPUState *env, int foo){
+    printf("other was passed a cpustate and paramater %#X\n", foo);
+    return 1;
+}
+
 
 panda_arg_list *args;
 
