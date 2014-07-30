@@ -60,17 +60,21 @@ void ppp_add_##cb_name(cb_name##_t fptr) ;
 */
 
 #define PPP_CB_BOILERPLATE(cb_name)		\
+extern "C" { \
+  void ppp_add_cb_##cb_name(cb_name##_t fptr) ;                   \       
+  void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;      \
+} \
   \
 cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB];	\
 int ppp_##cb_name##_num_cb = 0;				\
 							\
-void ppp_add_##cb_name(cb_name##_t fptr) {			\
+void ppp_add_cb_##cb_name(cb_name##_t fptr) {			\
   assert (ppp_##cb_name##_num_cb < PPP_MAX_CB);				\
   ppp_##cb_name##_cb[ppp_##cb_name##_num_cb] = fptr;			\
   ppp_##cb_name##_num_cb += 1;						\
 }									\
 									\
-void ppp_add_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
   assert (slot_num < PPP_MAX_CB);					\
   ppp_##cb_name##_cb[slot_num] = fptr;					\
   ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);	\
@@ -100,16 +104,17 @@ to add a callback to be run inside of plugin A.
 
 // Use this in the very begining of plugin B's init_plugin fn 
 // 
-#define PPP_REG_CB(other_plugin, cb_name, cb_func) \
+#define PPP_REG_CB(other_plugin, cb_name, cb_func)			\
   {									\
     dlerror();								\
-    void *op = panda_get_plugin_by_name("panda_" other_plugin ".so");		\
+    void *op = panda_get_plugin_by_name("panda_" other_plugin ".so");	\
     if (!op) {								\
       printf("In trying to add plugin callback, couldn't load %s plugin\n", other_plugin); \
       assert (op);							\
     }									\
-    void (*add_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_add_" #cb_name); \
-    add_cb (cb_func);					\
+    void (*add_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_add_cb_" #cb_name); \
+    assert (cb_func != 0);						\
+    add_cb (cb_func);							\
   }
 
 

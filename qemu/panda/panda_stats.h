@@ -20,7 +20,7 @@ PANDAENDCOMMENT */
 #include "taint_processor.h"
 
 void memplot(Shad *shad);
-void bufplot(CPUState *env, Shad *shad, uint64_t addr, int length);
+void bufplot(CPUState *env, Shad *shad, Addr *addr, int length);
 void dump_taint_stats(Shad *shad);
 void cleanup_taint_stats(void);
 

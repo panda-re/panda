@@ -589,6 +589,42 @@ int PANDROID_set_vars(void){
     file_vfsmnt_offset = -1;
 }
 
+int PANDROID_set_vars_jb4_2(void){  //"Android-x86 Gingerbread", /* entry name */
+       taskaddr = 0xC0336E08; /* task struct root */
+       sizeof_task_struct =1000; /* size of task_struct */
+       task_struct_tasks_offset =448; /* offset of task_struct list */
+       task_struct_pid_offset =492; /* offset of pid */
+       task_struct_tgid_offset =496; /* offset of tgid */
+       task_struct_group_leader_offset =524; /* offset of group_leader */
+       task_struct_thread_group_offset =580; /* offset of thread_group */
+       task_struct_real_parent_offset =500; /* offset of real_parent */
+       task_struct_mm_offset = 456; /* offset of mm */
+       task_struct_stack_offset =4; /* offset of stack */
+       task_struct_real_cred_offset = 704; /* offset of real_cred */
+       task_struct_cred_offset = 708; /* offset of cred */
+       cred_uid_offset = 4; /* offset of uid cred */
+       cred_gid_offset = 8; /* offset of gid cred */
+       cred_euid_offset = 20; /* offset of euid cred */
+       cred_egid_offset = 24; /* offset of egid cred */
+       mm_struct_pgd_offset = 36; /* offset of pgd in mm */
+       mm_struct_mm_arg_start_offset =148; /* offset of arg_start in mm */
+       mm_struct_start_brk_offset = 136; /* offset of start_brk in mm */
+       mm_struct_brk_offset = 140; /* offset of brk in mm */
+       mm_struct_start_stack_offset= 144; /* offset of start_stack in mm */
+       task_struct_comm_offset =724; /* offset of comm */
+       size_of_task_struct_comm = 16; /* size of comm */
+       vm_area_struct_vm_start_offset = 4; /* offset of vm_start in vma */
+       vm_area_struct_vm_end_offset = 8; /* offset of vm_end in vma */
+       vm_area_struct_vm_next_offset =  12; /* offset of vm_next in vma */
+       vm_area_struct_vm_file_offset = 72; /* offset of vm_file in vma */
+       vm_area_struct_vm_flags_offset = 20; /* offset of vm_flags in vma */
+       file_f_dentry_offset= 12; /* offset of dentry in file */
+       dentry_d_name_offset =  28; /* offset of d_name in dentry */
+       dentry_d_iname_offset = 88; /* offset of d_iname in dentry */
+       dentry_d_parent_offset =24; /* offset of d_parent in dentry */
+       thread_info_task_offset = 12; /* offset of task in thread_info */
+}
+
 int DECAF_linux_vmi_init(void)
 {
   int i = 0;
@@ -597,7 +633,7 @@ int DECAF_linux_vmi_init(void)
   int isbcomment = 0;
   int islcomment = 0;
   char pattern [BUFFER_SIZE];
-
+  PANDROID_set_vars_jb4_2(); return 0;
   PANDROID_set_vars(); return 0;
   FILE * fd = fopen(kernelinfo_filename, "ro");
 

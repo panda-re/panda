@@ -215,7 +215,8 @@ typedef enum {
     STCALLBACKOP,
     INSNSTARTOP,
     CALLOP,
-    RETOP
+    RETOP,
+    QUERYOP
 } TaintOpType;
 
 typedef struct taint_op_struct {
@@ -250,6 +251,7 @@ typedef struct taint_op_struct {
     } insn_start;
     struct {char name[50]; TaintTB *ttb;} call;
     struct {int null; /* data currently not used */} ret;
+    struct {Addr a; uint32_t l;} query;
   } val;
 } TaintOp;
 

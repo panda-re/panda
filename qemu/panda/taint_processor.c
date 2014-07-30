@@ -22,6 +22,8 @@ PANDAENDCOMMENT */
 #include "guestarch.h"
 #include "taint_processor.h"
 #include "panda_memlog.h"
+#include "panda/network.h"
+#include "panda/panda_stats.h"
 
 #define SB_INLINE inline
 
@@ -611,7 +613,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case LADDR:
             {
 #ifdef TAINTDEBUG
-                printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a.val.la+a.off));
+                printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
                 labelset_spit(ls);
                 printf("\n");
 #endif
@@ -635,7 +637,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case GREG:
             {
 #ifdef TAINTDEBUG
-                printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a.val.gr+a.off));
+                printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a->val.gr+a->off));
                 labelset_spit(ls);
                 printf("\n");
 #endif
@@ -647,7 +649,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case GSPEC:
             {
 #ifdef TAINTDEBUG
-                printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a.val.gs+a.off));
+                printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a->val.gs+a->off));
                 labelset_spit(ls);
                 printf("\n");
 #endif
@@ -1291,6 +1293,13 @@ void tob_op_print(Shad *shad, TaintOp *op) {
         case RETOP:
             {
                 printf("return\n");
+                break;
+            }
+        case QUERYOP:
+            {
+                printf("query ");
+                print_addr(shad, &(op->val.query.a));
+                printf(" len: %d\n", op->val.query.l);
                 break;
             }
         default:
@@ -2075,12 +2084,10 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
         DynValBuffer *dynval_buf) {
 
-
   uint32_t ii;
-    tob_rewind(buf);
+  ii = 0;
+  tob_rewind(buf);
 
-
-    ii = 0;
     while (!(tob_end(buf))) {
 
       //      if ((ii % 10000) == 0) {
@@ -2091,7 +2098,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
 
 #ifdef TAINTDEBUG
-        printf("op %d ", ii);
+      printf("op %d %d", i, ii);
         tob_op_print(shad, op);
 #endif
         switch (op->typ) {
@@ -2128,7 +2135,7 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     if (op->val.copy.a.flag == IRRELEVANT){
 #ifdef TAINTDEBUG
                             uint8_t foo = 0;
-                            if (tp_query(shad, op->val.copy.b)){
+                            if (tp_query(shad, &(op->val.copy.b))){
                                 printf ("  [dest was tainted]"); foo = 1;
                             }
                             if (foo) printf("\n");
@@ -2146,10 +2153,10 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
 #ifdef TAINTDEBUG
                     uint8_t foo = 0;
-                    if (tp_query(shad, op->val.copy.a)) {
+                    if (tp_query(shad, &(op->val.copy.a))) {
                         printf ("  [src is tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op->val.copy.b)) {
+                    if (tp_query(shad, &(op->val.copy.b))) {
                         printf ("  [dest was tainted]"); foo = 1;
                     }
                     if (foo) printf("\n");
@@ -2234,13 +2241,13 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
 #ifdef TAINTDEBUG
                     uint8_t foo = 0;
-                    if (tp_query(shad, op->val.compute.a)) {
+                    if (tp_query(shad, &(op->val.compute.a))) {
                         printf ("  [src1 was tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op->val.compute.b)) {
+                    if (tp_query(shad, &(op->val.compute.b))) {
                         printf ("  [src2 was tainted]"); foo = 1;
                     }
-                    if (tp_query(shad, op->val.compute.c)) {
+                    if (tp_query(shad, &(op->val.compute.c))) {
                         printf ("  [dest was tainted]"); foo = 1;
                     }
                     if (foo) printf("\n");
@@ -2284,6 +2291,12 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
                     else if ((int)shad->current_frame < 0){
                         assert(1==0);
                     }
+                    break;
+                }
+
+            case QUERYOP:
+                {
+                    bufplot(NULL, shad, &(op->val.query.a), op->val.query.l);
                     break;
                 }
 

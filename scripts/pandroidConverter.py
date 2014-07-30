@@ -26,8 +26,7 @@ def expandWithZeroes(filename, fullsize):
     print "Physical size: %d" % filledsize
     print "Expand by:     %d" % morelen
     with open(filename, 'ab') as image:
-        for i in range(morelen):
-            image.write('\xff')
+        image.write('\xff' * morelen)
     print "Expansion complete"
 
 def makeQCow(filename):
