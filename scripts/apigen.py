@@ -4,10 +4,12 @@ import os
 import sys
 import re
 import pdb
-proto_re = re.compile("(.+)\s+(\w+)\s*\((.*)\)")
+proto_re = re.compile("(.+)\s+(\S+)\s*\((.*)\)")
 
 def generate_code(functions, module):
-    code = """#include <dlfcn.h>
+    code = "#ifndef __" + module +"""_EXT_H
+#define __""" + module + """_EXT_H
+#include <dlfcn.h>
 #include "panda_plugin.h"
 
 """
@@ -50,6 +52,7 @@ inline bool init_sample_api(void){
 
 #undef API_PLUGIN_NAME
 #undef IMPORT_PPP
+#endif
 """
     return code
 
@@ -76,7 +79,7 @@ def resolve_type(modifiers, name):
         return rtype, name
 
 def generate_api(plugin_name, plugin_dir):
-    if 'sample_int.h' not in os.listdir(plugin_dir):
+    if '{0}_int.h'.format(plugin_name) not in os.listdir(plugin_dir):
         return
 
     print "Building API for plugin", plugin_name,
