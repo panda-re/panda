@@ -44,7 +44,9 @@ in the list at the right point.
 
 // use this in extern "C" { blob at head of A plugin
 #define PPP_PROT_REG_CB(cb_name) \
-void ppp_add_##cb_name(cb_name##_t fptr) ;
+void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;     
+
 
 
 
@@ -60,11 +62,6 @@ void ppp_add_##cb_name(cb_name##_t fptr) ;
 */
 
 #define PPP_CB_BOILERPLATE(cb_name)		\
-extern "C" { \
-  void ppp_add_cb_##cb_name(cb_name##_t fptr) ;                   \       
-  void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;      \
-} \
-  \
 cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB];	\
 int ppp_##cb_name##_num_cb = 0;				\
 							\
@@ -86,13 +83,14 @@ void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
 */
  
 #define PPP_RUN_CB(cb_name, ...)					\
-{									\
-  for (int ppp_cb_ind=0; ppp_cb_ind < ppp_##cb_name##_num_cb; ppp_cb_ind++) { \
-    if (ppp_##cb_name##_cb[ppp_cb_ind] != NULL) {			\
-      ppp_##cb_name##_cb[ppp_cb_ind]( __VA_ARGS__ ) ;				\
+  {									\
+    int ppp_cb_ind;							\
+    for (ppp_cb_ind = 0; ppp_cb_ind < ppp_##cb_name##_num_cb; ppp_cb_ind++) { \
+      if (ppp_##cb_name##_cb[ppp_cb_ind] != NULL) {			\
+	ppp_##cb_name##_cb[ppp_cb_ind]( __VA_ARGS__ ) ;			\
+      }									\
     }									\
-  }									\
-}
+  }
 
 
 

@@ -305,11 +305,17 @@ void print_addr(Shad *shad, Addr *a);
 void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
     DynValBuffer *dynval_buf);
 
+/*
 // the type of a taint processor callback
 // you get the program counter and a virtual memory address 
 // (either being loaded from or stored to)
 typedef void (*tp_callback_t) (uint64_t tp_pc, uint64_t addr);
+*/
 
+typedef void (*on_load_t) (uint64_t tp_pc, uint64_t addr);
+typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
+
+/*
 // scb will get called, inside the taint processor 
 // whenever a copy operation corresponding to a store is being processed
 void tp_add_store_callback(tp_callback_t scb);
@@ -317,7 +323,7 @@ void tp_add_store_callback(tp_callback_t scb);
 // lcb will get called, inside the taint processor 
 // whenever a copy operation corresponding to a load is being processed
 void tp_add_load_callback(tp_callback_t lcb);
-
+*/
 
 
 #endif

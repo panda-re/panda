@@ -27,7 +27,7 @@ PANDAENDCOMMENT */
 
 #include "cpu.h"
 
-#include "taint_processor.h"
+#include "../panda_plugins/taint/taint_processor.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 

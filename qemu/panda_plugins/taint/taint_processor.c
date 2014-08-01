@@ -22,8 +22,9 @@ PANDAENDCOMMENT */
 #include "guestarch.h"
 #include "taint_processor.h"
 #include "panda_memlog.h"
-#include "panda/network.h"
-#include "panda/panda_stats.h"
+#include "network.h"
+#include "panda_stats.h"
+#include "panda_plugin_plugin.h"
 
 #define SB_INLINE inline
 
@@ -54,21 +55,18 @@ uint32_t max_ref_count = 0;
 
 uint64_t tp_pc = 0;
 
-
-tp_callback_t tp_store_callback = NULL;
-tp_callback_t tp_load_callback  = NULL;
-
-
-
-void tp_add_store_callback(tp_callback_t cb) {
-  tp_store_callback = cb;
-}
-
-void tp_add_load_callback(tp_callback_t cb) {
-  tp_load_callback = cb;
-}
+// prototypes for on_load and on_store callback registering
+PPP_PROT_REG_CB(on_load);
+PPP_PROT_REG_CB(on_store);
 
 
+// this adds the actual callback machinery including
+// functions for registering callbacks
+PPP_CB_BOILERPLATE(on_load);
+PPP_CB_BOILERPLATE(on_store);
+
+
+void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 
 
@@ -402,7 +400,8 @@ uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
 
 
 
-SB_INLINE void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+//SB_INLINE void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
   LabelSet *ls = tp_labelset_get(shad, a);
   if (!labelset_is_empty(ls)) {
     labelset_iter(ls, app, stuff2);
@@ -431,7 +430,7 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
 
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad) {
-  printf ("here i am shad=0x%x\n", shad);
+
   fflush(stdout);
   if (shad->ram) {
     uint32_t x = shad_dir_occ_64(shad->ram);
@@ -1394,7 +1393,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                         break;
 		    case LDCALLBACKOP:
 		      {
-			if (tp_load_callback) {
+			if (ppp_on_load_num_cb > 0) {
 			  if (dventry.entry.memaccess.addr.typ == MADDR) {
 			    // load callback.  fill in the address
 			    cur_op->val.ldcallback.a.flag = 0;
@@ -1518,7 +1517,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
 
 		    case STCALLBACKOP:
 		      {
-			if (tp_store_callback) {
+			if (ppp_on_store_num_cb > 0) {
 			  if (dventry.entry.memaccess.addr.typ == MADDR){
 			    cur_op->val.stcallback.a.flag = 0;
 			    cur_op->val.stcallback.a.typ = MADDR;
@@ -2167,11 +2166,12 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
  	    case LDCALLBACKOP:
 	      {
-		if (tp_load_callback) {
+		if (ppp_on_load_num_cb > 0) {
 		  // semantically right after ld has happened.
 		  uint64_t ld_addr = op->val.ldcallback.a.val.ma + op->val.ldcallback.a.off;
 		  //				printf ("ld callback pc=0x%lx  ld_addr=0x%lx\n", tp_pc, ld_addr);
-		  tp_load_callback(tp_pc, ld_addr);
+		  //		  tp_load_callback(tp_pc, ld_addr);
+		  PPP_RUN_CB(on_load, tp_pc, ld_addr);
 		}
 		break;
 	      }
@@ -2179,11 +2179,12 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
  	    case STCALLBACKOP:
 	      {
-		if (tp_store_callback) {
+		if (ppp_on_store_num_cb > 0) {  
 		  // semantically right after st has happened.
 		  uint64_t st_addr = op->val.stcallback.a.val.ma + op->val.stcallback.a.off;
 		  //		printf ("st callback pc=0x%lx  st_addr=0x%lx\n", tp_pc, st_addr);
-		  tp_store_callback(tp_pc, st_addr);
+		  //		  tp_store_callback(tp_pc, st_addr);
+		  PPP_RUN_CB(on_store, tp_pc, st_addr);
 		}
 		break;
 	      }

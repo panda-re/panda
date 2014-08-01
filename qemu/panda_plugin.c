@@ -55,6 +55,7 @@ bool panda_add_arg(const char *arg, int arglen) {
 }
 
 bool panda_load_plugin(const char *filename) {
+  printf ("loading %s\n", filename);
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
@@ -70,10 +71,12 @@ bool panda_load_plugin(const char *filename) {
         panda_plugins[nb_panda_plugins].plugin = plugin;
         strncpy(panda_plugins[nb_panda_plugins].name, basename(filename), 256);
         nb_panda_plugins++;
+	fprintf (stderr, "Success\n");
         return true;
     }
     else {
         dlclose(plugin);
+	fprintf (stderr, "Fail. init_fn returned 0\n");
         return false;
     }
 }

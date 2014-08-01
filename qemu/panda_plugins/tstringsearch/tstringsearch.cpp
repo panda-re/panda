@@ -22,11 +22,9 @@ extern "C" {
 #include "qemu-common.h"
 #include "monitor.h"
 #include "cpu.h"
-  //#include "disas.h"
-
 #include "panda_plugin.h"
-#include "taint_processor.h"
-#include "taint_api.h"
+#include "../taint/taint_processor.h"
+#include "../taint/taint_ext.h"
 
 #include "../stringsearch/stringsearch.h"
 #include "panda_plugin_plugin.h"
@@ -34,12 +32,6 @@ extern "C" {
 
 }
 
-/*
-// this is the fn that will get called when tzb finds a match
-extern void (*stringsearch_match_fp)(CPUState *env, target_ulong pc, target_ulong addr,
-				     uint8_t *matched_string, uint32_t matched_string_lenght, 
-				     bool is_write);
-*/
 
 //#include <dlfcn.h>
 #include <stdio.h>
@@ -123,9 +115,8 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
       // turn on taint.
       taint_enable_taint();
       // add a callback for taint processor st
-      tp_add_store_callback(tstringsearch_label);
-      tp_add_load_callback(tstringsearch_label);
-
+      PPP_REG_CB("taint", on_load, tstringsearch_label);
+      PPP_REG_CB("taint", on_store, tstringsearch_label);
     }
   
   }
@@ -138,10 +129,15 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 
 
 bool init_plugin(void *self) {
-  /*
-    register the tstringsearch_match fn to be called at the on_ssm site within panda_stringsearch
-   */
+  printf ("Initializing tstringsearch\n");
+
+  // this sets up the taint api fn ptrs so we have access
+  bool x = init_taint_api();  
+  assert (x==true);
+
+  // register the tstringsearch_match fn to be called at the on_ssm site within panda_stringsearch
   PPP_REG_CB("stringsearch", on_ssm, tstringsearch_match) ;
+
   return true;
 }
 

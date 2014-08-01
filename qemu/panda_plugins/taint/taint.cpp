@@ -48,17 +48,17 @@ extern "C" {
 
   extern int compute_is_delete;
   extern int loglevel;
+  extern int tubtf_on;
+  
 
-
-  void     (*taint_enable_taint_fp)(void);
-  int      (*taint_enabled_fp)(void);
-  void     (*taint_label_ram_fp)(uint64_t pa, uint32_t l) ;
-  uint32_t (*taint_query_ram_fp)(uint64_t pa) ;
-  uint32_t (*taint_query_reg_fp)(int reg_num, int offset);
-  void     (*taint_delete_ram_fp)(uint64_t pa) ;
-  void     (*taint_labels_ram_iter_fp)(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
-  void     (*taint_labels_reg_iter_fp)(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
-  uint32_t (*taint_occ_ram_fp)(void);
+  // For the C API to taint accessible from other plugins
+  void taint_enable_taint(void);
+  int taint_enabled(void);
+  void taint_label_ram(uint64_t pa, uint32_t l) ;
+  uint32_t taint_query_ram(uint64_t pa);
+  uint32_t taint_query_reg(int reg_num, int offset);
+  void taint_delete_ram(uint64_t pa) ;
+  uint32_t taint_occ_ram(void) ;
 
 }
 
@@ -172,7 +172,7 @@ uint32_t       tob_io_thread_max_size = 1024 * 1024;
 
 
 // returns 1 iff taint is on
-int taint_enabled() {
+int __taint_enabled() {
   if (taintEnabled == true) {
     return 1;
   }
@@ -270,8 +270,10 @@ static void llvm_init(){
 
 } // namespace llvm
 
-void taint_enable_taint(){
-  printf ("taint_enable_taint\n");
+
+
+void __taint_enable_taint(void) {
+  printf ("__taint_enable_taint\n");
   taintJustEnabled = true;
   taintEnabled = true;
     panda_cb pcb;
@@ -362,6 +364,7 @@ void taint_enable_taint(){
         PTFP->runOnFunction(*i);
     }
 }
+
 
 
 
@@ -508,7 +511,7 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
                     printf("Enabling taint processing\n");
                     taintJustEnabled = true;
                     taintEnabled = true;
-                    taint_enable_taint();
+                    __taint_enable_taint();
                 }
                 
                 Addr a = make_iaddr(old_buf_addr);
@@ -660,7 +663,7 @@ int guest_hypercall_callback(CPUState *env){
             if (!taintEnabled){
                 printf("Taint plugin: Label operation detected\n");
                 printf("Enabling taint processing\n");
-                taint_enable_taint();
+                __taint_enable_taint();
             }
 
             TaintOpBuffer *tempBuf = tob_new(500*1048576 /* 5MB */);
@@ -708,7 +711,7 @@ int guest_hypercall_callback(CPUState *env){
         if (!taintEnabled){
             printf("Taint plugin: Label operation detected\n");
             printf("Enabling taint processing\n");
-	    taint_enable_taint();
+	    __taint_enable_taint();
         }
 
 
@@ -844,24 +847,26 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 
 
 // label this phys addr in memory with this label 
-void taint_label_ram(uint64_t pa, uint32_t l) {
+void __taint_label_ram(uint64_t pa, uint32_t l) {
   tp_label_ram(shadow, pa, l);
 }
 
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality 
-uint32_t taint_query_ram(uint64_t pa) {
+uint32_t __taint_query_ram(uint64_t pa) {
   return (tp_query_ram(shadow, pa));
 }
 
 
-uint32_t taint_query_reg(int reg_num, int offset) {
+uint32_t __taint_query_reg(int reg_num, int offset) {
   return tp_query_reg(shadow, reg_num, offset);
 }
 
-void taint_delete_ram(uint64_t pa) {
+
+void __taint_delete_ram(uint64_t pa) {
   tp_delete_ram(shadow, pa);
 }
+
 
 void taint_labels_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
   tp_ls_ram_iter(shadow, pa, app, stuff2);
@@ -874,11 +879,47 @@ void taint_labels_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void
 
 
 
-uint32_t taint_occ_ram() {
+uint32_t __taint_occ_ram() {
   printf ("blah blah\n");
   tp_occ_ram(shadow);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////
+// C API versions
+
+
+void taint_enable_taint(void) {
+  __taint_enable_taint();
+}
+
+int taint_enabled(void) {
+  return __taint_enabled();
+}
+
+void taint_label_ram(uint64_t pa, uint32_t l) {
+  __taint_label_ram(pa, l);
+}
+
+uint32_t taint_query_ram(uint64_t pa) {
+  return __taint_query_ram(pa);
+}
+
+void taint_delete_ram(uint64_t pa) {
+  __taint_delete_ram(pa);
+}
+
+uint32_t taint_query_reg(int reg_num, int offset) {
+  return __taint_query_reg(reg_num, offset);
+}
+
+
+uint32_t taint_occ_ram(void) {
+  return __taint_occ_ram();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
 
 bool init_plugin(void *self) {
     printf("Initializing taint plugin\n");
@@ -903,6 +944,11 @@ bool init_plugin(void *self) {
 
     int i;
     for (i = 0; i < panda_argc; i++) {
+
+      if (0 == strncmp(panda_argv[i], "tubtf", 5)) {
+        tubtf_on = 1;
+      }
+      
       if (0 == strncmp(panda_argv[i], "max_taintset_card", 17)) {
 	// Format is sample:key=value                                                                                                                                                                                 
 	char *str = strchr(panda_argv[i], '=');
@@ -932,15 +978,7 @@ bool init_plugin(void *self) {
     printf ("tainted_pointer = %d\n", tainted_pointer);
     
 
-    taint_enable_taint_fp = taint_enable_taint;
-    taint_enabled_fp =      taint_enabled;
-    taint_label_ram_fp =    taint_label_ram;
-    taint_query_ram_fp =    taint_query_ram;
-    taint_query_reg_fp =    taint_query_reg;
-    taint_delete_ram_fp =   taint_delete_ram;
-    taint_labels_ram_iter_fp = taint_labels_ram_iter; 
-    taint_labels_reg_iter_fp = taint_labels_reg_iter;
-    taint_occ_ram_fp = taint_occ_ram;
+    printf ("done initializing taint plugin\n");
 
     return true;
 }
@@ -964,26 +1002,6 @@ int print_labels (uint32_t el, void *stuff) {
 void uninit_plugin(void *self) {
 
   printf ("uninit taint plugin\n");
-
-#if 0
-  // spit out tainted bytes in memory
-  int pa;
-  printf ("dumping tainted memory report to /tmp/tpmem\n");
-  FILE *fp = fopen("/tmp/tpmem", "w");
-  uint32_t t = 0;
-  for (pa=0; pa<128 * 1024 * 1204; pa++) {
-    uint32_t c = taint_query_ram((uint64_t) pa);
-    if (c>0) {
-      // its tainted
-      fprintf(fp, "%x ", pa);
-      taint_labels_ram_iter(pa, print_labels, (void *) fp);
-      fprintf(fp,"\n");
-      t += 1;
-    }
-  }
-  printf ("%d tainted addrs\n", t);
-  fclose(fp);
-#endif
 
     /*
      * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
