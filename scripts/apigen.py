@@ -7,8 +7,9 @@ import pdb
 proto_re = re.compile("(.+)\s+(\S+)\s*\((.*)\)")
 
 def generate_code(functions, module):
-    code = "#ifndef __" + module +"""_EXT_H
-#define __""" + module + """_EXT_H
+    code =  "#ifndef __%s_EXT_H__\n" % (module.upper())
+    code += "#define __%s_EXT_H__\n" % (module.upper())
+    code +="""
 #include <dlfcn.h>
 #include "panda_plugin.h"
 
@@ -35,15 +36,19 @@ def generate_code(functions, module):
     return false; \\
  } \\
 }
+"""
+    code += "inline bool init_%s_api(void){" % module
 
-inline bool init_sample_api(void){
+
+    code += """
     void *module = panda_get_plugin_by_name("panda_" API_PLUGIN_NAME ".so");
     if (!module) {
         printf("In trying to add plugin, couldn't load %s plugin\\n", API_PLUGIN_NAME);
         return false;
     }
     dlerror();
-"""
+""" 
+
     for function in functions:
         code += "IMPORT_PPP(module, " + function[1] + ")\n"
 
@@ -52,8 +57,10 @@ inline bool init_sample_api(void){
 
 #undef API_PLUGIN_NAME
 #undef IMPORT_PPP
+
 #endif
 """
+
     return code
 
 bad_keywords = ['static', 'inline']
@@ -79,22 +86,28 @@ def resolve_type(modifiers, name):
         return rtype, name
 
 def generate_api(plugin_name, plugin_dir):
-    if '{0}_int.h'.format(plugin_name) not in os.listdir(plugin_dir):
+    print plugin_name
+    if ("%s_int.h" % plugin_name) not in os.listdir(plugin_dir):
         return
 
+
     print "Building API for plugin", plugin_name,
-    functions = []
+    functions = []    
     with open(os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))) as API:
         for line in API:
             line = line.strip();
-            if line and not line.startswith('#'):
+            if line and not line.startswith('#') and not (re.match("^/", line)):
+                print line
                 match = proto_re.match(line)
                 rtype, name, arglist = match.groups()
                 rtype, name = resolve_type(rtype, name)
 
                 args = []
                 for arg in [x.strip() for x in arglist.split(',')]:
-                    argtype, argname = arg.rsplit(None, 1)
+                    if arg == "void":
+                        argtype, argname = ("void", "")
+                    else:
+                        argtype, argname = arg.rsplit(None, 1)
                     args.append(resolve_type(argtype, argname))
                 functions.append((rtype, name, args))
     code = generate_code(functions, plugin_name)
