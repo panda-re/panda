@@ -279,8 +279,6 @@ uint8_t *boot_splash_filedata;
 int boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
 
-// defined in panda/tubtf.c
-extern int tubtf_on;
 
 typedef struct FWBootEntry FWBootEntry;
 
@@ -3241,11 +3239,8 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins++] = optarg;
+		printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
                 break;
-
-	    case QEMU_OPTION_tubtf:
-	      printf ("tubtf logging on\n");
-	      tubtf_on = 1;
 
             default:
                 os_parse_cmd_args(popt->index, optarg);
@@ -3260,8 +3255,10 @@ int main(int argc, char **argv, char **envp)
     // Now that all arguments are available, we can load plugins
     int pp_idx;
     for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
-        if(!panda_load_plugin(panda_plugin_files[pp_idx]))
-            fprintf(stderr, "WARN: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+      if(!panda_load_plugin(panda_plugin_files[pp_idx])) {
+	fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+	abort();
+      }
     }
 
     /* Open the logfile at this point, if necessary. We can't open the logfile
