@@ -33,7 +33,7 @@ PANDAENDCOMMENT */
 #include "llvm_trace_test.h"
 
 extern "C" {
-#include "panda_memlog.h"
+#include "../taint/panda_memlog.h"
 }
 
 using namespace llvm;

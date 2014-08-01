@@ -52,8 +52,7 @@ void uninit_plugin(void *);
 
 }
 
-
-
+#ifdef CONFIG_SOFTMMU
 
 bool tstringsearch_label_on = true;
 bool first_match = true;
@@ -70,8 +69,8 @@ void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
   }
   if (pc == the_pc) {
     printf ("\n****************************************************************************\n");
-    printf ("applying taint labels to search string of length %d  @ p=0x%x\n", the_len, the_buf);    
-    printf ("******************************************************************************\n");    
+    printf ("applying taint labels to search string of length %d  @ p=0x" TARGET_FMT_lx "\n", the_len, the_buf);
+    printf ("******************************************************************************\n");
     // label that buffer 
     int i;
     for (i=0; i<the_len; i++) {
@@ -122,15 +121,12 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
   }
 }
 
-
-
-
-
-
+#endif
 
 bool init_plugin(void *self) {
   printf ("Initializing tstringsearch\n");
 
+#ifdef CONFIG_SOFTMMU
   // this sets up the taint api fn ptrs so we have access
   bool x = init_taint_api();  
   assert (x==true);
@@ -139,6 +135,10 @@ bool init_plugin(void *self) {
   PPP_REG_CB("stringsearch", on_ssm, tstringsearch_match) ;
 
   return true;
+#else
+  fprintf(stderr, "tstringsearch: plugin does not support linux-user mode\n");
+  return false;
+#endif
 }
 
 
