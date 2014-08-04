@@ -33,6 +33,7 @@ PANDAENDCOMMENT */
 extern "C" {
 #include <fcntl.h>
 #include "panda_plugin.h"
+#include "../taint/taint_ext.h"
 }
 
 const target_ulong NULL_FD = 0;
@@ -303,6 +304,8 @@ struct StaticBlock {
 
         pcb.return_from_fork = return_from_fork;
         panda_register_callback(syscalls_plugin_self, PANDA_CB_VMI_AFTER_FORK, pcb);
+
+        init_taint_api();
     }
 };
 static StaticBlock staticBlock;
@@ -481,6 +484,33 @@ void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
 
 void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint64_t offset,uint32_t count) { }
 
+/* Apply taint to all bytes in the buffer */
+static void taintify(target_ulong guest_vaddr, uint32_t len, uint32_t label, bool autoenc) {
+    taint_enable_taint();
+    for(uint32_t i = 0; i < len; i++){
+        target_ulong va = guest_vaddr + i;
+        target_phys_addr_t pa = cpu_get_phys_addr(cpu_single_env, va);
+        if (autoenc)
+            taint_label_ram(pa, i + label);
+        else
+            taint_label_ram(pa, label);
+    }
+}
+
+/* Check if any of the bytes in the buffer are tainted */
+static bool check_taint(target_ulong guest_vaddr, uint32_t len){
+    if(1 != taint_enabled()){
+        return false;
+    }
+    for(uint32_t i = 0; i < len; i++){
+        target_ulong va = guest_vaddr + i;
+        target_phys_addr_t pa = cpu_get_phys_addr(cpu_single_env, va);
+        if(taint_query_ram(pa))
+            return true;
+    }
+    return false;
+}
+
 static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     ReadCallbackData* data = dynamic_cast<ReadCallbackData*>(opaque);
     if(!data){
@@ -494,6 +524,19 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
     auto retval = get_return_val(env);
     char* comm = getName(asid);
     fdlog << "Process " << comm << " finished reading " << filename << " return value " << retval <<  endl;
+    // if we don't want to taint this file, we're done
+    char* datadata = "/data/data";
+    if (0 != filename.compare(0 /* start */,
+                              strlen(datadata) /*len*/,
+                              datadata) ) {
+        return Callback_RC::NORMAL;
+    }
+    //if the taint engine isn't on, turn it on and re-translate the TB with LLVM
+    if(1 != taint_enabled()){
+        taint_enable_taint();
+        return Callback_RC::INVALIDATE;
+    }
+    taintify(data->guest_buffer, data->len, 0, true);
     return Callback_RC::NORMAL;
 }
 
@@ -507,16 +550,32 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
     fdlog << "Process " << comm << " " << "Reading from " << name << endl;
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
+    data->guest_buffer = buf;
+    data->len = count;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { 
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
+    string filename = "";
     try{
+        filename = asid_to_fds[asid].at(fd);
         fdlog << "Process " << comm << " " << "Reading v from " << asid_to_fds[asid].at(fd) << endl;
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing read FD " << fd << endl;
     }
+    char* datadata = "/data/data";
+    if (0 == filename.compare(0 /* start */,
+                              strlen(datadata) /*len*/,
+                              datadata) ) {
+        // We want to taint this, but don't implement things yet
+        cerr << "WARN: Readv called on " << filename << endl;
+    }
+    ReadCallbackData *data = new ReadCallbackData;
+    data->fd = fd;
+    data->guest_buffer = NULL;
+    data->len = 0;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) {
     target_asid asid = get_asid(env, pc);
@@ -526,6 +585,11 @@ void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing readp FD " << fd << endl;
     }
+    ReadCallbackData *data = new ReadCallbackData;
+    data->fd = fd;
+    data->guest_buffer = buf;
+    data->len = count;
+    appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 
 ofstream devnull("/scratch/nulls");
@@ -542,24 +606,39 @@ void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
         panda_virtual_memory_rw(env, buf, mybuf, count, 0);
         devnull << mybuf << endl;
     }
+    if(check_taint(buf, count)){
+        fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+    }
 }
 void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) { 
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
     try{
-        fdlog << "Process " << comm << " " << "Writing pv64 to " << asid_to_fds[asid].at(fd) << endl;
+        name = asid_to_fds[asid].at(fd);
+        fdlog << "Process " << comm << " " << "Writing pv64 to " << name << endl;
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing writep FD " << fd << endl;
+    }
+    if(check_taint(buf, count)){
+        fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
     }
 }
 void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) {
     target_asid asid = get_asid(env, pc);
     char* comm = getName(asid);
+    string name = string("UNKNOWN fd ") + to_string(fd);
     try{
-        fdlog << "Process " << comm << " " << "Writing v to " << asid_to_fds[asid].at(fd) << endl;
+        name = asid_to_fds[asid].at(fd);
+        fdlog << "Process " << comm << " " << "Writing v to " << name << endl;
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing writev FD " << fd << endl;
     }
+    /* writev passes a vector of iovec pointers, we can't just say
+     * if(check_taint(buf, count)){
+          fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+       }
+     */
 }
 
 /* Sockpair() handling code code is also used for pipe() and must be
