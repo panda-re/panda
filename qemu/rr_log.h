@@ -101,4 +101,20 @@ typedef struct rr_log_entry_t {
     struct rr_log_entry_t *next;
 } RR_log_entry;
 
+// a program-point indexed record/replay log
+typedef enum {RECORD, REPLAY} RR_log_type;
+typedef struct RR_log_t {
+  //mz TODO this field seems redundant given existence of rr_mode
+  RR_log_type type;            // record or replay
+  RR_prog_point last_prog_point; // to report progress
+
+  char *name;                  // file name
+  FILE *fp;                    // file pointer for log
+  unsigned long long size;     // for a log being opened for read, this will be the size in bytes
+
+  RR_log_entry current_item;
+  uint8_t current_item_valid;
+  unsigned long long item_number;
+} RR_log;
+
 #endif

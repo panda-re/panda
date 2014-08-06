@@ -847,6 +847,7 @@ int cpu_exec(CPUState *env)
                     if (!rr_loop_tries) {
                         // Signal failure
                         printf("Infinite loop detected during replay, aborting.\n");
+                        rr_spit_prog_point(rr_prog_point);
                         rr_do_end_replay(1);
                     }
                 }
