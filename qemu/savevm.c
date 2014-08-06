@@ -419,6 +419,40 @@ static QEMUFile *qemu_fopen_bdrv(BlockDriverState *bs, int is_writable)
     return qemu_fopen_ops(bs, NULL, block_get_buffer, bdrv_fclose, NULL, NULL, NULL);
 }
 
+static bool qemu_file_is_bdrv(QEMUFile* f)
+{
+    return ((  (!(f->get_buffer)) || f->get_buffer == block_get_buffer)
+            &&((!(f->put_buffer)) || f->put_buffer == block_put_buffer)
+            && (f->close == bdrv_fclose));
+}
+
+static bool qemu_file_is_fopen(QEMUFile* f)
+{
+    return ((  (!(f->get_buffer)) || f->get_buffer == file_get_buffer)
+            &&((!(f->put_buffer)) || f->put_buffer == file_put_buffer)
+            && (f->close == stdio_fclose));
+}
+
+static bool qemu_file_is_fdopen(QEMUFile* f)
+{
+    return ((  (!(f->get_buffer)) || f->get_buffer == stdio_get_buffer)
+            &&((!(f->put_buffer)) || f->put_buffer == stdio_put_buffer)
+            && (f->close == stdio_fclose));
+}
+
+static bool qemu_file_is_socket(QEMUFile* f)
+{
+    return ((f->get_buffer == socket_get_buffer)
+            && (f->close == socket_close));
+}
+
+static bool qemu_file_is_popen(QEMUFile* f)
+{
+    return ((  (!(f->get_buffer)) || f->get_buffer == stdio_get_buffer)
+            &&((!(f->put_buffer)) || f->put_buffer == stdio_put_buffer)
+            && (f->close == stdio_pclose));
+}
+
 QEMUFile *qemu_fopen_ops(void *opaque, QEMUFilePutBufferFunc *put_buffer,
                          QEMUFileGetBufferFunc *get_buffer,
                          QEMUFileCloseFunc *close,
@@ -1608,7 +1642,9 @@ static int qemu_concat_section(QEMUFile* dst, QEMUFile* src)
     // get tmp file size
     int64_t sec_len = qemu_ftell(src);
     // save tmp file size to section
-    qemu_put_be64(dst, sec_len);
+    // ONLY IF SAVING VMSTATE TO ITS OWN FILE
+    if(qemu_file_is_fopen(dst))
+        qemu_put_be64(dst, sec_len);
     // copy tmp contents to section
     
     qemu_fflush(src);
@@ -1639,7 +1675,10 @@ int qemu_savevm_state_begin(Monitor *mon, QEMUFile *f, int blk_enable,
     }
     
     qemu_put_be32(f, QEMU_VM_FILE_MAGIC);
-    qemu_put_be32(f, QEMU_VM_FILE_VERSION);
+    if(qemu_file_is_fopen(f))
+        qemu_put_be32(f, QEMU_VM_FILE_VERSION);
+    else
+        qemu_put_be32(f, QEMU_VM_FILE_VERSION_COMPAT);
 
     QTAILQ_FOREACH(se, &savevm_handlers, entry) {
         int len;
