@@ -378,6 +378,22 @@ fail:
     return NULL;
 }
 
+QEMUFile *qemu_tmpfile()
+{
+    QEMUFileStdio *s = g_malloc0(sizeof(QEMUFileStdio));
+
+    s->stdio_file = tmpfile();
+    if (!s->stdio_file)
+        goto fail;
+
+    s->file = qemu_fopen_ops(s, file_put_buffer, file_get_buffer, stdio_fclose,
+                             NULL, NULL, NULL);
+    return s->file;
+fail:
+    g_free(s);
+    return NULL;
+}
+
 static int block_put_buffer(void *opaque, const uint8_t *buf,
                            int64_t pos, int size)
 {
@@ -671,6 +687,38 @@ int64_t qemu_fseek(QEMUFile *f, int64_t pos, int whence)
         f->buf_size = 0;
     }
     return pos;
+}
+
+
+/* 
+ * Sendfile takes an 64-bit len, but qemu_[get|set]_buffer only takes
+ * 32-bits.
+ * TODO: handle 64-bits, loop over get and set buffers. Unclear how to fail in the middle,
+ * since the dst may be write-only, so we can't roll back
+ */
+int qemu_sendfile(QEMUFile *dst, QEMUFile *src, int64_t offset, int len)
+{
+    uint8_t* buffer;
+    int read_chars;
+
+    if (!dst || !dst->put_buffer
+        || !src || !src->get_buffer)
+        return -EBADF;
+
+    if (offset >= 0 &&
+        (offset != qemu_fseek(src, offset, SEEK_SET)))
+        return -EIO;
+
+    buffer = g_malloc(len);
+    read_chars = qemu_get_buffer(src, buffer, len);
+    if (read_chars != len){
+        g_free(buffer);
+        return -EIO;
+    } else {
+        qemu_put_buffer(dst, buffer, len);
+    }
+    g_free(buffer);
+    return len;
 }
 
 int qemu_file_rate_limit(QEMUFile *f)
@@ -1523,8 +1571,8 @@ static void vmstate_save(QEMUFile *f, SaveStateEntry *se)
 }
 
 #define QEMU_VM_FILE_MAGIC           0x5145564d
-#define QEMU_VM_FILE_VERSION_COMPAT  0x00000002
-#define QEMU_VM_FILE_VERSION         0x00000003
+#define QEMU_VM_FILE_VERSION_COMPAT  0x00000003
+#define QEMU_VM_FILE_VERSION         0x00000004
 
 #define QEMU_VM_EOF                  0x00
 #define QEMU_VM_SECTION_START        0x01
@@ -1547,11 +1595,41 @@ bool qemu_savevm_state_blocked(Monitor *mon)
     return false;
 }
 
+static void qemufile_reset_buffer(QEMUFile* f)
+{
+    f->is_write = 0;
+    f->buf_offset = 0;
+    f->buf_index = 0;
+    f->buf_size = 0;
+}
+
+static int qemu_concat_section(QEMUFile* dst, QEMUFile* src)
+{
+    // get tmp file size
+    int64_t sec_len = qemu_ftell(src);
+    // save tmp file size to section
+    qemu_put_be64(dst, sec_len);
+    // copy tmp contents to section
+    
+    qemu_fflush(src);
+    qemufile_reset_buffer(src);
+    int ret = qemu_sendfile(dst, src, 0, sec_len);
+    // set the tmp file back to the start for later writes
+    qemu_fseek(src, 0, SEEK_SET);
+    qemufile_reset_buffer(src);
+
+    return ret;
+}
+
 int qemu_savevm_state_begin(Monitor *mon, QEMUFile *f, int blk_enable,
                             int shared)
 {
     SaveStateEntry *se;
     int ret;
+    QEMUFile* tmp_save = qemu_tmpfile();
+    if (NULL == tmp_save){
+        return -1;
+    }
 
     QTAILQ_FOREACH(se, &savevm_handlers, entry) {
         if(se->set_params == NULL) {
@@ -1581,7 +1659,10 @@ int qemu_savevm_state_begin(Monitor *mon, QEMUFile *f, int blk_enable,
         qemu_put_be32(f, se->instance_id);
         qemu_put_be32(f, se->version_id);
 
-        ret = se->save_live_state(mon, f, QEMU_VM_SECTION_START, se->opaque);
+        ret = se->save_live_state(mon, tmp_save, QEMU_VM_SECTION_START, se->opaque);
+        if (ret >= 0){
+            ret = qemu_concat_section(f, tmp_save);
+        }
         if (ret < 0) {
             qemu_savevm_state_cancel(mon, f);
             return ret;
@@ -1592,6 +1673,7 @@ int qemu_savevm_state_begin(Monitor *mon, QEMUFile *f, int blk_enable,
         qemu_savevm_state_cancel(mon, f);
     }
 
+    qemu_fclose(tmp_save);
     return ret;
 
 }
@@ -1606,6 +1688,10 @@ int qemu_savevm_state_iterate(Monitor *mon, QEMUFile *f)
 {
     SaveStateEntry *se;
     int ret = 1;
+    QEMUFile* tmp_save = qemu_tmpfile();
+    if (NULL == tmp_save){
+        return -1;
+    }
 
     QTAILQ_FOREACH(se, &savevm_handlers, entry) {
         if (se->save_live_state == NULL)
@@ -1615,7 +1701,8 @@ int qemu_savevm_state_iterate(Monitor *mon, QEMUFile *f)
         qemu_put_byte(f, QEMU_VM_SECTION_PART);
         qemu_put_be32(f, se->section_id);
 
-        ret = se->save_live_state(mon, f, QEMU_VM_SECTION_PART, se->opaque);
+        ret = se->save_live_state(mon, tmp_save, QEMU_VM_SECTION_PART, se->opaque);
+        qemu_concat_section(f, tmp_save);
         if (ret <= 0) {
             /* Do not proceed to the next vmstate before this one reported
                completion of the current stage. This serializes the migration
@@ -1625,12 +1712,14 @@ int qemu_savevm_state_iterate(Monitor *mon, QEMUFile *f)
         }
     }
     if (ret != 0) {
+        qemu_fclose(tmp_save);
         return ret;
     }
     ret = qemu_file_get_error(f);
     if (ret != 0) {
         qemu_savevm_state_cancel(mon, f);
     }
+    qemu_fclose(tmp_save);
     return ret;
 }
 
@@ -1638,6 +1727,10 @@ int qemu_savevm_state_complete(Monitor *mon, QEMUFile *f)
 {
     SaveStateEntry *se;
     int ret;
+    QEMUFile* tmp_save = qemu_tmpfile();
+    if (NULL == tmp_save){
+        return -1;
+    }
 
     cpu_synchronize_all_states();
 
@@ -1649,8 +1742,12 @@ int qemu_savevm_state_complete(Monitor *mon, QEMUFile *f)
         qemu_put_byte(f, QEMU_VM_SECTION_END);
         qemu_put_be32(f, se->section_id);
 
-        ret = se->save_live_state(mon, f, QEMU_VM_SECTION_END, se->opaque);
+        ret = se->save_live_state(mon, tmp_save, QEMU_VM_SECTION_END, se->opaque);
+        if (ret >= 0){
+            ret = qemu_concat_section(f, tmp_save);
+        }
         if (ret < 0) {
+            qemu_fclose(tmp_save);
             return ret;
         }
     }
@@ -1673,11 +1770,13 @@ int qemu_savevm_state_complete(Monitor *mon, QEMUFile *f)
         qemu_put_be32(f, se->instance_id);
         qemu_put_be32(f, se->version_id);
 
-        vmstate_save(f, se);
+        vmstate_save(tmp_save, se);
+        qemu_concat_section(f, tmp_save);
     }
 
     qemu_put_byte(f, QEMU_VM_EOF);
 
+    qemu_fclose(tmp_save);
     return qemu_file_get_error(f);
 }
 
@@ -1829,6 +1928,7 @@ int qemu_loadvm_state(QEMUFile *f)
     uint8_t section_type;
     unsigned int v;
     int ret;
+    bool sections_have_lengths = true;
 
     if (qemu_savevm_state_blocked(default_mon)) {
         return -EINVAL;
@@ -1840,14 +1940,15 @@ int qemu_loadvm_state(QEMUFile *f)
 
     v = qemu_get_be32(f);
     if (v == QEMU_VM_FILE_VERSION_COMPAT) {
-        fprintf(stderr, "SaveVM v2 format is obsolete and don't work anymore\n");
-        return -ENOTSUP;
+        fprintf(stderr, "SaveVM v3 format forces exact matches between devices on load and save, including on replay.\n");
+        sections_have_lengths = false;
     }
-    if (v != QEMU_VM_FILE_VERSION)
+    else if (v != QEMU_VM_FILE_VERSION)
         return -ENOTSUP;
 
     while ((section_type = qemu_get_byte(f)) != QEMU_VM_EOF) {
         uint32_t instance_id, version_id, section_id;
+        uint64_t section_size;
         SaveStateEntry *se;
         char idstr[257];
         int len;
@@ -1862,13 +1963,19 @@ int qemu_loadvm_state(QEMUFile *f)
             idstr[len] = 0;
             instance_id = qemu_get_be32(f);
             version_id = qemu_get_be32(f);
+            if (sections_have_lengths) section_size = qemu_get_be64(f);
 
             /* Find savevm section */
             se = find_se(idstr, instance_id);
             if (se == NULL) {
                 fprintf(stderr, "Unknown savevm section or instance '%s' %d\n", idstr, instance_id);
-                ret = -EINVAL;
-                goto out;
+                if (sections_have_lengths){
+                    qemu_fseek(f, section_size, SEEK_CUR);
+                    continue;
+                } else {
+                    ret = -EINVAL;
+                    goto out;
+                }
             }
 
             /* Validate version */
@@ -1897,6 +2004,7 @@ int qemu_loadvm_state(QEMUFile *f)
         case QEMU_VM_SECTION_PART:
         case QEMU_VM_SECTION_END:
             section_id = qemu_get_be32(f);
+            if (sections_have_lengths) section_size = qemu_get_be64(f);
 
             QLIST_FOREACH(le, &loadvm_handlers, entry) {
                 if (le->section_id == section_id) {
@@ -1905,8 +2013,13 @@ int qemu_loadvm_state(QEMUFile *f)
             }
             if (le == NULL) {
                 fprintf(stderr, "Unknown savevm section %d\n", section_id);
-                ret = -EINVAL;
-                goto out;
+                if (sections_have_lengths){
+                    qemu_fseek(f, section_size, SEEK_CUR);
+                    continue;
+                } else {
+                    ret = -EINVAL;
+                    goto out;
+                }
             }
 
             ret = vmstate_load(f, le->se, le->version_id);
