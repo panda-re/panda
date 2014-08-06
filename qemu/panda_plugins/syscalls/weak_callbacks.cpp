@@ -1,7 +1,8 @@
 #ifdef TARGET_ARM
+
 #include "weak_callbacks.hpp"
 extern "C"{
-#include "qemu-common.h"
+#include "cpu.h"
 }
 
 // weak-defined default empty callbacks for all syscalls

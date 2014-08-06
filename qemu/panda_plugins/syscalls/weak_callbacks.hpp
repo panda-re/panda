@@ -1,6 +1,12 @@
 
 #include <string>
+
+// This is *NOT* supposed to be required for C++ code.
+// It's fixed in GCC-4.8 in C++11 mode.
+#define __STDC_FORMAT_MACROS
+
 #include "syscalls.hpp"
+
 extern "C" {
 #include "cpu.h"
 }

@@ -203,7 +203,7 @@ weak_callbacks += GUARD + "\n"
 weak_callbacks+= """
 #include "weak_callbacks.hpp"
 extern "C"{
-#include "qemu-common.h"
+#include "cpu.h"
 }
 
 // weak-defined default empty callbacks for all syscalls
@@ -219,7 +219,13 @@ with open("weak_callbacks.cpp", "w") as weakfile:
 weak_callbacks = ""
 weak_callbacks+= """
 #include <string>
+
+// This is *NOT* supposed to be required for C++ code.
+// It's fixed in GCC-4.8 in C++11 mode.
+#define __STDC_FORMAT_MACROS
+
 #include "syscalls.hpp"
+
 extern "C" {
 #include "cpu.h"
 }
