@@ -117,4 +117,6 @@ typedef struct RR_log_t {
   unsigned long long item_number;
 } RR_log;
 
+RR_log_entry *rr_get_queue_head(void);
+
 #endif

@@ -88,8 +88,8 @@ const char * rr_requested_name = NULL;
 const char * rr_snapshot_name  = NULL;
 
 //mz FIFO queue of log entries read from the log file
-RR_log_entry *queue_head;
-RR_log_entry *queue_tail;
+static RR_log_entry *queue_head;
+static RR_log_entry *queue_tail;
 
 //
 //mz Other useful things
@@ -100,6 +100,10 @@ extern void log_all_cpu_states(void);
 /******************************************************************************************/
 /* UTILITIES */
 /******************************************************************************************/
+
+RR_log_entry *rr_get_queue_head(void) {
+    return queue_head;
+}
 
 // Check if replay is really finished. Conditions:
 // 1) The log is empty

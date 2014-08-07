@@ -306,8 +306,6 @@ static RR_prog_point copy_entry(void) {
     return original_prog_point;
 }
 
-extern RR_log_entry *queue_head;
-
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (orig_last_prog_point.guest_instr_count == 0) {
         FILE *templog;
@@ -333,7 +331,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         oldlog = rr_nondet_log->fp;
 
         RR_prog_point prev_prog_point;
-        RR_log_entry *item = queue_head;
+        RR_log_entry *item = rr_get_queue_head();
         while (item != NULL && item->header.prog_point.guest_instr_count < end_count) {
             write_entry(item);
             prev_prog_point = item->header.prog_point;
