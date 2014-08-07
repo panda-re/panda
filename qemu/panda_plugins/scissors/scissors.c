@@ -12,6 +12,8 @@
 
 #include "rr_log.h"
 #include "monitor.h"
+#include "sysemu.h"
+#include "qemu-timer.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -29,7 +31,7 @@ static FILE *newlog = NULL;
 static RR_log_entry entry;
 static RR_prog_point orig_last_prog_point = {0, 0, 0};
 
-static RR_prog_point copy_entry();
+static RR_prog_point copy_entry(void);
 static void sassert(bool condition);
 
 static void sassert(bool condition) {
@@ -49,7 +51,6 @@ static void write_entry(RR_log_entry *item) {
     }
 
     //ph Fix up instruction count
-    RR_prog_point original_prog_point = item->header.prog_point;
     item->header.prog_point.guest_instr_count -= actual_start_count;
     sassert(fwrite(&(item->header.prog_point), sizeof(RR_prog_point), 1, newlog) == 1);
 
@@ -143,7 +144,7 @@ static void write_entry(RR_log_entry *item) {
 }
 
 // Returns guest instr count (in old replay counting mode)
-static RR_prog_point copy_entry() {
+static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
     RR_log_entry *item = &entry;
 
@@ -306,7 +307,7 @@ extern RR_log_entry *queue_head;
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (orig_last_prog_point.guest_instr_count == 0) {
         FILE *templog;
-        sassert(templog = fopen(rr_nondet_log->name, "r"));
+        sassert((templog = fopen(rr_nondet_log->name, "r")));
         sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, templog) == 1);
     }
 
@@ -328,10 +329,11 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         oldlog = rr_nondet_log->fp;
 
         RR_prog_point prev_prog_point;
-        while (queue_head != NULL && queue_head->header.prog_point.guest_instr_count < end_count) {
-            write_entry(queue_head);
-            prev_prog_point = queue_head->header.prog_point;
-            queue_head = queue_head->next;
+        RR_log_entry *item = queue_head;
+        while (item != NULL && item->header.prog_point.guest_instr_count < end_count) {
+            write_entry(item);
+            prev_prog_point = item->header.prog_point;
+            item = item->next;
         }
         do {
             prev_prog_point = prog_point;
