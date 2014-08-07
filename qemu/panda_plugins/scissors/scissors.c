@@ -2,7 +2,8 @@
  *
  * Use -panda-arg scissors:start and -panda-arg scissors:end
  * to control beginning and end of new replay. Output goes to
- * a new replay named "scissors" (yes, hardcoded for now).
+ * a new replay named "scissors" by default (-panda-arg scissors:name
+ * to change)
  */
 
 #include <stdio.h>
@@ -24,6 +25,9 @@ extern RR_log *rr_nondet_log;
 static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;
+
+static char nondet_name[128];
+static char snp_name[128];
 
 static FILE *oldlog = NULL;
 static FILE *newlog = NULL;
@@ -315,12 +319,12 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (count > start_count) {
         actual_start_count = count;
         printf("Saving snapshot at instr count %lu...\n", count);
-        do_savevm_rr(get_monitor(), "scissors-rr-snp");
+        do_savevm_rr(get_monitor(), snp_name);
 
         printf("Beginning cut-and-paste process at prog point:\n");
         rr_spit_prog_point(rr_prog_point);
-        printf("Writing entries to scissors-rr-nondet.log...\n");
-        newlog = fopen("scissors-rr-nondet.log", "w");
+        printf("Writing entries to %s...\n", nondet_name);
+        newlog = fopen(nondet_name, "w");
         sassert(newlog);
         // We'll fix this up later.
         RR_prog_point prog_point = {0, 0, 0};
@@ -372,6 +376,7 @@ bool init_plugin(void *self) {
 
     start_count = 0;
     end_count = UINT64_MAX;
+    const char *name = "scissors";
     
     panda_arg_list *args = panda_get_args("scissors");
     if (args != NULL) {
@@ -379,11 +384,16 @@ bool init_plugin(void *self) {
         for (i = 0; i < args->nargs; i++) {
             if (0 == strncmp(args->list[i].key, "start", 5)) {
                 start_count = atoi(args->list[i].value);
-            } else if (0 == strncmp(args->list[i].key, "end", 6)) {
+            } else if (0 == strncmp(args->list[i].key, "end", 3)) {
                 end_count = atoi(args->list[i].value);
+            } else if (0 == strncmp(args->list[i].key, "name", 4)) {
+                name = args->list[i].value;
             }
         }
     }
+
+    snprintf(nondet_name, 128, "%s-rr-nondet.log", name);
+    snprintf(snp_name, 128, "%s-rr-snp", name);
 
     return true;
 }
