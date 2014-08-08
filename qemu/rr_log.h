@@ -11,6 +11,12 @@
 #include "targphys.h"
 #include "rr_log_all.h"
 
+// accessors
+uint64_t rr_get_pc(void);
+uint64_t rr_get_secondary(void);
+uint64_t rr_get_guest_instr_count (void);
+
+
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state);
 
 //mz structure for arguments to cpu_physical_memory_rw()

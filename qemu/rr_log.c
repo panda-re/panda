@@ -52,6 +52,20 @@ volatile RR_mode rr_mode = RR_OFF;
 
 //mz program execution state
 RR_prog_point rr_prog_point = {0, 0, 0};
+
+
+uint64_t rr_get_pc() {
+    return rr_prog_point.pc;
+}
+
+uint64_t rr_get_secondary(void) {
+    return rr_prog_point.secondary;
+}
+
+uint64_t rr_get_guest_instr_count (void) {
+    return rr_prog_point.guest_instr_count;
+}
+
 //volatile uint64_t rr_guest_instr_count;
 volatile uint64_t rr_num_instr_before_next_interrupt;
 
