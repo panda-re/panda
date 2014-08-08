@@ -126,6 +126,9 @@ typedef struct shad_struct {
   LabelSet **gsv;  // guest special values, like FP, and parts of CPUState
   uint8_t *ram_bitmap;
   uint32_t current_frame; // keeps track of current function frame
+
+    uint32_t max_obs_ls_type;
+
 } Shad;
 
 // returns a shadow memory to be used by taint processor

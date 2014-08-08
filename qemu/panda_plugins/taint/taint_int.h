@@ -34,7 +34,8 @@ void taint_delete_ram(uint64_t pa) ;
 // returns number of tainted addrs in ram
 uint32_t taint_occ_ram(void);
 
-
+// returns the max ls type (taint compute #) observed so far
+uint32_t taint_max_obs_ls_type(void) ;
 
 
    

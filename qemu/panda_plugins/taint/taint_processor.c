@@ -535,12 +535,17 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
 }
 
 
+
+
 // here we are storing a copy of ls in the shadow memory.
 // so ls is caller's to free
 static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     assert (shad != NULL);
     tp_delete(shad, a);
 
+    if (shad->max_obs_ls_type < ls->type) {
+        shad->max_obs_ls_type = ls->type;
+    }
 
     if ((max_taintset_compute_number != 0) && (ls->type > max_taintset_compute_number)) {
       // discard taint set that has become computationally too distant from input
