@@ -6,6 +6,9 @@ import re
 import pdb
 proto_re = re.compile("(.+)\s+(\S+)\s*\((.*)\)")
 
+KNOWN_TYPES = ['int', 'double', 'float', 'char', 'short', 'long',
+               'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']
+
 def generate_code(functions, module):
     code =  "#ifndef __%s_EXT_H__\n" % (module.upper())
     code += "#define __%s_EXT_H__\n" % (module.upper())
@@ -69,7 +72,7 @@ def generate_code(functions, module):
     return code
 
 bad_keywords = ['static', 'inline']
-keep_keywords = ['const']
+keep_keywords = ['const', 'unsigned']
 def resolve_type(modifiers, name):
     modifiers = modifiers.strip()
     tokens = modifiers.split()
