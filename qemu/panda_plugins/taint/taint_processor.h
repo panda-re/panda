@@ -128,6 +128,9 @@ typedef struct shad_struct {
   uint32_t current_frame; // keeps track of current function frame
 
     uint32_t max_obs_ls_type;
+    uint8_t tainted_computation_happened;
+    uint8_t taint_state_changed;
+    uint8_t taint_state_read;
 
 } Shad;
 
@@ -317,6 +320,9 @@ typedef void (*tp_callback_t) (uint64_t tp_pc, uint64_t addr);
 
 typedef void (*on_load_t) (uint64_t tp_pc, uint64_t addr);
 typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
+typedef void (*before_execute_taint_ops_t) (void);
+typedef void (*after_execute_taint_ops_t) (void);
+
 
 /*
 // scb will get called, inside the taint processor 

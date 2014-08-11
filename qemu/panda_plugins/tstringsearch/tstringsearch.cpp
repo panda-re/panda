@@ -25,6 +25,7 @@ extern "C" {
 #include "panda_plugin.h"
 #include "../taint/taint_processor.h"
 #include "../taint/taint_ext.h"
+#include "rr_log.h"
 
 #include "../stringsearch/stringsearch.h"
 #include "panda_plugin_plugin.h"
@@ -55,13 +56,13 @@ void uninit_plugin(void *);
 #ifdef CONFIG_SOFTMMU
 
 bool tstringsearch_label_on = true;
-bool first_match = true;
 
 target_ulong the_pc;
 target_ulong the_buf;
 int the_len; 
 uint32_t old_amt_ram_tainted;
 
+uint64_t enable_taint_instr_count = 0;
 
 void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
   if (tstringsearch_label_on == false) {
@@ -109,17 +110,35 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     // this should enable
     tstringsearch_label_on = true;
     
+    /*
     if (first_match) {
       first_match = false;
       // turn on taint.
       taint_enable_taint();
+    */
       // add a callback for taint processor st
       PPP_REG_CB("taint", on_load, tstringsearch_label);
       PPP_REG_CB("taint", on_store, tstringsearch_label);
-    }
+      //    }
   
   }
 }
+
+
+
+// turn on taint at right instr count
+int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
+    // enable taint if close to instruction count
+    uint64_t ic = rr_get_guest_instr_count();
+    if (!taint_enabled()) {
+        if (ic + 100 > enable_taint_instr_count) {
+            printf ("enabling taint at instr count %d\n", ic);
+            taint_enable_taint();
+        }
+    }
+}
+
+
 
 #endif
 
@@ -127,6 +146,24 @@ bool init_plugin(void *self) {
   printf ("Initializing tstringsearch\n");
 
 #ifdef CONFIG_SOFTMMU
+
+  int i;
+  panda_arg_list *args;
+  args = panda_get_args("tstringsearch");
+  if (args != NULL) {
+      for (i = 0; i < args->nargs; i++) { 
+         // Format is tstringsearch:instr_count=X
+          if (0 == strncmp(args->list[i].key, "instr_count", 12)) {
+              enable_taint_instr_count = atoi(args->list[i].value);
+              printf ("taint will be enabled around instr count %d\n", enable_taint_instr_count);
+          }
+      }
+  }
+
+  panda_cb pcb;
+  pcb.before_block_translate = tstringsearch_enable_taint;
+  panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
+ 
   // this sets up the taint api fn ptrs so we have access
   bool x = init_taint_api();  
   assert (x==true);

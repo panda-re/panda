@@ -272,7 +272,7 @@ static SB_INLINE void labelset_collect(LabelSet *lsDest, LabelSet *lsSrc) {
     return;
   }
   bitset_collect(lsDest->set,lsSrc->set);
-  lsDest->type = max(lsDest->type, lsSrc->type);
+  lsDest->type = 1+max(lsDest->type, lsSrc->type);
   assert (lsDest->type != LST_DUNNO);  
   assert (lsSrc->type != LST_DUNNO);  
 }
@@ -286,7 +286,7 @@ static SB_INLINE LabelSet *labelset_union(LabelSet *ls1, LabelSet *ls2) {
   ls_new->count = 1;
   assert (ls1->type != LST_DUNNO);
   assert (ls2->type != LST_DUNNO);
-  ls_new->type = max(ls1->type, ls2->type);
+  ls_new->type = 1+max(ls1->type, ls2->type);
   assert (ls_new->type != LST_DUNNO);
   return ls_new;
 }

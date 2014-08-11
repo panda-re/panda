@@ -37,6 +37,23 @@ uint32_t taint_occ_ram(void);
 // returns the max ls type (taint compute #) observed so far
 uint32_t taint_max_obs_ls_type(void) ;
 
+// clears the flag indicating tainted computation happened
+void taint_clear_tainted_computation_happened(void);
+
+// reads the flag indicating tainted computation happened
+int taint_tainted_computation_happened(void);
+
+// clears the flag indicating taint state has changed
+void taint_clear_taint_state_changed(void);
+
+// returns the flag
+int taint_taint_state_changed(void);
+
+// clears the flag indicating taint state has been read
+void taint_clear_taint_state_read(void);
+
+// returns the flag
+int taint_taint_state_read(void);
 
    
 #endif                                                                                   

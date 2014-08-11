@@ -46,19 +46,26 @@ extern "C" {
 #include "rr_log.h"
 #endif
 
-  extern int compute_is_delete;
-  extern int loglevel;
-  extern int tubtf_on;
-  
-
-  // For the C API to taint accessible from other plugins
-  void taint_enable_taint(void);
-  int taint_enabled(void);
-  void taint_label_ram(uint64_t pa, uint32_t l) ;
-  uint32_t taint_query_ram(uint64_t pa);
-  uint32_t taint_query_reg(int reg_num, int offset);
-  void taint_delete_ram(uint64_t pa) ;
-  uint32_t taint_occ_ram(void) ;
+    extern int compute_is_delete;
+    extern int loglevel;
+    extern int tubtf_on;
+    
+    
+    // For the C API to taint accessible from other plugins
+    void taint_enable_taint(void);
+    int taint_enabled(void);
+    void taint_label_ram(uint64_t pa, uint32_t l) ;
+    uint32_t taint_query_ram(uint64_t pa);
+    uint32_t taint_query_reg(int reg_num, int offset);
+    void taint_delete_ram(uint64_t pa) ;
+    uint32_t taint_occ_ram(void) ;
+    uint32_t taint_max_obs_ls_type(void) ;
+    void taint_clear_tainted_computation_happened(void) ;
+    int taint_tainted_computation_happened(void) ;
+    void taint_clear_taint_state_changed(void);
+    int taint_taint_state_changed(void);
+    void taint_clear_taint_state_read(void);
+    int taint_taint_state_read(void);
 
 }
 
@@ -414,6 +421,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
         //printf("%s\n", tb->llvm_function->getName().str().c_str());
         //PTFP->debugTaintOps();
         //printf("\n\n");
+
         execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
 
         // Make sure there's nothing left in the buffer
@@ -880,9 +888,38 @@ void taint_labels_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void
 
 
 uint32_t __taint_occ_ram() {
-  printf ("blah blah\n");
-  tp_occ_ram(shadow);
+  return tp_occ_ram(shadow);
 }
+
+
+uint32_t __taint_max_obs_ls_type(void) {
+    return shadow->max_obs_ls_type;
+}
+
+void __taint_clear_tainted_computation_happened(void) {
+    shadow->tainted_computation_happened = 0;
+}
+
+int __taint_tainted_computation_happened(void) {
+    return shadow->tainted_computation_happened;
+}
+
+
+void __taint_clear_taint_state_changed(void) {
+    shadow->taint_state_changed = 0;
+}
+
+int __taint_taint_state_changed(void) {
+    return shadow->taint_state_changed;
+}
+
+void __taint_clear_taint_state_read(void) {
+    shadow->taint_state_read = 0;
+}
+int __taint_taint_state_read(void) {
+    return shadow->taint_state_read;
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -917,6 +954,36 @@ uint32_t taint_query_reg(int reg_num, int offset) {
 uint32_t taint_occ_ram(void) {
   return __taint_occ_ram();
 }
+
+uint32_t taint_max_obs_ls_type(void) {
+    return __taint_max_obs_ls_type();
+}
+
+
+void taint_clear_tainted_computation_happened(void) {
+    __taint_clear_tainted_computation_happened();
+}
+
+int taint_tainted_computation_happened(void) {
+    return __taint_tainted_computation_happened();
+}
+
+void taint_clear_taint_state_changed(void) {
+    __taint_clear_taint_state_changed();
+}
+
+int taint_taint_state_changed(void) {
+    return __taint_taint_state_changed();
+}
+
+void taint_clear_taint_state_read(void) {
+    __taint_clear_taint_state_read();
+}
+
+int taint_taint_state_read(void) {
+    return __taint_taint_state_read();
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////
