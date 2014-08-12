@@ -84,12 +84,9 @@ const char *basedir = NULL;
 FILE *funclog;
 extern FILE *memlog;
 
-
-// defined in tubtf.c
-extern int tubtf_on;
-
-
 }
+
+int tubtf_on;
 
 // Instrumentation function pass
 llvm::PandaInstrFunctionPass *PIFP;
@@ -293,6 +290,14 @@ bool init_plugin(void *self) {
 
     // Look for llvm_trace:base=dir
     for (int i = 0; i < panda_argc; i++) {
+
+        printf ("panda_arg %d = %s\n", i, panda_argv[i]);
+
+        if (0 == strncmp(panda_argv[i], "tubtf", 5)) {
+            printf ("tubt format in use\n");
+            tubtf_on = 1;
+        }
+      
         if(0 == strncmp(panda_argv[i], "llvm_trace", 10)) {
             basedir = strrchr(panda_argv[i], '=');
             if (basedir) basedir++; // advance past '='

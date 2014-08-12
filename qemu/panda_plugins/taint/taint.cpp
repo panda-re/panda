@@ -48,8 +48,6 @@ extern "C" {
 
     extern int compute_is_delete;
     extern int loglevel;
-    extern int tubtf_on;
-    
     
     // For the C API to taint accessible from other plugins
     void taint_enable_taint(void);
@@ -1011,10 +1009,6 @@ bool init_plugin(void *self) {
 
     int i;
     for (i = 0; i < panda_argc; i++) {
-
-      if (0 == strncmp(panda_argv[i], "tubtf", 5)) {
-        tubtf_on = 1;
-      }
       
       if (0 == strncmp(panda_argv[i], "max_taintset_card", 17)) {
 	// Format is sample:key=value                                                                                                                                                                                 
