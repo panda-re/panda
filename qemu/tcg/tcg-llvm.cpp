@@ -45,7 +45,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "disas.h"
 
-#include "panda_plugins/taint/panda_memlog.h"
+#include "panda_memlog.h"
 #include "panda_plugin.h"
 
 #if defined(CONFIG_SOFTMMU)

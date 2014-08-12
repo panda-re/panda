@@ -46,7 +46,9 @@ typedef enum {
     EXCEPTIONENTRY
 } DynValEntryType;
 
-#include "taint_processor.h"
+
+#include "panda_addr.h"
+//#include "taint_processor.h"
 
 typedef struct dyn_val_entry_struct {
     DynValEntryType entrytype;

@@ -50,11 +50,17 @@ PANDAENDCOMMENT */
  */
 
 
+
+#include "panda_addr.h"
+
+
 //#define TAINTSTATS
 
 /* these need to be the same size because when we have an unknown dynamic value
  * that we need to fill in later, we need to fix up the taint op in the buffer
  */
+
+/*
 typedef uint64_t HAddr;    // hard drive
 typedef uint64_t MAddr;    // physical ram
 typedef uint64_t IAddr;    // io buffers (net & hd)
@@ -98,7 +104,7 @@ typedef struct addr_struct {
   AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
 
-
+*/
 
 
 

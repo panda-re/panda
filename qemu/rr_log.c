@@ -54,7 +54,7 @@ volatile RR_mode rr_mode = RR_OFF;
 RR_prog_point rr_prog_point = {0, 0, 0};
 
 
-uint64_t rr_get_pc() {
+uint64_t rr_get_pc(void) {
     return rr_prog_point.pc;
 }
 

@@ -36,9 +36,9 @@ PANDAENDCOMMENT */
 extern "C" {
 
 #include "panda_plugin.h"
-#include "../taint/panda_memlog.h"
+#include "panda_memlog.h"
 #include "panda_common.h"
-#include "../taint/tubtf.h"
+#include "tubtf.h"
 
 
 #ifndef CONFIG_SOFTMMU
@@ -52,7 +52,7 @@ extern "C" {
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
-#include "../taint/panda_dynval_inst.h"
+#include "panda_dynval_inst.h"
 #include "tcg-llvm.h"
 
 

@@ -643,6 +643,7 @@ void printspec(Addr *a){}
 
 #endif
 
+/*
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len,
     TaintOpBuffer *buf){
     struct addr_struct src = {0,{0},0,0};
@@ -699,3 +700,4 @@ void guestDeleteTaint(GReg guestDst, int len, TaintOpBuffer *buf){
     }
 }
 
+*/

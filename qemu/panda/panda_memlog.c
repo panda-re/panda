@@ -25,7 +25,8 @@ PANDAENDCOMMENT */
 #include "panda_common.h"
 
 #include "tubtf.h"
-#include "taint_processor.h"
+//#include "taint_processor.h"
+#include "panda_addr.h"
 
 extern TubtfTrace *tubtf;
 
@@ -188,19 +189,18 @@ static void log_paddr(DynValBuffer *dynval_buf, uintptr_t dynval, uint32_t op){
 #endif // CONFIG_LLVM
 
 DynValBuffer *create_dynval_buffer(uint32_t size){
-    DynValBuffer *buf = (DynValBuffer *) my_malloc(sizeof(DynValBuffer),
-            poolid_dynamic_log);
+    DynValBuffer *buf = (DynValBuffer *) malloc(sizeof(DynValBuffer));
     buf->max_size = size;
     buf->cur_size = 0;
-    buf->start = (char *) my_malloc(size, poolid_dynamic_log);
+    buf->start = (char *) malloc(size);
     buf->ptr = buf->start;
     return buf;
 }
 
 void delete_dynval_buffer(DynValBuffer *dynval_buf){
-    my_free(dynval_buf->start, dynval_buf->max_size, poolid_dynamic_log);
+    free(dynval_buf->start) ; //, dynval_buf->max_size);
     dynval_buf->start = NULL;
-    my_free(dynval_buf, sizeof(DynValBuffer), poolid_dynamic_log);
+    free(dynval_buf); //  sizeof(DynValBuffer), poolid_dynamic_log);
     dynval_buf = NULL;
 }
 

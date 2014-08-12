@@ -27,7 +27,9 @@ PANDAENDCOMMENT */
 
 #include "cpu.h"
 
-#include "../panda_plugins/taint/taint_processor.h"
+//#include "../panda_plugins/taint/taint_processor.h"
+
+#include "panda_addr.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
@@ -771,9 +773,10 @@ int get_cpustate_val(uintptr_t dynval);
 void printreg(Addr *a);
 void printspec(Addr *a);
 
+/*
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len, TaintOpBuffer *buf);
 void guestLoadTaint(GReg guestSrc, LAddr localDst, int len, TaintOpBuffer *buf);
 void guestDeleteTaint(GReg guestDst, int len, TaintOpBuffer *buf);
-
+*/
 #endif
 
