@@ -35,6 +35,9 @@ static FILE *newlog = NULL;
 static RR_log_entry entry;
 static RR_prog_point orig_last_prog_point = {0, 0, 0};
 
+static bool snipping = false;
+static bool done = false;
+
 static RR_prog_point copy_entry(void);
 static void sassert(bool condition);
 
@@ -48,6 +51,10 @@ static void sassert(bool condition) {
 // Returns guest instr count (in old replay counting mode)
 static void write_entry(RR_log_entry *item) {
     // Code copied from rr_log.c.
+    
+    // Copy entry.
+    entry = *item;
+    item = &entry;
 
     if (item->header.prog_point.guest_instr_count > end_count) {
         // We don't want to copy this one.
@@ -150,6 +157,7 @@ static void write_entry(RR_log_entry *item) {
 // Returns guest instr count (in old replay counting mode)
 static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
+    // Copy entry.
     RR_log_entry *item = &entry;
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
@@ -297,6 +305,7 @@ static RR_prog_point copy_entry(void) {
         case RR_LAST:
         case RR_DEBUG:
             //mz nothing to read
+            //ph We don't copy RR_LAST here; write out afterwards.
             break;
         default:
             //mz unimplemented
@@ -306,15 +315,35 @@ static RR_prog_point copy_entry(void) {
     return original_prog_point;
 }
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (orig_last_prog_point.guest_instr_count == 0) {
-        FILE *templog;
-        sassert((templog = fopen(rr_nondet_log->name, "r")));
-        sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, templog) == 1);
-    }
+static void end_snip() {
+    RR_prog_point prog_point = rr_prog_point;
+    printf("Ending cut-and-paste on prog point:\n");
+    rr_spit_prog_point(rr_prog_point);
+    prog_point.guest_instr_count -= actual_start_count;
 
+    RR_header end;
+    end.kind = RR_LAST;
+    end.callsite_loc = RR_CALLSITE_LAST;
+    end.prog_point = rr_prog_point;
+    sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
+    sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
+    sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
+
+    rewind(newlog);
+    fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
+    fclose(newlog);
+
+    done = true;
+}
+
+int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_prog_point.guest_instr_count;
-    if (count > start_count) {
+    if (!snipping && count > start_count) {
+        sassert((oldlog = fopen(rr_nondet_log->name, "r")));
+        sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1);
+        printf("Original ending prog point: ");
+        rr_spit_prog_point(orig_last_prog_point);
+
         actual_start_count = count;
         printf("Saving snapshot at instr count %lu...\n", count);
         do_savevm_rr(get_monitor(), snp_name);
@@ -328,38 +357,28 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         RR_prog_point prog_point = {0, 0, 0};
         fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
 
-        oldlog = rr_nondet_log->fp;
+        fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
 
-        RR_prog_point prev_prog_point;
         RR_log_entry *item = rr_get_queue_head();
         while (item != NULL && item->header.prog_point.guest_instr_count < end_count) {
             write_entry(item);
-            prev_prog_point = item->header.prog_point;
             item = item->next;
         }
-        do {
-            prev_prog_point = prog_point;
+        while (prog_point.guest_instr_count < end_count && !feof(oldlog)) {
             prog_point = copy_entry();
-        } while(prog_point.guest_instr_count < end_count && !feof(oldlog));
-        if (!feof(oldlog)) // prog_point is the first one AFTER what we want
-            prog_point = prev_prog_point;
-        else
-            prog_point = orig_last_prog_point;
+        } 
+        if (!feof(oldlog)) { // prog_point is the first one AFTER what we want
+            printf("Reached end of old nondet log.\n");
+        } else {
+            printf("Past desired ending point for log.\n");
+        }
 
-        RR_header end;
-        end.kind = RR_LAST;
-        end.callsite_loc = RR_CALLSITE_LAST;
-        end.prog_point = prog_point;
-        sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
-        sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
-        sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
+        snipping = true;
+        printf("Continuing with replay.\n");
+    }
 
-        rewind(newlog);
-        printf("Ending cut-and-paste on prog point:\n");
-        rr_spit_prog_point(prog_point);
-        prog_point.guest_instr_count -= actual_start_count;
-        fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
-        fclose(newlog);
+    if (snipping && !done && count > end_count) {
+        end_snip();
 
         init_timer_alarm();
         rr_do_end_replay(0);
@@ -381,9 +400,9 @@ bool init_plugin(void *self) {
         int i;
         for (i = 0; i < args->nargs; i++) {
             if (0 == strncmp(args->list[i].key, "start", 5)) {
-                start_count = atoi(args->list[i].value);
+                start_count = strtoul(args->list[i].value, NULL, 10);
             } else if (0 == strncmp(args->list[i].key, "end", 3)) {
-                end_count = atoi(args->list[i].value);
+                end_count = strtoul(args->list[i].value, NULL, 10);
             } else if (0 == strncmp(args->list[i].key, "name", 4)) {
                 name = args->list[i].value;
             }
@@ -396,4 +415,6 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) {}
+void uninit_plugin(void *self) {
+    if (!done) end_snip();
+}
