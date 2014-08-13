@@ -359,6 +359,15 @@ bool init_plugin(void *self) {
         if (i->isDeclaration()){
             continue;
         }
+#if defined(TARGET_ARM)
+        //TODO: Fix handling of ARM's cpu_reset() helper
+        // Currently, we skip instrumenting it, because we generate invalid LLVM bitcode if we try
+        std::string modname =  i->getName().str();
+        if (modname == "cpu_reset_llvm"){
+            printf("Skipping instrumentation of cpu_reset\n");
+            continue;
+        }
+#endif
         PIFP->runOnFunction(*i);
     }
     std::string err;
