@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Original script on: https://github.com/nelhage/ministrace/blob/master/gen_tables.py
+
 import os
 import sys
 import re
@@ -93,17 +95,24 @@ def write_output(syscalls_h, types, numbers):
 
 def main(args):
     if not args:
-        print >>sys.stderr, "Usage: %s /path/to/linux-2.6" % (sys.argv[0],)
+        print >>sys.stderr, "Usage: %s /path/to/linux [mach]" % (sys.argv[0],)
         return 1
     linux_dir = args[0]
-    if os.uname()[4] == 'x86_64':
+
+    mach = args[1] if len(args)>1 else os.uname()[4]
+
+    if mach == 'x86_64':
         unistd_h = "arch/x86/include/asm/unistd_64.h"
+    elif mach == 'i686':
+        unistd_h = "arch/x86/include/asm/unistd_32.h"
     else:
+        print >>sys.stderr, "Unexpected machine type '%s' will be treated as i686." % (mach,)
+        mach = 'i686'
         unistd_h = "arch/x86/include/asm/unistd_32.h"
 
     syscall_numbers = do_syscall_numbers(os.path.join(linux_dir, unistd_h))
     syscall_types   = find_args(linux_dir)
-    write_output('syscallents.h', syscall_types, syscall_numbers)
+    write_output('syscallents_%s.h' % (mach,) , syscall_types, syscall_numbers)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
