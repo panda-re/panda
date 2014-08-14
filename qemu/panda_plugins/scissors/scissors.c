@@ -416,5 +416,5 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    if (!done) end_snip();
+    if (snipping && !done) end_snip();
 }
