@@ -2621,6 +2621,11 @@ DEF("panda-arg", HAS_ARG, QEMU_OPTION_panda_arg,
     "-panda-arg <plugin:opt=val>\n"
     "                pass <opt=val> to <plugin>\n", QEMU_ARCH_ALL)
 
+DEF("panda", HAS_ARG, QEMU_OPTION_panda_plugins,
+    "-panda <plugin1_name:opt1=val1,opt2=val2;plugin2_name>\n"
+    "               load <plugin1> with <opt1=val1> and <opt2=val2>; load <plugin2>\n"
+    "               uses qemubuilddir/panda_plugins/panda_%s.so by default\n", QEMU_ARCH_ALL)
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table

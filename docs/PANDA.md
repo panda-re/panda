@@ -7,7 +7,7 @@ for Architecture-Neutral Dynamic Analysis. Plugins are an easy way to extend the
 
 If all you want to do is use plugins others have written, you can read this section and skip the rest.
 
-There are two ways to load a PANDA plugin: by specifying it via `-panda-plugin` on the QEMU command line, or by using the `load_plugin` command from the monitor. In either case, the plugin should be specified by giving the path to the plugin (which will usually be named `panda_{something}.so`).
+There are two ways to load a PANDA plugin: by specifying it via `-panda` or `-panda-plugin` on the QEMU command line, or by using the `load_plugin` command from the monitor. In either case, the plugin should be specified by giving the path to the plugin (which will usually be named `panda_{something}.so`).
 
 Once a plugin is loaded, it will appear when using the `list_plugins` monitor command:
 
@@ -791,7 +791,7 @@ Finally, you can run QEMU with the plugin enabled:
 ```
 x86_64-softmmu/qemu-system-x86_64 -m 1024 -vnc :0 -monitor stdio \
 	-hda /scratch/qcows/qcows/win7.1.qcow2 -loadvm booted -k en-us \
-	-panda-plugin x86_64-softmmu/panda_syscalls.so
+	-panda syscalls
 ```
 
 When run on a Windows 7 VM, this plugin produces output in `syscalls.txt` that looks like:

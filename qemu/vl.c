@@ -3224,23 +3224,69 @@ int main(int argc, char **argv, char **envp)
                 generate_llvm = 1;
                 break;
 #endif
-	    case QEMU_OPTION_record_from:
+            case QEMU_OPTION_record_from:
                 record_name = optarg;
-	        break;
+	            break;
 
-	    case QEMU_OPTION_replay:
-	        replay_name = optarg;
-	        break;
+	        case QEMU_OPTION_replay:
+	            replay_name = optarg;
+	            break;
 
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
                     fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
                 }
                 break;
+
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins++] = optarg;
-		printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
+                printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
                 break;
+
+            case QEMU_OPTION_panda_plugins:
+                {
+                    char *new_optarg = strdup(optarg);
+                    char *plugin_start = new_optarg;
+                    char *plugin_end = new_optarg;
+
+                    char *qemu_file = strdup(argv[0]);
+                    char *dir = dirname(qemu_file);
+                    while (plugin_end != NULL) {
+                        plugin_end = strchr(plugin_start, ';');
+                        if (plugin_end != NULL) *plugin_end = '\0';
+                        
+                        char *opt_list;
+                        if ((opt_list = strchr(plugin_start, ':'))) {
+                            char arg_str[255];
+                            *opt_list = '\0';
+                            opt_list++;
+                            
+                            char *opt_start = opt_list, *opt_end = opt_list;
+                            while (opt_end != NULL) {
+                                opt_end = strchr(opt_start, ',');
+                                if (opt_end != NULL) *opt_end = '\0';
+                                
+                                snprintf(arg_str, 255, "%s:%s", plugin_start, opt_start);
+                                if (panda_add_arg(arg_str, strlen(arg_str))) // copies arg
+                                    printf("Adding PANDA arg %s.\n", arg_str);
+                                else
+                                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", arg_str);
+
+                                opt_start = opt_end + 1;
+                            }
+                        }
+
+                        char *plugin_path = g_malloc0(1024);
+                        snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_start);
+                        panda_plugin_files[nb_panda_plugins++] = plugin_path;
+                        printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                        
+                        plugin_start = plugin_end + 1;
+                    }
+                    free(new_optarg);
+                    free(dir);
+                    break;
+                }
 
             default:
                 os_parse_cmd_args(popt->index, optarg);
