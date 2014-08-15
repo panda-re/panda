@@ -25,6 +25,9 @@ extern "C" {
 #include "cpu.h"
 
 #include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
+
+#include "callstack_instr.h"
 
 bool translate_callback(CPUState *env, target_ulong pc);
 int exec_callback(CPUState *env, target_ulong pc);
@@ -57,7 +60,13 @@ int get_callers(target_ulong callers[], int n, CPUState *env);
 // This isn't quite the right place for it, but since it's awkward
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *env, prog_point *p);
+
+PPP_PROT_REG_CB(on_call);
+PPP_PROT_REG_CB(on_ret);
 }
+
+PPP_CB_BOILERPLATE(on_call);
+PPP_CB_BOILERPLATE(on_ret);
 
 unsigned long misses;
 unsigned long total;
@@ -331,10 +340,14 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
         callstacks[get_stackid(env,tb->pc)].push_back(se);
+
+        PPP_RUN_CB(on_call, env, tb, next);
     }
     else if (tb_type == INSTR_RET) {
         //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
         //if (next) printf("Next TB: " TARGET_FMT_lx "\n", next->pc);
+
+        PPP_RUN_CB(on_ret, env, tb, next);
     }
 
     return 1;
