@@ -1,5 +1,5 @@
 PANDA_PLUGINS = sample textfinder textprinter syscalls stringsearch \
     keyfind memstats taint memdump correlatetaps memsnap bufmon bigrams \
     tapindex llvm_trace callstack_instr textprinter_fast tstringsearch network \
-	scissors taint_compute_numbers 
+	scissors taint_compute_numbers bir
 
