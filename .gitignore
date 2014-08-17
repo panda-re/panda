@@ -72,3 +72,4 @@ qemu/arm-linux-user/
 qemu/arm-softmmu/
 qemu/x86_64-softmmu/
 qemu/install/*
+qemu/panda_plugins/*/*_ext.h

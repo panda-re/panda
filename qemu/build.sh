@@ -2,8 +2,7 @@
 
 python ../scripts/apigen.py
 
-./configure --target-list=x86_64-softmmu,x86_64-linux-user,i386-linux-user,\
-arm-linux-user,arm-softmmu \
+./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --cc=gcc-4.7 \
 --cxx=g++-4.7 \
 --prefix=`pwd`/install \
