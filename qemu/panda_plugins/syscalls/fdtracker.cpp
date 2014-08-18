@@ -201,11 +201,11 @@ class CloneCallbackData : public CallbackData {
 list<target_asid> outstanding_clone_child_asids;
 map<target_ulong, target_asid> outstanding_clone_child_pids;
 
-static void clone_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC clone_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     CloneCallbackData* data = dynamic_cast<CloneCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     // return value is TID = PID of child
     target_ulong child_pid = get_return_val(env);
@@ -238,7 +238,7 @@ static void clone_callback(CallbackData* opaque, CPUState* env, target_asid asid
             // sanity check: make sure it's really a new process, not a thread
             if(child->pgd == asid){
                 cerr << "Attempted to track a clone that was thread-like" << endl;
-                return;
+                return Callback_RC::NORMAL;
             }
             copy_fds(asid, child->pgd);
             outstanding_clone_child_asids.remove(child->pgd);
@@ -247,6 +247,7 @@ static void clone_callback(CallbackData* opaque, CPUState* env, target_asid asid
 #endif
         }
     }
+    return Callback_RC::NORMAL;
 }
 
 // if flags includes CLONE_FILES then the parent and child will continue to share a single FD table
@@ -352,14 +353,14 @@ static char* getName(target_asid asid){
     return comm;
 }
 
-static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC open_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     OpenCallbackData* data = dynamic_cast<OpenCallbackData*>(opaque);
     if (-1 == get_return_val(env)){
-        return;
+        return Callback_RC::NORMAL;
     }
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     string dirname = "";
     auto& mymap = asid_to_fds[asid];
@@ -376,6 +377,7 @@ static void open_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     if (NULL_FD != data->base_fd)
         dirname += " using OPENAT";
     fdlog << "Process " << comm << " opened " << dirname << " as FD " << get_return_val(env) <<  endl;
+    return Callback_RC::NORMAL;
 }
 
 //mkdirs
@@ -412,11 +414,11 @@ void call_sys_openat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscall
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));
 }
 
-static void dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     DupCallbackData* data = dynamic_cast<DupCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     target_ulong new_fd;
     if(data->new_fd != NULL_FD){
@@ -431,6 +433,7 @@ static void dup_callback(CallbackData* opaque, CPUState* env, target_asid asid){
         fdlog << "Process " << comm << " missing dup source FD " << data->old_fd << " to " << new_fd<< endl;
     }
     asid_to_fds[asid][new_fd] = asid_to_fds[asid][data->old_fd];
+    return Callback_RC::NORMAL;
 }
 
 // dups
@@ -478,11 +481,11 @@ void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
 
 void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint64_t offset,uint32_t count) { }
 
-static void read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     ReadCallbackData* data = dynamic_cast<ReadCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     string filename = asid_to_fds[asid][data->fd];
     if (filename.empty()){
@@ -491,6 +494,7 @@ static void read_callback(CallbackData* opaque, CPUState* env, target_asid asid)
     auto retval = get_return_val(env);
     char* comm = getName(asid);
     fdlog << "Process " << comm << " finished reading " << filename << " return value " << retval <<  endl;
+    return Callback_RC::NORMAL;
 }
 
 void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) {
@@ -565,16 +569,16 @@ public:
     target_ulong sd_array;
     uint32_t domain;
 };
-static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC sockpair_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     SockpairCallbackData* data = dynamic_cast<SockpairCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     target_ulong retval = get_return_val(env);
     //"On success, zero is returned.  On error, -1 is returned, and errno is set appropriately."
     if(0 != retval){
-        return;
+        return Callback_RC::NORMAL;
     }
     // sd_array is an array of ints, length 2. NOT target_ulong
     int sd_array[2];
@@ -584,7 +588,7 @@ static void sockpair_callback(CallbackData* opaque, CPUState* env, target_asid a
     fdlog << "Creating pipe in process " << comm << endl;
     asid_to_fds[asid][sd_array[0]] = "<pipe>";
     asid_to_fds[asid][sd_array[1]] = "<pipe>";
-    
+    return Callback_RC::NORMAL;
 }
 
 #define SYSCALLS_FDS_TRACK_SOCKETS
@@ -604,11 +608,11 @@ public:
     sa_family_t domain;
 };
 
-static void socket_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC socket_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     SocketCallbackData* data = dynamic_cast<SocketCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     target_ulong new_sd = get_return_val(env);
     auto& mymap = asid_to_fds[asid];
@@ -617,6 +621,7 @@ static void socket_callback(CallbackData* opaque, CPUState* env, target_asid asi
         auto& mysdmap = asid_to_sds[asid];
         mysdmap[new_sd] = data->domain;
     }
+    return Callback_RC::NORMAL;
 }
 
 /*
@@ -697,18 +702,18 @@ public:
     
 };
 
-static void accept_callback(CallbackData* opaque, CPUState* env, target_asid asid){
+static Callback_RC accept_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     AcceptCallbackData* data = dynamic_cast<AcceptCallbackData*>(opaque);
     if(!data){
         fprintf(stderr, "oops\n");
-        return;
+        return Callback_RC::ERROR;
     }
     target_ulong retval = get_return_val(env);
     if (-1 == retval){
-        return;
+        return Callback_RC::NORMAL;
     }
     asid_to_fds[asid][retval]= "SOCKET ACCEPTED";
-    
+    return Callback_RC::NORMAL;
 }
 
 void call_sys_accept_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong arg1,target_ulong arg2) { 

@@ -23,6 +23,7 @@ extern "C" {
 #include <stdlib.h>
 }
 
+#include <cassert>
 #include <functional>
 #include <string>
 #include <list>
@@ -212,7 +213,7 @@ static bool is_empty(ReturnPoint& pt){
     return (pt.retaddr == 0 && pt.process_id == 0);
 }
 
-static int returned_check_callback(CPUState *env, TranslationBlock *tb){
+static bool returned_check_callback(CPUState *env, TranslationBlock* tb){
     // First, check if any of the PANDA VMI callbacks needs to be triggered
 #if defined(CONFIG_PANDA_VMI)
     panda_cb_list *plist;
@@ -258,14 +259,26 @@ static int returned_check_callback(CPUState *env, TranslationBlock *tb){
 #endif
 
     //check if any of the internally tracked syscalls has returned
+    //only one should be at its return point for any given basic block
+    bool invalidate = false;
     for(auto& retVal : other_returns){
         if(retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
-            retVal.callback(retVal.opaque.get(), env, retVal.process_id);
-            retVal.retaddr = retVal.process_id = 0;
+            Callback_RC rc = retVal.callback(retVal.opaque.get(), env, retVal.process_id);
+            if(Callback_RC::INVALIDATE == rc){
+                invalidate = true;
+            } else if(Callback_RC::NORMAL == rc){
+                retVal.retaddr = retVal.process_id = 0;
+            } else if(Callback_RC::ERROR == rc){
+                fprintf(stderr, "Syscalls caused an error\n");
+                assert(0);
+            } else {
+                fprintf(stderr, "Unknown syscalls internal callback return value\n");
+                assert(0);
+            }
         }
     }
     other_returns.remove_if(is_empty);
-    return 0;
+    return invalidate;
 }
 
 
@@ -459,8 +472,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    pcb.before_block_exec = returned_check_callback;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.before_block_exec_invalidate_opt = returned_check_callback;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
 
     return true;
 
