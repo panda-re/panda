@@ -37,14 +37,10 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_TARGET_DIR)/bitvector_label_set.o \
     $(PLUGIN_TARGET_DIR)/shad_dir_32.o \
     $(PLUGIN_TARGET_DIR)/shad_dir_64.o \
-#    $(PLUGIN_TARGET_DIR)/guestarch.o \
     $(PLUGIN_TARGET_DIR)/taint_processor.o \
-#    $(PLUGIN_TARGET_DIR)/panda_memlog.o \
     $(PLUGIN_TARGET_DIR)/panda_stats.o \
-#    $(PLUGIN_TARGET_DIR)/tubtf.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o \
     $(PLUGIN_TARGET_DIR)/llvm_taint_lib.o 
-#    $(PLUGIN_TARGET_DIR)/panda_dynval_inst.o 
 
 	$(call quiet-command,$(CXX) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
