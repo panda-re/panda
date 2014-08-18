@@ -4,18 +4,6 @@
 #include <dlfcn.h>
 #include "panda_plugin.h"
 
-typedef DynValBuffer*(*create_dynval_buffer_t)(uint32_t);
-static create_dynval_buffer_t __create_dynval_buffer = NULL;
-inline DynValBuffer* create_dynval_buffer(uint32_t size){
-    assert(__create_dynval_buffer);
-    return __create_dynval_buffer(size);
-}
-typedef void(*delete_dynval_buffer_t)(DynValBuffer*);
-static delete_dynval_buffer_t __delete_dynval_buffer = NULL;
-inline void delete_dynval_buffer(DynValBuffer* dynval_buf){
-    assert(__delete_dynval_buffer);
-    return __delete_dynval_buffer(dynval_buf);
-}
 typedef void(*taint_enable_taint_t)(void);
 static taint_enable_taint_t __taint_enable_taint = NULL;
 inline void taint_enable_taint(void ){
@@ -117,8 +105,6 @@ inline bool init_taint_api(void){
         return false;
     }
     dlerror();
-IMPORT_PPP(module, create_dynval_buffer)
-IMPORT_PPP(module, delete_dynval_buffer)
 IMPORT_PPP(module, taint_enable_taint)
 IMPORT_PPP(module, taint_enabled)
 IMPORT_PPP(module, taint_label_ram)

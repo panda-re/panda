@@ -5,12 +5,6 @@
 #include "panda_memlog.h"
 #include "taint_processor.h"
 
-DynValBuffer *create_dynval_buffer(uint32_t size);
-
-void delete_dynval_buffer(DynValBuffer *dynval_buf);                                                             
-          
-                         
-
 // turns on taint
 void taint_enable_taint(void);
 
