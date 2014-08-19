@@ -134,7 +134,8 @@ static void addr_inc(Addr *a) {
 
 
 
-SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
+//SB_INLINE uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
+uint8_t get_ram_bit(Shad *shad, uint32_t addr) {
     uint8_t taint_byte = shad->ram_bitmap[addr >> 3];
     return (taint_byte & (1 << (addr & 7)));
 }
@@ -855,7 +856,8 @@ void tob_delete_iterate_ops(TaintOpBuffer *tbuf){
     tbuf = NULL;
 }
 
-SB_INLINE void tob_rewind(TaintOpBuffer *buf) {
+//SB_INLINE void tob_rewind(TaintOpBuffer *buf) {
+void tob_rewind(TaintOpBuffer *buf) {
     buf->ptr = buf->start;
 }
 
@@ -864,7 +866,8 @@ void tob_clear(TaintOpBuffer *buf) {
     buf->ptr = buf->start;
 }
 
-SB_INLINE uint8_t tob_end(TaintOpBuffer *buf) {
+//SB_INLINE uint8_t tob_end(TaintOpBuffer *buf) {
+uint8_t tob_end(TaintOpBuffer *buf) {
     return (buf->ptr >= buf->start + buf->size);
 }
 
@@ -992,7 +995,8 @@ void tob_op_write(TaintOpBuffer *buf, TaintOp *op) {
 }
 
 // *aop is pointer to a taint op
-SB_INLINE void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
+//SB_INLINE void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
+void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
     tob_read(buf, (char**) aop, sizeof(TaintOp));
 }
 
@@ -1728,8 +1732,9 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 
 }
 
-SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
-        DynValBuffer *dynval_buf) {
+//SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
+//        DynValBuffer *dynval_buf) {
+void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
 
     uint32_t i;
     tob_rewind(buf);
@@ -1922,7 +1927,8 @@ SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 
 /*** taint translation block stuff ***/
 
-SB_INLINE TaintTB *taint_tb_new(const char *name, int numBBs){
+//SB_INLINE TaintTB *taint_tb_new(const char *name, int numBBs){
+TaintTB *taint_tb_new(const char *name, int numBBs){
     TaintTB *ttb = (TaintTB*) my_malloc(sizeof(TaintTB), poolid_taint_processor);
     ttb->name = (char*) my_malloc(strlen(name)+1, poolid_taint_processor);
     strncpy(ttb->name, name, strlen(name)+1);
