@@ -37,8 +37,6 @@ extern "C" {
 
 #include <sys/time.h>
 #include "panda_plugin.h"
-#include "panda_memlog.h"
-#include "panda_stats.h"
 #include "panda/network.h"
 #ifdef CONFIG_SOFTMMU
 #include "rr_log.h"
@@ -52,6 +50,9 @@ extern "C" {
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "tcg-llvm.h"
+
+#include "panda_stats.h"
+#include "panda_memlog.h"
 
 #include "llvm_taint_lib.h"
 #include "panda_dynval_inst.h"
@@ -104,7 +105,6 @@ int cb_replay_cpu_physical_mem_rw_ram
   (CPUState *env,
    uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
-
 #ifndef CONFIG_SOFTMMU
 int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
                        int num, abi_long arg1, abi_long arg2, abi_long arg3,
@@ -117,10 +117,7 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
-
-
 Shad *shadow = NULL; // Global shadow memory
-
 }
 
 // Pointer passed in init_plugin()

@@ -18,17 +18,19 @@ PANDAENDCOMMENT */
  * the guest memory as we process taint.
  */
 
-#include "stdint.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdio.h>
 
+extern "C" {
 #include "qemu-common.h"
 #include "cpu-all.h"
+}
 
 // Compiler hack, these will get redefined
 #undef TRUE
 #undef FALSE
 
-#include "bitvector_label_set.c"
+#include "bitvector_label_set.cpp"
 #include "panda_stats.h"
 
 #define INSTR_INTERVAL 10000
@@ -40,6 +42,7 @@ uint64_t instr_count = 0;
 void memplot(Shad *shad){
     FILE *memplotlog = fopen("memory.csv", "w");
     fprintf(memplotlog, "\"Address\",\"Label\",\"Type\"\n");
+    /*
     unsigned int i;
     for (i = 0; i < 0xffffffff; i++){
 #ifdef TARGET_X86_64
@@ -62,6 +65,7 @@ void memplot(Shad *shad){
         }
 #endif
     }
+    */
     fclose(memplotlog);
 }
 
@@ -71,6 +75,7 @@ void memplot(Shad *shad){
 void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
     FILE *bufplotlog = fopen("taint_query.csv", "a+");
     fprintf(bufplotlog, "\"Address\",\"Label\",\"Type\"\n");
+    /*
     uint64_t i;
     LabelSet *ls;
 
@@ -127,6 +132,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
         // Other address types not supported
         assert(0);
     }
+    */
     fclose(bufplotlog);
 }
 

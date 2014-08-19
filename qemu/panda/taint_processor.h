@@ -10,11 +10,11 @@
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  *
-PANDAENDCOMMENT */
+ PANDAENDCOMMENT */
 
 /*
 
-  API for Taint processor
+   API for Taint processor
 
 */
 
@@ -24,6 +24,7 @@ PANDAENDCOMMENT */
 #include <stdint.h>
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
+
 
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
@@ -78,48 +79,46 @@ typedef enum {
 } InsnFlag;
 
 typedef struct addr_struct {
-  AddrType typ;
-  union {
-    HAddr ha;
-    MAddr ma;
-    IAddr ia;
-    PAddr pa;
-    LAddr la;
-    GReg gr;
-    GSpec gs;
-    Unk ua;
-    Const con;
-    Ret ret;
-  } val;
-  uint16_t off;   // offset within local registers and guest registers
-  AddrFlag flag;  // indication that we might need to look up address from log
+    AddrType typ;
+    union {
+        HAddr ha;
+        MAddr ma;
+        IAddr ia;
+        PAddr pa;
+        LAddr la;
+        GReg gr;
+        GSpec gs;
+        Unk ua;
+        Const con;
+        Ret ret;
+    } val;
+    uint16_t off;   // offset within local registers and guest registers
+    AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
-
 
 typedef uint32_t Label;
 
-
 typedef struct shad_struct {
-  uint64_t hd_size;
-  uint32_t mem_size;
-  uint64_t io_size;
-  uint32_t port_size;
-  uint32_t num_vals;
-  uint32_t guest_regs;
-  SdDir64 *hd;
+    uint64_t hd_size;
+    uint32_t mem_size;
+    uint64_t io_size;
+    uint32_t port_size;
+    uint32_t num_vals;
+    uint32_t guest_regs;
+    SdDir64 *hd;
 #ifdef TARGET_X86_64
-  SdDir64 *ram;
+    SdDir64 *ram;
 #else
-  SdDir32 *ram;
+    SdDir32 *ram;
 #endif
-  SdDir64 *io;
-  SdDir32 *ports;
-  LabelSet **llv;  // LLVM registers, with multiple frames
-  LabelSet **ret;  // LLVM return value, also temp register
-  LabelSet **grv;  // guest general purpose registers
-  LabelSet **gsv;  // guest special values, like FP, and parts of CPUState
-  uint8_t *ram_bitmap;
-  uint32_t current_frame; // keeps track of current function frame
+    SdDir64 *io;
+    SdDir32 *ports;
+    LabelSet **llv;  // LLVM registers, with multiple frames
+    LabelSet **ret;  // LLVM return value, also temp register
+    LabelSet **grv;  // guest general purpose registers
+    LabelSet **gsv;  // guest special values, like FP, and parts of CPUState
+    uint8_t *ram_bitmap;
+    uint32_t current_frame; // keeps track of current function frame
 } Shad;
 
 // returns a shadow memory to be used by taint processor
@@ -148,12 +147,11 @@ uint8_t addrs_equal(Addr *a, Addr *b);
 uint8_t get_ram_bit(Shad *shad, uint32_t addr);
 
 typedef struct taint_op_buffer_struct {
-  char *start;        // beginning of ops
-  uint32_t max_size;  // max size
-  uint32_t size;      // current size of this buffer in bytes
-  char *ptr;          // current location in buf for write / read
+    char *start;        // beginning of ops
+    uint32_t max_size;  // max size
+    uint32_t size;      // current size of this buffer in bytes
+    char *ptr;          // current location in buf for write / read
 } TaintOpBuffer;
-
 
 /*** taint translation block stuff ***/
 /* There are a few different notions of 'blocks'.  A guest basic block is
@@ -228,7 +226,6 @@ typedef struct taint_op_struct {
 
 #include "panda_memlog.h"
 
-
 Addr make_haddr(uint64_t a);
 Addr make_maddr(uint64_t a);
 Addr make_iaddr(uint64_t a);
@@ -271,6 +268,6 @@ enum {RETURN, BRANCH, SWITCHSTEP, EXCEPT};
 void print_addr(Shad *shad, Addr *a);
 
 void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
-    DynValBuffer *dynval_buf);
+        DynValBuffer *dynval_buf);
 
 #endif

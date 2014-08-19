@@ -1,29 +1,27 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
-extern "C"{
+extern "C" {
 #define __STDC_FORMAT_MACROS
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"
-
-
-
 #include "panda_plugin.h"
 #include <stdio.h>
 #include <stdlib.h>
 }
+
 #include <functional>
 #include <string>
 #include <list>
@@ -46,13 +44,13 @@ std::vector<target_ulong> relevant_ASIDs;
 #ifdef TARGET_ARM
 // ARM: stolen from target-arm/helper.c
 static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
-{   
+{
     uint32_t table;
 
     if (address & env->cp15.c2_mask)
         table = env->cp15.c2_base1 & 0xffffc000;
     else
-        
+
         table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
 
     return table;
@@ -93,7 +91,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 	  return true;
 #endif
 	}
-    } else { 
+    } else {
       panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // check for Thumb mode syscall
       if (buf[1] == 0xDF && buf[0] == 0){
@@ -341,7 +339,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
 extern "C" {
 
 bool init_plugin(void *self) {
-    plugin_log = fopen("/scratch/syscalls.txt", "w");    
+    plugin_log = fopen("/scratch/syscalls.txt", "w");
     if(!plugin_log) {
         fprintf(stderr, "Couldn't open /scratch/syscalls.txt. Abort.\n");
         return false;

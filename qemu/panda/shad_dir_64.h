@@ -1,28 +1,25 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #ifndef __SHAD_DIR_64_H
 #define __SHAD_DIR_64_H
 
 #include "label_set.h"
-
 #include "shad_dir.h"
 
-
-
-// the top-level directory is an array of pointers to page tables 
-typedef struct sd_dir_struct64 {
+// the top-level directory is an array of pointers to page tables
+typedef struct SdDir64 {
   uint32_t num_dir_bits;
   uint32_t num_table_bits;
   uint32_t num_page_bits;
@@ -43,20 +40,15 @@ typedef struct sd_dir_struct64 {
   int32_t num_non_empty;
 } SdDir64;
 
-
-
-
-
 /*
   creates initial, empty page directory.
-  this is a mapping from addresses, which are unsigned integers of width 
+  this is a mapping from addresses, which are unsigned integers of width
   (i.e. number of bytes) addr_size, to pointers to labelsets.
   top num_dir_bits of addr are the directory index
   next num_table_bits of addr are table index
   bottom num_page_bits are the page index
 */
 SdDir64 *shad_dir_new_64(uint32_t num_dir_bits, uint32_t num_table_bits, uint32_t num_page_bits);
-
 
 /*
   iterates over every entry in every page in shad_dir.
@@ -65,7 +57,7 @@ SdDir64 *shad_dir_new_64(uint32_t num_dir_bits, uint32_t num_table_bits, uint32_
   "stuff2" is a ptr to something the app fn needs
 */
 void shad_dir_iter_64
-     (SdDir64 *shad_dir, 
+     (SdDir64 *shad_dir,
       int (*app)(uint64_t addr, LabelSet *labelset, void *stuff1),
       void *stuff2);
 
@@ -79,7 +71,7 @@ int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff);
 /*
   add this mapping from addr to ls_new
   if a prior mapping exists, remove it first
-  labelset is *not* copied.  We copy its slots.  
+  labelset is *not* copied.  We copy its slots.
 */
 /*inline*/ void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new);
 
@@ -95,14 +87,10 @@ int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff);
 
 #ifndef SD_TESTING
 // marshall shad_dir to file
-void shad_dir_save_64(void * /* QEMUFile * */ f, SdDir64 *shad_dir); 
+void shad_dir_save_64(void * /* QEMUFile * */ f, SdDir64 *shad_dir);
 
 // unmarshall shad_dir from file
 SdDir64 *shad_dir_load_64(void * /* QEMUFile * */ f);
 
 #endif
-
-
-
 #endif
-

@@ -15,8 +15,9 @@ PANDAENDCOMMENT */
 #ifndef __PANDA_STATS_H__
 #define __PANDA_STATS_H__
 
+extern "C" {
 #include "cpu.h"
-
+}
 #include "taint_processor.h"
 
 void memplot(Shad *shad);

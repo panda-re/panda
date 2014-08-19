@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 /*
@@ -19,7 +19,7 @@ PANDAENDCOMMENT */
  * code generated from TCG.
  */
 
-#include "stdio.h"
+#include <stdio.h>
 
 #include "llvm/Linker.h"
 #include "llvm/Support/SourceMgr.h"
@@ -31,12 +31,11 @@ PANDAENDCOMMENT */
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include "config.h"
-#include "tcg-llvm.h"
-
 extern "C" {
-#include "panda_externals.h"
+#include "config.h"
 }
+#include "tcg-llvm.h"
+#include "panda_externals.h"
 #include "panda_helper_call_morph.h"
 
 namespace llvm {
@@ -88,7 +87,7 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I){
             || I.getCalledFunction()->getName().equals("helper_outl")){
         return; // Ignore intrinsics, declarations, memory, and I/O  functions
     }
-    
+
     // Call LLVM version of helper
     Module *m = I.getParent()->getParent()->getParent();
     assert(m);

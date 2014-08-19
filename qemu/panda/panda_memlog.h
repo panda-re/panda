@@ -1,21 +1,21 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 #ifndef PANDA_MEMLOG_H
 #define PANDA_MEMLOG_H
 
-#include "inttypes.h"
+#include <inttypes.h>
 
 void open_memlog(char *path);
 void close_memlog(void);
@@ -85,4 +85,3 @@ void log_dynval(DynValBuffer *dynval_buf, DynValEntryType type, LogOp op,
 void log_exception(DynValBuffer *dynval_buf);
 
 #endif
-
