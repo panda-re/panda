@@ -110,7 +110,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
-                printf("%s Match of str %d at: instr_count=%d :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
+                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
                        (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
@@ -122,8 +122,8 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.asid = p.cr3;
                 matchstacks[p] = f;
 
-		// call the i-found-a-match registered callbacks here
-		PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
+                // call the i-found-a-match registered callbacks here
+                PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
 
             }
         }
@@ -156,24 +156,31 @@ bool init_plugin(void *self) {
         return false;
     }
 
-    // Format: lines of colon-separated hex chars, e.g.
+    // Format: lines of colon-separated hex chars or quoted strings, e.g.
     // 0a:1b:2c:3d:4e
+    // or "string" (no newlines)
     std::string line;
     while(std::getline(search_strings, line)) {
         std::istringstream iss(line);
-        
-        std::string x;
-        int i = 0;
-        while (std::getline(iss, x, ':')) {
-            tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
-            if (i >= MAX_STRLEN) {
-                printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
-                break;
-            }
-        }
-        strlens[num_strings] = i;
 
-        printf("stringsearch: added string of length %d to search set\n", i);
+        if (line[0] == '"') {
+            size_t len = line.size() - 2;
+            memcpy(tofind[num_strings], line.substr(1, len).c_str(), len);
+            strlens[num_strings] = len;
+        } else {
+            std::string x;
+            int i = 0;
+            while (std::getline(iss, x, ':')) {
+                tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
+                if (i >= MAX_STRLEN) {
+                    printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
+                    break;
+                }
+            }
+            strlens[num_strings] = i;
+        }
+
+        printf("stringsearch: added string of length %d to search set\n", strlens[num_strings]);
 
         if(++num_strings >= MAX_STRINGS) {
             printf("WARN: maximum number of strings (%d) reached, will not load any more.\n", MAX_STRINGS);

@@ -1296,6 +1296,15 @@ void replay_progress(void) {
   }
 }
 
+uint64_t replay_get_total_num_instructions(void) {
+  if (rr_nondet_log) {
+    return rr_nondet_log->last_prog_point.guest_instr_count;
+  }
+  else {
+    return 0;
+  }
+}
+
 /******************************************************************************************/
 /* MONITOR CALLBACKS (top-level) */
 /******************************************************************************************/

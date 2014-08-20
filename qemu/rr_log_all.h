@@ -62,6 +62,10 @@ void rr_reset_state(void *cpu_state);
 //mz display indication of replay progress
 extern void replay_progress(void);
 
+//bdg helper to find out how many instructions
+//    are in our log
+uint64_t replay_get_total_num_instructions(void);
+
 void rr_quit_cpu_loop(void);
 void rr_set_program_point(void);
 
