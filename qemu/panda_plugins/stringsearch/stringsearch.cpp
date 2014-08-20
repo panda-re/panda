@@ -110,7 +110,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
-                printf("%s Match of str %d at: instr_count=%d :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
+                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
                        (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
