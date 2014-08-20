@@ -7,7 +7,11 @@ for Architecture-Neutral Dynamic Analysis. Plugins are an easy way to extend the
 
 If all you want to do is use plugins others have written, you can read this section and skip the rest.
 
-There are two ways to load a PANDA plugin: by specifying it via `-panda` or `-panda-plugin` on the QEMU command line, or by using the `load_plugin` command from the monitor. In either case, the plugin should be specified by giving the path to the plugin (which will usually be named `panda_{something}.so`).
+There are two ways to load a PANDA plugin: by specifying it via `-panda` or `-panda-plugin` on the QEMU command line, or by using the `load_plugin` command from the monitor. If using `-panda-plugin` or `load_plugin`, the plugin should be specified by giving the path to the plugin (which will usually be named `panda_{something}.so`).
+
+If using `-panda`, specify just the plugin's name. PANDA will search for the plugin in either the QEMU directory or in PANDA_PLUGIN_DIR. You can specify multiple plugins as a semicolon-separated list, and you can give the plugins arguments as a comma-separated list after the plugin's name and a colon. For example,
+
+	-panda stringsearch;callstack_instr;llvm_trace:base=dir
 
 Once a plugin is loaded, it will appear when using the `list_plugins` monitor command:
 

@@ -3277,7 +3277,12 @@ int main(int argc, char **argv, char **envp)
                         }
 
                         char *plugin_path = g_malloc0(1024);
-                        snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_start);
+                        char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
+                        if (plugin_dir != NULL) {
+                            snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_start);
+                        } else {
+                            snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_start);
+                        }
                         panda_plugin_files[nb_panda_plugins++] = plugin_path;
                         printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
                         
