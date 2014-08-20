@@ -1,22 +1,20 @@
-#include "panda_plugin.h"
-#include "panda_common.h"
-
 #include <assert.h>
 #include <stdint.h>
 
+extern "C" {
+#include "panda_plugin.h"
+}
+#include "panda_common.h"
 
 target_ulong panda_current_pc(CPUState *env) {
   assert (panda_update_pc);
   return env->panda_guest_pc;
 }
 
-
-
-
 #ifdef TARGET_ARM
 // ARM: stolen from target-arm/helper.c
 static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
-{   
+{
   uint32_t table;
 
   if (address & env->cp15.c2_mask)
@@ -27,7 +25,6 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
   return table;
 }
 #endif
-
 
 /*
   returns current asid or address-space id.
@@ -42,4 +39,3 @@ target_ulong panda_current_asid(CPUState *env) {
   return 0;
 #endif
 }
-

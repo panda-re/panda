@@ -12,7 +12,7 @@
  *
 PANDAENDCOMMENT */
 
-extern "C"{
+extern "C" {
 #define __STDC_FORMAT_MACROS
 #include "config.h"
 #include "qemu-common.h"

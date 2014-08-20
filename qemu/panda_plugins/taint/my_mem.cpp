@@ -15,11 +15,9 @@ PANDAENDCOMMENT */
 #include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "my_mem.h"
-
-extern int printf(const char *format, ...);
-
 
 const char *pool_names[] = {
   "poolid_iferret_log",

@@ -18,17 +18,19 @@ PANDAENDCOMMENT */
  * the guest memory as we process taint.
  */
 
-#include "stdint.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdio.h>
 
+extern "C" {
 #include "qemu-common.h"
 #include "cpu-all.h"
+}
 
 // Compiler hack, these will get redefined
 #undef TRUE
 #undef FALSE
 
-#include "bitvector_label_set.c"
+#include "bitvector_label_set.cpp"
 #include "panda_stats.h"
 
 #define INSTR_INTERVAL 10000
@@ -40,6 +42,7 @@ uint64_t instr_count = 0;
 void memplot(Shad *shad){
     FILE *memplotlog = fopen("memory.csv", "w");
     fprintf(memplotlog, "\"Address\",\"Label\",\"Type\"\n");
+    /*
     unsigned int i;
     for (i = 0; i < 0xffffffff; i++){
 #ifdef TARGET_X86_64
@@ -62,6 +65,7 @@ void memplot(Shad *shad){
         }
 #endif
     }
+    */
     fclose(memplotlog);
 }
 
@@ -78,10 +82,9 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
         for (i = addr->val.ia; i < addr->val.ia+length; i++){
             ls = shad_dir_find_64(shad->io, i);
             if (ls){
-                unsigned int j;
-                for (j = 0; j < ls->set->current_size; j++){
-                    fprintf(bufplotlog, "IO %lu,%d,%d\n", i, ls->set->members[j],
-                        ls->type);
+                BitSet::iterator j;
+                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                    fprintf(bufplotlog, "IO %lu,%u,%d\n", i, *j, ls->type);
                 }
             }
         }
@@ -97,10 +100,9 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             LabelSet *ls = shad_dir_find_64(shad->ram, i);
 #endif // CONFIG_SOFTMMU
             if (ls){
-                unsigned int j;
-                for (j = 0; j < ls->set->current_size; j++){
-                    fprintf(bufplotlog, "RAM %lu,%d,%d\n", i, ls->set->members[j],
-                        ls->type);
+                BitSet::iterator j;
+                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                    fprintf(bufplotlog, "RAM %lu,%u,%d\n", i, *j, ls->type);
                 }
             }
 #else // TARGET_X86_64
@@ -113,10 +115,9 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             if (get_ram_bit(shad, i)){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
-                unsigned int j;
-                for (j = 0; j < ls->set->current_size; j++){
-                    fprintf(bufplotlog, "%lu,%d,%d\n", i, ls->set->members[j],
-                        ls->type);
+                BitSet::iterator j;
+                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                    fprintf(bufplotlog, "%lu,%u,%d\n", i, *j, ls->type);
                 }
             }
 #endif // TARGET_X86_64

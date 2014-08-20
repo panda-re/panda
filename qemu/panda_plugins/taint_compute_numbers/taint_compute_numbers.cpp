@@ -23,7 +23,6 @@ extern "C" {
 #include "monitor.h"
 #include "cpu.h"
 #include "panda_plugin.h"
-#include "../taint/taint_processor.h"
 #include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
@@ -35,6 +34,8 @@ extern "C" {
 #include <stdlib.h>
 #include <ctype.h>
 #include <math.h>
+
+#include "../taint/taint_processor.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C

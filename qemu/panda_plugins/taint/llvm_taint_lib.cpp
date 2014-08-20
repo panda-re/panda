@@ -13,13 +13,11 @@
 PANDAENDCOMMENT */
 
 #include "llvm_taint_lib.h"
-
-extern "C" {
 #include "guestarch.h"
+#include "my_mem.h"
 
 extern Shad *shadow;
 extern int tainted_pointer ;
-}
 
 using namespace llvm;
 

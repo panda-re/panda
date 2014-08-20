@@ -1,37 +1,37 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 
 /*
 
   3-level directory->table->page map from addresses to labelsets.
-  Accommodates 64-bit addresses 
+  Accommodates 64-bit addresses
 
   1st level is a directory
   ... which points to 2nd level which is a table
   ... which points to a page
 
-    
-  The top num_dir_bits of the address indexes us into a directory of 
+
+  The top num_dir_bits of the address indexes us into a directory of
   1<<num_dir_bits entries to obtain a pointer to a table.
 
-  The next num_table_bits bits of the address indexes us into the table, 
+  The next num_table_bits bits of the address indexes us into the table,
   which contains 1<<num_table_bits entries, to obtain a pointer to a page.
 
-  The bottom num_page_bits of hte address indexes us into the page, 
+  The bottom num_page_bits of hte address indexes us into the page,
   which contains 1<<num_page_bits entires, obtain a pointer to a labelset.
 
-  Thus, the width of the address, in bits, must equal 
+  Thus, the width of the address, in bits, must equal
   num_bits_dir + num_bits_table + num_bits_page
 
   The type of the address is a macro ADDR_TYPE.  Thus, it is a parameter.
@@ -44,14 +44,14 @@ PANDAENDCOMMENT */
   labelset_copy (whcih increments reference count).
 
   Delete.
-  When a labelset is removed from the shadow memory, we always destroy the copy 
-  with a call to labelset_free (which decrements reference count and possible triggers 
+  When a labelset is removed from the shadow memory, we always destroy the copy
+  with a call to labelset_free (which decrements reference count and possible triggers
   call to free).
 
   Find.
   When a labelset is returned by shad_dir_find..(), we return a copy, created via
   labelset_copy (to increment reference count).
-  So don't forget to call labelset_free on it when you are done with it.  
+  So don't forget to call labelset_free on it when you are done with it.
 
  */
 
@@ -61,14 +61,9 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 #include "label_set.h"
 #include "shad_dir_32.h"
-
-
-#include "bitvector_label_set.c"
+#include "bitvector_label_set.cpp"
 
 #define SD32_INLINE //inline
-
-
-
 
 // create a new table
 static SD32_INLINE SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {
@@ -102,7 +97,7 @@ static SD32_INLINE void __shad_dir_page_free_32(SdDir32 *shad_dir, SdPage *page)
 
 /*
   creates initial, empty page directory.
-  this is a mapping from addresses, which are unsigned integers of width 
+  this is a mapping from addresses, which are unsigned integers of width
   (i.e. number of bytes) addr_size, to pointers to labelsets.
   top num_dir_bits of addr are the directory index
   next num_table_bits of addr are table index
@@ -110,7 +105,7 @@ static SD32_INLINE void __shad_dir_page_free_32(SdDir32 *shad_dir, SdPage *page)
 */
 SdDir32 *shad_dir_new_32
      (uint32_t num_dir_bits,
-      uint32_t num_table_bits, 
+      uint32_t num_table_bits,
       uint32_t num_page_bits) {
   assert (num_dir_bits < 32 && num_table_bits < 32 && num_page_bits < 32);
   SdDir32 *shad_dir = (SdDir32 *) my_calloc(1, sizeof(SdDir32), poolid_shad_dir);
@@ -135,7 +130,7 @@ SdDir32 *shad_dir_new_32
 
 /*
   macro to iterate over shadow memory pages.
-  at the point "do_this" text gets inserted, the following useful 
+  at the point "do_this" text gets inserted, the following useful
   iteration variables are defined
   "table" points to the SdTable for the current page
   "page" points to the SdPage for the current page
@@ -168,17 +163,17 @@ SdDir32 *shad_dir_new_32
 /*
   Iterates over pages of labelsets in shadow memory.
   Applies app(pa, page), where pa is base address of the page in guest
-  physical memory and "page" is a pointer to the SdPage struct for that 
+  physical memory and "page" is a pointer to the SdPage struct for that
   shadow page.
   "stuff2" is a ptr to something the app fn needs
 */
 static SD32_INLINE void __shad_dir_page_iter_32
-     (SdDir32 *shad_dir, 
-      int (*app)(uint32_t pa, SdPage *page, void *stuff1), 
+     (SdDir32 *shad_dir,
+      int (*app)(uint32_t pa, SdPage *page, void *stuff1),
       void *stuff2) {
-  SD_PAGE_ITER( 
+  SD_PAGE_ITER(
 	  { int iter_finished;
-	    iter_finished = 
+	    iter_finished =
 	      app(page_base_addr, page, stuff2);
 	    if (iter_finished != 0) return; } ,
 	  SD_DO_NOTHING,
@@ -194,20 +189,20 @@ static SD32_INLINE void __shad_dir_page_iter_32
   "stuff2" is a ptr to something the app fn needs
 */
 void shad_dir_iter_32
-     (SdDir32 *shad_dir, 
+     (SdDir32 *shad_dir,
       int (*app)(uint32_t addr, LabelSet *labels, void *stuff1),
       void *stuff2) {
   SD_PAGE_ITER(
 	  { int iter_finished;
 	    unsigned int ai;
-	    for (ai=0; ai<shad_dir->page_size; ai++) {	
+	    for (ai=0; ai<shad_dir->page_size; ai++) {
 	      uint32_t addr;
 	      addr = page_base_addr | ai;
 	      LabelSet *ls = label_set_array[ai];
 	      iter_finished = 0;
-	      if (ls != NULL) 
+	      if (ls != NULL)
 		iter_finished = app(addr, ls, stuff2);
-	      if (iter_finished != 0) return; 
+	      if (iter_finished != 0) return;
 	    } },
 	  SD_DO_NOTHING,
 	  SD_DO_NOTHING
@@ -218,14 +213,14 @@ void shad_dir_iter_32
 // returns the number of addr to labelset mappings
 uint32_t shad_dir_occ_32(SdDir32 *shad_dir) {
   uint32_t occ = 0;
-  SD_PAGE_ITER( 
+  SD_PAGE_ITER(
 	       {occ += page->num_non_empty;},
 	  SD_DO_NOTHING,
 	  SD_DO_NOTHING
          )
-  return occ;  
+  return occ;
 }
-		 
+
 
 int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff) {
   uint32_t i;
@@ -236,8 +231,8 @@ int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff) {
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
 }
- 
- 
+
+
 // release all memory associated with this shad pages
 void shad_dir_free_32(SdDir32 *shad_dir) {
   SD_PAGE_ITER(
@@ -253,7 +248,7 @@ void shad_dir_free_32(SdDir32 *shad_dir) {
 	       // free the table
 	       {
 		 table1->num_non_empty = 0;
-		 __shad_dir_table_free_32(shad_dir, table1); 
+		 __shad_dir_table_free_32(shad_dir, table1);
 	       },
 	       SD_DO_NOTHING
 	       );
@@ -287,12 +282,12 @@ void shad_dir_free_32(SdDir32 *shad_dir) {
   LabelSet **label_set_array = page->labels;      \
   uint32_t offset = (addr & shad_dir->page_mask); \
   LabelSet *ls = label_set_array[offset];         \
-  if (ls == NULL) { no_labelset_action ; }       
+  if (ls == NULL) { no_labelset_action ; }
 
 
 // add table to the directory
 static SD32_INLINE SdTable *__shad_dir_add_table_to_dir_32(SdDir32 *shad_dir, uint32_t di) {
-  SdTable *table = __shad_dir_table_new_32(shad_dir); 
+  SdTable *table = __shad_dir_table_new_32(shad_dir);
   shad_dir->table[di] = table;
   shad_dir->num_non_empty++;
   return table;
@@ -305,16 +300,16 @@ static SD32_INLINE SdPage *__shad_dir_add_page_to_table_32(SdDir32 *shad_dir, Sd
   table->num_non_empty ++;
   return page;
 }
-  
+
 
 /*
   add this mapping from addr to ls_new
   if a prior mapping exists, remove it first
-  labelset is *not* copied.  We copy its slots.  
+  labelset is *not* copied.  We copy its slots.
 */
 SD32_INLINE void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_new) {
   // get ls, the labelset currently associated with this addr
-  SD_GET_LABELSET_32( 
+  SD_GET_LABELSET_32(
     addr,
     table = __shad_dir_add_table_to_dir_32(shad_dir, di),
     page = __shad_dir_add_page_to_table_32(shad_dir, table, ti),
@@ -331,7 +326,7 @@ SD32_INLINE void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_
   LabelSet *ls_new_copy = labelset_copy(ls_new);
   label_set_array[offset] = ls_new_copy;
 }
-    
+
 
 // remove this mapping from addr to labelset
 SD32_INLINE void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
@@ -400,8 +395,9 @@ SD32_INLINE LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr) {
 #ifndef SD_TESTING
 
 // this is where all the qemu_put and qemu_get come from
+extern "C" {
 #include "hw/hw.h"
-
+}
 
 int shad_dir_save_aux_32(uint32_t addr, LabelSet *ls, void *f) {
   qemu_put_be32(f, addr);
@@ -419,13 +415,13 @@ void shad_dir_save_32(void * /* QEMUFile * */ f, SdDir32 *shad_dir) {
   shad_dir_iter_32(shad_dir, shad_dir_save_aux_32, f);
 }
 
-  
+
 // unmarshall shad_dir from file
 SdDir32 *shad_dir_load_32(void * /* QEMUFile * */ f) {
   uint32_t num_dir_bits = qemu_get_be32(f);
   uint32_t num_table_bits = qemu_get_be32(f);
   uint32_t num_page_bits = qemu_get_be32(f);
-  SdDir32 *shad_dir = 
+  SdDir32 *shad_dir =
     shad_dir_new_32(num_dir_bits, num_table_bits, num_page_bits);
   uint32_t occ = qemu_get_be32(f);
   int i;

@@ -3,6 +3,7 @@
 
 #include <dlfcn.h>
 #include "panda_plugin.h"
+#include "panda_memlog.h"
 
 typedef DynValBuffer*(*create_dynval_buffer_t)(uint32_t);
 static create_dynval_buffer_t __create_dynval_buffer = NULL;

@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 /*
  * llvm_trace PANDA plugin
@@ -34,19 +34,16 @@ PANDAENDCOMMENT */
 #endif
 
 extern "C" {
-
 #include "panda_plugin.h"
-#include "panda_memlog.h"
 #include "panda_common.h"
 #include "tubtf.h"
-
 
 #ifndef CONFIG_SOFTMMU
 #include "syscall_defs.h"
 #endif
-
 }
 
+#include "panda_memlog.h"
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Analysis/Verifier.h"
@@ -133,7 +130,7 @@ static void llvm_init(){
             Function::ExternalLinkage, "log_dynval", mod);
     logFunc->addFnAttr(Attribute::AlwaysInline);
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
-    
+
     // Create instrumentation pass and add to function pass manager
     llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
@@ -201,7 +198,7 @@ int outfd = -1;
 static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
               abi_long flagarg){
     const char *file = path((const char*)p);
-    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl); 
+    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl);
     if (ret > 0){
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
@@ -311,7 +308,7 @@ bool init_plugin(void *self) {
       char tubtf_path[256];
       strcpy(tubtf_path, basedir);
       strcat(tubtf_path, "/tubtf.log");
-      tubtf_open(tubtf_path, TUBTF_COLW_64);     
+      tubtf_open(tubtf_path, TUBTF_COLW_64);
       panda_enable_precise_pc();
     }
     else {
@@ -421,7 +418,7 @@ void uninit_plugin(void *self) {
         panda_disable_llvm();
     }
     panda_disable_memcb();
-    
+
     if (tubtf_on == 0) {
       fclose(funclog);
       close_memlog();
