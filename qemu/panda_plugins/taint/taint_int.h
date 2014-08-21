@@ -2,7 +2,6 @@
 #ifndef __TAINT_INT_H_
 #define __TAINT_INT_H_
 
-#include "panda_memlog.h"
 #include "taint_processor.h"
 
 // turns on taint
