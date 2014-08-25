@@ -1,7 +1,7 @@
 PIRATE: Platform for IR-based Analyses of Tainted Execution
 ========
 
-*Last updated 2/24/14*
+*Last updated 8/25/14*
 
 This is our implementation of architecture-independent dynamic taint analysis.
 To perform this analysis, we rely on dynamic code translation to the LLVM
@@ -38,7 +38,7 @@ Adding additional support for other architectures that QEMU supports should be a
 minimal porting effort that takes advantage of our alredy-existing information
 flow models based on LLVM.
 
-Hard drive taint is now supported for x86/64 systems.
+Hard drive and network taint is now supported for x86/64 systems.
 
 Organization
 --------
@@ -104,13 +104,7 @@ the recording with the heavyweight taint analysis enabled.
 Current/Ongoing Development
 --------
 
-1. Network taint
-    * PIRATE doesn't currently support taint tracking involving the
-    network.  We are currently working on porting this up from our older
-    QEMU-based taint analysis system.  Support for hard drive taint was recently
-    completed and tested for x86/64 systems.
-    
-2. Optimization
+1. Optimization
     * We are currently profiling the taint plugin, characterizing performance
     overheads, and optimizing accordingly.  We also plan on optimizing our taint
     operations.
