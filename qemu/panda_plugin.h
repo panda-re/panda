@@ -583,4 +583,8 @@ panda_arg_list *panda_get_args(const char *plugin_name);
 // Free a list of parsed arguments
 void panda_free_args(panda_arg_list *args);
 
+target_ulong panda_parse_ulong(panda_arg_list *args, char *argname, target_ulong defval);
+uint64_t panda_parse_uint64(panda_arg_list *args, char *argname, uint64_t defval);
+char *panda_parse_string(panda_arg_list *args, char *argname, char *defval);
+
 #endif
