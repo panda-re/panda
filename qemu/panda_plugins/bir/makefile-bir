@@ -1,0 +1,20 @@
+
+
+
+
+
+
+bi: utils.cpp binary_indexer.cpp                                                         
+	g++ -o bi utils.cpp binary_indexer.cpp -O2 -lm -std=c++11                                                       
+
+si: utils.cpp inv_spit.cpp 
+	g++ -o si utils.cpp inv_spit.cpp -O2 -lm -std=c++11  
+
+bm: utils.cpp binary_merger.cpp                                                         
+	g++ -o bm utils.cpp binary_merger.cpp -O2 -lm -std=c++11                                                       
+
+
+br: utils.cpp binary_retriever.cpp                                                         
+	g++ -o br utils.cpp binary_retriever.cpp -O2 -lm -std=c++11                                                       
+
+all: bi si bm br
