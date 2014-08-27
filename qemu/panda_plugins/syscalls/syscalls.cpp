@@ -181,36 +181,18 @@ void call_execve_callback(CPUState *env, target_ulong pc,
 void call_clone_callback(CPUState *env, target_ulong pc,
     target_ulong fn,target_ulong child_stack,uint32_t flags,target_ulong arg,target_ulong arg4)
 {
-    uint8_t offset = 0;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
-        offset = 2;
-    }
     clone_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 void call_sys_prctl_callback(CPUState *env, target_ulong pc,
     uint32_t option,uint32_t arg2,uint32_t arg3,uint32_t arg4,uint32_t arg5)
 {
-    uint8_t offset = 0;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
-        offset = 2;
-    }
     prctl_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
 void call_do_mmap2_callback(CPUState *env, target_ulong pc,
     uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff)
 {
-    uint8_t offset = 0;
-    if(env->thumb == 0){
-        offset = 4;
-    } else {
-        offset = 2;
-    }
     mmap_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
