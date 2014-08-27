@@ -63,6 +63,7 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+#ifndef __cplusplus
 #ifndef always_inline
 #if !((__GNUC__ < 3) || defined(__APPLE__))
 #ifdef __OPTIMIZE__
@@ -71,6 +72,7 @@
 #endif
 #else
 #define inline always_inline
+#endif
 #endif
 
 #ifdef __i386__
