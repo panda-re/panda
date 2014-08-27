@@ -316,7 +316,7 @@ fail:
     return NULL;
 }
 
-target_ulong panda_parse_ulong(panda_arg_list *args, char *argname, target_ulong defval) {
+target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval) {
     if (!args) return defval;
     int i;
     for (i = 0; i < args->nargs; i++) {
@@ -327,7 +327,7 @@ target_ulong panda_parse_ulong(panda_arg_list *args, char *argname, target_ulong
     return defval;
 }
 
-uint64_t panda_parse_uint64(panda_arg_list *args, char *argname, uint64_t defval) {
+uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval) {
     if (!args) return defval;
     int i;
     for (i = 0; i < args->nargs; i++) {
@@ -339,7 +339,7 @@ uint64_t panda_parse_uint64(panda_arg_list *args, char *argname, uint64_t defval
 }
 
 // Returns pointer to string inside arg list, freed when list is freed.
-char *panda_parse_string(panda_arg_list *args, char *argname, char *defval) {
+char *panda_parse_string(panda_arg_list *args, const char *argname, char *defval) {
     if (!args) return defval;
     int i;
     for (i = 0; i < args->nargs; i++) {
