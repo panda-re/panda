@@ -199,7 +199,6 @@ with open("android_arm_prototypes.txt") as armcalls:
     alltext += "}"+'\n'
 alltext+= "#endif\n"
 weak_callbacks = ""
-weak_callbacks += GUARD + "\n"
 weak_callbacks+= """
 #include "weak_callbacks.hpp"
 extern "C"{
@@ -208,6 +207,7 @@ extern "C"{
 
 // weak-defined default empty callbacks for all syscalls
 """
+weak_callbacks += GUARD + "\n"
 for callback_def in callback_defs:
     weak_callbacks += "void __attribute__((weak)) {0} {{ }}\n".format(callback_def)
 weak_callbacks+= """
