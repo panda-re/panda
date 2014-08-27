@@ -902,7 +902,7 @@ inline target_ulong getDalvikIBASE(CPUState* env)
 }
 
 
-#elif defined(TARGET_i386)
+#elif defined(TARGET_I386)
 target_ulong DECAF_getESP(CPUState* env){
   if (env == NULL)
   {

@@ -528,7 +528,7 @@ int contextBBCallback(CPUState* env, TranslationBlock* tb)
 #ifdef TARGET_ARM
     taskAddr = env->regs[0];
     Context_retAddr = env->regs[14];
-#elif defined(TARGET_i386)
+#elif defined(TARGET_I386)
     taskAddr = env->regs[R_EAX];
     DECAF_read_mem(env, env->regs[R_ESP], &Context_retAddr, sizeof(Context_retAddr));
 #endif
