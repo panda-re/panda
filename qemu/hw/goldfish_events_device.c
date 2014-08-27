@@ -355,12 +355,44 @@ events_clr_bit(GoldfishEventsDevice* s, int type, int bit)
     }
 }
 */
+
+enum hwconfig_camera {
+    CAMERA_CONFIG_NONE,
+    CAMERA_CONFIG_EMULATED,
+    CAMERA_CONFIG_FORWARD,
+};
+
+static struct hwconfig {
+    bool hw_dPad;
+    bool hw_trackBall;
+    bool hw_keyboard;
+    bool hw_keyboard_lid;
+    enum hwconfig_camera hw_camera_front;
+    enum hwconfig_camera hw_camera_back;
+    bool hw_touchscreen;
+    bool hw_multitouch;
+    bool hw_camera_button;
+} android_hw;
+
+static struct hwconfig* getHwConfig(void){
+    android_hw.hw_camera_back = CAMERA_CONFIG_FORWARD;
+    android_hw.hw_camera_front = CAMERA_CONFIG_FORWARD;
+    android_hw.hw_dPad = true;
+    android_hw.hw_keyboard = true;
+    android_hw.hw_trackBall = true;
+    android_hw.hw_keyboard_lid = true;
+    android_hw.hw_multitouch = false;
+    android_hw.hw_touchscreen = true;
+    android_hw.hw_camera_button = false;
+    return &android_hw;
+}
+
 static int goldfish_events_init(GoldfishDevice *dev)
 {
     GoldfishEventsDevice *s = (GoldfishEventsDevice *)dev;
     //int iomemtype;
     //AndroidHwConfig*  config = android_hw;
-
+    struct hwconfig* config = getHwConfig();
 
     // charmap name will be determined on demand
     s->name = NULL;
@@ -402,100 +434,112 @@ static int goldfish_events_init(GoldfishDevice *dev)
     events_set_bit(s, EV_KEY, KEY_POWER);
     events_set_bit(s, EV_KEY, KEY_SEARCH);
 
-    /* dPad enabled */
-    events_set_bit(s, EV_KEY, KEY_DOWN);
-    events_set_bit(s, EV_KEY, KEY_UP);
-    events_set_bit(s, EV_KEY, KEY_LEFT);
-    events_set_bit(s, EV_KEY, KEY_RIGHT);
-    events_set_bit(s, EV_KEY, KEY_CENTER);
+    if(config->hw_dPad){
+        events_set_bit(s, EV_KEY, KEY_DOWN);
+        events_set_bit(s, EV_KEY, KEY_UP);
+        events_set_bit(s, EV_KEY, KEY_LEFT);
+        events_set_bit(s, EV_KEY, KEY_RIGHT);
+        events_set_bit(s, EV_KEY, KEY_CENTER);
+    }
 
-    /* trackBall enabled */
-    events_set_bit(s, EV_KEY, BTN_MOUSE);
+    if(config->hw_trackBall){
+        events_set_bit(s, EV_KEY, BTN_MOUSE);
+    }
 
-    /* touchScreen enabled */
-    events_set_bit(s, EV_KEY, BTN_TOUCH);
+    if(config->hw_touchscreen){
+        events_set_bit(s, EV_KEY, BTN_TOUCH);
+    }
 
-    /* camera enabled */
-    //events_set_bit(s, EV_KEY, KEY_CAMERA);
+    // Do we have a shutter button and at least one camera?
+    // AOSP Android emulator has a camera button IFF there is at least one camera
+    if(config->hw_camera_button &&
+        (config->hw_camera_back != CAMERA_CONFIG_NONE ||
+         config->hw_camera_front != CAMERA_CONFIG_NONE)){
+        events_set_bit(s, EV_KEY, KEY_CAMERA);
+    }
 
-    /* keyboard enabled */
-    /* since we want to implement Unicode reverse-mapping
-     * allow any kind of key, even those not available on
-     * the skin.
-     *
-     * the previous code did set the [1..0x1ff] range, but
-     * we don't want to enable certain bits in the middle
-     * of the range that are registered for mouse/trackball/joystick
-     * events.
-     *
-     * see "linux_keycodes.h" for the list of events codes.
-     */
-    events_set_bits(s, EV_KEY, 1, 0xff);
-    events_set_bits(s, EV_KEY, 0x160, 0x1ff);
+    if(config->hw_keyboard){
+        /* since we want to implement Unicode reverse-mapping
+        * allow any kind of key, even those not available on
+        * the skin.
+        *
+        * the previous code did set the [1..0x1ff] range, but
+        * we don't want to enable certain bits in the middle
+        * of the range that are registered for mouse/trackball/joystick
+        * events.
+        *
+        * see "linux_keycodes.h" for the list of events codes.
+        */
+        events_set_bits(s, EV_KEY, 1, 0xff);
+        events_set_bits(s, EV_KEY, 0x160, 0x1ff);
 
-    /* If there is a keyboard, but no DPad, we need to clear the
-     * corresponding bits. Doing this is simpler than trying to exclude
-     * the DPad values from the ranges above.
-     */
-    /* dPad disabled
-    events_clr_bit(s, EV_KEY, KEY_DOWN);
-    events_clr_bit(s, EV_KEY, KEY_UP);
-    events_clr_bit(s, EV_KEY, KEY_LEFT);
-    events_clr_bit(s, EV_KEY, KEY_RIGHT);
-    events_clr_bit(s, EV_KEY, KEY_CENTER);
-    */
+        /* If there is a keyboard, but no DPad, we need to clear the
+        * corresponding bits. Doing this is simpler than trying to exclude
+        * the DPad values from the ranges above.
+        */
+        //TODO: fix events_clr_bit and uncomment this code
+        /*if(!config->hw_dPad){
+            events_clr_bit(s, EV_KEY, KEY_DOWN);
+            events_clr_bit(s, EV_KEY, KEY_UP);
+            events_clr_bit(s, EV_KEY, KEY_LEFT);
+            events_clr_bit(s, EV_KEY, KEY_RIGHT);
+            events_clr_bit(s, EV_KEY, KEY_CENTER);
+        }*/
+    }
 
     /* configure EV_REL array
      *
      * EV_REL events are sent when the trackball is moved
      */
-    /* trackBall enabled */
-    events_set_bit (s, EV_SYN, EV_REL );
-    events_set_bits(s, EV_REL, REL_X, REL_Y);
+    if(config->hw_trackBall){
+        events_set_bit (s, EV_SYN, EV_REL );
+        events_set_bits(s, EV_REL, REL_X, REL_Y);
+    }
 
     /* configure EV_ABS array.
      *
      * EV_ABS events are sent when the touchscreen is pressed
      */
-    /* touchScreen enabled */
-    int32_t*  values;
+    if(config->hw_touchscreen){
+        int32_t*  values;
 
-    events_set_bit (s, EV_SYN, EV_ABS );
-    events_set_bits(s, EV_ABS, ABS_X, ABS_Z);
-    /* Allocate the absinfo to report the min/max bounds for each
-     * absolute dimension. The array must contain 3 tuples
-     * of (min,max,fuzz,flat) 32-bit values.
-     *
-     * min and max are the bounds
-     * fuzz corresponds to the device's fuziness, we set it to 0
-     * flat corresponds to the flat position for JOEYDEV devices,
-     * we also set it to 0.
-     *
-     * There is no need to save/restore this array in a snapshot
-     * since the values only depend on the hardware configuration.
-     */
-    s->abs_info_count = 3*4;
-    s->abs_info = values = malloc(sizeof(uint32_t)*s->abs_info_count);
+        events_set_bit (s, EV_SYN, EV_ABS );
+        events_set_bits(s, EV_ABS, ABS_X, ABS_Z);
+        /* Allocate the absinfo to report the min/max bounds for each
+        * absolute dimension. The array must contain 3 tuples
+        * of (min,max,fuzz,flat) 32-bit values.
+        *
+        * min and max are the bounds
+        * fuzz corresponds to the device's fuziness, we set it to 0
+        * flat corresponds to the flat position for JOEYDEV devices,
+        * we also set it to 0.
+        *
+        * There is no need to save/restore this array in a snapshot
+        * since the values only depend on the hardware configuration.
+        */
+        s->abs_info_count = 3*4;
+        s->abs_info = values = malloc(sizeof(uint32_t)*s->abs_info_count);
 
-    /* ABS_X min/max/fuzz/flat */
-    values[0] = 0;
-    values[1] = ANDROID_LCD_WIDTH-1;
-    values[2] = 0;
-    values[3] = 0;
-    values   += 4;
+        /* ABS_X min/max/fuzz/flat */
+        values[0] = 0;
+        values[1] = ANDROID_LCD_WIDTH-1;
+        values[2] = 0;
+        values[3] = 0;
+        values   += 4;
 
-    /* ABS_Y */
-    values[0] = 0;
-    values[1] = ANDROID_LCD_HEIGHT-1;
-    values[2] = 0;
-    values[3] = 0;
-    values   += 4;
+        /* ABS_Y */
+        values[0] = 0;
+        values[1] = ANDROID_LCD_HEIGHT-1;
+        values[2] = 0;
+        values[3] = 0;
+        values   += 4;
 
-    /* ABS_Z */
-    values[0] = 0;
-    values[1] = 1;
-    values[2] = 0;
-    values[3] = 0;
+        /* ABS_Z */
+        values[0] = 0;
+        values[1] = 1;
+        values[2] = 0;
+        values[3] = 0;
+    }
 
     /* configure EV_SW array
      *
@@ -505,9 +549,10 @@ static int goldfish_events_init(GoldfishDevice *dev)
      *
      * We only support this when hw.keyboard.lid is true.
      */
-    /* keybard and lid enabled */
-    events_set_bit(s, EV_SYN, EV_SW);
-    events_set_bit(s, EV_SW, 0);
+    if(config->hw_keyboard && config->hw_keyboard_lid){
+        events_set_bit(s, EV_SYN, EV_SW);
+        events_set_bit(s, EV_SW, 0);
+    }
 
     //iomemtype = cpu_register_io_memory(events_readfn, events_writefn, s, DEVICE_NATIVE_ENDIAN);
 
