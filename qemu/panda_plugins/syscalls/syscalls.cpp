@@ -88,11 +88,12 @@ target_asid get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
-target_ulong get_return_val(CPUState *env){
+// Reinterpret the ulong as a long. Arch and host specific.
+target_long get_return_val(CPUState *env){
 #if defined(TARGET_I386)   
-    return env->regs[R_EAX];
+    return static_cast<target_long>(env->regs[R_EAX]);
 #elif defined(TARGET_ARM)
-    return env->regs[0];
+    return static_cast<target_long>(env->regs[0]);
 #else
 #error "Not Implemented"
 #endif
