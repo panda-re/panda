@@ -265,7 +265,7 @@ void  android_emulation_setup( void )
             /* setup first redirection for ADB, the Android Debug Bridge */
             {
 	        // Don't try to connect to 5555, let the QEMU port forwarding do it
-                if (0)//adb_server_init(base_port+1))
+                if (adb_server_init(base_port+1))
                     continue;
                 android_adb_service_init();
             }
