@@ -103,7 +103,7 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I){
     for (i = I.getCalledFunction()->arg_begin();
             i != I.getCalledFunction()->arg_end(); i++, j++){
         if (I.getArgOperand(j)->getType() == i->getType()){
-            return; // No cast required
+            continue; // No cast required
         }
         if (CastInst::isCastable(I.getArgOperand(j)->getType(), i->getType())){
             // False arguments assume things are unsigned, and I'm pretty sure
