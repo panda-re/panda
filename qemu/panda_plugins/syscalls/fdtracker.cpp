@@ -17,6 +17,8 @@ PANDAENDCOMMENT */
 // It currently DOES NOT handle links AT ALL
 // It tracks open(), etc., so only knows the names used by those functions
 
+// FDTRACKER_ENABLE_TAINT does what it says
+
 #if defined(SYSCALLS_FDS_TRACK_LINKS)
 #error "Hard and soft links are not supported"
 #endif
@@ -45,6 +47,13 @@ extern "C" {
     } __attribute__((packed));
 #endif
 }
+
+static const bool TRACK_TAINT =
+#if defined(FDTRACKER_ENABLE_TAINT)
+ true;
+#else
+ false;
+#endif
 
 const target_ulong NULL_FD = 0;
 
@@ -314,8 +323,9 @@ struct StaticBlock {
 
         pcb.return_from_fork = return_from_fork;
         panda_register_callback(syscalls_plugin_self, PANDA_CB_VMI_AFTER_FORK, pcb);
-
-        init_taint_api();
+        if(TRACK_TAINT){
+            init_taint_api();
+        }
     }
 };
 static StaticBlock staticBlock;
@@ -542,19 +552,21 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
                               datadata) ) {
         return Callback_RC::NORMAL;
     }
-    //if the taint engine isn't on, turn it on and re-translate the TB with LLVM
-    if(1 != taint_enabled()){
-        taint_enable_taint();
-        return Callback_RC::INVALIDATE;
-    }
-    if(data->iovec_base){
-        for (uint32_t i = 0; i < data->len; i++){
-            struct target_iovec tmp;
-            panda_virtual_memory_rw(env, data->iovec_base+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
-            taintify(tmp.base, tmp.len, 0, true);
+    if(TRACK_TAINT){
+        //if the taint engine isn't on, turn it on and re-translate the TB with LLVM
+        if(1 != taint_enabled()){
+            taint_enable_taint();
+            return Callback_RC::INVALIDATE;
         }
-    }else if(data->guest_buffer){
-        taintify(data->guest_buffer, data->len, 0, true);
+        if(data->iovec_base){
+            for (uint32_t i = 0; i < data->len; i++){
+                struct target_iovec tmp;
+                panda_virtual_memory_rw(env, data->iovec_base+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
+                taintify(tmp.base, tmp.len, 0, true);
+            }
+        }else if(data->guest_buffer){
+            taintify(data->guest_buffer, data->len, 0, true);
+        }
     }
     return Callback_RC::NORMAL;
 }
@@ -628,8 +640,10 @@ void call_sys_write_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
         panda_virtual_memory_rw(env, buf, mybuf, count, 0);
         devnull << mybuf << endl;
     }
-    if(check_taint(buf, count)){
-        fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+    if(TRACK_TAINT){
+        if(check_taint(buf, count)){
+            fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+        }
     }
 }
 void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) { 
@@ -642,8 +656,10 @@ void call_sys_pwrite64_callback(CPUState* env,target_ulong pc,uint32_t fd,target
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing writep FD " << fd << endl;
     }
-    if(check_taint(buf, count)){
-        fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+    if(TRACK_TAINT){
+        if(check_taint(buf, count)){
+            fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+        }
     }
 }
 void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) {
@@ -657,11 +673,13 @@ void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_u
         fdlog << "Process " << comm << " missing writev FD " << fd << endl;
     }
 
-    for (uint32_t i = 0; i < vlen; i++){
-        struct target_iovec tmp;
-        panda_virtual_memory_rw(env, vec+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
-        if(check_taint(tmp.base, tmp.len)){
-            fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+    if(TRACK_TAINT){
+        for (uint32_t i = 0; i < vlen; i++){
+            struct target_iovec tmp;
+            panda_virtual_memory_rw(env, vec+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
+            if(check_taint(tmp.base, tmp.len)){
+                fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+            }
         }
     }
 }
