@@ -34,6 +34,16 @@ extern "C" {
 #include <fcntl.h>
 #include "panda_plugin.h"
 #include "../taint/taint_ext.h"
+
+    // struct iovec is {void* p, size_t len} which is target-specific
+#if defined(TARGET_ARM)
+//TODO: fail on 64-bit ARM
+    // Thankfully we are on an x86 host and don't need to worry about packing
+    struct target_iovec{
+        target_ulong base;
+        target_ulong len;
+    } __attribute__((packed));
+#endif
 }
 
 const target_ulong NULL_FD = 0;
@@ -339,6 +349,7 @@ public:
     target_ulong fd;
     target_ulong guest_buffer;
     uint32_t len;
+    target_ulong iovec_base;
 };
 
 
@@ -536,7 +547,15 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
         taint_enable_taint();
         return Callback_RC::INVALIDATE;
     }
-    taintify(data->guest_buffer, data->len, 0, true);
+    if(data->iovec_base){
+        for (uint32_t i = 0; i < data->len; i++){
+            struct target_iovec tmp;
+            panda_virtual_memory_rw(env, data->iovec_base+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
+            taintify(tmp.base, tmp.len, 0, true);
+        }
+    }else if(data->guest_buffer){
+        taintify(data->guest_buffer, data->len, 0, true);
+    }
     return Callback_RC::NORMAL;
 }
 
@@ -550,6 +569,7 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
     fdlog << "Process " << comm << " " << "Reading from " << name << endl;
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
+    data->iovec_base = NULL;
     data->guest_buffer = buf;
     data->len = count;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
@@ -573,8 +593,9 @@ void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
     }
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
+    data->iovec_base = vec;
     data->guest_buffer = NULL;
-    data->len = 0;
+    data->len = vlen;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count,uint64_t pos) {
@@ -587,6 +608,7 @@ void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     }
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
+    data->iovec_base = NULL;
     data->guest_buffer = buf;
     data->len = count;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
@@ -634,11 +656,14 @@ void call_sys_writev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_u
     }catch( const std::out_of_range& oor){
         fdlog << "Process " << comm << " missing writev FD " << fd << endl;
     }
-    /* writev passes a vector of iovec pointers, we can't just say
-     * if(check_taint(buf, count)){
-          fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
-       }
-     */
+
+    for (uint32_t i = 0; i < vlen; i++){
+        struct target_iovec tmp;
+        panda_virtual_memory_rw(env, vec+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
+        if(check_taint(tmp.base, tmp.len)){
+            fdlog << "Process " << comm << "  sending tainted data to " << name << endl;
+        }
+    }
 }
 
 /* Sockpair() handling code code is also used for pipe() and must be
