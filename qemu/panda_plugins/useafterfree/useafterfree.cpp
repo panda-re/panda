@@ -231,8 +231,13 @@ void process_ret(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
         alloc_stacks[cr3].pop();
     } else if (!free_stacks[cr3].empty() && env->eip == free_stacks[cr3].top().retaddr) {
         free_info info = free_stacks[cr3].top();
-        if (info.addr > 0 && alloc_ever[cr3][info.heap].contains(info.addr))
-            alloc_now[cr3][info.heap].remove(info.addr);
+        if (info.addr > 0 && alloc_ever[cr3][info.heap].contains(info.addr)) {
+            if (!alloc_now[cr3][info.heap].contains(info.addr)) {
+                printf("DOUBLE FREE @ {%lx, %lx}! PC %lx\n", cr3, info.addr, env->eip);
+            } else {
+                alloc_now[cr3][info.heap].remove(info.addr);
+            }
+        }
         if (print) {
             printf("PP %lu: return from free; addr {%lx, %lx}!\n", rr_prog_point.guest_instr_count, env->cr[3], info.addr);
             printf("    alloc_now: ");
