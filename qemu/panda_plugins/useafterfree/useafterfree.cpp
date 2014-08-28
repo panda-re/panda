@@ -107,7 +107,7 @@ struct range_set {
         else {
             auto it = impl.upper_bound(addr);
             it--; // now greatest <= addr
-            return addr < it->second;
+            return addr >= it->first && addr < it->second;
         }
     }
 
