@@ -409,7 +409,7 @@ static Callback_RC open_callback(CallbackData* opaque, CPUState* env, target_asi
 }
 
 //mkdirs
-void call_sys_mkdirat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscalls::string pathname,uint32_t mode) { 
+void call_sys_mkdirat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string pathname,int32_t mode) { 
     //mkdirat does not return an FD
     /*OpenCallbackData* data = new OpenCallbackData(pathname);
     data->path = pathname;
@@ -417,7 +417,7 @@ void call_sys_mkdirat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscal
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));*/
 }
 
-void call_sys_mkdir_callback(CPUState* env,target_ulong pc,syscalls::string pathname,uint32_t mode) { 
+void call_sys_mkdir_callback(CPUState* env,target_ulong pc,syscalls::string pathname,int32_t mode) { 
     // mkdir does not return an FD
     /*OpenCallbackData* data = new OpenCallbackData(pathname);
     data->path = pathname;
@@ -426,14 +426,14 @@ void call_sys_mkdir_callback(CPUState* env,target_ulong pc,syscalls::string path
 }
 //opens
 
-void call_sys_open_callback(CPUState *env, target_ulong pc, syscalls::string filename,uint32_t flags,uint32_t mode){
+void call_sys_open_callback(CPUState *env, target_ulong pc, syscalls::string filename,int32_t flags,int32_t mode){
     OpenCallbackData* data = new OpenCallbackData(filename);
     data->path = filename;
     data->base_fd = NULL_FD;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, open_callback));
 }
 
-void call_sys_openat_callback(CPUState* env,target_ulong pc,uint32_t dfd,syscalls::string filename,uint32_t flags,uint32_t mode){
+void call_sys_openat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string filename,int32_t flags,int32_t mode){
     OpenCallbackData* data = new OpenCallbackData(filename);
     data->path = filename;
     data->base_fd = dfd;
@@ -483,7 +483,7 @@ void call_sys_dup2_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, dup_callback));
     
 }
-void call_sys_dup3_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_t newfd,uint32_t flags) {
+void call_sys_dup3_callback(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_t newfd,int32_t flags) {
     target_asid asid = get_asid(env, pc);
     asid_to_fds[asid][newfd] = asid_to_fds[asid][oldfd];
     return;
@@ -507,7 +507,7 @@ void call_sys_close_callback(CPUState* env,target_ulong pc,uint32_t fd) {
     
 }
 
-void call_sys_readahead_callback(CPUState* env,target_ulong pc,uint32_t fd,uint64_t offset,uint32_t count) { }
+void call_sys_readahead_callback(CPUState* env,target_ulong pc,int32_t fd,uint64_t offset,uint32_t count) { }
 
 /* Apply taint to all bytes in the buffer */
 static void taintify(target_ulong guest_vaddr, uint32_t len, uint32_t label, bool autoenc) {
@@ -757,14 +757,14 @@ struct sockaddr {
                char        sa_data[14];
            }
 */
-void call_sys_bind_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
+void call_sys_bind_callback(CPUState* env,target_ulong pc,int32_t sockfd,target_ulong sockaddr_ptr,int32_t sockaddrlen){
     const char* conn = getName(get_asid(env, pc));
     fdlog << "Process " << conn << " binding FD " << sockfd << endl;   
 }
 /*
 connect - updates name?
 */
-void call_sys_connect_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong sockaddr_ptr,uint32_t sockaddrlen){
+void call_sys_connect_callback(CPUState* env,target_ulong pc,int32_t sockfd,target_ulong sockaddr_ptr,int32_t sockaddrlen){
     const char* conn = getName(get_asid(env, pc));
     fdlog << "Process " << conn << " connecting FD " << sockfd << endl;
 }
@@ -772,7 +772,7 @@ void call_sys_connect_callback(CPUState* env,target_ulong pc,uint32_t sockfd,tar
 socket - fd
 Return value should be labeled "unbound socket"
 */
-void call_sys_socket_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol){
+void call_sys_socket_callback(CPUState* env,target_ulong pc,int32_t domain,int32_t type,int32_t protocol){
     SocketCallbackData* data = new SocketCallbackData;
     data->socketname = "unbound socket";
     data->domain = domain;
@@ -780,13 +780,13 @@ void call_sys_socket_callback(CPUState* env,target_ulong pc,uint32_t domain,uint
 }
 /*
 send, sendto, sendmsg - */
-void call_sys_send_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t arg3){
+void call_sys_send_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong buf,uint32_t len,uint32_t arg3){
     call_sys_write_callback(env, pc, fd,buf, len);
 }
-void call_sys_sendto_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t arg3,target_ulong arg4,uint32_t arg5){
+void call_sys_sendto_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong buf,uint32_t len,uint32_t arg3,target_ulong arg4,uint32_t arg5){
     call_sys_write_callback(env, pc, fd,buf, len);   
 }
-void call_sys_sendmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong msg,uint32_t flags){
+void call_sys_sendmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t flags){
     target_asid asid = get_asid(env, pc);
     const char* comm = getName(asid);
     string name = string("UNKNOWN fd ") + to_string(fd);
@@ -797,7 +797,7 @@ void call_sys_sendmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
 }
 
 /*recv, recvfrom, recvmsg - gets datas!*/
-void call_sys_recvmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong msg,uint32_t flags){
+void call_sys_recvmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t flags){
     target_asid asid = get_asid(env, pc);
     const char* comm = getName(asid);
     string name = string("UNKNOWN fd ") + to_string(fd);
@@ -806,16 +806,16 @@ void call_sys_recvmsg_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     }
     fdlog << "Process " << comm << " " << "recving msg from " << name << endl;
 }
-void call_sys_recvfrom_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t flags,target_ulong arg4,target_ulong arg5){
+void call_sys_recvfrom_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong buf,uint32_t len,uint32_t flags,target_ulong arg4,target_ulong arg5){
     call_sys_read_callback(env, pc, fd, buf, len);
 }
-void call_sys_recv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t len,uint32_t flags){
+void call_sys_recv_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong buf,uint32_t len,uint32_t flags){
     call_sys_read_callback(env, pc, fd, buf, len);
 }
 /*listen
 socketpair - two new fds
 */
-void call_sys_socketpair_callback(CPUState* env,target_ulong pc,uint32_t domain,uint32_t type,uint32_t protocol,target_ulong sd_array){
+void call_sys_socketpair_callback(CPUState* env,target_ulong pc,int32_t domain,int32_t type,int32_t protocol,target_ulong sd_array){
     SockpairCallbackData *data = new SockpairCallbackData;
     data->domain = domain;
     data->sd_array = sd_array;
@@ -842,7 +842,7 @@ static Callback_RC accept_callback(CallbackData* opaque, CPUState* env, target_a
     return Callback_RC::NORMAL;
 }
 
-void call_sys_accept_callback(CPUState* env,target_ulong pc,uint32_t sockfd,target_ulong arg1,target_ulong arg2) { 
+void call_sys_accept_callback(CPUState* env,target_ulong pc,int32_t sockfd,target_ulong arg1,target_ulong arg2) { 
     const char* conn = getName(get_asid(env, pc));
     fdlog << "Process " << conn << " accepting on FD " << sockfd << endl;
     AcceptCallbackData* data = new AcceptCallbackData;
@@ -856,7 +856,7 @@ void call_sys_pipe_callback(CPUState* env,target_ulong pc,target_ulong arg0){
     data->sd_array = arg0;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sockpair_callback));
 }
-void call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong arg0,uint32_t arg1){
+void call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong arg0,int32_t arg1){
     SockpairCallbackData *data = new SockpairCallbackData;
     data->domain = 0;
     data->sd_array = arg0;
@@ -874,7 +874,7 @@ void call_sys_fcntl_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t 
         appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, dup_callback));
     }
 }
-void call_sys_sendfile64_callback(CPUState* env,target_ulong pc,uint32_t out_fd,uint32_t in_fd,target_ulong offset,uint32_t count){
+void call_sys_sendfile64_callback(CPUState* env,target_ulong pc,int32_t out_fd,int32_t in_fd,target_ulong offset,uint32_t count){
     target_asid asid = get_asid(env, pc);
     const char* conn = getName(asid);
     fdlog << conn << " copying data from " << asid_to_fds[asid][in_fd] << " to " << asid_to_fds[asid][out_fd] << endl;

@@ -37,7 +37,8 @@ for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
     locals()[x] = locals()["_".join([MODE, x])]
 
 types_64 = ["loff_t", 'u64']
-types_32 = ["int", "long", "size_t", 'u32', 'off_t', 'timer_t', '__s32', 'key_t', 
+stypes_32 = ["int", "long", '__s32']
+types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t', 
             'key_serial_t', 'mqd_t', 'clockid_t', 'aio_context_t', 'qid_t', 'old_sigset_t', 'union semun']
 types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t']
 types_pointer = ['cap_user_data_t', 'cap_user_header_t', '...']
@@ -61,6 +62,10 @@ def record_32(dest, source, fname):
     global alltext
     alltext+= "uint32_t %s = log_32(%s, \"%s\");\n" %(dest, source, fname)
 
+def record_s32(dest, source, fname):
+    global alltext
+    alltext+= "int32_t %s = log_s32(%s, \"%s\");\n" %(dest, source, fname)
+
 def record_64(dest, highsource, lowsource, fname):
     global alltext
     alltext+= "uint64_t %s = log_64(%s, %s, \"%s\");\n" %(dest, highsource, lowsource, fname)
@@ -70,10 +75,12 @@ POINTER   = 'POINTER'
 BYTES_8   = '8BYTE'
 BYTES_4   = '4BYTE'
 BYTES_2   = '2BYTE'
+SIGNED_4  = '4SIGNED'
 ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           POINTER:    'target_ulong', # pointer
                           BYTES_8:    'uint64_t',
                           BYTES_4:    'uint32_t',
+                          SIGNED_4:   'int32_t',
                           BYTES_2:    'uint16_t',
                         }
 
@@ -148,6 +155,9 @@ with open("android_arm_prototypes.txt") as armcalls:
             elif any([x in arg for x in types_32]) or any([x in arg for x in types_16]):
                 thisarg.type = BYTES_4
                 arg_types.append(thisarg)
+            elif any([x in arg for x in stypes_32]) and 'unsigned' not in arg:
+                thisarg.type = SIGNED_4
+                arg_types.append(thisarg)
             elif arg.strip() == 'void':
                 pass
             elif arg.strip() == 'unsigned' or (len(arg.split()) is 2 and arg.split()[0] == 'unsigned'):
@@ -170,6 +180,8 @@ with open("android_arm_prototypes.txt") as armcalls:
                 record_address(arg_name, ARGS[argno], args[i])
             elif arg_type == BYTES_4:
                 record_32(arg_name, ARGS[argno], args[i])
+            elif arg_type == SIGNED_4:
+                record_s32(arg_name, ARGS[argno], args[i])
             elif arg_type == BYTES_8:
                 # alignment sadness. Linux tried to make sure none of these happen
                 if (argno % 2) == 1:

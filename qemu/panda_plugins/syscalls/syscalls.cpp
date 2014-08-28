@@ -340,6 +340,7 @@ std::function<void (const char*)> record_syscall;
 std::function<syscalls::string  (target_ulong, const char*)> log_string;
 std::function<target_ulong (target_ulong, const char*)> log_pointer;
 std::function<uint32_t     (target_ulong, const char*)> log_32;
+std::function<int32_t      (target_long, const char*)> log_s32;
 std::function<uint64_t     (target_ulong, target_ulong, const char*)> log_64;
 
 static inline bool is_watched(CPUState *env){
@@ -414,10 +415,15 @@ int exec_callback(CPUState *env, target_ulong pc) {
     };
 
     log_32 = [&env,&pc](target_ulong value, const char* argname){
-      syscall_fprintf(env, "I32, NAME=%s, VALUE=" TARGET_FMT_lx"\n", argname, value);
+      syscall_fprintf(env, "U32, NAME=%s, VALUE=" TARGET_FMT_lx"\n", argname, value);
       return value;
     };
 
+    log_s32 = [&env,&pc](target_long value, const char* argname){
+      syscall_fprintf(env, "S32, NAME=%s, VALUE=" TARGET_FMT_lx"\n", argname, value);
+      return value;
+    };
+    
     log_64 = [&env,&pc](target_ulong high, target_ulong low, const char* argname){
       syscall_fprintf(env, "I64, NAME=%s, VALUE=%llx\n", argname, ((unsigned long long)high << 32) | low );
       return ((unsigned long long)high << 32) | low;
