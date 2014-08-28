@@ -55,7 +55,7 @@ static const bool TRACK_TAINT =
  false;
 #endif
 
-const target_ulong NULL_FD = 0;
+const target_long NULL_FD = -1;
 
 using namespace std;
 
@@ -344,14 +344,14 @@ static ofstream    fdlog("/scratch/fdlog.txt");
 class OpenCallbackData : public CallbackData {
 public:
     syscalls::string path;
-    target_ulong base_fd;
+    target_long base_fd;
     OpenCallbackData(syscalls::string& apath): path(apath) {}
 };
 
 class DupCallbackData: public CallbackData {
 public:
-    target_ulong old_fd;
-    target_ulong new_fd;
+    target_long old_fd;
+    target_long new_fd;
 };
 
 class ReadCallbackData : public CallbackData {
@@ -360,6 +360,10 @@ public:
     target_ulong guest_buffer;
     uint32_t len;
     target_ulong iovec_base;
+    enum class ReadType {
+        READ,
+        READV,
+    } type;
 };
 
 
@@ -558,13 +562,13 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
             taint_enable_taint();
             return Callback_RC::INVALIDATE;
         }
-        if(data->iovec_base){
+        if(ReadCallbackData::ReadType::READV == data->type){
             for (uint32_t i = 0; i < data->len; i++){
                 struct target_iovec tmp;
                 panda_virtual_memory_rw(env, data->iovec_base+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
                 taintify(tmp.base, tmp.len, 0, true);
             }
-        }else if(data->guest_buffer){
+        }else if(ReadCallbackData::ReadType::READ == data->type){
             taintify(data->guest_buffer, data->len, 0, true);
         }
     }
@@ -581,9 +585,9 @@ void call_sys_read_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulo
     fdlog << "Process " << comm << " " << "Reading from " << name << endl;
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
-    data->iovec_base = NULL;
+    data->type = ReadCallbackData::ReadType::READ;
     data->guest_buffer = buf;
-    data->len = count;
+    data->len = count;    
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
 void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen) { 
@@ -606,7 +610,7 @@ void call_sys_readv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ul
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
     data->iovec_base = vec;
-    data->guest_buffer = NULL;
+    data->type = ReadCallbackData::ReadType::READV;
     data->len = vlen;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
 }
@@ -620,7 +624,7 @@ void call_sys_pread64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_
     }
     ReadCallbackData *data = new ReadCallbackData;
     data->fd = fd;
-    data->iovec_base = NULL;
+    data->type = ReadCallbackData::ReadType::READ;
     data->guest_buffer = buf;
     data->len = count;
     appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, read_callback));
