@@ -12,6 +12,8 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 #include "panda_common.h"
 
+#include "rr_log.h"
+
 #include "../callstack_instr/callstack_instr.h"
 
 #include <stdio.h>
@@ -219,11 +221,12 @@ void process_ret(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
             alloc_ever[cr3][info.heap].insert(addr, addr + info.size);
         }
         if (print) {
-            printf("return from alloc; addr {%lx, %lx}, size %lx\n", env->cr[3], env->regs[R_EAX], info.size);
-            printf("alloc_now: ");
+            printf("PP %lu: return from alloc; addr {%lx, %lx}, size %lx\n", rr_prog_point.guest_instr_count, env->cr[3], env->regs[R_EAX], info.size);
+            printf("    alloc_now: ");
             alloc_now[cr3][info.heap].dump();
-            printf("alloc_ever: ");
+            printf("    alloc_ever: ");
             alloc_ever[cr3][info.heap].dump();
+            printf("\n");
         }
         alloc_stacks[cr3].pop();
     } else if (!free_stacks[cr3].empty() && env->eip == free_stacks[cr3].top().retaddr) {
@@ -231,9 +234,10 @@ void process_ret(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
         if (info.addr > 0 && alloc_ever[cr3][info.heap].contains(info.addr))
             alloc_now[cr3][info.heap].remove(info.addr);
         if (print) {
-            printf("return from free; addr {%lx, %lx}!\n", env->cr[3], info.addr);
-            printf("alloc_now: ");
+            printf("PP %lu: return from free; addr {%lx, %lx}!\n", rr_prog_point.guest_instr_count, env->cr[3], info.addr);
+            printf("    alloc_now: ");
             alloc_now[cr3][info.heap].dump();
+            printf("\n");
         }
 
         free_stacks[cr3].pop();
@@ -275,6 +279,8 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
         for (auto it = alloc_ever[cr3].begin(); it != alloc_ever[cr3].end(); it++) {
             if (alloc_ever[cr3][it->first].contains(addr)
                     && !alloc_now[cr3][it->first].contains(addr)) {
+                //range_set ae = alloc_ever[cr3][it->first];
+                //range_set an = alloc_now[cr3][it->first];
                 printf("USE AFTER FREE %s @ {%lx, %lx}! PC %lx\n",
                         is_write ? "WRITE" : "READ", cr3, addr, pc);
                 break;
@@ -376,6 +382,9 @@ bool init_plugin(void *self) {
     right_cr3 = panda_parse_ulong(args, "cr3", 0x7F893460);
     // Size of words on target OS.
     word_size = panda_parse_uint64(args, "word", 4);
+
+    printf("Looking for alloc @ %lx, free @ %lx, realloc @ %lx\n",
+            alloc_guest_addr, free_guest_addr, realloc_guest_addr);
 
 #endif
 
