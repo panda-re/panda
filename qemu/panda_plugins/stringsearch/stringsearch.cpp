@@ -28,7 +28,6 @@ extern "C" {
 #include "rr_log.h"
 }
 
-#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -40,6 +39,7 @@ extern "C" {
 
 
 #include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
 #include "panda_plugin_plugin.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -50,12 +50,6 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
-typedef int (* get_callers_t)(target_ulong callers[], int n, CPUState *env);
-get_callers_t get_callers;
-
-typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
-get_prog_point_t get_prog_point;
 
 // prototype for the register-this-callback fn
 PPP_PROT_REG_CB(on_ssm);
@@ -188,27 +182,7 @@ bool init_plugin(void *self) {
         }
     }
 
-    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
-    if (!cs_plugin) {
-        printf("Couldn't load callstack plugin\n");
-        return false;
-    }
-    dlerror();
-    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
-    char *err = dlerror();
-    if (err) {
-        printf("Couldn't find get_callers function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
-    dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
-    err = dlerror();
-    if (err) {
-        printf("Couldn't find get_prog_point function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
+    if(!init_callstack_instr_api()) return false;
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();

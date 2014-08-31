@@ -50,19 +50,12 @@ void uninit_plugin(void *);
 #include "../common/prog_point.h"
 
 extern "C" {
-// Public interface
 
-// Get up to n callers from the given address space at this moment
-// Callers are returned in callers[], most recent first
-int get_callers(target_ulong callers[], int n, CPUState *env);
-
-// Get the current program point: (Caller, PC, ASID)
-// This isn't quite the right place for it, but since it's awkward
-// right now to have a "utilities" library, this will have to do
-void get_prog_point(CPUState *env, prog_point *p);
+#include "callstack_instr_int.h"
 
 PPP_PROT_REG_CB(on_call);
 PPP_PROT_REG_CB(on_ret);
+
 }
 
 PPP_CB_BOILERPLATE(on_call);

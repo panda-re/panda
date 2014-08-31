@@ -17,7 +17,6 @@ extern "C" {
 #include "../callstack_instr/callstack_instr.h"
 
 #include <stdio.h>
-#include <dlfcn.h>
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
