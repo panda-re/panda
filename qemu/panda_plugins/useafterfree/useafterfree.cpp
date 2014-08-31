@@ -173,15 +173,15 @@ static int debug = 0;
 
 static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf, int is_write);
 
-void process_call(CPUState *env, TranslationBlock *tb, TranslationBlock *next);
-void process_ret(CPUState *env, TranslationBlock *tb, TranslationBlock *next);
+void process_call(CPUState *env, target_ulong func);
+void process_ret(CPUState *env, target_ulong func);
 
 bool is_right_proc(CPUState *env) {
     if ((env->hflags & HF_CPL_MASK) == 0) return false;
     else return (env->cr[3] == right_cr3);
 }
 
-void process_call(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
+void process_call(CPUState *env, target_ulong func) {
     /*if (!is_right_proc(env)) return;
 
     uint8_t buf[6];
@@ -204,7 +204,7 @@ void process_call(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
     }*/
 }
 
-void process_ret(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
+void process_ret(CPUState *env, target_ulong func) {
     if (!is_right_proc(env)) return;
 
     target_ulong cr3 = env->cr[3];
