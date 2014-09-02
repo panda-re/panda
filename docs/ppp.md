@@ -99,7 +99,7 @@ To export an API, list each function's prototype in `<plugin>_int.h` in the plug
 The apigen.py script (which is run by build.sh) will automatically find all the plugins
 with those files, and generate a `<plugin>_ext.h` file for each one, in the plugin's directory.
 
-A user simply needs to `#include "panda_plugins/<plugin>/<plugin>_int.h"` and then
+A user simply needs to `#include "panda_plugins/<plugin>/<plugin>_ext.h"` and then
 in the user's plugin's init function, call `init_<plugin>_api()`, and ensure the return value is true.
 
 For example, to use the functions exported by the sample plugin, `#include "panda_plugins/sample/sample_ext.h"`
