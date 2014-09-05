@@ -6,6 +6,8 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
+QEMU_CXXFLAGS+= -std=c++11
+
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp \
