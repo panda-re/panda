@@ -16,19 +16,26 @@ PANDAENDCOMMENT */
 #define __LABEL_SET_H_
 
 #include <set>
-#include <stdint.h>
+#include <numeric> //std::iota
+#include <cstdint>
 #include "my_mem.h"
 
-#define LST_DUNNO 0
-#define LST_COPY 1
-#define LST_COMPUTE 2
 typedef uint32_t LabelSetType;
+enum LabelSetTypes {
+    LST_DUNNO = 0,
+    LST_COPY = 1,
+    LST_COMPUTE = 2,
+};
+
 typedef std::set<uint32_t,std::less<uint32_t>,mymem_allocator<uint32_t, poolid_bitset>> BitSet;
 
-typedef struct _label_set_struct {
-  BitSet *set;        // the set itself (C++ Set)
-  LabelSetType type;  // type
-  uint32_t count;
-} LabelSet;
+struct LabelSet {
+    BitSet set;         // the set itself (C++ Set)
+    LabelSetType type;  // type
+    uint32_t count;
+    inline bool isCompute(void){
+        return this->type >= LST_COMPUTE;
+    }
+};
 
 #endif

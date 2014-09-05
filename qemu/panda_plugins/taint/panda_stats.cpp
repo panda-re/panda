@@ -49,7 +49,7 @@ void memplot(Shad *shad){
         LabelSet *ls = shad_dir_find_64(shad->ram, i);
         if (ls){
             unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
+            for (j = 0; j < ls->set.current_size; j++){
                 fprintf(memplotlog, "%d,%d,%d\n", i, ls->set->members[j],
                     ls->type);
             }
@@ -83,7 +83,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             ls = shad_dir_find_64(shad->io, i);
             if (ls){
                 BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                for (j = ls->set.begin(); j != ls->set.end(); j++){
                     fprintf(bufplotlog, "IO %lu,%u,%d\n", i, *j, ls->type);
                 }
             }
@@ -101,7 +101,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
 #endif // CONFIG_SOFTMMU
             if (ls){
                 BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                for (j = ls->set.begin(); j != ls->set.end(); j++){
                     fprintf(bufplotlog, "RAM %lu,%u,%d\n", i, *j, ls->type);
                 }
             }
@@ -116,7 +116,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
                 BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
+                for (j = ls->set.begin(); j != ls->set.end(); j++){
                     fprintf(bufplotlog, "%lu,%u,%d\n", i, *j, ls->type);
                 }
             }
