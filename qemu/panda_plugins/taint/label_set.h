@@ -23,7 +23,7 @@ PANDAENDCOMMENT */
 #define LST_COPY 1
 #define LST_COMPUTE 2
 typedef uint32_t LabelSetType;
-typedef std::set<uint32_t> BitSet;
+typedef std::set<uint32_t,std::less<uint32_t>,mymem_allocator<uint32_t, poolid_bitset>> BitSet;
 
 typedef struct _label_set_struct {
   BitSet *set;        // the set itself (C++ Set)
