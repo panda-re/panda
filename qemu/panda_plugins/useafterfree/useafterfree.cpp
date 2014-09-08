@@ -54,6 +54,7 @@ struct realloc_info {
 };
 
 static bool print = false;
+static bool ptrprint = false;
 
 static target_ulong alloc_guest_addr, free_guest_addr, realloc_guest_addr;
 static target_ulong right_cr3;
@@ -230,10 +231,14 @@ void process_ret(CPUState *env, target_ulong func) {
         if (info.addr > 0 && alloc_ever[cr3].contains(info.addr)) {
             if (!alloc_now[cr3].contains(info.addr)) {
                 printf("DOUBLE FREE @ {%lx, %lx}! PC %lx\n", cr3, info.addr, env->eip);
-            } else {
+            } else if (free_stacks[cr3].size() == 1) {
+                if (info.addr <= 0x5556f0 && alloc_now[cr3][info.addr].end > 0x5556f0) {
+                    printf("FREE [%lx, %lx)!!\n", info.addr, alloc_now[cr3][info.addr].end);
+                    ptrprint = true;
+                }
                 range_info &ri = alloc_now[cr3][info.addr];
                 for (auto it = ri.valid_ptrs.begin(); it != ri.valid_ptrs.end(); it++) {
-                    printf("Invalidating pointer @ %lx\n", *it);
+                    if (ptrprint) printf("Invalidating pointer @ %lx\n", *it);
                     // *it is the location of a pointer into the freed range
                     invalid_ptrs[cr3].insert(*it);
                     valid_ptrs[cr3].erase(*it);
@@ -304,14 +309,14 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
         for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
                 it = valid_ptrs[cr3].erase(it)) {
             // it->second is the value of a ptr. it->first is its location.
-            printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
+            if (ptrprint) printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
             alloc_now[cr3][it->second].valid_ptrs.erase(it->first);
         }
 
         auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
         for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
                 it = invalid_ptrs[cr3].erase(it)) {
-            printf("Erasing invalid pointer @ %lx.\n", *it);
+            if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", *it);
         }
     }
 
@@ -323,13 +328,17 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
         // Might be writing a pointer. Track.
         if (is_write) {
             if (alloc_now[cr3].contains(val)) { // actually creating pointer.
-                printf("Creating pointer to %lx @ %lx.\n", val, addr);
+                if (ptrprint) printf("Creating pointer to %lx @ %lx.\n", val, loc);
                 alloc_now[cr3][val].valid_ptrs.insert(loc);
                 try { valid_ptrs[cr3][loc] = val; } catch (int e) {}
+            } else if (alloc_ever[cr3].contains(val)) {
+                // Oops! We wrote an invalid pointer.
+                if (ptrprint) printf("Writing invalid pointer to %lx @ %lx.\n", val, loc);
+                invalid_ptrs[cr3].insert(loc);
             }
         } else { // Reading a pointer.
             if (invalid_ptrs[cr3].count(addr) > 0) {
-                printf("READING INVALID POINTER %lx @ %lx!!\n", val, addr);
+                printf("READING INVALID POINTER %lx @ %lx!!\n", val, loc);
             }
         }
     }
