@@ -6,6 +6,26 @@ import sys
 import re
 import subprocess
 
+def do_prov_tracer_syscalls(syscallents_h):
+    prov_tracer_syscall_enum = False;
+    syscalls = []
+    for line in open(syscallents_h):
+        if not prov_tracer_syscall_enum:
+            # find start of enum
+            m = re.search(r'^enum prov_tracer_syscall\s*{', line)
+            prov_tracer_syscall_enum = True if m else False
+        else:
+            # find enum members
+            m = re.search(r'^\s*(\w+)', line)
+            if m:
+                syscalls.append(m.groups()[0])
+
+            # find end of enum
+            m = re.search(r'}\s*;\s*$', line)
+            prov_tracer_syscall_enum = False if m else True
+
+    return syscalls
+
 def do_syscall_numbers(unistd_h):
     syscalls = {}
     for line in open(unistd_h):
@@ -71,7 +91,7 @@ def parse_type(t):
         return "SYSCALL_ARG_PTR"
     return "SYSCALL_ARG_INT"
 
-def write_output(syscalls_h, types, numbers):
+def write_output(syscalls_h, types, numbers, prov_tracer_syscalls):
     out = open(syscalls_h, 'w')
     print >>out, '#include "syscallents.h"'
     print >>out, "#define MAX_SYSCALL_NUM %d" % (max(numbers.keys()),)
@@ -83,8 +103,12 @@ def write_output(syscalls_h, types, numbers):
         else:
             args = ["void*"] * 6
 
+        # figure out the mapping to prov tracer syscalls
+        prov_tracer_name = 'SYSCALL_%s' % (name.upper())
+        nr = prov_tracer_name if prov_tracer_name in prov_tracer_syscalls else 'SYSCALL_OTHER'
+
         print >>out, "  [%d] = {" % (num,)
-        print >>out, "    .nr  = %s," % ('SYSCALL_OTHER',)
+        print >>out, "    .nr  = %s," % (nr,)
         print >>out, "    .name  = \"%s\"," % (name,)
         print >>out, "    .nargs = %d," % (len(args,))
         out.write(   "    .args  = {")
@@ -100,8 +124,10 @@ def main(args):
         return 1
     linux_dir = args[0]
 
-    mach = args[1] if len(args)>1 else os.uname()[4]
+    # read which syscalls are supported by prov tracer
+    prov_tracer_syscalls = do_prov_tracer_syscalls('syscallents.h')
 
+    mach = args[1] if len(args)>1 else os.uname()[4]
     if mach == 'x86_64':
         unistd_h = "arch/x86/include/asm/unistd_64.h"
     elif mach == 'i686':
@@ -113,7 +139,7 @@ def main(args):
 
     syscall_numbers = do_syscall_numbers(os.path.join(linux_dir, unistd_h))
     syscall_types   = find_args(linux_dir)
-    write_output('syscallents_linux-%s.c' % (mach,) , syscall_types, syscall_numbers)
+    write_output('syscallents_linux-%s.c' % (mach,) , syscall_types, syscall_numbers, prov_tracer_syscalls)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
