@@ -66,14 +66,14 @@ def find_args(linux):
 
 def parse_type(t):
     if re.search(r'^(const\s*)?char\s*(__user\s*)?\*\s*$', t):
-        return "ARG_STR"
+        return "SYSCALL_ARG_STR"
     if t.endswith('*'):
-        return "ARG_PTR"
-    return "ARG_INT"
+        return "SYSCALL_ARG_PTR"
+    return "SYSCALL_ARG_INT"
 
 def write_output(syscalls_h, types, numbers):
     out = open(syscalls_h, 'w')
-
+    print >>out, '#include "syscallents.h"'
     print >>out, "#define MAX_SYSCALL_NUM %d" % (max(numbers.keys()),)
     print >>out, "struct syscall_entry syscalls[] = {"
     for num in sorted(numbers.keys()):
@@ -84,6 +84,7 @@ def write_output(syscalls_h, types, numbers):
             args = ["void*"] * 6
 
         print >>out, "  [%d] = {" % (num,)
+        print >>out, "    .nr  = %s," % ('SYSCALL_OTHER',)
         print >>out, "    .name  = \"%s\"," % (name,)
         print >>out, "    .nargs = %d," % (len(args,))
         out.write(   "    .args  = {")
@@ -112,7 +113,7 @@ def main(args):
 
     syscall_numbers = do_syscall_numbers(os.path.join(linux_dir, unistd_h))
     syscall_types   = find_args(linux_dir)
-    write_output('syscallents_%s.h' % (mach,) , syscall_types, syscall_numbers)
+    write_output('syscallents_linux-%s.c' % (mach,) , syscall_types, syscall_numbers)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
