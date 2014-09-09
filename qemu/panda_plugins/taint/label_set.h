@@ -15,7 +15,6 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
-#include <set>
 #include <numeric> //std::iota
 #include <cstdint>
 #include "my_mem.h"
@@ -27,7 +26,15 @@ enum LabelSetTypes {
     LST_COMPUTE = 2,
 };
 
+#if defined(LABELSET_VECTOR)
+#include <vector>
+typedef std::vector<bool,mymem_allocator<bool, poolid_bitset>> BitSet;
+#define BITSET_IMPLEMENTATION "vectorbitset.cpp"
+#else
+#include <set>
 typedef std::set<uint32_t,std::less<uint32_t>,mymem_allocator<uint32_t, poolid_bitset>> BitSet;
+#define BITSET_IMPLEMENTATION "sparsebitset.cpp"
+#endif
 
 struct LabelSet {
     BitSet set;         // the set itself (C++ Set)

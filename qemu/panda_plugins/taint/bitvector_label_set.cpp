@@ -34,7 +34,7 @@
 #include "my_bool.h"
 #include "max.h"
 #include "label_set.h"
-#include "sparsebitset.cpp"
+#include BITSET_IMPLEMENTATION // defined in label_set.h
 
 #ifdef BVLS_TESTING
 extern "C" {
@@ -212,10 +212,6 @@ static SB_INLINE void labelset_spit(LabelSet *ls) {
 // returns list of labels *n_addr long
 static SB_INLINE uint32_t *labelset_get_list(LabelSet *ls, uint32_t *n_addr) {
     return bitset_get_list(ls->set, n_addr);
-}
-
-static SB_INLINE uint32_t labelset_choose(LabelSet *ls) {
-    return bitset_choose(ls->set);
 }
 
 // returns list of labels *n_addr long.  el is pre-allocated

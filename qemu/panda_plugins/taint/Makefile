@@ -7,6 +7,8 @@ include ../panda.mak
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
 QEMU_CXXFLAGS+= -std=c++11
+#uncomment to enable vector<bool> labelset implementation
+#QEMU_CXXFLAGS+= -DLABELSET_VECTOR
 
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
