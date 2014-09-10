@@ -223,8 +223,8 @@ static std::map<target_ulong, merge_range_set> alloc_ever; // Allocated ever.
 static std::map<target_ulong, std::stack<alloc_info>> alloc_stacks; // Track alloc callstack.
 static std::map<target_ulong, std::stack<free_info>> free_stacks; // Track free callstack.
 static std::map<target_ulong, std::stack<realloc_info>> realloc_stacks; // Reallocs
-// Set is of pointer locations.
-static std::map<target_ulong, std::set<target_ulong>> invalid_ptrs;
+// Map from pointer location to instr count of invalidation
+static std::map<target_ulong, std::map<target_ulong, uint64_t>> invalid_ptrs;
 // Map from cr3 => map from pointer location => pointer value
 static std::map<target_ulong, std::map<target_ulong, target_ulong>> valid_ptrs;
 
@@ -237,6 +237,10 @@ void process_ret(CPUState *env, target_ulong func);
 bool is_right_proc(CPUState *env) {
     if ((env->hflags & HF_CPL_MASK) == 0) return false;
     else return (env->cr[3] == right_cr3);
+}
+
+static bool inside_memop(target_ulong cr3) {
+    return !(alloc_stacks[cr3].empty() && free_stacks[cr3].empty());
 }
 
 void process_ret(CPUState *env, target_ulong func) {
@@ -267,17 +271,18 @@ void process_ret(CPUState *env, target_ulong func) {
         free_info info = free_stacks[cr3].top();
         if (info.addr > 0 && alloc_ever[cr3].contains(info.addr)) {
             if (!alloc_now[cr3].contains(info.addr)) {
-                printf("DOUBLE FREE @ {%lx, %lx}! PC %lx\n", cr3, info.addr, env->eip);
+                if (!inside_memop(cr3) && func >> 20 != alloc_guest_addr >> 20)
+                    printf("DOUBLE FREE @ {%lx, %lx}! PC %lx\n", cr3, info.addr, env->eip);
             } else if (free_stacks[cr3].size() == 1) {
                 if (info.addr <= 0x5556f0 && alloc_now[cr3][info.addr].end > 0x5556f0) {
                     printf("FREE [%lx, %lx)!!\n", info.addr, alloc_now[cr3][info.addr].end);
-                    ptrprint = true;
+                    //ptrprint = true;
                 }
                 range_info &ri = alloc_now[cr3][info.addr];
                 for (auto it = ri.valid_ptrs.begin(); it != ri.valid_ptrs.end(); it++) {
                     if (ptrprint) printf("Invalidating pointer @ %lx\n", *it);
                     // *it is the location of a pointer into the freed range
-                    invalid_ptrs[cr3].insert(*it);
+                    invalid_ptrs[cr3][*it] = rr_get_guest_instr_count();
                     valid_ptrs[cr3].erase(*it);
                 }
                 alloc_now[cr3].remove(info.addr);
@@ -322,10 +327,6 @@ void process_ret(CPUState *env, target_ulong func) {
     }
 }
 
-static bool inside_memop(target_ulong cr3) {
-    return !(alloc_stacks[cr3].empty() && free_stacks[cr3].empty());
-}
-
 uint32_t get_uint32(CPUState *env, target_ulong addr) {
     uint32_t result;
     panda_virtual_memory_rw(env, addr, (uint8_t *)&result, 4, 0);
@@ -347,7 +348,7 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
             //range_set an = alloc_now[cr3][it->first];
             printf("USE AFTER FREE %s @ {%lx, %lx}! PC %lx\n",
                     is_write ? "WRITE" : "READ", cr3, addr, pc);
-            panda_memsavep(fopen("uaf.raw", "w"));
+            //panda_memsavep(fopen("uaf.raw", "w"));
             return 0;
         }
 
@@ -366,7 +367,7 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
             auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
             for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
                     it = invalid_ptrs[cr3].erase(it)) {
-                if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", *it);
+                if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", it->first);
             }
         }
 
@@ -383,10 +384,13 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
                 } else if (alloc_ever[cr3].contains(val)) {
                     // Oops! We wrote an invalid pointer.
                     if (ptrprint) printf("Writing invalid pointer to %lx @ %lx.\n", val, loc);
-                    invalid_ptrs[cr3].insert(loc);
+                    invalid_ptrs[cr3][loc] = rr_get_guest_instr_count();
                 }
-            } else { // Reading a pointer.
-                if (invalid_ptrs[cr3].count(addr) > 0) {
+            } else if (env->regs[R_ESP] != loc) { // Reading a pointer. Ignore stack reads.
+                // Leave safety window.
+                if (invalid_ptrs[cr3].count(loc) > 0 &&
+                        rr_get_guest_instr_count() - invalid_ptrs[cr3][loc] > 1000 &&
+                        val != 0) {
                     printf("READING INVALID POINTER %lx @ %lx!! PC %lx\n", val, loc, pc);
                 }
             }
