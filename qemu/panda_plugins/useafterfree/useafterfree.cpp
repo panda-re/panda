@@ -72,40 +72,77 @@ struct range_info {
     }
 };
 
+struct merge_range_set {
+    std::map<target_ulong, target_ulong> impl;
+
+    void insert(target_ulong heap, target_ulong begin, target_ulong end) {
+        auto it = impl.upper_bound(begin); // first range past begin
+        if (it != impl.begin()) { // possible overlap on left. have to handle.
+            it--;
+            if (begin < it->second) {
+                begin = std::min(begin, it->first);
+                it = impl.erase(it);
+            } else {
+                it++;
+            }
+        }
+        // Erase all subranges.
+        while (it != impl.end() && end > it->second) {
+            it = impl.erase(it);
+        }
+        // Handle right overlap. At this point should have end <= it->second
+        if (it != impl.end()) {
+            if (end >= it->first) { // merge when touching, even. performance.
+                end = std::max(end, it->second);
+                impl.erase(it);
+            }
+        }
+        impl[begin] = end;
+    }
+
+    bool contains(target_ulong addr) {
+        if (impl.empty()) return false;
+        else {
+            auto it = impl.upper_bound(addr);
+            if (it != impl.begin()) it--; // now greatest <= addr
+            return addr >= it->first && addr < it->second;
+        }
+    }
+
+    void dump() {
+        printf("{  ");
+        for (auto it = impl.begin(); it != impl.end(); it++) {
+            printf("[%lx, %lx) ", it->first, it->second);
+        }
+        printf(" }\n");
+    }
+};
+
 // Set of ranges [begin, end).
 // Should satisfy guarantee that all ranges are disjoint at all times.
 struct range_set {
     std::map<target_ulong, range_info> impl; // map from range begin -> end
 
-    bool insert(target_ulong heap, target_ulong begin, target_ulong end, bool merge = true) {
+    bool insert(target_ulong heap, target_ulong begin, target_ulong end) {
         bool error = false;
 
-        // Unify on left.
+        // Check left overlap. FIXME make sure this is correct.
         auto it = impl.upper_bound(begin);
         if (it != impl.begin()) {
             it--; // now points to greatest elt <= begin
-            if (begin < it->second.end) { // overlap! unify.
-                if (!merge) {
-                    printf("error! we shouldn't be merging [ %lx, %lx ). assuming missed free of [ %lx, %lx ).\n", begin, end, it->first, it->second.end);
-                    error = true;
-                } else {
-                    begin = it->first;
-                    end = std::max(end, it->second.end);
-                }
+            if (begin < it->second.end) {
+                printf("error! we shouldn't be merging [ %lx, %lx ). assuming missed free of [ %lx, %lx ).\n", begin, end, it->first, it->second.end);
+                error = true;
                 impl.erase(it->first);
             }
         }
 
-        // Unify on right.
+        // Check right overlap.
         it = impl.upper_bound(begin); // least elt > (begin, end);
         if (it != impl.end()) {
-            if (end > it->first) { // overlap! unify.
-                if (!merge) {
-                    printf("error! we shouldn't be merging. assuming missed free.\n");
-                    error = true;
-                } else {
-                    end = std::max(end, it->second.end);
-                }
+            if (end > it->first) {
+                printf("error! we shouldn't be merging. assuming missed free.\n");
+                error = true;
                 impl.erase(it->first);
             }
         }
@@ -182,7 +219,7 @@ struct range_set {
 
 // These are all per-cr3 data structs.
 static std::map<target_ulong, range_set> alloc_now; // Allocated now.
-static std::map<target_ulong, range_set> alloc_ever; // Allocated ever.
+static std::map<target_ulong, merge_range_set> alloc_ever; // Allocated ever.
 static std::map<target_ulong, std::stack<alloc_info>> alloc_stacks; // Track alloc callstack.
 static std::map<target_ulong, std::stack<free_info>> free_stacks; // Track free callstack.
 static std::map<target_ulong, std::stack<realloc_info>> realloc_stacks; // Reallocs
@@ -214,7 +251,7 @@ void process_ret(CPUState *env, target_ulong func) {
         if (!(alloc_stacks[cr3].size() == 2 && (info.size & 0x3ff) == 0x3f8)) {
             // Otherwise RtlAllocateHeap is calling itself to get a big block
             // to split up into little blocks. No idea why. -ph
-            alloc_now[cr3].insert(info.heap, addr, addr + info.size, false);
+            alloc_now[cr3].insert(info.heap, addr, addr + info.size);
             alloc_ever[cr3].insert(info.heap, addr, addr + info.size);
         }
         if (print) {
@@ -272,7 +309,7 @@ void process_ret(CPUState *env, target_ulong func) {
                 }
                 alloc_now[cr3].remove(info.addr);
             }
-        } 
+        }
         if (!alloc_now[cr3].has_range(newaddr)) { // check new range
             alloc_now[cr3].insert(info.heap, newaddr, newaddr + info.size);
         } else {
@@ -289,56 +326,69 @@ static bool inside_memop(target_ulong cr3) {
     return !(alloc_stacks[cr3].empty() && free_stacks[cr3].empty());
 }
 
+uint32_t get_uint32(CPUState *env, target_ulong addr) {
+    uint32_t result;
+    panda_virtual_memory_rw(env, addr, (uint8_t *)&result, 4, 0);
+    return result;
+}
+
 static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf, int is_write) {
+    if (!is_right_proc(env)) return 0;
+
+    if (pc == 0x6DC996ED) {
+        printf("%lx: [%lx] = %x\n", pc, addr, *(uint32_t *)buf);
+    }
+
     target_ulong cr3 = env->cr[3];
     if (!inside_memop(cr3) && pc >> 20 != alloc_guest_addr >> 20) { // hack.
-            if (alloc_ever[cr3].contains(addr)
-                    && !alloc_now[cr3].contains(addr)) {
-                //range_set ae = alloc_ever[cr3][it->first];
-                //range_set an = alloc_now[cr3][it->first];
-                printf("USE AFTER FREE %s @ {%lx, %lx}! PC %lx\n",
-                        is_write ? "WRITE" : "READ", cr3, addr, pc);
-                panda_memsavep(fopen("uaf.raw", "w"));
-                return 0;
-        }
-    }
-
-    if (size >= 4) { // The addresses we're overwriting don't contain ptrs anymore.
-        target_ulong begin = addr, end = addr + size;
-        auto end_it = valid_ptrs[cr3].lower_bound(end);
-        for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
-                it = valid_ptrs[cr3].erase(it)) {
-            // it->second is the value of a ptr. it->first is its location.
-            if (ptrprint) printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
-            alloc_now[cr3][it->second].valid_ptrs.erase(it->first);
+        if (alloc_ever[cr3].contains(addr)
+                && !alloc_now[cr3].contains(addr)) {
+            //range_set ae = alloc_ever[cr3][it->first];
+            //range_set an = alloc_now[cr3][it->first];
+            printf("USE AFTER FREE %s @ {%lx, %lx}! PC %lx\n",
+                    is_write ? "WRITE" : "READ", cr3, addr, pc);
+            panda_memsavep(fopen("uaf.raw", "w"));
+            return 0;
         }
 
-        auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
-        for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
-                it = invalid_ptrs[cr3].erase(it)) {
-            if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", *it);
-        }
-    }
-
-
-    if (size == 4) {
-        target_ulong loc = addr; // Pointer location
-        // Pointer value; should be address inside valid range
-        target_ulong val = *(target_ulong *)buf;
-        // Might be writing a pointer. Track.
-        if (is_write) {
-            if (alloc_now[cr3].contains(val)) { // actually creating pointer.
-                if (ptrprint) printf("Creating pointer to %lx @ %lx.\n", val, loc);
-                alloc_now[cr3][val].valid_ptrs.insert(loc);
-                try { valid_ptrs[cr3][loc] = val; } catch (int e) {}
-            } else if (alloc_ever[cr3].contains(val)) {
-                // Oops! We wrote an invalid pointer.
-                if (ptrprint) printf("Writing invalid pointer to %lx @ %lx.\n", val, loc);
-                invalid_ptrs[cr3].insert(loc);
+        if (size >= 4 && is_write) { // The addresses we're overwriting don't contain ptrs anymore.
+            target_ulong begin = addr, end = addr + size;
+            auto end_it = valid_ptrs[cr3].lower_bound(end);
+            for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
+                    it = valid_ptrs[cr3].erase(it)) {
+                // it->second is the value of a ptr. it->first is its location.
+                if (alloc_now[cr3].contains(it->second)) {
+                    if (ptrprint) printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
+                    alloc_now[cr3][it->second].valid_ptrs.erase(it->first);
+                }
             }
-        } else { // Reading a pointer.
-            if (invalid_ptrs[cr3].count(addr) > 0) {
-                printf("READING INVALID POINTER %lx @ %lx!!\n", val, loc);
+
+            auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
+            for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
+                    it = invalid_ptrs[cr3].erase(it)) {
+                if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", *it);
+            }
+        }
+
+        if (size == 4) {
+            target_ulong loc = addr; // Pointer location
+            // Pointer value; should be address inside valid range
+            target_ulong val = *(uint32_t *)buf;
+            // Might be writing a pointer. Track.
+            if (is_write) {
+                if (alloc_now[cr3].contains(val)) { // actually creating pointer.
+                    if (ptrprint) printf("Creating pointer to %lx @ %lx.\n", val, loc);
+                    alloc_now[cr3][val].valid_ptrs.insert(loc);
+                    try { valid_ptrs[cr3][loc] = val; } catch (int e) {}
+                } else if (alloc_ever[cr3].contains(val)) {
+                    // Oops! We wrote an invalid pointer.
+                    if (ptrprint) printf("Writing invalid pointer to %lx @ %lx.\n", val, loc);
+                    invalid_ptrs[cr3].insert(loc);
+                }
+            } else { // Reading a pointer.
+                if (invalid_ptrs[cr3].count(addr) > 0) {
+                    printf("READING INVALID POINTER %lx @ %lx!! PC %lx\n", val, loc, pc);
+                }
             }
         }
     }
@@ -384,7 +434,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         //printf("found free @ %lx! ret to %lx\n", free_addr.addr, free_retaddr.addr);
     } else if (tb->pc == alloc_guest_addr) { // alloc
         //printf("found alloc!\n");
-        
+
         alloc_info info;
         info.retaddr = get_stack(env, 0);
         info.heap = get_stack(env, 1);
@@ -406,7 +456,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
         //debug = 40;
     }
-        
 
     return 0;
 }
