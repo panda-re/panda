@@ -243,6 +243,12 @@ static bool inside_memop(target_ulong cr3) {
     return !(alloc_stacks[cr3].empty() && free_stacks[cr3].empty());
 }
 
+uint32_t get_uint32(CPUState *env, target_ulong addr) {
+    uint32_t result;
+    panda_virtual_memory_rw(env, addr, (uint8_t *)&result, 4, 0);
+    return result;
+}
+
 void process_ret(CPUState *env, target_ulong func) {
     if (!is_right_proc(env)) return;
 
@@ -255,8 +261,10 @@ void process_ret(CPUState *env, target_ulong func) {
         if (!(alloc_stacks[cr3].size() == 2 && (info.size & 0x3ff) == 0x3f8)) {
             // Otherwise RtlAllocateHeap is calling itself to get a big block
             // to split up into little blocks. No idea why. -ph
-            alloc_now[cr3].insert(info.heap, addr, addr + info.size);
-            alloc_ever[cr3].insert(info.heap, addr, addr + info.size);
+            if (addr != 0) {
+                alloc_now[cr3].insert(info.heap, addr, addr + info.size);
+                alloc_ever[cr3].insert(info.heap, addr, addr + info.size);
+            }
         }
         if (print) {
             printf("PP %lu: return from alloc; addr {%lx, %lx}, size %lx\n", rr_prog_point.guest_instr_count, env->cr[3], env->regs[R_EAX], info.size);
@@ -323,16 +331,30 @@ void process_ret(CPUState *env, target_ulong func) {
     }
 }
 
-uint32_t get_uint32(CPUState *env, target_ulong addr) {
-    uint32_t result;
-    panda_virtual_memory_rw(env, addr, (uint8_t *)&result, 4, 0);
-    return result;
-}
-
 static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf, int is_write) {
     if (!is_right_proc(env)) return 0;
 
     target_ulong cr3 = env->cr[3];
+
+    if (size >= 4 && is_write) { // The addresses we're overwriting don't contain ptrs anymore.
+        target_ulong begin = addr, end = addr + size;
+        auto end_it = valid_ptrs[cr3].lower_bound(end);
+        for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
+                it = valid_ptrs[cr3].erase(it)) {
+            // it->second is the value of a ptr. it->first is its location.
+            if (alloc_now[cr3].contains(it->second)) {
+                if (ptrprint) printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
+                alloc_now[cr3][it->second].valid_ptrs.erase(it->first);
+            }
+        }
+
+        auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
+        for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
+                it = invalid_ptrs[cr3].erase(it)) {
+            if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", it->first);
+        }
+    }
+
     if (!inside_memop(cr3) && pc >> 20 != alloc_guest_addr >> 20) { // hack.
         if (alloc_ever[cr3].contains(addr)
                 && !alloc_now[cr3].contains(addr)) {
@@ -342,25 +364,6 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
                     is_write ? "WRITE" : "READ", cr3, addr, pc);
             //panda_memsavep(fopen("uaf.raw", "w"));
             return 0;
-        }
-
-        if (size >= 4 && is_write) { // The addresses we're overwriting don't contain ptrs anymore.
-            target_ulong begin = addr, end = addr + size;
-            auto end_it = valid_ptrs[cr3].lower_bound(end);
-            for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
-                    it = valid_ptrs[cr3].erase(it)) {
-                // it->second is the value of a ptr. it->first is its location.
-                if (alloc_now[cr3].contains(it->second)) {
-                    if (ptrprint) printf("Erasing pointer to %lx @ %lx.\n", it->second, it->first);
-                    alloc_now[cr3][it->second].valid_ptrs.erase(it->first);
-                }
-            }
-
-            auto end_it2 = invalid_ptrs[cr3].lower_bound(end);
-            for (auto it = invalid_ptrs[cr3].lower_bound(begin); it != end_it2;
-                    it = invalid_ptrs[cr3].erase(it)) {
-                if (ptrprint) printf("Erasing invalid pointer @ %lx.\n", it->first);
-            }
         }
 
         if (size == 4) {
