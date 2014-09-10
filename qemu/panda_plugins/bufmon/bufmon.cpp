@@ -119,6 +119,12 @@ bool init_plugin(void *self) {
     }
     buffile.close();
 
+    mem_report = fopen("buffer_taps.txt", "w");
+    if(!mem_report) {
+        perror("fopen");
+        return false;
+    }
+
     if(!init_callstack_instr_api()) return false;
 
     pcb.virt_mem_read = mem_read_callback;
