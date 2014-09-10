@@ -279,8 +279,6 @@ uint8_t *boot_splash_filedata;
 int boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
 
-// defined in panda/tubtf.c
-extern int tubtf_on;
 
 typedef struct FWBootEntry FWBootEntry;
 
@@ -3226,26 +3224,74 @@ int main(int argc, char **argv, char **envp)
                 generate_llvm = 1;
                 break;
 #endif
-	    case QEMU_OPTION_record_from:
+            case QEMU_OPTION_record_from:
                 record_name = optarg;
-	        break;
+	            break;
 
-	    case QEMU_OPTION_replay:
-	        replay_name = optarg;
-	        break;
+	        case QEMU_OPTION_replay:
+	            replay_name = optarg;
+	            break;
 
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
                     fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
                 }
                 break;
+
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins++] = optarg;
+                printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
                 break;
 
-	    case QEMU_OPTION_tubtf:
-	      printf ("tubtf logging on\n");
-	      tubtf_on = 1;
+            case QEMU_OPTION_panda_plugins:
+                {
+                    char *new_optarg = strdup(optarg);
+                    char *plugin_start = new_optarg;
+                    char *plugin_end = new_optarg;
+
+                    char *qemu_file = canonicalize_file_name(argv[0]);
+                    char *dir = dirname(qemu_file);
+                    while (plugin_end != NULL) {
+                        plugin_end = strchr(plugin_start, ';');
+                        if (plugin_end != NULL) *plugin_end = '\0';
+                        
+                        char *opt_list;
+                        if ((opt_list = strchr(plugin_start, ':'))) {
+                            char arg_str[255];
+                            *opt_list = '\0';
+                            opt_list++;
+                            
+                            char *opt_start = opt_list, *opt_end = opt_list;
+                            while (opt_end != NULL) {
+                                opt_end = strchr(opt_start, ',');
+                                if (opt_end != NULL) *opt_end = '\0';
+                                
+                                snprintf(arg_str, 255, "%s:%s", plugin_start, opt_start);
+                                if (panda_add_arg(arg_str, strlen(arg_str))) // copies arg
+                                    printf("Adding PANDA arg %s.\n", arg_str);
+                                else
+                                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", arg_str);
+
+                                opt_start = opt_end + 1;
+                            }
+                        }
+
+                        char *plugin_path = g_malloc0(1024);
+                        char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
+                        if (plugin_dir != NULL) {
+                            snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_start);
+                        } else {
+                            snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_start);
+                        }
+                        panda_plugin_files[nb_panda_plugins++] = plugin_path;
+                        printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                        
+                        plugin_start = plugin_end + 1;
+                    }
+                    free(new_optarg);
+                    free(dir);
+                    break;
+                }
 
             default:
                 os_parse_cmd_args(popt->index, optarg);
@@ -3260,8 +3306,10 @@ int main(int argc, char **argv, char **envp)
     // Now that all arguments are available, we can load plugins
     int pp_idx;
     for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
-        if(!panda_load_plugin(panda_plugin_files[pp_idx]))
-            fprintf(stderr, "WARN: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+      if(!panda_load_plugin(panda_plugin_files[pp_idx])) {
+	fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+	abort();
+      }
     }
 
     /* Open the logfile at this point, if necessary. We can't open the logfile

@@ -24,10 +24,10 @@ extern "C" {
 #include "disas.h"
 
 #include "panda_plugin.h"
-
+#include "stringsearch.h"
+#include "rr_log.h"
 }
 
-#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -37,10 +37,10 @@ extern "C" {
 #include <sstream>
 #include <string>
 
-#define MAX_STRINGS 16
-#define MAX_STRLEN  256
 
 #include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
+#include "panda_plugin_plugin.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -51,11 +51,8 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-typedef int (* get_callers_t)(target_ulong callers[], int n, CPUState *env);
-get_callers_t get_callers;
-
-typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
-get_prog_point_t get_prog_point;
+// prototype for the register-this-callback fn
+PPP_PROT_REG_CB(on_ssm);
 
 }
 
@@ -83,6 +80,12 @@ uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
 
+// this creates BOTH the global for this callback fn (on_ssm_func)
+// and the function used by other plugins to register a fn (add_on_ssm)
+PPP_CB_BOILERPLATE(on_ssm)
+
+// this creates the 
+
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write,
                        std::map<prog_point,string_pos> &text_tracker) {
@@ -101,8 +104,8 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
             if (sp.val[str_idx] == strlens[str_idx]) {
                 // Victory!
-                printf("%s Match at: " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
-                    (is_write ? "WRITE" : "READ"), p.caller, p.pc, p.cr3);
+                printf("%s Match of str %d at: instr_count=%lu :  " TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
+                       (is_write ? "WRITE" : "READ"), str_idx, rr_get_guest_instr_count(), p.caller, p.pc, p.cr3);
                 matches[p].val[str_idx]++;
                 sp.val[str_idx] = 0;
 
@@ -112,6 +115,10 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 f.pc = p.pc;
                 f.asid = p.cr3;
                 matchstacks[p] = f;
+
+                // call the i-found-a-match registered callbacks here
+                PPP_RUN_CB(on_ssm, env, pc, addr, tofind[str_idx], strlens[str_idx], is_write)
+
             }
         }
     }
@@ -130,6 +137,8 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
 
+
+
 bool init_plugin(void *self) {
     panda_cb pcb;
 
@@ -141,24 +150,31 @@ bool init_plugin(void *self) {
         return false;
     }
 
-    // Format: lines of colon-separated hex chars, e.g.
+    // Format: lines of colon-separated hex chars or quoted strings, e.g.
     // 0a:1b:2c:3d:4e
+    // or "string" (no newlines)
     std::string line;
     while(std::getline(search_strings, line)) {
         std::istringstream iss(line);
-        
-        std::string x;
-        int i = 0;
-        while (std::getline(iss, x, ':')) {
-            tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
-            if (i >= MAX_STRLEN) {
-                printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
-                break;
-            }
-        }
-        strlens[num_strings] = i;
 
-        printf("stringsearch: added string of length %d to search set\n", i);
+        if (line[0] == '"') {
+            size_t len = line.size() - 2;
+            memcpy(tofind[num_strings], line.substr(1, len).c_str(), len);
+            strlens[num_strings] = len;
+        } else {
+            std::string x;
+            int i = 0;
+            while (std::getline(iss, x, ':')) {
+                tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
+                if (i >= MAX_STRLEN) {
+                    printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
+                    break;
+                }
+            }
+            strlens[num_strings] = i;
+        }
+
+        printf("stringsearch: added string of length %d to search set\n", strlens[num_strings]);
 
         if(++num_strings >= MAX_STRINGS) {
             printf("WARN: maximum number of strings (%d) reached, will not load any more.\n", MAX_STRINGS);
@@ -166,27 +182,7 @@ bool init_plugin(void *self) {
         }
     }
 
-    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
-    if (!cs_plugin) {
-        printf("Couldn't load callstack plugin\n");
-        return false;
-    }
-    dlerror();
-    get_callers = (get_callers_t) dlsym(cs_plugin, "get_callers");
-    char *err = dlerror();
-    if (err) {
-        printf("Couldn't find get_callers function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
-    dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
-    err = dlerror();
-    if (err) {
-        printf("Couldn't find get_prog_point function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
+    if(!init_callstack_instr_api()) return false;
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();

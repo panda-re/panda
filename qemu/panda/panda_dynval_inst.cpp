@@ -12,13 +12,11 @@
  *
 PANDAENDCOMMENT */
 
-#include "stdio.h"
-
+#include <stdio.h>
 #include "panda_dynval_inst.h"
-
+#include "panda_memlog.h"
 extern "C" {
 #include "config.h"
-#include "panda_memlog.h"
 }
 
 using namespace llvm;
@@ -325,7 +323,7 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
         // looks like %tmp1_v7 = call i64 @helper_inb(i32 146)
         // arg is port number. we'll treat it as a load from the port into the
         // LLVM register
-        
+
         ZEI = static_cast<ZExtInst*>
             (IRB.CreateZExt(I.getArgOperand(0), ptrType));
         argValues.push_back(ConstantInt::get(ptrType,
@@ -346,7 +344,7 @@ void PandaInstrumentVisitor::visitCallInst(CallInst &I){
         // looks like call void @helper_outb(i32 146, i32 %tmp7_v)
         // args are port number, data.  we'll treat it as a store from the
         // temporary to the port.
-        
+
         ZEI = static_cast<ZExtInst*>
             (IRB.CreateZExt(I.getArgOperand(0), ptrType));
         argValues.push_back(ConstantInt::get(ptrType,

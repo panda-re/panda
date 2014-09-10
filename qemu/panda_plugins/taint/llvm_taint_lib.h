@@ -16,21 +16,16 @@ PANDAENDCOMMENT */
 #define LLVM_TAINT_LIB_H
 
 #include "stdio.h"
-
 #include <map>
-
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Pass.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/InstVisitor.h"
 #include "llvm/IR/IRBuilder.h"
-
-extern "C" {
 #include "taint_processor.h"
 #include "panda_stats.h"
 #include "panda_memlog.h"
-}
 
 namespace llvm {
 
@@ -109,8 +104,8 @@ public:
     void memcpyHelper(CallInst &I);
     void memsetHelper(CallInst &I);
     void ctlzHelper(CallInst &I);
-    void loadHelper(Value *src, Value *dst, int len);
-    void storeHelper(Value *src, Value *dst, int len);
+    void loadHelper(Value *src, Value *dst, int len, int is_mmu);
+    void storeHelper(Value *src, Value *dst, int len, int is_mmu);
     void portLoadHelper(Value *src, Value *dst, int len);
     void portStoreHelper(Value *src, Value *dst, int len);
     void floatHelper(CallInst &I);

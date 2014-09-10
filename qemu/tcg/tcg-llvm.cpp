@@ -39,13 +39,13 @@ extern "C" {
 }
 
 #include "tcg-llvm.h"
+#include "panda_memlog.h"
 
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
 #include "disas.h"
 
-#include "panda_memlog.h"
 #include "panda_plugin.h"
 
 #if defined(CONFIG_SOFTMMU)
@@ -387,7 +387,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager = new FunctionPassManager(m_module);
     m_functionPassManager->add(
             new DataLayout(*m_executionEngine->getDataLayout()));
-    
+
     /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
      * code size
      */
@@ -427,7 +427,7 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
         delete m_functionPassManager;
         m_functionPassManager = NULL;
     }
- 
+
     // the following line will also delete
     // m_moduleProvider, m_module and all its functions
     if (m_executionEngine) {
@@ -446,7 +446,7 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
     TCGTemp &temp = s->temps[idx];
 
     assert(idx < s->nb_globals || s->temps[idx].temp_local);
-    
+
     if(m_memValuesPtr[idx] == NULL) {
         assert(idx < s->nb_globals);
 
@@ -670,7 +670,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 #ifdef CONFIG_SOFTMMU
 
     uintptr_t helperFuncAddr;
-    
+
     if (panda_use_memcb){
         helperFuncAddr = ld ? (uint64_t) qemu_panda_ld_helpers[bits>>4]:
                                (uint64_t) qemu_panda_st_helpers[bits>>4];
@@ -794,7 +794,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
             tcg_target_ulong helperAddrC = (tcg_target_ulong)
                    cast<ConstantInt>(helperAddr)->getZExtValue();
-            
+
             const char *helperName = tcg_helper_get_name(m_tcgContext,
                                                          (void*) helperAddrC);
             assert(helperName);
@@ -919,9 +919,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         m_tbFunction->getBasicBlockList().push_back(finished);      \
         m_builder.SetInsertPoint(finished);                         \
     } break;
-    
+
     __OP_SETCOND(INDEX_op_setcond_i32, 32)
-    
+
 #if TCG_TARGET_REG_BITS == 64
     __OP_SETCOND(INDEX_op_setcond_i64, 64)
 #endif
@@ -1359,12 +1359,18 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
                     wordPtrType()),
                 true);
             // volatile store of current PC
-            m_builder.CreateStore(ConstantInt::get(wordType(), args[0]),
+	    llvm::Instruction *i = 
+	      m_builder.CreateStore(ConstantInt::get(wordType(), args[0]),
                 m_builder.CreateIntToPtr(
                     ConstantInt::get(wordType(),
                         (uint64_t) &tcg_llvm_runtime.last_pc),
                     wordPtrType()),
-                true);
+                true);	    
+	    // TRL 2014 hack to annotate that last instruction as the one
+	    // that sets PC
+	    LLVMContext& C = i->getContext();
+	    MDNode* N = MDNode::get(C, MDString::get(C, "pcupdate"));
+	    i->setMetadata("pcupdate.md", N);
         }
 
         args += generateOperation(opc, args);

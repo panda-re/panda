@@ -166,8 +166,7 @@ hours to run with `keyfind` enabled. This is what the output looks like:
     brendan@brendantemp:~/git/panda/qemu$ echo "begin_replay ssltut" | \
         x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
-        -panda-plugin x86_64-softmmu/panda_plugins/panda_callstack_instr.so \
-        -panda-plugin x86_64-softmmu/panda_plugins/panda_keyfind.so 
+        -panda callstack_instr;keyfind
     Initializing plugin callstack_instr
     Initializing plugin keyfind
     Couldn't open keyfind_candidates.txt; no key tap candidates defined.
@@ -415,8 +414,7 @@ Now, we run the replay:
 
     $ echo "begin_replay ssltut" | x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
-        -panda-plugin x86_64-softmmu/panda_plugins/panda_callstack_instr.so \
-        -panda-plugin x86_64-softmmu/panda_plugins/panda_textprinter.so
+        -panda callstack_instr;textprinter
 
 It will produce two files, `read_tap_buffers.txt.gz` and
 `write_tap_buffers.txt.gz`. Let's focus on `write_tap_buffers.txt.gz`

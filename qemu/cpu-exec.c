@@ -755,7 +755,7 @@ int cpu_exec(CPUState *env)
                 // will get cleared when we actually get to execute the basic block.
                 panda_cb_list *plist;
                 bool panda_invalidate_tb = false;
-                if (unlikely(bb_invalidate_done)) {
+                if (unlikely(!bb_invalidate_done)) {
                     for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
                             plist != NULL; plist = plist->next) {
                         panda_invalidate_tb |=
@@ -847,6 +847,7 @@ int cpu_exec(CPUState *env)
                     if (!rr_loop_tries) {
                         // Signal failure
                         printf("Infinite loop detected during replay, aborting.\n");
+                        rr_spit_prog_point(rr_prog_point);
                         rr_do_end_replay(1);
                     }
                 }

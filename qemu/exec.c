@@ -1833,6 +1833,8 @@ const CPULogItem cpu_log_items[] = {
     { CPU_LOG_LLVM_ASM, "llvm_asm",
       "show LLVM-generated assembly code" },
 #endif
+    { CPU_LOG_TAINT_OPS, "taint_ops",
+      "show taint ops for each llvm bb", },
     { 0, NULL, NULL },
 };
 

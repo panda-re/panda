@@ -33,9 +33,8 @@ extern "C" {
 #include <set>
 #include <map>
 
-#include <dlfcn.h>
-
 #include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
     
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -46,9 +45,6 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int before_block_translate_cb(CPUState *env, target_ulong pc);
 int after_block_translate_cb(CPUState *env, TranslationBlock *tb);
-
-typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
-get_prog_point_t get_prog_point;
 
 }
 
@@ -325,20 +321,7 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin keyfind\n");
 
-    // Needed to get accurate callstacks cross-platform
-    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
-    if (!cs_plugin) {
-        printf("Couldn't load callstack plugin\n");
-        return false;
-    }
-    dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
-    char *err = dlerror();
-    if (err) {
-        printf("Couldn't find get_prog_point function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
+    if(!init_callstack_instr_api()) return false;
 
     // SSL stuff
     // Init list of ciphers & digests
