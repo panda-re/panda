@@ -1,15 +1,15 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 /*
  * llvm_trace PANDA plugin
@@ -34,19 +34,16 @@ PANDAENDCOMMENT */
 #endif
 
 extern "C" {
-
 #include "panda_plugin.h"
-#include "panda_memlog.h"
 #include "panda_common.h"
 #include "tubtf.h"
-
 
 #ifndef CONFIG_SOFTMMU
 #include "syscall_defs.h"
 #endif
-
 }
 
+#include "panda_memlog.h"
 #include "llvm/PassManager.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Analysis/Verifier.h"
@@ -84,12 +81,9 @@ const char *basedir = NULL;
 FILE *funclog;
 extern FILE *memlog;
 
-
-// defined in tubtf.c
-extern int tubtf_on;
-
-
 }
+
+int tubtf_on;
 
 // Instrumentation function pass
 llvm::PandaInstrFunctionPass *PIFP;
@@ -136,7 +130,7 @@ static void llvm_init(){
             Function::ExternalLinkage, "log_dynval", mod);
     logFunc->addFnAttr(Attribute::AlwaysInline);
     ee->addGlobalMapping(logFunc, (void*) &log_dynval);
-    
+
     // Create instrumentation pass and add to function pass manager
     llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
     fpm->add(instfp);
@@ -204,7 +198,7 @@ int outfd = -1;
 static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
               abi_long flagarg){
     const char *file = path((const char*)p);
-    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl); 
+    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl);
     if (ret > 0){
         if((strncmp(file, "/etc", 4) != 0)
                 && (strncmp(file, "/lib", 4) != 0)
@@ -293,6 +287,14 @@ bool init_plugin(void *self) {
 
     // Look for llvm_trace:base=dir
     for (int i = 0; i < panda_argc; i++) {
+
+        printf ("panda_arg %d = %s\n", i, panda_argv[i]);
+
+        if (0 == strncmp(panda_argv[i], "tubtf", 5)) {
+            printf ("tubt format in use\n");
+            tubtf_on = 1;
+        }
+      
         if(0 == strncmp(panda_argv[i], "llvm_trace", 10)) {
             basedir = strrchr(panda_argv[i], '=');
             if (basedir) basedir++; // advance past '='
@@ -306,7 +308,7 @@ bool init_plugin(void *self) {
       char tubtf_path[256];
       strcpy(tubtf_path, basedir);
       strcat(tubtf_path, "/tubtf.log");
-      tubtf_open(tubtf_path, TUBTF_COLW_64);     
+      tubtf_open(tubtf_path, TUBTF_COLW_64);
       panda_enable_precise_pc();
     }
     else {
@@ -354,6 +356,15 @@ bool init_plugin(void *self) {
         if (i->isDeclaration()){
             continue;
         }
+#if defined(TARGET_ARM)
+        //TODO: Fix handling of ARM's cpu_reset() helper
+        // Currently, we skip instrumenting it, because we generate invalid LLVM bitcode if we try
+        std::string modname =  i->getName().str();
+        if (modname == "cpu_reset_llvm"){
+            printf("Skipping instrumentation of cpu_reset\n");
+            continue;
+        }
+#endif
         PIFP->runOnFunction(*i);
     }
     std::string err;
@@ -407,7 +418,7 @@ void uninit_plugin(void *self) {
         panda_disable_llvm();
     }
     panda_disable_memcb();
-    
+
     if (tubtf_on == 0) {
       fclose(funclog);
       close_memlog();

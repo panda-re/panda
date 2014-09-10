@@ -13,6 +13,9 @@ include ../panda.mak
 QEMU_CFLAGS+=-std=c++11
 # LIBS+=
 
+# uncomment to enable taint in the FDTRACKER
+#QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
+
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp

@@ -11,6 +11,12 @@
 #include "targphys.h"
 #include "rr_log_all.h"
 
+// accessors
+uint64_t rr_get_pc(void);
+uint64_t rr_get_secondary(void);
+uint64_t rr_get_guest_instr_count (void);
+
+
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state);
 
 //mz structure for arguments to cpu_physical_memory_rw()
@@ -100,5 +106,23 @@ typedef struct rr_log_entry_t {
     } variant;
     struct rr_log_entry_t *next;
 } RR_log_entry;
+
+// a program-point indexed record/replay log
+typedef enum {RECORD, REPLAY} RR_log_type;
+typedef struct RR_log_t {
+  //mz TODO this field seems redundant given existence of rr_mode
+  RR_log_type type;            // record or replay
+  RR_prog_point last_prog_point; // to report progress
+
+  char *name;                  // file name
+  FILE *fp;                    // file pointer for log
+  unsigned long long size;     // for a log being opened for read, this will be the size in bytes
+
+  RR_log_entry current_item;
+  uint8_t current_item_valid;
+  unsigned long long item_number;
+} RR_log;
+
+RR_log_entry *rr_get_queue_head(void);
 
 #endif

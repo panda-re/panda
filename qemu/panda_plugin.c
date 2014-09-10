@@ -55,6 +55,7 @@ bool panda_add_arg(const char *arg, int arglen) {
 }
 
 bool panda_load_plugin(const char *filename) {
+  printf ("loading %s\n", filename);
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
@@ -70,10 +71,12 @@ bool panda_load_plugin(const char *filename) {
         panda_plugins[nb_panda_plugins].plugin = plugin;
         strncpy(panda_plugins[nb_panda_plugins].name, basename(filename), 256);
         nb_panda_plugins++;
+	fprintf (stderr, "Success\n");
         return true;
     }
     else {
         dlclose(plugin);
+	fprintf (stderr, "Fail. init_fn returned 0\n");
         return false;
     }
 }
@@ -311,6 +314,40 @@ fail:
     if (ret != NULL) g_free(ret);
     if (list != NULL) g_free(list);
     return NULL;
+}
+
+target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval) {
+    if (!args) return defval;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return strtoul(args->list[i].value, NULL, 0);
+        }
+    }
+    return defval;
+}
+
+uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval) {
+    if (!args) return defval;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return strtoul(args->list[i].value, NULL, 0);
+        }
+    }
+    return defval;
+}
+
+// Returns pointer to string inside arg list, freed when list is freed.
+char *panda_parse_string(panda_arg_list *args, const char *argname, char *defval) {
+    if (!args) return defval;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return args->list[i].value;
+        }
+    }
+    return defval;
 }
 
 // Free a list of parsed arguments

@@ -1,0 +1,32 @@
+
+This is a kind of dynamic bounds checking without bounds.
+
+lsmll = "Label taint at Store then Model Labels seen at Load"
+
+
+Say we have a good way, dynamically, of going from cr3 / pc / instruction to a string that identifies that instruction and will be consistent across runs and boots and so on.  So it deals with cr3 changing and ASLR and code relocation gracefully.  Call that ch(i), or "code hash" for instruction i.  
+
+1. Training.
+
+1.1. Arrange to label as tainted all data written by a ST.  Label is "the instruction that did the ST", 
+i.e., ch(i) for ST instruction i. 
+
+1.2. Whenever there is a LD instruction, collect set of labels you see on the data being read.  This set or 
+"ldst model" is associated with the LD instruction, i.e., with ch(i) for LD instruction i.  Call this model
+LDST(ch(i)).
+
+1.3. Note that it looks like we are using the taint system in and that, therefore, this will be very slow.  
+But no.  We can get away with *just* using the shadow memory and never turning on LLVM or taint ops.  
+We dont care about taint copies or computes.  So implement this as a panda plugin that labels memory at ST
+and models label models at LD instructions.
+
+1.4. Really, we need to build these models across several runs of the program in order to be assured we have 
+reasonable completeness.  Thus we need to be able to merge models.  Or perhaps we just arrange to merge 
+whatever models we find when testing? 
+
+
+2. Testing.
+
+2.1. Given a set of ldst models LDST(ch(i)), we label as in 1.1, but instead of building models as in 1.2, 
+we look for anomalies and flag them.  That is, when we see a LD from a ST that we didnt see in training,
+we report it under the assumption that it is an error.  

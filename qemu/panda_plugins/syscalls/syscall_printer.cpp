@@ -10,7 +10,7 @@ finish_syscall();
 // 1 long sys_exit ['int error_code']
 case 1: {
 record_syscall("sys_exit");
-uint32_t error_code = log_32(env->regs[0], "int error_code");
+int32_t error_code = log_s32(env->regs[0], "int error_code");
 call_sys_exit_callback(env,pc,error_code);
 finish_syscall();
 }; break;
@@ -42,8 +42,8 @@ finish_syscall();
 case 5: {
 record_syscall("sys_open");
 syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
-uint32_t flags = log_32(env->regs[1], "int flags");
-uint32_t mode = log_32(env->regs[2], " int mode");
+int32_t flags = log_s32(env->regs[1], "int flags");
+int32_t mode = log_s32(env->regs[2], " int mode");
 call_sys_open_callback(env,pc,filename,flags,mode);
 finish_syscall();
 }; break;
@@ -58,7 +58,7 @@ finish_syscall();
 case 8: {
 record_syscall("sys_creat");
 syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
-uint32_t mode = log_32(env->regs[1], " int mode");
+int32_t mode = log_s32(env->regs[1], " int mode");
 call_sys_creat_callback(env,pc,pathname,mode);
 finish_syscall();
 }; break;
@@ -97,7 +97,7 @@ finish_syscall();
 case 14: {
 record_syscall("sys_mknod");
 syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
-uint32_t mode = log_32(env->regs[1], " int mode");
+int32_t mode = log_s32(env->regs[1], " int mode");
 uint32_t dev = log_32(env->regs[2], "unsigned dev");
 call_sys_mknod_callback(env,pc,filename,mode,dev);
 finish_syscall();
@@ -161,10 +161,10 @@ finish_syscall();
 // 26 long sys_ptrace ['long request', ' long pid', ' long addr', ' long data']
 case 26: {
 record_syscall("sys_ptrace");
-uint32_t request = log_32(env->regs[0], "long request");
-uint32_t pid = log_32(env->regs[1], " long pid");
-uint32_t addr = log_32(env->regs[2], " long addr");
-uint32_t data = log_32(env->regs[3], " long data");
+int32_t request = log_s32(env->regs[0], "long request");
+int32_t pid = log_s32(env->regs[1], " long pid");
+int32_t addr = log_s32(env->regs[2], " long addr");
+int32_t data = log_s32(env->regs[3], " long data");
 call_sys_ptrace_callback(env,pc,request,pid,addr,data);
 finish_syscall();
 }; break;
@@ -178,14 +178,14 @@ finish_syscall();
 case 33: {
 record_syscall("sys_access");
 syscalls::string filename = log_string(env->regs[0], "const char __user *filename");
-uint32_t mode = log_32(env->regs[1], " int mode");
+int32_t mode = log_s32(env->regs[1], " int mode");
 call_sys_access_callback(env,pc,filename,mode);
 finish_syscall();
 }; break;
 // 34 long sys_nice ['int increment']
 case 34: {
 record_syscall("sys_nice");
-uint32_t increment = log_32(env->regs[0], "int increment");
+int32_t increment = log_s32(env->regs[0], "int increment");
 call_sys_nice_callback(env,pc,increment);
 finish_syscall();
 }; break;
@@ -198,8 +198,8 @@ finish_syscall();
 // 37 long sys_kill ['int pid', ' int sig']
 case 37: {
 record_syscall("sys_kill");
-uint32_t pid = log_32(env->regs[0], "int pid");
-uint32_t sig = log_32(env->regs[1], " int sig");
+int32_t pid = log_s32(env->regs[0], "int pid");
+int32_t sig = log_s32(env->regs[1], " int sig");
 call_sys_kill_callback(env,pc,pid,sig);
 finish_syscall();
 }; break;
@@ -215,7 +215,7 @@ finish_syscall();
 case 39: {
 record_syscall("sys_mkdir");
 syscalls::string pathname = log_string(env->regs[0], "const char __user *pathname");
-uint32_t mode = log_32(env->regs[1], " int mode");
+int32_t mode = log_s32(env->regs[1], " int mode");
 call_sys_mkdir_callback(env,pc,pathname,mode);
 finish_syscall();
 }; break;
@@ -290,7 +290,7 @@ finish_syscall();
 case 52: {
 record_syscall("sys_umount");
 syscalls::string name = log_string(env->regs[0], "char __user *name");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t flags = log_s32(env->regs[1], " int flags");
 call_sys_umount_callback(env,pc,name,flags);
 finish_syscall();
 }; break;
@@ -323,7 +323,7 @@ finish_syscall();
 // 60 long sys_umask ['int mask']
 case 60: {
 record_syscall("sys_umask");
-uint32_t mask = log_32(env->regs[0], "int mask");
+int32_t mask = log_s32(env->regs[0], "int mask");
 call_sys_umask_callback(env,pc,mask);
 finish_syscall();
 }; break;
@@ -371,7 +371,7 @@ finish_syscall();
 // 67 int sigaction ['int sig', ' const struct old_sigaction __user *act', ' struct old_sigaction __user *oact']
 case 67: {
 record_syscall("sigaction");
-uint32_t sig = log_32(env->regs[0], "int sig");
+int32_t sig = log_s32(env->regs[0], "int sig");
 target_ulong act = log_pointer(env->regs[1], " const struct old_sigaction __user *act");
 target_ulong oact = log_pointer(env->regs[2], " struct old_sigaction __user *oact");
 call_sigaction_callback(env,pc,sig,act,oact);
@@ -396,7 +396,7 @@ finish_syscall();
 // 72 long sigsuspend ['int restart', ' unsigned long oldmask', ' old_sigset_t mask']
 case 72: {
 record_syscall("sigsuspend");
-uint32_t restart = log_32(env->regs[0], "int restart");
+int32_t restart = log_s32(env->regs[0], "int restart");
 uint32_t oldmask = log_32(env->regs[1], " unsigned long oldmask");
 uint32_t mask = log_32(env->regs[2], " old_sigset_t mask");
 call_sigsuspend_callback(env,pc,restart,oldmask,mask);
@@ -413,7 +413,7 @@ finish_syscall();
 case 74: {
 record_syscall("sys_sethostname");
 syscalls::string name = log_string(env->regs[0], "char __user *name");
-uint32_t len = log_32(env->regs[1], " int len");
+int32_t len = log_s32(env->regs[1], " int len");
 call_sys_sethostname_callback(env,pc,name,len);
 finish_syscall();
 }; break;
@@ -428,7 +428,7 @@ finish_syscall();
 // 77 long sys_getrusage ['int who', ' struct rusage __user *ru']
 case 77: {
 record_syscall("sys_getrusage");
-uint32_t who = log_32(env->regs[0], "int who");
+int32_t who = log_s32(env->regs[0], "int who");
 target_ulong ru = log_pointer(env->regs[1], " struct rusage __user *ru");
 call_sys_getrusage_callback(env,pc,who,ru);
 finish_syscall();
@@ -452,7 +452,7 @@ finish_syscall();
 // 80 long sys_getgroups16 ['int gidsetsize', ' old_gid_t __user *grouplist']
 case 80: {
 record_syscall("sys_getgroups16");
-uint32_t gidsetsize = log_32(env->regs[0], "int gidsetsize");
+int32_t gidsetsize = log_s32(env->regs[0], "int gidsetsize");
 target_ulong grouplist = log_pointer(env->regs[1], " old_gid_t __user *grouplist");
 call_sys_getgroups16_callback(env,pc,gidsetsize,grouplist);
 finish_syscall();
@@ -460,7 +460,7 @@ finish_syscall();
 // 81 long sys_setgroups16 ['int gidsetsize', ' old_gid_t __user *grouplist']
 case 81: {
 record_syscall("sys_setgroups16");
-uint32_t gidsetsize = log_32(env->regs[0], "int gidsetsize");
+int32_t gidsetsize = log_s32(env->regs[0], "int gidsetsize");
 target_ulong grouplist = log_pointer(env->regs[1], " old_gid_t __user *grouplist");
 call_sys_setgroups16_callback(env,pc,gidsetsize,grouplist);
 finish_syscall();
@@ -478,7 +478,7 @@ case 85: {
 record_syscall("sys_readlink");
 syscalls::string path = log_string(env->regs[0], "const char __user *path");
 target_ulong buf = log_pointer(env->regs[1], "char __user *buf");
-uint32_t bufsiz = log_32(env->regs[2], " int bufsiz");
+int32_t bufsiz = log_s32(env->regs[2], " int bufsiz");
 call_sys_readlink_callback(env,pc,path,buf,bufsiz);
 finish_syscall();
 }; break;
@@ -493,15 +493,15 @@ finish_syscall();
 case 87: {
 record_syscall("sys_swapon");
 syscalls::string specialfile = log_string(env->regs[0], "const char __user *specialfile");
-uint32_t swap_flags = log_32(env->regs[1], " int swap_flags");
+int32_t swap_flags = log_s32(env->regs[1], " int swap_flags");
 call_sys_swapon_callback(env,pc,specialfile,swap_flags);
 finish_syscall();
 }; break;
 // 88 long sys_reboot ['int magic1', ' int magic2', ' unsigned int cmd', 'void __user *arg']
 case 88: {
 record_syscall("sys_reboot");
-uint32_t magic1 = log_32(env->regs[0], "int magic1");
-uint32_t magic2 = log_32(env->regs[1], " int magic2");
+int32_t magic1 = log_s32(env->regs[0], "int magic1");
+int32_t magic2 = log_s32(env->regs[1], " int magic2");
 uint32_t cmd = log_32(env->regs[2], " unsigned int cmd");
 target_ulong arg = log_pointer(env->regs[3], "void __user *arg");
 call_sys_reboot_callback(env,pc,magic1,magic2,cmd,arg);
@@ -551,17 +551,17 @@ finish_syscall();
 // 96 long sys_getpriority ['int which', ' int who']
 case 96: {
 record_syscall("sys_getpriority");
-uint32_t which = log_32(env->regs[0], "int which");
-uint32_t who = log_32(env->regs[1], " int who");
+int32_t which = log_s32(env->regs[0], "int which");
+int32_t who = log_s32(env->regs[1], " int who");
 call_sys_getpriority_callback(env,pc,which,who);
 finish_syscall();
 }; break;
 // 97 long sys_setpriority ['int which', ' int who', ' int niceval']
 case 97: {
 record_syscall("sys_setpriority");
-uint32_t which = log_32(env->regs[0], "int which");
-uint32_t who = log_32(env->regs[1], " int who");
-uint32_t niceval = log_32(env->regs[2], " int niceval");
+int32_t which = log_s32(env->regs[0], "int which");
+int32_t who = log_s32(env->regs[1], " int who");
+int32_t niceval = log_s32(env->regs[2], " int niceval");
 call_sys_setpriority_callback(env,pc,which,who,niceval);
 finish_syscall();
 }; break;
@@ -584,16 +584,16 @@ finish_syscall();
 // 103 long sys_syslog ['int type', ' char __user *buf', ' int len']
 case 103: {
 record_syscall("sys_syslog");
-uint32_t type = log_32(env->regs[0], "int type");
+int32_t type = log_s32(env->regs[0], "int type");
 target_ulong buf = log_pointer(env->regs[1], " char __user *buf");
-uint32_t len = log_32(env->regs[2], " int len");
+int32_t len = log_s32(env->regs[2], " int len");
 call_sys_syslog_callback(env,pc,type,buf,len);
 finish_syscall();
 }; break;
 // 104 long sys_setitimer ['int which', 'struct itimerval __user *value', 'struct itimerval __user *ovalue']
 case 104: {
 record_syscall("sys_setitimer");
-uint32_t which = log_32(env->regs[0], "int which");
+int32_t which = log_s32(env->regs[0], "int which");
 target_ulong value = log_pointer(env->regs[1], "struct itimerval __user *value");
 target_ulong ovalue = log_pointer(env->regs[2], "struct itimerval __user *ovalue");
 call_sys_setitimer_callback(env,pc,which,value,ovalue);
@@ -602,7 +602,7 @@ finish_syscall();
 // 105 long sys_getitimer ['int which', ' struct itimerval __user *value']
 case 105: {
 record_syscall("sys_getitimer");
-uint32_t which = log_32(env->regs[0], "int which");
+int32_t which = log_s32(env->regs[0], "int which");
 target_ulong value = log_pointer(env->regs[1], " struct itimerval __user *value");
 call_sys_getitimer_callback(env,pc,which,value);
 finish_syscall();
@@ -642,7 +642,7 @@ case 114: {
 record_syscall("sys_wait4");
 uint32_t pid = log_32(env->regs[0], "pid_t pid");
 target_ulong stat_addr = log_pointer(env->regs[1], " int __user *stat_addr");
-uint32_t options = log_32(env->regs[2], "int options");
+int32_t options = log_s32(env->regs[2], "int options");
 target_ulong ru = log_pointer(env->regs[3], " struct rusage __user *ru");
 call_sys_wait4_callback(env,pc,pid,stat_addr,options,ru);
 finish_syscall();
@@ -680,7 +680,7 @@ record_syscall("clone");
 uint32_t clone_flags = log_32(env->regs[0], "unsigned long clone_flags");
 uint32_t newsp = log_32(env->regs[1], " unsigned long newsp");
 target_ulong parent_tidptr = log_pointer(env->regs[2], " int __user *parent_tidptr");
-uint32_t tls_val = log_32(env->regs[3], " int tls_val");
+int32_t tls_val = log_s32(env->regs[3], " int tls_val");
 target_ulong child_tidptr = log_pointer(env->regs[4], " int __user *child_tidptr");
 target_ulong regs = log_pointer(env->regs[5], " struct pt_regs *regs");
 call_clone_callback(env,pc,clone_flags,newsp,parent_tidptr,tls_val,child_tidptr,regs);
@@ -690,7 +690,7 @@ finish_syscall();
 case 121: {
 record_syscall("sys_setdomainname");
 syscalls::string name = log_string(env->regs[0], "char __user *name");
-uint32_t len = log_32(env->regs[1], " int len");
+int32_t len = log_s32(env->regs[1], " int len");
 call_sys_setdomainname_callback(env,pc,name,len);
 finish_syscall();
 }; break;
@@ -720,7 +720,7 @@ finish_syscall();
 // 126 long sys_sigprocmask ['int how', ' old_sigset_t __user *set', 'old_sigset_t __user *oset']
 case 126: {
 record_syscall("sys_sigprocmask");
-uint32_t how = log_32(env->regs[0], "int how");
+int32_t how = log_s32(env->regs[0], "int how");
 target_ulong set = log_pointer(env->regs[1], " old_sigset_t __user *set");
 target_ulong oset = log_pointer(env->regs[2], "old_sigset_t __user *oset");
 call_sys_sigprocmask_callback(env,pc,how,set,oset);
@@ -770,15 +770,15 @@ finish_syscall();
 // 134 long sys_bdflush ['int func', ' long data']
 case 134: {
 record_syscall("sys_bdflush");
-uint32_t func = log_32(env->regs[0], "int func");
-uint32_t data = log_32(env->regs[1], " long data");
+int32_t func = log_s32(env->regs[0], "int func");
+int32_t data = log_s32(env->regs[1], " long data");
 call_sys_bdflush_callback(env,pc,func,data);
 finish_syscall();
 }; break;
 // 135 long sys_sysfs ['int option', 'unsigned long arg1', ' unsigned long arg2']
 case 135: {
 record_syscall("sys_sysfs");
-uint32_t option = log_32(env->regs[0], "int option");
+int32_t option = log_s32(env->regs[0], "int option");
 uint32_t arg1 = log_32(env->regs[1], "unsigned long arg1");
 uint32_t arg2 = log_32(env->regs[2], " unsigned long arg2");
 call_sys_sysfs_callback(env,pc,option,arg1,arg2);
@@ -787,7 +787,7 @@ finish_syscall();
 // 136 long sys_personality ['u_long personality']
 case 136: {
 record_syscall("sys_personality");
-uint32_t personality = log_32(env->regs[0], "u_long personality");
+int32_t personality = log_s32(env->regs[0], "u_long personality");
 call_sys_personality_callback(env,pc,personality);
 finish_syscall();
 }; break;
@@ -828,7 +828,7 @@ finish_syscall();
 // 142 long sys_select ['int n', ' fd_set __user *inp', ' fd_set __user *outp', 'fd_set __user *exp', ' struct timeval __user *tvp']
 case 142: {
 record_syscall("sys_select");
-uint32_t n = log_32(env->regs[0], "int n");
+int32_t n = log_s32(env->regs[0], "int n");
 target_ulong inp = log_pointer(env->regs[1], " fd_set __user *inp");
 target_ulong outp = log_pointer(env->regs[2], " fd_set __user *outp");
 target_ulong exp = log_pointer(env->regs[3], "fd_set __user *exp");
@@ -849,7 +849,7 @@ case 144: {
 record_syscall("sys_msync");
 uint32_t start = log_32(env->regs[0], "unsigned long start");
 uint32_t len = log_32(env->regs[1], " size_t len");
-uint32_t flags = log_32(env->regs[2], " int flags");
+int32_t flags = log_s32(env->regs[2], " int flags");
 call_sys_msync_callback(env,pc,start,len,flags);
 finish_syscall();
 }; break;
@@ -911,7 +911,7 @@ finish_syscall();
 // 152 long sys_mlockall ['int flags']
 case 152: {
 record_syscall("sys_mlockall");
-uint32_t flags = log_32(env->regs[0], "int flags");
+int32_t flags = log_s32(env->regs[0], "int flags");
 call_sys_mlockall_callback(env,pc,flags);
 finish_syscall();
 }; break;
@@ -941,7 +941,7 @@ finish_syscall();
 case 156: {
 record_syscall("sys_sched_setscheduler");
 uint32_t pid = log_32(env->regs[0], "pid_t pid");
-uint32_t policy = log_32(env->regs[1], " int policy");
+int32_t policy = log_s32(env->regs[1], " int policy");
 target_ulong param = log_pointer(env->regs[2], "struct sched_param __user *param");
 call_sys_sched_setscheduler_callback(env,pc,pid,policy,param);
 finish_syscall();
@@ -962,14 +962,14 @@ finish_syscall();
 // 159 long sys_sched_get_priority_max ['int policy']
 case 159: {
 record_syscall("sys_sched_get_priority_max");
-uint32_t policy = log_32(env->regs[0], "int policy");
+int32_t policy = log_s32(env->regs[0], "int policy");
 call_sys_sched_get_priority_max_callback(env,pc,policy);
 finish_syscall();
 }; break;
 // 160 long sys_sched_get_priority_min ['int policy']
 case 160: {
 record_syscall("sys_sched_get_priority_min");
-uint32_t policy = log_32(env->regs[0], "int policy");
+int32_t policy = log_s32(env->regs[0], "int policy");
 call_sys_sched_get_priority_min_callback(env,pc,policy);
 finish_syscall();
 }; break;
@@ -1023,14 +1023,14 @@ case 168: {
 record_syscall("sys_poll");
 target_ulong ufds = log_pointer(env->regs[0], "struct pollfd __user *ufds");
 uint32_t nfds = log_32(env->regs[1], " unsigned int nfds");
-uint32_t timeout = log_32(env->regs[2], "long timeout");
+int32_t timeout = log_s32(env->regs[2], "long timeout");
 call_sys_poll_callback(env,pc,ufds,nfds,timeout);
 finish_syscall();
 }; break;
 // 169 long sys_nfsservctl ['int cmd', 'struct nfsctl_arg __user *arg', 'void __user *res']
 case 169: {
 record_syscall("sys_nfsservctl");
-uint32_t cmd = log_32(env->regs[0], "int cmd");
+int32_t cmd = log_s32(env->regs[0], "int cmd");
 target_ulong arg = log_pointer(env->regs[1], "struct nfsctl_arg __user *arg");
 target_ulong res = log_pointer(env->regs[2], "void __user *res");
 call_sys_nfsservctl_callback(env,pc,cmd,arg,res);
@@ -1057,7 +1057,7 @@ finish_syscall();
 // 172 long sys_prctl ['int option', ' unsigned long arg2', ' unsigned long arg3', 'unsigned long arg4', ' unsigned long arg5']
 case 172: {
 record_syscall("sys_prctl");
-uint32_t option = log_32(env->regs[0], "int option");
+int32_t option = log_s32(env->regs[0], "int option");
 uint32_t arg2 = log_32(env->regs[1], " unsigned long arg2");
 uint32_t arg3 = log_32(env->regs[2], " unsigned long arg3");
 uint32_t arg4 = log_32(env->regs[3], "unsigned long arg4");
@@ -1074,7 +1074,7 @@ finish_syscall();
 // 174 long rt_sigaction ['int sig', ' const struct sigaction __user * act', ' struct sigaction __user * oact', '  size_t sigsetsize']
 case 174: {
 record_syscall("rt_sigaction");
-uint32_t sig = log_32(env->regs[0], "int sig");
+int32_t sig = log_s32(env->regs[0], "int sig");
 target_ulong act = log_pointer(env->regs[1], " const struct sigaction __user * act");
 target_ulong oact = log_pointer(env->regs[2], " struct sigaction __user * oact");
 uint32_t sigsetsize = log_32(env->regs[3], "  size_t sigsetsize");
@@ -1084,7 +1084,7 @@ finish_syscall();
 // 175 long sys_rt_sigprocmask ['int how', ' sigset_t __user *set', 'sigset_t __user *oset', ' size_t sigsetsize']
 case 175: {
 record_syscall("sys_rt_sigprocmask");
-uint32_t how = log_32(env->regs[0], "int how");
+int32_t how = log_s32(env->regs[0], "int how");
 target_ulong set = log_pointer(env->regs[1], " sigset_t __user *set");
 target_ulong oset = log_pointer(env->regs[2], "sigset_t __user *oset");
 uint32_t sigsetsize = log_32(env->regs[3], " size_t sigsetsize");
@@ -1112,8 +1112,8 @@ finish_syscall();
 // 178 long sys_rt_sigqueueinfo ['int pid', ' int sig', ' siginfo_t __user *uinfo']
 case 178: {
 record_syscall("sys_rt_sigqueueinfo");
-uint32_t pid = log_32(env->regs[0], "int pid");
-uint32_t sig = log_32(env->regs[1], " int sig");
+int32_t pid = log_s32(env->regs[0], "int pid");
+int32_t sig = log_s32(env->regs[1], " int sig");
 target_ulong uinfo = log_pointer(env->regs[2], " siginfo_t __user *uinfo");
 call_sys_rt_sigqueueinfo_callback(env,pc,pid,sig,uinfo);
 finish_syscall();
@@ -1192,8 +1192,8 @@ finish_syscall();
 // 187 long sys_sendfile ['int out_fd', ' int in_fd', 'off_t __user *offset', ' size_t count']
 case 187: {
 record_syscall("sys_sendfile");
-uint32_t out_fd = log_32(env->regs[0], "int out_fd");
-uint32_t in_fd = log_32(env->regs[1], " int in_fd");
+int32_t out_fd = log_s32(env->regs[0], "int out_fd");
+int32_t in_fd = log_s32(env->regs[1], " int in_fd");
 target_ulong offset = log_pointer(env->regs[2], "off_t __user *offset");
 uint32_t count = log_32(env->regs[3], " size_t count");
 call_sys_sendfile_callback(env,pc,out_fd,in_fd,offset,count);
@@ -1319,7 +1319,7 @@ finish_syscall();
 // 205 long sys_getgroups ['int gidsetsize', ' gid_t __user *grouplist']
 case 205: {
 record_syscall("sys_getgroups");
-uint32_t gidsetsize = log_32(env->regs[0], "int gidsetsize");
+int32_t gidsetsize = log_s32(env->regs[0], "int gidsetsize");
 target_ulong grouplist = log_pointer(env->regs[1], " gid_t __user *grouplist");
 call_sys_getgroups_callback(env,pc,gidsetsize,grouplist);
 finish_syscall();
@@ -1327,7 +1327,7 @@ finish_syscall();
 // 206 long sys_setgroups ['int gidsetsize', ' gid_t __user *grouplist']
 case 206: {
 record_syscall("sys_setgroups");
-uint32_t gidsetsize = log_32(env->regs[0], "int gidsetsize");
+int32_t gidsetsize = log_s32(env->regs[0], "int gidsetsize");
 target_ulong grouplist = log_pointer(env->regs[1], " gid_t __user *grouplist");
 call_sys_setgroups_callback(env,pc,gidsetsize,grouplist);
 finish_syscall();
@@ -1445,7 +1445,7 @@ case 220: {
 record_syscall("sys_madvise");
 uint32_t start = log_32(env->regs[0], "unsigned long start");
 uint32_t len = log_32(env->regs[1], " size_t len");
-uint32_t behavior = log_32(env->regs[2], " int behavior");
+int32_t behavior = log_s32(env->regs[2], " int behavior");
 call_sys_madvise_callback(env,pc,start,len,behavior);
 finish_syscall();
 }; break;
@@ -1467,7 +1467,7 @@ finish_syscall();
 // 225 long sys_readahead ['int fd', ' loff_t offset', ' size_t count']
 case 225: {
 record_syscall("sys_readahead");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 // skipping arg for alignment
 uint64_t offset = log_64(env->regs[2], env->regs[3], " loff_t offset");
 uint32_t count = log_32(env->regs[4], " size_t count");
@@ -1481,7 +1481,7 @@ syscalls::string path = log_string(env->regs[0], "const char __user *path");
 syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
-uint32_t flags = log_32(env->regs[4], " int flags");
+int32_t flags = log_s32(env->regs[4], " int flags");
 call_sys_setxattr_callback(env,pc,path,name,value,size,flags);
 finish_syscall();
 }; break;
@@ -1492,18 +1492,18 @@ syscalls::string path = log_string(env->regs[0], "const char __user *path");
 syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
-uint32_t flags = log_32(env->regs[4], " int flags");
+int32_t flags = log_s32(env->regs[4], " int flags");
 call_sys_lsetxattr_callback(env,pc,path,name,value,size,flags);
 finish_syscall();
 }; break;
 // 228 long sys_fsetxattr ['int fd', ' const char __user *name', 'const void __user *value', ' size_t size', ' int flags']
 case 228: {
 record_syscall("sys_fsetxattr");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "const void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
-uint32_t flags = log_32(env->regs[4], " int flags");
+int32_t flags = log_s32(env->regs[4], " int flags");
 call_sys_fsetxattr_callback(env,pc,fd,name,value,size,flags);
 finish_syscall();
 }; break;
@@ -1530,7 +1530,7 @@ finish_syscall();
 // 231 long sys_fgetxattr ['int fd', ' const char __user *name', 'void __user *value', ' size_t size']
 case 231: {
 record_syscall("sys_fgetxattr");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 syscalls::string name = log_string(env->regs[1], " const char __user *name");
 target_ulong value = log_pointer(env->regs[2], "void __user *value");
 uint32_t size = log_32(env->regs[3], " size_t size");
@@ -1558,7 +1558,7 @@ finish_syscall();
 // 234 long sys_flistxattr ['int fd', ' char __user *list', ' size_t size']
 case 234: {
 record_syscall("sys_flistxattr");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 syscalls::string list = log_string(env->regs[1], " char __user *list");
 uint32_t size = log_32(env->regs[2], " size_t size");
 call_sys_flistxattr_callback(env,pc,fd,list,size);
@@ -1583,7 +1583,7 @@ finish_syscall();
 // 237 long sys_fremovexattr ['int fd', ' const char __user *name']
 case 237: {
 record_syscall("sys_fremovexattr");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 syscalls::string name = log_string(env->regs[1], " const char __user *name");
 call_sys_fremovexattr_callback(env,pc,fd,name);
 finish_syscall();
@@ -1591,16 +1591,16 @@ finish_syscall();
 // 238 long sys_tkill ['int pid', ' int sig']
 case 238: {
 record_syscall("sys_tkill");
-uint32_t pid = log_32(env->regs[0], "int pid");
-uint32_t sig = log_32(env->regs[1], " int sig");
+int32_t pid = log_s32(env->regs[0], "int pid");
+int32_t sig = log_s32(env->regs[1], " int sig");
 call_sys_tkill_callback(env,pc,pid,sig);
 finish_syscall();
 }; break;
 // 239 long sys_sendfile64 ['int out_fd', ' int in_fd', 'loff_t __user *offset', ' size_t count']
 case 239: {
 record_syscall("sys_sendfile64");
-uint32_t out_fd = log_32(env->regs[0], "int out_fd");
-uint32_t in_fd = log_32(env->regs[1], " int in_fd");
+int32_t out_fd = log_s32(env->regs[0], "int out_fd");
+int32_t in_fd = log_s32(env->regs[1], " int in_fd");
 target_ulong offset = log_pointer(env->regs[2], "loff_t __user *offset");
 uint32_t count = log_32(env->regs[3], " size_t count");
 call_sys_sendfile64_callback(env,pc,out_fd,in_fd,offset,count);
@@ -1610,7 +1610,7 @@ finish_syscall();
 case 240: {
 record_syscall("sys_futex");
 target_ulong uaddr = log_pointer(env->regs[0], "u32 __user *uaddr");
-uint32_t op = log_32(env->regs[1], " int op");
+int32_t op = log_s32(env->regs[1], " int op");
 uint32_t val = log_32(env->regs[2], " u32 val");
 target_ulong utime = log_pointer(env->regs[3], "struct timespec __user *utime");
 target_ulong uaddr2 = log_pointer(env->regs[4], " u32 __user *uaddr2");
@@ -1655,8 +1655,8 @@ finish_syscall();
 case 245: {
 record_syscall("sys_io_getevents");
 uint32_t ctx_id = log_32(env->regs[0], "aio_context_t ctx_id");
-uint32_t min_nr = log_32(env->regs[1], "long min_nr");
-uint32_t nr = log_32(env->regs[2], "long nr");
+int32_t min_nr = log_s32(env->regs[1], "long min_nr");
+int32_t nr = log_s32(env->regs[2], "long nr");
 target_ulong events = log_pointer(env->regs[3], "struct io_event __user *events");
 target_ulong timeout = log_pointer(env->regs[4], "struct timespec __user *timeout");
 call_sys_io_getevents_callback(env,pc,ctx_id,min_nr,nr,events,timeout);
@@ -1666,7 +1666,7 @@ finish_syscall();
 case 246: {
 record_syscall("sys_io_submit");
 uint32_t arg0 = log_32(env->regs[0], "aio_context_t");
-uint32_t arg1 = log_32(env->regs[1], " long");
+int32_t arg1 = log_s32(env->regs[1], " long");
 target_ulong arg2 = log_pointer(env->regs[2], "struct iocb __user * __user *");
 call_sys_io_submit_callback(env,pc,arg0,arg1,arg2);
 finish_syscall();
@@ -1683,7 +1683,7 @@ finish_syscall();
 // 248 long sys_exit_group ['int error_code']
 case 248: {
 record_syscall("sys_exit_group");
-uint32_t error_code = log_32(env->regs[0], "int error_code");
+int32_t error_code = log_s32(env->regs[0], "int error_code");
 call_sys_exit_group_callback(env,pc,error_code);
 finish_syscall();
 }; break;
@@ -1699,16 +1699,16 @@ finish_syscall();
 // 250 long sys_epoll_create ['int size']
 case 250: {
 record_syscall("sys_epoll_create");
-uint32_t size = log_32(env->regs[0], "int size");
+int32_t size = log_s32(env->regs[0], "int size");
 call_sys_epoll_create_callback(env,pc,size);
 finish_syscall();
 }; break;
 // 251 long sys_epoll_ctl ['int epfd', ' int op', ' int fd', 'struct epoll_event __user *event']
 case 251: {
 record_syscall("sys_epoll_ctl");
-uint32_t epfd = log_32(env->regs[0], "int epfd");
-uint32_t op = log_32(env->regs[1], " int op");
-uint32_t fd = log_32(env->regs[2], " int fd");
+int32_t epfd = log_s32(env->regs[0], "int epfd");
+int32_t op = log_s32(env->regs[1], " int op");
+int32_t fd = log_s32(env->regs[2], " int fd");
 target_ulong event = log_pointer(env->regs[3], "struct epoll_event __user *event");
 call_sys_epoll_ctl_callback(env,pc,epfd,op,fd,event);
 finish_syscall();
@@ -1716,10 +1716,10 @@ finish_syscall();
 // 252 long sys_epoll_wait ['int epfd', ' struct epoll_event __user *events', 'int maxevents', ' int timeout']
 case 252: {
 record_syscall("sys_epoll_wait");
-uint32_t epfd = log_32(env->regs[0], "int epfd");
+int32_t epfd = log_s32(env->regs[0], "int epfd");
 target_ulong events = log_pointer(env->regs[1], " struct epoll_event __user *events");
-uint32_t maxevents = log_32(env->regs[2], "int maxevents");
-uint32_t timeout = log_32(env->regs[3], " int timeout");
+int32_t maxevents = log_s32(env->regs[2], "int maxevents");
+int32_t timeout = log_s32(env->regs[3], " int timeout");
 call_sys_epoll_wait_callback(env,pc,epfd,events,maxevents,timeout);
 finish_syscall();
 }; break;
@@ -1754,7 +1754,7 @@ finish_syscall();
 case 258: {
 record_syscall("sys_timer_settime");
 uint32_t timer_id = log_32(env->regs[0], "timer_t timer_id");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t flags = log_s32(env->regs[1], " int flags");
 target_ulong new_setting = log_pointer(env->regs[2], "const struct itimerspec __user *new_setting");
 target_ulong old_setting = log_pointer(env->regs[3], "struct itimerspec __user *old_setting");
 call_sys_timer_settime_callback(env,pc,timer_id,flags,new_setting,old_setting);
@@ -1810,7 +1810,7 @@ finish_syscall();
 case 265: {
 record_syscall("sys_clock_nanosleep");
 uint32_t which_clock = log_32(env->regs[0], "clockid_t which_clock");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t flags = log_s32(env->regs[1], " int flags");
 target_ulong rqtp = log_pointer(env->regs[2], "const struct timespec __user *rqtp");
 target_ulong rmtp = log_pointer(env->regs[3], "struct timespec __user *rmtp");
 call_sys_clock_nanosleep_callback(env,pc,which_clock,flags,rqtp,rmtp);
@@ -1837,9 +1837,9 @@ finish_syscall();
 // 268 long sys_tgkill ['int tgid', ' int pid', ' int sig']
 case 268: {
 record_syscall("sys_tgkill");
-uint32_t tgid = log_32(env->regs[0], "int tgid");
-uint32_t pid = log_32(env->regs[1], " int pid");
-uint32_t sig = log_32(env->regs[2], " int sig");
+int32_t tgid = log_s32(env->regs[0], "int tgid");
+int32_t pid = log_s32(env->regs[1], " int pid");
+int32_t sig = log_s32(env->regs[2], " int sig");
 call_sys_tgkill_callback(env,pc,tgid,pid,sig);
 finish_syscall();
 }; break;
@@ -1854,8 +1854,8 @@ finish_syscall();
 // 270 long sys_arm_fadvise64_64 ['int fd', ' int advice', ' loff_t offset', ' loff_t len']
 case 270: {
 record_syscall("sys_arm_fadvise64_64");
-uint32_t fd = log_32(env->regs[0], "int fd");
-uint32_t advice = log_32(env->regs[1], " int advice");
+int32_t fd = log_s32(env->regs[0], "int fd");
+int32_t advice = log_s32(env->regs[1], " int advice");
 uint64_t offset = log_64(env->regs[2], env->regs[3], " loff_t offset");
 uint64_t len = log_64(env->regs[4], env->regs[5], " loff_t len");
 call_sys_arm_fadvise64_64_callback(env,pc,fd,advice,offset,len);
@@ -1864,7 +1864,7 @@ finish_syscall();
 // 271 long sys_pciconfig_iobase ['long which', ' unsigned long bus', ' unsigned long devfn']
 case 271: {
 record_syscall("sys_pciconfig_iobase");
-uint32_t which = log_32(env->regs[0], "long which");
+int32_t which = log_s32(env->regs[0], "long which");
 uint32_t bus = log_32(env->regs[1], " unsigned long bus");
 uint32_t devfn = log_32(env->regs[2], " unsigned long devfn");
 call_sys_pciconfig_iobase_callback(env,pc,which,bus,devfn);
@@ -1896,7 +1896,7 @@ finish_syscall();
 case 274: {
 record_syscall("sys_mq_open");
 syscalls::string name = log_string(env->regs[0], "const char __user *name");
-uint32_t oflag = log_32(env->regs[1], " int oflag");
+int32_t oflag = log_s32(env->regs[1], " int oflag");
 uint32_t mode = log_32(env->regs[2], " mode_t mode");
 target_ulong attr = log_pointer(env->regs[3], " struct mq_attr __user *attr");
 call_sys_mq_open_callback(env,pc,name,oflag,mode,attr);
@@ -1951,10 +1951,10 @@ finish_syscall();
 // 280 long sys_waitid ['int which', ' pid_t pid', 'struct siginfo __user *infop', 'int options', ' struct rusage __user *ru']
 case 280: {
 record_syscall("sys_waitid");
-uint32_t which = log_32(env->regs[0], "int which");
+int32_t which = log_s32(env->regs[0], "int which");
 uint32_t pid = log_32(env->regs[1], " pid_t pid");
 target_ulong infop = log_pointer(env->regs[2], "struct siginfo __user *infop");
-uint32_t options = log_32(env->regs[3], "int options");
+int32_t options = log_s32(env->regs[3], "int options");
 target_ulong ru = log_pointer(env->regs[4], " struct rusage __user *ru");
 call_sys_waitid_callback(env,pc,which,pid,infop,options,ru);
 finish_syscall();
@@ -1962,42 +1962,42 @@ finish_syscall();
 // 281 long sys_socket ['int', ' int', ' int']
 case 281: {
 record_syscall("sys_socket");
-uint32_t arg0 = log_32(env->regs[0], "int");
-uint32_t arg1 = log_32(env->regs[1], " int");
-uint32_t arg2 = log_32(env->regs[2], " int");
+int32_t arg0 = log_s32(env->regs[0], "int");
+int32_t arg1 = log_s32(env->regs[1], " int");
+int32_t arg2 = log_s32(env->regs[2], " int");
 call_sys_socket_callback(env,pc,arg0,arg1,arg2);
 finish_syscall();
 }; break;
 // 282 long sys_bind ['int', ' struct sockaddr __user *', ' int']
 case 282: {
 record_syscall("sys_bind");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " struct sockaddr __user *");
-uint32_t arg2 = log_32(env->regs[2], " int");
+int32_t arg2 = log_s32(env->regs[2], " int");
 call_sys_bind_callback(env,pc,arg0,arg1,arg2);
 finish_syscall();
 }; break;
 // 283 long sys_connect ['int', ' struct sockaddr __user *', ' int']
 case 283: {
 record_syscall("sys_connect");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " struct sockaddr __user *");
-uint32_t arg2 = log_32(env->regs[2], " int");
+int32_t arg2 = log_s32(env->regs[2], " int");
 call_sys_connect_callback(env,pc,arg0,arg1,arg2);
 finish_syscall();
 }; break;
 // 284 long sys_listen ['int', ' int']
 case 284: {
 record_syscall("sys_listen");
-uint32_t arg0 = log_32(env->regs[0], "int");
-uint32_t arg1 = log_32(env->regs[1], " int");
+int32_t arg0 = log_s32(env->regs[0], "int");
+int32_t arg1 = log_s32(env->regs[1], " int");
 call_sys_listen_callback(env,pc,arg0,arg1);
 finish_syscall();
 }; break;
 // 285 long sys_accept ['int', ' struct sockaddr __user *', ' int __user *']
 case 285: {
 record_syscall("sys_accept");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " struct sockaddr __user *");
 target_ulong arg2 = log_pointer(env->regs[2], " int __user *");
 call_sys_accept_callback(env,pc,arg0,arg1,arg2);
@@ -2006,7 +2006,7 @@ finish_syscall();
 // 286 long sys_getsockname ['int', ' struct sockaddr __user *', ' int __user *']
 case 286: {
 record_syscall("sys_getsockname");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " struct sockaddr __user *");
 target_ulong arg2 = log_pointer(env->regs[2], " int __user *");
 call_sys_getsockname_callback(env,pc,arg0,arg1,arg2);
@@ -2015,7 +2015,7 @@ finish_syscall();
 // 287 long sys_getpeername ['int', ' struct sockaddr __user *', ' int __user *']
 case 287: {
 record_syscall("sys_getpeername");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " struct sockaddr __user *");
 target_ulong arg2 = log_pointer(env->regs[2], " int __user *");
 call_sys_getpeername_callback(env,pc,arg0,arg1,arg2);
@@ -2024,9 +2024,9 @@ finish_syscall();
 // 288 long sys_socketpair ['int', ' int', ' int', ' int __user *']
 case 288: {
 record_syscall("sys_socketpair");
-uint32_t arg0 = log_32(env->regs[0], "int");
-uint32_t arg1 = log_32(env->regs[1], " int");
-uint32_t arg2 = log_32(env->regs[2], " int");
+int32_t arg0 = log_s32(env->regs[0], "int");
+int32_t arg1 = log_s32(env->regs[1], " int");
+int32_t arg2 = log_s32(env->regs[2], " int");
 target_ulong arg3 = log_pointer(env->regs[3], " int __user *");
 call_sys_socketpair_callback(env,pc,arg0,arg1,arg2,arg3);
 finish_syscall();
@@ -2034,7 +2034,7 @@ finish_syscall();
 // 289 long sys_send ['int', ' void __user *', ' size_t', ' unsigned']
 case 289: {
 record_syscall("sys_send");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " void __user *");
 uint32_t arg2 = log_32(env->regs[2], " size_t");
 uint32_t arg3 = log_32(env->regs[3], " unsigned");
@@ -2044,19 +2044,19 @@ finish_syscall();
 // 290 long sys_sendto ['int', ' void __user *', ' size_t', ' unsigned', 'struct sockaddr __user *', ' int']
 case 290: {
 record_syscall("sys_sendto");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " void __user *");
 uint32_t arg2 = log_32(env->regs[2], " size_t");
 uint32_t arg3 = log_32(env->regs[3], " unsigned");
 target_ulong arg4 = log_pointer(env->regs[4], "struct sockaddr __user *");
-uint32_t arg5 = log_32(env->regs[5], " int");
+int32_t arg5 = log_s32(env->regs[5], " int");
 call_sys_sendto_callback(env,pc,arg0,arg1,arg2,arg3,arg4,arg5);
 finish_syscall();
 }; break;
 // 291 long sys_recv ['int', ' void __user *', ' size_t', ' unsigned']
 case 291: {
 record_syscall("sys_recv");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " void __user *");
 uint32_t arg2 = log_32(env->regs[2], " size_t");
 uint32_t arg3 = log_32(env->regs[3], " unsigned");
@@ -2066,7 +2066,7 @@ finish_syscall();
 // 292 long sys_recvfrom ['int', ' void __user *', ' size_t', ' unsigned', 'struct sockaddr __user *', ' int __user *']
 case 292: {
 record_syscall("sys_recvfrom");
-uint32_t arg0 = log_32(env->regs[0], "int");
+int32_t arg0 = log_s32(env->regs[0], "int");
 target_ulong arg1 = log_pointer(env->regs[1], " void __user *");
 uint32_t arg2 = log_32(env->regs[2], " size_t");
 uint32_t arg3 = log_32(env->regs[3], " unsigned");
@@ -2078,28 +2078,28 @@ finish_syscall();
 // 293 long sys_shutdown ['int', ' int']
 case 293: {
 record_syscall("sys_shutdown");
-uint32_t arg0 = log_32(env->regs[0], "int");
-uint32_t arg1 = log_32(env->regs[1], " int");
+int32_t arg0 = log_s32(env->regs[0], "int");
+int32_t arg1 = log_s32(env->regs[1], " int");
 call_sys_shutdown_callback(env,pc,arg0,arg1);
 finish_syscall();
 }; break;
 // 294 long sys_setsockopt ['int fd', ' int level', ' int optname', 'char __user *optval', ' int optlen']
 case 294: {
 record_syscall("sys_setsockopt");
-uint32_t fd = log_32(env->regs[0], "int fd");
-uint32_t level = log_32(env->regs[1], " int level");
-uint32_t optname = log_32(env->regs[2], " int optname");
+int32_t fd = log_s32(env->regs[0], "int fd");
+int32_t level = log_s32(env->regs[1], " int level");
+int32_t optname = log_s32(env->regs[2], " int optname");
 syscalls::string optval = log_string(env->regs[3], "char __user *optval");
-uint32_t optlen = log_32(env->regs[4], " int optlen");
+int32_t optlen = log_s32(env->regs[4], " int optlen");
 call_sys_setsockopt_callback(env,pc,fd,level,optname,optval,optlen);
 finish_syscall();
 }; break;
 // 295 long sys_getsockopt ['int fd', ' int level', ' int optname', 'char __user *optval', ' int __user *optlen']
 case 295: {
 record_syscall("sys_getsockopt");
-uint32_t fd = log_32(env->regs[0], "int fd");
-uint32_t level = log_32(env->regs[1], " int level");
-uint32_t optname = log_32(env->regs[2], " int optname");
+int32_t fd = log_s32(env->regs[0], "int fd");
+int32_t level = log_s32(env->regs[1], " int level");
+int32_t optname = log_s32(env->regs[2], " int optname");
 syscalls::string optval = log_string(env->regs[3], "char __user *optval");
 target_ulong optlen = log_pointer(env->regs[4], " int __user *optlen");
 call_sys_getsockopt_callback(env,pc,fd,level,optname,optval,optlen);
@@ -2108,7 +2108,7 @@ finish_syscall();
 // 296 long sys_sendmsg ['int fd', ' struct msghdr __user *msg', ' unsigned flags']
 case 296: {
 record_syscall("sys_sendmsg");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 target_ulong msg = log_pointer(env->regs[1], " struct msghdr __user *msg");
 uint32_t flags = log_32(env->regs[2], " unsigned flags");
 call_sys_sendmsg_callback(env,pc,fd,msg,flags);
@@ -2117,7 +2117,7 @@ finish_syscall();
 // 297 long sys_recvmsg ['int fd', ' struct msghdr __user *msg', ' unsigned flags']
 case 297: {
 record_syscall("sys_recvmsg");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 target_ulong msg = log_pointer(env->regs[1], " struct msghdr __user *msg");
 uint32_t flags = log_32(env->regs[2], " unsigned flags");
 call_sys_recvmsg_callback(env,pc,fd,msg,flags);
@@ -2126,7 +2126,7 @@ finish_syscall();
 // 298 long sys_semop ['int semid', ' struct sembuf __user *sops', 'unsigned nsops']
 case 298: {
 record_syscall("sys_semop");
-uint32_t semid = log_32(env->regs[0], "int semid");
+int32_t semid = log_s32(env->regs[0], "int semid");
 target_ulong sops = log_pointer(env->regs[1], " struct sembuf __user *sops");
 uint32_t nsops = log_32(env->regs[2], "unsigned nsops");
 call_sys_semop_callback(env,pc,semid,sops,nsops);
@@ -2136,17 +2136,17 @@ finish_syscall();
 case 299: {
 record_syscall("sys_semget");
 uint32_t key = log_32(env->regs[0], "key_t key");
-uint32_t nsems = log_32(env->regs[1], " int nsems");
-uint32_t semflg = log_32(env->regs[2], " int semflg");
+int32_t nsems = log_s32(env->regs[1], " int nsems");
+int32_t semflg = log_s32(env->regs[2], " int semflg");
 call_sys_semget_callback(env,pc,key,nsems,semflg);
 finish_syscall();
 }; break;
 // 300 long sys_semctl ['int semid', ' int semnum', ' int cmd', ' union semun arg']
 case 300: {
 record_syscall("sys_semctl");
-uint32_t semid = log_32(env->regs[0], "int semid");
-uint32_t semnum = log_32(env->regs[1], " int semnum");
-uint32_t cmd = log_32(env->regs[2], " int cmd");
+int32_t semid = log_s32(env->regs[0], "int semid");
+int32_t semnum = log_s32(env->regs[1], " int semnum");
+int32_t cmd = log_s32(env->regs[2], " int cmd");
 uint32_t arg = log_32(env->regs[3], " union semun arg");
 call_sys_semctl_callback(env,pc,semid,semnum,cmd,arg);
 finish_syscall();
@@ -2154,21 +2154,21 @@ finish_syscall();
 // 301 long sys_msgsnd ['int msqid', ' struct msgbuf __user *msgp', 'size_t msgsz', ' int msgflg']
 case 301: {
 record_syscall("sys_msgsnd");
-uint32_t msqid = log_32(env->regs[0], "int msqid");
+int32_t msqid = log_s32(env->regs[0], "int msqid");
 target_ulong msgp = log_pointer(env->regs[1], " struct msgbuf __user *msgp");
 uint32_t msgsz = log_32(env->regs[2], "size_t msgsz");
-uint32_t msgflg = log_32(env->regs[3], " int msgflg");
+int32_t msgflg = log_s32(env->regs[3], " int msgflg");
 call_sys_msgsnd_callback(env,pc,msqid,msgp,msgsz,msgflg);
 finish_syscall();
 }; break;
 // 302 long sys_msgrcv ['int msqid', ' struct msgbuf __user *msgp', 'size_t msgsz', ' long msgtyp', ' int msgflg']
 case 302: {
 record_syscall("sys_msgrcv");
-uint32_t msqid = log_32(env->regs[0], "int msqid");
+int32_t msqid = log_s32(env->regs[0], "int msqid");
 target_ulong msgp = log_pointer(env->regs[1], " struct msgbuf __user *msgp");
 uint32_t msgsz = log_32(env->regs[2], "size_t msgsz");
-uint32_t msgtyp = log_32(env->regs[3], " long msgtyp");
-uint32_t msgflg = log_32(env->regs[4], " int msgflg");
+int32_t msgtyp = log_s32(env->regs[3], " long msgtyp");
+int32_t msgflg = log_s32(env->regs[4], " int msgflg");
 call_sys_msgrcv_callback(env,pc,msqid,msgp,msgsz,msgtyp,msgflg);
 finish_syscall();
 }; break;
@@ -2176,15 +2176,15 @@ finish_syscall();
 case 303: {
 record_syscall("sys_msgget");
 uint32_t key = log_32(env->regs[0], "key_t key");
-uint32_t msgflg = log_32(env->regs[1], " int msgflg");
+int32_t msgflg = log_s32(env->regs[1], " int msgflg");
 call_sys_msgget_callback(env,pc,key,msgflg);
 finish_syscall();
 }; break;
 // 304 long sys_msgctl ['int msqid', ' int cmd', ' struct msqid_ds __user *buf']
 case 304: {
 record_syscall("sys_msgctl");
-uint32_t msqid = log_32(env->regs[0], "int msqid");
-uint32_t cmd = log_32(env->regs[1], " int cmd");
+int32_t msqid = log_s32(env->regs[0], "int msqid");
+int32_t cmd = log_s32(env->regs[1], " int cmd");
 target_ulong buf = log_pointer(env->regs[2], " struct msqid_ds __user *buf");
 call_sys_msgctl_callback(env,pc,msqid,cmd,buf);
 finish_syscall();
@@ -2192,9 +2192,9 @@ finish_syscall();
 // 305 long sys_shmat ['int shmid', ' char __user *shmaddr', ' int shmflg']
 case 305: {
 record_syscall("sys_shmat");
-uint32_t shmid = log_32(env->regs[0], "int shmid");
+int32_t shmid = log_s32(env->regs[0], "int shmid");
 syscalls::string shmaddr = log_string(env->regs[1], " char __user *shmaddr");
-uint32_t shmflg = log_32(env->regs[2], " int shmflg");
+int32_t shmflg = log_s32(env->regs[2], " int shmflg");
 call_sys_shmat_callback(env,pc,shmid,shmaddr,shmflg);
 finish_syscall();
 }; break;
@@ -2210,15 +2210,15 @@ case 307: {
 record_syscall("sys_shmget");
 uint32_t key = log_32(env->regs[0], "key_t key");
 uint32_t size = log_32(env->regs[1], " size_t size");
-uint32_t flag = log_32(env->regs[2], " int flag");
+int32_t flag = log_s32(env->regs[2], " int flag");
 call_sys_shmget_callback(env,pc,key,size,flag);
 finish_syscall();
 }; break;
 // 308 long sys_shmctl ['int shmid', ' int cmd', ' struct shmid_ds __user *buf']
 case 308: {
 record_syscall("sys_shmctl");
-uint32_t shmid = log_32(env->regs[0], "int shmid");
-uint32_t cmd = log_32(env->regs[1], " int cmd");
+int32_t shmid = log_s32(env->regs[0], "int shmid");
+int32_t cmd = log_s32(env->regs[1], " int cmd");
 target_ulong buf = log_pointer(env->regs[2], " struct shmid_ds __user *buf");
 call_sys_shmctl_callback(env,pc,shmid,cmd,buf);
 finish_syscall();
@@ -2247,7 +2247,7 @@ finish_syscall();
 // 311 long sys_keyctl ['int cmd', ' unsigned long arg2', ' unsigned long arg3', 'unsigned long arg4', ' unsigned long arg5']
 case 311: {
 record_syscall("sys_keyctl");
-uint32_t cmd = log_32(env->regs[0], "int cmd");
+int32_t cmd = log_s32(env->regs[0], "int cmd");
 uint32_t arg2 = log_32(env->regs[1], " unsigned long arg2");
 uint32_t arg3 = log_32(env->regs[2], " unsigned long arg3");
 uint32_t arg4 = log_32(env->regs[3], "unsigned long arg4");
@@ -2258,7 +2258,7 @@ finish_syscall();
 // 312 long sys_semtimedop ['int semid', ' struct sembuf __user *sops', 'unsigned nsops', 'const struct timespec __user *timeout']
 case 312: {
 record_syscall("sys_semtimedop");
-uint32_t semid = log_32(env->regs[0], "int semid");
+int32_t semid = log_s32(env->regs[0], "int semid");
 target_ulong sops = log_pointer(env->regs[1], " struct sembuf __user *sops");
 uint32_t nsops = log_32(env->regs[2], "unsigned nsops");
 target_ulong timeout = log_pointer(env->regs[3], "const struct timespec __user *timeout");
@@ -2268,17 +2268,17 @@ finish_syscall();
 // 314 long sys_ioprio_set ['int which', ' int who', ' int ioprio']
 case 314: {
 record_syscall("sys_ioprio_set");
-uint32_t which = log_32(env->regs[0], "int which");
-uint32_t who = log_32(env->regs[1], " int who");
-uint32_t ioprio = log_32(env->regs[2], " int ioprio");
+int32_t which = log_s32(env->regs[0], "int which");
+int32_t who = log_s32(env->regs[1], " int who");
+int32_t ioprio = log_s32(env->regs[2], " int ioprio");
 call_sys_ioprio_set_callback(env,pc,which,who,ioprio);
 finish_syscall();
 }; break;
 // 315 long sys_ioprio_get ['int which', ' int who']
 case 315: {
 record_syscall("sys_ioprio_get");
-uint32_t which = log_32(env->regs[0], "int which");
-uint32_t who = log_32(env->regs[1], " int who");
+int32_t which = log_s32(env->regs[0], "int which");
+int32_t who = log_s32(env->regs[1], " int who");
 call_sys_ioprio_get_callback(env,pc,which,who);
 finish_syscall();
 }; break;
@@ -2291,7 +2291,7 @@ finish_syscall();
 // 317 long sys_inotify_add_watch ['int fd', ' const char __user *path', 'u32 mask']
 case 317: {
 record_syscall("sys_inotify_add_watch");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 syscalls::string path = log_string(env->regs[1], " const char __user *path");
 uint32_t mask = log_32(env->regs[2], "u32 mask");
 call_sys_inotify_add_watch_callback(env,pc,fd,path,mask);
@@ -2300,8 +2300,8 @@ finish_syscall();
 // 318 long sys_inotify_rm_watch ['int fd', ' __s32 wd']
 case 318: {
 record_syscall("sys_inotify_rm_watch");
-uint32_t fd = log_32(env->regs[0], "int fd");
-uint32_t wd = log_32(env->regs[1], " __s32 wd");
+int32_t fd = log_s32(env->regs[0], "int fd");
+int32_t wd = log_s32(env->regs[1], " __s32 wd");
 call_sys_inotify_rm_watch_callback(env,pc,fd,wd);
 finish_syscall();
 }; break;
@@ -2331,7 +2331,7 @@ finish_syscall();
 // 321 long sys_set_mempolicy ['int mode', ' unsigned long __user *nmask', 'unsigned long maxnode']
 case 321: {
 record_syscall("sys_set_mempolicy");
-uint32_t mode = log_32(env->regs[0], "int mode");
+int32_t mode = log_s32(env->regs[0], "int mode");
 target_ulong nmask = log_pointer(env->regs[1], " unsigned long __user *nmask");
 uint32_t maxnode = log_32(env->regs[2], "unsigned long maxnode");
 call_sys_set_mempolicy_callback(env,pc,mode,nmask,maxnode);
@@ -2340,28 +2340,28 @@ finish_syscall();
 // 322 long sys_openat ['int dfd', ' const char __user *filename', ' int flags', 'int mode']
 case 322: {
 record_syscall("sys_openat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
-uint32_t flags = log_32(env->regs[2], " int flags");
-uint32_t mode = log_32(env->regs[3], "int mode");
+int32_t flags = log_s32(env->regs[2], " int flags");
+int32_t mode = log_s32(env->regs[3], "int mode");
 call_sys_openat_callback(env,pc,dfd,filename,flags,mode);
 finish_syscall();
 }; break;
 // 323 long sys_mkdirat ['int dfd', ' const char __user * pathname', ' int mode']
 case 323: {
 record_syscall("sys_mkdirat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string pathname = log_string(env->regs[1], " const char __user * pathname");
-uint32_t mode = log_32(env->regs[2], " int mode");
+int32_t mode = log_s32(env->regs[2], " int mode");
 call_sys_mkdirat_callback(env,pc,dfd,pathname,mode);
 finish_syscall();
 }; break;
 // 324 long sys_mknodat ['int dfd', ' const char __user * filename', ' int mode', 'unsigned dev']
 case 324: {
 record_syscall("sys_mknodat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " const char __user * filename");
-uint32_t mode = log_32(env->regs[2], " int mode");
+int32_t mode = log_s32(env->regs[2], " int mode");
 uint32_t dev = log_32(env->regs[3], "unsigned dev");
 call_sys_mknodat_callback(env,pc,dfd,filename,mode,dev);
 finish_syscall();
@@ -2369,18 +2369,18 @@ finish_syscall();
 // 325 long sys_fchownat ['int dfd', ' const char __user *filename', ' uid_t user', 'gid_t group', ' int flag']
 case 325: {
 record_syscall("sys_fchownat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
 uint32_t user = log_32(env->regs[2], " uid_t user");
 uint32_t group = log_32(env->regs[3], "gid_t group");
-uint32_t flag = log_32(env->regs[4], " int flag");
+int32_t flag = log_s32(env->regs[4], " int flag");
 call_sys_fchownat_callback(env,pc,dfd,filename,user,group,flag);
 finish_syscall();
 }; break;
 // 326 long sys_futimesat ['int dfd', ' char __user *filename', 'struct timeval __user *utimes']
 case 326: {
 record_syscall("sys_futimesat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong utimes = log_pointer(env->regs[2], "struct timeval __user *utimes");
 call_sys_futimesat_callback(env,pc,dfd,filename,utimes);
@@ -2389,28 +2389,28 @@ finish_syscall();
 // 327 long sys_fstatat64 ['int dfd', ' char __user *filename', 'struct stat64 __user *statbuf', ' int flag']
 case 327: {
 record_syscall("sys_fstatat64");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong statbuf = log_pointer(env->regs[2], "struct stat64 __user *statbuf");
-uint32_t flag = log_32(env->regs[3], " int flag");
+int32_t flag = log_s32(env->regs[3], " int flag");
 call_sys_fstatat64_callback(env,pc,dfd,filename,statbuf,flag);
 finish_syscall();
 }; break;
 // 328 long sys_unlinkat ['int dfd', ' const char __user * pathname', ' int flag']
 case 328: {
 record_syscall("sys_unlinkat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string pathname = log_string(env->regs[1], " const char __user * pathname");
-uint32_t flag = log_32(env->regs[2], " int flag");
+int32_t flag = log_s32(env->regs[2], " int flag");
 call_sys_unlinkat_callback(env,pc,dfd,pathname,flag);
 finish_syscall();
 }; break;
 // 329 long sys_renameat ['int olddfd', ' const char __user * oldname', 'int newdfd', ' const char __user * newname']
 case 329: {
 record_syscall("sys_renameat");
-uint32_t olddfd = log_32(env->regs[0], "int olddfd");
+int32_t olddfd = log_s32(env->regs[0], "int olddfd");
 syscalls::string oldname = log_string(env->regs[1], " const char __user * oldname");
-uint32_t newdfd = log_32(env->regs[2], "int newdfd");
+int32_t newdfd = log_s32(env->regs[2], "int newdfd");
 syscalls::string newname = log_string(env->regs[3], " const char __user * newname");
 call_sys_renameat_callback(env,pc,olddfd,oldname,newdfd,newname);
 finish_syscall();
@@ -2418,11 +2418,11 @@ finish_syscall();
 // 330 long sys_linkat ['int olddfd', ' const char __user *oldname', 'int newdfd', ' const char __user *newname', ' int flags']
 case 330: {
 record_syscall("sys_linkat");
-uint32_t olddfd = log_32(env->regs[0], "int olddfd");
+int32_t olddfd = log_s32(env->regs[0], "int olddfd");
 syscalls::string oldname = log_string(env->regs[1], " const char __user *oldname");
-uint32_t newdfd = log_32(env->regs[2], "int newdfd");
+int32_t newdfd = log_s32(env->regs[2], "int newdfd");
 syscalls::string newname = log_string(env->regs[3], " const char __user *newname");
-uint32_t flags = log_32(env->regs[4], " int flags");
+int32_t flags = log_s32(env->regs[4], " int flags");
 call_sys_linkat_callback(env,pc,olddfd,oldname,newdfd,newname,flags);
 finish_syscall();
 }; break;
@@ -2430,7 +2430,7 @@ finish_syscall();
 case 331: {
 record_syscall("sys_symlinkat");
 syscalls::string oldname = log_string(env->regs[0], "const char __user * oldname");
-uint32_t newdfd = log_32(env->regs[1], "int newdfd");
+int32_t newdfd = log_s32(env->regs[1], "int newdfd");
 syscalls::string newname = log_string(env->regs[2], " const char __user * newname");
 call_sys_symlinkat_callback(env,pc,oldname,newdfd,newname);
 finish_syscall();
@@ -2438,17 +2438,17 @@ finish_syscall();
 // 332 long sys_readlinkat ['int dfd', ' const char __user *path', ' char __user *buf', 'int bufsiz']
 case 332: {
 record_syscall("sys_readlinkat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string path = log_string(env->regs[1], " const char __user *path");
 target_ulong buf = log_pointer(env->regs[2], " char __user *buf");
-uint32_t bufsiz = log_32(env->regs[3], "int bufsiz");
+int32_t bufsiz = log_s32(env->regs[3], "int bufsiz");
 call_sys_readlinkat_callback(env,pc,dfd,path,buf,bufsiz);
 finish_syscall();
 }; break;
 // 333 long sys_fchmodat ['int dfd', ' const char __user * filename', 'mode_t mode']
 case 333: {
 record_syscall("sys_fchmodat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " const char __user * filename");
 uint32_t mode = log_32(env->regs[2], "mode_t mode");
 call_sys_fchmodat_callback(env,pc,dfd,filename,mode);
@@ -2457,9 +2457,9 @@ finish_syscall();
 // 334 long sys_faccessat ['int dfd', ' const char __user *filename', ' int mode']
 case 334: {
 record_syscall("sys_faccessat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " const char __user *filename");
-uint32_t mode = log_32(env->regs[2], " int mode");
+int32_t mode = log_s32(env->regs[2], " int mode");
 call_sys_faccessat_callback(env,pc,dfd,filename,mode);
 finish_syscall();
 }; break;
@@ -2481,7 +2481,7 @@ finish_syscall();
 // 339 long sys_get_robust_list ['int pid', 'struct robust_list_head __user * __user *head_ptr', 'size_t __user *len_ptr']
 case 339: {
 record_syscall("sys_get_robust_list");
-uint32_t pid = log_32(env->regs[0], "int pid");
+int32_t pid = log_s32(env->regs[0], "int pid");
 target_ulong head_ptr = log_pointer(env->regs[1], "struct robust_list_head __user * __user *head_ptr");
 target_ulong len_ptr = log_pointer(env->regs[2], "size_t __user *len_ptr");
 call_sys_get_robust_list_callback(env,pc,pid,head_ptr,len_ptr);
@@ -2490,9 +2490,9 @@ finish_syscall();
 // 340 long sys_splice ['int fd_in', ' loff_t __user *off_in', 'int fd_out', ' loff_t __user *off_out', 'size_t len', ' unsigned int flags']
 case 340: {
 record_syscall("sys_splice");
-uint32_t fd_in = log_32(env->regs[0], "int fd_in");
+int32_t fd_in = log_s32(env->regs[0], "int fd_in");
 target_ulong off_in = log_pointer(env->regs[1], " loff_t __user *off_in");
-uint32_t fd_out = log_32(env->regs[2], "int fd_out");
+int32_t fd_out = log_s32(env->regs[2], "int fd_out");
 target_ulong off_out = log_pointer(env->regs[3], " loff_t __user *off_out");
 uint32_t len = log_32(env->regs[4], "size_t len");
 uint32_t flags = log_32(env->regs[5], " unsigned int flags");
@@ -2502,7 +2502,7 @@ finish_syscall();
 // 341 long sys_sync_file_range2 ['int fd', ' unsigned int flags', 'loff_t offset', ' loff_t nbytes']
 case 341: {
 record_syscall("sys_sync_file_range2");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 uint32_t flags = log_32(env->regs[1], " unsigned int flags");
 uint64_t offset = log_64(env->regs[2], env->regs[3], "loff_t offset");
 uint64_t nbytes = log_64(env->regs[4], env->regs[5], " loff_t nbytes");
@@ -2512,8 +2512,8 @@ finish_syscall();
 // 342 long sys_tee ['int fdin', ' int fdout', ' size_t len', ' unsigned int flags']
 case 342: {
 record_syscall("sys_tee");
-uint32_t fdin = log_32(env->regs[0], "int fdin");
-uint32_t fdout = log_32(env->regs[1], " int fdout");
+int32_t fdin = log_s32(env->regs[0], "int fdin");
+int32_t fdout = log_s32(env->regs[1], " int fdout");
 uint32_t len = log_32(env->regs[2], " size_t len");
 uint32_t flags = log_32(env->regs[3], " unsigned int flags");
 call_sys_tee_callback(env,pc,fdin,fdout,len,flags);
@@ -2522,7 +2522,7 @@ finish_syscall();
 // 343 long sys_vmsplice ['int fd', ' const struct iovec __user *iov', 'unsigned long nr_segs', ' unsigned int flags']
 case 343: {
 record_syscall("sys_vmsplice");
-uint32_t fd = log_32(env->regs[0], "int fd");
+int32_t fd = log_s32(env->regs[0], "int fd");
 target_ulong iov = log_pointer(env->regs[1], " const struct iovec __user *iov");
 uint32_t nr_segs = log_32(env->regs[2], "unsigned long nr_segs");
 uint32_t flags = log_32(env->regs[3], " unsigned int flags");
@@ -2537,7 +2537,7 @@ uint32_t nr_pages = log_32(env->regs[1], " unsigned long nr_pages");
 target_ulong pages = log_pointer(env->regs[2], "const void __user * __user *pages");
 target_ulong nodes = log_pointer(env->regs[3], "const int __user *nodes");
 target_ulong status = log_pointer(env->regs[4], "int __user *status");
-uint32_t flags = log_32(env->regs[5], "int flags");
+int32_t flags = log_s32(env->regs[5], "int flags");
 call_sys_move_pages_callback(env,pc,pid,nr_pages,pages,nodes,status,flags);
 finish_syscall();
 }; break;
@@ -2563,17 +2563,17 @@ finish_syscall();
 // 348 long sys_utimensat ['int dfd', ' char __user *filename', 'struct timespec __user *utimes', ' int flags']
 case 348: {
 record_syscall("sys_utimensat");
-uint32_t dfd = log_32(env->regs[0], "int dfd");
+int32_t dfd = log_s32(env->regs[0], "int dfd");
 syscalls::string filename = log_string(env->regs[1], " char __user *filename");
 target_ulong utimes = log_pointer(env->regs[2], "struct timespec __user *utimes");
-uint32_t flags = log_32(env->regs[3], " int flags");
+int32_t flags = log_s32(env->regs[3], " int flags");
 call_sys_utimensat_callback(env,pc,dfd,filename,utimes,flags);
 finish_syscall();
 }; break;
 // 349 long sys_signalfd ['int ufd', ' sigset_t __user *user_mask', ' size_t sizemask']
 case 349: {
 record_syscall("sys_signalfd");
-uint32_t ufd = log_32(env->regs[0], "int ufd");
+int32_t ufd = log_s32(env->regs[0], "int ufd");
 target_ulong user_mask = log_pointer(env->regs[1], " sigset_t __user *user_mask");
 uint32_t sizemask = log_32(env->regs[2], " size_t sizemask");
 call_sys_signalfd_callback(env,pc,ufd,user_mask,sizemask);
@@ -2582,8 +2582,8 @@ finish_syscall();
 // 350 long sys_timerfd_create ['int clockid', ' int flags']
 case 350: {
 record_syscall("sys_timerfd_create");
-uint32_t clockid = log_32(env->regs[0], "int clockid");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t clockid = log_s32(env->regs[0], "int clockid");
+int32_t flags = log_s32(env->regs[1], " int flags");
 call_sys_timerfd_create_callback(env,pc,clockid,flags);
 finish_syscall();
 }; break;
@@ -2597,8 +2597,8 @@ finish_syscall();
 // 352 long sys_fallocate ['int fd', ' int mode', ' loff_t offset', ' loff_t len']
 case 352: {
 record_syscall("sys_fallocate");
-uint32_t fd = log_32(env->regs[0], "int fd");
-uint32_t mode = log_32(env->regs[1], " int mode");
+int32_t fd = log_s32(env->regs[0], "int fd");
+int32_t mode = log_s32(env->regs[1], " int mode");
 uint64_t offset = log_64(env->regs[2], env->regs[3], " loff_t offset");
 uint64_t len = log_64(env->regs[4], env->regs[5], " loff_t len");
 call_sys_fallocate_callback(env,pc,fd,mode,offset,len);
@@ -2607,8 +2607,8 @@ finish_syscall();
 // 353 long sys_timerfd_settime ['int ufd', ' int flags', 'const struct itimerspec __user *utmr', 'struct itimerspec __user *otmr']
 case 353: {
 record_syscall("sys_timerfd_settime");
-uint32_t ufd = log_32(env->regs[0], "int ufd");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t ufd = log_s32(env->regs[0], "int ufd");
+int32_t flags = log_s32(env->regs[1], " int flags");
 target_ulong utmr = log_pointer(env->regs[2], "const struct itimerspec __user *utmr");
 target_ulong otmr = log_pointer(env->regs[3], "struct itimerspec __user *otmr");
 call_sys_timerfd_settime_callback(env,pc,ufd,flags,utmr,otmr);
@@ -2617,7 +2617,7 @@ finish_syscall();
 // 354 long sys_timerfd_gettime ['int ufd', ' struct itimerspec __user *otmr']
 case 354: {
 record_syscall("sys_timerfd_gettime");
-uint32_t ufd = log_32(env->regs[0], "int ufd");
+int32_t ufd = log_s32(env->regs[0], "int ufd");
 target_ulong otmr = log_pointer(env->regs[1], " struct itimerspec __user *otmr");
 call_sys_timerfd_gettime_callback(env,pc,ufd,otmr);
 finish_syscall();
@@ -2625,10 +2625,10 @@ finish_syscall();
 // 355 long sys_signalfd4 ['int ufd', ' sigset_t __user *user_mask', ' size_t sizemask', ' int flags']
 case 355: {
 record_syscall("sys_signalfd4");
-uint32_t ufd = log_32(env->regs[0], "int ufd");
+int32_t ufd = log_s32(env->regs[0], "int ufd");
 target_ulong user_mask = log_pointer(env->regs[1], " sigset_t __user *user_mask");
 uint32_t sizemask = log_32(env->regs[2], " size_t sizemask");
-uint32_t flags = log_32(env->regs[3], " int flags");
+int32_t flags = log_s32(env->regs[3], " int flags");
 call_sys_signalfd4_callback(env,pc,ufd,user_mask,sizemask,flags);
 finish_syscall();
 }; break;
@@ -2636,14 +2636,14 @@ finish_syscall();
 case 356: {
 record_syscall("sys_eventfd2");
 uint32_t count = log_32(env->regs[0], "unsigned int count");
-uint32_t flags = log_32(env->regs[1], " int flags");
+int32_t flags = log_s32(env->regs[1], " int flags");
 call_sys_eventfd2_callback(env,pc,count,flags);
 finish_syscall();
 }; break;
 // 357 long sys_epoll_create1 ['int flags']
 case 357: {
 record_syscall("sys_epoll_create1");
-uint32_t flags = log_32(env->regs[0], "int flags");
+int32_t flags = log_s32(env->regs[0], "int flags");
 call_sys_epoll_create1_callback(env,pc,flags);
 finish_syscall();
 }; break;
@@ -2652,7 +2652,7 @@ case 358: {
 record_syscall("sys_dup3");
 uint32_t oldfd = log_32(env->regs[0], "unsigned int oldfd");
 uint32_t newfd = log_32(env->regs[1], " unsigned int newfd");
-uint32_t flags = log_32(env->regs[2], " int flags");
+int32_t flags = log_s32(env->regs[2], " int flags");
 call_sys_dup3_callback(env,pc,oldfd,newfd,flags);
 finish_syscall();
 }; break;
@@ -2660,14 +2660,14 @@ finish_syscall();
 case 359: {
 record_syscall("sys_pipe2");
 target_ulong arg0 = log_pointer(env->regs[0], "int __user *");
-uint32_t arg1 = log_32(env->regs[1], " int");
+int32_t arg1 = log_s32(env->regs[1], " int");
 call_sys_pipe2_callback(env,pc,arg0,arg1);
 finish_syscall();
 }; break;
 // 360 long sys_inotify_init1 ['int flags']
 case 360: {
 record_syscall("sys_inotify_init1");
-uint32_t flags = log_32(env->regs[0], "int flags");
+int32_t flags = log_s32(env->regs[0], "int flags");
 call_sys_inotify_init1_callback(env,pc,flags);
 finish_syscall();
 }; break;

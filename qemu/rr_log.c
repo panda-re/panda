@@ -52,6 +52,20 @@ volatile RR_mode rr_mode = RR_OFF;
 
 //mz program execution state
 RR_prog_point rr_prog_point = {0, 0, 0};
+
+
+uint64_t rr_get_pc(void) {
+    return rr_prog_point.pc;
+}
+
+uint64_t rr_get_secondary(void) {
+    return rr_prog_point.secondary;
+}
+
+uint64_t rr_get_guest_instr_count (void) {
+    return rr_prog_point.guest_instr_count;
+}
+
 //volatile uint64_t rr_guest_instr_count;
 volatile uint64_t rr_num_instr_before_next_interrupt;
 
@@ -60,22 +74,6 @@ volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
 volatile sig_atomic_t rr_use_live_exit_request = 0;
-
-// a program-point indexed record/replay log
-typedef enum {RECORD, REPLAY} RR_log_type;
-typedef struct RR_log_t {
-  //mz TODO this field seems redundant given existence of rr_mode
-  RR_log_type type;            // record or replay
-  RR_prog_point last_prog_point; // to report progress
-
-  char *name;                  // file name
-  FILE *fp;                    // file pointer for log
-  unsigned long long size;     // for a log being opened for read, this will be the size in bytes
-
-  RR_log_entry current_item;
-  uint8_t current_item_valid;
-  unsigned long long item_number;
-} RR_log;
 
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
@@ -116,6 +114,10 @@ extern void log_all_cpu_states(void);
 /******************************************************************************************/
 /* UTILITIES */
 /******************************************************************************************/
+
+RR_log_entry *rr_get_queue_head(void) {
+    return queue_head;
+}
 
 // Check if replay is really finished. Conditions:
 // 1) The log is empty
@@ -1291,6 +1293,15 @@ void replay_progress(void) {
                     rr_nondet_log->last_prog_point.guest_instr_count)
       );
     }
+  }
+}
+
+uint64_t replay_get_total_num_instructions(void) {
+  if (rr_nondet_log) {
+    return rr_nondet_log->last_prog_point.guest_instr_count;
+  }
+  else {
+    return 0;
   }
 }
 

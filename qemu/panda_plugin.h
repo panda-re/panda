@@ -536,6 +536,8 @@ int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int
 target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr);
 #endif
 
+// is_write == 1 means this is a write to the virtual memory addr of the contents of buf.
+// is_write == 0 is a read from that addr into buf.  
 int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
 
 bool panda_flush_tb(void);
@@ -580,5 +582,9 @@ typedef struct panda_arg_list {
 panda_arg_list *panda_get_args(const char *plugin_name);
 // Free a list of parsed arguments
 void panda_free_args(panda_arg_list *args);
+
+target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
+uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);
+char *panda_parse_string(panda_arg_list *args, const char *argname, char *defval);
 
 #endif

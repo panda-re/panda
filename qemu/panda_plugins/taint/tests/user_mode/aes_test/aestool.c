@@ -82,7 +82,7 @@ void main(int argc, char* argv[]) {
     }
 
     //Query output buffer
-    query_buffer((uint64_t)&output, fileLen);
+    query_buffer((uint64_t)output, fileLen);
 
     //Clean up AES
     free(ctx);
