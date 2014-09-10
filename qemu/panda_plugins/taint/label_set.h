@@ -30,10 +30,25 @@ enum LabelSetTypes {
 #include <vector>
 typedef std::vector<bool,mymem_allocator<bool, poolid_bitset>> BitSet;
 #define BITSET_IMPLEMENTATION "vectorbitset.cpp"
+#define BITSET_HAS_ITERATORS TRUE
+#elif defined(LABELSET_STDBITSET)
+#include <bitset>
+constexpr static inline uint32_t bitset_get_max_num_elements(void) {
+#if defined(LABELSET_MAX_LABELS)
+    return LABELSET_MAX_LABELS;
+#else
+    return 256;
+#endif
+}
+typedef std::bitset<bitset_get_max_num_elements()> BitSet;
+#define BITSET_IMPLEMENTATION "stdbitset.cpp"
+#define BITSET_HAS_ITERATORS FALSE
+
 #else
 #include <set>
 typedef std::set<uint32_t,std::less<uint32_t>,mymem_allocator<uint32_t, poolid_bitset>> BitSet;
 #define BITSET_IMPLEMENTATION "sparsebitset.cpp"
+#define BITSET_HAS_ITERATORS TRUE
 #endif
 
 struct LabelSet {

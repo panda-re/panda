@@ -69,6 +69,32 @@ void memplot(Shad *shad){
     fclose(memplotlog);
 }
 
+#if !defined(BITSET_HAS_ITERATORS)
+#error "Bitset implementation must tell me if it has iterators or needs to be accessed with [] in a loop!"
+#endif
+#if BITSET_HAS_ITERATORS
+void panda_stats_bufplot(FILE* bufplotlog,
+                         const char* prefix,
+                         LabelSet& ls,
+                         uint64_t i){
+    BitSet::iterator j;
+    for (j = ls.set.begin(); j != ls.set.end(); j++){
+        ::fprintf(bufplotlog, "%s%lu,%u,%d\n", prefix, i, *j, ls.type);
+    }
+}
+#else //BITSET_HAS_ITERATORS
+
+void panda_stats_bufplot(FILE* bufplotlog,
+                         const char* prefix,
+                         LabelSet& ls,
+                         uint64_t i){
+    for (uint32_t j = 0; j < ls.set.size(); j++){
+        ::fprintf(bufplotlog, "%s%lu,%u,%d\n", prefix, i, ls.set[j], ls.type);
+    }
+}
+#endif //BITSET_HAS_ITERATORS
+
+
 // Prints out taint of memory buffer
 // FIXME TODO: fix this broken thing, merge in Tim's taint callback stuff, an
 // improved version of this will be a taint plugin 'query' callback
@@ -82,10 +108,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
         for (i = addr->val.ia; i < addr->val.ia+length; i++){
             ls = shad_dir_find_64(shad->io, i);
             if (ls){
-                BitSet::iterator j;
-                for (j = ls->set.begin(); j != ls->set.end(); j++){
-                    fprintf(bufplotlog, "IO %lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "IO ", *ls, i);
             }
         }
     }
@@ -100,10 +123,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             LabelSet *ls = shad_dir_find_64(shad->ram, i);
 #endif // CONFIG_SOFTMMU
             if (ls){
-                BitSet::iterator j;
-                for (j = ls->set.begin(); j != ls->set.end(); j++){
-                    fprintf(bufplotlog, "RAM %lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "RAM ", *ls, i);
             }
 #else // TARGET_X86_64
 
@@ -115,10 +135,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             if (get_ram_bit(shad, i)){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
-                BitSet::iterator j;
-                for (j = ls->set.begin(); j != ls->set.end(); j++){
-                    fprintf(bufplotlog, "%lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "", *ls, i);
             }
 #endif // TARGET_X86_64
         }
