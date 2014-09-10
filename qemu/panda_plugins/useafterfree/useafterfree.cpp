@@ -274,10 +274,6 @@ void process_ret(CPUState *env, target_ulong func) {
                 if (!inside_memop(cr3) && func >> 20 != alloc_guest_addr >> 20)
                     printf("DOUBLE FREE @ {%lx, %lx}! PC %lx\n", cr3, info.addr, env->eip);
             } else if (free_stacks[cr3].size() == 1) {
-                if (info.addr <= 0x5556f0 && alloc_now[cr3][info.addr].end > 0x5556f0) {
-                    printf("FREE [%lx, %lx)!!\n", info.addr, alloc_now[cr3][info.addr].end);
-                    //ptrprint = true;
-                }
                 range_info &ri = alloc_now[cr3][info.addr];
                 for (auto it = ri.valid_ptrs.begin(); it != ri.valid_ptrs.end(); it++) {
                     if (ptrprint) printf("Invalidating pointer @ %lx\n", *it);
@@ -335,10 +331,6 @@ uint32_t get_uint32(CPUState *env, target_ulong addr) {
 
 static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf, int is_write) {
     if (!is_right_proc(env)) return 0;
-
-    if (pc == 0x6DC996ED) {
-        printf("%lx: [%lx] = %x\n", pc, addr, *(uint32_t *)buf);
-    }
 
     target_ulong cr3 = env->cr[3];
     if (!inside_memop(cr3) && pc >> 20 != alloc_guest_addr >> 20) { // hack.
