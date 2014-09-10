@@ -50,6 +50,7 @@ indexable = [
     "ELF 32-bit LSB relocatable",
     "ELF 32-bit LSB shared object", 
     "ELF 64-bit LSB relocatable",
+    "ELF 64-bit",
     "GNU dbm 1.x or ndbm little endian",
     "Hitachi SH big-endian COFF object, stripped",
     "Linux kernel x86 boot executable ",
@@ -77,7 +78,7 @@ if rebuild_file_list:
     files = []
     c = {}
     i=0
-    for filename in open("./filelist"):
+    for filename in open("./deb7-64bit-filelist"):
         i += 1
         if ((i%100) == 0):
             print "i=%d" % i
@@ -86,12 +87,11 @@ if rebuild_file_list:
             filename = foo.groups()[0]
         with magic.Magic() as m:
             ft = m.id_filename(filename)
+            if not (ft in c):
+                c[ft] = 0
+            c[ft] += 1
             if ft in indexable:
                 files.append(filename)
-                if not (ft in c):
-                    c[ft] = 0
-                c[ft] += 1
-
     for ft in sorted(c.keys()):
         print "%6d %s" % (c[ft], ft)
     print "%d files to index" % (len(files))
@@ -103,10 +103,7 @@ if rebuild_file_list:
     die 
 
 files = []
-for filename in open("./filelist-binonly"):
-
-    foo = re.search("System32", filename)
-    if foo:                                                                                                                                                                                                                                                                                                                                              
+for filename in open("./filelist-binonly"):                                                                                                              
         files.append(filename) 
 
 #    foo = re.search("ntos", filename)
@@ -139,7 +136,7 @@ print "%d files to index" % (len(files))
 
 
 # chunk size (we will index this many files at a time                                                                                        
-cs = 100
+cs = 20
 # min, max ngrams                                                                                                                            
 min_n = 1
 max_n = 3
@@ -147,7 +144,7 @@ max_n = 3
 passage_len = 512
     
 bin_dir = os.getcwd()
-ind_dir = "/scratch4/laredo/bir"
+ind_dir = "/data/laredo/tleek/bir/deb7-64"
 ind_fn = "%s/ind" % ind_dir
 chunk_pfx = "%s/chunk" % ind_dir
 ind_tmp_fn = "%s/ind_tmp" % ind_dir

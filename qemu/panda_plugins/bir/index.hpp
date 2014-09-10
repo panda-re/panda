@@ -157,9 +157,10 @@ typedef struct score_struct {
 
 
 
-#define RU(u)                                       \
-    {                                               \
-        size_t n = fread(&(u), sizeof(u), 1, fp);	\
+#define RU(u)                                                  \
+    {                                                          \
+        size_t n = fread(&(u), sizeof(u), 1, fp);              \
+        assert (n == 1);                                       \
     } 
 
 
@@ -172,12 +173,14 @@ typedef struct score_struct {
 #define WL(l) WU(l)
 
 #define RS(s)                                   \
-    {                                           \
-        uint32_t l;                             \
-        fread(&l, sizeof(l), 1, fp);			\
-        char *cs = (char *) malloc(l);			\
-        fread(cs, 1, l, fp);                    \
-        s = std::string(cs,l);                  \
+    {                                                   \
+        uint32_t l;                                     \
+        size_t n=fread(&l, sizeof(l), 1, fp);			\
+        assert (n == 1);                                \
+        char *cs = (char *) malloc(l);                  \
+        n = fread(cs, 1, l, fp);                        \
+        assert (n == l);                                \
+        s = std::string(cs,l);                          \
     }
 
 #define WS(s)                                   \
@@ -188,11 +191,6 @@ typedef struct score_struct {
         fwrite(cs, 1, l, fp);                   \
     }
 
-
-#define RD(x) {                                             \
-        size_t n_foo_bar = fread(&(x), sizeof(x), 1, fp);   \
-        assert (n_foo_bar==1);                              \
-    }
 
 #define WR(x) {fwrite(&(x), sizeof(x), 1, fp);}
 
@@ -243,7 +241,7 @@ void temp_count(SIHashtable &tcount, std::string n_gram, uint32_t n);
 Passage index_passage (std::map < uint32_t, Lexicon > &lexicon, 
                        bool update,
                        uint32_t min_n, uint32_t max_n,
-                       char *binary_passage, uint32_t len,
+                       uint8_t *binary_passage, uint32_t len,
                        uint32_t passage_ind);
 
 

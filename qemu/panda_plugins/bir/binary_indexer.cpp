@@ -38,7 +38,7 @@ Indexer new_indexer(uint32_t min_n_gram, uint32_t max_n_gram,
   The lexicon and index that come, packed into indexer,
   both get updated.
 */
-void index_this_passage(Indexer &indexer, char *binary_passage, uint32_t len, uint32_t passage_ind) {    
+void index_this_passage(Indexer &indexer, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) {    
     Index &index = indexer.index;
     Passage passage = 
         index_passage(index.lexicon, 
@@ -60,9 +60,9 @@ uint32_t index_file_aux(char *filename,
                         Indexer &indexer,
                         uint32_t passage_length,
                         uint32_t file_length) {
-    static char *binary = NULL;
+    static uint8_t *binary = NULL;
     if (binary == NULL) {
-        binary = (char *) malloc(passage_length);
+        binary = (uint8_t *) malloc(passage_length);
     }
     char *p = filename;
     while (*p != '\0') {
@@ -137,7 +137,7 @@ InvIndex invert(Index &index) {
     uint32_t ii=0;
     uint32_t i100 = index.num_passages / 100;
     for ( auto &kvp : index.passages ) {
-        if ((ii % i100) == 0) {
+        if (i100 > 0 && (ii % i100) == 0) {
             printf ("%d %d \n", ii/i100, ii);
         }
         ii ++;
