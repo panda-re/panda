@@ -2,6 +2,7 @@ Reproducing the LINE Censorship Results
 =======================================
 
 Preliminaries
+-------------
 
 Start by downloading and unpacking the LINE recording from rrshare.org:
 
@@ -48,6 +49,7 @@ create a small dummy QCOW2:
 Now we can move on to the actual analysis.
 
 Analysis
+--------
 
 Now, we suspect that the censorship list will include Tiananmen (天安门)
 and Falun (法轮). So we will use TZB to search all memory reads and
@@ -97,10 +99,10 @@ we can simply dump out all data passing through them using `textprinter`.
 Create a file `tap_points.txt` with the caller, pc, and address space
 information where both strings matched:
 
-40796784 40038678 28210000
-40796784 40038688 28210000
-407a7ada 4074f630 28210000
-407a7ada 4b50817c 28210000
+    40796784 40038678 28210000
+    40796784 40038688 28210000
+    407a7ada 4074f630 28210000
+    407a7ada 4b50817c 28210000
 
 And run another replay with `textprinter` turned on:
 
@@ -169,7 +171,7 @@ We can then look at that line in the original tap dump:
     $ zgrep '40796784 40038688 28210000' write_tap_buffers.txt.gz | less
 
 And then type `64587G` into `less` to jump to line `64587`. Here we see
-(full callstack abbreviated for the sake of readability) and annotated:
+(full callstack abbreviated and annotated for the sake of readability):
 
     40796784 40038688 28210000 41544f7e 714950631 75  ; u
     40796784 40038688 28210000 41544f7f 714950631 a7  ; \xa7
