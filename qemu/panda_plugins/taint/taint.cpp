@@ -276,6 +276,7 @@ static void llvm_init(){
 
 
 void __taint_enable_taint(void) {
+    if(taintEnabled) {return;}
   printf ("__taint_enable_taint\n");
   taintJustEnabled = true;
   taintEnabled = true;

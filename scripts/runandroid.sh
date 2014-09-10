@@ -42,7 +42,7 @@ CPU=""
 # For Android > 3.1, use a cortex-a9 cpu
 CPU="-cpu cortex-a9"
 
-arm-softmmu/qemu-system-arm -M android_arm $CPU  -kernel "$1/kernel" -initrd "$1/ramdisk.img"  -global goldfish_nand.system_path="$system" -global goldfish_nand.user_data_path="$userdata"  -global goldfish_nand.cache_path="$cache" -append  "console=ttyS0 ndns=2 qemu=1 no_console_suspend=1 qemu.gles=0 android.qemud=ttyS1" -m 2G -no-reboot -monitor telnet:localhost:4321,server,nowait -show-cursor -serial stdio -serial telnet:localhost:4421,server,nowait -display sdl -net nic,vlan=1 -net user,vlan=1,hostfwd=tcp::5555-:5555,hostfwd=tcp::5039-:5039 -global goldfish_mmc.sd_path="$sdcard" -android 
+arm-softmmu/qemu-system-arm -M android_arm $CPU  -kernel "$1/kernel" -initrd "$1/ramdisk.img"  -global goldfish_nand.system_path="$system" -global goldfish_nand.user_data_path="$userdata"  -global goldfish_nand.cache_path="$cache" -append  "console=ttyS0 ndns=2 qemu=1 no_console_suspend=1 qemu.gles=0 android.qemud=ttyS1" -m 2G -no-reboot -monitor telnet:localhost:4321,server,nowait -show-cursor -serial stdio -serial telnet:localhost:4421,server,nowait -display sdl -net nic,vlan=1 -net user,vlan=1 -global goldfish_mmc.sd_path="$sdcard" -android 
 
 # qemu exited, copy the files back if they are clean
 function img_check {

@@ -12,6 +12,7 @@ include ../panda.mak
 # LIBS+=
 QEMU_CFLAGS+=-std=c++11
 QEMU_CFLAGS+=-lm
+QEMU_CFLAGS+=-Wno-unused-result -Wno-unused-variable
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp
 $(PLUGIN_TARGET_DIR)/bir_utils.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/bir_utils.cpp

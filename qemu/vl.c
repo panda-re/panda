@@ -3249,7 +3249,7 @@ int main(int argc, char **argv, char **envp)
                     char *plugin_start = new_optarg;
                     char *plugin_end = new_optarg;
 
-                    char *qemu_file = strdup(argv[0]);
+                    char *qemu_file = canonicalize_file_name(argv[0]);
                     char *dir = dirname(qemu_file);
                     while (plugin_end != NULL) {
                         plugin_end = strchr(plugin_start, ';');

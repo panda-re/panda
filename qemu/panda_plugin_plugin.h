@@ -2,8 +2,7 @@
 #ifndef __PANDA_PLUGIN_PLUGIN_H_
 #define __PANDA_PLUGIN_PLUGIN_H_
 
-
-//#define MAX(a,b) (a > b ? a : b) 
+#include <dlfcn.h>
 
 /*
 
