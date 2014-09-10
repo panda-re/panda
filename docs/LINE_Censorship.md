@@ -16,7 +16,7 @@ Start by downloading and unpacking the LINE recording from rrshare.org:
 Get the version of PANDA used in the paper:
 
     $ git clone https://github.com/moyix/panda.git
-    $ git checkout c239949
+    $ git checkout b8d3dbb
 
 Modify the `build.sh` script to build with Android support. It will end
 up looking like:
