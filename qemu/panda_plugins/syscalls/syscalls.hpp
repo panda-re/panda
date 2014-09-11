@@ -82,6 +82,7 @@ namespace syscalls {
     public:
         target_ulong get_vaddr(void) {return vaddr;}
         string(CPUState* env, target_ulong pc, target_ulong vaddr);
+        string() : vaddr(-1), env(nullptr), pc(-1) {}
         std::string& value();
     };
 
