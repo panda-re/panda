@@ -18,6 +18,7 @@ Output panda tool to parse system calls on Linux
 """
 
 import re
+from collections import defaultdict
 
 ARM_CALLNO = "env->regs[7]"
 ARM_ARGS = ["env->regs[0]", "env->regs[1]", "env->regs[2]", "env->regs[3]", "env->regs[4]", "env->regs[5]", "env->regs[6]"]
@@ -76,6 +77,7 @@ BYTES_8   = '8BYTE'
 BYTES_4   = '4BYTE'
 BYTES_2   = '2BYTE'
 SIGNED_4  = '4SIGNED'
+# C++ types for callback arguments
 ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           POINTER:    'target_ulong', # pointer
                           BYTES_8:    'uint64_t',
@@ -83,6 +85,14 @@ ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           SIGNED_4:   'int32_t',
                           BYTES_2:    'uint16_t',
                         }
+# C types for callback arguments
+ARG_TYPE_C_TRANSLATIONS = dict(ARG_TYPE_TRANSLATIONS)
+ARG_TYPE_C_TRANSLATIONS[CHAR_STAR] = 'target_ulong'
+
+# Functions to translate arguments to C++ callbacks to arguments to C callbacks
+# Defaults to returning the C++ argument's name
+CXX_ARG_TO_C_ARG = defaultdict(lambda: lambda x: x)
+CXX_ARG_TO_C_ARG[CHAR_STAR] = lambda x: "{0}.get_vaddr()".format(x) # uses internals of syscalls::string
 
 CPP_RESERVED = {"new": "anew"}
 
@@ -117,7 +127,12 @@ class Argument(object):
             newname = newname[:-2]
         self._name = newname
 
+# Prototypes for internal C++ callbacks per syscall
 callback_defs = set()
+# Typedefs for PPP C callbacks
+typedefs = set()
+# Names of all PPP C callbacks
+cb_names = set()
 # Goldfish kernel doesn't support OABI layer. Yay!
 with open("android_arm_prototypes.txt") as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
@@ -196,14 +211,22 @@ with open("android_arm_prototypes.txt") as armcalls:
         # figure out callback definition
         callback_fn = "call_{0}_callback".format(callname)
         _args = ",".join(['env', 'pc'] + [x.name for i, x in enumerate(arg_types)])
+        _c_args = ",".join(['env', 'pc'] + [CXX_ARG_TO_C_ARG[x.type](x.name) for i, x in enumerate(arg_types)])
         _args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
+        _c_args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
         callback_call = callback_fn+"(" +_args+");"
         callback_def  = callback_fn+"(" + _args_types+")"
         # call the callback
         alltext += callback_call+'\n'
         #remember to define a weak symbol for the callback later
         callback_defs.add(callback_def)
-            
+
+        cb_names.add("on_{0}".format(callname))
+        # define a type for the callback
+        typedef = "typedef void (*on_{0}_t)({1});".format(callname, _c_args_types)
+        typedefs.add(typedef)
+        alltext += "PPP_RUN_CB(on_{0}, {1})\n".format(callname, _c_args)
+
         alltext += "finish_syscall();"+'\n'
         alltext += "}; break;"+'\n'
     alltext += "default:"+'\n'
@@ -253,6 +276,23 @@ weak_callbacks+= """
 with open("weak_callbacks.hpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
+with open("syscalls_ext_typedefs.h", "w") as callbacktypes:
+    callbacktypes.write(GUARD + "\n")
+    for t in typedefs:
+        callbacktypes.write(t+"\n")
+    callbacktypes.write("#endif\n")
+
 with open("syscall_printer.cpp", "w") as dispatchfile:
     dispatchfile.write(alltext)
 
+with open("syscall_ppp_register.cpp", "w") as pppfile:
+    pppfile.write(GUARD + "\n")
+    for ppp in cb_names:
+        pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
+    pppfile.write("#endif\n")
+
+with open("syscall_ppp_boilerplate.cpp", "w") as pppfile:
+    pppfile.write(GUARD + "\n")
+    for ppp in cb_names:
+        pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
+    pppfile.write("#endif\n")

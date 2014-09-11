@@ -80,6 +80,7 @@ namespace syscalls {
         target_ulong pc;
         bool resolve();
     public:
+        target_ulong get_vaddr(void) {return vaddr;}
         string(CPUState* env, target_ulong pc, target_ulong vaddr);
         std::string& value();
     };

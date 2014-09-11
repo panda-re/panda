@@ -19,6 +19,7 @@ extern "C" {
 #include "cpu.h"
 
 #include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
 #include <stdio.h>
 #include <stdlib.h>
 }
@@ -41,7 +42,12 @@ int exec_callback(CPUState *env, target_ulong pc);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+
+#include "syscalls_ext_typedefs.h"
+#include "syscall_ppp_register.cpp"
+
 }
+#include "syscall_ppp_boilerplate.cpp"
 // This is where we'll write out the syscall data
 FILE *plugin_log;
 void* syscalls_plugin_self;
