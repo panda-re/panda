@@ -26,7 +26,7 @@ PANDAENDCOMMENT */
 #include <map>
 #include <string>
 #include <list>
-#include "weak_callbacks.hpp"
+#include "callbacks.hpp"
 #include "syscalls.hpp"
 #include <iostream>
 #include <fstream>

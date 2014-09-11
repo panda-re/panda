@@ -158,9 +158,9 @@ syscalls::string dev_name = log_string(env->regs[0], "char __user *dev_name");
 syscalls::string dir_name = log_string(env->regs[1], " char __user *dir_name");
 syscalls::string type = log_string(env->regs[2], "char __user *type");
 uint32_t flags = log_32(env->regs[3], " unsigned long flags");
-target_ulong data = log_pointer(env->regs[4], "void __user *data");
-call_sys_mount_callback(env,pc,dev_name,dir_name,type,flags,data);
-PPP_RUN_CB(on_sys_mount, env,pc,dev_name.get_vaddr(),dir_name.get_vaddr(),type.get_vaddr(),flags,data)
+target_ulong data_arg = log_pointer(env->regs[4], "void __user *data");
+call_sys_mount_callback(env,pc,dev_name,dir_name,type,flags,data_arg);
+PPP_RUN_CB(on_sys_mount, env,pc,dev_name.get_vaddr(),dir_name.get_vaddr(),type.get_vaddr(),flags,data_arg)
 finish_syscall();
 }; break;
 // 23 long sys_setuid16 ['old_uid_t uid']
@@ -184,9 +184,9 @@ record_syscall("sys_ptrace");
 int32_t request = log_s32(env->regs[0], "long request");
 int32_t pid = log_s32(env->regs[1], " long pid");
 int32_t addr = log_s32(env->regs[2], " long addr");
-int32_t data = log_s32(env->regs[3], " long data");
-call_sys_ptrace_callback(env,pc,request,pid,addr,data);
-PPP_RUN_CB(on_sys_ptrace, env,pc,request,pid,addr,data)
+int32_t data_arg = log_s32(env->regs[3], " long data");
+call_sys_ptrace_callback(env,pc,request,pid,addr,data_arg);
+PPP_RUN_CB(on_sys_ptrace, env,pc,request,pid,addr,data_arg)
 finish_syscall();
 }; break;
 // 29 long sys_pause ['void']
@@ -869,9 +869,9 @@ finish_syscall();
 case 134: {
 record_syscall("sys_bdflush");
 int32_t func = log_s32(env->regs[0], "int func");
-int32_t data = log_s32(env->regs[1], " long data");
-call_sys_bdflush_callback(env,pc,func,data);
-PPP_RUN_CB(on_sys_bdflush, env,pc,func,data)
+int32_t data_arg = log_s32(env->regs[1], " long data");
+call_sys_bdflush_callback(env,pc,func,data_arg);
+PPP_RUN_CB(on_sys_bdflush, env,pc,func,data_arg)
 finish_syscall();
 }; break;
 // 135 long sys_sysfs ['int option', 'unsigned long arg1', ' unsigned long arg2']
@@ -1323,9 +1323,9 @@ finish_syscall();
 case 185: {
 record_syscall("sys_capset");
 target_ulong header = log_pointer(env->regs[0], "cap_user_header_t header");
-target_ulong data = log_pointer(env->regs[1], "const cap_user_data_t data");
-call_sys_capset_callback(env,pc,header,data);
-PPP_RUN_CB(on_sys_capset, env,pc,header,data)
+target_ulong data_arg = log_pointer(env->regs[1], "const cap_user_data_t data");
+call_sys_capset_callback(env,pc,header,data_arg);
+PPP_RUN_CB(on_sys_capset, env,pc,header,data_arg)
 finish_syscall();
 }; break;
 // 186 int do_sigaltstack ['const stack_t __user *uss', ' stack_t __user *uoss']

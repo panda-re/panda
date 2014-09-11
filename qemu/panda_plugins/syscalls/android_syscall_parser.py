@@ -94,7 +94,7 @@ ARG_TYPE_C_TRANSLATIONS[CHAR_STAR] = 'target_ulong'
 CXX_ARG_TO_C_ARG = defaultdict(lambda: lambda x: x)
 CXX_ARG_TO_C_ARG[CHAR_STAR] = lambda x: "{0}.get_vaddr()".format(x) # uses internals of syscalls::string
 
-CPP_RESERVED = {"new": "anew"}
+CPP_RESERVED = {"new": "anew", "data":"data_arg"}
 
 class Argument(object):
     def __init__(self):
@@ -133,6 +133,11 @@ callback_defs = set()
 typedefs = set()
 # Names of all PPP C callbacks
 cb_names = set()
+# map from callback_def to code that comes before it in cpp file
+precall = {}
+# map from callback_def to its content in cpp file
+call_contents = {}
+
 # Goldfish kernel doesn't support OABI layer. Yay!
 with open("android_arm_prototypes.txt") as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
@@ -221,10 +226,46 @@ with open("android_arm_prototypes.txt") as armcalls:
         #remember to define a weak symbol for the callback later
         callback_defs.add(callback_def)
 
+        # now generate the struct to hold the arguments through the call
+        calldataname = "{0}_calldata".format(callname)
+        calldata = "struct {0} : public CallbackData {{\n".format(calldataname)
+        calldata += "target_ulong pc;\n"
+        for x in arg_types:
+            calldata += ARG_TYPE_TRANSLATIONS[x.type] + " " + x.name + ";\n"
+        calldata += "};\n"
+
+        # code to call the sysret callback using the struct contents
+        sysretcallbackname = "{0}_returned".format(callname)
+        sysretcallback = "static Callback_RC {0}(CallbackData* opaque, CPUState* env, target_asid asid)".format(sysretcallbackname)
+        sysretcallback += "{\n"
+        sysretcallback += "{0}* data = dynamic_cast<{0}*>(opaque);\n".format(calldataname)
+        sysretcallback += 'if(!data) {fprintf(stderr,"oops\\n"); return Callback_RC::ERROR;}\n'
+        _c_ret_args_list = ",".join(['env', 'data->pc'] + [ "data->" +CXX_ARG_TO_C_ARG[x.type](x.name) for i, x in enumerate(arg_types)])
+        sysretcallback += "PPP_RUN_CB(on_{0}, {1})\n".format(sysretcallbackname, _c_ret_args_list)
+        sysretcallback += "return Callback_RC::NORMAL;\n"
+        sysretcallback += "}\n"
+
+
+        precall[callback_def] = calldata+sysretcallback
+        # code to populate the struct
+        calldatafill = "if (0 == ppp_on_{0}_num_cb) return;\n".format(sysretcallbackname)
+        calldatafill += "{0}* data = new {0};\n".format(calldataname)
+        calldatafill += "data->pc = pc;\n"
+        for x in arg_types:
+            calldatafill += "data->{0} = {0};\n".format(x.name)
+        calldatafill += "appendReturnPoint(ReturnPoint(" +\
+                        "calc_retaddr(env, pc),"+ \
+                        " get_asid(env, pc),"+\
+                        " data, {0}));".format(sysretcallbackname)
+        call_contents[callback_def] = calldatafill
+
         cb_names.add("on_{0}".format(callname))
+        cb_names.add("on_{0}".format(sysretcallbackname))
         # define a type for the callback
         typedef = "typedef void (*on_{0}_t)({1});".format(callname, _c_args_types)
         typedefs.add(typedef)
+        typedefr= "typedef void (*on_{0}_t)({1});".format(sysretcallbackname, _c_args_types)
+        typedefs.add(typedefr)
         alltext += "PPP_RUN_CB(on_{0}, {1})\n".format(callname, _c_args)
 
         alltext += "finish_syscall();"+'\n'
@@ -235,7 +276,7 @@ with open("android_arm_prototypes.txt") as armcalls:
 alltext+= "#endif\n"
 weak_callbacks = ""
 weak_callbacks+= """
-#include "weak_callbacks.hpp"
+#include "callbacks.hpp"
 extern "C"{
 #include "cpu.h"
 }
@@ -244,15 +285,19 @@ extern "C"{
 """
 weak_callbacks += GUARD + "\n"
 for callback_def in callback_defs:
-    weak_callbacks += "void __attribute__((weak)) {0} {{ }}\n".format(callback_def)
+    weak_callbacks += precall[callback_def]
+    weak_callbacks += "void __attribute__((weak)) {0} {{\n".format(callback_def)
+    weak_callbacks += call_contents[callback_def]
+    weak_callbacks += "}\n"
 weak_callbacks+= """
 #endif
 """
-with open("weak_callbacks.cpp", "w") as weakfile:
+with open("default_callbacks.cpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
 weak_callbacks = ""
-weak_callbacks+= """
+weak_callbacks+= """#ifndef __callbacks_hpp
+#define __callbacks_hpp
 #include <string>
 
 // This is *NOT* supposed to be required for C++ code.
@@ -272,8 +317,9 @@ for callback_def in callback_defs:
     weak_callbacks += "void __attribute__((weak)) {0};\n".format(callback_def)
 weak_callbacks+= """
 #endif
+#endif //__callbacks_hpp
 """
-with open("weak_callbacks.hpp", "w") as weakfile:
+with open("callbacks.hpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
 with open("syscalls_ext_typedefs.h", "w") as callbacktypes:

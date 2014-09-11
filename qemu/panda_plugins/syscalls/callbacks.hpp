@@ -1,4 +1,5 @@
-
+#ifndef __callbacks_hpp
+#define __callbacks_hpp
 #include <string>
 
 // This is *NOT* supposed to be required for C++ code.
@@ -45,10 +46,11 @@ void __attribute__((weak)) call_ARM_cacheflush_callback(CPUState* env,target_ulo
 void __attribute__((weak)) call_sys_mknodat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string filename,int32_t mode,uint32_t dev);
 void __attribute__((weak)) call_sys_fchownat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string filename,uint32_t user,uint32_t group,int32_t flag);
 void __attribute__((weak)) call_sys_swapoff_callback(CPUState* env,target_ulong pc,syscalls::string specialfile);
-void __attribute__((weak)) call_sys_setregid_callback(CPUState* env,target_ulong pc,uint32_t rgid,uint32_t egid);
+void __attribute__((weak)) call_sys_fremovexattr_callback(CPUState* env,target_ulong pc,int32_t fd,syscalls::string name);
 void __attribute__((weak)) call_sys_getpriority_callback(CPUState* env,target_ulong pc,int32_t which,int32_t who);
 void __attribute__((weak)) call_sys_sched_setparam_callback(CPUState* env,target_ulong pc,uint32_t pid,target_ulong param);
 void __attribute__((weak)) call_sys_getresgid_callback(CPUState* env,target_ulong pc,target_ulong rgid,target_ulong egid,target_ulong sgid);
+void __attribute__((weak)) call_sys_madvise_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t len,int32_t behavior);
 void __attribute__((weak)) call_sys_umount_callback(CPUState* env,target_ulong pc,syscalls::string name,int32_t flags);
 void __attribute__((weak)) call_sys_readlinkat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string path,target_ulong buf,int32_t bufsiz);
 void __attribute__((weak)) call_sys_readahead_callback(CPUState* env,target_ulong pc,int32_t fd,uint64_t offset,uint32_t count);
@@ -74,7 +76,6 @@ void __attribute__((weak)) call_sys_chown_callback(CPUState* env,target_ulong pc
 void __attribute__((weak)) call_sys_setfsgid_callback(CPUState* env,target_ulong pc,uint32_t gid);
 void __attribute__((weak)) call_sys_mlockall_callback(CPUState* env,target_ulong pc,int32_t flags);
 void __attribute__((weak)) call_ARM_breakpoint_callback(CPUState* env,target_ulong pc);
-void __attribute__((weak)) call_sys_waitid_callback(CPUState* env,target_ulong pc,int32_t which,uint32_t pid,target_ulong infop,int32_t options,target_ulong ru);
 void __attribute__((weak)) call_sigaction_callback(CPUState* env,target_ulong pc,int32_t sig,target_ulong act,target_ulong oact);
 void __attribute__((weak)) call_sys_lchown_callback(CPUState* env,target_ulong pc,syscalls::string filename,uint32_t user,uint32_t group);
 void __attribute__((weak)) call_sys_adjtimex_callback(CPUState* env,target_ulong pc,target_ulong txc_p);
@@ -111,7 +112,7 @@ void __attribute__((weak)) call_sys_lgetxattr_callback(CPUState* env,target_ulon
 void __attribute__((weak)) call_sys_select_callback(CPUState* env,target_ulong pc,int32_t n,target_ulong inp,target_ulong outp,target_ulong exp,target_ulong tvp);
 void __attribute__((weak)) call_sys_set_mempolicy_callback(CPUState* env,target_ulong pc,int32_t mode,target_ulong nmask,uint32_t maxnode);
 void __attribute__((weak)) call_sys_rmdir_callback(CPUState* env,target_ulong pc,syscalls::string pathname);
-void __attribute__((weak)) call_sys_madvise_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t len,int32_t behavior);
+void __attribute__((weak)) call_sys_mount_callback(CPUState* env,target_ulong pc,syscalls::string dev_name,syscalls::string dir_name,syscalls::string type,uint32_t flags,target_ulong data_arg);
 void __attribute__((weak)) call_sys_getppid_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_ARM_user26_mode_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_sys_semget_callback(CPUState* env,target_ulong pc,uint32_t key,int32_t nsems,int32_t semflg);
@@ -126,7 +127,7 @@ void __attribute__((weak)) call_sys_fstatfs64_callback(CPUState* env,target_ulon
 void __attribute__((weak)) call_sys_getuid16_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_sys_getgid_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_sys_truncate_callback(CPUState* env,target_ulong pc,syscalls::string path,uint32_t length);
-void __attribute__((weak)) call_sys_mount_callback(CPUState* env,target_ulong pc,syscalls::string dev_name,syscalls::string dir_name,syscalls::string type,uint32_t flags,target_ulong data);
+void __attribute__((weak)) call_sys_setregid_callback(CPUState* env,target_ulong pc,uint32_t rgid,uint32_t egid);
 void __attribute__((weak)) call_sys_accept_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2);
 void __attribute__((weak)) call_ARM_set_tls_callback(CPUState* env,target_ulong pc,uint32_t arg);
 void __attribute__((weak)) call_sys_getegid16_callback(CPUState* env,target_ulong pc);
@@ -150,10 +151,11 @@ void __attribute__((weak)) call_sys_munlock_callback(CPUState* env,target_ulong 
 void __attribute__((weak)) call_sys_getresuid_callback(CPUState* env,target_ulong pc,target_ulong ruid,target_ulong euid,target_ulong suid);
 void __attribute__((weak)) call_sys_lstat64_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong statbuf);
 void __attribute__((weak)) call_sys_remap_file_pages_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t size,uint32_t prot,uint32_t pgoff,uint32_t flags);
-void __attribute__((weak)) call_sys_ptrace_callback(CPUState* env,target_ulong pc,int32_t request,int32_t pid,int32_t addr,int32_t data);
+void __attribute__((weak)) call_sys_mq_open_callback(CPUState* env,target_ulong pc,syscalls::string name,int32_t oflag,uint32_t mode,target_ulong attr);
 void __attribute__((weak)) call_sys_statfs64_callback(CPUState* env,target_ulong pc,syscalls::string path,uint32_t sz,target_ulong buf);
 void __attribute__((weak)) call_sys_nanosleep_callback(CPUState* env,target_ulong pc,target_ulong rqtp,target_ulong rmtp);
 void __attribute__((weak)) call_sys_fchmodat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string filename,uint32_t mode);
+void __attribute__((weak)) call_sys_epoll_wait_callback(CPUState* env,target_ulong pc,int32_t epfd,target_ulong events,int32_t maxevents,int32_t timeout);
 void __attribute__((weak)) call_sys_eventfd2_callback(CPUState* env,target_ulong pc,uint32_t count,int32_t flags);
 void __attribute__((weak)) call_sys_timer_gettime_callback(CPUState* env,target_ulong pc,uint32_t timer_id,target_ulong setting);
 void __attribute__((weak)) call_sys_inotify_add_watch_callback(CPUState* env,target_ulong pc,int32_t fd,syscalls::string path,uint32_t mask);
@@ -187,7 +189,7 @@ void __attribute__((weak)) call_sys_vhangup_callback(CPUState* env,target_ulong 
 void __attribute__((weak)) call_sys_lookup_dcookie_callback(CPUState* env,target_ulong pc,uint64_t cookie64,target_ulong buf,uint32_t len);
 void __attribute__((weak)) call_sys_getxattr_callback(CPUState* env,target_ulong pc,syscalls::string path,syscalls::string name,target_ulong value,uint32_t size);
 void __attribute__((weak)) call_sys_getsockname_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2);
-void __attribute__((weak)) call_sys_capset_callback(CPUState* env,target_ulong pc,target_ulong header,target_ulong data);
+void __attribute__((weak)) call_sys_clock_gettime_callback(CPUState* env,target_ulong pc,uint32_t which_clock,target_ulong tp);
 void __attribute__((weak)) call_sys_io_setup_callback(CPUState* env,target_ulong pc,uint32_t nr_reqs,target_ulong ctx);
 void __attribute__((weak)) call_sys_newfstat_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong statbuf);
 void __attribute__((weak)) call_sys_fstatfs_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf);
@@ -218,6 +220,7 @@ void __attribute__((weak)) call_sys_sendto_callback(CPUState* env,target_ulong p
 void __attribute__((weak)) call_sys_inotify_init_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_sys_epoll_create_callback(CPUState* env,target_ulong pc,int32_t size);
 void __attribute__((weak)) call_sys_sched_setscheduler_callback(CPUState* env,target_ulong pc,uint32_t pid,int32_t policy,target_ulong param);
+void __attribute__((weak)) call_sys_ptrace_callback(CPUState* env,target_ulong pc,int32_t request,int32_t pid,int32_t addr,int32_t data_arg);
 void __attribute__((weak)) call_sys_chdir_callback(CPUState* env,target_ulong pc,syscalls::string filename);
 void __attribute__((weak)) call_sys_mkdirat_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string pathname,int32_t mode);
 void __attribute__((weak)) call_sys_getcwd_callback(CPUState* env,target_ulong pc,target_ulong buf,uint32_t size);
@@ -232,13 +235,13 @@ void __attribute__((weak)) call_sigreturn_callback(CPUState* env,target_ulong pc
 void __attribute__((weak)) call_sys_newstat_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong statbuf);
 void __attribute__((weak)) call_sys_ioctl_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t cmd,uint32_t arg);
 void __attribute__((weak)) call_sys_setsid_callback(CPUState* env,target_ulong pc);
-void __attribute__((weak)) call_sys_removexattr_callback(CPUState* env,target_ulong pc,syscalls::string path,syscalls::string name);
+void __attribute__((weak)) call_sys_capset_callback(CPUState* env,target_ulong pc,target_ulong header,target_ulong data_arg);
 void __attribute__((weak)) call_sys_mq_timedsend_callback(CPUState* env,target_ulong pc,uint32_t mqdes,syscalls::string msg_ptr,uint32_t msg_len,uint32_t msg_prio,target_ulong abs_timeout);
 void __attribute__((weak)) call_sys_brk_callback(CPUState* env,target_ulong pc,uint32_t brk);
 void __attribute__((weak)) call_sys_mknod_callback(CPUState* env,target_ulong pc,syscalls::string filename,int32_t mode,uint32_t dev);
 void __attribute__((weak)) call_sys_timerfd_create_callback(CPUState* env,target_ulong pc,int32_t clockid,int32_t flags);
 void __attribute__((weak)) call_sys_setresuid_callback(CPUState* env,target_ulong pc,uint32_t ruid,uint32_t euid,uint32_t suid);
-void __attribute__((weak)) call_sys_epoll_wait_callback(CPUState* env,target_ulong pc,int32_t epfd,target_ulong events,int32_t maxevents,int32_t timeout);
+void __attribute__((weak)) call_sys_bdflush_callback(CPUState* env,target_ulong pc,int32_t func,int32_t data_arg);
 void __attribute__((weak)) call_sys_getuid_callback(CPUState* env,target_ulong pc);
 void __attribute__((weak)) call_sys_eventfd_callback(CPUState* env,target_ulong pc,uint32_t count);
 void __attribute__((weak)) call_sys_mq_unlink_callback(CPUState* env,target_ulong pc,syscalls::string name);
@@ -246,15 +249,13 @@ void __attribute__((weak)) call_sys_sched_getscheduler_callback(CPUState* env,ta
 void __attribute__((weak)) call_sys_setreuid16_callback(CPUState* env,target_ulong pc,uint32_t ruid,uint32_t euid);
 void __attribute__((weak)) call_sys_sched_getparam_callback(CPUState* env,target_ulong pc,uint32_t pid,target_ulong param);
 void __attribute__((weak)) call_sys_mlock_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t len);
-void __attribute__((weak)) call_sys_bdflush_callback(CPUState* env,target_ulong pc,int32_t func,int32_t data);
 void __attribute__((weak)) call_sys_request_key_callback(CPUState* env,target_ulong pc,syscalls::string _type,syscalls::string _description,syscalls::string _callout_info,uint32_t destringid);
 void __attribute__((weak)) call_sys_kexec_load_callback(CPUState* env,target_ulong pc,uint32_t entry,uint32_t nr_segments,target_ulong segments,uint32_t flags);
 void __attribute__((weak)) call_sys_truncate64_callback(CPUState* env,target_ulong pc,syscalls::string path,uint64_t length);
 void __attribute__((weak)) call_sys_linkat_callback(CPUState* env,target_ulong pc,int32_t olddfd,syscalls::string oldname,int32_t newdfd,syscalls::string newname,int32_t flags);
 void __attribute__((weak)) call_sys_getresgid16_callback(CPUState* env,target_ulong pc,target_ulong rgid,target_ulong egid,target_ulong sgid);
-void __attribute__((weak)) call_sys_clock_gettime_callback(CPUState* env,target_ulong pc,uint32_t which_clock,target_ulong tp);
 void __attribute__((weak)) call_sys_timer_settime_callback(CPUState* env,target_ulong pc,uint32_t timer_id,int32_t flags,target_ulong new_setting,target_ulong old_setting);
-void __attribute__((weak)) call_sys_fremovexattr_callback(CPUState* env,target_ulong pc,int32_t fd,syscalls::string name);
+void __attribute__((weak)) call_sys_waitid_callback(CPUState* env,target_ulong pc,int32_t which,uint32_t pid,target_ulong infop,int32_t options,target_ulong ru);
 void __attribute__((weak)) call_sys_move_pages_callback(CPUState* env,target_ulong pc,uint32_t pid,uint32_t nr_pages,target_ulong pages,target_ulong nodes,target_ulong status,int32_t flags);
 void __attribute__((weak)) call_sys_mq_timedreceive_callback(CPUState* env,target_ulong pc,uint32_t mqdes,syscalls::string msg_ptr,uint32_t msg_len,target_ulong msg_prio,target_ulong abs_timeout);
 void __attribute__((weak)) call_sys_flock_callback(CPUState* env,target_ulong pc,uint32_t fd,uint32_t cmd);
@@ -294,7 +295,7 @@ void __attribute__((weak)) call_sys_set_robust_list_callback(CPUState* env,targe
 void __attribute__((weak)) call_sys_setresuid16_callback(CPUState* env,target_ulong pc,uint32_t ruid,uint32_t euid,uint32_t suid);
 void __attribute__((weak)) call_sys_timer_create_callback(CPUState* env,target_ulong pc,uint32_t which_clock,target_ulong timer_event_spec,target_ulong created_timer_id);
 void __attribute__((weak)) call_sys_clock_settime_callback(CPUState* env,target_ulong pc,uint32_t which_clock,target_ulong tp);
-void __attribute__((weak)) call_sys_mq_open_callback(CPUState* env,target_ulong pc,syscalls::string name,int32_t oflag,uint32_t mode,target_ulong attr);
+void __attribute__((weak)) call_sys_removexattr_callback(CPUState* env,target_ulong pc,syscalls::string path,syscalls::string name);
 void __attribute__((weak)) call_sys_sysinfo_callback(CPUState* env,target_ulong pc,target_ulong info);
 void __attribute__((weak)) call_sys_clock_nanosleep_callback(CPUState* env,target_ulong pc,uint32_t which_clock,int32_t flags,target_ulong rqtp,target_ulong rmtp);
 void __attribute__((weak)) call_sys_sysfs_callback(CPUState* env,target_ulong pc,int32_t option,uint32_t arg1,uint32_t arg2);
@@ -333,3 +334,4 @@ void __attribute__((weak)) call_sys_io_submit_callback(CPUState* env,target_ulon
 void __attribute__((weak)) call_sys_shmdt_callback(CPUState* env,target_ulong pc,syscalls::string shmaddr);
 
 #endif
+#endif //__callbacks_hpp

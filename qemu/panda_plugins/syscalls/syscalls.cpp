@@ -48,11 +48,13 @@ void uninit_plugin(void *);
 
 }
 #include "syscall_ppp_boilerplate.cpp"
+
 // This is where we'll write out the syscall data
 FILE *plugin_log;
 void* syscalls_plugin_self;
 
-#include "weak_callbacks.hpp"
+#include "callbacks.hpp"
+#include "default_callbacks.cpp"
 
 std::vector<target_asid> relevant_ASIDs;
 
@@ -162,7 +164,7 @@ void appendReturnPoint(ReturnPoint&& rp){
 }
 
 #if defined(TARGET_ARM)
-void call_fork_callback(CPUState *env, target_ulong pc){
+/*void call_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -171,7 +173,7 @@ void call_fork_callback(CPUState *env, target_ulong pc){
     }
     // pc + offset or env->regs[14] ?
     fork_returns.push_back(ReturnPoint(pc + offset, get_asid(env, pc)));
-}
+}*/
 
 void call_execve_callback(CPUState *env, target_ulong pc,
     std::string filename,target_ulong argv,target_ulong envp)
@@ -198,11 +200,11 @@ void call_sys_prctl_callback(CPUState *env, target_ulong pc,
     prctl_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
-void call_do_mmap2_callback(CPUState *env, target_ulong pc,
+/*void call_do_mmap2_callback(CPUState *env, target_ulong pc,
     uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff)
 {
     mmap_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
-}
+}*/
 
 #endif //TARGET_ARM
 
