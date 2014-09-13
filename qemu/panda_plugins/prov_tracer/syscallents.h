@@ -30,10 +30,13 @@ struct syscall_entry {
     enum syscall_argtype args[SYSCALL_MAXARGS];
 };
 
+//extern struct syscall_entry *syscalls;
+
 
 #if defined(TARGET_I386)
 typedef const unsigned char opcode_t;
 #define OP_SYSENTER { 0x0f, 0x34 }
+#define OP_SYSEXIT { 0x0f, 0x35 }
 #define TEST_OP(o0, o1) (o0[0] == o1[0] && o0[1] == o1[1])
 #endif
 

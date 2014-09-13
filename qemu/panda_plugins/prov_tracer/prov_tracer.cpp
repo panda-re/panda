@@ -1,3 +1,8 @@
+#include <distorm.h>
+namespace distorm {
+#include <mnemonics.h>
+}
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
@@ -14,6 +19,8 @@ extern "C" {
 #include <errno.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+
 
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
@@ -70,6 +77,7 @@ void uninit_plugin(void *);
 void *syscalls_dl;
 struct syscall_entry *syscalls;
 FILE *ptout;
+_DecodeType distorm_dt = Decode32Bits;
 
 /* 
 	http://www.tldp.org/LDP/tlk/ds/ds.html
@@ -82,7 +90,33 @@ FILE *ptout;
 	set during kernel compilation.
 
 
+    http://wiki.osdev.org/SYSENTER
 */
+
+/*
+static inline char *syscall2str() {
+
+    %eax
+    %ebx, %ecx, %edx, %esi, %edi, %ebp
+    std::stringstream ss;
+
+}
+*/
+
+
+
+static inline bool in_kernelspace(CPUState *env) {
+#if defined(TARGET_I386)
+    // check the Current Privillege Level in the flags register
+    return ((env->hflags & HF_CPL_MASK) == 0);
+#elif defined(TARGET_ARM)
+    // check for supervisor mode in the Current Program Status register
+    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+#else
+    return false;
+#endif
+}
+
 
 int before_block_exec_cb(CPUState *env, TranslationBlock *tb) {
 	//ptout << std::hex << env->regs[R_ESP] << ":" << (0xffffe000 & env->regs[R_ESP]) <<  std::endl;
@@ -91,32 +125,76 @@ int before_block_exec_cb(CPUState *env, TranslationBlock *tb) {
 
 //
 bool ins_translate_callback(CPUState *env, target_ulong pc) {
-    opcode_t sysenter[] = OP_SYSENTER;
     unsigned char buf[2];
+    opcode_t sysenter[] = OP_SYSENTER;
+    opcode_t sysexit[] = OP_SYSEXIT;
 
     cpu_memory_rw_debug(env, pc, buf, 2, 0);
-    if TEST_OP(sysenter, buf) return true;
 
-    return false;
+    _DInst decodedInstructions[1];
+    unsigned int decodedInstructionsCount = 0;
+    _DecodeType dt = Decode32Bits;
+
+    _CodeInfo ci;
+    ci.code = buf;
+    ci.codeLen = sizeof(buf);
+    ci.codeOffset = 0;
+    ci.dt = dt;
+    ci.features = DF_NONE;
+    distorm_decompose(&ci, decodedInstructions, 1, &decodedInstructionsCount);
+
+    for (int i=0; i<decodedInstructionsCount; i++) {
+        if (decodedInstructions[i].flags == FLAG_NOT_DECODABLE) {
+            fprintf(ptout, "?");
+        }
+        else if (decodedInstructions[i].opcode == distorm::I_SYSENTER) {
+            fprintf(ptout, "!");
+        }
+        else {
+            fprintf(ptout, "*");
+        }
+    }
+    fprintf(ptout, "\n");
+
+
+    if TEST_OP(sysenter, buf) return true;
+    else if TEST_OP(sysexit, buf) return true;
+    else return false;
 }
 
 int ins_exec_callback(CPUState *env, target_ulong pc) {
     unsigned char buf[2];
+    opcode_t sysenter[] = OP_SYSENTER;
+    opcode_t sysexit[] = OP_SYSEXIT;
 
     cpu_memory_rw_debug(env, pc, buf, 2, 0);
 
-    fprintf(ptout,
-        "opcode=%#04x %#04x\n",
-        buf[0], buf[1]);
+    if TEST_OP(sysenter, buf) {
+        unsigned int syscall_nr = env->regs[R_EAX];
 
-    int syscall_nr = env->regs[R_EAX];
-    // On Windows and Linux, the system call id is in EAX
-    fprintf(ptout,
-        "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n",
-        pc, syscall_nr);
-
-    if (syscalls[syscall_nr].nr != SYSCALL_OTHER) {
-        fprintf(ptout, "%s\n", syscalls[syscall_nr].name);
+        // On Windows and Linux, the system call id is in EAX
+        // On Linux, the PC will point to the same location for each syscall:
+        //  At kernel initialization time the routine sysenter_setup() is called. It
+        //  sets up a non-writable page and writes code for the sysenter instruction
+        //  if the CPU supports that, and for the classical int 0x80 otherwise.
+        //  Thus, the C library can use the fastest type of system call by jumping
+        //  to a fixed address in the vsyscall page.
+        //  (http://www.win.tue.nl/~aeb/linux/lk/lk-4.html)
+        //
+        fprintf(ptout,
+            "*%s PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx " (%s)\n",
+            in_kernelspace(env) ? "k" : "u",
+            pc,
+            syscall_nr,
+            syscalls[syscall_nr].name
+        );
+    }
+    else if TEST_OP(sysexit, buf) {
+        fprintf(ptout,
+            "#%s PC=" TARGET_FMT_lx "\n",
+            in_kernelspace(env) ? "k" : "u",
+            pc
+        );
     }
 
     /*
@@ -158,7 +236,6 @@ bool init_plugin(void *self) {
     if (plugin_args != NULL ) {
         for (i=0; i<plugin_args->nargs; i++) {
             panda_arg a = plugin_args->list[i];
-
 #if defined(TARGET_I386)
             // i386-specific arguments
             if (0 == strcmp(a.key, "guest")) {
@@ -190,6 +267,10 @@ bool init_plugin(void *self) {
     EXIT_ON_ERROR(syscalls_dl == NULL, dlerror());
     syscalls = (struct syscall_entry *)dlsym(syscalls_dl, "syscalls");
     EXIT_ON_ERROR(syscalls == NULL, dlerror());
+
+    // set Distorm decode mode
+    if (strstr(guest_os, "64")) { distorm_dt = Decode64Bits; }
+    else { distorm_dt = Decode64Bits; }
 
     // open output file
     ptout = fopen(PROV_TRACER_DEFAULT_OUT, "w");    
