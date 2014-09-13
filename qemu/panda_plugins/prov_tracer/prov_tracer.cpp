@@ -123,43 +123,55 @@ int before_block_exec_cb(CPUState *env, TranslationBlock *tb) {
 	return 0;
 }
 
-//
-bool ins_translate_callback(CPUState *env, target_ulong pc) {
-    unsigned char buf[2];
-    opcode_t sysenter[] = OP_SYSENTER;
-    opcode_t sysexit[] = OP_SYSEXIT;
-
-    cpu_memory_rw_debug(env, pc, buf, 2, 0);
-
-    _DInst decodedInstructions[1];
-    unsigned int decodedInstructionsCount = 0;
-    _DecodeType dt = Decode32Bits;
-
+// the number of instructions returned is always non-zero
+static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, unsigned int len, _DInst *ins_decoded, unsigned int ins_decoded_max, unsigned int feats) {
+    unsigned char *buf;
+    unsigned int ins_decoded_n;
     _CodeInfo ci;
+
+    // read from memory
+    ERRNO_CLEAR;
+    buf = (unsigned char *)malloc(len*sizeof(unsigned char));
+    EXIT_ON_ERROR(buf == NULL, "malloc failed");
+
+    ERRNO_CLEAR;
+    WARN_ON_ERROR((cpu_memory_rw_debug(env, mloc, buf, len, 0) != 0), "qemu failed to read memory");
+
+    // decode read bytes
     ci.code = buf;
-    ci.codeLen = sizeof(buf);
+    ci.codeLen = len;
     ci.codeOffset = 0;
-    ci.dt = dt;
-    ci.features = DF_NONE;
-    distorm_decompose(&ci, decodedInstructions, 1, &decodedInstructionsCount);
+    ci.dt = distorm_dt;         // global flag
+    ci.features = feats;
 
-    for (int i=0; i<decodedInstructionsCount; i++) {
-        if (decodedInstructions[i].flags == FLAG_NOT_DECODABLE) {
-            fprintf(ptout, "?");
-        }
-        else if (decodedInstructions[i].opcode == distorm::I_SYSENTER) {
-            fprintf(ptout, "!");
-        }
-        else {
-            fprintf(ptout, "*");
-        }
+    // decode_result is ignored as it is of little use
+    /* _DecodeResult decode_result = */distorm_decompose(&ci, ins_decoded, ins_decoded_max, &ins_decoded_n);
+
+    free(buf);
+    return ins_decoded_n;
+}
+
+bool ins_translate_callback(CPUState *env, target_ulong pc) {
+    _DInst ins_decoded[4];
+    unsigned int ins_decoded_n;
+
+    // sysenter/sysexit instructions are 2 bytes longs
+    // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
+    ins_decoded_n = decompose_from_mem(env, pc, 2, ins_decoded, 1, DF_STOP_ON_SYS);
+    WARN_ON_ERROR((ins_decoded_n > 1), "unexpected number of decoded instructions");
+
+    // no need to loop over ins_decoded - we only have requested one instruction to be decoded
+    if (ins_decoded[0].flags == FLAG_NOT_DECODABLE) {
+        return false;
     }
-    fprintf(ptout, "\n");
 
-
-    if TEST_OP(sysenter, buf) return true;
-    else if TEST_OP(sysexit, buf) return true;
-    else return false;
+    // check the decoded instruction class instead of the specific opcode
+    switch(META_GET_FC(ins_decoded[0].meta)) {
+        case FC_SYS:
+            return true;
+        default:
+            return false;
+    }
 }
 
 int ins_exec_callback(CPUState *env, target_ulong pc) {
@@ -302,6 +314,7 @@ void uninit_plugin(void *self) {
     WARN_ON_ERROR(n != 0, dlerror());
 	n = fclose(ptout);
     WARN_ON_ERROR(n != 0, "fclose failed");
+
 #endif
 }
 
