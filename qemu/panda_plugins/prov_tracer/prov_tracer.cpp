@@ -174,13 +174,46 @@ bool ins_translate_callback(CPUState *env, target_ulong pc) {
     }
 }
 
+
 int ins_exec_callback(CPUState *env, target_ulong pc) {
-    unsigned char buf[2];
-    opcode_t sysenter[] = OP_SYSENTER;
-    opcode_t sysexit[] = OP_SYSEXIT;
+    _DInst ins_decoded[4];
+    unsigned int ins_decoded_n;
+    unsigned int ins_not_decodable_n = 0;
 
-    cpu_memory_rw_debug(env, pc, buf, 2, 0);
+    // sysenter/sysexit instructions are 2 bytes longs
+    // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
+    ins_decoded_n = decompose_from_mem(env, pc, 2, ins_decoded, 1, DF_STOP_ON_SYS);
+    WARN_ON_ERROR((ins_decoded_n > 1), "unexpected number of decoded instructions");
 
+    // loop through decoded instructions
+    for (unsigned int i=0; i<ins_decoded_n; i++) {
+        if (ins_decoded[i].flags == FLAG_NOT_DECODABLE) {
+            ins_not_decodable_n++;
+            continue;
+        }
+
+        switch(ins_decoded[i].opcode) {
+            case distorm::I_SYSENTER:
+            {
+
+            }
+            break;
+
+            case distorm::I_SYSEXIT:
+            {
+
+            }
+            break;
+
+            default:
+            {
+
+            }
+            break;
+        }
+    }
+
+/*
     if TEST_OP(sysenter, buf) {
         unsigned int syscall_nr = env->regs[R_EAX];
 
@@ -208,6 +241,7 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
             pc
         );
     }
+*/
 
     /*
     fprintf(ptout,
