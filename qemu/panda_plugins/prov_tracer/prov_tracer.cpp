@@ -93,15 +93,58 @@ _DecodeType distorm_dt = Decode32Bits;
     http://wiki.osdev.org/SYSENTER
 */
 
-/*
-static inline char *syscall2str() {
+static inline const char *syscall2str(CPUState *env, target_ulong pc) {
+    // On Windows and Linux, the system call id is in EAX.
+    int syscall_nr = env->regs[R_EAX];
+    int syscall_nargs = syscalls[syscall_nr].nargs;
 
-    %eax
-    %ebx, %ecx, %edx, %esi, %edi, %ebp
     std::stringstream ss;
+    ss << syscalls[syscall_nr].name << "(";
 
+    // On Linux, system call arguments are passed in registers.
+    static int argidx[6] = {R_EBX, R_ECX, R_EDX, R_ESI, R_EDI, R_EBP};
+
+    for (int i=0; i<syscall_nargs; i++) {
+        unsigned char s[SYSCALL_MAXSTRLEN];
+        int rstatus;
+
+        switch (syscalls[syscall_nr].args[i]) {
+            case SYSCALL_ARG_INT:
+                ss << std::dec << env->regs[argidx[i]];
+                break;
+
+            case SYSCALL_ARG_PTR:
+                ss << '@' << std::hex << env->regs[argidx[i]];
+                break;
+
+            case SYSCALL_ARG_STR:
+                // read blindly SYSCALL_MAX_STRLEN data
+                rstatus = cpu_memory_rw_debug(env, env->regs[argidx[i]], s, SYSCALL_MAXSTRLEN, 0);
+                WARN_ON_ERROR((rstatus == 0), "qemu failed to read syscall string arg from memory");
+
+                // terminate string in case we read garbage
+                s[SYSCALL_MAXSTRLEN-1] = '\0';
+
+                ss << '"' << s << '"';
+                break;
+
+            default:
+                EXIT_ON_ERROR((1), "unexpected syscall argument type");
+                break;
+        }
+        ss << ", ";
+    }
+
+    if (syscall_nargs > 0) { ss.seekp(-2, ss.end); }
+    ss << ")";
+
+    // According to the C++ documentation: the pointer returned by
+    // c_str() may be invalidated by further calls to other member
+    // functions that modify the object.
+    // It is caller's responsibility to copy the string before any
+    // such calls.
+    return ss.str().c_str();
 }
-*/
 
 
 
@@ -174,7 +217,6 @@ bool ins_translate_callback(CPUState *env, target_ulong pc) {
     }
 }
 
-
 int ins_exec_callback(CPUState *env, target_ulong pc) {
     _DInst ins_decoded[4];
     unsigned int ins_decoded_n;
@@ -195,7 +237,22 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
         switch(ins_decoded[i].opcode) {
             case distorm::I_SYSENTER:
             {
-
+                // On Windows and Linux, the system call id is in EAX.
+                //
+                // On Linux, the PC will point to the same location for
+                // each syscall: At kernel initialization time the routine
+                // sysenter_setup() is called. It sets up a non-writable
+                // page and writes code for the sysenter instruction if
+                // the CPU supports that, and for the classical int 0x80
+                // otherwise. Thus, the C library can use the fastest type
+                // of system call by jumping to a fixed address in the
+                // vsyscall page.
+                // (http://www.win.tue.nl/~aeb/linux/lk/lk-4.html)
+                //
+                // ++ add ifs
+                fprintf(ptout, "*%s PC=" TARGET_FMT_lx " %s\n",
+                    in_kernelspace(env) ? "k" : "u", pc, syscall2str(env, pc)
+                );
             }
             break;
 
@@ -217,15 +274,6 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
     if TEST_OP(sysenter, buf) {
         unsigned int syscall_nr = env->regs[R_EAX];
 
-        // On Windows and Linux, the system call id is in EAX
-        // On Linux, the PC will point to the same location for each syscall:
-        //  At kernel initialization time the routine sysenter_setup() is called. It
-        //  sets up a non-writable page and writes code for the sysenter instruction
-        //  if the CPU supports that, and for the classical int 0x80 otherwise.
-        //  Thus, the C library can use the fastest type of system call by jumping
-        //  to a fixed address in the vsyscall page.
-        //  (http://www.win.tue.nl/~aeb/linux/lk/lk-4.html)
-        //
         fprintf(ptout,
             "*%s PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx " (%s)\n",
             in_kernelspace(env) ? "k" : "u",
@@ -252,7 +300,6 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
         "GETPID=%u READ=%u\n",
         SYS_getpid, __NR_read);
 
-    #if defined(LINUX32_GUEST)
     if (env->regs[R_EAX] == 20) {
         fprintf(ptout, "getpid\n");
     }
@@ -262,7 +309,6 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
     else {
         fprintf(ptout, "other\n");
     }
-    #endif
     */
     return 0;
 }
