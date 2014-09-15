@@ -6,6 +6,14 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
+QEMU_CXXFLAGS+= -std=c++11
+# Since std::vector<bool> uses less compute and less memory, it's the default now
+# Comment this out and leave the next entry commented to enable std::set<uint32_t> labelset implementation
+QEMU_CXXFLAGS+= -DLABELSET_VECTOR
+#uncomment to enable std::bitset labelset implementation. Change the set size if needed!
+#QEMU_CXXFLAGS+= -DLABELSET_STDBITSET 
+#QEMU_CXXFLAGS+= -DLABELSET_MAX_LABELS=256
+
 $(PLUGIN_TARGET_DIR)/my_mem.o: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/my_mem.[cpp|h])
 
