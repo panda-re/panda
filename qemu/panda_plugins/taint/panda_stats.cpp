@@ -69,30 +69,31 @@ void memplot(Shad *shad){
     fclose(memplotlog);
 }
 
-#if !defined(BITSET_HAS_ITERATORS)
-#error "Bitset implementation must tell me if it has iterators or needs to be accessed with [] in a loop!"
-#endif
-#if BITSET_HAS_ITERATORS
-void panda_stats_bufplot(FILE* bufplotlog,
-                         const char* prefix,
-                         LabelSet& ls,
-                         uint64_t i){
-    BitSet::iterator j;
-    for (j = ls.set.begin(); j != ls.set.end(); j++){
-        ::fprintf(bufplotlog, "%s%lu,%u,%d\n", prefix, i, *j, ls.type);
-    }
+struct labelset_print_info {
+    FILE* bufplotlog;
+    const char* prefix;
+    LabelSetType type;
+    uint64_t addr;
+};
+
+static int panda_stats_print_labelset(uint32_t label_no, void* opaque){
+    labelset_print_info *print_info = reinterpret_cast<labelset_print_info*>(opaque);
+    ::fprintf(print_info->bufplotlog, "%s%lu,%u,%d\n", print_info->prefix, 
+              print_info->addr, label_no, print_info->type);
+    return 0;
 }
-#else //BITSET_HAS_ITERATORS
 
 void panda_stats_bufplot(FILE* bufplotlog,
                          const char* prefix,
                          LabelSet& ls,
                          uint64_t i){
-    for (uint32_t j = 0; j < ls.set.size(); j++){
-        ::fprintf(bufplotlog, "%s%lu,%u,%d\n", prefix, i, ls.set[j], ls.type);
-    }
+    labelset_print_info info;
+    info.bufplotlog = bufplotlog;
+    info.prefix = prefix;
+    info.type = ls.type;
+    info.addr = i;
+    bitset_iter(ls.set, panda_stats_print_labelset, &info);
 }
-#endif //BITSET_HAS_ITERATORS
 
 
 // Prints out taint of memory buffer
