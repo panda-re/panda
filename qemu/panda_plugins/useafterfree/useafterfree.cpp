@@ -59,7 +59,7 @@ static bool ptrprint = false;
 
 static target_ulong alloc_guest_addr, free_guest_addr, realloc_guest_addr;
 static target_ulong right_cr3;
-static int word_size;
+static unsigned word_size;
 
 struct range_info {
     target_ulong heap, begin, end;
@@ -255,10 +255,16 @@ static bool inside_memop(target_ulong cr3) {
     return !(alloc_stacks[cr3].empty() && free_stacks[cr3].empty());
 }
 
-uint32_t get_uint32(CPUState *env, target_ulong addr) {
-    uint32_t result;
-    panda_virtual_memory_rw(env, addr, (uint8_t *)&result, 4, 0);
+// Assumes target+host have same endianness.
+static target_ulong get_word(CPUState *env, target_ulong addr) {
+    target_ulong result = 0;
+    panda_virtual_memory_rw(env, addr, (uint8_t *)&result, word_size, 0);
     return result;
+}
+
+// Returns [esp + word_size*offset_number]
+static target_ulong get_stack(CPUState *env, int offset_number) {
+    return get_word(env, env->regs[R_ESP] + word_size * offset_number);
 }
 
 void process_ret(CPUState *env, target_ulong func) {
@@ -351,7 +357,7 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
 
     target_ulong cr3 = env->cr[3];
 
-    if (size >= 4 && is_write) { // The addresses we're overwriting don't contain ptrs anymore.
+    if (size >= word_size && is_write) { // The addresses we're overwriting don't contain ptrs anymore.
         target_ulong begin = addr, end = addr + size;
         auto end_it = valid_ptrs[cr3].lower_bound(end);
         for (auto it = valid_ptrs[cr3].lower_bound(begin); it != end_it;
@@ -381,7 +387,7 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
             return 0;
         }
 
-        if (size == 4) {
+        if (size == word_size) {
             target_ulong loc = addr; // Pointer location
             // Pointer value; should be address inside valid range
             target_ulong val = *(uint32_t *)buf;
@@ -418,15 +424,6 @@ int virt_mem_read(CPUState *env, target_ulong pc, target_ulong addr, target_ulon
     return virt_mem_access(env, pc, addr, size, buf, 0);
 }
 
-// Returns [esp + word_size*offset_number]
-// Assumes target+host have same endianness.
-static target_ulong get_stack(CPUState *env, int offset_number) {
-    target_ulong result = 0;
-    panda_virtual_memory_rw(env, env->regs[R_ESP] + word_size * offset_number,
-            (uint8_t *)&result, word_size, 0);
-    return result;
-}
-
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (!is_right_proc(env)) return 0;
 
@@ -441,7 +438,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     // Clear queue of potential bad reads.
     while (bad_read_queue[cr3].size() > 0) {
         read_info& ri = bad_read_queue[cr3].front();
-        if (get_uint32(env, ri.loc) == ri.val) { // Still invalid.
+        if (get_word(env, ri.loc) == ri.val) { // Still invalid.
             printf("READING INVALID POINTER %lx @ %lx!! PC %lx\n", ri.val, ri.loc, ri.pc);
         }
         bad_read_queue[cr3].pop();
@@ -462,7 +459,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         }
 
         // Outside safety window and pointer is still dangling. Report.
-        printf("POINTER RETENTION to %x @ %lx!\n", get_uint32(env, loc), loc);
+        printf("POINTER RETENTION to %lx @ %lx!\n", get_word(env, loc), loc);
         invalid_queue[cr3].pop();
     }
 
