@@ -7,9 +7,12 @@ include ../panda.mak
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
 QEMU_CXXFLAGS+= -std=c++11
-#uncomment to enable vector<bool> labelset implementation
-#QEMU_CXXFLAGS+= -DLABELSET_VECTOR
-#QEMU_CXXFLAGS+= -DLABELSET_STDBITSET
+# Since std::vector<bool> uses less compute and less memory, it's the default now
+# Comment this out and leave the next entry commented to enable std::set<uint32_t> labelset implementation
+QEMU_CXXFLAGS+= -DLABELSET_VECTOR
+#uncomment to enable std::bitset labelset implementation. Change the set size if needed!
+#QEMU_CXXFLAGS+= -DLABELSET_STDBITSET 
+#QEMU_CXXFLAGS+= -DLABELSET_MAX_LABELS=256
 
 # plugin source file depends on shadow memory stuff in panda directory
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
