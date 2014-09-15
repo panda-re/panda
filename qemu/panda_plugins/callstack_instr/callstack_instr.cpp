@@ -348,6 +348,19 @@ int get_callers(target_ulong callers[], int n, CPUState *env) {
     return i;
 }
 
+int get_functions(target_ulong functions[], int n, CPUState *env) {
+    std::vector<target_ulong> &v = function_stacks[get_stackid(env,env->panda_guest_pc)];
+    if (v.empty()) {
+        return 0;
+    }
+    auto rit = v.rbegin();
+    int i = 0;
+    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
+        functions[i] = *rit;
+    }
+    return i;
+}
+
 void get_prog_point(CPUState *env, prog_point *p) {
     if (!p) return;
 

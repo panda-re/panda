@@ -4,7 +4,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <assert.h>
-#include "my_mem.h"
+    //#include "my_mem.h"
 
 }
 
@@ -37,9 +37,9 @@ int main(int argc, char **argv) {
         char filename[65535];
         sprintf(filename, "%s.inv-%d", pfx, n);
         FILE *fpinv = fopen(filename, "r");   
-        for ( auto &gram : inv.lexicon[n] ) {
+        for ( auto &gram : inv.lexicon[n].grams ) {
             printf ("gram = [");
-            spit_gram_hex(gram);
+            spit_gram_hex(gram, n);
             printf ("]");
             unmarshall_row_fp(fpinv, inv, n, gram, row);
             printf (" len=%d\n", row.size);

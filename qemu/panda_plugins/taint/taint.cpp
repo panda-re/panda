@@ -1014,31 +1014,26 @@ bool init_plugin(void *self) {
     tob_io_thread = tob_new(tob_io_thread_max_size);
 
     tainted_pointer = 1;
-
+    panda_arg_list *args = panda_get_args("taint");
     int i;
-    for (i = 0; i < panda_argc; i++) {
-      
-      if (0 == strncmp(panda_argv[i], "max_taintset_card", 17)) {
-	// Format is sample:key=value                                                                                                                                                                                 
-	char *str = strchr(panda_argv[i], '=');
-	if (str) {
-	  max_taintset_card = atoi(str+1);
+    if (NULL != args) {
+      for (i = 0; i < args->nargs; i++) {
+	if (0 == strncmp(args->list[i].key, "max_taintset_card", 17)) {
+	  max_taintset_card = atoi(args->list[i].value);
 	  printf ("max_taintset_card = %d\n", max_taintset_card);
 	}
-      }
-      if (0 == strncmp(panda_argv[i], "max_taintset_compute_number", 24)) {
-	// Format is sample:key=value                                                                                                                                                                                 
-	char *str = strchr(panda_argv[i], '=');
-	if (str) {
-	  max_taintset_compute_number = atoi(str+1);
-	  printf ("max_taintset_card = %d\n", max_taintset_compute_number);
+
+	if (0 == strncmp(args->list[i].key, "max_taintset_compute_number", 24)) {
+	  max_taintset_compute_number = atoi(args->list[i].value);
+	  printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
 	}
-      }
-      if (0 == strncmp(panda_argv[i], "compute_is_delete", 17)) {
-	compute_is_delete = 1;
-      }
-      if (0 == strncmp(panda_argv[i], "no_tainted_pointer", 18)) {
-	tainted_pointer = 0;
+
+	if (0 == strncmp(args->list[i].key, "compute_is_delete", 17)) {
+	  compute_is_delete = 1;
+	}
+	if (0 == strncmp(args->list[i].key, "no_tainted_pointer", 18)) {
+	  tainted_pointer = 0;
+	}
       }
     }
 

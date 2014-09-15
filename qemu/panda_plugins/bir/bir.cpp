@@ -46,6 +46,7 @@ void uninit_plugin(void *);
 }
 
 #include "../taint/taint_processor.h"
+#include "panda_common.h"
 
 #include "index.hpp"
 
@@ -68,6 +69,39 @@ bool compare_scores (const Score & s1, const Score & s2) {
 
 
 extern uint32_t max_row_length;
+
+
+extern "C" {
+#include <sys/time.h>
+}
+
+
+struct timeval time1, time2;
+
+void timer_start() {
+    gettimeofday(&time1, NULL);
+}
+
+
+float timer_stop() {
+    gettimeofday(&time2, NULL);
+    float secs = time2.tv_sec - time1.tv_sec;
+    secs += ((float) (time2.tv_usec - time1.tv_usec)) / 1000000.0;
+    return secs;
+}
+
+
+// memoized inv
+// invm[n][g][p] is counts for n - gram g in passage p 
+std::map < uint32_t, std::map < Gram, std:: map < uint32_t, uint32_t > > > invm;
+
+std::map < uint32_t, uint32_t > unmarshall_row(FILE *fp, InvIndex &inv, uint32_t n, Gram g) {
+    if ((invm.count(n) == 0) || (invm[n].count(g) == 0)) {
+        invm[n][g] = unmarshall_doc_word_fp(fp, inv, n, g);
+    }
+    return invm[n][g];
+}
+
 
 /*
 
@@ -155,10 +189,12 @@ std::map < uint32_t, uint32_t > row_sizes;
 // score is 1-d array, one item for each passage in the index
 void query_with_passage (Passage & query)  
 {
+    /*
     GramPsgCounts ngram_row;
     ngram_row.size = 0;
     ngram_row.max_size = 0;
     ngram_row.counts = NULL;
+    */
 
     std::vector < float >pppqs = std::vector < float >(inv.num_passages);
     std::vector < uint32_t > sc = std::vector < uint32_t > (inv.num_passages);
@@ -171,50 +207,38 @@ void query_with_passage (Passage & query)
 
     // iterate over highest order ngrams
     for (auto &kvp : query.contents[inv.max_n_gram].count)    {
-        // e.g., if inv.max_n_gram = 3 this might be the three bytes "abc"
+        // e.g., if inv.max_n_gram = 5 this might be the three bytes "abcde"
         Gram gram = kvp.first;
-        // e.g. count("abc" in query)
+        // e.g. count("abcde" in query)
         uint32_t gram_count = kvp.second;
         // since gram is inv.max_n_gram bytes long,
-        // this is the last byte, i.e. the unigram
-        // e.g. "c"
+        // this is the last byte, i.e. the unigram "e"
         Gram g = gramsub(gram, inv.max_n_gram - 1, 1);               
         // p(q|G) 
         float pg = ((float) inv.general_query[1][g]) / inv.total_count[1];
         // clear per-passage for-this-q scores        
-        for (uint32_t i = 0; i < inv.num_passages; i++) 	{
+ 
+       for (uint32_t i = 0; i < inv.num_passages; i++) 	{
             pppqs[i] = (*scoring_params)[0] * pg;
         }     
-        for (uint32_t n = inv.min_n_gram; n <= inv.max_n_gram; n++) 	{
-            // this is the ngram for n
-            // inv.max_n_gram = 3
-            // n=1, we take substring of length 1 starting at pos=2
-            // n=2, we take substring of length 2 starting at pos=1
-            // n=3, we take substring of length 3 starting at pos=0
-            // e.g. for n=2, this would be "bc"
+       for (uint32_t n = inv.min_n_gram; n <= inv.max_n_gram; n++) 	{
+            // this is the ngram for this n that ends in the unigram g (and includes it)
             Gram ngram = gramsub(gram, inv.max_n_gram - n, n);
-            int res = unmarshall_row_fp ((*fpinv)[n], inv, n, ngram, ngram_row);            
-            if (res == 0) {
-                // row too long
-                continue;
-            }
+            std::map < uint32_t, uint32_t > ngram_row = unmarshall_row ((*fpinv)[n], inv, n, ngram);            
             Gram prev_part;
             std::map < uint32_t, uint32_t > prev_part_dw;
-            if (n > 1) {
+            if (n != 1) {
                 // this is everything but the last byte of ngram
-                // e.g. in this case it would be "b"
+                // e.g. in this case it would be, for n=5, "abcd"
                 prev_part = gramsub(ngram, 0, n-1);
-                prev_part_dw = unmarshall_doc_word_fp((*fpinv)[n-1], inv, n-1, prev_part);
+                prev_part_dw = unmarshall_row((*fpinv)[n-1], inv, n-1, prev_part);
             }
             float w = (*scoring_params)[n];
-            // e.g. iterate over psgs that have bigram "bc"
-            if (ngram_row.size < max_row_length) {
-                //	  printf ("row_size = %d\n", ngram_row.size);
-                //	  row_sizes[ngram_row.size] ++;
-                for (uint32_t i = 0; i < ngram_row.size; i++) {
-                    uint32_t passage_ind = ngram_row.counts[i].passage_ind;
-                    // c("bc" in passage_ind)
-                    uint32_t c_ngram = ngram_row.counts[i].count;
+            // e.g. iterate over psgs that have the ngram            
+            if (ngram_row.size() < max_row_length) {
+                for ( auto &kvp : ngram_row ) {
+                    uint32_t passage_ind = kvp.first;
+                    uint32_t c_ngram = kvp.second;                    
                     float denom;
                     if (n == 1) {
                         denom = inv.passage_len_bytes; 
@@ -231,16 +255,21 @@ void query_with_passage (Passage & query)
             // by p(q|G), take log, and accumulate result 
             // into per-passage score
             
-              for (uint32_t i = 0; i < inv.num_passages; i++)   {
-                  // nb: gram_count is right thing to multiply by
-                  // if we multiplied by c(q|psg) we'd be overcounting
-                  (*score)[i].val += gram_count * (log (pppqs[i] / pg));
-                  //              (*score)[i].val += gram_count * pppqs[i];
-              }
+            for (uint32_t i = 0; i < inv.num_passages; i++)   {
+                // nb: gram_count is right thing to multiply by
+                // if we multiplied by c(q|psg) we'd be overcounting
+                (*score)[i].val += gram_count * (log (pppqs[i] / pg));
+                //              (*score)[i].val += gram_count * pppqs[i];
+            }
               
         }			// iterate over n
     }				// iterate over highest-order ngrams
     // scale the scores
+    for (uint32_t i = 0; i < inv.num_passages; i++) {
+        (*score)[i].val /= query.contents[inv.max_n_gram].total;
+    }
+    
+
     // sort the scores
     std::sort ((*score).begin (), (*score).end (), compare_scores);
 }
@@ -255,29 +284,104 @@ bool pdice (float prob_yes) {
 }
 
 
+float pdice_prob = 1.0;
+
+// cache of binary -> top ranked psg 
+// indexed by asid, then by pc
+
+std::map < uint32_t, std::map < uint32_t, std::string > >  bircache;
+
 
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if ((tb->pc > 0x1000000) && pdice(0.1) && tb->size>8) {
-        char buf[4096];
-        uint32_t len = 4096;
-        if (tb->size < len) {
-            len = tb->size;
+
+    //    float sec;
+
+    //      if (tb->pc <= 0x500000 && tb->size > 16) {
+    //if (tb->size > 16 && pdice(pdice_prob)) { 
+    if ((tb->size > 16) && (tb->pc & 0xf000000000000000)) {
+        
+        //    if ((tb->pc > 0x1000000) && pdice(0.99) && tb->size>8) {
+        target_ulong asid = panda_current_asid(env);
+        //        printf ("pc=0x" TARGET_FMT_lx " len=%d \n", tb->pc, tb->size);
+        
+        if ((bircache.count(asid) != 0) && (bircache[asid].count(tb->pc) != 0)) {
+            // its in the cache
+            printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+            printf ("bir cache --  %s \n", bircache[asid][tb->pc].c_str());
         }
-        panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
-        Passage  passage = index_passage (inv.lexicon,
-                                          /* update_lexicon = */ false,
-                                          inv.min_n_gram, inv.max_n_gram,
-                                          buf, len,
-                                          /* note: we dont really care about passage ind */
-                                          /* passage_ind = */ 0xdeadbeef);
-        query_with_passage (passage) ;
-        printf ("pc=0x" TARGET_FMT_lx " len=%d \n", tb->pc, tb->size);
-        for (int j=0; j<5; j++) {
-            uint32_t the_offset;       
-            const char *the_filename = get_passage_name(inv, (*score)[j].ind, &the_offset);            
-            printf ("  %d %.3f bir:%s-%d\n", j, (*score)[j].val, the_filename, the_offset);
+        else {
+            // not in cache
+            
+            uint8_t buf[4096];
+            uint32_t len = 4096;
+            if (tb->size < len) {
+                len = tb->size;
+            }
+            
+            
+            panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
+            
+            //            timer_start();
+            Passage  passage = index_passage (inv.lexicon,
+                                              /* update_lexicon = */ false,
+                                              inv.min_n_gram, inv.max_n_gram,
+                                              buf, len,
+                                              /* note: we dont really care about passage ind */
+                                              /* passage_ind = */ 0xdeadbeef);
+            
+            //            float sec;
+            //            sec = timer_stop();
+            //            printf ("%.5f sec to index_passage\n", sec);
+            
+            
+            //      timer_start();
+            query_with_passage (passage) ;
+            //            sec = timer_stop();
+            //            printf ("%.5f sec to query_with_passage\n", sec);
+            
+            printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+            if ( (*score)[0].val > 20 ) {
+                uint32_t the_offset;
+                const char *the_filename = get_passage_name(inv, (*score)[0].ind, &the_offset);            
+                char the_psgname[1024];
+                sprintf(the_psgname, "%s-%d", the_filename, the_offset);
+                bircache[asid][tb->pc] = std::string(the_psgname);
+                printf ("bir -- %.3f %s\n", (*score)[0].val, the_psgname);
+            }      
+            else {
+                printf ("bir -- %.3f unknown\n", (*score)[0].val);
+                bircache[asid][tb->pc] = "unknown";
+            }
+            
+        /*           
+            for (int j=0; j<2; j++) {
+                uint32_t the_offset;       
+                const char *the_filename = get_passage_name(inv, (*score)[j].ind, &the_offset);            
+                char the_psgname[1024];
+                sprintf(the_psgname, "%s-%d", the_filename, the_offset);
+                if (j==0) {
+                    if ((*score)[j].val > 20) {
+                        bircache[asid][tb->pc] = std::string(the_psgname);
+                    }
+                    else {
+                        bircache[asid][tb->pc] = std::string("not found in index");
+                        printf ("bir -- not found in index\n");
+                        //                        break;
+                    }
+                }
+                printf ("  %d %.3f bir:%s-%d\n", j, (*score)[j].val, the_filename, the_offset);
+            }
+            */
+        
         }
+        
     }
+
+    /*
+    sec = timer_stop();
+    printf ("%.8f sec to bir\n", sec);
+    */
+
     return 0;
 }
 
@@ -293,16 +397,29 @@ bool init_plugin(void *self) {
         int i;
         char *invpfx = NULL;
         for (i = 0; i < args->nargs; i++) {
+            printf ("arg=%s val=%s\n", args->list[i].key, args->list[i].value);
             if (0 == strncmp(args->list[i].key, "invpfx", 5)) {
                 invpfx = args->list[i].value;
-            } else if (0 == strncmp(args->list[i].key, "minn", 3)) {
+            } else if (0 == strncmp(args->list[i].key, "minn", 4)) {
                 minn = atoi(args->list[i].value);                
-            } else if (0 == strncmp(args->list[i].key, "maxn", 3)) {
-                maxn = atoi(args->list[i].value);
+            } else if (0 == strncmp(args->list[i].key, "maxn", 4)) {
+                maxn = atoi(args->list[i].value);            
+            } else if (0 == strncmp(args->list[i].key, "max_row_length", 14)) {
+                max_row_length = atoi(args->list[i].value);
+            } else if (0 == strncmp(args->list[i].key, "pdice", 5)) {
+                pdice_prob = atof(args->list[i].value);
             }
         }
+        printf ("minn = %d\n", minn);
+        printf ("maxn = %d\n", maxn);
+        printf ("max_row_length = %d\n", max_row_length);
+        printf ("pdice_prob = %0.8f\n", pdice_prob);
+
         if (invpfx != NULL) {                
             inv = unmarshall_invindex_min (invpfx);
+
+            //            spit_inv_min(inv);
+
             // weight for general_query = scoring_param[0] = 1/2
             // weight for n=1 is 1/3
             // weight for n=2 is 1/4
@@ -329,133 +446,8 @@ bool init_plugin(void *self) {
             return true;
         }
     }
+
+#endif
+
     return false;
 }
-#endif
-
-
-#if 0
-            char binbuffer[65535];
-            int  i, j;
-            for (i = 0; i < num_tests; i++)    {
-        auto start = std::chrono::high_resolution_clock::now();
-      
-        uint32_t	f = (random ()) % files.size ();
-        const char *	filename = files[f].c_str ();
-        struct stat	fstat;
-        stat (filename, &fstat);
-        long int	file_len = fstat.st_size;
-        long int	offset = (random ()) % file_len;
-        uint32_t	len = (random ())	% (inv.passage_len_bytes / 4) + (inv.passage_len_bytes / 4);
-        uint32_t	start_passage_num = offset / (inv.passage_len_bytes / 2);
-        if (start_passage_num > 0)	{
-            start_passage_num--;
-        }
-        uint32_t	end_passage_num = (offset + len) / (inv.passage_len_bytes / 2);
-        printf ("%d query is %s, offset=%ld [psg=%d..%d] len=%d\n",
-                i, filename, offset, start_passage_num, end_passage_num, len);
-        FILE *	fp = fopen (filename, "r");
-        fseek (fp, offset, SEEK_SET);
-        fread (binbuffer, 1, len, fp);
-        // corrupt it
-        for (j = 0; j < len; j++)	{
-            if (pdice (prob_corrupt))	    {
-                binbuffer[j] = (rand ()) % 256;
-            }
-        }
-
-        auto t1 = std::chrono::high_resolution_clock::now();
-	
-
-        Passage  passage = index_passage (inv.lexicon,
-                                          /* update_lexicon = */ false,
-                                          inv.min_n_gram, inv.max_n_gram,
-                                          binbuffer, len,
-                                          /* note: we dont really care about passage ind */
-                                          /* passage_ind = */ 0xdeadbeef);
-
-        auto t2 = std::chrono::high_resolution_clock::now();
-        float elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(t2-t1).count();
-        printf ("index_passage %.2f seconds\n", elapsedSeconds);
-
-
-
-        t1 = std::chrono::high_resolution_clock::now();
-        query_with_passage (inv, fpinv, passage, scoring_params, score, min_n, max_n);
-        t2 = std::chrono::high_resolution_clock::now();
-        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(t2-t1).count();
-        printf ("query_with_passage %.2f seconds\n", elapsedSeconds);
-
-
-        uint32_t	top_n = 5;
-
-
-        bool correct = false;
-        for (int j = 0; j < top_n; j++)	{
-            uint32_t the_offset;
-            const char *the_filename = get_passage_name(inv, score[j].ind, &the_offset);
-            if (j==0) {
-                if ((strcmp(the_filename, filename)==0) && (abs(the_offset - offset) < inv.passage_len_bytes) ) {
-                    correct = true;
-                    printf ("CORRECT\n");               
-                }
-                else {
-                    printf ("WRONG\n");
-                }
-            }
-            
-            printf ("Result %d  score = %0.5f  passage = %d [%s-%d]\n",
-                    j, score[j].val,
-                    score[j].ind, 
-                    the_filename, the_offset);
-        }
-      
-#if 0
-        char	passage_name[65535];
-        bool	correct = false;
-        uint32_t ii = 0;
-        for (j = 0; j < top_n * 3; j++)	{
-            const char *this_passage_name = inv.ind_to_passage_name[score[j].ind].c_str ();
-            int k;
-            for (k = start_passage_num; k <= end_passage_num; k++) {
-                sprintf (passage_name, "%s-%d", filename, k);
-                if ((strcmp (passage_name, this_passage_name)) == 0)	{
-                    correct = true;
-                    break;
-                }
-            }
-            if (correct)	    {
-                break;
-            }
-            if (j>0 && score[j].val != score[j-1].val) {
-                ii ++;
-            }
-            if (ii == top_n) {
-                break;
-            }
-        }
-        //      printf ("Scanned top %d -- ", j);
-#endif
-        if (correct)	{
-            //	  printf ("correct\n");
-            num_correct++;
-        }
-        /*
-          else	{
-          printf ("incorrect\n");
-          }
-        */
-
-        fclose (fp);
-
-
-        auto end = std::chrono::high_resolution_clock::now();
-        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
-        printf ("%.2f seconds\n", elapsedSeconds);
-
-    }
-
-    printf ("%.4f correct\n", ((float) num_correct) / num_tests);
-
-}
-#endif 
