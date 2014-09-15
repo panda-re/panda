@@ -356,7 +356,7 @@ static inline bool is_watched(CPUState *env){
         if (get_asid(env, pc) == asid)
             return true;
     }
-    return false;
+    return true;
 }
 
 static void syscall_fprintf(CPUState* env, const char* __format, ...){

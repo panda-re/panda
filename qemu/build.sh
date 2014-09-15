@@ -8,7 +8,7 @@ python ../scripts/apigen.py
 --prefix=`pwd`/install \
 --disable-pie \
 --enable-llvm \
---with-llvm=../llvm-3.3/Debug+Asserts \
+--with-llvm=../../llvm-3.3/Release/  \
 --extra-cflags="-O2" \
 --extra-cxxflags="-O2" \
 && make -j $(nproc)

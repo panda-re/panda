@@ -40,6 +40,9 @@ $ sudo cp * /usr/local/include
 specify the location where your LLVM build is located at the '--with-llvm'
 option in qemu/build.sh.
 
+Note: Set the with-lvm to the Release folder of the llvm-3.3
+
 cd panda/qemu
+./configure
 sh ./build.sh
 
