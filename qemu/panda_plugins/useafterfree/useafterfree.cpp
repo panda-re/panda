@@ -29,6 +29,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 #include <map>
 #include <stack>
 #include <set>
+#include <queue>
 
 // hack to avoid warnings about printf formats... sorry.
 #if defined(TARGET_I386) && TARGET_LONG_SIZE == 8
@@ -217,6 +218,13 @@ struct range_set {
     }
 };
 
+struct read_info {
+    target_ulong pc, loc, val;
+    read_info(target_ulong pc_, target_ulong loc_, target_ulong val_) {
+        pc = pc_; loc = loc_; val = val_;
+    }
+};
+
 // These are all per-cr3 data structs.
 static std::map<target_ulong, range_set> alloc_now; // Allocated now.
 static std::map<target_ulong, merge_range_set> alloc_ever; // Allocated ever.
@@ -227,8 +235,12 @@ static std::map<target_ulong, std::stack<realloc_info>> realloc_stacks; // Reall
 static std::map<target_ulong, std::map<target_ulong, uint64_t>> invalid_ptrs;
 // Map from cr3 => map from pointer location => pointer value
 static std::map<target_ulong, std::map<target_ulong, target_ulong>> valid_ptrs;
+static std::map<target_ulong, std::queue<target_ulong>> invalid_queue;
+static std::map<target_ulong, std::queue<read_info>> bad_read_queue;
 
 static int debug = 0;
+
+static const unsigned safety_window = 1000000;
 
 static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf, int is_write);
 
@@ -286,6 +298,9 @@ void process_ret(CPUState *env, target_ulong func) {
                 for (auto it = ri.valid_ptrs.begin(); it != ri.valid_ptrs.end(); it++) {
                     if (ptrprint) printf("Invalidating pointer @ %lx\n", *it);
                     // *it is the location of a pointer into the freed range
+                    if (alloc_now[cr3].contains(*it)) {
+                        invalid_queue[cr3].push(*it);
+                    }
                     invalid_ptrs[cr3][*it] = rr_get_guest_instr_count();
                     valid_ptrs[cr3].erase(*it);
                 }
@@ -384,9 +399,9 @@ static int virt_mem_access(CPUState *env, target_ulong pc, target_ulong addr, ta
             } else if (env->regs[R_ESP] != loc) { // Reading a pointer. Ignore stack reads.
                 // Leave safety window.
                 if (invalid_ptrs[cr3].count(loc) > 0 &&
-                        rr_get_guest_instr_count() - invalid_ptrs[cr3][loc] > 1000 &&
+                        rr_get_guest_instr_count() - invalid_ptrs[cr3][loc] > safety_window &&
                         val != 0) {
-                    printf("READING INVALID POINTER %lx @ %lx!! PC %lx\n", val, loc, pc);
+                    bad_read_queue[cr3].push(read_info(pc, loc, val));
                 }
             }
         }
@@ -423,6 +438,34 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         if (debug == 0) printf("\n");
     }
 
+    // Clear queue of potential bad reads.
+    while (bad_read_queue[cr3].size() > 0) {
+        read_info& ri = bad_read_queue[cr3].front();
+        if (get_uint32(env, ri.loc) == ri.val) { // Still invalid.
+            printf("READING INVALID POINTER %lx @ %lx!! PC %lx\n", ri.val, ri.loc, ri.pc);
+        }
+        bad_read_queue[cr3].pop();
+    }
+
+    // Clear queue of potential dangling pointers.
+    while (invalid_queue[cr3].size() > 0) {
+        target_ulong loc = invalid_queue[cr3].front();
+
+        if (invalid_ptrs[cr3].count(loc) == 0 || !alloc_now[cr3].contains(loc)) {
+            // Pointer has been overwritten or deallocated; not dangling.
+            invalid_queue[cr3].pop();
+            continue;
+        }
+        if (rr_get_guest_instr_count() - invalid_ptrs[cr3][loc] <= safety_window) {
+            // Inside safety window still.
+            break;
+        }
+
+        // Outside safety window and pointer is still dangling. Report.
+        printf("POINTER RETENTION to %x @ %lx!\n", get_uint32(env, loc), loc);
+        invalid_queue[cr3].pop();
+    }
+
     if (tb->pc == free_guest_addr) { // free
         free_info info;
         info.retaddr = get_stack(env, 0);
@@ -439,10 +482,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         info.heap = get_stack(env, 1);
         info.size = get_stack(env, 3);
         alloc_stacks[cr3].push(info);
-
-        if (alloc_stacks[cr3].size() > 2) {
-            printf("stack size > 2!!!!! unexpected!!\n");
-        }
 
         //debug = 100;
     } else if (tb->pc == realloc_guest_addr) { // realloc
