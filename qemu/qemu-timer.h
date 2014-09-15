@@ -268,7 +268,7 @@ static inline int64_t cpu_get_real_ticks (void)
 #define MIPS_RDHWR(rd, value) {                         \
         __asm__ __volatile__ (".set   push\n\t"         \
                               ".set mips32r2\n\t"       \
-                              "rdhwr  %0, "rd"\n\t"     \
+                              "rdhwr  %0, " rd "\n\t"     \
                               ".set   pop"              \
                               : "=r" (value));          \
     }
