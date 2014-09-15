@@ -129,9 +129,8 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
 #else // TARGET_X86_64
 
 #ifdef CONFIG_SOFTMMU
-            uint64_t physaddr = cpu_get_phys_addr(env, i);
-            if (get_ram_bit(shad, physaddr)){
-                LabelSet *ls = shad_dir_find_32(shad->ram, physaddr);
+            if (get_ram_bit(shad, cpu_get_phys_addr(env, i))){
+                ls = shad_dir_find_32(shad->ram, cpu_get_phys_addr(env, i));
 #else // CONFIG_SOFTMMU
             if (get_ram_bit(shad, i)){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);

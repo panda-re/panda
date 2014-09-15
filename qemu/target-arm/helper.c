@@ -1375,10 +1375,19 @@ void HELPER(set_cp)(CPUState *env, uint32_t insn, uint32_t val)
     int cp_info = (insn >> 5) & 7;
     int src = (insn >> 16) & 0xf;
     int operand = insn & 0xf;
-
+    
     if (env->cp[cp_num].cp_write)
         env->cp[cp_num].cp_write(env->cp[cp_num].opaque,
                                  cp_info, src, operand, val);
+    
+    if (cp_num == 7){
+        // PANDA instrumentation: guest hypercall
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL;
+                plist = plist->next){
+            plist->entry.guest_hypercall(env);
+        }
+    }
 }
 
 uint32_t HELPER(get_cp)(CPUState *env, uint32_t insn)

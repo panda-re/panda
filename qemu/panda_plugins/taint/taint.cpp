@@ -666,51 +666,44 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     return 0;
 }
 
-#if 0 // old version
-int guest_hypercall_callback(CPUState *env){
-#ifdef TARGET_I386
-    if (env->regs[R_EAX] == 0xdeadbeef){
-        target_ulong buf_start = env->regs[R_ECX];
-        target_ulong buf_len = env->regs[R_EDX];
+#ifdef TARGET_ARM
+// R0 is command (label or query)
+// R1 is buf_start
+// R2 is length
+// R3 is offset (not currently implemented)
+void arm_hypercall_callback(CPUState *env){
+    target_ulong buf_start = env->regs[1];
+    target_ulong buf_len = env->regs[2];
 
-        if (env->regs[R_EBX] == 0){ //Taint label
-            if (!taintEnabled){
-                printf("Taint plugin: Label operation detected\n");
-                printf("Enabling taint processing\n");
-                __taint_enable_taint();
-            }
-
-            TaintOpBuffer *tempBuf = tob_new(500*1048576 /* 5MB */);
-#ifndef CONFIG_SOFTMMU
-            add_taint(shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
-#else
-            add_taint(shadow, tempBuf, cpu_get_phys_addr(env, buf_start),
-                (int)buf_len);
-#endif //CONFIG_SOFTMMU
-            tob_delete(tempBuf);
+    if (env->regs[0] == 7 || env->regs[0] == 8){ //Taint label
+        if (!taintEnabled){
+            printf("Taint plugin: Label operation detected\n");
+            printf("Enabling taint processing\n");
+            __taint_enable_taint();
         }
 
-        else if (env->regs[R_EBX] == 1){ //Query taint on label
-#ifndef CONFIG_SOFTMMU
-            bufplot(shadow, (uint64_t)buf_start, (int)buf_len);
-#else
-            bufplot(shadow, cpu_get_phys_addr(env, buf_start), (int)buf_len);
-#endif //CONFIG_SOFTMMU
-            printf("Taint plugin: Query operation detected\n");
-            printf("Disabling taint processing\n");
-            taintEnabled = false;
-            taintJustDisabled = true;
-        }
+        TaintOpBuffer *tempBuf = tob_new(buf_len * sizeof(TaintOp));
+        add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        tob_delete(tempBuf);
     }
-#endif // TARGET_I386
-    return 1;
+
+    else if (env->regs[0] == 9){ //Query taint on label
+        if (taintEnabled){
+            printf("Taint plugin: Query operation detected\n");
+            Addr a = make_maddr(buf_start);
+            bufplot(env, shadow, &a, (int)buf_len);
+        }
+        //printf("Disabling taint processing\n");
+        //taintEnabled = false;
+        //taintJustDisabled = true;
+        //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
+    }
 }
-#endif
+#endif //TARGET_ARM
 
-
-// XXX: Support all features of label and query program
-int guest_hypercall_callback(CPUState *env){
 #ifdef TARGET_I386
+// XXX: Support all features of label and query program
+void i386_hypercall_callback(CPUState *env){
     target_ulong buf_start = env->regs[R_EBX];
     target_ulong buf_len = env->regs[R_ECX];
 
@@ -727,14 +720,9 @@ int guest_hypercall_callback(CPUState *env){
             printf("Enabling taint processing\n");
 	    __taint_enable_taint();
         }
-
-
         TaintOpBuffer *tempBuf = tob_new( buf_len * sizeof(TaintOp));
-	
-	
 	add_taint(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
         tob_delete(tempBuf);
-
     }    
 
     //mz Query taint on this buffer
@@ -754,13 +742,20 @@ int guest_hypercall_callback(CPUState *env){
         //taintJustDisabled = true;
         //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
+}
 #endif // TARGET_I386
+
+int guest_hypercall_callback(CPUState *env){
+#ifdef TARGET_I386
+    i386_hypercall_callback(env);
+#endif
+
+#ifdef TARGET_ARM
+    arm_hypercall_callback(env);
+#endif
+
     return 1;
 }
-
-
-
-
 
 #ifndef CONFIG_SOFTMMU
 
