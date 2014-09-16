@@ -51,7 +51,6 @@ void uninit_plugin(void *);
 }
 #define ERRNO_CLEAR errno = 0
 
-
 #define PLUGIN_NAME "panda_prov_tracer"
 #define DLNAME_LEN 256
 #define PROV_TRACER_DEFAULT_OUT "prov_tracer.txt"
@@ -74,10 +73,11 @@ void uninit_plugin(void *);
 
 
 #if defined(TARGET_I386)
-void *syscalls_dl;
-struct syscall_entry *syscalls;
-FILE *ptout;
-_DecodeType distorm_dt = Decode32Bits;
+void *syscalls_dl;                      // DL handle for syscalls table
+struct syscall_entry *syscalls;         // syscalls table
+FILE *ptout;                            // logfile handle
+_DecodeType distorm_dt = Decode32Bits;  // decoding mode for Distorm
+unsigned int ts;                        // internal timestamp - mostly for debugging
 
 /* 
 	http://www.tldp.org/LDP/tlk/ds/ds.html
@@ -105,27 +105,39 @@ static inline const char *syscall2str(CPUState *env, target_ulong pc) {
     static int argidx[6] = {R_EBX, R_ECX, R_EDX, R_ESI, R_EDI, R_EBP};
 
     for (int i=0; i<syscall_nargs; i++) {
+        auto arg = env->regs[argidx[i]];
         unsigned char s[SYSCALL_MAXSTRLEN];
         int rstatus;
 
         switch (syscalls[syscall_nr].args[i]) {
             case SYSCALL_ARG_INT:
-                ss << std::dec << env->regs[argidx[i]];
+                ss << std::dec << arg;
                 break;
 
             case SYSCALL_ARG_PTR:
-                ss << '@' << std::hex << env->regs[argidx[i]];
+                if (arg) {
+                    ss << '#' << std::hex << arg;
+                }
+                else {
+                    ss << "NULL";
+                }
                 break;
 
             case SYSCALL_ARG_STR:
-                // read blindly SYSCALL_MAX_STRLEN data
-                rstatus = cpu_memory_rw_debug(env, env->regs[argidx[i]], s, SYSCALL_MAXSTRLEN, 0);
-                WARN_ON_ERROR((rstatus == 0), "qemu failed to read syscall string arg from memory");
+                if (arg) {
+                    // read blindly SYSCALL_MAX_STRLEN data
+                    rstatus = panda_virtual_memory_rw(env, arg, s, SYSCALL_MAXSTRLEN, 0);
+                    WARN_ON_ERROR((rstatus < 0), "Couldn't read syscall string argument.");
+                    if (rstatus < 0) fprintf(stderr, "\t@%05u %s(), arg%d\n", ts, syscalls[syscall_nr].name, i);
 
-                // terminate string in case we read garbage
-                s[SYSCALL_MAXSTRLEN-1] = '\0';
+                    // terminate string in case we read garbage
+                    s[SYSCALL_MAXSTRLEN-1] = '\0';
 
-                ss << '"' << s << '"';
+                    ss << '"' << s << '"';
+                }
+                else {
+                    ss << "NULL";
+                }
                 break;
 
             default:
@@ -146,8 +158,6 @@ static inline const char *syscall2str(CPUState *env, target_ulong pc) {
     return ss.str().c_str();
 }
 
-
-
 static inline bool in_kernelspace(CPUState *env) {
 #if defined(TARGET_I386)
     // check the Current Privillege Level in the flags register
@@ -160,13 +170,11 @@ static inline bool in_kernelspace(CPUState *env) {
 #endif
 }
 
-
 int before_block_exec_cb(CPUState *env, TranslationBlock *tb) {
 	//ptout << std::hex << env->regs[R_ESP] << ":" << (0xffffe000 & env->regs[R_ESP]) <<  std::endl;
 	return 0;
 }
 
-// the number of instructions returned is always non-zero
 static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, unsigned int len, _DInst *ins_decoded, unsigned int ins_decoded_max, unsigned int feats) {
     unsigned char *buf;
     unsigned int ins_decoded_n;
@@ -178,7 +186,7 @@ static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, 
     EXIT_ON_ERROR(buf == NULL, "malloc failed");
 
     ERRNO_CLEAR;
-    WARN_ON_ERROR((cpu_memory_rw_debug(env, mloc, buf, len, 0) != 0), "qemu failed to read memory");
+    WARN_ON_ERROR((panda_virtual_memory_rw(env, mloc, buf, len, 0) < 0), "qemu failed to read memory");
 
     // decode read bytes
     ci.code = buf;
@@ -191,12 +199,16 @@ static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, 
     /* _DecodeResult decode_result = */distorm_decompose(&ci, ins_decoded, ins_decoded_max, &ins_decoded_n);
 
     free(buf);
+
+    // the number of instructions returned is always non-zero
     return ins_decoded_n;
 }
 
 bool ins_translate_callback(CPUState *env, target_ulong pc) {
     _DInst ins_decoded[4];
     unsigned int ins_decoded_n;
+
+    ts++;
 
     // sysenter/sysexit instructions are 2 bytes longs
     // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
@@ -221,6 +233,9 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
     _DInst ins_decoded[4];
     unsigned int ins_decoded_n;
     unsigned int ins_not_decodable_n = 0;
+
+    // Test to see if precise panda_enable_precise_pc() makes any difference.
+    //if (pc != env->panda_guest_pc) { fprintf(stderr, "PC inconsistent.\n"); exit(1); }
 
     // sysenter/sysexit instructions are 2 bytes longs
     // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
@@ -250,8 +265,9 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
                 // (http://www.win.tue.nl/~aeb/linux/lk/lk-4.html)
                 //
                 // ++ add ifs
-                fprintf(ptout, "*%s PC=" TARGET_FMT_lx " %s\n",
-                    in_kernelspace(env) ? "k" : "u", pc, syscall2str(env, pc)
+                fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                    ts, in_kernelspace(env) ? "K" : "U",
+                    env->cr[3], pc, syscall2str(env, pc)
                 );
             }
             break;
@@ -269,27 +285,6 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
             break;
         }
     }
-
-/*
-    if TEST_OP(sysenter, buf) {
-        unsigned int syscall_nr = env->regs[R_EAX];
-
-        fprintf(ptout,
-            "*%s PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx " (%s)\n",
-            in_kernelspace(env) ? "k" : "u",
-            pc,
-            syscall_nr,
-            syscalls[syscall_nr].name
-        );
-    }
-    else if TEST_OP(sysexit, buf) {
-        fprintf(ptout,
-            "#%s PC=" TARGET_FMT_lx "\n",
-            in_kernelspace(env) ? "k" : "u",
-            pc
-        );
-    }
-*/
 
     /*
     fprintf(ptout,
@@ -367,7 +362,12 @@ bool init_plugin(void *self) {
     // open output file
     ptout = fopen(PROV_TRACER_DEFAULT_OUT, "w");    
     if(ptout == NULL) return false;
+
+    // initialize panda stuff
     panda_cb pcb;
+
+    // this doesn't seem to have any effect for us - disable
+    //panda_enable_precise_pc();
 
     //pcb.before_block_exec = before_block_exec_cb;
     //panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);

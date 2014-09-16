@@ -16,8 +16,8 @@ LINUX_SYSCALLENTS_DL=$(foreach f,\
 
 # If you need custom CFLAGS or LIBS, set them up here
 QEMU_CFLAGS+=-std=c++11
-CXXFLAGS+=-DLINUX32_GUEST
-CFLAGS+=-DLINUX32_GUEST
+#CXXFLAGS+=-DXXX
+#CFLAGS+=-DXXX
 LIBS+=-ldistorm3
 
 OBJFILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
@@ -31,5 +31,4 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(OBJFILES)
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so $(LINUX_SYSCALLENTS_DL)
-	echo $(LINUX_SYSCALLENTS_DL)
 
