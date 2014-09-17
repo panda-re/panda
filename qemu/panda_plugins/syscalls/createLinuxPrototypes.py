@@ -38,7 +38,7 @@ signatures = {}
 signatures['sys_fork'] = 'unsigned long fork(void);'
 signatures['sys_vfork'] = 'unsigned long vfork(void);'
 signatures['sys_execve'] = 'unsigned long execve(const char *filename, char *const argv[], char *const envp[]);'
-signatures['sys_clone'] = 'unsigned long clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);'
+signatures['sys_clone'] = 'long clone(unsigned long clone_flags, unsigned long newsp, int __user *parent_tidptr, int tls_val, int __user *child_tidptr, struct pt_regs *regs);'
 signatures['sys_sigsuspend'] = 'long sigsuspend(int restart, unsigned long oldmask, old_sigset_t mask);'
 signatures['sys_rt_sigsuspend'] = 'int sys_rt_sigsuspend(sigset_t __user *unewset, size_t sigsetsize);'
 
