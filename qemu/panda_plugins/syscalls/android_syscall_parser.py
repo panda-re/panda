@@ -29,7 +29,7 @@ X86_CALLNO = "EAX"
 X86_ARGS = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
 X86_SP = "ESP"
 # Linux's syscall ABI doesn't change between IA32 and AMD64
-X86_GUARD = "TARGET_I386"
+X86_GUARD = "#ifdef TARGET_I386"
 
 MODE = "ARM"
 
