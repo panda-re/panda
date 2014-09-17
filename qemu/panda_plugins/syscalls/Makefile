@@ -22,12 +22,10 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGI
 $(PLUGIN_TARGET_DIR)/weak_callbacks.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/weak_callbacks.cpp
 $(PLUGIN_TARGET_DIR)/fdtracker.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/fdtracker.cpp
 
-O_FILES= 
+O_FILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 ifdef ENABLE_FDTRACKER
 O_FILES+=$(PLUGIN_TARGET_DIR)/fdtracker.o
 endif
-# any syscall handler overrides have to be linked in before the defaults in syscalls.cpp
-O_FILES+=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(O_FILES)
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
