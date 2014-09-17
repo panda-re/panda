@@ -27,6 +27,26 @@ static inline target_ulong mask_retaddr_to_pc(target_ulong retaddr){
     return retaddr & mask;
 }
 
+static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
+#if defined(TARGET_ARM)
+    // Normal syscalls: return addr is stored in LR
+    return mask_retaddr_to_pc(env->regs[14]);
+
+    // Fork, exec
+    uint8_t offset = 0;
+    if(env->thumb == 0){
+        offset = 4;
+    } else {
+        offset = 2;
+    }
+    return pc + offset;
+#elif defined(TARGET_I386)
+#error "return address calculation not implemented for x86 in fdtracker"
+#else
+#error "return address calculation not implemented for this architecture in fdtracker"
+#endif
+}
+
 class CallbackData {
 public:
     virtual ~CallbackData() { }
