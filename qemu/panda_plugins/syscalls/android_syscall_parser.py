@@ -18,6 +18,7 @@ Output panda tool to parse system calls on Linux
 """
 
 import re
+from collections import defaultdict
 
 ARM_CALLNO = "env->regs[7]"
 ARM_ARGS = ["env->regs[0]", "env->regs[1]", "env->regs[2]", "env->regs[3]", "env->regs[4]", "env->regs[5]", "env->regs[6]"]
@@ -28,7 +29,7 @@ X86_CALLNO = "EAX"
 X86_ARGS = ["EBX", "ECX", "EDX", "ESI", "EDI", "EBP"]
 X86_SP = "ESP"
 # Linux's syscall ABI doesn't change between IA32 and AMD64
-X86_GUARD = "TARGET_I386"
+X86_GUARD = "#ifdef TARGET_I386"
 
 MODE = "ARM"
 
@@ -76,6 +77,7 @@ BYTES_8   = '8BYTE'
 BYTES_4   = '4BYTE'
 BYTES_2   = '2BYTE'
 SIGNED_4  = '4SIGNED'
+# C++ types for callback arguments
 ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           POINTER:    'target_ulong', # pointer
                           BYTES_8:    'uint64_t',
@@ -83,8 +85,18 @@ ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
                           SIGNED_4:   'int32_t',
                           BYTES_2:    'uint16_t',
                         }
+# C types for callback arguments
+ARG_TYPE_C_TRANSLATIONS = dict(ARG_TYPE_TRANSLATIONS)
+ARG_TYPE_C_TRANSLATIONS[CHAR_STAR] = 'target_ulong'
 
-CPP_RESERVED = {"new": "anew"}
+# Functions to translate arguments to C++ callbacks to arguments to C callbacks
+# Defaults to returning the C++ argument's name
+CXX_ARG_TO_C_ARG = defaultdict(lambda: lambda x: x)
+CXX_ARG_TO_C_ARG[CHAR_STAR] = lambda x: "{0}.get_vaddr()".format(x) # uses internals of syscalls::string
+
+CPP_RESERVED = {"new": "anew", "data":"data_arg"}
+
+NAMESPACE = "syscalls"
 
 class Argument(object):
     def __init__(self):
@@ -117,7 +129,32 @@ class Argument(object):
             newname = newname[:-2]
         self._name = newname
 
+
+class Syscall(object):
+    def __init__(self, name):
+        self.cxxargs = None
+        self.cxx_std_fn = None
+        self.cargs = None
+        self.args = None
+        self.precall = None
+        self.call_contents = None
+        self.name = name
+
+# Prototypes for internal C++ callbacks per syscall
 callback_defs = set()
+# Typedefs for PPP C callbacks
+typedefs = set()
+# Names of all PPP C callbacks
+cb_names = set()
+# map from callback_def to code that comes before it in cpp file
+precall = {}
+# map from callback_def to its content in cpp file
+call_contents = {}
+# map from callback_def to call name
+call_names = {}
+
+syscalls = [] # objects, having a set is useless for dedup
+
 # Goldfish kernel doesn't support OABI layer. Yay!
 with open("android_arm_prototypes.txt") as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
@@ -195,24 +232,115 @@ with open("android_arm_prototypes.txt") as armcalls:
             argno+=1
         # figure out callback definition
         callback_fn = "call_{0}_callback".format(callname)
+        # each argument passed to C++ and C callbacks (the actual variable name or data)
         _args = ",".join(['env', 'pc'] + [x.name for i, x in enumerate(arg_types)])
+        _c_args = ",".join(['env', 'pc'] + [CXX_ARG_TO_C_ARG[x.type](x.name) for i, x in enumerate(arg_types)])
+        # declaration info (type and name) for each arg passed to C++ and C callbacks
         _args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
+        _c_args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
+        # call to the callback with C++ arguments
         callback_call = callback_fn+"(" +_args+");"
+        # prototype for the C++ callback (with arg types and names)
         callback_def  = callback_fn+"(" + _args_types+")"
+        # Check if this syscall has already be parsed
+        # Android/Linux has two sigreturn calls
+        if callback_def in call_names:
+            # don't generate vectors and typedefs and callbacks for this syscall, we already have
+            alltext += "PPP_RUN_CB(on_{0}, {1})\n".format(callname, _c_args)
+            alltext += "finish_syscall();"+'\n'
+            alltext += "}; break;"+'\n'
+            continue # skip to next syscall
+        call_names[callback_def] = callname
+        
         # call the callback
-        alltext += callback_call+'\n'
+        alltext += NAMESPACE + "::" + callback_call+'\n'
         #remember to define a weak symbol for the callback later
         callback_defs.add(callback_def)
-            
+
+        def gen_ret_callback_struct(callname, args):
+            # now generate the struct to hold the arguments through the call
+            calldataname = "{0}_calldata".format(callname)
+            calldata = "struct {0} : public CallbackData {{\n".format(calldataname)
+            calldata += "target_ulong pc;\n"
+            for x in args:
+                calldata += ARG_TYPE_TRANSLATIONS[x.type] + " " + x.name + ";\n"
+            calldata += "};\n"
+            return calldataname, calldata
+
+        calldataname, calldata = gen_ret_callback_struct(callname, arg_types)
+
+        def gen_ret_callback(callname, calldataname, args):
+            # code to call the sysret callback using the struct contents
+            sysretcallbackname = "{0}_returned".format(callname)
+            sysretcallback = "static Callback_RC {0}(CallbackData* opaque, CPUState* env, target_asid asid)".format(sysretcallbackname)
+            sysretcallback += "{\n"
+            sysretcallback += "{0}* data = dynamic_cast<{0}*>(opaque);\n".format(calldataname)
+            sysretcallback += 'if(!data) {fprintf(stderr,"oops\\n"); return Callback_RC::ERROR;}\n'
+            _c_ret_args_list = ",".join(['env', 'data->pc'] + [ "data->" +CXX_ARG_TO_C_ARG[x.type](x.name) for i, x in enumerate(args)])
+            sysretcallback += "PPP_RUN_CB(on_{0}, {1})\n".format(sysretcallbackname, _c_ret_args_list)
+            sysretcallback += "return Callback_RC::NORMAL;\n"
+            sysretcallback += "}\n"
+            return sysretcallbackname, sysretcallback
+
+        sysretcallbackname, sysretcallback = gen_ret_callback(callname, calldataname, arg_types)
+        #define the syscall's c++ callback fn
+        # C++ callback argument types, no names
+        _args_only_types = ", ".join(['CPUState*', 'target_ulong'] + [ARG_TYPE_TRANSLATIONS[x.type] for x in arg_types])
+
+        cxx_vector_name = "internal_registered_callback_" + callname
+        cxx_std_fn = "std::function<void({0})>".format(_args_only_types)
+        # Declare the callback list
+
+        cxx_vector_type = "std::vector<" + cxx_std_fn+">"
+        cxx_vector = cxx_vector_type +" " + cxx_vector_name
+        # Build the register callback function
+        cxx_register = "void {0}::register_call_{1}({2} callback){{\n".format(
+                        NAMESPACE, callname, cxx_std_fn)
+        cxx_register += cxx_vector_name +".push_back(callback);\n"
+        cxx_register += "}\n"
+        precall[callback_def] = cxx_vector + ";\n" + cxx_register+calldata+sysretcallback
+        # code to populate the struct
+        calldatafill  = "for (auto x: "+cxx_vector_name +"){\n"
+        calldatafill += "    x({0});\n".format(_args)
+        calldatafill += "}\n"
+        calldatafill += "if (0 == ppp_on_{0}_num_cb) return;\n".format(sysretcallbackname)
+        calldatafill += "{0}* data = new {0};\n".format(calldataname)
+        calldatafill += "data->pc = pc;\n"
+        for x in arg_types:
+            calldatafill += "data->{0} = {0};\n".format(x.name)
+        calldatafill += "appendReturnPoint(ReturnPoint(" +\
+                        "calc_retaddr(env, pc),"+ \
+                        " get_asid(env, pc),"+\
+                        " data, {0}));".format(sysretcallbackname)
+        call_contents[callback_def] = calldatafill
+
+        cb_names.add("on_{0}".format(callname))
+        cb_names.add("on_{0}".format(sysretcallbackname))
+        # define a type for the callback
+        typedef = "typedef void (*on_{0}_t)({1});".format(callname, _c_args_types)
+        typedefs.add(typedef)
+        typedefr= "typedef void (*on_{0}_t)({1});".format(sysretcallbackname, _c_args_types)
+        typedefs.add(typedefr)
+        alltext += "PPP_RUN_CB(on_{0}, {1})\n".format(callname, _c_args)
+
         alltext += "finish_syscall();"+'\n'
         alltext += "}; break;"+'\n'
+        thiscall = Syscall(callname)
+        thiscall.call_contents = calldatafill
+        thiscall.precall = cxx_vector + ";\n" + cxx_register+calldata+sysretcallback
+        thiscall.args = arg_types
+        thiscall.cxx_std_fn = cxx_std_fn
+        thiscall.callback_def = callback_def
+
+        syscalls.append(thiscall)
+        
     alltext += "default:"+'\n'
     alltext += "record_syscall(\"UNKNOWN\");"+'\n'
     alltext += "}"+'\n'
 alltext+= "#endif\n"
 weak_callbacks = ""
 weak_callbacks+= """
-#include "weak_callbacks.hpp"
+#include "callbacks.hpp"
 extern "C"{
 #include "cpu.h"
 }
@@ -220,16 +348,20 @@ extern "C"{
 // weak-defined default empty callbacks for all syscalls
 """
 weak_callbacks += GUARD + "\n"
-for callback_def in callback_defs:
-    weak_callbacks += "void __attribute__((weak)) {0} {{ }}\n".format(callback_def)
+for syscall in syscalls:
+    weak_callbacks += syscall.precall
+    weak_callbacks += "void {1}::{0} {{\n".format(syscall.callback_def, NAMESPACE)
+    weak_callbacks += syscall.call_contents
+    weak_callbacks += "}\n"
 weak_callbacks+= """
 #endif
 """
-with open("weak_callbacks.cpp", "w") as weakfile:
+with open("default_callbacks.cpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
 weak_callbacks = ""
-weak_callbacks+= """
+weak_callbacks+= """#ifndef __callbacks_hpp
+#define __callbacks_hpp
 #include <string>
 
 // This is *NOT* supposed to be required for C++ code.
@@ -245,14 +377,34 @@ extern "C" {
 // weak-defined default empty callbacks for all syscalls
 """
 weak_callbacks += GUARD + "\n"
-for callback_def in callback_defs:
-    weak_callbacks += "void __attribute__((weak)) {0};\n".format(callback_def)
-weak_callbacks+= """
+weak_callbacks += "namespace {0} {{\n".format(NAMESPACE)
+for syscall in syscalls:
+    weak_callbacks += "void register_call_{0}({1} callback);\n".format(syscall.name, syscall.cxx_std_fn);
+    weak_callbacks += "void {0};\n".format(syscall.callback_def)
+weak_callbacks+= """} //namespace syscalls
 #endif
+#endif //__callbacks_hpp
 """
-with open("weak_callbacks.hpp", "w") as weakfile:
+with open("callbacks.hpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
+
+with open("syscalls_ext_typedefs.h", "w") as callbacktypes:
+    callbacktypes.write(GUARD + "\n")
+    for t in typedefs:
+        callbacktypes.write(t+"\n")
+    callbacktypes.write("#endif\n")
 
 with open("syscall_printer.cpp", "w") as dispatchfile:
     dispatchfile.write(alltext)
 
+with open("syscall_ppp_register.cpp", "w") as pppfile:
+    pppfile.write(GUARD + "\n")
+    for ppp in cb_names:
+        pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
+    pppfile.write("#endif\n")
+
+with open("syscall_ppp_boilerplate.cpp", "w") as pppfile:
+    pppfile.write(GUARD + "\n")
+    for ppp in cb_names:
+        pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
+    pppfile.write("#endif\n")

@@ -26,8 +26,6 @@ O_FILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 ifdef ENABLE_FDTRACKER
 O_FILES+=$(PLUGIN_TARGET_DIR)/fdtracker.o
 endif
-# any syscall handlers have to be linked in prior to the default empty handlers in weak_callbacks
-O_FILES+=$(PLUGIN_TARGET_DIR)/weak_callbacks.o
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(O_FILES)
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
