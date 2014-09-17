@@ -71,7 +71,6 @@ void uninit_plugin(void *);
  *	TARGET_FMT_lu
  */
 
-
 #if defined(TARGET_I386)
 void *syscalls_dl;                      // DL handle for syscalls table
 struct syscall_entry *syscalls;         // syscalls table
@@ -106,7 +105,7 @@ static inline const char *syscall2str(CPUState *env, target_ulong pc) {
 
     for (int i=0; i<syscall_nargs; i++) {
         auto arg = env->regs[argidx[i]];
-        unsigned char s[SYSCALL_MAXSTRLEN];
+        unsigned char s[SYSCALL_STRSAMPLE_LEN];
         int rstatus;
 
         switch (syscalls[syscall_nr].args[i]) {
@@ -126,12 +125,12 @@ static inline const char *syscall2str(CPUState *env, target_ulong pc) {
             case SYSCALL_ARG_STR:
                 if (arg) {
                     // read blindly SYSCALL_MAX_STRLEN data
-                    rstatus = panda_virtual_memory_rw(env, arg, s, SYSCALL_MAXSTRLEN, 0);
+                    rstatus = panda_virtual_memory_rw(env, arg, s, SYSCALL_STRSAMPLE_LEN, 0);
                     WARN_ON_ERROR((rstatus < 0), "Couldn't read syscall string argument.");
                     if (rstatus < 0) fprintf(stderr, "\t@%05u %s(), arg%d\n", ts, syscalls[syscall_nr].name, i);
 
                     // terminate string in case we read garbage
-                    s[SYSCALL_MAXSTRLEN-1] = '\0';
+                    s[SYSCALL_STRSAMPLE_LEN-1] = '\0';
 
                     ss << '"' << s << '"';
                 }

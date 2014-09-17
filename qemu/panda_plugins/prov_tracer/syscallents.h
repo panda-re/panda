@@ -2,7 +2,7 @@
 #define __SYSCALLENTS_H__
 
 #define SYSCALL_MAXARGS 6
-#define SYSCALL_MAXSTRLEN 128
+#define SYSCALL_STRSAMPLE_LEN 128
 
 enum prov_tracer_syscall {
     SYSCALL_OTHER = -1,
