@@ -488,8 +488,6 @@ bool init_plugin(void *self) {
     pcb.before_block_exec_invalidate_opt = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
 
-    return true;
-
 #else
 
     fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
