@@ -253,7 +253,7 @@ static Callback_RC clone_callback(CallbackData* opaque, CPUState* env, target_as
 // if flags includes CLONE_FILES then the parent and child will continue to share a single FD table
 // if flags includes CLONE_THREAD, then we don't care about the call.
 void call_clone_callback(CPUState* env,target_ulong pc,uint32_t clone_flags,uint32_t newsp,
-                         target_ulong parent_tidptr,uint32_t tls_val,
+                         target_ulong parent_tidptr,int32_t tls_val,
                          target_ulong child_tidptr,target_ulong regs) {
     if (CLONE_THREAD & clone_flags){
         return;
