@@ -46,7 +46,7 @@ InvIndex invindex_min_new(char *pfx, uint32_t min_n, uint32_t max_n, uint32_t pa
 
 
 
-void spit_gram_hex(const Gram &gram, uint32_t n) {
+void spit_gram_hex(const Gram gram, uint32_t n) {
     uint32_t i;
     printf ("(n=%d,", n);
     for (i=0; i<n; i++) {
@@ -73,7 +73,7 @@ Gram gram64(uint8_t *buf, int n) {
   
 
 // returns sub-gram starting at pos of len bytes
-Gram gramsub(Gram &g, uint32_t pos, uint32_t len) {
+Gram gramsub(Gram g, uint32_t pos, uint32_t len) {
     uint64_t mask = (0xffffffffffffffff >> (64 - len * 8)) << (8 * pos);
     return (((uint64_t) g) & mask) >> (8 * pos);
 }
@@ -668,7 +668,7 @@ void marshall_doc_word_fp(FILE *fp, std::map < uint32_t, uint32_t > &doc_word) {
 
 
 // unmarshall doc word row for this gram
-int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram &gram, GramPsgCounts &row ) {
+int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram gram, GramPsgCounts &row ) {
     //  printf ("pos = %d\n", inv.map_dw[n][gram]);
     fseek(fp, inv.map_dw[n][gram], SEEK_SET);
     uint32_t occ;
@@ -685,12 +685,13 @@ int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram &gram, Gra
 
  
 
-std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex &inv, uint32_t n, Gram &gram) {
+std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex &inv, uint32_t n, Gram gram) {
     GramPsgCounts row;
     row.max_size = 0;
     row.size = 0;
     row.counts = NULL;
-    unmarshall_row_fp(fp, inv, n, gram, row);
+    int ret = unmarshall_row_fp(fp, inv, n, gram, row);
+    assert (ret == 1);
     std::map < uint32_t, uint32_t > dw;
     for (uint32_t i=0; i<row.size; i++) {
         dw[row.counts[i].passage_ind] = row.counts[i].count;
@@ -761,3 +762,40 @@ const char *get_passage_name(InvIndex &inv, uint32_t passage_ind, uint32_t *star
     return filename.c_str();
     //    sprintf (passage_name, "%s-%d", filename.c_str(), offset);
 }
+
+
+
+
+// unmarshalls the per-max-n-gram precomputed scores so that bir.cpp can be wicked fast
+std::map < Gram, std::pair < uint32_t, Score * > > unmarshallPreprocessedScores(char *filename_pfx) {
+    char filename[1024];
+    sprintf(filename, "%s.pp", filename_pfx);
+    FILE *fp = fopen(filename, "r");
+    uint32_t tot;
+    fread((void *) &tot, sizeof(tot), 1, fp);
+    printf ("unmarshalling preprocessed scores for %d max_ngrams\n", tot);
+    int tot100 = tot/100;
+    std::map < Gram, std::pair < uint32_t, Score * > > pp;
+    for (uint32_t i=0; i<tot; i++) {
+        if ((i % tot100) == 0) {
+            printf ("i=%d\n",i);
+        }
+        Gram gram;
+        fread((void *) &gram, sizeof(gram), 1, fp);
+        uint32_t rowsize;
+        fread((void *) &rowsize, sizeof(rowsize), 1, fp);
+        pp[gram].first = rowsize;
+        Score *s = (Score *) malloc(sizeof(Score) * rowsize);
+        fread((void *) s, sizeof(Score), rowsize, fp);
+        /*
+        for (uint32_t j=0; j<rowsize; j++) {
+            printf ("%d %d %.6f\n", j, s[j].ind, s[j].val);
+        }
+        */
+        pp[gram].second = s;
+    }
+    printf ("done\n");
+    return pp;
+}                
+
+

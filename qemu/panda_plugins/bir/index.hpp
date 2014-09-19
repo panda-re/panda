@@ -252,12 +252,12 @@ void resize_doc_word(GramPsgCounts &row, uint32_t desired_size);
 // which use an array for rows
 // returns 0 on fail (row too long)
 // else returns 1
-int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram &gram, GramPsgCounts &row );
+int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram gram, GramPsgCounts &row );
 
 // called by merger which keeps rows in an array
 void marshall_row_fp(FILE *fp, GramPsgCounts &row) ;
 
-std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex &inv, uint32_t n, Gram &gram);
+std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex &inv, uint32_t n, Gram gram);
 
 
 // called by indexer which keeps row in a map
@@ -265,12 +265,15 @@ void marshall_doc_word_fp(FILE *fp, std::map < uint32_t, uint32_t > &doc_word);
 
 InvIndex invindex_min_new(char *pfx, uint32_t min_n, uint32_t max_n, uint32_t passage_len_bytes) ;
 
-void spit_gram_hex(const Gram &gram, uint32_t n);
+void spit_gram_hex(const Gram gram, uint32_t n);
 
 
-Gram gramsub(Gram &g, uint32_t pos, uint32_t len);
+Gram gramsub(Gram g, uint32_t pos, uint32_t len);
 
 
 const char *get_passage_name(InvIndex &inv, uint32_t passage_ind, uint32_t *start_pos);
+
+// unmarshalls the per-max-n-gram precomputed scores so that bir.cpp can be wicked fast
+std::map < Gram, std::pair < uint32_t, Score * > > unmarshallPreprocessedScores(char *filename_pfx);
 
 #endif // __INDEX_H__

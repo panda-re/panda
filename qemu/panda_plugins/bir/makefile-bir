@@ -17,4 +17,8 @@ bm: bir_utils.cpp binary_merger.cpp
 br: bir_utils.cpp binary_retriever.cpp                                                         
 	g++ -o br bir_utils.cpp binary_retriever.cpp -O2 -lm -std=c++11                                                       
 
+bp: bir_utils.cpp binary_preprocessor.cpp                                                         
+	g++ -o bp bir_utils.cpp binary_preprocessor.cpp -O2 -lm -std=c++11                                                       
+
+
 all: bi si bm br
