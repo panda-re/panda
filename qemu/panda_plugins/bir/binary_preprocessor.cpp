@@ -151,9 +151,7 @@ int main (int argc, char **argv) {
         float is = scoring_params[0] * pg;
         std::map < uint32_t, float > pppqs;
         // iterate over psgs that contain the max n gram
-        //        printf ("mgram_row is %d\n", rowsize);
-
-        for (uint32_t n = inv.min_n_gram; n <=inv.max_n_gram; n++)  {
+        for (uint32_t n = inv.min_n_gram; n <= inv.max_n_gram; n++)  {
             float w = scoring_params[n];
             // this is the ngram for this n that ends in the unigram g (and includes it)           
             Gram ngram = igramsub(mgram, inv.max_n_gram - n, n);
