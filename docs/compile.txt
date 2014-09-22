@@ -16,8 +16,9 @@ apt-get install nasm
 apt-get install libssl-dev
 
 2. Download LLVM 3.3.  Also, download Clang 3.3 and extract it in the LLVM tools
-directory.  Compile - If building a debug build, use the following command
-(note: the debug build is REALLY slow):
+directory; make sure the resulting directory is named "clang".  Compile - If
+building a debug build, use the following command (note: the debug build is
+REALLY slow):
 
 CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
 
