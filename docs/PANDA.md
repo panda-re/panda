@@ -11,9 +11,9 @@ There are two ways to load a PANDA plugin: by specifying it via `-panda` or `-pa
 
 If using `-panda`, specify just the plugin's name. PANDA will search for the plugin in either the QEMU directory or in PANDA_PLUGIN_DIR. You can specify multiple plugins as a semicolon-separated list, and you can give the plugins arguments as a comma-separated list after the plugin's name and a colon. For example:
 
-	-panda stringsearch;callstack_instr;llvm_trace:base=dir,foo=bar
+	-panda 'stringsearch;callstack_instr;llvm_trace:base=dir,foo=bar'
 
-This loads the `stringsearch`, `callstack_instr`, and `llvm_trace` plugins and passes `llvm_trace` the arguments `base=dir` and `foo=bar`.
+This loads the `stringsearch`, `callstack_instr`, and `llvm_trace` plugins and passes `llvm_trace` the arguments `base=dir` and `foo=bar`. Note that the `;` character must be escaped in most shells; you can either surround the arguments with quotes (as in this example) or just escape the semicolon itself, e.g. `base=dir\;foo=bar`.
 
 Once a plugin is loaded, it will appear when using the `list_plugins` monitor command:
 
