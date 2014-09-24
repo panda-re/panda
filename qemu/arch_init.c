@@ -391,6 +391,7 @@ int ram_load(QEMUFile *f, void *opaque, int version_id)
         if (flags & RAM_SAVE_FLAG_MEM_SIZE) {
             if (version_id == 3) {
                 if (addr != ram_bytes_total()) {
+		    printf("RAM sizes: snapshot: %ld emulator: %ld\n", addr, ram_bytes_total());
                     return -EINVAL;
                 }
             } else {
@@ -411,6 +412,7 @@ int ram_load(QEMUFile *f, void *opaque, int version_id)
                     QLIST_FOREACH(block, &ram_list.blocks, next) {
                         if (!strncmp(id, block->idstr, sizeof(id))) {
                             if (block->length != length)
+				printf("Block expected %ld, found %ld, total %ld, system total %ld\n", block->length, length, addr, ram_bytes_total());
                                 return -EINVAL;
                             break;
                         }

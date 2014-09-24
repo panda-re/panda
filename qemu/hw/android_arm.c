@@ -62,6 +62,7 @@ static void android_arm_init_(ram_addr_t ram_size,
     env = cpu_init(cpu_model);
 
     ram_offset = qemu_ram_alloc(NULL,"android_arm",ram_size);
+    printf("RAM OFFSET IS %#X\n", ram_offset);
     cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
 
     cpu_pic = arm_pic_init_cpu(env);
