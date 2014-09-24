@@ -208,6 +208,7 @@ void tcg_llvm_destroy(void);
 #include "ui/qemu-spice.h"
 
 #include "rr_log_all.h"
+#include "replay_fix.h"
 
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
@@ -1560,9 +1561,13 @@ static void main_loop(void)
         if (__builtin_expect(rr_replay_requested, 0)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_replay(rr_requested_name, first_cpu);
-            quit_timers();
-            rr_replay_requested = 0;
+            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+                printf("Failed to start replay\n");
+                fix_replay_stuff();
+            } else { // we have to unblock signals, so we can't just continue on failure
+                quit_timers();
+                rr_replay_requested = 0;
+            }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
