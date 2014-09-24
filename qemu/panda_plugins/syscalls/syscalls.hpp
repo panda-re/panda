@@ -30,7 +30,8 @@ static inline target_ulong mask_retaddr_to_pc(target_ulong retaddr){
 static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
 #if defined(TARGET_ARM)
     // Normal syscalls: return addr is stored in LR
-    return mask_retaddr_to_pc(env->regs[14]);
+    // Except that we haven't run the SWI instruction yet! LR is where libc will return to!
+    //return mask_retaddr_to_pc(env->regs[14]);
 
     // Fork, exec
     uint8_t offset = 0;
@@ -39,9 +40,27 @@ static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     } else {
         offset = 2;
     }
-    return pc + offset;
+    return mask_retaddr_to_pc(pc + offset);
 #elif defined(TARGET_I386)
-#error "return address calculation not implemented for x86 in fdtracker"
+    // syscall and sysenter x86 instructions are both 2 bytes
+    //return pc+2;
+
+    // ABI from http://wiki.osdev.org/SYSENTER
+    // Return address is set by user code before the syscall/sysenter instr is executed
+    unsigned char buf[2];
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    // Check if the instruction is syscall (0F 05)
+    if (buf[0]== 0x0F && buf[1] == 0x05) {
+        return ECX;
+    }
+    // Check if the instruction is sysenter (0F 34)
+    else if (buf[0]== 0x0F && buf[1] == 0x34) {
+        return EDX;
+    }
+    else {
+        // Not a syscall or sysenter!?
+        assert(0);
+    }
 #else
 #error "return address calculation not implemented for this architecture in fdtracker"
 #endif
