@@ -92,7 +92,7 @@ static SB_INLINE void bitset_collect(BitSet& bsDest, BitSet& bsSrc) {
     if (bsDest.size() < bsSrc.size()){
         bsDest.resize(bsSrc.size());
     }
-    for (int i=0; i < bsSrc.size(); i++){
+    for (size_t i=0; i < bsSrc.size(); i++){
         bsDest[i] = bsDest[i] || bsSrc[i];
     }
 }
@@ -109,7 +109,7 @@ static SB_INLINE BitSet bitset_union(BitSet& bs1, BitSet& bs2) {
 // with list of members in bitset bs.
 static SB_INLINE void bitset_get_list_here(BitSet& bs, uint32_t *el) {
     int j = 0;
-    for(int i = 0 ; i < bs.size(); i++) {
+    for(size_t i = 0 ; i < bs.size(); i++) {
         if(bs[i]){
             el[j] = i;
             j++;
