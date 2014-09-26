@@ -133,10 +133,11 @@ int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
     uint64_t ic = rr_get_guest_instr_count();
     if (!taint_enabled()) {
         if (ic + 100 > enable_taint_instr_count) {
-            printf ("enabling taint at instr count %d\n", ic);
+            printf ("enabling taint at instr count %" PRIx64 "\n", ic);
             taint_enable_taint();
         }
     }
+    return 0;
 }
 
 
@@ -156,7 +157,8 @@ bool init_plugin(void *self) {
          // Format is tstringsearch:instr_count=X
           if (0 == strncmp(args->list[i].key, "instr_count", 12)) {
               enable_taint_instr_count = atoi(args->list[i].value);
-              printf ("taint will be enabled around instr count %d\n", enable_taint_instr_count);
+              printf ("taint will be enabled around instr count %" PRIx64 "\n",
+                      enable_taint_instr_count);
           }
       }
   }

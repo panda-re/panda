@@ -794,6 +794,7 @@ SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
             return (a->off == b->off);
         default:
             assert (1==0);
+            return 0;
     }
 }
 

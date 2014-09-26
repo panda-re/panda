@@ -13,6 +13,7 @@ QEMU_CXXFLAGS+= -DLABELSET_VECTOR
 #uncomment to enable std::bitset labelset implementation. Change the set size if needed!
 #QEMU_CXXFLAGS+= -DLABELSET_STDBITSET 
 #QEMU_CXXFLAGS+= -DLABELSET_MAX_LABELS=256
+QEMU_CXXFLAGS+= -Wno-unused-variable
 
 $(PLUGIN_TARGET_DIR)/my_mem.o: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/my_mem.[cpp|h])

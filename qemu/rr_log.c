@@ -1422,7 +1422,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   char *rr_name_base = g_strdup(file_name_full);
   char *rr_path = dirname(rr_path_base);
   char *rr_name = basename(rr_name_base);
-  int snapshot_ret;
+  int snapshot_ret = -1;
   if (rr_debug_whisper()) {
     fprintf (logfile,"Begin vm record for file_name_full = %s\n", file_name_full);    
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1455,6 +1455,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   // set global to turn on recording
   rr_mode = RR_RECORD;
   //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
+  return snapshot_ret;
 #endif
 }
 

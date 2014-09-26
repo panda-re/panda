@@ -33,7 +33,9 @@ PANDAENDCOMMENT */
 #include "shad_dir_64.h"
 #include "bitvector_label_set.cpp"
 
+#ifndef SB_INLINE
 #define SB_INLINE //inline
+#endif
 
 // 64-bit addresses
 // create a new table
