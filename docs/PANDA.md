@@ -133,7 +133,7 @@ Frees an argument list created with `panda_get_args`.
 	
 Requests that the translation block cache be flushed as soon as possible. If running with translation block chaining turned off (e.g. when in LLVM mode or replay mode), this will happen when the current translation block is done executing.
 
-Flushing the translation block cache may be necessary if the plugin makes changes to the way code is translated, since such changes will only apply to translation blocks generated after the plugin is loaded.
+Flushing the translation block cache is necessary if the plugin makes changes to the way code is translated (for example, by using `panda_enable_precise_pc`). **WARNING**: failing to flush the TB before turning on something that alters code translation may cause QEMU to crash! This is because QEMU's interrupt handling mechanism relies on translation being deterministic (see the `search_pc` stuff in translate-all.c for details).
 	
 	void panda_enable_memcb(void);
 	void panda_disable_memcb(void);
