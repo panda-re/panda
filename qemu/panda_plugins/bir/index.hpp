@@ -152,7 +152,6 @@ typedef struct scorerow_struct {
 } ScoreRow;
 
 typedef struct pp_score_struct {
-    std::string filename_prefix;
     // note: we dont care what min n gram is
     uint32_t max_n_gram;
     uint32_t num_passages;
@@ -281,13 +280,20 @@ void index_this_passage(Indexer *indexer, uint8_t *binary_passage, uint32_t len,
 
 void marshall_preprocessed_scores(PpScores *pps);
 
-PpScores *unmarshall_preprocessed_scores(std::string filename_pfx);
 
-
-void query_with_passage (Passage &query, PpScores &pps, uint32_t *ind, float *score);
 
 
 Indexer *new_indexer(uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
+
+
+// bir.cpp uses these
+PpScores *unmarshall_preprocessed_scores(std::string filename_pfx);
+IndexCommon unmarshall_index_common(const std::string pfx);
+InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc);
+void query_with_passage (Passage &query, PpScores &pps, uint32_t *ind, float *score);
+Passage index_passage (IndexCommon *indc, bool update,
+                       uint8_t *binary_passage, uint32_t len,
+                       uint32_t uind);
 
 
 #endif // __INDEX_H__

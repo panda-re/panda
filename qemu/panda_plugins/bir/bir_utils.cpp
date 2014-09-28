@@ -19,14 +19,22 @@ extern "C"{
 uint32_t max_row_length=1000000;
 
 extern "C" {
-    void *invert_c(void *index);
     void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
     void *new_index_c(void);
+
+    void *invert_c(void *index);
+
     void indc_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes);
+
     void index_this_passage_c(void *indc, void *index, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
-    void marshall_invindex_c(void *invindex, char *file_pfx);                                                                  
-    void marshall_index_c(void *vpindex, char *file_pfx);
+
+    void marshall_index_common_c(void *indc);
+    void marshall_index_c(void *indc, void *vpindex, char *file_pfx);
+    void marshall_invindex_c(void *indc, void *invindex, char *file_pfx);                                                                  
+
+    void *unmarshall_index_common(char *filename_pfx);
     void *unmarshall_preprocessed_scores_c (char *filename_pfx);
+
     void query_with_passage_c (void *vppassage, void *vppps, uint32_t *ind, float *score);
 }
 
@@ -75,6 +83,7 @@ Gram gramsub(Gram g, uint32_t pos, uint32_t len) {
 
 
 
+///////////////////////////////////////////////////
 
 void spit_passage_dist(PassageDist &pd) {
     if (pd.count.size() == 0) {
@@ -93,7 +102,6 @@ void spit_passage_dist(PassageDist &pd) {
     printf ("\n");
     printf ("PassageDist ]\n");
 }
-
   
 void spit_passage(Passage &passage) {
     printf ("Passage [\n");
@@ -106,8 +114,6 @@ void spit_passage(Passage &passage) {
     printf ("Passage ]\n");
 }
 
-
- 
 void spit_lexicon(Lexicon &lexicon) {
     printf ("Lexicon %d [\n", lexicon.n);
     printf ("size=%d\n", (int) lexicon.grams.size());
@@ -134,23 +140,25 @@ void spit_uind_to_psgs(std::map < uint32_t, std::set < uint32_t > > &uind_to_psg
 }
 
 void spit_string_to_uint32_map ( std::map < std::string, uint32_t > & su32m ) {
-    printf ("su32m [\n");
     printf ("size=%d\n", su32m.size());
     for ( auto &kvp : su32m ) {
         printf ("%s -> %d\n", kvp.first.c_str(), kvp.second );
     }
-    printf ("su32m ]\n");
 }
 
 void spit_uint32_to_string_map ( std::map < uint32_t, std::string > & u32sm ) {
-    printf ("u32sm [\n");
     printf ("size=%d\n", u32sm.size());
     for ( auto &kvp : u32sm ) {
         printf ("%d -> %s\n", kvp.first, kvp.second.c_str() );
     }
-    printf ("u32sm ]\n");
-}
-    
+}    
+
+void spit_uint32_to_uint32_map ( std::map < uint32_t, uint32_t > & u32u32m ) {
+    printf ("size=%d\n", u32u32m.size());
+    for ( auto &kvp : u32u32m ) {
+        printf ("%d -> %d\n", kvp.first, kvp.second );
+    }
+}    
 
 void spit_index_common(IndexCommon *indc) {
     printf ("min,max ngrams = (%d,%d)\n", indc->min_n_gram, indc->max_n_gram);
@@ -172,7 +180,6 @@ void spit_index_common(IndexCommon *indc) {
     printf ("first_passage_to_filename ]\n");
 }
 
-
 void spit_index(Index *index) {
     printf ("Index [\n");
     printf ("binary_to_uind is %d entries\n", index->binary_to_uind.size());
@@ -193,6 +200,50 @@ void spit_index(Index *index) {
     printf ("Index ]\n");
 }
 
+void spit_docs_with_word(Index_common *indc, std::map < uint32_t, std::map < Gram, std::map < uint32_t, uint32_t > > > &docs_with_word) {
+    printf ("docs_with_word [\n");
+    printf ("size=%d\n", docs_with_word.size());
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {   
+        for ( auto &kvp : docs_with_word[n] ) {
+            spit_gram_hex(kvp.first);
+            printf (" : ");
+            for ( auto &kvp2 : kvp.second ) {
+                printf (" (%d,%d)", kvp2.first, kvp2.second);
+            }
+            printf ("\n");
+        }
+    }
+    printf ("docs_with_word ]\n");
+}
+
+
+void spit_general_query(IndexCommon *indc, std::map < uint32_t, std::map < Gram, uint32_t > > &general_query ) {
+    printf ("general_query [\n");
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
+        printf ("n=%d\n", n);
+        for ( auto &kvp : general_query[n] ) {
+            printf ("  ");
+            spit_gram_hex(kvp.first, n);
+            printf (" %d\n", kvp.second);
+        }
+    }
+    printf ("general_query ]\n");
+}
+
+
+void spit_inv(IndexCommon *indc, InvIndex *inv) {
+    printf ("InvIndex [\n");
+    spit_docs_with_word(indc, inv->docs_with_word);
+    // dont spit map_dw 
+    printf ("total_count [\n");
+    spit_uint32_uint32_map(inv->total_count);
+    printf ("total_count ]\n");    
+    spit_general_query(indc, inv->general_query);
+    printf ("InvIndex ]\n");
+}
+
+
+///////////////////////////////////////////////////
 
 
 // collect n-gram distributions for passage.  length len.  may contain nulls
@@ -238,43 +289,38 @@ Passage index_passage (IndexCommon *indc, bool update,
 }
 
 
-void spit_general_query(IndexCommon &indc, std::map < uint32_t, std::map < Gram, uint32_t > > &general_query ) {
-    printf ("general_query [\n");
-    for (uint32_t n=inv->min_n_gram; n<=inv->max_n_gram; n++) {
-        printf ("n=%d\n", n);
-        for ( auto &kvp : inv->general_query[n] ) {
-            printf ("  ");
-            spit_gram_hex(kvp.first, n);
-            printf (" %d\n", kvp.second);
+
+/*
+  Count n-grams for this binary blob (a passage).
+  The lexicon and index both get updated.
+*/
+void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) {    
+    // maintain map a from binary passages to ints
+    std::string sb = std::string((const char *) binary_passage, len);
+    uint32_t uind;
+    if (index->binary_to_uind.find(sb) == index->binary_to_uind.end()) {
+        // this is a new passage, i.e., we haven't indexed this binary blob before
+        if ((uind % 1000) == 0) {
+            printf ("%d unique passages indexed.  %d passages observed\n", (int) uind, (int) index->passages.size());
         }
+        uind = index->binary_to_uind.size();
+        index->binary_to_uind[sb] = uind;
+        index->uind_to_passage[uind] = 
+            index_passage(indc, /* updatelexicon = */ true, binary_passage, len, uind);        
     }
-    printf ("general_query ]\n");
-    printf ("InvIndex ]\n");
+    else {
+        // a passage we have indexed previously -- get unique id
+        uind = index->binary_to_uind[sb];
+    }       
+    index->passages[passage_ind] = uind;
+    // this is the total # of passages (not unique ones) indexed
+    index->num_passages ++;
+    // keeps track of set of passages for this uind
+    index->uind_to_psgs[uind].insert(passage_ind);
 }
 
 
-void spit_inv(InvIndex &inv) {
-    //    spit_inv_min(inv);
-    printf ("docs_with_word [\n");
-    for (uint32_t n=inv.min_n_gram; n<=inv.max_n_gram; n++) {
-        printf ("n=%d\n", n);
-        for ( auto &kvp : inv.docs_with_word[n] ) {
-            Gram gram = kvp.first;
-            printf ("  gram : ") ;
-            spit_gram_hex(gram, n);
-            printf ("\n");
-            printf ("    ");
-            /*
-              for ( auto &kvp2 : kvp.second ) {
-              printf ("(c=%d, p=%s)", kvp2.second, inv.ind_to_passage_name[kvp2.first].c_str());
-              }
-            */
-            printf ("\n");
-        }
-    }
-    printf ("docs_with_word ]\n");
-}
-
+//////////////////////////////////////////////////////////////////////
 
 void marshall_lexicon(std::string filename, Lexicon &lexicon){ 
     FILE *fp = fopen ((char *) filename.c_str(), "w");
@@ -450,122 +496,249 @@ std::map < uint32_t, std::string > unmarshall_uint32_string_map(std::string file
     return usmap;
 }
 
-
-
-void marshall_summary(const std::string filename_prefix, InvIndex &inv) {
-    std::string filename = filename_prefix + ".summary";
-    // 1 file. first write out summary info
-    FILE *fp = fopen((char *) filename.c_str(), "w");
-    WS(inv.filename_prefix);  
-    WU(inv.min_n_gram);
-    WU(inv.max_n_gram);
-    WU(inv.passage_len_bytes);
-    WU(inv.num_passages);
+void marshall_uind_to_psgs(std::string &pfx, std::map < uint32_t, std::set < uint32_t > > &uind_to_psgs) {
+    printf ("marshalling uind to psg set\n");
+    filename = pfx + ".uind_to_psgs";
+    fp = fopen((char *) filename.c_str(), "w");
+    occ = uind_to_psgs.size();
+    WU(occ);  
+    for ( auto &kvp : uind_to_psgs ) {
+        uint32_t uind = kvp.first;
+        WU(uind);
+        occ = kvp.second.size();
+        WU (occ);
+        for ( auto &el : kvp.second ) {
+            WU(el);
+        }
+    }
     fclose(fp);
+}
+
+std::map < uint32_t, std::set < uint32_t > > unmarshall_uind_to_psgs(std::string pfx) {
+    printf ("unmarshalling uind to psg set\n");
+    filename = pfx + ".uind_to_psgs";
+    fp = fopen((char *) filename.c_str(), "r");
+    uint32_t occ1;
+    RU(occ1);
+    std::map < uint32_t, std::set < uint32_t > > uind_to_psgs;
+    for (uint32_t i=0; i<occ1; i++) {
+        uint32_t uind;
+        RU(uind);
+        uint32_t occ2;
+        RU (occ2);
+        for (uint32_t j=0; j<occ2; j++) {
+            uint32_t psg;
+            RU(psg);
+            uind_to_psgs[uind].insert(psg);
+        }
+    }
+    fclose(fp);
+    return uind_to_psgs;
+}
+
+
+void marshall_index_common(IndexCommon *indc) {
+    printf ("marshalling index_common\n");
+    std::string pfx = indc->filename_prefix;
+    std::string filename = pfx + ".indc";
+    FILE *fp = fopen((char *) filename.c_str(), "w");
+    WU(indc->min_n_gram);
+    WU(indc->max_n_gram);
+    WU(indc->passage_len_bytes);
+    WU(invc->num_passages);
+    fclose(fp);
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
+        printf ("marshalling lexicon n=%d\n", n);
+        marshall_lexicon(pfx + ".lexicon-" + std::to_string(n), indc->lexicon[n]);
+    }
+    marshall_uind_to_psgs(pfx, indc->uind_to_psgs);
+    printf ("marshalling f2fp and fp2f\n");
+    if (indc->filename_to_first_passage.size() == 0) {
+        printf ("... which are empty so filling with something\n");
+        indc->filename_to_first_passage[indc->filename_prefix] = 0;
+        indc->first_passage_to_filename[0] = indc->filename_prefix;
+    }
+    marshall_string_uint32_map(pfx + ".f2fp", indc->filename_to_first_passage);
+    marshall_uint32_string_map(pfx + ".fpf2", indc->first_passage_to_filename);
 }  
   
 
-void unmarshall_summary(const std::string filename_prefix, InvIndex *inv) {
-    std::string filename = filename_prefix + ".summary";
+IndexCommon unmarshall_index_common(const std::string pfx) {
+    std::string filename = pfx + ".indc";
     // 1 file. first write out summary info
     FILE *fp = fopen((char *) filename.c_str(), "r");
-    RS(inv->filename_prefix);
-    RU(inv->min_n_gram);
-    RU(inv->max_n_gram);
-    RU(inv->passage_len_bytes);
-    RU(inv->num_passages);
+    IndexCommon *indc = new IndexCommon;
+    indc->filename_pfx = pfx;
+    RU(indc->min_n_gram);
+    RU(indc->max_n_gram);
+    RU(indc->passage_len_bytes);
+    RU(indc->num_passages);
     fclose(fp);
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
+        printf ("unmarshalling lexicon n=%d\n", n);
+        indc->lexicon[n] = unmarshall_lexicon(pfx + ".lexicon-" + std::to_string(n));
+    }
+    indc->uind_to_psgs = unmarshall_uind_to_psgs(pfx);
+    indc->filename_to_first_passage = unmarshall_string_uint32_map(pfx + ".f2fp");
+    indc->first_passage_to_filename = unmarshall_uint32_string_map(pfx + ".fpf2");
 }  
 
 
+void marshall_passage(Passage &passage, FILE *fp) {
+    WU(passage.uind);
+    uint32_t l = passage.contents.size();
+    WU(l);
+    for ( auto &kvp : passage.contents ) {
+        uint32_t n = kvp.first;
+        PassageDist pd = kvp.second;
+        WU(n);
+        WU(pd.total);
+        uint32_t l2 = pd.count.size();
+        WU(l2);
+        for ( auto &kvp : pd.count ) {
+            Gram gram = kvp.first;
+            uint32_t count = kvp.second;
+            WU(gram);
+            WU(count);
+        }
+    }
+}
+
+
+Passage unmarshall_passage(FILE *fp) {
+    Passage passage;
+    RU(passage.uind);
+    // l is the size of the contents map
+    uint32_t l;
+    RU(l);
+    for(uint32_t i=0; i<l; i++) {
+        PassageDist pd;        
+        uint32_t n;
+        RU(n);
+        assert (n<=8);
+        pd.n = n;
+        RU(pd.total);
+        uint32_t l2;
+        RU(l2);
+        for (uint32_t j=0; j<l2; j++) {
+            Gram gram;
+            uint32_t count;
+            RU(gram);
+            RU(count);
+            pd.count[gram] = count;
+        }
+        passage.contents[n] = pd;
+    }
+    return passage;
+}
+        
+    
+void marshall_index(IndexCommon *indc, Index &index) {
+    std::string filename ;
+    printf ("marshalling binary_to_uind occ=%d\n", occ);
+    std::string pfx = indc->filename_prefix;
+    filename = index.filename_prefix + ".b2u";
+    fp = fopen((char *) filename.c_str(), "w");
+    uint32_t occ = index.binary_to_uind.size();
+    WU(occ);
+    for ( auto &kvp : index.binary_to_uind ) {       
+        WS(kvp.first);
+        WU(kvp.second);
+    }
+    fclose(fp);
+    printf ("marshalling uind_to_passage occ=%d\n", occ);
+    filename = index.filename_prefix + ".utp";
+    fp = fopen((char *) filename.c_str(), "w");
+    occ = index.uind_to_passage.size();
+    WU(occ);
+    for ( auto &kvp : index.uind_to_passage ) {
+        WU(kvp.first);
+        Passage &passage = kvp.second;
+        marshall_passage(passage, fp);
+    }
+    fclose(fp);
+    printf ("marshalling passages to uind occ=%d\n", occ);
+    filename = index.filename_prefix + ".passages";
+    fp = fopen((char *) filename.c_str(), "w");
+    occ = index.passages.size();
+    WU(occ);
+    for (uint32_t i=0; i<occ; i++) {
+        uint32_t passage_ind = index.passages[i];
+        WU(passage_ind);
+    }
+    fclose(fp);
+}
+
+
+Index *unmarshall_index(std::string pfx, IndexCommon *indc) {
+    Index *index = new Index;
+    printf ("unmarshalling binary_to_uind\n");
+    std::filename;
+    filename = index.filename_prefix + ".b2u";
+    fp = fopen((char *) filename.c_str(), "r");
+    uint32_t occ;
+    RU(occ);
+    printf ("%d size\n", occ);
+    for (uint32_t i=0; i<occ; i++) {
+        std::string binary;
+        uint32_t uind;
+        RS(binary);
+        RU(uind);
+        index->binary_to_uind[binary] = uind;
+    }
+    fclose(fp);
+    printf ("unmarshalling uind_to_passage \n");
+    filename = index.filename_prefix + ".utp";
+    fp = fopen((char *) filename.c_str(), "r");
+    RU(occ);
+    printf ("%d size\n", occ);
+    for (uint32_t i=0; i<occ; i++) {     
+        uint32_t uind;
+        RU(uind);
+        index->uind_to_passage[uind] = unmarshall_passage(fp);
+    }
+    fclose(fp);
+    printf ("unmarshalling passages \n");
+    filename = index.filename_prefix + ".passages";
+    fp = fopen((char *) filename.c_str(), "r");
+    RU(occ);
+    printf ("%d size\n", occ);    
+    for (uint32_t i=0; i<occ; i++) {
+        uint32_t passage_ind;
+        RU(passage_ind);
+        index->passages[i] = passage_ind;
+    }
+    fclose(fp);
+    return index;
+}
+    
 
 			      
 // marshalls everything *except* the doc-word arrays
-void marshall_invindex_min(InvIndex &inv) {
-    std::string pfx = inv.filename_prefix;
-    marshall_summary(pfx, inv);
+void marshall_invindex_min(InvIndex *inv, IndexCommon *indc) {
+    std::string pfx = inv->filename_prefix;
     std::string filename;
-    for (uint32_t n=inv.min_n_gram; n<=inv.max_n_gram; n++) {
-        // n files.  lexicon
-        filename = pfx + ".lexicon-" + std::to_string(n);
-        marshall_lexicon(filename, inv.lexicon[n]);
-        // n files.  map 
-        filename = pfx + ".inv-map-" + std::to_string(n);
-        marshall_gram_long_map(filename, inv.map_dw[n]);
-        // n files. general gram counts for each gram foreach n
-        filename = pfx + ".gen-" + std::to_string(n);
-        marshall_gram_uint32_map(filename, inv.general_query[n]);
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
+        marshall_gram_long_map(pfx + ".inv-map-" + std::to_string(n), inv->map_dw[n]);
+        marshall_gram_uint32_map(pfx + ".gen-" + std::to_string(n), inv->general_query[n]);
     }
-    // 1 file.  total count foreach n
-    filename = pfx + ".total_count";
-    marshall_uint32_uint32_map(filename, inv.total_count);
-    // 1 file.  map from filename to first passage number
-    filename = pfx + ".f2fp";
-    marshall_string_uint32_map(filename, inv.filename_to_first_passage);
-    // 1 file.  map from first passage number to filename
-    filename = pfx + ".fpf2";
-    marshall_uint32_string_map(filename, inv.first_passage_to_filename);
+    marshall_uint32_uint32_map(pfx + ".total_count", inv->total_count);
 }
  
 
-
 // unmarshalls everything except the doc-word arrays
-InvIndex *unmarshall_invindex_min(std::string pfx) {
+InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc) {
     InvIndex *inv = new InvIndex;    
-    // 1 file. first read summary info
-    unmarshall_summary(pfx, inv);
     std::string filename;
     for (uint32_t n=inv->min_n_gram; n<=inv->max_n_gram; n++) {        
-        filename = pfx + ".lexicon-" + (std::to_string(n));
-        inv->lexicon[n] = unmarshall_lexicon(filename, n);
-        // n files.  inv-maps
-        filename = pfx + ".inv-map-" + std::to_string(n);
-        inv->map_dw[n] = unmarshall_gram_long_map(filename);
-        // n files. general gram counts for each gram foreach n
-        filename = pfx + ".gen-" + std::to_string(n);
-        inv->general_query[n] = unmarshall_gram_uint32_map(filename);
+        inv->map_dw[n] = unmarshall_gram_long_map(pfx + ".inv-map-" + std::to_string(n));
+        inv->general_query[n] = unmarshall_gram_uint32_map(pfx + ".gen-" + std::to_string(n));
     }
-    // 1 file.  total count foreach n
-    filename = pfx + ".total_count";
-    inv->total_count = unmarshall_uint32_uint32_map(filename);
-    // Load the filename <-> first passage #  maps
-    // 1 file.  map from filename to first passage number
-    filename = pfx + ".f2fp";
-    inv->filename_to_first_passage = unmarshall_string_uint32_map(filename);
-    // 1 file.  map from first passage number to filename
-    filename = pfx + ".fpf2";
-    inv->first_passage_to_filename = unmarshall_uint32_string_map(filename); 
+    inv->total_count = unmarshall_uint32_uint32_map(pfx + ".total_count");
     return inv;
 }
 
  
-
-/*
-
-  Marshall a row in the inverted index
-  format is:
-
-  occ  
-  passage_ind[0] count[0] 
-  passage_ind[1] count[1] 
-  passage_ind[2] count[2] 
-  ...
-  passage_ind[occ-1] count[occ-1]
-
-  where all of occ, passage_ind, and count are uint32_t 
-
-  NB: we grab these passage_ind, count pairs out of a map, 
-  but we put them into an array sorted by passage_ind
-  before we write them out.
-
-*/
-
-
-bool compare_by_passage_ind(const CountPair &a, const CountPair &b) {
-    return (a.passage_ind < b.passage_ind);
-}
-
-
 static GramPsgCounts row;
 static bool row_init = true;
 
@@ -647,221 +820,29 @@ std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex *inv, 
     return dw;
 }
 
-/*
 
-  .inv-n file format
-  foreach n:
-  uint32_t occ      // number of grams in lexicon n
-  foreach gram in lexicon [n]:
-  marshall_doc_word for that gram (see fn)
-
-  (other index files written by marshall_invindex_min)
-
-*/
-void marshall_invindex(InvIndex &inv) {
-    std::string pfx = inv.filename_prefix;
-    for (uint32_t n=inv.min_n_gram; n<=inv.max_n_gram; n++) {
-        // n files.  inv index map.
-        std::string filename = pfx + ".inv-map-" + std::to_string(n);
+void marshall_invindex(InvIndex *inv, IndexCommon *indc) {
+    std::string pfx = indc->filename_prefix;
+    std::string filename;
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
+        filename = pfx + ".inv-map-" + std::to_string(n);
         FILE *fpinvmap = fopen((char *) filename.c_str(), "w");
-        uint32_t occ = inv.lexicon[n].grams.size();
+        uint32_t occ = indc->lexicon[n].grams.size();
         fwrite(&occ, sizeof(occ), 1, fpinvmap);
-        // n files.  inv index.
         filename = pfx + ".inv-" + std::to_string(n);
         FILE *fpinv = fopen((char *) filename.c_str(), "w");
         // create map_dw here
-        for ( auto &gram : inv.lexicon[n].grams ) {           
-            inv.map_dw[n][gram] = ftell(fpinv);      
-            marshall_doc_word_fp(fpinv, inv.docs_with_word[n][gram]);
+        for ( auto &gram : indc->lexicon[n].grams ) {           
+            inv->map_dw[n][gram] = ftell(fpinv);      
+            marshall_doc_word_fp(fpinv, inv->docs_with_word[n][gram]);
         }
         fclose(fpinv);
         fclose(fpinvmap);
     }
     // NB: have to do this last b/c otherwise invindex->map_dw not populated
-    marshall_invindex_min(inv);
+    marshall_invindex_min(inv, indc);
 }
 
-void marshall_passage(Passage &passage, FILE *fp) {
-    WU(passage.uind);
-    uint32_t l = passage.contents.size();
-    WU(l);
-    for ( auto &kvp : passage.contents ) {
-        uint32_t n = kvp.first;
-        PassageDist pd = kvp.second;
-        WU(n);
-        WU(pd.total);
-        uint32_t l2 = pd.count.size();
-        WU(l2);
-        for ( auto &kvp : pd.count ) {
-            Gram gram = kvp.first;
-            uint32_t count = kvp.second;
-            WU(gram);
-            WU(count);
-        }
-    }
-}
-
-Passage unmarshall_passage(FILE *fp) {
-    Passage passage;
-    RU(passage.uind);
-    // l is the size of the contents map
-    uint32_t l;
-    RU(l);
-    for(uint32_t i=0; i<l; i++) {
-        PassageDist pd;        
-        uint32_t n;
-        RU(n);
-        assert (n<=8);
-        pd.n = n;
-        RU(pd.total);
-        uint32_t l2;
-        RU(l2);
-        for (uint32_t j=0; j<l2; j++) {
-            Gram gram;
-            uint32_t count;
-            RU(gram);
-            RU(count);
-            pd.count[gram] = count;
-        }
-        passage.contents[n] = pd;
-    }
-    return passage;
-}
-        
-    
-
-void marshall_index(Index &index) {
-    std::string filename = index.filename_prefix + ".ind.summary";
-    FILE *fp = fopen((char *) filename.c_str(), "w");
-    WU(indc->min_n_gram);
-    WU(indc->max_n_gram);
-    WU(index.passage_len_bytes);
-    WU(index.num_passages);
-    fclose(fp);
-    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
-        std::string filename = std::string(index.filename_prefix) + ".ind.lexicon-" + (std::to_string(n));
-        printf ("marshalling lexicon n=%d occ=%d\n", (int) n, (int) indc->lexicon[n].grams.size());
-        marshall_lexicon(filename, indc->lexicon[n]);
-    }
-    filename = index.filename_prefix + ".ind.b2u";
-    fp = fopen((char *) filename.c_str(), "w");
-    uint32_t occ = index.binary_to_uind.size();
-    WU(occ);
-    printf ("marshalling binary_to_uind occ=%d\n", occ);
-    for ( auto &kvp : index.binary_to_uind ) {       
-        WS(kvp.first);
-        WU(kvp.second);
-    }
-    fclose(fp);
-    filename = index.filename_prefix + ".ind.utp";
-    fp = fopen((char *) filename.c_str(), "w");
-    occ = index.uind_to_passage.size();
-    WU(occ);
-    printf ("marshalling uind_to_passage occ=%d\n", occ);
-    for ( auto &kvp : index.uind_to_passage ) {
-        WU(kvp.first);
-        Passage &passage = kvp.second;
-        marshall_passage(passage, fp);
-    }
-    fclose(fp);
-    filename = index.filename_prefix + ".ind.passages";
-    fp = fopen((char *) filename.c_str(), "w");
-    occ = index.passages.size();
-    WU(occ);
-    printf ("marshalling passages to uind occ=%d\n", occ);
-    for (uint32_t i=0; i<occ; i++) {
-        uint32_t passage_ind = index.passages[i];
-        WU(passage_ind);
-    }
-    fclose(fp);
-    printf ("marshalling uind to psgs\n");
-    filename = index.filename_prefix + ".ind.uind_to_psgs";
-    fp = fopen((char *) filename.c_str(), "w");
-    occ = index.uind_to_psgs.size();
-    WU(occ);  
-    for ( auto &kvp : index.uind_to_psgs ) {
-        uint32_t uind = kvp.first;
-        WU(uind);
-        occ = kvp.second.size();
-        WU (occ);
-        for ( auto &el : kvp.second ) {
-            WU(el);
-        }
-    }
-    fclose(fp);
-    printf ("marshalling f2fp and fp2f\n");
-    if (index.filename_to_first_passage.size() == 0) {
-        index.filename_to_first_passage[index.filename_prefix] = 0;
-        index.first_passage_to_filename[0] = index.filename_prefix;
-    }
-    filename = index.filename_prefix + ".ind.f2fp";
-    printf ("%d\n", (int) index.filename_to_first_passage.size());
-    marshall_string_uint32_map(filename, index.filename_to_first_passage);
-    filename = index.filename_prefix + ".ind.fp2f";
-    printf ("%d\n", (int) index.first_passage_to_filename.size());
-    marshall_uint32_string_map(filename, index.first_passage_to_filename);
-    printf ("done marshalling index\n");
-}
-
-
-Index *unmarshall_index(std::string pfx) {
-    Index *index = new Index;
-    std::string filename = pfx + ".ind.summary";
-    FILE *fp = fopen((char *) filename.c_str(), "r");
-    RU(index->min_n_gram);
-    RU(index->max_n_gram);
-    RU(index->passage_len_bytes);
-    RU(index->num_passages);
-    fclose(fp);
-    for (uint32_t n=index->min_n_gram; n<=index->max_n_gram; n++) {
-        filename = pfx + ".ind.lexicon-" + (std::to_string(n));
-        index->lexicon[n] = unmarshall_lexicon(filename, n);
-    }
-    filename = pfx + ".ind.passages";
-    /*
-    fp = fopen((char *) filename.c_str(), "r");
-    printf ("%d passages\n", index->num_passages);
-    for (uint32_t i=0; i<index->num_passages; i++) {
-        Passage passage = unmarshall_passage(fp);
-        index->passages[passage.ind] = &passage;
-    }
-    */
-    filename = pfx + ".ind.f2fp";
-    index->filename_to_first_passage = unmarshall_string_uint32_map(filename);
-    filename = pfx + ".ind.fp2f";
-    index->first_passage_to_filename = unmarshall_uint32_string_map(filename); 
-    return index;
-}
-    
-
-
-void marshall_invindex(InvIndex *inv) {
-    marshall_invindex(*inv);
-}
-
-
-void marshall_index(Index *index) {
-    marshall_index(*index);
-}
-
-// construct passage name from ind, using first_passage_to_filename
-// passage_name assumed alloc big enough to fit filename-offset
-std::string get_passage_name(InvIndex &inv, uint32_t passage_ind, uint32_t *start_pos) {
-    auto x = (inv.first_passage_to_filename.upper_bound(passage_ind));
-    x--;
-    std::string filename = x->second;
-    uint64_t offset;
-    if ((passage_ind % 2) == 0) {
-        uint32_t num_chunks = passage_ind / 2;
-        offset = num_chunks * inv.passage_len_bytes;
-    }
-    else {
-        uint32_t num_chunks = (passage_ind - 1) / 2;
-        offset = inv.passage_len_bytes/2 + num_chunks * inv.passage_len_bytes;
-    }
-    *start_pos = offset;
-    return filename;
-}
 
 
 void marshall_preprocessed_scores(PpScores *pps) {
@@ -922,61 +903,32 @@ PpScores *unmarshall_preprocessed_scores(std::string filename_pfx) {
 
 
 
-/*
-  Count n-grams for this binary blob (a passage).
-  The lexicon and index both get updated.
-*/
-void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) {    
-    // maintain map a from binary passages to ints
-    std::string sb = std::string((const char *) binary_passage, len);
-    uint32_t uind;
-    if (index->binary_to_uind.find(sb) == index->binary_to_uind.end()) {
-        // new pasage
-        uind = index->binary_to_uind.size();
-        if ((uind % 1000) == 0) {
-            printf ("%d unique passages indexed.  %d passages observed\n", (int) uind, (int) index->passages.size());
-        }
-        index->binary_to_uind[sb] = uind;
-        index->uind_to_passage[uind] = 
-            index_passage(indc, /*updatelexicon = */ true, binary_passage, len, uind);        
+// construct passage name from ind, using first_passage_to_filename
+// passage_name assumed alloc big enough to fit filename-offset
+std::string get_passage_name(IndexCommon *indc, uint32_t passage_ind, uint32_t *start_pos) {
+    auto x = (indc->first_passage_to_filename.upper_bound(passage_ind));
+    x--;
+    std::string filename = x->second;
+    uint64_t offset;
+    if ((passage_ind % 2) == 0) {
+        uint32_t num_chunks = passage_ind / 2;
+        offset = num_chunks * indc->passage_len_bytes;
     }
     else {
-        uind = index->binary_to_uind[sb];
-    }       
-    index->num_passages ++;
-    index->passages[passage_ind] = uind;
-    if (index->uind_to_psgs.find(uind) == index->uind_to_psgs.end()) {
-        // keeps track of set of passages for this uind
-        index->uind_to_psgs[uind].insert(passage_ind);
+        uint32_t num_chunks = (passage_ind - 1) / 2;
+        offset = indc->passage_len_bytes/2 + num_chunks * indc->passage_len_bytes;
     }
-    assert (index->num_passages == index->passages.size());
-}
-
-
-// c version
-void index_this_passage_c(void *vpindc, void *vpindex, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) {
-    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
-    Index *index = reinterpret_cast<Index *> (vpindex);
-    index_this_passage(indc, index, binary_passage, len, passage_ind);
+    *start_pos = offset;
+    return filename;
 }
 
 
 
-
-InvIndex *invert(Index *index) {
+InvIndex *invert(IndexCommon *indc, Index *index) {
     int i;
     printf ("Inverting index\n");
     InvIndex *inv = new InvIndex;
-    uint32_t min_n = index->min_n_gram;
-    uint32_t max_n = index->max_n_gram;
-    inv->min_n_gram = min_n;
-    inv->max_n_gram = max_n;
-    inv->passage_len_bytes = index->passage_len_bytes;
-    inv->lexicon = index->lexicon;
-    inv->filename_to_first_passage = index->filename_to_first_passage;
-    inv->first_passage_to_filename = index->first_passage_to_filename;
-    inv->uind_to_psgs = index->uind_to_psgs;
-    // iterate over passages in the index
+    // iterate over *unique* passages in the index
     uint32_t ii=0;
     uint32_t tot = index->uind_to_passage.size();
     uint32_t i100 = tot / 100;
@@ -995,18 +947,14 @@ InvIndex *invert(Index *index) {
             for ( auto &kvp : pd.count ) {
                 Gram gram = kvp.first;
                 uint32_t count = kvp.second;
-                inv->docs_with_word[pd.n][gram][passage.uind]++;
-                inv->general_query[pd.n][gram] ++;
+                // shoudn't already have a count
+                assert (inv->docs_with_word[pd.n][gram].find(passage.uind) = inv->docs_with_word[pd.n][gram].end());
+                inv->docs_with_word[pd.n][gram][passage.uind] = count;
+                inv->general_query[pd.n][gram] += count;
                 inv->total_count[pd.n] += count;
             }
         }
     }
-    // create map from index back to passage name (a string)
-    // and populate passage lengths in inv index
-    inv->num_passages = index->num_passages;
-    // NB: inv->filename_prefix unspecified at this time
-    // NB: inv->map_dw doesnt exist yet. 
-    // this is generated when we write out the file
     return inv;
 }     
 
@@ -1084,19 +1032,28 @@ void query_with_passage (Passage &query, PpScores &pps, uint32_t *ind, float *be
 
 
 
+////////////////////////////////////////////
+// 
+// C API
 
-void *invert_c(void *vpindex) {
+void index_this_passage_c(void *vpindc, void *vpindex, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) {
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     Index *index = reinterpret_cast<Index *> (vpindex);
-    InvIndex *inv = invert(index);
+    index_this_passage(indc, index, binary_passage, len, passage_ind);
+}
+
+void *invert_c(void *vpindc, void *vpindex) {
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
+    Index *index = reinterpret_cast<Index *> (vpindex);
+    InvIndex *inv = invert(indc, index);
     return reinterpret_cast<void *> (inv);
 }
 
-
-// c version
-void marshall_invindex_c(void *vpinv, char *file_pfx) {
+void marshall_invindex_c(void *vpinv, void *vpindc, char *file_pfx) {
     InvIndex *inv = reinterpret_cast<InvIndex *> (vpinv);
     inv->filename_prefix = std::string(file_pfx);
-    marshall_invindex(inv);
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
+    marshall_invindex(inv, indc);
 }
 
 void marshall_index_c(void *vpindex, char *file_pfx) {
@@ -1111,13 +1068,11 @@ void *unmarshall_preprocessed_scores_c (char *filename_pfx) {
     return reinterpret_cast <void *> (pps);
 }
 
-
 void query_with_passage_c (void *vppassage, void *vppps, uint32_t *ind, float *score) {
     Passage *passage = reinterpret_cast<Passage *>(vppassage);
     PpScores *pps = reinterpret_cast<PpScores *>(vppps);
     query_with_passage(*passage, *pps, ind, score);
 }
-
 
 void new_index_common_c(char *filename_prefix, 
                         uint32_t min_n_gram, uint32_t max_n_gram,
@@ -1127,13 +1082,12 @@ void new_index_common_c(char *filename_prefix,
     return reinterpret_cast<void *> (indc);
 }
 
-// c version
 void *new_index_c() {
     Index *index = new Index;
     return reinterpret_cast<void *> (ind);
 }
 
-void indexer_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes) {
+void index_common_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes) {
     IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     indc->passage_len_bytes = passage_len_bytes;
 }

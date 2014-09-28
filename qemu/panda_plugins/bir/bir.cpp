@@ -58,6 +58,7 @@ void uninit_plugin(void *);
 // globals
 
 PpScores *pps = NULL; 
+IndexCommon *indc = NULL;
 InvIndex *inv = NULL;
 
 
@@ -325,9 +326,9 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("bir");
     if (args != NULL) {
         int i;
-        char *invpfx = NULL;
+        char *pfx = NULL;
         for (i = 0; i < args->nargs; i++) {
-            if (0 == strncmp(args->list[i].key, "invpfx", 5)) {
+            if (0 == strncmp(args->list[i].key, "pfx", 5)) {
                 invpfx = args->list[i].value;
             } else if (0 == strncmp(args->list[i].key, "max_row_length", 14)) {
                 max_row_length = atoi(args->list[i].value);
@@ -342,9 +343,11 @@ bool init_plugin(void *self) {
         }
         if (invpfx != NULL) {                            
             printf ("unmarshalling preprocessed scores\n");
-            pps = unmarshall_preprocessed_scores(invpfx);                      
+            pps = unmarshall_preprocessed_scores(pfx);                      
+            printf ("unmarshalling index common\n");
+            indc = unmarshall_index_common(pfx);
             printf ("unmarshalling inverted index\n");
-            inv = unmarshall_invindex_min (invpfx);            
+            inv = unmarshall_invindex_min (pfx);            
             panda_cb pcb;
             pcb.before_block_exec = bir_before_block_exec;
             panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
