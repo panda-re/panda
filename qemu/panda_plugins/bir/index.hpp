@@ -70,7 +70,7 @@ typedef struct ngram_dist_struct {
 
 // a passage is represented as an array of ngram distributions (one for each value of n)
 typedef struct passage_struct {
-    uint32_t ind;    // the index (into ind_to_passage_name vector) of this passage
+    uint32_t uind;    // unique index for this passage
     // passage[n] = passage dist for this value of n
     std::map < uint32_t, PassageDist > contents;
 } Passage;
@@ -84,30 +84,8 @@ typedef struct lexicon_struct {
 } Lexicon;
 
 
-typedef struct index_struct {
-    // min,max n-ngram to index
-    uint32_t min_n_gram;       
-    uint32_t max_n_gram;
-    // indexing passages of this length
-    uint32_t passage_len_bytes;
-    // number of passages in this index
-    uint32_t num_passages;
-    // one lexicon for each value of n
-    std::map < uint32_t, Lexicon > lexicon;
-    // index is an array of pointers to passages
-    // index.passages[passage_ind] is a Passage
-    std::map < uint32_t, Passage > passages;
-    // map from file names to first passage number for each
-    std::map < std::string, uint32_t > filename_to_first_passage;
-    // map from first passage number back to filename
-    std::map < uint32_t, std::string > first_passage_to_filename;
-} Index;
-
-
-
-
-// inverted index.  
-typedef struct invindex_struct {
+// both index and inv index use this info
+typedef struct index_common_struct {
     std::string filename_prefix;
     // min,max n-ngram to index
     uint32_t min_n_gram;        
@@ -118,6 +96,33 @@ typedef struct invindex_struct {
     uint32_t num_passages; 
     // map from ngram "words" to uniq inds
     std::map < uint32_t, Lexicon > lexicon;
+    // uind_to_psgs[uind] is the set  of passage inds that are all the same
+    std::map < uint32_t, std::set < uint32_t > > uind_to_psgs;  
+    // map from file names to first passage number for each
+    std::map < std::string, uint32_t > filename_to_first_passage;
+    // map from first passage number back to filename
+    std::map < uint32_t, std::string > first_passage_to_filename;   
+} IndexCommon;
+
+
+
+typedef struct index_struct {
+    // binary_to_uind[sb] = uind
+    // where sb is the binary blob that is code
+    // and uind is a unique int for each such binary
+    std::map < std::string, uint32_t > binary_to_uind;
+    // uind_to_passage[uind] is a passage
+    std::map < uint32_t, Passage > uind_to_passage;
+    // index.passages[passage_ind] is a uind
+    std::map < uint32_t, uint32_t > passages;
+} Index;
+
+
+
+
+
+// inverted index.  
+typedef struct invindex_struct {
     // this is the actual inverted index
     // docs_with_word[n] is a map with key being a gram (for this value of n), i.e., a string
     // docs_with_word[n][gram] is another map with key being a passage index, i.e., a uint32_t
@@ -132,21 +137,7 @@ typedef struct invindex_struct {
     // one for each ngram
     // inv.general_query[n][gram] is a count
     std::map < uint32_t, std::map < Gram, uint32_t > > general_query;
-    // map from file names to first passage number for each
-    std::map < std::string, uint32_t > filename_to_first_passage;
-    // map from first passage number back to filename
-    std::map < uint32_t, std::string > first_passage_to_filename;
 } InvIndex;
-
-
-typedef struct indexer_struct {
-    // min,max n-ngram to index
-    uint32_t min_n_gram;
-    uint32_t max_n_gram;
-    // indexing passages of this length
-    uint32_t passage_len_bytes;
-    Index index;
-} Indexer;
 
 
 typedef struct score_struct {
@@ -155,12 +146,29 @@ typedef struct score_struct {
 } Score;
 
 
+typedef struct scorerow_struct {
+    uint32_t len; // length of row
+    Score *el;   // this is ptr to c array of len Score structs
+} ScoreRow;
+
+typedef struct pp_score_struct {
+    std::string filename_prefix;
+    // note: we dont care what min n gram is
+    uint32_t max_n_gram;
+    uint32_t num_passages;
+    std::vector < Score > score;
+    // scorerow[maxn_gram] is row of preprocessed scores (for maxn_gram)
+    std::map < Gram, ScoreRow > scorerow;
+} PpScores;
+
+
+
 
 
 #define RU(u)                                                  \
     {                                                          \
-        size_t n = fread(&(u), sizeof(u), 1, fp);              \
-        assert (n == 1);                                       \
+        size_t nnn = fread(&(u), sizeof(u), 1, fp);              \
+        assert (nnn == 1);                                       \
     } 
 
 
@@ -172,15 +180,14 @@ typedef struct score_struct {
 #define RL(l) RU(l)
 #define WL(l) WU(l)
 
-#define RS(s)                                   \
-    {                                                   \
-        uint32_t l;                                     \
-        size_t n=fread(&l, sizeof(l), 1, fp);			\
-        assert (n == 1);                                \
-        char *cs = (char *) malloc(l);                  \
-        n = fread(cs, 1, l, fp);                        \
-        assert (n == l);                                \
-        s = std::string(cs,l);                          \
+#define RS(s)                                                   \
+    {                                                           \
+        uint32_t l;                                             \
+        fread(&l, sizeof(l), 1, fp);                            \
+        char *cs = (char *) malloc(l+1);                        \
+        fread(cs, 1, l, fp);                                    \
+        cs[l] = '\0';                                           \
+        s = std::string(cs,l);                                  \
     }
 
 #define WS(s)                                   \
@@ -201,8 +208,12 @@ typedef struct score_struct {
         fwrite(s, 1, l, fp);                    \
     }  
 
-void marshall_index(std::string &filename, Index &index);
-Index unmarshall_index(std::string &filename);
+    
+
+void marshall_index(std::string &filename, Index &index);    
+Index *unmarshall_index(std::string pfx) ;
+
+
 void *mi_malloc(size_t n) ;
 void *mi_calloc(size_t nmemb, size_t memsz);
 void *mi_realloc(void *p, size_t n);
@@ -211,38 +222,25 @@ void mi_free(void *p);
 void marshall_binary_int_hashtable_fp(FILE *fp, SIHashtable &sih);
 void marshall_string_int_hashtable_fp(FILE *fp, SIHashtable &sih);
 
-Index new_index(uint32_t min_n_gram, uint32_t max_n_gram,
-                uint32_t passage_len_bytes) ;
+Index *new_index(uint32_t min_n_gram, uint32_t max_n_gram,
+                 uint32_t passage_len_bytes) ;
 void spit_passage_dist(PassageDist &pd) ;
 void spit_passage(Passage &passage);
 
 void spit_index(Index &index);
 void spit_inv(InvIndex &inv);
 
-void marshall_invindex(InvIndex &invindex);
+void marshall_invindex(InvIndex &inv);
 
-InvIndex unmarshall_invindex_min(char *filename_pfx);
-void spit_inv_min(InvIndex &inv) ;
+InvIndex *unmarshall_invindex_min(std::string pfx) ;
+
+void spit_inv_min(InvIndex *inv) ;
 
 void marshall_invindex_min(InvIndex &inv);
 
 
 void spit_invindex(InvIndex &invindex);
 void temp_count(SIHashtable &tcount, std::string n_gram, uint32_t n);
-
-
-
-/*
-  index binary passage of length len (may contain null chars). 
-  use lexicon
-  update==true means add new words to lexicon
-  returns resulting index, an array of ngram distributions
-*/
-Passage index_passage (std::map < uint32_t, Lexicon > &lexicon, 
-                       bool update,
-                       uint32_t min_n, uint32_t max_n,
-                       uint8_t *binary_passage, uint32_t len,
-                       uint32_t passage_ind);
 
 
 void resize_doc_word(GramPsgCounts &row, uint32_t desired_size);
@@ -252,18 +250,18 @@ void resize_doc_word(GramPsgCounts &row, uint32_t desired_size);
 // which use an array for rows
 // returns 0 on fail (row too long)
 // else returns 1
-int unmarshall_row_fp(FILE *fp, InvIndex &inv, uint32_t n, const Gram gram, GramPsgCounts &row );
+int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, GramPsgCounts &row );
 
 // called by merger which keeps rows in an array
 void marshall_row_fp(FILE *fp, GramPsgCounts &row) ;
 
-std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex &inv, uint32_t n, Gram gram);
+std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex *inv, uint32_t n, Gram gram);
 
 
 // called by indexer which keeps row in a map
 void marshall_doc_word_fp(FILE *fp, std::map < uint32_t, uint32_t > &doc_word);
 
-InvIndex invindex_min_new(char *pfx, uint32_t min_n, uint32_t max_n, uint32_t passage_len_bytes) ;
+InvIndex  *invindex_min_new(std::string pfx, uint32_t min_n, uint32_t max_n, uint32_t passage_len_bytes) ;
 
 void spit_gram_hex(const Gram gram, uint32_t n);
 
@@ -271,9 +269,25 @@ void spit_gram_hex(const Gram gram, uint32_t n);
 Gram gramsub(Gram g, uint32_t pos, uint32_t len);
 
 
-const char *get_passage_name(InvIndex &inv, uint32_t passage_ind, uint32_t *start_pos);
+std::string get_passage_name(InvIndex &inv, uint32_t passage_ind, uint32_t *start_pos);
 
-// unmarshalls the per-max-n-gram precomputed scores so that bir.cpp can be wicked fast
-std::map < Gram, std::pair < uint32_t, Score * > > unmarshallPreprocessedScores(char *filename_pfx);
+
+
+
+InvIndex *invert(Index *index);
+
+
+void index_this_passage(Indexer *indexer, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
+
+void marshall_preprocessed_scores(PpScores *pps);
+
+PpScores *unmarshall_preprocessed_scores(std::string filename_pfx);
+
+
+void query_with_passage (Passage &query, PpScores &pps, uint32_t *ind, float *score);
+
+
+Indexer *new_indexer(uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
+
 
 #endif // __INDEX_H__

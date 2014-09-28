@@ -20,5 +20,7 @@ br: bir_utils.cpp binary_retriever.cpp
 bp: bir_utils.cpp binary_preprocessor.cpp                                                         
 	g++ -o bp bir_utils.cpp binary_preprocessor.cpp -O2 -lm -std=c++11                                                       
 
+tr: traligner.cpp bir_utils.cpp
+	g++ -o tr bir_utils.cpp traligner.cpp -O2 -lm -std=c++11                                                       
 
 all: bi si bm br

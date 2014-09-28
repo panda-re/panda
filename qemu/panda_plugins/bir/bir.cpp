@@ -57,11 +57,8 @@ void uninit_plugin(void *);
 
 // globals
 
-std::map < Gram, std::pair < uint32_t, Score * > > scorepair;
-InvIndex inv;
-std::vector < float > *scoring_params;
-std::vector < Score > *score ;
-std::vector < FILE * > * fpinv ;
+PpScores *pps = NULL; 
+InvIndex *inv = NULL;
 
 
 bool compare_scores (const Score & s1, const Score & s2) {
@@ -103,6 +100,7 @@ float timer_stop(std::string timername) {
 }
 
 
+/*
 // memoized inv
 // invm[n][g][p] is counts for n - gram g in passage p 
 std::map < uint32_t, std::map < Gram, std:: map < uint32_t, uint32_t > > > invm;
@@ -113,6 +111,7 @@ std::map < uint32_t, uint32_t > unmarshall_row(FILE *fp, InvIndex &inv, uint32_t
     }
     return invm[n][g];
 }
+*/
 
 
 /*
@@ -219,10 +218,10 @@ float *pppqs= NULL;
 
 std::map < Gram, std::map < uint32_t, float > > sc;
 
-
+/*
 // query is a passage.  
 // score is 1-d array, one item for each passage in the index
-static inline uint32_t query_with_passage (Passage & query)  
+uint32_t query_with_passage (Passage & query)  
 {
     if (pppqs == NULL) {
         pppqs = (float *) malloc(sizeof(float) * inv.num_passages);
@@ -258,7 +257,7 @@ static inline uint32_t query_with_passage (Passage & query)
     //    std::sort ((*score).begin (), (*score).end (), compare_scores);
     return argmax;
 }
-
+*/
 
 
 bool pdice (float prob_yes) {
@@ -277,6 +276,7 @@ std::map < uint32_t, std::map < uint32_t, std::string > >  bircache;
 
 float sec;
 
+
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (tb->size > 16) {         
         target_ulong asid = panda_current_asid(env);        
@@ -293,24 +293,24 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 len = tb->size;
             }
             panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
-            Passage  passage = index_passage (inv.lexicon,
-                                              /* update_lexicon = */ false,
-                                              inv.min_n_gram, inv.max_n_gram,
-                                              buf, len,
-                                              /* note: we dont really care about passage ind */
-                                              /* passage_ind = */ 0xdeadbeef);
-            int argmax = query_with_passage (passage) ;
+            Passage passage = index_passage (inv->lexicon,
+                                             /* update_lexicon = */ false,
+                                             inv->min_n_gram, inv->max_n_gram,
+                                             buf, len,
+                                             /* note: we dont really care about passage ind */
+                                             /* passage_ind = */ 0xdeadbeef);
+            uint32_t argmax;
+            float score;
+            query_with_passage (passage, *pps, &argmax, &score);
             printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-            if ( (*score)[argmax].val > 5.6 ) {
+            if ( score > 5.6 ) {
                 uint32_t the_offset;
-                const char *the_filename = get_passage_name(inv, (*score)[argmax].ind, &the_offset);            
-                char the_psgname[1024];
-                sprintf(the_psgname, "%s-%d", the_filename, the_offset);
-                bircache[asid][tb->pc] = std::string(the_psgname);
-                printf ("bir -- %.3f %s\n", (*score)[argmax].val, the_psgname);
+                std::string the_filename = get_passage_name(*inv, argmax, &the_offset);            
+                bircache[asid][tb->pc] = the_filename + "-" + (std::to_string(the_offset));
+                printf ("bir -- %.3f %s\n", score, bircache[asid][tb->pc].c_str()); 
             }      
             else {
-                printf ("bir -- %.3f unknown\n", (*score)[argmax].val);
+                printf ("bir -- %.3f unknown\n", score);
                 bircache[asid][tb->pc] = "unknown";
             }
         }        
@@ -327,7 +327,6 @@ bool init_plugin(void *self) {
         int i;
         char *invpfx = NULL;
         for (i = 0; i < args->nargs; i++) {
-            printf ("arg=%s val=%s\n", args->list[i].key, args->list[i].value);
             if (0 == strncmp(args->list[i].key, "invpfx", 5)) {
                 invpfx = args->list[i].value;
             } else if (0 == strncmp(args->list[i].key, "max_row_length", 14)) {
@@ -336,28 +335,16 @@ bool init_plugin(void *self) {
                 pdice_prob = atof(args->list[i].value);
             }
         }
-        printf ("max_row_length = %d\n", max_row_length);
-        printf ("pdice_prob = %0.8f\n", pdice_prob);
-        if (invpfx != NULL) {                
-            scorepair = unmarshallPreprocessedScores(invpfx);
-            inv = unmarshall_invindex_min (invpfx);
-            // weight for general_query = scoring_param[0] = 1/2
-            // weight for n=1 is 1/3
-            // weight for n=2 is 1/4
-            // etc
-            scoring_params = new std::vector < float > (inv.max_n_gram + 1);
-            for (uint32_t n = 0; n <= inv.max_n_gram; n++) {
-                (*scoring_params)[n] = 1.0 / (n + 2);
-            }
-            score = new std::vector < Score > (inv.num_passages);
-            // open up all the inv files
-            fpinv = new std::vector < FILE * >(inv.max_n_gram + 1);
-            for (uint32_t n = inv.min_n_gram; n <= inv.max_n_gram; n++)   {
-                // the inv index for this n, i.e. list of doc/count pairs for grams of this n
-                char filename[65535];
-                sprintf (filename, "%s.inv-%d", inv.filename_prefix.c_str (), n);
-                (*fpinv)[n] = fopen (filename, "r");
-            }            
+        if (0 == strncmp(invpfx, "none", 4)) {
+            // we just want the api
+            printf ("bir: I am only being used for my api fns.\n");
+            return true;
+        }
+        if (invpfx != NULL) {                            
+            printf ("unmarshalling preprocessed scores\n");
+            pps = unmarshall_preprocessed_scores(invpfx);                      
+            printf ("unmarshalling inverted index\n");
+            inv = unmarshall_invindex_min (invpfx);            
             panda_cb pcb;
             pcb.before_block_exec = bir_before_block_exec;
             panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
@@ -365,5 +352,7 @@ bool init_plugin(void *self) {
         }
     }
 #endif
+    printf ("no invpfx (inverted index file pfx) specifed \n");
     return false;
 }
+
