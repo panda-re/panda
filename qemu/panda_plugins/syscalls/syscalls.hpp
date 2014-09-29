@@ -9,6 +9,8 @@
 extern "C" {
 // get definitions of QEMU types
 #include "cpu.h"
+
+extern int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
 }
 
 enum class Callback_RC : int {

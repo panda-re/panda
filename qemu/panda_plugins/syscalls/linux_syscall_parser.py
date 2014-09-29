@@ -38,6 +38,8 @@ MODE = "ARM" if len(argv) < 2 else argv[1].upper()
 for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
     locals()[x] = locals()["_".join([MODE, x])]
 
+twoword_types = ["unsigned int", "unsigned long"]
+
 types_64 = ["loff_t", 'u64']
 stypes_32 = ["int", "long", '__s32']
 types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t', 
@@ -175,12 +177,16 @@ with open("linux_" + MODE.lower() + "_prototypes.txt") as armcalls:
                 continue
             #alltext += callno, rettype, callname, args
             thisarg = Argument()
-            if arg.endswith('*') or len(arg.split()) == 1:
+            arg = arg.strip()
+            if arg.endswith('*') or len(arg.split()) == 1 or arg in twoword_types:
                 # no argname, just type
                 argname = "arg{0}".format(argno)
             else:
                 argname = arg.split()[-1]
             thisarg.name = argname
+            if argname == 'int':
+                print "ERROR: shouldn't be naming arg 'int'! Arg text: '{0}'".format(arg)
+                exit(1)
             if charre.search(arg) and not argname.endswith('buf') and argname != '...' and not argname.endswith('[]'):
                 thisarg.type = CHAR_STAR
                 arg_types.append(thisarg)
@@ -196,9 +202,9 @@ with open("linux_" + MODE.lower() + "_prototypes.txt") as armcalls:
             elif any([x in arg for x in stypes_32]) and 'unsigned' not in arg:
                 thisarg.type = SIGNED_4
                 arg_types.append(thisarg)
-            elif arg.strip() == 'void':
+            elif arg == 'void':
                 pass
-            elif arg.strip() == 'unsigned' or (len(arg.split()) is 2 and arg.split()[0] == 'unsigned'):
+            elif arg == 'unsigned' or (len(arg.split()) is 2 and arg.split()[0] == 'unsigned'):
                 thisarg.type = BYTES_4
                 arg_types.append(thisarg)
             else:
