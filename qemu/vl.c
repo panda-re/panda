@@ -3233,9 +3233,10 @@ int main(int argc, char **argv, char **envp)
                 record_name = optarg;
 	            break;
 
-	        case QEMU_OPTION_replay:
-	            replay_name = optarg;
-	            break;
+            case QEMU_OPTION_replay:
+                display_type = DT_NONE;
+                replay_name = optarg;
+                break;
 
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
