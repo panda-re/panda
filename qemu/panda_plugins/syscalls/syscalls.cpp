@@ -387,7 +387,9 @@ int exec_callback(CPUState *env, target_ulong pc) {
     
 #if defined(TARGET_I386)
     // On Windows, the system call id is in EAX
-    syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
+    record_syscall = [&env, &pc](const char* callname){
+      syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", CR3=" TARGET_FMT_lx "\n", callname, pc, env->regs[R_EAX], env->cr[3]);
+    };
 #elif defined(TARGET_ARM)
 #if defined(CAPTURE_ARM_OABI)
 #if (1)
@@ -411,6 +413,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
     record_syscall = [&env, &pc](const char* callname){
       syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", callname, pc, env->regs[7], env->thumb);
     };
+#endif
 
     log_string = [&env, &pc](target_ulong src, const char* argname) -> syscalls::string{
       syscalls::string arg(env, pc, src);
@@ -441,7 +444,6 @@ int exec_callback(CPUState *env, target_ulong pc) {
 
     // syscall is in R7
     //syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", pc, env->regs[7], env->thumb);
-#endif
 
 #include "syscall_printer.cpp"
     return 0;
