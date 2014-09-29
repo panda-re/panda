@@ -92,10 +92,13 @@ with open("syscall_printer.gen.cpp", 'w') as printer:
     printer.write("int main(){\n")
 
     with open(CALLTABLE) as calltable:
-        if ARCH == "X86":
+        if ARCH == "x86":
             sysre = re.compile("\\.long ([a-zA-Z0-9_]+)")
-        elif ARCH == "ARM":
+        elif ARCH == "arm":
             sysre = re.compile("CALL\((.*)\)")
+        else:
+            print "ERROR: unknown arch {0}".format(ARCH)
+            exit(1)
         abire = re.compile("ABI\((.*),.*\)")
         callno = 0
 
