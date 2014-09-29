@@ -19,6 +19,7 @@ Output panda tool to parse system calls on Linux
 
 import re
 from collections import defaultdict
+from sys import argv
 
 ARM_CALLNO = "env->regs[7]"
 ARM_ARGS = ["env->regs[0]", "env->regs[1]", "env->regs[2]", "env->regs[3]", "env->regs[4]", "env->regs[5]", "env->regs[6]"]
@@ -31,7 +32,7 @@ X86_SP = "ESP"
 # Linux's syscall ABI doesn't change between IA32 and AMD64
 X86_GUARD = "#ifdef TARGET_I386"
 
-MODE = "ARM"
+MODE = "ARM" if len(argv) < 2 else argv[1].upper()
 
 # set arch/OS specific args by mode
 for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
@@ -42,7 +43,7 @@ stypes_32 = ["int", "long", '__s32']
 types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t', 
             'key_serial_t', 'mqd_t', 'clockid_t', 'aio_context_t', 'qid_t', 'old_sigset_t', 'union semun']
 types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t']
-types_pointer = ['cap_user_data_t', 'cap_user_header_t', '...']
+types_pointer = ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...']
 
 alltext = ""
 alltext += GUARD + "\n"
@@ -156,7 +157,7 @@ call_names = {}
 syscalls = [] # objects, having a set is useless for dedup
 
 # Goldfish kernel doesn't support OABI layer. Yay!
-with open("android_arm_prototypes.txt") as armcalls:
+with open("linux_" + MODE.lower() + "_prototypes.txt") as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
     charre = re.compile("char.*\*")
     for line in armcalls:
@@ -201,6 +202,7 @@ with open("android_arm_prototypes.txt") as armcalls:
                 thisarg.type = BYTES_4
                 arg_types.append(thisarg)
             else:
+                print arg
                 alltext += "unknown:", arg
         alltext += "case " + callno + ": {\n"
         alltext += "record_syscall(\"%s\");\n" % callname

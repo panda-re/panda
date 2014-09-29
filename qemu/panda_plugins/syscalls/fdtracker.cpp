@@ -38,14 +38,12 @@ extern "C" {
 #include "../taint/taint_ext.h"
 
     // struct iovec is {void* p, size_t len} which is target-specific
-#if defined(TARGET_ARM)
 //TODO: fail on 64-bit ARM
     // Thankfully we are on an x86 host and don't need to worry about packing
     struct target_iovec{
         target_ulong base;
         target_ulong len;
     } __attribute__((packed));
-#endif
 }
 
 static const bool TRACK_TAINT =
