@@ -47,8 +47,8 @@
   }                                   \
   while (0)                     
 
+#define __STDC_LIMIT_MACROS // this header is sometimes called from C++
 #include "qemu-common.h"
-#include <stdint.h>
 
 typedef target_ulong gva_t;
 //Interestingly enough - target_phys_addr_t is defined as uint64 - what to do?
