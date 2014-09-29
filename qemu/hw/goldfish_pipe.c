@@ -1019,7 +1019,7 @@ pipeDevice_doCommand( PipeDevice* dev, uint32_t command )
         //target_phys_addr_t  phys;
 #ifdef CONFIG_KVM
         if(kvm_enabled()) {
-            cpu_synchronize_state(env, 0);
+            cpu_synchronize_state(env);
         }
 #endif
         buffer.addr = address;
@@ -1040,7 +1040,7 @@ pipeDevice_doCommand( PipeDevice* dev, uint32_t command )
         //target_phys_addr_t  phys;
 #ifdef CONFIG_KVM
         if(kvm_enabled()) {
-            cpu_synchronize_state(env, 0);
+            cpu_synchronize_state(env);
         }
 #endif
         //phys = cpu_get_phys_page_debug(env, page);

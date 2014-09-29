@@ -131,7 +131,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
 
 #ifdef TARGET_I386
                             if (kvm_enabled())
-                                cpu_synchronize_state(cpu_single_env, 0);
+                                cpu_synchronize_state(cpu_single_env);
 #endif
                             cpu_memory_rw(cpu_single_env, buf, (uint8_t*)temp, to_write, 0);
                             qemu_chr_fe_write(s->cs, (const uint8_t*)temp, to_write);
@@ -147,7 +147,7 @@ static void goldfish_tty_write(void *opaque, target_phys_addr_t offset, uint32_t
                         cpu_abort (cpu_single_env, "goldfish_tty_write: reading more data than available %d %d\n", s->ptr_len, s->data_count);
 #ifdef TARGET_I386
                     if (kvm_enabled())
-                        cpu_synchronize_state(cpu_single_env, 0);
+                        cpu_synchronize_state(cpu_single_env);
 #endif
                     cpu_memory_rw(cpu_single_env,s->ptr, s->data, s->ptr_len,1);
                     //printf("goldfish_tty_write: read %d bytes to %x\n", s->ptr_len, s->ptr);
