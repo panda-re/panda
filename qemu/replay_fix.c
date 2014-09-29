@@ -29,7 +29,7 @@ void fix_replay_stuff(void)
     }
     if(0 != replay_issues.ram_size){
         const char const * machinename_arm = "android_arm";
-#if defined(TARGET_ARM)
+#if defined(TARGET_ARM) && defined(CONFIG_ANDROID)
         if (0 == strncmp(current_machine->name, machinename_arm, strlen(machinename_arm) +1)){
             android_arm_resize_ram(replay_issues.ram_size);
         }
