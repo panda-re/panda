@@ -614,7 +614,11 @@ int contextCondFunc (DECAF_callback_type_t cbType, gva_t curPC, gva_t nextPC)
 }
 #endif
 
+#if defined(TARGET_ARM)
 #define CURRENT_PGD(x) (x->cp15.c2_base0 & x->cp15.c2_base_mask)
+#elif defined(TARGET_I386)
+#define CURRENT_PGD(x) (x->cr[3])
+#endif
 
 static int return_from_exec(CPUState *env){
     updateProcessList(env, CURRENT_PGD(env), UPDATE_MODULES | UPDATE_PROCESSES | UPDATE_THREADS);
