@@ -63,31 +63,29 @@ PANDAENDCOMMENT */
 #include "shad_dir_32.h"
 #include "bitvector_label_set.cpp"
 
-#define SD32_INLINE //inline
-
 // create a new table
-static SD32_INLINE SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {
+static SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {
   SdTable *table = (SdTable *) my_calloc(1, sizeof(SdTable), poolid_shad_dir);
   table->page = (SdPage **) my_calloc(shad_dir->table_size, sizeof(SdPage *), poolid_shad_dir);
   table->num_non_empty = 0;
   return table;
 }
 
-static SD32_INLINE void __shad_dir_table_free_32(SdDir32 *shad_dir, SdTable *table) {
+static void __shad_dir_table_free_32(SdDir32 *shad_dir, SdTable *table) {
   if (shad_dir == NULL || table == NULL) return;
   assert (table->num_non_empty == 0);
   my_free(table->page, sizeof(SdPage *) * shad_dir->table_size, poolid_shad_dir);
   my_free(table, sizeof(SdTable), poolid_shad_dir);
 }
 
-static SD32_INLINE SdPage *__shad_dir_page_new_32(SdDir32 *shad_dir) {
+static SdPage *__shad_dir_page_new_32(SdDir32 *shad_dir) {
   SdPage *page = (SdPage *) my_calloc(1, sizeof(SdPage), poolid_shad_dir);
   page->labels = (LabelSet **) my_calloc(shad_dir->page_size, sizeof(LabelSet *), poolid_shad_dir);
   page->num_non_empty = 0;
   return page;
 }
 
-static SD32_INLINE void __shad_dir_page_free_32(SdDir32 *shad_dir, SdPage *page) {
+static void __shad_dir_page_free_32(SdDir32 *shad_dir, SdPage *page) {
   if (shad_dir == NULL || page == NULL) return;
   assert (page->num_non_empty == 0);
   my_free(page->labels, sizeof(LabelSet *) * shad_dir->page_size, poolid_shad_dir);
@@ -167,7 +165,7 @@ SdDir32 *shad_dir_new_32
   shadow page.
   "stuff2" is a ptr to something the app fn needs
 */
-static SD32_INLINE void __shad_dir_page_iter_32
+static void __shad_dir_page_iter_32
      (SdDir32 *shad_dir,
       int (*app)(uint32_t pa, SdPage *page, void *stuff1),
       void *stuff2) {
@@ -286,7 +284,7 @@ void shad_dir_free_32(SdDir32 *shad_dir) {
 
 
 // add table to the directory
-static SD32_INLINE SdTable *__shad_dir_add_table_to_dir_32(SdDir32 *shad_dir, uint32_t di) {
+static SdTable *__shad_dir_add_table_to_dir_32(SdDir32 *shad_dir, uint32_t di) {
   SdTable *table = __shad_dir_table_new_32(shad_dir);
   shad_dir->table[di] = table;
   shad_dir->num_non_empty++;
@@ -294,7 +292,7 @@ static SD32_INLINE SdTable *__shad_dir_add_table_to_dir_32(SdDir32 *shad_dir, ui
 }
 
 
-static SD32_INLINE SdPage *__shad_dir_add_page_to_table_32(SdDir32 *shad_dir, SdTable *table, uint32_t pi) {
+static SdPage *__shad_dir_add_page_to_table_32(SdDir32 *shad_dir, SdTable *table, uint32_t pi) {
   SdPage *page = __shad_dir_page_new_32(shad_dir);
   table->page[pi] = page;
   table->num_non_empty ++;
@@ -307,7 +305,7 @@ static SD32_INLINE SdPage *__shad_dir_add_page_to_table_32(SdDir32 *shad_dir, Sd
   if a prior mapping exists, remove it first
   labelset is *not* copied.  We copy its slots.
 */
-SD32_INLINE void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_new) {
+void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_new) {
   // get ls, the labelset currently associated with this addr
   SD_GET_LABELSET_32(
     addr,
@@ -329,7 +327,7 @@ SD32_INLINE void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_
 
 
 // remove this mapping from addr to labelset
-SD32_INLINE void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
+void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
   // get ls, the labelset currently associated with addr
   SD_GET_LABELSET_32(
     addr,
@@ -362,7 +360,7 @@ SD32_INLINE void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
 
 
 // Return TRUE if this addr has a labelset (possibly empty), FALSE otherwise
-SD32_INLINE uint32_t shad_dir_mem_32(SdDir32 *shad_dir, uint32_t addr) {
+uint32_t shad_dir_mem_32(SdDir32 *shad_dir, uint32_t addr) {
   SD_GET_LABELSET_32(
     addr,
     return FALSE,
@@ -375,7 +373,7 @@ SD32_INLINE uint32_t shad_dir_mem_32(SdDir32 *shad_dir, uint32_t addr) {
 
 // Returns pointer to labelset associated with this address.
 // Returns NULL if none
-SD32_INLINE LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr) {
+LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr) {
   // get ls, the labelset currently associated with addr
   SD_GET_LABELSET_32(
     addr,
