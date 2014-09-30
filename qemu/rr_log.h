@@ -15,6 +15,7 @@
 uint64_t rr_get_pc(void);
 uint64_t rr_get_secondary(void);
 uint64_t rr_get_guest_instr_count (void);
+double rr_get_percentage(void);
 
 
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state);

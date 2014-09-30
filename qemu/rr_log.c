@@ -78,6 +78,11 @@ volatile sig_atomic_t rr_use_live_exit_request = 0;
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 
+double rr_get_percentage (void) {
+    return 100.0 * rr_prog_point.guest_instr_count /
+        rr_nondet_log->last_prog_point.guest_instr_count;
+}
+
 static inline uint8_t rr_log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
