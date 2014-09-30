@@ -338,6 +338,17 @@ uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t 
     return defval;
 }
 
+double panda_parse_double(panda_arg_list *args, const char *argname, double defval) {
+    if (!args) return defval;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return strtod(args->list[i].value, NULL);
+        }
+    }
+    return defval;
+}
+
 // Returns pointer to string inside arg list, freed when list is freed.
 char *panda_parse_string(panda_arg_list *args, const char *argname, char *defval) {
     if (!args) return defval;
