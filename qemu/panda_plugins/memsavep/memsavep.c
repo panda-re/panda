@@ -15,39 +15,38 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-extern "C" {
-
 #include "config.h"
 #include "qemu-common.h"
 #include "rr_log.h"
 
 #include "panda_plugin.h"
 
-}
-
 #include <stdio.h>
 
-// These need to be extern "C" so that the ABI is compatible with
-// QEMU/PANDA, which is written in C
-extern "C" {
+extern RR_log *rr_nondet_log;
+
+static double percent = 0.0;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 
-}
-
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    printf("Saving memory to initial.raw.\n");
-    panda_memsavep(fopen("initial.raw", "wb"));
-    rr_do_end_replay(0);
+    if (rr_get_percentage() > percent) {
+        printf("Saving memory to initial.raw.\n");
+        panda_memsavep(fopen("initial.raw", "wb"));
+        rr_do_end_replay(0);
+    }
     return 0;
 }
 
 bool init_plugin(void *self) {
     panda_cb pcb = { .before_block_exec = before_block_exec };
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    panda_arg_list *args = panda_get_args("memsavep");
+    percent = panda_parse_double(args, "percent", 0.0);
 
     return true;
 }
