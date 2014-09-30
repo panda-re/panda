@@ -5,7 +5,7 @@ extern "C"{
 }
 
 // weak-defined default empty callbacks for all syscalls
-#ifdef TARGET_ARM
+#ifdef TARGET_I386
 std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sys_restart_syscall;
 void syscalls::register_call_sys_restart_syscall(std::function<void(CPUState*, target_ulong)> callback){
 internal_registered_callback_sys_restart_syscall.push_back(callback);
@@ -50,27 +50,6 @@ sys_exit_calldata* data = new sys_exit_calldata;
 data->pc = pc;
 data->error_code = error_code;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_exit_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_fork;
-void syscalls::register_call_fork(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_fork.push_back(callback);
-}
-struct fork_calldata : public CallbackData {
-target_ulong pc;
-};
-static Callback_RC fork_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-fork_calldata* data = dynamic_cast<fork_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_fork_returned, env,data->pc)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_fork_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_fork){
-    x(env,pc);
-}
-if (0 == ppp_on_fork_returned_num_cb) return;
-fork_calldata* data = new fork_calldata;
-data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, fork_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_read;
 void syscalls::register_call_sys_read(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_read.push_back(callback);
@@ -175,6 +154,33 @@ sys_close_calldata* data = new sys_close_calldata;
 data->pc = pc;
 data->fd = fd;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_close_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, int32_t)>> internal_registered_callback_sys_waitpid;
+void syscalls::register_call_sys_waitpid(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_waitpid.push_back(callback);
+}
+struct sys_waitpid_calldata : public CallbackData {
+target_ulong pc;
+uint32_t pid;
+target_ulong stat_addr;
+int32_t options;
+};
+static Callback_RC sys_waitpid_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_waitpid_calldata* data = dynamic_cast<sys_waitpid_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_waitpid_returned, env,data->pc,data->pid,data->stat_addr,data->options)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_waitpid_callback(CPUState* env,target_ulong pc,uint32_t pid,target_ulong stat_addr,int32_t options) {
+for (auto x: internal_registered_callback_sys_waitpid){
+    x(env,pc,pid,stat_addr,options);
+}
+if (0 == ppp_on_sys_waitpid_returned_num_cb) return;
+sys_waitpid_calldata* data = new sys_waitpid_calldata;
+data->pc = pc;
+data->pid = pid;
+data->stat_addr = stat_addr;
+data->options = options;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_waitpid_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)>> internal_registered_callback_sys_creat;
 void syscalls::register_call_sys_creat(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)> callback){
 internal_registered_callback_sys_creat.push_back(callback);
@@ -248,33 +254,6 @@ sys_unlink_calldata* data = new sys_unlink_calldata;
 data->pc = pc;
 data->pathname = pathname;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_unlink_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong, target_ulong)>> internal_registered_callback_execve;
-void syscalls::register_call_execve(std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong, target_ulong)> callback){
-internal_registered_callback_execve.push_back(callback);
-}
-struct execve_calldata : public CallbackData {
-target_ulong pc;
-syscalls::string filename;
-target_ulong argv;
-target_ulong envp;
-};
-static Callback_RC execve_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-execve_calldata* data = dynamic_cast<execve_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_execve_returned, env,data->pc,data->filename.get_vaddr(),data->argv,data->envp)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_execve_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong argv,target_ulong envp) {
-for (auto x: internal_registered_callback_execve){
-    x(env,pc,filename,argv,envp);
-}
-if (0 == ppp_on_execve_returned_num_cb) return;
-execve_calldata* data = new execve_calldata;
-data->pc = pc;
-data->filename = filename;
-data->argv = argv;
-data->envp = envp;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, execve_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string)>> internal_registered_callback_sys_chdir;
 void syscalls::register_call_sys_chdir(std::function<void(CPUState*, target_ulong, syscalls::string)> callback){
 internal_registered_callback_sys_chdir.push_back(callback);
@@ -298,6 +277,29 @@ sys_chdir_calldata* data = new sys_chdir_calldata;
 data->pc = pc;
 data->filename = filename;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_chdir_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_time;
+void syscalls::register_call_sys_time(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_time.push_back(callback);
+}
+struct sys_time_calldata : public CallbackData {
+target_ulong pc;
+target_ulong tloc;
+};
+static Callback_RC sys_time_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_time_calldata* data = dynamic_cast<sys_time_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_time_returned, env,data->pc,data->tloc)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_time_callback(CPUState* env,target_ulong pc,target_ulong tloc) {
+for (auto x: internal_registered_callback_sys_time){
+    x(env,pc,tloc);
+}
+if (0 == ppp_on_sys_time_returned_num_cb) return;
+sys_time_calldata* data = new sys_time_calldata;
+data->pc = pc;
+data->tloc = tloc;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_time_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t, uint32_t)>> internal_registered_callback_sys_mknod;
 void syscalls::register_call_sys_mknod(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t, uint32_t)> callback){
 internal_registered_callback_sys_mknod.push_back(callback);
@@ -377,6 +379,31 @@ data->filename = filename;
 data->user = user;
 data->group = group;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_lchown16_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)>> internal_registered_callback_sys_stat;
+void syscalls::register_call_sys_stat(std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)> callback){
+internal_registered_callback_sys_stat.push_back(callback);
+}
+struct sys_stat_calldata : public CallbackData {
+target_ulong pc;
+syscalls::string filename;
+target_ulong statbuf;
+};
+static Callback_RC sys_stat_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_stat_calldata* data = dynamic_cast<sys_stat_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_stat_returned, env,data->pc,data->filename.get_vaddr(),data->statbuf)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_stat_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong statbuf) {
+for (auto x: internal_registered_callback_sys_stat){
+    x(env,pc,filename,statbuf);
+}
+if (0 == ppp_on_sys_stat_returned_num_cb) return;
+sys_stat_calldata* data = new sys_stat_calldata;
+data->pc = pc;
+data->filename = filename;
+data->statbuf = statbuf;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_stat_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_lseek;
 void syscalls::register_call_sys_lseek(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_lseek.push_back(callback);
@@ -456,6 +483,29 @@ data->type = type;
 data->flags = flags;
 data->data_arg = data_arg;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mount_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, syscalls::string)>> internal_registered_callback_sys_oldumount;
+void syscalls::register_call_sys_oldumount(std::function<void(CPUState*, target_ulong, syscalls::string)> callback){
+internal_registered_callback_sys_oldumount.push_back(callback);
+}
+struct sys_oldumount_calldata : public CallbackData {
+target_ulong pc;
+syscalls::string name;
+};
+static Callback_RC sys_oldumount_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_oldumount_calldata* data = dynamic_cast<sys_oldumount_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_oldumount_returned, env,data->pc,data->name.get_vaddr())
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_oldumount_callback(CPUState* env,target_ulong pc,syscalls::string name) {
+for (auto x: internal_registered_callback_sys_oldumount){
+    x(env,pc,name);
+}
+if (0 == ppp_on_sys_oldumount_returned_num_cb) return;
+sys_oldumount_calldata* data = new sys_oldumount_calldata;
+data->pc = pc;
+data->name = name;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_oldumount_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_sys_setuid16;
 void syscalls::register_call_sys_setuid16(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_setuid16.push_back(callback);
@@ -500,16 +550,39 @@ if (0 == ppp_on_sys_getuid16_returned_num_cb) return;
 sys_getuid16_calldata* data = new sys_getuid16_calldata;
 data->pc = pc;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getuid16_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, int32_t)>> internal_registered_callback_sys_ptrace;
-void syscalls::register_call_sys_ptrace(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, int32_t)> callback){
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_stime;
+void syscalls::register_call_sys_stime(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_stime.push_back(callback);
+}
+struct sys_stime_calldata : public CallbackData {
+target_ulong pc;
+target_ulong tptr;
+};
+static Callback_RC sys_stime_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_stime_calldata* data = dynamic_cast<sys_stime_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_stime_returned, env,data->pc,data->tptr)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_stime_callback(CPUState* env,target_ulong pc,target_ulong tptr) {
+for (auto x: internal_registered_callback_sys_stime){
+    x(env,pc,tptr);
+}
+if (0 == ppp_on_sys_stime_returned_num_cb) return;
+sys_stime_calldata* data = new sys_stime_calldata;
+data->pc = pc;
+data->tptr = tptr;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_stime_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_ptrace;
+void syscalls::register_call_sys_ptrace(std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_ptrace.push_back(callback);
 }
 struct sys_ptrace_calldata : public CallbackData {
 target_ulong pc;
 int32_t request;
 int32_t pid;
-int32_t addr;
-int32_t data_arg;
+uint32_t addr;
+uint32_t data_arg;
 };
 static Callback_RC sys_ptrace_returned(CallbackData* opaque, CPUState* env, target_asid asid){
 sys_ptrace_calldata* data = dynamic_cast<sys_ptrace_calldata*>(opaque);
@@ -517,7 +590,7 @@ if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
 PPP_RUN_CB(on_sys_ptrace_returned, env,data->pc,data->request,data->pid,data->addr,data->data_arg)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_ptrace_callback(CPUState* env,target_ulong pc,int32_t request,int32_t pid,int32_t addr,int32_t data_arg) {
+void syscalls::call_sys_ptrace_callback(CPUState* env,target_ulong pc,int32_t request,int32_t pid,uint32_t addr,uint32_t data_arg) {
 for (auto x: internal_registered_callback_sys_ptrace){
     x(env,pc,request,pid,addr,data_arg);
 }
@@ -529,6 +602,54 @@ data->pid = pid;
 data->addr = addr;
 data->data_arg = data_arg;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_ptrace_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_sys_alarm;
+void syscalls::register_call_sys_alarm(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_alarm.push_back(callback);
+}
+struct sys_alarm_calldata : public CallbackData {
+target_ulong pc;
+uint32_t seconds;
+};
+static Callback_RC sys_alarm_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_alarm_calldata* data = dynamic_cast<sys_alarm_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_alarm_returned, env,data->pc,data->seconds)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_alarm_callback(CPUState* env,target_ulong pc,uint32_t seconds) {
+for (auto x: internal_registered_callback_sys_alarm){
+    x(env,pc,seconds);
+}
+if (0 == ppp_on_sys_alarm_returned_num_cb) return;
+sys_alarm_calldata* data = new sys_alarm_calldata;
+data->pc = pc;
+data->seconds = seconds;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_alarm_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)>> internal_registered_callback_sys_fstat;
+void syscalls::register_call_sys_fstat(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)> callback){
+internal_registered_callback_sys_fstat.push_back(callback);
+}
+struct sys_fstat_calldata : public CallbackData {
+target_ulong pc;
+uint32_t fd;
+target_ulong statbuf;
+};
+static Callback_RC sys_fstat_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_fstat_calldata* data = dynamic_cast<sys_fstat_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_fstat_returned, env,data->pc,data->fd,data->statbuf)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_fstat_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong statbuf) {
+for (auto x: internal_registered_callback_sys_fstat){
+    x(env,pc,fd,statbuf);
+}
+if (0 == ppp_on_sys_fstat_returned_num_cb) return;
+sys_fstat_calldata* data = new sys_fstat_calldata;
+data->pc = pc;
+data->fd = fd;
+data->statbuf = statbuf;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fstat_returned));}
 std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sys_pause;
 void syscalls::register_call_sys_pause(std::function<void(CPUState*, target_ulong)> callback){
 internal_registered_callback_sys_pause.push_back(callback);
@@ -550,6 +671,31 @@ if (0 == ppp_on_sys_pause_returned_num_cb) return;
 sys_pause_calldata* data = new sys_pause_calldata;
 data->pc = pc;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pause_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)>> internal_registered_callback_sys_utime;
+void syscalls::register_call_sys_utime(std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)> callback){
+internal_registered_callback_sys_utime.push_back(callback);
+}
+struct sys_utime_calldata : public CallbackData {
+target_ulong pc;
+syscalls::string filename;
+target_ulong times;
+};
+static Callback_RC sys_utime_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_utime_calldata* data = dynamic_cast<sys_utime_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_utime_returned, env,data->pc,data->filename.get_vaddr(),data->times)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_utime_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong times) {
+for (auto x: internal_registered_callback_sys_utime){
+    x(env,pc,filename,times);
+}
+if (0 == ppp_on_sys_utime_returned_num_cb) return;
+sys_utime_calldata* data = new sys_utime_calldata;
+data->pc = pc;
+data->filename = filename;
+data->times = times;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_utime_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)>> internal_registered_callback_sys_access;
 void syscalls::register_call_sys_access(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)> callback){
 internal_registered_callback_sys_access.push_back(callback);
@@ -746,22 +892,22 @@ internal_registered_callback_sys_pipe.push_back(callback);
 }
 struct sys_pipe_calldata : public CallbackData {
 target_ulong pc;
-target_ulong arg0;
+target_ulong fildes;
 };
 static Callback_RC sys_pipe_returned(CallbackData* opaque, CPUState* env, target_asid asid){
 sys_pipe_calldata* data = dynamic_cast<sys_pipe_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_pipe_returned, env,data->pc,data->arg0)
+PPP_RUN_CB(on_sys_pipe_returned, env,data->pc,data->fildes)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_pipe_callback(CPUState* env,target_ulong pc,target_ulong arg0) {
+void syscalls::call_sys_pipe_callback(CPUState* env,target_ulong pc,target_ulong fildes) {
 for (auto x: internal_registered_callback_sys_pipe){
-    x(env,pc,arg0);
+    x(env,pc,fildes);
 }
 if (0 == ppp_on_sys_pipe_returned_num_cb) return;
 sys_pipe_calldata* data = new sys_pipe_calldata;
 data->pc = pc;
-data->arg0 = arg0;
+data->fildes = fildes;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pipe_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_times;
 void syscalls::register_call_sys_times(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
@@ -853,6 +999,31 @@ if (0 == ppp_on_sys_getgid16_returned_num_cb) return;
 sys_getgid16_calldata* data = new sys_getgid16_calldata;
 data->pc = pc;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getgid16_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong)>> internal_registered_callback_sys_signal;
+void syscalls::register_call_sys_signal(std::function<void(CPUState*, target_ulong, int32_t, target_ulong)> callback){
+internal_registered_callback_sys_signal.push_back(callback);
+}
+struct sys_signal_calldata : public CallbackData {
+target_ulong pc;
+int32_t sig;
+target_ulong handler;
+};
+static Callback_RC sys_signal_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_signal_calldata* data = dynamic_cast<sys_signal_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_signal_returned, env,data->pc,data->sig,data->handler)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_signal_callback(CPUState* env,target_ulong pc,int32_t sig,target_ulong handler) {
+for (auto x: internal_registered_callback_sys_signal){
+    x(env,pc,sig,handler);
+}
+if (0 == ppp_on_sys_signal_returned_num_cb) return;
+sys_signal_calldata* data = new sys_signal_calldata;
+data->pc = pc;
+data->sig = sig;
+data->handler = handler;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_signal_returned));}
 std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sys_geteuid16;
 void syscalls::register_call_sys_geteuid16(std::function<void(CPUState*, target_ulong)> callback){
 internal_registered_callback_sys_geteuid16.push_back(callback);
@@ -1022,6 +1193,29 @@ data->pc = pc;
 data->pid = pid;
 data->pgid = pgid;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setpgid_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_olduname;
+void syscalls::register_call_sys_olduname(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_olduname.push_back(callback);
+}
+struct sys_olduname_calldata : public CallbackData {
+target_ulong pc;
+target_ulong arg0;
+};
+static Callback_RC sys_olduname_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_olduname_calldata* data = dynamic_cast<sys_olduname_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_olduname_returned, env,data->pc,data->arg0)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_olduname_callback(CPUState* env,target_ulong pc,target_ulong arg0) {
+for (auto x: internal_registered_callback_sys_olduname){
+    x(env,pc,arg0);
+}
+if (0 == ppp_on_sys_olduname_returned_num_cb) return;
+sys_olduname_calldata* data = new sys_olduname_calldata;
+data->pc = pc;
+data->arg0 = arg0;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_olduname_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_umask;
 void syscalls::register_call_sys_umask(std::function<void(CPUState*, target_ulong, int32_t)> callback){
 internal_registered_callback_sys_umask.push_back(callback);
@@ -1208,6 +1402,50 @@ data->sig = sig;
 data->act = act;
 data->oact = oact;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sigaction_returned));}
+std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sys_sgetmask;
+void syscalls::register_call_sys_sgetmask(std::function<void(CPUState*, target_ulong)> callback){
+internal_registered_callback_sys_sgetmask.push_back(callback);
+}
+struct sys_sgetmask_calldata : public CallbackData {
+target_ulong pc;
+};
+static Callback_RC sys_sgetmask_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_sgetmask_calldata* data = dynamic_cast<sys_sgetmask_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_sgetmask_returned, env,data->pc)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_sgetmask_callback(CPUState* env,target_ulong pc) {
+for (auto x: internal_registered_callback_sys_sgetmask){
+    x(env,pc);
+}
+if (0 == ppp_on_sys_sgetmask_returned_num_cb) return;
+sys_sgetmask_calldata* data = new sys_sgetmask_calldata;
+data->pc = pc;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sgetmask_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_ssetmask;
+void syscalls::register_call_sys_ssetmask(std::function<void(CPUState*, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_ssetmask.push_back(callback);
+}
+struct sys_ssetmask_calldata : public CallbackData {
+target_ulong pc;
+int32_t newmask;
+};
+static Callback_RC sys_ssetmask_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_ssetmask_calldata* data = dynamic_cast<sys_ssetmask_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_ssetmask_returned, env,data->pc,data->newmask)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_ssetmask_callback(CPUState* env,target_ulong pc,int32_t newmask) {
+for (auto x: internal_registered_callback_sys_ssetmask){
+    x(env,pc,newmask);
+}
+if (0 == ppp_on_sys_ssetmask_returned_num_cb) return;
+sys_ssetmask_calldata* data = new sys_ssetmask_calldata;
+data->pc = pc;
+data->newmask = newmask;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_ssetmask_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_setreuid16;
 void syscalls::register_call_sys_setreuid16(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_setreuid16.push_back(callback);
@@ -1358,6 +1596,31 @@ data->pc = pc;
 data->resource = resource;
 data->rlim = rlim;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setrlimit_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)>> internal_registered_callback_sys_old_getrlimit;
+void syscalls::register_call_sys_old_getrlimit(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)> callback){
+internal_registered_callback_sys_old_getrlimit.push_back(callback);
+}
+struct sys_old_getrlimit_calldata : public CallbackData {
+target_ulong pc;
+uint32_t resource;
+target_ulong rlim;
+};
+static Callback_RC sys_old_getrlimit_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_old_getrlimit_calldata* data = dynamic_cast<sys_old_getrlimit_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_old_getrlimit_returned, env,data->pc,data->resource,data->rlim)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_old_getrlimit_callback(CPUState* env,target_ulong pc,uint32_t resource,target_ulong rlim) {
+for (auto x: internal_registered_callback_sys_old_getrlimit){
+    x(env,pc,resource,rlim);
+}
+if (0 == ppp_on_sys_old_getrlimit_returned_num_cb) return;
+sys_old_getrlimit_calldata* data = new sys_old_getrlimit_calldata;
+data->pc = pc;
+data->resource = resource;
+data->rlim = rlim;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_old_getrlimit_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong)>> internal_registered_callback_sys_getrusage;
 void syscalls::register_call_sys_getrusage(std::function<void(CPUState*, target_ulong, int32_t, target_ulong)> callback){
 internal_registered_callback_sys_getrusage.push_back(callback);
@@ -1483,6 +1746,29 @@ data->pc = pc;
 data->gidsetsize = gidsetsize;
 data->grouplist = grouplist;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setgroups16_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_old_select;
+void syscalls::register_call_sys_old_select(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_old_select.push_back(callback);
+}
+struct sys_old_select_calldata : public CallbackData {
+target_ulong pc;
+target_ulong arg;
+};
+static Callback_RC sys_old_select_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_old_select_calldata* data = dynamic_cast<sys_old_select_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_old_select_returned, env,data->pc,data->arg)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_old_select_callback(CPUState* env,target_ulong pc,target_ulong arg) {
+for (auto x: internal_registered_callback_sys_old_select){
+    x(env,pc,arg);
+}
+if (0 == ppp_on_sys_old_select_returned_num_cb) return;
+sys_old_select_calldata* data = new sys_old_select_calldata;
+data->pc = pc;
+data->arg = arg;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_old_select_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string)>> internal_registered_callback_sys_symlink;
 void syscalls::register_call_sys_symlink(std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string)> callback){
 internal_registered_callback_sys_symlink.push_back(callback);
@@ -1508,6 +1794,31 @@ data->pc = pc;
 data->old = old;
 data->anew = anew;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_symlink_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)>> internal_registered_callback_sys_lstat;
+void syscalls::register_call_sys_lstat(std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong)> callback){
+internal_registered_callback_sys_lstat.push_back(callback);
+}
+struct sys_lstat_calldata : public CallbackData {
+target_ulong pc;
+syscalls::string filename;
+target_ulong statbuf;
+};
+static Callback_RC sys_lstat_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_lstat_calldata* data = dynamic_cast<sys_lstat_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_lstat_returned, env,data->pc,data->filename.get_vaddr(),data->statbuf)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_lstat_callback(CPUState* env,target_ulong pc,syscalls::string filename,target_ulong statbuf) {
+for (auto x: internal_registered_callback_sys_lstat){
+    x(env,pc,filename,statbuf);
+}
+if (0 == ppp_on_sys_lstat_returned_num_cb) return;
+sys_lstat_calldata* data = new sys_lstat_calldata;
+data->pc = pc;
+data->filename = filename;
+data->statbuf = statbuf;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_lstat_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong, int32_t)>> internal_registered_callback_sys_readlink;
 void syscalls::register_call_sys_readlink(std::function<void(CPUState*, target_ulong, syscalls::string, target_ulong, int32_t)> callback){
 internal_registered_callback_sys_readlink.push_back(callback);
@@ -1612,6 +1923,56 @@ data->magic2 = magic2;
 data->cmd = cmd;
 data->arg = arg;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_reboot_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_old_readdir;
+void syscalls::register_call_sys_old_readdir(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_old_readdir.push_back(callback);
+}
+struct sys_old_readdir_calldata : public CallbackData {
+target_ulong pc;
+uint32_t arg0;
+target_ulong arg1;
+uint32_t arg2;
+};
+static Callback_RC sys_old_readdir_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_old_readdir_calldata* data = dynamic_cast<sys_old_readdir_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_old_readdir_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_old_readdir_callback(CPUState* env,target_ulong pc,uint32_t arg0,target_ulong arg1,uint32_t arg2) {
+for (auto x: internal_registered_callback_sys_old_readdir){
+    x(env,pc,arg0,arg1,arg2);
+}
+if (0 == ppp_on_sys_old_readdir_returned_num_cb) return;
+sys_old_readdir_calldata* data = new sys_old_readdir_calldata;
+data->pc = pc;
+data->arg0 = arg0;
+data->arg1 = arg1;
+data->arg2 = arg2;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_old_readdir_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_old_mmap;
+void syscalls::register_call_sys_old_mmap(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_old_mmap.push_back(callback);
+}
+struct sys_old_mmap_calldata : public CallbackData {
+target_ulong pc;
+target_ulong arg;
+};
+static Callback_RC sys_old_mmap_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_old_mmap_calldata* data = dynamic_cast<sys_old_mmap_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_old_mmap_returned, env,data->pc,data->arg)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_old_mmap_callback(CPUState* env,target_ulong pc,target_ulong arg) {
+for (auto x: internal_registered_callback_sys_old_mmap){
+    x(env,pc,arg);
+}
+if (0 == ppp_on_sys_old_mmap_returned_num_cb) return;
+sys_old_mmap_calldata* data = new sys_old_mmap_calldata;
+data->pc = pc;
+data->arg = arg;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_old_mmap_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_munmap;
 void syscalls::register_call_sys_munmap(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_munmap.push_back(callback);
@@ -1637,14 +1998,14 @@ data->pc = pc;
 data->addr = addr;
 data->len = len;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_munmap_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, uint32_t)>> internal_registered_callback_sys_truncate;
-void syscalls::register_call_sys_truncate(std::function<void(CPUState*, target_ulong, syscalls::string, uint32_t)> callback){
+std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)>> internal_registered_callback_sys_truncate;
+void syscalls::register_call_sys_truncate(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)> callback){
 internal_registered_callback_sys_truncate.push_back(callback);
 }
 struct sys_truncate_calldata : public CallbackData {
 target_ulong pc;
 syscalls::string path;
-uint32_t length;
+int32_t length;
 };
 static Callback_RC sys_truncate_returned(CallbackData* opaque, CPUState* env, target_asid asid){
 sys_truncate_calldata* data = dynamic_cast<sys_truncate_calldata*>(opaque);
@@ -1652,7 +2013,7 @@ if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
 PPP_RUN_CB(on_sys_truncate_returned, env,data->pc,data->path.get_vaddr(),data->length)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_truncate_callback(CPUState* env,target_ulong pc,syscalls::string path,uint32_t length) {
+void syscalls::call_sys_truncate_callback(CPUState* env,target_ulong pc,syscalls::string path,int32_t length) {
 for (auto x: internal_registered_callback_sys_truncate){
     x(env,pc,path,length);
 }
@@ -1841,6 +2202,58 @@ data->pc = pc;
 data->fd = fd;
 data->buf = buf;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fstatfs_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t)>> internal_registered_callback_sys_ioperm;
+void syscalls::register_call_sys_ioperm(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t)> callback){
+internal_registered_callback_sys_ioperm.push_back(callback);
+}
+struct sys_ioperm_calldata : public CallbackData {
+target_ulong pc;
+uint32_t from;
+uint32_t num;
+int32_t on;
+};
+static Callback_RC sys_ioperm_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_ioperm_calldata* data = dynamic_cast<sys_ioperm_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_ioperm_returned, env,data->pc,data->from,data->num,data->on)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_ioperm_callback(CPUState* env,target_ulong pc,uint32_t from,uint32_t num,int32_t on) {
+for (auto x: internal_registered_callback_sys_ioperm){
+    x(env,pc,from,num,on);
+}
+if (0 == ppp_on_sys_ioperm_returned_num_cb) return;
+sys_ioperm_calldata* data = new sys_ioperm_calldata;
+data->pc = pc;
+data->from = from;
+data->num = num;
+data->on = on;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_ioperm_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong)>> internal_registered_callback_sys_socketcall;
+void syscalls::register_call_sys_socketcall(std::function<void(CPUState*, target_ulong, int32_t, target_ulong)> callback){
+internal_registered_callback_sys_socketcall.push_back(callback);
+}
+struct sys_socketcall_calldata : public CallbackData {
+target_ulong pc;
+int32_t call;
+target_ulong args;
+};
+static Callback_RC sys_socketcall_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_socketcall_calldata* data = dynamic_cast<sys_socketcall_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_socketcall_returned, env,data->pc,data->call,data->args)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_socketcall_callback(CPUState* env,target_ulong pc,int32_t call,target_ulong args) {
+for (auto x: internal_registered_callback_sys_socketcall){
+    x(env,pc,call,args);
+}
+if (0 == ppp_on_sys_socketcall_returned_num_cb) return;
+sys_socketcall_calldata* data = new sys_socketcall_calldata;
+data->pc = pc;
+data->call = call;
+data->args = args;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_socketcall_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)>> internal_registered_callback_sys_syslog;
 void syscalls::register_call_sys_syslog(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)> callback){
 internal_registered_callback_sys_syslog.push_back(callback);
@@ -1995,6 +2408,29 @@ data->pc = pc;
 data->fd = fd;
 data->statbuf = statbuf;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_newfstat_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong)>> internal_registered_callback_sys_uname;
+void syscalls::register_call_sys_uname(std::function<void(CPUState*, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_uname.push_back(callback);
+}
+struct sys_uname_calldata : public CallbackData {
+target_ulong pc;
+target_ulong arg0;
+};
+static Callback_RC sys_uname_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_uname_calldata* data = dynamic_cast<sys_uname_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_uname_returned, env,data->pc,data->arg0)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_uname_callback(CPUState* env,target_ulong pc,target_ulong arg0) {
+for (auto x: internal_registered_callback_sys_uname){
+    x(env,pc,arg0);
+}
+if (0 == ppp_on_sys_uname_returned_num_cb) return;
+sys_uname_calldata* data = new sys_uname_calldata;
+data->pc = pc;
+data->arg0 = arg0;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_uname_returned));}
 std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sys_vhangup;
 void syscalls::register_call_sys_vhangup(std::function<void(CPUState*, target_ulong)> callback){
 internal_registered_callback_sys_vhangup.push_back(callback);
@@ -2091,6 +2527,39 @@ sys_sysinfo_calldata* data = new sys_sysinfo_calldata;
 data->pc = pc;
 data->info = info;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sysinfo_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, int32_t, uint32_t, uint32_t, target_ulong, int32_t)>> internal_registered_callback_sys_ipc;
+void syscalls::register_call_sys_ipc(std::function<void(CPUState*, target_ulong, uint32_t, int32_t, uint32_t, uint32_t, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_ipc.push_back(callback);
+}
+struct sys_ipc_calldata : public CallbackData {
+target_ulong pc;
+uint32_t call;
+int32_t first;
+uint32_t second;
+uint32_t third;
+target_ulong ptr;
+int32_t fifth;
+};
+static Callback_RC sys_ipc_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_ipc_calldata* data = dynamic_cast<sys_ipc_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_ipc_returned, env,data->pc,data->call,data->first,data->second,data->third,data->ptr,data->fifth)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_ipc_callback(CPUState* env,target_ulong pc,uint32_t call,int32_t first,uint32_t second,uint32_t third,target_ulong ptr,int32_t fifth) {
+for (auto x: internal_registered_callback_sys_ipc){
+    x(env,pc,call,first,second,third,ptr,fifth);
+}
+if (0 == ppp_on_sys_ipc_returned_num_cb) return;
+sys_ipc_calldata* data = new sys_ipc_calldata;
+data->pc = pc;
+data->call = call;
+data->first = first;
+data->second = second;
+data->third = third;
+data->ptr = ptr;
+data->fifth = fifth;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_ipc_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_sys_fsync;
 void syscalls::register_call_sys_fsync(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_fsync.push_back(callback);
@@ -2114,60 +2583,6 @@ sys_fsync_calldata* data = new sys_fsync_calldata;
 data->pc = pc;
 data->fd = fd;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fsync_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_sigreturn;
-void syscalls::register_call_sigreturn(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_sigreturn.push_back(callback);
-}
-struct sigreturn_calldata : public CallbackData {
-target_ulong pc;
-};
-static Callback_RC sigreturn_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sigreturn_calldata* data = dynamic_cast<sigreturn_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sigreturn_returned, env,data->pc)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sigreturn_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_sigreturn){
-    x(env,pc);
-}
-if (0 == ppp_on_sigreturn_returned_num_cb) return;
-sigreturn_calldata* data = new sigreturn_calldata;
-data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sigreturn_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, int32_t, target_ulong, target_ulong)>> internal_registered_callback_clone;
-void syscalls::register_call_clone(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, int32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_clone.push_back(callback);
-}
-struct clone_calldata : public CallbackData {
-target_ulong pc;
-uint32_t clone_flags;
-uint32_t newsp;
-target_ulong parent_tidptr;
-int32_t tls_val;
-target_ulong child_tidptr;
-target_ulong regs;
-};
-static Callback_RC clone_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-clone_calldata* data = dynamic_cast<clone_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_clone_returned, env,data->pc,data->clone_flags,data->newsp,data->parent_tidptr,data->tls_val,data->child_tidptr,data->regs)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_clone_callback(CPUState* env,target_ulong pc,uint32_t clone_flags,uint32_t newsp,target_ulong parent_tidptr,int32_t tls_val,target_ulong child_tidptr,target_ulong regs) {
-for (auto x: internal_registered_callback_clone){
-    x(env,pc,clone_flags,newsp,parent_tidptr,tls_val,child_tidptr,regs);
-}
-if (0 == ppp_on_clone_returned_num_cb) return;
-clone_calldata* data = new clone_calldata;
-data->pc = pc;
-data->clone_flags = clone_flags;
-data->newsp = newsp;
-data->parent_tidptr = parent_tidptr;
-data->tls_val = tls_val;
-data->child_tidptr = child_tidptr;
-data->regs = regs;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, clone_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)>> internal_registered_callback_sys_setdomainname;
 void syscalls::register_call_sys_setdomainname(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t)> callback){
 internal_registered_callback_sys_setdomainname.push_back(callback);
@@ -2472,13 +2887,13 @@ data->option = option;
 data->arg1 = arg1;
 data->arg2 = arg2;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sysfs_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_personality;
-void syscalls::register_call_sys_personality(std::function<void(CPUState*, target_ulong, int32_t)> callback){
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_sys_personality;
+void syscalls::register_call_sys_personality(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_personality.push_back(callback);
 }
 struct sys_personality_calldata : public CallbackData {
 target_ulong pc;
-int32_t personality;
+uint32_t personality;
 };
 static Callback_RC sys_personality_returned(CallbackData* opaque, CPUState* env, target_asid asid){
 sys_personality_calldata* data = dynamic_cast<sys_personality_calldata*>(opaque);
@@ -2486,7 +2901,7 @@ if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
 PPP_RUN_CB(on_sys_personality_returned, env,data->pc,data->personality)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_personality_callback(CPUState* env,target_ulong pc,int32_t personality) {
+void syscalls::call_sys_personality_callback(CPUState* env,target_ulong pc,uint32_t personality) {
 for (auto x: internal_registered_callback_sys_personality){
     x(env,pc,personality);
 }
@@ -3116,11 +3531,11 @@ data->pc = pc;
 data->rqtp = rqtp;
 data->rmtp = rmtp;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_nanosleep_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_arm_mremap;
-void syscalls::register_call_arm_mremap(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)> callback){
-internal_registered_callback_arm_mremap.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_mremap;
+void syscalls::register_call_sys_mremap(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_mremap.push_back(callback);
 }
-struct arm_mremap_calldata : public CallbackData {
+struct sys_mremap_calldata : public CallbackData {
 target_ulong pc;
 uint32_t addr;
 uint32_t old_len;
@@ -3128,25 +3543,25 @@ uint32_t new_len;
 uint32_t flags;
 uint32_t new_addr;
 };
-static Callback_RC arm_mremap_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-arm_mremap_calldata* data = dynamic_cast<arm_mremap_calldata*>(opaque);
+static Callback_RC sys_mremap_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_mremap_calldata* data = dynamic_cast<sys_mremap_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_arm_mremap_returned, env,data->pc,data->addr,data->old_len,data->new_len,data->flags,data->new_addr)
+PPP_RUN_CB(on_sys_mremap_returned, env,data->pc,data->addr,data->old_len,data->new_len,data->flags,data->new_addr)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_arm_mremap_callback(CPUState* env,target_ulong pc,uint32_t addr,uint32_t old_len,uint32_t new_len,uint32_t flags,uint32_t new_addr) {
-for (auto x: internal_registered_callback_arm_mremap){
+void syscalls::call_sys_mremap_callback(CPUState* env,target_ulong pc,uint32_t addr,uint32_t old_len,uint32_t new_len,uint32_t flags,uint32_t new_addr) {
+for (auto x: internal_registered_callback_sys_mremap){
     x(env,pc,addr,old_len,new_len,flags,new_addr);
 }
-if (0 == ppp_on_arm_mremap_returned_num_cb) return;
-arm_mremap_calldata* data = new arm_mremap_calldata;
+if (0 == ppp_on_sys_mremap_returned_num_cb) return;
+sys_mremap_calldata* data = new sys_mremap_calldata;
 data->pc = pc;
 data->addr = addr;
 data->old_len = old_len;
 data->new_len = new_len;
 data->flags = flags;
 data->new_addr = new_addr;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, arm_mremap_returned));}
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mremap_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_setresuid16;
 void syscalls::register_call_sys_setresuid16(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_setresuid16.push_back(callback);
@@ -3228,33 +3643,6 @@ data->ufds = ufds;
 data->nfds = nfds;
 data->timeout = timeout;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_poll_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_nfsservctl;
-void syscalls::register_call_sys_nfsservctl(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_sys_nfsservctl.push_back(callback);
-}
-struct sys_nfsservctl_calldata : public CallbackData {
-target_ulong pc;
-int32_t cmd;
-target_ulong arg;
-target_ulong res;
-};
-static Callback_RC sys_nfsservctl_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_nfsservctl_calldata* data = dynamic_cast<sys_nfsservctl_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_nfsservctl_returned, env,data->pc,data->cmd,data->arg,data->res)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_nfsservctl_callback(CPUState* env,target_ulong pc,int32_t cmd,target_ulong arg,target_ulong res) {
-for (auto x: internal_registered_callback_sys_nfsservctl){
-    x(env,pc,cmd,arg,res);
-}
-if (0 == ppp_on_sys_nfsservctl_returned_num_cb) return;
-sys_nfsservctl_calldata* data = new sys_nfsservctl_calldata;
-data->pc = pc;
-data->cmd = cmd;
-data->arg = arg;
-data->res = res;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_nfsservctl_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_setresgid16;
 void syscalls::register_call_sys_setresgid16(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_setresgid16.push_back(callback);
@@ -3664,31 +4052,6 @@ data->pc = pc;
 data->header = header;
 data->data_arg = data_arg;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_capset_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, target_ulong, target_ulong)>> internal_registered_callback_do_sigaltstack;
-void syscalls::register_call_do_sigaltstack(std::function<void(CPUState*, target_ulong, target_ulong, target_ulong)> callback){
-internal_registered_callback_do_sigaltstack.push_back(callback);
-}
-struct do_sigaltstack_calldata : public CallbackData {
-target_ulong pc;
-target_ulong uss;
-target_ulong uoss;
-};
-static Callback_RC do_sigaltstack_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-do_sigaltstack_calldata* data = dynamic_cast<do_sigaltstack_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_do_sigaltstack_returned, env,data->pc,data->uss,data->uoss)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_do_sigaltstack_callback(CPUState* env,target_ulong pc,target_ulong uss,target_ulong uoss) {
-for (auto x: internal_registered_callback_do_sigaltstack){
-    x(env,pc,uss,uoss);
-}
-if (0 == ppp_on_do_sigaltstack_returned_num_cb) return;
-do_sigaltstack_calldata* data = new do_sigaltstack_calldata;
-data->pc = pc;
-data->uss = uss;
-data->uoss = uoss;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, do_sigaltstack_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_sendfile;
 void syscalls::register_call_sys_sendfile(std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_sendfile.push_back(callback);
@@ -3718,27 +4081,6 @@ data->in_fd = in_fd;
 data->offset = offset;
 data->count = count;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sendfile_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_vfork;
-void syscalls::register_call_vfork(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_vfork.push_back(callback);
-}
-struct vfork_calldata : public CallbackData {
-target_ulong pc;
-};
-static Callback_RC vfork_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-vfork_calldata* data = dynamic_cast<vfork_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_vfork_returned, env,data->pc)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_vfork_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_vfork){
-    x(env,pc);
-}
-if (0 == ppp_on_vfork_returned_num_cb) return;
-vfork_calldata* data = new vfork_calldata;
-data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, vfork_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)>> internal_registered_callback_sys_getrlimit;
 void syscalls::register_call_sys_getrlimit(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)> callback){
 internal_registered_callback_sys_getrlimit.push_back(callback);
@@ -3764,11 +4106,11 @@ data->pc = pc;
 data->resource = resource;
 data->rlim = rlim;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getrlimit_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_do_mmap2;
-void syscalls::register_call_do_mmap2(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)> callback){
-internal_registered_callback_do_mmap2.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_mmap_pgoff;
+void syscalls::register_call_sys_mmap_pgoff(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_mmap_pgoff.push_back(callback);
 }
-struct do_mmap2_calldata : public CallbackData {
+struct sys_mmap_pgoff_calldata : public CallbackData {
 target_ulong pc;
 uint32_t addr;
 uint32_t len;
@@ -3777,18 +4119,18 @@ uint32_t flags;
 uint32_t fd;
 uint32_t pgoff;
 };
-static Callback_RC do_mmap2_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-do_mmap2_calldata* data = dynamic_cast<do_mmap2_calldata*>(opaque);
+static Callback_RC sys_mmap_pgoff_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_mmap_pgoff_calldata* data = dynamic_cast<sys_mmap_pgoff_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_do_mmap2_returned, env,data->pc,data->addr,data->len,data->prot,data->flags,data->fd,data->pgoff)
+PPP_RUN_CB(on_sys_mmap_pgoff_returned, env,data->pc,data->addr,data->len,data->prot,data->flags,data->fd,data->pgoff)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_do_mmap2_callback(CPUState* env,target_ulong pc,uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff) {
-for (auto x: internal_registered_callback_do_mmap2){
+void syscalls::call_sys_mmap_pgoff_callback(CPUState* env,target_ulong pc,uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff) {
+for (auto x: internal_registered_callback_sys_mmap_pgoff){
     x(env,pc,addr,len,prot,flags,fd,pgoff);
 }
-if (0 == ppp_on_do_mmap2_returned_num_cb) return;
-do_mmap2_calldata* data = new do_mmap2_calldata;
+if (0 == ppp_on_sys_mmap_pgoff_returned_num_cb) return;
+sys_mmap_pgoff_calldata* data = new sys_mmap_pgoff_calldata;
 data->pc = pc;
 data->addr = addr;
 data->len = len;
@@ -3796,7 +4138,7 @@ data->prot = prot;
 data->flags = flags;
 data->fd = fd;
 data->pgoff = pgoff;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, do_mmap2_returned));}
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mmap_pgoff_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, uint64_t)>> internal_registered_callback_sys_truncate64;
 void syscalls::register_call_sys_truncate64(std::function<void(CPUState*, target_ulong, syscalls::string, uint64_t)> callback){
 internal_registered_callback_sys_truncate64.push_back(callback);
@@ -4387,33 +4729,6 @@ sys_setfsgid_calldata* data = new sys_setfsgid_calldata;
 data->pc = pc;
 data->gid = gid;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setfsgid_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_getdents64;
-void syscalls::register_call_sys_getdents64(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_getdents64.push_back(callback);
-}
-struct sys_getdents64_calldata : public CallbackData {
-target_ulong pc;
-uint32_t fd;
-target_ulong dirent;
-uint32_t count;
-};
-static Callback_RC sys_getdents64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_getdents64_calldata* data = dynamic_cast<sys_getdents64_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_getdents64_returned, env,data->pc,data->fd,data->dirent,data->count)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_getdents64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong dirent,uint32_t count) {
-for (auto x: internal_registered_callback_sys_getdents64){
-    x(env,pc,fd,dirent,count);
-}
-if (0 == ppp_on_sys_getdents64_returned_num_cb) return;
-sys_getdents64_calldata* data = new sys_getdents64_calldata;
-data->pc = pc;
-data->fd = fd;
-data->dirent = dirent;
-data->count = count;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getdents64_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string)>> internal_registered_callback_sys_pivot_root;
 void syscalls::register_call_sys_pivot_root(std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string)> callback){
 internal_registered_callback_sys_pivot_root.push_back(callback);
@@ -4493,6 +4808,33 @@ data->start = start;
 data->len = len;
 data->behavior = behavior;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_madvise_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_getdents64;
+void syscalls::register_call_sys_getdents64(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_getdents64.push_back(callback);
+}
+struct sys_getdents64_calldata : public CallbackData {
+target_ulong pc;
+uint32_t fd;
+target_ulong dirent;
+uint32_t count;
+};
+static Callback_RC sys_getdents64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_getdents64_calldata* data = dynamic_cast<sys_getdents64_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_getdents64_returned, env,data->pc,data->fd,data->dirent,data->count)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_getdents64_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong dirent,uint32_t count) {
+for (auto x: internal_registered_callback_sys_getdents64){
+    x(env,pc,fd,dirent,count);
+}
+if (0 == ppp_on_sys_getdents64_returned_num_cb) return;
+sys_getdents64_calldata* data = new sys_getdents64_calldata;
+data->pc = pc;
+data->fd = fd;
+data->dirent = dirent;
+data->count = count;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getdents64_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_fcntl64;
 void syscalls::register_call_sys_fcntl64(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_fcntl64.push_back(callback);
@@ -5178,6 +5520,35 @@ data->ctx_id = ctx_id;
 data->iocb = iocb;
 data->result = result;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_io_cancel_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint32_t, int32_t)>> internal_registered_callback_sys_fadvise64;
+void syscalls::register_call_sys_fadvise64(std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint32_t, int32_t)> callback){
+internal_registered_callback_sys_fadvise64.push_back(callback);
+}
+struct sys_fadvise64_calldata : public CallbackData {
+target_ulong pc;
+int32_t fd;
+uint64_t offset;
+uint32_t len;
+int32_t advice;
+};
+static Callback_RC sys_fadvise64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_fadvise64_calldata* data = dynamic_cast<sys_fadvise64_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_fadvise64_returned, env,data->pc,data->fd,data->offset,data->len,data->advice)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_fadvise64_callback(CPUState* env,target_ulong pc,int32_t fd,uint64_t offset,uint32_t len,int32_t advice) {
+for (auto x: internal_registered_callback_sys_fadvise64){
+    x(env,pc,fd,offset,len,advice);
+}
+if (0 == ppp_on_sys_fadvise64_returned_num_cb) return;
+sys_fadvise64_calldata* data = new sys_fadvise64_calldata;
+data->pc = pc;
+data->fd = fd;
+data->offset = offset;
+data->len = len;
+data->advice = advice;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fadvise64_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_exit_group;
 void syscalls::register_call_sys_exit_group(std::function<void(CPUState*, target_ulong, int32_t)> callback){
 internal_registered_callback_sys_exit_group.push_back(callback);
@@ -5700,124 +6071,126 @@ data->pc = pc;
 data->filename = filename;
 data->utimes = utimes;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_utimes_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint64_t, uint64_t)>> internal_registered_callback_sys_arm_fadvise64_64;
-void syscalls::register_call_sys_arm_fadvise64_64(std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint64_t, uint64_t)> callback){
-internal_registered_callback_sys_arm_fadvise64_64.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint64_t, int32_t)>> internal_registered_callback_sys_fadvise64_64;
+void syscalls::register_call_sys_fadvise64_64(std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint64_t, int32_t)> callback){
+internal_registered_callback_sys_fadvise64_64.push_back(callback);
 }
-struct sys_arm_fadvise64_64_calldata : public CallbackData {
+struct sys_fadvise64_64_calldata : public CallbackData {
 target_ulong pc;
 int32_t fd;
-int32_t advice;
 uint64_t offset;
 uint64_t len;
+int32_t advice;
 };
-static Callback_RC sys_arm_fadvise64_64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_arm_fadvise64_64_calldata* data = dynamic_cast<sys_arm_fadvise64_64_calldata*>(opaque);
+static Callback_RC sys_fadvise64_64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_fadvise64_64_calldata* data = dynamic_cast<sys_fadvise64_64_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_arm_fadvise64_64_returned, env,data->pc,data->fd,data->advice,data->offset,data->len)
+PPP_RUN_CB(on_sys_fadvise64_64_returned, env,data->pc,data->fd,data->offset,data->len,data->advice)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_arm_fadvise64_64_callback(CPUState* env,target_ulong pc,int32_t fd,int32_t advice,uint64_t offset,uint64_t len) {
-for (auto x: internal_registered_callback_sys_arm_fadvise64_64){
-    x(env,pc,fd,advice,offset,len);
+void syscalls::call_sys_fadvise64_64_callback(CPUState* env,target_ulong pc,int32_t fd,uint64_t offset,uint64_t len,int32_t advice) {
+for (auto x: internal_registered_callback_sys_fadvise64_64){
+    x(env,pc,fd,offset,len,advice);
 }
-if (0 == ppp_on_sys_arm_fadvise64_64_returned_num_cb) return;
-sys_arm_fadvise64_64_calldata* data = new sys_arm_fadvise64_64_calldata;
+if (0 == ppp_on_sys_fadvise64_64_returned_num_cb) return;
+sys_fadvise64_64_calldata* data = new sys_fadvise64_64_calldata;
 data->pc = pc;
 data->fd = fd;
-data->advice = advice;
 data->offset = offset;
 data->len = len;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_arm_fadvise64_64_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_pciconfig_iobase;
-void syscalls::register_call_sys_pciconfig_iobase(std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint32_t)> callback){
-internal_registered_callback_sys_pciconfig_iobase.push_back(callback);
+data->advice = advice;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fadvise64_64_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_mbind;
+void syscalls::register_call_sys_mbind(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, target_ulong, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_mbind.push_back(callback);
 }
-struct sys_pciconfig_iobase_calldata : public CallbackData {
+struct sys_mbind_calldata : public CallbackData {
 target_ulong pc;
-int32_t which;
-uint32_t bus;
-uint32_t devfn;
-};
-static Callback_RC sys_pciconfig_iobase_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_pciconfig_iobase_calldata* data = dynamic_cast<sys_pciconfig_iobase_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_pciconfig_iobase_returned, env,data->pc,data->which,data->bus,data->devfn)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_pciconfig_iobase_callback(CPUState* env,target_ulong pc,int32_t which,uint32_t bus,uint32_t devfn) {
-for (auto x: internal_registered_callback_sys_pciconfig_iobase){
-    x(env,pc,which,bus,devfn);
-}
-if (0 == ppp_on_sys_pciconfig_iobase_returned_num_cb) return;
-sys_pciconfig_iobase_calldata* data = new sys_pciconfig_iobase_calldata;
-data->pc = pc;
-data->which = which;
-data->bus = bus;
-data->devfn = devfn;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pciconfig_iobase_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, target_ulong)>> internal_registered_callback_sys_pciconfig_read;
-void syscalls::register_call_sys_pciconfig_read(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, target_ulong)> callback){
-internal_registered_callback_sys_pciconfig_read.push_back(callback);
-}
-struct sys_pciconfig_read_calldata : public CallbackData {
-target_ulong pc;
-uint32_t bus;
-uint32_t dfn;
-uint32_t off;
+uint32_t start;
 uint32_t len;
-target_ulong buf;
+uint32_t mode;
+target_ulong nmask;
+uint32_t maxnode;
+uint32_t flags;
 };
-static Callback_RC sys_pciconfig_read_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_pciconfig_read_calldata* data = dynamic_cast<sys_pciconfig_read_calldata*>(opaque);
+static Callback_RC sys_mbind_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_mbind_calldata* data = dynamic_cast<sys_mbind_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_pciconfig_read_returned, env,data->pc,data->bus,data->dfn,data->off,data->len,data->buf)
+PPP_RUN_CB(on_sys_mbind_returned, env,data->pc,data->start,data->len,data->mode,data->nmask,data->maxnode,data->flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_pciconfig_read_callback(CPUState* env,target_ulong pc,uint32_t bus,uint32_t dfn,uint32_t off,uint32_t len,target_ulong buf) {
-for (auto x: internal_registered_callback_sys_pciconfig_read){
-    x(env,pc,bus,dfn,off,len,buf);
+void syscalls::call_sys_mbind_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t len,uint32_t mode,target_ulong nmask,uint32_t maxnode,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_mbind){
+    x(env,pc,start,len,mode,nmask,maxnode,flags);
 }
-if (0 == ppp_on_sys_pciconfig_read_returned_num_cb) return;
-sys_pciconfig_read_calldata* data = new sys_pciconfig_read_calldata;
+if (0 == ppp_on_sys_mbind_returned_num_cb) return;
+sys_mbind_calldata* data = new sys_mbind_calldata;
 data->pc = pc;
-data->bus = bus;
-data->dfn = dfn;
-data->off = off;
+data->start = start;
 data->len = len;
-data->buf = buf;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pciconfig_read_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, target_ulong)>> internal_registered_callback_sys_pciconfig_write;
-void syscalls::register_call_sys_pciconfig_write(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, uint32_t, target_ulong)> callback){
-internal_registered_callback_sys_pciconfig_write.push_back(callback);
+data->mode = mode;
+data->nmask = nmask;
+data->maxnode = maxnode;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mbind_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_get_mempolicy;
+void syscalls::register_call_sys_get_mempolicy(std::function<void(CPUState*, target_ulong, target_ulong, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_get_mempolicy.push_back(callback);
 }
-struct sys_pciconfig_write_calldata : public CallbackData {
+struct sys_get_mempolicy_calldata : public CallbackData {
 target_ulong pc;
-uint32_t bus;
-uint32_t dfn;
-uint32_t off;
-uint32_t len;
-target_ulong buf;
+target_ulong policy;
+target_ulong nmask;
+uint32_t maxnode;
+uint32_t addr;
+uint32_t flags;
 };
-static Callback_RC sys_pciconfig_write_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_pciconfig_write_calldata* data = dynamic_cast<sys_pciconfig_write_calldata*>(opaque);
+static Callback_RC sys_get_mempolicy_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_get_mempolicy_calldata* data = dynamic_cast<sys_get_mempolicy_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_pciconfig_write_returned, env,data->pc,data->bus,data->dfn,data->off,data->len,data->buf)
+PPP_RUN_CB(on_sys_get_mempolicy_returned, env,data->pc,data->policy,data->nmask,data->maxnode,data->addr,data->flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_pciconfig_write_callback(CPUState* env,target_ulong pc,uint32_t bus,uint32_t dfn,uint32_t off,uint32_t len,target_ulong buf) {
-for (auto x: internal_registered_callback_sys_pciconfig_write){
-    x(env,pc,bus,dfn,off,len,buf);
+void syscalls::call_sys_get_mempolicy_callback(CPUState* env,target_ulong pc,target_ulong policy,target_ulong nmask,uint32_t maxnode,uint32_t addr,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_get_mempolicy){
+    x(env,pc,policy,nmask,maxnode,addr,flags);
 }
-if (0 == ppp_on_sys_pciconfig_write_returned_num_cb) return;
-sys_pciconfig_write_calldata* data = new sys_pciconfig_write_calldata;
+if (0 == ppp_on_sys_get_mempolicy_returned_num_cb) return;
+sys_get_mempolicy_calldata* data = new sys_get_mempolicy_calldata;
 data->pc = pc;
-data->bus = bus;
-data->dfn = dfn;
-data->off = off;
-data->len = len;
-data->buf = buf;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pciconfig_write_returned));}
+data->policy = policy;
+data->nmask = nmask;
+data->maxnode = maxnode;
+data->addr = addr;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_get_mempolicy_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_set_mempolicy;
+void syscalls::register_call_sys_set_mempolicy(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_set_mempolicy.push_back(callback);
+}
+struct sys_set_mempolicy_calldata : public CallbackData {
+target_ulong pc;
+int32_t mode;
+target_ulong nmask;
+uint32_t maxnode;
+};
+static Callback_RC sys_set_mempolicy_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_set_mempolicy_calldata* data = dynamic_cast<sys_set_mempolicy_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_set_mempolicy_returned, env,data->pc,data->mode,data->nmask,data->maxnode)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_set_mempolicy_callback(CPUState* env,target_ulong pc,int32_t mode,target_ulong nmask,uint32_t maxnode) {
+for (auto x: internal_registered_callback_sys_set_mempolicy){
+    x(env,pc,mode,nmask,maxnode);
+}
+if (0 == ppp_on_sys_set_mempolicy_returned_num_cb) return;
+sys_set_mempolicy_calldata* data = new sys_set_mempolicy_calldata;
+data->pc = pc;
+data->mode = mode;
+data->nmask = nmask;
+data->maxnode = maxnode;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_set_mempolicy_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, int32_t, uint32_t, target_ulong)>> internal_registered_callback_sys_mq_open;
 void syscalls::register_call_sys_mq_open(std::function<void(CPUState*, target_ulong, syscalls::string, int32_t, uint32_t, target_ulong)> callback){
 internal_registered_callback_sys_mq_open.push_back(callback);
@@ -5984,6 +6357,35 @@ data->mqdes = mqdes;
 data->mqstat = mqstat;
 data->omqstat = omqstat;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mq_getsetattr_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_kexec_load;
+void syscalls::register_call_sys_kexec_load(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_kexec_load.push_back(callback);
+}
+struct sys_kexec_load_calldata : public CallbackData {
+target_ulong pc;
+uint32_t entry;
+uint32_t nr_segments;
+target_ulong segments;
+uint32_t flags;
+};
+static Callback_RC sys_kexec_load_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_kexec_load_calldata* data = dynamic_cast<sys_kexec_load_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_kexec_load_returned, env,data->pc,data->entry,data->nr_segments,data->segments,data->flags)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_kexec_load_callback(CPUState* env,target_ulong pc,uint32_t entry,uint32_t nr_segments,target_ulong segments,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_kexec_load){
+    x(env,pc,entry,nr_segments,segments,flags);
+}
+if (0 == ppp_on_sys_kexec_load_returned_num_cb) return;
+sys_kexec_load_calldata* data = new sys_kexec_load_calldata;
+data->pc = pc;
+data->entry = entry;
+data->nr_segments = nr_segments;
+data->segments = segments;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_kexec_load_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint32_t, target_ulong, int32_t, target_ulong)>> internal_registered_callback_sys_waitid;
 void syscalls::register_call_sys_waitid(std::function<void(CPUState*, target_ulong, int32_t, uint32_t, target_ulong, int32_t, target_ulong)> callback){
 internal_registered_callback_sys_waitid.push_back(callback);
@@ -6015,786 +6417,6 @@ data->infop = infop;
 data->options = options;
 data->ru = ru;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_waitid_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t)>> internal_registered_callback_sys_socket;
-void syscalls::register_call_sys_socket(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t)> callback){
-internal_registered_callback_sys_socket.push_back(callback);
-}
-struct sys_socket_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-int32_t arg1;
-int32_t arg2;
-};
-static Callback_RC sys_socket_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_socket_calldata* data = dynamic_cast<sys_socket_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_socket_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_socket_callback(CPUState* env,target_ulong pc,int32_t arg0,int32_t arg1,int32_t arg2) {
-for (auto x: internal_registered_callback_sys_socket){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_socket_returned_num_cb) return;
-sys_socket_calldata* data = new sys_socket_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_socket_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)>> internal_registered_callback_sys_bind;
-void syscalls::register_call_sys_bind(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)> callback){
-internal_registered_callback_sys_bind.push_back(callback);
-}
-struct sys_bind_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-int32_t arg2;
-};
-static Callback_RC sys_bind_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_bind_calldata* data = dynamic_cast<sys_bind_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_bind_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_bind_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,int32_t arg2) {
-for (auto x: internal_registered_callback_sys_bind){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_bind_returned_num_cb) return;
-sys_bind_calldata* data = new sys_bind_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_bind_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)>> internal_registered_callback_sys_connect;
-void syscalls::register_call_sys_connect(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)> callback){
-internal_registered_callback_sys_connect.push_back(callback);
-}
-struct sys_connect_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-int32_t arg2;
-};
-static Callback_RC sys_connect_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_connect_calldata* data = dynamic_cast<sys_connect_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_connect_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_connect_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,int32_t arg2) {
-for (auto x: internal_registered_callback_sys_connect){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_connect_returned_num_cb) return;
-sys_connect_calldata* data = new sys_connect_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_connect_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t)>> internal_registered_callback_sys_listen;
-void syscalls::register_call_sys_listen(std::function<void(CPUState*, target_ulong, int32_t, int32_t)> callback){
-internal_registered_callback_sys_listen.push_back(callback);
-}
-struct sys_listen_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-int32_t arg1;
-};
-static Callback_RC sys_listen_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_listen_calldata* data = dynamic_cast<sys_listen_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_listen_returned, env,data->pc,data->arg0,data->arg1)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_listen_callback(CPUState* env,target_ulong pc,int32_t arg0,int32_t arg1) {
-for (auto x: internal_registered_callback_sys_listen){
-    x(env,pc,arg0,arg1);
-}
-if (0 == ppp_on_sys_listen_returned_num_cb) return;
-sys_listen_calldata* data = new sys_listen_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_listen_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_accept;
-void syscalls::register_call_sys_accept(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_sys_accept.push_back(callback);
-}
-struct sys_accept_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-target_ulong arg2;
-};
-static Callback_RC sys_accept_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_accept_calldata* data = dynamic_cast<sys_accept_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_accept_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_accept_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2) {
-for (auto x: internal_registered_callback_sys_accept){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_accept_returned_num_cb) return;
-sys_accept_calldata* data = new sys_accept_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_accept_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_getsockname;
-void syscalls::register_call_sys_getsockname(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_sys_getsockname.push_back(callback);
-}
-struct sys_getsockname_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-target_ulong arg2;
-};
-static Callback_RC sys_getsockname_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_getsockname_calldata* data = dynamic_cast<sys_getsockname_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_getsockname_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_getsockname_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2) {
-for (auto x: internal_registered_callback_sys_getsockname){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_getsockname_returned_num_cb) return;
-sys_getsockname_calldata* data = new sys_getsockname_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getsockname_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_getpeername;
-void syscalls::register_call_sys_getpeername(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_sys_getpeername.push_back(callback);
-}
-struct sys_getpeername_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-target_ulong arg2;
-};
-static Callback_RC sys_getpeername_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_getpeername_calldata* data = dynamic_cast<sys_getpeername_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_getpeername_returned, env,data->pc,data->arg0,data->arg1,data->arg2)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_getpeername_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2) {
-for (auto x: internal_registered_callback_sys_getpeername){
-    x(env,pc,arg0,arg1,arg2);
-}
-if (0 == ppp_on_sys_getpeername_returned_num_cb) return;
-sys_getpeername_calldata* data = new sys_getpeername_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getpeername_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, target_ulong)>> internal_registered_callback_sys_socketpair;
-void syscalls::register_call_sys_socketpair(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, target_ulong)> callback){
-internal_registered_callback_sys_socketpair.push_back(callback);
-}
-struct sys_socketpair_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-int32_t arg1;
-int32_t arg2;
-target_ulong arg3;
-};
-static Callback_RC sys_socketpair_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_socketpair_calldata* data = dynamic_cast<sys_socketpair_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_socketpair_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_socketpair_callback(CPUState* env,target_ulong pc,int32_t arg0,int32_t arg1,int32_t arg2,target_ulong arg3) {
-for (auto x: internal_registered_callback_sys_socketpair){
-    x(env,pc,arg0,arg1,arg2,arg3);
-}
-if (0 == ppp_on_sys_socketpair_returned_num_cb) return;
-sys_socketpair_calldata* data = new sys_socketpair_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-data->arg3 = arg3;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_socketpair_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_send;
-void syscalls::register_call_sys_send(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)> callback){
-internal_registered_callback_sys_send.push_back(callback);
-}
-struct sys_send_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-uint32_t arg2;
-uint32_t arg3;
-};
-static Callback_RC sys_send_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_send_calldata* data = dynamic_cast<sys_send_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_send_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_send_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,uint32_t arg2,uint32_t arg3) {
-for (auto x: internal_registered_callback_sys_send){
-    x(env,pc,arg0,arg1,arg2,arg3);
-}
-if (0 == ppp_on_sys_send_returned_num_cb) return;
-sys_send_calldata* data = new sys_send_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-data->arg3 = arg3;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_send_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong, int32_t)>> internal_registered_callback_sys_sendto;
-void syscalls::register_call_sys_sendto(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong, int32_t)> callback){
-internal_registered_callback_sys_sendto.push_back(callback);
-}
-struct sys_sendto_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-uint32_t arg2;
-uint32_t arg3;
-target_ulong arg4;
-int32_t arg5;
-};
-static Callback_RC sys_sendto_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_sendto_calldata* data = dynamic_cast<sys_sendto_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_sendto_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3,data->arg4,data->arg5)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_sendto_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,uint32_t arg2,uint32_t arg3,target_ulong arg4,int32_t arg5) {
-for (auto x: internal_registered_callback_sys_sendto){
-    x(env,pc,arg0,arg1,arg2,arg3,arg4,arg5);
-}
-if (0 == ppp_on_sys_sendto_returned_num_cb) return;
-sys_sendto_calldata* data = new sys_sendto_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-data->arg3 = arg3;
-data->arg4 = arg4;
-data->arg5 = arg5;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sendto_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_recv;
-void syscalls::register_call_sys_recv(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)> callback){
-internal_registered_callback_sys_recv.push_back(callback);
-}
-struct sys_recv_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-uint32_t arg2;
-uint32_t arg3;
-};
-static Callback_RC sys_recv_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_recv_calldata* data = dynamic_cast<sys_recv_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_recv_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_recv_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,uint32_t arg2,uint32_t arg3) {
-for (auto x: internal_registered_callback_sys_recv){
-    x(env,pc,arg0,arg1,arg2,arg3);
-}
-if (0 == ppp_on_sys_recv_returned_num_cb) return;
-sys_recv_calldata* data = new sys_recv_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-data->arg3 = arg3;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_recv_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_recvfrom;
-void syscalls::register_call_sys_recvfrom(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)> callback){
-internal_registered_callback_sys_recvfrom.push_back(callback);
-}
-struct sys_recvfrom_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-target_ulong arg1;
-uint32_t arg2;
-uint32_t arg3;
-target_ulong arg4;
-target_ulong arg5;
-};
-static Callback_RC sys_recvfrom_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_recvfrom_calldata* data = dynamic_cast<sys_recvfrom_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_recvfrom_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3,data->arg4,data->arg5)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_recvfrom_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,uint32_t arg2,uint32_t arg3,target_ulong arg4,target_ulong arg5) {
-for (auto x: internal_registered_callback_sys_recvfrom){
-    x(env,pc,arg0,arg1,arg2,arg3,arg4,arg5);
-}
-if (0 == ppp_on_sys_recvfrom_returned_num_cb) return;
-sys_recvfrom_calldata* data = new sys_recvfrom_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-data->arg2 = arg2;
-data->arg3 = arg3;
-data->arg4 = arg4;
-data->arg5 = arg5;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_recvfrom_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t)>> internal_registered_callback_sys_shutdown;
-void syscalls::register_call_sys_shutdown(std::function<void(CPUState*, target_ulong, int32_t, int32_t)> callback){
-internal_registered_callback_sys_shutdown.push_back(callback);
-}
-struct sys_shutdown_calldata : public CallbackData {
-target_ulong pc;
-int32_t arg0;
-int32_t arg1;
-};
-static Callback_RC sys_shutdown_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_shutdown_calldata* data = dynamic_cast<sys_shutdown_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_shutdown_returned, env,data->pc,data->arg0,data->arg1)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_shutdown_callback(CPUState* env,target_ulong pc,int32_t arg0,int32_t arg1) {
-for (auto x: internal_registered_callback_sys_shutdown){
-    x(env,pc,arg0,arg1);
-}
-if (0 == ppp_on_sys_shutdown_returned_num_cb) return;
-sys_shutdown_calldata* data = new sys_shutdown_calldata;
-data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_shutdown_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, syscalls::string, int32_t)>> internal_registered_callback_sys_setsockopt;
-void syscalls::register_call_sys_setsockopt(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, syscalls::string, int32_t)> callback){
-internal_registered_callback_sys_setsockopt.push_back(callback);
-}
-struct sys_setsockopt_calldata : public CallbackData {
-target_ulong pc;
-int32_t fd;
-int32_t level;
-int32_t optname;
-syscalls::string optval;
-int32_t optlen;
-};
-static Callback_RC sys_setsockopt_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_setsockopt_calldata* data = dynamic_cast<sys_setsockopt_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_setsockopt_returned, env,data->pc,data->fd,data->level,data->optname,data->optval.get_vaddr(),data->optlen)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_setsockopt_callback(CPUState* env,target_ulong pc,int32_t fd,int32_t level,int32_t optname,syscalls::string optval,int32_t optlen) {
-for (auto x: internal_registered_callback_sys_setsockopt){
-    x(env,pc,fd,level,optname,optval,optlen);
-}
-if (0 == ppp_on_sys_setsockopt_returned_num_cb) return;
-sys_setsockopt_calldata* data = new sys_setsockopt_calldata;
-data->pc = pc;
-data->fd = fd;
-data->level = level;
-data->optname = optname;
-data->optval = optval;
-data->optlen = optlen;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setsockopt_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, syscalls::string, target_ulong)>> internal_registered_callback_sys_getsockopt;
-void syscalls::register_call_sys_getsockopt(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, syscalls::string, target_ulong)> callback){
-internal_registered_callback_sys_getsockopt.push_back(callback);
-}
-struct sys_getsockopt_calldata : public CallbackData {
-target_ulong pc;
-int32_t fd;
-int32_t level;
-int32_t optname;
-syscalls::string optval;
-target_ulong optlen;
-};
-static Callback_RC sys_getsockopt_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_getsockopt_calldata* data = dynamic_cast<sys_getsockopt_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_getsockopt_returned, env,data->pc,data->fd,data->level,data->optname,data->optval.get_vaddr(),data->optlen)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_getsockopt_callback(CPUState* env,target_ulong pc,int32_t fd,int32_t level,int32_t optname,syscalls::string optval,target_ulong optlen) {
-for (auto x: internal_registered_callback_sys_getsockopt){
-    x(env,pc,fd,level,optname,optval,optlen);
-}
-if (0 == ppp_on_sys_getsockopt_returned_num_cb) return;
-sys_getsockopt_calldata* data = new sys_getsockopt_calldata;
-data->pc = pc;
-data->fd = fd;
-data->level = level;
-data->optname = optname;
-data->optval = optval;
-data->optlen = optlen;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getsockopt_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_sendmsg;
-void syscalls::register_call_sys_sendmsg(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_sendmsg.push_back(callback);
-}
-struct sys_sendmsg_calldata : public CallbackData {
-target_ulong pc;
-int32_t fd;
-target_ulong msg;
-uint32_t flags;
-};
-static Callback_RC sys_sendmsg_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_sendmsg_calldata* data = dynamic_cast<sys_sendmsg_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_sendmsg_returned, env,data->pc,data->fd,data->msg,data->flags)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_sendmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t flags) {
-for (auto x: internal_registered_callback_sys_sendmsg){
-    x(env,pc,fd,msg,flags);
-}
-if (0 == ppp_on_sys_sendmsg_returned_num_cb) return;
-sys_sendmsg_calldata* data = new sys_sendmsg_calldata;
-data->pc = pc;
-data->fd = fd;
-data->msg = msg;
-data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sendmsg_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_recvmsg;
-void syscalls::register_call_sys_recvmsg(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_recvmsg.push_back(callback);
-}
-struct sys_recvmsg_calldata : public CallbackData {
-target_ulong pc;
-int32_t fd;
-target_ulong msg;
-uint32_t flags;
-};
-static Callback_RC sys_recvmsg_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_recvmsg_calldata* data = dynamic_cast<sys_recvmsg_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_recvmsg_returned, env,data->pc,data->fd,data->msg,data->flags)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_recvmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t flags) {
-for (auto x: internal_registered_callback_sys_recvmsg){
-    x(env,pc,fd,msg,flags);
-}
-if (0 == ppp_on_sys_recvmsg_returned_num_cb) return;
-sys_recvmsg_calldata* data = new sys_recvmsg_calldata;
-data->pc = pc;
-data->fd = fd;
-data->msg = msg;
-data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_recvmsg_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_semop;
-void syscalls::register_call_sys_semop(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_semop.push_back(callback);
-}
-struct sys_semop_calldata : public CallbackData {
-target_ulong pc;
-int32_t semid;
-target_ulong sops;
-uint32_t nsops;
-};
-static Callback_RC sys_semop_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_semop_calldata* data = dynamic_cast<sys_semop_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_semop_returned, env,data->pc,data->semid,data->sops,data->nsops)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_semop_callback(CPUState* env,target_ulong pc,int32_t semid,target_ulong sops,uint32_t nsops) {
-for (auto x: internal_registered_callback_sys_semop){
-    x(env,pc,semid,sops,nsops);
-}
-if (0 == ppp_on_sys_semop_returned_num_cb) return;
-sys_semop_calldata* data = new sys_semop_calldata;
-data->pc = pc;
-data->semid = semid;
-data->sops = sops;
-data->nsops = nsops;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_semop_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, int32_t, int32_t)>> internal_registered_callback_sys_semget;
-void syscalls::register_call_sys_semget(std::function<void(CPUState*, target_ulong, uint32_t, int32_t, int32_t)> callback){
-internal_registered_callback_sys_semget.push_back(callback);
-}
-struct sys_semget_calldata : public CallbackData {
-target_ulong pc;
-uint32_t key;
-int32_t nsems;
-int32_t semflg;
-};
-static Callback_RC sys_semget_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_semget_calldata* data = dynamic_cast<sys_semget_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_semget_returned, env,data->pc,data->key,data->nsems,data->semflg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_semget_callback(CPUState* env,target_ulong pc,uint32_t key,int32_t nsems,int32_t semflg) {
-for (auto x: internal_registered_callback_sys_semget){
-    x(env,pc,key,nsems,semflg);
-}
-if (0 == ppp_on_sys_semget_returned_num_cb) return;
-sys_semget_calldata* data = new sys_semget_calldata;
-data->pc = pc;
-data->key = key;
-data->nsems = nsems;
-data->semflg = semflg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_semget_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, uint32_t)>> internal_registered_callback_sys_semctl;
-void syscalls::register_call_sys_semctl(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t, uint32_t)> callback){
-internal_registered_callback_sys_semctl.push_back(callback);
-}
-struct sys_semctl_calldata : public CallbackData {
-target_ulong pc;
-int32_t semid;
-int32_t semnum;
-int32_t cmd;
-uint32_t arg;
-};
-static Callback_RC sys_semctl_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_semctl_calldata* data = dynamic_cast<sys_semctl_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_semctl_returned, env,data->pc,data->semid,data->semnum,data->cmd,data->arg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_semctl_callback(CPUState* env,target_ulong pc,int32_t semid,int32_t semnum,int32_t cmd,uint32_t arg) {
-for (auto x: internal_registered_callback_sys_semctl){
-    x(env,pc,semid,semnum,cmd,arg);
-}
-if (0 == ppp_on_sys_semctl_returned_num_cb) return;
-sys_semctl_calldata* data = new sys_semctl_calldata;
-data->pc = pc;
-data->semid = semid;
-data->semnum = semnum;
-data->cmd = cmd;
-data->arg = arg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_semctl_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, int32_t)>> internal_registered_callback_sys_msgsnd;
-void syscalls::register_call_sys_msgsnd(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, int32_t)> callback){
-internal_registered_callback_sys_msgsnd.push_back(callback);
-}
-struct sys_msgsnd_calldata : public CallbackData {
-target_ulong pc;
-int32_t msqid;
-target_ulong msgp;
-uint32_t msgsz;
-int32_t msgflg;
-};
-static Callback_RC sys_msgsnd_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_msgsnd_calldata* data = dynamic_cast<sys_msgsnd_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_msgsnd_returned, env,data->pc,data->msqid,data->msgp,data->msgsz,data->msgflg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_msgsnd_callback(CPUState* env,target_ulong pc,int32_t msqid,target_ulong msgp,uint32_t msgsz,int32_t msgflg) {
-for (auto x: internal_registered_callback_sys_msgsnd){
-    x(env,pc,msqid,msgp,msgsz,msgflg);
-}
-if (0 == ppp_on_sys_msgsnd_returned_num_cb) return;
-sys_msgsnd_calldata* data = new sys_msgsnd_calldata;
-data->pc = pc;
-data->msqid = msqid;
-data->msgp = msgp;
-data->msgsz = msgsz;
-data->msgflg = msgflg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_msgsnd_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, int32_t, int32_t)>> internal_registered_callback_sys_msgrcv;
-void syscalls::register_call_sys_msgrcv(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, int32_t, int32_t)> callback){
-internal_registered_callback_sys_msgrcv.push_back(callback);
-}
-struct sys_msgrcv_calldata : public CallbackData {
-target_ulong pc;
-int32_t msqid;
-target_ulong msgp;
-uint32_t msgsz;
-int32_t msgtyp;
-int32_t msgflg;
-};
-static Callback_RC sys_msgrcv_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_msgrcv_calldata* data = dynamic_cast<sys_msgrcv_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_msgrcv_returned, env,data->pc,data->msqid,data->msgp,data->msgsz,data->msgtyp,data->msgflg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_msgrcv_callback(CPUState* env,target_ulong pc,int32_t msqid,target_ulong msgp,uint32_t msgsz,int32_t msgtyp,int32_t msgflg) {
-for (auto x: internal_registered_callback_sys_msgrcv){
-    x(env,pc,msqid,msgp,msgsz,msgtyp,msgflg);
-}
-if (0 == ppp_on_sys_msgrcv_returned_num_cb) return;
-sys_msgrcv_calldata* data = new sys_msgrcv_calldata;
-data->pc = pc;
-data->msqid = msqid;
-data->msgp = msgp;
-data->msgsz = msgsz;
-data->msgtyp = msgtyp;
-data->msgflg = msgflg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_msgrcv_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, int32_t)>> internal_registered_callback_sys_msgget;
-void syscalls::register_call_sys_msgget(std::function<void(CPUState*, target_ulong, uint32_t, int32_t)> callback){
-internal_registered_callback_sys_msgget.push_back(callback);
-}
-struct sys_msgget_calldata : public CallbackData {
-target_ulong pc;
-uint32_t key;
-int32_t msgflg;
-};
-static Callback_RC sys_msgget_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_msgget_calldata* data = dynamic_cast<sys_msgget_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_msgget_returned, env,data->pc,data->key,data->msgflg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_msgget_callback(CPUState* env,target_ulong pc,uint32_t key,int32_t msgflg) {
-for (auto x: internal_registered_callback_sys_msgget){
-    x(env,pc,key,msgflg);
-}
-if (0 == ppp_on_sys_msgget_returned_num_cb) return;
-sys_msgget_calldata* data = new sys_msgget_calldata;
-data->pc = pc;
-data->key = key;
-data->msgflg = msgflg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_msgget_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong)>> internal_registered_callback_sys_msgctl;
-void syscalls::register_call_sys_msgctl(std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong)> callback){
-internal_registered_callback_sys_msgctl.push_back(callback);
-}
-struct sys_msgctl_calldata : public CallbackData {
-target_ulong pc;
-int32_t msqid;
-int32_t cmd;
-target_ulong buf;
-};
-static Callback_RC sys_msgctl_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_msgctl_calldata* data = dynamic_cast<sys_msgctl_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_msgctl_returned, env,data->pc,data->msqid,data->cmd,data->buf)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_msgctl_callback(CPUState* env,target_ulong pc,int32_t msqid,int32_t cmd,target_ulong buf) {
-for (auto x: internal_registered_callback_sys_msgctl){
-    x(env,pc,msqid,cmd,buf);
-}
-if (0 == ppp_on_sys_msgctl_returned_num_cb) return;
-sys_msgctl_calldata* data = new sys_msgctl_calldata;
-data->pc = pc;
-data->msqid = msqid;
-data->cmd = cmd;
-data->buf = buf;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_msgctl_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, int32_t)>> internal_registered_callback_sys_shmat;
-void syscalls::register_call_sys_shmat(std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, int32_t)> callback){
-internal_registered_callback_sys_shmat.push_back(callback);
-}
-struct sys_shmat_calldata : public CallbackData {
-target_ulong pc;
-int32_t shmid;
-syscalls::string shmaddr;
-int32_t shmflg;
-};
-static Callback_RC sys_shmat_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_shmat_calldata* data = dynamic_cast<sys_shmat_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_shmat_returned, env,data->pc,data->shmid,data->shmaddr.get_vaddr(),data->shmflg)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_shmat_callback(CPUState* env,target_ulong pc,int32_t shmid,syscalls::string shmaddr,int32_t shmflg) {
-for (auto x: internal_registered_callback_sys_shmat){
-    x(env,pc,shmid,shmaddr,shmflg);
-}
-if (0 == ppp_on_sys_shmat_returned_num_cb) return;
-sys_shmat_calldata* data = new sys_shmat_calldata;
-data->pc = pc;
-data->shmid = shmid;
-data->shmaddr = shmaddr;
-data->shmflg = shmflg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_shmat_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, syscalls::string)>> internal_registered_callback_sys_shmdt;
-void syscalls::register_call_sys_shmdt(std::function<void(CPUState*, target_ulong, syscalls::string)> callback){
-internal_registered_callback_sys_shmdt.push_back(callback);
-}
-struct sys_shmdt_calldata : public CallbackData {
-target_ulong pc;
-syscalls::string shmaddr;
-};
-static Callback_RC sys_shmdt_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_shmdt_calldata* data = dynamic_cast<sys_shmdt_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_shmdt_returned, env,data->pc,data->shmaddr.get_vaddr())
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_shmdt_callback(CPUState* env,target_ulong pc,syscalls::string shmaddr) {
-for (auto x: internal_registered_callback_sys_shmdt){
-    x(env,pc,shmaddr);
-}
-if (0 == ppp_on_sys_shmdt_returned_num_cb) return;
-sys_shmdt_calldata* data = new sys_shmdt_calldata;
-data->pc = pc;
-data->shmaddr = shmaddr;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_shmdt_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t)>> internal_registered_callback_sys_shmget;
-void syscalls::register_call_sys_shmget(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t)> callback){
-internal_registered_callback_sys_shmget.push_back(callback);
-}
-struct sys_shmget_calldata : public CallbackData {
-target_ulong pc;
-uint32_t key;
-uint32_t size;
-int32_t flag;
-};
-static Callback_RC sys_shmget_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_shmget_calldata* data = dynamic_cast<sys_shmget_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_shmget_returned, env,data->pc,data->key,data->size,data->flag)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_shmget_callback(CPUState* env,target_ulong pc,uint32_t key,uint32_t size,int32_t flag) {
-for (auto x: internal_registered_callback_sys_shmget){
-    x(env,pc,key,size,flag);
-}
-if (0 == ppp_on_sys_shmget_returned_num_cb) return;
-sys_shmget_calldata* data = new sys_shmget_calldata;
-data->pc = pc;
-data->key = key;
-data->size = size;
-data->flag = flag;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_shmget_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong)>> internal_registered_callback_sys_shmctl;
-void syscalls::register_call_sys_shmctl(std::function<void(CPUState*, target_ulong, int32_t, int32_t, target_ulong)> callback){
-internal_registered_callback_sys_shmctl.push_back(callback);
-}
-struct sys_shmctl_calldata : public CallbackData {
-target_ulong pc;
-int32_t shmid;
-int32_t cmd;
-target_ulong buf;
-};
-static Callback_RC sys_shmctl_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_shmctl_calldata* data = dynamic_cast<sys_shmctl_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_shmctl_returned, env,data->pc,data->shmid,data->cmd,data->buf)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_shmctl_callback(CPUState* env,target_ulong pc,int32_t shmid,int32_t cmd,target_ulong buf) {
-for (auto x: internal_registered_callback_sys_shmctl){
-    x(env,pc,shmid,cmd,buf);
-}
-if (0 == ppp_on_sys_shmctl_returned_num_cb) return;
-sys_shmctl_calldata* data = new sys_shmctl_calldata;
-data->pc = pc;
-data->shmid = shmid;
-data->cmd = cmd;
-data->buf = buf;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_shmctl_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_add_key;
 void syscalls::register_call_sys_add_key(std::function<void(CPUState*, target_ulong, syscalls::string, syscalls::string, target_ulong, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_add_key.push_back(callback);
@@ -6886,35 +6508,6 @@ data->arg3 = arg3;
 data->arg4 = arg4;
 data->arg5 = arg5;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_keyctl_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, target_ulong)>> internal_registered_callback_sys_semtimedop;
-void syscalls::register_call_sys_semtimedop(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, target_ulong)> callback){
-internal_registered_callback_sys_semtimedop.push_back(callback);
-}
-struct sys_semtimedop_calldata : public CallbackData {
-target_ulong pc;
-int32_t semid;
-target_ulong sops;
-uint32_t nsops;
-target_ulong timeout;
-};
-static Callback_RC sys_semtimedop_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_semtimedop_calldata* data = dynamic_cast<sys_semtimedop_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_semtimedop_returned, env,data->pc,data->semid,data->sops,data->nsops,data->timeout)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_semtimedop_callback(CPUState* env,target_ulong pc,int32_t semid,target_ulong sops,uint32_t nsops,target_ulong timeout) {
-for (auto x: internal_registered_callback_sys_semtimedop){
-    x(env,pc,semid,sops,nsops,timeout);
-}
-if (0 == ppp_on_sys_semtimedop_returned_num_cb) return;
-sys_semtimedop_calldata* data = new sys_semtimedop_calldata;
-data->pc = pc;
-data->semid = semid;
-data->sops = sops;
-data->nsops = nsops;
-data->timeout = timeout;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_semtimedop_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t)>> internal_registered_callback_sys_ioprio_set;
 void syscalls::register_call_sys_ioprio_set(std::function<void(CPUState*, target_ulong, int32_t, int32_t, int32_t)> callback){
 internal_registered_callback_sys_ioprio_set.push_back(callback);
@@ -7040,97 +6633,35 @@ data->pc = pc;
 data->fd = fd;
 data->wd = wd;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_inotify_rm_watch_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_mbind;
-void syscalls::register_call_sys_mbind(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t, target_ulong, uint32_t, uint32_t)> callback){
-internal_registered_callback_sys_mbind.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_migrate_pages;
+void syscalls::register_call_sys_migrate_pages(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_migrate_pages.push_back(callback);
 }
-struct sys_mbind_calldata : public CallbackData {
+struct sys_migrate_pages_calldata : public CallbackData {
 target_ulong pc;
-uint32_t start;
-uint32_t len;
-uint32_t mode;
-target_ulong nmask;
+uint32_t pid;
 uint32_t maxnode;
-uint32_t flags;
+target_ulong from;
+target_ulong to;
 };
-static Callback_RC sys_mbind_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_mbind_calldata* data = dynamic_cast<sys_mbind_calldata*>(opaque);
+static Callback_RC sys_migrate_pages_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_migrate_pages_calldata* data = dynamic_cast<sys_migrate_pages_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_mbind_returned, env,data->pc,data->start,data->len,data->mode,data->nmask,data->maxnode,data->flags)
+PPP_RUN_CB(on_sys_migrate_pages_returned, env,data->pc,data->pid,data->maxnode,data->from,data->to)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_mbind_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t len,uint32_t mode,target_ulong nmask,uint32_t maxnode,uint32_t flags) {
-for (auto x: internal_registered_callback_sys_mbind){
-    x(env,pc,start,len,mode,nmask,maxnode,flags);
+void syscalls::call_sys_migrate_pages_callback(CPUState* env,target_ulong pc,uint32_t pid,uint32_t maxnode,target_ulong from,target_ulong to) {
+for (auto x: internal_registered_callback_sys_migrate_pages){
+    x(env,pc,pid,maxnode,from,to);
 }
-if (0 == ppp_on_sys_mbind_returned_num_cb) return;
-sys_mbind_calldata* data = new sys_mbind_calldata;
+if (0 == ppp_on_sys_migrate_pages_returned_num_cb) return;
+sys_migrate_pages_calldata* data = new sys_migrate_pages_calldata;
 data->pc = pc;
-data->start = start;
-data->len = len;
-data->mode = mode;
-data->nmask = nmask;
+data->pid = pid;
 data->maxnode = maxnode;
-data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_mbind_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, target_ulong, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_get_mempolicy;
-void syscalls::register_call_sys_get_mempolicy(std::function<void(CPUState*, target_ulong, target_ulong, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
-internal_registered_callback_sys_get_mempolicy.push_back(callback);
-}
-struct sys_get_mempolicy_calldata : public CallbackData {
-target_ulong pc;
-target_ulong policy;
-target_ulong nmask;
-uint32_t maxnode;
-uint32_t addr;
-uint32_t flags;
-};
-static Callback_RC sys_get_mempolicy_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_get_mempolicy_calldata* data = dynamic_cast<sys_get_mempolicy_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_get_mempolicy_returned, env,data->pc,data->policy,data->nmask,data->maxnode,data->addr,data->flags)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_get_mempolicy_callback(CPUState* env,target_ulong pc,target_ulong policy,target_ulong nmask,uint32_t maxnode,uint32_t addr,uint32_t flags) {
-for (auto x: internal_registered_callback_sys_get_mempolicy){
-    x(env,pc,policy,nmask,maxnode,addr,flags);
-}
-if (0 == ppp_on_sys_get_mempolicy_returned_num_cb) return;
-sys_get_mempolicy_calldata* data = new sys_get_mempolicy_calldata;
-data->pc = pc;
-data->policy = policy;
-data->nmask = nmask;
-data->maxnode = maxnode;
-data->addr = addr;
-data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_get_mempolicy_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_set_mempolicy;
-void syscalls::register_call_sys_set_mempolicy(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_set_mempolicy.push_back(callback);
-}
-struct sys_set_mempolicy_calldata : public CallbackData {
-target_ulong pc;
-int32_t mode;
-target_ulong nmask;
-uint32_t maxnode;
-};
-static Callback_RC sys_set_mempolicy_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_set_mempolicy_calldata* data = dynamic_cast<sys_set_mempolicy_calldata*>(opaque);
-if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_set_mempolicy_returned, env,data->pc,data->mode,data->nmask,data->maxnode)
-return Callback_RC::NORMAL;
-}
-void syscalls::call_sys_set_mempolicy_callback(CPUState* env,target_ulong pc,int32_t mode,target_ulong nmask,uint32_t maxnode) {
-for (auto x: internal_registered_callback_sys_set_mempolicy){
-    x(env,pc,mode,nmask,maxnode);
-}
-if (0 == ppp_on_sys_set_mempolicy_returned_num_cb) return;
-sys_set_mempolicy_calldata* data = new sys_set_mempolicy_calldata;
-data->pc = pc;
-data->mode = mode;
-data->nmask = nmask;
-data->maxnode = maxnode;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_set_mempolicy_returned));}
+data->from = from;
+data->to = to;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_migrate_pages_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, int32_t, int32_t)>> internal_registered_callback_sys_openat;
 void syscalls::register_call_sys_openat(std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, int32_t, int32_t)> callback){
 internal_registered_callback_sys_openat.push_back(callback);
@@ -7500,6 +7031,70 @@ data->dfd = dfd;
 data->filename = filename;
 data->mode = mode;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_faccessat_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong, target_ulong, target_ulong, target_ulong)>> internal_registered_callback_sys_pselect6;
+void syscalls::register_call_sys_pselect6(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, target_ulong, target_ulong, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_pselect6.push_back(callback);
+}
+struct sys_pselect6_calldata : public CallbackData {
+target_ulong pc;
+int32_t arg0;
+target_ulong arg1;
+target_ulong arg2;
+target_ulong arg3;
+target_ulong arg4;
+target_ulong arg5;
+};
+static Callback_RC sys_pselect6_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_pselect6_calldata* data = dynamic_cast<sys_pselect6_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_pselect6_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3,data->arg4,data->arg5)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_pselect6_callback(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2,target_ulong arg3,target_ulong arg4,target_ulong arg5) {
+for (auto x: internal_registered_callback_sys_pselect6){
+    x(env,pc,arg0,arg1,arg2,arg3,arg4,arg5);
+}
+if (0 == ppp_on_sys_pselect6_returned_num_cb) return;
+sys_pselect6_calldata* data = new sys_pselect6_calldata;
+data->pc = pc;
+data->arg0 = arg0;
+data->arg1 = arg1;
+data->arg2 = arg2;
+data->arg3 = arg3;
+data->arg4 = arg4;
+data->arg5 = arg5;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pselect6_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong, uint32_t, target_ulong, target_ulong, uint32_t)>> internal_registered_callback_sys_ppoll;
+void syscalls::register_call_sys_ppoll(std::function<void(CPUState*, target_ulong, target_ulong, uint32_t, target_ulong, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_ppoll.push_back(callback);
+}
+struct sys_ppoll_calldata : public CallbackData {
+target_ulong pc;
+target_ulong arg0;
+uint32_t arg1;
+target_ulong arg2;
+target_ulong arg3;
+uint32_t arg4;
+};
+static Callback_RC sys_ppoll_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_ppoll_calldata* data = dynamic_cast<sys_ppoll_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_ppoll_returned, env,data->pc,data->arg0,data->arg1,data->arg2,data->arg3,data->arg4)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_ppoll_callback(CPUState* env,target_ulong pc,target_ulong arg0,uint32_t arg1,target_ulong arg2,target_ulong arg3,uint32_t arg4) {
+for (auto x: internal_registered_callback_sys_ppoll){
+    x(env,pc,arg0,arg1,arg2,arg3,arg4);
+}
+if (0 == ppp_on_sys_ppoll_returned_num_cb) return;
+sys_ppoll_calldata* data = new sys_ppoll_calldata;
+data->pc = pc;
+data->arg0 = arg0;
+data->arg1 = arg1;
+data->arg2 = arg2;
+data->arg3 = arg3;
+data->arg4 = arg4;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_ppoll_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_sys_unshare;
 void syscalls::register_call_sys_unshare(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
 internal_registered_callback_sys_unshare.push_back(callback);
@@ -7608,35 +7203,35 @@ data->off_out = off_out;
 data->len = len;
 data->flags = flags;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_splice_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint64_t, uint64_t)>> internal_registered_callback_sys_sync_file_range2;
-void syscalls::register_call_sys_sync_file_range2(std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint64_t, uint64_t)> callback){
-internal_registered_callback_sys_sync_file_range2.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint64_t, uint32_t)>> internal_registered_callback_sys_sync_file_range;
+void syscalls::register_call_sys_sync_file_range(std::function<void(CPUState*, target_ulong, int32_t, uint64_t, uint64_t, uint32_t)> callback){
+internal_registered_callback_sys_sync_file_range.push_back(callback);
 }
-struct sys_sync_file_range2_calldata : public CallbackData {
+struct sys_sync_file_range_calldata : public CallbackData {
 target_ulong pc;
 int32_t fd;
-uint32_t flags;
 uint64_t offset;
 uint64_t nbytes;
+uint32_t flags;
 };
-static Callback_RC sys_sync_file_range2_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_sync_file_range2_calldata* data = dynamic_cast<sys_sync_file_range2_calldata*>(opaque);
+static Callback_RC sys_sync_file_range_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_sync_file_range_calldata* data = dynamic_cast<sys_sync_file_range_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_sync_file_range2_returned, env,data->pc,data->fd,data->flags,data->offset,data->nbytes)
+PPP_RUN_CB(on_sys_sync_file_range_returned, env,data->pc,data->fd,data->offset,data->nbytes,data->flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_sync_file_range2_callback(CPUState* env,target_ulong pc,int32_t fd,uint32_t flags,uint64_t offset,uint64_t nbytes) {
-for (auto x: internal_registered_callback_sys_sync_file_range2){
-    x(env,pc,fd,flags,offset,nbytes);
+void syscalls::call_sys_sync_file_range_callback(CPUState* env,target_ulong pc,int32_t fd,uint64_t offset,uint64_t nbytes,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_sync_file_range){
+    x(env,pc,fd,offset,nbytes,flags);
 }
-if (0 == ppp_on_sys_sync_file_range2_returned_num_cb) return;
-sys_sync_file_range2_calldata* data = new sys_sync_file_range2_calldata;
+if (0 == ppp_on_sys_sync_file_range_returned_num_cb) return;
+sys_sync_file_range_calldata* data = new sys_sync_file_range_calldata;
 data->pc = pc;
 data->fd = fd;
-data->flags = flags;
 data->offset = offset;
 data->nbytes = nbytes;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sync_file_range2_returned));}
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sync_file_range_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_tee;
 void syscalls::register_call_sys_tee(std::function<void(CPUState*, target_ulong, int32_t, int32_t, uint32_t, uint32_t)> callback){
 internal_registered_callback_sys_tee.push_back(callback);
@@ -7755,35 +7350,39 @@ data->cpu = cpu;
 data->node = node;
 data->cache = cache;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_getcpu_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_kexec_load;
-void syscalls::register_call_sys_kexec_load(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, uint32_t)> callback){
-internal_registered_callback_sys_kexec_load.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t, int32_t, target_ulong, uint32_t)>> internal_registered_callback_sys_epoll_pwait;
+void syscalls::register_call_sys_epoll_pwait(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t, int32_t, target_ulong, uint32_t)> callback){
+internal_registered_callback_sys_epoll_pwait.push_back(callback);
 }
-struct sys_kexec_load_calldata : public CallbackData {
+struct sys_epoll_pwait_calldata : public CallbackData {
 target_ulong pc;
-uint32_t entry;
-uint32_t nr_segments;
-target_ulong segments;
-uint32_t flags;
+int32_t epfd;
+target_ulong events;
+int32_t maxevents;
+int32_t timeout;
+target_ulong sigmask;
+uint32_t sigsetsize;
 };
-static Callback_RC sys_kexec_load_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-sys_kexec_load_calldata* data = dynamic_cast<sys_kexec_load_calldata*>(opaque);
+static Callback_RC sys_epoll_pwait_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_epoll_pwait_calldata* data = dynamic_cast<sys_epoll_pwait_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_kexec_load_returned, env,data->pc,data->entry,data->nr_segments,data->segments,data->flags)
+PPP_RUN_CB(on_sys_epoll_pwait_returned, env,data->pc,data->epfd,data->events,data->maxevents,data->timeout,data->sigmask,data->sigsetsize)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_kexec_load_callback(CPUState* env,target_ulong pc,uint32_t entry,uint32_t nr_segments,target_ulong segments,uint32_t flags) {
-for (auto x: internal_registered_callback_sys_kexec_load){
-    x(env,pc,entry,nr_segments,segments,flags);
+void syscalls::call_sys_epoll_pwait_callback(CPUState* env,target_ulong pc,int32_t epfd,target_ulong events,int32_t maxevents,int32_t timeout,target_ulong sigmask,uint32_t sigsetsize) {
+for (auto x: internal_registered_callback_sys_epoll_pwait){
+    x(env,pc,epfd,events,maxevents,timeout,sigmask,sigsetsize);
 }
-if (0 == ppp_on_sys_kexec_load_returned_num_cb) return;
-sys_kexec_load_calldata* data = new sys_kexec_load_calldata;
+if (0 == ppp_on_sys_epoll_pwait_returned_num_cb) return;
+sys_epoll_pwait_calldata* data = new sys_epoll_pwait_calldata;
 data->pc = pc;
-data->entry = entry;
-data->nr_segments = nr_segments;
-data->segments = segments;
-data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_kexec_load_returned));}
+data->epfd = epfd;
+data->events = events;
+data->maxevents = maxevents;
+data->timeout = timeout;
+data->sigmask = sigmask;
+data->sigsetsize = sigsetsize;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_epoll_pwait_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, target_ulong, int32_t)>> internal_registered_callback_sys_utimensat;
 void syscalls::register_call_sys_utimensat(std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, target_ulong, int32_t)> callback){
 internal_registered_callback_sys_utimensat.push_back(callback);
@@ -8081,24 +7680,24 @@ internal_registered_callback_sys_pipe2.push_back(callback);
 }
 struct sys_pipe2_calldata : public CallbackData {
 target_ulong pc;
-target_ulong arg0;
-int32_t arg1;
+target_ulong fildes;
+int32_t flags;
 };
 static Callback_RC sys_pipe2_returned(CallbackData* opaque, CPUState* env, target_asid asid){
 sys_pipe2_calldata* data = dynamic_cast<sys_pipe2_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_sys_pipe2_returned, env,data->pc,data->arg0,data->arg1)
+PPP_RUN_CB(on_sys_pipe2_returned, env,data->pc,data->fildes,data->flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong arg0,int32_t arg1) {
+void syscalls::call_sys_pipe2_callback(CPUState* env,target_ulong pc,target_ulong fildes,int32_t flags) {
 for (auto x: internal_registered_callback_sys_pipe2){
-    x(env,pc,arg0,arg1);
+    x(env,pc,fildes,flags);
 }
 if (0 == ppp_on_sys_pipe2_returned_num_cb) return;
 sys_pipe2_calldata* data = new sys_pipe2_calldata;
 data->pc = pc;
-data->arg0 = arg0;
-data->arg1 = arg1;
+data->fildes = fildes;
+data->flags = flags;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pipe2_returned));}
 std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_inotify_init1;
 void syscalls::register_call_sys_inotify_init1(std::function<void(CPUState*, target_ulong, int32_t)> callback){
@@ -8123,166 +7722,469 @@ sys_inotify_init1_calldata* data = new sys_inotify_init1_calldata;
 data->pc = pc;
 data->flags = flags;
 appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_inotify_init1_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_ARM_breakpoint;
-void syscalls::register_call_ARM_breakpoint(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_ARM_breakpoint.push_back(callback);
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_preadv;
+void syscalls::register_call_sys_preadv(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_preadv.push_back(callback);
 }
-struct ARM_breakpoint_calldata : public CallbackData {
+struct sys_preadv_calldata : public CallbackData {
 target_ulong pc;
+uint32_t fd;
+target_ulong vec;
+uint32_t vlen;
+uint32_t pos_l;
+uint32_t pos_h;
 };
-static Callback_RC ARM_breakpoint_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_breakpoint_calldata* data = dynamic_cast<ARM_breakpoint_calldata*>(opaque);
+static Callback_RC sys_preadv_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_preadv_calldata* data = dynamic_cast<sys_preadv_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_breakpoint_returned, env,data->pc)
+PPP_RUN_CB(on_sys_preadv_returned, env,data->pc,data->fd,data->vec,data->vlen,data->pos_l,data->pos_h)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_breakpoint_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_ARM_breakpoint){
-    x(env,pc);
+void syscalls::call_sys_preadv_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen,uint32_t pos_l,uint32_t pos_h) {
+for (auto x: internal_registered_callback_sys_preadv){
+    x(env,pc,fd,vec,vlen,pos_l,pos_h);
 }
-if (0 == ppp_on_ARM_breakpoint_returned_num_cb) return;
-ARM_breakpoint_calldata* data = new ARM_breakpoint_calldata;
+if (0 == ppp_on_sys_preadv_returned_num_cb) return;
+sys_preadv_calldata* data = new sys_preadv_calldata;
 data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_breakpoint_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_ARM_cacheflush;
-void syscalls::register_call_ARM_cacheflush(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
-internal_registered_callback_ARM_cacheflush.push_back(callback);
+data->fd = fd;
+data->vec = vec;
+data->vlen = vlen;
+data->pos_l = pos_l;
+data->pos_h = pos_h;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_preadv_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t, uint32_t)>> internal_registered_callback_sys_pwritev;
+void syscalls::register_call_sys_pwritev(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_pwritev.push_back(callback);
 }
-struct ARM_cacheflush_calldata : public CallbackData {
+struct sys_pwritev_calldata : public CallbackData {
 target_ulong pc;
-uint32_t start;
-uint32_t end;
+uint32_t fd;
+target_ulong vec;
+uint32_t vlen;
+uint32_t pos_l;
+uint32_t pos_h;
+};
+static Callback_RC sys_pwritev_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_pwritev_calldata* data = dynamic_cast<sys_pwritev_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_pwritev_returned, env,data->pc,data->fd,data->vec,data->vlen,data->pos_l,data->pos_h)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_pwritev_callback(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen,uint32_t pos_l,uint32_t pos_h) {
+for (auto x: internal_registered_callback_sys_pwritev){
+    x(env,pc,fd,vec,vlen,pos_l,pos_h);
+}
+if (0 == ppp_on_sys_pwritev_returned_num_cb) return;
+sys_pwritev_calldata* data = new sys_pwritev_calldata;
+data->pc = pc;
+data->fd = fd;
+data->vec = vec;
+data->vlen = vlen;
+data->pos_l = pos_l;
+data->pos_h = pos_h;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_pwritev_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t, target_ulong)>> internal_registered_callback_sys_rt_tgsigqueueinfo;
+void syscalls::register_call_sys_rt_tgsigqueueinfo(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, int32_t, target_ulong)> callback){
+internal_registered_callback_sys_rt_tgsigqueueinfo.push_back(callback);
+}
+struct sys_rt_tgsigqueueinfo_calldata : public CallbackData {
+target_ulong pc;
+uint32_t tgid;
+uint32_t pid;
+int32_t sig;
+target_ulong uinfo;
+};
+static Callback_RC sys_rt_tgsigqueueinfo_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_rt_tgsigqueueinfo_calldata* data = dynamic_cast<sys_rt_tgsigqueueinfo_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_rt_tgsigqueueinfo_returned, env,data->pc,data->tgid,data->pid,data->sig,data->uinfo)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_rt_tgsigqueueinfo_callback(CPUState* env,target_ulong pc,uint32_t tgid,uint32_t pid,int32_t sig,target_ulong uinfo) {
+for (auto x: internal_registered_callback_sys_rt_tgsigqueueinfo){
+    x(env,pc,tgid,pid,sig,uinfo);
+}
+if (0 == ppp_on_sys_rt_tgsigqueueinfo_returned_num_cb) return;
+sys_rt_tgsigqueueinfo_calldata* data = new sys_rt_tgsigqueueinfo_calldata;
+data->pc = pc;
+data->tgid = tgid;
+data->pid = pid;
+data->sig = sig;
+data->uinfo = uinfo;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_rt_tgsigqueueinfo_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, target_ulong, uint32_t, int32_t, int32_t, uint32_t)>> internal_registered_callback_sys_perf_event_open;
+void syscalls::register_call_sys_perf_event_open(std::function<void(CPUState*, target_ulong, target_ulong, uint32_t, int32_t, int32_t, uint32_t)> callback){
+internal_registered_callback_sys_perf_event_open.push_back(callback);
+}
+struct sys_perf_event_open_calldata : public CallbackData {
+target_ulong pc;
+target_ulong attr_uptr;
+uint32_t pid;
+int32_t cpu;
+int32_t group_fd;
 uint32_t flags;
 };
-static Callback_RC ARM_cacheflush_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_cacheflush_calldata* data = dynamic_cast<ARM_cacheflush_calldata*>(opaque);
+static Callback_RC sys_perf_event_open_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_perf_event_open_calldata* data = dynamic_cast<sys_perf_event_open_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_cacheflush_returned, env,data->pc,data->start,data->end,data->flags)
+PPP_RUN_CB(on_sys_perf_event_open_returned, env,data->pc,data->attr_uptr,data->pid,data->cpu,data->group_fd,data->flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_cacheflush_callback(CPUState* env,target_ulong pc,uint32_t start,uint32_t end,uint32_t flags) {
-for (auto x: internal_registered_callback_ARM_cacheflush){
-    x(env,pc,start,end,flags);
+void syscalls::call_sys_perf_event_open_callback(CPUState* env,target_ulong pc,target_ulong attr_uptr,uint32_t pid,int32_t cpu,int32_t group_fd,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_perf_event_open){
+    x(env,pc,attr_uptr,pid,cpu,group_fd,flags);
 }
-if (0 == ppp_on_ARM_cacheflush_returned_num_cb) return;
-ARM_cacheflush_calldata* data = new ARM_cacheflush_calldata;
+if (0 == ppp_on_sys_perf_event_open_returned_num_cb) return;
+sys_perf_event_open_calldata* data = new sys_perf_event_open_calldata;
 data->pc = pc;
-data->start = start;
-data->end = end;
+data->attr_uptr = attr_uptr;
+data->pid = pid;
+data->cpu = cpu;
+data->group_fd = group_fd;
 data->flags = flags;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_cacheflush_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_ARM_user26_mode;
-void syscalls::register_call_ARM_user26_mode(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_ARM_user26_mode.push_back(callback);
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_perf_event_open_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong)>> internal_registered_callback_sys_recvmmsg;
+void syscalls::register_call_sys_recvmmsg(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t, target_ulong)> callback){
+internal_registered_callback_sys_recvmmsg.push_back(callback);
 }
-struct ARM_user26_mode_calldata : public CallbackData {
+struct sys_recvmmsg_calldata : public CallbackData {
 target_ulong pc;
+int32_t fd;
+target_ulong msg;
+uint32_t vlen;
+uint32_t flags;
+target_ulong timeout;
 };
-static Callback_RC ARM_user26_mode_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_user26_mode_calldata* data = dynamic_cast<ARM_user26_mode_calldata*>(opaque);
+static Callback_RC sys_recvmmsg_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_recvmmsg_calldata* data = dynamic_cast<sys_recvmmsg_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_user26_mode_returned, env,data->pc)
+PPP_RUN_CB(on_sys_recvmmsg_returned, env,data->pc,data->fd,data->msg,data->vlen,data->flags,data->timeout)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_user26_mode_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_ARM_user26_mode){
-    x(env,pc);
+void syscalls::call_sys_recvmmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t vlen,uint32_t flags,target_ulong timeout) {
+for (auto x: internal_registered_callback_sys_recvmmsg){
+    x(env,pc,fd,msg,vlen,flags,timeout);
 }
-if (0 == ppp_on_ARM_user26_mode_returned_num_cb) return;
-ARM_user26_mode_calldata* data = new ARM_user26_mode_calldata;
+if (0 == ppp_on_sys_recvmmsg_returned_num_cb) return;
+sys_recvmmsg_calldata* data = new sys_recvmmsg_calldata;
 data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_user26_mode_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_ARM_usr32_mode;
-void syscalls::register_call_ARM_usr32_mode(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_ARM_usr32_mode.push_back(callback);
+data->fd = fd;
+data->msg = msg;
+data->vlen = vlen;
+data->flags = flags;
+data->timeout = timeout;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_recvmmsg_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_fanotify_init;
+void syscalls::register_call_sys_fanotify_init(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_fanotify_init.push_back(callback);
 }
-struct ARM_usr32_mode_calldata : public CallbackData {
+struct sys_fanotify_init_calldata : public CallbackData {
 target_ulong pc;
+uint32_t flags;
+uint32_t event_f_flags;
 };
-static Callback_RC ARM_usr32_mode_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_usr32_mode_calldata* data = dynamic_cast<ARM_usr32_mode_calldata*>(opaque);
+static Callback_RC sys_fanotify_init_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_fanotify_init_calldata* data = dynamic_cast<sys_fanotify_init_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_usr32_mode_returned, env,data->pc)
+PPP_RUN_CB(on_sys_fanotify_init_returned, env,data->pc,data->flags,data->event_f_flags)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_usr32_mode_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_ARM_usr32_mode){
-    x(env,pc);
+void syscalls::call_sys_fanotify_init_callback(CPUState* env,target_ulong pc,uint32_t flags,uint32_t event_f_flags) {
+for (auto x: internal_registered_callback_sys_fanotify_init){
+    x(env,pc,flags,event_f_flags);
 }
-if (0 == ppp_on_ARM_usr32_mode_returned_num_cb) return;
-ARM_usr32_mode_calldata* data = new ARM_usr32_mode_calldata;
+if (0 == ppp_on_sys_fanotify_init_returned_num_cb) return;
+sys_fanotify_init_calldata* data = new sys_fanotify_init_calldata;
 data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_usr32_mode_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t)>> internal_registered_callback_ARM_set_tls;
-void syscalls::register_call_ARM_set_tls(std::function<void(CPUState*, target_ulong, uint32_t)> callback){
-internal_registered_callback_ARM_set_tls.push_back(callback);
+data->flags = flags;
+data->event_f_flags = event_f_flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fanotify_init_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint64_t, int32_t, syscalls::string)>> internal_registered_callback_sys_fanotify_mark;
+void syscalls::register_call_sys_fanotify_mark(std::function<void(CPUState*, target_ulong, int32_t, uint32_t, uint64_t, int32_t, syscalls::string)> callback){
+internal_registered_callback_sys_fanotify_mark.push_back(callback);
 }
-struct ARM_set_tls_calldata : public CallbackData {
+struct sys_fanotify_mark_calldata : public CallbackData {
 target_ulong pc;
-uint32_t arg;
+int32_t fanotify_fd;
+uint32_t flags;
+uint64_t mask;
+int32_t fd;
+syscalls::string pathname;
 };
-static Callback_RC ARM_set_tls_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_set_tls_calldata* data = dynamic_cast<ARM_set_tls_calldata*>(opaque);
+static Callback_RC sys_fanotify_mark_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_fanotify_mark_calldata* data = dynamic_cast<sys_fanotify_mark_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_set_tls_returned, env,data->pc,data->arg)
+PPP_RUN_CB(on_sys_fanotify_mark_returned, env,data->pc,data->fanotify_fd,data->flags,data->mask,data->fd,data->pathname.get_vaddr())
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_set_tls_callback(CPUState* env,target_ulong pc,uint32_t arg) {
-for (auto x: internal_registered_callback_ARM_set_tls){
-    x(env,pc,arg);
+void syscalls::call_sys_fanotify_mark_callback(CPUState* env,target_ulong pc,int32_t fanotify_fd,uint32_t flags,uint64_t mask,int32_t fd,syscalls::string pathname) {
+for (auto x: internal_registered_callback_sys_fanotify_mark){
+    x(env,pc,fanotify_fd,flags,mask,fd,pathname);
 }
-if (0 == ppp_on_ARM_set_tls_returned_num_cb) return;
-ARM_set_tls_calldata* data = new ARM_set_tls_calldata;
+if (0 == ppp_on_sys_fanotify_mark_returned_num_cb) return;
+sys_fanotify_mark_calldata* data = new sys_fanotify_mark_calldata;
 data->pc = pc;
-data->arg = arg;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_set_tls_returned));}
-std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong)>> internal_registered_callback_ARM_cmpxchg;
-void syscalls::register_call_ARM_cmpxchg(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong)> callback){
-internal_registered_callback_ARM_cmpxchg.push_back(callback);
+data->fanotify_fd = fanotify_fd;
+data->flags = flags;
+data->mask = mask;
+data->fd = fd;
+data->pathname = pathname;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_fanotify_mark_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)>> internal_registered_callback_sys_prlimit64;
+void syscalls::register_call_sys_prlimit64(std::function<void(CPUState*, target_ulong, uint32_t, uint32_t, target_ulong, target_ulong)> callback){
+internal_registered_callback_sys_prlimit64.push_back(callback);
 }
-struct ARM_cmpxchg_calldata : public CallbackData {
+struct sys_prlimit64_calldata : public CallbackData {
 target_ulong pc;
-uint32_t val;
-uint32_t src;
-target_ulong dest;
+uint32_t pid;
+uint32_t resource;
+target_ulong new_rlim;
+target_ulong old_rlim;
 };
-static Callback_RC ARM_cmpxchg_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_cmpxchg_calldata* data = dynamic_cast<ARM_cmpxchg_calldata*>(opaque);
+static Callback_RC sys_prlimit64_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_prlimit64_calldata* data = dynamic_cast<sys_prlimit64_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_cmpxchg_returned, env,data->pc,data->val,data->src,data->dest)
+PPP_RUN_CB(on_sys_prlimit64_returned, env,data->pc,data->pid,data->resource,data->new_rlim,data->old_rlim)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_cmpxchg_callback(CPUState* env,target_ulong pc,uint32_t val,uint32_t src,target_ulong dest) {
-for (auto x: internal_registered_callback_ARM_cmpxchg){
-    x(env,pc,val,src,dest);
+void syscalls::call_sys_prlimit64_callback(CPUState* env,target_ulong pc,uint32_t pid,uint32_t resource,target_ulong new_rlim,target_ulong old_rlim) {
+for (auto x: internal_registered_callback_sys_prlimit64){
+    x(env,pc,pid,resource,new_rlim,old_rlim);
 }
-if (0 == ppp_on_ARM_cmpxchg_returned_num_cb) return;
-ARM_cmpxchg_calldata* data = new ARM_cmpxchg_calldata;
+if (0 == ppp_on_sys_prlimit64_returned_num_cb) return;
+sys_prlimit64_calldata* data = new sys_prlimit64_calldata;
 data->pc = pc;
-data->val = val;
-data->src = src;
-data->dest = dest;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_cmpxchg_returned));}
-std::vector<std::function<void(CPUState*, target_ulong)>> internal_registered_callback_ARM_null_segfault;
-void syscalls::register_call_ARM_null_segfault(std::function<void(CPUState*, target_ulong)> callback){
-internal_registered_callback_ARM_null_segfault.push_back(callback);
+data->pid = pid;
+data->resource = resource;
+data->new_rlim = new_rlim;
+data->old_rlim = old_rlim;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_prlimit64_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, target_ulong, target_ulong, int32_t)>> internal_registered_callback_sys_name_to_handle_at;
+void syscalls::register_call_sys_name_to_handle_at(std::function<void(CPUState*, target_ulong, int32_t, syscalls::string, target_ulong, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_name_to_handle_at.push_back(callback);
 }
-struct ARM_null_segfault_calldata : public CallbackData {
+struct sys_name_to_handle_at_calldata : public CallbackData {
 target_ulong pc;
+int32_t dfd;
+syscalls::string name;
+target_ulong handle;
+target_ulong mnt_id;
+int32_t flag;
 };
-static Callback_RC ARM_null_segfault_returned(CallbackData* opaque, CPUState* env, target_asid asid){
-ARM_null_segfault_calldata* data = dynamic_cast<ARM_null_segfault_calldata*>(opaque);
+static Callback_RC sys_name_to_handle_at_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_name_to_handle_at_calldata* data = dynamic_cast<sys_name_to_handle_at_calldata*>(opaque);
 if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
-PPP_RUN_CB(on_ARM_null_segfault_returned, env,data->pc)
+PPP_RUN_CB(on_sys_name_to_handle_at_returned, env,data->pc,data->dfd,data->name.get_vaddr(),data->handle,data->mnt_id,data->flag)
 return Callback_RC::NORMAL;
 }
-void syscalls::call_ARM_null_segfault_callback(CPUState* env,target_ulong pc) {
-for (auto x: internal_registered_callback_ARM_null_segfault){
-    x(env,pc);
+void syscalls::call_sys_name_to_handle_at_callback(CPUState* env,target_ulong pc,int32_t dfd,syscalls::string name,target_ulong handle,target_ulong mnt_id,int32_t flag) {
+for (auto x: internal_registered_callback_sys_name_to_handle_at){
+    x(env,pc,dfd,name,handle,mnt_id,flag);
 }
-if (0 == ppp_on_ARM_null_segfault_returned_num_cb) return;
-ARM_null_segfault_calldata* data = new ARM_null_segfault_calldata;
+if (0 == ppp_on_sys_name_to_handle_at_returned_num_cb) return;
+sys_name_to_handle_at_calldata* data = new sys_name_to_handle_at_calldata;
 data->pc = pc;
-appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, ARM_null_segfault_returned));}
+data->dfd = dfd;
+data->name = name;
+data->handle = handle;
+data->mnt_id = mnt_id;
+data->flag = flag;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_name_to_handle_at_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)>> internal_registered_callback_sys_open_by_handle_at;
+void syscalls::register_call_sys_open_by_handle_at(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_open_by_handle_at.push_back(callback);
+}
+struct sys_open_by_handle_at_calldata : public CallbackData {
+target_ulong pc;
+int32_t mountdirfd;
+target_ulong handle;
+int32_t flags;
+};
+static Callback_RC sys_open_by_handle_at_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_open_by_handle_at_calldata* data = dynamic_cast<sys_open_by_handle_at_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_open_by_handle_at_returned, env,data->pc,data->mountdirfd,data->handle,data->flags)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_open_by_handle_at_callback(CPUState* env,target_ulong pc,int32_t mountdirfd,target_ulong handle,int32_t flags) {
+for (auto x: internal_registered_callback_sys_open_by_handle_at){
+    x(env,pc,mountdirfd,handle,flags);
+}
+if (0 == ppp_on_sys_open_by_handle_at_returned_num_cb) return;
+sys_open_by_handle_at_calldata* data = new sys_open_by_handle_at_calldata;
+data->pc = pc;
+data->mountdirfd = mountdirfd;
+data->handle = handle;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_open_by_handle_at_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)>> internal_registered_callback_sys_clock_adjtime;
+void syscalls::register_call_sys_clock_adjtime(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong)> callback){
+internal_registered_callback_sys_clock_adjtime.push_back(callback);
+}
+struct sys_clock_adjtime_calldata : public CallbackData {
+target_ulong pc;
+uint32_t which_clock;
+target_ulong tx;
+};
+static Callback_RC sys_clock_adjtime_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_clock_adjtime_calldata* data = dynamic_cast<sys_clock_adjtime_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_clock_adjtime_returned, env,data->pc,data->which_clock,data->tx)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_clock_adjtime_callback(CPUState* env,target_ulong pc,uint32_t which_clock,target_ulong tx) {
+for (auto x: internal_registered_callback_sys_clock_adjtime){
+    x(env,pc,which_clock,tx);
+}
+if (0 == ppp_on_sys_clock_adjtime_returned_num_cb) return;
+sys_clock_adjtime_calldata* data = new sys_clock_adjtime_calldata;
+data->pc = pc;
+data->which_clock = which_clock;
+data->tx = tx;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_clock_adjtime_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t)>> internal_registered_callback_sys_syncfs;
+void syscalls::register_call_sys_syncfs(std::function<void(CPUState*, target_ulong, int32_t)> callback){
+internal_registered_callback_sys_syncfs.push_back(callback);
+}
+struct sys_syncfs_calldata : public CallbackData {
+target_ulong pc;
+int32_t fd;
+};
+static Callback_RC sys_syncfs_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_syncfs_calldata* data = dynamic_cast<sys_syncfs_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_syncfs_returned, env,data->pc,data->fd)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_syncfs_callback(CPUState* env,target_ulong pc,int32_t fd) {
+for (auto x: internal_registered_callback_sys_syncfs){
+    x(env,pc,fd);
+}
+if (0 == ppp_on_sys_syncfs_returned_num_cb) return;
+sys_syncfs_calldata* data = new sys_syncfs_calldata;
+data->pc = pc;
+data->fd = fd;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_syncfs_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_sendmmsg;
+void syscalls::register_call_sys_sendmmsg(std::function<void(CPUState*, target_ulong, int32_t, target_ulong, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_sendmmsg.push_back(callback);
+}
+struct sys_sendmmsg_calldata : public CallbackData {
+target_ulong pc;
+int32_t fd;
+target_ulong msg;
+uint32_t vlen;
+uint32_t flags;
+};
+static Callback_RC sys_sendmmsg_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_sendmmsg_calldata* data = dynamic_cast<sys_sendmmsg_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_sendmmsg_returned, env,data->pc,data->fd,data->msg,data->vlen,data->flags)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_sendmmsg_callback(CPUState* env,target_ulong pc,int32_t fd,target_ulong msg,uint32_t vlen,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_sendmmsg){
+    x(env,pc,fd,msg,vlen,flags);
+}
+if (0 == ppp_on_sys_sendmmsg_returned_num_cb) return;
+sys_sendmmsg_calldata* data = new sys_sendmmsg_calldata;
+data->pc = pc;
+data->fd = fd;
+data->msg = msg;
+data->vlen = vlen;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_sendmmsg_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, int32_t, int32_t)>> internal_registered_callback_sys_setns;
+void syscalls::register_call_sys_setns(std::function<void(CPUState*, target_ulong, int32_t, int32_t)> callback){
+internal_registered_callback_sys_setns.push_back(callback);
+}
+struct sys_setns_calldata : public CallbackData {
+target_ulong pc;
+int32_t fd;
+int32_t nstype;
+};
+static Callback_RC sys_setns_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_setns_calldata* data = dynamic_cast<sys_setns_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_setns_returned, env,data->pc,data->fd,data->nstype)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_setns_callback(CPUState* env,target_ulong pc,int32_t fd,int32_t nstype) {
+for (auto x: internal_registered_callback_sys_setns){
+    x(env,pc,fd,nstype);
+}
+if (0 == ppp_on_sys_setns_returned_num_cb) return;
+sys_setns_calldata* data = new sys_setns_calldata;
+data->pc = pc;
+data->fd = fd;
+data->nstype = nstype;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_setns_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_process_vm_readv;
+void syscalls::register_call_sys_process_vm_readv(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_process_vm_readv.push_back(callback);
+}
+struct sys_process_vm_readv_calldata : public CallbackData {
+target_ulong pc;
+uint32_t pid;
+target_ulong lvec;
+uint32_t liovcnt;
+target_ulong rvec;
+uint32_t riovcnt;
+uint32_t flags;
+};
+static Callback_RC sys_process_vm_readv_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_process_vm_readv_calldata* data = dynamic_cast<sys_process_vm_readv_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_process_vm_readv_returned, env,data->pc,data->pid,data->lvec,data->liovcnt,data->rvec,data->riovcnt,data->flags)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_process_vm_readv_callback(CPUState* env,target_ulong pc,uint32_t pid,target_ulong lvec,uint32_t liovcnt,target_ulong rvec,uint32_t riovcnt,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_process_vm_readv){
+    x(env,pc,pid,lvec,liovcnt,rvec,riovcnt,flags);
+}
+if (0 == ppp_on_sys_process_vm_readv_returned_num_cb) return;
+sys_process_vm_readv_calldata* data = new sys_process_vm_readv_calldata;
+data->pc = pc;
+data->pid = pid;
+data->lvec = lvec;
+data->liovcnt = liovcnt;
+data->rvec = rvec;
+data->riovcnt = riovcnt;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_process_vm_readv_returned));}
+std::vector<std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t)>> internal_registered_callback_sys_process_vm_writev;
+void syscalls::register_call_sys_process_vm_writev(std::function<void(CPUState*, target_ulong, uint32_t, target_ulong, uint32_t, target_ulong, uint32_t, uint32_t)> callback){
+internal_registered_callback_sys_process_vm_writev.push_back(callback);
+}
+struct sys_process_vm_writev_calldata : public CallbackData {
+target_ulong pc;
+uint32_t pid;
+target_ulong lvec;
+uint32_t liovcnt;
+target_ulong rvec;
+uint32_t riovcnt;
+uint32_t flags;
+};
+static Callback_RC sys_process_vm_writev_returned(CallbackData* opaque, CPUState* env, target_asid asid){
+sys_process_vm_writev_calldata* data = dynamic_cast<sys_process_vm_writev_calldata*>(opaque);
+if(!data) {fprintf(stderr,"oops\n"); return Callback_RC::ERROR;}
+PPP_RUN_CB(on_sys_process_vm_writev_returned, env,data->pc,data->pid,data->lvec,data->liovcnt,data->rvec,data->riovcnt,data->flags)
+return Callback_RC::NORMAL;
+}
+void syscalls::call_sys_process_vm_writev_callback(CPUState* env,target_ulong pc,uint32_t pid,target_ulong lvec,uint32_t liovcnt,target_ulong rvec,uint32_t riovcnt,uint32_t flags) {
+for (auto x: internal_registered_callback_sys_process_vm_writev){
+    x(env,pc,pid,lvec,liovcnt,rvec,riovcnt,flags);
+}
+if (0 == ppp_on_sys_process_vm_writev_returned_num_cb) return;
+sys_process_vm_writev_calldata* data = new sys_process_vm_writev_calldata;
+data->pc = pc;
+data->pid = pid;
+data->lvec = lvec;
+data->liovcnt = liovcnt;
+data->rvec = rvec;
+data->riovcnt = riovcnt;
+data->flags = flags;
+appendReturnPoint(ReturnPoint(calc_retaddr(env, pc), get_asid(env, pc), data, sys_process_vm_writev_returned));}
 
 #endif

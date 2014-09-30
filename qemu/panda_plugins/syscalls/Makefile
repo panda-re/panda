@@ -4,7 +4,7 @@
 # of the directory in which your plugin resides.
 PLUGIN_NAME=syscalls
 # uncomment to enable FDTRACKER module
-#ENABLE_FDTRACKER=1
+ENABLE_FDTRACKER=1
 
 # Include the PANDA Makefile rules
 include ../panda.mak
@@ -14,7 +14,7 @@ QEMU_CFLAGS+=-std=c++11
 # LIBS+=
 
 # uncomment to enable taint in the FDTRACKER
-#QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
+QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.

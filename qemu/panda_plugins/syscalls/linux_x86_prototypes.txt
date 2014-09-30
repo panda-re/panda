@@ -1,6 +1,6 @@
 0 long sys_restart_syscall(void);
 1 long sys_exit(int error_code);
-2 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
+3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 4 long sys_write(unsigned int fd, const char __user *buf,size_t count);
 5 long sys_open(const char __user *filename,int flags, int mode);
 6 long sys_close(unsigned int fd);
@@ -97,8 +97,8 @@
 107 long sys_newlstat(const char __user *filename,struct stat __user *statbuf);
 108 long sys_newfstat(unsigned int fd, struct stat __user *statbuf);
 109 long sys_uname(struct old_utsname __user *);
-110 111 long sys_vhangup(void);
-113 114 long sys_wait4(pid_t pid, int __user *stat_addr,int options, struct rusage __user *ru);
+111 long sys_vhangup(void);
+114 long sys_wait4(pid_t pid, int __user *stat_addr,int options, struct rusage __user *ru);
 115 long sys_swapoff(const char __user *specialfile);
 116 long sys_sysinfo(struct sysinfo __user *info);
 117 long sys_ipc(unsigned int call, int first, unsigned long second,unsigned long third, void __user *ptr, long fifth);
