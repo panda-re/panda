@@ -350,7 +350,7 @@ double panda_parse_double(panda_arg_list *args, const char *argname, double defv
 }
 
 // Returns pointer to string inside arg list, freed when list is freed.
-char *panda_parse_string(panda_arg_list *args, const char *argname, char *defval) {
+const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval) {
     if (!args) return defval;
     int i;
     for (i = 0; i < args->nargs; i++) {

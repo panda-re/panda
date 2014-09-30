@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 extern RR_log *rr_nondet_log;
 
 static double percent = 0.0;
+static const char *filename = NULL;
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -34,8 +35,8 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (rr_get_percentage() > percent) {
-        printf("Saving memory to initial.raw.\n");
-        panda_memsavep(fopen("initial.raw", "wb"));
+        printf("memsavep: Saving memory to %s.\n", filename);
+        panda_memsavep(fopen(filename, "wb"));
         rr_do_end_replay(0);
     }
     return 0;
@@ -47,6 +48,7 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("memsavep");
     percent = panda_parse_double(args, "percent", 0.0);
+    filename = panda_parse_string(args, "file", "memsavep.raw");
 
     return true;
 }
