@@ -22,6 +22,8 @@
 #define __TAINT_PROCESSOR_H__
 
 #include <stdint.h>
+
+#include "cpu.h"
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 
@@ -107,7 +109,10 @@ typedef struct addr_struct {
 
 */
 
-
+enum taint_label_mode {
+    TAINT_BINARY_LABEL,
+    TAINT_BYTE_LABEL
+};
 
 typedef uint32_t Label;
 
@@ -177,7 +182,6 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
 
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad);
-
 
 
 typedef struct taint_op_buffer_struct {
@@ -336,5 +340,12 @@ void tp_add_store_callback(tp_callback_t scb);
 void tp_add_load_callback(tp_callback_t lcb);
 */
 
+// Apply taint to a buffer of RAM
+void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length);
+
+// Apply taint to a buffer of IO memory
+void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length);
 
 #endif
