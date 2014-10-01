@@ -2256,6 +2256,8 @@ static void free_and_trace(gpointer mem)
     free(mem);
 }
 
+const char *qemu_loc;
+
 int main(int argc, char **argv, char **envp)
 {
     const char *gdbstub_dev = NULL;
@@ -2292,6 +2294,9 @@ int main(int argc, char **argv, char **envp)
     };
     const char *trace_events = NULL;
     const char *trace_file = NULL;
+
+    // Store for later use...
+    qemu_loc = realpath(argv[0], NULL);
 
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[16] = {};
