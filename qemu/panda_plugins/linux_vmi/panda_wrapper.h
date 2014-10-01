@@ -18,7 +18,7 @@ PANDAENDCOMMENT */
 
 
 #include "panda_plugin.h"
-#include "DECAF_types.h"
+#include "linux_vmi_types.h"
 
 #define DECAF_memory_rw(_env, _vaddr, _buf, _len, _write) \
         panda_virtual_memory_rw(_env, _vaddr, (uint8_t*) _buf, _len, _write)

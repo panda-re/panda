@@ -24,10 +24,10 @@
 
 #include <iostream>
 #include <iomanip>
-#include "DS_Common.h"
-#include "DS_utils/SymbolMap.h"
-#include "introspection/utils/HelperFunctions.h"
-#include "introspection/utils/PreallocatedHistory.h"
+#include "DroidScope/DS_Common.h"
+#include "DroidScope/DS_utils/SymbolMap.h"
+#include "utils/HelperFunctions.h"
+#include "utils/PreallocatedHistory.h"
 
 using namespace std;
 

@@ -27,7 +27,7 @@
 
 #include <string>
 #include <inttypes.h>
-#include "DS_utils/SymbolMap.h"
+#include "DroidScope/DS_utils/SymbolMap.h"
 
 class ModuleInfo : public SymbolMap
 {

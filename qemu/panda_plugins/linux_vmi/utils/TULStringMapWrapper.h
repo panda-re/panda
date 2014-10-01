@@ -27,7 +27,7 @@
 #ifndef TARGET_ULONG_STRING_MAP_WRAPPER_H_
 #define TARGET_ULONG_STRING_MAP_WRAPPER_H_
 
-#include "DECAF_types.h"
+#include "linux_vmi_types.h"
 
 #ifdef __cplusplus
 extern "C"

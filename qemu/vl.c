@@ -3308,9 +3308,6 @@ int main(int argc, char **argv, char **envp)
         
         boot_property_add("qemu.hw.mainkeys","0");
     
-#if defined(CONFIG_PANDA_VMI)
-        DS_init();
-#endif
     }
 #endif
 

@@ -33,11 +33,13 @@ void DS_init(void)
   DalvikDisableJit_init();
   DalvikPrinter_init();
 */
-  atexit(DS_close);
+  //atexit(DS_close);
 }
 
 void DS_close(void)
-{/*
+{
+    context_close();
+    /*
   DalvikMterpOpcodes_close();
   DalvikDisableJit_close();*/
 }

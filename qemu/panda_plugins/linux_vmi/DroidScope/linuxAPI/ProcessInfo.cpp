@@ -25,10 +25,10 @@
 
 #include <cstring>
 #include <assert.h>
-#include "DS_Common.h"
-#include "linuxAPI/ProcessInfo.h"
-#include "linuxAPI/ModuleInfo.h"
-#include "introspection/utils/OutputWrapper.h"
+#include "DroidScope/DS_Common.h"
+#include "DroidScope/linuxAPI/ProcessInfo.h"
+#include "DroidScope/linuxAPI/ModuleInfo.h"
+#include "utils/OutputWrapper.h"
 
 //Implementation for the class
 ProcessInfo* ProcessInfoMap::findProcessByPID(gpid_t pid)

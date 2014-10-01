@@ -170,10 +170,10 @@ gva_t prev_task_struct(CPUState* env, gva_t addr)
   return retval;
 }
 
-gpa_t DECAF_get_pgd(CPUState* env, gva_t addr)
+target_asid_t DECAF_get_pgd(CPUState* env, gva_t addr)
 {
   gva_t mmaddr;
-  gpa_t pgd;
+  target_asid_t pgd;
   DECAF_read_mem(env, addr + task_struct_mm_offset, &mmaddr, sizeof(mmaddr));
   if (0 == mmaddr)
     DECAF_read_mem(env, addr + task_struct_mm_offset + sizeof(mmaddr),
@@ -197,7 +197,7 @@ int DECAF_get_arg_name(CPUState* env, gva_t addr, char* buf, int size)
 {
   gva_t mmaddr = 0;
   gva_t argstart = 0;
-  gpa_t pgd = 0;
+  target_asid_t pgd = 0;
   DECAF_read_mem(env, addr + task_struct_mm_offset, &mmaddr, sizeof(mmaddr));
   if (mmaddr == 0)
   {

@@ -37,7 +37,7 @@ ModuleInfo* ModuleServer::getModulePointer(const string& name)
   for (it = modules.begin(); it != modules.end(); it++)
   {
     //this is horrible should not happen
-    DEFENSIVE_CHECK1( (*it == NULL), NULL );
+      //    DEFENSIVE_CHECK1( (*it == NULL), NULL );
 
     if (name.compare((*it)->getName()) == 0)
     {

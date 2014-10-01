@@ -31,69 +31,12 @@
  * TYPES
  *****************************************************************************/
 
-/**
- * A node in the module list
- */
-typedef struct _ModuleNode
-{
-  gva_t startAddr;
-  gva_t endAddr;
-  gva_t flags;
-  void* moduleInfo; //I used a void* on purpose so you can't access the module info directly
-  struct _ModuleNode* next;
-} ModuleNode;
-
-/**
- * Maximum length of the arg[0] name in the shadow list
- */
-#define MAX_PROCESS_INFO_NAME_LEN 128
-/**
- * Maximum length of the comm name inside the task_struct
- */
-#define MAX_TASK_COMM_LEN 16
-
-/**
- * A smaller data structure (compared to the one below) for
- * threads
- */
-
-typedef struct _ThreadNode
-{
-  union
-  {
-    gpid_t pid;
-    gpid_t tid;
-  };
-  gva_t threadInfo;
-  struct _ThreadNode* next;
-} ThreadNode;
-
-/**
- * A node in the shadow process (task really) list. 
- */
-typedef struct _ProcessInfo
-{
-  gva_t task_struct;
-  gpid_t pid;
-  gpid_t parentPid;
-  gpid_t tgid;
-  gpid_t glpid;
-  target_ulong uid;
-  target_ulong gid;
-  target_ulong euid;
-  target_ulong egid;
-  gpa_t pgd;
-  char strName[MAX_PROCESS_INFO_NAME_LEN];
-  char strComm[MAX_TASK_COMM_LEN];
-  ModuleNode* modules;
-  ThreadNode* threads;
-} ProcessInfo;
 
 /******************************************************************************
  * EVENTS API SECTION
  *****************************************************************************/
 
-#include "introspection/DECAF_processes.h"
+
 
 /******************************************************************************
  * CONTROL API SECTION
@@ -166,7 +109,7 @@ const char* getCurrentName(void);
 #define DS_PROC_PGD_MASK (1 << 9)
 #define DS_PROC_ARGNAME_MASK (1 << 10)
 #define DS_PROC_COMMNAME_MASK (1 << 11)
-int updateProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid_t tgid, gpid_t glpid, target_ulong uid, target_ulong gid, target_ulong euid, target_ulong egid, gpa_t pgd, const char* strName, const char* strComm);
+int updateProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid_t tgid, gpid_t glpid, target_ulong uid, target_ulong gid, target_ulong euid, target_ulong egid, target_asid_t pgd, const char* strName, const char* strComm);
 
 DECAF_errno_t updateProcessArgName(gpid_t pid, const char* argname);
 
@@ -192,7 +135,7 @@ int removeProcess(gpid_t pid);
  * @param strComm
  * @return
  */
-int addProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid_t tgid, gpid_t glpid, target_ulong uid, target_ulong gid, target_ulong euid, target_ulong egid, gpa_t pgd, const char* strName, const char* strComm);
+int addProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid_t tgid, gpid_t glpid, target_ulong uid, target_ulong gid, target_ulong euid, target_ulong egid, target_asid_t pgd, const char* strName, const char* strComm);
 
 int addThread(gpid_t pid, gpid_t tid, gva_t threadInfo);
 
@@ -313,7 +256,7 @@ ProcessInfo* findProcessByPID(gpid_t pid);
  * @param pgd The PGD to look for
  * @return Pointer to the structure otherwise NULL if not found
  */
-ProcessInfo* findProcessByPGD(gpa_t pgd);
+ProcessInfo* findProcessByPGD(target_asid_t pgd);
 
 /**
  * Returns a pointer to the ProcessInfo structure with name
@@ -334,7 +277,7 @@ int processExist(gpid_t pid);
  * @param pgd
  * @return
  */
-int processExistByPGD(gpa_t pgd);
+int processExistByPGD(target_asid_t pgd);
 
 /**
  * Tells if a process with the name strName exists. This function first
@@ -378,6 +321,6 @@ int getModuleInfoByName(gpid_t pid, gva_t* pStartAddr, gva_t* pEndAddr, const ch
 
 //I just used the include here because there is a macro for static inline function definitions inside the h file.
 // this is just a little cleaner that is all
-#include "introspection/DECAF_linux_vmi.h"
+#include "DECAF_linux_vmi.h"
 
 #endif /* LINUXAPI_H_ */

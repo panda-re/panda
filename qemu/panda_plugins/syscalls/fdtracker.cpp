@@ -69,7 +69,7 @@ static void registerSyscallListeners(void);
 
 #if defined(CONFIG_PANDA_VMI)
 extern "C" {
-#include "introspection/DroidScope/LinuxAPI.h"
+#include "../linux_vmi/linux_vmi_ext.h"
 // sched.h contains only preprocessor defines to constant literals
 #include <linux/sched.h>
 }
@@ -308,6 +308,8 @@ struct StaticBlock {
 
         pcb.return_from_fork = return_from_fork;
         panda_register_callback(syscalls_plugin_self, PANDA_CB_VMI_AFTER_FORK, pcb);
+
+        init_linux_vmi_api();
 #else //defined CONFIG_PANDA_VMI
 struct StaticBlock {
     StaticBlock(){

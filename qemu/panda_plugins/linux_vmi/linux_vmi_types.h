@@ -1,3 +1,21 @@
+/* PANDABEGINCOMMENT
+ *
+ * Authors:
+ *  Tim Leek               tleek@ll.mit.edu
+ *  Ryan Whelan            rwhelan@ll.mit.edu
+ *  Joshua Hodosh          josh.hodosh@ll.mit.edu
+ *  Michael Zhivich        mzhivich@ll.mit.edu
+ *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
+PANDAENDCOMMENT */
+
+/* Type definitions for introspecting into a Linux guest.
+ * 
+ */
+
 /**
  * Copyright (C) <2012> <Syracuse System Security (Sycure) Lab>
  *
@@ -24,54 +42,20 @@
  * @date: 19 SEP 2012
 */
 
-#ifndef DECAF_TYPES_H
-#define DECAF_TYPES_H
-
-#define DEFENSIVE_CHECK0(_bool) \
-  do                            \
-  {                             \
-    if (_bool)                  \
-    {                           \
-      return;                   \
-    }                           \
-  }                             \
-  while (0)                     
-
-#define DEFENSIVE_CHECK1(_bool, _ret) \
-  do                                  \
-  {                                   \
-    if (_bool)                        \
-    {                                 \
-      return (_ret);                  \
-    }                                 \
-  }                                   \
-  while (0)                     
+#ifndef LINUX_VMI_TYPES_H
+#define LINUX_VMI_TYPES_H
 
 #define __STDC_LIMIT_MACROS // this header is sometimes called from C++
-#include "qemu-common.h"
+#include "qemu-common.h" //includes stdint.h
 
+// Physical memory address
+typedef target_phys_addr_t gpa_t;
+// Virtual memory address
 typedef target_ulong gva_t;
-//Interestingly enough - target_phys_addr_t is defined as uint64 - what to do?
-typedef target_ulong gpa_t;
+// Page directory base/ASID value. Note that eg on i386/PAE this is not the same as guest physical address
+typedef target_ulong target_asid_t;
 
-typedef int gpid_t;
-
-//to determine the HOST type - we use the definitions from TCG
-// We use the same logic as defined in tcg.h
-//typedef tcg_target_ulong hva_t;
-//typedef tcg_target_ulong hpa_t;
-#if UINTPTR_MAX == UINT32_MAX
-  typedef uint32_t hva_t;
-  typedef uint32_t hpa_t;
-#elif UINTPTR_MAX == UINT64_MAX
-  typedef uint64_t hva_t;
-  typedef uint64_t hpa_t;
-#else
-  #error BLARB
-#endif
-
-typedef uintptr_t DECAF_Handle;
-#define DECAF_NULL_HANDLE ((uintptr_t)NULL)
+typedef int32_t gpid_t; // Linux PID is defined as signed 32-bit. see /usr/include/bits/typesizes.h
 
 //Used for addresses since -1 is a rarely used-if ever 32-bit address
 #define INV_ADDR (-1) //0xFFFFFFFF is only for 32-bit
@@ -117,4 +101,63 @@ typedef int DECAF_errno_t;
 #define PARAMETER_ERROR (-107)
 
 #define UNINITIALIZED_ERROR (-108)
+
+/**
+ * A node in the module list
+ */
+typedef struct _ModuleNode
+{
+  gva_t startAddr;
+  gva_t endAddr;
+  gva_t flags;
+  void* moduleInfo; //I used a void* on purpose so you can't access the module info directly
+  struct _ModuleNode* next;
+} ModuleNode;
+
+/**
+ * Maximum length of the arg[0] name in the shadow list
+ */
+#define MAX_PROCESS_INFO_NAME_LEN 128
+/**
+ * Maximum length of the comm name inside the task_struct
+ */
+#define MAX_TASK_COMM_LEN 16
+
+/**
+ * A smaller data structure (compared to the one below) for
+ * threads
+ */
+
+typedef struct _ThreadNode
+{
+  union
+  {
+    gpid_t pid;
+    gpid_t tid;
+  };
+  gva_t threadInfo;
+  struct _ThreadNode* next;
+} ThreadNode;
+
+/**
+ * A node in the shadow process (task really) list. 
+ */
+typedef struct _ProcessInfo
+{
+  gva_t task_struct;
+  gpid_t pid;
+  gpid_t parentPid;
+  gpid_t tgid;
+  gpid_t glpid;
+  target_ulong uid;
+  target_ulong gid;
+  target_ulong euid;
+  target_ulong egid;
+  gpa_t pgd;
+  char strName[MAX_PROCESS_INFO_NAME_LEN];
+  char strComm[MAX_TASK_COMM_LEN];
+  ModuleNode* modules;
+  ThreadNode* threads;
+} ProcessInfo;
+
 #endif
