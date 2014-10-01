@@ -144,11 +144,11 @@ void init_llvm_helpers(){
     llvm::LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    // XXX: Assumes you are invoking QEMU from the root of the qemu/ directory
     char *exe = strdup(qemu_loc);
     std::string bitcode(dirname(exe));
     free(exe);
     bitcode.append("/llvm-helpers.bc");
+
     llvm::SMDiagnostic Err;
     llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
     if (!helpermod) {
