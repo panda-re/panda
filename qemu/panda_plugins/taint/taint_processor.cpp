@@ -37,7 +37,10 @@ uint8_t taintedfunc;
  * frame, i.e. through tp_copy() and tp_delete(), not anything else.
  */
 
-int tainted_pointer;
+// Global count of taint labels
+int count = 0;
+
+int tainted_pointer = 1;
 
 // stuff for control flow in traces
 int next_step;
@@ -54,6 +57,15 @@ uint32_t max_taintset_compute_number = 0;
 uint32_t max_ref_count = 0;
 
 uint64_t tp_pc = 0;
+
+// Label all incoming network traffic as tainted
+bool taint_label_incoming_network_traffic = 0;
+
+// Query all outgoing network traffic for taint
+bool taint_query_outgoing_network_traffic = 0;
+
+// Taint labeling mode
+int taint_label_mode = TAINT_BYTE_LABEL;
 
 // prototypes for on_load and on_store callback registering
 PPP_PROT_REG_CB(on_load);
@@ -181,6 +193,59 @@ static SB_INLINE void clear_ram_bit(Shad *shad, uint32_t addr) {
     shad->ram_bitmap[addr >> 3] = taint_byte;
 }
 
+// Apply taint to a buffer of memory
+void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
+    struct addr_struct a = {};
+    a.typ = MADDR;
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+#ifdef CONFIG_SOFTMMU
+        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
+        if (pa == (target_phys_addr_t)(-1)) {
+            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr +i);
+            continue;
+        }
+        assert (pa != -1);
+        a.val.ma = pa;
+#else
+        a.val.ma = addr + i;
+#endif // CONFIG_SOFTMMU
+        op.val.label.a = a;
+        if (taint_label_mode == TAINT_BYTE_LABEL){
+            op.val.label.l = i + count;
+        }
+        else if (taint_label_mode == TAINT_BINARY_LABEL){
+            op.val.label.l = 1;
+        }
+        tob_op_write(tbuf, &op);	
+    }
+    assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
+    tob_process(tbuf, shad, NULL);
+    count += length;
+}
+
+// Apply taint to a buffer of IO memory
+void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
+    Addr a = make_iaddr(addr);
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+        a.val.ia = addr + i;
+        op.val.label.a = a;
+        if (taint_label_mode == TAINT_BYTE_LABEL){
+            op.val.label.l = i + count;
+        }
+        else if (taint_label_mode == TAINT_BINARY_LABEL){
+            op.val.label.l = 1;
+        }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tbuf);
+        tob_op_write(tbuf, &op);	
+    }
+}
 
 /*
    Initialize the shadow memory for taint processing.
