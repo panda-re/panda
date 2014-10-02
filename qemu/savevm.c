@@ -378,7 +378,7 @@ fail:
     return NULL;
 }
 
-QEMUFile *qemu_tmpfile()
+QEMUFile *qemu_tmpfile(void)
 {
     QEMUFileStdio *s = g_malloc0(sizeof(QEMUFileStdio));
 

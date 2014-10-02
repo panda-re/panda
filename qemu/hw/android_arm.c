@@ -41,7 +41,12 @@ static uint32_t switch_test_write(void *opaque, uint32_t state)
 }
 #endif
 
-
+// we only have one machine, with one block of RAM. Track it for automatic replay configuration
+static ram_addr_t ram_offset;
+static void init_ram(ram_addr_t ram_size){
+    ram_offset = qemu_ram_alloc(NULL, "android_arm", ram_size);
+    cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
+}
 
 static void android_arm_init_(ram_addr_t ram_size,
     const char *boot_device,
@@ -52,7 +57,6 @@ static void android_arm_init_(ram_addr_t ram_size,
 {
     CPUState *env;
     qemu_irq *cpu_pic;
-    ram_addr_t ram_offset;
     DeviceState *gf_int;
     int i;
 
@@ -61,8 +65,7 @@ static void android_arm_init_(ram_addr_t ram_size,
 
     env = cpu_init(cpu_model);
 
-    ram_offset = qemu_ram_alloc(NULL,"android_arm",ram_size);
-    cpu_register_physical_memory(0, ram_size, ram_offset | IO_MEM_RAM);
+    init_ram(ram_size);
 
     cpu_pic = arm_pic_init_cpu(env);
     GoldfishBus *gbus = goldfish_bus_init(0xff001000, 1);
@@ -138,6 +141,12 @@ QEMUMachine android_arm_machine = {
     .is_default = 0,
     .next = NULL
 };
+
+void android_arm_resize_ram(ram_addr_t new_size){
+    assert(current_machine->init == android_arm_init_);
+    qemu_ram_free(ram_offset); // RAM starts at address 0
+    init_ram(new_size);
+}
 
 static void android_arm_init(void)
 {

@@ -31,7 +31,7 @@
 #include <sys/mman.h>
 #include <sys/signal.h>
 
-#include <xs.h>
+#include <xenstore.h>
 #include <xenctrl.h>
 #include <xen/grant_table.h>
 

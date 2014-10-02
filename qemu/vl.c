@@ -208,6 +208,7 @@ void tcg_llvm_destroy(void);
 #include "ui/qemu-spice.h"
 
 #include "rr_log_all.h"
+#include "replay_fix.h"
 
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
@@ -1560,9 +1561,13 @@ static void main_loop(void)
         if (__builtin_expect(rr_replay_requested, 0)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_replay(rr_requested_name, first_cpu);
-            quit_timers();
-            rr_replay_requested = 0;
+            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+                printf("Failed to start replay\n");
+                fix_replay_stuff();
+            } else { // we have to unblock signals, so we can't just continue on failure
+                quit_timers();
+                rr_replay_requested = 0;
+            }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
@@ -2251,6 +2256,8 @@ static void free_and_trace(gpointer mem)
     free(mem);
 }
 
+const char *qemu_loc;
+
 int main(int argc, char **argv, char **envp)
 {
     const char *gdbstub_dev = NULL;
@@ -2288,6 +2295,9 @@ int main(int argc, char **argv, char **envp)
     const char *trace_events = NULL;
     const char *trace_file = NULL;
 
+    // Store for later use...
+    qemu_loc = realpath(argv[0], NULL);
+
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[16] = {};
     int nb_panda_plugins = 0;
@@ -2296,9 +2306,6 @@ int main(int argc, char **argv, char **envp)
     error_set_progname(argv[0]);
 
     g_mem_set_vtable(&mem_trace);
-    if (!g_thread_supported()) {
-        g_thread_init(NULL);
-    }
 
     runstate_init();
 
@@ -3228,9 +3235,10 @@ int main(int argc, char **argv, char **envp)
                 record_name = optarg;
 	            break;
 
-	        case QEMU_OPTION_replay:
-	            replay_name = optarg;
-	            break;
+            case QEMU_OPTION_replay:
+                display_type = DT_NONE;
+                replay_name = optarg;
+                break;
 
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {

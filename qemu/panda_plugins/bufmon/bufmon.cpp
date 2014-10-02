@@ -24,9 +24,12 @@ extern "C" {
 #include "disas.h"
 
 #include "panda_plugin.h"
+#include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
 
 }
 
+#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -48,42 +51,33 @@ int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_
 
 struct bufdesc { target_ulong buf; target_ulong size; target_ulong cr3; };
 
-struct match_entry {
-    target_ulong caller;
-    target_ulong pc;
-    target_ulong cr3;
-    bool is_write;
-    target_ulong start;
-    target_ulong size;
-    bool operator <(const match_entry &p) const {
-        return (this->pc < p.pc) || \
-               (this->pc == p.pc && this->caller < p.caller) || \
-               (this->pc == p.pc && this->caller == p.caller && this->cr3 < p.cr3);
-    }
-};
-
-std::list<match_entry> matches;
 std::list<bufdesc> bufs;
+FILE *mem_report;
 
 int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf, bool is_write) {
-    match_entry p = {};
-#ifdef TARGET_I386
-    panda_virtual_memory_rw(env, env->regs[R_EBP]+4, (uint8_t *)&p.caller, 4, 0);
-    if((env->hflags & HF_CPL_MASK) != 0) // Lump all kernel-mode CR3s together
-        p.cr3 = env->cr[3];
-#endif
-    p.pc = pc;
+    prog_point p = {};
+    get_prog_point(env, &p);
 
     std::list<bufdesc>::iterator it;
     for(it = bufs.begin(); it != bufs.end(); it++) {
         if (p.cr3 != it->cr3) continue;
-        if ((it->buf >= addr && it->buf < addr+size) ||                       // start byte in range
-            (it->buf+it->size-1 >= addr && it->buf+it->size-1 < addr+size)) { // end byte in range
-            p.is_write = is_write;
-            p.start = addr;
-            p.size = size;
-            matches.push_back(p);
+        target_ulong buf_first, buf_last;
+        buf_first = it->buf;
+        buf_last = it->buf + it->size - 1;
+        if ((addr <= buf_first && buf_first < addr+size) ||
+            (addr <= buf_last && buf_last < addr+size)   ||
+            (buf_first <= addr && addr <= buf_last)      || 
+            (buf_first <= addr+size && addr+size <= buf_last)) {
+
+            fprintf(mem_report, "%s " TARGET_FMT_lx " " TARGET_FMT_lx " " 
+                TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx,
+                is_write ? "WRITE" : "READ ",
+                p.caller, p.pc, p.cr3, addr, size);
+            for (size_t i = 0; i < size; i++) {
+                fprintf(mem_report, " %02x", *(((uint8_t *)buf)+i));
+            }
+            fprintf(mem_report, "\n");
         }
     }
  
@@ -108,11 +102,6 @@ bool init_plugin(void *self) {
     // Enable memory logging
     panda_enable_memcb();
 
-    pcb.virt_mem_read = mem_read_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
-    pcb.virt_mem_write = mem_write_callback;
-    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-
     std::ifstream buffile("search_buffers.txt");
     if (!buffile) {
         printf("Couldn't open search_buffers.txt; no buffers to search for. Exiting.\n");
@@ -130,23 +119,23 @@ bool init_plugin(void *self) {
     }
     buffile.close();
 
+    mem_report = fopen("buffer_taps.txt", "w");
+    if(!mem_report) {
+        perror("fopen");
+        return false;
+    }
+
+    if(!init_callstack_instr_api()) return false;
+
+    pcb.virt_mem_read = mem_read_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
+    pcb.virt_mem_write = mem_write_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
 
     return true;
 }
+
 void uninit_plugin(void *self) {
-    FILE *mem_report = fopen("buffer_taps.txt", "w");
-    if(!mem_report) {
-        printf("Couldn't write report:\n");
-        perror("fopen");
-        return;
-    }
-    std::list<match_entry>::iterator it;
-    for(it = matches.begin(); it != matches.end(); it++) {
-        fprintf(mem_report, "%s " TARGET_FMT_lx " " TARGET_FMT_lx " " 
-            TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx "\n",
-            it->is_write ? "WRITE" : "READ ",
-            it->caller, it->pc, it->start, it->size, it->cr3
-        );
-    }
+
     fclose(mem_report);
 }

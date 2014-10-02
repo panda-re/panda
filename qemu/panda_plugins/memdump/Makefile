@@ -8,7 +8,7 @@ PLUGIN_NAME=memdump
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-# CFLAGS+=
+CXXFLAGS+= -Wno-unused-result
 # LIBS+=
 
 # The main rule for your plugin. Please stick with the panda_ naming

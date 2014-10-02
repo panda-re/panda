@@ -1,25 +1,33 @@
-#include <climits>
+/* PANDABEGINCOMMENT
+ *
+ * Authors:
+ *  Tim Leek               tleek@ll.mit.edu
+ *  Ryan Whelan            rwhelan@ll.mit.edu
+ *  Joshua Hodosh          josh.hodosh@ll.mit.edu
+ *  Michael Zhivich        mzhivich@ll.mit.edu
+ *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
+PANDAENDCOMMENT */
+
 #include <iostream>
-#include <algorithm>
 #include "my_mem.h"
-#include "my_bool.h"
 #include "label_set.h"
 
 #define SB_INLINE inline
+#define BITSET_BOUNDS_CHECK
 
 static SB_INLINE void bitset_set_max_num_elements(uint32_t m) {
-    // ignore it -- max is uint32_t max
+    if(m > bitset_get_max_num_elements()) assert(0);
+    return;
 }
 
-static SB_INLINE uint32_t bitset_get_max_num_elements(void) {
-    //std::set has a max_size method but would require passing in a BitSet
-    return UINT_MAX;
-}
-
+/* Iterate over each label in the set until app(label, stuff2) returns non-0 */
 static SB_INLINE void bitset_iter(BitSet& bs, int (*app)(uint32_t e, void* stuff1), void* stuff2) {
-    BitSet::iterator i;
-    for(i = bs.begin(); i != bs.end(); i++) {
-        if((app(*i, stuff2)) != 0) {
+    for (uint32_t i = 0; i < bs.size(); i++){
+        if(bs[i] && (0 != app(i, stuff2) )){
             break;
         }
     }
@@ -27,26 +35,35 @@ static SB_INLINE void bitset_iter(BitSet& bs, int (*app)(uint32_t e, void* stuff
 
 // add this member to the bit array
 static SB_INLINE void bitset_add(BitSet& bs, uint32_t member) {
-    bs.insert(member);
+#if defined(BITSET_BOUNDS_CHECK)
+    assert(member < bs.size()); //std:;bitset::size() is a constexpr
+#endif
+    bs[member] = true;
 }
 
 // remove this element from the set
 static SB_INLINE void bitset_remove(BitSet& bs, uint32_t member) {
-    bs.erase(member);
+#if defined(BITSET_BOUNDS_CHECK)
+    assert(member < bs.size()); //std:;bitset::size() is a constexpr
+#endif
+    bs[member] = false;
 }
 
 // returns TRUE if bs contains member, FALSE otherwise
 static SB_INLINE bool bitset_member(BitSet& bs, uint32_t member) {
-    return (bs.find(member) == bs.end());
+#if defined(BITSET_BOUNDS_CHECK)
+    assert(member < bs.size()); //std:;bitset::size() is a constexpr
+#endif
+    return bs[member];
 }
 
 static SB_INLINE void bitset_erase(BitSet& bs) {
-    bs.clear();
+    bs.reset();
 }
 
 // returns TRUE if bitset is empty, FALSE otherwise
 static SB_INLINE bool bitset_is_empty(BitSet& bs) {
-    return bs.empty();
+    return bs.none();
 }
 
 // make bsDest a copy of bsSrc
@@ -56,12 +73,12 @@ static SB_INLINE void bitset_copy_in_place(BitSet& bsDest, BitSet& bsSrc) {
 
 // returns number of elements in the bitset
 static SB_INLINE uint32_t bitset_card(BitSet& bs) {
-    return bs.size();
+    return bs.count();
 }
 
 // merge bsDest with bsSrc and place result in bsDest
 static SB_INLINE void bitset_collect(BitSet& bsDest, BitSet& bsSrc) {
-    bsDest.insert(bsSrc.begin(), bsSrc.end());
+    bsDest |= bsSrc;
 }
 
 // return a new bitset containing the union of bs1 and bs2
@@ -75,11 +92,12 @@ static SB_INLINE BitSet bitset_union(BitSet& bs1, BitSet& bs2) {
 // populates el (assumed to be pre-allocated adequately by caller)
 // with list of members in bitset bs.
 static SB_INLINE void bitset_get_list_here(BitSet& bs, uint32_t *el) {
-    int j = 0;
-    BitSet::iterator i;
-    for(i = bs.begin(); i != bs.end(); i++) {
-        el[j] = *i;
-        j++;
+    uint32_t j = 0;
+    for(uint32_t i = 0 ; i < bs.size(); i++) {
+        if(bs[i]){
+            el[j] = i;
+            j++;
+        } 
     }
 }
 
@@ -92,46 +110,7 @@ static SB_INLINE uint32_t *bitset_get_list(BitSet& bs, uint32_t *n_addr) {
 
 // spit out members of the set
 static SB_INLINE void bitset_spit(BitSet& bs) {
-    BitSet::iterator i;
-    for(i = bs.begin(); i != bs.end(); i++) {
-        std::cout << *i << std::endl;
+    for(size_t i = 0; i < bs.size(); i++) {
+        if(bs[i]) std::cout << i << std::endl;
     }
 }
-
-/*
-#ifndef NO_QEMU_FILE
-#include "../hw/hw.h"
-
-static SB_INLINE int __bitset_save_aux(uint32_t e, void *f) {
-    qemu_put_be32(f, e);
-    return 0;
-}
-
-// save this bitset to qemu file f
-static SB_INLINE void bitset_save(void * f, BitSet& bs) {
-    qemu_put_be32(f, bs.max_size());
-    qemu_put_be32(f, bs.size());
-    bitset_iter(bs, __bitset_save_aux, f);
-}
-
-// re-populate this bitset from qemu file bs
-// nb: bitset struct already exists
-static SB_INLINE void bitset_fill(void * f, BitSet& bs) {
-    bs.clear();
-    uint32_t max_size = qemu_get_be32(f);
-    uint32_t size = qemu_get_be32(f);
-    for (int i=0; i < size; i++) {
-        uint32_t e = qemu_get_be32(f);
-        bs.insert(e);
-    }
-}
-
-// returns a new bitset read from this file
-static SB_INLINE BitSet* bitset_load(void * f) {
-    BitSet *bs = new BitSet();
-    bitset_fill(f, bs);
-    return bs;
-}
-
-#endif // NO_QEMU_FILE
-*/

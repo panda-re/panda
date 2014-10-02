@@ -19,6 +19,7 @@ extern "C" {
 #include "cpu.h"
 
 #include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
 #include <stdio.h>
 #include <stdlib.h>
 }
@@ -41,12 +42,19 @@ int exec_callback(CPUState *env, target_ulong pc);
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+
+#include "syscalls_ext_typedefs.h"
+#include "syscall_ppp_register.cpp"
+
 }
+#include "syscall_ppp_boilerplate.cpp"
+
 // This is where we'll write out the syscall data
 FILE *plugin_log;
 void* syscalls_plugin_self;
 
-#include "weak_callbacks.hpp"
+#include "callbacks.hpp"
+#include "default_callbacks.cpp"
 
 std::vector<target_asid> relevant_ASIDs;
 
@@ -156,7 +164,7 @@ void appendReturnPoint(ReturnPoint&& rp){
 }
 
 #if defined(TARGET_ARM)
-void call_fork_callback(CPUState *env, target_ulong pc){
+static void vmi_fork_callback(CPUState *env, target_ulong pc){
     uint8_t offset = 0;
     if(env->thumb == 0){
         offset = 4;
@@ -167,8 +175,8 @@ void call_fork_callback(CPUState *env, target_ulong pc){
     fork_returns.push_back(ReturnPoint(pc + offset, get_asid(env, pc)));
 }
 
-void call_execve_callback(CPUState *env, target_ulong pc,
-    std::string filename,target_ulong argv,target_ulong envp)
+static void vmi_execve_callback(CPUState *env, target_ulong pc,
+    syscalls::string filename,target_ulong argv,target_ulong envp)
 {
     uint8_t offset = 0;
     if(env->thumb == 0){
@@ -180,19 +188,20 @@ void call_execve_callback(CPUState *env, target_ulong pc,
     //exec_returns.push_back(std::make_pair(env->regs[14], get_asid(env, pc)));
 }
 
-void call_clone_callback(CPUState *env, target_ulong pc,
-    target_ulong fn,target_ulong child_stack,uint32_t flags,target_ulong arg,target_ulong arg4)
+static void vmi_clone_callback(CPUState* env,target_ulong pc,uint32_t clone_flags,uint32_t newsp,
+                         target_ulong parent_tidptr,int32_t tls_val,
+                         target_ulong child_tidptr,target_ulong regs)
 {
     clone_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
-void call_sys_prctl_callback(CPUState *env, target_ulong pc,
+static void vmi_sys_prctl_callback(CPUState *env, target_ulong pc,
     uint32_t option,uint32_t arg2,uint32_t arg3,uint32_t arg4,uint32_t arg5)
 {
     prctl_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
 }
 
-void call_do_mmap2_callback(CPUState *env, target_ulong pc,
+static void vmi_do_mmap2_callback(CPUState *env, target_ulong pc,
     uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff)
 {
     mmap_returns.push_back(ReturnPoint(mask_retaddr_to_pc(env->regs[14]), get_asid(env, pc)));
@@ -378,7 +387,9 @@ int exec_callback(CPUState *env, target_ulong pc) {
     
 #if defined(TARGET_I386)
     // On Windows, the system call id is in EAX
-    syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx "\n", pc, env->regs[R_EAX]);
+    record_syscall = [&env, &pc](const char* callname){
+      syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", CR3=" TARGET_FMT_lx "\n", callname, pc, env->regs[R_EAX], env->cr[3]);
+    };
 #elif defined(TARGET_ARM)
 #if defined(CAPTURE_ARM_OABI)
 #if (1)
@@ -402,6 +413,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
     record_syscall = [&env, &pc](const char* callname){
       syscall_fprintf(env, "CALL=%s, PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", callname, pc, env->regs[7], env->thumb);
     };
+#endif
 
     log_string = [&env, &pc](target_ulong src, const char* argname) -> syscalls::string{
       syscalls::string arg(env, pc, src);
@@ -432,7 +444,6 @@ int exec_callback(CPUState *env, target_ulong pc) {
 
     // syscall is in R7
     //syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", pc, env->regs[7], env->thumb);
-#endif
 
 #include "syscall_printer.cpp"
     return 0;
@@ -482,14 +493,20 @@ bool init_plugin(void *self) {
     pcb.before_block_exec_invalidate_opt = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
 
-    return true;
-
 #else
 
     fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
 
     return false;
 
+#endif
+
+#if defined(TARGET_ARM)
+    syscalls::register_call_fork(vmi_fork_callback);
+    syscalls::register_call_execve(vmi_execve_callback);
+    syscalls::register_call_do_mmap2(vmi_do_mmap2_callback);
+    syscalls::register_call_sys_prctl(vmi_sys_prctl_callback);
+    syscalls::register_call_clone(vmi_clone_callback);
 #endif
     syscalls_plugin_self = self;
     return true;

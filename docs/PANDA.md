@@ -9,9 +9,11 @@ If all you want to do is use plugins others have written, you can read this sect
 
 There are two ways to load a PANDA plugin: by specifying it via `-panda` or `-panda-plugin` on the QEMU command line, or by using the `load_plugin` command from the monitor. If using `-panda-plugin` or `load_plugin`, the plugin should be specified by giving the path to the plugin (which will usually be named `panda_{something}.so`).
 
-If using `-panda`, specify just the plugin's name. PANDA will search for the plugin in either the QEMU directory or in PANDA_PLUGIN_DIR. You can specify multiple plugins as a semicolon-separated list, and you can give the plugins arguments as a comma-separated list after the plugin's name and a colon. For example,
+If using `-panda`, specify just the plugin's name. PANDA will search for the plugin in either the QEMU directory or in PANDA_PLUGIN_DIR. You can specify multiple plugins as a semicolon-separated list, and you can give the plugins arguments as a comma-separated list after the plugin's name and a colon. For example:
 
-	-panda stringsearch;callstack_instr;llvm_trace:base=dir
+	-panda 'stringsearch;callstack_instr;llvm_trace:base=dir,foo=bar'
+
+This loads the `stringsearch`, `callstack_instr`, and `llvm_trace` plugins and passes `llvm_trace` the arguments `base=dir` and `foo=bar`. Note that the `;` character must be escaped in most shells; you can either surround the arguments with quotes (as in this example) or just escape the semicolon itself, e.g. `base=dir\;foo=bar`.
 
 Once a plugin is loaded, it will appear when using the `list_plugins` monitor command:
 
@@ -131,7 +133,7 @@ Frees an argument list created with `panda_get_args`.
 	
 Requests that the translation block cache be flushed as soon as possible. If running with translation block chaining turned off (e.g. when in LLVM mode or replay mode), this will happen when the current translation block is done executing.
 
-Flushing the translation block cache may be necessary if the plugin makes changes to the way code is translated, since such changes will only apply to translation blocks generated after the plugin is loaded.
+Flushing the translation block cache is necessary if the plugin makes changes to the way code is translated (for example, by using `panda_enable_precise_pc`). **WARNING**: failing to flush the TB before turning on something that alters code translation may cause QEMU to crash! This is because QEMU's interrupt handling mechanism relies on translation being deterministic (see the `search_pc` stuff in translate-all.c for details).
 	
 	void panda_enable_memcb(void);
 	void panda_disable_memcb(void);

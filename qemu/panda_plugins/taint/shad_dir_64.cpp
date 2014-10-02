@@ -33,13 +33,11 @@ PANDAENDCOMMENT */
 #include "shad_dir_64.h"
 #include "bitvector_label_set.cpp"
 
-#define SB_INLINE //inline
-
 // 64-bit addresses
 // create a new table
 // if table_table==1 then this is a table of tables,
 // else it is a table of pages
-static SB_INLINE SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t table_table) {
+static SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t table_table) {
   SdTable *table = (SdTable *) my_calloc(1, sizeof(SdTable), poolid_shad_dir);
   if (table_table == 1) {
     table->table = (SdTable **) my_calloc(shad_dir->table_size, sizeof(SdTable *), poolid_shad_dir);
@@ -52,7 +50,7 @@ static SB_INLINE SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t tab
 }
 
 
-static SB_INLINE void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table) {
+static void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table) {
   assert (table->num_non_empty == 0);
   if (table->table != NULL) {
     my_free(table->table, sizeof(SdTable *) * shad_dir->table_size, poolid_shad_dir);
@@ -64,14 +62,14 @@ static SB_INLINE void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table
   my_free(table, sizeof(SdTable), poolid_shad_dir);
 }
 
-static SB_INLINE SdPage *__shad_dir_page_new_64(SdDir64 *shad_dir) {
+static SdPage *__shad_dir_page_new_64(SdDir64 *shad_dir) {
   SdPage *page = (SdPage *) my_calloc(1, sizeof(SdPage), poolid_shad_dir);
   page->labels = (LabelSet **) my_calloc(shad_dir->page_size, sizeof(LabelSet *), poolid_shad_dir);
   page->num_non_empty = 0;
   return page;
 }
 
-static SB_INLINE void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
+static void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
   assert (page->num_non_empty == 0);
   my_free(page->labels, sizeof(LabelSet *) * shad_dir->page_size, poolid_shad_dir);
   my_free(page, sizeof(SdPage), poolid_shad_dir);
@@ -164,7 +162,7 @@ SdDir64 *shad_dir_new_64
   shadow page.
   "stuff2" is a ptr to something the app fn needs
 */
-static SB_INLINE void __shad_dir_page_iter_64
+static void __shad_dir_page_iter_64
      (SdDir64 *shad_dir,
       int (*app)(uint64_t pa, SdPage *page, void *stuff1),
       void *stuff2) {
@@ -272,7 +270,7 @@ void shad_dir_free_64(SdDir64 *shad_dir) {
 
 
 // add table to the directory
-static SB_INLINE SdTable *__shad_dir_add_table_to_dir_64(SdDir64 *shad_dir, uint32_t di) {
+static SdTable *__shad_dir_add_table_to_dir_64(SdDir64 *shad_dir, uint32_t di) {
   SdTable *table = __shad_dir_table_new_64(shad_dir, 1);
   shad_dir->table[di] = table;
   shad_dir->num_non_empty++;
@@ -283,7 +281,7 @@ static SB_INLINE SdTable *__shad_dir_add_table_to_dir_64(SdDir64 *shad_dir, uint
 
 // add either a table of tables or a table of pages.
 // table_table==0 means add a table of tables. else add a table of pages
-static SB_INLINE SdTable *__shad_dir_add_something_to_table_64
+static SdTable *__shad_dir_add_something_to_table_64
   (SdDir64 *shad_dir, SdTable *table_last, uint32_t ti, uint8_t table_table) {
   SdTable *table = __shad_dir_table_new_64(shad_dir, table_table);
   table_last->table[ti] = table;
@@ -293,7 +291,7 @@ static SB_INLINE SdTable *__shad_dir_add_something_to_table_64
 
 
 
-static SB_INLINE SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTable *table, uint32_t pi) {
+static SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTable *table, uint32_t pi) {
   SdPage *page = __shad_dir_page_new_64(shad_dir);
   table->page[pi] = page;
   table->num_non_empty ++;
@@ -314,7 +312,7 @@ static SB_INLINE SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTa
   if a prior mapping exists, remove it first
   labelset is *not* copied.  We copy its slots.
 */
-SB_INLINE void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new) {
+void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new) {
   // get ls, the labelset currently associated with this addr
   SD_GET_LABELSET_64(
     addr,
@@ -338,7 +336,7 @@ SB_INLINE void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_ne
 
 
 // remove this mapping from addr to labelset
-SB_INLINE void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
+void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
   // get ls, the labelset currently associated with addr
   SD_GET_LABELSET_64(
     addr,
@@ -387,7 +385,7 @@ SB_INLINE void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
 
 
 // Return TRUE if this addr has a labelset (possibly empty), FALSE otherwise
-SB_INLINE uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
+uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
   // 64-bit addrs
   SD_GET_LABELSET_64(
     addr,
@@ -403,7 +401,7 @@ SB_INLINE uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
 
 // Returns pointer to labelset associated with this address.
 // Returns NULL if none
-SB_INLINE LabelSet *shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
+LabelSet *shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
   // get ls, the labelset currently associated with addr
   SD_GET_LABELSET_64(
     addr,

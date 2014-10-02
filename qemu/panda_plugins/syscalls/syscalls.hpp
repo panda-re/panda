@@ -9,6 +9,8 @@
 extern "C" {
 // get definitions of QEMU types
 #include "cpu.h"
+
+extern int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
 }
 
 enum class Callback_RC : int {
@@ -25,6 +27,45 @@ target_long get_return_val(CPUState *env);
 static inline target_ulong mask_retaddr_to_pc(target_ulong retaddr){
     target_ulong mask = std::numeric_limits<target_ulong>::max() -1;
     return retaddr & mask;
+}
+
+static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
+#if defined(TARGET_ARM)
+    // Normal syscalls: return addr is stored in LR
+    // Except that we haven't run the SWI instruction yet! LR is where libc will return to!
+    //return mask_retaddr_to_pc(env->regs[14]);
+
+    // Fork, exec
+    uint8_t offset = 0;
+    if(env->thumb == 0){
+        offset = 4;
+    } else {
+        offset = 2;
+    }
+    return mask_retaddr_to_pc(pc + offset);
+#elif defined(TARGET_I386)
+    // syscall and sysenter x86 instructions are both 2 bytes
+    //return pc+2;
+
+    // ABI from http://wiki.osdev.org/SYSENTER
+    // Return address is set by user code before the syscall/sysenter instr is executed
+    unsigned char buf[2];
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    // Check if the instruction is syscall (0F 05)
+    if (buf[0]== 0x0F && buf[1] == 0x05) {
+        return ECX;
+    }
+    // Check if the instruction is sysenter (0F 34)
+    else if (buf[0]== 0x0F && buf[1] == 0x34) {
+        return EDX;
+    }
+    else {
+        // Not a syscall or sysenter!?
+        assert(0);
+    }
+#else
+#error "return address calculation not implemented for this architecture in fdtracker"
+#endif
 }
 
 class CallbackData {
@@ -80,7 +121,9 @@ namespace syscalls {
         target_ulong pc;
         bool resolve();
     public:
+        target_ulong get_vaddr(void) {return vaddr;}
         string(CPUState* env, target_ulong pc, target_ulong vaddr);
+        string() : vaddr(-1), env(nullptr), pc(-1) {}
         std::string& value();
     };
 

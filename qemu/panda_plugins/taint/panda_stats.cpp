@@ -49,7 +49,7 @@ void memplot(Shad *shad){
         LabelSet *ls = shad_dir_find_64(shad->ram, i);
         if (ls){
             unsigned int j;
-            for (j = 0; j < ls->set->current_size; j++){
+            for (j = 0; j < ls->set.current_size; j++){
                 fprintf(memplotlog, "%d,%d,%d\n", i, ls->set->members[j],
                     ls->type);
             }
@@ -69,6 +69,33 @@ void memplot(Shad *shad){
     fclose(memplotlog);
 }
 
+struct labelset_print_info {
+    FILE* bufplotlog;
+    const char* prefix;
+    LabelSetType type;
+    uint64_t addr;
+};
+
+static int panda_stats_print_labelset(uint32_t label_no, void* opaque){
+    labelset_print_info *print_info = reinterpret_cast<labelset_print_info*>(opaque);
+    ::fprintf(print_info->bufplotlog, "%s%lu,%u,%d\n", print_info->prefix, 
+              print_info->addr, label_no, print_info->type);
+    return 0;
+}
+
+void panda_stats_bufplot(FILE* bufplotlog,
+                         const char* prefix,
+                         LabelSet& ls,
+                         uint64_t i){
+    labelset_print_info info;
+    info.bufplotlog = bufplotlog;
+    info.prefix = prefix;
+    info.type = ls.type;
+    info.addr = i;
+    bitset_iter(ls.set, panda_stats_print_labelset, &info);
+}
+
+
 // Prints out taint of memory buffer
 // FIXME TODO: fix this broken thing, merge in Tim's taint callback stuff, an
 // improved version of this will be a taint plugin 'query' callback
@@ -82,10 +109,7 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
         for (i = addr->val.ia; i < addr->val.ia+length; i++){
             ls = shad_dir_find_64(shad->io, i);
             if (ls){
-                BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
-                    fprintf(bufplotlog, "IO %lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "IO ", *ls, i);
             }
         }
     }
@@ -100,25 +124,18 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             LabelSet *ls = shad_dir_find_64(shad->ram, i);
 #endif // CONFIG_SOFTMMU
             if (ls){
-                BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
-                    fprintf(bufplotlog, "RAM %lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "RAM ", *ls, i);
             }
 #else // TARGET_X86_64
 
 #ifdef CONFIG_SOFTMMU
-            uint64_t physaddr = cpu_get_phys_addr(env, i);
-            if (get_ram_bit(shad, physaddr)){
-                LabelSet *ls = shad_dir_find_32(shad->ram, physaddr);
+            if (get_ram_bit(shad, cpu_get_phys_addr(env, i))){
+                ls = shad_dir_find_32(shad->ram, cpu_get_phys_addr(env, i));
 #else // CONFIG_SOFTMMU
             if (get_ram_bit(shad, i)){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
-                BitSet::iterator j;
-                for (j = ls->set->begin(); j != ls->set->end(); j++){
-                    fprintf(bufplotlog, "%lu,%u,%d\n", i, *j, ls->type);
-                }
+                panda_stats_bufplot(bufplotlog, "", *ls, i);
             }
 #endif // TARGET_X86_64
         }

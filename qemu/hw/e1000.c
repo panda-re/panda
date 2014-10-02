@@ -537,7 +537,7 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
             {
                 if (rr_in_record()){
                     rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_1,
-                        NET_TRANSFER_IOB_TO_IOB, tp->data, tp->header, hdr);
+                        NET_TRANSFER_IOB_TO_IOB, (uint64_t)tp->data, (uint64_t)tp->header, hdr);
                 }
                 memmove(tp->header, tp->data, hdr);
             }
@@ -547,7 +547,7 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
                 xmit_seg(s);
                 if (rr_in_record()){
                     rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_MEMMOVE_2,
-                        NET_TRANSFER_IOB_TO_IOB, tp->header, tp->data, hdr);
+                        NET_TRANSFER_IOB_TO_IOB, (uint64_t)tp->header, (uint64_t)tp->data, hdr);
                 }
                 memmove(tp->data, tp->header, hdr);
                 tp->size = hdr;
@@ -562,7 +562,7 @@ process_tx_desc(E1000State *s, struct e1000_tx_desc *dp)
         // taint transfer mem->io
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_PROCESS_TX_DESC_2,
-                NET_TRANSFER_RAM_TO_IOB, addr, (uint64_t)(tp->data + tp->size),
+                NET_TRANSFER_RAM_TO_IOB, (uint64_t)addr, (uint64_t)(tp->data + tp->size),
                 split_size);
         }
         pci_dma_read(&s->dev, addr, tp->data + tp->size, split_size);
@@ -785,7 +785,7 @@ e1000_receive(VLANClientState *nc, const uint8_t *buf, size_t size)
     if (size < sizeof(min_buf)) {
         if (rr_in_record()){
             rr_record_net_transfer(RR_CALLSITE_E1000_RECEIVE_MEMCPY_1,
-                NET_TRANSFER_IOB_TO_IOB, min_buf, buf, size);
+                NET_TRANSFER_IOB_TO_IOB, (uint64_t)min_buf, (uint64_t)buf, size);
         }
         memcpy(min_buf, buf, size);
         // RW shouldn't need to worry about this memset for taint

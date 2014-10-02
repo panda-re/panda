@@ -28,7 +28,7 @@
 #include <termios.h>
 #include <stdarg.h>
 #include <sys/mman.h>
-#include <xs.h>
+#include <xenstore.h>
 #include <xen/io/console.h>
 #include <xenctrl.h>
 

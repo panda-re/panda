@@ -13,14 +13,21 @@
 # * 
 #PANDAENDCOMMENT */
 
-# get numbers from /scratch/aospkernel/goldfish/arch/arm/include/asm/unistd.h
-NUMSOURCE = "/scratch/aospkernel/goldfish/arch/arm/include/asm/unistd.h"
-# get names from /scratch/aospkernel/goldfish/arch/arm/kernel/calls.S
-CALLTABLE = "/scratch/aospkernel/goldfish/arch/arm/kernel/calls.S"
-# get names from /scratch/aospkernel/goldfish/arch/arm/kernel/entry-common.S
+from sys import argv, exit
 
-# get signatures from /scratch/aospkernel/goldfish/include/linux/syscalls.h
-SIGNATURES = '/scratch/aospkernel/goldfish/include/linux/syscalls.h'
+if len(argv) < 2:
+    print "ERROR: Need location of linux source as first arg!"
+    exit(1)
+LINUXSOURCE = argv[1]
+ARCH = "arm" if len(argv) < 3 else argv[2]
+# get numbers from arch/x86/include/asm/unistd.h
+NUMSOURCE = LINUXSOURCE + "/arch/" + ARCH + "/include/asm/unistd.h"
+# get names from ARCH/x86/kernel/calls.S
+CALLTABLE = LINUXSOURCE + "/arch/" + ARCH + "/kernel/" + ("syscall_table_32.S" if ARCH == "x86" else "calls.S")
+# get names from ARCH/x86/kernel/entry-common.S
+
+# get signatures from include/linux/syscalls.h
+SIGNATURES = LINUXSOURCE + "/include/linux/syscalls.h"
 
 # from /scratch/aospkernel/goldfish/arch/arm/kernel/traps.c
 # ARM syscall 0x9ffff0 is cmpxchg: ignore it!
@@ -38,7 +45,7 @@ signatures = {}
 signatures['sys_fork'] = 'unsigned long fork(void);'
 signatures['sys_vfork'] = 'unsigned long vfork(void);'
 signatures['sys_execve'] = 'unsigned long execve(const char *filename, char *const argv[], char *const envp[]);'
-signatures['sys_clone'] = 'unsigned long clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...);'
+signatures['sys_clone'] = 'long clone(unsigned long clone_flags, unsigned long newsp, int __user *parent_tidptr, int tls_val, int __user *child_tidptr, struct pt_regs *regs);'
 signatures['sys_sigsuspend'] = 'long sigsuspend(int restart, unsigned long oldmask, old_sigset_t mask);'
 signatures['sys_rt_sigsuspend'] = 'int sys_rt_sigsuspend(sigset_t __user *unewset, size_t sigsetsize);'
 
@@ -79,13 +86,19 @@ with open(SIGNATURES) as sigfile:
             signature += line
 
 
-with open("sycall_printer.cpp", 'w') as printer:
+with open("syscall_printer.gen.cpp", 'w') as printer:
     printer.write('#include "%s"\n' % NUMSOURCE)
     printer.write("#include <stdio.h>\n")
     printer.write("int main(){\n")
 
     with open(CALLTABLE) as calltable:
-        sysre = re.compile("CALL\((.*)\)")
+        if ARCH == "x86":
+            sysre = re.compile("\\.long ([a-zA-Z0-9_]+)")
+        elif ARCH == "arm":
+            sysre = re.compile("CALL\((.*)\)")
+        else:
+            print "ERROR: unknown arch {0}".format(ARCH)
+            exit(1)
         abire = re.compile("ABI\((.*),.*\)")
         callno = 0
 
@@ -130,20 +143,21 @@ with open("sycall_printer.cpp", 'w') as printer:
                 callno +=1
         # now deal with the ARM syscalls:
 
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_breakpoint'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_breakpoint(void);'))
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_cacheflush'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);'))
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr26'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_user26_mode(void);'))
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr32'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_usr32_mode(void);'))
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_set_tls'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_set_tls(unsigned long arg);'))
-        printer.write('printf("%d ",{0} + 0xfff0 );\n'.format('__ARM_NR_BASE'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('int ARM_cmpxchg(unsigned long val, unsigned long src, unsigned long* dest);'))
-        # branch through zero = bad!
-        printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_BASE'))
-        printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_null_segfault(void);'))
+        if ARCH == "ARM":
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_breakpoint'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_breakpoint(void);'))
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_cacheflush'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);'))
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr26'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_user26_mode(void);'))
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_usr32'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_usr32_mode(void);'))
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_set_tls'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_set_tls(unsigned long arg);'))
+            printer.write('printf("%d ",{0} + 0xfff0 );\n'.format('__ARM_NR_BASE'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('int ARM_cmpxchg(unsigned long val, unsigned long src, unsigned long* dest);'))
+            # branch through zero = bad!
+            printer.write('printf("%d ",{0} );\n'.format('__ARM_NR_BASE'))
+            printer.write('printf("%s\\n",\"{0}\" ); \n'.format('long ARM_null_segfault(void);'))
 
         printer.write("return 0; }\n")

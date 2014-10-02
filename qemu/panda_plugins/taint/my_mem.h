@@ -18,6 +18,7 @@ PANDAENDCOMMENT */
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <memory>
 
 typedef enum {
   poolid_iferret_log = 0,
@@ -75,5 +76,63 @@ void *my_realloc(void *p, size_t n, size_t old_n, pool_id pid);
 void my_free(void *p, size_t n, pool_id pid);
 char * my_strdup(const char *p, pool_id pid);
 
+enum class Memevent {
+    ALLOC,
+    FREE,
+    CTOR,
+    DTOR,
+};
+
+void my_mem_log(Memevent event, size_t amount, pool_id pid);
+
+/* C++ STL allocator that uses our heap-tracking code */
+template <typename T, pool_id poolid>
+class mymem_allocator : public std::allocator<T> {
+ public:
+    //Returns the address of r as a pointer type. This function and the following function are used to convert references to pointers.
+    //T* address(T& r) const;
+    typedef T* pointer;
+    typedef T  value_type;
+    typedef const T& const_reference;
+    typedef const T* const_pointer;
+    typedef T& reference;
+    //Returns the address of r as a const_pointer type.
+    //const T* address(const T& r) const;
+
+    //Allocates storage for n values of T. Uses the value of hint to optimize storage placement, if possible.
+    pointer allocate(size_t n, const void* hint=0){
+        pointer tmp = std::allocator<mymem_allocator<T, poolid>::value_type>::allocate(n, hint);
+        if(nullptr != tmp) my_mem_log(Memevent::ALLOC, n * sizeof(T), poolid);
+        return tmp;
+    }
+
+    //Deallocates storage obtained by a call to allocate.
+    void deallocate(pointer p, size_t n){
+        my_mem_log(Memevent::FREE, n, poolid);
+        std::allocator<mymem_allocator<T, poolid>::value_type>::deallocate(p,n * sizeof(T));
+    }
+
+    //Returns the largest possible storage available through a call to allocate.
+    //size_t max_size();
+
+    //Constructs an object of type T at the location of p, using the value of val in the call to the constructor for T.
+    void construct(pointer p, const_reference val){
+        my_mem_log(Memevent::CTOR, 0, poolid);
+        std::allocator<mymem_allocator<T, poolid>::value_type>::construct(p,val);
+    }
+
+    // destroy p
+    void destroy(pointer p){
+        my_mem_log(Memevent::DTOR, 0, poolid);
+        std::allocator<mymem_allocator<T, poolid>::value_type>::destroy(p);
+    }
+
+    // provides ability to allocate for types other than T
+    template<typename _Tp1>
+    struct rebind
+    {
+        typedef mymem_allocator<_Tp1, poolid> other;
+    };
+};
 
 #endif
