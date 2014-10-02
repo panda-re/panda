@@ -7,6 +7,7 @@ python ../scripts/apigen.py
 --cxx=g++-4.7 \
 --prefix=`pwd`/install \
 --disable-pie \
+--disable-xen \
 --enable-llvm \
 --with-llvm=../llvm-3.3/Debug+Asserts \
 --extra-cflags="-O2" \
