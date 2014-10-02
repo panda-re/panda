@@ -109,18 +109,10 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     the_buf = p;
     the_len = matched_string_length;
     // this should enable
-    tstringsearch_label_on = true;
-    
-    /*
-    if (first_match) {
-      first_match = false;
-      // turn on taint.
-      taint_enable_taint();
-    */
-      // add a callback for taint processor st
-      PPP_REG_CB("taint", on_load, tstringsearch_label);
-      PPP_REG_CB("taint", on_store, tstringsearch_label);
-      //    }
+    tstringsearch_label_on = true;    
+    // add a callback for taint processor st 
+    PPP_REG_CB("taint", on_load, tstringsearch_label);
+    PPP_REG_CB("taint", on_store, tstringsearch_label);
   
   }
 }
