@@ -18,8 +18,8 @@ This sort of thing can be interesting and useful if, e.g., you want
 to know what code computes a hash function or performs encryption.
 
 
-Tutorial Proper
-===============
+Obtain Replay 
+-------------
 
 In this tutorial, we will use a replay of someone using ssh-keygen.
 We will apply taint labels to the passphrase entered and then ask
@@ -37,16 +37,21 @@ This produces two files <pre> sshksci-rr-nondet.log </pre> which is
 the replay log, and <pre> sshksci-rr-snp </pre> which is the snapshot
 from which to begin replay.
 
+Use TZB to find the interesting part of the replay
+--------------------------------------------------
+
 The passphrase entered, as the rrshare page explains, is
 "tygertygerburningbrightintheforestofthenight".  We are going to use
 TZB's <pre> stringsearch </pre> plugin to tell us what instructions
 (or tap points) process that string. Here's how to do that. 
 
+For more info on TZB see publications in https://github.com/moyix/panda
 
 1. Create a file called <pre> search_strings.txt </pre> and put it in the
-qemu directory of PANDA.
+qemu directory of PANDA containing "tygertygerburningbrightintheforestofthenight".
+Yes, you need the quotes. 
 
-2. Run with the following command (assuming you unpacked replay into
+2. Run PANDA with the following command (assuming you unpacked replay into
 qemu dir)
 
 
@@ -55,6 +60,7 @@ qemu dir)
 
 This should produce output chugging through the replay until <pre> stringsearch </pre> sees the passphrase:
 
+    ...
     /data/laredo/tleek/rr-logs/sshkeygen-rr-nondet.log:  740611 of 1010779 (73.27%) bytes, 421487980 of 438334408 (96.16%) instructions processed.
     /data/laredo/tleek/rr-logs/sshkeygen-rr-nondet.log:  742261 of 1010779 (73.43%) bytes, 425620638 of 438334408 (97.10%) instructions processed.
     /data/laredo/tleek/rr-logs/sshkeygen-rr-nondet.log:  744037 of 1010779 (73.61%) bytes, 429671621 of 438334408 (98.02%) instructions processed.
@@ -70,8 +76,13 @@ This should produce output chugging through the replay until <pre> stringsearch 
     WRITE Match of str 0 at: instr_count=434866903 :  00000000c11d4ee2 00000000c11d43b6 0000000000000000
     READ Match of str 0 at: instr_count=434911491 :  00000000c11d40d0 00000000c11d1288 0000000000000000
     WRITE Match of str 0 at: instr_count=434911572 :  00000000c11d1b7e 00000000c11d0274 0000000000000000
+    ...
 
 So it isn't until about 430M instructions into the trace that we see "tygertygerburningbrightintheforestofthenight".
+
+
+Use scissors to pull out interesting 
+------------------------------------
 
 Now, we'll use the <pre> scissors </pre> plugin to pull out just the
 interesting part of the trace.  Here's how to do that.  
@@ -83,6 +94,10 @@ interesting part of the trace.  Here's how to do that.
 I created a new recording that starts at 420M instructions in and ends
 with the last instruction in the trace. This new replay is called 
 <pre> sshksci </pre>.
+
+
+Taint the passphrase and find out what instructions process taint
+-----------------------------------------------------------------
 
 Finally, we'll use the <pre> tstringsearch </pre> plugin to apply
 taint labels to that passphrase and ask the taint system to figure out
