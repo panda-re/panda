@@ -219,46 +219,6 @@ float *pppqs= NULL;
 
 std::map < Gram, std::map < uint32_t, float > > sc;
 
-/*
-// query is a passage.  
-// score is 1-d array, one item for each passage in the index
-uint32_t query_with_passage (Passage & query)  
-{
-    if (pppqs == NULL) {
-        pppqs = (float *) malloc(sizeof(float) * inv.num_passages);
-    }
-    for (uint32_t i = 0; i < inv.num_passages; i++) {
-        (*score)[i].ind = i;
-        (*score)[i].val = 0.0;
-    }
-    // iterate over highest order ngrams
-    float max_score = -10000.0;
-    uint32_t argmax = 0;
-    for (auto &kvp : query.contents[inv.max_n_gram].count)    {
-        // e.g., if inv.max_n_gram = 5 this might be the three bytes "abcde"
-        Gram gram = kvp.first;
-        // e.g. count("abcde" in query)
-        uint32_t gram_count = kvp.second;
-        uint32_t rowsize = scorepair[gram].first;
-        Score *sp = scorepair[gram].second;
-        for (uint32_t i=0; i<rowsize; i++) {
-            uint32_t psgid = sp[i].ind;
-            (*score)[psgid].val += gram_count * sp[i].val;
-        }
-    }
-    // scale the scores
-    for (uint32_t i = 0; i < inv.num_passages; i++) {
-        (*score)[i].val /= query.contents[inv.max_n_gram].total;
-        if ((*score)[i].val > max_score) {
-            max_score = (*score)[i].val;
-            argmax = i;
-        }
-    }        
-    // sort the scores
-    //    std::sort ((*score).begin (), (*score).end (), compare_scores);
-    return argmax;
-}
-*/
 
 
 bool pdice (float prob_yes) {
@@ -294,22 +254,21 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 len = tb->size;
             }
             panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
-            Passage passage = index_passage (inv->lexicon,
-                                             /* update_lexicon = */ false,
-                                             inv->min_n_gram, inv->max_n_gram,
+            Passage passage = index_passage (indc, /* update_lexicon = */ false,
                                              buf, len,
                                              /* note: we dont really care about passage ind */
                                              /* passage_ind = */ 0xdeadbeef);
             uint32_t argmax;
             float score;
-            query_with_passage (passage, *pps, &argmax, &score);
+            query_with_passage (indc, &passage, pps, &argmax, &score);
             printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-            if ( score > 5.6 ) {
+            if ( score > 2.0 ) {
                 uint32_t the_offset;
-                std::string the_filename = get_passage_name(*inv, argmax, &the_offset);            
+                uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
+                std::string the_filename = get_passage_name(indc, psgid, &the_offset);            
                 bircache[asid][tb->pc] = the_filename + "-" + (std::to_string(the_offset));
                 printf ("bir -- %.3f %s\n", score, bircache[asid][tb->pc].c_str()); 
-            }      
+           }      
             else {
                 printf ("bir -- %.3f unknown\n", score);
                 bircache[asid][tb->pc] = "unknown";
@@ -326,28 +285,28 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("bir");
     if (args != NULL) {
         int i;
-        char *pfx = NULL;
+        std::string pfx = "unk";
         for (i = 0; i < args->nargs; i++) {
             if (0 == strncmp(args->list[i].key, "pfx", 5)) {
-                invpfx = args->list[i].value;
+                pfx = std::string(args->list[i].value);
             } else if (0 == strncmp(args->list[i].key, "max_row_length", 14)) {
                 max_row_length = atoi(args->list[i].value);
             } else if (0 == strncmp(args->list[i].key, "pdice", 5)) {
                 pdice_prob = atof(args->list[i].value);
             }
         }
-        if (0 == strncmp(invpfx, "none", 4)) {
+        if (pfx.compare("none") == 0) {
             // we just want the api
             printf ("bir: I am only being used for my api fns.\n");
             return true;
         }
-        if (invpfx != NULL) {                            
+        else {
             printf ("unmarshalling preprocessed scores\n");
             pps = unmarshall_preprocessed_scores(pfx);                      
             printf ("unmarshalling index common\n");
-            indc = unmarshall_index_common(pfx);
+            indc = unmarshall_index_common(pfx, true);
             printf ("unmarshalling inverted index\n");
-            inv = unmarshall_invindex_min (pfx);            
+            inv = unmarshall_invindex_min (pfx, indc);            
             panda_cb pcb;
             pcb.before_block_exec = bir_before_block_exec;
             panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
@@ -355,7 +314,7 @@ bool init_plugin(void *self) {
         }
     }
 #endif
-    printf ("no invpfx (inverted index file pfx) specifed \n");
+    printf ("no pfx (inverted index file pfx) specifed \n");
     return false;
 }
 

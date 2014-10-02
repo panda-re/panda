@@ -23,7 +23,8 @@ using namespace std;
 uint32_t index_file_aux(char *filename, 
                         long start_offset,
                         uint32_t passage_num,
-                        Indexer *indexer,
+                        IndexCommon *indc,
+                        Index *index,
                         uint32_t passage_length,
                         uint32_t file_length) {
     static uint8_t *binary = NULL;
@@ -62,25 +63,25 @@ uint32_t index_file_aux(char *filename,
         }    
         if (n > 0) {
             //      printf ("\npos=%d\n", pos);
-            index_this_passage(indexer, binary, n, passage_num);
+            index_this_passage(indc, index, binary, n, passage_num);
             passage_num += 2;
         }
         pos += n;
     }
     fclose(fp);
-    printf("%d passages\n", indexer->index->num_passages);
+    printf("%d passages\n", indc->num_passages);
     return passage_num;
 }
 
 
 
 
-void index_file(Indexer *indexer, char *filename, uint32_t passage_length, uint32_t file_length) {
-    uint32_t first_passage_num = indexer->index->num_passages;
+void index_file(IndexCommon *indc, Index *index, char *filename, uint32_t passage_length, uint32_t file_length) {
+    uint32_t first_passage_num = indc->num_passages;
     // index passages starting from offset 0 in file
-    index_file_aux(filename, 0, first_passage_num, indexer, passage_length, file_length);
+    index_file_aux(filename, 0, first_passage_num, indc, index, passage_length, file_length);
     // index passages starting from offset passge_length/2 
-    index_file_aux(filename, passage_length/2, first_passage_num+1, indexer, passage_length, file_length);
+    index_file_aux(filename, passage_length/2, first_passage_num+1, indc, index, passage_length, file_length);
 }
 
 
@@ -100,8 +101,8 @@ int main (int argc, char **argv) {
     uint32_t max_n_gram = atoi(argv[4]);
     uint32_t passage_len = atoi(argv[5]);
     assert (min_n_gram <= max_n_gram);
-    Indexer *indexer = new_indexer(min_n_gram, max_n_gram, passage_len);  
-    Index *index = indexer->index;
+    IndexCommon *indc = new_index_common(filename_prefix, min_n_gram, max_n_gram, passage_len);  
+    Index *index = new Index;
     uint32_t num_files = 0;
     uint64_t total_bytes = 0;
     FILE *fp = fopen(file_list_file, "r");
@@ -115,19 +116,21 @@ int main (int argc, char **argv) {
         filename[strlen(filename)-1] = 0;
         stat(filename, &fs);   
         printf ("%d indexing file %s len=%d\n", num_files, filename, fs.st_size);
-        index->filename_to_first_passage[filename] = index->num_passages;
-        index->first_passage_to_filename[index->num_passages] = filename;
-        index_file(indexer, filename, passage_len, fs.st_size);    
+        indc->filename_to_first_passage[filename] = indc->num_passages;
+        indc->first_passage_to_filename[indc->num_passages] = filename;
+        index_file(indc, index, filename, passage_len, fs.st_size);    
         //    spit_index(index);
         total_bytes += fs.st_size;
         num_files++;
     }
-    printf ("%d passages in total\n", index->num_passages);
-    InvIndex *inv = invert(index);
+    printf ("%d passages in total\n", indc->num_passages);
+    marshall_index_common(indc);
+    InvIndex *inv = invert(indc, index);
     printf ("marshalling inv index\n");  
-    inv->filename_prefix = filename_prefix;
-    marshall_invindex(*inv);
+    indc->filename_prefix = filename_prefix;
+    marshall_invindex(indc, inv);
     printf ("total_bytes = %ld\n", total_bytes);
     printf ("indexing complete\n");
+    
 }
 

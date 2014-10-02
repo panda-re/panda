@@ -19,23 +19,28 @@ extern "C"{
 uint32_t max_row_length=1000000;
 
 extern "C" {
-    void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
-    void *new_index_c(void);
 
-    void *invert_c(void *index);
 
-    void indc_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes);
+void index_this_passage_c(void *vpindc, void *vpindex, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
 
-    void index_this_passage_c(void *indc, void *index, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
+void *invert_c(void *vpindc, void *vpindex) ;
 
-    void marshall_index_common_c(void *indc);
-    void marshall_index_c(void *indc, void *vpindex, char *file_pfx);
-    void marshall_invindex_c(void *indc, void *invindex, char *file_pfx);                                                                  
+void marshall_index_common_c(void *vpindc);
 
-    void *unmarshall_index_common(char *filename_pfx);
-    void *unmarshall_preprocessed_scores_c (char *filename_pfx);
+void marshall_index_c(void *vpindc, void *vpindex, char *file_pfx);    
 
-    void query_with_passage_c (void *vppassage, void *vppps, uint32_t *ind, float *score);
+void marshall_invindex_c(void *vpindc, void *vpinv, char *file_pfx) ;
+
+void *unmarshall_preprocessed_scores_c (char *filename_pfx);
+
+void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, float *score);
+
+void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
+
+void *new_index_c() ;
+
+void index_common_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes);
+
 }
 
 
@@ -127,7 +132,7 @@ void spit_lexicon(Lexicon &lexicon) {
 
 void spit_uind_to_psgs(std::map < uint32_t, std::set < uint32_t > > &uind_to_psgs) {
     printf ("uind_to_psgs [\n");
-    printf ("size=%d\n", uind_to_psgs.size());
+    printf ("size=%d\n", (int) uind_to_psgs.size());
     for ( auto &kvp : uind_to_psgs ) {
         uint32_t uind = kvp.first;
         printf ("uind = %d : ", uind);
@@ -139,22 +144,22 @@ void spit_uind_to_psgs(std::map < uint32_t, std::set < uint32_t > > &uind_to_psg
     printf ("uind_to_psgs ]\n");
 }
 
-void spit_string_to_uint32_map ( std::map < std::string, uint32_t > & su32m ) {
-    printf ("size=%d\n", su32m.size());
+void spit_string_uint32_map ( std::map < std::string, uint32_t > & su32m ) {
+    printf ("size=%d\n", (int) su32m.size());
     for ( auto &kvp : su32m ) {
         printf ("%s -> %d\n", kvp.first.c_str(), kvp.second );
     }
 }
 
-void spit_uint32_to_string_map ( std::map < uint32_t, std::string > & u32sm ) {
-    printf ("size=%d\n", u32sm.size());
+void spit_uint32_string_map ( std::map < uint32_t, std::string > & u32sm ) {
+    printf ("size=%d\n", (int) u32sm.size());
     for ( auto &kvp : u32sm ) {
         printf ("%d -> %s\n", kvp.first, kvp.second.c_str() );
     }
 }    
 
-void spit_uint32_to_uint32_map ( std::map < uint32_t, uint32_t > & u32u32m ) {
-    printf ("size=%d\n", u32u32m.size());
+void spit_uint32_uint32_map ( std::map < uint32_t, uint32_t > & u32u32m ) {
+    printf ("size=%d\n", (int) u32u32m.size());
     for ( auto &kvp : u32u32m ) {
         printf ("%d -> %d\n", kvp.first, kvp.second );
     }
@@ -182,30 +187,30 @@ void spit_index_common(IndexCommon *indc) {
 
 void spit_index(Index *index) {
     printf ("Index [\n");
-    printf ("binary_to_uind is %d entries\n", index->binary_to_uind.size());
+    printf ("binary_to_uind is %d entries\n", (int) index->binary_to_uind.size());
     printf ("uind_to_passage [\n");
-    printf ("size=%d\n", index->uind_to_passage.size());
+    printf ("size=%d\n", (int) index->uind_to_passage.size());
     for ( auto &kvp : index->uind_to_passage ) {
-        printf ("uind = %d\n", kvp.first);
+        printf ("uind = %d\n", (int) kvp.first);
         spit_passage(kvp.second);
     }
     printf ("uind_to_passage ]\n");
     printf ("passages [\n");
-    printf ("size=%d\n", index->passages.size());
+    printf ("size=%d\n", (int) index->passages.size());
     // iterate over passages
     for ( auto &kvp : index->passages ) {
-        printf ("%d -> %d\n", kvp.first, kvp.second);
+        printf ("%d -> %d\n", (int) kvp.first, (int) kvp.second);
     }
     printf ("passages ]\n");
     printf ("Index ]\n");
 }
 
-void spit_docs_with_word(Index_common *indc, std::map < uint32_t, std::map < Gram, std::map < uint32_t, uint32_t > > > &docs_with_word) {
+void spit_docs_with_word(IndexCommon *indc, std::map < uint32_t, std::map < Gram, std::map < uint32_t, uint32_t > > > &docs_with_word) {
     printf ("docs_with_word [\n");
-    printf ("size=%d\n", docs_with_word.size());
+    printf ("size=%d\n", (int) docs_with_word.size());
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {   
         for ( auto &kvp : docs_with_word[n] ) {
-            spit_gram_hex(kvp.first);
+            spit_gram_hex(kvp.first, n);
             printf (" : ");
             for ( auto &kvp2 : kvp.second ) {
                 printf (" (%d,%d)", kvp2.first, kvp2.second);
@@ -252,7 +257,7 @@ Passage index_passage (IndexCommon *indc, bool update,
                        uint32_t uind) {
     Passage passage;
     passage.uind = uind;
-    for (uint32_t n=indc->min_n; n<=indc->max_n; n++) {
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
         PassageDist pd;
         pd.n = n;
         pd.total = 0;
@@ -299,14 +304,15 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     std::string sb = std::string((const char *) binary_passage, len);
     uint32_t uind;
     if (index->binary_to_uind.find(sb) == index->binary_to_uind.end()) {
+        uind = index->binary_to_uind.size();
         // this is a new passage, i.e., we haven't indexed this binary blob before
         if ((uind % 1000) == 0) {
             printf ("%d unique passages indexed.  %d passages observed\n", (int) uind, (int) index->passages.size());
         }
-        uind = index->binary_to_uind.size();
         index->binary_to_uind[sb] = uind;
         index->uind_to_passage[uind] = 
             index_passage(indc, /* updatelexicon = */ true, binary_passage, len, uind);        
+        indc->num_uind = index->binary_to_uind.size();
     }
     else {
         // a passage we have indexed previously -- get unique id
@@ -314,9 +320,9 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     }       
     index->passages[passage_ind] = uind;
     // this is the total # of passages (not unique ones) indexed
-    index->num_passages ++;
+    indc->num_passages ++;
     // keeps track of set of passages for this uind
-    index->uind_to_psgs[uind].insert(passage_ind);
+    indc->uind_to_psgs[uind].insert(passage_ind);
 }
 
 
@@ -498,9 +504,9 @@ std::map < uint32_t, std::string > unmarshall_uint32_string_map(std::string file
 
 void marshall_uind_to_psgs(std::string &pfx, std::map < uint32_t, std::set < uint32_t > > &uind_to_psgs) {
     printf ("marshalling uind to psg set\n");
-    filename = pfx + ".uind_to_psgs";
-    fp = fopen((char *) filename.c_str(), "w");
-    occ = uind_to_psgs.size();
+    std::string filename = pfx + ".uind_to_psgs";
+    FILE *fp = fopen((char *) filename.c_str(), "w");
+    uint32_t occ = uind_to_psgs.size();
     WU(occ);  
     for ( auto &kvp : uind_to_psgs ) {
         uint32_t uind = kvp.first;
@@ -516,8 +522,8 @@ void marshall_uind_to_psgs(std::string &pfx, std::map < uint32_t, std::set < uin
 
 std::map < uint32_t, std::set < uint32_t > > unmarshall_uind_to_psgs(std::string pfx) {
     printf ("unmarshalling uind to psg set\n");
-    filename = pfx + ".uind_to_psgs";
-    fp = fopen((char *) filename.c_str(), "r");
+    std::string filename = pfx + ".uind_to_psgs";
+    FILE *fp = fopen((char *) filename.c_str(), "r");
     uint32_t occ1;
     RU(occ1);
     std::map < uint32_t, std::set < uint32_t > > uind_to_psgs;
@@ -526,6 +532,7 @@ std::map < uint32_t, std::set < uint32_t > > unmarshall_uind_to_psgs(std::string
         RU(uind);
         uint32_t occ2;
         RU (occ2);
+        //       printf ("uind=%d occ2=%d\n", uind, occ2);
         for (uint32_t j=0; j<occ2; j++) {
             uint32_t psg;
             RU(psg);
@@ -545,7 +552,8 @@ void marshall_index_common(IndexCommon *indc) {
     WU(indc->min_n_gram);
     WU(indc->max_n_gram);
     WU(indc->passage_len_bytes);
-    WU(invc->num_passages);
+    WU(indc->num_passages);
+    WU(indc->num_uind);
     fclose(fp);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
         printf ("marshalling lexicon n=%d\n", n);
@@ -563,24 +571,33 @@ void marshall_index_common(IndexCommon *indc) {
 }  
   
 
-IndexCommon unmarshall_index_common(const std::string pfx) {
+void unmarshall_indc(const std::string pfx, IndexCommon *indc) {
     std::string filename = pfx + ".indc";
-    // 1 file. first write out summary info
     FILE *fp = fopen((char *) filename.c_str(), "r");
-    IndexCommon *indc = new IndexCommon;
-    indc->filename_pfx = pfx;
+    indc->filename_prefix = pfx;
     RU(indc->min_n_gram);
     RU(indc->max_n_gram);
     RU(indc->passage_len_bytes);
     RU(indc->num_passages);
+    RU(indc->num_uind);
     fclose(fp);
+}
+
+
+// if uind_to_psgs is false, then we dont load that.  it can be slow
+IndexCommon *unmarshall_index_common(const std::string pfx, bool uind_to_psgs) {
+    IndexCommon *indc = new IndexCommon;
+    unmarshall_indc(pfx, indc);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
         printf ("unmarshalling lexicon n=%d\n", n);
-        indc->lexicon[n] = unmarshall_lexicon(pfx + ".lexicon-" + std::to_string(n));
+        indc->lexicon[n] = unmarshall_lexicon(pfx + ".lexicon-" + std::to_string(n), n);
     }
-    indc->uind_to_psgs = unmarshall_uind_to_psgs(pfx);
+    if (uind_to_psgs) {
+        indc->uind_to_psgs = unmarshall_uind_to_psgs(pfx);
+    }
     indc->filename_to_first_passage = unmarshall_string_uint32_map(pfx + ".f2fp");
     indc->first_passage_to_filename = unmarshall_uint32_string_map(pfx + ".fpf2");
+    return indc;
 }  
 
 
@@ -633,49 +650,50 @@ Passage unmarshall_passage(FILE *fp) {
 }
         
     
-void marshall_index(IndexCommon *indc, Index &index) {
+void marshall_index(IndexCommon *indc, Index *index) {
     std::string filename ;
-    printf ("marshalling binary_to_uind occ=%d\n", occ);
+    uint32_t occ = index->binary_to_uind.size();
+    printf ("marshalling binary_to_uind occ=%d\n", (int) occ);
     std::string pfx = indc->filename_prefix;
-    filename = index.filename_prefix + ".b2u";
-    fp = fopen((char *) filename.c_str(), "w");
-    uint32_t occ = index.binary_to_uind.size();
+    filename = indc->filename_prefix + ".b2u";
+    FILE *fp = fopen((char *) filename.c_str(), "w");
     WU(occ);
-    for ( auto &kvp : index.binary_to_uind ) {       
+    for ( auto &kvp : index->binary_to_uind ) {       
         WS(kvp.first);
         WU(kvp.second);
     }
     fclose(fp);
-    printf ("marshalling uind_to_passage occ=%d\n", occ);
-    filename = index.filename_prefix + ".utp";
+    occ = index->uind_to_passage.size();
+    printf ("marshalling uind_to_passage occ=%d\n", (int) occ);
+    filename = indc->filename_prefix + ".utp";
     fp = fopen((char *) filename.c_str(), "w");
-    occ = index.uind_to_passage.size();
     WU(occ);
-    for ( auto &kvp : index.uind_to_passage ) {
+    for ( auto &kvp : index->uind_to_passage ) {
         WU(kvp.first);
         Passage &passage = kvp.second;
         marshall_passage(passage, fp);
     }
     fclose(fp);
+    occ = index->passages.size();
     printf ("marshalling passages to uind occ=%d\n", occ);
-    filename = index.filename_prefix + ".passages";
+    filename = indc->filename_prefix + ".passages";
     fp = fopen((char *) filename.c_str(), "w");
-    occ = index.passages.size();
     WU(occ);
     for (uint32_t i=0; i<occ; i++) {
-        uint32_t passage_ind = index.passages[i];
+        uint32_t passage_ind = index->passages[i];
         WU(passage_ind);
     }
     fclose(fp);
 }
 
 
-Index *unmarshall_index(std::string pfx, IndexCommon *indc) {
+// only unmarshall passages if passages=true
+Index *unmarshall_index(std::string pfx, IndexCommon *indc, bool passages) {
     Index *index = new Index;
     printf ("unmarshalling binary_to_uind\n");
-    std::filename;
-    filename = index.filename_prefix + ".b2u";
-    fp = fopen((char *) filename.c_str(), "r");
+    std::string filename;
+    filename = indc->filename_prefix + ".b2u";
+    FILE *fp = fopen((char *) filename.c_str(), "r");
     uint32_t occ;
     RU(occ);
     printf ("%d size\n", occ);
@@ -688,7 +706,7 @@ Index *unmarshall_index(std::string pfx, IndexCommon *indc) {
     }
     fclose(fp);
     printf ("unmarshalling uind_to_passage \n");
-    filename = index.filename_prefix + ".utp";
+    filename = indc->filename_prefix + ".utp";
     fp = fopen((char *) filename.c_str(), "r");
     RU(occ);
     printf ("%d size\n", occ);
@@ -698,25 +716,27 @@ Index *unmarshall_index(std::string pfx, IndexCommon *indc) {
         index->uind_to_passage[uind] = unmarshall_passage(fp);
     }
     fclose(fp);
-    printf ("unmarshalling passages \n");
-    filename = index.filename_prefix + ".passages";
-    fp = fopen((char *) filename.c_str(), "r");
-    RU(occ);
-    printf ("%d size\n", occ);    
-    for (uint32_t i=0; i<occ; i++) {
-        uint32_t passage_ind;
-        RU(passage_ind);
-        index->passages[i] = passage_ind;
+    if (passages) {
+        printf ("unmarshalling passages \n");
+        filename = indc->filename_prefix + ".passages";
+        fp = fopen((char *) filename.c_str(), "r");
+        RU(occ);
+        printf ("%d size\n", occ);    
+        for (uint32_t i=0; i<occ; i++) {
+            uint32_t passage_ind;
+            RU(passage_ind);
+            index->passages[i] = passage_ind;
+        }
+        fclose(fp);
     }
-    fclose(fp);
     return index;
 }
     
 
 			      
 // marshalls everything *except* the doc-word arrays
-void marshall_invindex_min(InvIndex *inv, IndexCommon *indc) {
-    std::string pfx = inv->filename_prefix;
+void marshall_invindex_min(IndexCommon *indc, InvIndex *inv) {
+    std::string pfx = indc->filename_prefix;
     std::string filename;
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
         marshall_gram_long_map(pfx + ".inv-map-" + std::to_string(n), inv->map_dw[n]);
@@ -730,7 +750,7 @@ void marshall_invindex_min(InvIndex *inv, IndexCommon *indc) {
 InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc) {
     InvIndex *inv = new InvIndex;    
     std::string filename;
-    for (uint32_t n=inv->min_n_gram; n<=inv->max_n_gram; n++) {        
+    for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {        
         inv->map_dw[n] = unmarshall_gram_long_map(pfx + ".inv-map-" + std::to_string(n));
         inv->general_query[n] = unmarshall_gram_uint32_map(pfx + ".gen-" + std::to_string(n));
     }
@@ -821,7 +841,7 @@ std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex *inv, 
 }
 
 
-void marshall_invindex(InvIndex *inv, IndexCommon *indc) {
+void marshall_invindex(IndexCommon *indc, InvIndex *inv) {
     std::string pfx = indc->filename_prefix;
     std::string filename;
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
@@ -840,16 +860,15 @@ void marshall_invindex(InvIndex *inv, IndexCommon *indc) {
         fclose(fpinvmap);
     }
     // NB: have to do this last b/c otherwise invindex->map_dw not populated
-    marshall_invindex_min(inv, indc);
+    marshall_invindex_min(indc, inv);
 }
 
 
 
-void marshall_preprocessed_scores(PpScores *pps) {
-    std::string filename = pps->filename_prefix + ".pp";
+void marshall_preprocessed_scores(IndexCommon *indc, PpScores *pps) {
+    std::string pfx = indc->filename_prefix;
+    std::string filename = pfx + ".pp";
     FILE *fp = fopen((char *) filename.c_str(), "w");
-    WU(pps->max_n_gram);
-    WU(pps->num_passages);
     uint32_t num_mgrams = pps->scorerow.size();
     WU(num_mgrams);
     printf ("marshalling preprocessed scores for %d max_ngrams\n", num_mgrams);
@@ -876,8 +895,6 @@ PpScores *unmarshall_preprocessed_scores(std::string filename_pfx) {
     PpScores *pps = new PpScores;
     std::string filename = filename_pfx + ".pp";
     FILE *fp = fopen((char *) filename.c_str(), "r");
-    RU(pps->max_n_gram);
-    RU(pps->num_passages);
     uint32_t num_mgrams;
     RU(num_mgrams);
     printf ("unmarshalling preprocessed scores for %d max_ngrams\n", num_mgrams);
@@ -888,13 +905,12 @@ PpScores *unmarshall_preprocessed_scores(std::string filename_pfx) {
         RU(gram);
         uint32_t rowsize;
         RU(rowsize);
-        printf ("rowsize = %d\n", rowsize);
-        assert (rowsize <= pps->num_passages);
         pps->scorerow[gram].len = rowsize;
         pps->scorerow[gram].el = (Score *) malloc (sizeof (Score) * rowsize);
         uint32_t nn = fread((void *) pps->scorerow[gram].el, sizeof (Score), rowsize, fp);
         assert(nn==rowsize);
     }
+    fclose(fp);
     printf ("done\n");
     return pps;
 }                
@@ -931,9 +947,9 @@ InvIndex *invert(IndexCommon *indc, Index *index) {
     // iterate over *unique* passages in the index
     uint32_t ii=0;
     uint32_t tot = index->uind_to_passage.size();
-    uint32_t i100 = tot / 100;
+    uint32_t i10 = tot / 10;
     for ( auto &kvp : index->uind_to_passage ) {
-        if (ii > 0 && (ii % i100) == 0) {
+        if (ii > 0 && (ii % i10) == 0) {
             printf ("%d %d \n", ii, tot);
         }
         ii ++;
@@ -948,7 +964,7 @@ InvIndex *invert(IndexCommon *indc, Index *index) {
                 Gram gram = kvp.first;
                 uint32_t count = kvp.second;
                 // shoudn't already have a count
-                assert (inv->docs_with_word[pd.n][gram].find(passage.uind) = inv->docs_with_word[pd.n][gram].end());
+                assert (inv->docs_with_word[pd.n][gram].find(passage.uind) == inv->docs_with_word[pd.n][gram].end());
                 inv->docs_with_word[pd.n][gram][passage.uind] = count;
                 inv->general_query[pd.n][gram] += count;
                 inv->total_count[pd.n] += count;
@@ -968,63 +984,65 @@ static bool compare_scores (const Score & s1, const Score & s2) {
 // query is a passage.  
 
 
-
-std::vector < Score > score;
+Score *score = NULL;
 /*
   query contains a passage
   scorepair is preprocessed score arrays. let n = scorepare[max_n_gram].first.  
   scorepair[max_n_gram].second is a c array of n Score structs 
   scorepair[max_n_gram].second[i].ind is a passage ind and .val is the preprocessed score to add for that psg.
 */ 
-void query_with_passage (Passage &query, PpScores &pps, uint32_t *ind, float *best_score) {
-    if (score.size() < pps.num_passages) {
-        score.resize(pps.num_passages);
-        printf ("score is now %d len\n", (int) score.size());
+void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *best_score) {
+    if (score == NULL) {
+        score = (Score *) malloc (sizeof(Score) * indc->num_uind);
     }
     // clear the scores
-    for (uint32_t i = 0; i < pps.num_passages; i++) {
+    for (uint32_t i = 0; i < indc->num_uind; i++) {
         score[i].ind = i;
         score[i].val = 0.0;
     }
     // iterate over highest order ngrams in the "query"
-    for (auto &kvp : query.contents[pps.max_n_gram].count)    {
+    for (auto &kvp : query->contents[indc->max_n_gram].count)    {
         Gram gram = kvp.first;
-        //        printf ("gram = ");
-        //        spit_gram_hex(gram, pps.max_n_gram);
         uint32_t gram_count = kvp.second;
-        uint32_t rowsize = pps.scorerow[gram].len;
-        //        printf ("gram_count = %d  rowsize = %d\n", gram_count, rowsize);
-        Score *sp = pps.scorerow[gram].el;
+        if (pps->scorerow.find(gram) == pps->scorerow.end()) {
+            continue;
+        }
+        uint32_t rowsize = pps->scorerow[gram].len;
+        assert (rowsize < indc->num_uind);
+        Score *sp = pps->scorerow[gram].el;
         for (uint32_t i=0; i<rowsize; i++) {
-            uint32_t psgid = sp[i].ind; 
-            //            printf ("score %d += %d * %.2f\n", psgid, gram_count, sp[i].val);
-            score[psgid].val += gram_count * sp[i].val;
+            uint32_t uid = sp[i].ind; 
+            if (uid >= indc->num_uind) {
+                printf ("uid=%d num_uinq=%d\n", uid, indc->num_uind);
+                assert (uid < indc->num_uind);
+            }
+            score[uid].val += gram_count * sp[i].val;
         }
     }
     // scale the scores
     float max_score = -10000.0;
     uint32_t argmax = 0;
-    float min_score = 10000.0;
+    //    float min_score = 10000.0;
     //    uint32_t argmin = 0;
-    for (uint32_t i = 0; i < pps.num_passages; i++) {
-        score[i].val /= query.contents[pps.max_n_gram].total;
+    for (uint32_t i = 0; i < indc->num_uind; i++) {
+        score[i].val /= query->contents[indc->max_n_gram].total;
         if (score[i].val > max_score) {
             max_score = score[i].val;
             argmax = i;
         }
-        /*
-        if (score[i].val < min_score) {
-            min_score = score[i].val;
-            argmin = i;
-        }
-        */
     }
+    /*
     std::sort (score.begin (), score.end (), compare_scores);  
     for (uint32_t i=0; i<5; i++) {
         printf ("%d %d %.4f\n", i, score[i].ind, score[i].val);
+        for ( auto &el : indc->uind_to_psgs[score[i].ind] ) {
+            printf ("%d ", el);
+        }
+        printf ("\n");
     }
-
+    
     printf ("min_score = %.5f\n", min_score);
+    */
     *ind = argmax;
     *best_score = max_score;
 }
@@ -1049,34 +1067,38 @@ void *invert_c(void *vpindc, void *vpindex) {
     return reinterpret_cast<void *> (inv);
 }
 
-void marshall_invindex_c(void *vpinv, void *vpindc, char *file_pfx) {
+void marshall_invindex_c(void *vpindc, void *vpinv, char *file_pfx) {
     InvIndex *inv = reinterpret_cast<InvIndex *> (vpinv);
-    inv->filename_prefix = std::string(file_pfx);
     IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
-    marshall_invindex(inv, indc);
+    marshall_invindex(indc, inv);
 }
 
-void marshall_index_c(void *vpindex, char *file_pfx) {
+void marshall_index_c(void *vpindc, void *vpindex, char *file_pfx) {
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     Index *index = reinterpret_cast<Index *> (vpindex);
-    index->filename_prefix = std::string(file_pfx);
-    marshall_index(index);
+    marshall_index(indc, index);
 }
 
+void marshall_index_common_c(void *vpindc) {
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
+    marshall_index_common(indc);
+}
 
 void *unmarshall_preprocessed_scores_c (char *filename_pfx) {
     PpScores *pps = unmarshall_preprocessed_scores(std::string(filename_pfx));
     return reinterpret_cast <void *> (pps);
 }
 
-void query_with_passage_c (void *vppassage, void *vppps, uint32_t *ind, float *score) {
+void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, float *score) {
+    IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     Passage *passage = reinterpret_cast<Passage *>(vppassage);
     PpScores *pps = reinterpret_cast<PpScores *>(vppps);
-    query_with_passage(*passage, *pps, ind, score);
+    query_with_passage(indc, passage, pps, ind, score);
 }
 
-void new_index_common_c(char *filename_prefix, 
-                        uint32_t min_n_gram, uint32_t max_n_gram,
-                        uint32_t passage_len_bytes) {
+void *new_index_common_c(char *filename_prefix, 
+                         uint32_t min_n_gram, uint32_t max_n_gram,
+                         uint32_t passage_len_bytes) {
     IndexCommon *indc = new_index_common(std::string(filename_prefix),
                                          min_n_gram, max_n_gram, passage_len_bytes);
     return reinterpret_cast<void *> (indc);
@@ -1084,7 +1106,7 @@ void new_index_common_c(char *filename_prefix,
 
 void *new_index_c() {
     Index *index = new Index;
-    return reinterpret_cast<void *> (ind);
+    return reinterpret_cast<void *> (index);
 }
 
 void index_common_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_bytes) {
