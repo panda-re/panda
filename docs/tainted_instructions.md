@@ -42,23 +42,22 @@ Use TZB to find the interesting part of the replay
 --------------------------------------------------
 
 The passphrase entered, as the rrshare page explains, is
-"tygertygerburningbrightintheforestofthenight".  We are going to use
+`"tygertygerburningbrightintheforestofthenight"`.  We are going to use
 TZB's  stringsearch  plugin to tell us what instructions
 (or tap points) process that string. Here's how to do that. 
 
 1. Create a file called 
 
-    search_strings.txt 
+        search_strings.txt 
 
-and put it in the qemu directory of PANDA.  That file should contain
-the string "tygertygerburningbrightintheforestofthenight".  Yes, you
-need the quotes. 
+    and put it in the qemu directory of PANDA.  That file should contain
+    the string "tygertygerburningbrightintheforestofthenight".  Yes, you
+    need the quotes. 
 
 2. Run PANDA with the following command (assuming you unpacked replay into
 qemu dir)
 
-
-    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshkeygen -display none  -panda callstack_instr -panda stringsearch 
+        ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshkeygen -display none  -panda callstack_instr -panda stringsearch 
 
 
 This should produce output chugging through the replay until `stringsearch` sees the passphrase:
@@ -90,7 +89,7 @@ Use scissors to pull out the interesting
 ----------------------------------------
 
 We dont really care about the part of the replay before we see the
-passphrase.  So we'll use PANDA's scissors plugin to pull out just the
+passphrase.  So we'll use PANDA's `scissors` plugin to pull out just the
 interesting part of the trace.  Here's how to do that.
 
 
@@ -109,7 +108,7 @@ Finally, we'll use the tstringsearch plugin to apply taint labels to
 that passphrase and ask the taint system to figure out what
 instructions are tainted.  Here's how to do that.
 
-      ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
+      ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshksci -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
 
 This time, in addition to all the WRITE and READ match info, you should also see PANDA saying it is tainting those matched strings, e.g.,
 
