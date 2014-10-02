@@ -3,6 +3,9 @@ PLUGIN_NAME=taint
 # Include the PANDA Makefile rules
 include ../panda.mak
 
+QEMU_CFLAGS+=-std=c++11
+
+
 # Include files and lib from LLVM
 CXXFLAGS+=$(LLVM_CXXFLAGS)
 
