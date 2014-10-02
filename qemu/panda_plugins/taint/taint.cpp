@@ -74,6 +74,7 @@ extern "C" {
 
 #include "panda_stats.h"
 #include "panda_memlog.h"
+#include "panda_common.h"
 
 #include "llvm_taint_lib.h"
 #include "panda_dynval_inst.h"
@@ -383,6 +384,8 @@ void __taint_enable_taint(void) {
 
 // Derive taint ops
 int before_block_exec(CPUState *env, TranslationBlock *tb){
+
+    shadow->asid = panda_current_asid(env);
 
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
@@ -1072,6 +1075,16 @@ void uninit_plugin(void *self) {
 
   printf ("uninit taint plugin\n");
 
+
+    for ( auto &kvp : shadow->tpc ) {
+        uint64_t asid = kvp.first;
+        printf ("asid = %lx\n", asid);
+        for ( auto &pc : kvp.second ) {
+            printf ("instr is tainted :  asid=0x%lx : pc=0x%lx \n", asid, pc);
+        }
+    }
+
+
     /*
      * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
      * fine, until we reload this plugin again into QEMU and we get an LLVM
@@ -1090,6 +1103,8 @@ void uninit_plugin(void *self) {
         pr->unregisterPass(*pi);
     }
 
+
+
     if (taintfpm) delete taintfpm; // Delete function pass manager and pass
     if (shadow) tp_free(shadow);
     if (tob_io_thread) tob_delete(tob_io_thread);
@@ -1097,6 +1112,8 @@ void uninit_plugin(void *self) {
     panda_disable_llvm();
     panda_disable_memcb();
     panda_enable_tb_chaining();
+
+
 }
 
 

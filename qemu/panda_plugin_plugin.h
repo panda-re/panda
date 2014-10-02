@@ -110,6 +110,7 @@ to add a callback to be run inside of plugin A.
       assert (op);							\
     }									\
     void (*add_cb)(cb_name##_t fptr) = (void (*)(cb_name##_t)) dlsym(op, "ppp_add_cb_" #cb_name); \
+    assert (add_cb != 0); \
     add_cb (cb_func);							\
   }
 

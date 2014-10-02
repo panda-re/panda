@@ -26,6 +26,9 @@
 #include "shad_dir_64.h"
 
 
+#include <map>
+#include <set>
+
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
 #define FUNCNAMELENGTH 50
@@ -136,6 +139,10 @@ typedef struct shad_struct {
     uint8_t tainted_computation_happened;
     uint8_t taint_state_changed;
     uint8_t taint_state_read;
+    uint64_t asid;
+    uint64_t pc;
+   // map from cr3 to set of pcs that are "tainted" meaning they are instructions that process tainted data
+    std::map < uint64_t, std::set < uint64_t > > tpc;  
 } Shad;
 
 // returns a shadow memory to be used by taint processor
@@ -236,7 +243,7 @@ typedef struct taint_op_struct {
     struct {Addr a, b;} copy;
     struct {Addr a; Addr b; uint32_t l;} bulkcopy;
     struct {Addr a, b, c;} compute;
-    uint64_t pc;   // special op that just knows the current program counter
+      uint64_t pc;   // special op that just knows the current program counter
     struct {Addr a;} ldcallback;  
     struct {Addr a;} stcallback;
     struct {
