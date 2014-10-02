@@ -95,6 +95,8 @@ extern int taint_label_mode;
 // Global number of taint labels
 extern int count;
 
+extern int tainted_instructions;
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -951,43 +953,49 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("taint");
     int i;
     if (NULL != args) {
-      for (i = 0; i < args->nargs; i++) {
-	if (0 == strncmp(args->list[i].key, "max_taintset_card", 17)) {
-	  max_taintset_card = atoi(args->list[i].value);
-	  printf ("max_taintset_card = %d\n", max_taintset_card);
-	}
-
-	if (0 == strncmp(args->list[i].key, "max_taintset_compute_number", 24)) {
-	  max_taintset_compute_number = atoi(args->list[i].value);
-	  printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
-	}
-
-	if (0 == strncmp(args->list[i].key, "compute_is_delete", 17)) {
-	  compute_is_delete = 1;
-	}
-	if (0 == strncmp(args->list[i].key, "label_incoming_network", 22)) {
-	  taint_label_incoming_network_traffic = 1;
-	}
-	if (0 == strncmp(args->list[i].key, "query_outgoing_network", 22)) {
-	  taint_query_outgoing_network_traffic = 1;
-	}
-	if (0 == strncmp(args->list[i].key, "no_tainted_pointer", 18)) {
-	  tainted_pointer = 0;
-	}
-	if (0 == strncmp(args->list[i].key, "label_mode", 10)) {
-	  if (0 == strncmp(args->list[i].value, "binary", 6)){
-            taint_label_mode = TAINT_BINARY_LABEL;
-          }
-	  else if (0 == strncmp(args->list[i].value, "byte", 4)){
-            taint_label_mode = TAINT_BYTE_LABEL;
-          }
-          else {
-            printf("Invalid taint label_mode.  Using default byte label.\n");
-            taint_label_mode = TAINT_BYTE_LABEL;
-	  }
+        for (i = 0; i < args->nargs; i++) {
+            if (0 == strncmp(args->list[i].key, "max_taintset_card", 17)) {
+                max_taintset_card = atoi(args->list[i].value);
+                printf ("max_taintset_card = %d\n", max_taintset_card);
+            }
+            
+            if (0 == strncmp(args->list[i].key, "max_taintset_compute_number", 24)) {
+                max_taintset_compute_number = atoi(args->list[i].value);
+                printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
+            }
+            
+            if (0 == strncmp(args->list[i].key, "compute_is_delete", 17)) {
+                compute_is_delete = 1;
+            }
+            if (0 == strncmp(args->list[i].key, "label_incoming_network", 22)) {
+                taint_label_incoming_network_traffic = 1;
+            }
+            if (0 == strncmp(args->list[i].key, "query_outgoing_network", 22)) {
+                taint_query_outgoing_network_traffic = 1;
+            }
+            if (0 == strncmp(args->list[i].key, "no_tainted_pointer", 18)) {
+                tainted_pointer = 0;
+            }
+            if (0 == strncmp(args->list[i].key, "label_mode", 10)) {
+                if (0 == strncmp(args->list[i].value, "binary", 6)){
+                    taint_label_mode = TAINT_BINARY_LABEL;
+                }
+                else if (0 == strncmp(args->list[i].value, "byte", 4)){
+                    taint_label_mode = TAINT_BYTE_LABEL;
+                }
+                else {
+                    printf("Invalid taint label_mode.  Using default byte label.\n");
+                    taint_label_mode = TAINT_BYTE_LABEL;
+                }
+            }
+            
+            if (0 == strncmp (args->list[i].key, "tainted_instructions", 20)) {
+                tainted_instructions = 1;
+            }
+            
         }
-      }
     }
+    
 
     if (taint_label_mode == TAINT_BYTE_LABEL){
         printf("Taint: running in byte labeling mode.\n");
@@ -1027,18 +1035,19 @@ int print_labels (uint32_t el, void *stuff) {
 
 void uninit_plugin(void *self) {
 
-  printf ("uninit taint plugin\n");
-
-
-    for ( auto &kvp : shadow->tpc ) {
-        uint64_t asid = kvp.first;
-        printf ("asid = %lx\n", asid);
-        for ( auto &pc : kvp.second ) {
-            printf ("instr is tainted :  asid=0x%lx : pc=0x%lx \n", asid, pc);
+    printf ("uninit taint plugin\n");
+    
+    if (tainted_instructions) {
+        for ( auto &kvp : shadow->tpc ) {
+            uint64_t asid = kvp.first;
+            printf ("asid = %lx\n", asid);
+            for ( auto &pc : kvp.second ) {
+                printf ("instr is tainted :  asid=0x%lx : pc=0x%lx \n", asid, pc);
+            }
         }
     }
-
-
+    
+    
     /*
      * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
      * fine, until we reload this plugin again into QEMU and we get an LLVM
