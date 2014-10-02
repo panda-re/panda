@@ -9,47 +9,50 @@ Say you have a replay and you want to taint some data and then
 determine which instructions operate on that tainted data.  That is,
 you want to know what instructions in what processes delete, copy and
 comute taint sets.  This is a little like a forward slice, but on a
-specific, concrete exection of (in this case) an entire system.
-Remember that PANDA's taint is whole-system.  So if shared memory or
-disk gets tainted, taint flows between processes and to and from
-kernel.  
+specific, concrete execution.  Remember that PANDA's taint is
+whole-system.  So shared memory or disk bytes can get tainted, and
+taint flows between processes and to and from kernel.
 
 This sort of thing can be interesting and useful if, e.g., you want
-to know what code computes a hash function or performs encryption.
-
-
-Obtain Replay 
--------------
+to know what code computes a hash function or performs encryption
+or is engaged in computing a function argument deep in a program.
 
 In this tutorial, we will use a replay of someone using ssh-keygen.
 We will apply taint labels to the passphrase entered and then ask
 PANDA to tell us all the code that processes that tainted data.
 
+
+Obtain Replay 
+-------------
+
 Download the replay from here. 
 
-http://www.rrshare.org/detail/30
+    http://www.rrshare.org/detail/30 
 
 And unpack it with 
 
-<pre> python scripts/rrunpack.py sshkeygen.rr </pre>
+    python scripts/rrunpack.py sshkeygen.rr 
 
-This produces two files <pre> sshksci-rr-nondet.log </pre> which is
-the replay log, and <pre> sshksci-rr-snp </pre> which is the snapshot
+This produces two files sshksci-rr-nondet.log, which is
+the replay log, and sshksci-rr-snp, which is the snapshot
 from which to begin replay.
+
 
 Use TZB to find the interesting part of the replay
 --------------------------------------------------
 
 The passphrase entered, as the rrshare page explains, is
 "tygertygerburningbrightintheforestofthenight".  We are going to use
-TZB's <pre> stringsearch </pre> plugin to tell us what instructions
+TZB's  stringsearch  plugin to tell us what instructions
 (or tap points) process that string. Here's how to do that. 
 
-For more info on TZB see publications in https://github.com/moyix/panda
+1. Create a file called 
 
-1. Create a file called <pre> search_strings.txt </pre> and put it in the
-qemu directory of PANDA containing "tygertygerburningbrightintheforestofthenight".
-Yes, you need the quotes. 
+    search_strings.txt 
+
+and put it in the qemu directory of PANDA.  That file should contain
+the string "tygertygerburningbrightintheforestofthenight".  Yes, you
+need the quotes. 
 
 2. Run PANDA with the following command (assuming you unpacked replay into
 qemu dir)
@@ -80,28 +83,31 @@ This should produce output chugging through the replay until <pre> stringsearch 
 
 So it isn't until about 430M instructions into the trace that we see "tygertygerburningbrightintheforestofthenight".
 
+For more info on TZB see publications in https://github.com/moyix/panda
 
-Use scissors to pull out interesting 
-------------------------------------
 
-Now, we'll use the <pre> scissors </pre> plugin to pull out just the
-interesting part of the trace.  Here's how to do that.  
+Use scissors to pull out the interesting 
+----------------------------------------
+
+We dont really care about the part of the replay before we see the
+passphrase.  So we'll use PANDA's scissors plugin to pull out just the
+interesting part of the trace.  Here's how to do that.
 
 
     ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda scissors:start=420000000,end=438334408,name=sshksci
 
 
-I created a new recording that starts at 420M instructions in and ends
+This creates a new recording that starts at 420M instructions in and ends
 with the last instruction in the trace. This new replay is called 
 <pre> sshksci </pre>.
 
 
-Taint the passphrase and find out what instructions process taint
+Use taint to find out what instructions process the passphrase
 -----------------------------------------------------------------
 
-Finally, we'll use the <pre> tstringsearch </pre> plugin to apply
-taint labels to that passphrase and ask the taint system to figure out
-what instructions are tainted.  Here's how to do that.  
+Finally, we'll use the tstringsearch plugin to apply taint labels to
+that passphrase and ask the taint system to figure out what
+instructions are tainted.  Here's how to do that.
 
       ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
 
@@ -116,7 +122,7 @@ This time, in addition to all the WRITE and READ match info, you should also see
      applying taint labels to search string of length 44  @ p=0x00000000c53bec50                        
      ******************************************************************************                     
 
-And, at the end of the run, you will see the tainted instruction output:
+And, at the end of the run, you will see the tainted instructions:
 
     uninit taint plugin                                
     asid = 503d000                                     
@@ -129,11 +135,14 @@ And, at the end of the run, you will see the tainted instruction output:
     instr is tainted :  asid=0x503d000 : pc=0xb722c9d1 
     ...                                                
 
-This tells us that the process with asid (CR3) 0x503d000 processed
-tainted data in instructions at pc=0xb722c988,0xb722c9b6, etc.  One needn't apply taint
-labels via tstringsearch (although it is convenient), note.  Instead,
-you might taint data at the linux <pre> read </pre> system call.
-The complete expected output is reproduced below.  
+This tells us that the process with CR3 0x503d000 processed tainted
+data in instructions at pc=0xb722c988,0xb722c9b6, etc.  
+
+Note that one needn't apply taint labels via tstringsearch (although
+it is convenient).  Instead, you might taint data at the linux
+<pre> read </pre> system call.  Or somewhere else.
+
+The complete expected output from list last run of panda is reproduced below.
 
     adding /home/tleek/git/panda/qemu/x86_64-softmmu/panda_plugins/panda_callstack_instr.so to panda_plugin_files 0                
     adding /home/tleek/git/panda/qemu/x86_64-softmmu/panda_plugins/panda_stringsearch.so to panda_plugin_files 1                   
