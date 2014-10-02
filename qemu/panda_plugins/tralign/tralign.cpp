@@ -34,9 +34,9 @@ extern "C" {
 #include "rr_log.h"
 #include "rr_log_all.h"
 #include "panda_plugin_plugin.h"
-
-bool init_plugin(void *);
-void uninit_plugin(void *);
+    
+    bool init_plugin(void *);
+    void uninit_plugin(void *);
 
 }
 
@@ -63,7 +63,8 @@ uint8_t *buffer = NULL;
 uint32_t buffer_len = 0;
 uint32_t buffer_max = 0;
 
-void *indexer;
+void *ind;
+void *indc;
 
 uint32_t bb_counter = 0;
 
@@ -83,7 +84,6 @@ bool pdice (float prob_yes) {
 
 float pincludebb = 0.01;
 
-uint32_t first_buffer_len = 0;
 
 uint64_t total_bb = 0;
 
@@ -102,52 +102,11 @@ int tralign_before_block_exec(CPUState *env, TranslationBlock *tb) {
             buffer = (uint8_t *) realloc(buffer, buffer_max);
         }
         panda_virtual_memory_rw(env, tb->pc, buffer, tb->size, 0);
-        // index it
-        index_this_passage_c(indexer, buffer, tb->size, block_num);
+        // index it        
+        index_this_passage_c(indc, ind, buffer, tb->size, block_num);
     }
     block_num ++;
   
-
-#if 0
-    if (total_instr == 0) {
-        total_instr = replay_get_total_num_instructions();
-        if (numblocks == 0) {
-            instr_per_block = 1;
-        }
-        instr_per_block = total_instr / numblocks;
-        instr_this_block = 0;
-    }
-    if (numblocks==0 || instr_this_block > instr_per_block) {
-        printf ("instr_this_block = " TARGET_FMT_lu " instr_per_block = " TARGET_FMT_lu " instr_this_block_indexed = " TARGET_FMT_lu " \n",
-                instr_this_block, instr_per_block, instr_this_block_indexed);
-        // done with current block -- index
-        index_this_passage_c(indexer, buffer, buffer_len, block_num);
-        printf ("done indexing block %d of %d bytes\n", block_num, buffer_len);
-        if (first_buffer_len == 0) {
-            first_buffer_len = buffer_len;
-        }
-        block_num ++;
-        buffer_len = 0;
-        instr_this_block = 0;
-        instr_this_block_indexed = 0;
-    }
-    else {
-        if (pdice(pincludebb) == true) {
-            // not done with current block -- collect
-            if (buffer_len + tb->size > buffer_max) {
-                buffer_max *= 2;
-                printf ("increased buffer_max to %d\n", buffer_max);
-                buffer = (uint8_t *) realloc(buffer, buffer_max);
-            }
-            // append this tb's code to the end of the current buffer
-            panda_virtual_memory_rw(env, tb->pc, buffer + buffer_len, tb->size, 0);
-            buffer_len += tb->size;
-            instr_this_block_indexed += tb->num_guest_insns;
-        }
-        instr_this_block += tb->num_guest_insns;
-    }
-    bb_counter ++;
-#endif
     return 0;
 }
 
@@ -193,7 +152,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     buffer_max = 1024;
     buffer = (uint8_t *) malloc(buffer_max);
-    indexer = new_indexer_c(min_n, max_n, 100000);    
+    indc = new_index_common_c(traceind_pfx, min_n, max_n, 100);    
+    ind = new_index_c();
     return true;
 
 #endif
@@ -206,15 +166,14 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #ifdef CONFIG_SOFTMMU
     printf ("total bb = %lu\n", total_bb);
-    printf ("using %d as passage len\n", first_buffer_len);
-    indexer_set_passage_len_bytes_c(indexer, first_buffer_len);
-    void *index = indexer_get_index_c(indexer);
+    printf ("marshalling index common\n");
+    marshall_index_common_c(indc);
     printf ("marshalling index\n");
-    marshall_index_c(index, traceind_pfx);
+    marshall_index_c(indc, ind, traceind_pfx);
     printf ("inverting\n");
-    void *inv = invert_c(index);
+    void *inv = invert_c(indc, ind);
     printf ("marshalling inv index\n");  
-    marshall_invindex_c(inv, traceind_pfx);
+    marshall_invindex_c(indc, inv, traceind_pfx);
 
 #endif
 }
