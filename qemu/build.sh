@@ -8,6 +8,7 @@ python ../scripts/apigen.py
 --prefix=`pwd`/install \
 --disable-pie \
 --disable-xen \
+--disable-libiscsi \
 --enable-llvm \
 --with-llvm=../llvm-3.3/Debug+Asserts \
 --extra-cflags="-O2" \
