@@ -24,6 +24,8 @@ QEMU_CFLAGS+=-std=c++11
 # uncomment to enable taint in the FDTRACKER
 QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
 
+GENCODE=syscall_ppp_boilerplate.cpp syscall_ppp_register.cpp syscall_printer.cpp callbacks.hpp default_callbacks.cpp syscalls_ext_typedefs.h
+
 syscall_ppp_boilerplate.cpp: gencode
 syscall_ppp_register.cpp: gencode
 syscall_printer.cpp: gencode
@@ -36,9 +38,9 @@ gencode:
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp syscalls.hpp syscall_ppp_boilerplate.cpp syscall_ppp_register.cpp syscall_printer.cpp callbacks.hpp default_callbacks.cpp syscalls_ext_typedefs.h
-$(PLUGIN_TARGET_DIR)/weak_callbacks.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/weak_callbacks.cpp
-$(PLUGIN_TARGET_DIR)/fdtracker.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/fdtracker.cpp
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp $(GENCODE)
+$(PLUGIN_TARGET_DIR)/weak_callbacks.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/weak_callbacks.cpp $(GENCODE)
+$(PLUGIN_TARGET_DIR)/fdtracker.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/fdtracker.cpp $(GENCODE)
 
 O_FILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 ifdef ENABLE_FDTRACKER
