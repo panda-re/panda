@@ -27,7 +27,7 @@ PANDAENDCOMMENT */
 #include <string>
 #include <list>
 #include <vector>
-#include "callbacks.hpp"
+#include "gen_callbacks.hpp"
 #include "syscalls.hpp"
 #include <iostream>
 #include <sstream>

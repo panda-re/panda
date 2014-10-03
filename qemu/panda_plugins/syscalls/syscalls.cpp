@@ -43,18 +43,18 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-#include "syscalls_ext_typedefs.h"
-#include "syscall_ppp_register.cpp"
+#include "gen_syscalls_ext_typedefs.h"
+#include "gen_syscall_ppp_register.cpp"
 
 }
-#include "syscall_ppp_boilerplate.cpp"
+#include "gen_syscall_ppp_boilerplate.cpp"
 
 // This is where we'll write out the syscall data
 FILE *plugin_log;
 void* syscalls_plugin_self;
 
-#include "callbacks.hpp"
-#include "default_callbacks.cpp"
+#include "gen_callbacks.hpp"
+#include "gen_default_callbacks.cpp"
 
 std::vector<target_asid> relevant_ASIDs;
 
@@ -445,7 +445,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
     // syscall is in R7
     //syscall_fprintf(env, "PC=" TARGET_FMT_lx ", SYSCALL=" TARGET_FMT_lx ", thumb=" TARGET_FMT_lx "\n", pc, env->regs[7], env->thumb);
 
-#include "syscall_printer.cpp"
+#include "gen_syscall_printer.cpp"
     return 0;
 }
 

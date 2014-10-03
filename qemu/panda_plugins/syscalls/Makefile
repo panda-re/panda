@@ -26,16 +26,14 @@ QEMU_CFLAGS+=-std=c++11
 
 PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
-GENCODE=$(PLUGIN_SRC_DIR)/syscall_ppp_boilerplate.cpp
-GENCODE+= $(PLUGIN_SRC_DIR)/syscall_ppp_register.cpp
-GENCODE+= $(PLUGIN_SRC_DIR)/syscall_printer.cpp
-GENCODE+= $(PLUGIN_SRC_DIR)/callbacks.hpp
-GENCODE+= $(PLUGIN_SRC_DIR)/default_callbacks.cpp
-GENCODE+= $(PLUGIN_SRC_DIR)/syscalls_ext_typedefs.h
+GENCODE=$(PLUGIN_SRC_DIR)/gen_syscall_ppp_boilerplate.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/gen_syscall_ppp_register.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/gen_syscall_printer.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/gen_callbacks.hpp
+GENCODE+= $(PLUGIN_SRC_DIR)/gen_default_callbacks.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/gen_syscalls_ext_typedefs.h
 
-$(GENCODE): gencode
-
-gencode:
+$(PLUGIN_SRC_DIR)/gen_%: linux_syscall_parser.py
 	$(call quiet-command,python linux_syscall_parser.py $(SYSCALLS_PROTOS) $(SYSCALLS_ARCH),"  PYTHON linux_syscall_parser.py")
 
 # The main rule for your plugin. Please stick with the panda_ naming

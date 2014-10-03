@@ -349,7 +349,7 @@ with open(PROTOS) as armcalls:
 alltext+= "#endif\n"
 weak_callbacks = ""
 weak_callbacks+= """
-#include "callbacks.hpp"
+#include "gen_callbacks.hpp"
 extern "C"{
 #include "cpu.h"
 }
@@ -365,12 +365,12 @@ for syscall in syscalls:
 weak_callbacks+= """
 #endif
 """
-with open("default_callbacks.cpp", "w") as weakfile:
+with open("gen_default_callbacks.cpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
 weak_callbacks = ""
-weak_callbacks+= """#ifndef __callbacks_hpp
-#define __callbacks_hpp
+weak_callbacks+= """#ifndef __gen_callbacks_hpp
+#define __gen_callbacks_hpp
 #include <string>
 
 // This is *NOT* supposed to be required for C++ code.
@@ -392,27 +392,27 @@ for syscall in syscalls:
     weak_callbacks += "void {0};\n".format(syscall.callback_def)
 weak_callbacks+= """} //namespace syscalls
 #endif
-#endif //__callbacks_hpp
+#endif //__gen_callbacks.hpp
 """
-with open("callbacks.hpp", "w") as weakfile:
+with open("gen_callbacks.hpp", "w") as weakfile:
     weakfile.write(weak_callbacks)
 
-with open("syscalls_ext_typedefs.h", "w") as callbacktypes:
+with open("gen_syscalls_ext_typedefs.h", "w") as callbacktypes:
     callbacktypes.write(GUARD + "\n")
     for t in typedefs:
         callbacktypes.write(t+"\n")
     callbacktypes.write("#endif\n")
 
-with open("syscall_printer.cpp", "w") as dispatchfile:
+with open("gen_syscall_printer.cpp", "w") as dispatchfile:
     dispatchfile.write(alltext)
 
-with open("syscall_ppp_register.cpp", "w") as pppfile:
+with open("gen_syscall_ppp_register.cpp", "w") as pppfile:
     pppfile.write(GUARD + "\n")
     for ppp in cb_names:
         pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
     pppfile.write("#endif\n")
 
-with open("syscall_ppp_boilerplate.cpp", "w") as pppfile:
+with open("gen_syscall_ppp_boilerplate.cpp", "w") as pppfile:
     pppfile.write(GUARD + "\n")
     for ppp in cb_names:
         pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
