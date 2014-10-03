@@ -32,7 +32,8 @@ X86_SP = "ESP"
 # Linux's syscall ABI doesn't change between IA32 and AMD64
 X86_GUARD = "#ifdef TARGET_I386"
 
-MODE = "ARM" if len(argv) < 2 else argv[1].upper()
+PROTOS = "android_arm_prototypes.txt" if len(argv) < 2 else argv[1]
+MODE = "ARM" if len(argv) < 3 else argv[2].upper()
 
 # set arch/OS specific args by mode
 for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
@@ -159,7 +160,7 @@ call_names = {}
 syscalls = [] # objects, having a set is useless for dedup
 
 # Goldfish kernel doesn't support OABI layer. Yay!
-with open("linux_" + MODE.lower() + "_prototypes.txt") as armcalls:
+with open(PROTOS) as armcalls:
     linere = re.compile("(\d+) (.+) (\w+)\((.*)\);")
     charre = re.compile("char.*\*")
     for line in armcalls:
