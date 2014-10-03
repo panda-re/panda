@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 #include <map>
 #include <string>
 #include <list>
+#include <vector>
 #include "callbacks.hpp"
 #include "syscalls.hpp"
 #include <iostream>
@@ -522,6 +523,8 @@ static bool check_taint(target_ulong guest_vaddr, uint32_t len){
     return false;
 }
 
+std::vector<std::string> read_fd_names;
+
 static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     ReadCallbackData* data = dynamic_cast<ReadCallbackData*>(opaque);
     if(!data){
@@ -530,7 +533,7 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
     }
     string filename = asid_to_fds[asid][data->fd];
     if (filename.empty()){
-        
+        filename = string("UNKNOWN fd ") + to_string(data->fd);
     }
     auto retval = get_return_val(env);
     std::string comm = getName(asid);
@@ -550,7 +553,8 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
                 taintify(tmp.base, tmp.len, 0, true);
             }
         }else if(ReadCallbackData::ReadType::READ == data->type){
-            taintify(data->guest_buffer, data->len, 0, true);
+            taintify(data->guest_buffer, data->len, read_fd_names.size(), true);
+            read_fd_names.push_back(filename);
         }
     }
     return Callback_RC::NORMAL;
@@ -560,7 +564,7 @@ static void fdtracker_sys_read_callback(CPUState* env,target_ulong pc,uint32_t f
     target_asid asid = get_asid(env, pc);
     std::string comm = getName(asid);
     string name = string("UNKNOWN fd ") + to_string(fd);
-    if (asid_to_fds[asid].count(fd) > 0){
+    if (asid_to_fds[asid].count(fd) > 0 && asid_to_fds[asid][fd].size() > 0){
         name =  asid_to_fds[asid][fd];
     }
     fdlog << "Process " << comm << " " << "Reading from " << name << endl;
