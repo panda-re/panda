@@ -24,14 +24,16 @@ QEMU_CFLAGS+=-std=c++11
 # uncomment to enable taint in the FDTRACKER
 QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
 
-GENCODE=syscall_ppp_boilerplate.cpp syscall_ppp_register.cpp syscall_printer.cpp callbacks.hpp default_callbacks.cpp syscalls_ext_typedefs.h
+PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
-syscall_ppp_boilerplate.cpp: gencode
-syscall_ppp_register.cpp: gencode
-syscall_printer.cpp: gencode
-syscalls_ext_typedefs.h: gencode
-callbacks.hpp: gencode
-default_callbacks.cpp: gencode
+GENCODE=$(PLUGIN_SRC_DIR)/syscall_ppp_boilerplate.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/syscall_ppp_register.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/syscall_printer.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/callbacks.hpp
+GENCODE+= $(PLUGIN_SRC_DIR)/default_callbacks.cpp
+GENCODE+= $(PLUGIN_SRC_DIR)/syscalls_ext_typedefs.h
+
+$(GENCODE): gencode
 
 gencode:
 	$(call quiet-command,python linux_syscall_parser.py $(SYSCALLS_PROTOS) $(SYSCALLS_ARCH),"  PYTHON linux_syscall_parser.py")
