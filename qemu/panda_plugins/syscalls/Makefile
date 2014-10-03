@@ -4,12 +4,12 @@
 # of the directory in which your plugin resides.
 PLUGIN_NAME=syscalls
 # uncomment to enable FDTRACKER module
-ENABLE_FDTRACKER=1
+# ENABLE_FDTRACKER=1
 
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-ifdef CONFIG_ANDROID
+ifeq ($(TARGET_BASE_ARCH),arm)
 SYSCALLS_PROTOS=android_arm_prototypes.txt
 SYSCALLS_ARCH=arm
 else
@@ -22,7 +22,7 @@ QEMU_CFLAGS+=-std=c++11
 # LIBS+=
 
 # uncomment to enable taint in the FDTRACKER
-QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
+# QEMU_CFLAGS+= -DFDTRACKER_ENABLE_TAINT
 
 PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
