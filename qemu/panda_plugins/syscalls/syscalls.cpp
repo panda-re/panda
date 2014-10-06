@@ -96,18 +96,6 @@ target_asid get_asid(CPUState *env, target_ulong addr) {
 #endif
 }
 
-// Reinterpret the ulong as a long. Arch and host specific.
-target_long get_return_val(CPUState *env){
-#if defined(TARGET_I386)   
-    return static_cast<target_long>(env->regs[R_EAX]);
-#elif defined(TARGET_ARM)
-    return static_cast<target_long>(env->regs[0]);
-#else
-#error "Not Implemented"
-#endif
-    
-}
-
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
 #if defined(TARGET_I386)
@@ -290,54 +278,6 @@ static bool returned_check_callback(CPUState *env, TranslationBlock* tb){
     other_returns.remove_if(is_empty);
     return invalidate;
 }
-
-
-
-namespace syscalls {
-    
-string::string(CPUState* env, target_ulong pc, target_ulong vaddr):
-    vaddr(vaddr), env(env), pc(pc)
-{
-    resolve();
-}
-
-bool string::resolve()
-{
-    // TARGET_PAGE_SIZE doesn't account for large pages, but most of QEMU doesn't anyway
-    char buff[TARGET_PAGE_SIZE + 1];
-    buff[TARGET_PAGE_SIZE] = 0;
-    unsigned short len = TARGET_PAGE_SIZE - (vaddr &  (TARGET_PAGE_SIZE -1));
-    if(len == 0) len = TARGET_PAGE_SIZE;
-    do{
-    // keep copying pages until the string terminates
-        int ret = panda_virtual_memory_rw(env, vaddr, (uint8_t*)buff, len, 0);
-        if(ret < 0){ // not mapped
-          return false;
-        }
-        if(strlen(buff) > len){
-
-          data.append(buff, len);
-          vaddr += len;
-          len = TARGET_PAGE_SIZE;
-        }else {
-          data += buff;
-          break;
-        }
-    }while(true);
-    
-    return true;
-}
-
-std::string& string::value()
-{
-    if(data.empty())
-        resolve();
-    return data;
-}
-
-
-};
-
 
 //void record_syscall(const char* callname);
 void finish_syscall(){}
