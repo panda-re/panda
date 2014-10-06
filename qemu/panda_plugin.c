@@ -298,9 +298,12 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
                     break;
                 }
             }
-            if (! (found_colon && found_equals)) {
+            if (!found_colon) {
                 // malformed argument
                 goto fail;
+            }
+            if (!found_equals) {
+                list[ret_idx].value = "";
             }
             ret_idx++;
         }
@@ -314,6 +317,23 @@ fail:
     if (ret != NULL) g_free(ret);
     if (list != NULL) g_free(list);
     return NULL;
+}
+
+bool panda_parse_bool(panda_arg_list *args, const char *argname) {
+    if (!args) return false;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            char *val = args->list[i].value;
+            if (strcmp("false", val) == 0 || strcmp("no", val) == 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+    // not found
+    return false;
 }
 
 target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval) {
