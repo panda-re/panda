@@ -63,7 +63,7 @@ int SymbolMap::getInfoFromObjdumpLine(const string& str, gva_t& add, string& sym
     return (-1);
   }
 
-  if (myHexStrToul(add, str.substr(0, t1)) < 0)
+  if (myHexStrToul<gva_t>(add, str.substr(0, t1)) < 0)
   {
     return (-1);
   }
@@ -165,7 +165,7 @@ int SymbolMap::getInfoFromDexdumpLine(const string& str, gva_t& address, string&
     return (-1);
   }
 
-  if (myHexStrToul(address, str.substr(t1 + 2, t2 - t1 - 2)) != 0)
+  if (myHexStrToul<gva_t>(address, str.substr(t1 + 2, t2 - t1 - 2)) != 0)
   {
     return (-1);
   }

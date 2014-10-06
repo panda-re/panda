@@ -47,7 +47,7 @@ int hexCharsToByte(uint8_t& h, char c1, char c2);
 /**
  * Converts a hex string into an unsigned long. Calls myHexStrToul(..., const char*);
  */
-int myHexStrToul(uint32_t& ul, const std::string& str);
+template<typename _ul> int myHexStrToul(_ul& ul, const std::string& str);
 
 /**
  * Converts a hex string into an unsigned long. Calls myHexStrToBArray. This function differs from the stdc one because:

@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
+#include "bswap.h"
+
 //#include "ErrorCodes.h"
 #define NULL_POINTER_ERROR -1
 
@@ -61,16 +63,26 @@ int hexCharsToByte(uint8_t& h, char c1, char c2)
   return (0);
 }
 
-int myHexStrToul(uint32_t& ul, const char* str)
-{
-  uint32_t u = 0;
-  size_t count = 4;
-  uint8_t* pa = (uint8_t*)(&u);
-  int ret = myHexStrToBArray(pa,count,str);
-  ul = htonl(u);
-  ul = (ul >> ((4 - count) * 8));
-  return (ret);
+// myHexStrToul needs to be able to take a 32 or 64 bit unsigned integer
+// We defined a template so we only need to write the code once, and
+// define these functions so C++ can do overload resolution in the template code
+// since the existing bswap stuff is all macro magic
+// and is undef'ed in the bswap header after used to define C functions
+static void inline my_be_bswaps(uint32* p){
+    be32_to_cpus(p);
 }
+static void inline my_be_bswaps(uint64* p){
+    be64_to_cpus(p);
+}
+template<typename _ul> int myHexStrToul(_ul& ul, const string& str){
+    uint8_t* pt = reinterpret_cast<uint8_t*>(&ul);
+    size_t longlen = sizeof(_ul);
+    int ret = myHexStrToBArray(pt, longlen, str);\
+    my_be_bswaps(&ul);
+    return ret;
+}
+template int myHexStrToul(uint32_t& ul, const string& str);
+template int myHexStrToul(uint64_t& ul, const string& str);
 
 /*
 int myHexStrToul(uint32_t& ul, const char* str, char** end)
@@ -151,11 +163,6 @@ int myHexStrToul(uint32_t& ul, const char* str, char** end)
   return (0);
 }
 */
-
-int myHexStrToul(uint32_t& ul, const string& str)
-{
-  return (myHexStrToul(ul, str.c_str()));
-}
 
 
 

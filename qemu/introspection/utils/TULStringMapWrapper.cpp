@@ -101,7 +101,7 @@ int TULStringMap::readSymbolsFromFile(const std::string& filename)
     {
       continue;
     }
-    ret = myHexStrToul(addr, s.substr(0,t));
+    ret = myHexStrToul<target_ulong>(addr, s.substr(0,t));
     if (ret != 0)
     {
       cerr << "readTULStringMap: Error [" << ret << "] with the following line [" << s << "]" << endl;
