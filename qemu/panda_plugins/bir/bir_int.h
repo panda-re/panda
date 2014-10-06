@@ -1,8 +1,6 @@
 #ifndef __BIR_INT_H_
 #define __BIR_INT_H_
 
-#include "index.h"
-
 
 void index_this_passage_c(void *vpindc, void *vpindex, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
 
