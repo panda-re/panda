@@ -16,6 +16,9 @@ void taint_label_ram(uint64_t pa, uint32_t l);
 // else returns label set cardinality 
 uint32_t taint_query_ram(uint64_t pa);
 
+// Return one label; ~0 if not labeled.
+uint32_t taint_pick_label(uint64_t pa);
+
 // if offset of reg is untainted, ...
 uint32_t taint_query_reg(int reg_num, int offset);
 
