@@ -487,7 +487,18 @@ static bool check_taint(target_ulong guest_vaddr, uint32_t len){
     return false;
 }
 
-std::vector<std::string> read_fd_names;
+static std::vector<std::string> read_fd_names;
+
+const char *__fdtracker_get_fd_name(uint32_t taint_label) {
+    std::string str(read_fd_names[taint_label]);
+    return strdup(str.c_str());
+}
+
+extern "C" {
+const char *fdtracker_get_fd_name(uint32_t taint_label) {
+    return __fdtracker_get_fd_name(taint_label);
+}
+}
 
 static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asid asid){
     ReadCallbackData* data = dynamic_cast<ReadCallbackData*>(opaque);
@@ -513,11 +524,14 @@ static Callback_RC read_callback(CallbackData* opaque, CPUState* env, target_asi
             for (uint32_t i = 0; i < data->len; i++){
                 struct target_iovec tmp;
                 panda_virtual_memory_rw(env, data->iovec_base+i, reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp), 0);
-                taintify(tmp.base, tmp.len, 0, true);
+                taintify(tmp.base, tmp.len, read_fd_names.size(), false);
             }
-        }else if(ReadCallbackData::ReadType::READ == data->type){
-            taintify(data->guest_buffer, data->len, read_fd_names.size(), true);
             read_fd_names.push_back(filename);
+        }else if(ReadCallbackData::ReadType::READ == data->type){
+            uint32_t label = read_fd_names.size();
+            taintify(data->guest_buffer, data->len, read_fd_names.size(), false);
+            read_fd_names.push_back(filename);
+            printf("tainted: label %u, vector size %u\n", label, read_fd_names.size());
         }
     }
     return Callback_RC::NORMAL;
