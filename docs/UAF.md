@@ -36,7 +36,7 @@ loaded, so let's find out what page it is. First, though, we need to cut
 the replay to a manageable size. The relevant part should start with the
 page load--so we should see the string `<html` in memory, and it should
 end with "has stopped working" being in memory. Place the following
-three lines into search_strings.txt:
+three lines into `search_strings.txt`:
 
 	"<html"
 	"<HTML"
@@ -188,7 +188,9 @@ The revision we're using already has the correct addresses for `malloc`,
 `free`, and `realloc` as defaults, as well as the CR3 of the Internet
 Explorer process. These were derived by dumping memory during the replay
 and then using
-[Volatility](https://github.com/volatilityfoundation/volatility) to 
+[Volatility](https://github.com/volatilityfoundation/volatility) to find
+the relevant process and look up the addresses of the memory allocation
+functions.
 
 Now we can run the use after free detector:
 
