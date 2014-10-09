@@ -144,8 +144,17 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin stringsearch\n");
 
+    panda_arg_list *args = panda_get_args("stringsearch");
+    const char *arg_str = panda_parse_string(args, "str", "");
+    size_t arg_len = strlen(arg_str);
+    if (arg_len > 0) {
+        memcpy(tofind[num_strings], arg_str, arg_len);
+        strlens[num_strings] = arg_len;
+        num_strings++;
+    }
+
     std::ifstream search_strings("search_strings.txt");
-    if (!search_strings) {
+    if (num_strings == 0 && !search_strings) {
         printf("Couldn't open search_strings.txt; no strings to search for. Exiting.\n");
         return false;
     }
