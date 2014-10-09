@@ -8,6 +8,7 @@ PLUGIN_NAME=changeme
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
+CXXFLAGS+= -std=c++11
 # CFLAGS+=
 # LIBS+=
 
