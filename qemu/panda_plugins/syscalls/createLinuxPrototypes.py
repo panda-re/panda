@@ -86,7 +86,7 @@ with open(SIGNATURES) as sigfile:
             signature += line
 
 
-with open("syscall_printer.gen.cpp", 'w') as printer:
+with open("proto_printer.cpp", 'w') as printer:
     printer.write('#include "%s"\n' % NUMSOURCE)
     printer.write("#include <stdio.h>\n")
     printer.write("int main(){\n")

@@ -45,9 +45,10 @@ static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     return mask_retaddr_to_pc(pc + offset);
 #elif defined(TARGET_I386)
     // syscall and sysenter x86 instructions are both 2 bytes
-    //return pc+2;
+    // on linux this is true. different for different systems.
+    return pc+11;
 
-    // ABI from http://wiki.osdev.org/SYSENTER
+    /*// ABI from http://wiki.osdev.org/SYSENTER
     // Return address is set by user code before the syscall/sysenter instr is executed
     unsigned char buf[2];
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
@@ -62,7 +63,7 @@ static target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     else {
         // Not a syscall or sysenter!?
         assert(0);
-    }
+    }*/
 #else
 #error "return address calculation not implemented for this architecture in fdtracker"
 #endif

@@ -73,3 +73,11 @@ qemu/arm-softmmu/
 qemu/x86_64-softmmu/
 qemu/install/*
 qemu/panda_plugins/*/*_ext.h
+
+qemu/panda_plugins/syscalls/gen_syscall_ppp_boilerplate.cpp
+qemu/panda_plugins/syscalls/gen_syscall_ppp_register.cpp
+qemu/panda_plugins/syscalls/gen_syscall_printer.cpp
+qemu/panda_plugins/syscalls/gen_syscalls_ext_typedefs.h
+qemu/panda_plugins/syscalls/gen_callbacks.hpp
+qemu/panda_plugins/syscalls/gen_default_callbacks.cpp
+qemu/panda_plugins/syscalls/proto_printer.cpp

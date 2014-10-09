@@ -407,10 +407,15 @@ obj-arm-y += strongarm.o
 obj-arm-y += collie.o
 obj-arm-y += pl041.o lm4549.o 
 ifdef CONFIG_ANDROID
-obj-android = android_arm.o goldfish_device.o goldfish_interrupt.o goldfish_timer.o
+obj-android-arm = android_arm.o 
+obj-arm-y += $(obj-android-arm)
+
+
+obj-android = goldfish_device.o goldfish_interrupt.o goldfish_timer.o
 obj-android += goldfish_events_device.o
 obj-android += goldfish_tty.o goldfish_nand.o goldfish_fb.o goldfish_memlog.o
 obj-android += goldfish_battery.o goldfish_switch.o goldfish_pipe.o
+obj-android += goldfish_mmc.o
 obj-android += android/utils/debug.o
 obj-android += android/utils/system.o
 obj-android += android/utils/misc.o
@@ -435,8 +440,7 @@ obj-android += android/gps.o
 obj-android += android/camera/camera-service.o android/camera/camera-capture-linux.o android/camera/camera-format-converters.o
 obj-android += android/hw-sensors.o
 obj-android += android/hw-control.o
-obj-android += goldfish_mmc.o
-obj-arm-y += $(obj-android)
+obj-y += $(obj-android)
 endif #CONFIG_ANDROID
 
 obj-sh4-y = shix.o r2d.o sh7750.o sh7750_regnames.o tc58128.o
@@ -529,68 +533,6 @@ obj-$(CONFIG_SMARTCARD_NSS) += $(addprefix ../libcacard/, $(libcacard-y))
 endif # CONFIG_BSD_USER
 endif # CONFIG_LINUX_USER
 
-##############################################################################
-### 
-### DECAF Sources
-###
-
-ifdef CONFIG_ANDROID
-
-#obj-decaf =  ../introspection/DECAF_callback.o
-obj-decaf =  introspection/DECAF_cmds.o
-obj-decaf +=  introspection/DECAF_main.o
-obj-decaf +=  introspection/DECAF_vm_compress.o
-obj-decaf +=  introspection/DECAF_linux_vmi.o
-obj-decaf +=  introspection/utils/HashtableWrapper.o
-obj-decaf +=  introspection/utils/OutputWrapper.o
-obj-decaf +=  introspection/utils/SimpleCallback.o
-obj-decaf +=  introspection/utils/HelperFunctions.o
-obj-decaf +=  introspection/utils/TULStringMapWrapper.o
-#  procmod.cpp \
-#  hookapi.cpp \
-#  hooks/function_map.cpp \
-
-QEMU_CFLAGS += -I$(SRC_PATH)/introspection/
-LIBS += -lstdc++ 
-
-
-libobj-y += $(obj-decaf)
-### 
-### END DECAF Sources
-###
-##############################################################################
-
-##############################################################################
-###
-### DroidScope Sources
-###
-
-
-obj-droidscope =  introspection/DroidScope/DS_Init.o
-obj-droidscope +=  introspection/DroidScope/linuxAPI/Context.o
-obj-droidscope +=  introspection/DroidScope/linuxAPI/ModuleServer.o
-obj-droidscope +=  introspection/DroidScope/linuxAPI/ProcessInfo.o
-obj-droidscope +=  introspection/DroidScope/DS_utils/SymbolMap.o
-obj-droidscope +=  introspection/DroidScope/DS_utils/RangeList.o
-obj-droidscope +=  introspection/DroidScope/dalvik/libdex/InstrUtils.o
-#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikMterpOpcodes.o
-#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikPrinter.o
-#obj-droidscope +=  introspection/DroidScope/dalvikAPI/DalvikDisableJit.o
-obj-droidscope +=  introspection/DroidScope/dalvikAPI/AndroidHelperFunctions.o
-obj-droidscope +=  introspection/DroidScope/dalvikAPI/AndroidHelperFunctionsCPP.o
-
-libobj-y += $(obj-droidscope)
-QEMU_CFLAGS += -I$(SRC_PATH)/introspection/DroidScope/
-LIBS += -lstdc++
-
-
-endif #CONFIG_ANDROID
-###
-### END DroidSCope Sources
-###
-##############################################################################
-
-
 
 obj-$(CONFIG_GDBSTUB_XML) += gdbstub-xml.o
 
@@ -620,7 +562,11 @@ clean:
 	rm -f *.o *.a *~ $(PROGS) nwfpe/*.o fpu/*.o
 	rm -f *.d */*.d tcg/*.o ide/*.o 9pfs/*.o panda/*.o *.bc *.bc1 *.bc2
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
-	rm -f panda_plugins/* panda_tools/*
+	rm -f panda_plugins/DroidScope/DS_utils/*.*
+	rm -f panda_plugins/DroidScope/linuxAPI/*.*
+	rm -f panda_plugins/DroidScope/*.*
+	rm -f panda_plugins/utils/*.*
+	rm -f panda_plugins/*.* panda_tools/*
 
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp

@@ -110,7 +110,7 @@ the SSL session aside from the handshake. This isn't required, however.
 Once the connection has been successfully made, end the recording
 session from the QEMU monitor and quit.
 
-    (qemu) end_record ssltut
+    (qemu) end_record
     (qemu) quit
 
 Examining the Encrypted Data
@@ -166,7 +166,7 @@ hours to run with `keyfind` enabled. This is what the output looks like:
     brendan@brendantemp:~/git/panda/qemu$ echo "begin_replay ssltut" | \
         x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
-        -panda callstack_instr;keyfind
+        -panda "callstack_instr;keyfind"
     Initializing plugin callstack_instr
     Initializing plugin keyfind
     Couldn't open keyfind_candidates.txt; no key tap candidates defined.

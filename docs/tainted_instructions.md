@@ -38,8 +38,8 @@ And unpack it with
 
     python scripts/rrunpack.py sshkeygen.rr 
 
-This produces two files sshksci-rr-nondet.log, which is
-the replay log, and sshksci-rr-snp, which is the snapshot
+This produces two files sshkeygen-rr-nondet.log, which is
+the replay log, and sshkeygen-rr-snp, which is the snapshot
 from which to begin replay.
 
 
@@ -47,27 +47,26 @@ Use TZB to find the interesting part of the replay
 --------------------------------------------------
 
 The passphrase entered, as the rrshare page explains, is
-"tygertygerburningbrightintheforestofthenight".  We are going to use
+`"tygertygerburningbrightintheforestofthenight"`.  We are going to use
 TZB's  stringsearch  plugin to tell us what instructions
 (or tap points) process that string. Here's how to do that. 
 
 1. Create a file called 
 
-    search_strings.txt 
+        search_strings.txt 
 
-and put it in the qemu directory of PANDA.  That file should contain
-the string "tygertygerburningbrightintheforestofthenight".  Yes, you
-need the quotes. 
+    and put it in the qemu directory of PANDA.  That file should contain
+    the string "tygertygerburningbrightintheforestofthenight".  Yes, you
+    need the quotes. 
 
 2. Run PANDA with the following command (assuming you unpacked replay into
 qemu dir)
 
-
-    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay ./sshkeygen -display none  -panda callstack_instr -panda stringsearch 
+        ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshkeygen -display none  -panda callstack_instr -panda stringsearch 
 
 
 On my computer this takes about 1 min 3 sec.  
-This should produce output chugging through the replay until <pre> stringsearch </pre> sees the passphrase:
+This should produce output chugging through the replay until `stringsearch` sees the passphrase:
 
     ...
     /data/laredo/tleek/rr-logs/sshkeygen-rr-nondet.log:  740611 of 1010779 (73.27%) bytes, 421487980 of 438334408 (96.16%) instructions processed.
@@ -96,16 +95,16 @@ Use scissors to pull out the interesting
 ----------------------------------------
 
 We dont really care about the part of the replay before we see the
-passphrase.  So we'll use PANDA's scissors plugin to pull out just the
+passphrase.  So we'll use PANDA's `scissors` plugin to pull out just the
 interesting part of the trace.  Here's how to do that.
 
 
-    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda scissors:start=420000000,end=438334408,name=sshksci
+    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshkeygen -display none -panda scissors:start=420000000,end=438334408,name=sshksci
 
 On my computer, this takes about 13 seconds. 
 This creates a new recording that starts at 420M instructions in and ends
 with the last instruction in the trace. This new replay is called 
-<pre> sshksci </pre>.
+`sshksci`.
 
 
 Use taint to find out what instructions process the passphrase
@@ -115,7 +114,7 @@ Finally, we'll use the tstringsearch plugin to apply taint labels to
 that passphrase and ask the taint system to figure out what
 instructions are tainted.  Here's how to do that.
 
-    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
+      ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay sshksci -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
 
 On my computer, this takes about 10 min 38 sec. 
 This time, in addition to all the WRITE and READ match info, you should also see PANDA saying it is tainting those matched strings, e.g.,
@@ -147,7 +146,7 @@ data in instructions at pc=0xb722c988,0xb722c9b6, etc.
 
 Note that one needn't apply taint labels via tstringsearch (although
 it is convenient).  Instead, you might taint data at the linux
-<pre> read </pre> system call.  Or somewhere else.
+`read` system call.  Or somewhere else.
 
 The complete expected output from list last run of panda is reproduced below.
 

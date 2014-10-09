@@ -260,6 +260,8 @@ void __taint_enable_taint(void) {
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
 #endif
 
+    panda_enable_precise_pc(); //before_block_exec requires precise_pc for panda_current_asid
+
     if (!execute_llvm){
         panda_enable_llvm();
     }

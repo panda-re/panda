@@ -2,8 +2,6 @@
 #ifndef __TAINT_INT_H_
 #define __TAINT_INT_H_
 
-#include "taint_processor.h"
-
 // turns on taint
 void taint_enable_taint(void);
 
