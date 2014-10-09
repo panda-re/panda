@@ -67,7 +67,7 @@ struct string_pos {
 };
 struct fullstack {
     int n;
-    target_ulong callers[16];
+    target_ulong callers[MAX_CALLERS];
     target_ulong pc;
     target_ulong asid;
 };
@@ -79,6 +79,7 @@ std::map<prog_point,string_pos> write_text_tracker;
 uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
+int n_callers = 16;
 
 // this creates BOTH the global for this callback fn (on_ssm_func)
 // and the function used by other plugins to register a fn (add_on_ssm)
@@ -111,7 +112,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
                 // Also get the full stack here
                 fullstack f = {0};
-                f.n = get_callers(f.callers, 16, env);
+                f.n = get_callers(f.callers, n_callers, env);
                 f.pc = p.pc;
                 f.asid = p.cr3;
                 matchstacks[p] = f;
@@ -152,6 +153,9 @@ bool init_plugin(void *self) {
         strlens[num_strings] = arg_len;
         num_strings++;
     }
+
+    n_callers = panda_parse_uint64(args, "callers", 16);
+    if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
 
     std::ifstream search_strings("search_strings.txt");
     if (num_strings == 0 && !search_strings) {

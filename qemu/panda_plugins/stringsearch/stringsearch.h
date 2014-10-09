@@ -5,6 +5,7 @@
 
 
 #define MAX_STRINGS 16
+#define MAX_CALLERS 128
 #define MAX_STRLEN  256
 
 
