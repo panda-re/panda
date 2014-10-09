@@ -22,6 +22,11 @@ We will apply taint labels to the passphrase entered and then ask
 PANDA to tell us all the code that processes that tainted data.
 
 
+NOTE:  This tutorial is known to work with git checkout
+
+
+    3601eb928a379f27a236ae15cfe8f00ab6fee2f2    
+
 Obtain Replay 
 -------------
 
@@ -61,6 +66,7 @@ qemu dir)
     ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay ./sshkeygen -display none  -panda callstack_instr -panda stringsearch 
 
 
+On my computer this takes about 1 min 3 sec.  
 This should produce output chugging through the replay until <pre> stringsearch </pre> sees the passphrase:
 
     ...
@@ -96,7 +102,7 @@ interesting part of the trace.  Here's how to do that.
 
     ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda scissors:start=420000000,end=438334408,name=sshksci
 
-
+On my computer, this takes about 13 seconds. 
 This creates a new recording that starts at 420M instructions in and ends
 with the last instruction in the trace. This new replay is called 
 <pre> sshksci </pre>.
@@ -109,8 +115,9 @@ Finally, we'll use the tstringsearch plugin to apply taint labels to
 that passphrase and ask the taint system to figure out what
 instructions are tainted.  Here's how to do that.
 
-      ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
+    ./x86_64-softmmu/qemu-system-x86_64 -m 128 -replay /data/laredo/tleek/rr-logs/sshkeygen -display none -panda callstack_instr -panda stringsearch -panda taint:tainted_instructions=1 -panda tstringsearch
 
+On my computer, this takes about 10 min 38 sec. 
 This time, in addition to all the WRITE and READ match info, you should also see PANDA saying it is tainting those matched strings, e.g.,
 
 
