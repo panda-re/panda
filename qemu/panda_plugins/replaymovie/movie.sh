@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# NOTE: you may need to apt-get install all of the following:
+# parallel
+# graphicsmagick
+# ffmpeg
+#
 
 ls *.ppm | parallel -m gm mogrify -format png -colorspace RGB
 rm replay_movie*.ppm
