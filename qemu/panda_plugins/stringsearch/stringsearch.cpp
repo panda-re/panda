@@ -138,7 +138,7 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
 
-
+FILE *mem_report = NULL;
 
 bool init_plugin(void *self) {
     panda_cb pcb;
@@ -146,6 +146,7 @@ bool init_plugin(void *self) {
     printf("Initializing plugin stringsearch\n");
 
     panda_arg_list *args = panda_get_args("stringsearch");
+
     const char *arg_str = panda_parse_string(args, "str", "");
     size_t arg_len = strlen(arg_str);
     if (arg_len > 0) {
@@ -157,9 +158,13 @@ bool init_plugin(void *self) {
     n_callers = panda_parse_uint64(args, "callers", 16);
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
 
-    std::ifstream search_strings("search_strings.txt");
-    if (num_strings == 0 && !search_strings) {
-        printf("Couldn't open search_strings.txt; no strings to search for. Exiting.\n");
+    const char *prefix = panda_parse_string(args, "name", "stringsearch");
+    char stringsfile[128] = {};
+    sprintf(stringsfile, "%s_search_strings.txt", prefix);
+
+    std::ifstream search_strings(stringsfile);
+    if (!search_strings) {
+        printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
         return false;
     }
 
@@ -195,6 +200,15 @@ bool init_plugin(void *self) {
         }
     }
 
+    char matchfile[128] = {};
+    sprintf(matchfile, "%s_string_matches.txt", prefix);
+    mem_report = fopen(matchfile, "w");
+    if(!mem_report) {
+        printf("Couldn't write report:\n");
+        perror("fopen");
+        return false;
+    }
+
     if(!init_callstack_instr_api()) return false;
 
     // Need this to get EIP with our callbacks
@@ -212,12 +226,6 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    FILE *mem_report = fopen("string_matches.txt", "w");
-    if(!mem_report) {
-        printf("Couldn't write report:\n");
-        perror("fopen");
-        return;
-    }
     std::map<prog_point,match_strings>::iterator it;
     for(it = matches.begin(); it != matches.end(); it++) {
         // Print prog point
