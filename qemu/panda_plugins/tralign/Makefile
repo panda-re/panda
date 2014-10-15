@@ -7,6 +7,8 @@ PLUGIN_NAME=tralign
 # Include the PANDA Makefile rules
 include ../panda.mak
 
+QEMU_CFLAGS+=-std=c++11 
+
 # If you need custom CFLAGS or LIBS, set them up here
 CFLAGS+=-lm
 # LIBS+=
@@ -19,3 +21,6 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
+
+
+
