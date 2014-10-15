@@ -65,6 +65,8 @@ uint32_t old_amt_ram_tainted;
 
 uint64_t enable_taint_instr_count = 0;
 
+uint32_t positional_tainting = 0;
+
 void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
   if (tstringsearch_label_on == false) {
     return;
@@ -78,7 +80,14 @@ void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
     for (i=0; i<the_len; i++) {
       target_ulong va = the_buf + i;
       target_phys_addr_t pa = cpu_get_phys_addr(cpu_single_env, va);
-      taint_label_ram(pa, i);
+      if (pa != (target_phys_addr_t) -1) {
+          if (positional_tainting) {
+              taint_label_ram(pa, i);
+          }
+          else {
+              taint_label_ram(pa, 10);
+          }
+      }
     }
     tstringsearch_label_on = false;
   }
@@ -86,6 +95,9 @@ void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
 
  
 
+bool first_time = true;
+
+// this is called from stringsearch upon a match
 void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 			uint8_t *matched_string, uint32_t matched_string_length, 
 			bool is_write) {
@@ -93,26 +105,43 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
   // determine if the search string is sitting in memory, starting at addr - (strlen-1)
   // first, grab that string out of memory
   target_ulong p = addr - (matched_string_length-1);
-  uint8_t thestring[MAX_STRLEN];
+  uint8_t thestring[MAX_STRLEN*2];
   panda_virtual_memory_rw(env, p, thestring, matched_string_length, 0);
+  printf ("thestring = [");
+  for (int i=0; i<matched_string_length; i++) {
+      if (isprint(thestring[i])) {
+          printf("%c", thestring[i]);
+      }
+      else {
+          printf(".");
+      }
+  }
+  printf ("]\n");
+  for (int i=0; i<matched_string_length; i++) {
+      printf ("%02x ", thestring[i]);
+  }
+  printf ("\n");
+
   // now compare it to the search string
-  printf ("thestring = [%s]\n", thestring);
   // NOTE: this is a write, so the final byte of the string hasn't yet been
   // written to memory since write callback is at start of fn.
   // thus, the matched_string_length - 1.
-  // yes, we can get this right, but eh.
-  if ((strncmp((char *)thestring, (char *)matched_string, matched_string_length-1)) == 0) {
-    printf ("search string is sitting in memory starting at 0x%lx\n", (long unsigned int) p);
-    
+  // yes, we can get this right. but, meh.
+  if ((memcmp((char *)thestring, (char *)matched_string, matched_string_length-1)) == 0) {
+    printf ("search string is sitting in memory starting at 0x%lx\n", (long unsigned int) p);    
     // ok this is ugly.  save pc, buffer addr and len
     the_pc = pc;
     the_buf = p;
     the_len = matched_string_length;
     // this should enable
     tstringsearch_label_on = true;    
-    // add a callback for taint processor st 
-    PPP_REG_CB("taint", on_load, tstringsearch_label);
-    PPP_REG_CB("taint", on_store, tstringsearch_label);
+
+    if (first_time) {
+        first_time = false;
+        // add a callback for taint processor st 
+        PPP_REG_CB("taint", on_load, tstringsearch_label);
+        PPP_REG_CB("taint", on_store, tstringsearch_label);
+    }
   
   }
 }
@@ -141,19 +170,10 @@ bool init_plugin(void *self) {
 
 #ifdef CONFIG_SOFTMMU
 
-  int i;
   panda_arg_list *args;
   args = panda_get_args("tstringsearch");
-  if (args != NULL) {
-      for (i = 0; i < args->nargs; i++) { 
-         // Format is tstringsearch:instr_count=X
-          if (0 == strncmp(args->list[i].key, "instr_count", 12)) {
-              enable_taint_instr_count = atoi(args->list[i].value);
-              printf ("taint will be enabled around instr count %" PRIx64 "\n",
-                      enable_taint_instr_count);
-          }
-      }
-  }
+  enable_taint_instr_count = panda_parse_uint64(args, "instr_count", 0);
+  positional_tainting = panda_parse_ulong(args, "positional", 0);
 
   panda_cb pcb;
   pcb.before_block_translate = tstringsearch_enable_taint;
