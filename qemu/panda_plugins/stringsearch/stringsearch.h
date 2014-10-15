@@ -4,7 +4,7 @@
 #define __STRINGSEARCH_H_
 
 
-#define MAX_STRINGS 16
+#define MAX_STRINGS 100
 #define MAX_STRLEN  256
 
 
