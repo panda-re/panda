@@ -14,33 +14,6 @@ extern "C"{
 
 
 
-/*
-
-struct gram_struct {
-    // val is actual gram.
-    // lowest order byte is first byte in gram.  
-    // excess high-order bytes are guaranteed to be zero
-    uint64_t val;  
-
-    // n as in n-gram.  
-    // n=1 means just 1st byte will be non-zero. 
-    // n=2 means first two will be non-zero
-    uint32_t n;
-  
-    bool operator <(const gram_struct &g) const { 
-        {
-            if (this->n == g.n) {
-                return this->val < g.val;
-            }
-            return this->n < g.n;
-        }
-    }
-};
-
-typedef gram_struct Gram;
-
-*/
-
 typedef uint64_t Gram;
 
 
@@ -298,5 +271,8 @@ Passage index_passage (IndexCommon *indc, bool update,
                        uint8_t *binary_passage, uint32_t len,
                        uint32_t uind);
 
+
+std::map < uint64_t, uint64_t > unmarshall_uint64_uint64_map(std::string filename) ;
+void marshall_uint64_uint64_map(std::string filename, std::map < uint64_t, uint64_t > &uumap) ;
 
 #endif // __INDEX_H__

@@ -306,9 +306,6 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     if (index->binary_to_uind.find(sb) == index->binary_to_uind.end()) {
         uind = index->binary_to_uind.size();
         // this is a new passage, i.e., we haven't indexed this binary blob before
-        if ((uind % 1000) == 0) {
-            printf ("%d unique passages indexed.  %d passages observed\n", (int) uind, (int) index->passages.size());
-        }
         index->binary_to_uind[sb] = uind;
         index->uind_to_passage[uind] = 
             index_passage(indc, /* updatelexicon = */ true, binary_passage, len, uind);        
@@ -321,6 +318,9 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     index->passages[passage_ind] = uind;
     // this is the total # of passages (not unique ones) indexed
     indc->num_passages ++;
+    //    if ((indc->num_passages % 100000) == 0) {
+    //        printf ("%lu passages\n", indc->num_passages);
+    //    }
     // keeps track of set of passages for this uind
     indc->uind_to_psgs[uind].insert(passage_ind);
 }
@@ -350,6 +350,20 @@ void marshall_uint32_uint32_map(std::string filename, std::map < uint32_t, uint3
     }
     fclose(fp);
 }
+
+
+void marshall_uint64_uint64_map(std::string filename, std::map < uint64_t, uint64_t > &uumap) {
+    FILE *fp = fopen ((char *) filename.c_str(), "w");
+    uint64_t occ = uumap.size();
+    WU(occ);
+    for ( auto &kvp : uumap ) {
+        WU(kvp.first);
+        WU(kvp.second);
+    }
+    fclose(fp);
+}
+
+
 
 
 void marshall_gram_long_map(std::string filename, std::map < Gram, long > &glmap ) {
@@ -425,6 +439,23 @@ std::map < uint32_t, uint32_t > unmarshall_uint32_uint32_map(std::string filenam
     std::map < uint32_t, uint32_t > uumap;
     for (uint32_t i=0; i<occ; i++) {
         uint32_t key, val;
+        RU(key);
+        RU(val);
+        uumap[key] = val;
+    }
+    fclose(fp);
+    return uumap;
+}
+
+
+
+std::map < uint64_t, uint64_t > unmarshall_uint64_uint64_map(std::string filename) {
+    FILE *fp = fopen ((char *)filename.c_str(), "r");
+    uint64_t occ;
+    RU(occ); 
+    std::map < uint64_t, uint64_t > uumap;
+    for (uint64_t i=0; i<occ; i++) {
+        uint64_t key, val;
         RU(key);
         RU(val);
         uumap[key] = val;
@@ -985,6 +1016,7 @@ static bool compare_scores (const Score & s1, const Score & s2) {
 
 
 Score *score = NULL;
+uint32_t max_num_uind = 0;
 /*
   query contains a passage
   scorepair is preprocessed score arrays. let n = scorepare[max_n_gram].first.  
@@ -994,8 +1026,13 @@ Score *score = NULL;
 void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *best_score) {
     if (score == NULL) {
         score = (Score *) malloc (sizeof(Score) * indc->num_uind);
+        max_num_uind = indc->num_uind;
     }
-    // clear the scores
+    if (indc->num_uind > max_num_uind) {
+        score = (Score *) realloc(score, sizeof(Score) * indc->num_uind);
+        max_num_uind = indc->num_uind;
+    }
+   // clear the scores
     for (uint32_t i = 0; i < indc->num_uind; i++) {
         score[i].ind = i;
         score[i].val = 0.0;
@@ -1113,3 +1150,4 @@ void index_common_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_byt
     IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     indc->passage_len_bytes = passage_len_bytes;
 }
+
