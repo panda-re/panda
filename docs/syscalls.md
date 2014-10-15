@@ -2,9 +2,9 @@ System call tracer plugin
 ====
 Generating system call introspection
 ----
-The system call plugin includes a python script named `android_syscall_parser.py`.
+The system call plugin includes a python script named `linux_syscall_parser.py`.
 This script reads in system call prototypes from a text file, one per line, as a space delimited syscall number and prototype
-(see `android_arm_prototypes.txt`).
+(see `android_arm_prototypes.txt` or `linux_x86_prototypes.txt`).
 
 For Android/Linux, we've implemented a python program that reads kernel source code and outputs a C program that uses kernel
 headers to print out the system call prototypes and numbers, with some fixups for calls such as `clone()` which have complicated
@@ -14,9 +14,9 @@ PPP
 ----
 Once a system call number and prototype list has been parsed and code has been generated, other plugins can
 register callbacks using PPP for syscall and sysret sites.
-The callback-registering plugin can `#include syscalls_ext_typedefs.h`, which defines the function signatures of before/after callbacks
+The callback-registering plugin can `#include gen_syscalls_ext_typedefs.h`, which defines the function signatures of before/after callbacks
 for each system call.
-The quickest reference for the list of available callback names is syscall_ppp_register.cpp, which is
+The quickest reference for the list of available callback names is `gen_syscall_ppp_register.cpp`, which is
 included in `syscalls.cpp`.
 Callbacks, whether at the call or return site,
 take the CPUState, pc, and all of the arguments to the system call.
@@ -51,5 +51,5 @@ System call data waiting for the syscall to return exists in a `ReturnPoint` obj
 The `ReturnPoint` is initially created on the stack and is passed to `appendReturnPoint()` using move semantics.
 No data in it is ever copied, and when it is removed from the vector its destructor is called, cleaning up its data.
 The `CallbackData` contained in the `ReturnPoint` is constructed using new (see any of the `syscall::call_X_callback()` functions
-in `default_callbacks.cpp`), and passed to `ReturnPoint`'s constructor, where it is encapsulated in a `std::unique_ptr`
+in `gen_default_callbacks.cpp`), and passed to `ReturnPoint`'s constructor, where it is encapsulated in a `std::unique_ptr`
 smart pointer. It will then be deleted when the `ReturnPoint` is destroyed when it is removed from the vector.

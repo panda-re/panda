@@ -33,8 +33,24 @@ Setting up the VM
 
 For this tutorial, we'll be working off of an [i386 Debian squeeze
 virtual machine created by Aurelien
-Jarno](http://people.debian.org/~aurel32/qemu/i386/). If you want to
-follow along without creating your own recording, there is [a sample
+Jarno](http://people.debian.org/~aurel32/qemu/i386/). If you're interested
+in using these virtual machines, you'll need a more recent copy of qemu to
+convert these images to a lower version of qcow2 which PANDA supports. You can
+do this with:
+
+    qemu-img convert -f qcow2 -O qcow2 -o compat=0.10 \
+    debian_wheezy_amd64_desktop.qcow2 debian_wheezy_amd64_desktop_panda.qcow2
+    
+where debian_wheezy_amd64_desktop.qcow2 is the example name of the qcow2 image
+you're looking to downgrade and debian_wheezy_amd64_desktop_panda.qcow2 is the
+new output file. Also, note again that this is using your distro's more recent 
+version of qemu-img, not PANDA's. This command is needed if you're running 
+into the following error:
+
+    'ide0-hd0' uses a qcow2 feature which is not supported by this qemu
+    version: QCOW version 3
+
+If you want to follow along without creating your own recording, there is [a sample
 virtual machine image and recording log
 available](http://amnesia.gtisc.gatech.edu/~moyix/ssltut.tar.gz) (beware
 though, it clocks in at around 2GB).

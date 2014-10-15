@@ -563,6 +563,12 @@ Some system call arguments need some additional processing, as evident in
 linux-user/syscall.c.  If your plugin is particularly interested in system call
 arguments, be sure to process them in similar ways.
 
+Additionally, this callback is dependent on running qemu in linux-user mode,
+a mode for which PANDA support is being phased out. To use this callback you
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
+plugins for examples of legacy usage. This callback will likely be removed in 
+future versions of PANDA.
+
 **Signature**:
 
     int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
@@ -590,6 +596,12 @@ arguments, be sure to process them in similar ways.
 Some system call arguments need some additional processing, as evident in
 linux-user/syscall.c.  If your plugin is particularly interested in system call
 arguments, be sure to process them in similar ways.
+
+Additionally, this callback is dependent on running qemu in linux-user mode,
+a mode for which PANDA support is being phased out. To use this callback you
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
+plugins for examples of legacy usage. This callback will likely be removed in 
+future versions of PANDA.
 
 **Signature**:
 
