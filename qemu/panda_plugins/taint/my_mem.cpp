@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <memory>
 
 #include "my_mem.h"
 
@@ -71,6 +72,8 @@ typedef struct {
   uint64_t num_malloc;
   uint64_t num_free;
   uint64_t num_strdup;
+  uint64_t num_ctor;
+  uint64_t num_dtor;
 } pool_info;
 
 pool_info mem_usage[poolid_last];
@@ -80,14 +83,38 @@ void spit_mem_usage(void) {
    int i;
    for (i = 0; i < poolid_last; i++) {
        printf("%s: ", pool_names[i]);
-       printf("bytes = %llu, num_malloc=%llu, num_free=%llu, num_strdup=%llu\n",
-	      (long long unsigned int) mem_usage[i].bytes_alloc, 
-	      (long long unsigned int) mem_usage[i].num_malloc,
-	      (long long unsigned int) mem_usage[i].num_free,
-	      (long long unsigned int) mem_usage[i].num_strdup);
+       printf("bytes = %llu, num_malloc=%llu, num_free=%llu, num_strdup=%llu, num_ctor=%llu, num_dtor=%llu\n",
+             (long long unsigned int) mem_usage[i].bytes_alloc,
+             (long long unsigned int) mem_usage[i].num_malloc,
+             (long long unsigned int) mem_usage[i].num_free,
+             (long long unsigned int) mem_usage[i].num_strdup,
+             (long long unsigned int) mem_usage[i].num_ctor,
+             (long long unsigned int) mem_usage[i].num_dtor);
    }
 }
 
+void my_mem_log(Memevent event, size_t amount, pool_id pid){
+    switch(event){
+        case Memevent::ALLOC:
+            mem_usage[pid].bytes_alloc += amount;
+            mem_usage[pid].num_malloc++;
+            break;
+
+        case Memevent::FREE:
+            mem_usage[pid].bytes_alloc -= amount;
+            mem_usage[pid].num_free++;
+            break;
+
+        case Memevent::CTOR:
+            mem_usage[pid].num_ctor++;
+            break;
+
+        case Memevent::DTOR:
+            mem_usage[pid].num_dtor++;
+            break;
+
+    }
+}
 
 void *my_malloc(size_t n, pool_id pid) {
   static uint64_t my_malloc_counter = 0;
@@ -146,4 +173,3 @@ char * my_strdup(const char *p, pool_id pid) {
     mem_usage[pid].num_strdup++;
     return q;
 }
-

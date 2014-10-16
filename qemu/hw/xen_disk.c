@@ -32,7 +32,7 @@
 #include <sys/mman.h>
 #include <sys/uio.h>
 
-#include <xs.h>
+#include <xenstore.h>
 #include <xenctrl.h>
 #include <xen/io/xenbus.h>
 

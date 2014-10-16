@@ -81,7 +81,7 @@ iscsi_aio_cancel(BlockDriverAIOCB *blockacb)
                                      iscsi_abort_task_cb, NULL);
 
     /* then also cancel the task locally in libiscsi */
-    iscsi_scsi_task_cancel(iscsilun->iscsi, acb->task);
+    iscsi_scsi_cancel_task(iscsilun->iscsi, acb->task);
 }
 
 static AIOPool iscsi_aio_pool = {
@@ -224,9 +224,10 @@ iscsi_aio_writev(BlockDriverState *bs, int64_t sector_num,
     size = nb_sectors * BDRV_SECTOR_SIZE;
     acb->buf = g_malloc(size);
     qemu_iovec_to_buffer(acb->qiov, acb->buf);
-    acb->task = iscsi_write10_task(iscsi, iscsilun->lun, acb->buf, size,
+    acb->task = iscsi_write10_task(iscsi, iscsilun->lun,
                               sector_qemu2lun(sector_num, iscsilun),
-                              fua, 0, iscsilun->block_size,
+                              acb->buf, size, iscsilun->block_size,
+                              0, 0, fua, 0, 0,
                               iscsi_aio_write10_cb, acb);
     if (acb->task == NULL) {
         error_report("iSCSI: Failed to send write10 command. %s",
@@ -309,6 +310,7 @@ iscsi_aio_readv(BlockDriverState *bs, int64_t sector_num,
     acb->task = iscsi_read10_task(iscsi, iscsilun->lun,
                              sector_qemu2lun(sector_num, iscsilun),
                              lun_read_size, iscsilun->block_size,
+                             0, 0, 0, 0, 0,
                              iscsi_aio_read10_cb, acb);
     if (acb->task == NULL) {
         error_report("iSCSI: Failed to send read10 command. %s",

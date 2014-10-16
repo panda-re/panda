@@ -22,9 +22,14 @@
 #define __TAINT_PROCESSOR_H__
 
 #include <stdint.h>
+
+#include "cpu.h"
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 
+
+#include <map>
+#include <set>
 
 #define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
 #define OPNAMELENGTH 15
@@ -107,7 +112,10 @@ typedef struct addr_struct {
 
 */
 
-
+enum taint_label_mode {
+    TAINT_BINARY_LABEL,
+    TAINT_BYTE_LABEL
+};
 
 typedef uint32_t Label;
 
@@ -136,6 +144,10 @@ typedef struct shad_struct {
     uint8_t tainted_computation_happened;
     uint8_t taint_state_changed;
     uint8_t taint_state_read;
+    uint64_t asid;
+    uint64_t pc;
+   // map from cr3 to set of pcs that are "tainted" meaning they are instructions that process tainted data
+    std::map < uint64_t, std::set < uint64_t > > tpc;  
 } Shad;
 
 // returns a shadow memory to be used by taint processor
@@ -177,7 +189,6 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
 
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad);
-
 
 
 typedef struct taint_op_buffer_struct {
@@ -236,7 +247,7 @@ typedef struct taint_op_struct {
     struct {Addr a, b;} copy;
     struct {Addr a; Addr b; uint32_t l;} bulkcopy;
     struct {Addr a, b, c;} compute;
-    uint64_t pc;   // special op that just knows the current program counter
+      uint64_t pc;   // special op that just knows the current program counter
     struct {Addr a;} ldcallback;  
     struct {Addr a;} stcallback;
     struct {
@@ -336,5 +347,12 @@ void tp_add_store_callback(tp_callback_t scb);
 void tp_add_load_callback(tp_callback_t lcb);
 */
 
+// Apply taint to a buffer of RAM
+void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length);
+
+// Apply taint to a buffer of IO memory
+void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length);
 
 #endif

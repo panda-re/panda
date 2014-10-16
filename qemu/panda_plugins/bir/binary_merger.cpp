@@ -173,23 +173,25 @@ void merge_inv_indexes(char *inv_a_pfx,
     FILE *fp_merge = fopen(filename, "w");
     printf ("merge: lexicon %d has occ = %d\n", n, minv.lexicon[n].grams.size());
     for ( auto &gram : minv.lexicon[n].grams ) {
+        //        spit_gram_hex(gram, n);
+        //        printf ("\n");
       // this is file pos for this row
       long pos = ftell(fp_merge);      
-      //      printf ("pos = %d\n", pos);
+      //            printf ("pos = %d\n", pos);
       minv.map_dw[n][gram] = pos;
       // merge the rows from a and b
       row_merged.size = 0;
-      //      printf ("merge a\n");
+      //            printf ("merge a\n");
       merge_row(gram, n, fp_a, inv_a, minv, row_merged, 0);
-      //      printf ("merged len is %d\n", row_merged.size);
-      //      printf ("merge b\n");
+      //            printf ("merged len is %d\n", row_merged.size);
+      //            printf ("merge b\n");
       merge_row(gram, n, fp_b, inv_b, minv, row_merged, inv_a.num_passages);
-      //      printf ("merged len is %d\n", row_merged.size);
+      //            printf ("merged len is %d\n", row_merged.size);
       // finally, write merged row
 
-      //      printf ("before writing row, pos = %d\n", ftell(fp_merge));
+      //            printf ("before writing row, pos = %d\n", ftell(fp_merge));
       marshall_row_fp(fp_merge, row_merged);
-      //      printf ("after writing row, pos = %d\n", ftell(fp_merge));
+      //            printf ("after writing row, pos = %d\n", ftell(fp_merge));
     }      
   }
 

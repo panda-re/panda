@@ -9,7 +9,7 @@ proto_re = re.compile("(.+)\s+(\S+)\s*\((.*)\)")
 KNOWN_TYPES = ['int', 'double', 'float', 'char', 'short', 'long',
                'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']
 
-def generate_code(functions, module):
+def generate_code(functions, module, includes):
     code =  "#ifndef __%s_EXT_H__\n" % (module.upper())
     code += "#define __%s_EXT_H__\n" % (module.upper())
     code +="""
@@ -22,6 +22,9 @@ def generate_code(functions, module):
 #include "panda_plugin.h"
 
 """
+    for include in includes:
+        code+= include + "\n"
+
     for function in functions:
         argtypelist = ",".join([x[0] for x in  function[2]])
         code+= "typedef " + function[0] + "(*" + function[1]+ "_t)(" + argtypelist + ");\n"
@@ -100,7 +103,8 @@ def generate_api(plugin_name, plugin_dir):
 
 
     print "Building API for plugin", plugin_name,
-    functions = []    
+    functions = []
+    includes = []
     with open(os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))) as API:
         for line in API:
             line = line.strip();
@@ -118,7 +122,9 @@ def generate_api(plugin_name, plugin_dir):
                         argtype, argname = arg.rsplit(None, 1)
                     args.append(resolve_type(argtype, argname))
                 functions.append((rtype, name, args))
-    code = generate_code(functions, plugin_name)
+            elif line and line.startswith('#include'):
+                includes.append(line)
+    code = generate_code(functions, plugin_name, includes)
     with open(os.path.join(plugin_dir, '{0}_ext.h'.format(plugin_name)), 'w') as extAPI:
         extAPI.write(code)
     print "... Done!"

@@ -6,6 +6,8 @@ python ../scripts/apigen.py
 --cxx=g++-4.8 \
 --prefix=`pwd`/install \
 --disable-pie \
+--disable-xen \
+--disable-libiscsi \
 --enable-llvm \
 --with-llvm=../llvm/Debug+Asserts \
 --extra-cflags="-O2" \

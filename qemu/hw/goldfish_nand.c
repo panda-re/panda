@@ -355,7 +355,7 @@ static uint32_t nand_dev_read_file(nand_dev *dev, uint32_t data, uint64_t addr, 
         }
 #ifdef TARGET_I386
         if (kvm_enabled())
-            cpu_synchronize_state(cpu_single_env, 0);
+            cpu_synchronize_state(cpu_single_env);
 #endif
         cpu_memory_rw(cpu_single_env, data, dev->data, read_len, 1);
         data += read_len;
@@ -383,7 +383,7 @@ static uint32_t nand_dev_write_file(nand_dev *dev, uint32_t data, uint64_t addr,
             write_len = len;
 #ifdef TARGET_I386
         if (kvm_enabled())
-                cpu_synchronize_state(cpu_single_env, 0);
+                cpu_synchronize_state(cpu_single_env);
 #endif
         cpu_memory_rw(cpu_single_env, data, dev->data, write_len, 0);
 #if defined(ANDROID_QCOW)
@@ -474,7 +474,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
             size = dev->devname_len;
 #ifdef TARGET_I386
         if (kvm_enabled())
-                cpu_synchronize_state(cpu_single_env, 0);
+                cpu_synchronize_state(cpu_single_env);
 #endif
         cpu_memory_rw(cpu_single_env, s->data, (uint8_t*)dev->devname, size, 1);
         return size;
@@ -492,7 +492,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
             return nand_dev_read_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
-                cpu_synchronize_state(cpu_single_env, 0);
+                cpu_synchronize_state(cpu_single_env);
 #endif
         cpu_memory_rw(cpu_single_env,s->data, &dev->data[addr], size, 1);
         return size;
@@ -512,7 +512,7 @@ uint32_t nand_dev_do_cmd(GoldfishNandDevice *s, uint32_t cmd)
             return nand_dev_write_file(dev, s->data, addr, size);
 #ifdef TARGET_I386
         if (kvm_enabled())
-                cpu_synchronize_state(cpu_single_env, 0);
+                cpu_synchronize_state(cpu_single_env);
 #endif
         cpu_memory_rw(cpu_single_env,s->data, &dev->data[addr], size, 0);
         return size;

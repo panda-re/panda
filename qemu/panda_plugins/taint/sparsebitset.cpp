@@ -7,12 +7,6 @@
 
 #define SB_INLINE inline
 
-// returns a new bitset, initially empty, but with space for 1 member
-// NB: this function allocates memory. caller is responsible for freeing.
-static SB_INLINE BitSet* bitset_new(void) {
-    return new BitSet();
-}
-
 static SB_INLINE void bitset_set_max_num_elements(uint32_t m) {
     // ignore it -- max is uint32_t max
 }
@@ -20,11 +14,6 @@ static SB_INLINE void bitset_set_max_num_elements(uint32_t m) {
 static SB_INLINE uint32_t bitset_get_max_num_elements(void) {
     //std::set has a max_size method but would require passing in a BitSet
     return UINT_MAX;
-}
-
-// destroy this bitset
-static SB_INLINE void bitset_free(BitSet& bs) {
-    delete &bs;
 }
 
 static SB_INLINE void bitset_iter(BitSet& bs, int (*app)(uint32_t e, void* stuff1), void* stuff2) {
@@ -49,11 +38,6 @@ static SB_INLINE void bitset_remove(BitSet& bs, uint32_t member) {
 // returns TRUE if bs contains member, FALSE otherwise
 static SB_INLINE bool bitset_member(BitSet& bs, uint32_t member) {
     return (bs.find(member) == bs.end());
-}
-
-static SB_INLINE uint32_t bitset_choose(BitSet& bs) {
-    if (bs.size() == 0) return 0xffffffff;
-    return *(bs.begin());
 }
 
 static SB_INLINE void bitset_erase(BitSet& bs) {
@@ -81,10 +65,10 @@ static SB_INLINE void bitset_collect(BitSet& bsDest, BitSet& bsSrc) {
 }
 
 // return a new bitset containing the union of bs1 and bs2
-static SB_INLINE BitSet* bitset_union(BitSet& bs1, BitSet& bs2) {
-    BitSet *bs_new = new BitSet();
-    bitset_collect(*bs_new, bs1);
-    bitset_collect(*bs_new, bs2);
+static SB_INLINE BitSet bitset_union(BitSet& bs1, BitSet& bs2) {
+    BitSet bs_new;
+    bitset_collect(bs_new, bs1);
+    bitset_collect(bs_new, bs2);
     return bs_new;
 }
 

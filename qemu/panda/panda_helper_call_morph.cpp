@@ -20,6 +20,7 @@ PANDAENDCOMMENT */
  */
 
 #include <stdio.h>
+#include <libgen.h>
 
 #include "llvm/Linker.h"
 #include "llvm/Support/SourceMgr.h"
@@ -127,6 +128,7 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I){
 
 } // namespace llvm
 
+extern const char *qemu_loc;
 /*
  * Start the process of including the execution of QEMU helper functions in the
  * LLVM JIT.
@@ -142,14 +144,11 @@ void init_llvm_helpers(){
     llvm::LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    // XXX: Assumes you are invoking QEMU from the root of the qemu/ directory
-    std::string bitcode = TARGET_ARCH;
-#if defined(CONFIG_SOFTMMU)
-    bitcode.append("-softmmu");
-#elif defined(CONFIG_LINUX_USER)
-    bitcode.append("-linux-user");
-#endif
+    char *exe = strdup(qemu_loc);
+    std::string bitcode(dirname(exe));
+    free(exe);
     bitcode.append("/llvm-helpers.bc");
+
     llvm::SMDiagnostic Err;
     llvm::Module *helpermod = ParseIRFile(bitcode, Err, ctx);
     if (!helpermod) {

@@ -37,7 +37,10 @@ uint8_t taintedfunc;
  * frame, i.e. through tp_copy() and tp_delete(), not anything else.
  */
 
-int tainted_pointer;
+// Global count of taint labels
+int count = 0;
+
+int tainted_pointer = 1;
 
 // stuff for control flow in traces
 int next_step;
@@ -53,7 +56,18 @@ uint32_t max_taintset_compute_number = 0;
 
 uint32_t max_ref_count = 0;
 
-uint64_t tp_pc = 0;
+extern "C" {
+
+// Label all incoming network traffic as tainted
+bool taint_label_incoming_network_traffic = 0;
+
+// Query all outgoing network traffic for taint
+bool taint_query_outgoing_network_traffic = 0;
+
+// Taint labeling mode
+int taint_label_mode = TAINT_BYTE_LABEL;
+
+int tainted_instructions = 0;
 
 // prototypes for on_load and on_store callback registering
 PPP_PROT_REG_CB(on_load);
@@ -68,7 +82,7 @@ PPP_CB_BOILERPLATE(on_load);
 PPP_CB_BOILERPLATE(on_store);
 PPP_CB_BOILERPLATE(before_execute_taint_ops);
 PPP_CB_BOILERPLATE(after_execute_taint_ops);
-
+}
 
 void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
@@ -181,6 +195,59 @@ static SB_INLINE void clear_ram_bit(Shad *shad, uint32_t addr) {
     shad->ram_bitmap[addr >> 3] = taint_byte;
 }
 
+// Apply taint to a buffer of memory
+void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
+    struct addr_struct a = {};
+    a.typ = MADDR;
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+#ifdef CONFIG_SOFTMMU
+        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
+        if (pa == (target_phys_addr_t)(-1)) {
+            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr +i);
+            continue;
+        }
+        assert (pa != -1);
+        a.val.ma = pa;
+#else
+        a.val.ma = addr + i;
+#endif // CONFIG_SOFTMMU
+        op.val.label.a = a;
+        if (taint_label_mode == TAINT_BYTE_LABEL){
+            op.val.label.l = i + count;
+        }
+        else if (taint_label_mode == TAINT_BINARY_LABEL){
+            op.val.label.l = 1;
+        }
+        tob_op_write(tbuf, &op);	
+    }
+    assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
+    tob_process(tbuf, shad, NULL);
+    count += length;
+}
+
+// Apply taint to a buffer of IO memory
+void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
+    Addr a = make_iaddr(addr);
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+        a.val.ia = addr + i;
+        op.val.label.a = a;
+        if (taint_label_mode == TAINT_BYTE_LABEL){
+            op.val.label.l = i + count;
+        }
+        else if (taint_label_mode == TAINT_BINARY_LABEL){
+            op.val.label.l = 1;
+        }
+        // make the taint op buffer bigger if necessary
+        tob_resize(&tbuf);
+        tob_op_write(tbuf, &op);	
+    }
+}
 
 /*
    Initialize the shadow memory for taint processing.
@@ -191,7 +258,9 @@ static SB_INLINE void clear_ram_bit(Shad *shad, uint32_t addr) {
  */
 Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
         uint32_t max_vals) {
-    Shad *shad = (Shad *) my_malloc(sizeof(Shad), poolid_taint_processor);
+    //    Shad *shad = (Shad *) my_malloc(sizeof(Shad), poolid_taint_processor);
+    void *tmp = my_malloc(sizeof(Shad), poolid_taint_processor);
+    Shad *shad = new(tmp) Shad;
     shad->hd_size = hd_size;
     shad->mem_size = mem_size;
     shad->io_size = io_size;
@@ -216,6 +285,7 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size,
     // guest registers are generally the size of the guest architecture
     shad->grv = (LabelSet **) my_calloc(NUMREGS * WORDSIZE,
             sizeof(LabelSet *), poolid_taint_processor);
+
     // architecture-dependent size defined in guestarch.h
     if (NUMSPECADDRS){
         /*
@@ -443,7 +513,6 @@ uint32_t tp_occ_ram(Shad *shad) {
 #else
     uint32_t x = shad_dir_occ_32(shad->ram);
 #endif
-    printf ("x=%d\n", x);
     return x;
   }
   else {
@@ -461,7 +530,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
         case HADDR:
             {
                 // NB: just returns if nothing there
-                shad->taint_state_changed = shad_dir_mem_64(shad->hd, a->val.ha+a->off); 
+                shad->taint_state_changed |= shad_dir_mem_64(shad->hd, a->val.ha+a->off); 
                 shad_dir_remove_64(shad->hd, a->val.ha+a->off);
                 break;
             }
@@ -472,7 +541,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
                  * is too big to represent.  We can still use it for
                  * whole-system though.
                  */
-                shad->taint_state_changed = shad_dir_mem_64(shad->ram, a->val.ma+a->off);
+                shad->taint_state_changed |= shad_dir_mem_64(shad->ram, a->val.ma+a->off);
                 shad_dir_remove_64(shad->ram, a->val.ma+a->off);
 #else
                 if (get_ram_bit(shad, a->val.ma+a->off)) {
@@ -485,13 +554,13 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
             }
         case IADDR:
             {
-                shad->taint_state_changed = shad_dir_mem_64(shad->io, a->val.ia+a->off);
+                shad->taint_state_changed |= shad_dir_mem_64(shad->io, a->val.ia+a->off);
                 shad_dir_remove_64(shad->io, a->val.ia+a->off);
                 break;
             }
         case PADDR:
             {
-                shad->taint_state_changed = shad_dir_mem_32(shad->ports, a->val.ia+a->off);
+                shad->taint_state_changed |= shad_dir_mem_32(shad->ports, a->val.ia+a->off);
                 shad_dir_remove_32(shad->ports, a->val.ia+a->off);
                 break;
             }
@@ -503,7 +572,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
                         shad->llv[shad->num_vals*(shad->current_frame + 1) +
                                   a->val.la*MAXREGSIZE +
                                   a->off];
-                    shad->taint_state_changed = !(labelset_is_empty(ls));
+                    shad->taint_state_changed |= !(labelset_is_empty(ls));
                     labelset_free(ls);
                     shad->llv[shad->num_vals*(shad->current_frame + 1) +
                               a->val.la*MAXREGSIZE +
@@ -515,7 +584,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
                         shad->llv[shad->num_vals*shad->current_frame +
                                   a->val.la*MAXREGSIZE +
                                   a->off];
-                    shad->taint_state_changed = !(labelset_is_empty(ls));
+                    shad->taint_state_changed |= !(labelset_is_empty(ls));
                     labelset_free(ls);
                     shad->llv[shad->num_vals*shad->current_frame +
                               a->val.la*MAXREGSIZE +
@@ -527,7 +596,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
             {
                 // free the labelset and remove reference
                 LabelSet *ls = shad->grv[a->val.gr * WORDSIZE + a->off];
-                shad->taint_state_changed = !(labelset_is_empty(ls));
+                shad->taint_state_changed |= !(labelset_is_empty(ls));
                 labelset_free(ls);
                 shad->grv[a->val.gr * WORDSIZE + a->off] = NULL;
                 break;
@@ -536,7 +605,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
             {
                 // SpecAddr enum is offset by the number of guest registers
                 LabelSet *ls = shad->gsv[a->val.gs - NUMREGS + a->off];
-                shad->taint_state_changed = !(labelset_is_empty(ls));
+                shad->taint_state_changed |= !(labelset_is_empty(ls));
                 labelset_free(ls);
                 shad->gsv[a->val.gs - NUMREGS + a->off] = NULL;
                 break;
@@ -544,7 +613,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
         case RET:
             {
                 LabelSet *ls = shad->ret[a->off];
-                shad->taint_state_changed = !(labelset_is_empty(ls));               
+                shad->taint_state_changed |= !(labelset_is_empty(ls));               
                 labelset_free(ls);
                 shad->ret[a->off] = NULL;
                 break;
@@ -719,11 +788,12 @@ SB_INLINE void addr_spit(Addr *a) {
 SB_INLINE void tp_label(Shad *shad, Addr *a, Label l) {
     assert (shad != NULL);
     
+    
     /*
     printf ("tp_label ");
     addr_spit(a);
     printf (" %d\n", l);
-    */
+    */    
 
     LabelSet *ls = tp_labelset_get(shad, a);
 
@@ -794,7 +864,9 @@ SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
             return (a->off == b->off);
         default:
             assert (1==0);
+            return 0;
     }
+    return FALSE;
 }
 
 
@@ -936,6 +1008,8 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
     if (addrs_equal(a, b)) return;
     LabelSet *ls_a = tp_labelset_get(shad, a);
     if (labelset_is_empty(ls_a)) {
+        LabelSet *ls_b = tp_labelset_get(shad, b);
+        shad->taint_state_changed |= !(labelset_is_empty(ls_b));
         // a not tainted -- remove taint on b
         tp_delete(shad, b);
     }
@@ -962,7 +1036,9 @@ SB_INLINE void tp_copy(Shad *shad, Addr *a, Addr *b) {
 SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
     assert (shad != NULL);    
     if (compute_is_delete) {      
-      tp_delete (shad, c);
+        LabelSet *ls_c = tp_labelset_get(shad, c);
+        shad->taint_state_changed |= !(labelset_is_empty(ls_c));        
+        tp_delete (shad, c);
       return;
     }
     if (!(tp_query(shad, a)) && !(tp_query(shad, b)) && !(tp_query(shad, c))) {
@@ -970,6 +1046,7 @@ SB_INLINE void tp_compute(Shad *shad, Addr *a, Addr *b, Addr *c) {
     }
     else {
         shad->taint_state_changed = 1;
+
     }
     // we want the possibilities of address equality for unioning
     //assert (!(addrs_equal(a,b)));
@@ -2146,7 +2223,7 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
                 {
 		  //		  tob_op_print(shad, op);
 		  
-		  tp_label(shad, &(op->val.label.a), op->val.label.l);
+                    tp_label(shad, &(op->val.label.a), op->val.label.l);
                     break;
                 }
 
@@ -2210,9 +2287,7 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
 		if (ppp_on_load_num_cb > 0) {
 		  // semantically right after ld has happened.
 		  uint64_t ld_addr = op->val.ldcallback.a.val.ma + op->val.ldcallback.a.off;
-		  //				printf ("ld callback pc=0x%lx  ld_addr=0x%lx\n", tp_pc, ld_addr);
-		  //		  tp_load_callback(tp_pc, ld_addr);
-		  PPP_RUN_CB(on_load, tp_pc, ld_addr);
+		  PPP_RUN_CB(on_load, shad->pc, ld_addr);
 		}
 		break;
 	      }
@@ -2223,9 +2298,7 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
 		if (ppp_on_store_num_cb > 0) {  
 		  // semantically right after st has happened.
 		  uint64_t st_addr = op->val.stcallback.a.val.ma + op->val.stcallback.a.off;
-		  //		printf ("st callback pc=0x%lx  st_addr=0x%lx\n", tp_pc, st_addr);
-		  //		  tp_store_callback(tp_pc, st_addr);
-		  PPP_RUN_CB(on_store, tp_pc, st_addr);
+		  PPP_RUN_CB(on_store, shad->pc, st_addr);
 		}
 		break;
 	      }
@@ -2302,10 +2375,21 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
 
             case PCOP:
                 {
- 		    // set taint processor's pc to correct value for
-		    // current instruction
-		    tp_pc = op->val.pc;
-		    //		    printf ("tp_pc = 0x%lx\n", tp_pc);
+                    if (tainted_instructions && shad->taint_state_changed) {
+                        // add last pc to set of pcs that changed taint state
+                        shad->tpc[shad->asid].insert(shad->pc);
+                    }
+
+                    // set taint processor's pc to correct value for
+                    // current instruction
+                    shad->pc = op->val.pc;
+		    //		    printf ("shad->pc = 0x%lx\n", shad->pc);
+
+                    if (tainted_instructions) {
+                        // clear this so that we will know if taint state changed for this instruction
+                        shad->taint_state_changed = 0;
+                    }
+
 	            break;
 		}
 

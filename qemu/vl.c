@@ -208,6 +208,7 @@ void tcg_llvm_destroy(void);
 #include "ui/qemu-spice.h"
 
 #include "rr_log_all.h"
+#include "replay_fix.h"
 
 //#define DEBUG_NET
 //#define DEBUG_SLIRP
@@ -1560,9 +1561,13 @@ static void main_loop(void)
         if (__builtin_expect(rr_replay_requested, 0)) {
             //block signals
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            rr_do_begin_replay(rr_requested_name, first_cpu);
-            quit_timers();
-            rr_replay_requested = 0;
+            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+                printf("Failed to start replay\n");
+                fix_replay_stuff();
+            } else { // we have to unblock signals, so we can't just continue on failure
+                quit_timers();
+                rr_replay_requested = 0;
+            }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
@@ -2251,6 +2256,8 @@ static void free_and_trace(gpointer mem)
     free(mem);
 }
 
+const char *qemu_loc;
+
 int main(int argc, char **argv, char **envp)
 {
     const char *gdbstub_dev = NULL;
@@ -2288,6 +2295,9 @@ int main(int argc, char **argv, char **envp)
     const char *trace_events = NULL;
     const char *trace_file = NULL;
 
+    // Store for later use...
+    qemu_loc = realpath(argv[0], NULL);
+
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[16] = {};
     int nb_panda_plugins = 0;
@@ -2296,9 +2306,6 @@ int main(int argc, char **argv, char **envp)
     error_set_progname(argv[0]);
 
     g_mem_set_vtable(&mem_trace);
-    if (!g_thread_supported()) {
-        g_thread_init(NULL);
-    }
 
     runstate_init();
 
@@ -2330,38 +2337,6 @@ int main(int argc, char **argv, char **envp)
     nb_nics = 0;
 
     autostart= 1;
-
-#if defined(CONFIG_ANDROID)
-    boot_property_init_service();
-    boot_property_add("dalvik.vm.heapsize","48m");
-
-    android_qemud_get_channel( "gps", &android_gps_cs );
-    boot_property_add("qemu.sf.fake_camera", "both");
-    android_camera_service_init();
-
-    /*
-     * CharDriverState*  cs = qemu_chr_open("radio", android_op_radio, NULL);
-        if (cs == NULL) {
-            PANIC("unsupported character device specification: %s\n"
-                        "used -help-char-devices for list of available formats",
-                    android_op_radio);
-        }
-        android_qemud_set_channel( ANDROID_QEMUD_GSM, cs);
-     */
-    android_qemud_get_channel( "gsm", &android_modem_cs );
-
-    android_hw_control_init();
-    /* Initialize audio. */
-    /*if (android_op_audio) {
-        if ( !audio_check_backend_name( 0, android_op_audio ) ) {
-            PANIC("'%s' is not a valid audio output backend. see -help-audio-out",
-                    android_op_audio);
-        }
-        setenv("QEMU_AUDIO_DRV", android_op_audio, 1);
-    }*/
-    
-    boot_property_add("qemu.hw.mainkeys","0");
-#endif
 
     /* first pass of option parsing */
     optind = 1;
@@ -3228,9 +3203,10 @@ int main(int argc, char **argv, char **envp)
                 record_name = optarg;
 	            break;
 
-	        case QEMU_OPTION_replay:
-	            replay_name = optarg;
-	            break;
+            case QEMU_OPTION_replay:
+                display_type = DT_NONE;
+                replay_name = optarg;
+                break;
 
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
@@ -3299,8 +3275,40 @@ int main(int argc, char **argv, char **envp)
         }
     }
     loc_set_none();
-#if defined(CONFIG_PANDA_VMI) && defined(CONFIG_ANDROID)
-    DS_init();
+    
+#if defined(CONFIG_ANDROID)
+    if(android_input){
+        boot_property_init_service();
+        boot_property_add("dalvik.vm.heapsize","48m");
+
+        android_qemud_get_channel( "gps", &android_gps_cs );
+        boot_property_add("qemu.sf.fake_camera", "both");
+        android_camera_service_init();
+
+        /*
+        * CharDriverState*  cs = qemu_chr_open("radio", android_op_radio, NULL);
+            if (cs == NULL) {
+                PANIC("unsupported character device specification: %s\n"
+                            "used -help-char-devices for list of available formats",
+                        android_op_radio);
+            }
+            android_qemud_set_channel( ANDROID_QEMUD_GSM, cs);
+        */
+        android_qemud_get_channel( "gsm", &android_modem_cs );
+
+        android_hw_control_init();
+        /* Initialize audio. */
+        /*if (android_op_audio) {
+            if ( !audio_check_backend_name( 0, android_op_audio ) ) {
+                PANIC("'%s' is not a valid audio output backend. see -help-audio-out",
+                        android_op_audio);
+            }
+            setenv("QEMU_AUDIO_DRV", android_op_audio, 1);
+        }*/
+        
+        boot_property_add("qemu.hw.mainkeys","0");
+    
+    }
 #endif
 
     // Now that all arguments are available, we can load plugins

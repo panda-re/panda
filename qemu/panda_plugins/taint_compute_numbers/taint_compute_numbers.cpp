@@ -80,23 +80,23 @@ int taint_compute_numbers_before_block_exec(CPUState *env, TranslationBlock *tb)
 void taint_compute_numbers_after_execute_taint_ops(void) {
     uint32_t tcn_after = taint_max_obs_ls_type();
     if (tcn_after != tcn_before) {
-        printf ("tcn changed.  the_pc=0x%lx  rr_instr_count=%d  max_obs_tcn=%d\n",
+        printf ("tcn changed.  the_pc=0x%" PRIx64 "  rr_instr_count=%" PRIu64 "  max_obs_tcn=%" PRIu32 "\n",
                 the_pc, the_instr_count, taint_max_obs_ls_type());
     }
     if (taint_tainted_computation_happened()) {
         // the last run of the taint processor on a basic block included
         // at least one taint compute in which at least one arg was tainted 
         // and thus, some taint compute number increased
-        printf ("tainted computation happened.  the_pc=0x%lx  rr_instr_count=%d  max_obs_tcn=%d\n",
+        printf ("tainted computation happened.  the_pc=0x%" PRIx64 "  rr_instr_count=%" PRIu64 "  max_obs_tcn=%" PRIu32 "\n",
                 the_pc, the_instr_count, taint_max_obs_ls_type());
     }
     if (taint_taint_state_changed()) {
         // some change to taint state
-        printf ("taint state changed.  the_pc=0x%lx  rr_instr_count=%d  max_obs_tcn=%d\n",
+        printf ("taint state changed.  the_pc=0x%" PRIx64 "  rr_instr_count=%" PRIu64 "  max_obs_tcn=%" PRIu32 "\n",
                 the_pc, the_instr_count, taint_max_obs_ls_type());
     }
     if (taint_taint_state_read()) {
-        printf ("taint state read.  the_pc=0x%lx  rr_instr_count=%d  max_obs_tcn=%d\n",
+        printf ("taint state read.  the_pc=0x%" PRIx64 "  rr_instr_count=%" PRIu64 "  max_obs_tcn=%" PRIu32 "\n",
                 the_pc, the_instr_count, taint_max_obs_ls_type());
     }    
 }
@@ -104,7 +104,7 @@ void taint_compute_numbers_after_execute_taint_ops(void) {
     
 void taint_compute_numbers_on_load(uint64_t pc, uint64_t phys_addr) {
     if (taint_query_ram(phys_addr)) {
-        printf ("pc=0x%x -- load of tainted datat\n", pc);
+        printf ("pc=0x%" PRIx64 " -- load of tainted datat\n", pc);
     }
 }
 
