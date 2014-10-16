@@ -4,7 +4,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <assert.h>
-#include "my_mem.h"
+    //#include "my_mem.h"
 
 }
 
@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     char *pfx = argv[1];
 
     printf ("unmarshalling inv index\n");
-    InvIndex inv = unmarshall_invindex_min(pfx);
+    InvIndex *inv = unmarshall_invindex_min(pfx);
   
     spit_inv_min(inv);
 
@@ -32,14 +32,14 @@ int main(int argc, char **argv) {
 
     // also spit out doc-words
     printf("Inv [\n");
-    for (int n=inv.min_n_gram; n<=inv.max_n_gram; n++) {
+    for (int n=inv->min_n_gram; n<=inv->max_n_gram; n++) {
         printf ("n=%d\n", n);
         char filename[65535];
         sprintf(filename, "%s.inv-%d", pfx, n);
         FILE *fpinv = fopen(filename, "r");   
-        for ( auto &gram : inv.lexicon[n] ) {
+        for ( auto &gram : inv->lexicon[n].grams ) {
             printf ("gram = [");
-            spit_gram_hex(gram);
+            spit_gram_hex(gram, n);
             printf ("]");
             unmarshall_row_fp(fpinv, inv, n, gram, row);
             printf (" len=%d\n", row.size);

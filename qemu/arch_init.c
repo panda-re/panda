@@ -42,6 +42,8 @@
 #include "gdbstub.h"
 #include "hw/smbios.h"
 
+#include "replay_fix.h"
+
 #ifdef TARGET_SPARC
 int graphic_width = 1024;
 int graphic_height = 768;
@@ -391,6 +393,7 @@ int ram_load(QEMUFile *f, void *opaque, int version_id)
         if (flags & RAM_SAVE_FLAG_MEM_SIZE) {
             if (version_id == 3) {
                 if (addr != ram_bytes_total()) {
+		    printf("RAM sizes: snapshot: %ld emulator: %ld\n", addr, ram_bytes_total());
                     return -EINVAL;
                 }
             } else {
@@ -410,8 +413,12 @@ int ram_load(QEMUFile *f, void *opaque, int version_id)
 
                     QLIST_FOREACH(block, &ram_list.blocks, next) {
                         if (!strncmp(id, block->idstr, sizeof(id))) {
-                            if (block->length != length)
+                            if (block->length != length){
+				printf("Block expected %ld, found %ld, total %ld, system total %ld\n", block->length, length, addr, ram_bytes_total());
+                                replay_issues.ram_name = strdup(block->idstr);
+                                replay_issues.ram_size = length;
                                 return -EINVAL;
+                            }
                             break;
                         }
                     }

@@ -1,0 +1,26 @@
+
+
+
+
+
+
+bi: bir_utils.cpp binary_indexer.cpp                                                         
+	g++ -o bi bir_utils.cpp binary_indexer.cpp -O2 -lm -std=c++11                                                       
+
+si: bir_utils.cpp inv_spit.cpp 
+	g++ -o si bir_utils.cpp inv_spit.cpp -O2 -lm -std=c++11  
+
+bm: bir_utils.cpp binary_merger.cpp                                                         
+	g++ -o bm bir_utils.cpp binary_merger.cpp -O2 -lm -std=c++11                                                       
+
+
+br: bir_utils.cpp binary_retriever.cpp                                                         
+	g++ -o br bir_utils.cpp binary_retriever.cpp -O2 -lm -std=c++11                                                       
+
+bp: bir_utils.cpp binary_preprocessor.cpp                                                         
+	g++ -o bp bir_utils.cpp binary_preprocessor.cpp -O2 -lm -std=c++11                                                       
+
+tr: traligner.cpp bir_utils.cpp
+	g++ -o tr bir_utils.cpp traligner.cpp -O2 -lm -std=c++11                                                       
+
+all: bi si bm br

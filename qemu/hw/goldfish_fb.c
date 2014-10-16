@@ -11,6 +11,8 @@
 */
 #include "goldfish_device.h"
 #include "console.h"
+// check if we're in replay and if so ignore load failures
+#include "rr_log_all.h"
 
 #define  DUFF4(_count,_stmnt)  \
     ({ \
@@ -112,10 +114,10 @@ static int  goldfish_fb_load(QEMUFile*  f, void*  opaque, int  version_id)
 
     DisplayState*  ds = s->ds;
 
-    if (ds->surface->width != ds_w ||
+    if ((ds->surface->width != ds_w ||
         ds->surface->height != ds_h ||
         ds->surface->linesize != ds_pitch ||
-        ds_rot != 0)
+        ds_rot != 0) && !rr_replay_requested)
     {
         /* XXX: We should be able to force a resize/rotation from here ? */
         fprintf(stderr, "%s: framebuffer dimensions mismatch\n", __FUNCTION__);

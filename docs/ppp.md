@@ -88,7 +88,7 @@ definition for the callback functions `on_ssm_t`.  Look in
 `PPP_CB_BOILERPLATE`.  `tstringsearch` is plugin B.  It contains a
 function `tstringsearch_match` which it registers with `stringsearch`
 via the `PPP_REG_CB` macro in order to apply taint labels to any
-string match.` Their powers combined, these two plugins allow us to
+string match. Their powers combined, these two plugins allow us to
 perform a complicated task (content-based taint labeling).
 
 

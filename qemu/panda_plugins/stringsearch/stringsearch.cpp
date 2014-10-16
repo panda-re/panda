@@ -67,7 +67,7 @@ struct string_pos {
 };
 struct fullstack {
     int n;
-    target_ulong callers[16];
+    target_ulong callers[MAX_CALLERS];
     target_ulong pc;
     target_ulong asid;
 };
@@ -79,6 +79,7 @@ std::map<prog_point,string_pos> write_text_tracker;
 uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
 uint8_t strlens[MAX_STRINGS];
 int num_strings = 0;
+int n_callers = 16;
 
 // this creates BOTH the global for this callback fn (on_ssm_func)
 // and the function used by other plugins to register a fn (add_on_ssm)
@@ -111,7 +112,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
                 // Also get the full stack here
                 fullstack f = {0};
-                f.n = get_callers(f.callers, 16, env);
+                f.n = get_callers(f.callers, n_callers, env);
                 f.pc = p.pc;
                 f.asid = p.cr3;
                 matchstacks[p] = f;
@@ -137,16 +138,33 @@ int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return mem_callback(env, pc, addr, size, buf, true, write_text_tracker);
 }
 
-
+FILE *mem_report = NULL;
 
 bool init_plugin(void *self) {
     panda_cb pcb;
 
     printf("Initializing plugin stringsearch\n");
 
-    std::ifstream search_strings("search_strings.txt");
+    panda_arg_list *args = panda_get_args("stringsearch");
+
+    const char *arg_str = panda_parse_string(args, "str", "");
+    size_t arg_len = strlen(arg_str);
+    if (arg_len > 0) {
+        memcpy(tofind[num_strings], arg_str, arg_len);
+        strlens[num_strings] = arg_len;
+        num_strings++;
+    }
+
+    n_callers = panda_parse_uint64(args, "callers", 16);
+    if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
+
+    const char *prefix = panda_parse_string(args, "name", "stringsearch");
+    char stringsfile[128] = {};
+    sprintf(stringsfile, "%s_search_strings.txt", prefix);
+
+    std::ifstream search_strings(stringsfile);
     if (!search_strings) {
-        printf("Couldn't open search_strings.txt; no strings to search for. Exiting.\n");
+        printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
         return false;
     }
 
@@ -182,6 +200,15 @@ bool init_plugin(void *self) {
         }
     }
 
+    char matchfile[128] = {};
+    sprintf(matchfile, "%s_string_matches.txt", prefix);
+    mem_report = fopen(matchfile, "w");
+    if(!mem_report) {
+        printf("Couldn't write report:\n");
+        perror("fopen");
+        return false;
+    }
+
     if(!init_callstack_instr_api()) return false;
 
     // Need this to get EIP with our callbacks
@@ -199,12 +226,6 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
-    FILE *mem_report = fopen("string_matches.txt", "w");
-    if(!mem_report) {
-        printf("Couldn't write report:\n");
-        perror("fopen");
-        return;
-    }
     std::map<prog_point,match_strings>::iterator it;
     for(it = matches.begin(); it != matches.end(); it++) {
         // Print prog point

@@ -34,7 +34,7 @@
 #include "my_bool.h"
 #include "max.h"
 #include "label_set.h"
-#include "sparsebitset.cpp"
+#include BITSET_IMPLEMENTATION // defined in label_set.h
 
 #ifdef BVLS_TESTING
 extern "C" {
@@ -57,8 +57,8 @@ static SB_INLINE const char *labelset_type_str(LabelSetType type) {
 // NB: this function allocates memory. caller is responsible for freeing.
 static SB_INLINE LabelSet *labelset_new(void) {
     LabelSet *ls;
-    ls = (LabelSet *) my_calloc(1, sizeof(LabelSet), poolid_label_set);
-    ls->set = bitset_new();
+    void* tmp = my_calloc(1, sizeof(LabelSet), poolid_label_set);
+    ls = new(tmp) LabelSet; //call the constructor
     ls->type = LST_DUNNO;
     ls->count = 1;
     return ls;
@@ -104,36 +104,36 @@ static SB_INLINE void labelset_free(LabelSet *ls) {
     ls->count--;
     if (ls->count == 0) {
         // ref count went to zero -- really free
-        bitset_free(*(ls->set));
+        ls->~LabelSet(); // we have to manually run the destructor
         my_free(ls, sizeof(LabelSet), poolid_label_set);
     }
 }
 
 // clear this labelset -- reset all of its bits.
 static SB_INLINE void labelset_erase(LabelSet *ls) {
-    bitset_erase(*(ls->set));
+    bitset_erase(ls->set);
     ls->type = LST_DUNNO;
 }
 
 // returns true iff this labelset is empty
 static SB_INLINE bool labelset_is_empty(LabelSet *ls) {
     if (ls == 0) return true;
-    return bitset_is_empty(*(ls->set));
+    return bitset_is_empty(ls->set);
 }
 
 // returns TRUE iff label l is in set ls.
 static SB_INLINE bool labelset_member(LabelSet *ls, uint32_t l) {
-    return bitset_member(*(ls->set),l);
+    return bitset_member(ls->set,l);
 }
 
 static SB_INLINE uint32_t labelset_card(LabelSet *ls) {
-    return bitset_card(*(ls->set));
+    return bitset_card(ls->set);
 }
 
 // add label l to set ls
 // NB: this function allocates memory, sometimes, when calling bitset_add.
 static SB_INLINE void labelset_add(LabelSet *ls, uint32_t l) {
-    bitset_add(*(ls->set), l);
+    bitset_add(ls->set, l);
     // NB: we don't set LabelSetType in here.
     // -- could be LST_COPY or LST_COMPUTE after this operation,
     // depending upon what it was before.
@@ -158,7 +158,7 @@ static SB_INLINE LabelSet *labelset_copy(LabelSet *ls) {
 // here we actually make a copy
 static SB_INLINE LabelSet *labelset_copy_real(LabelSet *ls) {
     LabelSet *ls_copy = labelset_new();
-    bitset_copy_in_place(*(ls_copy->set), *(ls->set));
+    bitset_copy_in_place(ls_copy->set, ls->set);
     // must propagate label set type, too
     ls_copy->type = ls->type;
     assert (ls->type != LST_DUNNO);
@@ -167,7 +167,7 @@ static SB_INLINE LabelSet *labelset_copy_real(LabelSet *ls) {
 
 // here we actually make a copy in place
 static SB_INLINE void labelset_copy_in_place(LabelSet *lsDest, LabelSet *lsSrc) {
-    bitset_copy_in_place(*(lsDest->set), *(lsSrc->set));
+    bitset_copy_in_place(lsDest->set, lsSrc->set);
     // must propagate label set type, too
     assert (lsSrc->type != LST_DUNNO);
     lsDest->type = lsSrc->type;
@@ -176,7 +176,7 @@ static SB_INLINE void labelset_copy_in_place(LabelSet *lsDest, LabelSet *lsSrc) 
 // iterate over items in this labelset and apply fn app to each.
 // stuff2 also gets passed to app
 static SB_INLINE void labelset_iter (LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    bitset_iter(*(ls->set), app, stuff2);
+    bitset_iter(ls->set, app, stuff2);
 }
 
 // union lsDest with lsSrc and place contents in lsDest
@@ -185,7 +185,7 @@ static SB_INLINE void labelset_collect(LabelSet *lsDest, LabelSet *lsSrc) {
     if (lsDest == NULL || lsSrc == NULL) {
         return;
     }
-    bitset_collect(*(lsDest->set),*(lsSrc->set));
+    bitset_collect(lsDest->set,lsSrc->set);
     lsDest->type = 1+max(lsDest->type, lsSrc->type);
     assert (lsDest->type != LST_DUNNO);
     assert (lsSrc->type != LST_DUNNO);
@@ -194,8 +194,9 @@ static SB_INLINE void labelset_collect(LabelSet *lsDest, LabelSet *lsSrc) {
 // form a new set that is the union of ls1 and ls2
 static SB_INLINE LabelSet *labelset_union(LabelSet *ls1, LabelSet *ls2) {
     LabelSet *ls_new;
-    ls_new = (LabelSet *) my_calloc(1, sizeof(LabelSet), poolid_label_set);
-    ls_new->set = (BitSet *) bitset_union(*(ls1->set), *(ls2->set));
+    void* tmp = my_calloc(1, sizeof(LabelSet), poolid_label_set);
+    ls_new = new(tmp) LabelSet; //placement new
+    ls_new->set = bitset_union(ls1->set, ls2->set);
     ls_new->count = 1;
     assert (ls1->type != LST_DUNNO);
     assert (ls2->type != LST_DUNNO);
@@ -205,22 +206,17 @@ static SB_INLINE LabelSet *labelset_union(LabelSet *ls1, LabelSet *ls2) {
 }
 
 static SB_INLINE void labelset_spit(LabelSet *ls) {
-    assert(ls->set != NULL);
-    bitset_spit(*(ls->set));
+    bitset_spit(ls->set);
 }
 
 // returns list of labels *n_addr long
 static SB_INLINE uint32_t *labelset_get_list(LabelSet *ls, uint32_t *n_addr) {
-    return bitset_get_list(*(ls->set), n_addr);
-}
-
-static SB_INLINE uint32_t labelset_choose(LabelSet *ls) {
-    return bitset_choose(*(ls->set));
+    return bitset_get_list(ls->set, n_addr);
 }
 
 // returns list of labels *n_addr long.  el is pre-allocated
 static SB_INLINE void labelset_get_list_here(LabelSet *ls, uint32_t *el) {
-    return bitset_get_list_here(*(ls->set), el);
+    bitset_get_list_here(ls->set, el);
 }
 
 /*

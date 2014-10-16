@@ -78,6 +78,11 @@ volatile sig_atomic_t rr_use_live_exit_request = 0;
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 
+double rr_get_percentage (void) {
+    return 100.0 * rr_prog_point.guest_instr_count /
+        rr_nondet_log->last_prog_point.guest_instr_count;
+}
+
 static inline uint8_t rr_log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
@@ -1296,6 +1301,15 @@ void replay_progress(void) {
   }
 }
 
+uint64_t replay_get_guest_instr_count(void) {
+  if (rr_nondet_log) {
+    return queue_head->header.prog_point.guest_instr_count;
+  }
+  else {
+    return 0;
+  }
+}    
+
 uint64_t replay_get_total_num_instructions(void) {
   if (rr_nondet_log) {
     return rr_nondet_log->last_prog_point.guest_instr_count;
@@ -1422,7 +1436,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   char *rr_name_base = g_strdup(file_name_full);
   char *rr_path = dirname(rr_path_base);
   char *rr_name = basename(rr_name_base);
-  int snapshot_ret;
+  int snapshot_ret = -1;
   if (rr_debug_whisper()) {
     fprintf (logfile,"Begin vm record for file_name_full = %s\n", file_name_full);    
     fprintf (logfile,"path = [%s]  file_name_base = [%s]\n", rr_path, rr_name);
@@ -1455,6 +1469,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   // set global to turn on recording
   rr_mode = RR_RECORD;
   //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
+  return snapshot_ret;
 #endif
 }
 
@@ -1517,6 +1532,11 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
         plist->entry.before_loadvm();
     }
   snapshot_ret = load_vmstate_rr(name_buf);
+  if (0 != snapshot_ret){
+      // TODO: free rr_path and rr_name
+      printf("Failed to load snapshot for replay: %d\n", snapshot_ret);
+      return snapshot_ret;
+  }
   printf ("... done.\n");
   log_all_cpu_states();
 
@@ -1536,6 +1556,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 
   //mz fill the queue!
   rr_fill_queue();
+  return snapshot_ret;
 #endif
 }
 

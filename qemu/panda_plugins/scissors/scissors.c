@@ -315,7 +315,7 @@ static RR_prog_point copy_entry(void) {
     return original_prog_point;
 }
 
-static void end_snip() {
+static void end_snip(void) {
     RR_prog_point prog_point = rr_prog_point;
     printf("Ending cut-and-paste on prog point:\n");
     rr_spit_prog_point(rr_prog_point);

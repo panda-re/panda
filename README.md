@@ -1,9 +1,8 @@
 PANDA
 ====
-PANDA is the Platform for Architecture-Neutral Dynamic Analysis.  It is a
-platform based on QEMU 1.0.1 and LLVM 3.3 for performing dynamic software
-analysis, abstracting architecture-level details away with a clean plugin
-interface.  It is currently being developed in collaboration with MIT Lincoln
+PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It is built upon the QEMU whole system emulator, and so analyses have access to all code executing in the guest and all data. PANDA adds the ability to record and replay executions, enabling iterative, deep, whole system analyses. Further, the replay log files are compact and shareable, allowing for repeatable experiments. A nine billion instruction boot of FreeBSD, e.g., is represented by only a few hundred MB. PANDA leverages QEMU's support of thirteen different CPU architectures to make analyses of those diverse instruction sets possible within the LLVM IR. In this way, PANDA can have a single dynamic taint analysis, for example, that precisely supports many CPUs. PANDA analyses are written in a simple plugin architecture which includes a mechanism to share functionality between plugins, increasing analysis code re-use and simplifying complex analysis development. 
+
+It is currently being developed in collaboration with MIT Lincoln
 Laboratory, Georgia Tech, and Northeastern University.
 
 Building
