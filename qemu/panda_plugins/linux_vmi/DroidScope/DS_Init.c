@@ -21,6 +21,7 @@
  *      Author: lok
  */
 
+#include "DECAF_linux_vmi.h"
 #include "DroidScope/DS_Init.h"
 #include "DroidScope/DS_Common.h"
 #include <stdlib.h>
@@ -29,7 +30,8 @@ void DS_init(void)
 {
   DECAF_linux_vmi_init();
   context_init();
-  /*DalvikMterpOpcodes_init();
+/*
+  DalvikMterpOpcodes_init();
   DalvikDisableJit_init();
   DalvikPrinter_init();
 */
@@ -39,7 +41,8 @@ void DS_init(void)
 void DS_close(void)
 {
     context_close();
-    /*
+/*
   DalvikMterpOpcodes_close();
-  DalvikDisableJit_close();*/
+  DalvikDisableJit_close();
+*/
 }

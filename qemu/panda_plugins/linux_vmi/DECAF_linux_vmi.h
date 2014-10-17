@@ -387,4 +387,11 @@ int DECAF_linux_vmi_init(void);
  * Returns the number of offets read or -1 if error
 **/
 int DECAF_linux_vmi_init_with_string(const char* pattern);
+
+/**
+ * Prototypes for Android offset inititalization.
+ * Quash compiler warnings.
+**/
+int PANDROID_set_vars(void);
+int PANDROID_set_vars_jb4_2(void);
 #endif

@@ -50,6 +50,7 @@
 #include <libgen.h>
 #include <unistd.h>
 
+#include "linux_vmi_types.h"
 #include "DECAF_linux_vmi.h"
 
 char kernelinfo_filename[256] = "kernelinfo.conf";
@@ -143,7 +144,7 @@ gva_t DECAF_get_next_task_struct(CPUState* env, gva_t addr)
   return retval;
 }
 
-gva_t prev_task_struct(CPUState* env, gva_t addr)
+gva_t DECAF_get_prev_task_struct(CPUState* env, gva_t addr)
 {
   gva_t retval;
 
@@ -296,7 +297,7 @@ static gva_t PANDA_get_dentry(CPUState* env, gva_t addr){
         }
     } else {
         gva_t vmfile = 0;
-        gva_t vmpath = 0;
+        /* gva_t vmpath = 0; */
          if (DECAF_memory_rw(env, addr + vm_area_struct_vm_file_offset, &vmfile, sizeof(vmfile), 0) == -1
             || DECAF_memory_rw(env, vmfile + file_f_path_offset/*, &vmpath, sizeof(vmpath), 0) == -1
             || DECAF_memory_rw(env, vmpath*/ + path_dentry_offset, &dentry, sizeof(dentry), 0) == -1
@@ -587,6 +588,7 @@ int PANDROID_set_vars(void){
     path_mount_offset = 0;
     vfsmount_mnt_root_offset = 16;
     file_vfsmnt_offset = -1;
+    return 0;
 }
 
 int PANDROID_set_vars_jb4_2(void){  //"Android-x86 Gingerbread", /* entry name */
@@ -623,6 +625,7 @@ int PANDROID_set_vars_jb4_2(void){  //"Android-x86 Gingerbread", /* entry name *
        dentry_d_iname_offset = 88; /* offset of d_iname in dentry */
        dentry_d_parent_offset =24; /* offset of d_parent in dentry */
        thread_info_task_offset = 12; /* offset of task in thread_info */
+       return 0;
 }
 
 int DECAF_linux_vmi_init(void)

@@ -8,7 +8,9 @@ PLUGIN_NAME=linux_vmi
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-QEMU_CXXFLAGS+=-std=c++11
+QEMU_CXXFLAGS+=-std=c++11 
+CFLAGS+=-DCONFIG_PANDA_VMI
+CXXFLAGS+=-DCONFIG_PANDA_VMI
 # LIBS+=
 
 # The main rule for your plugin. Please stick with the panda_ naming
