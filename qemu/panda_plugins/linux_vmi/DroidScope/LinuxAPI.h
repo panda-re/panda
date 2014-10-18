@@ -323,4 +323,9 @@ int getModuleInfoByName(gpid_t pid, gva_t* pStartAddr, gva_t* pEndAddr, const ch
 // this is just a little cleaner that is all
 #include "DECAF_linux_vmi.h"
 
+// Context.c functions called from DS_Init.c.
+// Prototypes added to quash warnings.
+void context_init(void);
+void context_close(void);
+
 #endif /* LINUXAPI_H_ */

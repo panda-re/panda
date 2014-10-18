@@ -190,7 +190,7 @@ void TULStringMap::printMap(FILE* fp)
 
   for (it = symbols.begin(); it != symbols.end(); it++)
   {
-    fprintf(fp, "0x%08x, %s\n", (*it).first, ((*it).second).c_str());
+    fprintf(fp, "0x%08x, %s\n", (unsigned int)(*it).first, ((*it).second).c_str());
   }
 }
 

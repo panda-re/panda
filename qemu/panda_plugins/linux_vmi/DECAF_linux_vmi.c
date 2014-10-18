@@ -512,7 +512,7 @@ int DECAF_linux_vmi_init_with_string(const char* pattern)
   return (
            sscanf(pattern, "%[^,],%x,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                   version,
-                  &taskaddr,
+                  (unsigned int *)&taskaddr,
                   &sizeof_task_struct,
                   &task_struct_tasks_offset,
                   &task_struct_pid_offset,

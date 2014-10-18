@@ -247,7 +247,7 @@ int myHexStrToBArray(uint8_t*& pul, size_t& count, const char* str)
   //create the array if needed
   if (bNeedNew)
   {
-    pul = new (uint8_t[len]);
+    pul = new uint8_t[len];
     count = len;
   }
   //if count is less than len, then we don't prepend the 0 since

@@ -34,7 +34,7 @@ extern "C" {
 //#include <stdio.h>
 #include "DroidScope/LinuxAPI.h"
 
-int processMarkBegin();
+int processMarkBegin(void);
 int processMark(gpid_t pid);
 int processMarkEnd(gpid_t** aPIDs, size_t* len);
 

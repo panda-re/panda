@@ -24,6 +24,7 @@
 #include "DECAF_linux_vmi.h"
 #include "DroidScope/DS_Init.h"
 #include "DroidScope/DS_Common.h"
+#include "DroidScope/linuxAPI/ProcessInfo.h"
 #include <stdlib.h>
 
 void DS_init(void)
