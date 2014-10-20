@@ -3,7 +3,7 @@
 python ../scripts/apigen.py
 ./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --cc=${CC:=gcc-4.7} \
---cxx=$(CXX:=g++-4.7} \
+--cxx=${CXX:=g++-4.7} \
 --prefix=`pwd`/install \
 --disable-pie \
 --disable-xen \
