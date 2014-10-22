@@ -45,7 +45,8 @@ void uninit_plugin(void *);
 
 #include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_register.cpp"
-
+void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
+void appendReturnPoint(ReturnPoint&& rp);
 }
 #include "gen_syscall_ppp_boilerplate.cpp"
 
@@ -58,9 +59,9 @@ void* syscalls_plugin_self;
 
 std::vector<target_asid> relevant_ASIDs;
 
-std::vector<std::function<void(CPUState*, target_ulong)>> preExecCallbacks;
+std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 
-void registerExecPreCallback(std::function<void(CPUState*, target_ulong)> callback){
+void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
 }
 
