@@ -15,7 +15,8 @@ endif
 include ../config.replay
 include ../panda_tools/config.panda
 
-PANDA_PLUGINS=$(shell cat ../panda_plugins/config.panda | xargs)
+# remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
+PANDA_PLUGINS=$(shell tr -d "[:blank:]" < ../panda_plugins/config.panda | grep -v "^\#" | xargs)
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)
