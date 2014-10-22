@@ -46,5 +46,7 @@ void taint_clear_taint_state_read(void);
 // returns the flag
 int taint_taint_state_read(void);
 
-   
+// Clear all taint from the shadow memory (by reinstantiating it)
+void taint_clear_shadow_memory(void);
+
 #endif                                                                                   

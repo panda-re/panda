@@ -62,6 +62,7 @@ extern "C" {
     int taint_taint_state_changed(void);
     void taint_clear_taint_state_read(void);
     int taint_taint_state_read(void);
+    void taint_clear_shadow_memory(void);
 
 }
 
@@ -866,7 +867,9 @@ void __taint_clear_taint_state_read(void) {
 int __taint_taint_state_read(void) {
     return shadow->taint_state_read;
 }
-
+void __taint_clear_shadow_memory(void){
+    clear_shadow_memory(&shadow);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -931,6 +934,9 @@ int taint_taint_state_read(void) {
     return __taint_taint_state_read();
 }
 
+void taint_clear_shadow_memory(void){
+    __taint_clear_shadow_memory();
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////

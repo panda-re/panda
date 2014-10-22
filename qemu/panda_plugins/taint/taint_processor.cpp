@@ -321,16 +321,28 @@ void tp_free(Shad *shad){
     shad->io = NULL;
     shad_dir_free_32(shad->ports);
     shad->ports = NULL;
+    for (uint32_t i = 0; i < shad->num_vals * FUNCTIONFRAMES * MAXREGSIZE; i++){
+        labelset_free(shad->llv[i]);
+    }
     my_free(shad->llv, (shad->num_vals * FUNCTIONFRAMES * MAXREGSIZE *
         sizeof(LabelSet *)), poolid_taint_processor);
     shad->llv = NULL;
+    for (uint32_t i = 0; i < MAXREGSIZE; i++){
+        labelset_free(shad->ret[i]);
+    }
     my_free(shad->ret, (MAXREGSIZE * sizeof(LabelSet *)),
         poolid_taint_processor);
     shad->ret = NULL;
+    for (uint32_t i = 0; i < NUMREGS * WORDSIZE; i++){
+        labelset_free(shad->grv[i]);
+    }
     my_free(shad->grv, (NUMREGS * WORDSIZE * sizeof(LabelSet *)),
         poolid_taint_processor);
     shad->grv = NULL;
     if (shad->gsv){
+        for (uint32_t i = 0; i < NUMSPECADDRS + NUMREGS; i++){
+            labelset_free(shad->gsv[i]);
+        }
         my_free(shad->gsv, ((NUMSPECADDRS+NUMREGS) * sizeof(LabelSet *)),
             poolid_taint_processor);
         shad->gsv = NULL;
@@ -341,6 +353,17 @@ void tp_free(Shad *shad){
     shad = NULL;
 }
 
+/*
+ * Remove all taint from all parts of the shadow memory
+ */
+void clear_shadow_memory(Shad **shad){
+    uint64_t hd_size = (*shad)->hd_size;
+    uint32_t mem_size = (*shad)->mem_size;
+    uint64_t io_size = (*shad)->io_size;
+    uint32_t num_vals = (*shad)->num_vals;
+    tp_free(*shad);
+    *shad = tp_init(hd_size, mem_size, io_size, num_vals);
+}
 
 // returns a copy of the labelset associated with a.  or NULL if none.
 // so you'll need to call labelset_free on this pointer when done with it.

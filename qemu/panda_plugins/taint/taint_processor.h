@@ -156,6 +156,9 @@ Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size, uint32_t ma
 // Delete a shadow memory
 void tp_free(Shad *shad);
 
+// Remove all taint from shadow memory (by re-instantiating it)
+void clear_shadow_memory(Shad **shad);
+
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr *a, Label l);
 
