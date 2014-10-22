@@ -176,15 +176,13 @@ int before_block_exec_cb(CPUState *env, TranslationBlock *tb) {
 
 static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, unsigned int len, _DInst *ins_decoded, unsigned int ins_decoded_max, unsigned int feats) {
     unsigned char *buf;
-    unsigned int ins_decoded_n;
+    unsigned int ndecoded;
     _CodeInfo ci;
 
     // read from memory
     ERRNO_CLEAR;
     buf = (unsigned char *)malloc(len*sizeof(unsigned char));
     EXIT_ON_ERROR(buf == NULL, "malloc failed");
-
-    ERRNO_CLEAR;
     WARN_ON_ERROR((panda_virtual_memory_rw(env, mloc, buf, len, 0) < 0), "qemu failed to read memory");
 
     // decode read bytes
@@ -195,60 +193,69 @@ static inline unsigned int decompose_from_mem(CPUState *env, target_ulong mloc, 
     ci.features = feats;
 
     // decode_result is ignored as it is of little use
-    /* _DecodeResult decode_result = */distorm_decompose(&ci, ins_decoded, ins_decoded_max, &ins_decoded_n);
+    /* _DecodeResult decode_result = */distorm_decompose(&ci, ins_decoded, ins_decoded_max, &ndecoded);
 
     free(buf);
-
-    // the number of instructions returned is always non-zero
-    return ins_decoded_n;
+    return ndecoded;       // the number of instructions returned is always non-zero
 }
 
 bool ins_translate_callback(CPUState *env, target_ulong pc) {
-    _DInst ins_decoded[4];
-    unsigned int ins_decoded_n;
+    const int nbytes = 32;      // number of bytes to attempt to decode. sysenter/sysexit are 2 bytes long.
+    const int ndecode = 1;      // number of instructions to decode
+    unsigned int ndecoded;      // number of instructions actually decoded
+    _DInst ins_decoded[ndecode];// the decoded instructions
+    _DInst *ins;
 
     ts++;
 
-    // sysenter/sysexit instructions are 2 bytes longs
     // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
-    ins_decoded_n = decompose_from_mem(env, pc, 2, ins_decoded, 1, DF_STOP_ON_SYS);
-    WARN_ON_ERROR((ins_decoded_n > 1), "unexpected number of decoded instructions");
+    // TODO: add a static buffer to decompose_from_mem() so that we don't need to read memory for every call
+    ndecoded = decompose_from_mem(env, pc, nbytes, ins_decoded, ndecode, DF_STOP_ON_SYS);
+    WARN_ON_ERROR((ndecoded > ndecode), "unexpected number of decoded instructions");
 
-    // no need to loop over ins_decoded - we only have requested one instruction to be decoded
-    if (ins_decoded[0].flags == FLAG_NOT_DECODABLE) {
+    ins = &ins_decoded[0];
+
+    // we requested decoding 1 instruction - no loop needed
+    if (ins->flags == FLAG_NOT_DECODABLE) {
         return false;
     }
 
     // check the decoded instruction class instead of the specific opcode
-    switch(META_GET_FC(ins_decoded[0].meta)) {
+    switch(META_GET_FC(ins->meta)) {
         case FC_SYS:
             return true;
         default:
-            return false;
+            if (ins->ops[0].type == O_REG && ins->ops[0].index == distorm::R_CR3 )
+                return true;
+            else
+                return false;
     }
 }
 
 int ins_exec_callback(CPUState *env, target_ulong pc) {
-    _DInst ins_decoded[4];
-    unsigned int ins_decoded_n;
-    unsigned int ins_not_decodable_n = 0;
+    const int nbytes = 32;      // number of bytes to attempt to decode. sysenter/sysexit are 2 bytes long.
+    const int ndecode = 1;      // number of instructions to decode
+    unsigned int ndecoded;      // number of instructions actually decoded
+    unsigned int nundecodable = 0;
+    _DInst ins_decoded[ndecode];// the decoded instructions
+    _DInst *ins;
 
     // Test to see if precise panda_enable_precise_pc() makes any difference.
     //if (pc != env->panda_guest_pc) { fprintf(stderr, "PC inconsistent.\n"); exit(1); }
 
-    // sysenter/sysexit instructions are 2 bytes longs
     // with the DF_STOP_ON_SYS feature, decoding will stop on the first syscall related instruction
-    ins_decoded_n = decompose_from_mem(env, pc, 2, ins_decoded, 1, DF_STOP_ON_SYS);
-    WARN_ON_ERROR((ins_decoded_n > 1), "unexpected number of decoded instructions");
+    ndecoded = decompose_from_mem(env, pc, nbytes, ins_decoded, ndecode, DF_STOP_ON_SYS);
+    WARN_ON_ERROR((ndecoded > ndecode), "unexpected number of decoded instructions");
 
     // loop through decoded instructions
-    for (unsigned int i=0; i<ins_decoded_n; i++) {
-        if (ins_decoded[i].flags == FLAG_NOT_DECODABLE) {
-            ins_not_decodable_n++;
+    for (unsigned int i=0; i<ndecoded; i++) {
+        ins = &ins_decoded[i];
+        if (ins->flags == FLAG_NOT_DECODABLE) {
+            nundecodable++;
             continue;
         }
 
-        switch(ins_decoded[i].opcode) {
+        switch(ins->opcode) {
             case distorm::I_SYSENTER:
             {
                 // On Windows and Linux, the system call id is in EAX.
@@ -273,12 +280,22 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
 
             case distorm::I_SYSEXIT:
             {
+                fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                    ts, in_kernelspace(env) ? "K" : "U",
+                    env->cr[3], pc, "SYSEXIT"
+                );
 
             }
             break;
 
             default:
             {
+                if (ins->ops[0].type == O_REG && ins->ops[0].index == distorm::R_CR3 ) {
+                    fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                        ts, in_kernelspace(env) ? "K" : "U",
+                        env->cr[3], pc, "CR3 Updated"
+                    );
+                }
 
             }
             break;
