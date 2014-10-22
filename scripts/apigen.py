@@ -43,7 +43,7 @@ def generate_code(functions, module, includes):
  __##func_name = (func_name##_t) dlsym(module, #func_name); \\
  char *err = dlerror(); \\
  if (err) { \\
-    printf("Couldn't find func_name function in library %s.\\n", API_PLUGIN_NAME); \\
+    printf("Couldn't find %s function in library %s.\\n", #func_name, API_PLUGIN_NAME); \\
     printf("Error: %s\\n", err); \\
     return false; \\
  } \\
