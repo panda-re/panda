@@ -260,6 +260,8 @@ typedef struct taint_op_struct {
         // true and false labels when used with branch
         // true and false values when used with select
         int branch_labels[2];
+        // LLVM register that branch condition is based on
+        int branch_cond_llvm_reg;
         // For switches/branches, log the bb it is in for phi
         int cur_branch_bb;
         unsigned phi_len;

@@ -1858,6 +1858,12 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
                 assert(1==0);
             }
 
+            /*
+             * Place to inspect taint on branch condition
+             */
+            //printf("Branch condition LLVM register: %%%d\n",
+            //    op->val.insn_start.branch_cond_llvm_reg);
+
             next_step = BRANCH;
         }
 
