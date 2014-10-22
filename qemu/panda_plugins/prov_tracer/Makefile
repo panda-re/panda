@@ -4,13 +4,22 @@ PLUGIN_NAME=prov_tracer
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-# Set compler flags.
-LINUX_VMI_INCLUDES=-I$(PLUGIN_SRC_ROOT)/linux_vmi
+# Enable features.
+DECAF_LINUX_VMI=yes
+
+# Set compiler flags.
 QEMU_CFLAGS+=-DCONFIG_PANDA_VMI
-QEMU_CXXFLAGS+=-DCONFIG_PANDA_VMI
+# Don't need to repeat QEMU_CFLAGS in QEMU_CXXFLAGS.
+#QEMU_CXXFLAGS+=
 #CFLAGS+=-DXXX
 CXXFLAGS+=-std=c++11
 LIBS+=-ldistorm3
+
+# Set compiler flags for enabled features.
+ifeq ($(DECAF_LINUX_VMI), yes)
+QEMU_INCLUDES+=-I$(PLUGIN_SRC_ROOT)/linux_vmi
+QEMU_CFLAGS+=-DDECAF_LINUX_VMI
+endif
 
 # Dynamic libraries for translating system calls.
 # Use gen_tables_linux.py script to generate these.
@@ -19,8 +28,14 @@ LINUX_SYSCALLENTS_DL=$(foreach f,\
 					 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_$(f)\
 )
 
-# Linux VMI object files - kept separate from the standalone linux_vmi plugin.
+# All object files used by the plugin.
+PLUGIN_OBJFILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
+
+# Add extra object files for enabled features.
+ifeq ($(DECAF_LINUX_VMI), yes)
+# Object files in separate dir from the standalone linux_vmi plugin.
 LINUX_VMI_OBJDIR=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)
+
 LINUX_VMI_OBJFILES=$(LINUX_VMI_OBJDIR)/DECAF_linux_vmi.o
 LINUX_VMI_OBJFILES+=$(LINUX_VMI_OBJDIR)/DECAF_main.o
 LINUX_VMI_OBJFILES+=$(LINUX_VMI_OBJDIR)/DroidScope/DS_Init.o
@@ -33,18 +48,21 @@ LINUX_VMI_OBJFILES+=$(LINUX_VMI_OBJDIR)/utils/OutputWrapper.o
 LINUX_VMI_OBJFILES+=$(LINUX_VMI_OBJDIR)/utils/HelperFunctions.o
 #LINUX_VMI_OBJFILES+=$(LINUX_VMI_OBJDIR)/linux_vmi_main.o
 
-# All object files used by the plugin.
-PLUGIN_OBJFILES=$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o $(LINUX_VMI_OBJFILES)
+PLUGIN_OBJFILES+=$(LINUX_VMI_OBJFILES)
+endif
+
+
+
 
 .PHONY: all
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)/%.o: $(PLUGIN_SRC_ROOT)/linux_vmi/%.c
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
-	$(call quiet-command,$(CC) $(LINUX_VMI_INCLUDES) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(CFLAGS) -c -o $@ $^,"  LINUX VMI CC $@")
+	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(CFLAGS) -c -o $@ $^,"  LINUX VMI CC $@")
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)/%.o: $(PLUGIN_SRC_ROOT)/linux_vmi/%.cpp
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
-	$(call quiet-command,$(CXX) $(LINUX_VMI_INCLUDES) $(filter-out $(CXXFLAGS_EXCLUDE), $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(CXXFLAGS)) -c -o $@ $^,"  LINUX VMI CXX $@")
+	$(call quiet-command,$(CXX) $(filter-out $(CXXFLAGS_EXCLUDE), $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(CXXFLAGS)) -c -o $@ $^,"  LINUX VMI CXX $@")
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp
 

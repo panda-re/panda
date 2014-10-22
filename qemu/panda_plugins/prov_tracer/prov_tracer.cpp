@@ -8,9 +8,15 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu.h"
 
+#ifdef DECAF_LINUX_VMI
+#include "DroidScope/DS_Init.h"
+#endif
+
 #include "panda_plugin.h"
 #include "syscallents.h"
 }
+
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -371,6 +377,10 @@ bool init_plugin(void *self) {
     syscalls = (struct syscall_entry *)dlsym(syscalls_dl, "syscalls");
     EXIT_ON_ERROR(syscalls == NULL, dlerror());
 
+#ifdef DECAF_LINUX_VMI
+    DS_init();
+#endif
+
     // set Distorm decode mode
     if (strstr(guest_os, "64")) { distorm_dt = Decode64Bits; }
     else { distorm_dt = Decode64Bits; }
@@ -404,6 +414,10 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 #if defined(TARGET_I386)
     int n;
+
+#ifdef DECAF_LINUX_VMI
+    DS_close();
+#endif
 
     ERRNO_CLEAR;
     n = dlclose(syscalls_dl);
