@@ -904,10 +904,10 @@ void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
     }
     break;
   case GREG:
-    //    printreg(a);
+    fprintf_reg(a, fp);
     break;
   case GSPEC:
-    //    printspec(a);
+    fprintf_spec(a, fp);
     break;
   case UNK:
     if (a->flag == IRRELEVANT){

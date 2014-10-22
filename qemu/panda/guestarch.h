@@ -772,8 +772,8 @@ extern uintptr_t r15_reg;
 void init_regs(void);
 int get_cpustate_val(uintptr_t dynval);
 
-void printreg(Addr *a);
-void printspec(Addr *a);
+void fprintf_reg(Addr *a, FILE *fp);
+void fprintf_spec(Addr *a, FILE *fp);
 
 /*
 void guestStoreTaint(LAddr localSrc, GReg guestDst, int len, TaintOpBuffer *buf);
