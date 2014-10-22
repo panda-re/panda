@@ -13,8 +13,9 @@ ifneq ($(HWDIR),)
 include $(HWDIR)/config.mak
 endif
 include ../config.replay
-include ../panda_plugins/config.panda
 include ../panda_tools/config.panda
+
+PANDA_PLUGINS=$(shell cat ../panda_plugins/config.panda | xargs)
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)

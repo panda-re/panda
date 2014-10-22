@@ -18,6 +18,7 @@ Output panda tool to parse system calls on Linux
 """
 
 import re
+import os
 from collections import defaultdict
 from sys import argv
 
@@ -34,6 +35,7 @@ X86_GUARD = "#ifdef TARGET_I386"
 
 PROTOS = "android_arm_prototypes.txt" if len(argv) < 2 else argv[1]
 MODE = "ARM" if len(argv) < 3 else argv[2].upper()
+DESTDIR = "." if len(argv) < 4 else argv[3]
 
 # set arch/OS specific args by mode
 for x in ["CALLNO", "ARGS", "SP", "GUARD"]:
@@ -365,7 +367,7 @@ for syscall in syscalls:
 weak_callbacks+= """
 #endif
 """
-with open("gen_default_callbacks.cpp", "w") as weakfile:
+with open(os.path.join(DESTDIR, "gen_default_callbacks.cpp"), "w") as weakfile:
     weakfile.write(weak_callbacks)
 
 weak_callbacks = ""
@@ -394,25 +396,25 @@ weak_callbacks+= """} //namespace syscalls
 #endif
 #endif //__gen_callbacks.hpp
 """
-with open("gen_callbacks.hpp", "w") as weakfile:
+with open(os.path.join(DESTDIR, "gen_callbacks.hpp"), "w") as weakfile:
     weakfile.write(weak_callbacks)
 
-with open("gen_syscalls_ext_typedefs.h", "w") as callbacktypes:
+with open(os.path.join(DESTDIR, "gen_syscalls_ext_typedefs.h"), "w") as callbacktypes:
     callbacktypes.write(GUARD + "\n")
     for t in typedefs:
         callbacktypes.write(t+"\n")
     callbacktypes.write("#endif\n")
 
-with open("gen_syscall_printer.cpp", "w") as dispatchfile:
+with open(os.path.join(DESTDIR, "gen_syscall_printer.cpp"), "w") as dispatchfile:
     dispatchfile.write(alltext)
 
-with open("gen_syscall_ppp_register.cpp", "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_register.cpp"), "w") as pppfile:
     pppfile.write(GUARD + "\n")
     for ppp in cb_names:
         pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
     pppfile.write("#endif\n")
 
-with open("gen_syscall_ppp_boilerplate.cpp", "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate.cpp"), "w") as pppfile:
     pppfile.write(GUARD + "\n")
     for ppp in cb_names:
         pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))

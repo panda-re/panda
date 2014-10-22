@@ -52,6 +52,7 @@ extern "C" {
     int taint_enabled(void);
     void taint_label_ram(uint64_t pa, uint32_t l) ;
     uint32_t taint_query_ram(uint64_t pa);
+    uint32_t taint_pick_label(uint64_t pa);
     uint32_t taint_query_reg(int reg_num, int offset);
     void taint_delete_ram(uint64_t pa) ;
     uint32_t taint_occ_ram(void) ;
@@ -807,6 +808,17 @@ void __taint_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
+static int put_int(uint32_t val, void *place) {
+  *(uint32_t *)place = val;
+  return 0;
+}
+
+uint32_t __taint_pick_label(uint64_t pa) {
+  uint32_t result = ~0;
+  tp_ls_ram_iter(shadow, pa, put_int, &result);
+  return result;
+}
+
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality 
 uint32_t __taint_query_ram(uint64_t pa) {
@@ -886,6 +898,10 @@ int taint_enabled(void) {
 
 void taint_label_ram(uint64_t pa, uint32_t l) {
     __taint_label_ram(pa, l);
+}
+
+uint32_t taint_pick_label(uint64_t pa) {
+  return __taint_pick_label(pa);
 }
 
 uint32_t taint_query_ram(uint64_t pa) {
