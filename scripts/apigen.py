@@ -31,7 +31,8 @@ def generate_code(functions, module, includes):
         code+= "static " + function[1] + "_t __" + function[1] + " = NULL;\n"
         
         arglist = ",".join([x[0] + ' ' + x[1] for x in function[2]])
-        argnamelist = ",".join([x[1] for x in function[2]])
+        # if an arg is an r-value reference, we need to pass it with std::move
+        argnamelist = ",".join(map(lambda x: 'std::move({0})'.format(x[1]) if x[0].endswith('&&') else x[1], function[2]))
         code += "inline " + function[0] + " " +function[1]+"("+arglist+"""){
     assert(__"""+function[1]+""");
     return __"""+function[1]+"("+argnamelist+""");
@@ -42,7 +43,7 @@ def generate_code(functions, module, includes):
  __##func_name = (func_name##_t) dlsym(module, #func_name); \\
  char *err = dlerror(); \\
  if (err) { \\
-    printf("Couldn't find func_name function in library %s.\\n", API_PLUGIN_NAME); \\
+    printf("Couldn't find %s function in library %s.\\n", #func_name, API_PLUGIN_NAME); \\
     printf("Error: %s\\n", err); \\
     return false; \\
  } \\
