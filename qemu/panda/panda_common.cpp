@@ -7,8 +7,10 @@ extern "C" {
 #include "panda_common.h"
 
 target_ulong panda_current_pc(CPUState *env) {
-  assert (panda_update_pc);
-  return env->panda_guest_pc;
+    target_ulong pc, cs_base;
+    int flags;
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    return pc;
 }
 
 #ifdef TARGET_ARM

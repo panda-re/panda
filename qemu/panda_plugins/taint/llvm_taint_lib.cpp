@@ -1198,6 +1198,7 @@ void PandaTaintVisitor::visitBranchInst(BranchInst &I){
     op.val.insn_start.num_ops = 0;
     op.val.insn_start.flag = INSNREADLOG;
     op.val.insn_start.cur_branch_bb = PST->getLocalSlot(I.getParent());
+    op.val.insn_start.branch_cond_llvm_reg = PST->getLocalSlot(I.getCondition());
     for (int i = 0; i < (int)I.getNumSuccessors(); i++){
         op.val.insn_start.branch_labels[i] =
             PST->getLocalSlot(I.getSuccessor(i));
