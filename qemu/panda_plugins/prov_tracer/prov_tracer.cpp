@@ -9,6 +9,7 @@ extern "C" {
 #include "cpu.h"
 
 #ifdef DECAF_LINUX_VMI
+#include "DECAF_linux_vmi.h"
 #include "DroidScope/DS_Init.h"
 #endif
 
@@ -261,6 +262,8 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
             continue;
         }
 
+        gva_t p = DECAF_get_current_process(env);
+        gva_t pid = DECAF_get_pid(env, p);
         switch(ins->opcode) {
             case distorm::I_SYSENTER:
             {
@@ -277,8 +280,9 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
                 // (http://www.win.tue.nl/~aeb/linux/lk/lk-4.html)
                 //
                 // ++ add ifs
-                fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                fprintf(ptout, "@%05u %s %5u CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
                     ts, in_kernelspace(env) ? "K" : "U",
+                    (unsigned int)pid,
                     env->cr[3], pc, syscall2str(env, pc)
                 );
             }
@@ -286,23 +290,23 @@ int ins_exec_callback(CPUState *env, target_ulong pc) {
 
             case distorm::I_SYSEXIT:
             {
-                fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                fprintf(ptout, "@%05u %s %5u CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
                     ts, in_kernelspace(env) ? "K" : "U",
+                    (unsigned int)pid,
                     env->cr[3], pc, "SYSEXIT"
                 );
-
             }
             break;
 
             default:
             {
                 if (ins->ops[0].type == O_REG && ins->ops[0].index == distorm::R_CR3 ) {
-                    fprintf(ptout, "@%05u %s CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
+                    fprintf(ptout, "@%05u %s %5u CR3=" TARGET_FMT_lx " PC=" TARGET_FMT_lx " %s\n",
                         ts, in_kernelspace(env) ? "K" : "U",
+                        (unsigned int)pid,
                         env->cr[3], pc, "CR3 Updated"
                     );
                 }
-
             }
             break;
         }
@@ -377,6 +381,10 @@ bool init_plugin(void *self) {
     syscalls = (struct syscall_entry *)dlsym(syscalls_dl, "syscalls");
     EXIT_ON_ERROR(syscalls == NULL, dlerror());
 
+    // open output file
+    ptout = fopen(PROV_TRACER_DEFAULT_OUT, "w");    
+    if(ptout == NULL) return false;
+
 #ifdef DECAF_LINUX_VMI
     DS_init();
 #endif
@@ -384,10 +392,6 @@ bool init_plugin(void *self) {
     // set Distorm decode mode
     if (strstr(guest_os, "64")) { distorm_dt = Decode64Bits; }
     else { distorm_dt = Decode64Bits; }
-
-    // open output file
-    ptout = fopen(PROV_TRACER_DEFAULT_OUT, "w");    
-    if(ptout == NULL) return false;
 
     // initialize panda stuff
     panda_cb pcb;

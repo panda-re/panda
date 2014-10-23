@@ -90,26 +90,38 @@ int vfsmount_mnt_root_offset = 0;
 
 gva_t DECAF_get_current_task_struct(CPUState* env)
 {
-  gva_t threadinfo = 0;
-  gva_t curtask = 0;
-  if (env == NULL)
-  {
-    return (0);
-  }
+    gva_t threadinfo = 0;
+    gva_t curtask = 0;
 
-  threadinfo = DECAF_getESP(env) & ~8191;
-  DECAF_read_mem(env, threadinfo + thread_info_task_offset, &curtask, 4);
-  return (curtask);
+    if (env == NULL) {
+#ifdef DECAF_DEBUG
+        fprintf(DECAF_DLOG, "DECAF:%s: env is NULL\n", __FUNCTION__);
+#endif
+        return (0);
+    }
+
+    threadinfo = DECAF_getESP(env) & ~8191;
+    DECAF_read_mem(env, threadinfo + thread_info_task_offset, &curtask, 4);
+#ifdef DECAF_DEBUG
+    fprintf(DECAF_DLOG, "DECAF:%s: [%08x+%04x] = %u\n", __FUNCTION__,
+        (unsigned int)threadinfo,
+        (unsigned int)thread_info_task_offset,
+        (unsigned int)curtask
+    );
+#endif
+    return (curtask);
 }
 
 gva_t DECAF_get_current_process(CPUState* env)
 {
-  gva_t task = DECAF_get_current_task_struct(env);
-  if (task == 0)
-  {
-    return (0);
-  }
-  return (DECAF_get_group_leader(env, task));
+    gva_t task = DECAF_get_current_task_struct(env);
+    if (task == 0) {
+#ifdef DECAF_DEBUG
+        fprintf(DECAF_DLOG, "DECAF:%s: task struct is NULL\n", __FUNCTION__);
+#endif
+        return (0);
+    }
+    return (DECAF_get_group_leader(env, task));
 }
 
 gva_t DECAF_get_next_task_struct(CPUState* env, gva_t addr)
@@ -567,6 +579,11 @@ int DECAF_linux_vmi_init_with_string(const char* pattern)
         &dentry_d_parent_offset,
         &thread_info_task_offset
     );
+
+#ifdef DECAF_DEBUG
+    fprintf(DECAF_DLOG, "DECAF:%s: init string is \"%s\"\n", __FUNCTION__, pattern);
+    fprintf(DECAF_DLOG, "DECAF:%s: scanned %d/%d items\n", __FUNCTION__, nactual, nexpected);
+#endif
 
     if (nactual == nexpected)
         /* success */
