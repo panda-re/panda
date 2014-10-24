@@ -7,13 +7,11 @@ extern "C" {
 
 #include "cpu.h"
 
+target_ulong panda_current_pc(CPUState *env);
+target_ulong panda_current_asid(CPUState *env);
+
 #ifdef __cplusplus
 }
 #endif
-
-extern "C" {
-target_ulong panda_current_pc(CPUState *env);
-target_ulong panda_current_asid(CPUState *env);
-}
 
 #endif
