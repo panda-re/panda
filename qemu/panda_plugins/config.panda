@@ -1,7 +1,7 @@
 sample
 textfinder
 textprinter
-syscalls
+#syscalls
 stringsearch
 keyfind
 memstats
@@ -24,5 +24,5 @@ useafterfree
 bufmon
 memsavep
 tralign
-fdtracker
+#fdtracker
 printstack
