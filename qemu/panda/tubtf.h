@@ -104,6 +104,7 @@ typedef struct tubtf_struct {
 
 // opens trace file & writes header
 // colw: 0 means 32-bit columns, 1 means 64-bit columns in trace body
+extern "C" {
 void tubtf_open(char *filename, TubtfColw colw);
 
 uint32_t tubtf_element_size(void);
@@ -114,6 +115,7 @@ void tubtf_write_el_64(uint64_t cr3, uint64_t eip, uint64_t type, uint64_t arg1,
 
 // close the trace file and write header
 void tubtf_close(void);
+}
 
 
 
