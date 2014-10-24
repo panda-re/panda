@@ -285,26 +285,14 @@ int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 bool init_plugin(void *self) {
     printf("Initializing plugin llvm_trace\n");
 
-    // Look for llvm_trace:base=dir
-    for (int i = 0; i < panda_argc; i++) {
-
-        printf ("panda_arg %d = %s\n", i, panda_argv[i]);
-
-        if (0 == strncmp(panda_argv[i], "tubtf", 5)) {
-            printf ("tubt format in use\n");
-            tubtf_on = 1;
-        }
-      
-        if(0 == strncmp(panda_argv[i], "llvm_trace", 10)) {
-            basedir = strrchr(panda_argv[i], '=');
-            if (basedir) basedir++; // advance past '='
-        }
-    }
-    if (basedir == NULL) {
-        basedir = default_basedir;
-    }
+    panda_arg_list *args = panda_get_args("llvm_trace");
+    basedir = panda_parse_string(args, "base", "/tmp");
+    tubtf_on = panda_parse_bool(args, "tubtf");
+    
+    printf("llvm_trace using basedir=%s\n", basedir);
 
     if (tubtf_on) {
+      printf("tubt is on\n");
       char tubtf_path[256];
       strcpy(tubtf_path, basedir);
       strcat(tubtf_path, "/tubtf.log");
