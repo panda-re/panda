@@ -81,6 +81,10 @@ void dump_tubt(TUBTEntry *row) {
     printf("%x %x %s %x %x %x %x\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
 }
 
+// Ugly to use a global here. But at an exception we have to return out of
+// an unknown number of levels of recursion.
+bool in_exception = false;
+
 TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
     TUBTEntry *cursor = dynvals;
     BasicBlock &entry = f->getEntryBlock();
@@ -89,7 +93,18 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
     while (have_successor) {
         have_successor = false;
         for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
+            // Peek at the next thing in the log. If it's an exception, no point
+            // processing anything further, since we know there can be no dynamic
+            // values before the exception.
+            if (cursor->type == TUBTFE_LLVM_EXCEPTION) {
+                if (debug) printf("Found exception, will not finish this function.\n");
+                in_exception = true;
+                cursor++;
+            }
+            if (in_exception) return cursor;
+
             if (debug) errs() << *i << "\n";
+
             switch (i->getOpcode()) {
                 case Instruction::Load: {
                     assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
@@ -164,6 +179,16 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                         if (debug) dump_tubt(cursor);
                         cursor++;
                     }
+                    else if (func_name.startswith("helper_in")) {
+                        assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
+                        if (debug) dump_tubt(cursor);
+                        cursor++;
+                    }
+                    else if (func_name.startswith("helper_out")) {
+                        assert(cursor->type == TUBTFE_LLVM_DV_STORE);
+                        if (debug) dump_tubt(cursor);
+                        cursor++;
+                    }
                     else if (func_name.equals("log_dynval") ||
                              subf->isDeclaration() ||
                              subf->isIntrinsic()) {
@@ -231,6 +256,7 @@ int main(int argc, char **argv) {
         Function *f = mod->getFunction(namebuf);
         assert(f != NULL);
         cursor++; // Don't include the function entry
+        in_exception = false; // reset this in case the last function ended with an exception
         cursor = process_func(f, cursor);
     }
     
