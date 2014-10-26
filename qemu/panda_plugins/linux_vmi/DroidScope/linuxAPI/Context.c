@@ -93,9 +93,6 @@ void updateProcessModuleList(CPUState* env, gpid_t pid)
   {
     return;
   }
-  /*if(pid == 31){
-      //printf("finding strings for task at 0x%X\n", i);
-  } else return;*/
 
   target_ulong mmap_first = DECAF_get_first_mmap(env, i);
   target_ulong mmap_i = mmap_first;

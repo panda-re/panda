@@ -228,7 +228,7 @@ int ProcessInfoMap::updateProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid
     ret |= DS_PROC_COMMNAME_MASK;
   }
 
-  //shouldn't I destroy the module list?
+  //XXX: shouldn't I destroy the module list?
 
   return (ret);
 }
