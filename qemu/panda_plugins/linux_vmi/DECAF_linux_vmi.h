@@ -393,7 +393,10 @@ int DECAF_linux_vmi_init(void);
 
 /**
  * Initialize all of the offsets by reading it from a pattern string.
- * Returns the number of offets read or -1 if error
+ * Returns:
+ *   - 0 on success
+ *   - otherwise the number of offset which were not successfully read
+ *   - -1 on other errors
 **/
 int DECAF_linux_vmi_init_with_string(const char* pattern);
 
