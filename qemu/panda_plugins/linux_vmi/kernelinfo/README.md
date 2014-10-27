@@ -5,24 +5,26 @@ it needs to know several offsets within the data structures used by the
 kernel.  E.g. what is the offset of ``pid`` within ``struct task_struct``?
 
 These offsets are dependent on the kernel version *and* the flags used to
-compile it. Some of them could be guessed using heuristics. But a more
-robust approach is query the running kernel from within the guest VM,
-when this is possible.
+compile it. Some of them could be guessed using heuristics. 
+A more robust approach is retrieving them by querying the running kernel.
 
-The scripts in this directory implement this approach.
+The kernel modules in this directory implement this approach.
+After compiling and inserting the modules into the kernel, the required
+offsets are printed in the kernel log.
+From there, they have to be copied in a ``kernelinfo.conf`` file on the
+host, for DECAF to read and use.
 
-<!-- Comments from DECAF_linux_vmi.c. To be added in markdown format.
+Two files are contained here:
 
-//This tool depends on the kernelinfo.conf file that is obtained by either populating the values
-// manually, or getting it by inserting a kernel module
-//The source is included at the end of this file. There are two ways of doing this
-//1. Paste the source into a file called procinfo.c in the drivers/misc directory of the kernel source tree
-// Then add the following line to the Makefile and just made the kernel as normal
-//obj-y                           += procinfo.o
-//2. Paste the source into a different kernel module, such as goldfish_audio.c, inside the init function
-// No other changes are necessary.
-//The difference between the two methods is that in the first, you have to insmod the module and then do a dmesg.
-// You should get an error from insmod, but the necessary data is printed to the log. In the second method, you
-// just run dmesg and its done. That is because goldfish-audio is automatically loaded.
-//The second is more intrusive ofcourse, but it still works fine.
--->
+* ``procinfo.c``: This is a standalone module to be compiled and inserted
+  using ``insmod`` command. The module initialization will (intentionally)
+  always fail. But the required offset will have been printed in the 
+  kernel log before that.
+* ``goldfish_audio.c``: This file contains code to be pasted inside the
+  ``init_module()`` function of an existing module. If the module is 
+  auto-loaded (like the goldfish-audio module in Android), then the
+  offset will be printed in the kernel log without requiring further
+  action from the user.
+
+In general, using the ``procinfo`` module should be preferred, as it is
+less intrusive.
