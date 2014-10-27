@@ -401,9 +401,16 @@ int DECAF_linux_vmi_init(void);
 int DECAF_linux_vmi_init_with_string(const char* pattern);
 
 /**
- * Prototypes for Android offset inititalization.
- * Quash compiler warnings.
+ * Prototypes for Android compiled-in offset inititalization.
+ * XXX: The values in these functions must be moved in a config file.
 **/
-int PANDROID_set_vars(void);
+#ifdef PANDROID
+#ifdef PANDROID_4_2
 int PANDROID_set_vars_jb4_2(void);
+#else
+int PANDROID_set_vars(void);
 #endif
+#endif
+
+#endif
+

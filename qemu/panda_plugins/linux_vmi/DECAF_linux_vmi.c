@@ -512,17 +512,6 @@ void DECAF_get_mod_full_dname(CPUState* env, gva_t addr, char *name, int size)
 #define KERNELINFO_DEFAULT_FILENAME "kernelinfo.conf"
 #define BUFFER_SIZE 1024
 #define VMI_INIT_SCANFMT "%[^,],%x,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
-#ifdef PANDROID
-	/*
-	 * Declare functions that set compiled-in values for Android.
-	 * XXX: These values should be moved in a configuration file.
-	 */
-#ifdef PANDROID_4_2
-	int PANDROID_set_vars_jb4_2(void);
-#else
-	int PANDROID_set_vars(void);
-#endif
-#endif
 
 int DECAF_linux_vmi_init_with_string(const char* pattern)
 {
