@@ -9,6 +9,10 @@ Building
 ----
 Instructions for building PANDA can be found in docs/compile.txt.
 
+Support
+----
+If you need help with PANDA, or want to discuss the project, you can join our IRC channel at #panda-re on Freenode, or join the [PANDA mailing list](http://mailman.mit.edu/mailman/listinfo/panda-users).
+
 PANDA Plugins
 ----
 Details about the architecture-neutral plugin interface can be found in
