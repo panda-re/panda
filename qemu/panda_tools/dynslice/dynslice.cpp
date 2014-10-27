@@ -8,6 +8,10 @@
 #include <sys/mman.h>
 #include <assert.h>
 
+#include <bitset>
+#include <vector>
+#include <set>
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
@@ -24,7 +28,7 @@
 
 using namespace llvm;
 
-#define ASSERT(left,operator,right) { if(!((left) operator (right))){ errs() << "ASSERT FAILED: " << #left << #operator << #right << " @ " << __FILE__ << " (" << __LINE__ << "). " << #left << "=" << (left) << "; " << #right << "=" << (right) << "\n"; } assert(0); }
+#define FMT64 "%" PRIx64
 
 std::string TubtfEITypeStr[TUBTFE_LLVM_EXCEPTION+1] = {
     "TUBTFE_USE",
@@ -66,6 +70,10 @@ std::string TubtfEITypeStr[TUBTFE_LLVM_EXCEPTION+1] = {
     "TUBTFE_LLVM_EXCEPTION",
 };
 
+#ifdef __APPLE__
+#define O_LARGEFILE 0
+#endif
+
 struct __attribute__((packed)) TUBTEntry {
     uint64_t asid;
     uint64_t pc;
@@ -77,22 +85,101 @@ struct __attribute__((packed)) TUBTEntry {
 };
 
 bool debug = false;
+
 void dump_tubt(TUBTEntry *row) {
-    printf("%x %x %s %x %x %x %x\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
+    printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
+}
+
+struct trace_entry {
+    uint32_t index; // index of instruction in the original function
+    Function *func;
+    Instruction *insn;
+    TUBTEntry *dyn;
+};
+
+void get_uses_and_defs(trace_entry &t,
+        std::set<StringRef> &uses,
+        std::set<StringRef> &defs) {
+    switch (t.insn->getOpcode()) {
+        default:
+            printf("Warning: no model for %s, assuming uses={} defs={}\n", t.insn->getOpcodeName());
+            break;
+    }
+    return;
+}
+
+std::map<std::pair<StringRef,int>,std::bitset<512>> marked;
+
+// Core slicing algorithm. If the current instruction
+// defines something we currently care about, then kill
+// the defs and add in the uses.
+// Note that this *modifies* the working set 'work' and
+// updates the global map of LLVM functions => bitsets
+void slice_trace(std::vector<trace_entry> &trace,
+        std::set<StringRef> &work) {
+    Function *entry_func = trace[0].func;
+
+    for(std::vector<trace_entry>::reverse_iterator it = trace.rbegin();
+            it != trace.rend(); it++) {
+
+        std::set<StringRef> uses, defs;
+        get_uses_and_defs(*it, uses, defs);
+        
+        bool has_overlap = false;
+        for (auto &s : defs) {
+            if (work.find(s) != work.end()) {
+                has_overlap = true;
+                break;
+            }
+        }
+
+        if (has_overlap) {
+            // Mark the instruction
+            int bb_num = it->index >> 16;
+            int insn_index = it->index & 0xffff;
+            marked[std::make_pair(it->func->getName(),bb_num)][insn_index] = true;
+
+            // Update the working set
+            work.erase(defs.begin(), defs.end());
+            work.insert(uses.begin(), uses.end());
+        }
+
+    }
+}
+
+// Find the index of a block in a function
+int getBlockIndex(Function *f, BasicBlock *b) {
+    int i = 0;
+    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
+        if (&*it == b) return i;
+        i++;
+    }
+    return -1;
 }
 
 // Ugly to use a global here. But at an exception we have to return out of
 // an unknown number of levels of recursion.
 bool in_exception = false;
 
-TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
+TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entry> *serialized) {
+    assert(serialized != NULL);
     TUBTEntry *cursor = dynvals;
     BasicBlock &entry = f->getEntryBlock();
     BasicBlock *block = &entry;
     bool have_successor = true;
     while (have_successor) {
         have_successor = false;
+        
+        int bb_index = getBlockIndex(f, block);
         for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
+            int insn_index = 0;
+            trace_entry t;
+            t.index = insn_index | (bb_index << 16);
+            insn_index++;
+
+            // Bail out if we're we're in an exception
+            if (in_exception) return cursor;
+
             // Peek at the next thing in the log. If it's an exception, no point
             // processing anything further, since we know there can be no dynamic
             // values before the exception.
@@ -100,8 +187,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                 if (debug) printf("Found exception, will not finish this function.\n");
                 in_exception = true;
                 cursor++;
+                return cursor;
             }
-            if (in_exception) return cursor;
 
             if (debug) errs() << *i << "\n";
 
@@ -110,6 +197,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                     LoadInst *l = cast<LoadInst>(&*i);
                     if (debug) dump_tubt(cursor);
+                    t.func = f; t.insn = i; t.dyn = cursor;
+                    serialized->push_back(t);
                     cursor++;
                     break;
                 }
@@ -118,6 +207,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     if (!s->isVolatile()) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     break;
@@ -127,6 +218,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     BranchInst *b = cast<BranchInst>(&*i);
                     block = b->getSuccessor(cursor->arg1);
                     if (debug) dump_tubt(cursor);
+                    t.func = f; t.insn = i; t.dyn = cursor;
+                    serialized->push_back(t);
                     cursor++;
                     have_successor = true;
                     break;
@@ -140,6 +233,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     SwitchInst::CaseIt caseIndex = s->findCaseValue(caseVal);
                     block = s->getSuccessor(caseIndex.getSuccessorIndex());
                     if (debug) dump_tubt(cursor);
+                    t.func = f; t.insn = i; t.dyn = cursor;
+                    serialized->push_back(t);
                     cursor++;
                     have_successor = true;
                     break;
@@ -148,6 +243,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     assert(cursor->type == TUBTFE_LLVM_DV_SELECT);
                     SelectInst *s = cast<SelectInst>(&*i);
                     if (debug) dump_tubt(cursor);
+                    t.func = f; t.insn = i; t.dyn = cursor;
+                    serialized->push_back(t);
                     cursor++;
                     break;
                 }
@@ -159,34 +256,48 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     if (func_name.startswith("__ld")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("__st")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("llvm.memcpy")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("llvm.memset")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("helper_in")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("helper_out")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
+                        t.func = f; t.insn = i; t.dyn = cursor;
+                        serialized->push_back(t);
                         cursor++;
                     }
                     else if (func_name.equals("log_dynval") ||
@@ -196,11 +307,13 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals) {
                     }
                     else {
                         // descend
-                        cursor = process_func(subf, cursor);
+                        cursor = process_func(subf, cursor, serialized);
                     }
                     break;
                 }
                 default:
+                    t.func = f; t.insn = i; t.dyn = NULL;
+                    serialized->push_back(t);
                     break;
             }
         }
@@ -251,13 +364,17 @@ int main(int argc, char **argv) {
     while (cursor != endp) {
         assert (cursor->type == TUBTFE_LLVM_FN);
         char namebuf[128];
-        sprintf(namebuf, "tcg-llvm-tb-%d-%x", cursor->arg1, cursor->pc);
+        sprintf(namebuf, "tcg-llvm-tb-%llu-%llx", cursor->arg1, cursor->pc);
         printf("%s\n", namebuf);
         Function *f = mod->getFunction(namebuf);
         assert(f != NULL);
         cursor++; // Don't include the function entry
         in_exception = false; // reset this in case the last function ended with an exception
-        cursor = process_func(f, cursor);
+        std::vector<trace_entry> aligned_block;
+        cursor = process_func(f, cursor, &aligned_block);
+        std::set<StringRef> work;
+        slice_trace(aligned_block, work);
+        break;
     }
     
     return 0;
