@@ -3,6 +3,8 @@ TOOL_NAME=dynslice
 # Include the PANDA Makefile rules
 include ../panda.mak
 
+CXXFLAGS += -std=c++11
+
 $(TOOL_TARGET_DIR)/$(TOOL_NAME): \
     $(TOOL_SRC_ROOT)/$(TOOL_NAME)/$(TOOL_NAME).cpp
 

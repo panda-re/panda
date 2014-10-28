@@ -104,119 +104,152 @@ static void extract_addrentry(uint64_t entry, int &typ, int &flag, int &off) {
     off = entry >> 16;
 }
 
-StringRef get_value_name(Value *v) {
+static std::string get_value_name(Value *v) {
     if (v->hasName()) {
-        return v->getName();
+        return v->getName().str();
     }
     else {
         // Unnamed values just use the pointer
-        char name[128];
+        char name[128] = {};
         sprintf(name, "LV_%llx", (uint64_t)v);
-        return StringRef(name);
+        return name;
     }
 }
 
-// Perhaps should be refactored to put the individual cases in their
-// own functions
+// Handlers for individual instruction types
+
+static void handleStore(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+    StoreInst *s = cast<StoreInst>(t.insn);
+    int typ, flag, off;
+    extract_addrentry(t.dyn->arg1, typ, flag, off);
+
+    if (!s->isVolatile() && flag != IRRELEVANT) {
+        switch (typ) {
+            case GREG:
+                defs.insert("REG_" + std::to_string(t.dyn->arg2));
+                break;
+            default:
+                printf("Warning: unhandled address entry type %d\n", typ);
+                break;
+        }
+        Value *v = s->getValueOperand();
+        if (!isa<Constant>(v)) {
+            uses.insert(get_value_name(v));
+        }
+    }
+    return;
+}
+
+static void handleLoad(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+    LoadInst *s = cast<LoadInst>(t.insn);
+    int typ, flag, off;
+    extract_addrentry(t.dyn->arg1, typ, flag, off);
+
+    if (flag != IRRELEVANT) {
+        switch (typ) {
+            case GREG:
+                uses.insert("REG_" + std::to_string(t.dyn->arg2));
+                break;
+            default:
+                printf("Warning: unhandled address entry type %d\n", typ);
+                break;
+        }
+    }
+    // Even IRRELEVANT loads can define things
+    defs.insert(get_value_name(t.insn));
+    return;
+}
+
+static void handleDefault(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+    for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
+        Value *v = *i;
+        if (!isa<Constant>(v)) { // No need to include constants
+            uses.insert(get_value_name(*i));
+        }
+    }
+    defs.insert(get_value_name(t.insn));
+    return;
+}
+
+static void handleCall(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+    CallInst *c = cast<CallInst>(t.insn);
+    StringRef func_name = c->getCalledFunction()->getName();
+    if (func_name.startswith("__ld")) {
+        char sz_c = func_name[4];
+        int size = -1;
+        switch(sz_c) {
+            case 'q': size = 8; break;
+            case 'l': size = 4; break;
+            case 'w': size = 2; break;
+            case 'b': size = 1; break;
+            default: assert(false && "Invalid size in call to load");
+        }
+        for (int off = 0; off < size; off++) {
+            char name[128];
+            sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
+            uses.insert(name);
+        }
+        Value *load_addr = c->getArgOperand(0);
+        if (!isa<Constant>(load_addr)) uses.insert(get_value_name(load_addr));
+        defs.insert(get_value_name(t.insn));
+    }
+    else if (func_name.startswith("__st")) {
+        char sz_c = func_name[4];
+        int size = -1;
+        switch(sz_c) {
+            case 'q': size = 8; break;
+            case 'l': size = 4; break;
+            case 'w': size = 2; break;
+            case 'b': size = 1; break;
+            default: assert(false && "Invalid size in call to store");
+        }
+        for (int off = 0; off < size; off++) {
+            char name[128];
+            sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
+            defs.insert(name);
+        }
+        Value *store_addr = c->getArgOperand(0);
+        Value *store_val  = c->getArgOperand(1);
+        if (!isa<Constant>(store_addr)) uses.insert(get_value_name(store_addr));
+        if (!isa<Constant>(store_val)) uses.insert(get_value_name(store_val));
+    }
+    else if (func_name.startswith("llvm.memcpy")) { } // TODO
+    else if (func_name.startswith("llvm.memset")) { } // TODO
+    else if (func_name.startswith("helper_in")) { } // TODO
+    else if (func_name.startswith("helper_out")) { } // TODO
+    else if (func_name.startswith("log_dynval")) {
+        // ignore
+    }
+    else {
+        // call to some helper
+        handleDefault(t, uses, defs);
+    }
+    return;
+}
+
+// I don't *think* we can use LLVM's InstructionVisitor here because actually
+// want to operate on a trace element, not an Instruction (and hence we need
+// the accompanying dynamic info).
 void get_uses_and_defs(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
     switch (t.insn->getOpcode()) {
-        case Instruction::Store: {
-            StoreInst *s = cast<StoreInst>(t.insn);
-            int typ, flag, off;
-            extract_addrentry(t.dyn->arg1, typ, flag, off);
-
-            if (!s->isVolatile() && flag != IRRELEVANT) {
-                switch (typ) {
-                    case GREG:
-                        defs.insert("REG_" + std::to_string(t.dyn->arg2));
-                        break;
-                    default:
-                        printf("Warning: unhandled address entry type %d\n", typ);
-                        break;
-                }
-                Value *v = s->getValueOperand();
-                if (!isa<Constant>(v)) {
-                    uses.insert(get_value_name(v));
-                }
-            }
+        case Instruction::Store:
+            handleStore(t, uses, defs);
             return;
-        }
-        case Instruction::Load: {
-            LoadInst *s = cast<LoadInst>(t.insn);
-            int typ, flag, off;
-            extract_addrentry(t.dyn->arg1, typ, flag, off);
-
-            if (flag != IRRELEVANT) {
-                switch (typ) {
-                    case GREG:
-                        uses.insert("REG_" + std::to_string(t.dyn->arg2));
-                        break;
-                    default:
-                        printf("Warning: unhandled address entry type %d\n", typ);
-                        break;
-                }
-            }
-            // Even IRRELEVANT loads can define things
-            defs.insert(get_value_name(t.insn));
+        case Instruction::Load:
+            handleLoad(t, uses, defs);
             return;
-        }
         case Instruction::Call: {
-            CallInst *c = cast<CallInst>(t.insn);
-            StringRef func_name = c->getCalledFunction()->getName();
-            if (func_name.startswith("__ld")) {
-                char sz_c = func_name[4];
-                int size = -1;
-                switch(sz_c) {
-                    case 'q': size = 8; break;
-                    case 'l': size = 4; break;
-                    case 'w': size = 2; break;
-                    case 'b': size = 1; break;
-                    default: assert(false && "Invalid size in call to load");
-                }
-                for (int off = 0; off < size; off++) {
-                    char name[128];
-                    sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
-                    uses.insert(name);
-                }
-                Value *load_addr = c->getArgOperand(0);
-                if (!isa<Constant>(load_addr)) uses.insert(get_value_name(load_addr));
-                defs.insert(get_value_name(t.insn));
-            }
-            else if (func_name.startswith("__st")) {
-                char sz_c = func_name[4];
-                int size = -1;
-                switch(sz_c) {
-                    case 'q': size = 8; break;
-                    case 'l': size = 4; break;
-                    case 'w': size = 2; break;
-                    case 'b': size = 1; break;
-                    default: assert(false && "Invalid size in call to store");
-                }
-                for (int off = 0; off < size; off++) {
-                    char name[128];
-                    sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
-                    defs.insert(name);
-                }
-                Value *store_addr = c->getArgOperand(0);
-                Value *store_val  = c->getArgOperand(1);
-                if (!isa<Constant>(store_addr)) uses.insert(get_value_name(store_addr));
-                if (!isa<Constant>(store_val)) uses.insert(get_value_name(store_val));
-            }
-            else if (func_name.startswith("log_dynval")) {
-                // ignore
-            }
-            else {
-                // call to some helper
-                for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
-                    Value *v = *i;
-                    if (!isa<Constant>(v)) { // No need to include constants
-                        uses.insert(get_value_name(*i));
-                    }
-                }
-                defs.insert(get_value_name(t.insn));
-            }
+            handleCall(t, uses, defs);
             return;
         }
         case Instruction::Br:
@@ -230,21 +263,14 @@ void get_uses_and_defs(trace_entry &t,
             // Try "default" operand handling
             // defs = LHS, right = operands
 
-            for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
-                Value *v = *i;
-                if (!isa<Constant>(v)) { // No need to include constants
-                    uses.insert(get_value_name(*i));
-                }
-            }
-
-            defs.insert(get_value_name(t.insn));
+            handleDefault(t, uses, defs);
             return;
         }
     }
     return;
 }
 
-std::map<std::pair<StringRef,int>,std::bitset<512>> marked;
+std::map<std::pair<Function*,int>,std::bitset<512>> marked;
 
 void print_marked(Function *f) {
     printf("*** Function %s ***\n", f->getName().str().c_str());
@@ -253,7 +279,7 @@ void print_marked(Function *f) {
         printf(">>> Block %d\n", i);
         int j = 0;
         for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end(); insn_it != insn_ed; ++insn_it) {
-            char m = marked[std::make_pair(f->getName(),i)][j] ? '*' : ' ';
+            char m = marked[std::make_pair(f,i)][j] ? '*' : ' ';
             fprintf(stderr, "%c ", m);
             insn_it->dump();
             j++;
@@ -300,7 +326,7 @@ void slice_trace(std::vector<trace_entry> &trace,
             // Mark the instruction
             int bb_num = it->index >> 16;
             int insn_index = it->index & 0xffff;
-            marked[std::make_pair(it->func->getName(),bb_num)][insn_index] = true;
+            marked[std::make_pair(it->func,bb_num)][insn_index] = true;
             printf("Marking %s, block %d, instruction %d.\n", it->func->getName().str().c_str(), bb_num, insn_index);
 
             // Update the working set
@@ -528,7 +554,7 @@ int main(int argc, char **argv) {
     }
 
     std::set<std::string> work;
-    work.insert("REG_3");
+    work.insert("REG_19");
     while (cursor != endp) {
         assert (cursor->type == TUBTFE_LLVM_FN);
         char namebuf[128];
