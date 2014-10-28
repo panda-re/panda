@@ -95,20 +95,172 @@ struct trace_entry {
     Function *func;
     Instruction *insn;
     TUBTEntry *dyn;
+    TUBTEntry *dyn2; // Just for memcpy because it's a special snowflake
 };
 
+static void extract_addrentry(uint64_t entry, int &typ, int &flag, int &off) {
+    typ = entry & 0xff;
+    flag = (entry >> 8) & 0xff;
+    off = entry >> 16;
+}
+
+StringRef get_value_name(Value *v) {
+    if (v->hasName()) {
+        return v->getName();
+    }
+    else {
+        // Unnamed values just use the pointer
+        char name[128];
+        sprintf(name, "LV_%llx", (uint64_t)v);
+        return StringRef(name);
+    }
+}
+
+// Perhaps should be refactored to put the individual cases in their
+// own functions
 void get_uses_and_defs(trace_entry &t,
-        std::set<StringRef> &uses,
-        std::set<StringRef> &defs) {
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
     switch (t.insn->getOpcode()) {
-        default:
-            printf("Warning: no model for %s, assuming uses={} defs={}\n", t.insn->getOpcodeName());
-            break;
+        case Instruction::Store: {
+            StoreInst *s = cast<StoreInst>(t.insn);
+            int typ, flag, off;
+            extract_addrentry(t.dyn->arg1, typ, flag, off);
+
+            if (!s->isVolatile() && flag != IRRELEVANT) {
+                switch (typ) {
+                    case GREG:
+                        defs.insert("REG_" + std::to_string(t.dyn->arg2));
+                        break;
+                    default:
+                        printf("Warning: unhandled address entry type %d\n", typ);
+                        break;
+                }
+                Value *v = s->getValueOperand();
+                if (!isa<Constant>(v)) {
+                    uses.insert(get_value_name(v));
+                }
+            }
+            return;
+        }
+        case Instruction::Load: {
+            LoadInst *s = cast<LoadInst>(t.insn);
+            int typ, flag, off;
+            extract_addrentry(t.dyn->arg1, typ, flag, off);
+
+            if (flag != IRRELEVANT) {
+                switch (typ) {
+                    case GREG:
+                        uses.insert("REG_" + std::to_string(t.dyn->arg2));
+                        break;
+                    default:
+                        printf("Warning: unhandled address entry type %d\n", typ);
+                        break;
+                }
+            }
+            // Even IRRELEVANT loads can define things
+            defs.insert(get_value_name(t.insn));
+            return;
+        }
+        case Instruction::Call: {
+            CallInst *c = cast<CallInst>(t.insn);
+            StringRef func_name = c->getCalledFunction()->getName();
+            if (func_name.startswith("__ld")) {
+                char sz_c = func_name[4];
+                int size = -1;
+                switch(sz_c) {
+                    case 'q': size = 8; break;
+                    case 'l': size = 4; break;
+                    case 'w': size = 2; break;
+                    case 'b': size = 1; break;
+                    default: assert(false && "Invalid size in call to load");
+                }
+                for (int off = 0; off < size; off++) {
+                    char name[128];
+                    sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
+                    uses.insert(name);
+                }
+                Value *load_addr = c->getArgOperand(0);
+                if (!isa<Constant>(load_addr)) uses.insert(get_value_name(load_addr));
+                defs.insert(get_value_name(t.insn));
+            }
+            else if (func_name.startswith("__st")) {
+                char sz_c = func_name[4];
+                int size = -1;
+                switch(sz_c) {
+                    case 'q': size = 8; break;
+                    case 'l': size = 4; break;
+                    case 'w': size = 2; break;
+                    case 'b': size = 1; break;
+                    default: assert(false && "Invalid size in call to store");
+                }
+                for (int off = 0; off < size; off++) {
+                    char name[128];
+                    sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
+                    defs.insert(name);
+                }
+                Value *store_addr = c->getArgOperand(0);
+                Value *store_val  = c->getArgOperand(1);
+                if (!isa<Constant>(store_addr)) uses.insert(get_value_name(store_addr));
+                if (!isa<Constant>(store_val)) uses.insert(get_value_name(store_val));
+            }
+            else if (func_name.startswith("log_dynval")) {
+                // ignore
+            }
+            else {
+                // call to some helper
+                for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
+                    Value *v = *i;
+                    if (!isa<Constant>(v)) { // No need to include constants
+                        uses.insert(get_value_name(*i));
+                    }
+                }
+                defs.insert(get_value_name(t.insn));
+            }
+            return;
+        }
+        case Instruction::Br:
+        case Instruction::Switch:
+            // There's a philosophical choice here: given that we have a trace,
+            // we could say that all control flow instructions should be marked,
+            // or alternatively none should be. Right now we choose the latter.
+            return;
+        default: {
+            printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.insn->getOpcodeName());
+            // Try "default" operand handling
+            // defs = LHS, right = operands
+
+            for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
+                Value *v = *i;
+                if (!isa<Constant>(v)) { // No need to include constants
+                    uses.insert(get_value_name(*i));
+                }
+            }
+
+            defs.insert(get_value_name(t.insn));
+            return;
+        }
     }
     return;
 }
 
 std::map<std::pair<StringRef,int>,std::bitset<512>> marked;
+
+void print_marked(Function *f) {
+    printf("*** Function %s ***\n", f->getName().str().c_str());
+    int i = 0;
+    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
+        printf(">>> Block %d\n", i);
+        int j = 0;
+        for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end(); insn_it != insn_ed; ++insn_it) {
+            char m = marked[std::make_pair(f->getName(),i)][j] ? '*' : ' ';
+            fprintf(stderr, "%c ", m);
+            insn_it->dump();
+            j++;
+        }
+        i++;
+    }
+}
 
 // Core slicing algorithm. If the current instruction
 // defines something we currently care about, then kill
@@ -116,14 +268,23 @@ std::map<std::pair<StringRef,int>,std::bitset<512>> marked;
 // Note that this *modifies* the working set 'work' and
 // updates the global map of LLVM functions => bitsets
 void slice_trace(std::vector<trace_entry> &trace,
-        std::set<StringRef> &work) {
+        std::set<std::string> &work) {
     Function *entry_func = trace[0].func;
 
     for(std::vector<trace_entry>::reverse_iterator it = trace.rbegin();
             it != trace.rend(); it++) {
 
-        std::set<StringRef> uses, defs;
+        //it->insn->dump();
+        std::set<std::string> uses, defs;
         get_uses_and_defs(*it, uses, defs);
+
+        printf("DEBUG: %d defs, %d uses\n", defs.size(), uses.size());
+        printf("DEFS: {");
+        for (auto &w : defs) printf(" %s", w.c_str());
+        printf(" }\n");
+        printf("USES: {");
+        for (auto &w : uses) printf(" %s", w.c_str());
+        printf(" }\n");
         
         bool has_overlap = false;
         for (auto &s : defs) {
@@ -134,15 +295,21 @@ void slice_trace(std::vector<trace_entry> &trace,
         }
 
         if (has_overlap) {
+            printf("Current instruction defines something in the working set\n");
+
             // Mark the instruction
             int bb_num = it->index >> 16;
             int insn_index = it->index & 0xffff;
             marked[std::make_pair(it->func->getName(),bb_num)][insn_index] = true;
+            printf("Marking %s, block %d, instruction %d.\n", it->func->getName().str().c_str(), bb_num, insn_index);
 
             // Update the working set
-            work.erase(defs.begin(), defs.end());
+            for (auto &d : defs) work.erase(d);
             work.insert(uses.begin(), uses.end());
         }
+        printf("Working set: {");
+        for (auto &w : work) printf(" %s", w.c_str());
+        printf(" }\n");
 
     }
 }
@@ -171,8 +338,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
         have_successor = false;
         
         int bb_index = getBlockIndex(f, block);
+        int insn_index = 0;
         for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
-            int insn_index = 0;
             trace_entry t;
             t.index = insn_index | (bb_index << 16);
             insn_index++;
@@ -275,8 +442,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         cursor++;
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
-                        t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        t.dyn2 = cursor;
                         cursor++;
                     }
                     else if (func_name.startswith("llvm.memset")) {
@@ -355,12 +521,14 @@ int main(int argc, char **argv) {
         // debug: allow seeking to a specific tb
         unsigned long num = strtoul(argv[3], NULL, 10);
         unsigned long pc = strtoul(argv[4], NULL, 16);
-        debug = true;
+        debug = false;
         while (!(cursor->type == TUBTFE_LLVM_FN && cursor->pc == pc && cursor->arg1 == num)) cursor++;
         TUBTEntry *dbgcurs = cursor + 1;
         while (dbgcurs->type != TUBTFE_LLVM_FN) dump_tubt(dbgcurs++);
     }
 
+    std::set<std::string> work;
+    work.insert("REG_3");
     while (cursor != endp) {
         assert (cursor->type == TUBTFE_LLVM_FN);
         char namebuf[128];
@@ -372,10 +540,12 @@ int main(int argc, char **argv) {
         in_exception = false; // reset this in case the last function ended with an exception
         std::vector<trace_entry> aligned_block;
         cursor = process_func(f, cursor, &aligned_block);
-        std::set<StringRef> work;
         slice_trace(aligned_block, work);
+
+        print_marked(f);
+
         break;
     }
-    
+
     return 0;
 }
