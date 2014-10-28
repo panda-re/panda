@@ -28,6 +28,8 @@
 
 using namespace llvm;
 
+#define MAX_BITSET 2048
+#define INCLUDE_BRANCHES 1
 #define FMT64 "%" PRIx64
 
 std::string TubtfEITypeStr[TUBTFE_LLVM_EXCEPTION+1] = {
@@ -130,6 +132,13 @@ static void handleStore(trace_entry &t,
             case GREG:
                 defs.insert("REG_" + std::to_string(t.dyn->arg2));
                 break;
+            case MADDR:
+                //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
+                defs.insert("HOST_" + std::to_string(t.dyn->arg2));
+                break;
+            case GSPEC:
+                defs.insert("SPEC_" + std::to_string(t.dyn->arg2));
+                break;
             default:
                 printf("Warning: unhandled address entry type %d\n", typ);
                 break;
@@ -153,6 +162,13 @@ static void handleLoad(trace_entry &t,
         switch (typ) {
             case GREG:
                 uses.insert("REG_" + std::to_string(t.dyn->arg2));
+                break;
+            case MADDR:
+                //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
+                uses.insert("HOST_" + std::to_string(t.dyn->arg2));
+                break;
+            case GSPEC:
+                uses.insert("SPEC_" + std::to_string(t.dyn->arg2));
                 break;
             default:
                 printf("Warning: unhandled address entry type %d\n", typ);
@@ -222,7 +238,9 @@ static void handleCall(trace_entry &t,
         if (!isa<Constant>(store_val)) uses.insert(get_value_name(store_val));
     }
     else if (func_name.startswith("llvm.memcpy")) { } // TODO
-    else if (func_name.startswith("llvm.memset")) { } // TODO
+    else if (func_name.startswith("llvm.memset")) {
+
+    } // TODO
     else if (func_name.startswith("helper_in")) { } // TODO
     else if (func_name.startswith("helper_out")) { } // TODO
     else if (func_name.startswith("log_dynval")) {
@@ -248,29 +266,44 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::Load:
             handleLoad(t, uses, defs);
             return;
-        case Instruction::Call: {
+        case Instruction::Call:
             handleCall(t, uses, defs);
             return;
-        }
         case Instruction::Br:
         case Instruction::Switch:
-            // There's a philosophical choice here: given that we have a trace,
-            // we could say that all control flow instructions should be marked,
-            // or alternatively none should be. Right now we choose the latter.
+        case Instruction::Add:
+        case Instruction::Sub:
+        case Instruction::Mul:
+        case Instruction::IntToPtr:
+        case Instruction::PtrToInt:
+        case Instruction::And:
+        case Instruction::Xor:
+        case Instruction::Or:
+        case Instruction::ZExt:
+        case Instruction::SExt:
+        case Instruction::Trunc:
+        case Instruction::GetElementPtr:
+        case Instruction::Shl:
+        case Instruction::AShr:
+        case Instruction::LShr:
+        case Instruction::ICmp:
+            handleDefault(t, uses, defs);
             return;
-        default: {
+        case Instruction::Ret:
+        case Instruction::Alloca:
+            return;
+        default:
             printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.insn->getOpcodeName());
             // Try "default" operand handling
             // defs = LHS, right = operands
 
             handleDefault(t, uses, defs);
             return;
-        }
     }
     return;
 }
 
-std::map<std::pair<Function*,int>,std::bitset<512>> marked;
+std::map<std::pair<Function*,int>,std::bitset<MAX_BITSET>> marked;
 
 void print_marked(Function *f) {
     printf("*** Function %s ***\n", f->getName().str().c_str());
@@ -288,6 +321,14 @@ void print_marked(Function *f) {
     }
 }
 
+void mark(trace_entry &t) {
+    int bb_num = t.index >> 16;
+    int insn_index = t.index & 0xffff;
+    assert (insn_index < MAX_BITSET);
+    marked[std::make_pair(t.func,bb_num)][insn_index] = true;
+    if (debug) printf("Marking %s, block %d, instruction %d.\n", t.func->getName().str().c_str(), bb_num, insn_index);
+}
+
 // Core slicing algorithm. If the current instruction
 // defines something we currently care about, then kill
 // the defs and add in the uses.
@@ -299,18 +340,21 @@ void slice_trace(std::vector<trace_entry> &trace,
 
     for(std::vector<trace_entry>::reverse_iterator it = trace.rbegin();
             it != trace.rend(); it++) {
+        // Skip helper functions for now
+        if (it->func != entry_func) continue;
+        if (debug) printf(">> %s\n", it->insn->getOpcodeName());
 
         //it->insn->dump();
         std::set<std::string> uses, defs;
         get_uses_and_defs(*it, uses, defs);
 
-        printf("DEBUG: %d defs, %d uses\n", defs.size(), uses.size());
-        printf("DEFS: {");
-        for (auto &w : defs) printf(" %s", w.c_str());
-        printf(" }\n");
-        printf("USES: {");
-        for (auto &w : uses) printf(" %s", w.c_str());
-        printf(" }\n");
+        if (debug) printf("DEBUG: %d defs, %d uses\n", defs.size(), uses.size());
+        if (debug) printf("DEFS: {");
+        if (debug) for (auto &w : defs) printf(" %s", w.c_str());
+        if (debug) printf(" }\n");
+        if (debug) printf("USES: {");
+        if (debug) for (auto &w : uses) printf(" %s", w.c_str());
+        if (debug) printf(" }\n");
         
         bool has_overlap = false;
         for (auto &s : defs) {
@@ -321,21 +365,26 @@ void slice_trace(std::vector<trace_entry> &trace,
         }
 
         if (has_overlap) {
-            printf("Current instruction defines something in the working set\n");
+            if (debug) printf("Current instruction defines something in the working set\n");
 
             // Mark the instruction
-            int bb_num = it->index >> 16;
-            int insn_index = it->index & 0xffff;
-            marked[std::make_pair(it->func,bb_num)][insn_index] = true;
-            printf("Marking %s, block %d, instruction %d.\n", it->func->getName().str().c_str(), bb_num, insn_index);
+            mark(*it);
 
             // Update the working set
             for (auto &d : defs) work.erase(d);
             work.insert(uses.begin(), uses.end());
+
         }
-        printf("Working set: {");
-        for (auto &w : work) printf(" %s", w.c_str());
-        printf(" }\n");
+        else if (it->insn->isTerminator() && !isa<ReturnInst>(it->insn) && INCLUDE_BRANCHES) {
+            // Special case: branch/switch
+            if (debug) printf("Current instruction is a branch, adding it.\n");
+            mark(*it);
+            work.insert(uses.begin(), uses.end());
+        }
+
+        if (debug) printf("Working set: {");
+        if (debug) for (auto &w : work) printf(" %s", w.c_str());
+        if (debug) printf(" }\n");
 
     }
 }
@@ -513,19 +562,84 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
     return cursor;
 }
 
+static inline void update_progress(uint64_t cur, uint64_t total) {
+    double pct = cur / (double)total;
+    const int columns = 80;
+    printf("[");
+    int pos = columns*pct;
+    for (int i = 0; i < columns; i++) {
+        if (i < pos) printf("=");
+        else if (i == pos) printf(">");
+        else printf(" ");
+    }
+    printf("] %02d%%\r", (int)(pct*100));
+    fflush(stdout);
+}
+
+void usage(char *prog) {
+   fprintf(stderr, "Usage: %s [-d] [-p PC] [-n NUM] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+           prog);
+}
+
 int main(int argc, char **argv) {
     // mmap the dynamic log
+
+    int opt;
+    unsigned long num, pc;
+    bool have_num = false, have_pc = false;
+    while ((opt = getopt(argc, argv, "dn:p:")) != -1) {
+        switch (opt) {
+        case 'n':
+            num = strtoul(optarg, NULL, 10);
+            have_num = true;
+            break;
+        case 'p':
+            pc = strtoul(optarg, NULL, 16);
+            have_pc = true;
+            break;
+        case 'd':
+            debug = true;
+            break;
+        default: /* '?' */
+            usage(argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (have_num != have_pc) {
+        fprintf(stderr, "ERROR: cannot specify -p without -n (and vice versa).\n");
+        usage(argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (optind + 1 >= argc) {
+        fprintf(stderr, "ERROR: both <llvm_mod> and <dynlog> are required.\n");
+        usage(argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    
+    if (optind + 2 >= argc) {
+        fprintf(stderr, "WARNING: You did not specify any slicing criteria. This is probably not what you want.\n");
+        fprintf(stderr, "Continuing anyway.\n");
+    }
+
+    char *llvm_mod_fname = argv[optind];
+    char *tubt_log_fname = argv[optind+1];
+
+    // Add the slicing criteria
+    std::set<std::string> work;
+    for (int i = optind + 2; i < argc; i++) {
+        work.insert(argv[i]);
+    }
+
     struct stat st;
-    if(argc < 3) {
-        fprintf(stderr, "usage: %s <llvm_mod> <dynlog>\n", argv[0]);
-        return 1;
-    }
-    if (stat(argv[2], &st) != 0) {
+    if (stat(tubt_log_fname, &st) != 0) {
         perror("stat");
-        return 1;
+        exit(EXIT_FAILURE);
     }
+
     uint64_t num_rows = (st.st_size - 20) / sizeof(TUBTEntry);
-    int fd = open(argv[2], O_RDWR|O_LARGEFILE);
+    int fd = open(tubt_log_fname, O_RDWR|O_LARGEFILE);
     uint8_t *mapping = (uint8_t *)mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
     if (mapping == MAP_FAILED) {
         perror("mmap");
@@ -540,38 +654,45 @@ int main(int argc, char **argv) {
     // Load the bitcode...
     SMDiagnostic err;
 
-    Module *mod = ParseIRFile(argv[1], err, ctx);
+    Module *mod = ParseIRFile(llvm_mod_fname, err, ctx);
 
     TUBTEntry *cursor = rows;
-    if (argc == 5) {
-        // debug: allow seeking to a specific tb
-        unsigned long num = strtoul(argv[3], NULL, 10);
-        unsigned long pc = strtoul(argv[4], NULL, 16);
-        debug = false;
+    if (have_pc) {
         while (!(cursor->type == TUBTFE_LLVM_FN && cursor->pc == pc && cursor->arg1 == num)) cursor++;
         TUBTEntry *dbgcurs = cursor + 1;
-        while (dbgcurs->type != TUBTFE_LLVM_FN) dump_tubt(dbgcurs++);
+        if (debug) while (dbgcurs->type != TUBTFE_LLVM_FN) dump_tubt(dbgcurs++);
     }
 
-    std::set<std::string> work;
-    work.insert("REG_19");
+    uint64_t rows_processed = 0;
+
+    printf("Slicing trace...\n");
     while (cursor != endp) {
         assert (cursor->type == TUBTFE_LLVM_FN);
         char namebuf[128];
         sprintf(namebuf, "tcg-llvm-tb-%llu-%llx", cursor->arg1, cursor->pc);
-        printf("%s\n", namebuf);
+        if (debug) printf("%s\n", namebuf);
         Function *f = mod->getFunction(namebuf);
         assert(f != NULL);
+
         cursor++; // Don't include the function entry
+
+        // Get the aligned trace of this block
         in_exception = false; // reset this in case the last function ended with an exception
         std::vector<trace_entry> aligned_block;
         cursor = process_func(f, cursor, &aligned_block);
+
+        // And slice it
         slice_trace(aligned_block, work);
 
-        print_marked(f);
-
-        break;
+        rows_processed = cursor - rows;
+        update_progress(rows_processed, num_rows);
     }
+
+    printf("\n");
+
+    uint64_t insns_marked = 0;
+    for (auto &kvp : marked) insns_marked += kvp.second.size();
+    printf("Done slicing. Marked %llu blocks, %llu instructions.\n", marked.size(), insns_marked);
 
     return 0;
 }
