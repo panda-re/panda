@@ -185,7 +185,7 @@ static void handleDefault(trace_entry &t,
         std::set<std::string> &defs) {
     for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
         Value *v = *i;
-        if (!isa<Constant>(v)) { // No need to include constants
+        if (!isa<Constant>(v) && !isa<BasicBlock>(v)) { // No need to include constants
             uses.insert(get_value_name(*i));
         }
     }
@@ -329,6 +329,15 @@ void mark(trace_entry &t) {
     if (debug) printf("Marking %s, block %d, instruction %d.\n", t.func->getName().str().c_str(), bb_num, insn_index);
 }
 
+void print_insn(Instruction *insn) {
+    std::string s;
+    raw_string_ostream ss(s);
+    insn->print(ss);
+    ss.flush();
+    printf("%s\n", ss.str().c_str());
+    return;
+}
+
 // Core slicing algorithm. If the current instruction
 // defines something we currently care about, then kill
 // the defs and add in the uses.
@@ -343,6 +352,7 @@ void slice_trace(std::vector<trace_entry> &trace,
         // Skip helper functions for now
         if (it->func != entry_func) continue;
         if (debug) printf(">> %s\n", it->insn->getOpcodeName());
+        if (debug) print_insn(it->insn);
 
         //it->insn->dump();
         std::set<std::string> uses, defs;
@@ -415,7 +425,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
         int bb_index = getBlockIndex(f, block);
         int insn_index = 0;
         for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
-            trace_entry t;
+            trace_entry t = {};
             t.index = insn_index | (bb_index << 16);
             insn_index++;
 
@@ -426,19 +436,19 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
             // processing anything further, since we know there can be no dynamic
             // values before the exception.
             if (cursor->type == TUBTFE_LLVM_EXCEPTION) {
-                if (debug) printf("Found exception, will not finish this function.\n");
+                // if (debug) printf("Found exception, will not finish this function.\n");
                 in_exception = true;
                 cursor++;
                 return cursor;
             }
 
-            if (debug) errs() << *i << "\n";
+            // if (debug) errs() << *i << "\n";
 
             switch (i->getOpcode()) {
                 case Instruction::Load: {
                     assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                     LoadInst *l = cast<LoadInst>(&*i);
-                    if (debug) dump_tubt(cursor);
+                    // if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
                     serialized->push_back(t);
                     cursor++;
@@ -448,7 +458,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     StoreInst *s = cast<StoreInst>(&*i);
                     if (!s->isVolatile()) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
-                        if (debug) dump_tubt(cursor);
+                        // if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
                         serialized->push_back(t);
                         cursor++;
@@ -547,6 +557,8 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         // ignore
                     }
                     else {
+                        t.func = f; t.insn = i; t.dyn = NULL;
+                        serialized->push_back(t);
                         // descend
                         cursor = process_func(subf, cursor, serialized);
                     }
@@ -659,8 +671,6 @@ int main(int argc, char **argv) {
     TUBTEntry *cursor = rows;
     if (have_pc) {
         while (!(cursor->type == TUBTFE_LLVM_FN && cursor->pc == pc && cursor->arg1 == num)) cursor++;
-        TUBTEntry *dbgcurs = cursor + 1;
-        if (debug) while (dbgcurs->type != TUBTFE_LLVM_FN) dump_tubt(dbgcurs++);
     }
 
     uint64_t rows_processed = 0;
@@ -670,9 +680,12 @@ int main(int argc, char **argv) {
         assert (cursor->type == TUBTFE_LLVM_FN);
         char namebuf[128];
         sprintf(namebuf, "tcg-llvm-tb-%llu-%llx", cursor->arg1, cursor->pc);
-        if (debug) printf("%s\n", namebuf);
+        if (debug) printf("********** %s **********\n", namebuf);
         Function *f = mod->getFunction(namebuf);
         assert(f != NULL);
+
+        TUBTEntry *dbgcurs = cursor + 1;
+        if (debug) while (dbgcurs->type != TUBTFE_LLVM_FN) dump_tubt(dbgcurs++);
 
         cursor++; // Don't include the function entry
 
