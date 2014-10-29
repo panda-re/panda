@@ -31,7 +31,6 @@
 using namespace llvm;
 
 #define MAX_BITSET 2048
-#define INCLUDE_BRANCHES 1
 #define FMT64 "%" PRIx64
 
 std::string TubtfEITypeStr[TUBTFE_LLVM_EXCEPTION+1] = {
@@ -89,6 +88,7 @@ struct __attribute__((packed)) TUBTEntry {
 };
 
 bool debug = false;
+bool include_branches = false;
 
 void dump_tubt(TUBTEntry *row) {
     printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
@@ -393,6 +393,12 @@ bool is_ignored(Function *f) {
         return false;
 }
 
+void print_set(std::set<std::string> &s) {
+    printf("{");
+    for (auto &w : s) printf(" %s", w.c_str());
+    printf(" }\n");
+}
+
 // Core slicing algorithm. If the current instruction
 // defines something we currently care about, then kill
 // the defs and add in the uses.
@@ -419,12 +425,10 @@ void slice_trace(std::vector<trace_entry> &trace,
         get_uses_and_defs(*it, uses, defs);
 
         if (debug) printf("DEBUG: %d defs, %d uses\n", defs.size(), uses.size());
-        if (debug) printf("DEFS: {");
-        if (debug) for (auto &w : defs) printf(" %s", w.c_str());
-        if (debug) printf(" }\n");
-        if (debug) printf("USES: {");
-        if (debug) for (auto &w : uses) printf(" %s", w.c_str());
-        if (debug) printf(" }\n");
+        if (debug) printf("DEFS: ");
+        if (debug) print_set(defs);
+        if (debug) printf("USES: ");
+        if (debug) print_set(uses);
 
         if (it->func != entry_func) {
             // If we're not at top level (i.e. we're in a helper function)
@@ -439,9 +443,8 @@ void slice_trace(std::vector<trace_entry> &trace,
                 }
             }
 
-            if (debug) printf("USES (remapped): {");
-            if (debug) for (auto &w : uses) printf(" %s", w.c_str());
-            if (debug) printf(" }\n");
+            if (debug) printf("USES (remapped): ");
+            if (debug) print_set(uses);
         }
         
         bool has_overlap = false;
@@ -463,7 +466,7 @@ void slice_trace(std::vector<trace_entry> &trace,
             work.insert(uses.begin(), uses.end());
 
         }
-        else if (it->insn->isTerminator() && !isa<ReturnInst>(it->insn) && INCLUDE_BRANCHES) {
+        else if (it->insn->isTerminator() && !isa<ReturnInst>(it->insn) && include_branches) {
             // Special case: branch/switch
             if (debug) printf("Current instruction is a branch, adding it.\n");
             mark(*it);
@@ -494,10 +497,8 @@ void slice_trace(std::vector<trace_entry> &trace,
             if(!argmap_stack.empty()) argmap_stack.pop();
         }
 
-        if (debug) printf("Working set: {");
-        if (debug) for (auto &w : work) printf(" %s", w.c_str());
-        if (debug) printf(" }\n");
-
+        if (debug) printf("Working set: ");
+        if (debug) print_set(work);
     }
 }
 
@@ -705,8 +706,17 @@ static inline void update_progress(uint64_t cur, uint64_t total) {
 }
 
 void usage(char *prog) {
-   fprintf(stderr, "Usage: %s [-d] [-p PC] [-n NUM] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+   fprintf(stderr, "Usage: %s [-b] [-d] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
            prog);
+   fprintf(stderr, "Options:\n"
+           "  -b                : include branch conditions in slice\n"
+           "  -d                : enable debug output\n"
+           "  -n NUM -p PC      : skip ahead to TB NUM-PC\n"
+           "  <llvm_mod>        : the LLVM bitcode module\n"
+           "  <dynlog>          : the TUBT log file\n"
+           "  <criterion> ...   : the slicing criteria, i.e., what to slice on\n"
+           "                      Use REG_[N] for registers, MEM_[PADDR] for memory\n"
+          );
 }
 
 int main(int argc, char **argv) {
@@ -715,7 +725,7 @@ int main(int argc, char **argv) {
     int opt;
     unsigned long num, pc;
     bool have_num = false, have_pc = false;
-    while ((opt = getopt(argc, argv, "dn:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "bdn:p:")) != -1) {
         switch (opt) {
         case 'n':
             num = strtoul(optarg, NULL, 10);
@@ -727,6 +737,9 @@ int main(int argc, char **argv) {
             break;
         case 'd':
             debug = true;
+            break;
+        case 'b':
+            include_branches = true;
             break;
         default: /* '?' */
             usage(argv[0]);
