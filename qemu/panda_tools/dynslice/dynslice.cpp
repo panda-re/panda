@@ -11,6 +11,8 @@
 #include <bitset>
 #include <vector>
 #include <set>
+#include <stack>
+#include <map>
 
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instructions.h"
@@ -120,6 +122,8 @@ static std::string get_value_name(Value *v) {
 
 // Handlers for individual instruction types
 
+// XXX: look into whether we need to include the value that provides
+//      the address of the store
 static void handleStore(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
@@ -151,6 +155,8 @@ static void handleStore(trace_entry &t,
     return;
 }
 
+// XXX: look into whether we need to include the value that provides
+//      the address of the load
 static void handleLoad(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
@@ -196,8 +202,9 @@ static void handleDefault(trace_entry &t,
 static void handleCall(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
-    CallInst *c = cast<CallInst>(t.insn);
-    StringRef func_name = c->getCalledFunction()->getName();
+    CallInst *c =  cast<CallInst>(t.insn);
+    Function *subf = c->getCalledFunction();
+    StringRef func_name = subf->getName();
     if (func_name.startswith("__ld")) {
         char sz_c = func_name[4];
         int size = -1;
@@ -248,10 +255,39 @@ static void handleCall(trace_entry &t,
     }
     else {
         // call to some helper
-        handleDefault(t, uses, defs);
+        if (!c->getType()->isVoidTy()) {
+            defs.insert(get_value_name(c));
+        }
+        // Uses the return value of that function.
+        // Note that it does *not* use the arguments -- these will
+        // get included automatically if they're needed to compute
+        // the return value.
+        uses.insert((func_name + ".retval").str());
     }
     return;
 }
+
+static void handleRet(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+
+    ReturnInst *r = cast<ReturnInst>(t.insn);
+    Value *v = r->getReturnValue();
+    if (v != NULL && !isa<Constant>(v)) uses.insert(get_value_name(v));
+
+    defs.insert((t.func->getName() + ".retval").str());
+}
+
+static void handlePHI(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+    // arg1 is the fake dynamic value we derived during trace alignment
+    PHINode *p = cast<PHINode>(t.insn);
+    Value *v = p->getIncomingValue(t.dyn->arg1);
+    if (!isa<Constant>(v)) uses.insert(get_value_name(v));
+    defs.insert(get_value_name(t.insn));
+}
+
 
 // I don't *think* we can use LLVM's InstructionVisitor here because actually
 // want to operate on a trace element, not an Instruction (and hence we need
@@ -290,6 +326,11 @@ void get_uses_and_defs(trace_entry &t,
             handleDefault(t, uses, defs);
             return;
         case Instruction::Ret:
+            handleRet(t, uses, defs);
+            return;
+        case Instruction::PHI:
+            handlePHI(t, uses, defs);
+            return;
         case Instruction::Alloca:
             return;
         default:
@@ -338,6 +379,20 @@ void print_insn(Instruction *insn) {
     return;
 }
 
+bool is_ignored(Function *f) {
+    StringRef func_name = f->getName();
+    if (func_name.startswith("__ld") ||
+        func_name.startswith("__st") ||
+        func_name.startswith("llvm.memcpy") || 
+        func_name.startswith("llvm.memset") ||
+        func_name.startswith("helper_in") ||
+        func_name.startswith("helper_out") ||
+        func_name.equals("log_dynval"))
+        return true;
+    else
+        return false;
+}
+
 // Core slicing algorithm. If the current instruction
 // defines something we currently care about, then kill
 // the defs and add in the uses.
@@ -347,14 +402,19 @@ void slice_trace(std::vector<trace_entry> &trace,
         std::set<std::string> &work) {
     Function *entry_func = trace[0].func;
 
+    // Keeps track of argument->value binding when we descend into
+    // functions
+    std::stack<std::map<std::string,std::string>> argmap_stack;
+
     for(std::vector<trace_entry>::reverse_iterator it = trace.rbegin();
             it != trace.rend(); it++) {
+
         // Skip helper functions for now
-        if (it->func != entry_func) continue;
+        // if (it->func != entry_func) continue;
+
         if (debug) printf(">> %s\n", it->insn->getOpcodeName());
         if (debug) print_insn(it->insn);
 
-        //it->insn->dump();
         std::set<std::string> uses, defs;
         get_uses_and_defs(*it, uses, defs);
 
@@ -365,6 +425,24 @@ void slice_trace(std::vector<trace_entry> &trace,
         if (debug) printf("USES: {");
         if (debug) for (auto &w : uses) printf(" %s", w.c_str());
         if (debug) printf(" }\n");
+
+        if (it->func != entry_func) {
+            // If we're not at top level (i.e. we're in a helper function)
+            // we need to map the uses through the current argument map. We
+            // don't need to do this with the defs because you can't define
+            // a function argument inside the function.
+            for (auto &u : uses) {
+                std::map<std::string,std::string> &argmap = argmap_stack.top();
+                if (argmap.find(u) != argmap.end()) {
+                    uses.erase(u);
+                    uses.insert(argmap[u]);
+                }
+            }
+
+            if (debug) printf("USES (remapped): {");
+            if (debug) for (auto &w : uses) printf(" %s", w.c_str());
+            if (debug) printf(" }\n");
+        }
         
         bool has_overlap = false;
         for (auto &s : defs) {
@@ -392,6 +470,30 @@ void slice_trace(std::vector<trace_entry> &trace,
             work.insert(uses.begin(), uses.end());
         }
 
+        // Special handling for function calls. We need to bind arguments to values
+        if (CallInst *c = dyn_cast<CallInst>(it->insn)) {
+            std::map<std::string,std::string> argmap;
+            Function *subf = c->getCalledFunction();
+
+            if (!is_ignored(subf)) {
+                // Iterate over pairs of arguments & values
+                Function::arg_iterator argIter;
+                int p;
+                for (argIter = subf->arg_begin(), p = 0;
+                     argIter != subf->arg_end() && p < c->getNumArgOperands();
+                     argIter++, p++) {
+                    argmap[get_value_name(&*argIter)] = get_value_name(c->getArgOperand(p));
+                    if (debug) printf("ArgMap %s => %s\n", get_value_name(&*argIter).c_str(), get_value_name(c->getArgOperand(p)).c_str());
+                }
+                argmap_stack.push(argmap);
+            }
+        }
+        else if (&*(it->func->getEntryBlock().begin()) == &*(it->insn)) {
+            // If we just processed the first instruction in the function,
+            // we must be about to exit the function, so pop the stack
+            if(!argmap_stack.empty()) argmap_stack.pop();
+        }
+
         if (debug) printf("Working set: {");
         if (debug) for (auto &w : work) printf(" %s", w.c_str());
         if (debug) printf(" }\n");
@@ -413,8 +515,7 @@ int getBlockIndex(Function *f, BasicBlock *b) {
 // an unknown number of levels of recursion.
 bool in_exception = false;
 
-TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entry> *serialized) {
-    assert(serialized != NULL);
+TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entry> &serialized) {
     TUBTEntry *cursor = dynvals;
     BasicBlock &entry = f->getEntryBlock();
     BasicBlock *block = &entry;
@@ -450,7 +551,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     LoadInst *l = cast<LoadInst>(&*i);
                     // if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
-                    serialized->push_back(t);
+                    serialized.push_back(t);
                     cursor++;
                     break;
                 }
@@ -460,7 +561,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         // if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     break;
@@ -471,7 +572,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     block = b->getSuccessor(cursor->arg1);
                     if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
-                    serialized->push_back(t);
+                    serialized.push_back(t);
                     cursor++;
                     have_successor = true;
                     break;
@@ -486,9 +587,22 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     block = s->getSuccessor(caseIndex.getSuccessorIndex());
                     if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
-                    serialized->push_back(t);
+                    serialized.push_back(t);
                     cursor++;
                     have_successor = true;
+                    break;
+                }
+                case Instruction::PHI: {
+                    // We don't actually have a dynamic log entry here,
+                    // but for convenience we do want to know which basic
+                    // block we just came from. So we peek at the previous
+                    // thing in our trace, which should be the predecessor
+                    // basic block to this PHI
+                    PHINode *p = cast<PHINode>(&*i);
+                    TUBTEntry *new_dyn = new TUBTEntry;
+                    new_dyn->arg1 = p->getBasicBlockIndex(serialized.back().insn->getParent());
+                    t.func = f; t.insn = i; t.dyn = new_dyn;
+                    serialized.push_back(t);
                     break;
                 }
                 case Instruction::Select: {
@@ -496,7 +610,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     SelectInst *s = cast<SelectInst>(&*i);
                     if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
-                    serialized->push_back(t);
+                    serialized.push_back(t);
                     cursor++;
                     break;
                 }
@@ -509,21 +623,21 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("__st")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("llvm.memcpy")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
@@ -534,21 +648,21 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("helper_in")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("helper_out")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized->push_back(t);
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.equals("log_dynval") ||
@@ -557,16 +671,18 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         // ignore
                     }
                     else {
-                        t.func = f; t.insn = i; t.dyn = NULL;
-                        serialized->push_back(t);
                         // descend
                         cursor = process_func(subf, cursor, serialized);
+                        // Put the call in *after* the instructions so we
+                        // can decide if we need the return value
+                        t.func = f; t.insn = i; t.dyn = NULL;
+                        serialized.push_back(t);
                     }
                     break;
                 }
                 default:
                     t.func = f; t.insn = i; t.dyn = NULL;
-                    serialized->push_back(t);
+                    serialized.push_back(t);
                     break;
             }
         }
@@ -692,7 +808,7 @@ int main(int argc, char **argv) {
         // Get the aligned trace of this block
         in_exception = false; // reset this in case the last function ended with an exception
         std::vector<trace_entry> aligned_block;
-        cursor = process_func(f, cursor, &aligned_block);
+        cursor = process_func(f, cursor, aligned_block);
 
         // And slice it
         slice_trace(aligned_block, work);
