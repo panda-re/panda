@@ -126,8 +126,6 @@ static void insertValue(std::set<std::string> &s, Value *v) {
 
 // Handlers for individual instruction types
 
-// XXX: look into whether we need to include the value that provides
-//      the address of the store
 static void handleStore(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
@@ -159,8 +157,6 @@ static void handleStore(trace_entry &t,
     return;
 }
 
-// XXX: look into whether we need to include the value that provides
-//      the address of the load
 static void handleLoad(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
@@ -185,6 +181,8 @@ static void handleLoad(trace_entry &t,
                 break;
         }
     }
+    Value *p = s->getPointerOperand();
+    insertValue(uses, p);
     // Even IRRELEVANT loads can define things
     insertValue(defs, t.insn);
     return;
@@ -348,6 +346,7 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::AShr:
         case Instruction::LShr:
         case Instruction::ICmp:
+        case Instruction::Alloca:
             handleDefault(t, uses, defs);
             return;
         case Instruction::Ret:
@@ -359,7 +358,6 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::Select:
             handleSelect(t, uses, defs);
             return;
-        case Instruction::Alloca:
         case Instruction::Unreachable: // how do we even get these??
             return;
         default:
@@ -530,6 +528,10 @@ void slice_trace(std::vector<trace_entry> &trace,
         if (debug) printf("Working set: ");
         if (debug) print_set(work);
     }
+
+    // At the end we want to get rid of the argument to the basic block,
+    // since it's just env.
+    work.erase(get_value_name(&*entry_func->arg_begin()));
 }
 
 // Find the index of a block in a function
@@ -744,11 +746,12 @@ static inline void update_progress(uint64_t cur, uint64_t total) {
 }
 
 void usage(char *prog) {
-   fprintf(stderr, "Usage: %s [-b] [-d] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+   fprintf(stderr, "Usage: %s [-w] [-b] [-d] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
            prog);
    fprintf(stderr, "Options:\n"
            "  -b                : include branch conditions in slice\n"
            "  -d                : enable debug output\n"
+           "  -w                : print working set after each block\n"
            "  -n NUM -p PC      : skip ahead to TB NUM-PC\n"
            "  <llvm_mod>        : the LLVM bitcode module\n"
            "  <dynlog>          : the TUBT log file\n"
@@ -763,7 +766,8 @@ int main(int argc, char **argv) {
     int opt;
     unsigned long num, pc;
     bool have_num = false, have_pc = false;
-    while ((opt = getopt(argc, argv, "bdn:p:")) != -1) {
+    bool print_work = false;
+    while ((opt = getopt(argc, argv, "wbdn:p:")) != -1) {
         switch (opt) {
         case 'n':
             num = strtoul(optarg, NULL, 10);
@@ -778,6 +782,9 @@ int main(int argc, char **argv) {
             break;
         case 'b':
             include_branches = true;
+            break;
+        case 'w':
+            print_work = true;
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -864,8 +871,17 @@ int main(int argc, char **argv) {
         // And slice it
         slice_trace(aligned_block, work);
 
+        if (print_work) printf("Working set: ");
+        if (print_work) print_set(work);
+
         rows_processed = cursor - rows;
         update_progress(rows_processed, num_rows);
+
+        if (work.empty()) {
+            printf("\n");
+            printf("Note: working set is empty, will stop slicing.\n");
+            break;
+        }
     }
 
     printf("\n");
