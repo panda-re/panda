@@ -193,7 +193,7 @@ static void handleDefault(trace_entry &t,
         std::set<std::string> &defs) {
     for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
         Value *v = *i;
-        if (!isa<BasicBlock>(v)) { // No need to include constants
+        if (!isa<BasicBlock>(v)) { // So that br doesn't end up with block refs
             insertValue(uses, *i);
         }
     }
@@ -321,6 +321,17 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::Call:
             handleCall(t, uses, defs);
             return;
+        case Instruction::Ret:
+            handleRet(t, uses, defs);
+            return;
+        case Instruction::PHI:
+            handlePHI(t, uses, defs);
+            return;
+        case Instruction::Select:
+            handleSelect(t, uses, defs);
+            return;
+        case Instruction::Unreachable: // how do we even get these??
+            return;
         case Instruction::Br:
         case Instruction::Switch:
         case Instruction::Add:
@@ -348,17 +359,6 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::ICmp:
         case Instruction::Alloca:
             handleDefault(t, uses, defs);
-            return;
-        case Instruction::Ret:
-            handleRet(t, uses, defs);
-            return;
-        case Instruction::PHI:
-            handlePHI(t, uses, defs);
-            return;
-        case Instruction::Select:
-            handleSelect(t, uses, defs);
-            return;
-        case Instruction::Unreachable: // how do we even get these??
             return;
         default:
             printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.insn->getOpcodeName());
