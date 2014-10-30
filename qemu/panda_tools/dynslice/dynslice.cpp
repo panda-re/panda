@@ -120,6 +120,10 @@ static std::string get_value_name(Value *v) {
     }
 }
 
+static void insertValue(std::set<std::string> &s, Value *v) {
+    if (!isa<Constant>(v)) s.insert(get_value_name(v));
+}
+
 // Handlers for individual instruction types
 
 // XXX: look into whether we need to include the value that provides
@@ -148,9 +152,9 @@ static void handleStore(trace_entry &t,
                 break;
         }
         Value *v = s->getValueOperand();
-        if (!isa<Constant>(v)) {
-            uses.insert(get_value_name(v));
-        }
+        insertValue(uses, v);
+        Value *p = s->getPointerOperand();
+        insertValue(uses, p);
     }
     return;
 }
@@ -182,7 +186,7 @@ static void handleLoad(trace_entry &t,
         }
     }
     // Even IRRELEVANT loads can define things
-    defs.insert(get_value_name(t.insn));
+    insertValue(defs, t.insn);
     return;
 }
 
@@ -191,11 +195,11 @@ static void handleDefault(trace_entry &t,
         std::set<std::string> &defs) {
     for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
         Value *v = *i;
-        if (!isa<Constant>(v) && !isa<BasicBlock>(v)) { // No need to include constants
-            uses.insert(get_value_name(*i));
+        if (!isa<BasicBlock>(v)) { // No need to include constants
+            insertValue(uses, *i);
         }
     }
-    defs.insert(get_value_name(t.insn));
+    insertValue(defs, t.insn);
     return;
 }
 
@@ -221,8 +225,8 @@ static void handleCall(trace_entry &t,
             uses.insert(name);
         }
         Value *load_addr = c->getArgOperand(0);
-        if (!isa<Constant>(load_addr)) uses.insert(get_value_name(load_addr));
-        defs.insert(get_value_name(t.insn));
+        insertValue(uses, load_addr);
+        insertValue(defs, t.insn);
     }
     else if (func_name.startswith("__st")) {
         char sz_c = func_name[4];
@@ -241,13 +245,11 @@ static void handleCall(trace_entry &t,
         }
         Value *store_addr = c->getArgOperand(0);
         Value *store_val  = c->getArgOperand(1);
-        if (!isa<Constant>(store_addr)) uses.insert(get_value_name(store_addr));
-        if (!isa<Constant>(store_val)) uses.insert(get_value_name(store_val));
+        insertValue(uses, store_addr);
+        insertValue(uses, store_val);
     }
     else if (func_name.startswith("llvm.memcpy")) { } // TODO
-    else if (func_name.startswith("llvm.memset")) {
-
-    } // TODO
+    else if (func_name.startswith("llvm.memset")) { } // TODO
     else if (func_name.startswith("helper_in")) { } // TODO
     else if (func_name.startswith("helper_out")) { } // TODO
     else if (func_name.startswith("log_dynval")) {
@@ -256,7 +258,7 @@ static void handleCall(trace_entry &t,
     else {
         // call to some helper
         if (!c->getType()->isVoidTy()) {
-            defs.insert(get_value_name(c));
+            insertValue(defs, c);
         }
         // Uses the return value of that function.
         // Note that it does *not* use the arguments -- these will
@@ -273,7 +275,7 @@ static void handleRet(trace_entry &t,
 
     ReturnInst *r = cast<ReturnInst>(t.insn);
     Value *v = r->getReturnValue();
-    if (v != NULL && !isa<Constant>(v)) uses.insert(get_value_name(v));
+    if (v != NULL) insertValue(uses, v);
 
     defs.insert((t.func->getName() + ".retval").str());
 }
@@ -284,10 +286,26 @@ static void handlePHI(trace_entry &t,
     // arg1 is the fake dynamic value we derived during trace alignment
     PHINode *p = cast<PHINode>(t.insn);
     Value *v = p->getIncomingValue(t.dyn->arg1);
-    if (!isa<Constant>(v)) uses.insert(get_value_name(v));
-    defs.insert(get_value_name(t.insn));
+    insertValue(uses, v);
+    insertValue(defs, t.insn);
 }
 
+static void handleSelect(trace_entry &t,
+        std::set<std::string> &uses,
+        std::set<std::string> &defs) {
+
+    SelectInst *s = cast<SelectInst>(t.insn);
+    Value *v;
+    // These are negated in the dynamic log from what you'd expect
+    if (t.dyn->arg1 == 1)
+        v = s->getFalseValue();
+    else
+        v = s->getTrueValue();
+
+    insertValue(uses, v);
+    insertValue(uses, s->getCondition());
+    insertValue(defs, t.insn);
+}
 
 // I don't *think* we can use LLVM's InstructionVisitor here because actually
 // want to operate on a trace element, not an Instruction (and hence we need
@@ -310,6 +328,10 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::Add:
         case Instruction::Sub:
         case Instruction::Mul:
+        case Instruction::UDiv:
+        case Instruction::URem:
+        case Instruction::SDiv:
+        case Instruction::SRem:
         case Instruction::IntToPtr:
         case Instruction::PtrToInt:
         case Instruction::And:
@@ -318,7 +340,10 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::ZExt:
         case Instruction::SExt:
         case Instruction::Trunc:
+        case Instruction::BitCast:
         case Instruction::GetElementPtr:
+        case Instruction::ExtractValue:
+        case Instruction::InsertValue:
         case Instruction::Shl:
         case Instruction::AShr:
         case Instruction::LShr:
@@ -331,7 +356,11 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::PHI:
             handlePHI(t, uses, defs);
             return;
+        case Instruction::Select:
+            handleSelect(t, uses, defs);
+            return;
         case Instruction::Alloca:
+        case Instruction::Unreachable: // how do we even get these??
             return;
         default:
             printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.insn->getOpcodeName());
@@ -437,9 +466,10 @@ void slice_trace(std::vector<trace_entry> &trace,
             // a function argument inside the function.
             for (auto &u : uses) {
                 std::map<std::string,std::string> &argmap = argmap_stack.top();
-                if (argmap.find(u) != argmap.end()) {
+                auto arg_it = argmap.find(u);
+                if (arg_it != argmap.end()) {
                     uses.erase(u);
-                    uses.insert(argmap[u]);
+                    uses.insert(arg_it->second);
                 }
             }
 
@@ -594,14 +624,22 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     break;
                 }
                 case Instruction::PHI: {
-                    // We don't actually have a dynamic log entry here,
-                    // but for convenience we do want to know which basic
-                    // block we just came from. So we peek at the previous
-                    // thing in our trace, which should be the predecessor
-                    // basic block to this PHI
+                    // We don't actually have a dynamic log entry here, but for
+                    // convenience we do want to know which basic block we just
+                    // came from. So we peek at the previous non-PHI thing in
+                    // our trace, which should be the predecessor basic block
+                    // to this PHI
                     PHINode *p = cast<PHINode>(&*i);
                     TUBTEntry *new_dyn = new TUBTEntry;
-                    new_dyn->arg1 = p->getBasicBlockIndex(serialized.back().insn->getParent());
+                    new_dyn->arg1 = -1; // sentinel
+                    // Find the last non-PHI instruction
+                    for (auto sit = serialized.rbegin(); sit != serialized.rend(); sit++) {
+                        if (sit->insn->getOpcode() != Instruction::PHI) {
+                            new_dyn->arg1 = p->getBasicBlockIndex(sit->insn->getParent());
+                            break;
+                        }
+                    }
+                    assert(new_dyn->arg1 != (uint64_t) -1);
                     t.func = f; t.insn = i; t.dyn = new_dyn;
                     serialized.push_back(t);
                     break;
