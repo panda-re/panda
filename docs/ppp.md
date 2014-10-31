@@ -68,15 +68,20 @@ array of function pointers, an integer keeping track of how many
 functions have been registered, and a pair of functions that can be
 used from outside Plugin A to register callbacks.
 
-5. Remember to `#include "panda_plugin_plugin.h"` at the top of the
+5. In the same file you edited in 3, in the `extern "C" {` portion 
+near the top of the file, add `PPP_PROT_REG_CB(foo);`. For more 
+information on this, see `panda_plugin_plugin.h`.
+
+6. Remember to `#include "panda_plugin_plugin.h"` at the top of the
 edited source file.
 
 In order to register a callback with Plugin A that is defined in
 Plugin B, all you need to do is use the `PPP_REG_CB` macro in Plugin
-B's init_plugin function.  This macro takes three arguments.
-The first is the name of plugin A (as in, its name in the Makefile).
-The second is the callback name.  The third is the function in B
-that is to be registered with A.
+B's init_plugin function and include Plugin A's .h file where the 
+type for the callback is defined (see #2).  This macro takes three 
+arguments. The first is the name of plugin A (as in, its name in the
+Makefile). The second is the callback name.  The third is the function
+in B that is to be registered with A.
 
 A good example of how all this fits together can be seen in the
 interaction between the `stringsearch` and `tstringsearch` plugins.
