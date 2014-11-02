@@ -117,4 +117,4 @@ them into PANDA's packed record/replay format in a file named
 
     scripts/rrunpack.py <name>.rr
 
-A central repository for sharing record/replay logs will be available soon.
+A central repository for sharing record/replay logs is available at the [PANDA Share](http://www.rrshare.org/) website.
