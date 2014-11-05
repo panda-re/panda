@@ -349,8 +349,14 @@ static void handleCall(trace_entry &t,
         // Value (if not constant)
         insertValue(uses, c->getArgOperand(1));
     }
-    else if (func_name.startswith("helper_in")) { } // TODO
-    else if (func_name.startswith("helper_out")) { } // TODO
+    else if (func_name.startswith("helper_in")) {
+        insertValue(uses, c->getArgOperand(0));
+        insertValue(defs, c);
+    }
+    else if (func_name.startswith("helper_out")) {
+        // We don't have any model of port I/O, so
+        // we just ignore this one
+    }
     else if (func_name.startswith("log_dynval")) {
         // ignore
     }
@@ -552,7 +558,7 @@ void slice_trace(std::vector<trace_entry> &trace,
         std::set<std::string> uses, defs;
         get_uses_and_defs(*it, uses, defs);
 
-        if (debug) printf("DEBUG: %d defs, %d uses\n", defs.size(), uses.size());
+        if (debug) printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
         if (debug) printf("DEFS: ");
         if (debug) print_set(defs);
         if (debug) printf("USES: ");
@@ -685,7 +691,6 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
             switch (i->getOpcode()) {
                 case Instruction::Load: {
                     assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
-                    LoadInst *l = cast<LoadInst>(&*i);
                     if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
                     serialized.push_back(t);
@@ -752,7 +757,6 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                 }
                 case Instruction::Select: {
                     assert(cursor->type == TUBTFE_LLVM_DV_SELECT);
-                    SelectInst *s = cast<SelectInst>(&*i);
                     if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
                     serialized.push_back(t);
@@ -992,7 +996,7 @@ int main(int argc, char **argv) {
 
     uint64_t insns_marked = 0;
     for (auto &kvp : marked) insns_marked += kvp.second.size();
-    printf("Done slicing. Marked %llu blocks, %llu instructions.\n", marked.size(), insns_marked);
+    printf("Done slicing. Marked %lu blocks, %llu instructions.\n", marked.size(), insns_marked);
 
     return 0;
 }
