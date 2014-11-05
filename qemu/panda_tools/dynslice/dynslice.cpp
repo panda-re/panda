@@ -90,8 +90,55 @@ struct __attribute__((packed)) TUBTEntry {
 bool debug = false;
 bool include_branches = false;
 
+static void extract_addrentry(uint64_t entry, AddrType &typ, AddrFlag &flag, int &off) {
+    typ = (AddrType) (entry & 0xff);
+    flag = (AddrFlag) ((entry >> 8) & 0xff);
+    off = entry >> 16;
+}
+
+const char * addrflag_str(AddrFlag a) {
+    switch (a) {
+        case IRRELEVANT: return "IRRELEVANT";
+        case EXCEPTION: return "EXCEPTION";
+        case READLOG: return "READLOG";
+        case FUNCARG: return "FUNCARG";
+        case 0: return "0";
+        default: return "????";
+    }
+}
+
+const char * addrtype_str(AddrType t) {
+    switch(t) {
+        case HADDR: return "HADDR";
+        case MADDR: return "MADDR";
+        case IADDR: return "IADDR";
+        case PADDR: return "PADDR";
+        case LADDR: return "LADDR";
+        case GREG: return "GREG";
+        case GSPEC: return "GSPEC";
+        case UNK: return "UNK";
+        case CONST: return "CONST";
+        case RET: return "RET";
+        default: return "????";
+    }
+}
+
 void dump_tubt(TUBTEntry *row) {
-    printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
+    switch (row->type) {
+        case TUBTFE_LLVM_DV_LOAD:
+        case TUBTFE_LLVM_DV_STORE:
+        {
+            AddrType typ;
+            AddrFlag flag;
+            int off;
+            extract_addrentry(row->arg1, typ, flag, off);
+            printf(FMT64 " " FMT64 " %s AddrType=%s AddrFlag=%s off=%d " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), addrtype_str(typ), addrflag_str(flag), off, row->arg2, row->arg3, row->arg4);
+            break;
+        }
+        default:
+            printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
+            break;
+    }
 }
 
 struct trace_entry {
@@ -101,12 +148,6 @@ struct trace_entry {
     TUBTEntry *dyn;
     TUBTEntry *dyn2; // Just for memcpy because it's a special snowflake
 };
-
-static void extract_addrentry(uint64_t entry, int &typ, int &flag, int &off) {
-    typ = entry & 0xff;
-    flag = (entry >> 8) & 0xff;
-    off = entry >> 16;
-}
 
 static std::string get_value_name(Value *v) {
     if (v->hasName()) {
@@ -124,31 +165,54 @@ static void insertValue(std::set<std::string> &s, Value *v) {
     if (!isa<Constant>(v)) s.insert(get_value_name(v));
 }
 
+int getLoadSize(LoadInst *l) {
+    Value *pt = l->getPointerOperand();
+    Type *t = pt->getType()->getPointerElementType();
+    return t->getPrimitiveSizeInBits() / 8;
+}
+
+int getStoreSize(StoreInst *s) {
+    Value *v = s->getValueOperand();
+    Type *t = v->getType();
+    return t->getPrimitiveSizeInBits() / 8;
+}
+
+// Adds the appropriate values to a use/def set given an
+// AddrEntry. NOTE: don't use this on __ld / __st, as the
+// MADDR type means something different in that context.
+// arg2 is the TUBT arg2 column
+void insertAddr(std::set<std::string> &s, AddrType typ, uint64_t arg2, int sz) {
+    switch (typ) {
+        case GREG:
+            s.insert("REG_" + std::to_string(arg2));
+            break;
+        case MADDR:
+            //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
+            for (int off = 0; off < sz; off++)
+                s.insert("HOST_" + std::to_string(arg2+off));
+            break;
+        case GSPEC:
+            s.insert("SPEC_" + std::to_string(arg2));
+            break;
+        default:
+            printf("Warning: unhandled address entry type %d\n", typ);
+            break;
+    }
+}
+
 // Handlers for individual instruction types
 
 static void handleStore(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
     StoreInst *s = cast<StoreInst>(t.insn);
-    int typ, flag, off;
+    AddrType typ;
+    AddrFlag flag;
+    int off;
     extract_addrentry(t.dyn->arg1, typ, flag, off);
 
     if (!s->isVolatile() && flag != IRRELEVANT) {
-        switch (typ) {
-            case GREG:
-                defs.insert("REG_" + std::to_string(t.dyn->arg2));
-                break;
-            case MADDR:
-                //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
-                defs.insert("HOST_" + std::to_string(t.dyn->arg2));
-                break;
-            case GSPEC:
-                defs.insert("SPEC_" + std::to_string(t.dyn->arg2));
-                break;
-            default:
-                printf("Warning: unhandled address entry type %d\n", typ);
-                break;
-        }
+        insertAddr(defs, typ, t.dyn->arg2, getStoreSize(s));
         Value *v = s->getValueOperand();
         insertValue(uses, v);
         Value *p = s->getPointerOperand();
@@ -160,28 +224,16 @@ static void handleStore(trace_entry &t,
 static void handleLoad(trace_entry &t,
         std::set<std::string> &uses,
         std::set<std::string> &defs) {
-    LoadInst *s = cast<LoadInst>(t.insn);
-    int typ, flag, off;
+    LoadInst *l = cast<LoadInst>(t.insn);
+    AddrType typ;
+    AddrFlag flag;
+    int off;
     extract_addrentry(t.dyn->arg1, typ, flag, off);
 
     if (flag != IRRELEVANT) {
-        switch (typ) {
-            case GREG:
-                uses.insert("REG_" + std::to_string(t.dyn->arg2));
-                break;
-            case MADDR:
-                //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
-                uses.insert("HOST_" + std::to_string(t.dyn->arg2));
-                break;
-            case GSPEC:
-                uses.insert("SPEC_" + std::to_string(t.dyn->arg2));
-                break;
-            default:
-                printf("Warning: unhandled address entry type %d\n", typ);
-                break;
-        }
+        insertAddr(uses, typ, t.dyn->arg2, getLoadSize(l));
     }
-    Value *p = s->getPointerOperand();
+    Value *p = l->getPointerOperand();
     insertValue(uses, p);
     // Even IRRELEVANT loads can define things
     insertValue(defs, t.insn);
@@ -246,8 +298,57 @@ static void handleCall(trace_entry &t,
         insertValue(uses, store_addr);
         insertValue(uses, store_val);
     }
-    else if (func_name.startswith("llvm.memcpy")) { } // TODO
-    else if (func_name.startswith("llvm.memset")) { } // TODO
+    else if (func_name.startswith("llvm.memcpy")) {
+        AddrType typ;
+        AddrFlag flag;
+        int off;
+
+        // Get memcpy size
+        int bytes = 0;
+        Value *bytes_ir = const_cast<Value*>(c->getArgOperand(2));
+        ConstantInt* CI = dyn_cast<ConstantInt>(bytes_ir);
+        if (CI && CI->getBitWidth() <= 64) {
+            bytes = CI->getSExtValue();
+        }
+
+        // Load first
+        extract_addrentry(t.dyn->arg1, typ, flag, off);
+        if (flag != IRRELEVANT)
+            insertAddr(uses, typ, t.dyn->arg2, bytes);
+
+        // Now store
+        extract_addrentry(t.dyn2->arg1, typ, flag, off);
+        if (flag != IRRELEVANT)
+            insertAddr(defs, typ, t.dyn2->arg2, bytes);
+
+        // Src/Dst pointers
+        insertValue(uses, c->getArgOperand(0));
+        insertValue(uses, c->getArgOperand(1));
+        
+    }
+    else if (func_name.startswith("llvm.memset")) {
+        AddrType typ;
+        AddrFlag flag;
+        int off;
+
+        int bytes = 0;
+        Value *bytes_ir  = const_cast<Value*>(c->getArgOperand(2));
+        ConstantInt* CI = dyn_cast<ConstantInt>(bytes_ir);
+        if (CI && CI->getBitWidth() <= 64) {
+            bytes = CI->getSExtValue();
+        }
+
+        // Now store
+        extract_addrentry(t.dyn->arg1, typ, flag, off);
+        if (flag != IRRELEVANT)
+            insertAddr(defs, typ, t.dyn->arg2, bytes);
+
+        // Dst pointer
+        insertValue(uses, c->getArgOperand(0));
+
+        // Value (if not constant)
+        insertValue(uses, c->getArgOperand(1));
+    }
     else if (func_name.startswith("helper_in")) { } // TODO
     else if (func_name.startswith("helper_out")) { } // TODO
     else if (func_name.startswith("log_dynval")) {
@@ -350,7 +451,7 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::SExt:
         case Instruction::Trunc:
         case Instruction::BitCast:
-        case Instruction::GetElementPtr:
+        case Instruction::GetElementPtr: // possible loss of precision
         case Instruction::ExtractValue:
         case Instruction::InsertValue:
         case Instruction::Shl:
@@ -573,19 +674,19 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
             // processing anything further, since we know there can be no dynamic
             // values before the exception.
             if (cursor->type == TUBTFE_LLVM_EXCEPTION) {
-                // if (debug) printf("Found exception, will not finish this function.\n");
+                if (debug) printf("Found exception, will not finish this function.\n");
                 in_exception = true;
                 cursor++;
                 return cursor;
             }
 
-            // if (debug) errs() << *i << "\n";
+            if (debug) print_insn(&*i);
 
             switch (i->getOpcode()) {
                 case Instruction::Load: {
                     assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                     LoadInst *l = cast<LoadInst>(&*i);
-                    // if (debug) dump_tubt(cursor);
+                    if (debug) dump_tubt(cursor);
                     t.func = f; t.insn = i; t.dyn = cursor;
                     serialized.push_back(t);
                     cursor++;
@@ -595,7 +696,7 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                     StoreInst *s = cast<StoreInst>(&*i);
                     if (!s->isVolatile()) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
-                        // if (debug) dump_tubt(cursor);
+                        if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
                         serialized.push_back(t);
                         cursor++;
@@ -681,11 +782,11 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
-                        serialized.push_back(t);
                         cursor++;
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
                         t.dyn2 = cursor;
+                        serialized.push_back(t);
                         cursor++;
                     }
                     else if (func_name.startswith("llvm.memset")) {
