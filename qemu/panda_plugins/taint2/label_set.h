@@ -15,6 +15,8 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
+#include "my_mem.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -33,14 +35,26 @@ typedef struct LabelSet {
     };
 } LabelSet;
 
-typedef struct {
-    bool initialized;
-    LabelSet *(*label_set_union)(LabelSet *, LabelSet *);
-    LabelSet *(*label_set_singleton)(uint32_t);
-} LabelSetApi;
+inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
+    if (ls1 == ls2) {
+        return ls1;
+    } else if (ls1 && ls2) {
+        LabelSet *result = (LabelSet *)my_malloc(sizeof(LabelSet), poolid_label_set);
+        result->child1 = ls1;
+        result->child2 = ls2;
+        return result;
+    } else if (ls1) {
+        return ls1;
+    } else if (ls2) {
+        return ls2;
+    } else return NULL;
+}
 
-LabelSetApi label_set_api = { false, NULL, NULL };
-
-void init_labelset_api(TaintBackendType backend_type);
+inline LabelSet *label_set_singleton(uint32_t label) {
+    LabelSet *result = (LabelSet *)my_malloc(sizeof(LabelSet), poolid_label_set);
+    result->child1 = NULL;
+    result->label = label;
+    return result;
+}
 
 #endif

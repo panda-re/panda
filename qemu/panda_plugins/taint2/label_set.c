@@ -16,9 +16,10 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 
 static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
-    if (ls1 && ls2) {
+    if (ls1 == ls2) {
+        return ls1;
+    } else if (ls1 && ls2) {
         LabelSet *result = my_malloc(sizeof(LabelSet), poolid_label_set);
-        result->refcount = 1;
         result->child1 = ls1;
         result->child2 = ls2;
         return result;
@@ -31,34 +32,7 @@ static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
 
 static inline LabelSet *label_set_singleton(uint32_t label) {
     LabelSet *result = my_malloc(sizeof(LabelSet), poolid_label_set);
-    result->refcount = 1;
     result->child1 = NULL;
     result->label = label;
     return result;
-}
-
-// Binary taint represented by non-null labelset pointer.
-static inline LabelSet *binary_set_union(LabelSet *ls1, LabelSet *ls2) {
-    if (ls1) return ls1;
-    else return ls2;
-}
-
-static inline LabelSet *binary_set_singleton(uint32_t label) {
-    return (LabelSet *)true;
-}
-
-void init_labelset_api(TaintBackendType backend_type) {
-    label_set_api.initialized = true;
-    switch (backend_type) {
-        case TAINT_BACKEND_LABEL:
-            label_set_api.label_set_union = label_set_union;
-            label_set_api.label_set_singleton = label_set_singleton;
-            break;
-        case TAINT_BACKEND_BINARY:
-            label_set_api.label_set_union = binary_set_union;
-            label_set_api.label_set_singleton = binary_set_singleton;
-            break;
-        default:
-            assert(false);
-    }
 }

@@ -3,7 +3,7 @@ PLUGIN_NAME=taint2
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-QEMU_CFLAGS+=-std=c++11
+QEMU_CFLAGS+= -O3
 
 
 # Include files and lib from LLVM
@@ -21,15 +21,9 @@ QEMU_CXXFLAGS+= -Wno-unused-variable
 $(PLUGIN_TARGET_DIR)/my_mem.o: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/my_mem.[cpp|h])
 
-$(PLUGIN_TARGET_DIR)/bitvector_label_set.o: \
-    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h) \
-    $(wildcard $(SRC_PATH)/panda/*.h) \
-    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/sparsebitset.cpp
-
 $(wildcard $(PLUGIN_TARGET_DIR)/shad_dir_*.o): \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h) \
-    $(wildcard $(SRC_PATH)/panda/*.h) \
-    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/bitvector_label_set.cpp
+    $(wildcard $(SRC_PATH)/panda/*.h)
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp \
@@ -38,26 +32,22 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.[ch]) \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.cpp)
 
-$(PLUGIN_TARGET_DIR)/taint_processor.o: \
-    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h) \
-    $(wildcard $(SRC_PATH)/panda/*.h)
-
 $(PLUGIN_TARGET_DIR)/llvm_taint_lib.o: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.[cpp|h]) \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.[cpp|h]) \
     $(wildcard $(SRC_PATH)/panda/*.[cpp|h])
 
 $(PLUGIN_TARGET_DIR)/fast_shad.o: \
-	$(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/label_set.[ch])
+	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/fast_shad.h \
+	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/label_set.h
+
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_TARGET_DIR)/my_mem.o \
-    $(PLUGIN_TARGET_DIR)/bitvector_label_set.o \
     $(PLUGIN_TARGET_DIR)/shad_dir_32.o \
     $(PLUGIN_TARGET_DIR)/shad_dir_64.o \
-    $(PLUGIN_TARGET_DIR)/taint_processor.o \
     $(PLUGIN_TARGET_DIR)/panda_stats.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o \
     $(PLUGIN_TARGET_DIR)/fast_shad.o \
@@ -66,6 +56,10 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 
 	$(call quiet-command,$(CXX) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
+
+$(PLUGIN_TARGET_DIR/panda_$(PLUGIN_NAME)_ops.bc: \
+	$(call quiet-command,$(CC) $(CFLAGS) $(QEMU_CFLAGS) \
+			-shared -emit-llvm -o $@,"  LLVM $@")
 
 ifdef CONFIG_LLVM
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so

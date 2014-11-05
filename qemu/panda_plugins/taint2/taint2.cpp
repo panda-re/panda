@@ -44,26 +44,12 @@ extern "C" {
 #include "rr_log.h"
 #endif
 
-    extern int compute_is_delete;
     extern int loglevel;
     
     // For the C API to taint accessible from other plugins
     void taint_enable_taint(void);
-    int taint_enabled(void);
     void taint_label_ram(uint64_t pa, uint32_t l) ;
     uint32_t taint_query_ram(uint64_t pa);
-    uint32_t taint_pick_label(uint64_t pa);
-    uint32_t taint_query_reg(int reg_num, int offset);
-    void taint_delete_ram(uint64_t pa) ;
-    uint32_t taint_occ_ram(void) ;
-    uint32_t taint_max_obs_ls_type(void) ;
-    void taint_clear_tainted_computation_happened(void) ;
-    int taint_tainted_computation_happened(void) ;
-    void taint_clear_taint_state_changed(void);
-    int taint_taint_state_changed(void);
-    void taint_clear_taint_state_read(void);
-    int taint_taint_state_read(void);
-    void taint_clear_shadow_memory(void);
 
 }
 
@@ -74,29 +60,11 @@ extern "C" {
 
 #include "tcg-llvm.h"
 
-#include "panda_stats.h"
-#include "panda_memlog.h"
 #include "panda_common.h"
 
 #include "llvm_taint_lib.h"
 #include "panda_dynval_inst.h"
-#include "taint_processor.h"
-
-// defined in panda/taint_processor.c
-extern uint32_t max_taintset_card;
-extern uint32_t max_taintset_compute_number;
-// Label all incoming network traffic as tainted
-extern bool taint_label_incoming_network_traffic;
-// Query all outgoing network traffic for taint
-extern bool taint_query_outgoing_network_traffic;
-// this is on by default
-extern int tainted_pointer;
-// default is byte labeling
-extern int taint_label_mode;
-// Global number of taint labels
-extern int count;
-
-extern int tainted_instructions;
+#include "taint2.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -130,13 +98,6 @@ int cb_replay_cpu_physical_mem_rw_ram
   (CPUState *env,
    uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
-#ifndef CONFIG_SOFTMMU
-int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                       int num, abi_long arg1, abi_long arg2, abi_long arg3,
-                       abi_long arg4, abi_long arg5, abi_long arg6, abi_long
-                       arg7, abi_long arg8, void *p, abi_long ret);
-
-#endif
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
@@ -152,33 +113,18 @@ void *plugin_ptr = NULL;
 // Our pass manager to derive taint ops
 llvm::FunctionPassManager *taintfpm = NULL;
 
-// Taint and instrumentation function passes
+// Taint function pass.
 llvm::PandaTaintFunctionPass *PTFP = NULL;
-llvm::PandaInstrFunctionPass *PIFP = NULL;
 
 // For now, taint becomes enabled when a label operation first occurs, and
 // becomes disabled when a query operation subsequently occurs
 bool taintEnabled = false;
 
-// Lets us know right when taint was enabled
-bool taintJustEnabled = false;
-
 // Lets us know right when taint was disabled
 bool taintJustDisabled = false;
 
-
-// Globals needed for taint io buffer
-TaintOpBuffer *tob_io_thread;
-uint32_t       tob_io_thread_max_size = 1024 * 1024;
-
-
-// returns 1 iff taint is on
-int __taint_enabled() {
-  if (taintEnabled == true) {
-    return 1;
-  }
-  return 0;
-}
+// Taint memlog
+taint2_memlog memlog;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -186,58 +132,20 @@ int __taint_enabled() {
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
-    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-    log_dynval(dynval_buffer, ADDRENTRY, STORE, addr);
+    taint2_memlog_push((uint64_t)&memlog, addr);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
-    DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-    log_dynval(dynval_buffer, ADDRENTRY, LOAD, addr);
+    taint2_memlog_push((uint64_t)&memlog, addr);
     return 0;
 }
 
-namespace llvm {
-
-static void llvm_init(){
-    ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
-    FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
-    Module *mod = tcg_llvm_ctx->getModule();
-    LLVMContext &ctx = mod->getContext();
-
-    // Link logging function in with JIT
-    Function *logFunc;
-    std::vector<Type*> argTypes;
-    // DynValBuffer*
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    // DynValEntryType
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(DynValEntryType)));
-    // LogOp
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(LogOp)));
-    // Dynamic value
-    argTypes.push_back(IntegerType::get(ctx, 8*sizeof(uintptr_t)));
-    logFunc = Function::Create(
-            FunctionType::get(Type::getVoidTy(ctx), argTypes, false),
-            Function::ExternalLinkage, "log_dynval", mod);
-    logFunc->addFnAttr(Attribute::AlwaysInline);
-    ee->addGlobalMapping(logFunc, (void*) &log_dynval);
-
-    // Create instrumentation pass and add to function pass manager
-    llvm::FunctionPass *instfp = createPandaInstrFunctionPass(mod);
-    fpm->add(instfp);
-    PIFP = static_cast<PandaInstrFunctionPass*>(instfp);
-}
-
-} // namespace llvm
-
-
-
 void __taint_enable_taint(void) {
     if(taintEnabled) {return;}
-  printf ("__taint_enable_taint\n");
-  taintJustEnabled = true;
-  taintEnabled = true;
+    printf ("__taint_enable_taint\n");
+    taintEnabled = true;
     panda_cb pcb;
 
     pcb.before_block_exec = before_block_exec;
@@ -252,62 +160,26 @@ void __taint_enable_taint(void) {
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
 
     // for hd and network taint
-#ifdef CONFIG_SOFTMMU
     pcb.replay_hd_transfer = cb_replay_hd_transfer_taint;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
     pcb.replay_net_transfer = cb_replay_net_transfer_taint;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_NET_TRANSFER, pcb);
     pcb.replay_before_cpu_physical_mem_rw_ram = cb_replay_cpu_physical_mem_rw_ram;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM, pcb);
-#endif
 
     panda_enable_precise_pc(); //before_block_exec requires precise_pc for panda_current_asid
 
     if (!execute_llvm){
         panda_enable_llvm();
     }
-    llvm::llvm_init();
     panda_enable_llvm_helpers();
-
-    /*
-     * Run instrumentation pass over all helper functions that are now in the
-     * module, and verify module.
-     */
-    llvm::Module *mod = tcg_llvm_ctx->getModule();
-    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
-        if (i->isDeclaration()){
-            continue;
-        }
-#if defined(TARGET_ARM)
-        //TODO: Fix handling of ARM's cpu_reset() helper
-        // Currently, we skip instrumenting it, because we generate invalid LLVM bitcode if we try
-        std::string modname =  i->getName().str();
-        if (modname == "cpu_reset_llvm"){
-            printf("Skipping instrumentation of cpu_reset\n");
-            continue;
-        }
-#endif
-        PIFP->runOnFunction(*i);
-    }
-    std::string err;
-    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        printf("%s\n", err.c_str());
-        exit(1);
-    }
 
     /*
      * Taint processor initialization
      */
 
     //uint32_t ram_size = 536870912; // 500MB each
-#ifdef TARGET_X86_64
-    // this is only for the fast bitmap which we currently aren't using for
-    // 64-bit, it only supports 32-bit
-    //XXX FIXME
-    uint64_t ram_size = 0;
-#else
-    uint32_t ram_size = 0xffffffff; //guest address space -- QEMU user mode
-#endif
+    extern uint64_t ram_size;
     uint64_t hd_size =  536870912;
     uint64_t io_size = 536870912;
     uint16_t num_vals = 2000; // LLVM virtual registers //XXX assert this
@@ -317,27 +189,28 @@ void __taint_enable_taint(void) {
         exit(1);
     }
 
-    taintfpm = new llvm::FunctionPassManager(tcg_llvm_ctx->getModule());
+    // Initialize memlog.
+    memset(&memlog, 0, sizeof(memlog));
+
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    taintfpm = new llvm::FunctionPassManager(mod);
 
     // Add the taint analysis pass to our taint pass manager
-    llvm::FunctionPass *taintfp =
-        llvm::createPandaTaintFunctionPass(15*1048576/* global taint op buffer
-        size, 10MB */, NULL /* existing taint cache */);
-    PTFP = static_cast<llvm::PandaTaintFunctionPass*>(taintfp);
+    llvm::FunctionPass *taintfp = new llvm::PandaTaintFunctionPass(shadow, memlog);
     taintfpm->add(taintfp);
     taintfpm->doInitialization();
 
-    // Populate taint cache with helper function taint ops
-    for (llvm::Module::iterator i = mod->begin(); i != mod->end(); i++){
-        if (i->isDeclaration()){
-            continue;
-        }
-        PTFP->runOnFunction(*i);
+    // Populate module with helper function taint ops
+    for (auto i = mod->begin(); i != mod->end(); i++){
+        if (!i->isDeclaration()) PTFP->runOnFunction(*i);
+    }
+
+    std::string err;
+    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
+        printf("%s\n", err.c_str());
+        exit(1);
     }
 }
-
-
-
 
 // Derive taint ops
 int before_block_exec(CPUState *env, TranslationBlock *tb){
@@ -347,11 +220,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 
     if (taintEnabled){
-        // process taint ops in io thread taint op buffer
-        // NB: we don't need a dynval buffer here.
-        tob_process(tob_io_thread, shadow, NULL);
-        tob_clear(tob_io_thread);
-
+        // Figure out some sort of metadata test to make sure we don't taintify twice
         taintfpm->run(*(tb->llvm_function));
         DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
         clear_dynval_buffer(dynval_buffer);
@@ -364,12 +233,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
 int after_block_exec(CPUState *env, TranslationBlock *tb,
         TranslationBlock *next_tb){
 
-    if (taintJustEnabled){
-        // need to wait until the next TB to start executing taint ops
-        taintJustEnabled = false;
-	//	mytimer_start(ttimer);
-        return 0;
-    }
     if (taintJustDisabled){
         taintJustDisabled = false;
         execute_llvm = 0;
@@ -380,24 +243,10 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
         return 0;
     }
 
-    if (taintEnabled){
-        DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-        rewind_dynval_buffer(dynval_buffer);
-
-        //printf("%s\n", tb->llvm_function->getName().str().c_str());
-        //PTFP->debugTaintOps();
-        //printf("\n\n");
-
-        execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
-
-        // Make sure there's nothing left in the buffer
-	assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
-
-    }
-
     return 0;
 }
 
+/*
 #ifdef CONFIG_SOFTMMU
 // this is for much of the hd taint transfers.
 // this gets called from rr_log.c, rr_replay_skipped_calls, RR_CALL_HD_TRANSFER
@@ -612,7 +461,7 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
 
     return 0;
 }
-
+*/
 #ifdef TARGET_ARM
 // R0 is command (label or query)
 // R1 is buf_start
@@ -667,9 +516,7 @@ void i386_hypercall_callback(CPUState *env){
             printf("Enabling taint processing\n");
 	    __taint_enable_taint();
         }
-        TaintOpBuffer *tempBuf = tob_new( buf_len * sizeof(TaintOp));
-	add_taint_ram(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
-        tob_delete(tempBuf);
+        // Add taint.
     }    
 
     //mz Query taint on this buffer
@@ -681,7 +528,6 @@ void i386_hypercall_callback(CPUState *env){
     else if (env->regs[R_EAX] == 9){ //Query taint on label
         if (taintEnabled){
             printf("Taint plugin: Query operation detected\n");
-            Addr a = make_maddr(buf_start);
             bufplot(env, shadow, &a, (int)buf_len);
         }
         //printf("Disabling taint processing\n");
@@ -704,104 +550,7 @@ int guest_hypercall_callback(CPUState *env){
     return 1;
 }
 
-#ifndef CONFIG_SOFTMMU
-
-// Globals to keep track of file descriptors
-int infd = -1;
-int outfd = -1;
-
 /*
- * Kind of a hacky way to see if the file being opened is something we're
- * interested in.  For now, we are working under the assumption that a program
- * will open/read one file of interest, and open/write the other file of
- * interest.  So we assume that files that are opened from /etc and /lib aren't
- * of interest. /proc and openssl.cnf also aren't interesting, from looking at
- * openssl.
- */
-static int user_open(bitmask_transtbl *fcntl_flags_tbl, abi_long ret, void *p,
-              abi_long flagarg){
-    const char *file = path((const char*)p);
-    unsigned int flags = target_to_host_bitmask(flagarg, fcntl_flags_tbl);
-    if (ret > 0){
-        if((strncmp(file, "/etc", 4) != 0)
-                && (strncmp(file, "/lib", 4) != 0)
-                && (strncmp(file, "/proc", 5) != 0)
-                //&& (strncmp(file, "/dev", 4) != 0)
-                && (strncmp(file, "/usr", 4) != 0)
-                && (strstr(file, "openssl.cnf") == 0)
-                && (strstr(file, "xpdfrc") == 0)){
-            printf("open %s for ", file);
-            if ((flags & (O_RDONLY | O_WRONLY)) == O_RDONLY){
-                printf("read\n");
-                infd = ret;
-            }
-            if (flags & O_WRONLY){
-                printf("write\n");
-                outfd = ret;
-            }
-        }
-    }
-    return 0;
-}
-
-static int user_creat(abi_long ret, void *p){
-    const char *file = path((const char*)p);
-    if (ret > 0){
-        printf("open %s for write\n", file);
-        outfd = ret;
-    }
-    return 0;
-}
-
-static int user_read(CPUState *env, abi_long ret, abi_long fd, void *p){
-    if (ret > 0 && fd == infd){
-        TaintOpBuffer *tempBuf = tob_new(5*1048576 /* 1MB */);
-        add_taint_ram(env, shadow, tempBuf, (uint64_t)p /*pointer*/, ret /*length*/);
-        tob_delete(tempBuf);
-    }
-    return 0;
-}
-
-static int user_write(CPUState *env, abi_long ret, abi_long fd, void *p){
-    if (ret > 0 && fd == outfd){
-        Addr a = make_maddr((uint64_t)p);
-        bufplot(env, shadow, &a /*pointer*/, ret /*length*/);
-    }
-    return 0;
-}
-
-int user_after_syscall(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                       int num, abi_long arg1, abi_long arg2, abi_long arg3,
-                       abi_long arg4, abi_long arg5, abi_long arg6,
-                       abi_long arg7, abi_long arg8, void *p, abi_long ret){
-    CPUState *env = (CPUState *)cpu_env;
-    switch (num){
-        case TARGET_NR_read:
-            user_read(env, ret, arg1, p);
-            break;
-        case TARGET_NR_write:
-            user_write(env, ret, arg1, p);
-            break;
-        case TARGET_NR_open:
-            user_open(fcntl_flags_tbl, ret, p, arg2);
-            break;
-        case TARGET_NR_openat:
-            user_open(fcntl_flags_tbl, ret, p, arg3);
-            break;
-        case TARGET_NR_creat:
-            user_creat(ret, p);
-            break;
-        default:
-            break;
-    }
-    return 0;
-}
-
-#endif // CONFIG_SOFTMMU
-
-
-
-
 // label this phys addr in memory with this label 
 void __taint_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
@@ -952,7 +701,7 @@ int taint_taint_state_read(void) {
 void taint_clear_shadow_memory(void){
     __taint_clear_shadow_memory();
 }
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -966,76 +715,6 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
-#ifndef CONFIG_SOFTMMU
-    pcb.user_after_syscall = user_after_syscall;
-    panda_register_callback(self, PANDA_CB_USER_AFTER_SYSCALL, pcb);
-#endif
-
-    tob_io_thread = tob_new(tob_io_thread_max_size);
-
-    panda_arg_list *args = panda_get_args("taint");
-    int i;
-    if (NULL != args) {
-        for (i = 0; i < args->nargs; i++) {
-            if (0 == strncmp(args->list[i].key, "max_taintset_card", 17)) {
-                max_taintset_card = atoi(args->list[i].value);
-                printf ("max_taintset_card = %d\n", max_taintset_card);
-            }
-            
-            if (0 == strncmp(args->list[i].key, "max_taintset_compute_number", 24)) {
-                max_taintset_compute_number = atoi(args->list[i].value);
-                printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
-            }
-            
-            if (0 == strncmp(args->list[i].key, "compute_is_delete", 17)) {
-                compute_is_delete = 1;
-            }
-            if (0 == strncmp(args->list[i].key, "label_incoming_network", 22)) {
-                taint_label_incoming_network_traffic = 1;
-            }
-            if (0 == strncmp(args->list[i].key, "query_outgoing_network", 22)) {
-                taint_query_outgoing_network_traffic = 1;
-            }
-            if (0 == strncmp(args->list[i].key, "no_tainted_pointer", 18)) {
-                tainted_pointer = 0;
-            }
-            if (0 == strncmp(args->list[i].key, "label_mode", 10)) {
-                if (0 == strncmp(args->list[i].value, "binary", 6)){
-                    taint_label_mode = TAINT_BINARY_LABEL;
-                }
-                else if (0 == strncmp(args->list[i].value, "byte", 4)){
-                    taint_label_mode = TAINT_BYTE_LABEL;
-                }
-                else {
-                    printf("Invalid taint label_mode.  Using default byte label.\n");
-                    taint_label_mode = TAINT_BYTE_LABEL;
-                }
-            }
-            
-            if (0 == strncmp (args->list[i].key, "tainted_instructions", 20)) {
-                tainted_instructions = 1;
-            }
-            
-        }
-    }
-    
-
-    if (taint_label_mode == TAINT_BYTE_LABEL){
-        printf("Taint: running in byte labeling mode.\n");
-    }
-    else if (taint_label_mode == TAINT_BINARY_LABEL){
-        printf("Taint: running in binary labeling mode.\n");
-    }
-    printf ("max_taintset_card = %d\n", max_taintset_card);
-    printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
-    printf ("taint_label_incoming_network_traffic = %d\n",
-        taint_label_incoming_network_traffic);
-    printf ("taint_query_outgoing_network_traffic = %d\n",
-        taint_query_outgoing_network_traffic);
-    printf ("tainted_pointer = %d\n", tainted_pointer);
-    
-    printf ("compute_is_delete = %d\n", compute_is_delete);
-    printf ("done initializing taint plugin\n");
 
     return true;
 }
@@ -1060,45 +739,12 @@ void uninit_plugin(void *self) {
 
     printf ("uninit taint plugin\n");
     
-    if (tainted_instructions) {
-        for ( auto &kvp : shadow->tpc ) {
-            uint64_t asid = kvp.first;
-            printf ("asid = %lx\n", asid);
-            for ( auto &pc : kvp.second ) {
-                printf ("instr is tainted :  asid=0x%lx : pc=0x%lx \n", asid, pc);
-            }
-        }
-    }
-    
-    
-    /*
-     * XXX: Here, we unload our pass from the PassRegistry.  This seems to work
-     * fine, until we reload this plugin again into QEMU and we get an LLVM
-     * assertion saying the pass is already registered.  This seems like a bug
-     * with LLVM.  Switching between TCG and LLVM works fine when passes aren't
-     * added to LLVM.
-     */
-    llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
-    const llvm::PassInfo *pi =
-        //pr->getPassInfo(&llvm::PandaInstrFunctionPass::ID);
-        pr->getPassInfo(llvm::StringRef("PandaInstr"));
-    if (!pi){
-        printf("Unable to find 'PandaInstr' pass in pass registry\n");
-    }
-    else {
-        pr->unregisterPass(*pi);
-    }
-
-
-
     if (taintfpm) delete taintfpm; // Delete function pass manager and pass
     if (shadow) tp_free(shadow);
-    if (tob_io_thread) tob_delete(tob_io_thread);
 
     panda_disable_llvm();
     panda_disable_memcb();
     panda_enable_tb_chaining();
-
 
 }
 

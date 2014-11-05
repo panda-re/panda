@@ -23,9 +23,10 @@ PANDAENDCOMMENT */
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/InstVisitor.h"
 #include "llvm/IR/IRBuilder.h"
-#include "taint_processor.h"
-#include "panda_stats.h"
+#include "taint_ops.h"
 #include "panda_memlog.h"
+
+typedef struct shad_struct Shad;
 
 namespace llvm {
 
@@ -67,27 +68,36 @@ class PandaTaintVisitor : public InstVisitor<PandaTaintVisitor> {
 private:
     PandaSlotTracker *PST;
     Shad *shad; // no ownership. weak ptr.
+    taint2_memlog *memlog; // same.
+
+public:
+    DataLayout *dataLayout = NULL;
 
     Function *deleteF;
     Function *mixF;
-    Function *parallelF;
+    Function *mixCompF;
+    Function *parallelCompF;
     Function *copyF;
+    Function *sextF;
+    Function *selectF;
+    Function *pushFrameF;
+    Function *popFrameF;
 
-public:
+    Constant *memlogConst;
+    Function *memlogPopF;
+
     Constant *llvConst;
     Constant *memConst;
     Constant *grvConst;
     Constant *gsvConst;
     Constant *retConst;
 
-    PandaTaintVisitor(Shad *shad) : PST(NULL), shad(shad) {}
+    Constant *prevBbConst;
+
+    PandaTaintVisitor(Shad *shad, taint2_memlog *memlog)
+        : PST(NULL), shad(shad), memlog(memlog) {}
 
     ~PandaTaintVisitor() {}
-
-    void setTaintFuncs(Function *deleteF_, Function *mixF_,
-            Function *parallelF_, Function *copyF_) {
-        deleteF = deleteF_; mixF = mixF_; parallelF = parallelF_; copyF = copyF_;
-    }
 
     // Define most visitor functions
     #define HANDLE_INST(N, OPCODE, CLASS) void visit##OPCODE##Inst(CLASS&);
@@ -102,27 +112,6 @@ public:
 
     // Helpers
     int getValueSize(Value *V);
-    void insertComputeFor(Instruction &I, Value *arg1, Value *arg2
-
-    void simpleDeleteTaintAtDest(int llvmReg);
-    void simpleTaintCopy(int source, int dest, int bytes);
-    void simpleTaintCompute(int source0, AddrType source0ty, int source1,
-        AddrType source1ty, int dest, int bytes);
-    void intPtrHelper(Instruction &I, int sourcesize, int destsize);
-    void addSubHelper(Value *arg0, Value *arg1, Value *dst);
-    void mulHelper(BinaryOperator &I);
-    void shiftHelper(BinaryOperator &I);
-    void approxArithHelper(Value *op0, Value *op1, Value *dest);
-    void simpleArithHelper(BinaryOperator &I);
-    void bswapHelper(CallInst &I);
-    void memcpyHelper(CallInst &I);
-    void memsetHelper(CallInst &I);
-    void ctlzHelper(CallInst &I);
-    void loadHelper(Value *src, Value *dst, int len, int is_mmu);
-    void storeHelper(Value *src, Value *dst, int len, int is_mmu);
-    void portLoadHelper(Value *src, Value *dst, int len);
-    void portStoreHelper(Value *src, Value *dst, int len);
-    void floatHelper(CallInst &I);
 };
 
 /* PandaTaintFunctionPass class
@@ -136,7 +125,8 @@ public:
     static char ID;
     PandaTaintVisitor PTV; // Our LLVM instruction visitor
 
-    PandaTaintFunctionPass(Shad *shad) : FunctionPass(ID), PTV(shad) {}
+    PandaTaintFunctionPass(Shad *shad, taint2_memlog *memlog)
+        : FunctionPass(ID), PTV(shad, memlog) {}
 
     ~PandaTaintFunctionPass() { }
 

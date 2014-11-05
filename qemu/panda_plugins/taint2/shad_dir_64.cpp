@@ -31,7 +31,6 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 #include "label_set.h"
 #include "shad_dir_64.h"
-#include "bitvector_label_set.cpp"
 
 // 64-bit addresses
 // create a new table
@@ -214,9 +213,6 @@ uint32_t shad_dir_occ_64(SdDir64 *shad_dir) {
 int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
   uint32_t i;
   SdDir64 *shad_dir = (SdDir64 *) stuff;
-  for (i=0; i<shad_dir->page_size; i++) {
-    labelset_free(page->labels[i]);
-  }
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
 }
@@ -327,11 +323,7 @@ void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new) {
     // we are adding an addr -> label_set mapping
     page->num_non_empty++;
   }
-  // discard copy of previous labelset associated with addr
-  labelset_free(ls);
-  // store copy of ls_new in shad_dir, associated with addr
-  LabelSet *ls_new_copy = labelset_copy(ls_new);
-  label_set_array[offset] = ls_new_copy;
+  label_set_array[offset] = ls_new;
 }
 
 
@@ -349,8 +341,6 @@ void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
     // we are removing an addr -> label_set mapping
     page->num_non_empty --;
   }
-  // discard copy of previous labelset associated with addr
-  labelset_free(ls);
   page->labels[offset] = NULL;
   assert (page->num_non_empty >= 0);
   if (page->num_non_empty == 0) {
@@ -414,8 +404,7 @@ LabelSet *shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
   if (ls == NULL) {
     return NULL;
   }
-  LabelSet *ls_copy = labelset_copy(ls);
-  return ls_copy;
+  return ls;
 }
 
 #define SD_TESTING

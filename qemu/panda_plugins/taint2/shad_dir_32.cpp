@@ -39,19 +39,7 @@ PANDAENDCOMMENT */
 
 
   The contract wrt label sets.
-  Add.
-  When a labelset is added to the shadow memory dir, we store a copy, created via
-  labelset_copy (whcih increments reference count).
-
-  Delete.
-  When a labelset is removed from the shadow memory, we always destroy the copy
-  with a call to labelset_free (which decrements reference count and possible triggers
-  call to free).
-
-  Find.
-  When a labelset is returned by shad_dir_find..(), we return a copy, created via
-  labelset_copy (to increment reference count).
-  So don't forget to call labelset_free on it when you are done with it.
+  NO RULES!!!!!!!
 
  */
 
@@ -61,7 +49,6 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 #include "label_set.h"
 #include "shad_dir_32.h"
-#include "bitvector_label_set.cpp"
 
 // create a new table
 static SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {
@@ -223,9 +210,6 @@ uint32_t shad_dir_occ_32(SdDir32 *shad_dir) {
 int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff) {
   uint32_t i;
   SdDir32 *shad_dir = (SdDir32 *) stuff;
-  for (i=0; i<shad_dir->page_size; i++) {
-    labelset_free(page->labels[i]);
-  }
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
 }
@@ -237,9 +221,6 @@ void shad_dir_free_32(SdDir32 *shad_dir) {
 	       // free labelset associated with each addr in this page
 	       {
 		 uint32_t i;
-		 for (i=0; i<shad_dir->page_size; i++) {
-		   labelset_free(page->labels[i]);
-		 }
                  page->num_non_empty = 0;
 		 __shad_dir_page_free_32(shad_dir, page);
 	       },
@@ -318,11 +299,7 @@ void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_new) {
     // we are adding an addr -> label_set mapping
     page->num_non_empty++;
   }
-  // discard copy of previous labelset associated with addr
-  labelset_free(ls);
-  // store copy of ls_new in shad_dir, associated with addr
-  LabelSet *ls_new_copy = labelset_copy(ls_new);
-  label_set_array[offset] = ls_new_copy;
+  label_set_array[offset] = ls_new;
 }
 
 
@@ -339,7 +316,6 @@ void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr) {
     page->num_non_empty --;
   }
   // discard copy of previous labelset associated with addr
-  labelset_free(ls);
   page->labels[offset] = NULL;
   assert (page->num_non_empty >= 0);
   if (page->num_non_empty == 0) {
@@ -384,8 +360,7 @@ LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr) {
   if (ls == NULL) {
     return NULL;
   }
-  LabelSet *ls_copy = labelset_copy(ls);
-  return ls_copy;
+  return ls;
 }
 
 
