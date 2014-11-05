@@ -462,12 +462,15 @@ void slice_trace(std::vector<trace_entry> &trace,
             // we need to map the uses through the current argument map. We
             // don't need to do this with the defs because you can't define
             // a function argument inside the function.
-            for (auto &u : uses) {
+            for (auto it = uses.begin(); it != uses.end(); ) {
                 std::map<std::string,std::string> &argmap = argmap_stack.top();
-                auto arg_it = argmap.find(u);
+                auto arg_it = argmap.find(*it);
                 if (arg_it != argmap.end()) {
-                    uses.erase(u);
+                    uses.erase(it++);
                     uses.insert(arg_it->second);
+                }
+                else {
+                    ++it;
                 }
             }
 
