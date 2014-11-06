@@ -349,11 +349,15 @@ static void handleCall(trace_entry &t,
         // Value (if not constant)
         insertValue(uses, c->getArgOperand(1));
     }
-    else if (func_name.startswith("helper_in")) {
+    else if (func_name.equals("helper_inb") ||
+             func_name.equals("helper_inw") ||
+             func_name.equals("helper_inl")) {
         insertValue(uses, c->getArgOperand(0));
         insertValue(defs, c);
     }
-    else if (func_name.startswith("helper_out")) {
+    else if (func_name.equals("helper_outb") ||
+             func_name.equals("helper_outw") ||
+             func_name.equals("helper_outl")) {
         // We don't have any model of port I/O, so
         // we just ignore this one
     }
@@ -519,8 +523,12 @@ bool is_ignored(Function *f) {
         func_name.startswith("__st") ||
         func_name.startswith("llvm.memcpy") || 
         func_name.startswith("llvm.memset") ||
-        func_name.startswith("helper_in") ||
-        func_name.startswith("helper_out") ||
+        func_name.equals("helper_inb") ||
+        func_name.equals("helper_inw") ||
+        func_name.equals("helper_inl") ||
+        func_name.equals("helper_outb") ||
+        func_name.equals("helper_outw") ||
+        func_name.equals("helper_outl") ||
         func_name.equals("log_dynval"))
         return true;
     else
@@ -800,14 +808,18 @@ TUBTEntry * process_func(Function *f, TUBTEntry *dynvals, std::vector<trace_entr
                         serialized.push_back(t);
                         cursor++;
                     }
-                    else if (func_name.startswith("helper_in")) {
+                    else if (func_name.equals("helper_inb") ||
+                             func_name.equals("helper_inw") ||
+                             func_name.equals("helper_inl")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_LOAD);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
                         serialized.push_back(t);
                         cursor++;
                     }
-                    else if (func_name.startswith("helper_out")) {
+                    else if (func_name.equals("helper_outb") ||
+                             func_name.equals("helper_outw") ||
+                             func_name.equals("helper_outl")) {
                         assert(cursor->type == TUBTFE_LLVM_DV_STORE);
                         if (debug) dump_tubt(cursor);
                         t.func = f; t.insn = i; t.dyn = cursor;
@@ -988,9 +1000,9 @@ int main(int argc, char **argv) {
         if (print_work) print_set(work);
 
         rows_processed = cursor - rows;
-        update_progress(rows_processed, num_rows);
+        //update_progress(rows_processed, num_rows);
 
-        if (work.empty()) {
+        if (work.empty() && !align_only) {
             printf("\n");
             printf("Note: working set is empty, will stop slicing.\n");
             break;
