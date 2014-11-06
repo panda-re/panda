@@ -77,6 +77,90 @@ std::string TubtfEITypeStr[TUBTFE_LLVM_EXCEPTION+1] = {
 #define O_LARGEFILE 0
 #endif
 
+enum SliceVarType {
+    LLVM,
+    MEM,
+    HOST,
+    REG,
+    SPEC,
+    FRET
+};
+uint64_t ret_ctr = 0;
+
+typedef std::pair<SliceVarType,uint64_t> SliceVar;
+
+std::string SliceVarStr(const SliceVar &s) {
+    char output[128] = {};
+
+    switch (s.first) {
+        case LLVM:
+            sprintf(output, "LLVM_%x", s.second);
+            break;
+        case MEM:
+            sprintf(output, "MEM_%x", s.second);
+            break;
+        case HOST:
+            sprintf(output, "HOST_%x", s.second);
+            break;
+        case REG:
+            sprintf(output, "REG_%x", s.second);
+            break;
+        case SPEC:
+            sprintf(output, "SPEC_%x", s.second);
+            break;
+        case FRET:
+            sprintf(output, "RET_%x", s.second);
+            break;
+        default:
+            assert (false && "No such SliceVarType");
+    }
+
+    return output;
+}
+
+SliceVar VarFromStr(const char *str) {
+    SliceVarType typ;
+    uint64_t addr = 0;
+    char *addrstr;
+
+    char *work = strdup(str);
+    char *c = work;
+    while (*c) {
+        if (*c == '_') {
+            *c = '\0';
+            addrstr = c+1;
+        }
+        c++;
+    }
+    sscanf(addrstr, "%x", &addr);
+
+    if (strncmp(str, "LLVM", 4) == 0) {
+        typ = LLVM;
+    }
+    else if (strncmp(str, "MEM", 3) == 0) {
+        typ = MEM;
+    }
+    else if (strncmp(str, "REG", 3) == 0) {
+        typ = REG;
+    }
+    else if (strncmp(str, "HOST", 4) == 0) {
+        typ = HOST;
+    }
+    else if (strncmp(str, "SPEC", 4) == 0) {
+        typ = SPEC;
+    }
+    else if (strncmp(str, "RET", 3) == 0) {
+        typ = FRET;
+    }
+    else {
+        assert (false && "Bad SliceVarType");
+    }
+
+    free(work);
+
+    return std::make_pair(typ, addr);
+}
+
 struct __attribute__((packed)) TUBTEntry {
     uint64_t asid;
     uint64_t pc;
@@ -132,11 +216,16 @@ void dump_tubt(TUBTEntry *row) {
             AddrFlag flag;
             int off;
             extract_addrentry(row->arg1, typ, flag, off);
-            printf(FMT64 " " FMT64 " %s AddrType=%s AddrFlag=%s off=%d " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), addrtype_str(typ), addrflag_str(flag), off, row->arg2, row->arg3, row->arg4);
+            printf(FMT64 " " FMT64 " %s AddrType=%s AddrFlag=%s off=%d " FMT64 " " FMT64 " " FMT64 "\n",
+                    row->asid, row->pc, TubtfEITypeStr[row->type].c_str(),
+                    addrtype_str(typ), addrflag_str(flag), off,
+                    row->arg2, row->arg3, row->arg4);
             break;
         }
         default:
-            printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid, row->pc, TubtfEITypeStr[row->type].c_str(), row->arg1, row->arg2, row->arg3, row->arg4);
+            printf(FMT64 " " FMT64 " %s " FMT64 " " FMT64 " " FMT64 " " FMT64 "\n", row->asid,
+                    row->pc, TubtfEITypeStr[row->type].c_str(),
+                    row->arg1, row->arg2, row->arg3, row->arg4);
             break;
     }
 }
@@ -149,19 +238,11 @@ struct trace_entry {
     TUBTEntry *dyn2; // Just for memcpy because it's a special snowflake
 };
 
-static std::string get_value_name(Value *v) {
-    if (v->hasName()) {
-        return v->getName().str();
-    }
-    else {
-        // Unnamed values just use the pointer
-        char name[128] = {};
-        sprintf(name, "LV_%llx", (uint64_t)v);
-        return name;
-    }
+static SliceVar get_value_name(Value *v) {
+    return std::make_pair(LLVM, (uint64_t)v);
 }
 
-static void insertValue(std::set<std::string> &s, Value *v) {
+static void insertValue(std::set<SliceVar> &s, Value *v) {
     if (!isa<Constant>(v)) s.insert(get_value_name(v));
 }
 
@@ -181,18 +262,17 @@ int getStoreSize(StoreInst *s) {
 // AddrEntry. NOTE: don't use this on __ld / __st, as the
 // MADDR type means something different in that context.
 // arg2 is the TUBT arg2 column
-void insertAddr(std::set<std::string> &s, AddrType typ, uint64_t arg2, int sz) {
+void insertAddr(std::set<SliceVar> &s, AddrType typ, uint64_t arg2, int sz) {
     switch (typ) {
         case GREG:
-            s.insert("REG_" + std::to_string(arg2));
+            s.insert(std::make_pair(REG, arg2));
             break;
         case MADDR:
-            //printf("Warning: what is MADDR? Val=%llx\n", t.dyn->arg2);
             for (int off = 0; off < sz; off++)
-                s.insert("HOST_" + std::to_string(arg2+off));
+                s.insert(std::make_pair(HOST, arg2+off));
             break;
         case GSPEC:
-            s.insert("SPEC_" + std::to_string(arg2));
+            s.insert(std::make_pair(SPEC,arg2));
             break;
         default:
             printf("Warning: unhandled address entry type %d\n", typ);
@@ -203,8 +283,8 @@ void insertAddr(std::set<std::string> &s, AddrType typ, uint64_t arg2, int sz) {
 // Handlers for individual instruction types
 
 static void handleStore(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     StoreInst *s = cast<StoreInst>(t.insn);
     AddrType typ;
     AddrFlag flag;
@@ -222,8 +302,8 @@ static void handleStore(trace_entry &t,
 }
 
 static void handleLoad(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     LoadInst *l = cast<LoadInst>(t.insn);
     AddrType typ;
     AddrFlag flag;
@@ -241,8 +321,8 @@ static void handleLoad(trace_entry &t,
 }
 
 static void handleDefault(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     for (User::op_iterator i = t.insn->op_begin(), e = t.insn->op_end(); i != e; ++i) {
         Value *v = *i;
         if (!isa<BasicBlock>(v)) { // So that br doesn't end up with block refs
@@ -254,8 +334,8 @@ static void handleDefault(trace_entry &t,
 }
 
 static void handleCall(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     CallInst *c =  cast<CallInst>(t.insn);
     Function *subf = c->getCalledFunction();
     StringRef func_name = subf->getName();
@@ -270,9 +350,7 @@ static void handleCall(trace_entry &t,
             default: assert(false && "Invalid size in call to load");
         }
         for (int off = 0; off < size; off++) {
-            char name[128];
-            sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
-            uses.insert(name);
+            uses.insert(std::make_pair(MEM, t.dyn->arg2 + off));
         }
         Value *load_addr = c->getArgOperand(0);
         insertValue(uses, load_addr);
@@ -289,9 +367,7 @@ static void handleCall(trace_entry &t,
             default: assert(false && "Invalid size in call to store");
         }
         for (int off = 0; off < size; off++) {
-            char name[128];
-            sprintf(name, "MEM_%llx", t.dyn->arg2 + off);
-            defs.insert(name);
+            defs.insert(std::make_pair(MEM, t.dyn->arg2 + off));
         }
         Value *store_addr = c->getArgOperand(0);
         Value *store_val  = c->getArgOperand(1);
@@ -361,7 +437,7 @@ static void handleCall(trace_entry &t,
         // We don't have any model of port I/O, so
         // we just ignore this one
     }
-    else if (func_name.startswith("log_dynval")) {
+    else if (func_name.equals("log_dynval")) {
         // ignore
     }
     else {
@@ -373,25 +449,25 @@ static void handleCall(trace_entry &t,
         // Note that it does *not* use the arguments -- these will
         // get included automatically if they're needed to compute
         // the return value.
-        uses.insert((func_name + ".retval").str());
+        uses.insert(std::make_pair(FRET, ret_ctr));
     }
     return;
 }
 
 static void handleRet(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
 
     ReturnInst *r = cast<ReturnInst>(t.insn);
     Value *v = r->getReturnValue();
     if (v != NULL) insertValue(uses, v);
 
-    defs.insert((t.func->getName() + ".retval").str());
+    defs.insert(std::make_pair(FRET, ret_ctr++));
 }
 
 static void handlePHI(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     // arg1 is the fake dynamic value we derived during trace alignment
     PHINode *p = cast<PHINode>(t.insn);
     Value *v = p->getIncomingValue(t.dyn->arg1);
@@ -400,8 +476,8 @@ static void handlePHI(trace_entry &t,
 }
 
 static void handleSelect(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
 
     SelectInst *s = cast<SelectInst>(t.insn);
     Value *v;
@@ -420,8 +496,8 @@ static void handleSelect(trace_entry &t,
 // want to operate on a trace element, not an Instruction (and hence we need
 // the accompanying dynamic info).
 void get_uses_and_defs(trace_entry &t,
-        std::set<std::string> &uses,
-        std::set<std::string> &defs) {
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
     switch (t.insn->getOpcode()) {
         case Instruction::Store:
             handleStore(t, uses, defs);
@@ -505,7 +581,8 @@ void mark(trace_entry &t) {
     int insn_index = t.index & 0xffff;
     assert (insn_index < MAX_BITSET);
     marked[std::make_pair(t.func,bb_num)][insn_index] = true;
-    if (debug) printf("Marking %s, block %d, instruction %d.\n", t.func->getName().str().c_str(), bb_num, insn_index);
+    if (debug)
+        printf("Marking %s, block %d, instruction %d.\n", t.func->getName().str().c_str(), bb_num, insn_index);
 }
 
 void print_insn(Instruction *insn) {
@@ -535,9 +612,9 @@ bool is_ignored(Function *f) {
         return false;
 }
 
-void print_set(std::set<std::string> &s) {
+void print_set(std::set<SliceVar> &s) {
     printf("{");
-    for (auto &w : s) printf(" %s", w.c_str());
+    for (const SliceVar &w : s) printf(" %s", SliceVarStr(w).c_str());
     printf(" }\n");
 }
 
@@ -547,12 +624,12 @@ void print_set(std::set<std::string> &s) {
 // Note that this *modifies* the working set 'work' and
 // updates the global map of LLVM functions => bitsets
 void slice_trace(std::vector<trace_entry> &trace,
-        std::set<std::string> &work) {
+        std::set<SliceVar> &work) {
     Function *entry_func = trace[0].func;
 
     // Keeps track of argument->value binding when we descend into
     // functions
-    std::stack<std::map<std::string,std::string>> argmap_stack;
+    std::stack<std::map<SliceVar,SliceVar>> argmap_stack;
 
     for(std::vector<trace_entry>::reverse_iterator it = trace.rbegin();
             it != trace.rend(); it++) {
@@ -563,7 +640,7 @@ void slice_trace(std::vector<trace_entry> &trace,
         if (debug) printf(">> %s\n", it->insn->getOpcodeName());
         if (debug) print_insn(it->insn);
 
-        std::set<std::string> uses, defs;
+        std::set<SliceVar> uses, defs;
         get_uses_and_defs(*it, uses, defs);
 
         if (debug) printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
@@ -578,7 +655,7 @@ void slice_trace(std::vector<trace_entry> &trace,
             // don't need to do this with the defs because you can't define
             // a function argument inside the function.
             for (auto it = uses.begin(); it != uses.end(); ) {
-                std::map<std::string,std::string> &argmap = argmap_stack.top();
+                std::map<SliceVar,SliceVar> &argmap = argmap_stack.top();
                 auto arg_it = argmap.find(*it);
                 if (arg_it != argmap.end()) {
                     uses.erase(it++);
@@ -621,7 +698,7 @@ void slice_trace(std::vector<trace_entry> &trace,
 
         // Special handling for function calls. We need to bind arguments to values
         if (CallInst *c = dyn_cast<CallInst>(it->insn)) {
-            std::map<std::string,std::string> argmap;
+            std::map<SliceVar,SliceVar> argmap;
             Function *subf = c->getCalledFunction();
 
             if (!is_ignored(subf)) {
@@ -632,7 +709,7 @@ void slice_trace(std::vector<trace_entry> &trace,
                      argIter != subf->arg_end() && p < c->getNumArgOperands();
                      argIter++, p++) {
                     argmap[get_value_name(&*argIter)] = get_value_name(c->getArgOperand(p));
-                    if (debug) printf("ArgMap %s => %s\n", get_value_name(&*argIter).c_str(), get_value_name(c->getArgOperand(p)).c_str());
+                    if (debug) printf("ArgMap %s => %s\n", SliceVarStr(get_value_name(&*argIter)).c_str(), SliceVarStr(get_value_name(c->getArgOperand(p))).c_str());
                 }
                 argmap_stack.push(argmap);
             }
@@ -938,9 +1015,9 @@ int main(int argc, char **argv) {
     char *tubt_log_fname = argv[optind+1];
 
     // Add the slicing criteria
-    std::set<std::string> work;
+    std::set<SliceVar> work;
     for (int i = optind + 2; i < argc; i++) {
-        work.insert(argv[i]);
+        work.insert(VarFromStr(argv[i]));
     }
 
     struct stat st;
