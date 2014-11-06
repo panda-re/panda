@@ -854,11 +854,12 @@ static inline void update_progress(uint64_t cur, uint64_t total) {
 }
 
 void usage(char *prog) {
-   fprintf(stderr, "Usage: %s [-w] [-b] [-d] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+   fprintf(stderr, "Usage: %s [-w] [-b] [-d] [-a] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
            prog);
    fprintf(stderr, "Options:\n"
            "  -b                : include branch conditions in slice\n"
            "  -d                : enable debug output\n"
+           "  -a                : just align, don't slice\n"
            "  -w                : print working set after each block\n"
            "  -n NUM -p PC      : skip ahead to TB NUM-PC\n"
            "  <llvm_mod>        : the LLVM bitcode module\n"
@@ -875,7 +876,8 @@ int main(int argc, char **argv) {
     unsigned long num, pc;
     bool have_num = false, have_pc = false;
     bool print_work = false;
-    while ((opt = getopt(argc, argv, "wbdn:p:")) != -1) {
+    bool align_only = false;
+    while ((opt = getopt(argc, argv, "awbdn:p:")) != -1) {
         switch (opt) {
         case 'n':
             num = strtoul(optarg, NULL, 10);
@@ -893,6 +895,9 @@ int main(int argc, char **argv) {
             break;
         case 'w':
             print_work = true;
+            break;
+        case 'a':
+            align_only = true;
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -977,7 +982,7 @@ int main(int argc, char **argv) {
         cursor = process_func(f, cursor, aligned_block);
 
         // And slice it
-        slice_trace(aligned_block, work);
+        if (!align_only) slice_trace(aligned_block, work);
 
         if (print_work) printf("Working set: ");
         if (print_work) print_set(work);
