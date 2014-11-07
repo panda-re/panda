@@ -16,6 +16,9 @@ PANDAENDCOMMENT */
 #include "guestarch.h"
 #include "my_mem.h"
 
+extern Shad *shadow;
+extern int tainted_pointer ;
+
 using namespace llvm;
 
 /***
@@ -31,29 +34,247 @@ X("PandaTaint", "Analyze each instruction in a function for taint operations");
  * created in the constructor.  Otherwise, pass in an existing one that was
  * created previously.
  */
-FunctionPass *llvm::createPandaTaintFunctionPass(Shad *shad) {
-    return new PandaTaintFunctionPass(Shad *shad);
+FunctionPass *llvm::createPandaTaintFunctionPass(size_t tob_size,
+        std::map<std::string, TaintTB*> *existingTtbCache) {
+    return new PandaTaintFunctionPass(tob_size, existingTtbCache);
+}
+
+TaintOpBuffer* PandaTaintFunctionPass::getTaintOpBuffer(){
+    return tbuf;
+}
+
+std::map<std::string, TaintTB*>* PandaTaintFunctionPass::getTaintTBCache(){
+    return ttbCache;
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F){
+
 #ifdef TAINTDEBUG
     printf("\n\n%s\n", F.getName().str().c_str());
 #endif
 
-    // create slot tracker to keep track of LLVM values
-    PTV->PST = createPandaSlotTracker(&F);
-    PTV->PST->initialize();
+    // check and see if cache needs to be flushed and if so, flush
+    std::map<std::string, TaintTB*>::iterator it;
+    if (ttbCache->size() == 10000){
+        for (it = ttbCache->begin(); it != ttbCache->end(); it++){
+            // don't remove helper functions from cache
+            if (!strstr(it->second->name, "tcg-llvm-tb")){
+                continue;
+            }
+            taint_tb_cleanup(it->second);
+            ttbCache->erase(it);
+        }
+    }
 
-    // process taint starting with the entry BB
-    Function::iterator bb = F.begin();
-    //printf("Processing entry BB...\n");
-    PTV->visit(bb);
+    it = ttbCache->find(F.getName().str());
+    if (it != ttbCache->end()){
+#ifdef TAINTDEBUG
+        printf("found\n");
+#endif
+        ttb = it->second;
+    }
 
-    // delete slot tracker
-    delete PTV->PST;
+    else {
 
-    return true; // no modifications made to function
+        // create new ttb
+        ttb = taint_tb_new(F.getName().str().c_str(),
+            (int)F.getBasicBlockList().size());
+
+        // clear global taint op buffer
+        tob_clear(tbuf);
+
+        // create slot tracker to keep track of LLVM values
+        PTV->PST = createPandaSlotTracker(&F);
+        PTV->PST->initialize();
+
+        // process taint starting with the entry BB
+        Function::iterator bb = F.begin();
+        //printf("Processing entry BB...\n");
+        PTV->visit(bb);
+        assert(tbuf->size < tbuf_size); // make sure it didn't overflow
+
+        // Copy the tbuf ops into the ttb
+        ttb->entry->label = 0;
+        ttb->entry->ops = tob_new(tbuf->size);
+        tob_clear(ttb->entry->ops);
+        memcpy(ttb->entry->ops->start, tbuf->start, tbuf->size);
+        ttb->entry->ops->size = tbuf->size;
+
+
+	if (qemu_loglevel_mask(CPU_LOG_TAINT_OPS)) {
+	  qemu_log("OUT (TAINT OPS) (main) \n");
+	  fprintf_tob(shadow, ttb->entry->ops, logfile);
+	  qemu_log_flush();
+	}
+
+
+        // process other taint BBs if they exist
+        int i = 0;
+        if (ttb->numBBs > 1){
+            bb++;
+            for (Function::iterator bbe = F.end(); bb != bbe; bb++){
+
+                // clear global taint op buffer
+                tob_clear(tbuf);
+
+                ttb->tbbs[i]->label = PTV->PST->getLocalSlot(bb);
+                //printf("Processing BB %d...\n", LV->PST->getLocalSlot(bb));
+                PTV->visit(bb);
+                assert(tbuf->size < tbuf_size); // make sure it didn't overflow
+
+                // Copy the tbuf ops into the ttb
+                ttb->tbbs[i]->ops = tob_new(tbuf->size);
+                tob_clear(ttb->tbbs[i]->ops);
+                memcpy(ttb->tbbs[i]->ops->start, tbuf->start, tbuf->size);
+                ttb->tbbs[i]->ops->size = tbuf->size;
+
+		if (qemu_loglevel_mask(CPU_LOG_TAINT_OPS)) {
+		  qemu_log("OUT (TAINT OPS) (other) %d\n", i);
+		  fprintf_tob(shadow, ttb->tbbs[i]->ops, logfile);
+		  qemu_log_flush();
+		}
+
+
+
+                i++;
+            }
+        }
+
+        // delete slot tracker
+        delete PTV->PST;
+
+#ifndef TAINTSTATS
+        // don't cache during statistics gathering because we need to keep
+        // instruction count
+        ttbCache->insert(std::pair<std::string, TaintTB*>(
+            F.getName().str(), ttb));
+#endif
+    }
+
+    //taint_tb_cleanup(ttb);
+    //spit_mem_usage();
+
+    return false; // no modifications made to function
 }
+
+void PandaTaintFunctionPass::debugTaintOps(){
+    int j = 0;
+    tob_rewind(ttb->entry->ops);
+    while (!(tob_end(ttb->entry->ops))) {
+        TaintOp *op;
+        tob_op_read(ttb->entry->ops, &op);
+        printf("op %d ", j);
+        tob_op_print(NULL, op);
+        j++;
+    }
+
+    // show taint ops for all BBs
+    for (int i = 0; i < ttb->numBBs-1; i++){
+        printf("\nBB %d:\n", ttb->tbbs[i]->label);
+
+        j = 0;
+        tob_rewind(ttb->tbbs[i]->ops);
+        while (!(tob_end(ttb->tbbs[i]->ops))) {
+	    TaintOp *op;
+	    tob_op_read(ttb->tbbs[i]->ops, &op);
+            printf("op %d ", j);
+            tob_op_print(NULL, op);
+            j++;
+        }
+    }
+}
+
+/*
+ * This probably isn't the safest code.  Please don't fuzz the cache file ;)
+ */
+/*void PandaTaintFunctionPass::readTaintCache(){
+    size_t cacheSize;
+    char name[50];
+    int numBBs;
+    TaintTB *filettb;
+    uint32_t taintbufsize;
+    size_t n = 0;
+    n = fread(&cacheSize, sizeof(size_t), 1, taintCache);
+    assert(n);
+    for (int i = 0; i < (int)cacheSize; i++){
+        n = fread(name, 50, 1, taintCache);
+        assert(n);
+        n = fread(&numBBs, sizeof(int), 1, taintCache);
+        assert(n);
+        filettb = taint_tb_new(name, numBBs);
+#ifdef TAINTDEBUG
+        printf("reading %s from cache\n", name);
+#endif
+        n = fread(&filettb->entry->label, sizeof(((TaintBB*)0)->label), 1,
+            taintCache);
+        assert(n);
+        n = fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+        assert(n);
+        filettb->entry->ops = (TaintOpBuffer*)my_malloc(sizeof(TaintOpBuffer),
+            poolid_taint_processor);
+        filettb->entry->ops->size = taintbufsize;
+        filettb->entry->ops->max_size = taintbufsize;
+        filettb->entry->ops->start = (char*)my_malloc(taintbufsize,
+            poolid_taint_processor);
+        n = fread(filettb->entry->ops->start, taintbufsize, 1, taintCache);
+        assert(n);
+
+        // read additional BBs if they exist
+        if (numBBs > 1){
+            for (int j = 0; j < numBBs-1; j++){
+                n = fread(&filettb->tbbs[j]->label,
+                    sizeof(((TaintBB*)0)->label), 1, taintCache);
+                assert(n);
+                n = fread(&taintbufsize, sizeof(uint32_t), 1, taintCache);
+                assert(n);
+                filettb->tbbs[j]->ops = (TaintOpBuffer*)my_malloc(
+                    sizeof(TaintOpBuffer), poolid_taint_processor);
+                filettb->tbbs[j]->ops->size = taintbufsize;
+                filettb->tbbs[j]->ops->max_size = taintbufsize;
+                filettb->tbbs[j]->ops->start = (char*)my_malloc(taintbufsize,
+                    poolid_taint_processor);
+                n = fread(filettb->tbbs[j]->ops->start, taintbufsize, 1,
+                    taintCache);
+                assert(n);
+            }
+        }
+
+        ttbCache->insert(std::pair<std::string, TaintTB*>(
+            std::string(name), filettb));
+    }
+}
+
+void PandaTaintFunctionPass::writeTaintCache(){
+    std::map<std::string, TaintTB*>::iterator it;
+    size_t cacheSize = ttbCache->size();
+    fwrite(&cacheSize, sizeof(size_t), 1, taintCache);
+    for (it = ttbCache->begin(); it != ttbCache->end(); it++){
+#ifdef TAINTDEBUG
+        printf("writing %s to cache\n", it->second->name);
+#endif
+        fwrite(it->second->name, 50, 1, taintCache);
+        fwrite(&it->second->numBBs, sizeof(((TaintTB*)0)->numBBs), 1,
+            taintCache);
+        fwrite(&it->second->entry->label, sizeof(((TaintBB*)0)->label), 1,
+            taintCache);
+        fwrite(&it->second->entry->ops->size, sizeof(((TaintOpBuffer*)0)->size),
+            1, taintCache);
+        fwrite(it->second->entry->ops->start, it->second->entry->ops->size, 1,
+            taintCache);
+
+        // write additional BBs if they exist
+        if (it->second->numBBs > 1){
+            for (int i = 0; i < it->second->numBBs-1; i++){
+                fwrite(&it->second->tbbs[i]->label,
+                    sizeof(((TaintBB*)0)->label), 1, taintCache);
+                fwrite(&it->second->tbbs[i]->ops->size,
+                    sizeof(((TaintOpBuffer*)0)->size), 1, taintCache);
+                fwrite(it->second->tbbs[i]->ops->start,
+                    it->second->tbbs[i]->ops->size, 1, taintCache);
+            }
+        }
+    }
+}*/
 
 /***
  *** PandaSlotTracker
@@ -139,7 +360,9 @@ int PandaSlotTracker::getLocalSlot(const Value *V){
  *** PandaTaintVisitor
  ***/
 
-PandaTaintVisitor::PandaTaintVisitor(){
+PandaTaintVisitor::PandaTaintVisitor(PandaTaintFunctionPass *PTFunPass){
+    PTFP = PTFunPass;
+    tbuf = PTFP->getTaintOpBuffer();
     PST = NULL;
 }
 
@@ -178,7 +401,16 @@ int PandaTaintVisitor::getValueSize(Value *V){
 
 // Delete taint at destination LLVM register
 void PandaTaintVisitor::simpleDeleteTaintAtDest(int llvmReg){
-    
+    struct taint_op_struct op = {};
+    struct addr_struct dst = {};
+    op.typ = DELETEOP;
+    dst.typ = LADDR;
+    dst.val.la = llvmReg;
+    for (int i = 0; i < MAXREGSIZE; i++){
+        dst.off = i;
+        op.val.deletel.a = dst;
+        tob_op_write(tbuf, &op);
+    }
 }
 
 // Copy taint from LLVM source to dest byte by byte

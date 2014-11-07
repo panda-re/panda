@@ -20,7 +20,7 @@ PANDAENDCOMMENT */
 
 // Initialize this to 0.
 #define TAINT2_MEMLOG_SIZE 2
-typedef struct {
+typedef struct taint2_memlog {
     uint64_t ring[TAINT2_MEMLOG_SIZE];
     uint64_t idx;
 } taint2_memlog;

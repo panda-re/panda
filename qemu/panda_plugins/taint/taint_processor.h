@@ -127,13 +127,17 @@ typedef struct shad_struct {
     uint32_t num_vals;
     uint32_t guest_regs;
     SdDir64 *hd;
-    FastShad *ram;
+#ifdef TARGET_X86_64
+    SdDir64 *ram;
+#else
+    SdDir32 *ram;
+#endif
     SdDir64 *io;
     SdDir32 *ports;
-    FastShad *llv;  // LLVM registers, with multiple frames
-    FastShad *ret;  // LLVM return value, also temp register
-    FastShad *grv;  // guest general purpose registers
-    FastShad *gsv;  // guest special values, like FP, and parts of CPUState
+    LabelSet **llv;  // LLVM registers, with multiple frames
+    LabelSet **ret;  // LLVM return value, also temp register
+    LabelSet **grv;  // guest general purpose registers
+    LabelSet **gsv;  // guest special values, like FP, and parts of CPUState
     uint8_t *ram_bitmap;
     uint32_t current_frame; // keeps track of current function frame
     uint32_t max_obs_ls_type;
@@ -185,6 +189,43 @@ void tp_delete_ram(Shad *shad, uint64_t pa) ;
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+
+// returns number of tainted addrs in ram
+uint32_t tp_occ_ram(Shad *shad);
+
+
+typedef struct taint_op_buffer_struct {
+    char *start;        // beginning of ops
+    uint32_t max_size;  // max size
+    uint32_t size;      // current size of this buffer in bytes
+    char *ptr;          // current location in buf for write / read
+} TaintOpBuffer;
+
+/*** taint translation block stuff ***/
+/* There are a few different notions of 'blocks'.  A guest basic block is
+ * translated into a QEMU translation block.  There may be multiple basic blocks
+ * within a translation block since QEMU and LLVM have control flow
+ * instructions.  So a taint translation block corresponds to a QEMU translation
+ * block, or LLVM function, which may consist of multiple basic blocks.  Every
+ * TaintTB has an entry basic block.  Additional basic blocks start at
+ * TaintTB.tbbs[0].  LLVM functions from source code also fall into the category
+ * of TaintTB.
+ */
+
+typedef struct taint_bb_struct {
+    int label;           // corresponding LLVM BB label
+    TaintOpBuffer *ops;  // taint ops for this taint BB
+} TaintBB;
+
+typedef struct taint_tb_struct {
+    char *name;      // corresponding name of LLVM function
+    int numBBs;      // number of taint BBs
+    TaintBB *entry;  // entry taint BB
+    TaintBB **tbbs;  // array of other taint BBs
+} TaintTB;
+
+TaintTB *taint_tb_new(const char *name, int numBBs);
+void taint_tb_cleanup(TaintTB *ttb);
 
 typedef enum {
     LABELOP,

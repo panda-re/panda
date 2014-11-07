@@ -35,7 +35,13 @@ typedef struct LabelSet {
     };
 } LabelSet;
 
-inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
+/*
+inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2);
+inline LabelSet *label_set_singleton(uint32_t label);
+inline uint32_t label_set_cardinality(LabelSet *ls);
+*/
+
+static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
@@ -50,11 +56,19 @@ inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     } else return NULL;
 }
 
-inline LabelSet *label_set_singleton(uint32_t label) {
+static inline LabelSet *label_set_singleton(uint32_t label) {
     LabelSet *result = (LabelSet *)my_malloc(sizeof(LabelSet), poolid_label_set);
     result->child1 = NULL;
     result->label = label;
     return result;
+}
+
+static inline uint32_t label_set_cardinality(LabelSet *ls) {
+    if (ls == NULL) return 0;
+    else if (ls->child1 != NULL) {
+        return label_set_cardinality(ls->child1) +
+            label_set_cardinality(ls->child2);
+    } else return 1;
 }
 
 #endif

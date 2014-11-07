@@ -15,20 +15,25 @@ PANDAENDCOMMENT */
 #ifndef LLVM_TAINT_LIB_H
 #define LLVM_TAINT_LIB_H
 
-#include "stdio.h"
 #include <map>
-#include "llvm/IR/Intrinsics.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/Pass.h"
-#include "llvm/ADT/DenseMap.h"
-#include "llvm/InstVisitor.h"
-#include "llvm/IR/IRBuilder.h"
-#include "taint_ops.h"
-#include "panda_memlog.h"
+#include <cstdio>
+#include <vector>
 
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/InstVisitor.h>
+
+typedef struct taint2_memlog taint2_memlog;
 typedef struct shad_struct Shad;
 
+using std::vector;
+using std::pair;
+
 namespace llvm {
+
+class Function;
+class Value;
+class Constant;
+class DataLayout;
 
 /* PandaSlotTracker class
  * This is modeled after SlotTracker in lib/VMCore/AsmWriter.cpp which keeps
@@ -57,7 +62,11 @@ public:
     void initialize();
 };
 
-PandaSlotTracker *createPandaSlotTracker(Function *F);
+class ReturnInst;
+class BranchInst;
+class BinaryOperator;
+class PHINode;
+class Instruction;
 
 /* PandaTaintVisitor class
  * This class implements our taint propagation policies for each LLVM
@@ -66,9 +75,36 @@ PandaSlotTracker *createPandaSlotTracker(Function *F);
  */
 class PandaTaintVisitor : public InstVisitor<PandaTaintVisitor> {
 private:
-    PandaSlotTracker *PST;
+    std::unique_ptr<PandaSlotTracker> PST;
     Shad *shad; // no ownership. weak ptr.
     taint2_memlog *memlog; // same.
+
+    Constant *constSlot(LLVMContext &ctx, Value *value);
+    int intValue(Value *value);
+    unsigned getValueSize(Value *V);
+    void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
+    void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
+    CallInst *insertLogPop(Instruction &after);
+    void insertTaintMove(Instruction &I,
+            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
+            uint64_t size);
+    void insertTaintCopy(Instruction &I,
+            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
+            uint64_t size);
+    void insertTaintBulk(Instruction &I,
+            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
+            uint64_t size, Function *func);
+    void insertTaintMix(Instruction &I, Value *src);
+    void insertTaintMix(Instruction &I, Value *dest, Value *src);
+    void insertTaintCompute(Instruction &I,
+            Value *src1, Value *src2, bool is_mixed);
+    void insertTaintCompute(Instruction &I, Value *dest,
+            Value *src1, Value *src2, bool is_mixed);
+    void insertTaintSext(Instruction &I, Value *src);
+    void insertTaintSelect(Instruction &after, Value *dest,
+            Value *selector, vector<pair<Value *, Value *>> &selections);
+    void insertTaintDelete(Instruction &I,
+            Constant *shad, Value *dest, Value *size);
 
 public:
     DataLayout *dataLayout = NULL;
@@ -78,10 +114,14 @@ public:
     Function *mixCompF;
     Function *parallelCompF;
     Function *copyF;
+    Function *moveF;
+    Function *setF;
     Function *sextF;
     Function *selectF;
+
     Function *pushFrameF;
     Function *popFrameF;
+    Function *breadcrumbF;
 
     Constant *memlogConst;
     Function *memlogPopF;
@@ -95,23 +135,46 @@ public:
     Constant *prevBbConst;
 
     PandaTaintVisitor(Shad *shad, taint2_memlog *memlog)
-        : PST(NULL), shad(shad), memlog(memlog) {}
+        : shad(shad), memlog(memlog) {}
 
     ~PandaTaintVisitor() {}
 
-    // Define most visitor functions
-    #define HANDLE_INST(N, OPCODE, CLASS) void visit##OPCODE##Inst(CLASS&);
-    #include "llvm/IR/Instruction.def"
+    // Overrides.
+    void visitFunction(Function& F);
+    void visitBasicBlock(BasicBlock &BB);
+
+    void visitInvokeInst(InvokeInst &I);
+    void visitUnreachableInst(UnreachableInst &I);
+    void visitAllocaInst(AllocaInst &I);
+    void visitLoadInst(LoadInst &I);
+    void visitStoreInst(StoreInst &I);
+    void visitFenceInst(FenceInst &I);
+    void visitAtomicCmpXchgInst(AtomicCmpXchgInst &I);
+    void visitAtomicRMWInst(AtomicRMWInst &I);
+    void visitGetElementPtrInst(GetElementPtrInst &I);
+    void visitCallInst(CallInst &I);
+    void visitSelectInst(SelectInst &I);
+    void visitVAArgInst(VAArgInst &I);
+    void visitExtractElementInst(ExtractElementInst &I);
+    void visitInsertElementInst(InsertElementInst &I);
+    void visitShuffleVectorInst(ShuffleVectorInst &I);
+    void visitExtractValueInst(ExtractValueInst &I);
+    void visitInsertValueInst(InsertValueInst &I);
+    void visitLandingPadInst(LandingPadInst &I);
+
 
     // We missed some...
     void visitReturnInst(ReturnInst &I);
-    void visitBranchInst(BranchInst &I);
     void visitBinaryOperator(BinaryOperator &I);
     void visitPHINode(PHINode &I);
     void visitInstruction(Instruction &I);
 
-    // Helpers
-    int getValueSize(Value *V);
+    void visitTerminatorInst(TerminatorInst &I);
+    void visitCastInst(CastInst &I);
+    void visitCmpInst(CmpInst &I);
+    void visitMemCpyInst(MemTransferInst &I);
+    void visitMemMoveInst(MemTransferInst &I);
+    void visitMemSetInst(MemSetInst &I);
 };
 
 /* PandaTaintFunctionPass class
@@ -121,12 +184,16 @@ public:
  * taint op calculations and population of taint op buffers.
  */
 class PandaTaintFunctionPass : public FunctionPass {
+private:
+    Shad *shad;
+    taint2_memlog *memlog;
+
 public:
     static char ID;
     PandaTaintVisitor PTV; // Our LLVM instruction visitor
 
     PandaTaintFunctionPass(Shad *shad, taint2_memlog *memlog)
-        : FunctionPass(ID), PTV(shad, memlog) {}
+        : FunctionPass(ID), shad(shad), memlog(memlog), PTV(shad, memlog) {}
 
     ~PandaTaintFunctionPass() { }
 
@@ -142,8 +209,6 @@ public:
         AU.setPreservesAll();
     }
 };
-
-FunctionPass *createPandaTaintFunctionPass();
 
 } // End llvm namespace
 

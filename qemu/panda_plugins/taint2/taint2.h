@@ -23,22 +23,17 @@
 
 #include <stdint.h>
 
-#include "cpu.h"
-#include "fast_shad.h"
-#include "shad_dir_32.h"
-#include "shad_dir_64.h"
-#include "panda_memlog.h"
-
 #include <map>
 #include <set>
 
-#define EXCEPTIONSTRING "3735928559"  // 0xDEADBEEF read from dynamic log
-#define OPNAMELENGTH 15
-#define FUNCNAMELENGTH 50
-#define FUNCTIONFRAMES 10 // handle 10 frames for now, should be sufficient
-#define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
+#include "defines.h"
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
+
+typedef struct FastShad FastShad;
+typedef struct LabelSet LabelSet;
+typedef struct SdDir32 SdDir32;
+typedef struct SdDir64 SdDir64;
 
 // Unused for now.
 typedef enum {
@@ -62,15 +57,13 @@ typedef struct shad_struct {
     FastShad *grv;  // guest general purpose registers
     FastShad *gsv;  // guest special values, like FP, and parts of CPUState
     uint32_t max_obs_ls_type;
-    uint8_t tainted_computation_happened;
     uint64_t asid;
     uint64_t pc;
-   // map from cr3 to set of pcs that are "tainted" meaning they are instructions that process tainted data
-    std::map < uint64_t, std::set < uint64_t > > tpc;  
+    uint64_t prev_bb; // label for previous BB.
 } Shad;
 
 // returns a shadow memory to be used by taint processor
-Shad *tp_init(uint64_t hd_size, uint32_t mem_size, uint64_t io_size, uint32_t max_vals);
+Shad *tp_init();
 
 // Delete a shadow memory
 void tp_free(Shad *shad);

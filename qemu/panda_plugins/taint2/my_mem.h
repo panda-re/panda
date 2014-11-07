@@ -18,7 +18,9 @@ PANDAENDCOMMENT */
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#ifdef __cplusplus
 #include <memory>
+#endif
 
 typedef enum {
   poolid_iferret_log = 0,
@@ -68,6 +70,9 @@ typedef enum {
 } pool_id;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void spit_mem_usage(void);
 
 void *my_malloc(size_t n, pool_id pid);
@@ -75,12 +80,16 @@ void *my_calloc(size_t nmemb, size_t memsz, pool_id pid);
 void *my_realloc(void *p, size_t n, size_t old_n, pool_id pid);
 void my_free(void *p, size_t n, pool_id pid);
 char * my_strdup(const char *p, pool_id pid);
+#ifdef __cplusplus
+}
+#endif
 
+#ifdef __cplusplus
 enum class Memevent {
     ALLOC,
     FREE,
     CTOR,
-    DTOR,
+    DTOR
 };
 
 void my_mem_log(Memevent event, size_t amount, pool_id pid);
@@ -134,5 +143,5 @@ class mymem_allocator : public std::allocator<T> {
         typedef mymem_allocator<_Tp1, poolid> other;
     };
 };
-
+#endif // __cplusplus
 #endif
