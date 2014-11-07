@@ -135,13 +135,15 @@ to slice on, such as some registers or memory we're interested in. The
 usage information for the `dynslice` utility shows what options we have
 for slicing conditions:
 
-    Usage: ./dynslice [-w] [-b] [-d] [-a] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]
+    Usage: ./dynslice [OPTIONS] <llvm_mod> <dynlog> <criterion> [<criterion> ...]
     Options:
       -b                : include branch conditions in slice
       -d                : enable debug output
+      -v                : show progress meter
       -a                : just align, don't slice
       -w                : print working set after each block
       -n NUM -p PC      : skip ahead to TB NUM-PC
+      -o OUTPUT         : save results to OUTPUT
       <llvm_mod>        : the LLVM bitcode module
       <dynlog>          : the TUBT log file
       <criterion> ...   : the slicing criteria, i.e., what to slice on
