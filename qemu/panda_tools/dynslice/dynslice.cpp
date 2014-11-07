@@ -572,22 +572,6 @@ void bits2bytes(std::bitset<MAX_BITSET> &bs, uint8_t out[]) {
     }
 }
 
-void print_marked(Function *f) {
-    printf("*** Function %s ***\n", f->getName().str().c_str());
-    int i = 0;
-    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
-        printf(">>> Block %d\n", i);
-        int j = 0;
-        for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end(); insn_it != insn_ed; ++insn_it) {
-            char m = marked[std::make_pair(f,i)][j] ? '*' : ' ';
-            fprintf(stderr, "%c ", m);
-            insn_it->dump();
-            j++;
-        }
-        i++;
-    }
-}
-
 void mark(trace_entry &t) {
     int bb_num = t.index >> 16;
     int insn_index = t.index & 0xffff;
@@ -1101,7 +1085,7 @@ int main(int argc, char **argv) {
     printf("\n");
 
     uint64_t insns_marked = 0;
-    for (auto &kvp : marked) insns_marked += kvp.second.size();
+    for (auto &kvp : marked) insns_marked += kvp.second.count();
     printf("Done slicing. Marked %lu blocks, %llu instructions.\n", marked.size(), insns_marked);
 
     // Write slice report
@@ -1117,6 +1101,7 @@ int main(int argc, char **argv) {
 
         fwrite(&name_size, sizeof(uint32_t), 1, outf);
         fwrite(name.str().c_str(), name_size, 1, outf);
+        fwrite(&index, sizeof(uint32_t), 1, outf);
         fwrite(bytes, MAX_BITSET / 8, 1, outf);
     }
     fclose(outf);
