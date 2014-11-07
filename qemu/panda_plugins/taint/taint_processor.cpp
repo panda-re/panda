@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include "panda_stats.h"
 #include "panda_plugin_plugin.h"
 
+#include "label_set.h"
+
 #define SB_INLINE inline
 
 #ifdef TAINTSTATS
@@ -72,6 +74,7 @@ int tainted_instructions = 0;
 // prototypes for on_load and on_store callback registering
 PPP_PROT_REG_CB(on_load);
 PPP_PROT_REG_CB(on_store);
+PPP_PROT_REG_CB(on_branch);
 PPP_PROT_REG_CB(before_execute_taint_ops);
 PPP_PROT_REG_CB(after_execute_taint_ops);
 
@@ -80,6 +83,7 @@ PPP_PROT_REG_CB(after_execute_taint_ops);
 // functions for registering callbacks
 PPP_CB_BOILERPLATE(on_load);
 PPP_CB_BOILERPLATE(on_store);
+PPP_CB_BOILERPLATE(on_branch);
 PPP_CB_BOILERPLATE(before_execute_taint_ops);
 PPP_CB_BOILERPLATE(after_execute_taint_ops);
 }
@@ -493,9 +497,22 @@ uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
   return 0;
 }
 
-
-
-
+// returns label set cardinality
+uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset) {
+  Addr ra;
+  ra.typ = LADDR;
+  ra.val.la = reg_num;
+  ra.off = offset;
+  ra.flag = (AddrFlag) 0;
+  if (tp_query(shad, &ra)) {
+    LabelSet *ls = tp_labelset_get(shad, &ra);    
+    uint32_t c = labelset_card(ls);
+    assert (c > 0);
+    return c;
+  }
+  // not tainted
+  return 0;
+}
 
 
 //SB_INLINE void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -525,6 +542,48 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
   tp_ls_iter(shad, &ra, app, stuff2);
 }
 
+void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  Addr ra;
+  ra.typ = LADDR;
+  ra.val.la = reg_num;
+  ra.off = offset;
+  ra.flag = (AddrFlag) 0;
+  tp_ls_iter(shad, &ra, app, stuff2);
+}
+
+struct reg_spit_info {
+    const char* prefix;
+    int reg_num;
+};
+
+static int spit_reg_label(uint32_t label_no, void* opaque){
+    reg_spit_info *sp_info = reinterpret_cast<reg_spit_info*>(opaque);
+    printf("%s %%%d,%u\n", sp_info->prefix, sp_info->reg_num, label_no);
+    return 0;
+}
+
+// prints the label on an llvm register
+void tp_spit_reg(Shad *shad, int reg_num, int offset) {
+  if (tp_query_reg(shad, reg_num, offset)) {
+    reg_spit_info info;
+    info.prefix = "\tREG";
+    info.reg_num = reg_num;
+    tp_ls_reg_iter(shad, reg_num, offset, spit_reg_label, &info);
+  }
+}
+
+
+// prints the label on an llvm register
+void tp_spit_llvm(Shad *shad, int reg_num, int offset) {
+  if (tp_query_llvm(shad, reg_num, offset)) {
+    reg_spit_info info;
+    info.prefix = "\tLLVM_REG";
+    info.reg_num = reg_num;
+    tp_ls_llvm_iter(shad, reg_num, offset, spit_reg_label, &info);
+  }
+}
+
+
 
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad) {
@@ -543,6 +602,20 @@ uint32_t tp_occ_ram(Shad *shad) {
   }
 }
 
+// returns the ls type (taint compute #) for the given llvm register
+uint32_t tp_get_ls_type_llvm(Shad *shad, int reg_num, int offset) {
+  Addr ra;
+  ra.typ = LADDR;
+  ra.val.la = reg_num;
+  ra.off = offset;
+  ra.flag = (AddrFlag) 0;
+  if (tp_query(shad, &ra)) {
+    LabelSet *ls = tp_labelset_get(shad, &ra);    
+    return ls->type;
+  }
+  // not tainted
+  return 0;
+}
 
 
 // untaint -- discard label set associated with a
@@ -1452,6 +1525,7 @@ void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
     tob_read(buf, (char**) aop, sizeof(TaintOp));
 }
 
+
 SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
         DynValBuffer *dynval_buf){
 #ifdef TAINTDEBUG
@@ -1861,8 +1935,16 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
             /*
              * Place to inspect taint on branch condition
              */
-            //printf("Branch condition LLVM register: %%%d\n",
-            //    op->val.insn_start.branch_cond_llvm_reg);
+
+            int reg_num = op->val.insn_start.branch_cond_llvm_reg;
+            bool conditional_branch = reg_num != -1;
+            if (conditional_branch) {
+                    PPP_RUN_CB(on_branch, reg_num);
+            }
+
+            /*
+             * End place to inspect taint on branch condition
+             */
 
             next_step = BRANCH;
         }
@@ -2230,7 +2312,6 @@ void execute_taint_ops(TaintTB *ttb, Shad *shad, DynValBuffer *dynval_buf){
 //SB_INLINE void tob_process(TaintOpBuffer *buf, Shad *shad,
 //        DynValBuffer *dynval_buf) {
 void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
-
     uint32_t i;
     tob_rewind(buf);
     i = 0;

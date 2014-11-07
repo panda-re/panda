@@ -54,8 +54,12 @@ extern "C" {
     uint32_t taint_query_ram(uint64_t pa);
     uint32_t taint_pick_label(uint64_t pa);
     uint32_t taint_query_reg(int reg_num, int offset);
+    uint32_t taint_query_llvm(int reg_num, int offset);
+    void taint_spit_reg(int reg_num, int offset);
+    void taint_spit_llvm(int reg_num, int offset);
     void taint_delete_ram(uint64_t pa) ;
     uint32_t taint_occ_ram(void) ;
+    uint32_t taint_get_ls_type_llvm(int reg_num, int offset);
     uint32_t taint_max_obs_ls_type(void) ;
     void taint_clear_tainted_computation_happened(void) ;
     int taint_tainted_computation_happened(void) ;
@@ -830,6 +834,17 @@ uint32_t __taint_query_reg(int reg_num, int offset) {
   return tp_query_reg(shadow, reg_num, offset);
 }
 
+uint32_t __taint_query_llvm(int reg_num, int offset) {
+  return tp_query_llvm(shadow, reg_num, offset);
+}
+
+void __taint_spit_reg(int reg_num, int offset) {
+  tp_spit_reg(shadow, reg_num, offset);
+}
+
+void __taint_spit_llvm(int reg_num, int offset) {
+  tp_spit_llvm(shadow, reg_num, offset);
+}
 
 void __taint_delete_ram(uint64_t pa) {
   tp_delete_ram(shadow, pa);
@@ -845,6 +860,10 @@ void taint_labels_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void
   tp_ls_reg_iter(shadow, reg_num, offset, app, stuff2);
 }
 
+void taint_labels_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  tp_ls_llvm_iter(shadow, reg_num, offset, app, stuff2);
+}
+
 
 
 uint32_t __taint_occ_ram() {
@@ -855,6 +874,11 @@ uint32_t __taint_occ_ram() {
 uint32_t __taint_max_obs_ls_type(void) {
     return shadow->max_obs_ls_type;
 }
+
+uint32_t __taint_get_ls_type_llvm(int reg_num, int offset) {
+    return tp_get_ls_type_llvm(shadow, reg_num, offset);
+}
+
 
 void __taint_clear_tainted_computation_happened(void) {
     shadow->tainted_computation_happened = 0;
@@ -916,6 +940,18 @@ uint32_t taint_query_reg(int reg_num, int offset) {
   return __taint_query_reg(reg_num, offset);
 }
 
+uint32_t taint_query_llvm(int reg_num, int offset) {
+  return __taint_query_llvm(reg_num, offset);
+}
+
+void taint_spit_reg(int reg_num, int offset) {
+  __taint_spit_reg(reg_num, offset);
+}
+
+void taint_spit_llvm(int reg_num, int offset) {
+  __taint_spit_llvm(reg_num, offset);
+}
+
 
 uint32_t taint_occ_ram(void) {
   return __taint_occ_ram();
@@ -923,6 +959,10 @@ uint32_t taint_occ_ram(void) {
 
 uint32_t taint_max_obs_ls_type(void) {
     return __taint_max_obs_ls_type();
+}
+
+uint32_t taint_get_ls_type_llvm(int reg_num, int offset) {
+    return __taint_get_ls_type_llvm(reg_num, offset);
 }
 
 
