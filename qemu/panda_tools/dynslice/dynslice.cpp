@@ -561,6 +561,17 @@ void get_uses_and_defs(trace_entry &t,
 
 std::map<std::pair<Function*,int>,std::bitset<MAX_BITSET>> marked;
 
+// Don't ever call this with an array of size < MAX_BITSET/8
+void bits2bytes(std::bitset<MAX_BITSET> &bs, uint8_t out[]) {
+    for (int i = 0; i < MAX_BITSET / 8; i++) {
+        uint8_t byte = 0;
+        for (int j = 0; j < 8; j++) {
+            byte |= (bs[(i*8) + j] << j);
+        }
+        out[i] = byte;
+    }
+}
+
 void print_marked(Function *f) {
     printf("*** Function %s ***\n", f->getName().str().c_str());
     int i = 0;
@@ -1092,6 +1103,24 @@ int main(int argc, char **argv) {
     uint64_t insns_marked = 0;
     for (auto &kvp : marked) insns_marked += kvp.second.size();
     printf("Done slicing. Marked %lu blocks, %llu instructions.\n", marked.size(), insns_marked);
+
+    // Write slice report
+    FILE *outf = fopen("slice_report.bin", "w");
+    for (auto &kvp : marked) {
+        uint32_t name_size = 0;
+        uint32_t index = kvp.first.second;
+        uint8_t bytes[MAX_BITSET/8] = {};
+
+        StringRef name = kvp.first.first->getName();
+        name_size = name.size();
+        bits2bytes(kvp.second, bytes);
+
+        fwrite(&name_size, sizeof(uint32_t), 1, outf);
+        fwrite(name.str().c_str(), name_size, 1, outf);
+        fwrite(bytes, MAX_BITSET / 8, 1, outf);
+    }
+    fclose(outf);
+    printf("Wrote slicing results to slice_report.bin\n");
 
     return 0;
 }
