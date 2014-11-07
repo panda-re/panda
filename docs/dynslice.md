@@ -52,7 +52,7 @@ Since we're mainly interested in analysis, we won't consider branches
 for now.
 
 Dynamic Slicing on LLVM
-=======================
+-----------------------
 
 PANDA's ability to lift native code up to LLVM is a huge help in
 simplifying program analyses. It has three main benefits:
@@ -76,7 +76,7 @@ its ability to create traces in LLVM mode, implemented by the
 `llvm_trace` plugin.
 
 Execution Tracing in PANDA with `llvm_trace`
-============================================
+--------------------------------------------
 
 To capture a useful execution trace, we want three things:
 
@@ -119,7 +119,7 @@ Which will produce `llvm-mod.bc` and `tubtf.log` in the `<output_dir>`
 directory.
 
 Using PANDA's Dynamic Slicer
-============================
+----------------------------
 
 Because dynamic slicing operates on a trace in reverse, we first need to
 reverse the logfile. This is done using the `logreverse_mmap` tool:
