@@ -544,6 +544,7 @@ void get_uses_and_defs(trace_entry &t,
         case Instruction::AShr:
         case Instruction::LShr:
         case Instruction::ICmp:
+        case Instruction::FCmp:
         case Instruction::Alloca:
             handleDefault(t, uses, defs);
             return;
