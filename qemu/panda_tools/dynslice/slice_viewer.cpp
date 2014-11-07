@@ -77,6 +77,12 @@ void bytes2bits(uint8_t bytes[], std::bitset<MAX_BITSET> &bits) {
 }
 
 int main(int argc, char **argv) {
+    if (argc < 4) {
+        printf("Usage: %s <llvm-mod.bc> <slice_report.bin> <function> [<function> ...]\n",
+                argv[0]);
+        return EXIT_FAILURE;
+    }
+
     LLVMContext &ctx = getGlobalContext();
 
     // Load the bitcode...
@@ -127,4 +133,6 @@ int main(int argc, char **argv) {
         }
         print_marked(fn, marked);
     }
+
+    return EXIT_SUCCESS;
 }

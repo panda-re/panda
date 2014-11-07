@@ -939,14 +939,16 @@ static inline void update_progress(uint64_t cur, uint64_t total) {
 }
 
 void usage(char *prog) {
-   fprintf(stderr, "Usage: %s [-w] [-b] [-d] [-a] [-n NUM] [-p PC] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+   fprintf(stderr, "Usage: %s [OPTIONS] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
            prog);
    fprintf(stderr, "Options:\n"
            "  -b                : include branch conditions in slice\n"
            "  -d                : enable debug output\n"
+           "  -v                : show progress meter\n"
            "  -a                : just align, don't slice\n"
            "  -w                : print working set after each block\n"
            "  -n NUM -p PC      : skip ahead to TB NUM-PC\n"
+           "  -o OUTPUT         : save results to OUTPUT\n"
            "  <llvm_mod>        : the LLVM bitcode module\n"
            "  <dynlog>          : the TUBT log file\n"
            "  <criterion> ...   : the slicing criteria, i.e., what to slice on\n"
@@ -959,10 +961,12 @@ int main(int argc, char **argv) {
 
     int opt;
     unsigned long num, pc;
+    bool show_progress = false;
     bool have_num = false, have_pc = false;
     bool print_work = false;
     bool align_only = false;
-    while ((opt = getopt(argc, argv, "awbdn:p:")) != -1) {
+    const char *output = NULL;
+    while ((opt = getopt(argc, argv, "vawbdn:p:o:")) != -1) {
         switch (opt) {
         case 'n':
             num = strtoul(optarg, NULL, 10);
@@ -983,6 +987,12 @@ int main(int argc, char **argv) {
             break;
         case 'a':
             align_only = true;
+            break;
+        case 'o':
+            output = optarg;
+            break;
+        case 'v':
+            show_progress = true;
             break;
         default: /* '?' */
             usage(argv[0]);
@@ -1005,6 +1015,11 @@ int main(int argc, char **argv) {
     if (optind + 2 >= argc) {
         fprintf(stderr, "WARNING: You did not specify any slicing criteria. This is probably not what you want.\n");
         fprintf(stderr, "Continuing anyway.\n");
+    }
+
+    if (output == NULL) {
+        output = "slice_report.bin";
+        fprintf(stderr, "Note: no output file provided. Will save results to '%s'\n", output);
     }
 
     char *llvm_mod_fname = argv[optind];
@@ -1073,7 +1088,7 @@ int main(int argc, char **argv) {
         if (print_work) print_set(work);
 
         rows_processed = cursor - rows;
-        //update_progress(rows_processed, num_rows);
+        if (show_progress) update_progress(rows_processed, num_rows);
 
         if (work.empty() && !align_only) {
             printf("\n");
@@ -1089,7 +1104,7 @@ int main(int argc, char **argv) {
     printf("Done slicing. Marked %lu blocks, %llu instructions.\n", marked.size(), insns_marked);
 
     // Write slice report
-    FILE *outf = fopen("slice_report.bin", "w");
+    FILE *outf = fopen(output, "wb");
     for (auto &kvp : marked) {
         uint32_t name_size = 0;
         uint32_t index = kvp.first.second;
@@ -1105,7 +1120,7 @@ int main(int argc, char **argv) {
         fwrite(bytes, MAX_BITSET / 8, 1, outf);
     }
     fclose(outf);
-    printf("Wrote slicing results to slice_report.bin\n");
+    printf("Wrote slicing results to %s\n", output);
 
     return 0;
 }
