@@ -128,7 +128,7 @@ RR_log_entry *rr_get_queue_head(void) {
 // 1) The log is empty
 // 2) The only thing in the queue is RR_LAST
 uint8_t rr_replay_finished(void) {
-    return rr_log_is_empty() && queue_head->header.kind == RR_LAST;
+    return rr_log_is_empty() && queue_head->header.kind == RR_LAST && rr_prog_point.guest_instr_count >= queue_head->header.prog_point.guest_instr_count;
 }
 
 //mz "performance" counters - basically, how much of the log is taken up by
