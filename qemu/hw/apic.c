@@ -199,7 +199,7 @@ void apic_deliver_pic_intr(DeviceState *d, int level)
             reset_bit(s->irr, lvt & 0xff);
             /* fall through */
         case APIC_DM_EXTINT:
-            cpu_reset_interrupt(s->cpu_env, CPU_INTERRUPT_HARD);
+            apic_update_irq(s);
             break;
         }
     }
@@ -402,6 +402,8 @@ static void apic_update_irq(APICState *s)
 {
     if (apic_irq_pending(s) > 0) {
         cpu_interrupt(s->cpu_env, CPU_INTERRUPT_HARD);
+    } else if (!apic_accept_pic_intr(&s->busdev.qdev) || !pic_get_output(isa_pic)) {
+        cpu_reset_interrupt(s->cpu_env, CPU_INTERRUPT_HARD);
     }
 }
 
