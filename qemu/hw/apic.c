@@ -380,6 +380,11 @@ static int apic_get_arb_pri(APICState *s)
 static int apic_irq_pending(APICState *s)
 {
     int irrv, ppr;
+
+    if (!(s->spurious_vec & APIC_SV_ENABLE)) {
+        return 0;
+    }
+
     irrv = get_highest_priority_int(s->irr);
     if (irrv < 0) {
         return 0;
@@ -395,14 +400,8 @@ static int apic_irq_pending(APICState *s)
 /* signal the CPU if an irq is pending */
 static void apic_update_irq(APICState *s)
 {
-    if (!(s->spurious_vec & APIC_SV_ENABLE)) {
-        return;
-    }
     if (apic_irq_pending(s) > 0) {
         cpu_interrupt(s->cpu_env, CPU_INTERRUPT_HARD);
-    } else if (apic_accept_pic_intr(&s->busdev.qdev) &&
-               pic_get_output(isa_pic)) {
-        apic_deliver_pic_intr(&s->busdev.qdev, 1);
     }
 }
 
