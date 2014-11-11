@@ -272,7 +272,7 @@ void write_dynval_buffer(DynValBuffer *dynval_buf, DynValEntry *entry){
                     assert (op == PLOAD ||op == PSTORE);
                     Addr *a = &(entry->entry.portaccess.addr);
                     typ = TUBTFE_LLVM_DV_LOAD;
-                    if (op == STORE) {
+                    if (op == PSTORE) {
                         typ = TUBTFE_LLVM_DV_STORE;
                     }
                     // a->type fits easily in a byte -- 1 .. 5

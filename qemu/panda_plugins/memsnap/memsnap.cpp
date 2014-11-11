@@ -44,7 +44,6 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
 }
 
@@ -52,7 +51,7 @@ std::set<prog_point> tap_points;
 
 bool done = false;
 
-int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
+int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
     if(done) return 1;
 
@@ -101,8 +100,10 @@ bool init_plugin(void *self) {
 
     panda_enable_precise_pc();
     panda_enable_memcb();    
-    pcb.virt_mem_write = mem_write_callback;
+    pcb.virt_mem_write = mem_callback;
     panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
+    pcb.virt_mem_read = mem_callback;
+    panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
 
     return true;
 }

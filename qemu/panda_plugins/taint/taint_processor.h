@@ -184,15 +184,24 @@ uint32_t tp_query_ram(Shad *shad, uint64_t pa) ;
 
 uint32_t tp_query_reg(Shad *shad, int reg_num, int offset);
 
+uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset);
+
+void tp_spit_reg(Shad *shad, int reg_num, int offset);
+
+void tp_spit_llvm(Shad *shad, int reg_num, int offset);
+
 void tp_delete_ram(Shad *shad, uint64_t pa) ;
 
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
+void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad);
 
+uint32_t tp_get_ls_type_llvm(Shad *shad, int reg_num, int offset);
 
 typedef struct taint_op_buffer_struct {
     char *start;        // beginning of ops
@@ -338,6 +347,7 @@ typedef void (*tp_callback_t) (uint64_t tp_pc, uint64_t addr);
 
 typedef void (*on_load_t) (uint64_t tp_pc, uint64_t addr);
 typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
+typedef void (*on_branch_t) (int reg_num);
 typedef void (*before_execute_taint_ops_t) (void);
 typedef void (*after_execute_taint_ops_t) (void);
 
