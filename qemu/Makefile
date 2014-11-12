@@ -30,6 +30,7 @@ Makefile: ;
 configure: ;
 
 .PHONY: all clean cscope distclean dvi html info install install-doc \
+	panda-clean \
 	pdf recurse-all speed tar tarbin test build-all
 
 $(call set-vpath, $(SRC_PATH):$(SRC_PATH)/hw)
@@ -219,7 +220,11 @@ qemu-ga$(EXESUF): qemu-ga.o $(qga-obj-y) $(qapi-obj-y) $(tools-obj-y) $(qobject-
 
 QEMULIBS=libhw32 libhw64 libuser libdis libdis-user
 
-clean:
+panda-clean:
+	find */panda_plugins -type f -delete
+	find */panda_plugins -depth -mindepth 1 -type d -delete
+
+clean: panda-clean
 # avoid old build problems by removing potentially incorrect old files
 	rm -f config.mak op-i386.h opc-i386.h gen-op-i386.h op-arm.h opc-arm.h gen-op-arm.h
 	rm -f qemu-options.def
