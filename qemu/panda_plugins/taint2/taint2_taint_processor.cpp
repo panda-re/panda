@@ -272,7 +272,8 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_64(shad->hd, a->val.ha+a->off);
             break;
         case MADDR:
-            fast_shad_remove(shad->ram, a->val.ma+a->off);
+            fast_shad_remove(shad->ram, a->val.ma+a->off,
+                    WORDSIZE - a->off);
             break;
         case IADDR:
             shad_dir_remove_64(shad->io, a->val.ia+a->off);
@@ -281,16 +282,19 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_32(shad->ports, a->val.pa+a->off);
             break;
         case LADDR:
-            fast_shad_remove(shad->llv, a->val.la*MAXREGSIZE + a->off);
+            fast_shad_remove(shad->llv, a->val.la*MAXREGSIZE + a->off,
+                    MAXREGSIZE - a->off);
             break;
         case GREG:
-            fast_shad_remove(shad->grv, a->val.gr * WORDSIZE + a->off);
+            fast_shad_remove(shad->grv, a->val.gr * WORDSIZE + a->off,
+                    WORDSIZE - a->off);
             break;
         case GSPEC:
-            fast_shad_remove(shad->gsv, a->val.gs - NUMREGS + a->off);
+            fast_shad_remove(shad->gsv, a->val.gs - NUMREGS + a->off,
+                    WORDSIZE - a->off);
             break;
         case RET:
-            fast_shad_remove(shad->ret, a->off);
+            fast_shad_remove(shad->ret, a->off, MAXREGSIZE);
             break;
         default:
             assert (1==0);
@@ -306,7 +310,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
             shad_dir_add_64(shad->hd, a->val.ha + a->off, ls);
 #ifdef TAINTDEBUG
             printf("Labelset put on HD: 0x%lx\n", (uint64_t)(a->val.ha + a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             break;
@@ -314,14 +318,14 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
             fast_shad_set(shad->ram, a->val.ma + a->off, ls);
 #ifdef TAINTDEBUG
             printf("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             break;
         case IADDR:
 #ifdef TAINTDEBUG
             printf("Labelset put in IO: 0x%lx\n", (uint64_t)(a->val.ia + a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             shad_dir_add_64(shad->io, a->val.ia + a->off, ls);
@@ -329,7 +333,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case PADDR:
 #ifdef TAINTDEBUG
             printf("Labelset put in port: 0x%lx\n", (uint64_t)(a->val.pa + a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             shad_dir_add_32(shad->ports, a->val.pa + a->off, ls);
@@ -337,7 +341,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case LADDR:
 #ifdef TAINTDEBUG
             printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             fast_shad_set(shad->llv, a->val.la*MAXREGSIZE + a->off, ls);
@@ -345,7 +349,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case GREG:
 #ifdef TAINTDEBUG
             printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a->val.gr+a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             // need to call labelset_copy to increment ref count
@@ -354,7 +358,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case GSPEC:
 #ifdef TAINTDEBUG
             printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a->val.gs+a->off));
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             // SpecAddr enum is offset by the number of guest registers
@@ -363,7 +367,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
         case RET:
 #ifdef TAINTDEBUG
             printf("Labelset put in ret\n");
-            labelset_spit(ls);
+            //labelset_spit(ls);
             printf("\n");
 #endif
             fast_shad_set(shad->ret, a->off, ls);

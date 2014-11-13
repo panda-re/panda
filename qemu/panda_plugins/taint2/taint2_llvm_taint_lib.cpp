@@ -51,11 +51,16 @@ char PandaTaintFunctionPass::ID = 0;
 //X("PandaTaint", "Analyze each instruction in a function for taint operations");
 
 static inline ConstantInt *const_uint64(LLVMContext &C, uint64_t val) {
-    return ConstantInt::get(IntegerType::get(C, 64), val);
+    return ConstantInt::get(Type::getInt64Ty(C), val);
 }
 
 static inline ConstantInt *const_uint64_ptr(LLVMContext &C, void *ptr) {
-    return ConstantInt::get(IntegerType::get(C, 64), (uint64_t)ptr);
+    return ConstantInt::get(Type::getInt64Ty(C), (uint64_t)ptr);
+}
+
+static inline Constant *const_i64p(LLVMContext &C, void *ptr) {
+    return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr),
+            Type::getInt64PtrTy(C));
 }
 
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
@@ -73,6 +78,14 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
         Err.print("qemu", llvm::errs());
         return false;
     }
+
+    MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
+    for (auto it = taintopmod->begin(); it != taintopmod->end(); it++) {
+        if (it->size() == 0) continue;
+        if (it->front().size() == 0) continue;
+        it->front().front().setMetadata("tainted", md);
+    }
+
     std::string err;
     Linker::LinkModules(&M, taintopmod, Linker::DestroySource, &err);
     if (!err.empty()) {
@@ -90,8 +103,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
-    PTV.copyF = M.getFunction("taint_move");
+    PTV.moveF = M.getFunction("taint_move");
     PTV.sextF = M.getFunction("taint_sext");
+    PTV.selectF = M.getFunction("taint_select");
     PTV.pushFrameF = M.getFunction("taint_push_frame");
     PTV.popFrameF = M.getFunction("taint_pop_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
@@ -104,10 +118,10 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.dataLayout = new DataLayout(&M);
 
-    PTV.memlogPopF = M.getFunction("memlog_pop");
+    PTV.memlogPopF = M.getFunction("taint2_memlog_pop");
     PTV.memlogConst = const_uint64_ptr(ctx, memlog);
 
-    PTV.prevBbConst = const_uint64_ptr(ctx, &shad->prev_bb);
+    PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
     return true;
 }
@@ -116,8 +130,13 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
 #ifdef TAINTDEBUG
     printf("\n\n%s\n", F.getName().str().c_str());
 #endif
+    if (F.front().front().getMetadata("tainted") ||
+            F.getName().startswith("taint")) { // already processed!!
+        return false;
+    }
     //printf("Processing entry BB...\n");
     PTV.visit(F);
+    F.dump();
 
     return true;
 }
@@ -211,36 +230,55 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
 }
 
 void PandaTaintVisitor::inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args) {
-    CallInst *CI = CallInst::Create(copyF, args);
+    assert(F);
+    CallInst *CI = CallInst::Create(F, args);
     if (!CI) {
         printf("Couldn't create call inst!!\n");
     }
     CI->insertAfter(&I);
 
-    // Inline.
-    InlineFunctionInfo IFI;
-    if (!InlineFunction(CI, IFI)) {
-        printf("Inlining failed!\n");
+    if (F->size() == 1) { // no control flow
+        // Inline.
+#ifndef TAINT2_NOINLINE
+        InlineFunctionInfo IFI;
+        if (!InlineFunction(CI, IFI)) {
+            printf("Inlining failed!\n");
+        }
+#endif
     }
 }
 
 void PandaTaintVisitor::inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args) {
-    CallInst *CI = CallInst::Create(copyF, args);
+    assert(F);
+    CallInst *CI = CallInst::Create(F, args);
     if (!CI) {
         printf("Couldn't create call inst!!\n");
     }
     CI->insertBefore(&I);
 
-    // Inline.
-    InlineFunctionInfo IFI;
-    if (!InlineFunction(CI, IFI)) {
-        printf("Inlining failed!\n");
+    if (F->size() == 1) { // no control flow
+        // Inline.
+#ifndef TAINT2_NOINLINE
+        InlineFunctionInfo IFI;
+        if (!InlineFunction(CI, IFI)) {
+            printf("Inlining failed!\n");
+        }
+#endif
     }
 }
 
 Constant *PandaTaintVisitor::constSlot(LLVMContext &ctx, Value *value) {
     assert(value && !isa<Constant>(value));
     return const_uint64(ctx, MAXREGSIZE * PST->getLocalSlot(value));
+}
+
+Constant *PandaTaintVisitor::constWeakSlot(LLVMContext &ctx, Value *value) {
+    int slot = PST->getLocalSlot(value);
+    uint64_t result = MAXREGSIZE * slot;
+    if (slot < 0) {
+        result = ~0UL;
+    }
+    return const_uint64(ctx, MAXREGSIZE * result);
 }
 
 int PandaTaintVisitor::intValue(Value *value) {
@@ -253,12 +291,7 @@ int PandaTaintVisitor::intValue(Value *value) {
 void PandaTaintVisitor::visitFunction(Function& F) {
     LLVMContext &ctx = F.getContext();
     // Two things: Insert "tainted" metadata.
-    Instruction &first = F.front().front();
-    if (first.getMetadata("tainted")) { // already processed!!
-        return;
-    }
     MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
-    first.setMetadata("tainted", md);
 
     // create slot tracker to keep track of LLVM values
     PST.reset(new PandaSlotTracker(&F));
@@ -270,7 +303,8 @@ void PandaTaintVisitor::visitFunction(Function& F) {
         const_uint64(ctx, MAXREGSIZE * shad->num_vals)
     };
     assert(F.front().getFirstNonPHI() != NULL);
-    inlineCallAfter(*F.front().getFirstNonPHI(), deleteF, args);
+    inlineCallBefore(*F.front().getFirstNonPHI(), deleteF, args);
+    F.front().front().setMetadata("tainted", md);
 }
 
 void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
@@ -327,6 +361,7 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
     Instruction *after = srcCI ? srcCI : (destCI ? destCI : &I);
     inlineCallAfter(*after, func, args);
 
+#ifndef TAINT2_NOINLINE
     InlineFunctionInfo IFI;
     if (destCI && !InlineFunction(destCI, IFI)) {
         printf("Inlining failed!\n");
@@ -334,6 +369,7 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
     if (srcCI && !InlineFunction(srcCI, IFI)) {
         printf("Inlining failed!\n");
     }
+#endif
 }
 
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
@@ -341,6 +377,8 @@ void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
 }
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *dest, Value *src) {
     LLVMContext &ctx = I.getContext();
+    if (isa<Constant>(src)) return;
+
     if (!dest) dest = &I;
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src));
@@ -359,6 +397,19 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *src1, Value *s
 void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *src1, Value *src2, bool is_mixed) {
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
+
+    if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        return; // do nothing.
+    } else if (isa<Constant>(src1) || isa<Constant>(src2)) {
+        Value *tainted = isa<Constant>(src1) ? src2 : src1;
+        if (is_mixed) {
+            insertTaintMix(I, tainted);
+        } else {
+            insertTaintCopy(I, llvConst, dest, llvConst, tainted, getValueSize(src2));
+        }
+        return;
+    }
+
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
     }
@@ -404,6 +455,7 @@ void PandaTaintVisitor::insertTaintSelect(Instruction &after, Value *dest,
 
 void PandaTaintVisitor::insertTaintDelete(Instruction &I,
         Constant *shad, Value *dest, Value *size) {
+    if (shad == llvConst) dest = constSlot(I.getContext(), dest);
     vector<Value *> args{ shad, dest, size };
     inlineCallAfter(I, deleteF, args);
 }
@@ -483,6 +535,58 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
 // Do nothing.
 void PandaTaintVisitor::visitAllocaInst(AllocaInst &I) {}
 
+// Find address and constant given a load/store (i.e. host vmem) address.
+// Argument should be an inttoptr instruction.
+bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
+    IntToPtrInst *I2PI;
+    GetElementPtrInst *GEPI;
+    BinaryOperator *AI;
+    int offset = -1;
+    // Structure produced by code gen should always be inttoptr(add(env_v, off)).
+    // Helper functions are GEP's.
+    if ((I2PI = dyn_cast<IntToPtrInst>(addrVal)) != NULL) {
+        assert(I2PI->getOperand(0));
+        if ((AI = dyn_cast<BinaryOperator>(I2PI->getOperand(0))) == NULL) return false;
+
+        assert(AI->getOperand(0) && AI->getOperand(1));
+        // This gets erased by the slot tracker. Never mind.
+        //if (AI->getOperand(0)->getName() != "env_v") return false;
+        if (PST->getLocalSlot(AI->getOperand(0)) != 0) return false;
+
+        offset = intValue(AI->getOperand(1));
+    } else if ((GEPI = dyn_cast<GetElementPtrInst>(addrVal)) != NULL) {
+        // unsupported as of yet.
+        // this happens in helper functions.
+        return false;
+    } else {
+        return false;
+    }
+    if (offset < 0 || (unsigned)offset >= sizeof(CPUState)) return false;
+
+#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
+#define m_size(member) sizeof(((CPUState *)0)->member)
+#define m_endoff(member) (m_off(member) + m_size(member))
+#define contains_offset(member) (m_off(member) <= (unsigned)(offset) && (unsigned)(offset) < m_endoff(member))
+#if defined(TARGET_I386) || defined(TARGET_ARM)
+    if (contains_offset(regs)) {
+        addrOut.typ = GREG;
+        addrOut.val.gs = (offset - m_off(regs)) / m_size(regs[0]);
+        addrOut.off = (offset - m_off(regs)) % m_size(regs[0]);
+        return true;
+    }
+#else
+#error "Platform not supported by taint!"
+#endif
+    addrOut.typ = GSPEC;
+    addrOut.val.gs = offset;
+    addrOut.off = 0;
+    return true;
+#undef contains_offset
+#undef m_endoff
+#undef m_size
+#undef m_off
+}
+
 void PandaTaintVisitor::visitLoadInst(LoadInst &I) {
     // These are loads from CPUState etc.
 }
@@ -521,7 +625,6 @@ void PandaTaintVisitor::visitGetElementPtrInst(GetElementPtrInst &I) {
 
 // Cast operators
 void PandaTaintVisitor::visitCastInst(CastInst &I) {
-    LLVMContext &ctx = I.getContext();
     Value *src = I.getOperand(0);
 
     unsigned srcSize = getValueSize(src), destSize = getValueSize(&I);
@@ -549,8 +652,8 @@ void PandaTaintVisitor::visitCastInst(CastInst &I) {
         case Instruction::PtrToInt:
         case Instruction::Trunc:
         case Instruction::ZExt:
-           insertTaintCopy(I, llvConst, constSlot(ctx, &I),
-                   llvConst, constSlot(ctx, src),
+           insertTaintCopy(I, llvConst, &I,
+                   llvConst, src,
                    std::min(srcSize, destSize));
            break;
         default:
@@ -582,8 +685,8 @@ void PandaTaintVisitor::visitPHINode(PHINode &I) {
     LI->insertBefore(I.getParent()->getFirstNonPHI());
     vector<pair<Value *,Value *>> selections;
     for (unsigned i = 0; i < I.getNumIncomingValues(); ++i) {
-        Constant *select = const_uint64_ptr(ctx, I.getIncomingBlock(i));
-        Constant *value = constSlot(ctx, I.getIncomingValue(i));
+        Constant *select = constSlot(ctx, I.getIncomingBlock(i));
+        Constant *value = constWeakSlot(ctx, I.getIncomingValue(i));
         selections.push_back(std::make_pair(select, value));
     }
     insertTaintSelect(*LI, &I, LI, selections);
@@ -612,7 +715,7 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     Value *size = I.getLength();
     Value *writeval = I.getValue();
     if (isa<Constant>(writeval)) {
-        insertTaintDelete(I, memConst, destCI, size);
+        insertTaintDelete(*destCI, memConst, destCI, size);
     } else {
         assert(size->getType()->isIntegerTy());
         assert(getValueSize(size) <= 8);
@@ -625,10 +728,12 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
         };
         inlineCallAfter(*destCI, setF, args);
     }
+#ifndef TAINT2_NOINLINE
     InlineFunctionInfo IFI;
     if (!InlineFunction(destCI, IFI)) {
         printf("Couldn't inline!!\n");
     }
+#endif
 }
 
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
@@ -674,7 +779,14 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             || !calledName.compare("__stl_mmu_panda")
             || !calledName.compare("__stq_mmu_panda")) {
         Value *src = I.getArgOperand(1);
-        insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
+        if (isa<Constant>(src)) {
+            insertTaintDelete(I, llvConst, &I, const_uint64(ctx, getValueSize(src)));
+        } else {
+            insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
+        }
+        return;
+    }
+    else if (called->getName().startswith("taint")) {
         return;
     }
     else if (!calledName.compare("sin")
@@ -758,9 +870,9 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 inlineCallBefore(I, copyF, copyargs);
             }
         }
-        if (!called->getType()->isVoidTy()) { // Copy from return slot.
+        if (!called->getReturnType()->isVoidTy()) { // Copy from return slot.
             vector<Value *> retargs{
-                llvConst, &I, retConst,
+                llvConst, constSlot(ctx, &I), retConst,
                 const_uint64(ctx, 0), const_uint64(ctx, MAXREGSIZE)
             };
             inlineCallAfter(I, copyF, retargs);
@@ -821,11 +933,6 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len) {
 }
 */
 
-/*
- * This may need to become more complex for more complex cases of this
- * instruction. Currently we are just treating it like a branch, but with values
- * filled in instead of branch targets.
- */
 void PandaTaintVisitor::visitSelectInst(SelectInst &I) {}
 
 void PandaTaintVisitor::visitVAArgInst(VAArgInst &I) {}
@@ -833,15 +940,9 @@ void PandaTaintVisitor::visitExtractElementInst(ExtractElementInst &I) {}
 void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {}
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {}
 
-/*
- * This may need to become more complex for more complex cases of this
- * instruction.
- */
-void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
-}
+void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {}
 
-void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
-}
+void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {}
 
 void PandaTaintVisitor::visitLandingPadInst(LandingPadInst &I) {}
 

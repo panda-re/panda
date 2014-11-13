@@ -115,7 +115,7 @@ void taint_mix_compute(
 
 void taint_delete(uint64_t shad_ptr, uint64_t dest, uint64_t size) {
     FastShad *shad = (FastShad *)shad_ptr;
-    bulk_set(shad, dest, size, NULL);
+    fast_shad_remove(shad, dest, size);
 }
 
 void taint_set(
@@ -141,6 +141,8 @@ void taint_sext(uint64_t shad_ptr, uint64_t dest, uint64_t dest_size, uint64_t s
             fast_shad_query(shad, dest + src_size - 1));
 }
 
+const uint64_t ones = ~0UL;
+
 // Takes a NULL-terminated list of (shad_src, value, select) triples.
 void taint_select(
         uint64_t shad_ptr,
@@ -158,7 +160,9 @@ void taint_select(
         srcsel = va_arg(argp, uint64_t);
 
         if (srcsel == selector) { // bingo!
-            fast_shad_copy(shad_dest, dest, shad_src, src, size);
+            if (src != ones) { // otherwise it's a constant.
+                fast_shad_copy(shad_dest, dest, shad_src, src, size);
+            }
             return;
         }
 

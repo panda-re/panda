@@ -18,12 +18,14 @@ PANDAENDCOMMENT */
 #include <map>
 #include <cstdio>
 #include <vector>
+#include <set>
 
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/InstVisitor.h>
 
 typedef struct taint2_memlog taint2_memlog;
 typedef struct shad_struct Shad;
+typedef struct addr_struct Addr;
 
 using std::vector;
 using std::pair;
@@ -80,8 +82,10 @@ private:
     taint2_memlog *memlog; // same.
 
     Constant *constSlot(LLVMContext &ctx, Value *value);
+    Constant *constWeakSlot(LLVMContext &ctx, Value *value);
     int intValue(Value *value);
     unsigned getValueSize(Value *V);
+    bool getAddr(Value *addrVal, Addr& addrOut);
     void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
     void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
     CallInst *insertLogPop(Instruction &after);
@@ -161,7 +165,6 @@ public:
     void visitExtractValueInst(ExtractValueInst &I);
     void visitInsertValueInst(InsertValueInst &I);
     void visitLandingPadInst(LandingPadInst &I);
-
 
     // We missed some...
     void visitReturnInst(ReturnInst &I);

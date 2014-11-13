@@ -6,10 +6,17 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+= $(LLVM_CXXFLAGS)
 
+QEMU_CFLAGS+= -DTAINTDEBUG
+QEMU_CXXFLAGS+= -DTAINTDEBUG
+
+QEMU_CFLAGS+= -DTAINT2_NOINLINE
+QEMU_CXXFLAGS+= -DTAINT2_NOINLINE
+
 QEMU_CXXFLAGS+= -std=c++11
 
 TAINT_OP_CFLAGS= -O3 -std=c11
 LLVM_OPS=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_taint_ops.c
+MY_MEM=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_my_mem.cpp
 
 # This will make things easier.
 $(wildcard $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_*.o): \
@@ -42,11 +49,25 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(call quiet-command,$(CXX) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: $(LLVM_OPS)
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.c
 	$(call quiet-command,\
 		$(filter-out -g -Wold-style-declaration,\
 			$(LLVMCC) $(CFLAGS) $(QEMU_CFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $^),"  LLVM    $@")
+
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.cpp
+	$(call quiet-command,\
+		$(filter-out -g -Wold-style-declaration,\
+			$(LLVMCC) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
+			-emit-llvm -c -o $@ $^),"  LLVM    $@")
+
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.bc \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_ops.bc
+
+	$(call quiet-command,\
+		$(filter-out -g -Wold-style-declaration,\
+			$(LLVM_LINK) -o $@ $^),"  LLVM_LINK $@")
 
 ifdef CONFIG_LLVM
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so \

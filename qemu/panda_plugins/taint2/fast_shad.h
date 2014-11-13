@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
 
 #include "defines.h"
 
+void *memset(void *dest, int val, size_t n);
 void *memcpy(void *dest, const void *src, size_t n);
 void *memmove(void *dest, const void *src, size_t n);
 
@@ -35,7 +36,7 @@ void fast_shad_free(FastShad *fast_shad);
 static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSet *ls);
 static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size);
 static inline void fast_shad_copy(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size);
-static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr);
+static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t size);
 static inline LabelSet *fast_shad_query(FastShad *fast_shad, uint64_t addr);
 static inline void fast_shad_push_frame(FastShad *fast_shad);
 static inline void fast_shad_pop_frame(FastShad *fast_shad);
@@ -66,8 +67,8 @@ static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastS
 }
 
 // Remove taint.
-static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr) {
-    *get_ls_p(fast_shad, addr) = NULL;
+static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t size) {
+    memset(get_ls_p(fast_shad, addr), 0, size);
 }
 
 // Query. NULL if untainted.
