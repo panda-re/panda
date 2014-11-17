@@ -1,11 +1,10 @@
-
-
+#ifndef OSI_TYPES_H
+#define OSI_TYPES_H
 
 typedef struct osi_page_struct {
     target_ulong start;
     target_ulong len;
-}
-
+} OsiPage;
 
 typedef struct osi_proc_struct {
     char *name;
@@ -15,14 +14,10 @@ typedef struct osi_proc_struct {
     target_ulong ppid;
 } OsiProc;
 
-
-
 typedef struct osi_procs_struct {
     uint32_t num;
     OsiProc *proc;
 } OsiProcs;
-
-
 
 typedef struct osi_module_struct {
     target_ulong offset;
@@ -32,18 +27,9 @@ typedef struct osi_module_struct {
     char *name;
 } OsiModule;
 
-
-void struct osi_modules_struct {
+typedef struct osi_modules_struct {
     uint32_t num;
     OsiModule *module;
 } OsiModules;
 
-
-
-// returns operating system introspection info for each process in an array
-OsiProcs *get_processes(typedef);
-
-
-
-// returns operating system introspection info for each kernel module currently loaded
-OsiModules *get_modules(void);
+#endif
