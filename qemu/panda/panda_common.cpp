@@ -41,3 +41,17 @@ target_ulong panda_current_asid(CPUState *env) {
   return 0;
 #endif
 }
+
+/*
+  returns true if we are currently executing in kernel-mode
+*/
+
+bool panda_in_kernel(CPUState *env) {
+#if defined(TARGET_I386)
+    return ((env->hflags & HF_CPL_MASK) == 0);
+#elif defined(TARGET_ARM)
+    return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
+#else
+    return false;
+#endif
+}
