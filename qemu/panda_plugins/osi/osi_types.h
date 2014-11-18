@@ -7,6 +7,7 @@ typedef struct osi_page_struct {
 } OsiPage;
 
 typedef struct osi_proc_struct {
+    target_ulong offset;
     char *name;
     target_ulong asid;
     OsiPage *pages;
