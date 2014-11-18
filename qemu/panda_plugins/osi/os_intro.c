@@ -32,11 +32,17 @@ PPP_PROT_REG_CB(on_get_processes)
 PPP_PROT_REG_CB(on_get_current_process)
 PPP_PROT_REG_CB(on_get_modules)
 PPP_PROT_REG_CB(on_get_libraries)
+PPP_PROT_REG_CB(on_free_osiproc)
+PPP_PROT_REG_CB(on_free_osiprocs)
+PPP_PROT_REG_CB(on_free_osimodules)
 
 PPP_CB_BOILERPLATE(on_get_processes)
 PPP_CB_BOILERPLATE(on_get_current_process)
 PPP_CB_BOILERPLATE(on_get_modules)
 PPP_CB_BOILERPLATE(on_get_libraries)
+PPP_CB_BOILERPLATE(on_free_osiproc)
+PPP_CB_BOILERPLATE(on_free_osiprocs)
+PPP_CB_BOILERPLATE(on_free_osimodules)
 
 // The copious use of pointers to pointers in this file is due to
 // the fact that PPP doesn't support return values (since it assumes
@@ -64,6 +70,18 @@ OsiModules *get_libraries(CPUState *env, OsiProc *p) {
     OsiModules *m = NULL;
     PPP_RUN_CB(on_get_libraries, env, p, &m);
     return m;
+}
+
+void free_osiproc(OsiProc *p) {
+    PPP_RUN_CB(on_free_osiproc, p);
+}
+
+void free_osiprocs(OsiProcs *ps) {
+    PPP_RUN_CB(on_free_osiprocs, ps);
+}
+
+void free_osimodules(OsiModules *ms) {
+    PPP_RUN_CB(on_free_osimodules, ms);
 }
 
 bool init_plugin(void *self) {

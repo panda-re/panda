@@ -34,6 +34,9 @@ void uninit_plugin(void *);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_processes(CPUState *env, OsiProcs **out_ps);
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
+void on_free_osiproc(OsiProc *p);
+void on_free_osiprocs(OsiProcs *ps);
+void on_free_osimodules(OsiModules *ms);
 
 }
 
@@ -69,23 +72,29 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 // a 32-bit OS will run on x86_64-softmmu
 #define PTR uint32_t
 
+static inline char * make_pagedstr() {
+    char *m = (char *)malloc(8);
+    strcpy(m, "(paged)");
+    return m;
+}
+
 // Gets a unicode string. Does its own mem allocation.
 // Output is a null-terminated UTF8 string
 char * get_unicode_str(CPUState *env, PTR ustr) {
     uint16_t size = 0;
     PTR str_ptr = 0;
     if (-1 == panda_virtual_memory_rw(env, ustr, (uint8_t *)&size, 2, false)) {
-        return "(paged)";
+        return make_pagedstr();
     }
     // Clamp size
     if (size > 1024) size = 1024;
     if (-1 == panda_virtual_memory_rw(env, ustr+4, (uint8_t *)&str_ptr, 4, false)) {
-        return "(paged)";
+        return make_pagedstr();
     }
     gchar *in_str = (gchar *)g_malloc0(size);
     if (-1 == panda_virtual_memory_rw(env, str_ptr, (uint8_t *)in_str, size, false)) {
         g_free(in_str);
-        return "(paged)";
+        return make_pagedstr();
     }
 
     gsize bytes_written = 0;
@@ -166,11 +175,11 @@ static bool is_valid_process(CPUState *env, PTR eproc) {
 }
 
 // Module stuff
-static char *get_mod_basename(CPUState *env, PTR mod) {
+static const char *get_mod_basename(CPUState *env, PTR mod) {
     return get_unicode_str(env, mod+LDR_BASENAME_OFF);
 }
 
-static char *get_mod_filename(CPUState *env, PTR mod) {
+static const char *get_mod_filename(CPUState *env, PTR mod) {
     return get_unicode_str(env, mod+LDR_FILENAME_OFF);
 }
 
@@ -207,10 +216,10 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR eproc) {
 
 static void fill_osimod(CPUState *env, OsiModule *m, PTR mod) {
     m->offset = mod;
-    m->file = get_mod_filename(env, mod);
+    m->file = (char *)get_mod_filename(env, mod);
     m->base = get_mod_base(env, mod);
     m->size = get_mod_size(env, mod);
-    m->name = get_mod_basename(env, mod);
+    m->name = (char *)get_mod_basename(env, mod);
 }
 
 static void add_proc(CPUState *env, OsiProcs *ps, PTR eproc) {
@@ -320,6 +329,31 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
     return;
 }
 
+void on_free_osiproc(OsiProc *p) {
+    if (!p) return;
+    free(p->name);
+    free(p);
+}
+
+void on_free_osiprocs(OsiProcs *ps) {
+    if (!ps) return;
+    for(uint32_t i = 0; i < ps->num; i++) {
+        free(ps->proc[i].name);
+    }
+    if(ps->proc) free(ps->proc);
+    free(ps);
+}
+
+void on_free_osimodules(OsiModules *ms) {
+    if (!ms) return;
+    for(uint32_t i = 0; i < ms->num; i++) {
+        free(ms->module[i].file);
+        free(ms->module[i].name);
+    }
+    if (ms->module) free(ms->module);
+    free(ms);
+}
+
 #endif
 
 bool init_plugin(void *self) {
@@ -327,6 +361,9 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
+    PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
+    PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
 #endif
     return true;
 }

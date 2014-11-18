@@ -52,6 +52,12 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         for (i = 0; i < ms->num; i++)
             printf("  %08x %08x %s %s\n", ms->module[i].base, ms->module[i].size, ms->module[i].name, ms->module[i].file);
     }
+    
+    // Cleanup
+    free_osiproc(current);
+    free_osiprocs(ps);
+    free_osimodules(ms);
+
     return 0;
 }
 
