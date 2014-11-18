@@ -32,6 +32,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 void on_get_current_process(CPUState *env, OsiProc **out_p);
+void on_get_processes(CPUState *env, OsiProcs **out_ps);
+void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 
 }
 
