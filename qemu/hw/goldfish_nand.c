@@ -923,7 +923,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
         uint64_t    sysBytes = s->system_size;
 
         if (sysBytes == 0) {
-            PANIC("Invalid system partition size: %jd", sysBytes);
+            printf("Invalid system partition size for non-QCOW image: %jd", sysBytes);
         }
 
         snprintf(tmp,sizeof(tmp),"system");
@@ -963,7 +963,7 @@ static int goldfish_nand_init(GoldfishDevice *dev)
         uint64_t    dataBytes = s->user_data_size;
 
         if (dataBytes == 0) {
-            PANIC("Invalid data partition size: %jd", dataBytes);
+            printf("Invalid data partition size for non-QCOW image: %jd", dataBytes);
         }
 
         snprintf(tmp,sizeof(tmp),"userdata,size=0x%jx", dataBytes);
@@ -1108,12 +1108,12 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_STRING("name", GoldfishDevice, name),
         DEFINE_PROP_STRING("system_path", GoldfishNandDevice, system_path),
         DEFINE_PROP_STRING("system_init_path", GoldfishNandDevice, system_init_path),
-        DEFINE_PROP_UINT64("system_size", GoldfishNandDevice, system_size, 0x7100000),
+        DEFINE_PROP_UINT64("system_size", GoldfishNandDevice, system_size, 0),
         DEFINE_PROP_STRING("user_data_path", GoldfishNandDevice, user_data_path),
         DEFINE_PROP_STRING("user_data_init_path", GoldfishNandDevice, user_data_init_path),
-        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0x5000000),
+        DEFINE_PROP_UINT64("user_data_size", GoldfishNandDevice, user_data_size, 0),
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
-        DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
+        DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0),
         DEFINE_PROP_UINT32("nand_dev_count", GoldfishNandDevice, nand_dev_count, 0),
         DEFINE_PROP_BIT("ext4", GoldfishNandDevice, device_flags, GOLDFISH_NAND_FLAG_BLOCK, 0),
         DEFINE_PROP_END_OF_LIST(),
