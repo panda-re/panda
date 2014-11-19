@@ -947,6 +947,11 @@ static int goldfish_nand_init(GoldfishDevice *dev)
         } /*else {
             PANIC("Missing initial system image path!");
         }*/
+        if (s->device_flags & (GOLDFISH_NAND_FLAG_BLOCK +1)){
+            pstrcat(tmp, sizeof(tmp), ",pagesize=512");
+            pstrcat(tmp, sizeof(tmp), ",extrasize=0");
+            pstrcat(tmp, sizeof(tmp), ",erasepages=1");
+        }
         nand_add_dev(s, tmp);
     }
 
@@ -983,6 +988,11 @@ static int goldfish_nand_init(GoldfishDevice *dev)
             pstrcat(tmp, sizeof(tmp), ",initfile=");
             pstrcat(tmp, sizeof(tmp), initImage);
         }
+        if (s->device_flags & (GOLDFISH_NAND_FLAG_BLOCK +1)){
+            pstrcat(tmp, sizeof(tmp), ",pagesize=512");
+            pstrcat(tmp, sizeof(tmp), ",extrasize=0");
+            pstrcat(tmp, sizeof(tmp), ",erasepages=1");
+        }
         nand_add_dev(s, tmp);
     }
 
@@ -1009,6 +1019,11 @@ static int goldfish_nand_init(GoldfishDevice *dev)
                 pstrcat(tmp, sizeof(tmp), ",file=");
                 pstrcat(tmp, sizeof(tmp), partPath);
             }
+        }
+        if (s->device_flags & (GOLDFISH_NAND_FLAG_BLOCK +1)){
+            pstrcat(tmp, sizeof(tmp), ",pagesize=512");
+            pstrcat(tmp, sizeof(tmp), ",extrasize=0");
+            pstrcat(tmp, sizeof(tmp), ",erasepages=1");
         }
         nand_add_dev(s, tmp);
     }
@@ -1072,6 +1087,7 @@ static const VMStateDescription vmstate_goldfish_nand = {
         VMSTATE_UINT32(nand_dev_count, GoldfishNandDevice),
         VMSTATE_STRUCT_ARRAY(nand_devs, GoldfishNandDevice, MAX_NAND_DEVS, 2,
                              vmstate_nand_dev, nand_dev),
+        VMSTATE_UINT32(device_flags, GoldfishNandDevice),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -1099,6 +1115,7 @@ static GoldfishDeviceInfo goldfish_nand_info = {
         DEFINE_PROP_STRING("cache_path", GoldfishNandDevice, cache_path),
         DEFINE_PROP_UINT64("cache_size", GoldfishNandDevice, cache_size, 0x4200000),
         DEFINE_PROP_UINT32("nand_dev_count", GoldfishNandDevice, nand_dev_count, 0),
+        DEFINE_PROP_BIT("ext4", GoldfishNandDevice, device_flags, GOLDFISH_NAND_FLAG_BLOCK, 0),
         DEFINE_PROP_END_OF_LIST(),
     },
 };
