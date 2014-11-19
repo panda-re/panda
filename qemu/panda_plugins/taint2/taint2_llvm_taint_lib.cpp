@@ -356,8 +356,10 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
         dest = (destCI = insertLogPop(I));
     }
     // If these are llvm regs we have to interpret them as slots.
-    if (shad_dest == llvConst) dest = constSlot(ctx, dest);
-    if (shad_src == llvConst) src = constSlot(ctx, src);
+    if (shad_dest == llvConst && !isa<Constant>(dest))
+        dest = constSlot(ctx, dest);
+    if (shad_src == llvConst && !isa<Constant>(src))
+        src = constSlot(ctx, src);
 
     vector<Value *> args{ shad_dest, dest, shad_src, src, const_uint64(ctx, size) };
     Instruction *after = srcCI ? srcCI : (destCI ? destCI : &I);
@@ -639,10 +641,6 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
 
     insertStateOp(I);
 }
-
-void PandaTaintVisitor::visitFenceInst(FenceInst &I) {}
-void PandaTaintVisitor::visitAtomicCmpXchgInst(AtomicCmpXchgInst &I) {}
-void PandaTaintVisitor::visitAtomicRMWInst(AtomicRMWInst &I) {}
 
 /*
  * In TCG->LLVM translation, it seems like this instruction is only used to get
@@ -974,8 +972,24 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
     insertTaintSelect(I, &I, ZEI, selections);
 }
 
-void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {}
-void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {}
+void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
+    LLVMContext &ctx = I.getContext();
+    assert(I.getNumIndices() == 1);
+
+    Value *aggregate = I.getAggregateOperand();
+    assert(aggregate && aggregate->getType()->isStructTy());
+    StructType *typ = dyn_cast<StructType>(aggregate->getType());
+    const StructLayout *structLayout = dataLayout->getStructLayout(typ);
+    
+    assert(I.idx_begin() != I.idx_end());
+    unsigned offset = structLayout->getElementOffset(*I.idx_begin());
+    uint64_t src = MAXREGSIZE * PST->getLocalSlot(aggregate) + offset;
+
+    insertTaintCopy(I,
+            llvConst, &I,
+            llvConst, const_uint64(ctx, src),
+            getValueSize(&I));
+}
 
 // Unhandled
 void PandaTaintVisitor::visitInstruction(Instruction &I) {

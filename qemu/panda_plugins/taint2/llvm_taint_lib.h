@@ -154,16 +154,11 @@ public:
     void visitAllocaInst(AllocaInst &I);
     void visitLoadInst(LoadInst &I);
     void visitStoreInst(StoreInst &I);
-    void visitFenceInst(FenceInst &I);
-    void visitAtomicCmpXchgInst(AtomicCmpXchgInst &I);
-    void visitAtomicRMWInst(AtomicRMWInst &I);
     void visitGetElementPtrInst(GetElementPtrInst &I);
     void visitCallInst(CallInst &I);
     void visitSelectInst(SelectInst &I);
     void visitExtractValueInst(ExtractValueInst &I);
-    void visitInsertValueInst(InsertValueInst &I);
 
-    // We missed some...
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);
     void visitPHINode(PHINode &I);
