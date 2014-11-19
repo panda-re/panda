@@ -137,7 +137,9 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
     }
     //printf("Processing entry BB...\n");
     PTV.visit(F);
+#ifdef TAINTDEBUG
     F.dump();
+#endif
 
     return true;
 }
