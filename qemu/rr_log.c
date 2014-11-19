@@ -1532,11 +1532,12 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
         plist->entry.before_loadvm();
     }
   snapshot_ret = load_vmstate_rr(name_buf);
-  if (0 != snapshot_ret){
+  // If the loadvm failed, fail
+  /*if (0 != snapshot_ret){
       // TODO: free rr_path and rr_name
       printf("Failed to load snapshot for replay: %d\n", snapshot_ret);
       return snapshot_ret;
-  }
+  }*/
   printf ("... done.\n");
   log_all_cpu_states();
 
@@ -1556,7 +1557,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 
   //mz fill the queue!
   rr_fill_queue();
-  return snapshot_ret;
+  return 0; //snapshot_ret;
 #endif
 }
 
