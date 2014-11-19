@@ -94,3 +94,9 @@ void taint_select(
         uint64_t shad_ptr,
         uint64_t dest, uint64_t size, uint64_t selector,
         ...);
+
+void taint_host_copy(
+        uint64_t env_ptr, uint64_t addr,
+        uint64_t llv_ptr, uint64_t llv_offset,
+        uint64_t greg_ptr, uint64_t gspec_ptr,
+        uint64_t size, bool is_store);

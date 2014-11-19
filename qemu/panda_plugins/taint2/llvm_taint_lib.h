@@ -109,6 +109,7 @@ private:
             Value *selector, vector<pair<Value *, Value *>> &selections);
     void insertTaintDelete(Instruction &I,
             Constant *shad, Value *dest, Value *size);
+    void insertStateOp(Instruction &I);
 
 public:
     DataLayout *dataLayout = NULL;
@@ -122,6 +123,7 @@ public:
     Function *setF;
     Function *sextF;
     Function *selectF;
+    Function *hostCopyF;
 
     Function *pushFrameF;
     Function *popFrameF;
@@ -158,13 +160,8 @@ public:
     void visitGetElementPtrInst(GetElementPtrInst &I);
     void visitCallInst(CallInst &I);
     void visitSelectInst(SelectInst &I);
-    void visitVAArgInst(VAArgInst &I);
-    void visitExtractElementInst(ExtractElementInst &I);
-    void visitInsertElementInst(InsertElementInst &I);
-    void visitShuffleVectorInst(ShuffleVectorInst &I);
     void visitExtractValueInst(ExtractValueInst &I);
     void visitInsertValueInst(InsertValueInst &I);
-    void visitLandingPadInst(LandingPadInst &I);
 
     // We missed some...
     void visitReturnInst(ReturnInst &I);

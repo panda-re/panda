@@ -20,6 +20,8 @@ PANDAENDCOMMENT */
 #include <stdarg.h>
 #include <assert.h>
 
+#include "cpu.h"
+
 #include "fast_shad.h"
 #include "label_set.h"
 #include "taint_ops.h"
@@ -170,4 +172,42 @@ void taint_select(
     } 
 
     assert(false && "Couldn't find selected argument!!");
+}
+
+// This should only be called on loads/stores from CPUState.
+void taint_host_copy(
+        uint64_t env_ptr, uint64_t addr,
+        uint64_t llv_ptr, uint64_t llv_offset,
+        uint64_t greg_ptr, uint64_t gspec_ptr,
+        uint64_t size, bool is_store) {
+    FastShad *llv = (FastShad *)llv_ptr;
+    FastShad *greg = (FastShad *)greg_ptr;
+    FastShad *gspec = (FastShad *)gspec_ptr;
+
+    int64_t offset = addr - env_ptr;
+    assert(offset >= 0 && offset < sizeof(CPUState));
+
+    FastShad *state_shad;
+    
+#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
+#define m_size(member) sizeof(((CPUState *)0)->member)
+#define m_endoff(member) (m_off(member) + m_size(member))
+#define contains_offset(member) (m_off(member) <= (unsigned)(offset) && (unsigned)(offset) < m_endoff(member))
+    if (contains_offset(regs)) {
+        state_shad = greg;
+        offset -= m_off(regs);
+    } else {
+        state_shad = gspec;
+    }
+#undef contains_offset
+#undef m_endoff
+#undef m_size
+#undef m_off
+
+    FastShad *shad_src = is_store ? llv : state_shad;
+    uint64_t src = is_store ? llv_offset : offset;
+    FastShad *shad_dest = is_store ? state_shad : llv;
+    uint64_t dest = is_store ? offset : llv_offset;
+
+    fast_shad_copy(shad_dest, dest, shad_src, src, size);
 }
