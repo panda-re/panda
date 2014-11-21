@@ -30,6 +30,8 @@ set to cortex-a8 or cortex-a9
 The first serial device is the console. They second is the GSM radio interface.
 Example command line: -M android_arm -cpu cortex-a9  -kernel /androidstuff/kernel-qemu -initrd /androidstuff/ramdisk.img  -global goldfish_nand.system_path=/androidstuff/system.img.qcow2 -global goldfish_nand.user_data_path=/androidstuff/userdata-qemu.img.qcow2  -global goldfish_nand.cache_path=/androidstuff/cache.img.qcow2 -append  "console=ttyS0 ndns=2 qemu=1 no_console_suspend=1 qemu.gles=0 android.qemud=ttyS1" -m 2G -no-reboot -monitor telnet:localhost:4321,server,nowait -show-cursor -serial stdio -serial telnet:localhost:4421,server,nowait -display sdl -net nic,vlan=1 -net user,vlan=1,hostfwd=tcp::5555-:5555,hostfwd=tcp::5039-:5039 -global goldfish_mmc.sd_path=/androidstuff/sdcard.qcow2  -android
 
+Images using ext4 partitions instead of YAFFS require the argument "-global goldfish_nand.ext4=on"
+
 VNC is supported but an attached VNC client will cause significantly more overhead than SDL.
 
 Sensors

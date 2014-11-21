@@ -71,6 +71,7 @@ def translateImage(avdname):
     yaffs=True
     if 'yes' == config.get(FAKE_SECTION,'hw.useext4').lower():
         yaffs = False
+        print 'ext4 filesystem detected. Append this to your PANDA commmand line: "-global goldfish_nand.ext4=on"'
     else:
         print "NOTE: These are NAND images, empty space is 0xFF instead of 0x00, so they aren't sparse"
     
