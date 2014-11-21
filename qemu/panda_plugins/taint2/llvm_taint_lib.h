@@ -158,6 +158,7 @@ public:
     void visitCallInst(CallInst &I);
     void visitSelectInst(SelectInst &I);
     void visitExtractValueInst(ExtractValueInst &I);
+    void visitInsertValueInst(InsertValueInst &I);
 
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);

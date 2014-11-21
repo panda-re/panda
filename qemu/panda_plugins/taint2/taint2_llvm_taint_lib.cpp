@@ -136,7 +136,15 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
         return false;
     }
     //printf("Processing entry BB...\n");
-    PTV.visit(F);
+    PTV.visitFunction(F);
+    for (BasicBlock &BB : F) {
+        vector<Instruction *> insts;
+        for (Instruction &I : BB) insts.push_back(&I);
+        PTV.visitBasicBlock(BB);
+        for (Instruction *I : insts) {
+            PTV.visit(I);
+        }
+    }
 #ifdef TAINTDEBUG
     F.dump();
 #endif
@@ -177,8 +185,8 @@ void PandaSlotTracker::processFunction() {
             // the naming of the 'entry' BB happens by default, so leave it
             if (strcmp(BB->getName().str().c_str(), "entry")) {
                 BB->setName("");
-                CreateFunctionSlot(BB);
             }
+            CreateFunctionSlot(BB);
         }
         for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;
             ++I) {
@@ -206,7 +214,7 @@ void PandaSlotTracker::processFunction() {
 
 void PandaSlotTracker::CreateFunctionSlot(const Value *V) {
     assert(V->getType() != Type::getVoidTy(TheFunction->getContext()) &&
-        !V->hasName() && "Doesn't need a slot!");
+        (!V->hasName() || V->getName() == "entry") && "Doesn't need a slot!");
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
 }
@@ -273,16 +281,15 @@ void PandaTaintVisitor::inlineCallBefore(Instruction &I, Function *F, vector<Val
 
 Constant *PandaTaintVisitor::constSlot(LLVMContext &ctx, Value *value) {
     assert(value && !isa<Constant>(value));
-    return const_uint64(ctx, MAXREGSIZE * PST->getLocalSlot(value));
+    int slot = PST->getLocalSlot(value);
+    assert(slot >= 0);
+    return const_uint64(ctx, MAXREGSIZE * slot);
 }
 
 Constant *PandaTaintVisitor::constWeakSlot(LLVMContext &ctx, Value *value) {
     int slot = PST->getLocalSlot(value);
-    uint64_t result = MAXREGSIZE * slot;
-    if (slot < 0) {
-        result = ~0UL;
-    }
-    return const_uint64(ctx, MAXREGSIZE * result);
+    assert(isa<Constant>(value) || slot >= 0);
+    return const_uint64(ctx, slot < 0 ? ~0UL : MAXREGSIZE * slot);
 }
 
 int PandaTaintVisitor::intValue(Value *value) {
@@ -455,15 +462,21 @@ void PandaTaintVisitor::insertTaintSelect(Instruction &after, Value *dest,
         args.push_back(selection.first);
         args.push_back(selection.second);
     }
-    args.push_back(const_uint64(ctx, 0));
+    args.push_back(const_uint64(ctx, ~0UL));
+    args.push_back(const_uint64(ctx, ~0UL));
     inlineCallAfter(after, selectF, args);
 }
 
 void PandaTaintVisitor::insertTaintDelete(Instruction &I,
         Constant *shad, Value *dest, Value *size) {
+    CallInst *destCI = NULL;
     if (shad == llvConst) dest = constSlot(I.getContext(), dest);
+    if (shad == memConst && dest == NULL) {
+        dest = (destCI = insertLogPop(I));
+    }
+
     vector<Value *> args{ shad, dest, size };
-    inlineCallAfter(I, deleteF, args);
+    inlineCallAfter(destCI ? *destCI : I, deleteF, args);
 }
 
 // Terminator instructions
@@ -594,8 +607,9 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     LLVMContext &ctx = I.getContext();
     Addr addr;
 
-    Value *ptr = I.getOperand(isa<StoreInst>(I) ? 1 : 0);
-    Value *val = isa<StoreInst>(I) ? I.getOperand(0) : &I;
+    bool isStore = isa<StoreInst>(I);
+    Value *ptr = I.getOperand(isStore ? 1 : 0);
+    Value *val = isStore ? I.getOperand(0) : &I;
     uint64_t size = getValueSize(val);
     if (getAddr(I.getOperand(0), addr)) {
         // Successfully statically found offset.
@@ -609,12 +623,15 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             destAddr = addr.val.gs;
         }
         insertTaintCopy(I, llvConst, &I, destConst, const_uint64(ctx, destAddr), size);
+    } else if (isa<Constant>(val) && isStore) {
+        // FIXME: Delete taint at destination memory address.
     } else {
         PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
             const_uint64_ptr(ctx, cpu_single_env), P2II,
-            llvConst, constSlot(ctx, &I), grvConst, gsvConst,
-            const_uint64(ctx, size), ConstantInt::getTrue(ctx)
+            llvConst, constSlot(ctx, val), grvConst, gsvConst,
+            const_uint64(ctx, size),
+            ConstantInt::get(Type::getInt1Ty(ctx), isStore)
         };
         inlineCallAfter(I, hostCopyF, args);
     }
@@ -715,9 +732,9 @@ void PandaTaintVisitor::visitPHINode(PHINode &I) {
     LI->insertBefore(I.getParent()->getFirstNonPHI());
     vector<pair<Value *,Value *>> selections;
     for (unsigned i = 0; i < I.getNumIncomingValues(); ++i) {
-        Constant *select = constSlot(ctx, I.getIncomingBlock(i));
         Constant *value = constWeakSlot(ctx, I.getIncomingValue(i));
-        selections.push_back(std::make_pair(select, value));
+        Constant *select = constSlot(ctx, I.getIncomingBlock(i));
+        selections.push_back(std::make_pair(value, select));
     }
     insertTaintSelect(*LI, &I, LI, selections);
 }
@@ -767,149 +784,157 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
 }
 
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
-    Function *called = I.getCalledFunction();
     LLVMContext &ctx = I.getContext();
-    if (!called) {
-        //assert(1==0);
-        //return; // doesn't have name, we can't process it
-        // Might be ok for now, but we might need to revisit.
-        printf("Note: skipping taint analysis of statically unknowable call in %s.\n",
-            I.getParent()->getParent()->getName().str().c_str());
-        return;
-    }
-    std::string calledName = called->getName().str();
+    Function *calledF = I.getCalledFunction();
+    Value *calledV = I.getCalledValue();
+    assert(calledV);
 
-    switch (I.getCalledFunction()->getIntrinsicID()) {
-        case Intrinsic::uadd_with_overflow:
-            insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), 1);
+    Type *valueType = calledV->getType();
+    FunctionType *callType;
+    // If not a function type, it's a function pointer.
+    if (!(callType = dyn_cast<FunctionType>(valueType))) {
+        PointerType *pointerType = dyn_cast<PointerType>(valueType);
+        assert(pointerType && pointerType->getElementType()->isFunctionTy());
+        callType = dyn_cast<FunctionType>(pointerType->getElementType());
+    }
+    assert(callType && callType->isFunctionTy());
+
+    if (calledF) {
+        std::string calledName = calledF->getName().str();
+
+        switch (calledF->getIntrinsicID()) {
+            case Intrinsic::uadd_with_overflow:
+                insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), 1);
+                return;
+            case Intrinsic::bswap:
+            case Intrinsic::ctlz:
+                insertTaintMix(I, I.getArgOperand(0));
+                return;
+            case Intrinsic::not_intrinsic:
+                break;
+            default:
+                printf("Note: unsupported intrinsic %s in %s.\n",
+                    calledF->getName().str().c_str(),
+                    I.getParent()->getParent()->getName().str().c_str());
+                return;
+        }
+
+        assert(!calledF->isIntrinsic());
+        if (!calledName.compare("__ldb_mmu_panda")
+                || !calledName.compare("__ldw_mmu_panda")
+                || !calledName.compare("__ldl_mmu_panda")
+                || !calledName.compare("__ldq_mmu_panda")) {
+            insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
             return;
-        case Intrinsic::bswap:
-        case Intrinsic::ctlz:
+        }
+        else if (!calledName.compare("__stb_mmu_panda")
+                || !calledName.compare("__stw_mmu_panda")
+                || !calledName.compare("__stl_mmu_panda")
+                || !calledName.compare("__stq_mmu_panda")) {
+            Value *src = I.getArgOperand(1);
+            if (isa<Constant>(src)) {
+                insertTaintDelete(I, memConst, NULL, const_uint64(ctx, getValueSize(src)));
+            } else {
+                insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
+            }
+            return;
+        }
+        else if (calledF->getName().startswith("taint")) {
+            return;
+        }
+        else if (!calledName.compare("sin")
+                || !calledName.compare("cos")
+                || !calledName.compare("tan")
+                || !calledName.compare("log")
+                || !calledName.compare("__isinf")
+                || !calledName.compare("__isnan")
+                || !calledName.compare("rint")
+                || !calledName.compare("floor")
+                || !calledName.compare("abs")
+                || !calledName.compare("ceil")
+                || !calledName.compare("exp2")) {
             insertTaintMix(I, I.getArgOperand(0));
             return;
-        case Intrinsic::not_intrinsic:
-            break;
-        default:
-            printf("Note: unsupported intrinsic %s in %s.\n",
-                I.getCalledFunction()->getName().str().c_str(),
-                I.getParent()->getParent()->getName().str().c_str());
+        }
+        else if (!calledName.compare("ldexp")
+                || !calledName.compare("atan2")) {
+            insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
-    }
-
-    assert(!I.getCalledFunction()->isIntrinsic());
-    if (!calledName.compare("__ldb_mmu_panda")
-            || !calledName.compare("__ldw_mmu_panda")
-            || !calledName.compare("__ldl_mmu_panda")
-            || !calledName.compare("__ldq_mmu_panda")) {
-        insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
-        return;
-    }
-    else if (!calledName.compare("__stb_mmu_panda")
-            || !calledName.compare("__stw_mmu_panda")
-            || !calledName.compare("__stl_mmu_panda")
-            || !calledName.compare("__stq_mmu_panda")) {
-        Value *src = I.getArgOperand(1);
-        if (isa<Constant>(src)) {
-            insertTaintDelete(I, llvConst, &I, const_uint64(ctx, getValueSize(src)));
-        } else {
-            insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
         }
-        return;
-    }
-    else if (called->getName().startswith("taint")) {
-        return;
-    }
-    else if (!calledName.compare("sin")
-            || !calledName.compare("cos")
-            || !calledName.compare("tan")
-            || !calledName.compare("log")
-            || !calledName.compare("__isinf")
-            || !calledName.compare("__isnan")
-            || !calledName.compare("rint")
-            || !calledName.compare("floor")
-            || !calledName.compare("abs")
-            || !calledName.compare("ceil")
-            || !calledName.compare("exp2")) {
-        insertTaintMix(I, I.getArgOperand(0));
-        return;
-    }
-    else if (!calledName.compare("ldexp")
-            || !calledName.compare("atan2")) {
-        insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
-        return;
-    }
-    else if (!calledName.compare(0, 9, "helper_in") && calledName.size() == 10) {
-        /*
-         * The last character of the instruction name determines the size of data transfer
-         * b = single byte
-         * w = 2 bytes
-         * l - 4 bytes
-         */
-        /*char type = *calledName.rbegin();
-        int len;
-        if (type == 'b') {
-            len = 1;
-        } else if (type == 'w') {
-            len = 2;
-        } else if (type == 'l') {
-            len = 4;
-        }
-*/
-        /* helper_in instructions will be modeled as loads with various lengths */
-        // For now do nothing.
-        return;
-    }
-    else if (!calledName.compare(0, 10, "helper_out") && calledName.size() == 11) {
-        /*
-         * The last character of the instruction name determines the size of data transfer
-         * b = single byte
-         * w = 2 bytes
-         * l - 4 bytes
-         */
-        /*char type = *calledName.rbegin();
-        int len;
-        if (type == 'b') {
-            len = 1;
-        } else if (type == 'w') {
-            len = 2;
-        } else {
-            len = 4;
-        }
-*/
-        /* helper_out instructions will be modeled as stores with various lengths */
-        // For now do nothing.
-        //portStoreHelper(I.getArgOperand(1), I.getArgOperand(0), len);
-        return;
-    } else {
-        // This is a call that we aren't going to model, so we need to process
-        // it instruction by instruction.
-        // First, we need to set up a new stack frame and copy argument taint.
-        vector<Value *> fargs{ llvConst };
-        int numArgs = I.getNumArgOperands();
-        for (int i = 0; i < numArgs; i++) {
-            Value *arg = I.getArgOperand(i);
-            int argBytes = getValueSize(arg);
-            assert(argBytes > 0);
-
-            // if arg is constant then do nothing
-            if (!isa<Constant>(arg)) {
-                vector<Value *> copyargs{
-                    llvConst, const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE),
-                    llvConst, constSlot(ctx, arg), const_uint64(ctx, argBytes)
-                };
-                inlineCallBefore(I, copyF, copyargs);
+        else if (!calledName.compare(0, 9, "helper_in") && calledName.size() == 10) {
+            /*
+             * The last character of the instruction name determines the size of data transfer
+             * b = single byte
+             * w = 2 bytes
+             * l - 4 bytes
+             */
+            /*char type = *calledName.rbegin();
+            int len;
+            if (type == 'b') {
+                len = 1;
+            } else if (type == 'w') {
+                len = 2;
+            } else if (type == 'l') {
+                len = 4;
             }
+    */
+            /* helper_in instructions will be modeled as loads with various lengths */
+            // For now do nothing.
+            return;
         }
-        if (!called->getReturnType()->isVoidTy()) { // Copy from return slot.
-            vector<Value *> retargs{
-                llvConst, constSlot(ctx, &I), retConst,
-                const_uint64(ctx, 0), const_uint64(ctx, MAXREGSIZE)
-            };
-            inlineCallAfter(I, copyF, retargs);
+        else if (!calledName.compare(0, 10, "helper_out") && calledName.size() == 11) {
+            /*
+             * The last character of the instruction name determines the size of data transfer
+             * b = single byte
+             * w = 2 bytes
+             * l - 4 bytes
+             */
+            /*char type = *calledName.rbegin();
+            int len;
+            if (type == 'b') {
+                len = 1;
+            } else if (type == 'w') {
+                len = 2;
+            } else {
+                len = 4;
+            }
+    */
+            /* helper_out instructions will be modeled as stores with various lengths */
+            // For now do nothing.
+            //portStoreHelper(I.getArgOperand(1), I.getArgOperand(0), len);
+            return;
         }
-        inlineCallBefore(I, pushFrameF, fargs);
-        inlineCallAfter(I, popFrameF, fargs);
+        // Else fall through to named case.
     }
+
+    // This is a call that we aren't going to model, so we need to process
+    // it instruction by instruction.
+    // First, we need to set up a new stack frame and copy argument taint.
+    vector<Value *> fargs{ llvConst };
+    int numArgs = I.getNumArgOperands();
+    for (int i = 0; i < numArgs; i++) {
+        Value *arg = I.getArgOperand(i);
+        int argBytes = getValueSize(arg);
+        assert(argBytes > 0);
+
+        // if arg is constant then do nothing
+        if (!isa<Constant>(arg)) {
+            vector<Value *> copyargs{
+                llvConst, const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE),
+                llvConst, constSlot(ctx, arg), const_uint64(ctx, argBytes)
+            };
+            inlineCallBefore(I, copyF, copyargs);
+        }
+    }
+    if (!callType->getReturnType()->isVoidTy()) { // Copy from return slot.
+        vector<Value *> retargs{
+            llvConst, constSlot(ctx, &I), retConst,
+            const_uint64(ctx, 0), const_uint64(ctx, MAXREGSIZE)
+        };
+        inlineCallAfter(I, copyF, retargs);
+    }
+    inlineCallBefore(I, pushFrameF, fargs);
+    inlineCallAfter(I, popFrameF, fargs);
 }
 /*
 // For now delete dest taint.
@@ -969,8 +994,12 @@ void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
     assert(ZEI);
 
     vector<pair<Value *, Value *>> selections;
-    selections.push_back(std::make_pair(ConstantInt::get(ctx, APInt(64, 1)), I.getTrueValue()));
-    selections.push_back(std::make_pair(ConstantInt::get(ctx, APInt(64, 0)), I.getFalseValue()));
+    selections.push_back(std::make_pair(
+                constWeakSlot(ctx, I.getTrueValue()),
+                ConstantInt::get(ctx, APInt(64, 1))));
+    selections.push_back(std::make_pair(
+                constWeakSlot(ctx, I.getFalseValue()),
+                ConstantInt::get(ctx, APInt(64, 0))));
     insertTaintSelect(I, &I, ZEI, selections);
 }
 
@@ -993,8 +1022,28 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
             getValueSize(&I));
 }
 
+void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
+    LLVMContext &ctx = I.getContext();
+    assert(I.getNumIndices() == 1);
+
+    Value *aggregate = I.getAggregateOperand();
+    assert(aggregate && aggregate->getType()->isStructTy());
+    StructType *typ = dyn_cast<StructType>(aggregate->getType());
+    const StructLayout *structLayout = dataLayout->getStructLayout(typ);
+    
+    assert(I.idx_begin() != I.idx_end());
+    unsigned offset = structLayout->getElementOffset(*I.idx_begin());
+    uint64_t dest = MAXREGSIZE * PST->getLocalSlot(&I) + offset;
+
+    insertTaintCopy(I,
+            llvConst, const_uint64(ctx, dest),
+            llvConst, &I,
+            getValueSize(I.getInsertedValueOperand()));
+}
+
 // Unhandled
 void PandaTaintVisitor::visitInstruction(Instruction &I) {
+    I.dump();
     printf("Error: Unhandled instruction\n");
     assert(1==0);
 }

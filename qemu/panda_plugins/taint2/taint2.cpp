@@ -72,6 +72,7 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
+bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
 //int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
@@ -140,6 +141,14 @@ int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
     return 0;
 }
 
+void verify(void) {
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+    std::string err;
+    if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
+        printf("%s\n", err.c_str());
+    }
+}
+
 void __taint_enable_taint(void) {
     if(taintEnabled) {return;}
     printf ("__taint_enable_taint\n");
@@ -203,6 +212,8 @@ void __taint_enable_taint(void) {
         printf("%s\n", err.c_str());
         exit(1);
     }
+
+    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 }
 
 // Derive taint ops
@@ -213,8 +224,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     if (taintEnabled){
         // taintfp will make sure it never runs twice.
         taintfpm->run(*(tb->llvm_function));
-    } else {
-        __taint_enable_taint();
     }
 
     return 0;
@@ -693,6 +702,14 @@ void taint_clear_shadow_memory(void){
 */
 
 ////////////////////////////////////////////////////////////////////////////////////
+bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
+    __taint_enable_taint();
+    if (!tb->llvm_tc_ptr) {
+        return false;
+    } else {
+        return true;
+    }
+}
 
 bool init_plugin(void *self) {
     printf("Initializing taint plugin\n");
@@ -702,8 +719,8 @@ bool init_plugin(void *self) {
     panda_disable_tb_chaining();
     pcb.guest_hypercall = guest_hypercall_callback;
     panda_register_callback(self, PANDA_CB_GUEST_HYPERCALL, pcb);
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
     /*
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);

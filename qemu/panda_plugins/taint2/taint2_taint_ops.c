@@ -145,30 +145,28 @@ void taint_sext(uint64_t shad_ptr, uint64_t dest, uint64_t dest_size, uint64_t s
 
 const uint64_t ones = ~0UL;
 
-// Takes a NULL-terminated list of (shad_src, value, select) triples.
+// Takes a (~0UL, ~0UL)-terminated list of (value, selector) pairs.
 void taint_select(
         uint64_t shad_ptr,
         uint64_t dest, uint64_t size, uint64_t selector,
         ...) {
-    FastShad *shad_dest = (FastShad *)shad_ptr;
+    FastShad *shad = (FastShad *)shad_ptr;
     va_list argp;
     uint64_t src, srcsel;
-    FastShad *shad_src;
 
     va_start(argp, selector);
-    shad_src = (FastShad *)va_arg(argp, FastShad *);
-    while (shad_src != NULL) {
-        src = va_arg(argp, uint64_t);
-        srcsel = va_arg(argp, uint64_t);
-
+    src = va_arg(argp, uint64_t);
+    srcsel = va_arg(argp, uint64_t);
+    while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
-                fast_shad_copy(shad_dest, dest, shad_src, src, size);
+                fast_shad_copy(shad, dest, shad, src, size);
             }
             return;
         }
 
-        shad_src = (FastShad *)va_arg(argp, FastShad *);
+        src = va_arg(argp, uint64_t);
+        srcsel = va_arg(argp, uint64_t);
     } 
 
     assert(false && "Couldn't find selected argument!!");
@@ -185,7 +183,10 @@ void taint_host_copy(
     FastShad *gspec = (FastShad *)gspec_ptr;
 
     int64_t offset = addr - env_ptr;
-    assert(offset >= 0 && offset < sizeof(CPUState));
+    if (offset < 0 || offset >= sizeof(CPUState)) {
+        // Irrelevant.
+        return;
+    }
 
     FastShad *state_shad;
     
