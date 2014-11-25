@@ -69,7 +69,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     std::string bitcode(dirname(exe));
     free(exe);
     bitcode.append("/panda_plugins/panda_taint2_ops.bc");
-    std::cerr << "Linking taint ops from " << bitcode << std::endl;
+    std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
 
     LLVMContext &ctx = M.getContext();
     SMDiagnostic Err;
@@ -124,12 +124,14 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
+    std::cout << "taint2: Done initializing taint transformation." << std::endl;
+
     return true;
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F) {
 #ifdef TAINTDEBUG
-    printf("\n\n%s\n", F.getName().str().c_str());
+    //printf("\n\n%s\n", F.getName().str().c_str());
 #endif
     if (F.front().front().getMetadata("tainted") ||
             F.getName().startswith("taint")) { // already processed!!
@@ -146,7 +148,7 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
         }
     }
 #ifdef TAINTDEBUG
-    F.dump();
+    //F.dump();
 #endif
 
     return true;
@@ -485,19 +487,28 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     if (!ret) return;
 
     LLVMContext &ctx = I.getContext();
-    vector<Value *> args{
-        retConst, const_uint64(ctx, 0),
-        llvConst, const_uint64(ctx, PST->getLocalSlot(ret)),
-        const_uint64(ctx, getValueSize(ret))
-    };
-    inlineCallBefore(I, copyF, args);
+    if (isa<Constant>(ret)) {
+        // delete return taint.
+        vector<Value *> args{
+            retConst, const_uint64(ctx, 0),
+            const_uint64(ctx, MAXREGSIZE)
+        };
+        inlineCallBefore(I, deleteF, args);
+    } else {
+        vector<Value *> args{
+            retConst, const_uint64(ctx, 0),
+            llvConst, const_uint64(ctx, PST->getLocalSlot(ret)),
+            const_uint64(ctx, getValueSize(ret))
+        };
+        inlineCallBefore(I, copyF, args);
+    }
 
     visitTerminatorInst(I);
 }
 
 // On a branch we just have to log the previous BB.
 void PandaTaintVisitor::visitTerminatorInst(TerminatorInst &I) {
-    // FIXME: Insert BB logging.
+    // BB logging is in the previous stuff.
 }
 
 void PandaTaintVisitor::visitInvokeInst(InvokeInst &I) {

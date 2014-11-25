@@ -158,6 +158,7 @@ Shad *tp_init() {
     shad->ret = fast_shad_new(MAXREGSIZE);
     // guest registers are generally the size of the guest architecture
     shad->grv = fast_shad_new(NUMREGS * WORDSIZE);
+    shad->gsv = fast_shad_new(sizeof(CPUState));
 
     // architecture-dependent size defined in guestarch.h
     if (NUMSPECADDRS){

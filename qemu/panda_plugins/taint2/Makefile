@@ -6,15 +6,15 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+= $(LLVM_CXXFLAGS)
 
-#QEMU_CFLAGS+= -DTAINTDEBUG
-#QEMU_CXXFLAGS+= -DTAINTDEBUG
+QEMU_CFLAGS+= -DTAINTDEBUG
+QEMU_CXXFLAGS+= -DTAINTDEBUG
 
 QEMU_CFLAGS+= -DTAINT2_NOINLINE
 QEMU_CXXFLAGS+= -DTAINT2_NOINLINE
 
 QEMU_CXXFLAGS+= -std=c++11
 
-TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition
+TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
 LLVM_OPS=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_taint_ops.c
 MY_MEM=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_my_mem.cpp
 

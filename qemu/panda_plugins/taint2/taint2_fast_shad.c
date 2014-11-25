@@ -28,17 +28,17 @@ PANDAENDCOMMENT */
 #include "label_set.h"
 #include "fast_shad.h"
 
-FastShad *fast_shad_new(uint64_t bytes) {
+FastShad *fast_shad_new(uint64_t labelsets) {
     FastShad *result = (FastShad *)malloc(sizeof(FastShad));
+    uint64_t size = sizeof(LabelSet *) * labelsets;
     if (!result) return NULL;
 
     LabelSet **array;
-    if (bytes < (1UL << 24)) {
-        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc.\n", bytes);
-        array = malloc(bytes);
+    if (labelsets < (1UL << 24)) {
+        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc.\n", size);
+        array = (LabelSet **)malloc(size);
         assert(array);
     } else {
-        uint64_t size = sizeof(LabelSet *) * bytes;
         uint64_t align = 1UL << 40; // Align to a 1T boundary.
         assert(align > size);
         uint64_t vaddr = 0;
@@ -63,13 +63,17 @@ FastShad *fast_shad_new(uint64_t bytes) {
     }
 
     result->labels = array;
-    result->bytes = bytes;
+    result->size = labelsets;
 
     return result;
 }
 
 // release all memory associated with this fast_shad.
 void fast_shad_free(FastShad *fast_shad) {
-    munmap(fast_shad->labels, sizeof(LabelSet *) * fast_shad->bytes);
+    if (fast_shad->size < (1UL << 24)) {
+        free(fast_shad->labels);
+    } else {
+        munmap(fast_shad->labels, sizeof(LabelSet *) * fast_shad->size);
+    }
     free(fast_shad);
 }

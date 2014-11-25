@@ -71,7 +71,7 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-int before_block_exec(CPUState *env, TranslationBlock *tb);
+int after_block_translate(CPUState *env, TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
@@ -155,8 +155,10 @@ void __taint_enable_taint(void) {
     taintEnabled = true;
     panda_cb pcb;
 
-    pcb.before_block_exec = before_block_exec;
-    panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    pcb.after_block_translate = after_block_translate;
+    panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
+    pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
+    panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
     pcb.after_block_exec = after_block_exec;
     panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_read = phys_mem_read_callback;
@@ -207,23 +209,29 @@ void __taint_enable_taint(void) {
         if (!i->isDeclaration()) PTFP->runOnFunction(*i);
     }
 
+    printf("taint2: Done processing helper functions for taint.\n");
+
     std::string err;
     if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
         printf("%s\n", err.c_str());
         exit(1);
     }
 
-    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    printf("taint2: Done verifying module.\n");
+
+    //tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 }
 
 // Derive taint ops
-int before_block_exec(CPUState *env, TranslationBlock *tb){
+int after_block_translate(CPUState *env, TranslationBlock *tb){
 
-    //printf("%s\n", tcg_llvm_get_func_name(tb));
+    printf("%s\n", tcg_llvm_get_func_name(tb));
 
     if (taintEnabled){
+        assert(tb->llvm_function);
         // taintfp will make sure it never runs twice.
         taintfpm->run(*(tb->llvm_function));
+        //tb->llvm_function->dump();
     }
 
     return 0;
@@ -703,7 +711,7 @@ void taint_clear_shadow_memory(void){
 
 ////////////////////////////////////////////////////////////////////////////////////
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
-    __taint_enable_taint();
+    if (!taintEnabled) __taint_enable_taint();
     if (!tb->llvm_tc_ptr) {
         return false;
     } else {
