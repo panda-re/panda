@@ -135,9 +135,9 @@ SdDir32 *shad_dir_new_32
     for (ti=0; ti<shad_dir->table_size; ti++) {  \
       SdPage *page = table1->page[ti];	         \
       if (page == NULL) continue;                \
-      uint32_t page_base_addr =					          \
+      __attribute__((__unused__)) uint32_t page_base_addr =					          \
         (di << shad_dir->dir_shift) | (ti << (shad_dir->num_page_bits));  \
-      LabelSet **label_set_array = page->labels;                          \
+      __attribute__((__unused__)) LabelSet **label_set_array = page->labels;                          \
       do_this;								  \
     } 		           \
     do_this_after_loop1    \
@@ -152,7 +152,7 @@ SdDir32 *shad_dir_new_32
   shadow page.
   "stuff2" is a ptr to something the app fn needs
 */
-static void __shad_dir_page_iter_32
+__attribute__((__unused__)) static void __shad_dir_page_iter_32
      (SdDir32 *shad_dir,
       int (*app)(uint32_t pa, SdPage *page, void *stuff1),
       void *stuff2) {
@@ -208,7 +208,6 @@ uint32_t shad_dir_occ_32(SdDir32 *shad_dir) {
 
 
 int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff) {
-  uint32_t i;
   SdDir32 *shad_dir = (SdDir32 *) stuff;
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
@@ -220,7 +219,6 @@ void shad_dir_free_32(SdDir32 *shad_dir) {
   SD_PAGE_ITER(
 	       // free labelset associated with each addr in this page
 	       {
-		 uint32_t i;
                  page->num_non_empty = 0;
 		 __shad_dir_page_free_32(shad_dir, page);
 	       },

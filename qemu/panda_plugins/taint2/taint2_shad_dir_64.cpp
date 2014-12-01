@@ -145,7 +145,7 @@ SdDir64 *shad_dir_new_64
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t2i;	\
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t3i;	\
           page_base_addr = page_base_addr << shad_dir->num_page_bits;           \
-          LabelSet **label_set_array = page->labels;                            \
+          __attribute__((__unused__)) LabelSet ** label_set_array = page->labels;                            \
           do_this ;         \
         }                   \
       }                     \
@@ -211,7 +211,6 @@ uint32_t shad_dir_occ_64(SdDir64 *shad_dir) {
 
 
 int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
-  uint32_t i;
   SdDir64 *shad_dir = (SdDir64 *) stuff;
   my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
   return 0;
