@@ -49,17 +49,23 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(call quiet-command,$(CXX) $(CXXFLAGS) $(QEMU_CXXFLAGS) \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.c
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
+	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.c \
+    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
+
 	$(call quiet-command,\
 		$(filter-out -g -Wold-style-declaration -std=c11,\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $(TAINT_OP_CFLAGS) \
-			-emit-llvm -c -o $@ $^),"  LLVM    $@")
+			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.cpp
+$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
+	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.cpp \
+    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
+
 	$(call quiet-command,\
 		$(filter-out -g -Wold-style-declaration -std=c11,\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) \
-			-emit-llvm -c -o $@ $^),"  LLVM    $@")
+			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.bc \
