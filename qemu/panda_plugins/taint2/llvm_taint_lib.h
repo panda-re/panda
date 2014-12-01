@@ -79,7 +79,7 @@ class PandaTaintVisitor : public InstVisitor<PandaTaintVisitor> {
 private:
     std::unique_ptr<PandaSlotTracker> PST;
     Shad *shad; // no ownership. weak ptr.
-    taint2_memlog *memlog; // same.
+    taint2_memlog *taint_memlog; // same.
 
     Constant *constSlot(LLVMContext &ctx, Value *value);
     Constant *constWeakSlot(LLVMContext &ctx, Value *value);
@@ -140,8 +140,8 @@ public:
 
     Constant *prevBbConst;
 
-    PandaTaintVisitor(Shad *shad, taint2_memlog *memlog)
-        : shad(shad), memlog(memlog) {}
+    PandaTaintVisitor(Shad *shad, taint2_memlog *taint_memlog)
+        : shad(shad), taint_memlog(taint_memlog) {}
 
     ~PandaTaintVisitor() {}
 
@@ -182,14 +182,14 @@ public:
 class PandaTaintFunctionPass : public FunctionPass {
 private:
     Shad *shad;
-    taint2_memlog *memlog;
+    taint2_memlog *taint_memlog;
 
 public:
     static char ID;
     PandaTaintVisitor PTV; // Our LLVM instruction visitor
 
-    PandaTaintFunctionPass(Shad *shad, taint2_memlog *memlog)
-        : FunctionPass(ID), shad(shad), memlog(memlog), PTV(shad, memlog) {}
+    PandaTaintFunctionPass(Shad *shad, taint2_memlog *taint_memlog)
+        : FunctionPass(ID), shad(shad), taint_memlog(taint_memlog), PTV(shad, taint_memlog) {}
 
     ~PandaTaintFunctionPass() { }
 

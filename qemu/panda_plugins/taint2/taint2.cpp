@@ -123,7 +123,7 @@ bool taintEnabled = false;
 bool taintJustDisabled = false;
 
 // Taint memlog
-taint2_memlog memlog;
+static taint2_memlog taint_memlog;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -131,13 +131,13 @@ taint2_memlog memlog;
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
-    taint2_memlog_push((uint64_t)&memlog, addr);
+    taint2_memlog_push((uint64_t)&taint_memlog, addr);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
-    taint2_memlog_push((uint64_t)&memlog, addr);
+    taint2_memlog_push((uint64_t)&taint_memlog, addr);
     return 0;
 }
 
@@ -194,13 +194,13 @@ void __taint_enable_taint(void) {
     }
 
     // Initialize memlog.
-    memset(&memlog, 0, sizeof(memlog));
+    memset(&taint_memlog, 0, sizeof(taint_memlog));
 
     llvm::Module *mod = tcg_llvm_ctx->getModule();
     taintfpm = new llvm::FunctionPassManager(mod);
 
     // Add the taint analysis pass to our taint pass manager
-    PTFP = new llvm::PandaTaintFunctionPass(shadow, &memlog);
+    PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
     taintfpm->add(PTFP);
     taintfpm->doInitialization();
 
@@ -225,9 +225,11 @@ void __taint_enable_taint(void) {
 // Derive taint ops
 int after_block_translate(CPUState *env, TranslationBlock *tb){
 
-    printf("%s\n", tcg_llvm_get_func_name(tb));
-
     if (taintEnabled){
+#ifdef TAINTDEBUG
+        printf("%s\n", tcg_llvm_get_func_name(tb));
+#endif
+
         assert(tb->llvm_function);
         // taintfp will make sure it never runs twice.
         taintfpm->run(*(tb->llvm_function));
@@ -713,9 +715,9 @@ void taint_clear_shadow_memory(void){
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
     if (!taintEnabled) __taint_enable_taint();
     if (!tb->llvm_tc_ptr) {
-        return false;
-    } else {
         return true;
+    } else {
+        return false;
     }
 }
 

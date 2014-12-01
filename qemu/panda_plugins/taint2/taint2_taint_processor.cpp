@@ -160,17 +160,6 @@ Shad *tp_init() {
     shad->grv = fast_shad_new(NUMREGS * WORDSIZE);
     shad->gsv = fast_shad_new(sizeof(CPUState));
 
-    // architecture-dependent size defined in guestarch.h
-    if (NUMSPECADDRS){
-        /*
-         * +NUMREGS is necessary offset for how we process these according to
-         * enums
-         */
-        shad->gsv = fast_shad_new(NUMSPECADDRS + NUMREGS);
-    }
-    else {
-        shad->gsv = NULL;
-    }
     return shad;
 }
 

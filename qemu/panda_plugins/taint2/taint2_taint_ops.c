@@ -29,16 +29,16 @@ PANDAENDCOMMENT */
 // Memlog functions.
 
 uint64_t taint2_memlog_pop(uint64_t memlog_ptr) {
-    taint2_memlog *memlog = (taint2_memlog *)memlog_ptr;
-    uint64_t result = memlog->ring[memlog->idx];
-    memlog->idx = (memlog->idx + TAINT2_MEMLOG_SIZE - 1) % TAINT2_MEMLOG_SIZE;;
+    taint2_memlog *taint_memlog = (taint2_memlog *)memlog_ptr;
+    uint64_t result = taint_memlog->ring[taint_memlog->idx];
+    taint_memlog->idx = (taint_memlog->idx + TAINT2_MEMLOG_SIZE - 1) % TAINT2_MEMLOG_SIZE;;
     return result;
 }
 
 void taint2_memlog_push(uint64_t memlog_ptr, uint64_t val) {
-    taint2_memlog *memlog = (taint2_memlog *)memlog_ptr;
-    memlog->idx = (memlog->idx + 1) % TAINT2_MEMLOG_SIZE;;
-    memlog->ring[memlog->idx] = val;
+    taint2_memlog *taint_memlog = (taint2_memlog *)memlog_ptr;
+    taint_memlog->idx = (taint_memlog->idx + 1) % TAINT2_MEMLOG_SIZE;;
+    taint_memlog->ring[taint_memlog->idx] = val;
 }
 
 // Bookkeeping.
@@ -62,6 +62,7 @@ void taint_copy(
         uint64_t size) {
     FastShad *shad_dest = (FastShad *)shad_dest_ptr;
     FastShad *shad_src = (FastShad *)shad_src_ptr;
+    //printf("taint_copy\n");
     fast_shad_copy(shad_dest, dest, shad_src, src, size);
 }
 
@@ -138,6 +139,7 @@ void taint_mix(
 
 void taint_sext(uint64_t shad_ptr, uint64_t dest, uint64_t dest_size, uint64_t src, uint64_t src_size) {
     FastShad *shad = (FastShad *)shad_ptr;
+    //printf("taint_sext\n");
     fast_shad_copy(shad, dest, shad, src, src_size);
     bulk_set(shad, dest + src_size, dest_size - src_size,
             fast_shad_query(shad, dest + src_size - 1));
@@ -160,6 +162,7 @@ void taint_select(
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
+                //printf("taint_select\n");
                 fast_shad_copy(shad, dest, shad, src, size);
             }
             return;
@@ -210,5 +213,9 @@ void taint_host_copy(
     FastShad *shad_dest = is_store ? state_shad : llv;
     uint64_t dest = is_store ? offset : llv_offset;
 
+    /*printf("taint_host_copy\n");
+    printf("env: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
+    printf("greg: %lx, gspec: %lx, size: %lx, is_store: %u\n", greg_ptr, gspec_ptr, size, is_store);
+    printf("src: %lx[%lx], dest: %lx[%lx]\n", (uint64_t)shad_src, src, (uint64_t)shad_dest, dest);*/
     fast_shad_copy(shad_dest, dest, shad_src, src, size);
 }

@@ -120,7 +120,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.dataLayout = new DataLayout(&M);
 
     PTV.memlogPopF = M.getFunction("taint2_memlog_pop");
-    PTV.memlogConst = const_uint64_ptr(ctx, memlog);
+    PTV.memlogConst = const_uint64_ptr(ctx, taint_memlog);
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
