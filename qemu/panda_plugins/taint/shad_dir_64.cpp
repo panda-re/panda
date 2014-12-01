@@ -146,7 +146,7 @@ SdDir64 *shad_dir_new_64
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t2i;	\
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t3i;	\
           page_base_addr = page_base_addr << shad_dir->num_page_bits;           \
-          LabelSet **label_set_array = page->labels;                            \
+          __attribute__((__unused__)) LabelSet **label_set_array = page->labels;                            \
           do_this ;         \
         }                   \
       }                     \
