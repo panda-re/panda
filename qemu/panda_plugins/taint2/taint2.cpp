@@ -39,8 +39,8 @@ extern "C" {
 #include "rr_log.h"
 #include "cpu.h"
 
-#include "fast_shad.h"
 #include "taint_ops.h"
+#include "fast_shad.h"
 
 extern int loglevel;
 
@@ -73,6 +73,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int after_block_translate(CPUState *env, TranslationBlock *tb);
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb);
+int before_block_exec(CPUState *env, TranslationBlock *tb);
 int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
 //int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
@@ -110,7 +111,7 @@ Shad *shadow = NULL; // Global shadow memory
 void *plugin_ptr = NULL;
 
 // Our pass manager to derive taint ops
-llvm::FunctionPassManager *taintfpm = NULL;
+llvm::FunctionPassManager *FPM = NULL;
 
 // Taint function pass.
 llvm::PandaTaintFunctionPass *PTFP = NULL;
@@ -131,12 +132,18 @@ static taint2_memlog taint_memlog;
  */
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf) {
+    /*if (size == 4) {
+        printf("pmem: " TARGET_FMT_lx "\n", addr);
+    }*/
     taint2_memlog_push((uint64_t)&taint_memlog, addr);
     return 0;
 }
 
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf){
+    /*if (size == 4) {
+        printf("pmem: " TARGET_FMT_lx "\n", addr);
+    }*/
     taint2_memlog_push((uint64_t)&taint_memlog, addr);
     return 0;
 }
@@ -159,6 +166,8 @@ void __taint_enable_taint(void) {
     panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_TRANSLATE, pcb);
     pcb.before_block_exec_invalidate_opt = before_block_exec_invalidate_opt;
     panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
+    pcb.before_block_exec = before_block_exec;
+    panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.after_block_exec = after_block_exec;
     panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.phys_mem_read = phys_mem_read_callback;
@@ -197,12 +206,12 @@ void __taint_enable_taint(void) {
     memset(&taint_memlog, 0, sizeof(taint_memlog));
 
     llvm::Module *mod = tcg_llvm_ctx->getModule();
-    taintfpm = new llvm::FunctionPassManager(mod);
+    FPM = tcg_llvm_ctx->getFunctionPassManager();
 
     // Add the taint analysis pass to our taint pass manager
     PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
-    taintfpm->add(PTFP);
-    taintfpm->doInitialization();
+    FPM->add(PTFP);
+    FPM->doInitialization();
 
     // Populate module with helper function taint ops
     for (auto i = mod->begin(); i != mod->end(); i++){
@@ -226,13 +235,9 @@ void __taint_enable_taint(void) {
 int after_block_translate(CPUState *env, TranslationBlock *tb){
 
     if (taintEnabled){
-#ifdef TAINTDEBUG
-        printf("%s\n", tcg_llvm_get_func_name(tb));
-#endif
-
         assert(tb->llvm_function);
         // taintfp will make sure it never runs twice.
-        taintfpm->run(*(tb->llvm_function));
+        //FPM->run(*(tb->llvm_function));
         //tb->llvm_function->dump();
     }
 
@@ -712,11 +717,22 @@ void taint_clear_shadow_memory(void){
 */
 
 ////////////////////////////////////////////////////////////////////////////////////
+int before_block_exec(CPUState *env, TranslationBlock *tb) {
+    //printf("%s\n", tb->llvm_function->getName().str().c_str());
+    //FPM->run(*(tb->llvm_function));
+    return 0;
+}
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
     if (!taintEnabled) __taint_enable_taint();
+
+#ifdef TAINTDEBUG
+    //printf("%s\n", tcg_llvm_get_func_name(tb));
+#endif
+
     if (!tb->llvm_tc_ptr) {
         return true;
     } else {
+        //tb->llvm_function->dump();
         return false;
     }
 }
@@ -759,7 +775,6 @@ void uninit_plugin(void *self) {
 
     printf ("uninit taint plugin\n");
     
-    if (taintfpm) delete taintfpm; // Delete function pass manager and pass
     if (shadow) tp_free(shadow);
 
     panda_disable_llvm();

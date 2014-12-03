@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include "label_set.h"
 #include "taint_ops.h"
 
+uint64_t labelset_count;
+
 // Memlog functions.
 
 uint64_t taint2_memlog_pop(uint64_t memlog_ptr) {
@@ -48,6 +50,16 @@ void taint_breadcrumb(uint64_t dest_ptr, uint64_t bb_slot) {
 
 // Stack frame operations
 
+void taint_reset_frame(uint64_t shad_ptr) {
+    // scorched earth!!
+    /*volatile uint32_t *null = NULL;
+    *(uint32_t *)null = 0xDEADBEEF;
+    assert(false);
+    printf("%d", 1 / 0);*/
+
+    fast_shad_reset_frame((FastShad *)shad_ptr);
+}
+
 void taint_push_frame(uint64_t shad_ptr) {
     fast_shad_push_frame((FastShad *)shad_ptr);
 }
@@ -62,7 +74,14 @@ void taint_copy(
         uint64_t size) {
     FastShad *shad_dest = (FastShad *)shad_dest_ptr;
     FastShad *shad_src = (FastShad *)shad_src_ptr;
-    //printf("taint_copy\n");
+    /*printf("dest: %lx[%lx], src: %lx[%lx], size: %lx (%lu)\n",
+            shad_dest_ptr, dest, shad_src_ptr, src, size, size);*/
+    if (dest > shad_dest->size || src > shad_src->size) {
+#ifdef TAINTDEBUG
+        //printf("taint_copy: ignoring IO mem rw.\n");
+#endif
+        return;
+    }
     fast_shad_copy(shad_dest, dest, shad_src, src, size);
 }
 
@@ -118,6 +137,11 @@ void taint_mix_compute(
 
 void taint_delete(uint64_t shad_ptr, uint64_t dest, uint64_t size) {
     FastShad *shad = (FastShad *)shad_ptr;
+    //printf("remove: %lx[%lx+%lx]\n", shad_ptr, dest, size);
+    if (unlikely(dest >= shad->size)) {
+        // Ignore IO rw.
+        return;
+    }
     fast_shad_remove(shad, dest, size);
 }
 
@@ -187,7 +211,7 @@ void taint_host_copy(
 
     int64_t offset = addr - env_ptr;
     if (offset < 0 || offset >= sizeof(CPUState)) {
-        // Irrelevant.
+        // Irrelevant
         return;
     }
 

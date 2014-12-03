@@ -127,6 +127,7 @@ public:
 
     Function *pushFrameF;
     Function *popFrameF;
+    Function *resetFrameF;
     Function *breadcrumbF;
 
     Constant *memlogConst;

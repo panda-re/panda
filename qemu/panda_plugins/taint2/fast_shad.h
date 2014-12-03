@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 #ifndef __FAST_SHAD_H
 #define __FAST_SHAD_H
 
+#include <assert.h>
 #include <stdint.h>
 
 #include "defines.h"
@@ -27,6 +28,7 @@ typedef struct LabelSet LabelSet;
 
 typedef struct FastShad {
     LabelSet **labels;
+    LabelSet **orig_labels;
     uint64_t size; // Number of labelsets contained.
 } FastShad;
 
@@ -38,6 +40,7 @@ static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastS
 static inline void fast_shad_copy(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size);
 static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t size);
 static inline LabelSet *fast_shad_query(FastShad *fast_shad, uint64_t addr);
+static inline void fast_shad_reset_frame(FastShad *fast_shad);
 static inline void fast_shad_push_frame(FastShad *fast_shad);
 static inline void fast_shad_pop_frame(FastShad *fast_shad);
 
@@ -82,12 +85,25 @@ static inline LabelSet *fast_shad_query(FastShad *fast_shad, uint64_t addr) {
     return *get_ls_p(fast_shad, addr);
 } 
 
+static inline void fast_shad_reset_frame(FastShad *fast_shad) {
+    fast_shad->labels = fast_shad->orig_labels;
+    //printf("reset: %lx\n", (uint64_t)fast_shad->labels);
+}
+
 static inline void fast_shad_push_frame(FastShad *fast_shad) {
     fast_shad->labels += MAXREGSIZE * MAXFRAMESIZE;
+#ifdef TAINTDEBUG
+    assert(fast_shad->labels < fast_shad->orig_labels + fast_shad->size);
+#endif
+    //printf("push: %lx\n", (uint64_t)fast_shad->labels);
 }
 
 static inline void fast_shad_pop_frame(FastShad *fast_shad) {
     fast_shad->labels -= MAXREGSIZE * MAXFRAMESIZE;
+#ifdef TAINTDEBUG
+    //assert(fast_shad->labels >= fast_shad->orig_labels);
+#endif
+    //printf("pop: %lx\n", (uint64_t)fast_shad->labels);
 }
 
 #endif

@@ -33,6 +33,7 @@ void taint2_memlog_push(uint64_t memlog_ptr, uint64_t val);
 //
 // Functions for dealing with function frames. We'll just advance and retract
 // the label array pointer to make a new frame.
+void taint_reset_frame(uint64_t shad_ptr);
 void taint_push_frame(uint64_t shad_ptr);
 void taint_pop_frame(uint64_t shad_ptr);
 

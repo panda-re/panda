@@ -35,7 +35,6 @@ PANDAENDCOMMENT */
 extern "C" {
 
 #include "fast_shad.h"
-#include "taint_ops.h"
 
 // prototypes for on_load and on_store callback registering
 PPP_PROT_REG_CB(on_load);

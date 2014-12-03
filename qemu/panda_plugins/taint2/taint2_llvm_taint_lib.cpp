@@ -1,4 +1,5 @@
 /* PANDABEGINCOMMENT
+ * Function *resetFrameF;
  *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
@@ -109,6 +110,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.hostCopyF = M.getFunction("taint_host_copy");
     PTV.pushFrameF = M.getFunction("taint_push_frame");
     PTV.popFrameF = M.getFunction("taint_pop_frame");
+    PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
     PTV.llvConst = const_uint64_ptr(ctx, shad->llv);
@@ -149,6 +151,12 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
     }
 #ifdef TAINTDEBUG
     //F.dump();
+    /*std::string err;
+    if (F.getName().startswith("tcg-llvm-tb-")) {
+        std::cerr << "Verifying " << F.getName().str() << std::endl;
+        verifyModule(*F.getParent(), llvm::AbortProcessAction, &err);
+    }
+    if (!err.empty()) std::cerr << err << std::endl;*/
 #endif
 
     return true;
@@ -310,6 +318,13 @@ void PandaTaintVisitor::visitFunction(Function& F) {
     PST.reset(new PandaSlotTracker(&F));
     PST->initialize();
 
+    if (F.getName().startswith("tcg-llvm-tb-")) {
+        // This is a single guest BB, so callstack should be empty.
+        // Insert call to reset llvm frame.
+        vector<Value *> args{ llvConst };
+        inlineCallBefore(*F.front().getFirstNonPHI(), resetFrameF, args);
+    }
+
     // Insert call to clear llvm shadow mem.
     vector<Value *> args{
         llvConst, const_uint64(ctx, 0),
@@ -317,6 +332,7 @@ void PandaTaintVisitor::visitFunction(Function& F) {
     };
     assert(F.front().getFirstNonPHI() != NULL);
     inlineCallBefore(*F.front().getFirstNonPHI(), deleteF, args);
+
     F.front().front().setMetadata("tainted", md);
 }
 
@@ -831,7 +847,13 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         }
 
         assert(!calledF->isIntrinsic());
-        if (!calledName.compare("__ldb_mmu_panda")
+        if (calledF->getName().startswith("taint")) {
+            return;
+        }
+        else if (!calledName.compare("cpu_loop_exit")) {
+            return;
+        }
+        else if (!calledName.compare("__ldb_mmu_panda")
                 || !calledName.compare("__ldw_mmu_panda")
                 || !calledName.compare("__ldl_mmu_panda")
                 || !calledName.compare("__ldq_mmu_panda")) {
@@ -848,9 +870,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             } else {
                 insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
             }
-            return;
-        }
-        else if (calledF->getName().startswith("taint")) {
             return;
         }
         else if (!calledName.compare("sin")

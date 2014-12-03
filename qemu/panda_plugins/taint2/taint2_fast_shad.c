@@ -63,6 +63,7 @@ FastShad *fast_shad_new(uint64_t labelsets) {
     }
 
     result->labels = array;
+    result->orig_labels = array;
     result->size = labelsets;
 
     return result;

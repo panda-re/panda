@@ -15,8 +15,6 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
-#include "my_mem.h"
-
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -25,8 +23,8 @@ typedef enum {
     TAINT_BACKEND_LABEL
 } TaintBackendType;
 
-// We use the same type for different backends for programming convenience.
-// This enables us to avoid dlopen/dlsym whatever.
+extern uint64_t labelset_count;
+
 typedef struct LabelSet {
     struct LabelSet *child1;
     union {     // If child1 is null this is a number.
@@ -45,7 +43,9 @@ static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
-        LabelSet *result = (LabelSet *)my_malloc(sizeof(LabelSet), poolid_label_set);
+        LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
+        labelset_count++;
+
         result->child1 = ls1;
         result->child2 = ls2;
         return result;
@@ -57,7 +57,9 @@ static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
 }
 
 static inline LabelSet *label_set_singleton(uint32_t label) {
-    LabelSet *result = (LabelSet *)my_malloc(sizeof(LabelSet), poolid_label_set);
+    LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
+    labelset_count++;
+
     result->child1 = NULL;
     result->label = label;
     return result;
