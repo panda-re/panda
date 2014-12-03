@@ -24,6 +24,12 @@ QCOW2 files of the filesystems, as well as copying the correct kernel and initra
 
 Running
 ----
+The runandroid.py script in /scripts runs PANDROID with simplified arguments, as long
+as the 4 partitions' QCOW files are located in the same directory. The only required parameters
+to the script are the QCOW file directory and the API version number of the Android guest.
+Additional parameters are available; run runandroid.py -h for more information. The script
+will also forward arguments it doesn't parse directly to PANDA.
+
 PANDROID requires a long command line.
 Android 3.2 (Honeycomb) and newer use ARMv7 in the SDK image, requiring the CPU to be
 set to cortex-a8 or cortex-a9
