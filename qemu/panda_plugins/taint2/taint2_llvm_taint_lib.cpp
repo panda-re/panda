@@ -229,6 +229,10 @@ void PandaSlotTracker::CreateFunctionSlot(const Value *V) {
     fMap[V] = DestSlot;
 }
 
+unsigned PandaSlotTracker::getMaxSlot() {
+    return fNext;
+}
+
 //void PandaSlotTracker::CreateMetadataSlot(const MDNode *N) {
     // don't currently need this, but we will if we start using metadata
 //}
@@ -328,7 +332,7 @@ void PandaTaintVisitor::visitFunction(Function& F) {
     // Insert call to clear llvm shadow mem.
     vector<Value *> args{
         llvConst, const_uint64(ctx, 0),
-        const_uint64(ctx, MAXREGSIZE * shad->num_vals)
+        const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
     };
     assert(F.front().getFirstNonPHI() != NULL);
     inlineCallBefore(*F.front().getFirstNonPHI(), deleteF, args);
@@ -840,7 +844,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             case Intrinsic::not_intrinsic:
                 break;
             default:
-                printf("Note: unsupported intrinsic %s in %s.\n",
+                printf("taint2: Note: unsupported intrinsic %s in %s.\n",
                     calledF->getName().str().c_str(),
                     I.getParent()->getParent()->getName().str().c_str());
                 return;

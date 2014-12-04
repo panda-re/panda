@@ -78,26 +78,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     TranslationBlock *next_tb);
 //int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 int guest_hypercall_callback(CPUState *env);
-/*
-// for hd taint
-int cb_replay_hd_transfer_taint
-  (CPUState *env,
-   uint32_t type,
-   uint64_t src_addr,
-   uint64_t dest_addr,
-   uint32_t num_bytes);
 
-int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
-    uint64_t old_buf_addr);
-
-// for network taint
-int cb_replay_net_transfer_taint(CPUState *env, uint32_t type,
-   uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
-
-int cb_replay_cpu_physical_mem_rw_ram
-  (CPUState *env,
-   uint32_t is_write, uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes);
-*/
 int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
@@ -261,222 +242,16 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     return 0;
 }
 
-/*
-#ifdef CONFIG_SOFTMMU
-// this is for much of the hd taint transfers.
-// this gets called from rr_log.c, rr_replay_skipped_calls, RR_CALL_HD_TRANSFER
-// case.
-int cb_replay_hd_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
-        uint64_t dest_addr, uint32_t num_bytes) {
-    // Replay hd transfer as taint transfer
-    if (taintEnabled) {
-        TaintOp top;
-        top.typ = BULKCOPYOP;
-        top.val.bulkcopy.l = num_bytes;
-        switch (type) {
-            case HD_TRANSFER_HD_TO_IOB:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_HD_TO_IOB\n");
-#endif
-                top.val.bulkcopy.a = make_haddr(src_addr);
-                top.val.bulkcopy.b = make_iaddr(dest_addr);
-                break;
-            case HD_TRANSFER_IOB_TO_HD:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_HD\n");
-#endif
-                top.val.bulkcopy.a = make_iaddr(src_addr);
-                top.val.bulkcopy.b = make_haddr(dest_addr);
-                break;
-            case HD_TRANSFER_PORT_TO_IOB:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_PORT_TO_IOB\n");
-#endif
-                top.val.bulkcopy.a = make_paddr(src_addr);
-                top.val.bulkcopy.b = make_iaddr(dest_addr);
-                break;
-            case HD_TRANSFER_IOB_TO_PORT:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_IOB_TO_PORT\n");
-#endif
-                top.val.bulkcopy.a = make_iaddr(src_addr);
-                top.val.bulkcopy.b = make_paddr(dest_addr);
-                break;
-            case HD_TRANSFER_HD_TO_RAM:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_HD_TO_RAM\n");
-                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
-                    src_addr, dest_addr, num_bytes);
-#endif
-                top.val.bulkcopy.a = make_haddr(src_addr);
-                top.val.bulkcopy.b = make_maddr(dest_addr);
-                break;
-            case HD_TRANSFER_RAM_TO_HD:
-#ifdef TAINTDEBUG
-                printf("replay_hd_transfer HD_TRANSFER_RAM_TO_HD\n");
-                printf("\tSource: 0x%lx, Dest: 0x%lx, Len: %d\n",
-                    src_addr, dest_addr, num_bytes);
-#endif
-                top.val.bulkcopy.a = make_maddr(src_addr);
-                top.val.bulkcopy.b = make_haddr(dest_addr);
-                break;
-            default:
-                printf ("Impossible hd transfer type: %d\n", type);
-                assert (1==0);
-        }
-        // make the taint op buffer bigger if necessary
-        tob_resize(&tob_io_thread);
-        // add bulk copy corresponding to this hd transfer to buffer
-        // of taint ops for io thread.
-        tob_op_write(tob_io_thread, &top);
+__attribute__((unused)) static void print_labels(uint32_t el, void *stuff) { 
+    if (stuff == NULL) {
+        printf("%d ", el); 
     }
-    return 0;
+    else {
+        FILE *fp = (FILE *) stuff;
+        fprintf(fp, "%d ", el);
+    }
 }
 
-int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
-        uint64_t old_buf_addr){
-    switch (direction){
-        case PANDA_NET_RX:
-        {
-#ifdef TAINTDEBUG
-            printf("RX packet\n");
-            printf("Buf: 0x%lx, Old Buf: 0x%lx, Size %d\n",
-                (uint64_t)buf, old_buf_addr, size);
-#endif
-            if (taint_label_incoming_network_traffic){
-                if (!taintEnabled){
-                    printf("Taint plugin: Label operation detected (network)\n");
-                    printf("Enabling taint processing\n");
-                    __taint_enable_taint();
-                }
-                
-                add_taint_io(env, shadow, tob_io_thread, old_buf_addr, size);
-                count += size;
-                break;
-            }
-        }
-        case PANDA_NET_TX:
-#ifdef TAINTDEBUG
-            printf("TX packet\n");
-            printf("Buf: 0x%lx, Old Buf: 0x%lx, Size %d\n",
-                (uint64_t)buf, old_buf_addr, size);
-#endif
-            if (taintEnabled && taint_query_outgoing_network_traffic){
-                TaintOp top;
-                top.typ = QUERYOP;
-                top.val.query.l = size;
-                top.val.query.a = make_iaddr(old_buf_addr);
-                // make the taint op buffer bigger if necessary
-                tob_resize(&tob_io_thread);
-                tob_op_write(tob_io_thread, &top);
-            }
-            break;
-        default:
-            assert(0);
-    }
-    return 0;
-}
-
-// this is for much of the network taint transfers.
-// this gets called from rr_log.c, rr_replay_skipped_calls, RR_CALL_NET_TRANSFER
-// case.
-int cb_replay_net_transfer_taint(CPUState *env, uint32_t type, uint64_t src_addr,
-        uint64_t dest_addr, uint32_t num_bytes){
-    // Replay network transfer as taint transfer
-    if (taintEnabled) {
-        TaintOp top;
-        top.typ = BULKCOPYOP;
-        top.val.bulkcopy.l = num_bytes;
-        switch (type) {
-            case NET_TRANSFER_RAM_TO_IOB:
-#ifdef TAINTDEBUG
-                printf("NET_TRANSFER_RAM_TO_IOB src: 0x%lx, dest 0x%lx, len %d\n",
-                    src_addr, dest_addr, num_bytes);
-#endif
-                top.val.bulkcopy.a = make_maddr(src_addr);
-                top.val.bulkcopy.b = make_iaddr(dest_addr);
-                break;
-            case NET_TRANSFER_IOB_TO_RAM:
-#ifdef TAINTDEBUG
-                printf("NET_TRANSFER_IOB_TO_RAM src: 0x%lx, dest 0x%lx, len %d\n",
-                    src_addr, dest_addr, num_bytes);
-#endif
-                top.val.bulkcopy.a = make_iaddr(src_addr);
-                top.val.bulkcopy.b = make_maddr(dest_addr);
-                break;
-            case NET_TRANSFER_IOB_TO_IOB:
-#ifdef TAINTDEBUG
-                printf("NET_TRANSFER_IOB_TO_IOB src: 0x%lx, dest 0x%lx, len %d\n",
-                    src_addr, dest_addr, num_bytes);
-#endif
-                top.val.bulkcopy.a = make_iaddr(src_addr);
-                top.val.bulkcopy.b = make_iaddr(dest_addr);
-                break;
-            default:
-                assert(0);
-        }
-        // make the taint op buffer bigger if necessary
-        tob_resize(&tob_io_thread);
-        // add bulk copy corresponding to this hd transfer to buffer
-        // of taint ops for io thread.
-        tob_op_write(tob_io_thread, &top);
-    }
-    return 0;
-}
-
-// this does a bunch of the dmas in hd taint transfer
-int cb_replay_cpu_physical_mem_rw_ram(CPUState *env, uint32_t is_write,
-        uint8_t *src_addr, uint64_t dest_addr, uint32_t num_bytes){
-    // NB:
-    // is_write == 1 means write from qemu buffer to guest RAM.
-    // is_write == 0 means RAM -> qemu buffer
-    // Replay dmas in hd taint transfer
-    if (taintEnabled) {
-        TaintOp top;
-        top.typ = BULKCOPYOP;
-        top.val.bulkcopy.l = num_bytes;
-        if (is_write) {
-           // its a "write", i.e., transfer from IO buffer to RAM
-	    //            printf("cpu_physical_mem_rw IO->RAM\n");
-            top.val.bulkcopy.a = make_iaddr((uint64_t)src_addr);
-            top.val.bulkcopy.b = make_maddr(dest_addr);
-        }
-        else {
-            // its a "read", i.e., transfer from RAM to IO buffer
-	    //            printf("cpu_physical_mem_rw RAM->IO\n");
-            top.val.bulkcopy.a = make_maddr(dest_addr);
-            top.val.bulkcopy.b = make_iaddr((uint64_t)src_addr);
-        }
-        // make the taint op buffer bigger if necessary
-        tob_resize(&tob_io_thread);
-        // add bulk copy corresponding to this hd transfer to buffer
-        // of taint ops for io thread.
-        tob_op_write(tob_io_thread, &top);
-    }
-    return 0;
-}
-#endif
-
-
-int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
-
-    if (taintEnabled){
-        //printf("EXCEPTION - logging\n");
-        DynValBuffer *dynval_buffer = PIFP->PIV->getDynvalBuffer();
-        log_exception(dynval_buffer);
-
-        // Then execute taint ops up until the exception occurs.  Execution of taint
-        // ops will stop at the point of the exception.
-        rewind_dynval_buffer(dynval_buffer);
-        execute_taint_ops(PTFP->ttb, shadow, dynval_buffer);
-
-        // Make sure there's nothing left in the buffer
-	assert(dynval_buffer->ptr - dynval_buffer->start == dynval_buffer->cur_size);
-    }
-
-    return 0;
-}
-*/
 #ifdef TARGET_ARM
 // R0 is command (label or query)
 // R1 is buf_start
@@ -511,42 +286,45 @@ void arm_hypercall_callback(CPUState *env){
 #endif //TARGET_ARM
 
 #ifdef TARGET_I386
-// XXX: Support all features of label and query program
+// Support all features of label and query program
 void i386_hypercall_callback(CPUState *env){
-    //target_ulong buf_start = env->regs[R_EBX];
-    //target_ulong buf_len = env->regs[R_ECX];
+    //printf("taint2: Hypercall! B " TARGET_FMT_lx " C " TARGET_FMT_lx " D " TARGET_FMT_lx "\n",
+    //        env->regs[R_EBX], env->regs[R_ECX], env->regs[R_EDX]);
 
-    // call to iferret to label data
+    // Label op.
     // EBX contains addr of that data
     // ECX contains size of data
-    // EDI is a pointer to a buffer containing the label string
-    // ESI contains the length of that label
-    // EDX = starting offset (for positional labels only)
-
+    // EDX contains the label; ~0UL for autoenc.
     if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
+        target_ulong addr = env->regs[R_EBX];
+        target_ulong size = env->regs[R_ECX];
+        target_ulong label = env->regs[R_EDX];
         if (!taintEnabled){
-            printf("Taint plugin: Label operation detected\n");
-            printf("Enabling taint processing\n");
-	    __taint_enable_taint();
+            printf("taint2: Label operation detected\n");
+            __taint_enable_taint();
         }
-        // FIXME: Add taint.
+
+        LabelSet *ls = NULL;
+        if (label != (target_ulong)~0UL) {
+            ls = label_set_singleton(label);
+        } // otherwise autoinc.
+        for (unsigned i = 0; i < size; i++) {
+            fast_shad_set(shadow->ram, addr + i,
+                    ls ? ls : label_set_singleton(i));
+        }
     }    
 
-    //mz Query taint on this buffer
-    //mz EBX = start of buffer (VA)
-    //mz ECX = size of buffer (bytes)
-    // EDI is a pointer to a buffer containing the filename or another name for this query
-    // ESI contains the length of that string
-    // EDX = starting offset - for file queries
-    else if (env->regs[R_EAX] == 9){ //Query taint on label
+    // Query op.
+    // EBX contains addr.
+    if (env->regs[R_EAX] == 9) {
         if (taintEnabled){
-            printf("Taint plugin: Query operation detected\n");
-            //bufplot(env, shadow, &a, (int)buf_len);
+            printf("taint2: Query operation detected. %u labels: \n",
+                    taint_query_ram(env->regs[R_EBX]));
+            label_set_iter(fast_shad_query(shadow->ram, env->regs[R_EBX]),
+                    print_labels, NULL);
+            printf("taint2: Stopping replay.\n");
+            rr_do_end_replay(0);
         }
-        //printf("Disabling taint processing\n");
-        //taintEnabled = false;
-        //taintJustDisabled = true;
-        //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
 }
 #endif // TARGET_I386
@@ -563,56 +341,32 @@ int guest_hypercall_callback(CPUState *env){
     return 1;
 }
 
-/*
+bool __taint_enabled() {
+    return taintEnabled;
+}
+
 // label this phys addr in memory with this label 
 void __taint_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
-static int put_int(uint32_t val, void *place) {
-  *(uint32_t *)place = val;
-  return 0;
-}
-
-uint32_t __taint_pick_label(uint64_t pa) {
-  uint32_t result = ~0;
-  tp_ls_ram_iter(shadow, pa, put_int, &result);
-  return result;
-}
-
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality 
 uint32_t __taint_query_ram(uint64_t pa) {
-  return (tp_query_ram(shadow, pa));
+    return tp_query_ram(shadow, pa);
 }
 
 
 uint32_t __taint_query_reg(int reg_num, int offset) {
-  return tp_query_reg(shadow, reg_num, offset);
+    return tp_query_reg(shadow, reg_num, offset);
 }
 
 
 void __taint_delete_ram(uint64_t pa) {
-  tp_delete_ram(shadow, pa);
+    tp_delete_ram(shadow, pa);
 }
 
-
-void taint_labels_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-  tp_ls_ram_iter(shadow, pa, app, stuff2);
-}
-
-
-void taint_labels_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-  tp_ls_reg_iter(shadow, reg_num, offset, app, stuff2);
-}
-
-
-
-uint32_t __taint_occ_ram() {
-  return tp_occ_ram(shadow);
-}
-
-
+/*
 uint32_t __taint_max_obs_ls_type(void) {
     return shadow->max_obs_ls_type;
 }
@@ -643,7 +397,7 @@ int __taint_taint_state_read(void) {
 void __taint_clear_shadow_memory(void){
     clear_shadow_memory(&shadow);
 }
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 // C API versions
@@ -661,9 +415,9 @@ void taint_label_ram(uint64_t pa, uint32_t l) {
     __taint_label_ram(pa, l);
 }
 
-uint32_t taint_pick_label(uint64_t pa) {
+/*uint32_t taint_pick_label(uint64_t pa) {
   return __taint_pick_label(pa);
-}
+}*/
 
 uint32_t taint_query_ram(uint64_t pa) {
   return __taint_query_ram(pa);
@@ -677,15 +431,9 @@ uint32_t taint_query_reg(int reg_num, int offset) {
   return __taint_query_reg(reg_num, offset);
 }
 
-
-uint32_t taint_occ_ram(void) {
-  return __taint_occ_ram();
-}
-
-uint32_t taint_max_obs_ls_type(void) {
+/*uint32_t taint_max_obs_ls_type(void) {
     return __taint_max_obs_ls_type();
 }
-
 
 void taint_clear_tainted_computation_happened(void) {
     __taint_clear_tainted_computation_happened();
@@ -723,18 +471,21 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
-    if (!taintEnabled) __taint_enable_taint();
+    //if (!taintEnabled) __taint_enable_taint();
 
 #ifdef TAINTDEBUG
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 #endif
 
-    if (!tb->llvm_tc_ptr) {
-        return true;
-    } else {
-        //tb->llvm_function->dump();
-        return false;
+    if (taintEnabled) {
+        if (!tb->llvm_tc_ptr) {
+            return true;
+        } else {
+            //tb->llvm_function->dump();
+            return false;
+        }
     }
+    return false;
 }
 
 bool init_plugin(void *self) {
@@ -757,20 +508,6 @@ bool init_plugin(void *self) {
 
 
 
-
-
-int print_labels (uint32_t el, void *stuff) { 
-  if (stuff == NULL) {
-    printf ("%d ", el); 
-  }
-  else {
-    FILE *fp = (FILE *) stuff;
-    fprintf (fp, "%d ", el);
-  }
-  return 0;
-}
-
-
 void uninit_plugin(void *self) {
 
     printf ("uninit taint plugin\n");
@@ -782,7 +519,3 @@ void uninit_plugin(void *self) {
     panda_enable_tb_chaining();
 
 }
-
-
-
-

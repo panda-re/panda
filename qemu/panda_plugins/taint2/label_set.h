@@ -18,13 +18,6 @@ PANDAENDCOMMENT */
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
-    TAINT_BACKEND_BINARY,
-    TAINT_BACKEND_LABEL
-} TaintBackendType;
-
-extern uint64_t labelset_count;
-
 typedef struct LabelSet {
     struct LabelSet *child1;
     union {     // If child1 is null this is a number.
@@ -33,18 +26,16 @@ typedef struct LabelSet {
     };
 } LabelSet;
 
-/*
 inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2);
 inline LabelSet *label_set_singleton(uint32_t label);
-inline uint32_t label_set_cardinality(LabelSet *ls);
-*/
+static void label_set_iter(LabelSet *ls, void (*iter)(uint32_t, void *), void *user);
 
-static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
+inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
         LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
-        labelset_count++;
+        //labelset_count++;
 
         result->child1 = ls1;
         result->child2 = ls2;
@@ -56,21 +47,24 @@ static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     } else return NULL;
 }
 
-static inline LabelSet *label_set_singleton(uint32_t label) {
+inline LabelSet *label_set_singleton(uint32_t label) {
     LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
-    labelset_count++;
+    //labelset_count++;
 
     result->child1 = NULL;
     result->label = label;
     return result;
 }
 
-static inline uint32_t label_set_cardinality(LabelSet *ls) {
-    if (ls == NULL) return 0;
-    else if (ls->child1 != NULL) {
-        return label_set_cardinality(ls->child1) +
-            label_set_cardinality(ls->child2);
-    } else return 1;
+static void label_set_iter(LabelSet *ls, void (*iter)(uint32_t, void *), void *user) {
+    if (!ls) return;
+    
+    if (ls->child1) { // union
+        label_set_iter(ls->child1, iter, user);
+        label_set_iter(ls->child2, iter, user);
+    } else {
+        iter(ls->label, user);
+    }
 }
 
 #endif

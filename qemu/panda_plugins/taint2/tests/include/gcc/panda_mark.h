@@ -12,29 +12,29 @@ const int QUERY_BUFFER = 9;
 #ifdef TARGET_I386
 inline
 void hypercall(unsigned long buf, unsigned long len, unsigned long off, int action) {
-  unsigned long rax = action;
-  unsigned long rbx = buf;
-  unsigned long rcx = len;
-  unsigned long rdx = off;
+  unsigned long eax = action;
+  unsigned long ebx = buf;
+  unsigned long ecx = len;
+  unsigned long edx = off;
 
   asm __volatile__
-      ("push %%rax \t\n\
-        push %%rbx \t\n\
-        push %%rcx \t\n\
-        push %%rdx \t\n\
-        mov  %0, %%rax \t\n\
-        mov  %1, %%rbx \t\n\
-        mov  %2, %%rcx \t\n\
-        mov  %3, %%rdx \t\n\
+      ("push %%eax \t\n\
+        push %%ebx \t\n\
+        push %%ecx \t\n\
+        push %%edx \t\n\
+        mov  %0, %%eax \t\n\
+        mov  %1, %%ebx \t\n\
+        mov  %2, %%ecx \t\n\
+        mov  %3, %%edx \t\n\
         cpuid \t\n\
-        pop  %%rdx \t\n\
-        pop  %%rcx \t\n\
-        pop  %%rbx \t\n\
-        pop  %%rax \t\n\
+        pop  %%edx \t\n\
+        pop  %%ecx \t\n\
+        pop  %%ebx \t\n\
+        pop  %%eax \t\n\
        "
       : /* no output registers */
-      : "r" (rax), "r" (rbx), "r" (rcx), "r" (rdx) /* input operands */
-      : "rax", "rbx", "rcx", "rdx" /* clobbered registers */
+      : "r" (eax), "r" (ebx), "r" (ecx), "r" (edx) /* input operands */
+      : "eax", "ebx", "ecx", "edx" /* clobbered registers */
       );
   return;
 }

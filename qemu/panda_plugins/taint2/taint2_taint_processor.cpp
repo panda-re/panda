@@ -30,25 +30,10 @@ PANDAENDCOMMENT */
 #include "network.h"
 #include "defines.h"
 
-#define SB_INLINE inline
-
 extern "C" {
 
 #include "fast_shad.h"
 
-// prototypes for on_load and on_store callback registering
-PPP_PROT_REG_CB(on_load);
-PPP_PROT_REG_CB(on_store);
-PPP_PROT_REG_CB(before_execute_taint_ops);
-PPP_PROT_REG_CB(after_execute_taint_ops);
-
-
-// this adds the actual callback machinery including
-// functions for registering callbacks
-PPP_CB_BOILERPLATE(on_load);
-PPP_CB_BOILERPLATE(on_store);
-PPP_CB_BOILERPLATE(before_execute_taint_ops);
-PPP_CB_BOILERPLATE(after_execute_taint_ops);
 }
 
 Addr make_haddr(uint64_t a) {
@@ -87,54 +72,15 @@ Addr make_paddr(uint64_t a) {
   return pa;
 }
 
-/*// if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
-// else throw up
-static Addr addr_add(Addr a, uint32_t o) {
-  switch (a.typ) {
-  case HADDR:
-    a.val.ha += o;
-    break;
-  case MADDR:
-    a.val.ma += o;
-    break;
-  case IADDR:
-    a.val.ia += o;
-    break;
-  case PADDR:
-    a.val.pa += o;
-    break;
-  default:
-    // Thou shalt not.
-    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
-    assert (1==0);
-    break;
-  }
-  return a;
+Addr make_greg(uint64_t r, uint16_t off) {
+    Addr ra = {
+        .typ = GREG,
+        .val = { .gr = r },
+        .off = off,
+        .flag = (AddrFlag) 0
+    };
+    return ra;
 }
-
-
-// increment addr a in place
-static void addr_inc(Addr *a) {
-  switch (a->typ) {
-  case HADDR:
-    a->val.ha++;
-    break;
-  case MADDR:
-    a->val.ma++;
-    break;
-  case IADDR:
-    a->val.ia++;
-    break;
-  case PADDR:
-    a->val.pa++;
-    break;
-  default:
-    // Thou shalt not.
-    printf ("You called addr_add with an Addr other than HADDR, MADDR, IADDR, PADDR.  That isn't meaningful.\n");
-    assert (1==0);
-    break;
-  }
-}*/
 
 /*
    Initialize the shadow memory for taint processing.
@@ -174,15 +120,14 @@ void tp_free(Shad *shad){
     fast_shad_free(shad->llv);
     fast_shad_free(shad->ret);
     fast_shad_free(shad->grv);
-    if (shad->gsv){
-        fast_shad_free(shad->gsv);
-    }
+    fast_shad_free(shad->gsv);
     my_free(shad, sizeof(Shad), poolid_taint_processor);
 }
 
 // returns a copy of the labelset associated with a.  or NULL if none.
 // so you'll need to call labelset_free on this pointer when done with it.
-static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr *a) {
+LabelSet *tp_labelset_get(Shad *shad, Addr *a) {
+    assert(shad != NULL);
     switch (a->typ) {
         case HADDR:
             return shad_dir_find_64(shad->hd, a->val.ha+a->off);
@@ -209,50 +154,40 @@ static SB_INLINE LabelSet *tp_labelset_get(Shad *shad, Addr *a) {
     return NULL;
 }
 
+extern "C" {
+static void set_insert(uint32_t l, void *label_set_opaque);
+}
+static void set_insert(uint32_t l, void *label_set_opaque) {
+    std::set<uint32_t> *label_set =
+        reinterpret_cast<std::set<uint32_t> *>(label_set_opaque);
+    label_set->insert(l);
+}
 
-// returns TRUE (1) iff a has a non-empty taint set
-SB_INLINE LabelSet *tp_query(Shad *shad, Addr *a) {
+// returns std::set of labels.
+std::set<uint32_t> tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
     LabelSet *ls = tp_labelset_get(shad, a);
-    return ls;
+
+    std::set<uint32_t> result;
+    label_set_iter(ls, set_insert, &result);
+
+    return result;
 }
 
 // returns label set cardinality
 uint32_t tp_query_ram(Shad *shad, uint64_t pa) {
-  Addr ra;
-  ra.typ = MADDR;
-  ra.val.ma = pa;
-  ra.off = 0;
-  ra.flag = (AddrFlag) 0;
-  if (tp_query(shad, &ra)) {
-    LabelSet *ls = tp_labelset_get(shad, &ra);    
-    uint32_t c = label_set_cardinality(ls);
-    assert (c > 0);
-    return c;
-  }
-  // not tainted
-  return 0;
+    Addr a = make_maddr(pa);
+    return tp_query(shad, &a).size();
 }
 
 // returns label set cardinality
 uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
-  Addr ra;
-  ra.typ = GREG;
-  ra.val.gr = reg_num;
-  ra.off = offset;
-  ra.flag = (AddrFlag) 0;
-  if (tp_query(shad, &ra)) {
-    LabelSet *ls = tp_labelset_get(shad, &ra);    
-    uint32_t c = label_set_cardinality(ls);
-    assert (c > 0);
-    return c;
-  }
-  // not tainted
-  return 0;
+    Addr a = make_greg(reg_num, offset);
+    return tp_query(shad, &a).size();
 }
 
 // untaint -- discard label set associated with a
-SB_INLINE void tp_delete(Shad *shad, Addr *a) {
+void tp_delete(Shad *shad, Addr *a) {
     assert (shad != NULL);
     switch (a->typ) {
         case HADDR:
@@ -293,7 +228,7 @@ SB_INLINE void tp_delete(Shad *shad, Addr *a) {
 
 // here we are storing a copy of ls in the shadow memory.
 // so ls is caller's to free
-static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
+static void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     switch (a->typ) {
         case HADDR:
             shad_dir_add_64(shad->hd, a->val.ha + a->off, ls);
@@ -366,7 +301,7 @@ static SB_INLINE void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
     }
 }
 
-SB_INLINE void addr_spit(Addr *a) {
+void addr_spit(Addr *a) {
   switch (a->typ) {
   case HADDR:    printf ("(h%lx", a->val.ha);    break;
   case MADDR:    printf ("(m%lx", a->val.ma);    break;
@@ -386,15 +321,8 @@ SB_INLINE void addr_spit(Addr *a) {
     
 
 // label -- associate label l with address a
-SB_INLINE void tp_label(Shad *shad, Addr *a, uint32_t l) {
+void tp_label(Shad *shad, Addr *a, uint32_t l) {
     assert (shad != NULL);
-    
-    
-    /*
-    printf ("tp_label ");
-    addr_spit(a);
-    printf (" %d\n", l);
-    */    
 
     LabelSet *ls = tp_labelset_get(shad, a);
     LabelSet *ls2 = label_set_singleton(l);
@@ -403,56 +331,14 @@ SB_INLINE void tp_label(Shad *shad, Addr *a, uint32_t l) {
 }
 
 void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l) {
-  Addr ra;
-  ra.typ = MADDR;
-  ra.val.ma = pa;
-  ra.off = 0;
-  ra.flag = (AddrFlag) 0;
-  tp_label(shad, &ra, l);
+    Addr a = make_maddr(pa);
+    tp_label(shad, &a, l);
 }
 
 void tp_delete_ram(Shad *shad, uint64_t pa) {
-
-  Addr ra;
-  ra.typ = MADDR;
-  ra.val.ma = pa;
-  ra.off = 0;
-  ra.flag = (AddrFlag) 0;
-  tp_delete(shad, &ra);
+    Addr a = make_maddr(pa);
+    tp_delete(shad, &a);
 }
-
-
-
-SB_INLINE uint8_t addrs_equal(Addr *a, Addr *b) {
-    if (a->typ != b->typ)
-        return FALSE;
-    switch (a->typ) {
-        case HADDR:
-            return a->val.ha+a->off == b->val.ha+b->off;
-        case MADDR:
-            return a->val.ma+a->off == b->val.ma+b->off;
-        case IADDR:
-            return a->val.ia+a->off == b->val.ia+b->off;
-        case PADDR:
-            return a->val.pa+a->off == b->val.pa+b->off;
-        case LADDR:
-            return (a->val.la == b->val.la)
-                   && (a->off == b->off)
-                   && (a->flag == b->flag);
-        case GREG:
-            return (a->val.gr == b->val.gr) && (a->off == b->off);
-        case GSPEC:
-            return (a->val.gs == b->val.gs) && (a->off == b->off);
-        case RET:
-            return (a->off == b->off);
-        default:
-            assert (1==0);
-            return 0;
-    }
-    return FALSE;
-}
-
-
 
 void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
   switch(a->typ) {
@@ -510,66 +396,3 @@ void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
 void print_addr(Shad *shad, Addr *a) {
   fprintf_addr(shad, a, stdout);
 }
- 
-/*
-void print_addr(Shad *shad, Addr *a) {
-    uint32_t current_frame;
-    switch(a->typ) {
-        case HADDR:
-            printf ("h0x%llx", (long long unsigned int) a->val.ha+a->off);
-            break;
-        case MADDR:
-            printf ("m0x%llx", (long long unsigned int) a->val.ma+a->off);
-            break;
-        case IADDR:
-            printf ("i0x%llx", (long long unsigned int) a->val.ia+a->off);
-            break;
-        case PADDR:
-            printf ("p0x%llx", (long long unsigned int) a->val.pa+a->off);
-            break;
-        case LADDR:
-            if (!shad){
-                current_frame = 0; // not executing taint ops, assume frame 0
-            }
-            else {
-                current_frame = shad->current_frame;
-            }
-
-            if (a->flag == FUNCARG){
-                printf ("[%d]l%lld[%d]", current_frame + 1,
-                    (long long unsigned int) a->val.la, a->off);
-            }
-            else {
-                printf ("[%d]l%lld[%d]", current_frame,
-                    (long long unsigned int) a->val.la, a->off);
-            }
-            break;
-        case GREG:
-            printreg(a);
-            break;
-        case GSPEC:
-            printspec(a);
-            break;
-        case UNK:
-            if (a->flag == IRRELEVANT){
-                printf("irrelevant");
-            }
-            //else if (a->flag == READLOG) {
-            else if (a->typ == UNK){
-                printf("unknown");
-            }
-            else {
-                assert(1==0);
-            }
-            break;
-        case CONST:
-            printf("constant");
-            break;
-        case RET:
-            printf("ret[%d]", a->off);
-            break;
-        default:
-            assert (1==0);
-    }
-}
-*/

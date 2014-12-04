@@ -71,11 +71,14 @@ void tp_free(Shad *shad);
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr *a, uint32_t l);
 
-LabelSet *tp_query(Shad *shad, Addr *a);
+std::set<uint32_t> tp_query(Shad *shad, Addr *a);
 
-typedef void (*on_load_t) (uint64_t tp_pc, uint64_t addr);
-typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
-typedef void (*before_execute_taint_ops_t) (void);
-typedef void (*after_execute_taint_ops_t) (void);
+void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l);
+
+uint32_t tp_query_ram(Shad *shad, uint64_t pa) ;
+
+uint32_t tp_query_reg(Shad *shad, int reg_num, int offset);
+
+void tp_delete_ram(Shad *shad, uint64_t pa) ;
 
 #endif

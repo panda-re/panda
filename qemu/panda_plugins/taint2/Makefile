@@ -14,7 +14,7 @@ QEMU_CXXFLAGS+= -DTAINT2_NOINLINE
 
 QEMU_CXXFLAGS+= -std=c++11
 
-TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
+TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector -fno-omit-frame-pointer
 LLVM_OPS=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_taint_ops.c
 MY_MEM=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_my_mem.cpp
 

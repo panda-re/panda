@@ -62,6 +62,7 @@ public:
         FunctionProcessed(false), fNext(0) {}
     int getLocalSlot(const Value *V);
     void initialize();
+    unsigned getMaxSlot();
 };
 
 class ReturnInst;
