@@ -20,6 +20,16 @@ PANDAENDCOMMENT */
 
 #include "defines.h"
 
+#define CPU_LOG_TAINT_OPS (1 << 14)
+#ifndef TAINTDEBUG
+#define taint_log(...) {}
+#define tassert(...) {}
+#else
+#define tassert(cond) assert((cond))
+#define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__)
+//#define taint_log(...) printf(__VA_ARGS__)
+#endif
+
 void *memset(void *dest, int val, size_t n);
 void *memcpy(void *dest, const void *src, size_t n);
 void *memmove(void *dest, const void *src, size_t n);
@@ -45,9 +55,7 @@ static inline void fast_shad_push_frame(FastShad *fast_shad);
 static inline void fast_shad_pop_frame(FastShad *fast_shad);
 
 static inline LabelSet **get_ls_p(FastShad *fast_shad, uint64_t guest_addr) {
-#ifdef TAINTDEBUG
-    assert(guest_addr < fast_shad->size);
-#endif
+    tassert(guest_addr < fast_shad->size);
     return &fast_shad->labels[guest_addr];
 }
 
@@ -57,27 +65,57 @@ static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSet *l
 }
 
 static inline void fast_shad_copy(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size) {
+    tassert(dest + size <= fast_shad_dest->size);
+    tassert(src + size <= fast_shad_src->size);
+    
 #ifdef TAINTDEBUG
-    assert(dest + size <= fast_shad_dest->size);
-    assert(src + size <= fast_shad_src->size);
+    unsigned i;
+    for (i = 0; i < size; i++) {
+        if (*get_ls_p(fast_shad_src, src + i) != NULL) {
+            taint_log("TAINTED COPY: %lx[%lx] <- %lx[%lx] (%lx)\n",
+                    (uint64_t)fast_shad_dest, dest + i,
+                    (uint64_t)fast_shad_src, src + i,
+                    (uint64_t)*get_ls_p(fast_shad_src, src + i));
+            break;
+        }
+    }
 #endif
-    memcpy(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size);
+
+    memcpy(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSet *));
 }
 
 static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size) {
+    tassert(dest + size <= fast_shad_dest->size);
+    tassert(src + size <= fast_shad_src->size);
+    
 #ifdef TAINTDEBUG
-    assert(dest + size <= fast_shad_dest->size);
-    assert(src + size <= fast_shad_src->size);
+    unsigned i;
+    for (i = 0; i < size; i++) {
+        if (*get_ls_p(fast_shad_src, src + i) != NULL) {
+            taint_log("TAINTED MOVE\n");
+            break;
+        }
+    }
 #endif
-    memmove(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size);
+
+    memmove(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSet *));
 }
 
 // Remove taint.
 static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t size) {
+    tassert(addr + size <= fast_shad->size);
+    
 #ifdef TAINTDEBUG
-    assert(addr + size <= fast_shad->size);
+    unsigned i;
+    for (i = 0; i < size; i++) {
+        if (*get_ls_p(fast_shad, addr + i) != NULL) {
+            taint_log("TAINTED DELETE\n");
+            break;
+        }
+    }
 #endif
-    memset(get_ls_p(fast_shad, addr), 0, size);
+
+    memset(get_ls_p(fast_shad, addr), 0, size * sizeof(LabelSet *));
 }
 
 // Query. NULL if untainted.
@@ -92,17 +130,13 @@ static inline void fast_shad_reset_frame(FastShad *fast_shad) {
 
 static inline void fast_shad_push_frame(FastShad *fast_shad) {
     fast_shad->labels += MAXREGSIZE * MAXFRAMESIZE;
-#ifdef TAINTDEBUG
-    assert(fast_shad->labels < fast_shad->orig_labels + fast_shad->size);
-#endif
+    tassert(fast_shad->labels < fast_shad->orig_labels + fast_shad->size);
     //printf("push: %lx\n", (uint64_t)fast_shad->labels);
 }
 
 static inline void fast_shad_pop_frame(FastShad *fast_shad) {
     fast_shad->labels -= MAXREGSIZE * MAXFRAMESIZE;
-#ifdef TAINTDEBUG
-    //assert(fast_shad->labels >= fast_shad->orig_labels);
-#endif
+    tassert(fast_shad->labels >= fast_shad->orig_labels);
     //printf("pop: %lx\n", (uint64_t)fast_shad->labels);
 }
 

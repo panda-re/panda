@@ -17,6 +17,9 @@ PANDAENDCOMMENT */
 
 #include <stdint.h>
 #include <stdbool.h>
+#ifdef TAINTDEBUG
+#include <stdio.h>
+#endif
 
 typedef struct LabelSet {
     struct LabelSet *child1;
@@ -26,11 +29,11 @@ typedef struct LabelSet {
     };
 } LabelSet;
 
-inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2);
-inline LabelSet *label_set_singleton(uint32_t label);
+static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2);
+static inline LabelSet *label_set_singleton(uint32_t label);
 static void label_set_iter(LabelSet *ls, void (*iter)(uint32_t, void *), void *user);
 
-inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
+static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
@@ -47,8 +50,11 @@ inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     } else return NULL;
 }
 
-inline LabelSet *label_set_singleton(uint32_t label) {
+static inline LabelSet *label_set_singleton(uint32_t label) {
     LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
+//#ifdef TAINTDEBUG
+    printf("SINGLETON LABELSET: %lx\n", (uint64_t)result);
+//#endif
     //labelset_count++;
 
     result->child1 = NULL;

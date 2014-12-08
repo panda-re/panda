@@ -35,8 +35,9 @@ FastShad *fast_shad_new(uint64_t labelsets) {
 
     LabelSet **array;
     if (labelsets < (1UL << 24)) {
-        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc.\n", size);
         array = (LabelSet **)malloc(size);
+        printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc @ %lx.\n",
+                size, (uint64_t)array);
         assert(array);
     } else {
         uint64_t align = 1UL << 40; // Align to a 1T boundary.
@@ -45,7 +46,7 @@ FastShad *fast_shad_new(uint64_t labelsets) {
         do {
             // We're going to try to make this aligned.
             vaddr += align;
-            printf("taint2: Trying to map shadow memory @ 0x%" PRIx64 ".\n", vaddr);
+            printf("taint2: Trying to allocate large fast_shad @ 0x%" PRIx64 ".\n", vaddr);
             array = (LabelSet **)mmap((void *)vaddr, size, PROT_READ | PROT_WRITE,
                     MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED | MAP_HUGETLB,
                     -1, 0);

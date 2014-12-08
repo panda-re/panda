@@ -6,11 +6,11 @@ include ../panda.mak
 # Include files and lib from LLVM
 CXXFLAGS+= $(LLVM_CXXFLAGS)
 
-QEMU_CFLAGS+= -DTAINTDEBUG
-QEMU_CXXFLAGS+= -DTAINTDEBUG
+DBGFLAGS=
+DBGFLAGS+= -DTAINT2_NOINLINE -DTAINTDEBUG
 
-QEMU_CFLAGS+= -DTAINT2_NOINLINE
-QEMU_CXXFLAGS+= -DTAINT2_NOINLINE
+QEMU_CFLAGS+= $(DBGFLAGS)
+QEMU_CXXFLAGS+= $(DBGFLAGS)
 
 QEMU_CXXFLAGS+= -std=c++11
 
@@ -54,7 +54,7 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
 
 	$(call quiet-command,\
-		$(filter-out -g -Wold-style-declaration -std=c11,\
+		$(filter-out -Wold-style-declaration -std=c11,\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
@@ -63,8 +63,8 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
 
 	$(call quiet-command,\
-		$(filter-out -g -Wold-style-declaration -std=c11,\
-			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) \
+		$(filter-out -Wold-style-declaration -std=c11,\
+			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \

@@ -139,7 +139,7 @@ void verify(void) {
 
 void __taint_enable_taint(void) {
     if(taintEnabled) {return;}
-    printf ("__taint_enable_taint\n");
+    printf ("taint2: __taint_enable_taint\n");
     taintEnabled = true;
     panda_cb pcb;
 
@@ -263,7 +263,7 @@ void arm_hypercall_callback(CPUState *env){
 
     if (env->regs[0] == 7 || env->regs[0] == 8){ //Taint label
         if (!taintEnabled){
-            printf("Taint plugin: Label operation detected\n");
+            printf("Taint plugin: Label operation detected @ %lu\n", rr_get_guest_instr_count());
             printf("Enabling taint processing\n");
             __taint_enable_taint();
         }
@@ -273,7 +273,7 @@ void arm_hypercall_callback(CPUState *env){
 
     else if (env->regs[0] == 9){ //Query taint on label
         if (taintEnabled){
-            printf("Taint plugin: Query operation detected\n");
+            printf("Taint plugin: Query operation detected @ %lu\n", rr_get_guest_instr_count());
             //Addr a = make_maddr(buf_start);
             //bufplot(env, shadow, &a, (int)buf_len);
         }
@@ -296,11 +296,14 @@ void i386_hypercall_callback(CPUState *env){
     // ECX contains size of data
     // EDX contains the label; ~0UL for autoenc.
     if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
-        target_ulong addr = env->regs[R_EBX];
+        target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
         target_ulong size = env->regs[R_ECX];
         target_ulong label = env->regs[R_EDX];
         if (!taintEnabled){
-            printf("taint2: Label operation detected\n");
+            printf("taint2: Label operation detected @ %lu\n",
+                    rr_get_guest_instr_count());
+            printf("taint2: Labeling " TARGET_FMT_lx " to " TARGET_FMT_lx
+                    " with label " TARGET_FMT_lx ".\n", addr, addr + size, label);
             __taint_enable_taint();
         }
 
@@ -308,6 +311,9 @@ void i386_hypercall_callback(CPUState *env){
         if (label != (target_ulong)~0UL) {
             ls = label_set_singleton(label);
         } // otherwise autoinc.
+        qemu_log_mask(CPU_LOG_TAINT_OPS, "label: %lx[%lx+%lx] <- %lx (%lx)\n",
+                (uint64_t)shadow->ram, (uint64_t)addr, (uint64_t)size, (uint64_t)label,
+                (uint64_t)ls);
         for (unsigned i = 0; i < size; i++) {
             fast_shad_set(shadow->ram, addr + i,
                     ls ? ls : label_set_singleton(i));
@@ -317,9 +323,12 @@ void i386_hypercall_callback(CPUState *env){
     // Query op.
     // EBX contains addr.
     if (env->regs[R_EAX] == 9) {
+        target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
         if (taintEnabled){
-            printf("taint2: Query operation detected. %u labels: \n",
-                    taint_query_ram(env->regs[R_EBX]));
+            printf("taint2: Query operation detected @ %lu. %u labels: \n",
+                    rr_get_guest_instr_count(), taint_query_ram(addr));
+            printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
+                    (uint64_t)addr);
             label_set_iter(fast_shad_query(shadow->ram, env->regs[R_EBX]),
                     print_labels, NULL);
             printf("taint2: Stopping replay.\n");
