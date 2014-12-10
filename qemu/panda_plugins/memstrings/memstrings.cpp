@@ -66,7 +66,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
     for (unsigned int i = 0; i < size; i++) {
         uint8_t val = ((uint8_t *)buf)[i];
-        if (isgraph(val)) {
+        if (isprint(val)) {
             sp.ch[sp.nch++] = val;
             // If we max out the string, chop it
             if (sp.nch == MAX_STRLEN - 1) {
@@ -130,5 +130,12 @@ bool init_plugin(void *self) {
 }
 
 void uninit_plugin(void *self) {
+    // Save any that we haven't flushed yet
+    for (auto &kvp : read_text_tracker)
+        if (kvp.second.nch > min_strlen)
+            gzprintf(mem_report, "%.*s\n", kvp.second.nch, kvp.second.ch);
+    for (auto &kvp : write_text_tracker)
+        if (kvp.second.nch > min_strlen)
+            gzprintf(mem_report, "%.*s\n", kvp.second.nch, kvp.second.ch);
     gzclose(mem_report);
 }
