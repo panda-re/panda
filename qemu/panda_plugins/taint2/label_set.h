@@ -27,17 +27,17 @@ typedef struct LabelSet {
         struct LabelSet *child2;
         uint32_t label;
     };
-} LabelSet;
+} *LabelSetP;
 
-static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2);
-static inline LabelSet *label_set_singleton(uint32_t label);
-static void label_set_iter(LabelSet *ls, void (*iter)(uint32_t, void *), void *user);
+static inline LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2);
+static inline LabelSetP label_set_singleton(uint32_t label);
+static void label_set_iter(LabelSetP ls, void (*iter)(uint32_t, void *), void *user);
 
-static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
+static inline LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
-        LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
+        LabelSetP result = (LabelSetP)malloc(sizeof(struct LabelSet));
         //labelset_count++;
 
         result->child1 = ls1;
@@ -50,11 +50,8 @@ static inline LabelSet *label_set_union(LabelSet *ls1, LabelSet *ls2) {
     } else return NULL;
 }
 
-static inline LabelSet *label_set_singleton(uint32_t label) {
-    LabelSet *result = (LabelSet *)malloc(sizeof(LabelSet));
-//#ifdef TAINTDEBUG
-    printf("SINGLETON LABELSET: %lx\n", (uint64_t)result);
-//#endif
+static inline LabelSetP label_set_singleton(uint32_t label) {
+    LabelSetP result = (LabelSetP)malloc(sizeof(struct LabelSet));
     //labelset_count++;
 
     result->child1 = NULL;
@@ -62,7 +59,8 @@ static inline LabelSet *label_set_singleton(uint32_t label) {
     return result;
 }
 
-static void label_set_iter(LabelSet *ls, void (*iter)(uint32_t, void *), void *user) {
+__attribute__((unused)) static void label_set_iter(
+        LabelSetP ls, void (*iter)(uint32_t, void *), void *user) {
     if (!ls) return;
     
     if (ls->child1) { // union

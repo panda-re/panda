@@ -118,7 +118,7 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
     /*if (size == 4) {
         printf("pmem: " TARGET_FMT_lx "\n", addr);
     }*/
-    taint2_memlog_push((uint64_t)&taint_memlog, addr);
+    taint_memlog_push(&taint_memlog, addr);
     return 0;
 }
 
@@ -127,7 +127,7 @@ int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
     /*if (size == 4) {
         printf("pmem: " TARGET_FMT_lx "\n", addr);
     }*/
-    taint2_memlog_push((uint64_t)&taint_memlog, addr);
+    taint_memlog_push(&taint_memlog, addr);
     return 0;
 }
 
@@ -309,7 +309,7 @@ void i386_hypercall_callback(CPUState *env){
             __taint_enable_taint();
         }
 
-        LabelSet *ls = NULL;
+        LabelSetP ls = NULL;
         if (label != (target_ulong)~0UL) {
             ls = label_set_singleton(label);
         } // otherwise autoinc.
@@ -318,7 +318,7 @@ void i386_hypercall_callback(CPUState *env){
                 (uint64_t)ls);
         for (unsigned i = 0; i < size; i++) {
             fast_shad_set(shadow->ram, addr + i,
-                    ls ? ls : label_set_singleton(i));
+                    label_set_singleton(i));
         }
     }    
 

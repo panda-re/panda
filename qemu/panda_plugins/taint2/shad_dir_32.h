@@ -63,7 +63,7 @@ SdDir32 *shad_dir_new_32(uint32_t num_dir_bits, uint32_t num_table_bits, uint32_
 */
 void shad_dir_iter_32
      (SdDir32 *shad_dir,
-      int (*app)(uint32_t addr, LabelSet *labelset, void *stuff1),
+      int (*app)(uint32_t addr, LabelSetP labelset, void *stuff1),
       void *stuff2);
 
 // returns the number of addr to labelset mappings
@@ -78,7 +78,7 @@ int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff);
   if a prior mapping exists, remove it first
   labelset is *not* copied.  We copy its slots.
 */
-/*inline*/ void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSet *ls_new);
+/*inline*/ void shad_dir_add_32(SdDir32 *shad_dir, uint32_t addr, LabelSetP ls_new);
 
 // remove this mapping from addr to labelset
 /*inline*/ void shad_dir_remove_32(SdDir32 *shad_dir, uint32_t addr);
@@ -88,7 +88,7 @@ int shad_dir_free_aux_32(uint32_t pa, SdPage *page, void *stuff);
 
 // Returns pointer to labelset associated with this address.
 // Returns NULL if none
-/*inline*/ LabelSet *shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr);
+/*inline*/ LabelSetP shad_dir_find_32(SdDir32 *shad_dir, uint32_t addr);
 
 #ifndef SD_TESTING
 // marshall shad_dir to file

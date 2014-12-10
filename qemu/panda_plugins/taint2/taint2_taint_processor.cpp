@@ -126,7 +126,7 @@ void tp_free(Shad *shad){
 
 // returns a copy of the labelset associated with a.  or NULL if none.
 // so you'll need to call labelset_free on this pointer when done with it.
-LabelSet *tp_labelset_get(Shad *shad, Addr *a) {
+LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
     assert(shad != NULL);
     switch (a->typ) {
         case HADDR:
@@ -166,7 +166,7 @@ static void set_insert(uint32_t l, void *label_set_opaque) {
 // returns std::set of labels.
 std::set<uint32_t> tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
-    LabelSet *ls = tp_labelset_get(shad, a);
+    LabelSetP ls = tp_labelset_get(shad, a);
 
     std::set<uint32_t> result;
     label_set_iter(ls, set_insert, &result);
@@ -228,7 +228,7 @@ void tp_delete(Shad *shad, Addr *a) {
 
 // here we are storing a copy of ls in the shadow memory.
 // so ls is caller's to free
-static void tp_labelset_put(Shad *shad, Addr *a, LabelSet *ls) {
+static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
     switch (a->typ) {
         case HADDR:
             shad_dir_add_64(shad->hd, a->val.ha + a->off, ls);
@@ -324,9 +324,9 @@ void addr_spit(Addr *a) {
 void tp_label(Shad *shad, Addr *a, uint32_t l) {
     assert (shad != NULL);
 
-    LabelSet *ls = tp_labelset_get(shad, a);
-    LabelSet *ls2 = label_set_singleton(l);
-    LabelSet *result = label_set_union(ls, ls2);
+    LabelSetP ls = tp_labelset_get(shad, a);
+    LabelSetP ls2 = label_set_singleton(l);
+    LabelSetP result = label_set_union(ls, ls2);
     tp_labelset_put(shad, a, result);
 }
 

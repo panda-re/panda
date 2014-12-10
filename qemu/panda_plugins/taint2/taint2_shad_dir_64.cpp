@@ -63,14 +63,14 @@ static void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table) {
 
 static SdPage *__shad_dir_page_new_64(SdDir64 *shad_dir) {
   SdPage *page = (SdPage *) my_calloc(1, sizeof(SdPage), poolid_shad_dir);
-  page->labels = (LabelSet **) my_calloc(shad_dir->page_size, sizeof(LabelSet *), poolid_shad_dir);
+  page->labels = (LabelSetP *) my_calloc(shad_dir->page_size, sizeof(LabelSetP ), poolid_shad_dir);
   page->num_non_empty = 0;
   return page;
 }
 
 static void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
   assert (page->num_non_empty == 0);
-  my_free(page->labels, sizeof(LabelSet *) * shad_dir->page_size, poolid_shad_dir);
+  my_free(page->labels, sizeof(LabelSetP ) * shad_dir->page_size, poolid_shad_dir);
   my_free(page, sizeof(SdPage), poolid_shad_dir);
 }
 
@@ -145,7 +145,7 @@ SdDir64 *shad_dir_new_64
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t2i;	\
           page_base_addr = (page_base_addr << shad_dir->num_table_bits) | t3i;	\
           page_base_addr = page_base_addr << shad_dir->num_page_bits;           \
-          __attribute__((__unused__)) LabelSet ** label_set_array = page->labels;                            \
+          __attribute__((__unused__)) LabelSetP * label_set_array = page->labels;                            \
           do_this ;         \
         }                   \
       }                     \
@@ -182,7 +182,7 @@ static void __shad_dir_page_iter_64
 */
 void shad_dir_iter_64
      (SdDir64 *shad_dir,
-      int (*app)(uint64_t addr, LabelSet *labels, void *stuff1),
+      int (*app)(uint64_t addr, LabelSetP labels, void *stuff1),
       void *stuff2) {
   SD_PAGE_ITER(
 	  { int iter_finished;
@@ -190,7 +190,7 @@ void shad_dir_iter_64
 	    for (ai=0; ai<shad_dir->page_size; ai++) {
 	      uint64_t addr;
 	      addr = page_base_addr | ai;
-	      LabelSet *ls = label_set_array[ai];
+	      LabelSetP ls = label_set_array[ai];
 	      iter_finished = 0;
 	      if (ls != NULL)
 		iter_finished = app(addr, ls, stuff2);
@@ -212,7 +212,7 @@ uint32_t shad_dir_occ_64(SdDir64 *shad_dir) {
 
 int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
   SdDir64 *shad_dir = (SdDir64 *) stuff;
-  my_free(page->labels, sizeof(LabelSet **) * shad_dir->page_size, poolid_shad_dir);
+  my_free(page->labels, sizeof(LabelSetP *) * shad_dir->page_size, poolid_shad_dir);
   return 0;
 }
 
@@ -257,9 +257,9 @@ void shad_dir_free_64(SdDir64 *shad_dir) {
   uint32_t t3i = (addr & shad_dir->table3_mask) >> sh; 	\
   SdPage *page = table3->page[t3i];		  \
   if (page == NULL) { no_page_action ; }	  \
-  LabelSet **label_set_array = page->labels;      \
+  LabelSetP *label_set_array = page->labels;      \
   uint32_t offset = (addr & shad_dir->page_mask); \
-  LabelSet *ls = label_set_array[offset];         \
+  LabelSetP ls = label_set_array[offset];         \
   if (ls == NULL) { no_labelset_action ; }
 
 
@@ -307,7 +307,7 @@ static SdPage *__shad_dir_add_page_to_table_64(SdDir64 *shad_dir, SdTable *table
   if a prior mapping exists, remove it first
   labelset is *not* copied.  We copy its slots.
 */
-void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSet *ls_new) {
+void shad_dir_add_64(SdDir64 *shad_dir, uint64_t addr, LabelSetP ls_new) {
   // get ls, the labelset currently associated with this addr
   SD_GET_LABELSET_64(
     addr,
@@ -390,7 +390,7 @@ uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
 
 // Returns pointer to labelset associated with this address.
 // Returns NULL if none
-LabelSet *shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
+LabelSetP shad_dir_find_64(SdDir64 *shad_dir, uint64_t addr) {
   // get ls, the labelset currently associated with addr
   SD_GET_LABELSET_64(
     addr,
@@ -415,7 +415,7 @@ extern "C" {
 }
 
 
-int shad_dir_save_aux_64(uint64_t addr, LabelSet *ls, void *f) {
+int shad_dir_save_aux_64(uint64_t addr, LabelSetP ls, void *f) {
   qemu_put_be64(f, addr);
   labelset_save(f, ls);
   return 0;
@@ -443,7 +443,7 @@ SdDir64 *shad_dir_load_64(void * /* QEMUFile * */ f) {
   int i;
   for (i=0; i<occ; i++) {
     uint64_t addr = qemu_get_be64(f);
-    LabelSet *ls = labelset_load(f);
+    LabelSetP ls = labelset_load(f);
     shad_dir_add_64(shad_dir, addr, ls);
   }
   return shad_dir;

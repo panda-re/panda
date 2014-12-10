@@ -34,33 +34,33 @@ void *memset(void *dest, int val, size_t n);
 void *memcpy(void *dest, const void *src, size_t n);
 void *memmove(void *dest, const void *src, size_t n);
 
-typedef struct LabelSet LabelSet;
+typedef struct LabelSet *LabelSetP;
 
 typedef struct FastShad {
-    LabelSet **labels;
-    LabelSet **orig_labels;
+    LabelSetP *labels;
+    LabelSetP *orig_labels;
     uint64_t size; // Number of labelsets contained.
 } FastShad;
 
 FastShad *fast_shad_new(uint64_t size);
 void fast_shad_free(FastShad *fast_shad);
 
-static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSet *ls);
+static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSetP ls);
 static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size);
 static inline void fast_shad_copy(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size);
 static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t size);
-static inline LabelSet *fast_shad_query(FastShad *fast_shad, uint64_t addr);
+static inline LabelSetP fast_shad_query(FastShad *fast_shad, uint64_t addr);
 static inline void fast_shad_reset_frame(FastShad *fast_shad);
 static inline void fast_shad_push_frame(FastShad *fast_shad);
 static inline void fast_shad_pop_frame(FastShad *fast_shad);
 
-static inline LabelSet **get_ls_p(FastShad *fast_shad, uint64_t guest_addr) {
+static inline LabelSetP *get_ls_p(FastShad *fast_shad, uint64_t guest_addr) {
     tassert(guest_addr < fast_shad->size);
     return &fast_shad->labels[guest_addr];
 }
 
 // Taint an address with a labelset.
-static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSet *ls) {
+static inline void fast_shad_set(FastShad *fast_shad, uint64_t addr, LabelSetP ls) {
     *get_ls_p(fast_shad, addr) = ls;
 }
 
@@ -81,7 +81,7 @@ static inline void fast_shad_copy(FastShad *fast_shad_dest, uint64_t dest, FastS
     }
 #endif
 
-    memcpy(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSet *));
+    memcpy(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSetP));
 }
 
 static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastShad *fast_shad_src, uint64_t src, uint64_t size) {
@@ -98,7 +98,7 @@ static inline void fast_shad_move(FastShad *fast_shad_dest, uint64_t dest, FastS
     }
 #endif
 
-    memmove(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSet *));
+    memmove(get_ls_p(fast_shad_dest, dest), get_ls_p(fast_shad_src, src), size * sizeof(LabelSetP ));
 }
 
 // Remove taint.
@@ -115,11 +115,11 @@ static inline void fast_shad_remove(FastShad *fast_shad, uint64_t addr, uint64_t
     }
 #endif
 
-    memset(get_ls_p(fast_shad, addr), 0, size * sizeof(LabelSet *));
+    memset(get_ls_p(fast_shad, addr), 0, size * sizeof(LabelSetP ));
 }
 
 // Query. NULL if untainted.
-static inline LabelSet *fast_shad_query(FastShad *fast_shad, uint64_t addr) {
+static inline LabelSetP fast_shad_query(FastShad *fast_shad, uint64_t addr) {
     return *get_ls_p(fast_shad, addr);
 } 
 

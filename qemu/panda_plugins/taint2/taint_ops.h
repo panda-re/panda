@@ -12,6 +12,14 @@
  *
 PANDAENDCOMMENT */
 
+#ifndef __TAINT_OPS_H_
+#define __TAINT_OPS_H_
+
+typedef struct FastShad FastShad;
+
+// Add a label to a given address.
+void taint_label(FastShad *shad, uint64_t addr, uint32_t label);
+
 // taint2_memlog
 //
 // This will replace the dynamic log, since we now need to track values for
@@ -25,86 +33,88 @@ typedef struct taint2_memlog {
     uint64_t idx;
 } taint2_memlog;
 
-uint64_t taint2_memlog_pop(uint64_t memlog_ptr);
+uint64_t taint_memlog_pop(taint2_memlog *memlog);
 
-void taint2_memlog_push(uint64_t memlog_ptr, uint64_t val);
+void taint_memlog_push(taint2_memlog *memlog, uint64_t val);
 
 // taint_pop_frame; taint_push_frame
 //
 // Functions for dealing with function frames. We'll just advance and retract
 // the label array pointer to make a new frame.
-void taint_reset_frame(uint64_t shad_ptr);
-void taint_push_frame(uint64_t shad_ptr);
-void taint_pop_frame(uint64_t shad_ptr);
+void taint_reset_frame(FastShad *shad);
+void taint_push_frame(FastShad *shad);
+void taint_pop_frame(FastShad *shad);
 
 // Bookkeeping.
-void taint_breadcrumb(uint64_t dest_ptr, uint64_t bb_slot);
+void taint_breadcrumb(uint64_t *dest_ptr, uint64_t bb_slot);
 
 // Taint operations
 //
 // These are all the taint operations which we will inline into the LLVM code
 // as it JITs.
 void taint_copy(
-        uint64_t shad_dest_ptr, uint64_t dest,
-        uint64_t shad_src_ptr, uint64_t src,
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_src, uint64_t src,
         uint64_t size);
 
 void taint_move(
-        uint64_t shad_dest_ptr, uint64_t dest,
-        uint64_t shad_src_ptr, uint64_t src,
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_src, uint64_t src,
         uint64_t size);
 
 // Two compute models: parallel and mixed. Parallel for bitwise, mixed otherwise.
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
 void taint_parallel_compute(
-        uint64_t shad_ptr,
+        FastShad *shad,
         uint64_t dest, uint64_t ignored,
         uint64_t src1, uint64_t src2, uint64_t src_size);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
 void taint_mix_compute(
-        uint64_t shad_ptr,
+        FastShad *shad,
         uint64_t dest, uint64_t dest_size,
         uint64_t src1, uint64_t src2, uint64_t src_size);
 
 // Clear taint.
-void taint_delete(uint64_t shad_ptr, uint64_t dest, uint64_t size);
+void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
 // Copy a single value to multiple destinations. (i.e. memset)
 void taint_set(
-        uint64_t shad_dest_ptr, uint64_t dest, uint64_t dest_size,
-        uint64_t shad_src_ptr, uint64_t src);
+        FastShad *shad_dest, uint64_t dest, uint64_t dest_size,
+        FastShad *shad_src, uint64_t src);
 
 // Union all labels within here: [1,2,3] -> [123,123,123]
 // A mixed compute becomes two mixes followed by a parallel.
 void taint_mix(
-        uint64_t shad_ptr,
+        FastShad *shad,
         uint64_t dest, uint64_t dest_size,
         uint64_t src, uint64_t src_size);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
 void taint_pointer(
-        uint64_t shad_dest_ptr, uint64_t dest,
-        uint64_t shad_ptr_ptr, uint64_t ptr, uint64_t ptr_size,
-        uint64_t shad_src_ptr, uint64_t src, uint64_t size);
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
+        FastShad *shad_src, uint64_t src, uint64_t size);
 
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
 void taint_sext(
-        uint64_t shad_ptr,
+        FastShad *shad,
         uint64_t dest, uint64_t dest_size,
         uint64_t src, uint64_t src_size);
 
 // Takes a NULL-terminated list of (value, select) pairs.
 void taint_select(
-        uint64_t shad_ptr,
+        FastShad *shad,
         uint64_t dest, uint64_t size, uint64_t selector,
         ...);
 
 void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
-        uint64_t llv_ptr, uint64_t llv_offset,
-        uint64_t greg_ptr, uint64_t gspec_ptr,
+        FastShad *llv, uint64_t llv_offset,
+        FastShad *greg, FastShad *gspec,
         uint64_t size, bool is_store);
+
+#endif

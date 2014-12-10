@@ -30,12 +30,12 @@ PANDAENDCOMMENT */
 
 FastShad *fast_shad_new(uint64_t labelsets) {
     FastShad *result = (FastShad *)malloc(sizeof(FastShad));
-    uint64_t size = sizeof(LabelSet *) * labelsets;
+    uint64_t size = sizeof(LabelSetP ) * labelsets;
     if (!result) return NULL;
 
-    LabelSet **array;
+    LabelSetP *array;
     if (labelsets < (1UL << 24)) {
-        array = (LabelSet **)malloc(size);
+        array = (LabelSetP *)malloc(size);
         printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc @ %lx (%lx).\n",
                 size, (uint64_t)array, (uint64_t)result);
         assert(array);
@@ -48,17 +48,17 @@ FastShad *fast_shad_new(uint64_t labelsets) {
             // We're going to try to make this aligned.
             vaddr += align;
             printf("taint2: Trying to allocate large fast_shad @ 0x%" PRIx64 ".\n", vaddr);
-            array = (LabelSet **)mmap((void *)vaddr, size, PROT_READ | PROT_WRITE,
+            array = (LabelSetP *)mmap((void *)vaddr, size, PROT_READ | PROT_WRITE,
                     MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED | MAP_HUGETLB,
                     -1, 0);
-            if (array == (LabelSet **)MAP_FAILED) {
+            if (array == (LabelSetP *)MAP_FAILED) {
                 printf("taint2: Hugetlb failed. Trying without.\n");
                 // try without HUGETLB
-                array = (LabelSet **)mmap((void *)vaddr, size, PROT_READ | PROT_WRITE,
+                array = (LabelSetP *)mmap((void *)vaddr, size, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
             }
-        } while (array == (LabelSet **)MAP_FAILED && vaddr <= align * 8); // only try 8 times.
-        if (array == (LabelSet **)MAP_FAILED) {
+        } while (array == (LabelSetP *)MAP_FAILED && vaddr <= align * 8); // only try 8 times.
+        if (array == (LabelSetP *)MAP_FAILED) {
             puts(strerror(errno));
             return NULL;
         }
@@ -76,7 +76,7 @@ void fast_shad_free(FastShad *fast_shad) {
     if (fast_shad->size < (1UL << 24)) {
         free(fast_shad->labels);
     } else {
-        munmap(fast_shad->labels, sizeof(LabelSet *) * fast_shad->size);
+        munmap(fast_shad->labels, sizeof(LabelSetP ) * fast_shad->size);
     }
     free(fast_shad);
 }

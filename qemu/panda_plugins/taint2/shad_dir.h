@@ -18,7 +18,7 @@ PANDAENDCOMMENT */
 // struct for a page
 typedef struct sd_page_struct {
   // array of pointers to label sets, one for each offset within the page
-  LabelSet **labels;
+  LabelSetP *labels;
   // count non-empty label sets in page
   int32_t num_non_empty;
 } SdPage;

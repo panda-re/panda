@@ -28,6 +28,7 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Instruction.h>
 
+#include "fast_shad.h"
 #include "llvm_taint_lib.h"
 #include "guestarch.h"
 #include "my_mem.h"
@@ -64,6 +65,10 @@ static inline ConstantInt *const_uint64_ptr(LLVMContext &C, void *ptr) {
 static inline Constant *const_i64p(LLVMContext &C, void *ptr) {
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr),
             Type::getInt64PtrTy(C));
+}
+
+static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) {
+    return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
@@ -116,16 +121,24 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    PTV.llvConst = const_uint64_ptr(ctx, shad->llv);
-    PTV.memConst = const_uint64_ptr(ctx, shad->ram);
-    PTV.grvConst = const_uint64_ptr(ctx, shad->grv);
-    PTV.gsvConst = const_uint64_ptr(ctx, shad->gsv);
-    PTV.retConst = const_uint64_ptr(ctx, shad->ret);
+    Type *shadT = M.getTypeByName("struct.FastShad");
+    assert(shadT);
+    Type *shadP = PointerType::getUnqual(shadT);
+
+    PTV.llvConst = const_struct_ptr(ctx, shadP, shad->llv);
+    PTV.memConst = const_struct_ptr(ctx, shadP, shad->ram);
+    PTV.grvConst = const_struct_ptr(ctx, shadP, shad->grv);
+    PTV.gsvConst = const_struct_ptr(ctx, shadP, shad->gsv);
+    PTV.retConst = const_struct_ptr(ctx, shadP, shad->ret);
 
     PTV.dataLayout = new DataLayout(&M);
 
-    PTV.memlogPopF = M.getFunction("taint2_memlog_pop");
-    PTV.memlogConst = const_uint64_ptr(ctx, taint_memlog);
+    Type *memlogT = M.getTypeByName("struct.taint2_memlog");
+    assert(memlogT);
+    Type *memlogP = PointerType::getUnqual(memlogT);
+
+    PTV.memlogPopF = M.getFunction("taint_memlog_pop");
+    PTV.memlogConst = const_struct_ptr(ctx, memlogP, taint_memlog);
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
@@ -345,7 +358,7 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
     // At end of BB, log where we just were.
     LLVMContext &ctx = BB.getContext();
     vector<Value *> args{
-        const_uint64_ptr(ctx, &shad->prev_bb), constSlot(ctx, &BB)
+        const_i64p(ctx, &shad->prev_bb), constSlot(ctx, &BB)
     };
     assert(BB.getTerminator() != NULL);
     inlineCallBefore(*BB.getTerminator(), breadcrumbF, args);

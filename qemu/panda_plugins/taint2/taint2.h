@@ -31,7 +31,7 @@
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
 typedef struct FastShad FastShad;
-typedef struct LabelSet LabelSet;
+typedef struct LabelSet *LabelSetP;
 typedef struct SdDir32 SdDir32;
 typedef struct SdDir64 SdDir64;
 
