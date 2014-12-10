@@ -53,6 +53,7 @@ typedef struct {
 /* The controller is the single access point for all NAND images currently
  * attached to the system.
  */
+#define GOLDFISH_NAND_FLAG_BLOCK 0
 typedef struct GoldfishNandDevice {
     GoldfishDevice qdev;
     char *system_path;
@@ -79,6 +80,7 @@ typedef struct GoldfishNandDevice {
     uint32_t result;
     uint32_t nand_dev_count;
     nand_dev nand_devs[MAX_NAND_DEVS];
+    uint32_t device_flags;
 } GoldfishNandDevice;
 
 #endif

@@ -24,11 +24,19 @@ QCOW2 files of the filesystems, as well as copying the correct kernel and initra
 
 Running
 ----
+The runandroid.py script in /scripts runs PANDROID with simplified arguments, as long
+as the 4 partitions' QCOW files are located in the same directory. The only required parameters
+to the script are the QCOW file directory and the API version number of the Android guest.
+Additional parameters are available; run runandroid.py -h for more information. The script
+will also forward arguments it doesn't parse directly to PANDA.
+
 PANDROID requires a long command line.
 Android 3.2 (Honeycomb) and newer use ARMv7 in the SDK image, requiring the CPU to be
 set to cortex-a8 or cortex-a9
 The first serial device is the console. They second is the GSM radio interface.
 Example command line: -M android_arm -cpu cortex-a9  -kernel /androidstuff/kernel-qemu -initrd /androidstuff/ramdisk.img  -global goldfish_nand.system_path=/androidstuff/system.img.qcow2 -global goldfish_nand.user_data_path=/androidstuff/userdata-qemu.img.qcow2  -global goldfish_nand.cache_path=/androidstuff/cache.img.qcow2 -append  "console=ttyS0 ndns=2 qemu=1 no_console_suspend=1 qemu.gles=0 android.qemud=ttyS1" -m 2G -no-reboot -monitor telnet:localhost:4321,server,nowait -show-cursor -serial stdio -serial telnet:localhost:4421,server,nowait -display sdl -net nic,vlan=1 -net user,vlan=1,hostfwd=tcp::5555-:5555,hostfwd=tcp::5039-:5039 -global goldfish_mmc.sd_path=/androidstuff/sdcard.qcow2  -android
+
+Images using ext4 partitions instead of YAFFS require the argument "-global goldfish_nand.ext4=on"
 
 VNC is supported but an attached VNC client will cause significantly more overhead than SDL.
 

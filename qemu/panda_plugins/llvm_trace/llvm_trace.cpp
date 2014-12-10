@@ -148,7 +148,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb){
     uint32_t pc, unk;
     sscanf(llvm_fn_name, "tcg-llvm-tb-%d-%x", &unk, &pc);
     env->panda_guest_pc = pc;
-    tubtf_write_el_64(panda_current_asid(env), pc, TUBTFE_LLVM_FN, unk, 0, 0, 0);
+    tubtf_write_el_64(panda_current_asid(env), pc, TUBTFE_LLVM_FN, unk, panda_in_kernel(env), 0, 0);
   }
   else {
     fprintf(funclog, "%s\n", tcg_llvm_get_func_name(tb));

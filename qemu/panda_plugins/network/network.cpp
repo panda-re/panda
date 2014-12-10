@@ -28,6 +28,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pcap/pcap.h>
 
 extern "C" {
 
@@ -40,7 +41,7 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
 }
 
 panda_arg_list *args;
-FILE *plugin_log;
+pcap_dumper_t *plugin_log;
 
 // RW Yanked from net.c
 static void hex_dump(FILE *f, const uint8_t *buf, int size)
@@ -89,7 +90,9 @@ bool init_plugin(void *self) {
         return false;
     }
 
-    plugin_log = fopen(tblog_filename, "w");    
+    pcap_t *p = pcap_open_dead(DLT_EN10MB, 65535);
+    pcap_activate(p);
+    plugin_log = pcap_dump_open(p, tblog_filename);
     if(!plugin_log) return false;
 
     pcb.replay_handle_packet = handle_packet;
@@ -101,25 +104,29 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     printf("Unloading network plugin.\n");
     panda_free_args(args);
-    fflush(plugin_log);
-    fclose(plugin_log);
+    pcap_dump_close(plugin_log);
 }
 
 int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
         uint64_t old_buf_addr){
-    switch (direction){
-        case PANDA_NET_RX:
-            fprintf(plugin_log, "RX:\n");
-            break;
-        case PANDA_NET_TX:
-            fprintf(plugin_log, "TX:\n");
-            break;
-        default:
-            assert(0);
-            break;
-    }
-    hex_dump(plugin_log, buf, size);
-    fprintf(plugin_log, "\n");
+//    switch (direction){
+//        case PANDA_NET_RX:
+//            fprintf(plugin_log, "RX:\n");
+//            break;
+//        case PANDA_NET_TX:
+//            fprintf(plugin_log, "TX:\n");
+//            break;
+//        default:
+//            assert(0);
+//            break;
+//    }
+//    hex_dump(plugin_log, buf, size);
+//    fprintf(plugin_log, "\n");
+    struct pcap_pkthdr h = {};
+    gettimeofday(&h.ts, NULL);
+    h.caplen = size;
+    h.len = size;
+    pcap_dump((u_char *)plugin_log, &h, buf);
 
     return 0;
 }
