@@ -15,7 +15,7 @@ llvm_trace
 callstack_instr
 textprinter_fast
 tstringsearch
-network
+#network
 scissors
 taint_compute_numbers
 bir
@@ -30,3 +30,4 @@ tainted_branch
 osi
 win7x86intro
 memstrings
+asidstory
