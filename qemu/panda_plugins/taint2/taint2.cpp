@@ -107,6 +107,8 @@ bool taintJustDisabled = false;
 // Taint memlog
 static taint2_memlog taint_memlog;
 
+bool tainted_pointer = true;
+
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
  * accesses are captured by IR instrumentation.
@@ -329,6 +331,8 @@ void i386_hypercall_callback(CPUState *env){
                     rr_get_guest_instr_count(), taint_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
+            qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
+                    (uint64_t)shadow->ram, (uint64_t)addr);
             label_set_iter(fast_shad_query(shadow->ram, env->regs[R_EBX]),
                     print_labels, NULL);
             printf("taint2: Stopping replay.\n");
@@ -511,6 +515,9 @@ bool init_plugin(void *self) {
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(plugin_ptr, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
     */
+
+    panda_arg_list *args = panda_get_args("taint2");
+    tainted_pointer = !panda_parse_bool(args, "no_tp");
 
     return true;
 }

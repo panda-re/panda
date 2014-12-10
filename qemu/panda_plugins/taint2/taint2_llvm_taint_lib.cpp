@@ -35,6 +35,8 @@ PANDAENDCOMMENT */
 
 extern "C" {
 #include "libgen.h"
+
+extern bool tainted_pointer;
 }
 
 extern char *qemu_loc;
@@ -101,6 +103,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.deleteF = M.getFunction("taint_delete"),
     PTV.mixF = M.getFunction("taint_mix"),
+    PTV.pointerF = M.getFunction("taint_pointer"),
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
@@ -255,6 +258,16 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
     return (size < 8) ? 1 : size / 8;
 }
 
+void PandaTaintVisitor::inlineCall(CallInst *CI) {
+    assert(CI);
+#ifndef TAINT2_NOINLINE
+    InlineFunctionInfo IFI;
+    if (!InlineFunction(CI, IFI)) {
+        printf("Inlining failed!\n");
+    }
+#endif
+}
+
 void PandaTaintVisitor::inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args) {
     assert(F);
     CallInst *CI = CallInst::Create(F, args);
@@ -264,13 +277,7 @@ void PandaTaintVisitor::inlineCallAfter(Instruction &I, Function *F, vector<Valu
     CI->insertAfter(&I);
 
     if (F->size() == 1) { // no control flow
-        // Inline.
-#ifndef TAINT2_NOINLINE
-        InlineFunctionInfo IFI;
-        if (!InlineFunction(CI, IFI)) {
-            printf("Inlining failed!\n");
-        }
-#endif
+        inlineCall(CI);
     }
 }
 
@@ -283,13 +290,7 @@ void PandaTaintVisitor::inlineCallBefore(Instruction &I, Function *F, vector<Val
     CI->insertBefore(&I);
 
     if (F->size() == 1) { // no control flow
-        // Inline.
-#ifndef TAINT2_NOINLINE
-        InlineFunctionInfo IFI;
-        if (!InlineFunction(CI, IFI)) {
-            printf("Inlining failed!\n");
-        }
-#endif
+        inlineCall(CI);
     }
 }
 
@@ -396,16 +397,32 @@ void PandaTaintVisitor::insertTaintBulk(Instruction &I,
     Instruction *after = srcCI ? srcCI : (destCI ? destCI : &I);
     inlineCallAfter(*after, func, args);
 
-#ifndef TAINT2_NOINLINE
-    InlineFunctionInfo IFI;
-    if (destCI && !InlineFunction(destCI, IFI)) {
-        printf("Inlining failed!\n");
-    }
-    if (srcCI && !InlineFunction(srcCI, IFI)) {
-        printf("Inlining failed!\n");
-    }
-#endif
+    if (srcCI) inlineCall(srcCI);
+    if (destCI) inlineCall(destCI);
 }
+
+void PandaTaintVisitor::insertTaintPointer(Instruction &I,
+        Value *ptr, Value *val, bool is_store) {
+    LLVMContext &ctx = I.getContext();
+    CallInst *popCI = insertLogPop(I);
+    Value *addr = popCI;
+
+    Constant *shad_dest = is_store ? memConst : llvConst;
+    Value *dest = is_store ? addr : constSlot(ctx, val);
+
+    Constant *shad_src = is_store ? llvConst : memConst;
+    // If we're storing a constant, still do a taint mix.
+    Value *src = is_store ? constWeakSlot(ctx, val) : addr;
+    vector<Value *> args{
+        shad_dest, dest,
+        llvConst, constSlot(ctx, ptr), const_uint64(ctx, getValueSize(ptr)),
+        shad_src, src, const_uint64(ctx, getValueSize(val))
+    };
+    inlineCallAfter(*popCI, pointerF, args);
+
+    inlineCall(popCI);
+}
+        
 
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
     insertTaintMix(I, &I, src);
@@ -806,12 +823,7 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
         };
         inlineCallAfter(*destCI, setF, args);
     }
-#ifndef TAINT2_NOINLINE
-    InlineFunctionInfo IFI;
-    if (!InlineFunction(destCI, IFI)) {
-        printf("Couldn't inline!!\n");
-    }
-#endif
+    inlineCall(destCI);
 }
 
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
@@ -861,18 +873,28 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 || !calledName.compare("__ldw_mmu_panda")
                 || !calledName.compare("__ldl_mmu_panda")
                 || !calledName.compare("__ldq_mmu_panda")) {
-            insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
+
+            Value *ptr = I.getArgOperand(0);
+            if (tainted_pointer && !isa<Constant>(ptr)) {
+                insertTaintPointer(I, ptr, &I, false);
+            } else {
+                insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
+            }
             return;
         }
         else if (!calledName.compare("__stb_mmu_panda")
                 || !calledName.compare("__stw_mmu_panda")
                 || !calledName.compare("__stl_mmu_panda")
                 || !calledName.compare("__stq_mmu_panda")) {
-            Value *src = I.getArgOperand(1);
-            if (isa<Constant>(src)) {
-                insertTaintDelete(I, memConst, NULL, const_uint64(ctx, getValueSize(src)));
+            // FIXME: TAINTED POINTER
+            Value *ptr = I.getArgOperand(0);
+            Value *val = I.getArgOperand(1);
+            if (tainted_pointer && !isa<Constant>(ptr)) {
+                insertTaintPointer(I, ptr, val, true /* is_store */ );
+            } else if (isa<Constant>(val)) {
+                insertTaintDelete(I, memConst, NULL, const_uint64(ctx, getValueSize(val)));
             } else {
-                insertTaintCopy(I, memConst, NULL, llvConst, src, getValueSize(src));
+                insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
             return;
         }

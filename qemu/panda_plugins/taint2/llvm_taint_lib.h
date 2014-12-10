@@ -87,6 +87,7 @@ private:
     int intValue(Value *value);
     unsigned getValueSize(Value *V);
     bool getAddr(Value *addrVal, Addr& addrOut);
+    void inlineCall(CallInst *CI);
     void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
     void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
     CallInst *insertLogPop(Instruction &after);
@@ -99,6 +100,7 @@ private:
     void insertTaintBulk(Instruction &I,
             Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
             uint64_t size, Function *func);
+    void insertTaintPointer(Instruction &I, Value *ptr, Value *val, bool is_store);
     void insertTaintMix(Instruction &I, Value *src);
     void insertTaintMix(Instruction &I, Value *dest, Value *src);
     void insertTaintCompute(Instruction &I,
@@ -117,6 +119,7 @@ public:
 
     Function *deleteF;
     Function *mixF;
+    Function *pointerF;
     Function *mixCompF;
     Function *parallelCompF;
     Function *copyF;

@@ -35,10 +35,13 @@ uint64_t taint2_memlog_pop(uint64_t memlog_ptr) {
     taint2_memlog *taint_memlog = (taint2_memlog *)memlog_ptr;
     uint64_t result = taint_memlog->ring[taint_memlog->idx];
     taint_memlog->idx = (taint_memlog->idx + TAINT2_MEMLOG_SIZE - 1) % TAINT2_MEMLOG_SIZE;;
+
+    taint_log("memlog_pop: %lx\n", result);
     return result;
 }
 
 void taint2_memlog_push(uint64_t memlog_ptr, uint64_t val) {
+    taint_log("memlog_push: %lx\n", val);
     taint2_memlog *taint_memlog = (taint2_memlog *)memlog_ptr;
     taint_memlog->idx = (taint_memlog->idx + 1) % TAINT2_MEMLOG_SIZE;;
     taint_memlog->ring[taint_memlog->idx] = val;
@@ -72,7 +75,8 @@ void taint_copy(
     taint_log("copy: %lx[%lx+%lx] <- %lx[%lx] (",
             shad_dest_ptr, dest, size, shad_src_ptr, src);
 #ifdef TAINTDEBUG
-    for (unsigned i = 0; i < size; i++) {
+    unsigned i;
+    for (i = 0; i < size; i++) {
         taint_log("%lx, ", (uint64_t)fast_shad_query(shad_src, src));
     }
     taint_log(")\n");
@@ -168,6 +172,32 @@ void taint_mix(
     bulk_set(shad, dest, dest_size, mixed_labels(shad, src, src_size));
 }
 
+static const uint64_t ones = ~0UL;
+
+void taint_pointer(
+        uint64_t shad_dest_ptr, uint64_t dest,
+        uint64_t shad_ptr_ptr, uint64_t ptr, uint64_t ptr_size,
+        uint64_t shad_src_ptr, uint64_t src, uint64_t size) {
+    FastShad *shad_dest = (FastShad *)shad_dest_ptr;
+    FastShad *shad_ptr = (FastShad *)shad_ptr_ptr;
+    FastShad *shad_src = (FastShad *)shad_src_ptr;
+
+    taint_log("ptr: %lx[%lx+%lx] <- %lx[%lx] @ %lx[%lx+%lx]\n",
+            (uint64_t)shad_dest, dest, size,
+            (uint64_t)shad_src, src, (uint64_t)shad_ptr, ptr, ptr_size);
+
+    LabelSet *ls_ptr = mixed_labels(shad_ptr, ptr, ptr_size);
+    if (src == ones) {
+        bulk_set(shad_dest, dest, size, ls_ptr);
+    } else {
+        unsigned i;
+        for (i = 0; i < size; i++) {
+            fast_shad_set(shad_dest, dest + i,
+                    label_set_union(ls_ptr, fast_shad_query(shad_src, src + i)));
+        }
+    }
+}
+
 void taint_sext(uint64_t shad_ptr, uint64_t dest, uint64_t dest_size, uint64_t src, uint64_t src_size) {
     FastShad *shad = (FastShad *)shad_ptr;
     taint_log("taint_sext\n");
@@ -175,8 +205,6 @@ void taint_sext(uint64_t shad_ptr, uint64_t dest, uint64_t dest_size, uint64_t s
     bulk_set(shad, dest + src_size, dest_size - src_size,
             fast_shad_query(shad, dest + src_size - 1));
 }
-
-const uint64_t ones = ~0UL;
 
 // Takes a (~0UL, ~0UL)-terminated list of (value, selector) pairs.
 void taint_select(
@@ -250,7 +278,8 @@ void taint_host_copy(
 #ifdef TAINTDEBUG
     taint_log("hostcopy: %lx[%lx+%lx] <- %lx[%lx] (offset %lx) (",
             (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src, offset);
-    for (unsigned i = 0; i < size; i++) {
+    unsigned i;
+    for (i = 0; i < size; i++) {
         taint_log("%lx, ", (uint64_t)fast_shad_query(shad_src, src));
     }
     taint_log(")\n");

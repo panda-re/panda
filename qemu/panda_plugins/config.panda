@@ -5,7 +5,7 @@ textprinter
 stringsearch
 keyfind
 memstats
-#taint
+taint
 taint2
 memdump
 correlatetaps

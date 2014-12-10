@@ -54,7 +54,7 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
 
 	$(call quiet-command,\
-		$(filter-out -Wold-style-declaration -std=c11,\
+		$(filter-out -g -Wold-style-declaration,\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
@@ -63,7 +63,7 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
 
 	$(call quiet-command,\
-		$(filter-out -Wold-style-declaration -std=c11,\
+		$(filter-out -g -Wold-style-declaration -std=c11,\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 

@@ -83,6 +83,13 @@ void taint_mix(
         uint64_t dest, uint64_t dest_size,
         uint64_t src, uint64_t src_size);
 
+// Tainted pointer load in tainted pointer mode.
+// Mixes the ptr labels and parallels that with each src label.
+void taint_pointer(
+        uint64_t shad_dest_ptr, uint64_t dest,
+        uint64_t shad_ptr_ptr, uint64_t ptr, uint64_t ptr_size,
+        uint64_t shad_src_ptr, uint64_t src, uint64_t size);
+
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
 void taint_sext(
