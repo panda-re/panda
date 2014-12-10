@@ -127,7 +127,7 @@ void PreallocatedHistory<T>::initElements()
     return;
   }
 
-  aElements = new (T[maxLines]);
+  aElements = new T[maxLines];
   //notice that I don't check whether aElements is NULL
   // I check these things during runtime anyways
 }

@@ -63,10 +63,9 @@ FILE* DECAF_get_output_fp(void);
 Monitor* DECAF_get_output_mon(void);
 
 /** I Put this here as a reference. The idea is that we use a magic FD value
- to represent the default monitor. All of the code is there, just not
- exported for use 
-const FILE* DECAF_get_monitor_fp(void);
+ to represent the default monitor.
 **/
+const FILE* DECAF_get_monitor_fp(void);
 
 /** Function called by the set_output_file command - currently not used **/
 void DECAF_do_set_output_file(Monitor* mon, const char* fileName);

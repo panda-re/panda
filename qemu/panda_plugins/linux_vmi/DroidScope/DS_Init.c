@@ -21,15 +21,18 @@
  *      Author: lok
  */
 
+#include "DECAF_linux_vmi.h"
 #include "DroidScope/DS_Init.h"
 #include "DroidScope/DS_Common.h"
+#include "DroidScope/linuxAPI/ProcessInfo.h"
 #include <stdlib.h>
 
 void DS_init(void)
 {
-  DECAF_linux_vmi_init();
-  context_init();
-  /*DalvikMterpOpcodes_init();
+    DECAF_linux_vmi_init(); /* initialize kernel struct offsets */
+    context_init();         /* installs PANDA callbacks */
+/*
+  DalvikMterpOpcodes_init();
   DalvikDisableJit_init();
   DalvikPrinter_init();
 */
@@ -38,8 +41,9 @@ void DS_init(void)
 
 void DS_close(void)
 {
-    context_close();
-    /*
+    context_close();        /* callback cleanup - XXX: not implemented */
+/*
   DalvikMterpOpcodes_close();
-  DalvikDisableJit_close();*/
+  DalvikDisableJit_close();
+*/
 }

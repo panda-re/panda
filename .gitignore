@@ -7,6 +7,10 @@ syntax: glob
 tags
 *gmon.out
 
+distorm*
+llvm*
+libiscsi*
+
 qemu/QMP/qmp-commands.txt
 qemu/config-all-devices.mak
 qemu/config-host.h

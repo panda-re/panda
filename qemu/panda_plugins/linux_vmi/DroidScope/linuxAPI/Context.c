@@ -93,9 +93,6 @@ void updateProcessModuleList(CPUState* env, gpid_t pid)
   {
     return;
   }
-  /*if(pid == 31){
-      //printf("finding strings for task at 0x%X\n", i);
-  } else return;*/
 
   target_ulong mmap_first = DECAF_get_first_mmap(env, i);
   target_ulong mmap_i = mmap_first;
@@ -152,7 +149,7 @@ void updateProcessModuleList(CPUState* env, gpid_t pid)
       }
     }
 
-    int ret = updateModule(pid, vmstart, vmend, flags, name);
+    updateModule(pid, vmstart, vmend, flags, name);
     mmap_i = DECAF_get_next_mmap(env, mmap_i);
   } while ((mmap_i != 0) && (mmap_i != mmap_first));
 
@@ -266,8 +263,6 @@ gva_t updateProcessListByTask(CPUState* env, gva_t task, int updateMask, int bNe
   parentPid = DECAF_get_parent_pid(env, i);
   pgd = pgd_strip(DECAF_get_pgd(env, i));
 
-  int ret = 0;
-
   //if (curProcessPGD == pgd)
   {
     if (DECAF_get_arg_name(env, i, argName, MAX_PROCESS_INFO_NAME_LEN) < 0)
@@ -293,7 +288,7 @@ gva_t updateProcessListByTask(CPUState* env, gva_t task, int updateMask, int bNe
   }
   else
   {
-    ret = updateProcess(i, pid, parentPid, tgid, glpid, uid, gid, euid, egid, pgd, (argName[0] == '\0') ? NULL : argName, (name[0] == '\0') ? NULL : name);
+    updateProcess(i, pid, parentPid, tgid, glpid, uid, gid, euid, egid, pgd, (argName[0] == '\0') ? NULL : argName, (name[0] == '\0') ? NULL : name);
   }
 
   if (updateMask & UPDATE_THREADS)
@@ -339,6 +334,10 @@ void updateProcessList(CPUState* env, target_asid_t newpgd, int updateMask)
     return;
   }
 
+  /*
+    XXX: Hardcoded value. Won't work for i386/ARM.
+    See cpu.h header for each target.
+  */
   if (env->regs[15] < 0xC0000000)
   {
     return;
@@ -374,7 +373,6 @@ void updateProcessList(CPUState* env, target_asid_t newpgd, int updateMask)
 
   gpid_t* pids = NULL;
   size_t len = 0;
-  size_t j = 0;
 
   //mark the end as well as get an array of all the affected pids
   processMarkEnd(&pids, &len);
@@ -414,7 +412,7 @@ inline void linux_pt(Monitor* mon)
 
 #if (1)
 //reg 0 is c2_base0 and 1 is c2_base1
-void Context_PGDWriteCallback(CPUState *env, target_ulong oldval, target_ulong newval)
+static int Context_PGDWriteCallback(CPUState *env, target_ulong oldval, target_ulong newval)
 {
   //struct timeval t;
   //gettimeofday(&t, NULL);
@@ -431,14 +429,18 @@ void Context_PGDWriteCallback(CPUState *env, target_ulong oldval, target_ulong n
 
   //reset this flag
   bSkipNextPGDUpdate = 0;
+
+  return 0;
 }
 
+// contextBBCallback() is not currently used. Disabled code until a proper cleanup.
+#if (0)
 static gva_t Context_retAddr = 0;
 //LOK: My tests have shown that do_fork -> then update on a PGD write is a perfect choice. Should change the logic to do that.
 // it seems to cover many more cases than do_fork and schedule()
 //TODO: have to fix the potential problem where this is called twice before the return is processed
 // in which case the process name will not be updated properly
-int contextBBCallback(CPUState* env, TranslationBlock* tb)
+static int contextBBCallback(CPUState* env, TranslationBlock* tb)
 {
   static gva_t taskAddr = INV_ADDR;
   static int updateMask = 0;
@@ -453,7 +455,7 @@ int contextBBCallback(CPUState* env, TranslationBlock* tb)
   
   if (NULL == tb)
   {
-    return;
+    return 0;
   }
 
   if ( (tb->pc == SET_TASK_COMM_ADDR) || (tb->pc == DO_PRCTL_ADDR) )//set_task_comm
@@ -517,7 +519,7 @@ int contextBBCallback(CPUState* env, TranslationBlock* tb)
     FILE* foo = fopen("/dev/null","w");
     //printModuleList(foo, 31);
     //printProcessList(NULL);
-    printf("%s is at [%x]\n", "fputs", getSymbolAddress(341, "/lib/libdvm.so", "dvmAsmInstructionStart"));
+    printf("%s is at [%x]\n", "fputs", (unsigned int)getSymbolAddress(341, "/lib/libdvm.so", "dvmAsmInstructionStart"));
     fclose(foo);
   }
 
@@ -528,10 +530,11 @@ int contextBBCallback(CPUState* env, TranslationBlock* tb)
    //DECAF_flushTranslationBlock_env(env, Context_retAddr);
   }
     
-  return;
+  return 0;
 }
+#endif // if (0)
 
-#endif
+#endif // if (1)
 
 #if defined(TARGET_ARM)
 #define CURRENT_PGD(x) (x->cp15.c2_base0 & x->cp15.c2_base_mask)

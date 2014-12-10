@@ -6,7 +6,8 @@ C++11 is required.
 
 5/2013 TRL
 
-PANDA is known to build on debian 7 linux with the following steps.
+PANDA is known to build on debian wheezy and jessie with the following steps.
+
 
 1. Install some prereqs.
 
@@ -16,31 +17,46 @@ apt-get install nasm
 apt-get install libssl-dev
 
 2. Download LLVM 3.3.  Also, download Clang 3.3 and extract it in the LLVM tools
-directory; make sure the resulting directory is named "clang".  Compile - If
-building a debug build, use the following command (note: the debug build is
-REALLY slow):
+directory.  Make sure the resulting directory is named "clang".
 
-CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+$ cd panda
+$ svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_33/final/ llvm
+$ cd llvm/tools
+$ svn checkout http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_33/final/ clang
+$ cd -
+$ cd llvm/tools/clang/tools
+$ svn checkout http://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/final/ extra
+$ cd -
+
+Compile - If building a debug build, use the following command (note: the debug build is REALLY slow):
+
+$ cd llvm
+$ CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+$ cd -
 
 If building a release build, use the following command:
 
-CC=gcc-4.7 CXX=g++-4.7 ./configure --enable-optimized --disable-assertions --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+$ cd llvm
+$ CC=gcc-4.7 CXX=g++-4.7 ./configure --enable-optimized --disable-assertions --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+$ cd -
 
 3. Compile & install distorm
 
 Get distorm via SVN:
-  svn checkout http://distorm.googlecode.com/svn/trunk/ distorm-read-only
+  svn checkout http://distorm.googlecode.com/svn/trunk/ distorm
 
-$ cd make/linux
+$ cd distorm/make/linux
 $ make
 $ sudo make install
-$ cd ../../include
+$ cd -
+$ cd distorm/include
 $ sudo cp * /usr/local/include
+$ cd -
 
-3. Compile the QEMU part.  Note that if you want to use LLVM, you may need to
+4. Compile the QEMU part.  Note that if you want to use LLVM, you may need to
 specify the location where your LLVM build is located at the '--with-llvm'
 option in qemu/build.sh.
 
-cd panda/qemu
-sh ./build.sh
+$ cd qemu
+$ sh ./build.sh
 

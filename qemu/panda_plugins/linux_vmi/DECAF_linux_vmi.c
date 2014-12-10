@@ -26,18 +26,13 @@
  *      Author: lok
  */
 
-//This tool depends on the kernelinfo.conf file that is obtained by either populating the values
-// manually, or getting it by inserting a kernel module
-//The source is included at the end of this file. There are two ways of doing this
-//1. Paste the source into a file called procinfo.c in the drivers/misc directory of the kernel source tree
-// Then add the following line to the Makefile and just made the kernel as normal
-//obj-y                           += procinfo.o
-//2. Paste the source into a different kernel module, such as goldfish_audio.c, inside the init function
-// No other changes are necessary.
-//The difference between the two methods is that in the first, you have to insmod the module and then do a dmesg.
-// You should get an error from insmod, but the necessary data is printed to the log. In the second method, you
-// just run dmesg and its done. That is because goldfish-audio is automatically loaded.
-//The second is more intrusive ofcourse, but it still works fine.
+/*
+ * This tool depends on having a proper kernelinfo.conf file when
+ * running DECAF. The file can be obtained by either populating the
+ * values manually, or inserting a probe kernel module in the guest VM
+ * kernel to extract them. The module along with further instructions
+ * can be found in kernelinfo directory.
+ */
 
 #include "config.h"
 #include <ctype.h>
@@ -49,10 +44,10 @@
 #include <assert.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <errno.h>
 
+#include "linux_vmi_types.h"
 #include "DECAF_linux_vmi.h"
-
-char kernelinfo_filename[256] = "kernelinfo.conf";
 
 gva_t taskaddr = 0;
 int sizeof_task_struct = 0;
@@ -95,26 +90,38 @@ int vfsmount_mnt_root_offset = 0;
 
 gva_t DECAF_get_current_task_struct(CPUState* env)
 {
-  gva_t threadinfo = 0;
-  gva_t curtask = 0;
-  if (env == NULL)
-  {
-    return (0);
-  }
+    gva_t threadinfo = 0;
+    gva_t curtask = 0;
 
-  threadinfo = DECAF_getESP(env) & ~8191;
-  DECAF_read_mem(env, threadinfo + thread_info_task_offset, &curtask, 4);
-  return (curtask);
+    if (env == NULL) {
+#ifdef DECAF_DEBUG
+        fprintf(DECAF_DLOG, "DECAF:%s: env is NULL\n", __FUNCTION__);
+#endif
+        return (0);
+    }
+
+    threadinfo = DECAF_getESP(env) & ~8191;
+    DECAF_read_mem(env, threadinfo + thread_info_task_offset, &curtask, 4);
+#ifdef DECAF_DEBUG
+    fprintf(DECAF_DLOG, "DECAF:%s: [%08x+%04x] = %u\n", __FUNCTION__,
+        (unsigned int)threadinfo,
+        (unsigned int)thread_info_task_offset,
+        (unsigned int)curtask
+    );
+#endif
+    return (curtask);
 }
 
 gva_t DECAF_get_current_process(CPUState* env)
 {
-  gva_t task = DECAF_get_current_task_struct(env);
-  if (task == 0)
-  {
-    return (0);
-  }
-  return (DECAF_get_group_leader(env, task));
+    gva_t task = DECAF_get_current_task_struct(env);
+    if (task == 0) {
+#ifdef DECAF_DEBUG
+        fprintf(DECAF_DLOG, "DECAF:%s: task struct is NULL\n", __FUNCTION__);
+#endif
+        return (0);
+    }
+    return (DECAF_get_group_leader(env, task));
 }
 
 gva_t DECAF_get_next_task_struct(CPUState* env, gva_t addr)
@@ -143,7 +150,7 @@ gva_t DECAF_get_next_task_struct(CPUState* env, gva_t addr)
   return retval;
 }
 
-gva_t prev_task_struct(CPUState* env, gva_t addr)
+gva_t DECAF_get_prev_task_struct(CPUState* env, gva_t addr)
 {
   gva_t retval;
 
@@ -296,7 +303,7 @@ static gva_t PANDA_get_dentry(CPUState* env, gva_t addr){
         }
     } else {
         gva_t vmfile = 0;
-        gva_t vmpath = 0;
+        /* gva_t vmpath = 0; */
          if (DECAF_memory_rw(env, addr + vm_area_struct_vm_file_offset, &vmfile, sizeof(vmfile), 0) == -1
             || DECAF_memory_rw(env, vmfile + file_f_path_offset/*, &vmpath, sizeof(vmpath), 0) == -1
             || DECAF_memory_rw(env, vmpath*/ + path_dentry_offset, &dentry, sizeof(dentry), 0) == -1
@@ -502,52 +509,239 @@ void DECAF_get_mod_full_dname(CPUState* env, gva_t addr, char *name, int size)
   DECAF_get_dentry_full_dname_path(env, dentry, name, size, vfsmnt);
 }
 
-
+#define KERNELINFO_DEFAULT_FILENAME "kernelinfo.conf"
 #define BUFFER_SIZE 1024
+#define VMI_INIT_SCANFMT "%[^,],%x,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d"
 
 int DECAF_linux_vmi_init_with_string(const char* pattern)
 {
-  char version[128];
-  return (
-           sscanf(pattern, "%[^,],%x,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                  version,
-                  &taskaddr,
-                  &sizeof_task_struct,
-                  &task_struct_tasks_offset,
-                  &task_struct_pid_offset,
-                  &task_struct_tgid_offset,
-                  &task_struct_group_leader_offset,
-                  &task_struct_thread_group_offset,
-                  &task_struct_real_parent_offset,
-                  &task_struct_mm_offset,
-                  &task_struct_stack_offset,
-                  &task_struct_real_cred_offset,
-                  &task_struct_cred_offset,
-                  &cred_uid_offset,
-                  &cred_gid_offset,
-                  &cred_euid_offset,
-                  &cred_egid_offset,
-                  &mm_struct_pgd_offset,
-                  &mm_struct_mm_arg_start_offset,
-                  &mm_struct_start_brk_offset,
-                  &mm_struct_brk_offset,
-                  &mm_struct_start_stack_offset,
-                  &task_struct_comm_offset,
-                  &size_of_task_struct_comm,
-                  &vm_area_struct_vm_start_offset,
-                  &vm_area_struct_vm_end_offset,
-                  &vm_area_struct_vm_next_offset,
-                  &vm_area_struct_vm_file_offset,
-                  &vm_area_struct_vm_flags_offset,
-                  &file_f_dentry_offset,
-                  &dentry_d_name_offset,
-                  &dentry_d_iname_offset,
-                  &dentry_d_parent_offset,
-                  &thread_info_task_offset
-          )//sscanf
-  ); //return
+    int nexpected = 0;
+    int nactual = 0;
+    char version[128];
+    int i;
+
+    /* count the number of items expected to be scanned */
+    for (i=0; VMI_INIT_SCANFMT[i]!='\0'; i++) {
+        if (VMI_INIT_SCANFMT[i] == '%') {
+            if (VMI_INIT_SCANFMT[i+1] != '\0' && VMI_INIT_SCANFMT[i+1] == '%')
+                /* %% */
+                i++;
+            else
+                nexpected++;
+        }
+    }
+
+    errno = 0;
+    nactual = sscanf(pattern, VMI_INIT_SCANFMT,
+        version,
+/* 0*/  (unsigned int *)&taskaddr,
+        &sizeof_task_struct,
+        &task_struct_tasks_offset,
+        &task_struct_pid_offset,
+        &task_struct_tgid_offset,
+/* 5*/  &task_struct_group_leader_offset,
+        &task_struct_thread_group_offset,
+        &task_struct_real_parent_offset,
+        &task_struct_mm_offset,
+        &task_struct_stack_offset,
+/*10*/  &task_struct_real_cred_offset,
+        &task_struct_cred_offset,
+        &cred_uid_offset,
+        &cred_gid_offset,
+        &cred_euid_offset,
+/*15*/  &cred_egid_offset,
+        &mm_struct_pgd_offset,
+        &mm_struct_mm_arg_start_offset,
+        &mm_struct_start_brk_offset,
+        &mm_struct_brk_offset,
+/*20*/  &mm_struct_start_stack_offset,
+        &task_struct_comm_offset,
+        &size_of_task_struct_comm,
+        &vm_area_struct_vm_start_offset,
+        &vm_area_struct_vm_end_offset,
+/*25*/  &vm_area_struct_vm_next_offset,
+        &vm_area_struct_vm_file_offset,
+        &vm_area_struct_vm_flags_offset,
+        &file_f_dentry_offset,
+        &dentry_d_name_offset,
+/*30*/  &dentry_d_iname_offset,
+        &dentry_d_parent_offset,
+        &thread_info_task_offset
+    );
+
+#ifdef DECAF_DEBUG
+    fprintf(DECAF_DLOG, "DECAF:%s: init string is \"%s\"\n", __FUNCTION__, pattern);
+    fprintf(DECAF_DLOG, "DECAF:%s: scanned %d/%d items\n", __FUNCTION__, nactual, nexpected);
+#endif
+
+    if (nactual == nexpected)
+        /* success */
+        return 0;
+    else if (errno != 0)
+        /* -1 for scanf failure */
+        return -1;
+    else
+        /* (positive) number of items not scanned */
+        return nexpected-nactual;
 }
 
+/**
+ * @name    Initializes DECAF for guest VM Introspection.
+ *
+ * Reads kernel struct offset and size information from a file.
+ * The file name should be named "kernelinfo.conf" (currently
+ * non configurable).
+ *
+ * @retval   0   Success.
+ * @retval  -1   Error while parsing file contents.
+ * @retval n>0   n items couln't be read from input file.
+ */
+int DECAF_linux_vmi_init(void)
+{
+    int i = 0;
+    int retval = -1;
+    int started = 0;
+    int isbcomment = 0;
+    int islcomment = 0;
+    char pattern[BUFFER_SIZE];
+
+#ifdef PANDROID
+    /*
+     * Use compiled-in values for Android.
+     * XXX: The called functions should be moved in a configuration
+     * file and read from there.
+     */
+#ifdef PANDROID_4_2
+    PANDROID_set_vars_jb4_2();
+#else
+    PANDROID_set_vars();
+#endif
+    return 0;
+#endif
+
+    FILE * fd = fopen(KERNELINFO_DEFAULT_FILENAME, "ro");
+    if (fd == NULL) return -1;
+
+again:
+    i = started = isbcomment = islcomment = 0;
+    while (i < BUFFER_SIZE) {
+
+        pattern[i] = fgetc(fd);
+        if(pattern[i] == EOF) break;
+
+        /* comment handling */
+        switch(pattern[i]) {
+            case '/':
+                /* search for block/line comments start */
+                pattern[i] = fgetc(fd);
+                if(pattern[i] == '*')
+                    isbcomment += 1;
+                else if(pattern[i] == '/')
+                    islcomment = 1;
+                break;
+            case '*':
+                /* search for block comments end */
+                pattern[i] = fgetc(fd);
+                if(pattern[i] == '/')
+                    isbcomment -= 1;
+                break;
+            case '\n':
+                /* reset line comment flag */
+                islcomment = 0;
+                break;
+        }
+
+        /* skip when in a comment */
+        if(isbcomment || islcomment) continue;
+
+        /* pattern block start */
+        if(pattern[i] == '{') {
+            assert(!started || isbcomment || islcomment);
+            started = 1;
+            continue;
+        }
+
+        /* pattern block end (nested blocks not considered) */
+        if(pattern[i] == '}') {
+            pattern[i] = '\0';
+            retval = DECAF_linux_vmi_init_with_string(pattern);
+
+            if (retval == 0)
+                /* end loop - all offsets successfully scanned */
+                break;
+            else
+                /* retry with the remaining file */
+                goto again;
+        }
+
+        /* not in a block - ignore character */
+        if(!started) continue;
+
+        /* character added to the pattern buffer */
+        if(isdigit(pattern[i]) || isalpha(pattern[i]) || pattern[i] == ','
+                || pattern[i] == '_' || pattern[i] == '.' || pattern[i] == '-')
+            i++;
+    }
+
+    fclose(fd);
+    return retval;
+}
+
+
+
+
+
+
+
+
+/*******************************************************************
+ * Only stuff to be removed from this point on...                  *
+ *******************************************************************/
+#ifdef PANDROID
+    /*
+     * Functions for setting compiled-in values for Android.
+     * XXX: The values in these functions should be moved in a
+     * configuration file and read from there.
+     */
+#ifdef PANDROID_4_2
+int PANDROID_set_vars_jb4_2(void){  //"Android-x86 Gingerbread", /* entry name */
+       taskaddr = 0xC0336E08; /* task struct root */
+       sizeof_task_struct =1000; /* size of task_struct */
+       task_struct_tasks_offset =448; /* offset of task_struct list */
+       task_struct_pid_offset =492; /* offset of pid */
+       task_struct_tgid_offset =496; /* offset of tgid */
+       task_struct_group_leader_offset =524; /* offset of group_leader */
+       task_struct_thread_group_offset =580; /* offset of thread_group */
+       task_struct_real_parent_offset =500; /* offset of real_parent */
+       task_struct_mm_offset = 456; /* offset of mm */
+       task_struct_stack_offset =4; /* offset of stack */
+       task_struct_real_cred_offset = 704; /* offset of real_cred */
+       task_struct_cred_offset = 708; /* offset of cred */
+       cred_uid_offset = 4; /* offset of uid cred */
+       cred_gid_offset = 8; /* offset of gid cred */
+       cred_euid_offset = 20; /* offset of euid cred */
+       cred_egid_offset = 24; /* offset of egid cred */
+       mm_struct_pgd_offset = 36; /* offset of pgd in mm */
+       mm_struct_mm_arg_start_offset =148; /* offset of arg_start in mm */
+       mm_struct_start_brk_offset = 136; /* offset of start_brk in mm */
+       mm_struct_brk_offset = 140; /* offset of brk in mm */
+       mm_struct_start_stack_offset= 144; /* offset of start_stack in mm */
+       task_struct_comm_offset =724; /* offset of comm */
+       size_of_task_struct_comm = 16; /* size of comm */
+       vm_area_struct_vm_start_offset = 4; /* offset of vm_start in vma */
+       vm_area_struct_vm_end_offset = 8; /* offset of vm_end in vma */
+       vm_area_struct_vm_next_offset =  12; /* offset of vm_next in vma */
+       vm_area_struct_vm_file_offset = 72; /* offset of vm_file in vma */
+       vm_area_struct_vm_flags_offset = 20; /* offset of vm_flags in vma */
+       file_f_dentry_offset= 12; /* offset of dentry in file */
+       dentry_d_name_offset =  28; /* offset of d_name in dentry */
+       dentry_d_iname_offset = 88; /* offset of d_iname in dentry */
+       dentry_d_parent_offset =24; /* offset of d_parent in dentry */
+       thread_info_task_offset = 12; /* offset of task in thread_info */
+       return 0;
+
+}
+#else
 int PANDROID_set_vars(void){
     taskaddr = 0xc0310fa0;
     sizeof_task_struct = 1000;
@@ -587,319 +781,8 @@ int PANDROID_set_vars(void){
     path_mount_offset = 0;
     vfsmount_mnt_root_offset = 16;
     file_vfsmnt_offset = -1;
+    return 0;
 }
-
-int PANDROID_set_vars_jb4_2(void){  //"Android-x86 Gingerbread", /* entry name */
-       taskaddr = 0xC0336E08; /* task struct root */
-       sizeof_task_struct =1000; /* size of task_struct */
-       task_struct_tasks_offset =448; /* offset of task_struct list */
-       task_struct_pid_offset =492; /* offset of pid */
-       task_struct_tgid_offset =496; /* offset of tgid */
-       task_struct_group_leader_offset =524; /* offset of group_leader */
-       task_struct_thread_group_offset =580; /* offset of thread_group */
-       task_struct_real_parent_offset =500; /* offset of real_parent */
-       task_struct_mm_offset = 456; /* offset of mm */
-       task_struct_stack_offset =4; /* offset of stack */
-       task_struct_real_cred_offset = 704; /* offset of real_cred */
-       task_struct_cred_offset = 708; /* offset of cred */
-       cred_uid_offset = 4; /* offset of uid cred */
-       cred_gid_offset = 8; /* offset of gid cred */
-       cred_euid_offset = 20; /* offset of euid cred */
-       cred_egid_offset = 24; /* offset of egid cred */
-       mm_struct_pgd_offset = 36; /* offset of pgd in mm */
-       mm_struct_mm_arg_start_offset =148; /* offset of arg_start in mm */
-       mm_struct_start_brk_offset = 136; /* offset of start_brk in mm */
-       mm_struct_brk_offset = 140; /* offset of brk in mm */
-       mm_struct_start_stack_offset= 144; /* offset of start_stack in mm */
-       task_struct_comm_offset =724; /* offset of comm */
-       size_of_task_struct_comm = 16; /* size of comm */
-       vm_area_struct_vm_start_offset = 4; /* offset of vm_start in vma */
-       vm_area_struct_vm_end_offset = 8; /* offset of vm_end in vma */
-       vm_area_struct_vm_next_offset =  12; /* offset of vm_next in vma */
-       vm_area_struct_vm_file_offset = 72; /* offset of vm_file in vma */
-       vm_area_struct_vm_flags_offset = 20; /* offset of vm_flags in vma */
-       file_f_dentry_offset= 12; /* offset of dentry in file */
-       dentry_d_name_offset =  28; /* offset of d_name in dentry */
-       dentry_d_iname_offset = 88; /* offset of d_iname in dentry */
-       dentry_d_parent_offset =24; /* offset of d_parent in dentry */
-       thread_info_task_offset = 12; /* offset of task in thread_info */
-}
-
-int DECAF_linux_vmi_init(void)
-{
-  int i = 0;
-  int retval = -1;
-  int started = 0;
-  int isbcomment = 0;
-  int islcomment = 0;
-  char pattern [BUFFER_SIZE];
-  PANDROID_set_vars_jb4_2(); return 0;
-  PANDROID_set_vars(); return 0;
-  FILE * fd = fopen(kernelinfo_filename, "ro");
-
-  if(fd == NULL) 
-  {
-    return (-1);
-  }
-
-again:
-
-  for(i = 0, started = 0, isbcomment = 0, islcomment = 0; i < BUFFER_SIZE; ) {
-
-    pattern[i] = fgetc(fd);
-
-    if(pattern[i] == EOF)
-      break;
-
-    switch(pattern[i]) {
-    case '/':
-      pattern[i] = fgetc(fd);
-      if(pattern[i] == '*')
-        isbcomment += 1;
-      else if(pattern[i] == '/')
-        islcomment = 1;
-      break;
-    case '*':
-      pattern[i] = fgetc(fd);
-      if(pattern[i] == '/')
-        isbcomment -= 1;
-      break;
-    case '\n':
-      islcomment = 0;
-      break;
-    }
-
-    if(isbcomment || islcomment)
-      continue;
-    if(pattern[i] == '{') {
-      assert(!started || isbcomment || islcomment);
-      started = 1;
-    } else if(pattern[i] == '}') {
-      started = 0;
-      pattern[i] = 0;
-      retval = DECAF_linux_vmi_init_with_string(pattern);
-
-      goto again;
-    }
-    if(!started)
-      continue;
-    if(isdigit(pattern[i]) || isalpha(pattern[i]) || pattern[i] == ','
-        || pattern[i] == '_' || pattern[i] == '.' || pattern[i] == '-')
-      i++;
-  }
-
-  fclose(fd);
-
-  return retval;
-}
-
-#if 0 //START of procinfo.c
-#include <linux/module.h>	/* Needed by all modules */
-#include <linux/kernel.h>	/* Needed for KERN_INFO */
-#include <linux/version.h>
-#include <linux/syscalls.h>
-#include <linux/security.h>
-#include <linux/sched.h>
-#include <linux/mm.h>
-#include <linux/fs.h>
-#include <linux/dcache.h>
-
-int init_module(void)
-{
-  struct vm_area_struct vma;
-  struct file filestruct;
-  struct dentry dentrystr;
-  struct cred credstruct;
-  struct thread_info ti;
-
-  printk(KERN_INFO
-      "    {  \"%s\", /* entry name */\n"
-      "       0x%08lX, /* task struct root */\n"
-      "       %d, /* size of task_struct */\n"
-      "       %d, /* offset of task_struct list */\n"
-      "       %d, /* offset of pid */\n"
-      "       %d, /* offset of tgid */\n"
-      "       %d, /* offset of group_leader */\n"
-      "       %d, /* offset of thread_group */\n"
-      "       %d, /* offset of real_parent */\n"
-      "       %d, /* offset of mm */\n"
-      "       %d, /* offset of stack */\n"
-      "       %d, /* offset of real_cred */\n"
-      "       %d, /* offset of cred */\n"
-      "       %d, /* offset of uid cred */\n"
-      "       %d, /* offset of gid cred */\n"
-      "       %d, /* offset of euid cred */\n"
-      "       %d, /* offset of egid cred */\n"
-      "       %d, /* offset of pgd in mm */\n"
-      "       %d, /* offset of arg_start in mm */\n"
-      "       %d, /* offset of start_brk in mm */\n"
-      "       %d, /* offset of brk in mm */\n"
-      "       %d, /* offset of start_stack in mm */\n",
-
-      "Android-x86 Gingerbread",
-      (long)&init_task,
-      sizeof(init_task),
-      (int)&init_task.tasks - (int)&init_task,
-      (int)&init_task.pid - (int)&init_task,
-      (int)&init_task.tgid - (int)&init_task,
-      (int)&init_task.group_leader - (int)&init_task,
-      (int)&init_task.thread_group - (int)&init_task,
-      (int)&init_task.real_parent - (int)&init_task,
-      (int)&init_task.mm - (int)&init_task,
-      (int)&init_task.stack - (int)&init_task,
-      (int)&init_task.real_cred - (int)&init_task,
-      (int)&init_task.cred - (int)&init_task,
-      (int)&credstruct.uid - (int)&credstruct,
-      (int)&credstruct.gid - (int)&credstruct,
-      (int)&credstruct.euid - (int)&credstruct,
-      (int)&credstruct.egid - (int)&credstruct,
-      (int)&init_task.mm->pgd - (int)init_task.mm,
-      (int)&init_task.mm->arg_start - (int)init_task.mm,
-      (int)&init_task.mm->start_brk - (int)init_task.mm,
-      (int)&init_task.mm->brk - (int)init_task.mm,
-      (int)&init_task.mm->start_stack - (int)init_task.mm
-  );
-
-  printk(KERN_INFO
-      "       %d, /* offset of comm */\n"
-      "       %d, /* size of comm */\n"
-      "       %d, /* offset of vm_start in vma */\n"
-      "       %d, /* offset of vm_end in vma */\n"
-      "       %d, /* offset of vm_next in vma */\n"
-      "       %d, /* offset of vm_file in vma */\n"
-      "       %d, /* offset of vm_flags in vma */\n"
-      "       %d, /* offset of dentry in file */\n"
-      "       %d, /* offset of d_name in dentry */\n"
-      "       %d, /* offset of d_iname in dentry */\n"
-      "       %d, /* offset of d_parent in dentry */\n"
-      "       %d, /* offset of task in thread_info */\n"
-      "    },\n",
-
-      (int)&init_task.comm - (int)&init_task,
-      sizeof(init_task.comm),
-      (int)&vma.vm_start - (int)&vma,
-      (int)&vma.vm_end - (int)&vma,
-      (int)&vma.vm_next - (int)&vma,
-      (int)&vma.vm_file - (int)&vma,
-      (int)&vma.vm_flags - (int)&vma,
-      (int)&filestruct.f_dentry - (int)&filestruct,
-      (int)&dentrystr.d_name - (int)&dentrystr,
-      (int)&dentrystr.d_iname - (int)&dentrystr,
-      (int)&dentrystr.d_parent - (int)&dentrystr,
-      (int)&ti.task - (int)&ti
-    );
-
-
-  printk(KERN_INFO "Information module registered.\n");
-  return -1;
-}
-
-void cleanup_module(void)
-{
-
-    printk(KERN_INFO "Information module removed.\n");
-}
-
-MODULE_LICENSE("GPL");
-#endif
-
-#if 0 //goldfish_audio.c example
-static int __init goldfish_audio_init(void)
-{
-  int ret;
-
-  struct vm_area_struct vma;
-  struct file filestruct;
-  struct dentry dentrystr;
-  struct cred credstruct;
-  struct thread_info ti;
-
-  printk(KERN_INFO
-      "    {  \"%s\", /* entry name */\n"
-      "       0x%08lX, /* task struct root */\n"
-      "       %d, /* size of task_struct */\n"
-      "       %d, /* offset of task_struct list */\n"
-      "       %d, /* offset of pid */\n"
-      "       %d, /* offset of tgid */\n"
-      "       %d, /* offset of group_leader */\n"
-      "       %d, /* offset of thread_group */\n"
-      "       %d, /* offset of real_parent */\n"
-      "       %d, /* offset of mm */\n"
-      "       %d, /* offset of stack */\n"
-      "       %d, /* offset of real_cred */\n"
-      "       %d, /* offset of cred */\n"
-      "       %d, /* offset of uid cred */\n"
-      "       %d, /* offset of gid cred */\n"
-      "       %d, /* offset of euid cred */\n"
-      "       %d, /* offset of egid cred */\n"
-      "       %d, /* offset of pgd in mm */\n"
-      "       %d, /* offset of arg_start in mm */\n"
-      "       %d, /* offset of start_brk in mm */\n"
-      "       %d, /* offset of brk in mm */\n"
-      "       %d, /* offset of start_stack in mm */\n",
-
-      "Android-x86 Gingerbread",
-      (long)&init_task,
-      sizeof(init_task),
-      (int)&init_task.tasks - (int)&init_task,
-      (int)&init_task.pid - (int)&init_task,
-      (int)&init_task.tgid - (int)&init_task,
-      (int)&init_task.group_leader - (int)&init_task,
-      (int)&init_task.thread_group - (int)&init_task,
-      (int)&init_task.real_parent - (int)&init_task,
-      (int)&init_task.mm - (int)&init_task,
-      (int)&init_task.stack - (int)&init_task,
-      (int)&init_task.real_cred - (int)&init_task,
-      (int)&init_task.cred - (int)&init_task,
-      (int)&credstruct.uid - (int)&credstruct,
-      (int)&credstruct.gid - (int)&credstruct,
-      (int)&credstruct.euid - (int)&credstruct,
-      (int)&credstruct.egid - (int)&credstruct,
-      (int)&init_task.mm->pgd - (int)init_task.mm,
-      (int)&init_task.mm->arg_start - (int)init_task.mm,
-      (int)&init_task.mm->start_brk - (int)init_task.mm,
-      (int)&init_task.mm->brk - (int)init_task.mm,
-      (int)&init_task.mm->start_stack - (int)init_task.mm
-  );
-
-  printk(KERN_INFO
-      "       %d, /* offset of comm */\n"
-      "       %d, /* size of comm */\n"
-      "       %d, /* offset of vm_start in vma */\n"
-      "       %d, /* offset of vm_end in vma */\n"
-      "       %d, /* offset of vm_next in vma */\n"
-      "       %d, /* offset of vm_file in vma */\n"
-      "       %d, /* offset of vm_flags in vma */\n"
-      "       %d, /* offset of dentry in file */\n"
-      "       %d, /* offset of d_name in dentry */\n"
-      "       %d, /* offset of d_iname in dentry */\n"
-      "       %d, /* offset of d_parent in dentry */\n"
-      "       %d, /* offset of task in thread_info */\n"
-      "    },\n",
-
-      (int)&init_task.comm - (int)&init_task,
-      sizeof(init_task.comm),
-      (int)&vma.vm_start - (int)&vma,
-      (int)&vma.vm_end - (int)&vma,
-      (int)&vma.vm_next - (int)&vma,
-      (int)&vma.vm_file - (int)&vma,
-      (int)&vma.vm_flags - (int)&vma,
-      (int)&filestruct.f_dentry - (int)&filestruct,
-      (int)&dentrystr.d_name - (int)&dentrystr,
-      (int)&dentrystr.d_iname - (int)&dentrystr,
-      (int)&dentrystr.d_parent - (int)&dentrystr,
-      (int)&ti.task - (int)&ti
-    );
-
-
-  ret = platform_driver_register(&goldfish_audio_driver);
-  if (ret < 0)
-  {
-    printk("platform_driver_register returned %d\n", ret);
-    return ret;
-  }
-
-  return ret;
-}
-#endif
+#endif /* #ifdef PANDROID_4_2 */
+#endif /* #ifdef PANDROID */
 

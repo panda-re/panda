@@ -228,7 +228,7 @@ int ProcessInfoMap::updateProcess(gva_t task, gpid_t pid, gpid_t parentPid, gpid
     ret |= DS_PROC_COMMNAME_MASK;
   }
 
-  //shouldn't I destroy the module list?
+  //XXX: shouldn't I destroy the module list?
 
   return (ret);
 }
@@ -947,7 +947,7 @@ gva_t  ProcessInfoMap::getSymbolAddress(ProcessInfo* pInfo, const char* strModul
     if (pModInfo->getName().compare(strModule) == 0) //if the modules match then find the address
     {
       ret = pModInfo->getSymbolAddress(strSymbol);
-      if (ret != INV_ADDR)
+      if (ret != (gva_t)INV_ADDR)
       {
         ret += i->startAddr;
       }
@@ -1029,7 +1029,7 @@ ProcessInfoMap processInfoMap;
 ProcessInfoMap processInfoMapTemp;
 bool bInMarkMode = false;
 
-int processMarkBegin()
+int processMarkBegin(void)
 {
   bInMarkMode = true;
   return (0);
