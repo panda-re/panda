@@ -11,6 +11,9 @@ following steps.
 Some parts of the installation require root privileges. We assume
 that sudo has been setup and enabled for the user installing
 PANDA.
+If you prefer to have these instructions printed, you can 
+use [gitprint](https://gitprint.com/) to render them into
+a printable PDF file.
 
 ## Prepackaged prerequisites
 Use the following commands to install the prerequisites that can
