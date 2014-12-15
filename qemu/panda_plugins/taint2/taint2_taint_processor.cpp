@@ -29,12 +29,7 @@ PANDAENDCOMMENT */
 #include "taint2.h"
 #include "network.h"
 #include "defines.h"
-
-extern "C" {
-
 #include "fast_shad.h"
-
-}
 
 Addr make_haddr(uint64_t a) {
   Addr ha;
@@ -85,7 +80,7 @@ Addr make_greg(uint64_t r, uint16_t off) {
 /*
    Initialize the shadow memory for taint processing.
  */
-Shad *tp_init() {
+Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity) {
     //    Shad *shad = (Shad *) my_malloc(sizeof(Shad), poolid_taint_processor);
     void *tmp = my_malloc(sizeof(Shad), poolid_taint_processor);
     Shad *shad = new(tmp) Shad;
@@ -94,16 +89,29 @@ Shad *tp_init() {
     shad->num_vals = MAXFRAMESIZE;
     shad->guest_regs = NUMREGS;
     shad->hd = shad_dir_new_64(12,12,16);
-    shad->ram = fast_shad_new(ram_size);
     shad->io = shad_dir_new_64(12,12,16);
     shad->ports = shad_dir_new_32(10,10,12);
 
-    // we're working with LLVM values that can be up to 128 bits
-    shad->llv = fast_shad_new(MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE);
-    shad->ret = fast_shad_new(MAXREGSIZE);
-    // guest registers are generally the size of the guest architecture
-    shad->grv = fast_shad_new(NUMREGS * WORDSIZE);
-    shad->gsv = fast_shad_new(sizeof(CPUState));
+    shad->granularity = granularity;
+    shad->mode = mode;
+
+    if (granularity == TAINT_GRANULARITY_BYTE) {
+        printf("taint2: Creating byte-level taint processor\n");
+        shad->ram = new FastShad(ram_size);
+        // we're working with LLVM values that can be up to 128 bits
+        shad->llv = new FastShad(MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE);
+        shad->ret = new FastShad(MAXREGSIZE);
+        // guest registers are generally the size of the guest architecture
+        shad->grv = new FastShad(NUMREGS * WORDSIZE);
+    } else {
+        printf("taint2: Creating word-level taint processor\n");
+        shad->ram = new FastShad(ram_size / WORDSIZE);
+        shad->llv = new FastShad(MAXFRAMESIZE * FUNCTIONFRAMES);
+        shad->ret = new FastShad(1);
+        shad->grv = new FastShad(NUMREGS);
+    }
+
+    shad->gsv = new FastShad(sizeof(CPUState));
 
     return shad;
 }
@@ -114,13 +122,13 @@ Shad *tp_init() {
  */
 void tp_free(Shad *shad){
     shad_dir_free_64(shad->hd);
-    fast_shad_free(shad->ram);
+    delete shad->ram;
     shad_dir_free_64(shad->io);
     shad_dir_free_32(shad->ports);
-    fast_shad_free(shad->llv);
-    fast_shad_free(shad->ret);
-    fast_shad_free(shad->grv);
-    fast_shad_free(shad->gsv);
+    delete shad->llv;
+    delete shad->ret;
+    delete shad->grv;
+    delete shad->gsv;
     my_free(shad, sizeof(Shad), poolid_taint_processor);
 }
 
@@ -132,22 +140,22 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
         case HADDR:
             return shad_dir_find_64(shad->hd, a->val.ha+a->off);
         case MADDR:
-            return fast_shad_query(shad->ram, a->val.ma+a->off);
+            return FastShad::query(shad->ram, a->val.ma+a->off);
         case IADDR:
             return shad_dir_find_64(shad->io, a->val.ia+a->off);
         case PADDR:
             return shad_dir_find_32(shad->ports, a->val.pa+a->off);
         case LADDR:
-            return fast_shad_query(shad->llv, a->val.la*MAXREGSIZE + a->off);
+            return FastShad::query(shad->llv, a->val.la*MAXREGSIZE + a->off);
         case GREG:
-            return fast_shad_query(shad->grv, a->val.gr * WORDSIZE + a->off);
+            return FastShad::query(shad->grv, a->val.gr * WORDSIZE + a->off);
         case GSPEC:
             // SpecAddr enum is offset by the number of guest registers
-            return fast_shad_query(shad->gsv, a->val.gs - NUMREGS + a->off);
+            return FastShad::query(shad->gsv, a->val.gs - NUMREGS + a->off);
         case CONST:
             return NULL;
         case RET:
-            return fast_shad_query(shad->ret, a->off);
+            return FastShad::query(shad->ret, a->off);
         default:
             assert(false);
     }
@@ -196,7 +204,7 @@ void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_64(shad->hd, a->val.ha+a->off);
             break;
         case MADDR:
-            fast_shad_remove(shad->ram, a->val.ma+a->off,
+            FastShad::remove(shad->ram, a->val.ma+a->off,
                     WORDSIZE - a->off);
             break;
         case IADDR:
@@ -206,19 +214,19 @@ void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_32(shad->ports, a->val.pa+a->off);
             break;
         case LADDR:
-            fast_shad_remove(shad->llv, a->val.la*MAXREGSIZE + a->off,
+            FastShad::remove(shad->llv, a->val.la*MAXREGSIZE + a->off,
                     MAXREGSIZE - a->off);
             break;
         case GREG:
-            fast_shad_remove(shad->grv, a->val.gr * WORDSIZE + a->off,
+            FastShad::remove(shad->grv, a->val.gr * WORDSIZE + a->off,
                     WORDSIZE - a->off);
             break;
         case GSPEC:
-            fast_shad_remove(shad->gsv, a->val.gs - NUMREGS + a->off,
+            FastShad::remove(shad->gsv, a->val.gs - NUMREGS + a->off,
                     WORDSIZE - a->off);
             break;
         case RET:
-            fast_shad_remove(shad->ret, a->off, MAXREGSIZE);
+            FastShad::remove(shad->ret, a->off, MAXREGSIZE);
             break;
         default:
             assert (1==0);
@@ -239,7 +247,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
 #endif
             break;
         case MADDR:
-            fast_shad_set(shad->ram, a->val.ma + a->off, ls);
+            FastShad::set(shad->ram, a->val.ma + a->off, ls);
 #ifdef TAINTDEBUG
             printf("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
             //labelset_spit(ls);
@@ -268,7 +276,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
             printf("\n");
 #endif
-            fast_shad_set(shad->llv, a->val.la*MAXREGSIZE + a->off, ls);
+            FastShad::set(shad->llv, a->val.la*MAXREGSIZE + a->off, ls);
             break;
         case GREG:
 #ifdef TAINTDEBUG
@@ -277,7 +285,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             printf("\n");
 #endif
             // need to call labelset_copy to increment ref count
-            fast_shad_set(shad->grv, a->val.gr * WORDSIZE + a->off, ls);
+            FastShad::set(shad->grv, a->val.gr * WORDSIZE + a->off, ls);
             break;
         case GSPEC:
 #ifdef TAINTDEBUG
@@ -286,7 +294,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             printf("\n");
 #endif
             // SpecAddr enum is offset by the number of guest registers
-            fast_shad_set(shad->gsv, a->val.gs - NUMREGS + a->off, ls);
+            FastShad::set(shad->gsv, a->val.gs - NUMREGS + a->off, ls);
             break;
         case RET:
 #ifdef TAINTDEBUG
@@ -294,7 +302,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
             printf("\n");
 #endif
-            fast_shad_set(shad->ret, a->off, ls);
+            FastShad::set(shad->ret, a->off, ls);
             break;
         default:
             assert (1==0);

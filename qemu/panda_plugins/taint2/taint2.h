@@ -41,6 +41,11 @@ typedef enum {
     TAINT_BYTE_LABEL
 } TaintLabelMode;
 
+typedef enum {
+    TAINT_GRANULARITY_BYTE,
+    TAINT_GRANULARITY_WORD
+} TaintGranularity;
+
 typedef struct shad_struct {
     uint64_t hd_size;
     uint32_t mem_size;
@@ -60,10 +65,13 @@ typedef struct shad_struct {
     uint64_t asid;
     uint64_t pc;
     uint64_t prev_bb; // label for previous BB.
+
+    TaintLabelMode mode;
+    TaintGranularity granularity;
 } Shad;
 
 // returns a shadow memory to be used by taint processor
-Shad *tp_init();
+Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity);
 
 // Delete a shadow memory
 void tp_free(Shad *shad);

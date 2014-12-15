@@ -19,7 +19,7 @@
 #define OPNAMELENGTH 15
 #define FUNCNAMELENGTH 50
 #define FUNCTIONFRAMES 10 // handle 10 frames for now, should be sufficient
-#define MAXREGSIZE 16 // Maximum LLVM register size is 16 bytes
+#define MAXREGSIZE 8 // Maximum LLVM register size is 8 bytes
 #define MAXFRAMESIZE 5000 // maximum number of LLVM values a function can use.
 
 #endif

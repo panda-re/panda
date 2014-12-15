@@ -107,7 +107,11 @@ bool taintJustDisabled = false;
 // Taint memlog
 static taint2_memlog taint_memlog;
 
+// Configuration
 bool tainted_pointer = true;
+static TaintGranularity granularity;
+static TaintLabelMode mode;
+
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -179,7 +183,7 @@ void __taint_enable_taint(void) {
      * Taint processor initialization
      */
 
-    shadow = tp_init();
+    shadow = tp_init(TAINT_BYTE_LABEL, TAINT_GRANULARITY_BYTE);
     if (shadow == NULL){
         printf("Error initializing shadow memory...\n");
         exit(1);
@@ -248,6 +252,10 @@ __attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {
     printf("%d ", el); 
 }
 
+__attribute__((unused)) static void record_bit(uint32_t el, void *array) {
+    *(uint64_t *)array |= 1 << el;
+}
+
 #ifdef TARGET_ARM
 // R0 is command (label or query)
 // R1 is buf_start
@@ -312,7 +320,7 @@ void i386_hypercall_callback(CPUState *env){
                 (uint64_t)ls);
         for (unsigned i = 0; i < size; i++) {
             //printf("label %u\n", i);
-            fast_shad_set(shadow->ram, addr + i,
+            FastShad::set(shadow->ram, addr + i,
                     label_set_singleton(i));
         }
     }    
@@ -324,12 +332,14 @@ void i386_hypercall_callback(CPUState *env){
         if (taintEnabled){
             printf("taint2: Query operation detected @ %lu.\n",
                     rr_get_guest_instr_count());
-            printf("taint2: %u labels.\n", tp_query_ram(shadow, addr));
+            uint64_t array;
+            label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
+            printf("taint2: %lx labels.\n", array);
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
                     (uint64_t)shadow->ram, (uint64_t)addr);
-            //label_set_iter(fast_shad_query(shadow->ram, addr),
+            //label_set_iter(FastShad::query(shadow->ram, addr),
                     //print_labels, NULL);
             printf("taint2: Stopping replay.\n");
             rr_do_end_replay(0);
@@ -375,39 +385,6 @@ void __taint_delete_ram(uint64_t pa) {
     tp_delete_ram(shadow, pa);
 }
 
-/*
-uint32_t __taint_max_obs_ls_type(void) {
-    return shadow->max_obs_ls_type;
-}
-
-void __taint_clear_tainted_computation_happened(void) {
-    shadow->tainted_computation_happened = 0;
-}
-
-int __taint_tainted_computation_happened(void) {
-    return shadow->tainted_computation_happened;
-}
-
-
-void __taint_clear_taint_state_changed(void) {
-    shadow->taint_state_changed = 0;
-}
-
-int __taint_taint_state_changed(void) {
-    return shadow->taint_state_changed;
-}
-
-void __taint_clear_taint_state_read(void) {
-    shadow->taint_state_read = 0;
-}
-int __taint_taint_state_read(void) {
-    return shadow->taint_state_read;
-}
-void __taint_clear_shadow_memory(void){
-    clear_shadow_memory(&shadow);
-}
-*/
-
 ////////////////////////////////////////////////////////////////////////////////////
 // C API versions
 
@@ -424,10 +401,6 @@ void taint_label_ram(uint64_t pa, uint32_t l) {
     __taint_label_ram(pa, l);
 }
 
-/*uint32_t taint_pick_label(uint64_t pa) {
-  return __taint_pick_label(pa);
-}*/
-
 uint32_t taint_query_ram(uint64_t pa) {
   return __taint_query_ram(pa);
 }
@@ -439,39 +412,6 @@ void taint_delete_ram(uint64_t pa) {
 uint32_t taint_query_reg(int reg_num, int offset) {
   return __taint_query_reg(reg_num, offset);
 }
-
-/*uint32_t taint_max_obs_ls_type(void) {
-    return __taint_max_obs_ls_type();
-}
-
-void taint_clear_tainted_computation_happened(void) {
-    __taint_clear_tainted_computation_happened();
-}
-
-int taint_tainted_computation_happened(void) {
-    return __taint_tainted_computation_happened();
-}
-
-void taint_clear_taint_state_changed(void) {
-    __taint_clear_taint_state_changed();
-}
-
-int taint_taint_state_changed(void) {
-    return __taint_taint_state_changed();
-}
-
-void taint_clear_taint_state_read(void) {
-    __taint_clear_taint_state_read();
-}
-
-int taint_taint_state_read(void) {
-    return __taint_taint_state_read();
-}
-
-void taint_clear_shadow_memory(void){
-    __taint_clear_shadow_memory();
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
@@ -514,6 +454,8 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool(args, "no_tp");
+    if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
+    if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
 
     return true;
 }

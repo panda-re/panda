@@ -32,9 +32,9 @@ extern "C" {
 uint64_t labelset_count;
 
 void taint_label(FastShad *shad, uint64_t addr, uint32_t label) {
-    fast_shad_set(shad, addr,
+    FastShad::set(shad, addr,
             label_set_union(
-                fast_shad_query(shad, addr),
+                FastShad::query(shad, addr),
                 label_set_singleton(label)));
 }
 
@@ -62,14 +62,14 @@ void taint_breadcrumb(uint64_t *dest_ptr, uint64_t bb_slot) {
 // Stack frame operations
 
 void taint_reset_frame(FastShad *shad) {
-    fast_shad_reset_frame(shad);
+    shad->reset_frame();
 }
 
 void taint_push_frame(FastShad *shad) {
-    fast_shad_push_frame(shad);
+    shad->push_frame(MAXREGSIZE * MAXFRAMESIZE);
 }
 void taint_pop_frame(FastShad *shad) {
-    fast_shad_pop_frame(shad);
+    shad->pop_frame(MAXREGSIZE * MAXFRAMESIZE);
 }
 
 // Taint operations
@@ -82,24 +82,24 @@ void taint_copy(
 #ifdef TAINTDEBUG
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)fast_shad_query(shad_src, src));
+        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
     }
     taint_log(")\n");
 #endif
-    if (dest > shad_dest->size || src > shad_src->size) {
+    if (dest > shad_dest->get_size() || src > shad_src->get_size()) {
 #ifdef TAINTDEBUG
         printf("taint_copy: ignoring IO mem rw.\n");
 #endif
         return;
     }
-    fast_shad_copy(shad_dest, dest, shad_src, src, size);
+    FastShad::copy(shad_dest, dest, shad_src, src, size);
 }
 
 void taint_move(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
         uint64_t size) {
-    fast_shad_move(shad_dest, dest, shad_src, src, size);
+    FastShad::move(shad_dest, dest, shad_src, src, size);
 }
 
 void taint_parallel_compute(
@@ -111,9 +111,9 @@ void taint_parallel_compute(
     uint64_t i;
     for (i = 0; i < src_size; ++i) {
         LabelSetP ls = label_set_union(
-                fast_shad_query(shad, src1 + i),
-                fast_shad_query(shad, src2 + i));
-        fast_shad_set(shad, dest + i, ls);
+                FastShad::query(shad, src1 + i),
+                FastShad::query(shad, src2 + i));
+        FastShad::set(shad, dest + i, ls);
     }
 }
 
@@ -121,7 +121,7 @@ static inline LabelSetP mixed_labels(FastShad *shad, uint64_t addr, uint64_t siz
     LabelSetP ls = NULL;
     uint64_t i;
     for (i = 0; i < size; ++i) {
-        ls = label_set_union(ls, fast_shad_query(shad, addr + i));
+        ls = label_set_union(ls, FastShad::query(shad, addr + i));
     }
     return ls;
 }
@@ -129,7 +129,7 @@ static inline LabelSetP mixed_labels(FastShad *shad, uint64_t addr, uint64_t siz
 static inline void bulk_set(FastShad *shad, uint64_t addr, uint64_t size, LabelSetP ls) {
     uint64_t i;
     for (i = 0; i < size; ++i) {
-        fast_shad_set(shad, addr + i, ls);
+        FastShad::set(shad, addr + i, ls);
     }
 }
 
@@ -147,17 +147,17 @@ void taint_mix_compute(
 
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
     taint_log("remove: %lx[%lx+%lx]\n", (uint64_t)shad, dest, size);
-    if (unlikely(dest >= shad->size)) {
+    if (unlikely(dest >= shad->get_size())) {
         // Ignore IO rw.
         return;
     }
-    fast_shad_remove(shad, dest, size);
+    FastShad::remove(shad, dest, size);
 }
 
 void taint_set(
         FastShad *shad_dest, uint64_t dest, uint64_t dest_size,
         FastShad *shad_src, uint64_t src) {
-    bulk_set(shad_dest, dest, dest_size, fast_shad_query(shad_src, src));
+    bulk_set(shad_dest, dest, dest_size, FastShad::query(shad_src, src));
 }
 
 void taint_mix(
@@ -185,17 +185,17 @@ void taint_pointer(
     } else {
         unsigned i;
         for (i = 0; i < size; i++) {
-            fast_shad_set(shad_dest, dest + i,
-                    label_set_union(ls_ptr, fast_shad_query(shad_src, src + i)));
+            FastShad::set(shad_dest, dest + i,
+                    label_set_union(ls_ptr, FastShad::query(shad_src, src + i)));
         }
     }
 }
 
 void taint_sext(FastShad *shad, uint64_t dest, uint64_t dest_size, uint64_t src, uint64_t src_size) {
     taint_log("taint_sext\n");
-    fast_shad_copy(shad, dest, shad, src, src_size);
+    FastShad::copy(shad, dest, shad, src, src_size);
     bulk_set(shad, dest + src_size, dest_size - src_size,
-            fast_shad_query(shad, dest + src_size - 1));
+            FastShad::query(shad, dest + src_size - 1));
 }
 
 // Takes a (~0UL, ~0UL)-terminated list of (value, selector) pairs.
@@ -213,7 +213,7 @@ void taint_select(
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
                 taint_log("slct\n");
-                fast_shad_copy(shad, dest, shad, src, size);
+                FastShad::copy(shad, dest, shad, src, size);
             }
             return;
         }
@@ -230,7 +230,7 @@ void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
         FastShad *llv, uint64_t llv_offset,
         FastShad *greg, FastShad *gspec,
-        uint64_t size, bool is_store) {
+        uint64_t size, uint64_t bytes_per_reg, bool is_store) {
     int64_t offset = addr - env_ptr;
     if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
         // Irrelevant
@@ -238,16 +238,18 @@ void taint_host_copy(
     }
 
     FastShad *state_shad;
-    
+    uint64_t state_addr;
+
 #define m_off(member) (uint64_t)(&((CPUState *)0)->member)
 #define m_size(member) sizeof(((CPUState *)0)->member)
 #define m_endoff(member) (m_off(member) + m_size(member))
 #define contains_offset(member) (m_off(member) <= (unsigned)(offset) && (unsigned)(offset) < m_endoff(member))
     if (contains_offset(regs)) {
         state_shad = greg;
-        offset -= m_off(regs);
+        state_addr = (offset - m_off(regs)) / bytes_per_reg;
     } else {
         state_shad = gspec;
+        state_addr = offset;
     }
 #undef contains_offset
 #undef m_endoff
@@ -255,9 +257,9 @@ void taint_host_copy(
 #undef m_off
 
     FastShad *shad_src = is_store ? llv : state_shad;
-    uint64_t src = is_store ? llv_offset : offset;
+    uint64_t src = is_store ? llv_offset : state_addr;
     FastShad *shad_dest = is_store ? state_shad : llv;
-    uint64_t dest = is_store ? offset : llv_offset;
+    uint64_t dest = is_store ? state_addr : llv_offset;
 
     //taint_log("taint_host_copy\n");
     //taint_log("\tenv: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
@@ -267,9 +269,9 @@ void taint_host_copy(
             (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src, offset);
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)fast_shad_query(shad_src, src));
+        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
     }
     taint_log(")\n");
 #endif
-    fast_shad_copy(shad_dest, dest, shad_src, src, size);
+    FastShad::copy(shad_dest, dest, shad_src, src, size);
 }

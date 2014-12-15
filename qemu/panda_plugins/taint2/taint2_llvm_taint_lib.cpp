@@ -121,7 +121,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    Type *shadT = M.getTypeByName("struct.FastShad");
+    Type *shadT = M.getTypeByName("class.FastShad");
     assert(shadT);
     Type *shadP = PointerType::getUnqual(shadT);
 
@@ -691,7 +691,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         vector<Value *> args{
             const_uint64_ptr(ctx, cpu_single_env), P2II,
             llvConst, constSlot(ctx, val), grvConst, gsvConst,
-            const_uint64(ctx, size),
+            const_uint64(ctx, size), const_uint64(ctx, WORDSIZE),
             ConstantInt::get(Type::getInt1Ty(ctx), isStore)
         };
         inlineCallAfter(I, hostCopyF, args);
