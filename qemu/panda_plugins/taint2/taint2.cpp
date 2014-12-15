@@ -39,7 +39,6 @@ extern "C" {
 #include "rr_log.h"
 #include "cpu.h"
 
-#include "taint_ops.h"
 #include "fast_shad.h"
 
 extern int loglevel;
@@ -62,6 +61,7 @@ uint32_t taint_query_ram(uint64_t pa);
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "llvm_taint_lib.h"
+#include "taint_ops.h"
 #include "taint2.h"
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -209,7 +209,7 @@ void __taint_enable_taint(void) {
         exit(1);
     }
 
-    printf("taint2: Done verifying module.\n");
+    printf("taint2: Done verifying module. Running...\n");
 
     //tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 }
@@ -245,13 +245,7 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
 }
 
 __attribute__((unused)) static void print_labels(uint32_t el, void *stuff) { 
-    if (stuff == NULL) {
-        printf("%d ", el); 
-    }
-    else {
-        FILE *fp = (FILE *) stuff;
-        fprintf(fp, "%d ", el);
-    }
+    printf("%d ", el); 
 }
 
 #ifdef TARGET_ARM
@@ -317,6 +311,7 @@ void i386_hypercall_callback(CPUState *env){
                 (uint64_t)shadow->ram, (uint64_t)addr, (uint64_t)size, (uint64_t)label,
                 (uint64_t)ls);
         for (unsigned i = 0; i < size; i++) {
+            //printf("label %u\n", i);
             fast_shad_set(shadow->ram, addr + i,
                     label_set_singleton(i));
         }
@@ -327,14 +322,15 @@ void i386_hypercall_callback(CPUState *env){
     if (env->regs[R_EAX] == 9) {
         target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
         if (taintEnabled){
-            printf("taint2: Query operation detected @ %lu. %u labels: \n",
-                    rr_get_guest_instr_count(), taint_query_ram(addr));
+            printf("taint2: Query operation detected @ %lu.\n",
+                    rr_get_guest_instr_count());
+            printf("taint2: %u labels.\n", tp_query_ram(shadow, addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
                     (uint64_t)shadow->ram, (uint64_t)addr);
-            label_set_iter(fast_shad_query(shadow->ram, env->regs[R_EBX]),
-                    print_labels, NULL);
+            //label_set_iter(fast_shad_query(shadow->ram, addr),
+                    //print_labels, NULL);
             printf("taint2: Stopping replay.\n");
             rr_do_end_replay(0);
         }

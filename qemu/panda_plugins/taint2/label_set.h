@@ -15,12 +15,18 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
-#include <stdint.h>
-#include <stdbool.h>
-#ifdef TAINTDEBUG
-#include <stdio.h>
-#endif
+#include <cstdio>
 
+extern "C" {
+#include "cpu.h"
+#include "qemu-log.h"
+}
+
+#include <cstdint>
+
+#include <map>
+
+extern "C" {
 typedef struct LabelSet {
     struct LabelSet *child1;
     union {     // If child1 is null this is a number.
@@ -28,47 +34,10 @@ typedef struct LabelSet {
         uint32_t label;
     };
 } *LabelSetP;
-
-static inline LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2);
-static inline LabelSetP label_set_singleton(uint32_t label);
-static void label_set_iter(LabelSetP ls, void (*iter)(uint32_t, void *), void *user);
-
-static inline LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
-    if (ls1 == ls2) {
-        return ls1;
-    } else if (ls1 && ls2) {
-        LabelSetP result = (LabelSetP)malloc(sizeof(struct LabelSet));
-        //labelset_count++;
-
-        result->child1 = ls1;
-        result->child2 = ls2;
-        return result;
-    } else if (ls1) {
-        return ls1;
-    } else if (ls2) {
-        return ls2;
-    } else return NULL;
 }
 
-static inline LabelSetP label_set_singleton(uint32_t label) {
-    LabelSetP result = (LabelSetP)malloc(sizeof(struct LabelSet));
-    //labelset_count++;
-
-    result->child1 = NULL;
-    result->label = label;
-    return result;
-}
-
-__attribute__((unused)) static void label_set_iter(
-        LabelSetP ls, void (*iter)(uint32_t, void *), void *user) {
-    if (!ls) return;
-    
-    if (ls->child1) { // union
-        label_set_iter(ls->child1, iter, user);
-        label_set_iter(ls->child2, iter, user);
-    } else {
-        iter(ls->label, user);
-    }
-}
+LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2);
+LabelSetP label_set_singleton(uint32_t label);
+void label_set_iter(LabelSetP ls, void (*leaf)(uint32_t, void *), void *user);
 
 #endif

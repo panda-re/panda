@@ -7,7 +7,7 @@ include ../panda.mak
 CXXFLAGS+= $(LLVM_CXXFLAGS)
 
 DBGFLAGS=
-DBGFLAGS+= -DTAINT2_NOINLINE #-DTAINTDEBUG
+DBGFLAGS+= -DTAINT2_NOINLINE -DTAINTDEBUG
 
 QEMU_CFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= $(DBGFLAGS)
@@ -43,6 +43,7 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_llvm_taint_lib.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_fast_shad.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_ops.o \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_label_set.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_processor.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
 
@@ -50,25 +51,17 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
             -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
-	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.c \
-    $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
-
-	$(call quiet-command,\
-		$(filter-out -g -Wold-style-declaration,\
-			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $(TAINT_OP_CFLAGS) \
-			-emit-llvm -c -o $@ $<),"  LLVM    $@")
-
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
 	$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME)_%.cpp \
     $(wildcard $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/*.h)
 
 	$(call quiet-command,\
 		$(filter-out -g -Wold-style-declaration -std=c11,\
-			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
+			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.bc \
+    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_label_set.bc \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_ops.bc
 
 	$(call quiet-command,\

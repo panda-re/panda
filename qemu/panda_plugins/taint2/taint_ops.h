@@ -15,6 +15,8 @@ PANDAENDCOMMENT */
 #ifndef __TAINT_OPS_H_
 #define __TAINT_OPS_H_
 
+extern "C" {
+
 typedef struct FastShad FastShad;
 
 // Add a label to a given address.
@@ -116,5 +118,7 @@ void taint_host_copy(
         FastShad *llv, uint64_t llv_offset,
         FastShad *greg, FastShad *gspec,
         uint64_t size, bool is_store);
+
+}
 
 #endif

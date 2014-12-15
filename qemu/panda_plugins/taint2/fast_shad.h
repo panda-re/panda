@@ -20,6 +20,9 @@ PANDAENDCOMMENT */
 
 #include "defines.h"
 
+#include "cpu.h"
+#include "qemu-log.h"
+
 #define CPU_LOG_TAINT_OPS (1 << 14)
 #ifndef TAINTDEBUG
 #define taint_log(...) {}

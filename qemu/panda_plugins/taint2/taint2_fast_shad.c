@@ -25,8 +25,9 @@ PANDAENDCOMMENT */
 #include <sys/mman.h>
 
 #include "defines.h"
-#include "label_set.h"
 #include "fast_shad.h"
+
+typedef struct LabelSet *LabelSetP;
 
 FastShad *fast_shad_new(uint64_t labelsets) {
     FastShad *result = (FastShad *)malloc(sizeof(FastShad));

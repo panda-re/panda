@@ -190,7 +190,11 @@ struct TranslationBlock {
 #ifdef CONFIG_LLVM
     /* pointer to LLVM translated code */
     struct TCGLLVMContext *tcg_llvm_context;
+#ifdef __cplusplus
+    Function *llvm_function;
+#else
     struct Function *llvm_function;
+#endif
     uint8_t *llvm_tc_ptr;
     uint8_t *llvm_tc_end;
     struct TranslationBlock* llvm_tb_next[2];

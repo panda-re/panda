@@ -16,12 +16,14 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 #endif
 
+extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
 
 #include "cpu.h"
 #include "qemu-log.h"
+}
 
 #include "fast_shad.h"
 #include "label_set.h"
@@ -76,7 +78,7 @@ void taint_copy(
         FastShad *shad_src, uint64_t src,
         uint64_t size) {
     taint_log("copy: %lx[%lx+%lx] <- %lx[%lx] (",
-            shad_dest_ptr, dest, size, shad_src_ptr, src);
+            (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src);
 #ifdef TAINTDEBUG
     unsigned i;
     for (i = 0; i < size; i++) {
@@ -144,7 +146,7 @@ void taint_mix_compute(
 }
 
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
-    taint_log("remove: %lx[%lx+%lx]\n", shad_ptr, dest, size);
+    taint_log("remove: %lx[%lx+%lx]\n", (uint64_t)shad, dest, size);
     if (unlikely(dest >= shad->size)) {
         // Ignore IO rw.
         return;
@@ -230,7 +232,7 @@ void taint_host_copy(
         FastShad *greg, FastShad *gspec,
         uint64_t size, bool is_store) {
     int64_t offset = addr - env_ptr;
-    if (offset < 0 || offset >= sizeof(CPUState)) {
+    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
         // Irrelevant
         return;
     }

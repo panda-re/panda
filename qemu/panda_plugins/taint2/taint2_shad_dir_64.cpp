@@ -29,8 +29,9 @@ PANDAENDCOMMENT */
 #include <stdint.h>
 #include "my_bool.h"
 #include "my_mem.h"
-#include "label_set.h"
 #include "shad_dir_64.h"
+
+typedef struct LabelSet *LabelSetP;
 
 // 64-bit addresses
 // create a new table
