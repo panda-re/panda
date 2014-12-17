@@ -589,5 +589,6 @@ double panda_parse_double(panda_arg_list *args, const char *argname, double defv
 // Returns true if arg present, unless arg=false or arg=no exists.
 bool panda_parse_bool(panda_arg_list *args, const char *argname);
 const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
+char** str_split(char* a_str, const char a_delim);
 
 #endif
