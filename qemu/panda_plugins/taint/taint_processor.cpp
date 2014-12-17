@@ -1526,7 +1526,7 @@ void tob_op_read(TaintOpBuffer *buf, TaintOp **aop) {
 }
 
 
-SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
+SB_INLINE void process_insn_start_op(Shad *shad,  TaintOp *op, TaintOpBuffer *buf,
         DynValBuffer *dynval_buf){
 #ifdef TAINTDEBUG
     printf("Fixing up taint op buffer for: %s\n", op->val.insn_start.name);
@@ -1939,7 +1939,7 @@ SB_INLINE void process_insn_start_op(TaintOp *op, TaintOpBuffer *buf,
             int reg_num = op->val.insn_start.branch_cond_llvm_reg;
             bool conditional_branch = reg_num != -1;
             if (conditional_branch) {
-                    PPP_RUN_CB(on_branch, reg_num);
+                PPP_RUN_CB(on_branch, shad->pc, reg_num);
             }
 
             /*
@@ -2505,7 +2505,7 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
 
             case INSNSTARTOP:
                 {
-		  process_insn_start_op(op, buf, dynval_buf);
+                    process_insn_start_op(shad, op, buf, dynval_buf);
                     if (next_step == EXCEPT){
                         return;
                     }

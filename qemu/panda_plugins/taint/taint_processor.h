@@ -347,7 +347,7 @@ typedef void (*tp_callback_t) (uint64_t tp_pc, uint64_t addr);
 
 typedef void (*on_load_t) (uint64_t tp_pc, uint64_t addr);
 typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
-typedef void (*on_branch_t) (int reg_num);
+typedef void (*on_branch_t) (uint64_t pc, int reg_num);
 typedef void (*before_execute_taint_ops_t) (void);
 typedef void (*after_execute_taint_ops_t) (void);
 

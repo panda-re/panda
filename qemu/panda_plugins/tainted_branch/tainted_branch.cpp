@@ -24,6 +24,7 @@ extern "C" {
 #include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
+#include "panda_common.h"
 }
 
 #include <stdio.h>
@@ -44,9 +45,10 @@ void uninit_plugin(void *);
 
 bool first_enable_taint = true;
 
-void tbranch_on_branch(int reg_num) {
+void tbranch_on_branch(uint64_t pc, int reg_num) {
     if (taint_query_llvm(reg_num, /*offset=*/0)) {
-        printf("Branch condition on tainted LLVM register: %%%d\n", reg_num);
+        printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register: %%%d\n", 
+               (unsigned int ) panda_current_asid(cpu_single_env), (unsigned int) pc, reg_num);
         // Get taint compute number
         uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);
         
