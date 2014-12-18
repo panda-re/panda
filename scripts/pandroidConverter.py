@@ -86,7 +86,14 @@ def translateImage(avdname):
     datasize = config.get(FAKE_SECTION, 'disk.datapartition.size')
     datapath = config.get(FAKE_SECTION, 'disk.datapartition.path')
     convertFile(datapath, "data-pandroid", datasize, isNand=yaffs)
-    
+
+    has_sd = ('yes' == config.get(FAKE_SECTION, 'hw.sdcard').lower().strip())
+    if has_sd:
+        # the sdcard is always a formatted fat32 partition, so we don't grow it
+        sdpath = config.get(FAKE_SECTION, 'hw.sdcard.path')
+        sdsize = os.stat(sdpath).st_size
+        convertFile(sdpath, 'sdcard', sdsize, isNand=False)
+
     kernelpath = config.get(FAKE_SECTION, "kernel.path")
     shutil.copyfile(kernelpath, "kernel")
     initramfs  = config.get(FAKE_SECTION, "disk.ramdisk.path")

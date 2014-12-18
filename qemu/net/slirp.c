@@ -228,7 +228,8 @@ static int net_slirp_init(VLANState *vlan, const char *model,
     }
     if ((dns.s_addr & mask.s_addr) != net.s_addr ||
         dns.s_addr == host.s_addr) {
-        return -1;
+	// We don't care that the nameserver isn't on the local subnet
+	//        return -1;
     }
 
 #ifndef _WIN32
