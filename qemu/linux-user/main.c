@@ -3137,6 +3137,8 @@ struct qemu_argument {
     const char *help;
 };
 
+const char *qemu_loc;
+
 struct qemu_argument arg_table[] = {
     {"h",          "",                 false, handle_arg_help,
      "",           "print this help"},
@@ -3324,6 +3326,8 @@ int main(int argc, char **argv, char **envp)
     int target_argc;
     int i;
     int ret;
+
+    qemu_loc = realpath(argv[0], NULL);
 
     qemu_cache_utils_init(envp);
 

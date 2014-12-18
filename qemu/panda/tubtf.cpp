@@ -58,7 +58,7 @@ static void tubtf_write_contents_bits(void) {
 void tubtf_open(char *filename, TubtfColw colw) {
     assert (tubtf == NULL);
     assert ((colw == TUBTF_COLW_32) || (colw == TUBTF_COLW_64));
-    tubtf = (TubtfTrace *) malloc(sizeof(TubtfTrace *));
+    tubtf = (TubtfTrace *) malloc(sizeof(TubtfTrace));
     tubtf->version = 0;
     tubtf->colw = colw;
     tubtf->contents_bits = 0;

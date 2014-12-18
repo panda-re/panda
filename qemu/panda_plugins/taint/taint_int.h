@@ -22,6 +22,15 @@ uint32_t taint_pick_label(uint64_t pa);
 // if offset of reg is untainted, ...
 uint32_t taint_query_reg(int reg_num, int offset);
 
+// if offset of llvm reg is untainted, ...
+uint32_t taint_query_llvm(int reg_num, int offset);
+
+// Print the labels on a register
+void taint_spit_reg(int reg_num, int offset);
+
+// Print the labels on an llvm register
+void taint_spit_llvm(int reg_num, int offset);
+
 // delete taint from this phys addr
 void taint_delete_ram(uint64_t pa) ;
 
@@ -30,6 +39,9 @@ uint32_t taint_occ_ram(void);
 
 // returns the max ls type (taint compute #) observed so far
 uint32_t taint_max_obs_ls_type(void) ;
+
+// returns the ls type (taint compute #) for the given llvm register
+uint32_t taint_get_ls_type_llvm(int reg_num, int offset);
 
 // clears the flag indicating tainted computation happened
 void taint_clear_tainted_computation_happened(void);

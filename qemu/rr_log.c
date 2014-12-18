@@ -107,8 +107,8 @@ const char * rr_requested_name = NULL;
 const char * rr_snapshot_name  = NULL;
 
 //mz FIFO queue of log entries read from the log file
-static RR_log_entry *queue_head;
-static RR_log_entry *queue_tail;
+static RR_log_entry *rr_queue_head;
+static RR_log_entry *rr_queue_tail;
 
 //
 //mz Other useful things
@@ -121,14 +121,14 @@ extern void log_all_cpu_states(void);
 /******************************************************************************************/
 
 RR_log_entry *rr_get_queue_head(void) {
-    return queue_head;
+    return rr_queue_head;
 }
 
 // Check if replay is really finished. Conditions:
 // 1) The log is empty
 // 2) The only thing in the queue is RR_LAST
 uint8_t rr_replay_finished(void) {
-    return rr_log_is_empty() && queue_head->header.kind == RR_LAST;
+    return rr_log_is_empty() && rr_queue_head->header.kind == RR_LAST && rr_prog_point.guest_instr_count >= rr_queue_head->header.prog_point.guest_instr_count;
 }
 
 //mz "performance" counters - basically, how much of the log is taken up by
@@ -199,7 +199,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
 }
 
 void rr_spit_queue_head(void) {
-    rr_spit_log_entry(*queue_head);
+    rr_spit_log_entry(*rr_queue_head);
 }
 
 //mz use in debugger to print a short history of log entries
@@ -235,9 +235,9 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded) {
 inline void rr_assert_fail(const char *exp, const char *file, int line, const char *function) {
     printf("RR rr_assertion `%s' failed at %s:%d\n", exp, file, line);
     printf("Current log point:\n");
-    if(queue_head != NULL) {
-        rr_spit_prog_point(queue_head->header.prog_point);
-        printf("Next log entry type: %s\n", log_entry_kind_str[queue_head->header.kind]);
+    if(rr_queue_head != NULL) {
+        rr_spit_prog_point(rr_queue_head->header.prog_point);
+        printf("Next log entry type: %s\n", log_entry_kind_str[rr_queue_head->header.kind]);
     }
     else {
         printf("<queue empty>\n");
@@ -827,18 +827,18 @@ static void rr_fill_queue(void) {
     unsigned long long num_entries = 0;
 
     //mz first, some sanity checks.  The queue should be empty when this is called.
-    rr_assert(queue_head == NULL && queue_tail == NULL);
+    rr_assert(rr_queue_head == NULL && rr_queue_tail == NULL);
 
     while ( ! rr_log_is_empty()) {
         log_entry = rr_read_item();
 
         //mz add it to the queue
-        if (queue_head == NULL) {
-            queue_head = queue_tail = log_entry;
+        if (rr_queue_head == NULL) {
+            rr_queue_head = rr_queue_tail = log_entry;
         }
         else {
-            queue_tail->next = log_entry;
-            queue_tail = queue_tail->next;
+            rr_queue_tail->next = log_entry;
+            rr_queue_tail = rr_queue_tail->next;
         }
         num_entries++;
 
@@ -871,48 +871,48 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
 {
     RR_log_entry *current;
     //mz make sure queue is not empty, and that we have the right element next
-    if (queue_head == NULL) {
+    if (rr_queue_head == NULL) {
         printf("Queue is empty, will return NULL\n");
         return NULL;
     }
 
     if (kind != RR_INTERRUPT_REQUEST && kind != RR_SKIPPED_CALL) {
-        while (queue_head && queue_head->header.kind == RR_DEBUG) {
+        while (rr_queue_head && rr_queue_head->header.kind == RR_DEBUG) {
             //printf("Removing RR_DEBUG because we are looking for %s\n", log_entry_kind_str[kind]);
-            current = queue_head;
-            queue_head = queue_head->next;
+            current = rr_queue_head;
+            rr_queue_head = rr_queue_head->next;
             current->next = NULL;
-            if (current == queue_tail) {
-                queue_tail = NULL;
+            if (current == rr_queue_tail) {
+                rr_queue_tail = NULL;
             }
         }
     }
 
-    if (queue_head->header.kind != kind) {
+    if (rr_queue_head->header.kind != kind) {
         return NULL;
     }
 
-    if (check_callsite && queue_head->header.callsite_loc != call_site) {
+    if (check_callsite && rr_queue_head->header.callsite_loc != call_site) {
         return NULL;
     }
 
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
-    if (queue_head->header.prog_point.pc == 0 &&
-        queue_head->header.prog_point.secondary == 0 &&
-        queue_head->header.prog_point.guest_instr_count == 0) {
+    if (rr_queue_head->header.prog_point.pc == 0 &&
+        rr_queue_head->header.prog_point.secondary == 0 &&
+        rr_queue_head->header.prog_point.guest_instr_count == 0) {
         // We'll process this one beacuse it's the start of the log
     }
     //mz rr_prog_point_compare will fail if we're ahead of the log
-    else if (rr_prog_point_compare(rr_prog_point, queue_head->header.prog_point, kind) != 0) {
+    else if (rr_prog_point_compare(rr_prog_point, rr_queue_head->header.prog_point, kind) != 0) {
         return NULL;
     }
     //mz remove log entry from queue and return it.
-    current = queue_head;
-    queue_head = queue_head->next;
+    current = rr_queue_head;
+    rr_queue_head = rr_queue_head->next;
     current->next = NULL;
-    if (current == queue_tail) {
-        queue_tail = NULL;
+    if (current == rr_queue_tail) {
+        rr_queue_tail = NULL;
     }
     return current;
 }
@@ -920,15 +920,15 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
 void rr_replay_debug(RR_callsite_id call_site) {
     RR_log_entry *current_item;
 
-    if (queue_head == NULL) {
+    if (rr_queue_head == NULL) {
         return;
     }
 
-    if (queue_head->header.kind != RR_DEBUG) {
+    if (rr_queue_head->header.kind != RR_DEBUG) {
         return;
     }
 
-    RR_prog_point log_point = queue_head->header.prog_point;
+    RR_prog_point log_point = rr_queue_head->header.prog_point;
 
     if (log_point.guest_instr_count > rr_prog_point.guest_instr_count) {
         // This is normal -- in replay we may hit the checkpoint more often
@@ -941,11 +941,11 @@ void rr_replay_debug(RR_callsite_id call_site) {
             rr_signal_disagreement(rr_prog_point, log_point);
         
         // We passed all these, so consume the log entry
-        current_item = queue_head;
-        queue_head = queue_head->next;
+        current_item = rr_queue_head;
+        rr_queue_head = rr_queue_head->next;
         current_item->next = NULL;
-        if (current_item == queue_tail) {
-            queue_tail = NULL;
+        if (current_item == rr_queue_tail) {
+            rr_queue_tail = NULL;
         }
 
         add_to_recycle_list(current_item);
@@ -955,11 +955,11 @@ void rr_replay_debug(RR_callsite_id call_site) {
     else { // log_point.guest_instr_count > rr_prog_point.guest_instr_count
         // This shouldn't happen. We're ahead of the log.
         //rr_signal_disagreement(rr_prog_point, log_point);
-        current_item = queue_head;
-        queue_head = queue_head->next;
+        current_item = rr_queue_head;
+        rr_queue_head = rr_queue_head->next;
         current_item->next = NULL;
-        if (current_item == queue_tail) {
-            queue_tail = NULL;
+        if (current_item == rr_queue_tail) {
+            rr_queue_tail = NULL;
         }
 
         add_to_recycle_list(current_item);
@@ -1202,7 +1202,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
             //bdg refill the queue here
             // RW ...but only if the queue is actually empty at this point
             if ((call_site == RR_CALLSITE_MAIN_LOOP_WAIT)
-                    && (queue_head == NULL)){ // RW queue is empty
+                    && (rr_queue_head == NULL)){ // RW queue is empty
                 rr_fill_queue();
             }
         }
@@ -1292,9 +1292,9 @@ void replay_progress(void) {
               ftell(rr_nondet_log->fp),
               rr_nondet_log->size,
               (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
-              (unsigned long long)queue_head->header.prog_point.guest_instr_count,
+              (unsigned long long)rr_queue_head->header.prog_point.guest_instr_count,
               (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count,
-              ((queue_head->header.prog_point.guest_instr_count * 100.0) / 
+              ((rr_queue_head->header.prog_point.guest_instr_count * 100.0) / 
                     rr_nondet_log->last_prog_point.guest_instr_count)
       );
     }
@@ -1303,7 +1303,7 @@ void replay_progress(void) {
 
 uint64_t replay_get_guest_instr_count(void) {
   if (rr_nondet_log) {
-    return queue_head->header.prog_point.guest_instr_count;
+    return rr_queue_head->header.prog_point.guest_instr_count;
   }
   else {
     return 0;
@@ -1532,11 +1532,12 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
         plist->entry.before_loadvm();
     }
   snapshot_ret = load_vmstate_rr(name_buf);
-  if (0 != snapshot_ret){
+  // If the loadvm failed, fail
+  /*if (0 != snapshot_ret){
       // TODO: free rr_path and rr_name
       printf("Failed to load snapshot for replay: %d\n", snapshot_ret);
       return snapshot_ret;
-  }
+  }*/
   printf ("... done.\n");
   log_all_cpu_states();
 
@@ -1556,7 +1557,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 
   //mz fill the queue!
   rr_fill_queue();
-  return snapshot_ret;
+  return 0; //snapshot_ret;
 #endif
 }
 
@@ -1602,7 +1603,7 @@ void rr_do_end_replay(int is_error) {
         printf("%lu items on recycle list, %lu bytes total\n", num_items, num_items * sizeof(RR_log_entry));
     }
     //mz some more sanity checks - the queue should contain only the RR_LAST element
-    if (queue_head == queue_tail && queue_head != NULL && queue_head->header.kind == RR_LAST) {
+    if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL && rr_queue_head->header.kind == RR_LAST) {
         printf("Replay completed successfully.");
     }
     else {
@@ -1616,16 +1617,16 @@ void rr_do_end_replay(int is_error) {
     // cleanup the queue
     {
         RR_log_entry *entry;
-        while (queue_head) {
-            entry = queue_head;
-            queue_head = entry->next;
+        while (rr_queue_head) {
+            entry = rr_queue_head;
+            rr_queue_head = entry->next;
             entry->next = NULL;
             free_entry_params(entry);
             g_free(entry);
         }
     }
-    queue_head = NULL;
-    queue_tail = NULL;
+    rr_queue_head = NULL;
+    rr_queue_tail = NULL;
     //mz print CPU state at end of replay
     log_all_cpu_states();
     // close logs

@@ -95,6 +95,7 @@ static void write_entry(RR_log_entry *item) {
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
+                sassert(fwrite(&(args->kind), sizeof(args->kind), 1, newlog) == 1);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
                         sassert(fwrite(&(args->variant.cpu_mem_rw_args),
@@ -111,7 +112,7 @@ static void write_entry(RR_log_entry *item) {
                                     sizeof(args->variant.cpu_mem_unmap), 1, newlog) == 1);
                         sassert(fwrite(args->variant.cpu_mem_unmap.buf, 1,
                                     args->variant.cpu_mem_unmap.len, newlog) > 0);
-                        free(args->variant.cpu_mem_unmap.buf);
+                        //free(args->variant.cpu_mem_unmap.buf);
                         break;
 
                     case RR_CALL_CPU_REG_MEM_REGION:
@@ -135,7 +136,7 @@ static void write_entry(RR_log_entry *item) {
                         sassert(fwrite(args->variant.handle_packet_args.buf, 
                                     args->variant.handle_packet_args.size, 1,
                                     newlog) == 1 /*> 0*/);
-                        free(args->variant.handle_packet_args.buf);
+                        //free(args->variant.handle_packet_args.buf);
                         break;
 
                     default:
@@ -251,7 +252,7 @@ static RR_prog_point copy_entry(void) {
                                     args->variant.cpu_mem_unmap.len, oldlog) > 0);
                         sassert(fwrite(args->variant.cpu_mem_unmap.buf, 1,
                                     args->variant.cpu_mem_unmap.len, newlog) > 0);
-                        free(args->variant.cpu_mem_unmap.buf);
+                        //free(args->variant.cpu_mem_unmap.buf);
                         break;
 
                     case RR_CALL_CPU_REG_MEM_REGION:
@@ -293,7 +294,7 @@ static RR_prog_point copy_entry(void) {
                         sassert(fwrite(args->variant.handle_packet_args.buf, 
                                     args->variant.handle_packet_args.size, 1,
                                     newlog) == 1 /*> 0*/);
-                        free(args->variant.handle_packet_args.buf);
+                        //free(args->variant.handle_packet_args.buf);
                         break;
 
                     default:
@@ -325,6 +326,7 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = rr_prog_point;
+    end.prog_point.guest_instr_count -= actual_start_count;
     sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
     sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
@@ -338,7 +340,7 @@ static void end_snip(void) {
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_prog_point.guest_instr_count;
-    if (!snipping && count > start_count) {
+    if (!snipping && count+tb->num_guest_insns > start_count) {
         sassert((oldlog = fopen(rr_nondet_log->name, "r")));
         sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1);
         printf("Original ending prog point: ");
