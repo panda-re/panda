@@ -176,10 +176,7 @@ std::set<uint32_t> tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
     LabelSetP ls = tp_labelset_get(shad, a);
 
-    std::set<uint32_t> result;
-    label_set_iter(ls, set_insert, &result);
-
-    return result;
+    return label_set_render_set(ls);
 }
 
 // returns label set cardinality

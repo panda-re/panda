@@ -4,17 +4,6 @@
 
 std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP> *memoized_unions = NULL;
 
-void label_set_iter(LabelSetP ls, void (*leaf)(uint32_t, void *), void *user) {
-    if (!ls) return;
-    
-    if (ls->child1) { // union
-        label_set_iter(ls->child1, leaf, user);
-        label_set_iter(ls->child2, leaf, user);
-    } else {
-        leaf(ls->label, user);
-    }
-}
-
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
     if (ls1 == ls2) {
         return ls1;
@@ -56,4 +45,13 @@ LabelSetP label_set_singleton(uint32_t label) {
     result->child1 = nullptr;
     result->label = label;
     return result;
+}
+
+std::set<uint32_t> label_set_render_set(LabelSetP ls) {
+    return label_set_iter<std::set<uint32_t>, set_insert>(ls);
+}
+
+uint64_t label_set_render_uint(LabelSetP ls) {
+    constexpr uint64_t zero = 0UL;
+    return label_set_iter<uint64_t, bitset_insert, zero>(ls);
 }

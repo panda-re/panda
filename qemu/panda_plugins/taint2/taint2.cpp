@@ -332,9 +332,9 @@ void i386_hypercall_callback(CPUState *env){
         if (taintEnabled){
             printf("taint2: Query operation detected @ %lu.\n",
                     rr_get_guest_instr_count());
-            uint64_t array;
-            label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
-            printf("taint2: %lx labels.\n", array);
+            //uint64_t array;
+            //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
+            printf("taint2: %lu labels.\n", taint_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
