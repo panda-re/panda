@@ -34,6 +34,9 @@ typedef struct FastShad FastShad;
 typedef struct LabelSet *LabelSetP;
 typedef struct SdDir32 SdDir32;
 typedef struct SdDir64 SdDir64;
+typedef struct addr_struct Addr;
+
+typedef void (*on_branch_t) (LabelSetP);
 
 // Unused for now.
 typedef enum {

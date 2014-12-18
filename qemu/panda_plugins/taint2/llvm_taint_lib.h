@@ -112,6 +112,7 @@ private:
             Value *selector, vector<pair<Value *, Value *>> &selections);
     void insertTaintDelete(Instruction &I,
             Constant *shad, Value *dest, Value *size);
+    void insertTaintBranch(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
 
 public:
@@ -133,6 +134,7 @@ public:
     Function *popFrameF;
     Function *resetFrameF;
     Function *breadcrumbF;
+    Function *branchF;
 
     Constant *memlogConst;
     Function *memlogPopF;
@@ -170,6 +172,9 @@ public:
     void visitPHINode(PHINode &I);
     void visitInstruction(Instruction &I);
 
+    void visitBranchInst(BranchInst &I);
+    void visitIndirectBrInst(IndirectBrInst &I);
+    void visitSwitchInst(SwitchInst &I);
     void visitTerminatorInst(TerminatorInst &I);
     void visitCastInst(CastInst &I);
     void visitCmpInst(CmpInst &I);

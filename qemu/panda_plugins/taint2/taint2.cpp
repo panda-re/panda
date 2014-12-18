@@ -44,9 +44,12 @@ extern "C" {
 extern int loglevel;
 
 // For the C API to taint accessible from other plugins
-void taint_enable_taint(void);
-void taint_label_ram(uint64_t pa, uint32_t l) ;
-uint32_t taint_query_ram(uint64_t pa);
+void taint2_enable_taint(void);
+int taint2_enabled(void);
+void taint2_label_ram(uint64_t pa, uint32_t l) ;
+uint32_t taint2_query_ram(uint64_t pa);
+void taint2_delete_ram(uint64_t pa);
+uint32_t taint2_query_reg(int reg_num, int offset);
 
 }
 
@@ -334,7 +337,7 @@ void i386_hypercall_callback(CPUState *env){
                     rr_get_guest_instr_count());
             //uint64_t array;
             //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
-            printf("taint2: %u labels.\n", taint_query_ram(addr));
+            printf("taint2: %u labels.\n", taint2_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",

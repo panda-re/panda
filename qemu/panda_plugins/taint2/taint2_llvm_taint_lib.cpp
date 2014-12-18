@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #include <iostream>
 #include <vector>
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Linker.h>
 #include <llvm/IRReader/IRReader.h>
@@ -28,6 +29,9 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Instruction.h>
 
+#include "tcg/tcg-llvm.h"
+#include "panda_plugin_plugin.h"
+
 #include "fast_shad.h"
 #include "llvm_taint_lib.h"
 #include "guestarch.h"
@@ -38,6 +42,10 @@ extern "C" {
 #include "libgen.h"
 
 extern bool tainted_pointer;
+
+PPP_PROT_REG_CB(on_branch);
+
+PPP_CB_BOILERPLATE(on_branch);
 }
 
 extern char *qemu_loc;
@@ -71,6 +79,11 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
+static void taint_branch_run(FastShad *shad, uint64_t src) {
+    PPP_RUN_CB(on_branch, FastShad::query(shad, src));
+}
+
+extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
     char *exe = strdup(qemu_loc);
@@ -141,6 +154,17 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.memlogConst = const_struct_ptr(ctx, memlogP, taint_memlog);
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
+
+    ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
+    vector<Type *> argTs{ shadP, Type::getInt64Ty(ctx) };
+    PTV.branchF = M.getFunction("taint_branch");
+    if (!PTV.branchF) { // insert
+        PTV.branchF = Function::Create(
+            FunctionType::get(Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
+            GlobalVariable::ExternalLinkage, "taint_branch", &M);
+    }
+    assert(PTV.branchF);
+    EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
 
     std::cout << "taint2: Done initializing taint transformation." << std::endl;
 
@@ -531,6 +555,13 @@ void PandaTaintVisitor::insertTaintDelete(Instruction &I,
     inlineCallAfter(destCI ? *destCI : I, deleteF, args);
 }
 
+void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
+    vector<Value *> args{
+        llvConst, constSlot(I.getContext(), cond)
+    };
+    inlineCallBefore(I, branchF, args);
+}
+
 // Terminator instructions
 void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     Value *ret = I.getReturnValue();
@@ -554,6 +585,18 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     }
 
     visitTerminatorInst(I);
+}
+
+void PandaTaintVisitor::visitBranchInst(BranchInst &I) {
+    if (I.isConditional()) {
+        insertTaintBranch(I, I.getCondition());
+    }
+}
+void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I) {
+    insertTaintBranch(I, I.getAddress());
+}
+void PandaTaintVisitor::visitSwitchInst(SwitchInst &I) {
+    insertTaintBranch(I, I.getCondition());
 }
 
 // On a branch we just have to log the previous BB.
