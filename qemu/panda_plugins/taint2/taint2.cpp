@@ -143,7 +143,7 @@ void verify(void) {
     }
 }
 
-void __taint_enable_taint(void) {
+void __taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     printf ("taint2: __taint_enable_taint\n");
     taintEnabled = true;
@@ -269,7 +269,7 @@ void arm_hypercall_callback(CPUState *env){
         if (!taintEnabled){
             printf("Taint plugin: Label operation detected @ %lu\n", rr_get_guest_instr_count());
             printf("Enabling taint processing\n");
-            __taint_enable_taint();
+            __taint2_enable_taint();
         }
 
         // FIXME: do labeling here.
@@ -308,7 +308,7 @@ void i386_hypercall_callback(CPUState *env){
                     rr_get_guest_instr_count());
             printf("taint2: Labeling " TARGET_FMT_lx " to " TARGET_FMT_lx
                     " with label " TARGET_FMT_lx ".\n", addr, addr + size, label);
-            __taint_enable_taint();
+            __taint2_enable_taint();
         }
 
         LabelSetP ls = NULL;
@@ -334,7 +334,7 @@ void i386_hypercall_callback(CPUState *env){
                     rr_get_guest_instr_count());
             //uint64_t array;
             //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
-            printf("taint2: %lu labels.\n", taint_query_ram(addr));
+            printf("taint2: %u labels.\n", taint_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
@@ -360,28 +360,28 @@ int guest_hypercall_callback(CPUState *env){
     return 1;
 }
 
-bool __taint_enabled() {
+bool __taint2_enabled() {
     return taintEnabled;
 }
 
 // label this phys addr in memory with this label 
-void __taint_label_ram(uint64_t pa, uint32_t l) {
+void __taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality 
-uint32_t __taint_query_ram(uint64_t pa) {
+uint32_t __taint2_query_ram(uint64_t pa) {
     return tp_query_ram(shadow, pa);
 }
 
 
-uint32_t __taint_query_reg(int reg_num, int offset) {
+uint32_t __taint2_query_reg(int reg_num, int offset) {
     return tp_query_reg(shadow, reg_num, offset);
 }
 
 
-void __taint_delete_ram(uint64_t pa) {
+void __taint2_delete_ram(uint64_t pa) {
     tp_delete_ram(shadow, pa);
 }
 
@@ -389,28 +389,28 @@ void __taint_delete_ram(uint64_t pa) {
 // C API versions
 
 
-void taint_enable_taint(void) {
-  __taint_enable_taint();
+void taint2_enable_taint(void) {
+  __taint2_enable_taint();
 }
 
-int taint_enabled(void) {
-  return __taint_enabled();
+int taint2_enabled(void) {
+  return __taint2_enabled();
 }
 
-void taint_label_ram(uint64_t pa, uint32_t l) {
-    __taint_label_ram(pa, l);
+void taint2_label_ram(uint64_t pa, uint32_t l) {
+    __taint2_label_ram(pa, l);
 }
 
-uint32_t taint_query_ram(uint64_t pa) {
-  return __taint_query_ram(pa);
+uint32_t taint2_query_ram(uint64_t pa) {
+  return __taint2_query_ram(pa);
 }
 
-void taint_delete_ram(uint64_t pa) {
-  __taint_delete_ram(pa);
+void taint2_delete_ram(uint64_t pa) {
+  __taint2_delete_ram(pa);
 }
 
-uint32_t taint_query_reg(int reg_num, int offset) {
-  return __taint_query_reg(reg_num, offset);
+uint32_t taint2_query_reg(int reg_num, int offset) {
+  return __taint2_query_reg(reg_num, offset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
