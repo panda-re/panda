@@ -230,7 +230,7 @@ void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
         FastShad *llv, uint64_t llv_offset,
         FastShad *greg, FastShad *gspec,
-        uint64_t size, uint64_t bytes_per_reg, bool is_store) {
+        uint64_t size, uint64_t labels_per_reg, bool is_store) {
     int64_t offset = addr - env_ptr;
     if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
         // Irrelevant
@@ -246,7 +246,7 @@ void taint_host_copy(
 #define contains_offset(member) (m_off(member) <= (unsigned)(offset) && (unsigned)(offset) < m_endoff(member))
     if (contains_offset(regs)) {
         state_shad = greg;
-        state_addr = (offset - m_off(regs)) / bytes_per_reg;
+        state_addr = (offset - m_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
     } else {
         state_shad = gspec;
         state_addr = offset;

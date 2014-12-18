@@ -117,7 +117,7 @@ void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
         FastShad *llv, uint64_t llv_offset,
         FastShad *greg, FastShad *gspec,
-        uint64_t size, uint64_t bytes_per_reg, bool is_store);
+        uint64_t size, uint64_t labels_per_reg, bool is_store);
 
 }
 

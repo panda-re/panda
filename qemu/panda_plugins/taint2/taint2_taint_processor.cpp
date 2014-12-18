@@ -162,15 +162,6 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
     return NULL;
 }
 
-extern "C" {
-static void set_insert(uint32_t l, void *label_set_opaque);
-}
-static void set_insert(uint32_t l, void *label_set_opaque) {
-    std::set<uint32_t> *label_set =
-        reinterpret_cast<std::set<uint32_t> *>(label_set_opaque);
-    label_set->insert(l);
-}
-
 // returns std::set of labels.
 std::set<uint32_t> tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);

@@ -14,13 +14,13 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
 
         if (!memoized_unions)
             memoized_unions = new std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP>();
-        qemu_log_mask(CPU_LOG_TAINT_OPS, "  MEMO: %lu, %lu\n", (uint64_t)min, (uint64_t)max);
+        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  MEMO: %lu, %lu\n", (uint64_t)min, (uint64_t)max);
 
         auto it = memoized_unions->find(minmax);
         if (it != memoized_unions->end()) {
             return it->second;
         }
-        qemu_log_mask(CPU_LOG_TAINT_OPS, "  NOT FOUND\n");
+        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  NOT FOUND\n");
 
         LabelSetP result = new struct LabelSet;
         //labelset_count++;
@@ -29,7 +29,7 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
         result->child2 = max;
 
         memoized_unions->insert(std::make_pair(minmax, result));
-        qemu_log_mask(CPU_LOG_TAINT_OPS, "  INSERTED\n");
+        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  INSERTED\n");
         return result;
     } else if (ls1) {
         return ls1;
