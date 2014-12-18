@@ -125,7 +125,7 @@ public:
 
     inline void reset_frame() {
         labels = orig_labels;
-        taint_log("reset: %lx\n", (uint64_t)labels);
+        //taint_log("reset: %lx\n", (uint64_t)labels);
     }
 
     inline void push_frame(uint64_t framesize) {
