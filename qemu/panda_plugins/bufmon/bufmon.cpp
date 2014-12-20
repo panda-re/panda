@@ -24,6 +24,7 @@ extern "C" {
 #include "disas.h"
 
 #include "panda_plugin.h"
+#include "rr_log.h"
 #include "../common/prog_point.h"
 #include "../callstack_instr/callstack_instr_ext.h"
 
@@ -70,9 +71,9 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             (buf_first <= addr && addr <= buf_last)      || 
             (buf_first <= addr+size && addr+size <= buf_last)) {
 
-            fprintf(mem_report, "%s " TARGET_FMT_lx " " TARGET_FMT_lx " " 
+            fprintf(mem_report, "%s %" PRId64 " " TARGET_FMT_lx " " TARGET_FMT_lx " " 
                 TARGET_FMT_lx " " TARGET_FMT_lx " " TARGET_FMT_lx,
-                is_write ? "WRITE" : "READ ",
+                is_write ? "WRITE" : "READ", rr_get_guest_instr_count(),
                 p.caller, p.pc, p.cr3, addr, size);
             for (size_t i = 0; i < size; i++) {
                 fprintf(mem_report, " %02x", *(((uint8_t *)buf)+i));
