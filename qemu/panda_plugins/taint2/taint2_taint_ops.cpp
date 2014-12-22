@@ -86,12 +86,8 @@ void taint_copy(
     }
     taint_log(")\n");
 #endif
-    if (dest > shad_dest->get_size() || src > shad_src->get_size()) {
-#ifdef TAINTDEBUG
-        printf("taint_copy: ignoring IO mem rw.\n");
-#endif
-        return;
-    }
+    tassert(dest + size <= shad_dest->get_size() &&
+            src + size <= shad_src->get_size());
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 }
 

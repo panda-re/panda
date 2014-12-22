@@ -295,14 +295,15 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
     return (size < 8) ? 1 : size / 8;
 }
 
+bool inline_taint = true;
 void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI);
-#ifndef TAINT2_NOINLINE
-    InlineFunctionInfo IFI;
-    if (!InlineFunction(CI, IFI)) {
-        printf("Inlining failed!\n");
+        if (inline_taint) {
+        InlineFunctionInfo IFI;
+        if (!InlineFunction(CI, IFI)) {
+            printf("Inlining failed!\n");
+        }
     }
-#endif
 }
 
 void PandaTaintVisitor::inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args) {
@@ -352,35 +353,37 @@ int PandaTaintVisitor::intValue(Value *value) {
 }
 
 void PandaTaintVisitor::visitFunction(Function& F) {
-    LLVMContext &ctx = F.getContext();
-    // Two things: Insert "tainted" metadata.
-    MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
-
     // create slot tracker to keep track of LLVM values
     PST.reset(new PandaSlotTracker(&F));
     PST->initialize();
-
-    if (F.getName().startswith("tcg-llvm-tb-")) {
-        // This is a single guest BB, so callstack should be empty.
-        // Insert call to reset llvm frame.
-        vector<Value *> args{ llvConst };
-        inlineCallBefore(*F.front().getFirstNonPHI(), resetFrameF, args);
-    }
-
-    // Insert call to clear llvm shadow mem.
-    vector<Value *> args{
-        llvConst, const_uint64(ctx, 0),
-        const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
-    };
-    assert(F.front().getFirstNonPHI() != NULL);
-    inlineCallBefore(*F.front().getFirstNonPHI(), deleteF, args);
-
-    F.front().front().setMetadata("tainted", md);
 }
 
 void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
-    // At end of BB, log where we just were.
     LLVMContext &ctx = BB.getContext();
+    Function *F = BB.getParent();
+    assert(F);
+    if (&F->front() == &BB && F->getName().startswith("tcg-llvm-tb-")) {
+        // Entry block.
+        // This is a single guest BB, so callstack should be empty.
+        // Insert call to reset llvm frame.
+        vector<Value *> args{ llvConst };
+        assert(BB.getFirstNonPHI());
+        inlineCallBefore(*BB.getFirstNonPHI(), resetFrameF, args);
+
+        // Insert call to clear llvm shadow mem.
+        vector<Value *> args2{
+            llvConst, const_uint64(ctx, 0),
+            const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
+        };
+        inlineCallBefore(*BB.getFirstNonPHI(), deleteF, args2);
+
+        // Two things: Insert "tainted" metadata.
+        MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
+
+        BB.front().setMetadata("tainted", md);
+    }
+
+    // At end of BB, log where we just were.
     vector<Value *> args{
         const_i64p(ctx, &shad->prev_bb), constSlot(ctx, &BB)
     };

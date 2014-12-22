@@ -57,6 +57,7 @@ uint32_t taint2_query_reg(int reg_num, int offset);
 #include <llvm/PassRegistry.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
 #include "tcg-llvm.h"
 #include "panda_memlog.h"
@@ -114,6 +115,8 @@ static taint2_memlog taint_memlog;
 bool tainted_pointer = true;
 static TaintGranularity granularity;
 static TaintLabelMode mode;
+bool optimize_llvm = true;
+extern bool inline_taint;
 
 
 /*
@@ -201,6 +204,15 @@ void __taint2_enable_taint(void) {
     // Add the taint analysis pass to our taint pass manager
     PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
     FPM->add(PTFP);
+
+    if (optimize_llvm) {
+        printf("taint2: Adding default optimizations (-O1).\n");
+        llvm::PassManagerBuilder Builder;
+        Builder.OptLevel = 1;
+        Builder.SizeLevel = 0;
+        Builder.populateFunctionPassManager(*FPM);
+    }
+
     FPM->doInitialization();
 
     // Populate module with helper function taint ops
@@ -457,8 +469,13 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool(args, "no_tp");
+    inline_taint = !panda_parse_bool(args, "no_inline");
+    if (!inline_taint) {
+        printf("taint2: Instructed not to inline taint ops.\n");
+    }
     if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
     if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
+    optimize_llvm = panda_parse_bool(args, "opt");
 
     return true;
 }

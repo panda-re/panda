@@ -378,7 +378,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      * our log processing.
      */
     m_executionEngine = ExecutionEngine::createJIT(
-            m_module, &error, m_jitMemoryManager, CodeGenOpt::None);
+            m_module, &error, m_jitMemoryManager, CodeGenOpt::Less);
     if(m_executionEngine == NULL) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);
@@ -882,6 +882,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #define __OP_SETCOND(opc_name, bits)                                \
     case opc_name: {                                                \
         Value* retptr = getPtrForValue(args[0]);                    \
+        __attribute__((unused))                                     \
         Value* ret = m_builder.CreateLoad(retptr);                  \
         Value* v1  = getValue(args[1]);                             \
         Value* v2  = getValue(args[2]);                             \
