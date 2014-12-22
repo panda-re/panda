@@ -2,6 +2,7 @@ sample
 textfinder
 textprinter
 #syscalls
+syscalls2
 stringsearch
 keyfind
 memstats
