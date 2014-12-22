@@ -7,6 +7,7 @@ stringsearch
 keyfind
 memstats
 taint
+taint2
 memdump
 correlatetaps
 memsnap

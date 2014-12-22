@@ -526,7 +526,7 @@ static inline int lduw_be_p(const void *ptr)
 {
 #if defined(__i386__)
     int val;
-    asm volatile ("movzwl %1, %0\n"
+    __asm__ volatile ("movzwl %1, %0\n"
                   "xchgb %b0, %h0\n"
                   : "=q" (val)
                   : "m" (*(uint16_t *)ptr));
@@ -541,7 +541,7 @@ static inline int ldsw_be_p(const void *ptr)
 {
 #if defined(__i386__)
     int val;
-    asm volatile ("movzwl %1, %0\n"
+    __asm__ volatile ("movzwl %1, %0\n"
                   "xchgb %b0, %h0\n"
                   : "=q" (val)
                   : "m" (*(uint16_t *)ptr));
@@ -556,7 +556,7 @@ static inline int ldl_be_p(const void *ptr)
 {
 #if defined(__i386__) || defined(__x86_64__)
     int val;
-    asm volatile ("movl %1, %0\n"
+    __asm__ volatile ("movl %1, %0\n"
                   "bswap %0\n"
                   : "=r" (val)
                   : "m" (*(uint32_t *)ptr));
@@ -578,7 +578,7 @@ static inline uint64_t ldq_be_p(const void *ptr)
 static inline void stw_be_p(void *ptr, int v)
 {
 #if defined(__i386__)
-    asm volatile ("xchgb %b0, %h0\n"
+    __asm__ volatile ("xchgb %b0, %h0\n"
                   "movw %w0, %1\n"
                   : "=q" (v)
                   : "m" (*(uint16_t *)ptr), "0" (v));
@@ -592,7 +592,7 @@ static inline void stw_be_p(void *ptr, int v)
 static inline void stl_be_p(void *ptr, int v)
 {
 #if defined(__i386__) || defined(__x86_64__)
-    asm volatile ("bswap %0\n"
+    __asm__ volatile ("bswap %0\n"
                   "movl %0, %1\n"
                   : "=r" (v)
                   : "m" (*(uint32_t *)ptr), "0" (v));
