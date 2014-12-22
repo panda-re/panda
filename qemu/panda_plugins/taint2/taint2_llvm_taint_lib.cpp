@@ -556,6 +556,8 @@ void PandaTaintVisitor::insertTaintDelete(Instruction &I,
 }
 
 void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
+    if (isa<Constant>(cond)) return;
+
     vector<Value *> args{
         llvConst, constSlot(I.getContext(), cond)
     };

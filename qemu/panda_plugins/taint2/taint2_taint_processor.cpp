@@ -229,66 +229,58 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
         case HADDR:
             shad_dir_add_64(shad->hd, a->val.ha + a->off, ls);
 #ifdef TAINTDEBUG
-            printf("Labelset put on HD: 0x%lx\n", (uint64_t)(a->val.ha + a->off));
+            taint_log("Labelset put on HD: 0x%lx\n", (uint64_t)(a->val.ha + a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             break;
         case MADDR:
             FastShad::set(shad->ram, a->val.ma + a->off, ls);
 #ifdef TAINTDEBUG
-            printf("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
+            taint_log("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             break;
         case IADDR:
 #ifdef TAINTDEBUG
-            printf("Labelset put in IO: 0x%lx\n", (uint64_t)(a->val.ia + a->off));
+            taint_log("Labelset put in IO: 0x%lx\n", (uint64_t)(a->val.ia + a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             shad_dir_add_64(shad->io, a->val.ia + a->off, ls);
             break;
         case PADDR:
 #ifdef TAINTDEBUG
-            printf("Labelset put in port: 0x%lx\n", (uint64_t)(a->val.pa + a->off));
+            taint_log("Labelset put in port: 0x%lx\n", (uint64_t)(a->val.pa + a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             shad_dir_add_32(shad->ports, a->val.pa + a->off, ls);
             break;
         case LADDR:
 #ifdef TAINTDEBUG
-            printf("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
+            taint_log("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             FastShad::set(shad->llv, a->val.la*MAXREGSIZE + a->off, ls);
             break;
         case GREG:
 #ifdef TAINTDEBUG
-            printf("Labelset put in GR: 0x%lx\n", (uint64_t)(a->val.gr+a->off));
+            taint_log("Labelset put in GR: 0x%lx\n", (uint64_t)(a->val.gr+a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             // need to call labelset_copy to increment ref count
             FastShad::set(shad->grv, a->val.gr * WORDSIZE + a->off, ls);
             break;
         case GSPEC:
 #ifdef TAINTDEBUG
-            printf("Labelset put in GS: 0x%lx\n", (uint64_t)(a->val.gs+a->off));
+            taint_log("Labelset put in GS: 0x%lx\n", (uint64_t)(a->val.gs+a->off));
             //labelset_spit(ls);
-            printf("\n");
 #endif
             // SpecAddr enum is offset by the number of guest registers
             FastShad::set(shad->gsv, a->val.gs - NUMREGS + a->off, ls);
             break;
         case RET:
 #ifdef TAINTDEBUG
-            printf("Labelset put in ret\n");
+            taint_log("Labelset put in ret\n");
             //labelset_spit(ls);
-            printf("\n");
 #endif
             FastShad::set(shad->ret, a->off, ls);
             break;

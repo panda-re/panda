@@ -148,7 +148,7 @@ void taint_mix_compute(
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
     taint_log("remove: %lx[%lx+%lx]\n", (uint64_t)shad, dest, size);
     if (unlikely(dest >= shad->get_size())) {
-        // Ignore IO rw.
+        taint_log("Ignoring IO RW\n");
         return;
     }
     FastShad::remove(shad, dest, size);
@@ -178,6 +178,19 @@ void taint_pointer(
     taint_log("ptr: %lx[%lx+%lx] <- %lx[%lx] @ %lx[%lx+%lx]\n",
             (uint64_t)shad_dest, dest, size,
             (uint64_t)shad_src, src, (uint64_t)shad_ptr, ptr, ptr_size);
+
+    if (unlikely(dest + size > shad_dest->get_size())) {
+        taint_log("  Ignoring IO RW\n");
+        return;
+    } else if (unlikely(ptr + ptr_size > shad_ptr->get_size() &&
+                src + size > shad_src->get_size())) {
+        taint_log("  Both are IO.\n");
+        FastShad::remove(shad_dest, dest, size);
+        return;
+    } else if (unlikely(src + size > shad_src->get_size())) {
+        taint_log("  Source IO.\n");
+        src = ones; // ignore source.
+    }
 
     LabelSetP ls_ptr = mixed_labels(shad_ptr, ptr, ptr_size);
     if (src == ones) {

@@ -25,6 +25,7 @@ extern "C" {
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
 #include "panda_common.h"
+#include "guestarch.h"
 }
 
 #include <stdio.h>
@@ -45,6 +46,7 @@ void uninit_plugin(void *);
 
 
 bool first_enable_taint = true;
+FILE *branchfile = NULL;
 
 void tbranch_on_branch(LabelSetP ls) {
     if (ls) {
@@ -54,6 +56,10 @@ void tbranch_on_branch(LabelSetP ls) {
         
         // Print out the labels
         //printf("\tCompute number: %d\n", ls->taint_compute_num);
+#ifdef TARGET_I386
+        fprintf(branchfile, "%lx\n", (unsigned long)cpu_single_env->eip);
+#endif
+
     }
 }
 
@@ -79,6 +85,8 @@ bool init_plugin(void *self) {
   panda_cb pcb;
   pcb.after_block_exec = tbranch_after_block_exec;
   panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+
+  branchfile = fopen("branches.txt", "w");
 
   return true;
 #else

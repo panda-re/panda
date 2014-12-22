@@ -120,6 +120,7 @@ public:
 
     // Query. NULL if untainted.
     static inline LabelSetP query(FastShad *fast_shad, uint64_t addr) {
+        tassert(fast_shad);
         return *fast_shad->get_ls_p(addr);
     } 
 
