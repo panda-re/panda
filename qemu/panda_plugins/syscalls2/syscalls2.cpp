@@ -150,7 +150,10 @@ target_ulong calc_retaddr(CPUState* env, target_ulong pc){
 
 
 
-uint32_t get_lin_argnum(CPUState *env, uint32_t argnum) {
+
+
+uint32_t get_linux_x86_argnum(CPUState *env, uint32_t argnum) {
+#if defined(TARGET_I386)
     switch (argnum) {
     case 0: 
         return env->regs[R_EBX];
@@ -172,16 +175,21 @@ uint32_t get_lin_argnum(CPUState *env, uint32_t argnum) {
         break;
     }
     assert (1==0);
+#endif
+    return 0;
 }
 
 
 
 static uint32_t get_win_syscall_arg(CPUState* env, int nr) {
+#if defined(TARGET_I386)
     // At sysenter on Windows7, args start at EDX+8
     uint32_t arg;
     panda_virtual_memory_rw(env, env->regs[R_EDX] + 8 + (4*nr),
                             (uint8_t *) &arg, 4, false);
     return arg;
+#endif
+    return 0;
 }
 
 
@@ -191,7 +199,7 @@ target_ulong get_32 (CPUState *env, uint32_t argnum) {
     switch (syscalls_profile) {
     case PROFILE_LINUX_X86:
         assert (argnum < 6);
-        ret = (target_ulong) get_lin_argnum(env, argnum);
+        ret = (target_ulong) get_linux_x86_argnum(env, argnum);
         break;
     case PROFILE_LINUX_ARM:
         assert (argnum < 7);
@@ -222,7 +230,7 @@ uint64_t get_64(CPUState *env, uint32_t argnum) {
     switch (syscalls_profile) {
     case PROFILE_LINUX_X86:
         assert (argnum < 6);
-        ret = (((uint64_t) get_lin_argnum(env, argnum)) << 32) | (get_lin_argnum(env, argnum));
+        ret = (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
         break;
     case PROFILE_LINUX_ARM:
         assert (argnum < 7);
