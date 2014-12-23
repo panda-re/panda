@@ -189,22 +189,14 @@ BYTES_8   = '8BYTE'
 BYTES_4   = '4BYTE'
 BYTES_2   = '2BYTE'
 SIGNED_4  = '4SIGNED'
-# C++ types for callback arguments
-ARG_TYPE_TRANSLATIONS = { CHAR_STAR:  'syscalls::string', # pointer
-                          POINTER:    'target_ulong', # pointer
-                          BYTES_8:    'uint64_t',
-                          BYTES_4:    'uint32_t',
-                          SIGNED_4:   'int32_t',
-                          BYTES_2:    'uint16_t',
-                        }
 # C types for callback arguments
-ARG_TYPE_C_TRANSLATIONS = dict(ARG_TYPE_TRANSLATIONS)
-ARG_TYPE_C_TRANSLATIONS[CHAR_STAR] = 'target_ulong'
-
-# Functions to translate arguments to C++ callbacks to arguments to C callbacks
-# Defaults to returning the C++ argument's name
-CXX_ARG_TO_C_ARG = defaultdict(lambda: lambda x: x)
-CXX_ARG_TO_C_ARG[CHAR_STAR] = lambda x: "{0}.get_vaddr()".format(x) # uses internals of syscalls::string
+ARG_TYPE_C_TRANSLATIONS = { CHAR_STAR:  'target_ulong', # pointer
+                            POINTER:    'target_ulong', # pointer
+                            BYTES_8:    'uint64_t',
+                            BYTES_4:    'uint32_t',
+                            SIGNED_4:   'int32_t',
+                            BYTES_2:    'uint16_t',
+                          }
 
 CPP_RESERVED = {"new": "anew", "data":"data_arg"}
 
@@ -367,7 +359,6 @@ with open(PROTOS) as calls:
 
         # each argument passed to C++ and C callbacks (the actual variable name or data)
             
-#        _c_args = ",".join(['env', 'pc'] + [CXX_ARG_TO_C_ARG[x.type](x.name) for i, x in enumerate(arg_types)])
         _c_args = ",".join(['env', 'pc'] + ["arg%d" % i for i in range(len(arg_types))])
         # declaration info (type and name) for each arg passed to C++ and C callbacks
         _c_args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
