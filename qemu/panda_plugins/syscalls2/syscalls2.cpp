@@ -49,8 +49,6 @@ enum ProfileType { PROFILE_LINUX_X86, PROFILE_LINUX_ARM, PROFILE_WINDOWS7_X86, P
 
 ProfileType syscalls_profile;
 
-
-
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val(CPUState *env){
 #if defined(TARGET_I386)
@@ -68,41 +66,21 @@ target_ulong mask_retaddr_to_pc(target_ulong retaddr){
     return retaddr & mask;
 }
 
+// Return address calculations
 target_ulong calc_retaddr_windows7_x86(CPUState* env, target_ulong pc) {
 #if defined(TARGET_I386)
     target_ulong retaddr;
-    panda_virtual_memory_rw(env, EDX+4, (uint8_t *) &retaddr, 4, false);
+    panda_virtual_memory_rw(env, EDX, (uint8_t *) &retaddr, 4, false);
     return retaddr;
 #else
-    // shouldn't happen                                                                                                                                                                                                                                                                                                    
+    // shouldn't happen
     assert (1==0);
 #endif
-
-
 }
 
 target_ulong calc_retaddr_linux_x86(CPUState* env, target_ulong pc) {
 #if defined(TARGET_I386)
-    // syscall and sysenter x86 instructions are both 2 bytes
-    // on linux this is true. different for different systems.
     return pc+11;
-
-    /*// ABI from http://wiki.osdev.org/SYSENTER
-    // Return address is set by user code before the syscall/sysenter instr is executed
-    unsigned char buf[2];
-    panda_virtual_memory_rw(env, pc, buf, 2, 0);
-    // Check if the instruction is syscall (0F 05)
-    if (buf[0]== 0x0F && buf[1] == 0x05) {
-        return ECX;
-    }
-    // Check if the instruction is sysenter (0F 34)
-    else if (buf[0]== 0x0F && buf[1] == 0x34) {
-        return EDX;
-    }
-    else {
-        // Not a syscall or sysenter!?
-        assert(0);
-    }*/
 #else
     // shouldn't happen
     assert (1==0);
@@ -129,7 +107,6 @@ target_ulong calc_retaddr_linux_arm(CPUState* env, target_ulong pc) {
 #endif
 }
 
-
 target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     switch (syscalls_profile) {
     case PROFILE_LINUX_X86:
@@ -148,10 +125,7 @@ target_ulong calc_retaddr(CPUState* env, target_ulong pc){
     return 0;
 }
 
-
-
-
-
+// Argument getting (at syscall entry)
 uint32_t get_linux_x86_argnum(CPUState *env, uint32_t argnum) {
 #if defined(TARGET_I386)
     switch (argnum) {
@@ -179,8 +153,6 @@ uint32_t get_linux_x86_argnum(CPUState *env, uint32_t argnum) {
     return 0;
 }
 
-
-
 static uint32_t get_win_syscall_arg(CPUState* env, int nr) {
 #if defined(TARGET_I386)
     // At sysenter on Windows7, args start at EDX+8
@@ -191,7 +163,6 @@ static uint32_t get_win_syscall_arg(CPUState* env, int nr) {
 #endif
     return 0;
 }
-
 
 target_ulong get_32 (CPUState *env, uint32_t argnum) {
     target_ulong ret;
@@ -214,16 +185,13 @@ target_ulong get_32 (CPUState *env, uint32_t argnum) {
     return ret;
 }
 
-
 uint32_t get_pointer(CPUState *env, uint32_t argnum) {
     return get_32(env, argnum);
 }
 
-
 int32_t get_s32(CPUState *env, uint32_t argnum) {
     return (int32_t) get_32(env, argnum);
 }
-
 
 uint64_t get_64(CPUState *env, uint32_t argnum) {
     uint64_t ret;
@@ -245,7 +213,66 @@ uint64_t get_64(CPUState *env, uint32_t argnum) {
     return ret;
 }
 
+// Argument getting (at syscall return)
+static uint32_t get_win_syscall_return_arg(CPUState* env, int nr) {
+#if defined(TARGET_I386)
+    // At sysenter on Windows7, args start at EDX+8
+    uint32_t arg;
+    panda_virtual_memory_rw(env, ESP + 4 + (4*nr),
+                            (uint8_t *) &arg, 4, false);
+    return arg;
+#endif
+    return 0;
+}
 
+target_ulong get_return_32 (CPUState *env, uint32_t argnum) {
+    target_ulong ret;
+    
+    switch (syscalls_profile) {
+    case PROFILE_LINUX_X86:
+        assert (argnum < 6);
+        ret = (target_ulong) get_linux_x86_argnum(env, argnum);
+        break;
+    case PROFILE_LINUX_ARM:
+        assert (argnum < 7);
+        ret =  (target_ulong) env->regs[argnum];
+        break;
+    case PROFILE_WINDOWS7_X86:
+        ret = (target_ulong) get_win_syscall_return_arg(env, argnum);
+        break;
+    default:
+        assert (1==0);
+    }
+    return ret;
+}
+
+uint32_t get_return_pointer(CPUState *env, uint32_t argnum) {
+    return get_return_32(env, argnum);
+}
+
+int32_t get_return_s32(CPUState *env, uint32_t argnum) {
+    return (int32_t) get_return_32(env, argnum);
+}
+
+uint64_t get_return_64(CPUState *env, uint32_t argnum) {
+    uint64_t ret;
+    switch (syscalls_profile) {
+    case PROFILE_LINUX_X86:
+        assert (argnum < 6);
+        ret = (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
+        break;
+    case PROFILE_LINUX_ARM:
+        assert (argnum < 7);
+        ret = (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
+        break;
+    case PROFILE_WINDOWS7_X86:
+        assert (1==0);
+        break;
+    default:
+        assert (1==0);
+    }
+    return ret;
+}
 
 std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 

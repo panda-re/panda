@@ -168,6 +168,18 @@ def get_s32(argnum):
 def get_64(argnum):
     return "uint64_t arg%d = get_64(env, %d);\n" % (argnum, argnum)
 
+def get_return_pointer(argnum):
+    return "target_ulong arg%d = get_return_pointer(env, %d);\n" % (argnum, argnum)
+    
+def get_return_32(argnum):
+    return "uint32_t arg%d = get_return_32(env, %d);\n" % (argnum, argnum)
+
+def get_return_s32(argnum):
+    return "int32_t arg%d = get_return_s32(env, %d);\n" % (argnum, argnum)
+
+def get_return_64(argnum):
+    return "uint64_t arg%d = get_return_64(env, %d);\n" % (argnum, argnum)
+
 
 
 
@@ -329,17 +341,17 @@ with open(PROTOS) as calls:
 #                alltext += "// out of registers. Use the stack!"+'\n'
                 break
             if arg_type == CHAR_STAR:
-                s = get_pointer(i)
-                syscall_enter_switch += s; syscall_return_switch += s
+                syscall_enter_switch += get_pointer(i)
+                syscall_return_switch += get_return_pointer(i)
             elif arg_type == POINTER:
-                s = get_pointer(i)
-                syscall_enter_switch += s; syscall_return_switch += s
+                syscall_enter_switch += get_pointer(i)
+                syscall_return_switch += get_return_pointer(i)
             elif arg_type == BYTES_4:
-                s = get_32(i)
-                syscall_enter_switch += s; syscall_return_switch += s
+                syscall_enter_switch += get_32(i)
+                syscall_return_switch += get_return_32(i)
             elif arg_type == SIGNED_4:
-                s = get_s32(i)
-                syscall_enter_switch += s; syscall_return_switch += s
+                syscall_enter_switch += get_s32(i)
+                syscall_return_switch += get_return_s32(i)
             elif arg_type == BYTES_8:
                 # alignment sadness. Linux tried to make sure none of these happen
                 if (argno % 2) == 1:
@@ -348,8 +360,8 @@ with open(PROTOS) as calls:
                     if argno >= len(ARGS):
 #                        alltext += "// out of registers. Use the stack!"+'\n'
                         break
-                s = get_64(i)
-                syscall_enter_switch += s; syscall_return_switch += s
+                syscall_enter_switch += get_64(i)
+                syscall_return_switch += get_return_64(i)
                 argno+=1
             argno+=1
 
