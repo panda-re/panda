@@ -69,7 +69,7 @@ target_ulong mask_retaddr_to_pc(target_ulong retaddr){
 // Return address calculations
 target_ulong calc_retaddr_windows7_x86(CPUState* env, target_ulong pc) {
 #if defined(TARGET_I386)
-    target_ulong retaddr;
+    target_ulong retaddr = 0;
     panda_virtual_memory_rw(env, EDX, (uint8_t *) &retaddr, 4, false);
     return retaddr;
 #else
@@ -156,7 +156,7 @@ uint32_t get_linux_x86_argnum(CPUState *env, uint32_t argnum) {
 static uint32_t get_win_syscall_arg(CPUState* env, int nr) {
 #if defined(TARGET_I386)
     // At sysenter on Windows7, args start at EDX+8
-    uint32_t arg;
+    uint32_t arg = 0;
     panda_virtual_memory_rw(env, env->regs[R_EDX] + 8 + (4*nr),
                             (uint8_t *) &arg, 4, false);
     return arg;
@@ -217,7 +217,7 @@ uint64_t get_64(CPUState *env, uint32_t argnum) {
 static uint32_t get_win_syscall_return_arg(CPUState* env, int nr) {
 #if defined(TARGET_I386)
     // At sysenter on Windows7, args start at EDX+8
-    uint32_t arg;
+    uint32_t arg = 0;
     panda_virtual_memory_rw(env, ESP + 4 + (4*nr),
                             (uint8_t *) &arg, 4, false);
     return arg;
@@ -347,7 +347,7 @@ int exec_callback(CPUState *env, target_ulong pc) {
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
 #if defined(TARGET_I386)
-    unsigned char buf[2];
+    unsigned char buf[2] = {};
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
@@ -361,7 +361,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
         return false;
     }
 #elif defined(TARGET_ARM)
-    unsigned char buf[4];
+    unsigned char buf[4] = {};
 
     // Check for ARM mode syscall
     if(env->thumb == 0) {
