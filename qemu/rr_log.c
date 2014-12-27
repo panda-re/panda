@@ -820,6 +820,7 @@ static RR_log_entry *rr_read_item(void) {
     return item;
 }
 
+#define RR_MAX_QUEUE_LEN 65536
 
 //mz fill the queue of log entries from the file
 static void rr_fill_queue(void) {
@@ -846,17 +847,18 @@ static void rr_fill_queue(void) {
             // It's not really an interrupt, but needs to be set here so
             // that we can execute any remaining code.
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
+            break;
         }
         else if ((log_entry->header.kind == RR_SKIPPED_CALL && log_entry->header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT) ||
                  log_entry->header.kind == RR_INTERRUPT_REQUEST) {
-#if RR_REPORT_PROGRESS
-            static uint64_t num = 1;
-            if ((rr_prog_point.guest_instr_count / (double)rr_nondet_log->last_prog_point.guest_instr_count) * 100 >= num) {
-              replay_progress();
-              num += 1;
-            }
-#endif /* RR_REPORT_PROGRESS */
             rr_num_instr_before_next_interrupt = log_entry->header.prog_point.guest_instr_count - rr_prog_point.guest_instr_count;
+            break;
+        }
+
+        // Cut off queue so we don't run out of memory on long runs of non-interrupts
+        if (num_entries > RR_MAX_QUEUE_LEN) {
+            // No longer know how many instructions it will be until next interrupt, so assume it's (uint64_t) -1
+            rr_num_instr_before_next_interrupt = (uint64_t) -1;
             break;
         }
     }
@@ -864,6 +866,13 @@ static void rr_fill_queue(void) {
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
     }
+#if RR_REPORT_PROGRESS
+    static uint64_t num = 1;
+    if ((rr_prog_point.guest_instr_count / (double)rr_nondet_log->last_prog_point.guest_instr_count) * 100 >= num) {
+      replay_progress();
+      num += 1;
+    }
+#endif /* RR_REPORT_PROGRESS */
 }
 
 //mz return next log entry from the queue
@@ -872,8 +881,13 @@ static inline RR_log_entry *get_next_entry(RR_log_entry_kind kind, RR_callsite_i
     RR_log_entry *current;
     //mz make sure queue is not empty, and that we have the right element next
     if (rr_queue_head == NULL) {
-        printf("Queue is empty, will return NULL\n");
-        return NULL;
+        // Try again; we may have failed because the queue got too big and we need to refill
+        rr_fill_queue();
+        // If it's still empty, fail
+        if (rr_queue_head == NULL) {
+            printf("Queue is empty, will return NULL\n");
+            return NULL;
+        }
     }
 
     if (kind != RR_INTERRUPT_REQUEST && kind != RR_SKIPPED_CALL) {
