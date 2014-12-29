@@ -7,7 +7,7 @@ Laboratory, Georgia Tech, and Northeastern University.
 
 Building
 ----
-Instructions for building PANDA can be found in docs/compile.txt.
+Instructions for building PANDA can be found in [docs/compile.md](docs/compile.md).
 
 Support
 ----
@@ -15,19 +15,22 @@ If you need help with PANDA, or want to discuss the project, you can join our IR
 
 PANDA Plugins
 ----
-Details about the architecture-neutral plugin interface can be found in
-docs/PANDA.md.  Existing plugins and tools can be found in qemu/panda\_plugins
-and qemu/panda\_tools.
+Details about the architecture-neutral plugin interface can be
+found in [docs/PANDA.md](docs/PANDA.md).
+Existing plugins and tools can be found in
+[qemu/panda\_plugins](qemu/panda_plugins) and
+[qemu/panda\_tools](qemu/panda_tools).
 
 Record/Replay
 ----
 PANDA currently supports whole-system record/replay execution of x86, x86\_64,
-and ARM guests.  Documentation can be found in docs/record\_replay.md
+and ARM guests.
+Documentation can be found in [docs/record\_replay.md](docs/record_replay.md).
 
 Android Support
 ----
 PANDA supports ARMv7 Android guests, running on the Goldfish emulated platform.
-Documentation can be found in docs/Android.md
+Documentation can be found in [docs/Android.md](docs/Android.md).
 
 Publications
 ----
