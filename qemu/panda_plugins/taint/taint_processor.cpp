@@ -42,6 +42,9 @@ uint8_t taintedfunc;
 // Global count of taint labels
 int count = 0;
 
+// Global count of taint labels, primarily used in file labeling tool
+int taint_pos_count = 0;
+
 int tainted_pointer = 1;
 
 // stuff for control flow in traces
@@ -200,6 +203,7 @@ static SB_INLINE void clear_ram_bit(Shad *shad, uint32_t addr) {
 }
 
 // Apply taint to a buffer of memory
+// XXX Deprecated - remove me
 void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length){
     struct addr_struct a = {};
@@ -230,6 +234,61 @@ void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
     assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
     tob_process(tbuf, shad, NULL);
     count += length;
+}
+
+// Apply positional taint to a buffer of memory
+void add_taint_ram_pos(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length){
+    struct addr_struct a = {};
+    a.typ = MADDR;
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+#ifdef CONFIG_SOFTMMU
+        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
+        if (pa == (target_phys_addr_t)(-1)) {
+            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr +i);
+            continue;
+        }
+        assert (pa != -1);
+        a.val.ma = pa;
+#else
+        a.val.ma = addr + i;
+#endif // CONFIG_SOFTMMU
+        op.val.label.a = a;
+        op.val.label.l = i + taint_pos_count;
+        tob_op_write(tbuf, &op);	
+    }
+    assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
+    tob_process(tbuf, shad, NULL);
+    taint_pos_count += length;
+}
+
+// Apply single label taint to a buffer of memory
+void add_taint_ram_single_label(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
+        uint64_t addr, int length, long label){
+    struct addr_struct a = {};
+    a.typ = MADDR;
+    struct taint_op_struct op = {};
+    op.typ = LABELOP;
+    for (int i = 0; i < length; i++){
+#ifdef CONFIG_SOFTMMU
+        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
+        if (pa == (target_phys_addr_t)(-1)) {
+            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, i.e., it isnt actually there.\n", addr +i);
+            continue;
+        }
+        assert (pa != -1);
+        a.val.ma = pa;
+#else
+        a.val.ma = addr + i;
+#endif // CONFIG_SOFTMMU
+        op.val.label.a = a;
+        op.val.label.l = label;
+        tob_op_write(tbuf, &op);	
+    }
+    assert (tbuf->ptr <= (tbuf->start + tbuf->max_size));
+    tob_process(tbuf, shad, NULL);
 }
 
 // Apply taint to a buffer of IO memory

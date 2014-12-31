@@ -109,7 +109,10 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
         for (i = addr->val.ia; i < addr->val.ia+length; i++){
             ls = shad_dir_find_64(shad->io, i);
             if (ls){
-                panda_stats_bufplot(bufplotlog, "IO ", *ls, i);
+                panda_stats_bufplot(bufplotlog, "IO,", *ls, i);
+            }
+            else {
+                fprintf(bufplotlog, "IO,%lu,NULL,NULL\n", i);
             }
         }
     }
@@ -124,7 +127,10 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
             LabelSet *ls = shad_dir_find_64(shad->ram, i);
 #endif // CONFIG_SOFTMMU
             if (ls){
-                panda_stats_bufplot(bufplotlog, "RAM ", *ls, i);
+                panda_stats_bufplot(bufplotlog, "RAM,", *ls, i);
+            }
+            else {
+                fprintf(bufplotlog, "RAM,%lu,NULL,NULL\n", i);
             }
 #else // TARGET_X86_64
 
@@ -136,6 +142,9 @@ void bufplot(CPUState *env, Shad *shad, Addr *addr, int length){
                 LabelSet *ls = shad_dir_find_32(shad->ram, i);
 #endif // CONFIG_SOFTMMU
                 panda_stats_bufplot(bufplotlog, "", *ls, i);
+            }
+            else {
+                fprintf(bufplotlog, "RAM,%lu,NULL,NULL\n", i);
             }
 #endif // TARGET_X86_64
         }

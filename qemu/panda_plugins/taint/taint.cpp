@@ -100,6 +100,8 @@ extern int tainted_pointer;
 extern int taint_label_mode;
 // Global number of taint labels
 extern int count;
+// Global count of taint labels, primarily used in file labeling tool
+extern int taint_pos_count;
 
 extern int tainted_instructions;
 
@@ -622,20 +624,29 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
 // R0 is command (label or query)
 // R1 is buf_start
 // R2 is length
-// R3 is offset (not currently implemented)
+// R3 is offset (not currently implemented, managed in pirate_utils)
+// R4 is the label integer
 void arm_hypercall_callback(CPUState *env){
     target_ulong buf_start = env->regs[1];
     target_ulong buf_len = env->regs[2];
+    long label = env->regs[4];
 
-    if (env->regs[0] == 7 || env->regs[0] == 8){ //Taint label
+    if (env->regs[0] == 7 || env->regs[0] == 8){
         if (!taintEnabled){
             printf("Taint plugin: Label operation detected\n");
             printf("Enabling taint processing\n");
             __taint_enable_taint();
         }
-
-        TaintOpBuffer *tempBuf = tob_new(buf_len * sizeof(TaintOp));
-        add_taint_ram(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        TaintOpBuffer *tempBuf = tob_new( buf_len * sizeof(TaintOp));
+        if (env->regs[0] == 7){
+            // Standard buffer label
+            add_taint_ram_single_label(env, shadow, tempBuf,
+                (uint64_t)buf_start, (int)buf_len, label);
+        }
+        else if (env->regs[0] == 8){
+            // Positional buffer label
+            add_taint_ram_pos(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        }
         tob_delete(tempBuf);
     }
 
@@ -650,39 +661,49 @@ void arm_hypercall_callback(CPUState *env){
         //taintJustDisabled = true;
         //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
     }
+    else if (env->regs[0] == 10){
+        // Guest util done - reset positional label counter
+        taint_pos_count = 0;
+    }
 }
 #endif //TARGET_ARM
 
 #ifdef TARGET_I386
-// XXX: Support all features of label and query program
 void i386_hypercall_callback(CPUState *env){
     target_ulong buf_start = env->regs[R_EBX];
     target_ulong buf_len = env->regs[R_ECX];
+    long label = env->regs[R_EDI];
 
-    // call to iferret to label data
+    // call to label data
     // EBX contains addr of that data
     // ECX contains size of data
-    // EDI is a pointer to a buffer containing the label string
-    // ESI contains the length of that label
+    // EDI is the label integer
     // EDX = starting offset (for positional labels only)
-
+    //     -mostly not used, this is managed in pirate_utils
     if (env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8){
         if (!taintEnabled){
             printf("Taint plugin: Label operation detected\n");
             printf("Enabling taint processing\n");
-	    __taint_enable_taint();
+            __taint_enable_taint();
         }
         TaintOpBuffer *tempBuf = tob_new( buf_len * sizeof(TaintOp));
-	add_taint_ram(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        if (env->regs[R_EAX] == 7){
+            // Standard buffer label
+            add_taint_ram_single_label(env, shadow, tempBuf,
+                (uint64_t)buf_start, (int)buf_len, label);
+        }
+        else if (env->regs[R_EAX] == 8){
+            // Positional buffer label
+            add_taint_ram_pos(env, shadow, tempBuf, (uint64_t)buf_start, (int)buf_len);
+        }
         tob_delete(tempBuf);
-    }    
+    }
 
     //mz Query taint on this buffer
     //mz EBX = start of buffer (VA)
     //mz ECX = size of buffer (bytes)
-    // EDI is a pointer to a buffer containing the filename or another name for this query
-    // ESI contains the length of that string
     // EDX = starting offset - for file queries
+    //    -mostly not used, this is managed in pirate_utils
     else if (env->regs[R_EAX] == 9){ //Query taint on label
         if (taintEnabled){
             printf("Taint plugin: Query operation detected\n");
@@ -693,6 +714,10 @@ void i386_hypercall_callback(CPUState *env){
         //taintEnabled = false;
         //taintJustDisabled = true;
         //printf("Label occurrences on HD: %d\n", shad_dir_occ_64(shadow->hd));
+    }
+    else if (env->regs[R_EAX] == 10){
+        // Guest util done - reset positional label counter
+        taint_pos_count = 0;
     }
 }
 #endif // TARGET_I386
@@ -1060,7 +1085,6 @@ bool init_plugin(void *self) {
         }
     }
     
-
     if (taint_label_mode == TAINT_BYTE_LABEL){
         printf("Taint: running in byte labeling mode.\n");
     }
