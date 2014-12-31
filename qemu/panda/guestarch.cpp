@@ -640,7 +640,7 @@ void fprintf_reg(Addr *a, FILE *fp){
     }
 }
 
-void printspec(Addr *a){}
+void fprintf_spec(Addr *a, FILE *fp){}
 
 #endif
 

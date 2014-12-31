@@ -13,14 +13,14 @@
 void usage() {
 	printf("Usage:\n");
 	printf("pirate_label <file> <label> <start_offset> <region_size> <chunk_size>\n");
-	printf("This utility enables labeling every bytes of <file> with label <label>.\n");
+	printf("This utility enables labeling every byte of <file> with configurable labels.\n");
 	printf("\t <file> = full path to file to be labeled\n");
-	printf("\t <label> = label as a string\n");
+	printf("\t <label> = label as an int\n");
 	printf("\t <start_offset> = start labeling at given offset\n");
 	printf("\t <region_size> = length of region to label (-1 = whole file)\n");
-	printf("\t <chunk_size> = label the file in chunks (i.e. labels are 'label-<start_offset>-<end_offset>') for each <chunk_size> bytes\n");
-	printf("\t                 NB: chunk_size must be <= 4096 bytes (and, of course, <= <region_size>).\n");
-	printf("\t                 NB: chunk_size = -1 means no splitting.\n");
+	printf("\t <chunk_size> = label the file in chunks (i.e. labels are chunked for each <chunk_size> bytes)\n");
+	printf("\t\t NB: chunk_size must be <= 4096 bytes (and, of course, <= <region_size>).\n");
+	printf("\t\t NB: chunk_size = -1 means no splitting (single label of <label>).\n");
 }
 
 //mz match block size
@@ -30,7 +30,7 @@ char file_buffer[BUFFER_SIZE];
 int main(int argc, char* argv[])
 {
 	char *file_name;
-	char *label_str;
+	long label = 0;
 	long start_offset = 0;
 	long region_size = 0;
 	long chunk_size = 0;
@@ -49,15 +49,10 @@ int main(int argc, char* argv[])
 	}
 
 	file_name = argv[1];
-	label_str = argv[2];
+	label = atol(argv[2]);
 	start_offset = atol(argv[3]);
 	region_size = atol(argv[4]);
 	chunk_size = atol(argv[5]);
-
-	if (strlen(label_str) > 512) {
-		printf("Label string too long\n");
-		exit(2);
-	}
 
 	hFile = CreateFileA(file_name, 
 					    GENERIC_READ | GENERIC_WRITE,
@@ -132,17 +127,14 @@ int main(int argc, char* argv[])
 	while ( (region_size > 0) && ReadFile(hFile, &file_buffer[0], bytes_to_read, &bytes_read, NULL) ) {
 		//identity(&file_buffer[0], bytes_read);
 		if (pos_label) {
-			vm_label_buffer_pos(&file_buffer[0], bytes_read, label_str, strlen(label_str), start_offset);
+			vm_label_buffer_pos(&file_buffer[0], bytes_read, start_offset);
 		}
 		else if (single_label) {
-			vm_label_buffer(&file_buffer[0], bytes_read, label_str, strlen(label_str)); 
+			vm_label_buffer(&file_buffer[0], bytes_read, label); 
 		}
 		else {
-			//mz TODO fix label_str here!
-			char new_label[1024];
-			sprintf_s(new_label, 1024, "%s-%d-%d", label_str, start_offset, start_offset + bytes_to_read - 1);
-			//vm_label_buffer(&file_buffer[0], bytes_read, label_str, strlen(label_str));
-			vm_label_buffer(&file_buffer[0], bytes_read, new_label, strlen(new_label));
+            // Else, chunk label.  Label the chunk with the starting offset of the chunk
+			vm_label_buffer(&file_buffer[0], bytes_read, start_offset);
 		}
 
 		ret = SetFilePointer(hFile, (0 - bytes_read), NULL, FILE_CURRENT);

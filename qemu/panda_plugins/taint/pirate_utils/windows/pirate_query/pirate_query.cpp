@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 	current_offset = start_offset;
 	
 	while ( (region_size > 0) && ReadFile(hFile, &file_buffer[0], bytes_to_read, &bytes_read, NULL)) {
-		vm_query_buffer(&file_buffer[0], bytes_read, /*name=*/file_name, /*name_len=*/strlen(file_name), /*offset=*/current_offset);
+		vm_query_buffer(&file_buffer[0], bytes_read, /*offset=*/current_offset);
 		region_size -= bytes_read;
 		current_offset += bytes_read;
 		//mz make sure to adjust amount to read here as well
