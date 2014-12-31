@@ -17,7 +17,7 @@ void usage() {
     printf("\t <label> = label as an int\n");
     printf("\t <start_offset> = start labeling at given offset\n");
     printf("\t <region_size> = length of region to label (-1 = whole file)\n");
-    printf("\t <chunk_size> = label the file in chunks (i.e. labels are chunked for each <chunk_size> bytes\n");
+    printf("\t <chunk_size> = label the file in chunks (i.e. labels are chunked for each <chunk_size> bytes)\n");
     printf("\t\t NB: chunk_size must be <= 4096 bytes (and, of course, <= <region_size>).\n");
     printf("\t\t NB: chunk_size = -1 means no splitting (single label of <label>).\n");
 }

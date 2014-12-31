@@ -1,7 +1,7 @@
 PIRATE: Platform for IR-based Analyses of Tainted Execution
 ========
 
-*Last updated 10/1/14*
+*Last updated 12/31/14*
 
 This is our implementation of architecture-independent dynamic taint analysis.
 To perform this analysis, we rely on dynamic code translation to the LLVM
@@ -38,13 +38,10 @@ the recording with the heavyweight taint analysis enabled.
 There are many ways to perform taint labeling and querying.  The primary method
 we currently use is to make hypercalls from the guest into the hypervisor with
 the parameters.  The implementation of the hypercall can be seen in
-`panda/qemu/panda_plugins/taint/taint.cpp` at the guest hypercall callback.  An
-easy way to label and query from the guest (with a gcc compiler) can be seen in
-`panda/qemu/panda_plugins/taint/tests/include/gcc/panda_mark.h`.  Additionally,
-examples using `panda_mark.h` are in the `tests` directory.  For Windows guests,
-the utilities included in `panda/qemu/panda_plugins/taint/pirate_utils` can be
-used to label files (Note: only a subset of the functionality available in
-those tools has been ported to the taint plugin).
+`panda/qemu/panda_plugins/taint/taint.cpp` at the guest hypercall callback.
+More information about using the hypercall can be seen in the file tainting
+tools in `panda/qemu/panda_plugins/taint/pirate_utils` which allow configurable
+ways to apply taint labels to files on the system.
 
 There are a number of command line arguments available to the taint plugin:
 
