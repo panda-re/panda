@@ -1,3 +1,4 @@
+debianwheezyx86intro
 sample
 textfinder
 textprinter
@@ -20,7 +21,7 @@ tstringsearch
 #network
 scissors
 taint_compute_numbers
-bir
+#bir
 replaymovie
 useafterfree
 bufmon
@@ -33,3 +34,4 @@ osi
 win7x86intro
 memstrings
 asidstory
+#file_taint

@@ -40,28 +40,20 @@
 #include <inttypes.h>
 #include <algorithm>
 #include <map>
+#include <set>
 #include <cstdint>
 
-#include "panda_common.h"
 
 
 extern "C" {
 
-    /*
-#include <math.h>
-#include <dlfcn.h>
-#include "config.h"
-#include "qemu-common.h" 
-#include "monitor.h"
-#include "cpu.h"
-    */
-
 #include "panda_plugin.h"
+#include "panda_common.h"
 
-    
-    //#include "../bir/bir_ext.h"
 #include "rr_log.h"
 #include "rr_log_all.h"  
+#include "../osi/osi_types.h"
+#include "../osi/osi_ext.h"
 #include "panda_plugin_plugin.h"
     
     bool init_plugin(void *);
@@ -71,12 +63,18 @@ extern "C" {
 
 
 
+uint32_t num_cells = 80;
+uint64_t min_instr;
+uint64_t max_instr = 0;
+double scale;
 bool vol_done = false;
 uint64_t vol_instr_count = 0;
 std::string vol_cmds = "";
 
+std::map < uint64_t, std::set < uint32_t > > asid_instr;
 std::map < uint64_t, uint64_t > asid_first_instr;
 std::map < uint64_t, uint64_t > asid_last_instr;
+
 
 
 // write physmem to a file
@@ -101,10 +99,53 @@ void vol(char *outfilename) {
     
 #define MILLION 1000000
 
+uint64_t a_counter = 0;
 
+std::map < uint64_t, std::map < std::string, uint32_t > > asid_to_name;
+
+
+uint64_t asid_before = 0;
+uint64_t first_instr = 0;
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    uint64_t asid = panda_current_asid(env);
+    if (max_instr == 0) {
+        max_instr = replay_get_total_num_instructions();
+        scale = ((double) num_cells) / ((double) max_instr); 
+    }
+    asid_before = panda_current_asid(env);
+    first_instr = rr_get_guest_instr_count();
+    if (asid_first_instr.count(asid_before) == 0) {
+        // first time
+        asid_first_instr[asid_before] = first_instr;
+    }
+    else {
+        asid_first_instr[asid_before] = std::min(asid_first_instr[asid_before], first_instr);
+    }
+    return 0;
+}
 
+
+
+
+int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
+    uint64_t asid =  panda_current_asid(env);
+    uint64_t last_instr = rr_get_guest_instr_count();
+    if (asid_last_instr.count(asid) == 0) {
+        // last time
+        asid_last_instr[asid] = last_instr;
+    }
+    else {
+        asid_last_instr[asid] = std::max(asid_last_instr[asid], last_instr);
+    }
+    // weird -- let's leave this one be
+    if (asid_before != asid) {
+        return 0;
+    }
+    a_counter ++;
+    if ((a_counter%1000) == 0) {
+        OsiProc *p = get_current_process(env);
+        asid_to_name[asid][p->name] ++;
+        a_counter ++;
+    }
     if ((vol_instr_count != 0) 
         && (!vol_done) 
         && (rr_get_guest_instr_count() > vol_instr_count)) {
@@ -113,46 +154,41 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         vol((char *) fn.c_str());
         vol_done = true;
     }
-    
-    if (asid_first_instr.count(asid) == 0) {
-        // new asid -- write down rr instruction count
-        asid_first_instr[asid] = rr_get_guest_instr_count();
-    }
-    else {
-        // old asid -- update last seen
-        asid_last_instr[asid] =  rr_get_guest_instr_count();
-    }
+        
+
+    uint32_t cell = rr_get_guest_instr_count() * scale;
+    asid_instr[asid].insert(cell);
     return 0;
 }
 
 
 
+    
+
 
 bool init_plugin(void *self) {    
-#ifdef CONFIG_SOFTMMU    
 
-    panda_cb pcb;
+    printf ("Initializing plugin asidstory  XXX\n");
+
+    // this sets up OS introspection API
+    bool x = init_osi_api();  
+    assert (x==true);
+    
+    panda_cb pcb;    
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-
+    
+    pcb.after_block_exec = asidstory_after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    
     panda_arg_list *args = panda_get_args("asidstory");
-    if (args != NULL) {
-        int i;
-        for (i = 0; i < args->nargs; i++) {
-            if (0 == strncmp(args->list[i].key, "vol_instr_count", 15)) {
-                vol_instr_count = atoll(args->list[i].value);
-                printf ("vol_instr_count = %" PRIu64 " \n", vol_instr_count);
-            }
-            if (0 == strncmp(args->list[i].key, "vol_cmds", 8)) {
-                vol_cmds = std::string(args->list[i].value);
-                printf ("vol_cmds = %s\n", vol_cmds.c_str());
-            }
-        }
-    }
+    vol_instr_count = panda_parse_uint64(args, "vol_instr_count", 0);
+    vol_cmds = panda_parse_string(args, "vol_cmds", "xxx");
+    
+    min_instr = 0;
+    
 
     return true;
-#endif
-    return false;
 }
 
 
@@ -160,66 +196,47 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     
     FILE *fp = fopen("asidstory", "w");
-    bool first = true;
-    uint64_t min_instr=0;
-    uint64_t max_instr=0;
-    
-    for ( auto &kvp : asid_first_instr ) {
-        uint64_t asid = kvp.first;
-        uint64_t first_instr = kvp.second;
-        uint64_t last_instr = asid_last_instr[asid];
-        fprintf (fp, 
-                 "%" PRIx64 
-                 " %" PRIu64 
-                 " %" PRIu64 
-                 "\n", 
-                 asid, first_instr, last_instr);
-        if (first) {
-            first = false;
-            min_instr = first_instr;
-            max_instr = last_instr;
-        }
-        else {
-            min_instr = std::min(min_instr, first_instr);
-            max_instr = std::max(max_instr, last_instr);
-        }
-    }
-    fclose(fp);
 
-    float m = 80.0 / (float) (max_instr - min_instr);
-    for ( auto &kvp : asid_first_instr ) {
+    // write out concordance asid -> name
+    for ( auto &kvp : asid_to_name ) {
+        fprintf (fp, "0x%x : ", (unsigned int) kvp.first);
+        for ( auto &kvp2 : asid_to_name[kvp.first] ) {
+            fprintf (fp, "(%d, %s) ", kvp2.second, (const char *) kvp2.first.c_str());
+        }
+        fprintf (fp, "\n");
+    }
+
+    for ( auto &kvp : asid_instr ) {
         uint64_t asid = kvp.first;
-        uint64_t first_instr = kvp.second;
-        uint64_t last_instr = asid_last_instr[asid];
-        printf ( " %20" PRIx64 
+        fprintf (fp, " %20" PRIx64 
                  " %15" PRIu64 
                  " %15" PRIu64
                  " : ",
-                 asid, first_instr, last_instr);
-        int fi = first_instr * m;
-        int li = last_instr * m;
-        if (fi == li) {
-            li ++;
+                 asid, 
+                 asid_first_instr[asid], asid_last_instr[asid]);
+        for ( uint32_t i=0; i<num_cells; i++ ) {
+            if ( asid_instr[asid].count(i) == 0 ) {
+                fprintf (fp, " ");
+            }
+            else {
+                fprintf (fp, "#");
+            }
         }
-        for (int i=0; i<fi; i++) {
-            printf (" ");
-        }
-        for (int i=fi; i<li; i++) {
-            printf ("#");
-        }
-        printf ("\n");
+        fprintf (fp, "\n");
     }
-    printf ("\n");
-    for (int i=5; i<80; i+=5) {
-        uint64_t instr = i / m;
-        printf ("                      ");
-        printf ("               ");
-        printf (" %15" PRIu64 " : ", instr);
-        for (int j=0; j<i; j++) {
-            printf (" ");
+    fprintf (fp, "\n");
+    for (uint32_t i=5; i<num_cells; i+=5) {
+        uint64_t instr = i / scale;
+        fprintf (fp, "                      ");
+        fprintf (fp, "               ");
+        fprintf (fp, " %15" PRIu64 " : ", instr);
+        for (uint32_t j=0; j<i; j++) {
+            fprintf (fp, " ");
         }
-        printf ("^\n");
+        fprintf (fp, "^\n");
     }
+    fclose(fp);
+
         
 
 

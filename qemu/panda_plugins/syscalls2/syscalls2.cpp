@@ -394,6 +394,8 @@ panda_arg_list *args;
 
 bool init_plugin(void *self) {
 
+    printf("Initializing plugin syscalls2\n");
+
     args = panda_get_args("syscalls");
     const char *profile_name = panda_parse_string(args, "profile", "linux_x86");
     if (0 == strncmp(profile_name, "linux_x86", 8)) {

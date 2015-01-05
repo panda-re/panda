@@ -202,8 +202,9 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
     PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
-#endif
     return true;
+#endif
+    return false;
 }
 
 void uninit_plugin(void *self) { }
