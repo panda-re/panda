@@ -362,7 +362,7 @@ void tp_add_store_callback(tp_callback_t scb);
 void tp_add_load_callback(tp_callback_t lcb);
 */
 
-// Apply taint to a buffer of RAM XXX deprecated
+// Apply taint to a buffer of memory according to taint_label_mode
 void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length);
 
@@ -374,7 +374,7 @@ void add_taint_ram_pos(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
 void add_taint_ram_single_label(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length, long label);
 
-// Apply taint to a buffer of IO memory
+// Apply taint to a buffer of IO memory according to taint_label_mode
 void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length);
 

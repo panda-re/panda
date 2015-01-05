@@ -79,7 +79,8 @@ There are a number of command line arguments available to the taint plugin:
 
    Current taint labeling modes are binary and byte.  Binary mode tracks only
    whether or not data is tainted.  Byte mode gives each new byte its own label
-   for precise tracking.
+   for precise tracking.  Currently, this parameter is referenced in
+   `add_taint_ram()` and `add_taint_io()`.
 
 The default invocation of of the taint plugin on a replay is:
 `<architecture>/qemu-system-<arch> -replay <replay_name> -panda taint`.

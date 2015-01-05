@@ -202,8 +202,7 @@ static SB_INLINE void clear_ram_bit(Shad *shad, uint32_t addr) {
     shad->ram_bitmap[addr >> 3] = taint_byte;
 }
 
-// Apply taint to a buffer of memory
-// XXX Deprecated - remove me
+// Apply taint to a buffer of memory according to taint_label_mode
 void add_taint_ram(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length){
     struct addr_struct a = {};
@@ -291,7 +290,7 @@ void add_taint_ram_single_label(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
     tob_process(tbuf, shad, NULL);
 }
 
-// Apply taint to a buffer of IO memory
+// Apply taint to a buffer of IO memory according to taint_label_mode
 void add_taint_io(CPUState *env, Shad *shad, TaintOpBuffer *tbuf,
         uint64_t addr, int length){
     Addr a = make_iaddr(addr);
