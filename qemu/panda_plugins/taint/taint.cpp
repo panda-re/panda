@@ -1084,7 +1084,8 @@ bool init_plugin(void *self) {
             
         }
     }
-    
+
+    printf ("taint_label_mode=%d\n", taint_label_mode);
     if (taint_label_mode == TAINT_BYTE_LABEL){
         printf("Taint: running in byte labeling mode.\n");
     }
@@ -1093,13 +1094,16 @@ bool init_plugin(void *self) {
     }
     printf ("max_taintset_card = %d\n", max_taintset_card);
     printf ("max_taintset_compute_number = %d\n", max_taintset_compute_number);
+    printf ("compute_is_delete = %d\n", compute_is_delete);
+
     printf ("taint_label_incoming_network_traffic = %d\n",
         taint_label_incoming_network_traffic);
     printf ("taint_query_outgoing_network_traffic = %d\n",
         taint_query_outgoing_network_traffic);
     printf ("tainted_pointer = %d\n", tainted_pointer);
     
-    printf ("compute_is_delete = %d\n", compute_is_delete);
+    printf ("tainted_instructions = %d\n", tainted_instructions);
+
     printf ("done initializing taint plugin\n");
 
     return true;
