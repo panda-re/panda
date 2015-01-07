@@ -1470,7 +1470,7 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-void TCGLLVMContext::writeModule(char *path){
+void TCGLLVMContext::writeModule(const char *path){
     std::string Error;
     raw_ostream *outfile;
     outfile = new raw_fd_ostream(path, Error,
@@ -1553,7 +1553,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
     return next_tb;
 }
 
-void tcg_llvm_write_module(TCGLLVMContext *l, char *path){
+void tcg_llvm_write_module(TCGLLVMContext *l, const char *path){
     l->writeModule(path);
 }
 
