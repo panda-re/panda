@@ -178,11 +178,6 @@ void taint_pointer(
     if (unlikely(dest + size > shad_dest->get_size())) {
         taint_log("  Ignoring IO RW\n");
         return;
-    } else if (unlikely(ptr + ptr_size > shad_ptr->get_size() &&
-                src + size > shad_src->get_size())) {
-        taint_log("  Both are IO.\n");
-        FastShad::remove(shad_dest, dest, size);
-        return;
     } else if (unlikely(src + size > shad_src->get_size())) {
         taint_log("  Source IO.\n");
         src = ones; // ignore source.

@@ -214,7 +214,7 @@ void PandaSlotTracker::initialize() {
 
 void PandaSlotTracker::processFunction() {
     // Add arguments without names
-    // We make sure that arguments have 
+    // We make sure that arguments have
     for(Function::arg_iterator AI = TheFunction->arg_begin(),
         AE = TheFunction->arg_end(); AI != AE; ++AI) {
         if (!AI->hasName()) {
@@ -462,7 +462,7 @@ void PandaTaintVisitor::insertTaintPointer(Instruction &I,
 
     inlineCall(popCI);
 }
-        
+
 
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
     insertTaintMix(I, &I, src);
@@ -668,18 +668,24 @@ void PandaTaintVisitor::visitAllocaInst(AllocaInst &I) {}
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
-    BinaryOperator *AI;
     int offset = -1;
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
     if ((I2PI = dyn_cast<IntToPtrInst>(addrVal)) != NULL) {
         assert(I2PI->getOperand(0));
+        BinaryOperator *AI;
         if ((AI = dyn_cast<BinaryOperator>(I2PI->getOperand(0))) == NULL) return false;
 
         assert(AI->getOperand(0) && AI->getOperand(1));
-        // This gets erased by the slot tracker. Never mind.
-        //if (AI->getOperand(0)->getName() != "env_v") return false;
-        if (PST->getLocalSlot(AI->getOperand(0)) != 0) return false;
+
+        LoadInst *LI;
+        Instruction *EnvI;
+        if ((LI = dyn_cast<LoadInst>(AI->getOperand(0))) == NULL) return false;
+        if ((EnvI = dyn_cast<GetElementPtrInst>(LI->getOperand(0))) == NULL &&
+                (EnvI = dyn_cast<BitCastInst>(LI->getOperand(0))) == NULL) {
+            return false;
+        }
+        if (PST->getLocalSlot(EnvI->getOperand(0)) != 0) return false;
 
         offset = intValue(AI->getOperand(1));
     } else if ((GEPI = dyn_cast<GetElementPtrInst>(addrVal)) != NULL) {
@@ -720,18 +726,27 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     Value *ptr = I.getOperand(isStore ? 1 : 0);
     Value *val = isStore ? I.getOperand(0) : &I;
     uint64_t size = getValueSize(val);
-    if (getAddr(I.getOperand(0), addr)) {
+    if (getAddr(ptr, addr)) {
         // Successfully statically found offset.
-        Constant *destConst;
-        uint64_t destAddr;
+        Constant *ptrConst;
+        uint64_t ptrAddr;
         if (addr.typ == GREG) {
-            destConst = grvConst;
-            destAddr = addr.val.gr * MAXREGSIZE + addr.off;
+            ptrConst = grvConst;
+            ptrAddr = addr.val.gr * WORDSIZE + addr.off;
         } else {
-            destConst = gsvConst;
-            destAddr = addr.val.gs;
+            ptrConst = gsvConst;
+            ptrAddr = addr.val.gs;
         }
-        insertTaintCopy(I, llvConst, &I, destConst, const_uint64(ctx, destAddr), size);
+
+        Constant *destConst = isStore ? ptrConst : llvConst;
+        Constant *srcConst = isStore ? llvConst : ptrConst;
+        Value *dest = isStore ? const_uint64(ctx, ptrAddr) : val;
+        Value *src = isStore ? val : const_uint64(ctx, ptrAddr);
+        if (isStore && isa<Constant>(val)) {
+            insertTaintDelete(I, destConst, dest, const_uint64(ctx, size));
+        } else {
+            insertTaintCopy(I, destConst, dest, srcConst, src, size);
+        }
     } else if (isa<Constant>(val) && isStore) {
         // FIXME: Delete taint at destination memory address.
     } else {
@@ -760,7 +775,7 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
     // look for magic taint pc update info
     MDNode *md = I.getMetadata("pcupdate.md");
     if (md != NULL) {
-        // found store instruction that contains PC.  
+        // found store instruction that contains PC.
     }
 
     if (I.isVolatile()) {
@@ -1128,7 +1143,7 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
     const StructLayout *structLayout = dataLayout->getStructLayout(typ);
-    
+
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
     uint64_t src = MAXREGSIZE * PST->getLocalSlot(aggregate) + offset;
@@ -1147,7 +1162,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
     const StructLayout *structLayout = dataLayout->getStructLayout(typ);
-    
+
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
     uint64_t dest = MAXREGSIZE * PST->getLocalSlot(&I) + offset;

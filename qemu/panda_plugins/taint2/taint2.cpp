@@ -263,8 +263,8 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     return 0;
 }
 
-__attribute__((unused)) static void print_labels(uint32_t el, void *stuff) { 
-    printf("%d ", el); 
+__attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {
+    printf("%d ", el);
 }
 
 __attribute__((unused)) static void record_bit(uint32_t el, void *array) {
@@ -338,7 +338,7 @@ void i386_hypercall_callback(CPUState *env){
             FastShad::set(shadow->ram, addr + i,
                     label_set_singleton(i));
         }
-    }    
+    }
 
     // Query op.
     // EBX contains addr.
@@ -379,13 +379,13 @@ bool __taint2_enabled() {
     return taintEnabled;
 }
 
-// label this phys addr in memory with this label 
+// label this phys addr in memory with this label
 void __taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
 // if phys addr pa is untainted, return 0.
-// else returns label set cardinality 
+// else returns label set cardinality
 uint32_t __taint2_query_ram(uint64_t pa) {
     return tp_query_ram(shadow, pa);
 }
@@ -485,7 +485,7 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 
     printf ("uninit taint plugin\n");
-    
+
     if (shadow) tp_free(shadow);
 
     panda_disable_llvm();
