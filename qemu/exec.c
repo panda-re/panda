@@ -5013,6 +5013,8 @@ int cpu_memory_rw_debug(CPUState *env, target_ulong addr,
     return 0;
 }
 
+int cpu_memory_rw(CPUState *env, target_ulong addr,
+                  uint8_t *buf, int len, int is_write);
 /* virtual memory access for debug (includes writing to ROM) */
 int cpu_memory_rw(CPUState *env, target_ulong addr,
                   uint8_t *buf, int len, int is_write)

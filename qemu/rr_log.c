@@ -103,8 +103,8 @@ volatile sig_atomic_t rr_replay_requested = 0;
 volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
-const char * rr_requested_name = NULL;
-const char * rr_snapshot_name  = NULL;
+char * rr_requested_name = NULL;
+char * rr_snapshot_name  = NULL;
 
 //mz FIFO queue of log entries read from the log file
 static RR_log_entry *rr_queue_head;
@@ -1526,7 +1526,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   // decompose file_name_base into path & file. 
   char *rr_path = g_strdup(file_name_full);
   char *rr_name = g_strdup(file_name_full);
-  int snapshot_ret;
+  __attribute__((unused)) int snapshot_ret;
   rr_path = dirname(rr_path);
   rr_name = basename(rr_name);
   if (rr_debug_whisper()) {

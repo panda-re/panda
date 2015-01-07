@@ -133,7 +133,7 @@ Addr make_paddr(uint64_t a) {
 
 // if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
 // else throw up
-static Addr addr_add(Addr a, uint32_t o) {
+__attribute__((unused)) static Addr addr_add(Addr a, uint32_t o) {
   switch (a.typ) {
   case HADDR:
     a.val.ha += o;

@@ -44,7 +44,7 @@ volatile sig_atomic_t rr_replay_requested = 0;
 volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
-const char * rr_requested_name = NULL;
+char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {

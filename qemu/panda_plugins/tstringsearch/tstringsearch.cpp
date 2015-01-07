@@ -108,7 +108,7 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
   uint8_t thestring[MAX_STRLEN*2];
   panda_virtual_memory_rw(env, p, thestring, matched_string_length, 0);
   printf ("thestring = [");
-  for (int i=0; i<matched_string_length; i++) {
+  for (unsigned i=0; i<matched_string_length; i++) {
       if (isprint(thestring[i])) {
           printf("%c", thestring[i]);
       }
@@ -117,7 +117,7 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
       }
   }
   printf ("]\n");
-  for (int i=0; i<matched_string_length; i++) {
+  for (unsigned i=0; i<matched_string_length; i++) {
       printf ("%02x ", thestring[i]);
   }
   printf ("\n");
@@ -160,9 +160,9 @@ int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
                 taint_enable_taint();               
                 printf ("labeling that buffer\n");
                 labeled = true;
-                for (int i=0; i<65536; i++) {
+                for (unsigned i=0; i<65536; i++) {
                     uint64_t pa = panda_virt_to_phys(env, 0x7e0000+i);
-                    assert (pa != -1);
+                    assert (pa != ~0UL);
                     taint_label_ram(pa, i);
                 }         
                 printf ("...done\n");

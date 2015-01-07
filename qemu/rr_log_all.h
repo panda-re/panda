@@ -49,8 +49,8 @@ extern volatile int rr_replay_requested;
 extern volatile int rr_record_requested;
 extern volatile int rr_end_record_requested;
 extern volatile int rr_end_replay_requested;
-extern const char *rr_requested_name;
-extern const char *rr_snapshot_name;
+extern char *rr_requested_name;
+extern char *rr_snapshot_name;
 
 // used from monitor.c 
 int  rr_do_begin_record(const char *name, void *cpu_state);
