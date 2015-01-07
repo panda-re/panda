@@ -87,6 +87,8 @@ private:
     int intValue(Value *value);
     unsigned getValueSize(Value *V);
     bool getAddr(Value *addrVal, Addr& addrOut);
+    bool isCPUStateAdd(BinaryOperator *AI);
+    bool isEnvPtr(Value *loadVal);
     void inlineCall(CallInst *CI);
     void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
     void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);

@@ -626,6 +626,11 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
     switch (I.getOpcode()) {
         case Instruction::Add:
+            {
+                BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
+                assert(AI);
+                if (isCPUStateAdd(AI)) return;
+            } // fall through otherwise.
         case Instruction::Sub:
         case Instruction::Mul:
         case Instruction::UDiv:
@@ -663,6 +668,24 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
 // Do nothing.
 void PandaTaintVisitor::visitAllocaInst(AllocaInst &I) {}
 
+bool PandaTaintVisitor::isEnvPtr(Value *loadVal) {
+    Instruction *EnvI;
+    if ((EnvI = dyn_cast<GetElementPtrInst>(loadVal)) == NULL &&
+            (EnvI = dyn_cast<BitCastInst>(loadVal)) == NULL) {
+        return false;
+    }
+    return PST->getLocalSlot(EnvI->getOperand(0)) == 0;
+}
+
+bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
+    assert(AI->getOpcode() == Instruction::Add);
+
+    LoadInst *LI;
+    if ((LI = dyn_cast<LoadInst>(AI->getOperand(0))) == NULL) return false;
+    if (!isEnvPtr(LI->getOperand(0))) return false;
+    return true;
+}
+
 // Find address and constant given a load/store (i.e. host vmem) address.
 // Argument should be an inttoptr instruction.
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
@@ -678,16 +701,12 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
 
         assert(AI->getOperand(0) && AI->getOperand(1));
 
-        LoadInst *LI;
-        Instruction *EnvI;
-        if ((LI = dyn_cast<LoadInst>(AI->getOperand(0))) == NULL) return false;
-        if ((EnvI = dyn_cast<GetElementPtrInst>(LI->getOperand(0))) == NULL &&
-                (EnvI = dyn_cast<BitCastInst>(LI->getOperand(0))) == NULL) {
-            return false;
-        }
-        if (PST->getLocalSlot(EnvI->getOperand(0)) != 0) return false;
+        if (!isCPUStateAdd(AI)) return false;
 
         offset = intValue(AI->getOperand(1));
+    } else if (isEnvPtr(addrVal)) {
+        addrOut.flag = IRRELEVANT;
+        return true;
     } else if ((GEPI = dyn_cast<GetElementPtrInst>(addrVal)) != NULL) {
         // unsupported as of yet.
         // this happens in helper functions.
@@ -727,6 +746,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     Value *val = isStore ? I.getOperand(0) : &I;
     uint64_t size = getValueSize(val);
     if (getAddr(ptr, addr)) {
+        if (addr.flag == IRRELEVANT) return;
         // Successfully statically found offset.
         Constant *ptrConst;
         uint64_t ptrAddr;
@@ -807,30 +827,38 @@ void PandaTaintVisitor::visitCastInst(CastInst &I) {
         case Instruction::SIToFP:
         case Instruction::UIToFP:
             insertTaintMix(I, &I, src);
-            break;
+            return;
+
+        case Instruction::IntToPtr:
+            {
+                BinaryOperator *AI = dyn_cast<BinaryOperator>(src);
+                if (AI && isCPUStateAdd(AI)) {
+                    // do nothing.
+                    return;
+                } else break;
+            }
 
         case Instruction::SExt:
             if (destSize > srcSize) {
                 // Generate a sext.
                 insertTaintSext(I, src);
-                break;
+                return;
             }
             // Else fall through to a copy.
         // Parallel cases. Assume little-endian...
         // Both involve a simple copy.
         case Instruction::BitCast:
-        case Instruction::IntToPtr:
         case Instruction::PtrToInt:
         case Instruction::Trunc:
         case Instruction::ZExt:
-           insertTaintCopy(I, llvConst, &I,
-                   llvConst, src,
-                   std::min(srcSize, destSize));
            break;
         default:
            // BROKEN
            assert(false && "Bad CastInst!!");
     }
+    insertTaintCopy(I, llvConst, &I,
+            llvConst, src,
+            std::min(srcSize, destSize));
 }
 
 // Other operators
