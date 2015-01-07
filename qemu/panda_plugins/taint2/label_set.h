@@ -34,6 +34,9 @@ typedef struct LabelSet {
         struct LabelSet *child2;
         uint32_t label;
     };
+
+    // extensions
+    uint64_t taint_compute_num;
 } *LabelSetP;
 }
 

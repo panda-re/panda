@@ -109,6 +109,7 @@ void taint_parallel_compute(
         LabelSetP ls = label_set_union(
                 FastShad::query(shad, src1 + i),
                 FastShad::query(shad, src2 + i));
+        if (ls) ls->taint_compute_num++;
         FastShad::set(shad, dest + i, ls);
     }
 }
@@ -119,6 +120,7 @@ static inline LabelSetP mixed_labels(FastShad *shad, uint64_t addr, uint64_t siz
     for (i = 0; i < size; ++i) {
         ls = label_set_union(ls, FastShad::query(shad, addr + i));
     }
+    if (ls) ls->taint_compute_num++;
     return ls;
 }
 
