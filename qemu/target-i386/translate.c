@@ -197,7 +197,7 @@ static uint32_t prefetch_long(DisasContext *s, target_ulong eip) {
     return ldl_code(eip);
 }
 
-static uint64_t prefetch_quad(DisasContext *s, target_ulong eip) {
+__attribute__((unused)) static uint64_t prefetch_quad(DisasContext *s, target_ulong eip) {
     if ( (! s->is_first_instr) &&
          (s->tb_src_page != (eip & TARGET_PAGE_MASK) ||
           s->tb_src_page != ((eip + sizeof(uint64_t) - 1) & TARGET_PAGE_MASK))) {
