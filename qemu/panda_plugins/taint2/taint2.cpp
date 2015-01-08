@@ -44,9 +44,12 @@ extern "C" {
 extern int loglevel;
 
 // For the C API to taint accessible from other plugins
-void taint_enable_taint(void);
-void taint_label_ram(uint64_t pa, uint32_t l) ;
-uint32_t taint_query_ram(uint64_t pa);
+void taint2_enable_taint(void);
+int taint2_enabled(void);
+void taint2_label_ram(uint64_t pa, uint32_t l) ;
+uint32_t taint2_query_ram(uint64_t pa);
+void taint2_delete_ram(uint64_t pa);
+uint32_t taint2_query_reg(int reg_num, int offset);
 
 }
 
@@ -54,6 +57,7 @@ uint32_t taint_query_ram(uint64_t pa);
 #include <llvm/PassRegistry.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 
 #include "tcg-llvm.h"
 #include "panda_memlog.h"
@@ -111,6 +115,8 @@ static taint2_memlog taint_memlog;
 bool tainted_pointer = true;
 static TaintGranularity granularity;
 static TaintLabelMode mode;
+bool optimize_llvm = true;
+extern bool inline_taint;
 
 
 /*
@@ -198,6 +204,15 @@ void __taint2_enable_taint(void) {
     // Add the taint analysis pass to our taint pass manager
     PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
     FPM->add(PTFP);
+
+    if (optimize_llvm) {
+        printf("taint2: Adding default optimizations (-O1).\n");
+        llvm::PassManagerBuilder Builder;
+        Builder.OptLevel = 1;
+        Builder.SizeLevel = 0;
+        Builder.populateFunctionPassManager(*FPM);
+    }
+
     FPM->doInitialization();
 
     // Populate module with helper function taint ops
@@ -213,9 +228,9 @@ void __taint2_enable_taint(void) {
         exit(1);
     }
 
-    printf("taint2: Done verifying module. Running...\n");
+    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 
-    //tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    printf("taint2: Done verifying module. Running...\n");
 }
 
 // Derive taint ops
@@ -248,8 +263,8 @@ int after_block_exec(CPUState *env, TranslationBlock *tb,
     return 0;
 }
 
-__attribute__((unused)) static void print_labels(uint32_t el, void *stuff) { 
-    printf("%d ", el); 
+__attribute__((unused)) static void print_labels(uint32_t el, void *stuff) {
+    printf("%d ", el);
 }
 
 __attribute__((unused)) static void record_bit(uint32_t el, void *array) {
@@ -323,7 +338,7 @@ void i386_hypercall_callback(CPUState *env){
             FastShad::set(shadow->ram, addr + i,
                     label_set_singleton(i));
         }
-    }    
+    }
 
     // Query op.
     // EBX contains addr.
@@ -334,7 +349,7 @@ void i386_hypercall_callback(CPUState *env){
                     rr_get_guest_instr_count());
             //uint64_t array;
             //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
-            printf("taint2: %u labels.\n", taint_query_ram(addr));
+            printf("taint2: %u labels.\n", taint2_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
                     (uint64_t)addr);
             qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
@@ -364,13 +379,13 @@ bool __taint2_enabled() {
     return taintEnabled;
 }
 
-// label this phys addr in memory with this label 
+// label this phys addr in memory with this label
 void __taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
 // if phys addr pa is untainted, return 0.
-// else returns label set cardinality 
+// else returns label set cardinality
 uint32_t __taint2_query_ram(uint64_t pa) {
     return tp_query_ram(shadow, pa);
 }
@@ -454,8 +469,15 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool(args, "no_tp");
+    inline_taint = !panda_parse_bool(args, "no_inline");
+    if (inline_taint) {
+        printf("taint2: Inlining taint ops by default.\n");
+    } else {
+        printf("taint2: Instructed not to inline taint ops.\n");
+    }
     if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
     if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
+    optimize_llvm = panda_parse_bool(args, "opt");
 
     return true;
 }
@@ -465,7 +487,7 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
 
     printf ("uninit taint plugin\n");
-    
+
     if (shadow) tp_free(shadow);
 
     panda_disable_llvm();

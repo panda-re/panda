@@ -86,12 +86,8 @@ void taint_copy(
     }
     taint_log(")\n");
 #endif
-    if (dest > shad_dest->get_size() || src > shad_src->get_size()) {
-#ifdef TAINTDEBUG
-        printf("taint_copy: ignoring IO mem rw.\n");
-#endif
-        return;
-    }
+    tassert(dest + size <= shad_dest->get_size() &&
+            src + size <= shad_src->get_size());
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 }
 
@@ -113,6 +109,7 @@ void taint_parallel_compute(
         LabelSetP ls = label_set_union(
                 FastShad::query(shad, src1 + i),
                 FastShad::query(shad, src2 + i));
+        if (ls) ls->taint_compute_num++;
         FastShad::set(shad, dest + i, ls);
     }
 }
@@ -123,6 +120,7 @@ static inline LabelSetP mixed_labels(FastShad *shad, uint64_t addr, uint64_t siz
     for (i = 0; i < size; ++i) {
         ls = label_set_union(ls, FastShad::query(shad, addr + i));
     }
+    if (ls) ls->taint_compute_num++;
     return ls;
 }
 
@@ -148,7 +146,7 @@ void taint_mix_compute(
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
     taint_log("remove: %lx[%lx+%lx]\n", (uint64_t)shad, dest, size);
     if (unlikely(dest >= shad->get_size())) {
-        // Ignore IO rw.
+        taint_log("Ignoring IO RW\n");
         return;
     }
     FastShad::remove(shad, dest, size);
@@ -178,6 +176,14 @@ void taint_pointer(
     taint_log("ptr: %lx[%lx+%lx] <- %lx[%lx] @ %lx[%lx+%lx]\n",
             (uint64_t)shad_dest, dest, size,
             (uint64_t)shad_src, src, (uint64_t)shad_ptr, ptr, ptr_size);
+
+    if (unlikely(dest + size > shad_dest->get_size())) {
+        taint_log("  Ignoring IO RW\n");
+        return;
+    } else if (unlikely(src + size > shad_src->get_size())) {
+        taint_log("  Source IO.\n");
+        src = ones; // ignore source.
+    }
 
     LabelSetP ls_ptr = mixed_labels(shad_ptr, ptr, ptr_size);
     if (src == ones) {

@@ -44,6 +44,7 @@ LabelSetP label_set_singleton(uint32_t label) {
 
     result->child1 = nullptr;
     result->label = label;
+    result->taint_compute_num = 0;
     return result;
 }
 

@@ -378,7 +378,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      * our log processing.
      */
     m_executionEngine = ExecutionEngine::createJIT(
-            m_module, &error, m_jitMemoryManager, CodeGenOpt::None);
+            m_module, &error, m_jitMemoryManager, CodeGenOpt::Less);
     if(m_executionEngine == NULL) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);
@@ -882,6 +882,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #define __OP_SETCOND(opc_name, bits)                                \
     case opc_name: {                                                \
         Value* retptr = getPtrForValue(args[0]);                    \
+        __attribute__((unused))                                     \
         Value* ret = m_builder.CreateLoad(retptr);                  \
         Value* v1  = getValue(args[1]);                             \
         Value* v2  = getValue(args[2]);                             \
@@ -1469,7 +1470,7 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-void TCGLLVMContext::writeModule(char *path){
+void TCGLLVMContext::writeModule(const char *path){
     std::string Error;
     raw_ostream *outfile;
     outfile = new raw_fd_ostream(path, Error,
@@ -1552,7 +1553,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
     return next_tb;
 }
 
-void tcg_llvm_write_module(TCGLLVMContext *l, char *path){
+void tcg_llvm_write_module(TCGLLVMContext *l, const char *path){
     l->writeModule(path);
 }
 

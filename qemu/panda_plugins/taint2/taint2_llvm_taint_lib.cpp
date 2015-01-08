@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #include <iostream>
 #include <vector>
 
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Linker.h>
 #include <llvm/IRReader/IRReader.h>
@@ -28,6 +29,9 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Instruction.h>
 
+#include "tcg/tcg-llvm.h"
+#include "panda_plugin_plugin.h"
+
 #include "fast_shad.h"
 #include "llvm_taint_lib.h"
 #include "guestarch.h"
@@ -38,6 +42,10 @@ extern "C" {
 #include "libgen.h"
 
 extern bool tainted_pointer;
+
+PPP_PROT_REG_CB(on_branch);
+
+PPP_CB_BOILERPLATE(on_branch);
 }
 
 extern char *qemu_loc;
@@ -71,6 +79,11 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
+static void taint_branch_run(FastShad *shad, uint64_t src) {
+    PPP_RUN_CB(on_branch, FastShad::query(shad, src));
+}
+
+extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
     char *exe = strdup(qemu_loc);
@@ -142,6 +155,17 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
+    ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
+    vector<Type *> argTs{ shadP, Type::getInt64Ty(ctx) };
+    PTV.branchF = M.getFunction("taint_branch");
+    if (!PTV.branchF) { // insert
+        PTV.branchF = Function::Create(
+            FunctionType::get(Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
+            GlobalVariable::ExternalLinkage, "taint_branch", &M);
+    }
+    assert(PTV.branchF);
+    EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
+
     std::cout << "taint2: Done initializing taint transformation." << std::endl;
 
     return true;
@@ -190,7 +214,7 @@ void PandaSlotTracker::initialize() {
 
 void PandaSlotTracker::processFunction() {
     // Add arguments without names
-    // We make sure that arguments have 
+    // We make sure that arguments have
     for(Function::arg_iterator AI = TheFunction->arg_begin(),
         AE = TheFunction->arg_end(); AI != AE; ++AI) {
         if (!AI->hasName()) {
@@ -271,14 +295,15 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
     return (size < 8) ? 1 : size / 8;
 }
 
+bool inline_taint = true;
 void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI);
-#ifndef TAINT2_NOINLINE
-    InlineFunctionInfo IFI;
-    if (!InlineFunction(CI, IFI)) {
-        printf("Inlining failed!\n");
+        if (inline_taint) {
+        InlineFunctionInfo IFI;
+        if (!InlineFunction(CI, IFI)) {
+            printf("Inlining failed!\n");
+        }
     }
-#endif
 }
 
 void PandaTaintVisitor::inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args) {
@@ -328,35 +353,37 @@ int PandaTaintVisitor::intValue(Value *value) {
 }
 
 void PandaTaintVisitor::visitFunction(Function& F) {
-    LLVMContext &ctx = F.getContext();
-    // Two things: Insert "tainted" metadata.
-    MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
-
     // create slot tracker to keep track of LLVM values
     PST.reset(new PandaSlotTracker(&F));
     PST->initialize();
-
-    if (F.getName().startswith("tcg-llvm-tb-")) {
-        // This is a single guest BB, so callstack should be empty.
-        // Insert call to reset llvm frame.
-        vector<Value *> args{ llvConst };
-        inlineCallBefore(*F.front().getFirstNonPHI(), resetFrameF, args);
-    }
-
-    // Insert call to clear llvm shadow mem.
-    vector<Value *> args{
-        llvConst, const_uint64(ctx, 0),
-        const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
-    };
-    assert(F.front().getFirstNonPHI() != NULL);
-    inlineCallBefore(*F.front().getFirstNonPHI(), deleteF, args);
-
-    F.front().front().setMetadata("tainted", md);
 }
 
 void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
-    // At end of BB, log where we just were.
     LLVMContext &ctx = BB.getContext();
+    Function *F = BB.getParent();
+    assert(F);
+    if (&F->front() == &BB && F->getName().startswith("tcg-llvm-tb-")) {
+        // Entry block.
+        // This is a single guest BB, so callstack should be empty.
+        // Insert call to reset llvm frame.
+        vector<Value *> args{ llvConst };
+        assert(BB.getFirstNonPHI());
+        inlineCallBefore(*BB.getFirstNonPHI(), resetFrameF, args);
+
+        // Insert call to clear llvm shadow mem.
+        vector<Value *> args2{
+            llvConst, const_uint64(ctx, 0),
+            const_uint64(ctx, MAXREGSIZE * PST->getMaxSlot())
+        };
+        inlineCallBefore(*BB.getFirstNonPHI(), deleteF, args2);
+
+        // Two things: Insert "tainted" metadata.
+        MDNode *md = MDNode::get(ctx, ArrayRef<Value *>());
+
+        BB.front().setMetadata("tainted", md);
+    }
+
+    // At end of BB, log where we just were.
     vector<Value *> args{
         const_i64p(ctx, &shad->prev_bb), constSlot(ctx, &BB)
     };
@@ -435,7 +462,7 @@ void PandaTaintVisitor::insertTaintPointer(Instruction &I,
 
     inlineCall(popCI);
 }
-        
+
 
 void PandaTaintVisitor::insertTaintMix(Instruction &I, Value *src) {
     insertTaintMix(I, &I, src);
@@ -531,6 +558,15 @@ void PandaTaintVisitor::insertTaintDelete(Instruction &I,
     inlineCallAfter(destCI ? *destCI : I, deleteF, args);
 }
 
+void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
+    if (isa<Constant>(cond)) return;
+
+    vector<Value *> args{
+        llvConst, constSlot(I.getContext(), cond)
+    };
+    inlineCallBefore(I, branchF, args);
+}
+
 // Terminator instructions
 void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     Value *ret = I.getReturnValue();
@@ -556,6 +592,18 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     visitTerminatorInst(I);
 }
 
+void PandaTaintVisitor::visitBranchInst(BranchInst &I) {
+    if (I.isConditional()) {
+        insertTaintBranch(I, I.getCondition());
+    }
+}
+void PandaTaintVisitor::visitIndirectBrInst(IndirectBrInst &I) {
+    insertTaintBranch(I, I.getAddress());
+}
+void PandaTaintVisitor::visitSwitchInst(SwitchInst &I) {
+    insertTaintBranch(I, I.getCondition());
+}
+
 // On a branch we just have to log the previous BB.
 void PandaTaintVisitor::visitTerminatorInst(TerminatorInst &I) {
     // BB logging is in the previous stuff.
@@ -578,6 +626,11 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
     switch (I.getOpcode()) {
         case Instruction::Add:
+            {
+                BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
+                assert(AI);
+                if (isCPUStateAdd(AI)) return;
+            } // fall through otherwise.
         case Instruction::Sub:
         case Instruction::Mul:
         case Instruction::UDiv:
@@ -615,25 +668,45 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
 // Do nothing.
 void PandaTaintVisitor::visitAllocaInst(AllocaInst &I) {}
 
+bool PandaTaintVisitor::isEnvPtr(Value *loadVal) {
+    Instruction *EnvI;
+    if ((EnvI = dyn_cast<GetElementPtrInst>(loadVal)) == NULL &&
+            (EnvI = dyn_cast<BitCastInst>(loadVal)) == NULL) {
+        return false;
+    }
+    return PST->getLocalSlot(EnvI->getOperand(0)) == 0;
+}
+
+bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
+    assert(AI->getOpcode() == Instruction::Add);
+
+    LoadInst *LI;
+    if ((LI = dyn_cast<LoadInst>(AI->getOperand(0))) == NULL) return false;
+    if (!isEnvPtr(LI->getOperand(0))) return false;
+    return true;
+}
+
 // Find address and constant given a load/store (i.e. host vmem) address.
 // Argument should be an inttoptr instruction.
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
-    BinaryOperator *AI;
     int offset = -1;
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
     if ((I2PI = dyn_cast<IntToPtrInst>(addrVal)) != NULL) {
         assert(I2PI->getOperand(0));
+        BinaryOperator *AI;
         if ((AI = dyn_cast<BinaryOperator>(I2PI->getOperand(0))) == NULL) return false;
 
         assert(AI->getOperand(0) && AI->getOperand(1));
-        // This gets erased by the slot tracker. Never mind.
-        //if (AI->getOperand(0)->getName() != "env_v") return false;
-        if (PST->getLocalSlot(AI->getOperand(0)) != 0) return false;
+
+        if (!isCPUStateAdd(AI)) return false;
 
         offset = intValue(AI->getOperand(1));
+    } else if (isEnvPtr(addrVal)) {
+        addrOut.flag = IRRELEVANT;
+        return true;
     } else if ((GEPI = dyn_cast<GetElementPtrInst>(addrVal)) != NULL) {
         // unsupported as of yet.
         // this happens in helper functions.
@@ -672,18 +745,28 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
     Value *ptr = I.getOperand(isStore ? 1 : 0);
     Value *val = isStore ? I.getOperand(0) : &I;
     uint64_t size = getValueSize(val);
-    if (getAddr(I.getOperand(0), addr)) {
+    if (getAddr(ptr, addr)) {
+        if (addr.flag == IRRELEVANT) return;
         // Successfully statically found offset.
-        Constant *destConst;
-        uint64_t destAddr;
+        Constant *ptrConst;
+        uint64_t ptrAddr;
         if (addr.typ == GREG) {
-            destConst = grvConst;
-            destAddr = addr.val.gr * MAXREGSIZE + addr.off;
+            ptrConst = grvConst;
+            ptrAddr = addr.val.gr * WORDSIZE + addr.off;
         } else {
-            destConst = gsvConst;
-            destAddr = addr.val.gs;
+            ptrConst = gsvConst;
+            ptrAddr = addr.val.gs;
         }
-        insertTaintCopy(I, llvConst, &I, destConst, const_uint64(ctx, destAddr), size);
+
+        Constant *destConst = isStore ? ptrConst : llvConst;
+        Constant *srcConst = isStore ? llvConst : ptrConst;
+        Value *dest = isStore ? const_uint64(ctx, ptrAddr) : val;
+        Value *src = isStore ? val : const_uint64(ctx, ptrAddr);
+        if (isStore && isa<Constant>(val)) {
+            insertTaintDelete(I, destConst, dest, const_uint64(ctx, size));
+        } else {
+            insertTaintCopy(I, destConst, dest, srcConst, src, size);
+        }
     } else if (isa<Constant>(val) && isStore) {
         // FIXME: Delete taint at destination memory address.
     } else {
@@ -712,7 +795,7 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
     // look for magic taint pc update info
     MDNode *md = I.getMetadata("pcupdate.md");
     if (md != NULL) {
-        // found store instruction that contains PC.  
+        // found store instruction that contains PC.
     }
 
     if (I.isVolatile()) {
@@ -744,30 +827,38 @@ void PandaTaintVisitor::visitCastInst(CastInst &I) {
         case Instruction::SIToFP:
         case Instruction::UIToFP:
             insertTaintMix(I, &I, src);
-            break;
+            return;
+
+        case Instruction::IntToPtr:
+            {
+                BinaryOperator *AI = dyn_cast<BinaryOperator>(src);
+                if (AI && isCPUStateAdd(AI)) {
+                    // do nothing.
+                    return;
+                } else break;
+            }
 
         case Instruction::SExt:
             if (destSize > srcSize) {
                 // Generate a sext.
                 insertTaintSext(I, src);
-                break;
+                return;
             }
             // Else fall through to a copy.
         // Parallel cases. Assume little-endian...
         // Both involve a simple copy.
         case Instruction::BitCast:
-        case Instruction::IntToPtr:
         case Instruction::PtrToInt:
         case Instruction::Trunc:
         case Instruction::ZExt:
-           insertTaintCopy(I, llvConst, &I,
-                   llvConst, src,
-                   std::min(srcSize, destSize));
            break;
         default:
            // BROKEN
            assert(false && "Bad CastInst!!");
     }
+    insertTaintCopy(I, llvConst, &I,
+            llvConst, src,
+            std::min(srcSize, destSize));
 }
 
 // Other operators
@@ -1080,7 +1171,7 @@ void PandaTaintVisitor::visitExtractValueInst(ExtractValueInst &I) {
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
     const StructLayout *structLayout = dataLayout->getStructLayout(typ);
-    
+
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
     uint64_t src = MAXREGSIZE * PST->getLocalSlot(aggregate) + offset;
@@ -1099,7 +1190,7 @@ void PandaTaintVisitor::visitInsertValueInst(InsertValueInst &I) {
     assert(aggregate && aggregate->getType()->isStructTy());
     StructType *typ = dyn_cast<StructType>(aggregate->getType());
     const StructLayout *structLayout = dataLayout->getStructLayout(typ);
-    
+
     assert(I.idx_begin() != I.idx_end());
     unsigned offset = structLayout->getElementOffset(*I.idx_begin());
     uint64_t dest = MAXREGSIZE * PST->getLocalSlot(&I) + offset;

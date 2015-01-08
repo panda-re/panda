@@ -50,6 +50,9 @@ void taint_pop_frame(FastShad *shad);
 // Bookkeeping.
 void taint_breadcrumb(uint64_t *dest_ptr, uint64_t bb_slot);
 
+// Call out to PPP callback.
+void taint_branch(FastShad *shad, uint64_t src);
+
 // Taint operations
 //
 // These are all the taint operations which we will inline into the LLVM code
