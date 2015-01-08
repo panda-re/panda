@@ -24,6 +24,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu.h"
 
+#include "panda_common.h"
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
 #include "../osi/osi_types.h"
@@ -59,6 +60,11 @@ void on_free_osimodules(OsiModules *ms);
 
 #define MAX_TASK_COMM_LEN  16   // Max length of the comm field in task_struct
 #define PAGE_SIZE          8192 // Used to find thread_info struct from esp
+
+// mm struct offset (ptr to mm)
+#define MM_OFF 240
+// and, within mm struct, cr3 is here
+#define PGD_OFF 36
 
 // Size of a guest pointer. Note that this can't just be target_ulong since
 // a 32-bit OS will run on x86_64-softmmu
@@ -100,12 +106,20 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
     get_procname(env, task_addr, name);
     p->name = name;
     //printf("p->name: %s\n", p->name);
-    p->asid = 0; // TODO
+
     p->pages = NULL;
     p->pid = get_pid(env, task_addr);
     //printf("p->pid: %d\n", p->pid);
     p->ppid = get_ppid(env, task_addr);
     //printf("p->ppid: %d\n", p->ppid);
+    
+    target_ulong mm;
+    panda_virtual_memory_rw(env, task_addr + MM_OFF, (uint8_t *) &mm, sizeof(target_ulong), false);    
+    target_ulong asid;  
+    panda_virtual_memory_rw(env, mm + PGD_OFF, (uint8_t *) &asid, sizeof(target_ulong), false);
+    p->asid = asid;
+    p->asid = asid & (~0xc0000000);
+
 }
 
 static void add_proc(CPUState *env, OsiProcs *ps, PTR task_addr) {
@@ -127,15 +141,41 @@ PTR get_thread_info_addr(CPUState *env) {
     return esp & ~(PAGE_SIZE - 1);
 }
 
-static PTR get_current_proc(CPUState *env) {
-    // First find the thread_info struct
-    PTR thread_info_addr = get_thread_info_addr(env);
 
+#define KMODE_FS 0xd8
+
+PTR get_task(CPUState *env) {
+    uint32_t e1, e2;
+    uint32_t fs_base, thread, proc;
+
+    // Read out the two 32-bit ints that make up a segment descriptor                                                                                                                                                                                                                                    
+    panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS, (uint8_t *)&e1, 4, false);
+    panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS + 4, (uint8_t *)&e2, 4, false);
+    // Turn wacky segment into base                                         
+    fs_base = (e1 >> 16) | ((e2 & 0xff) << 16) | (e2 & 0xff000000);
+    // the rest of this comes from peering at in_asm trace thx to qemu.
+    uint32_t fsplus = fs_base + 0xc147cf0c;
+    uint32_t eax, eax_2;
+    panda_virtual_memory_rw(env, fsplus,      (uint8_t *)&eax, 4, false);
+    panda_virtual_memory_rw(env, eax+0x148,   (uint8_t *)&eax_2, 4, false);
+    return eax_2;
+}
+
+
+
+static PTR get_current_proc(CPUState *env) {
+    /*
+    // First find the thread_info struct
+    PTR thread_info_addr = get_thread_info_addr(env);   
     // the task_struct *task is at thread_info[0], so just deref thread_info_addr
-    PTR task_struct_addr;
-    panda_virtual_memory_rw(env, thread_info_addr, (uint8_t *)&task_struct_addr, sizeof(task_struct_addr), false);
+    PTR task_struct_addr = panda_virtual_memory_rw(env, thread_info_addr, (uint8_t *)&task_struct_addr, sizeof(task_struct_addr), false);
+    */
+    PTR task_struct_addr = get_task(env);
     return task_struct_addr;
 }
+
+
+    
 
 void on_get_current_process(CPUState *env, OsiProc **out_p) {
     OsiProc *p = (OsiProc *) malloc(sizeof(OsiProc));
