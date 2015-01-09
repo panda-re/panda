@@ -146,7 +146,7 @@ PTR get_thread_info_addr(CPUState *env) {
 
 PTR get_task(CPUState *env) {
     uint32_t e1, e2;
-    uint32_t fs_base, thread, proc;
+    uint32_t fs_base; //, thread, proc;
 
     // Read out the two 32-bit ints that make up a segment descriptor                                                                                                                                                                                                                                    
     panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS, (uint8_t *)&e1, 4, false);
@@ -186,7 +186,7 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 
 void on_get_processes(CPUState *env, OsiProcs **out_ps) {
     PTR first = get_current_proc(env);
-    PTR first_pid = get_pid(env, first);
+    //PTR first_pid = get_pid(env, first);
     PTR current = first;
 
     OsiProcs *ps = (OsiProcs *)malloc(sizeof(OsiProcs));
