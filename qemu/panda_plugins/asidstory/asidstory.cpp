@@ -157,7 +157,6 @@ int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
     }
     if ((p->pid != 0) && (p->asid > 10)) {
         namepid_to_asids[p->name][p->pid][p->asid]++;
-        Instr instr = rr_get_guest_instr_count();
         uint32_t cell = instr * scale;
         namepid_cells[p->name][p->pid][cell] ++;
         namepid_last_instr[p->name][p->pid] = std::max(namepid_last_instr[p->name][p->pid], instr);
