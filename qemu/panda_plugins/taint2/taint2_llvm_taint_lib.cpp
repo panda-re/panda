@@ -43,9 +43,9 @@ extern "C" {
 
 extern bool tainted_pointer;
 
-PPP_PROT_REG_CB(on_branch);
+PPP_PROT_REG_CB(on_branch2);
 
-PPP_CB_BOILERPLATE(on_branch);
+PPP_CB_BOILERPLATE(on_branch2);
 }
 
 extern char *qemu_loc;
@@ -80,7 +80,7 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
 }
 
 static void taint_branch_run(FastShad *shad, uint64_t src) {
-    PPP_RUN_CB(on_branch, FastShad::query(shad, src));
+    PPP_RUN_CB(on_branch2, FastShad::query(shad, src));
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
