@@ -295,7 +295,7 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
     return (size < 8) ? 1 : size / 8;
 }
 
-bool inline_taint = true;
+bool inline_taint = false;
 void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI);
         if (inline_taint) {

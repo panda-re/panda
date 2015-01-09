@@ -482,7 +482,7 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool(args, "no_tp");
-    inline_taint = !panda_parse_bool(args, "no_inline");
+    inline_taint = panda_parse_bool(args, "inline");
     if (inline_taint) {
         printf("taint2: Inlining taint ops by default.\n");
     } else {
