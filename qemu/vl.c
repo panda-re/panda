@@ -2322,7 +2322,7 @@ int main(int argc, char **argv, char **envp)
     machine = find_default_machine();
     cpu_model = NULL;
     initrd_filename = NULL;
-    ram_size = 0;
+    ram_size = DEFAULT_RAM_SIZE * 1024 * 1024;
     snapshot = 0;
     kernel_filename = NULL;
     kernel_cmdline = "";
@@ -3468,10 +3468,6 @@ int main(int argc, char **argv, char **envp)
     }
 
     /* init the memory */
-    if (ram_size == 0) {
-        ram_size = DEFAULT_RAM_SIZE * 1024 * 1024;
-    }
-
     configure_accelerator();
 
     qemu_init_cpu_loop();
