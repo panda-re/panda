@@ -400,6 +400,14 @@ void __taint2_delete_ram(uint64_t pa) {
     tp_delete_ram(shadow, pa);
 }
 
+void __taint2_labelset_spit(LabelSetP ls) {
+    std::set<uint32_t> rendered(label_set_render_set(ls));
+    for (uint32_t l : rendered) {
+        printf("%u ", l);
+    }
+    printf("\n");
+}
+
 ////////////////////////////////////////////////////////////////////////////////////
 // C API versions
 
@@ -426,6 +434,10 @@ void taint2_delete_ram(uint64_t pa) {
 
 uint32_t taint2_query_reg(int reg_num, int offset) {
   return __taint2_query_reg(reg_num, offset);
+}
+
+void taint2_labelset_spit(LabelSetP ls) {
+    return __taint2_labelset_spit(ls);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

@@ -109,7 +109,9 @@ def generate_api(plugin_name, plugin_dir):
     with open(os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))) as API:
         for line in API:
             line = line.strip();
-            if line and not line.startswith('#') and not (re.match("^/", line)):
+            if line and line.startswith('typedef'):
+                includes.append(line)
+            elif line and not line.startswith('#') and not (re.match("^/", line)):
                 print line
                 match = proto_re.match(line)
                 rtype, name, arglist = match.groups()

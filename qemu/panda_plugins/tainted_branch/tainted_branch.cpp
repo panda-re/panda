@@ -55,7 +55,8 @@ void tbranch_on_branch(LabelSetP ls) {
                (unsigned int) panda_current_pc(cpu_single_env));
         
         // Print out the labels
-        //printf("\tCompute number: %d\n", ls->taint_compute_num);
+        printf("\tCompute number: %lu\n", ls->taint_compute_num);
+        taint2_labelset_spit(ls);
 #ifdef TARGET_I386
         fprintf(branchfile, "%lx\n", (unsigned long)cpu_single_env->eip);
 #endif
