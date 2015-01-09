@@ -378,7 +378,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
      * our log processing.
      */
     m_executionEngine = ExecutionEngine::createJIT(
-            m_module, &error, m_jitMemoryManager, CodeGenOpt::Less);
+            m_module, &error, m_jitMemoryManager, CodeGenOpt::None);
     if(m_executionEngine == NULL) {
         std::cerr << "Unable to create LLVM JIT: " << error << std::endl;
         exit(1);

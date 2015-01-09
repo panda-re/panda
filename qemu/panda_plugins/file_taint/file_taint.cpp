@@ -28,6 +28,7 @@ uint32_t the_asid;
 uint32_t the_fd;
 
 
+#ifdef TARGET_I386
 // 5 long sys_open(const char __user *filename,int flags, int mode);
 // typedef void (*on_sys_open_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
 void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
@@ -96,7 +97,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
         saw_read = false;
     }
 }
-
+#endif
 
 bool init_plugin(void *self) {
 
