@@ -50,6 +50,7 @@ void taint2_label_ram(uint64_t pa, uint32_t l) ;
 uint32_t taint2_query_ram(uint64_t pa);
 void taint2_delete_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
+void taint2_labelset_spit(LabelSetP ls);
 
 }
 
