@@ -118,4 +118,6 @@ bool init_plugin(void *self) {
 #endif
 }
 
-void uninit_plugin(void *self) {}
+void uninit_plugin(void *self) {
+    fclose(branchfile);
+}
