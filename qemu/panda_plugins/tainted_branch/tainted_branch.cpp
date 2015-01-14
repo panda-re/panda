@@ -28,6 +28,10 @@ extern "C" {
 }
 
 #include <stdio.h>
+
+#include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
+
 #include "../taint/taint_processor.h"
 
 
@@ -50,11 +54,15 @@ void tbranch_on_branch(uint64_t pc, int reg_num) {
         printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register: %%%d\n", 
                (unsigned int ) panda_current_asid(cpu_single_env), (unsigned int) pc, reg_num);
         // Get taint compute number
-        uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);
-        
+        uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);        
         // Print out the labels
         printf("\tCompute number: %d\n", ls_type);
         taint_spit_llvm(reg_num, /*offset=*/0);
+        target_ulong callers[16];
+        int n = get_callers(callers, 16, cpu_single_env);
+        for (int i=0; i<n; i++) {
+            printf ("callstack: %d " TARGET_FMT_lx " \n", i, callers[i]);
+        }
     }
 }
 
@@ -81,6 +89,9 @@ bool init_plugin(void *self) {
   panda_cb pcb;
   pcb.after_block_exec = tbranch_after_block_exec;
   panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+
+
+  if(!init_callstack_instr_api()) return false;
 
   return true;
 #else
