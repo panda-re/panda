@@ -19,6 +19,8 @@ PANDAENDCOMMENT */
 #include "hmp.h"
 #include "error.h"
 
+#include <libgen.h>
+
 #ifdef CONFIG_LLVM
 #include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
@@ -38,15 +40,22 @@ panda_cb_list *panda_cbs[PANDA_CB_LAST];
 char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
 int panda_argc;
 
+int nb_panda_plugins = 0;
 panda_plugin panda_plugins[MAX_PANDA_PLUGINS];
-int nb_panda_plugins;
+
 bool panda_plugins_to_unload[MAX_PANDA_PLUGINS];
+
 bool panda_plugin_to_unload = false;
+
+int nb_panda_plugins_loaded = 0;
+char *panda_plugins_loaded[MAX_PANDA_PLUGINS];
 
 bool panda_please_flush_tb = false;
 bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
+
+
 
 bool panda_add_arg(const char *arg, int arglen) {
     if (arglen > 255) return false;
@@ -55,7 +64,17 @@ bool panda_add_arg(const char *arg, int arglen) {
 }
 
 bool panda_load_plugin(const char *filename) {
-  printf ("loading %s\n", filename);
+    // don't load the same plugin twice
+    uint32_t i;
+    for (i=0; i<nb_panda_plugins_loaded; i++) {
+        if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
+            printf ("panda_load_plugin: %s already loaded\n", filename);
+            return 1;
+        }
+    }    
+    panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
+    nb_panda_plugins_loaded ++;
+    printf ("loading %s\n", filename);
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
@@ -69,17 +88,47 @@ bool panda_load_plugin(const char *filename) {
     }
     if(init_fn(plugin)) {
         panda_plugins[nb_panda_plugins].plugin = plugin;
-        strncpy(panda_plugins[nb_panda_plugins].name, basename(filename), 256);
+        strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
         nb_panda_plugins++;
-	fprintf (stderr, "Success\n");
+        fprintf (stderr, "Success\n");
         return true;
     }
     else {
         dlclose(plugin);
-	fprintf (stderr, "Fail. init_fn returned 0\n");
+        fprintf (stderr, "Fail. init_fn returned 0\n");
         return false;
     }
 }
+
+extern const char *qemu_file;
+
+// translate plugin name into path to .so
+char *panda_plugin_path(const char *plugin_name) {    
+    char *plugin_path = g_malloc0(1024);
+    char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
+    if (plugin_dir != NULL) {
+        snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_name);
+    } else {
+        char *dir = strdup(qemu_file);
+        dir = dirname( (char *) dir);
+        snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_name);
+    }
+    return plugin_path;
+}
+
+
+void panda_require(const char *plugin_name) {
+    printf ("panda_require: %s\n", plugin_name);
+    // translate plugin name into a path to .so
+    char *plugin_path = panda_plugin_path(plugin_name);
+    // load plugin same as in vl.c
+    if (!panda_load_plugin(plugin_path)) {
+        fprintf(stderr, "panda_require: FAIL: Unable to load plugin `%s' `%s'\n", plugin_name, plugin_path);
+        abort();
+    }
+}
+
+    
 
 // Internal: remove a plugin from the global array
 static void panda_delete_plugin(int i) {

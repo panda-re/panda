@@ -195,15 +195,18 @@ extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;
 
+
+struct TCGLLVMContext* tcg_llvm_initialize(void);
+void tcg_llvm_destroy(void);
+#endif
+
 // PANDA: externed here because we don't want to pull in the target-specific
 // pieces of QEMU
 extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
+extern char *panda_plugin_path(const char *name);
 
-struct TCGLLVMContext* tcg_llvm_initialize(void);
-void tcg_llvm_destroy(void);
-#endif
 
 #include "ui/qemu-spice.h"
 
@@ -297,6 +300,7 @@ uint64_t node_mem[MAX_NODES];
 uint64_t node_cpumask[MAX_NODES];
 
 uint8_t qemu_uuid[16];
+
 
 static QEMUBootSetHandler *boot_set_handler;
 static void *boot_set_opaque;
@@ -2257,7 +2261,8 @@ static void free_and_trace(gpointer mem)
     free(mem);
 }
 
-const char *qemu_loc;
+const char *qemu_loc = NULL;
+const char *qemu_file = NULL;
 
 int main(int argc, char **argv, char **envp)
 {
@@ -2298,6 +2303,7 @@ int main(int argc, char **argv, char **envp)
 
     // Store for later use...
     qemu_loc = realpath(argv[0], NULL);
+    qemu_file = canonicalize_file_name(argv[0]);
 
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[16] = {};
@@ -3226,8 +3232,6 @@ int main(int argc, char **argv, char **envp)
                     char *plugin_start = new_optarg;
                     char *plugin_end = new_optarg;
 
-                    char *qemu_file = canonicalize_file_name(argv[0]);
-                    char *dir = dirname(qemu_file);
                     while (plugin_end != NULL) {
                         plugin_end = strchr(plugin_start, ';');
                         if (plugin_end != NULL) *plugin_end = '\0';
@@ -3253,20 +3257,13 @@ int main(int argc, char **argv, char **envp)
                             }
                         }
 
-                        char *plugin_path = g_malloc0(1024);
-                        char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
-                        if (plugin_dir != NULL) {
-                            snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_start);
-                        } else {
-                            snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_start);
-                        }
+                        char *plugin_path = panda_plugin_path((const char *) plugin_start);
                         panda_plugin_files[nb_panda_plugins++] = plugin_path;
                         printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
                         
                         plugin_start = plugin_end + 1;
                     }
                     free(new_optarg);
-                    free(dir);
                     break;
                 }
 
