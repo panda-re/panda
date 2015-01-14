@@ -149,7 +149,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
     OsiProc *p = get_current_process(env);
-    Instr instr = rr_get_guest_instr_count();
+    //    Instr instr = rr_get_guest_instr_count();
 
     b_counter ++;
     if ((b_counter % SAMPLE_RATE) != 0) {
