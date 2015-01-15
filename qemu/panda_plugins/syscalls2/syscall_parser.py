@@ -214,7 +214,7 @@ class Argument(object):
     
     @type.setter
     def type(self, newtype):
-        assert(newtype in ARG_TYPE_TRANSLATIONS.keys())
+        assert(newtype in ARG_TYPE_C_TRANSLATIONS.keys())
         self._type = newtype
     
     @property
