@@ -125,6 +125,10 @@ void make_nps(Name &name, Pid pid, char *buf, uint32_t buf_len) {
 }
 
 
+bool npis_sort (std::tuple < Name, Pid, Instr > npi1, std::tuple < Name, Pid, Instr > npi2 ) {
+    return (std::get<2>(npi1) < std::get<2>(npi2));
+}
+  
 
 void spit_asidstory() {
     
@@ -160,36 +164,49 @@ void spit_asidstory() {
     }
     fprintf (fp, "\n");
 
+
+    // sort the name/pids by first sighting
+    std::vector < std::tuple < Name, Pid, Instr > > npis;
     for ( auto &kvp1 : namepid_to_asids ) {
+        auto np = kvp1;
         Name name = kvp1.first;
         for ( auto &kvp2 : kvp1.second ) {
             Pid pid = kvp2.first;
-            if ( namepid_ignore[name].count(pid) != 0) {
-                continue;
+            Instr ins = namepid_first_instr[name][pid];
+            npis.push_back(std::make_tuple(name, pid, ins));
+        }
+    }
+    std::sort ( npis.begin(), npis.end(), npis_sort);
+    
+    for ( auto &tup : npis ) {
+        Name name = std::get<0>(tup);
+        Pid pid = std::get<1>(tup);
+        if ( namepid_ignore[name].count(pid) != 0) {
+            continue;
+        }
+        char nps[256];
+        make_nps(name, pid, nps, 256);
+        fprintf (fp, "%20s : ", nps);            
+        fprintf (fp, 
+                 " %15" PRIu64 
+                 " %15" PRIu64
+                 " : ",                 
+                 namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
+        for ( uint32_t i=0; i<num_cells; i++ ) {
+            if ( namepid_cells[name][pid].count(i) == 0 ) {
+                fprintf (fp, " ");
             }
-            char nps[256];
-            make_nps(name, pid, nps, 256);
-            fprintf (fp, "%20s : ", nps);            
-            fprintf (fp, 
-                     " %15" PRIu64 
-                     " %15" PRIu64
-                     " : ",                 
-                     namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
-            for ( uint32_t i=0; i<num_cells; i++ ) {
-                if ( namepid_cells[name][pid].count(i) == 0 ) {
-                    fprintf (fp, " ");
+            else {
+                if ( namepid_cells[name][pid][i] < 2 ) {
+                    fprintf(fp, " ");
                 }
                 else {
-                    if ( namepid_cells[name][pid][i] < 2 ) {
-                        fprintf(fp, " ");
-                    }
-                    else {
-                        fprintf (fp, "#");
-                    }
+                    fprintf (fp, "#");
                 }
-            }        
-            fprintf (fp, "\n");
-        }
+            }
+        }        
+        fprintf (fp, "\n");
+        
     }
     fprintf (fp, "\n");
     for (uint32_t i=5; i<num_cells; i+=5) {
@@ -209,11 +226,11 @@ void spit_asidstory() {
 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
-  /*
-  if ((a_counter % 1000000) == 0) {
+  
+  if ((a_counter % 10000000) == 0) {
         spit_asidstory();
   }
-  */
+  
 
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck.
