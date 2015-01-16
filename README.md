@@ -42,6 +42,10 @@ Communications Security (CCS), Berlin, Germany, November 2013.
 Information Flow Tracking. 22nd International Conference on Compiler
 Construction (CC), Rome, Italy, March 2013.
 
+* [3] B. Dolan-Gavitt, J. Hodosh, P. Hulin, T. Leek, R. Whelan.  
+Repeatable Reverse Engineering for the Greater Good with PANDA.
+TR CUCS-023-14
+
 License
 ----
 GPLv2.
