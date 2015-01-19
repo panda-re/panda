@@ -122,6 +122,16 @@ void taint_host_copy(
         FastShad *greg, FastShad *gspec,
         uint64_t size, uint64_t labels_per_reg, bool is_store);
 
-}
+void taint_host_memcpy(
+        uint64_t env_ptr, uint64_t dest, uint64_t src,
+        FastShad *greg, FastShad *gspec,
+        uint64_t size, uint64_t labels_per_reg);
+
+void taint_host_delete(
+        uint64_t env_ptr, uint64_t dest_addr,
+        FastShad *greg, FastShad *gspec,
+        uint64_t size, uint64_t labels_per_reg);
+
+} // extern "C"
 
 #endif

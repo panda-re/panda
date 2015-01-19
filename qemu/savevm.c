@@ -378,7 +378,7 @@ fail:
     return NULL;
 }
 
-QEMUFile *qemu_tmpfile(void)
+static QEMUFile *qemu_tmpfile(void)
 {
     QEMUFileStdio *s = g_malloc0(sizeof(QEMUFileStdio));
 
@@ -419,6 +419,7 @@ static QEMUFile *qemu_fopen_bdrv(BlockDriverState *bs, int is_writable)
     return qemu_fopen_ops(bs, NULL, block_get_buffer, bdrv_fclose, NULL, NULL, NULL);
 }
 
+__attribute__((unused))
 static bool qemu_file_is_bdrv(QEMUFile* f)
 {
     return ((  (!(f->get_buffer)) || f->get_buffer == block_get_buffer)
@@ -433,6 +434,7 @@ static bool qemu_file_is_fopen(QEMUFile* f)
             && (f->close == stdio_fclose));
 }
 
+__attribute__((unused))
 static bool qemu_file_is_fdopen(QEMUFile* f)
 {
     return ((  (!(f->get_buffer)) || f->get_buffer == stdio_get_buffer)
@@ -440,12 +442,14 @@ static bool qemu_file_is_fdopen(QEMUFile* f)
             && (f->close == stdio_fclose));
 }
 
+__attribute__((unused))
 static bool qemu_file_is_socket(QEMUFile* f)
 {
     return ((f->get_buffer == socket_get_buffer)
             && (f->close == socket_close));
 }
 
+__attribute__((unused))
 static bool qemu_file_is_popen(QEMUFile* f)
 {
     return ((  (!(f->get_buffer)) || f->get_buffer == stdio_get_buffer)
@@ -730,7 +734,7 @@ int64_t qemu_fseek(QEMUFile *f, int64_t pos, int whence)
  * TODO: handle 64-bits, loop over get and set buffers. Unclear how to fail in the middle,
  * since the dst may be write-only, so we can't roll back
  */
-int qemu_sendfile(QEMUFile *dst, QEMUFile *src, int64_t offset, int len)
+static int qemu_sendfile(QEMUFile *dst, QEMUFile *src, int64_t offset, int len)
 {
     uint8_t* buffer;
     int read_chars;

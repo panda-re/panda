@@ -72,6 +72,12 @@ uint64_t vol_instr_count = 0;
 std::string vol_cmds = "";
 
 
+bool pid_ok(int pid) {
+    if (pid < 4) {
+        return false;
+    }
+    return true;
+}
 
 
 // write physmem to a file
@@ -94,7 +100,7 @@ void vol(char *outfilename) {
 }
  
 #define SAMPLE_CUTOFF 10    
-#define SAMPLE_RATE 100
+#define SAMPLE_RATE 1
 #define MILLION 1000000
 
 uint64_t a_counter = 0;
@@ -112,7 +118,7 @@ std::map < Name, std::map < Pid, std::map < Asid, Count > > > namepid_to_asids;
 std::map < Name, std::map < Pid, Instr > > namepid_first_instr;
 std::map < Name, std::map < Pid, Instr > >  namepid_last_instr;
 
-char np[256];
+//char np[256];
 
 void make_nps(Name &name, Pid pid, char *buf, uint32_t buf_len) {
     snprintf (buf, buf_len, "%d-%s", pid, (const char *) name.c_str());
@@ -132,7 +138,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         return 0;
     }
     OsiProc *p = get_current_process(env);
-    if ((p->pid != 0) && (p->asid > 10)) {
+    if (pid_ok(p->pid)) {
         namepid_to_asids[p->name][p->pid][p->asid]++;
         // keep track of first rr instruction for each name/pid
         if ((namepid_first_instr.count(p->name) == 0) 
@@ -149,15 +155,14 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
     OsiProc *p = get_current_process(env);
-    //    Instr instr = rr_get_guest_instr_count();
 
     b_counter ++;
     if ((b_counter % SAMPLE_RATE) != 0) {
         return 0;
     }
-    if ((p->pid != 0) && (p->asid > 10)) {
-        namepid_to_asids[p->name][p->pid][p->asid]++;
+    if (pid_ok(p->pid)) {
         Instr instr = rr_get_guest_instr_count();
+        namepid_to_asids[p->name][p->pid][p->asid]++;
         uint32_t cell = instr * scale;
         namepid_cells[p->name][p->pid][cell] ++;
         namepid_last_instr[p->name][p->pid] = std::max(namepid_last_instr[p->name][p->pid], instr);
@@ -182,10 +187,12 @@ bool init_plugin(void *self) {
 
     printf ("Initializing plugin asidstory\n");
 
+    panda_require("osi");
+   
     // this sets up OS introspection API
     bool x = init_osi_api();  
     assert (x==true);
-    
+
     panda_cb pcb;    
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);

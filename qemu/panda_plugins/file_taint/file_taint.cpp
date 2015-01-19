@@ -9,6 +9,7 @@ extern "C" {
 #include "panda_common.h"
 #include "../syscalls2/gen_syscalls_ext_typedefs_linux_x86.h"
 #include "../taint/taint_ext.h"
+#include "../taint2/taint2_ext.h"
 #include "panda_plugin_plugin.h" 
     
     bool init_plugin(void *);
@@ -21,6 +22,7 @@ extern "C" {
 
 const char *taint_filename = 0;
 bool positional_labels = true;
+bool use_taint2 = true;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
@@ -84,14 +86,17 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
 
     if (saw_read) {
         printf ("returning from read of [%s] count=%d\n", taint_filename, count);    
-        printf ("*** applying taint labels to buffer\n");
+        printf ("*** applying %s taint labels to buffer\n",
+                positional_labels ? "positional" : "uniform");
         for (uint32_t i=0; i<count; i++ ) {
             target_phys_addr_t pa = panda_virt_to_phys(env, the_buf+i);
             if (positional_labels) {
-                taint_label_ram(pa, i);
+                if (use_taint2) taint2_label_ram(pa, i);
+                else taint_label_ram(pa, i);
             }
             else {
-                taint_label_ram(pa, 1);
+                if (use_taint2) taint2_label_ram(pa, 0);
+                else taint_label_ram(pa, 0);
             }
         }
         saw_read = false;
@@ -107,14 +112,24 @@ bool init_plugin(void *self) {
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string(args, "filename", "abc123");
     positional_labels = panda_parse_bool(args, "pos");
+    use_taint2 = !panda_parse_bool(args, "taint1");
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
 
+
+    panda_require("syscalls2");
+
     // this sets up the taint api fn ptrs so we have access
-    bool x = init_taint_api();  
-    assert (x==true);
-    taint_enable_taint();
+    if (use_taint2) {
+        panda_require("taint2");
+        assert(init_taint2_api());
+        taint2_enable_taint();
+    } else {
+        panda_require("taint");
+        assert(init_taint_api());
+        taint_enable_taint();
+    }
     
 #if defined(TARGET_I386)
             

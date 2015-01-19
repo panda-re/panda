@@ -214,7 +214,7 @@ void marshall_uint64_uint64_map(std::string filename, std::map < uint64_t, uint6
 void uninit_plugin(void *self) {
 #ifdef CONFIG_SOFTMMU
     uint32_t n = ind.size();
-    printf ("found %d cr3s\n", ind.size());
+    printf ("found %lu cr3s\n", ind.size());
     std::string fn = std::string(traceind_pfx) + ".cr3";
     FILE *fp = fopen(fn.c_str(), "w");
     fwrite ((void *) &n, sizeof(n), 1, fp);

@@ -186,7 +186,7 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 
 void on_get_processes(CPUState *env, OsiProcs **out_ps) {
     PTR first = get_current_proc(env);
-    //    PTR first_pid = get_pid(env, first);
+    //PTR first_pid = get_pid(env, first);
     PTR current = first;
 
     OsiProcs *ps = (OsiProcs *)malloc(sizeof(OsiProcs));

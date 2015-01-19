@@ -43,9 +43,9 @@ extern "C" {
 
 extern bool tainted_pointer;
 
-PPP_PROT_REG_CB(on_branch);
+PPP_PROT_REG_CB(on_branch2);
 
-PPP_CB_BOILERPLATE(on_branch);
+PPP_CB_BOILERPLATE(on_branch2);
 }
 
 extern char *qemu_loc;
@@ -80,7 +80,7 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
 }
 
 static void taint_branch_run(FastShad *shad, uint64_t src) {
-    PPP_RUN_CB(on_branch, FastShad::query(shad, src));
+    PPP_RUN_CB(on_branch2, FastShad::query(shad, src));
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
@@ -129,6 +129,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.sextF = M.getFunction("taint_sext");
     PTV.selectF = M.getFunction("taint_select");
     PTV.hostCopyF = M.getFunction("taint_host_copy");
+    PTV.hostMemcpyF = M.getFunction("taint_host_memcpy");
+    PTV.hostDeleteF = M.getFunction("taint_host_delete");
+
     PTV.pushFrameF = M.getFunction("taint_push_frame");
     PTV.popFrameF = M.getFunction("taint_pop_frame");
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
@@ -295,7 +298,7 @@ unsigned PandaTaintVisitor::getValueSize(Value *V) {
     return (size < 8) ? 1 : size / 8;
 }
 
-bool inline_taint = true;
+bool inline_taint = false;
 void PandaTaintVisitor::inlineCall(CallInst *CI) {
     assert(CI);
         if (inline_taint) {
@@ -768,7 +771,12 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             insertTaintCopy(I, destConst, dest, srcConst, src, size);
         }
     } else if (isa<Constant>(val) && isStore) {
-        // FIXME: Delete taint at destination memory address.
+        PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
+        vector<Value *> args{
+            const_uint64_ptr(ctx, cpu_single_env), P2II,
+            grvConst, gsvConst, const_uint64(ctx, size), const_uint64(ctx, WORDSIZE)
+        };
+        inlineCallAfter(I, hostDeleteF, args);
     } else {
         PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
@@ -892,42 +900,39 @@ void PandaTaintVisitor::visitPHINode(PHINode &I) {
 }
 
 void PandaTaintVisitor::visitMemCpyInst(MemTransferInst &I) {
-    int size = intValue(I.getLength());
-    assert(size >= 0);
-
-    insertTaintCopy(I, memConst, NULL, memConst, NULL, size);
+    LLVMContext &ctx = I.getContext();
+    Value *dest = I.getDest();
+    Value *src = I.getSource();
+    Value *size = I.getLength();
+    PtrToIntInst *destP2II = new PtrToIntInst(dest, Type::getInt64Ty(ctx), "", &I);
+    PtrToIntInst *srcP2II = new PtrToIntInst(src, Type::getInt64Ty(ctx), "", &I);
+    assert(destP2II && srcP2II);
+    vector<Value *> args{
+        const_uint64_ptr(ctx, cpu_single_env), destP2II, srcP2II,
+        grvConst, gsvConst, size, const_uint64(ctx, WORDSIZE)
+    };
+    inlineCallAfter(I, hostMemcpyF, args);
 }
 
 void PandaTaintVisitor::visitMemMoveInst(MemTransferInst &I) {
-    int size = intValue(I.getLength());
-    assert(size >= 0);
-
-    insertTaintMove(I, memConst, NULL, memConst, NULL, size);
+    assert(false && "MemMove unhandled!");
 }
 
 void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     LLVMContext &ctx = I.getContext();
 
-    CallInst *destCI = insertLogPop(I);
-    assert(destCI != NULL);
-
+    Value *dest = I.getDest();
     Value *size = I.getLength();
-    Value *writeval = I.getValue();
-    if (isa<Constant>(writeval)) {
-        insertTaintDelete(*destCI, memConst, destCI, size);
-    } else {
-        assert(size->getType()->isIntegerTy());
-        assert(getValueSize(size) <= 8);
-        if (getValueSize(size) < 8) {
-            // insert ZExtInst before I.
-            size = new ZExtInst(size, IntegerType::get(ctx, 64), "", &I);
-        }
-        vector<Value *> args{
-            memConst, destCI, size, llvConst, constSlot(ctx, writeval)
-        };
-        inlineCallAfter(*destCI, setF, args);
-    }
-    inlineCall(destCI);
+    assert(isa<Constant>(I.getValue()));
+
+    PtrToIntInst *P2II = new PtrToIntInst(dest, Type::getInt64Ty(ctx), "", &I);
+    assert(P2II);
+
+    vector<Value *> args{
+        const_uint64_ptr(ctx, cpu_single_env), P2II,
+        grvConst, gsvConst, size, const_uint64(ctx, WORDSIZE)
+    };
+    inlineCallAfter(I, hostDeleteF, args);
 }
 
 void PandaTaintVisitor::visitCallInst(CallInst &I) {

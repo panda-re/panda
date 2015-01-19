@@ -231,6 +231,23 @@ void taint_select(
     tassert(false && "Couldn't find selected argument!!");
 }
 
+static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
+#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
+#define m_size(member) sizeof(((CPUState *)0)->member)
+#define m_endoff(member) (m_off(member) + m_size(member))
+    if (m_off(regs) <= offset && offset < m_endoff(regs)) {
+        *dest = greg;
+        *addr = (offset - m_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
+    } else {
+        *dest= gspec;
+        *addr= offset;
+    }
+#undef contains_offset
+#undef m_endoff
+#undef m_size
+#undef m_off
+}
+
 // This should only be called on loads/stores from CPUState.
 void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
@@ -240,27 +257,15 @@ void taint_host_copy(
     int64_t offset = addr - env_ptr;
     if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
         // Irrelevant
+        taint_log("hostcopy: irrelevant\n");
         return;
     }
 
-    FastShad *state_shad;
-    uint64_t state_addr;
+    FastShad *state_shad = NULL;
+    uint64_t state_addr = 0;
 
-#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
-#define m_size(member) sizeof(((CPUState *)0)->member)
-#define m_endoff(member) (m_off(member) + m_size(member))
-#define contains_offset(member) (m_off(member) <= (unsigned)(offset) && (unsigned)(offset) < m_endoff(member))
-    if (contains_offset(regs)) {
-        state_shad = greg;
-        state_addr = (offset - m_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
-    } else {
-        state_shad = gspec;
-        state_addr = offset;
-    }
-#undef contains_offset
-#undef m_endoff
-#undef m_size
-#undef m_off
+    find_offset(greg, gspec, (uint64_t)offset, labels_per_reg,
+            &state_shad, &state_addr);
 
     FastShad *shad_src = is_store ? llv : state_shad;
     uint64_t src = is_store ? llv_offset : state_addr;
@@ -280,4 +285,57 @@ void taint_host_copy(
     taint_log(")\n");
 #endif
     FastShad::copy(shad_dest, dest, shad_src, src, size);
+}
+
+
+void taint_host_memcpy(
+        uint64_t env_ptr, uint64_t dest, uint64_t src,
+        FastShad *greg, FastShad *gspec,
+        uint64_t size, uint64_t labels_per_reg) {
+    int64_t dest_offset = dest - env_ptr, src_offset = src - env_ptr;
+    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUState) || 
+            src_offset < 0 || (size_t)src_offset >= sizeof(CPUState)) {
+        taint_log("hostmemcpy: irrelevant\n");
+        return;
+    }
+
+    FastShad *shad_dest = NULL, *shad_src = NULL;
+    uint64_t addr_dest = 0, addr_src = 0;
+
+    find_offset(greg, gspec, (uint64_t)dest_offset, labels_per_reg,
+            &shad_dest, &addr_dest);
+    find_offset(greg, gspec, (uint64_t)src_offset, labels_per_reg,
+            &shad_src, &addr_src);
+
+#ifdef TAINTDEBUG
+    taint_log("hostmemcpy: %lx[%lx+%lx] <- %lx[%lx] (offsets %lx <- %lx) (",
+            (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src,
+            dest_offset, src_offset);
+    unsigned i;
+    for (i = 0; i < size; i++) {
+        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
+    }
+    taint_log(")\n");
+#endif
+    FastShad::copy(shad_dest, dest, shad_src, src, size);
+}
+
+void taint_host_delete(
+        uint64_t env_ptr, uint64_t dest_addr,
+        FastShad *greg, FastShad *gspec,
+        uint64_t size, uint64_t labels_per_reg) {
+    int64_t offset = dest_addr - env_ptr;
+
+    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
+        taint_log("hostdel: irrelevant\n");
+        return;
+    }
+    FastShad *shad = NULL;
+    uint64_t dest = 0;
+
+    find_offset(greg, gspec, offset, labels_per_reg, &shad, &dest);
+
+    taint_log("hostdel: %lx[%lx+%lx]", (uint64_t)shad, dest, size);
+
+    FastShad::remove(shad, dest, size);
 }

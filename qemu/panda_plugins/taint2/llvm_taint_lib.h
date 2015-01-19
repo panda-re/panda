@@ -131,6 +131,8 @@ public:
     Function *sextF;
     Function *selectF;
     Function *hostCopyF;
+    Function *hostMemcpyF;
+    Function *hostDeleteF;
 
     Function *pushFrameF;
     Function *popFrameF;

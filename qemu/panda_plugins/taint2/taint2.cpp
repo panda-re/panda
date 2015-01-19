@@ -50,6 +50,7 @@ void taint2_label_ram(uint64_t pa, uint32_t l) ;
 uint32_t taint2_query_ram(uint64_t pa);
 void taint2_delete_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
+void taint2_labelset_spit(LabelSetP ls);
 
 }
 
@@ -481,7 +482,7 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
     tainted_pointer = !panda_parse_bool(args, "no_tp");
-    inline_taint = !panda_parse_bool(args, "no_inline");
+    inline_taint = panda_parse_bool(args, "inline");
     if (inline_taint) {
         printf("taint2: Inlining taint ops by default.\n");
     } else {
