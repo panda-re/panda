@@ -487,6 +487,21 @@ uint32_t arg11 = get_return_32(env, 11);
 uint32_t arg12 = get_return_32(env, 12);
 PPP_RUN_CB(on_NtCreateToken_return, env,pc,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12) ; 
 }; break;
+// 93 NTSTATUS NtCreateUserProcess ['PHANDLE ProcessHandle', ' PHANDLE ThreadHandle', ' ACCESS_MASK ProcessDesiredAccess', ' ACCESS_MASK ThreadDesiredAccess', ' POBJECT_ATTRIBUTES ProcessObjectAttributes', ' POBJECT_ATTRIBUTES ThreadObjectAttributes', ' ULONG ProcessFlags', ' ULONG ThreadFlags', ' PRTL_USER_PROCESS_PARAMETERS ProcessParameters', ' PPROCESS_CREATE_INFO CreateInfo', ' PPROCESS_ATTRIBUTE_LIST AttributeList']
+case 93: {
+uint32_t arg0 = get_return_32(env, 0);
+uint32_t arg1 = get_return_32(env, 1);
+uint32_t arg2 = get_return_32(env, 2);
+uint32_t arg3 = get_return_32(env, 3);
+uint32_t arg4 = get_return_32(env, 4);
+uint32_t arg5 = get_return_32(env, 5);
+uint32_t arg6 = get_return_32(env, 6);
+uint32_t arg7 = get_return_32(env, 7);
+uint32_t arg8 = get_return_32(env, 8);
+uint32_t arg9 = get_return_32(env, 9);
+uint32_t arg10 = get_return_32(env, 10);
+PPP_RUN_CB(on_NtCreateUserProcess_return, env,pc,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10) ; 
+}; break;
 // 94 NTSTATUS NtCreateWaitablePort ['PHANDLE PortHandle', ' POBJECT_ATTRIBUTES ObjectAttributes', ' ULONG MaxConnectInfoLength', ' ULONG MaxDataLength', ' ULONG NPMessageQueueSize']
 case 94: {
 uint32_t arg0 = get_return_32(env, 0);
@@ -945,6 +960,14 @@ uint32_t arg0 = get_return_32(env, 0);
 uint32_t arg1 = get_return_32(env, 1);
 uint32_t arg2 = get_return_32(env, 2);
 PPP_RUN_CB(on_NtOpenKey_return, env,pc,arg0,arg1,arg2) ; 
+}; break;
+// 183 NTSTATUS NtOpenKeyEx ['PHANDLE KeyHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' ULONG OpenOptions']
+case 183: {
+uint32_t arg0 = get_return_32(env, 0);
+uint32_t arg1 = get_return_32(env, 1);
+uint32_t arg2 = get_return_32(env, 2);
+uint32_t arg3 = get_return_32(env, 3);
+PPP_RUN_CB(on_NtOpenKeyEx_return, env,pc,arg0,arg1,arg2,arg3) ; 
 }; break;
 // 184 NTSTATUS NtOpenKeyedEvent ['PHANDLE EventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
 case 184: {

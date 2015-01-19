@@ -125,7 +125,113 @@ void make_nps(Name &name, Pid pid, char *buf, uint32_t buf_len) {
 }
 
 
+bool npis_sort (std::tuple < Name, Pid, Instr > npi1, std::tuple < Name, Pid, Instr > npi2 ) {
+    return (std::get<2>(npi1) < std::get<2>(npi2));
+}
+  
+
+void spit_asidstory() {
+    
+    FILE *fp = fopen("asidstory", "w");
+
+    // write out concordance namepid to asid 
+    std::map < Name, std::set < Pid > > namepid_ignore;
+    for ( auto &kvp1 : namepid_to_asids ) {
+        Name name = kvp1.first;
+        for ( auto &kvp2 : kvp1.second ) {
+            Pid pid = kvp2.first;
+            uint64_t tc = 0;
+            for ( auto &kvp3 : kvp2.second ) {
+                //                Asid asid = kvp3.first;
+                Count count = kvp3.second;
+                tc += count;
+            }
+            // probably not a *real* process
+            if (tc < SAMPLE_CUTOFF) {
+                namepid_ignore[name].insert(pid);
+                continue;
+            }
+            char nps[256];
+            make_nps(name, pid, nps, 256);
+            fprintf (fp, "%20s : ", nps);
+            for ( auto &kvp3 : namepid_to_asids[name][pid] ) {
+                Asid asid = kvp3.first;
+                Count count = kvp3.second;            
+                fprintf (fp, "(count=%d, asid=0x%x) ", (unsigned int) count, (unsigned int) asid);
+            }            
+            fprintf (fp, "\n");
+        }
+    }
+    fprintf (fp, "\n");
+
+
+    // sort the name/pids by first sighting
+    std::vector < std::tuple < Name, Pid, Instr > > npis;
+    for ( auto &kvp1 : namepid_to_asids ) {
+        auto np = kvp1;
+        Name name = kvp1.first;
+        for ( auto &kvp2 : kvp1.second ) {
+            Pid pid = kvp2.first;
+            Instr ins = namepid_first_instr[name][pid];
+            npis.push_back(std::make_tuple(name, pid, ins));
+        }
+    }
+    std::sort ( npis.begin(), npis.end(), npis_sort);
+    
+    for ( auto &tup : npis ) {
+        Name name = std::get<0>(tup);
+        Pid pid = std::get<1>(tup);
+        if ( namepid_ignore[name].count(pid) != 0) {
+            continue;
+        }
+        char nps[256];
+        make_nps(name, pid, nps, 256);
+        fprintf (fp, "%20s : ", nps);            
+        fprintf (fp, 
+                 " %15" PRIu64 
+                 " %15" PRIu64
+                 " : ",                 
+                 namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
+        for ( uint32_t i=0; i<num_cells; i++ ) {
+            if ( namepid_cells[name][pid].count(i) == 0 ) {
+                fprintf (fp, " ");
+            }
+            else {
+                if ( namepid_cells[name][pid][i] < 2 ) {
+                    fprintf(fp, " ");
+                }
+                else {
+                    fprintf (fp, "#");
+                }
+            }
+        }        
+        fprintf (fp, "\n");
+        
+    }
+    fprintf (fp, "\n");
+    for (uint32_t i=5; i<num_cells; i+=5) {
+        uint64_t instr = i / scale;
+        fprintf (fp, "                      ");
+        fprintf (fp, "                 ");
+        fprintf (fp, " %15" PRIu64 " : ", instr);
+        for (uint32_t j=0; j<i; j++) {
+            fprintf (fp, " ");
+        }
+        fprintf (fp, "^\n");
+    }
+    fclose(fp);
+
+}
+
+
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+
+  
+  if ((a_counter % 10000000) == 0) {
+        spit_asidstory();
+  }
+  
+
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck.
     if (max_instr == 0) {
@@ -146,6 +252,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             namepid_first_instr[p->name][p->pid] = rr_get_guest_instr_count();
         }
     }
+    free (p);
     return 0;
 }
 
@@ -154,12 +261,11 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 
 int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
-    OsiProc *p = get_current_process(env);
-
     b_counter ++;
     if ((b_counter % SAMPLE_RATE) != 0) {
         return 0;
     }
+    OsiProc *p = get_current_process(env);
     if (pid_ok(p->pid)) {
         Instr instr = rr_get_guest_instr_count();
         namepid_to_asids[p->name][p->pid][p->asid]++;
@@ -175,6 +281,7 @@ int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
         vol((char *) fn.c_str());
         vol_done = true;
     }        
+    free(p);
     return 0;
 }
 
@@ -211,82 +318,6 @@ bool init_plugin(void *self) {
 
 
 void uninit_plugin(void *self) {
-    
-    FILE *fp = fopen("asidstory", "w");
-
-    // write out concordance namepid to asid 
-    std::map < Name, std::set < Pid > > namepid_ignore;
-    for ( auto &kvp1 : namepid_to_asids ) {
-        Name name = kvp1.first;
-        for ( auto &kvp2 : kvp1.second ) {
-            Pid pid = kvp2.first;
-            uint64_t tc = 0;
-            for ( auto &kvp3 : kvp2.second ) {
-                //                Asid asid = kvp3.first;
-                Count count = kvp3.second;
-                tc += count;
-            }
-            // probably not a *real* process
-            if (tc < SAMPLE_CUTOFF) {
-                namepid_ignore[name].insert(pid);
-                continue;
-            }
-            char nps[256];
-            make_nps(name, pid, nps, 256);
-            fprintf (fp, "%20s : ", nps);
-            for ( auto &kvp3 : namepid_to_asids[name][pid] ) {
-                Asid asid = kvp3.first;
-                Count count = kvp3.second;            
-                fprintf (fp, "(count=%d, asid=0x%x) ", (unsigned int) count, (unsigned int) asid);
-            }            
-            fprintf (fp, "\n");
-        }
-    }
-    fprintf (fp, "\n");
-
-    for ( auto &kvp1 : namepid_to_asids ) {
-        Name name = kvp1.first;
-        for ( auto &kvp2 : kvp1.second ) {
-            Pid pid = kvp2.first;
-            if ( namepid_ignore[name].count(pid) != 0) {
-                continue;
-            }
-            char nps[256];
-            make_nps(name, pid, nps, 256);
-            fprintf (fp, "%20s : ", nps);            
-            fprintf (fp, 
-                     " %15" PRIu64 
-                     " %15" PRIu64
-                     " : ",                 
-                     namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
-            for ( uint32_t i=0; i<num_cells; i++ ) {
-                if ( namepid_cells[name][pid].count(i) == 0 ) {
-                    fprintf (fp, " ");
-                }
-                else {
-                    if ( namepid_cells[name][pid][i] < 2 ) {
-                        fprintf(fp, " ");
-                    }
-                    else {
-                        fprintf (fp, "#");
-                    }
-                }
-            }        
-            fprintf (fp, "\n");
-        }
-    }
-    fprintf (fp, "\n");
-    for (uint32_t i=5; i<num_cells; i+=5) {
-        uint64_t instr = i / scale;
-        fprintf (fp, "                      ");
-        fprintf (fp, "                 ");
-        fprintf (fp, " %15" PRIu64 " : ", instr);
-        for (uint32_t j=0; j<i; j++) {
-            fprintf (fp, " ");
-        }
-        fprintf (fp, "^\n");
-    }
-    fclose(fp);
-
+  spit_asidstory();
 }
 

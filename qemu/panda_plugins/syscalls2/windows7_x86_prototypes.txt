@@ -53,6 +53,7 @@
 87 NTSTATUS NtCreateThread (PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ProcessHandle, PCLIENT_ID ClientId, PCONTEXT ThreadContext, PINITIAL_TEB UserStack, BOOLEAN CreateSuspended);
 89 NTSTATUS NtCreateTimer (PHANDLE TimerHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, TIMER_TYPE TimerType);
 90 NTSTATUS NtCreateToken (PHANDLE TokenHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, TOKEN_TYPE TokenType, PLUID AuthenticationId, PLARGE_INTEGER ExpirationTime, PTOKEN_USER TokenUser, PTOKEN_GROUPS TokenGroups, PTOKEN_PRIVILEGES TokenPrivileges, PTOKEN_OWNER TokenOwner, PTOKEN_PRIMARY_GROUP TokenPrimaryGroup, PTOKEN_DEFAULT_DACL TokenDefaultDacl, PTOKEN_SOURCE TokenSource);
+93 NTSTATUS NtCreateUserProcess (PHANDLE ProcessHandle, PHANDLE ThreadHandle, ACCESS_MASK ProcessDesiredAccess, ACCESS_MASK ThreadDesiredAccess, POBJECT_ATTRIBUTES ProcessObjectAttributes, POBJECT_ATTRIBUTES ThreadObjectAttributes, ULONG ProcessFlags, ULONG ThreadFlags, PRTL_USER_PROCESS_PARAMETERS ProcessParameters, PPROCESS_CREATE_INFO CreateInfo, PPROCESS_ATTRIBUTE_LIST AttributeList);
 94 NTSTATUS NtCreateWaitablePort (PHANDLE PortHandle, POBJECT_ATTRIBUTES ObjectAttributes, ULONG MaxConnectInfoLength, ULONG MaxDataLength, ULONG NPMessageQueueSize);
 96 NTSTATUS NtDebugActiveProcess (HANDLE Process, HANDLE DebugObject);
 97 NTSTATUS NtDebugContinue (HANDLE DebugObject, PCLIENT_ID AppClientId, NTSTATUS ContinueStatus);
@@ -116,6 +117,7 @@
 180 NTSTATUS NtOpenIoCompletion (PHANDLE CompetionPort, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
 181 NTSTATUS NtOpenJobObject (PHANDLE JobHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
 182 NTSTATUS NtOpenKey (PHANDLE KeyHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+183 NTSTATUS NtOpenKeyEx (PHANDLE KeyHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, ULONG OpenOptions);
 184 NTSTATUS NtOpenKeyedEvent (PHANDLE EventHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
 187 NTSTATUS NtOpenMutant (PHANDLE MutantHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
 188 NTSTATUS NtOpenObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, PUNICODE_STRING ObjectTypeName, PUNICODE_STRING ObjectName, PSECURITY_DESCRIPTOR SecurityDescriptor, HANDLE ClientToken, ULONG DesiredAccess, ULONG GrantedAccess, PPRIVILEGE_SET Privileges, BOOLEAN ObjectCreation, BOOLEAN AccessGranted, PBOOLEAN GenerateOnClose);
