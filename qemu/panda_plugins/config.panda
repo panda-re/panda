@@ -31,6 +31,7 @@ tralign
 printstack
 tainted_branch
 osi
+osi_linux
 win7x86intro
 memstrings
 asidstory
