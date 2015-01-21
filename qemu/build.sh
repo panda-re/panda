@@ -10,7 +10,7 @@ python ../scripts/apigen.py
 --disable-xen \
 --disable-libiscsi \
 --enable-llvm \
---with-llvm=../llvm/Debug+Asserts \
+--with-llvm=../llvm/${PANDA_LLVM_BUILD:=Debug+Asserts} \
 --extra-cflags="-O2" \
 --extra-cxxflags="-O2" \
 --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
