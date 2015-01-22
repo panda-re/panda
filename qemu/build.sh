@@ -15,9 +15,8 @@ sh ./pp.sh
 --disable-xen \
 --disable-libiscsi \
 --enable-llvm \
---with-llvm=../llvm/Debug+Asserts \
+--with-llvm=../llvm/Release \
 --extra-cflags="-O2 -I/usr/local/include" \
 --extra-cxxflags="-O2" \
---extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c" 
-
-make -j $(nproc)
+--extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c" \
+&& make -j $(nproc)
