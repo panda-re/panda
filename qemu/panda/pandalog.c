@@ -1,8 +1,14 @@
+
+#ifndef PANDALOG_READER
 #include "panda_common.h"
 #include "rr_log.h"
+#endif
+
+
 #include "pandalog.pb-c.h"
 #include "pandalog.h"
 #include <zlib.h>
+#include <stdlib.h>
 
 gzFile pandalog_file = 0;
 
@@ -40,6 +46,7 @@ int  pandalog_close(void) {
 }
 
 
+#ifndef PANDALOG_READER
 void pandalog_write_entry(Panda__LogEntry *entry) {
     // fill in required fields. 
     // NOTE: any other fields will already have been filled in 
@@ -54,12 +61,13 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
     // and then the entry itself
     gzwrite(pandalog_file, pandalog_buf, n);        
 }
-
+#endif
 
 Panda__LogEntry *pandalog_read_entry(void) {
     // read the size of the log entry
     size_t n;
     gzread(pandalog_file, (void *) &n, sizeof(n));
+    resize_pandalog(n);
     // and then read the entry iself
     gzread(pandalog_file, pandalog_buf, n);
     // and unpack it
@@ -70,5 +78,6 @@ Panda__LogEntry *pandalog_read_entry(void) {
 void pandalog_free_entry(Panda__LogEntry *entry) {    
     panda__log_entry__free_unpacked(entry, NULL);
 }
+
 
 

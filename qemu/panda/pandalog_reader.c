@@ -1,30 +1,20 @@
 
-// gcc -o pandalog_reader pandalog_reader.c pandalog.pb-c.c  -L/usr/local/lib -lprotobuf-c
+// cd panda/qemu
+// gcc -g -o pandalog_reader pandalog_reader.c pandalog.c pandalog.pb-c.c  -L/usr/local/lib -lprotobuf-c -I .. -lz -D PANDALOG_READER
 
 
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "pandalog.pb-c.h"
-
-
-
-Panda__LogEntry *readstdin() {
-    char buf[1024];
-    size_t len;
-    size_t n = fread((void *) &len, sizeof(len), 1, stdin);
-    if (n==0) return NULL;
-    n = fread(buf, len, 1, stdin);
-    if (n==0) return NULL;
-    return panda__log_entry__unpack(NULL, len, buf);
-}
+#include "pandalog.h"
 
 
 int main (int argc, char **argv) {
+    pandalog_open(argv[1], "r");
     Panda__LogEntry *ple;
     while (1) {
-        ple = readstdin();
+        ple = pandalog_read_entry();
         if (ple == NULL) {
             break;
         }
