@@ -207,6 +207,9 @@ extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 
+void pandalog_open(const char *path, const char *mode);
+int  pandalog_close(void);
+int pandalog = 0;
 
 #include "ui/qemu-spice.h"
 
@@ -3215,6 +3218,11 @@ int main(int argc, char **argv, char **envp)
                 replay_name = optarg;
                 break;
 
+            case QEMU_OPTION_pandalog:
+                pandalog = 1;
+                pandalog_open(optarg, "w");
+                break;
+
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
                     fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
@@ -3318,6 +3326,7 @@ int main(int argc, char **argv, char **envp)
       }
     }
 
+ 
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the
      * other one may be encountered later on the command line, changing the
@@ -3803,6 +3812,10 @@ int main(int argc, char **argv, char **envp)
 
     // PANDA: unload plugins
     panda_unload_plugins();
+
+    if (pandalog) {
+        pandalog_close();
+    }
 
     bdrv_close_all();
 

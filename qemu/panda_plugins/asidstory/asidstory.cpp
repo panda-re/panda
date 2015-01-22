@@ -49,6 +49,7 @@ extern "C" {
 
 #include "panda_plugin.h"
 #include "panda_common.h"
+#include "pandalog.h"
 
 #include "rr_log.h"
 #include "rr_log_all.h"  
@@ -224,12 +225,16 @@ void spit_asidstory() {
 }
 
 
+char *last_name = 0;
+target_ulong last_pid = 0;
+target_ulong last_asid = 0;
+
+
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
-  
-  if ((a_counter % 10000000) == 0) {
+    if ((a_counter % 10000000) == 0) {
         spit_asidstory();
-  }
+    }
   
 
     // NB: we only know max instr *after* replay has started,
@@ -250,6 +255,24 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         if ((namepid_first_instr.count(p->name) == 0) 
             || (namepid_first_instr[p->name].count(p->pid) == 0)) {
             namepid_first_instr[p->name][p->pid] = rr_get_guest_instr_count();
+        }
+        if (pandalog) {
+            if (last_name == 0
+                || (p->asid != last_asid)
+                || (p->pid != last_pid) 
+                || (0 != strcmp(p->name, last_name))) {        
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_asid = 1;
+                ple.asid = p->asid;
+                ple.has_process_id = 1;
+                ple.process_id = p->pid;
+                ple.process_name = p->name;
+                pandalog_write_entry(&ple);           
+                last_asid = p->asid;
+                last_pid = p->pid;
+                free(last_name);
+                last_name = strdup(p->name);
+            }
         }
     }
     free (p);
