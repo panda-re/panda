@@ -347,10 +347,10 @@ bool init_plugin(void *self) {
 
     // Load kernel offsets.
     if (read_kernelinfo(NULL, KERNELINFO_GROUP, &ki) != 0) {
-        LOG_ERR("Failed to read conf group %s", KERNELINFO_GROUP);
+        LOG_ERR("Failed to read conf group %s.", KERNELINFO_GROUP);
         goto error;
     }
-    LOG_ERR("Read kernel info from conf group %s", KERNELINFO_GROUP);
+    LOG_INFO("Read kernel info from conf group %s.", KERNELINFO_GROUP);
 
 #if (OSI_LINUX_TEST)
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
