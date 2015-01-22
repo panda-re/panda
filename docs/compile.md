@@ -87,6 +87,9 @@ cd -
 
 ### Protocol buffers C style
 
+Protocol buffers are used by pandalog.  You want it.
+This is how I built things and installed them.
+
 ```
 cd ~/software
 git clone https://github.com/google/protobuf.git
@@ -103,7 +106,7 @@ sh ./autogen.sh
 ./configure --disable-shared
 make
 make install
-
+```
 
 ## Building the QEMU part
 After successfully installing all the prerequisites, you can go
