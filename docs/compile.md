@@ -89,13 +89,13 @@ cd -
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.
 
-By default, `build.sh` will attempt to use the debug build of
-LLVM. You can override this by setting the `PANDA_LLVM_BUILD`
-environment variable. E.g. to you use the release build
-(faster), run:
+By default, `build.sh` will attempt to use the release build of
+LLVM (faster).
+You can override this by setting the `PANDA_LLVM_BUILD`
+environment variable. E.g. to you use the debug build run:
 
 ```
-export PANDA_LLVM_BUILD=Release
+export PANDA_LLVM_BUILD=Debug+Asserts
 ```
 
 After making sure that the proper LLVM build will be used,
