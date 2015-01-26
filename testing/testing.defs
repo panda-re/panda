@@ -27,6 +27,6 @@ function set_outputs {
   testout=${outdir}/${tst}.${testoutsuff}
   # expected output is supposed to be here                                                                                                                                                                                                  
   refout=${refdir}/${tst}.${testoutsuff}
-  echo "testout set to [$testout]"
-  echo "refout set to [$refout]"
+#  echo "testout set to [$testout]"
+#  echo "refout set to [$refout]"
 }

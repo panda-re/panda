@@ -21,8 +21,13 @@ set_outputs $tst
 # this is where pandlog will go
 pandalog=${outdir}/asidstory1.pandalog
 
+# delete pandalog & asidstory because we want to make sure that this run creates them
+/bin/rm -f $pandalog
+/bin/rm -f ./asidstory
+
+
 # run qemu with asidstory & pandalog
-${testingdir}/runqemu.bash i386 ${replaydir}/NotExploitable/notexploitable $pandalog -pandalog $pandalog -panda 'debianwheezyx86intro;asidstory'
+${testingdir}/runqemu.bash i386 ${replaydir}/NotExploitable/notexploitable -pandalog $pandalog -panda 'debianwheezyx86intro;asidstory'
 
 # really there are two outputs here.
 # 1. the textual asidstory (in the file ./asidstory)

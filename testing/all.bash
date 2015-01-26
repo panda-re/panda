@@ -11,32 +11,27 @@
 #
 # arg 2, regressiondir, also must be present
 # 
+usage="try again with all.bash mode regressiondir"
 
 if [ $# != 2 ]
 then
-    echo "try again with all.bash mode regressiondir"
+    echo $usage
     exit 1
 fi
-
-
-
-allstarttime=$(date +%s%N)
 
 mode=$1
 regressiondir=$2
 
-
-if [ -z $1 ]
-then
-    echo "try again with all.bash [test|ref]"
-    exit 1
-fi
-
 if [[ $mode != "ref" ]] && [[ $mode != "test" ]]
 then
-    echo "try again with all.bash [test|ref]"
+    echo $usage
     exit 1
 fi
+
+
+allstarttime=$(date +%s%N)
+
+
 
 source testing.defs
 
@@ -61,7 +56,7 @@ do
     echo "test [${tst}] output BEGIN"
     testcmds="./tests/${tst}/${tst}.bash $regressiondir"
     echo "testcmds=[$testcmds]"
-    `time $testcmds`
+    time $testcmds
     echo "test [${tst}] output END"
     echo "--------------"
     set_outputs $tst
