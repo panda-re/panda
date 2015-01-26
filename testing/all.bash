@@ -44,6 +44,9 @@ num_passed=0
 num_failed=0
 num_tests=0
 
+declare -A times
+declare -A result
+
 for tst in `/bin/ls tests`
 do  
     starttime=$(date +%s%N)
@@ -75,9 +78,11 @@ do
 	then
 	    echo "*** test [${tst}] PASSED"
 	    num_passed=$((num_passed + 1))
+	    result[${tst}]="PASS"
 	else
 	    echo "*** test [${tst}] FAILED"
 	    num_failed=$((num_failed + 1))
+	    result[${tst}]="FAIL"
 	fi
     fi
     endtime=$(date +%s%N)
@@ -85,6 +90,7 @@ do
     elapsed=$(bc <<< "scale=2; $elapsed / 1000000000" )
     echo "test [${tst}] END.  $elapsed seconds"
     num_tests=$((num_tests + 1))
+    time[${tst}]=$elapsed
 done
 
 allendtime=$(date +%s%N)
@@ -94,6 +100,16 @@ elapsed=$(bc <<< "scale=2; $elapsed / 1000000000" )
 
 echo " "
 echo "//////////////////"
+
+
+echo " "
+echo "SUMMARY"
+for tst in `/bin/ls tests`
+do  
+    echo "$tst ${result[${tst}]} ${time[${tst}]} sec"
+done
+
+echo " "
 echo "A total of $num_tests tests completed."
 echo "total time required: $elapsed seconds"
 
@@ -111,7 +127,5 @@ if [[ $mode == "ref" ]]
 then
     echo "** references created"
 fi
-
-
 
 
