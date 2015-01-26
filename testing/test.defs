@@ -1,0 +1,9 @@
+nas=/nas/regression
+replaydir=${nas}/replays
+pandadir=/home/panda/git/panda
+
+# this is where to put test outputs
+outdir=/tmp
+
+# and this is where reference, blessed outputs for those tests reside
+referencedir=${nas}/outputs
