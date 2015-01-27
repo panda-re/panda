@@ -27,7 +27,7 @@ PANDAENDCOMMENT */
 #endif
 
 // This is a C file, so we don't need "extern C"
-#include "sample_int.h"
+#include "sample_int_fns.h"
 
 #include <stdio.h>
 #include <stdlib.h>

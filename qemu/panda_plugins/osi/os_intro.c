@@ -22,7 +22,7 @@ PANDAENDCOMMENT */
 #include "panda_plugin_plugin.h"
 
 #include "osi_types.h"
-#include "osi_int.h"
+#include "osi_int_fns.h"
 #include "os_intro.h"
 
 bool init_plugin(void *);

@@ -1,5 +1,7 @@
 #define __STDC_FORMAT_MACROS
 
+#include "../taint2/taint2.h"
+
 extern "C" {
 
 #include "rr_log.h"    

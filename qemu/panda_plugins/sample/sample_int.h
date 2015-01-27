@@ -1,6 +1,5 @@
 
-#include "cpu.h"
+typedef void CPUState;
 
-int sample_function(CPUState *env);
+#include "sample_int_fns.h"
 
-int other_sample_function(CPUState *env, int foo);

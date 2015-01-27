@@ -1,22 +1,27 @@
-#ifndef OSI_API_H
-#define OSI_API_H
 
-// returns operating system introspection info for each process in an array
-OsiProcs *get_processes(CPUState *env);
+//  NOTE.  This file is a manually generated spec for the API to this plugin.
+//  It is intended to be consumed by apigen.py.  Actually pycparser is what
+//  consumes it.
 
-// gets the currently running process
-OsiProc *get_current_process(CPUState *env);
+//  Other plugin .c, .h, and cpp files SHOULD NOT include this file.
+//  It looks like a real header but its not.  Those typedef voids below are a dead 
+//  giveaway.  Those are there to fake out pycparser which, otherwise, would require 
+//  lots of code to be pulled in to get definitions for those types, which aren't 
+//  necessary for autogenerating code.  
 
-// returns operating system introspection info for each kernel module currently loaded
-OsiModules *get_modules(CPUState *env);
+//  Please always put the actual prototypes in a separate file, XXX_int_fns.h.
+//  It is fine to #include that file.
 
-// returns operating system introspection info for each userspace loaded library in the specified process
-// returns the same type as get_modules
-OsiModules *get_libraries(CPUState *env, OsiProc *p);
+//  Also, you CANT put and typedefs or #includes in XXX_int_fns.h as it will bollocks
+//  pycparser.  Unless they are ones that are easy to find like stdint.h.
+//  Just the prototypes, please.  
 
-// Free memory allocated by other library functions
-void free_osiproc(OsiProc *p);
-void free_osiprocs(OsiProcs *ps);
-void free_osimodules(OsiModules *ms);
 
-#endif
+typedef void OsiProc;
+typedef void OsiProcs;
+typedef void OsiModules;
+typedef void CPUState;
+
+#include "osi_int_fns.h"
+
+

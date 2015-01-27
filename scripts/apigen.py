@@ -4,10 +4,60 @@ import os
 import sys
 import re
 import pdb
-proto_re = re.compile("(.+)\s+(\S+)\s*\((.*)\)")
+import pycparser
+import subprocess
 
 KNOWN_TYPES = ['int', 'double', 'float', 'char', 'short', 'long',
                'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']
+
+
+# input is name of interface file.
+# output is list of args for that fn.
+# so, for the fn
+# void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+# this will return
+# ["reg_num", "offset", "app", "stuff2"]
+#
+def get_arglists(pf):
+#    pyf = subprocess.check_output( ("gcc -E " + prototype_file).split())
+    pyc = pycparser.CParser()
+    p = pyc.parse(pf)
+    args = {}
+    for (dc, d) in p.children():
+        if type(d) == pycparser.c_ast.Decl:
+            # a prototype
+            function_name = d.name
+            print "function name = [%s]" % function_name
+            fundec = d.children()[0][1]
+            args[function_name] = []
+            for arg in fundec.args.params:
+                if not (arg.name is None):
+                    args[function_name].append(arg.name)
+    return args
+
+
+# prototype_line is a string containint a c function prototype.
+# all on one line.  has to end with a semi-colon.
+# return type has to be simple (better not return a fn ptr).
+# it can return a pointer to something.
+# this fn splits that line up into 
+# return_type,
+# fn name
+# fn args (with types)
+def split_fun_prototype(prototype_line):
+    foo = re.search("^([^(]+)\((.*)\)\s*\;", prototype_line)
+    if foo is None:
+        return None
+    (a,fn_args_with_types) = foo.groups()
+    bar = a.split()
+    fn_name = bar[-1]
+    fn_type = " ".join(bar[0:-1])
+    # carve off ptrs from head of fn name
+    while fn_name[0] == '*':
+        fn_name = fn_name[1:]
+        fn_type = fn_type + " *"
+    return (fn_type, fn_name, fn_args_with_types)
+
 
 def generate_code(functions, module, includes):
     code =  "#ifndef __%s_EXT_H__\n" % (module.upper())
@@ -22,22 +72,18 @@ def generate_code(functions, module, includes):
 #include "panda_plugin.h"
 
 """
-    for include in includes:
-        code+= include + "\n"
+#    for include in includes:
+#        code+= include + "\n"
 
-    for function in functions:
-        argtypelist = ",".join([x[0] for x in  function[2]])
-        code+= "typedef " + function[0] + "(*" + function[1]+ "_t)(" + argtypelist + ");\n"
-        code+= "static " + function[1] + "_t __" + function[1] + " = NULL;\n"
-        
-        arglist = ",".join([x[0] + ' ' + x[1] for x in function[2]])
-        # if an arg is an r-value reference, we need to pass it with std::move
-        argnamelist = ",".join(map(lambda x: 'std::move({0})'.format(x[1]) if x[0].endswith('&&') else x[1], function[2]))
-        code += "inline " + function[0] + " " +function[1]+"("+arglist+"""){
-    assert(__"""+function[1]+""");
-    return __"""+function[1]+"("+argnamelist+""");
-}
-"""
+    for (fn_rtype, fn_name, fn_args_with_types, fn_args_list) in functions:
+        fn_args = ",".join(fn_args_list)
+        code+= "typedef " + fn_rtype + "(*" + fn_name + "_t)(" + fn_args_with_types + ");\n"
+        code+= "static " + fn_name + "_t __" + fn_name + " = NULL;\n"
+        code += "inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + "){\n"
+        code += "    assert(__" + fn_name + ");\n"
+        code += "    return __" + fn_name + "(" + fn_args + ");\n"
+        code += "}\n"
+
     code += "#define API_PLUGIN_NAME \"" + module
     code += """\"\n#define IMPORT_PPP(module, func_name) { \\
  __##func_name = (func_name##_t) dlsym(module, #func_name); \\
@@ -61,8 +107,8 @@ def generate_code(functions, module, includes):
     dlerror();
 """ 
 
-    for function in functions:
-        code += "IMPORT_PPP(module, " + function[1] + ")\n"
+    for (fn_rtype, fn_name, fn_args_with_types, fn_args_list) in functions:
+        code += "IMPORT_PPP(module, " + fn_name + ")\n"
 
     code += """return true;
 }
@@ -98,53 +144,53 @@ def resolve_type(modifiers, name):
         return rtype, name
 
 def generate_api(plugin_name, plugin_dir):
-    print plugin_name
     if ("%s_int.h" % plugin_name) not in os.listdir(plugin_dir):
         return
 
 
-    print "Building API for plugin", plugin_name,
+    print "Building API for plugin " + plugin_name
     functions = []
     includes = []
-    with open(os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))) as API:
-        for line in API:
-            line = line.strip();
-            if line and line.startswith('typedef'):
-                includes.append(line)
-            elif line and not line.startswith('#') and not (re.match("^/", line)):
-                print line
-                match = proto_re.match(line)
-                rtype, name, arglist = match.groups()
-                rtype, name = resolve_type(rtype, name)
 
-                args = []
-                for arg in [x.strip() for x in arglist.split(',')]:
-                    if arg == "void":
-                        argtype, argname = ("void", "")
-                    else:
-                        argtype, argname = arg.rsplit(None, 1)
-                    args.append(resolve_type(argtype, argname))
-                functions.append((rtype, name, args))
-            elif line and line.startswith('#include'):
-                includes.append(line)
+    interface_file = os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))
+
+    # use preprocessor 
+    pf = subprocess.check_output( ("gcc -E " + interface_file).split())
+
+
+    # use pycparser to get arglists
+    arglist = get_arglists(pf)
+
+    for line in pf.split("\n"):
+        line = line.strip();
+        if line and not line.startswith('#') and not (re.match("^/", line)):
+            # not a typedef and not a comment.
+            # could be a fn prototype
+            print line
+            foo = split_fun_prototype(line)
+            if not (foo is None):
+                # it is a fn prototype -- pull out return type, name, and arglist with types
+                (fn_rtype, fn_name, args_with_types) = foo
+                tup = (fn_rtype, fn_name, args_with_types, arglist[fn_name])
+                functions.append(tup)
     code = generate_code(functions, plugin_name, includes)
     with open(os.path.join(plugin_dir, '{0}_ext.h'.format(plugin_name)), 'w') as extAPI:
         extAPI.write(code)
     print "... Done!"
 
-# figure out where we are
-if len(sys.argv) > 1:
-    plugins_dir = sys.argv[1]
-else:
-    if os.getcwd().endswith('panda_plugins'):
-        plugins_dir = os.getcwd()
-    elif os.getcwd().endswith('qemu'):
-        plugins_dir = os.getcwd() + "/panda_plugins"
-    else:
-        print "Usage: %s plugins_dir" % sys.argv[0]
-        sys.exit(1)
 
-for plugin in os.listdir(plugins_dir):
-    plugindir = os.path.join(plugins_dir, plugin)
-    if os.path.isdir(plugindir):
-        generate_api(plugin, plugindir)
+# the directory this script is in
+script_dir = os.path.dirname(os.path.realpath(__file__))
+# which means this is the panda dir
+(panda_dir,foo) = os.path.split(script_dir)
+# and therefore this is the plugins dir
+plugins_dir = panda_dir + "/qemu/panda_plugins"
+
+# iterate over enabled plugins
+plugins = (open(plugins_dir + "/config.panda").read()).split()
+for plugin in plugins:
+    print plugin
+    if plugin[0] == '#':
+        continue
+    plugin_dir = plugins_dir + "/" + plugin
+    generate_api(plugin, plugin_dir)

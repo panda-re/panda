@@ -15,6 +15,10 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <stdio.h>
+#include "../taint2/label_set.h"
+#include "../taint2/taint2.h"
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
@@ -29,9 +33,6 @@ extern "C" {
 #include "guestarch.h"
 }
 
-#include <stdio.h>
-#include "../taint2/label_set.h"
-#include "../taint2/taint2.h"
 
 #include "../common/prog_point.h"
 #include "../callstack_instr/callstack_instr_ext.h"

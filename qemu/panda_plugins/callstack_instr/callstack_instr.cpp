@@ -51,7 +51,7 @@ void uninit_plugin(void *);
 
 extern "C" {
 
-#include "callstack_instr_int.h"
+#include "callstack_instr_int_fns.h"
 
 PPP_PROT_REG_CB(on_call);
 PPP_PROT_REG_CB(on_ret);
