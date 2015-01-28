@@ -1,0 +1,2 @@
+repeated uint32 tainted_branch_label = 9;
+repeated uint64 callstack = 10;

@@ -32,18 +32,18 @@ void taint2_labelset_spit(LabelSetP ls) ;
 
 // apply this fn to each of the labels associated with this pa
 // fn should return 0 to continue iteration
-//void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // ditto, but a machine register
 // you should be able to use R_EAX, etc as reg_num
 // offset is byte offset withing that reg.
-//void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // ditto, but for llvm regs.  dunno where you are getting that number
-//void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // ditto, but someone handed you the ls, e.g. a callback like tainted branch
-//void taint2_labelset_iter(LabelSetP ls);
+void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 
 #endif                                                                                   

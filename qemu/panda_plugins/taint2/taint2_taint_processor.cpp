@@ -49,6 +49,15 @@ Addr make_maddr(uint64_t a) {
   return ma;
 }
 
+Addr make_laddr(uint64_t a, uint64_t o) {
+    Addr la;
+    la.typ = LADDR;
+    la.val.la = a;
+    la.off = o;
+    la.flag = (AddrFlag) 0;
+    return la;
+}
+
 Addr make_iaddr(uint64_t a) {
   Addr ia;
   ia.typ = IADDR;
@@ -181,6 +190,62 @@ uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
     Addr a = make_greg(reg_num, offset);
     return tp_query(shad, &a).size();
 }
+
+
+
+
+// iterate over 
+void tp_lsr_iter(std::set<uint32_t> rendered, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    for (uint32_t el : rendered) {     
+        printf ("el=%d\n", el);
+        if ((app(el, stuff2)) != 0) break;
+    }
+}
+    
+
+
+// memoize rendering of label sets into actual sets
+std::map < LabelSet *, std::set < uint32_t > > memoize_ls_rend;
+
+// retrieve ls for this addr
+void tp_ls_iter(LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    std::set<uint32_t> rendered;
+    if (memoize_ls_rend.count(ls) == 0) {
+        printf ("not yet memoized\n");
+        rendered = label_set_render_set(ls);
+        memoize_ls_rend[ls] = rendered;
+    }
+    else {
+        printf ("memoized\n");
+        rendered = memoize_ls_rend[ls];
+    }
+    tp_lsr_iter(rendered, app, stuff2);
+}
+
+void tp_ls_a_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    // retrieve the tree-representation of the 
+    LabelSet *ls = tp_labelset_get(shad, a);
+    if (ls == NULL) return;
+    tp_ls_iter(ls, app, stuff2);
+}
+
+void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    Addr a = make_maddr(pa);    
+    tp_ls_a_iter(shad, &a, app, stuff2);
+}
+
+void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    Addr a = make_greg(reg_num, offset);
+    tp_ls_a_iter(shad, &a, app, stuff2);
+}
+
+void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    Addr a = make_laddr(reg_num, offset);
+    tp_ls_a_iter(shad, &a, app, stuff2);
+}
+
+
+
 
 // untaint -- discard label set associated with a
 void tp_delete(Shad *shad, Addr *a) {

@@ -24,11 +24,13 @@ extern "C" {
 #include "qemu-common.h"
 #include "monitor.h"
 #include "cpu.h"
+
 #include "panda_plugin.h"
 #include "../taint2/taint2_ext.h"
 #include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
+#include "pandalog.h"
 #include "panda_common.h"
 #include "guestarch.h"
 }
@@ -54,7 +56,7 @@ void uninit_plugin(void *);
 
 
 bool first_enable_taint = true;
-FILE *branchfile = NULL;
+//FILE *branchfile = NULL;
 
 bool use_taint2 = true;
 
@@ -78,21 +80,77 @@ void tbranch_on_branch(uint64_t pc, int reg_num) {
         // Print out the labels
         printf("\tCompute number: %d\n", ls_type);
         taint_spit_llvm(reg_num, /*offset=*/0);
-
-        fprintf(branchfile, "%lx\n", pc);
+        //        fprintf(branchfile, "%lx\n", pc);
     }
 }
 
+
+uint32_t *label = NULL;
+uint32_t num_labels = 0;
+uint32_t max_num_labels = 0;
+
+// el is a label
+int tb_each_label(uint32_t el, void *stuff1) {
+    
+    if (max_num_labels == 0) {
+        max_num_labels = 16;
+        label = (uint32_t *) malloc(sizeof(uint32_t) * max_num_labels);
+    }
+    else {
+        if (num_labels == max_num_labels) {
+            max_num_labels *= 2;
+            label = (uint32_t *) realloc(label, sizeof(uint32_t) * max_num_labels);
+        }
+    }
+    label[num_labels] = el;
+    num_labels ++;
+
+    // continue iteration
+    return 0;
+}
+
+
+uint64_t *callers64=NULL;
+uint32_t num_callers = 0;
+
 void tbranch_on_branch_taint2(LabelSetP ls) {
     if (ls) {
-        printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register.\n",
+        
+        printf("cr3=0x%x instr=%ld pc=0x%x Branch condition on tainted LLVM register.\n",
                (unsigned int ) panda_current_asid(cpu_single_env),
+               rr_get_guest_instr_count(),
                (unsigned int) panda_current_pc(cpu_single_env));
-        callstack();
+        
+        //        callstack();
         // Print out the labels
-        printf("\tCompute number: %lu\n", ls->taint_compute_num);
+        //        printf("\tCompute number: %lu\n", ls->taint_compute_num);
         //taint2_labelset_spit(ls);
-        fprintf(branchfile, "%lx\n", (uint64_t)panda_current_pc(cpu_single_env));
+        //        fprintf(branchfile, "%lx\n", (uint64_t)panda_current_pc(cpu_single_env));
+        
+        if (pandalog) {
+            
+            // nb: in taint2, we need to call this fn in order to actually render the labels as a set
+            // and to populate the label array
+            num_labels = 0;
+            printf ("calling taint2_labelset_iter\n");
+            taint2_labelset_iter(ls, tb_each_label, NULL);            
+            target_ulong callers[16];
+            printf ("calling get_callers\n");
+            int n = get_callers(callers, 16, cpu_single_env);
+            if (callers64 == NULL) {
+                callers64 = (uint64_t *) malloc(sizeof(uint64_t) * 16);
+            }
+            for (unsigned int i=0; i<16; i++) {
+                callers64[i] = callers[i];
+            }
+            printf ("%d labels. %d callstack\n", num_labels, n);
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.n_tainted_branch_label = num_labels;
+            ple.tainted_branch_label = label;
+            ple.n_callstack = n;
+            ple.callstack = callers64;
+            pandalog_write_entry(&ple);           
+        }
 
     }
 }
@@ -129,10 +187,10 @@ bool init_plugin(void *self) {
         assert (init_taint_api());
     }
     
-    branchfile = fopen("branches.txt", "w");
+    //    branchfile = fopen("branches.txt", "w");
     return true;
 }
 
 void uninit_plugin(void *self) {
-    fclose(branchfile);
+    //    fclose(branchfile);
 }

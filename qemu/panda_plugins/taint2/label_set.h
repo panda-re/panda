@@ -82,6 +82,7 @@ static user_type label_set_iter(LabelSetP ls) {
 __attribute__((unused))
 static inline void set_insert(uint32_t l, std::set<uint32_t> &s) {
     s.insert(l);
+    printf ("l=%d\n", l);
 }
 
 __attribute__((unused))

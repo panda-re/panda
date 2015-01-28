@@ -3,7 +3,11 @@ package panda;
 message LogEntry {
 required uint64 pc = 1;    
 required uint64 instr = 2;
-optional uint64 asid = 3; 
+repeated uint32 tainted_branch_label = 9;
+repeated uint64 callstack = 10;optional uint64 asid = 3; 
 optional string process_name = 4;
 optional uint32 process_id = 5;
+optional uint64 taint_label_virtual_addr = 6;
+optional uint64 taint_label_physical_addr = 7;
+optional uint32 taint_label_number = 8;
 }
