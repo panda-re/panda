@@ -3221,6 +3221,7 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_pandalog:
                 pandalog = 1;
                 pandalog_open(optarg, "w");
+                printf ("pandalogging to [%s]\n", optarg);
                 break;
 
             case QEMU_OPTION_panda_arg:
