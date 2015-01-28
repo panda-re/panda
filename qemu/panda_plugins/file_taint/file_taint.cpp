@@ -8,6 +8,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu.h"
 #include "panda_plugin.h"
+#include "pandalog.h"
 #include "panda_common.h"
 #include "../syscalls2/gen_syscalls_ext_typedefs_linux_x86.h"
 #include "../taint/taint_ext.h"
@@ -92,13 +93,28 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 positional_labels ? "positional" : "uniform");
         for (uint32_t i=0; i<count; i++ ) {
             target_phys_addr_t pa = panda_virt_to_phys(env, the_buf+i);
+            if (pandalog) {
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_taint_label_virtual_addr = 1;
+                ple.has_taint_label_physical_addr = 1;
+                ple.has_taint_label_number = 1;
+                ple.taint_label_virtual_addr = the_buf + i;
+                ple.taint_label_physical_addr = pa;
+                if (positional_labels) {
+                    ple.taint_label_number = i;
+                }
+                else {
+                    ple.taint_label_number = 1;
+                }
+                pandalog_write_entry(&ple);           
+            }
             if (positional_labels) {
                 if (use_taint2) taint2_label_ram(pa, i);
                 else taint_label_ram(pa, i);
             }
             else {
                 if (use_taint2) taint2_label_ram(pa, 0);
-                else taint_label_ram(pa, 0);
+                else taint_label_ram(pa, 1);
             }
         }
         saw_read = false;
