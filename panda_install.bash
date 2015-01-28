@@ -4,15 +4,18 @@ sudo apt-get -y install build-essential
 sudo apt-get -y build-dep qemu
 sudo apt-get -y install nasm
 sudo apt-get -y install libssl-dev
-sudo apt-get -y install libpacap-dev
+sudo apt-get -y install libpcap-dev
 sudo apt-get -y install subversion
 sudo apt-get -y install curl
 sudo apt-get -y install autoconf
 sudo apt-get -y install libtool
 
 
+# this will install panda in ~/git/panda
 
-cd ~/git/panda/git
+mkidr -p ~/git
+
+cd ~/git
 git clone https://github.com/moyix/panda.git
 
 cd ~/git/panda
