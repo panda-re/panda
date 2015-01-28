@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#
+# This script installs all of PANDA after first taking care of current dependencies. 
+# Known to work on debian 7 install.
+#
+# The only prereq is llvm.  You need to put that in ~/llvm
+
 sudo apt-get -y install build-essential 
 sudo apt-get -y build-dep qemu
 sudo apt-get -y install nasm
@@ -19,7 +25,7 @@ cd ~/git
 git clone https://github.com/moyix/panda.git
 
 cd ~/git/panda
-ln -s /nas/regression/git/panda/llvm ./llvm
+ln -s ~/llvm ./llvm
 
 cd ~
 
