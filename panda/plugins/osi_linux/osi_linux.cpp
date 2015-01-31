@@ -198,6 +198,12 @@ error0:
 
 /**
  * @brief PPP callback to retrieve OsiModules from the running OS.
+ *
+ * Current implementation returns all the memory areas  mapped by the
+ * process and the files they were mapped from. Libraries that have
+ * many mappings will appear multiple times.
+ *
+ * @todo Remove duplicates from results.
  */
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
     PTR ts_first, ts_current;
@@ -239,20 +245,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
         vma_current = get_vma_next(env, vma_current);
     } while(vma_current != (PTR)NULL && vma_current != vma_first);
 
-    // memory read error
-    if (vma_current == (PTR)NULL) goto error1;
-
     *out_ms = ms;
     return;
 
-error1:
-    do {
-        ms->num--;
-        g_free(ms->module[ms->num].name);
-        g_free(ms->module[ms->num].file);
-    } while (ms->num != 0);
-    g_free(ms->module);
-    g_free(ms);
 error0:
     *out_ms = NULL;
     return;
