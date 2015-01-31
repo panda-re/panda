@@ -149,9 +149,18 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
     OsiProc *p;
     uint32_t ps_capacity = 16;
 
-    ts_first = ts_current =  get_task_struct(env, (_ESP & THREADINFO_MASK));
+    ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
     if (ts_current == (PTR)NULL) goto error0;
-    
+
+    // When thread_group points to itself, the task_struct belongs to a thread
+    // (see kernel_structs.md for details). This will trigger an infinite loop
+    // in the traversal loop.
+    // Following next will lead us to a task_struct belonging to a process and
+    // help avoid the condition.
+    if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
+        ts_first = ts_current = get_task_struct_next(env, ts_current);
+    }
+
     ps = (OsiProcs *)g_malloc0(sizeof(OsiProcs));
     ps->proc = g_new(OsiProc, ps_capacity);
     do {
