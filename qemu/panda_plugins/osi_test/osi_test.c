@@ -16,8 +16,8 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 // Choose a granularity for the OSI code to be invoked.
-#define GRANULARITY_PGD
-//#define GRANULARITY_BBL
+#define INVOKE_FREQ_PGD
+//#define INVOKE_FREQ_BBL
 
 #include "config.h"
 #include "qemu-common.h"
@@ -40,7 +40,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     OsiModules *ms = get_libraries(env, current);
     if (ms == NULL) {
-        printf("No dynamic libraries could mapped.\n");
+        printf("No mapped dynamic libraries.\n");
     }
     else {
         printf("Dynamic libraries list (%d libs):\n", ms->num);
@@ -76,7 +76,7 @@ int vmi_pgd_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd) {
 }
 
 bool init_plugin(void *self) {
-#if defined(GRANULARITY_PGD)
+#if defined(INVOKE_FREQ_PGD)
     // relatively short execution
     panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
