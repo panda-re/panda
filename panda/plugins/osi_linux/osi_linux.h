@@ -146,6 +146,13 @@ static inline _retType2 _name(CPUState* env, PTR _paramName) {                  
 IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, PTR, ki.task.task_offset, 0)
 
 /**
+ * @brief Retrieves the thread group address from task_struct.
+ * If the thread group address points back to itself, then the task_struct
+ * corresponds to a process.
+ */
+IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, PTR, ki.task.thread_group_offset, 0)
+
+/**
  * @brief Retrieves the tasks address from a task_struct.
  * This is used to iterate the process list.
  */
