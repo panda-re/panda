@@ -591,4 +591,7 @@ bool panda_parse_bool(panda_arg_list *args, const char *argname);
 const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
 char** str_split(char* a_str, const char a_delim);
 
+char *panda_plugin_path(const char *name);
+void panda_require(const char *plugin_name);
+
 #endif

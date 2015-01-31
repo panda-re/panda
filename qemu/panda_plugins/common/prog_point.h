@@ -28,6 +28,8 @@ struct prog_point {
 };
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
+
+#include <functional>
 struct hash_prog_point{
     size_t operator()(const prog_point &p) const
     {
@@ -37,4 +39,6 @@ struct hash_prog_point{
         return h1 ^ h2 ^ h3;
     }
 };
+
+
 #endif

@@ -117,11 +117,16 @@ bool init_plugin(void *self) {
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
 
+
+    panda_require("syscalls2");
+
     // this sets up the taint api fn ptrs so we have access
     if (use_taint2) {
+        panda_require("taint2");
         assert(init_taint2_api());
         taint2_enable_taint();
     } else {
+        panda_require("taint");
         assert(init_taint_api());
         taint_enable_taint();
     }

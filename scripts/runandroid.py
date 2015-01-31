@@ -60,7 +60,7 @@ fgroup.add_argument("--ramdisk", help="ramdisk path in imgdir", default="initram
 parser.add_argument("--tcpdump", help="file to dump network traffic into", default=argparse.SUPPRESS)
 parser.add_argument("--cpu", default="cortex-a9",
                     help="CPU model. Default based on API level.")
-parser.add_argument("api_level")
+parser.add_argument("api_level", type=int)
 parser.add_argument("--ext4", help="Partitions are block devices intead of raw flash with YAFFS. Default is based on API level",
                     action='store_true', default=argparse.SUPPRESS)
 parser.add_argument("panda_args", nargs=argparse.REMAINDER,
