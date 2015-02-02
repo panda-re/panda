@@ -28,6 +28,8 @@ PANDAENDCOMMENT */
 
 #include "label_set.h"
 
+typedef struct LabelSet * LabelSetP;
+
 #define SB_INLINE inline
 
 #ifdef TAINTSTATS
@@ -130,6 +132,17 @@ Addr make_paddr(uint64_t a) {
   pa.flag = (AddrFlag) 0;
   return pa;
 }
+
+
+Addr make_laddr(uint64_t a, uint64_t o) {
+    Addr la;
+    la.typ = LADDR;
+    la.val.la = a;
+    la.off = o;
+    la.flag = (AddrFlag) 0;
+    return la;
+}
+
 
 // if addr is one of HAddr, MAddr, IAddr, PAddr, LAddr, then add this offset to it
 // else throw up
@@ -573,12 +586,16 @@ uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset) {
 }
 
 
+void tp_ls_iter(LabelSet *ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    if (!labelset_is_empty(ls)) {
+        labelset_iter(ls, app, stuff2);
+    }
+}
+
 //SB_INLINE void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-  LabelSet *ls = tp_labelset_get(shad, a);
-  if (!labelset_is_empty(ls)) {
-    labelset_iter(ls, app, stuff2);
-  }
+void tp_lsa_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+  LabelSetP ls = tp_labelset_get(shad, a);
+  tp_ls_iter(ls, app, stuff2);
 }
 
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -587,7 +604,7 @@ void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff
   ra.val.ma = pa;
   ra.off = 0;
   ra.flag = (AddrFlag) 0;
-  tp_ls_iter(shad, &ra, app, stuff2);
+  tp_lsa_iter(shad, &ra, app, stuff2);
 }
 
 
@@ -597,7 +614,7 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
   ra.val.gr = reg_num;
   ra.off = offset;
   ra.flag = (AddrFlag) 0;
-  tp_ls_iter(shad, &ra, app, stuff2);
+  tp_lsa_iter(shad, &ra, app, stuff2);
 }
 
 void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -606,7 +623,7 @@ void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el
   ra.val.la = reg_num;
   ra.off = offset;
   ra.flag = (AddrFlag) 0;
-  tp_ls_iter(shad, &ra, app, stuff2);
+  tp_lsa_iter(shad, &ra, app, stuff2);
 }
 
 struct reg_spit_info {
@@ -1999,6 +2016,7 @@ SB_INLINE void process_insn_start_op(Shad *shad,  TaintOp *op, TaintOpBuffer *bu
             if (conditional_branch) {
                 PPP_RUN_CB(on_branch, shad->pc, reg_num);
             }
+
 
             /*
              * End place to inspect taint on branch condition

@@ -198,6 +198,9 @@ void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el,
 
 void tp_ls_llvm_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
+void tp_ls_iter(LabelSet *ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+
+
 // returns number of tainted addrs in ram
 uint32_t tp_occ_ram(Shad *shad);
 

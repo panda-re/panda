@@ -15,6 +15,8 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include "../taint/taint.h"
+
 extern "C" {
 
 #include <dlfcn.h>

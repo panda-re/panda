@@ -70,20 +70,6 @@ void callstack() {
 }
 
 
-void tbranch_on_branch(uint64_t pc, int reg_num) {
-    if (taint_query_llvm(reg_num, /*offset=*/0)) {
-        printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register: %%%d\n",
-               (unsigned int ) panda_current_asid(cpu_single_env), (unsigned int) pc, reg_num);
-        // Get taint compute number
-        uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);
-        callstack();
-        // Print out the labels
-        printf("\tCompute number: %d\n", ls_type);
-        taint_spit_llvm(reg_num, /*offset=*/0);
-        //        fprintf(branchfile, "%lx\n", pc);
-    }
-}
-
 
 uint32_t *label = NULL;
 uint32_t num_labels = 0;
@@ -112,6 +98,55 @@ int tb_each_label(uint32_t el, void *stuff1) {
 
 uint64_t *callers64=NULL;
 uint32_t num_callers = 0;
+
+
+
+void tbranch_on_branch(uint64_t pc, int reg_num) {
+    if (taint_query_llvm(reg_num, /*offset=*/0)) {
+        printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register: %%%d\n",
+               (unsigned int ) panda_current_asid(cpu_single_env), (unsigned int) pc, reg_num);        
+#if 0
+        // Get taint compute number
+        
+        uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);
+        callstack();
+        // Print out the labels
+        printf("\tCompute number: %d\n", ls_type);
+        taint_spit_llvm(reg_num, /*offset=*/0);
+            //        fprintf(branchfile, "%lx\n", pc);
+#endif 
+        
+        if (pandalog) {
+            
+            // nb: in taint2, we need to call this fn in order to actually render the labels as a set
+            // and to populate the label array
+            num_labels = 0;
+            printf ("calling taint2_labelset_iter\n");
+            taint_labelset_llvm_iter(reg_num, 0, tb_each_label, NULL);            
+            target_ulong callers[16];
+            printf ("calling get_callers\n");
+            int n = get_callers(callers, 16, cpu_single_env);
+            if (callers64 == NULL) {
+                callers64 = (uint64_t *) malloc(sizeof(uint64_t) * 16);
+            }
+            for (unsigned int i=0; i<16; i++) {
+                callers64[i] = callers[i];
+            }
+            printf ("%d labels. %d callstack\n", num_labels, n);
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.n_tainted_branch_label = num_labels;
+            ple.tainted_branch_label = label;
+            ple.n_callstack = n;
+            ple.callstack = callers64;
+            pandalog_write_entry(&ple);           
+        }
+
+
+
+
+
+   }
+}
 
 void tbranch_on_branch_taint2(LabelSetP ls) {
     if (ls) {

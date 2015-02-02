@@ -35,7 +35,7 @@ extern "C" {
 #include "syscall_defs.h"
 #endif
 
-
+#include "taint.h"
 
 #include <sys/time.h>
 #include "panda_plugin.h"
@@ -68,6 +68,11 @@ extern "C" {
     void taint_clear_taint_state_read(void);
     int taint_taint_state_read(void);
     void taint_clear_shadow_memory(void);
+
+    void taint_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    void taint_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    void taint_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+    void taint_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 }
 
@@ -933,6 +938,27 @@ void __taint_clear_shadow_memory(void){
 }
 
 
+void __taint_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_iter(ls, app, stuff2);
+}
+
+
+
+void __taint_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_ram_iter(shadow, pa, app, stuff2);
+}
+
+
+void __taint_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_reg_iter(shadow, reg_num, offset, app, stuff2);
+}
+
+
+void __taint_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_llvm_iter(shadow, reg_num, offset, app, stuff2);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////////
 // C API versions
 
@@ -976,6 +1002,26 @@ void taint_spit_reg(int reg_num, int offset) {
 void taint_spit_llvm(int reg_num, int offset) {
   __taint_spit_llvm(reg_num, offset);
 }
+
+
+void taint_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    __taint_labelset_ram_iter(pa, app, stuff2);
+}
+
+void taint_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    __taint_labelset_reg_iter(reg_num, offset, app, stuff2);
+}
+
+void taint_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    __taint_labelset_llvm_iter(reg_num, offset, app, stuff2);
+}
+
+void taint_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    __taint_labelset_iter(ls, app, stuff2);
+}
+
+
+
 
 
 uint32_t taint_occ_ram(void) {
