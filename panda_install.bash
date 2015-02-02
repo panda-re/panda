@@ -19,7 +19,7 @@ sudo apt-get -y install libtool
 
 # this will install panda in ~/git/panda
 
-mkidr -p ~/git
+mkdir -p ~/git
 
 cd ~/git
 git clone https://github.com/moyix/panda.git
