@@ -103,7 +103,7 @@ reported as the first match for `<html`) and end at `1122107469`, the
 first match for `"has stopped working`.
 
 	panda/qemu/x86_64-softmmu/qemu-system-x86_64 -m 1024 -replay cve-2011-1255-crash \
-        -display none -panda 'scissors:start=398546927,end=1122107469,name=reduced_crash`
+        -display none -panda 'scissors:start=398546927,end=1122107469,name=crash_reduced`
 
 Once this runs, we'll have a replay of around 700 million instructions
 -- about half the size of the original.
