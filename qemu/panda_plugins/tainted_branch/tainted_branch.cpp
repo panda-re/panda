@@ -67,14 +67,14 @@ void tbranch_on_branch(uint64_t pc, int reg_num) {
     }
 }
 
-void tbranch_on_branch_taint2(LabelSetP ls) {
+void tbranch_on_branch_taint2(LabelSetP ls, uint32_t tcn) {
     if (ls) {
         printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register.\n",
                (unsigned int ) panda_current_asid(cpu_single_env),
                (unsigned int) panda_current_pc(cpu_single_env));
 
         // Print out the labels
-        printf("\tCompute number: %lu\n", ls->taint_compute_num);
+        printf("\tCompute number: %lu\n", tcn);
         //taint2_labelset_spit(ls);
         fprintf(branchfile, "%lx\n", (uint64_t)panda_current_pc(cpu_single_env));
 

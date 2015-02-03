@@ -73,9 +73,6 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
 
         result->child1 = min;
         result->child2 = max;
-        result->taint_compute_num = std::max(
-                ls1->taint_compute_num,
-                ls2->taint_compute_num);
 
         memoized_unions->insert(std::make_pair(minmax, result));
         //qemu_log_mask(CPU_LOG_TAINT_OPS, "  INSERTED\n");
@@ -94,7 +91,6 @@ LabelSetP label_set_singleton(uint32_t label) {
 
     result->child1 = nullptr;
     result->label = label;
-    result->taint_compute_num = 0;
     return result;
 }
 

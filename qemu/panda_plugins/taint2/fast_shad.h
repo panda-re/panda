@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
 #include <cstdint>
 
 #include "defines.h"
+#include "label_set.h"
 
 extern "C" {
 #include "cpu.h"
@@ -37,20 +38,43 @@ extern "C" {
 
 void *memset(void *dest, int val, size_t n);
 void *memcpy(void *dest, const void *src, size_t n);
-void *memmove(void *dest, const void *src, size_t n);
 
-typedef struct LabelSet *LabelSetP;
+
+struct TaintData {
+    LabelSetP ls;
+    uint32_t tcn;
+
+    TaintData() : ls(NULL), tcn(0) {}
+    TaintData(LabelSetP ls, uint32_t tcn) : ls(ls), tcn(tcn) {}
+
+    void add(TaintData td) {
+        ls = label_set_union(ls, td.ls);
+        tcn = std::max(tcn, td.tcn) + 1;
+    }
+
+    static TaintData copy_union(TaintData td1, TaintData td2) {
+        return TaintData(
+                label_set_union(td1.ls, td2.ls),
+                std::max(td1.tcn, td2.tcn));
+    }
+
+    static TaintData comp_union(TaintData td1, TaintData td2) {
+        return TaintData(
+                label_set_union(td1.ls, td2.ls),
+                std::max(td1.tcn, td2.tcn) + 1);
+    }
+};
 
 class FastShad {
 private:
-    LabelSetP *labels;
-    LabelSetP *orig_labels;
+    TaintData *labels;
+    TaintData *orig_labels;
     uint64_t size; // Number of labelsets contained.
 
     inline LabelSetP *get_ls_p(uint64_t guest_addr) {
         //taint_log("  %lx->get_ls_p(%lx)\n", (uint64_t)this, guest_addr);
         tassert(guest_addr < size);
-        return &labels[guest_addr];
+        return &(labels[guest_addr].ls);
     }
 
 public:
@@ -60,8 +84,8 @@ public:
     uint64_t get_size() { return size; }
 
     // Taint an address with a labelset.
-    static inline void set(FastShad *fast_shad, uint64_t addr, LabelSetP ls) {
-        *fast_shad->get_ls_p(addr) = ls;
+    inline void set(uint64_t addr, LabelSetP ls) {
+        *get_ls_p(addr) = ls;
     }
 
     static inline void copy(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
@@ -69,8 +93,7 @@ public:
         tassert(src + size <= shad_src->size);
         
 #ifdef TAINTDEBUG
-        unsigned i;
-        for (i = 0; i < size; i++) {
+        for (unsigned i = 0; i < size; i++) {
             if (*shad_src->get_ls_p(src + i) != NULL) {
                 taint_log("TAINTED COPY: %lx[%lx] <- %lx[%lx] (%lx)\n",
                         (uint64_t)shad_dest, dest + i,
@@ -81,47 +104,28 @@ public:
         }
 #endif
 
-        memcpy(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(LabelSetP));
-    }
-
-    static inline void move(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
-        tassert(dest + size <= shad_dest->size);
-        tassert(src + size <= shad_src->size);
-        
-#ifdef TAINTDEBUG
-        unsigned i;
-        for (i = 0; i < size; i++) {
-            if (*shad_src->get_ls_p(src + i) != NULL) {
-                taint_log("TAINTED MOVE\n");
-                break;
-            }
-        }
-#endif
-
-        memmove(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(LabelSetP));
+        memcpy(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(TaintData));
     }
 
     // Remove taint.
-    static inline void remove(FastShad *fast_shad, uint64_t addr, uint64_t size) {
-        tassert(addr + size <= fast_shad->size);
+    inline void remove(uint64_t addr, uint64_t remove_size) {
+        tassert(addr + remove_size <= size);
         
 #ifdef TAINTDEBUG
-        unsigned i;
-        for (i = 0; i < size; i++) {
-            if (*fast_shad->get_ls_p(addr + i) != NULL) {
+        for (unsigned i = 0; i < remove_size; i++) {
+            if (*get_ls_p(addr + i) != NULL) {
                 taint_log("TAINTED DELETE\n");
                 break;
             }
         }
 #endif
 
-        memset(fast_shad->get_ls_p(addr), 0, size * sizeof(LabelSetP));
+        memset(get_ls_p(addr), 0, remove_size * sizeof(TaintData));
     }
 
     // Query. NULL if untainted.
-    static inline LabelSetP query(FastShad *fast_shad, uint64_t addr) {
-        tassert(fast_shad);
-        return *fast_shad->get_ls_p(addr);
+    inline LabelSetP query(uint64_t addr) {
+        return *get_ls_p(addr);
     } 
 
     inline void reset_frame() {
@@ -139,6 +143,22 @@ public:
         labels -= framesize;
         tassert(labels >= orig_labels);
         taint_log("pop: %lx\n", (uint64_t)labels);
+    }
+
+    inline TaintData query_full(uint64_t addr) {
+        return labels[addr];
+    }
+
+    inline void set_full(uint64_t addr, TaintData td) {
+        labels[addr] = td;
+    }
+
+    inline uint32_t get_tcn(uint64_t addr) {
+        return labels[addr].tcn;
+    }
+
+    inline void set_tcn(uint64_t addr, uint32_t val) {
+        labels[addr].tcn = val;
     }
 };
 
