@@ -129,8 +129,8 @@ constituent tap points and converting the hex data to binary. The
 script that does this is called `split_taps.py`:
 
     $ mkdir -p taps/reads taps/writes
-    $ ../scripts/split_taps.py ../scripts/split_taps.py read_tap_buffers.txt.gz taps/reads/line
-    $ ../scripts/split_taps.py ../scripts/split_taps.py write_tap_buffers.txt.gz taps/writes/line
+    $ ../scripts/split_taps.py read_tap_buffers.txt.gz taps/reads/line
+    $ ../scripts/split_taps.py write_tap_buffers.txt.gz taps/writes/line
 
 And then examining the files in `taps/reads` and `taps/writes`. Looking
 in particular at `taps/writes/line.40796784.40038688.28210000.dat`, we
