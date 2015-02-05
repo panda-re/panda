@@ -58,9 +58,14 @@ static void label_set_iter_rec(LabelSetP ls, user_type &user) {
 
 template<typename user_type, void (*leaf)(uint32_t, user_type &), user_type initial>
 static user_type label_set_iter(LabelSetP ls) {
-    if (!ls) return initial;
-
     user_type initial_copy = initial;
+    if (!ls) return initial;
+    if (ls->count > 65536) {
+        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
+                "Not iterating.\n", (unsigned long)ls, ls->count);
+        return initial;
+    }
+
     label_set_iter_rec<user_type, leaf>(ls, initial_copy);
 
     return initial_copy;
@@ -71,6 +76,11 @@ static user_type label_set_iter(LabelSetP ls) {
     user_type initial;
 
     if (!ls) return initial;
+    if (ls->count > 65536) {
+        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
+                "Not iterating.\n", (unsigned long)ls, ls->count);
+        return initial;
+    }
 
     label_set_iter_rec<user_type, leaf>(ls, initial);
 
