@@ -50,6 +50,9 @@ void taint2_label_ram(uint64_t pa, uint32_t l) ;
 uint32_t taint2_query_ram(uint64_t pa);
 void taint2_delete_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
+
+uint32_t taint2_query_llvm(int reg_num, int offset);
+
 void taint2_labelset_spit(LabelSetP ls);
 
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -401,6 +404,12 @@ uint32_t __taint2_query_reg(int reg_num, int offset) {
     return tp_query_reg(shadow, reg_num, offset);
 }
 
+uint32_t __taint2_query_llvm(int reg_num, int offset) {
+    return tp_query_llvm(shadow, reg_num, offset);
+}
+
+
+
 
 void __taint2_delete_ram(uint64_t pa) {
     tp_delete_ram(shadow, pa);
@@ -463,6 +472,10 @@ void taint2_delete_ram(uint64_t pa) {
 
 uint32_t taint2_query_reg(int reg_num, int offset) {
   return __taint2_query_reg(reg_num, offset);
+}
+
+uint32_t taint2_query_llvm(int reg_num, int offset) {
+  return __taint2_query_llvm(reg_num, offset);
 }
 
 void taint2_labelset_spit(LabelSetP ls) {

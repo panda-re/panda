@@ -191,6 +191,12 @@ uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
     return tp_query(shad, &a).size();
 }
 
+// returns label set cardinality
+uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset) {
+    Addr a = make_laddr(reg_num, offset);
+    return tp_query(shad, &a).size();
+}
+
 
 
 

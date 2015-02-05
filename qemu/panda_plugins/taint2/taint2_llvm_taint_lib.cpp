@@ -80,7 +80,8 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
 }
 
 static void taint_branch_run(FastShad *shad, uint64_t src) {
-    PPP_RUN_CB(on_branch2, FastShad::query(shad, src));
+    //    PPP_RUN_CB(on_branch2, FastShad::query(shad, src));
+    PPP_RUN_CB(on_branch2, src / MAXREGSIZE);
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
