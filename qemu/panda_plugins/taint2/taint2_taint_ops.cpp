@@ -81,7 +81,7 @@ void taint_copy(
 #ifdef TAINTDEBUG
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)shad_src->query(src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
@@ -270,7 +270,7 @@ void taint_host_copy(
             (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src, offset);
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)shad_src->query(src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
@@ -303,7 +303,7 @@ void taint_host_memcpy(
             dest_offset, src_offset);
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)shad_src->query(src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
