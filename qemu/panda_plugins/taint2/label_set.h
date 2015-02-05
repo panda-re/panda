@@ -15,13 +15,12 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
-#include <cstdio>
-
 extern "C" {
 #include "cpu.h"
 #include "qemu-log.h"
 }
 
+#include <cstdio>
 #include <cstdint>
 
 #include <map>

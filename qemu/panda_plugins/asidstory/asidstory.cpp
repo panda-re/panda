@@ -49,6 +49,7 @@ extern "C" {
 
 #include "panda_plugin.h"
 #include "panda_common.h"
+#include "pandalog.h"
 
 #include "rr_log.h"
 #include "rr_log_all.h"  
@@ -72,6 +73,12 @@ uint64_t vol_instr_count = 0;
 std::string vol_cmds = "";
 
 
+bool pid_ok(int pid) {
+    if (pid < 4) {
+        return false;
+    }
+    return true;
+}
 
 
 // write physmem to a file
@@ -94,7 +101,7 @@ void vol(char *outfilename) {
 }
  
 #define SAMPLE_CUTOFF 10    
-#define SAMPLE_RATE 100
+#define SAMPLE_RATE 1
 #define MILLION 1000000
 
 uint64_t a_counter = 0;
@@ -112,97 +119,19 @@ std::map < Name, std::map < Pid, std::map < Asid, Count > > > namepid_to_asids;
 std::map < Name, std::map < Pid, Instr > > namepid_first_instr;
 std::map < Name, std::map < Pid, Instr > >  namepid_last_instr;
 
-char np[256];
+//char np[256];
 
 void make_nps(Name &name, Pid pid, char *buf, uint32_t buf_len) {
     snprintf (buf, buf_len, "%d-%s", pid, (const char *) name.c_str());
 }
 
 
-int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    // NB: we only know max instr *after* replay has started,
-    // so this code *cant* be run in init_plugin.  yuck.
-    if (max_instr == 0) {
-        max_instr = replay_get_total_num_instructions();
-        scale = ((double) num_cells) / ((double) max_instr); 
-    }
-
-    a_counter ++;
-    if ((a_counter % SAMPLE_RATE) != 0) {
-        return 0;
-    }
-    OsiProc *p = get_current_process(env);
-    if ((p->pid != 0) && (p->asid > 10)) {
-        namepid_to_asids[p->name][p->pid][p->asid]++;
-        // keep track of first rr instruction for each name/pid
-        if ((namepid_first_instr.count(p->name) == 0) 
-            || (namepid_first_instr[p->name].count(p->pid) == 0)) {
-            namepid_first_instr[p->name][p->pid] = rr_get_guest_instr_count();
-        }
-    }
-    return 0;
+bool npis_sort (std::tuple < Name, Pid, Instr > npi1, std::tuple < Name, Pid, Instr > npi2 ) {
+    return (std::get<2>(npi1) < std::get<2>(npi2));
 }
+  
 
-
-
-
-
-int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
-    OsiProc *p = get_current_process(env);
-    Instr instr = rr_get_guest_instr_count();
-
-    b_counter ++;
-    if ((b_counter % SAMPLE_RATE) != 0) {
-        return 0;
-    }
-    if ((p->pid != 0) && (p->asid > 10)) {
-        namepid_to_asids[p->name][p->pid][p->asid]++;
-        uint32_t cell = instr * scale;
-        namepid_cells[p->name][p->pid][cell] ++;
-        namepid_last_instr[p->name][p->pid] = std::max(namepid_last_instr[p->name][p->pid], instr);
-    }
-    if ((vol_instr_count != 0) 
-        && (!vol_done) 
-        && (rr_get_guest_instr_count() > vol_instr_count)) {
-        printf ("instr count is %" PRIu64 " \n", rr_get_guest_instr_count());
-        std::string fn = "asidstory.vol";
-        vol((char *) fn.c_str());
-        vol_done = true;
-    }        
-    return 0;
-}
-
-
-
-    
-
-
-bool init_plugin(void *self) {    
-
-    printf ("Initializing plugin asidstory\n");
-
-    // this sets up OS introspection API
-    bool x = init_osi_api();  
-    assert (x==true);
-    
-    panda_cb pcb;    
-    pcb.before_block_exec = asidstory_before_block_exec;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
-    pcb.after_block_exec = asidstory_after_block_exec;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    
-    panda_arg_list *args = panda_get_args("asidstory");
-    vol_instr_count = panda_parse_uint64(args, "vol_instr_count", 0);
-    vol_cmds = panda_parse_string(args, "vol_cmds", "xxx");
-    
-    min_instr = 0;   
-    return true;
-}
-
-
-
-void uninit_plugin(void *self) {
+void spit_asidstory() {
     
     FILE *fp = fopen("asidstory", "w");
 
@@ -236,36 +165,49 @@ void uninit_plugin(void *self) {
     }
     fprintf (fp, "\n");
 
+
+    // sort the name/pids by first sighting
+    std::vector < std::tuple < Name, Pid, Instr > > npis;
     for ( auto &kvp1 : namepid_to_asids ) {
+        auto np = kvp1;
         Name name = kvp1.first;
         for ( auto &kvp2 : kvp1.second ) {
             Pid pid = kvp2.first;
-            if ( namepid_ignore[name].count(pid) != 0) {
-                continue;
+            Instr ins = namepid_first_instr[name][pid];
+            npis.push_back(std::make_tuple(name, pid, ins));
+        }
+    }
+    std::sort ( npis.begin(), npis.end(), npis_sort);
+    
+    for ( auto &tup : npis ) {
+        Name name = std::get<0>(tup);
+        Pid pid = std::get<1>(tup);
+        if ( namepid_ignore[name].count(pid) != 0) {
+            continue;
+        }
+        char nps[256];
+        make_nps(name, pid, nps, 256);
+        fprintf (fp, "%20s : ", nps);            
+        fprintf (fp, 
+                 " %15" PRIu64 
+                 " %15" PRIu64
+                 " : ",                 
+                 namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
+        for ( uint32_t i=0; i<num_cells; i++ ) {
+            if ( namepid_cells[name][pid].count(i) == 0 ) {
+                fprintf (fp, " ");
             }
-            char nps[256];
-            make_nps(name, pid, nps, 256);
-            fprintf (fp, "%20s : ", nps);            
-            fprintf (fp, 
-                     " %15" PRIu64 
-                     " %15" PRIu64
-                     " : ",                 
-                     namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
-            for ( uint32_t i=0; i<num_cells; i++ ) {
-                if ( namepid_cells[name][pid].count(i) == 0 ) {
-                    fprintf (fp, " ");
+            else {
+                if ( namepid_cells[name][pid][i] < 2 ) {
+                    fprintf(fp, " ");
                 }
                 else {
-                    if ( namepid_cells[name][pid][i] < 2 ) {
-                        fprintf(fp, " ");
-                    }
-                    else {
-                        fprintf (fp, "#");
-                    }
+                    fprintf (fp, "#");
                 }
-            }        
-            fprintf (fp, "\n");
-        }
+            }
+        }        
+        fprintf (fp, "\n");
+        
     }
     fprintf (fp, "\n");
     for (uint32_t i=5; i<num_cells; i+=5) {
@@ -280,5 +222,125 @@ void uninit_plugin(void *self) {
     }
     fclose(fp);
 
+}
+
+
+char *last_name = 0;
+target_ulong last_pid = 0;
+target_ulong last_asid = 0;
+
+
+int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+
+    if ((a_counter % 10000000) == 0) {
+        spit_asidstory();
+    }
+  
+
+    // NB: we only know max instr *after* replay has started,
+    // so this code *cant* be run in init_plugin.  yuck.
+    if (max_instr == 0) {
+        max_instr = replay_get_total_num_instructions();
+        scale = ((double) num_cells) / ((double) max_instr); 
+    }
+
+    a_counter ++;
+    if ((a_counter % SAMPLE_RATE) != 0) {
+        return 0;
+    }
+    OsiProc *p = get_current_process(env);
+    if (pid_ok(p->pid)) {
+        namepid_to_asids[p->name][p->pid][p->asid]++;
+        // keep track of first rr instruction for each name/pid
+        if ((namepid_first_instr.count(p->name) == 0) 
+            || (namepid_first_instr[p->name].count(p->pid) == 0)) {
+            namepid_first_instr[p->name][p->pid] = rr_get_guest_instr_count();
+        }
+        if (pandalog) {
+            if (last_name == 0
+                || (p->asid != last_asid)
+                || (p->pid != last_pid) 
+                || (0 != strcmp(p->name, last_name))) {        
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_asid = 1;
+                ple.asid = p->asid;
+                ple.has_process_id = 1;
+                ple.process_id = p->pid;
+                ple.process_name = p->name;
+                pandalog_write_entry(&ple);           
+                last_asid = p->asid;
+                last_pid = p->pid;
+                free(last_name);
+                last_name = strdup(p->name);
+            }
+        }
+    }
+    free (p);
+    return 0;
+}
+
+
+
+
+
+int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
+    b_counter ++;
+    if ((b_counter % SAMPLE_RATE) != 0) {
+        return 0;
+    }
+    OsiProc *p = get_current_process(env);
+    if (pid_ok(p->pid)) {
+        Instr instr = rr_get_guest_instr_count();
+        namepid_to_asids[p->name][p->pid][p->asid]++;
+        uint32_t cell = instr * scale;
+        namepid_cells[p->name][p->pid][cell] ++;
+        namepid_last_instr[p->name][p->pid] = std::max(namepid_last_instr[p->name][p->pid], instr);
+    }
+    if ((vol_instr_count != 0) 
+        && (!vol_done) 
+        && (rr_get_guest_instr_count() > vol_instr_count)) {
+        printf ("instr count is %" PRIu64 " \n", rr_get_guest_instr_count());
+        std::string fn = "asidstory.vol";
+        vol((char *) fn.c_str());
+        vol_done = true;
+    }        
+    free(p);
+    return 0;
+}
+
+
+
+    
+
+
+bool init_plugin(void *self) {    
+
+    printf ("Initializing plugin asidstory\n");
+
+    panda_require("osi");
+   
+    // this sets up OS introspection API
+    bool x = init_osi_api();  
+    assert (x==true);
+
+    panda_cb pcb;    
+    pcb.before_block_exec = asidstory_before_block_exec;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    
+    pcb.after_block_exec = asidstory_after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    
+    panda_arg_list *args = panda_get_args("asidstory");
+    vol_instr_count = panda_parse_uint64(args, "vol_instr_count", 0);
+    vol_cmds = panda_parse_string(args, "vol_cmds", "xxx");
+    
+    min_instr = 0;   
+    return true;
+}
+
+
+
+void uninit_plugin(void *self) {
+  spit_asidstory();
 }
 

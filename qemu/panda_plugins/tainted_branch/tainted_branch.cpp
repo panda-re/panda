@@ -33,6 +33,11 @@ extern "C" {
 #include "../taint2/label_set.h"
 #include "../taint2/taint2.h"
 
+#include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
+
+//#include "../taint/taint_processor.h"
+
 typedef void (*on_branch_t) (uint64_t, int); // hack since we can't include both taint.h's
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -52,16 +57,26 @@ FILE *branchfile = NULL;
 
 bool use_taint2 = true;
 
+void callstack() {
+    // callstack info
+    target_ulong callers[16];
+    int n = get_callers(callers, 16, cpu_single_env);
+    for (int i=0; i<n; i++) {
+        printf ("callstack: %d " TARGET_FMT_lx " \n", i, callers[i]);
+    }
+}
+
+
 void tbranch_on_branch(uint64_t pc, int reg_num) {
     if (taint_query_llvm(reg_num, /*offset=*/0)) {
         printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register: %%%d\n",
                (unsigned int ) panda_current_asid(cpu_single_env), (unsigned int) pc, reg_num);
         // Get taint compute number
         uint32_t ls_type = taint_get_ls_type_llvm(reg_num, /*offset=*/0);
-
+        callstack();
         // Print out the labels
         printf("\tCompute number: %d\n", ls_type);
-        //taint_spit_llvm(reg_num, /*offset=*/0);
+        taint_spit_llvm(reg_num, /*offset=*/0);
 
         fprintf(branchfile, "%lx\n", pc);
     }
@@ -72,7 +87,7 @@ void tbranch_on_branch_taint2(LabelSetP ls, uint32_t tcn) {
         printf("cr3=0x%x pc=0x%x Branch condition on tainted LLVM register.\n",
                (unsigned int ) panda_current_asid(cpu_single_env),
                (unsigned int) panda_current_pc(cpu_single_env));
-
+        callstack();
         // Print out the labels
         printf("\tCompute number: %lu\n", tcn);
         //taint2_labelset_spit(ls);
@@ -80,6 +95,7 @@ void tbranch_on_branch_taint2(LabelSetP ls, uint32_t tcn) {
 
     }
 }
+
 
 int tbranch_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
     if ((use_taint2 && taint2_enabled()) || (!use_taint2 && taint_enabled())) {
@@ -96,26 +112,24 @@ int tbranch_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlo
 #endif
 
 bool init_plugin(void *self) {
-
-#ifdef CONFIG_SOFTMMU
-  panda_cb pcb;
-  pcb.after_block_exec = tbranch_after_block_exec;
-  panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-
-  panda_arg_list *args = panda_get_args("tainted_branch");
-  use_taint2 = !panda_parse_bool(args, "taint1");
-
-  // this sets up the taint api fn ptrs so we have access
-  if (use_taint2) assert(init_taint2_api());
-  else assert(init_taint_api());
-
-  branchfile = fopen("branches.txt", "w");
-
-  return true;
-#else
-  fprintf(stderr, "tainted_branch plugin does not support linux-user mode\n");
-  return false;
-#endif
+    panda_require("callstack_instr");
+    assert (init_callstack_instr_api());
+    panda_cb pcb;
+    pcb.after_block_exec = tbranch_after_block_exec;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    panda_arg_list *args = panda_get_args("tainted_branch");
+    use_taint2 = !panda_parse_bool(args, "taint1");
+    if (use_taint2) {
+        panda_require("taint2");
+        assert (init_taint2_api());
+    }
+    else {
+        panda_require("taint");
+        assert (init_taint_api());
+    }
+    
+    branchfile = fopen("branches.txt", "w");
+    return true;
 }
 
 void uninit_plugin(void *self) {

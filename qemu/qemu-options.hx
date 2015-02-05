@@ -2613,6 +2613,10 @@ DEF("replay", HAS_ARG, QEMU_OPTION_replay,
     "-replay <snapshot>\n"
     "                replay the recording that starts at <snapshot>\n", QEMU_ARCH_ALL)
 
+DEF("pandalog", HAS_ARG, QEMU_OPTION_pandalog,
+    "-pandalog <filename>\n"
+    "                enable panda logging to file\n", QEMU_ARCH_ALL)
+
 DEF("panda-plugin", HAS_ARG, QEMU_OPTION_panda_plugin,
     "-panda-plugin <file>\n"
     "                load PANDA plugin from <file>\n", QEMU_ARCH_ALL)
