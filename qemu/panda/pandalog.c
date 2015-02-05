@@ -65,8 +65,11 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 
 Panda__LogEntry *pandalog_read_entry(void) {
     // read the size of the log entry
-    size_t n;
-    gzread(pandalog_file, (void *) &n, sizeof(n));
+    size_t n,nbr;
+    nbr = gzread(pandalog_file, (void *) &n, sizeof(n));
+    if (nbr == 0) {
+        return NULL;
+    }
     resize_pandalog(n);
     // and then read the entry iself
     gzread(pandalog_file, pandalog_buf, n);
