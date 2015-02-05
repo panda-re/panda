@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # creates api code for plugins
 python ../scripts/apigen.py
@@ -7,6 +7,16 @@ python ../scripts/apigen.py
 sh ./pp.sh
 
 
+# only 
+LLVM_BIT=""
+if [ -f ../llvm ]
+then
+  LLVM_BIT="--enable-llvm --with-llvm=../llvm/Release"
+else
+  echo "No ../llvm dir found -- LLVM SUPPORT IS DISABLED"
+fi  
+    
+
 ./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --cc=${CC:=gcc-4.7} \
 --cxx=${CXX:=g++-4.7} \
@@ -14,7 +24,7 @@ sh ./pp.sh
 --disable-pie \
 --disable-xen \
 --disable-libiscsi \
---enable-llvm \
+$LLVM_BIT \
 --with-llvm=../llvm/Release \
 --extra-cflags="-O2 -I/usr/local/include" \
 --extra-cxxflags="-O2" \
