@@ -471,6 +471,7 @@ const char *panda_parse_string(panda_arg_list *args, const char *argname, const 
 // Free a list of parsed arguments
 void panda_free_args(panda_arg_list *args) {
     int i;
+    if (!args) return;
     for (i = 0; i < args->nargs; i++) {
         g_free(args->list[i].argptr);
     }
