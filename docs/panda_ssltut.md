@@ -430,7 +430,7 @@ Now, we run the replay:
 
     $ echo "begin_replay ssltut" | x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
-        -panda callstack_instr;textprinter
+        -panda 'callstack_instr;textprinter'
 
 It will produce two files, `read_tap_buffers.txt.gz` and
 `write_tap_buffers.txt.gz`. Let's focus on `write_tap_buffers.txt.gz`
