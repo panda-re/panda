@@ -33,6 +33,8 @@ typedef struct LabelSet {
         struct LabelSet *child2;
         uint32_t label;
     };
+
+    uint64_t count;
 } *LabelSetP;
 }
 
