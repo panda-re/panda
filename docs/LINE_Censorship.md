@@ -42,9 +42,10 @@ Build PANDA (see the documentation for details on dependencies).
 Due to a bug in the Android support, the replay requires that a QCOW2
 file exists for the system and user data devices of the Android
 emulator. It doesn't have to have any real data though, so we can just
-create a small dummy QCOW2:
+create two small dummy QCOW2:
 
     $ ./qemu-img create -f qcow2 dummy.qcow2 1M
+    $ ./qemu-img create -f qcow2 dummy2.qcow2 1M
 
 Now we can move on to the actual analysis.
 
@@ -63,7 +64,7 @@ Now, run the replay. Note that we have to pass in the dummy QCOW2 we
 created:
 
     ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -cpu cortex-a9 -kernel /dev/null -vnc :0 \
-      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy.qcow2 \
+      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;stringsearch'
 
@@ -107,7 +108,7 @@ information where both strings matched:
 And run another replay with `textprinter` turned on:
 
     ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -cpu cortex-a9 -kernel /dev/null -vnc :0 \
-      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy.qcow2 \
+      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;textprinter'
 
@@ -129,8 +130,8 @@ constituent tap points and converting the hex data to binary. The
 script that does this is called `split_taps.py`:
 
     $ mkdir -p taps/reads taps/writes
-    $ ../scripts/split_taps.py ../scripts/split_taps.py read_tap_buffers.txt.gz taps/reads/line
-    $ ../scripts/split_taps.py ../scripts/split_taps.py write_tap_buffers.txt.gz taps/writes/line
+    $ ../scripts/split_taps.py read_tap_buffers.txt.gz taps/reads/line
+    $ ../scripts/split_taps.py write_tap_buffers.txt.gz taps/writes/line
 
 And then examining the files in `taps/reads` and `taps/writes`. Looking
 in particular at `taps/writes/line.40796784.40038688.28210000.dat`, we
