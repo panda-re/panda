@@ -347,14 +347,20 @@ bool init_plugin(void *self) {
     panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
 #endif
 
-    //panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
+    // Read the name of the kernel configuration to use.
+    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
+    char *kconf_file = g_strdup(panda_parse_string(plugin_args, "kconf_file", DEFAULT_KERNELINFO_FILE));
+    char *kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
+    panda_free_args(plugin_args);
 
     // Load kernel offsets.
-    if (read_kernelinfo(NULL, KERNELINFO_GROUP, &ki) != 0) {
-        LOG_ERR("Failed to read conf group %s.", KERNELINFO_GROUP);
+    if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
+        LOG_ERR("Failed to read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
         goto error;
     }
-    LOG_INFO("Read kernel info from conf group %s.", KERNELINFO_GROUP);
+    LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
+    g_free(kconf_file);
+    g_free(kconf_group);
 
 #if (OSI_LINUX_TEST)
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);

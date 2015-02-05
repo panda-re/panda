@@ -20,7 +20,7 @@
 
 // For byte array reversal.
 #define PLUGIN_NAME "osi_linux"
-#define KERNELINFO_GROUP "debian-3.2.63-i686"
+#define DEFAULT_KERNELINFO_GROUP "debian-3.2.63-i686"
 
 /**
  * @brief Pointer type of the guest VM.
