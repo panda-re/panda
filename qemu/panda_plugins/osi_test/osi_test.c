@@ -15,6 +15,10 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+// Choose a granularity for the OSI code to be invoked.
+#define INVOKE_FREQ_PGD
+//#define INVOKE_FREQ_BBL
+
 #include "config.h"
 #include "qemu-common.h"
 
@@ -25,34 +29,39 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+int vmi_pgd_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     int i;
 
     OsiProc *current = get_current_process(env);
-    printf("Current process: %s, PID %04x PPID %04x\n", current->name, current->pid, current->ppid);
-    OsiProcs *ps;
-    ps = get_processes(env);
+    printf("Current process: %s PID:" TARGET_FMT_ld " PPID:" TARGET_FMT_ld "\n", current->name, current->pid, current->ppid);
+
+    OsiModules *ms = get_libraries(env, current);
+    if (ms == NULL) {
+        printf("No mapped dynamic libraries.\n");
+    }
+    else {
+        printf("Dynamic libraries list (%d libs):\n", ms->num);
+        for (i = 0; i < ms->num; i++)
+            printf("\t0x" TARGET_FMT_lx "\t" TARGET_FMT_ld "\t%-24s %s\n", ms->module[i].base, ms->module[i].size, ms->module[i].name, ms->module[i].file);
+    }
+
+    printf("\n");
+
+    OsiProcs *ps = get_processes(env);
     if (ps == NULL) {
         printf("Process list not available.\n");
     }
     else {
         printf("Process list (%d procs):\n", ps->num);
         for (i = 0; i < ps->num; i++)
-            printf("  %-16s %04x %04x\n", ps->proc[i].name, ps->proc[i].pid, ps->proc[i].ppid);
+            printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", ps->proc[i].name, ps->proc[i].pid, ps->proc[i].ppid);
     }
-    OsiModules *ms;
-    ms = get_libraries(env, current);
-    if (ms == NULL) {
-        printf("DLL list is paged out.\n");
-    }
-    else {
-        printf("DLL list (%d libs):\n", ms->num);
-        for (i = 0; i < ms->num; i++)
-            printf("  %08x %08x %s %s\n", ms->module[i].base, ms->module[i].size, ms->module[i].name, ms->module[i].file);
-    }
-    
+
+    printf("\n-------------------------------------------------\n\n");
+
     // Cleanup
     free_osiproc(current);
     free_osiprocs(ps);
@@ -61,9 +70,21 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 
+int vmi_pgd_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd) {
+    // tb argument is not used by before_block_exec()
+    return before_block_exec(env, NULL);
+}
+
 bool init_plugin(void *self) {
+#if defined(INVOKE_FREQ_PGD)
+    // relatively short execution
+    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
+    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+#else
+    // expect this to take forever to run
     panda_cb pcb = { .before_block_exec = before_block_exec };
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+#endif
 
     if(!init_osi_api()) return false;
 

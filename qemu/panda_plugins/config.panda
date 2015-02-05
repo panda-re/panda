@@ -32,6 +32,7 @@ printstack
 tainted_branch
 osi
 osi_linux
+osi_test
 win7x86intro
 memstrings
 asidstory
