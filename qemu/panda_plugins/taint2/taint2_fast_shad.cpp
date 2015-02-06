@@ -71,8 +71,8 @@ FastShad::FastShad(uint64_t labelsets) {
 // release all memory associated with this fast_shad.
 FastShad::~FastShad() {
     if (size < (1UL << 24)) {
-        free(labels);
+        free(orig_labels);
     } else {
-        munmap(labels, sizeof(TaintData) * size);
+        munmap(orig_labels, sizeof(TaintData) * size);
     }
 }
