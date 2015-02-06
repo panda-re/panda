@@ -96,25 +96,32 @@ int tb_each_label(uint32_t el, void *stuff1) {
 }
 
 
-uint64_t *callers64=NULL;
+#define MAXCALLERS 128
+target_ulong callers[MAXCALLERS];
+uint64_t callers64[MAXCALLERS];
 uint32_t num_callers = 0;
-uint32_t max_num_callers = 0;
 
 
 void tbranch_pandalogging() {
-                // NB: max of 16 callstack.  bad idea?
-    target_ulong callers[16];
-    int n = get_callers(callers, 16, cpu_single_env);
+    if (num_labels == 0) {
+        // no actual labels -- why isn't this handled by taint_query_llvm ? 
+        return;
+    }
+    int n = get_callers(callers, MAXCALLERS, cpu_single_env);
+    /*
     if (callers64 == NULL) {
         max_num_callers = std::max(n, 16);
-        callers64 = (uint64_t *) malloc(sizeof(uint64_t) * max_num_callers);        
+        callers = (target_ulong *) malloc(sizeof(target_ulong) * max_num_callers);
+        callers64 = (uint64_t *) malloc(sizeof(uint64_t) * max_num_callers);                
     }
     if (n >= max_num_callers) {
         do {
             max_num_callers *= 2;
         } while (n >= max_num_callers);
+        callers = (target_ulong *) realloc(callers64, sizeof(target_ulong) * max_num_callers);
         callers64 = (uint64_t *) realloc(callers64, sizeof(uint64_t) * max_num_callers);
     }
+    */
     for (unsigned int i=0; i<n; i++) {
         callers64[i] = callers[i];
     }
