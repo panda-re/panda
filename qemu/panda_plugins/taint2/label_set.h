@@ -15,13 +15,12 @@ PANDAENDCOMMENT */
 #ifndef __LABEL_SET_H_
 #define __LABEL_SET_H_
 
-#include <cstdio>
-
 extern "C" {
 #include "cpu.h"
 #include "qemu-log.h"
 }
 
+#include <cstdio>
 #include <cstdint>
 
 #include <map>
@@ -35,8 +34,7 @@ typedef struct LabelSet {
         uint32_t label;
     };
 
-    // extensions
-    uint64_t taint_compute_num;
+    uint64_t count;
 } *LabelSetP;
 }
 
@@ -60,9 +58,14 @@ static void label_set_iter_rec(LabelSetP ls, user_type &user) {
 
 template<typename user_type, void (*leaf)(uint32_t, user_type &), user_type initial>
 static user_type label_set_iter(LabelSetP ls) {
-    if (!ls) return initial;
-
     user_type initial_copy = initial;
+    if (!ls) return initial;
+    if (ls->count > 65536) {
+        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
+                "Not iterating.\n", (unsigned long)ls, ls->count);
+        return initial;
+    }
+
     label_set_iter_rec<user_type, leaf>(ls, initial_copy);
 
     return initial_copy;
@@ -73,6 +76,11 @@ static user_type label_set_iter(LabelSetP ls) {
     user_type initial;
 
     if (!ls) return initial;
+    if (ls->count > 65536) {
+        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
+                "Not iterating.\n", (unsigned long)ls, ls->count);
+        return initial;
+    }
 
     label_set_iter_rec<user_type, leaf>(ls, initial);
 

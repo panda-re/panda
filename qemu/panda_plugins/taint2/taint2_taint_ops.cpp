@@ -32,10 +32,9 @@ extern "C" {
 uint64_t labelset_count;
 
 void taint_label(FastShad *shad, uint64_t addr, uint32_t label) {
-    FastShad::set(shad, addr,
-            label_set_union(
-                FastShad::query(shad, addr),
-                label_set_singleton(label)));
+    shad->set(addr, label_set_union(
+            shad->query(addr),
+            label_set_singleton(label)));
 }
 
 // Memlog functions.
@@ -82,20 +81,13 @@ void taint_copy(
 #ifdef TAINTDEBUG
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
     tassert(dest + size <= shad_dest->get_size() &&
             src + size <= shad_src->get_size());
     FastShad::copy(shad_dest, dest, shad_src, src, size);
-}
-
-void taint_move(
-        FastShad *shad_dest, uint64_t dest,
-        FastShad *shad_src, uint64_t src,
-        uint64_t size) {
-    FastShad::move(shad_dest, dest, shad_src, src, size);
 }
 
 void taint_parallel_compute(
@@ -106,28 +98,26 @@ void taint_parallel_compute(
             (uint64_t)shad, dest, src_size, src1, src2);
     uint64_t i;
     for (i = 0; i < src_size; ++i) {
-        LabelSetP ls = label_set_union(
-                FastShad::query(shad, src1 + i),
-                FastShad::query(shad, src2 + i));
-        if (ls) ls->taint_compute_num++;
-        FastShad::set(shad, dest + i, ls);
+        TaintData td = TaintData::comp_union(
+                shad->query_full(src1 + i),
+                shad->query_full(src2 + i));
+        shad->set_full(dest + i, td);
     }
 }
 
-static inline LabelSetP mixed_labels(FastShad *shad, uint64_t addr, uint64_t size) {
-    LabelSetP ls = NULL;
+static inline TaintData mixed_labels(FastShad *shad, uint64_t addr, uint64_t size) {
+    TaintData td;
     uint64_t i;
     for (i = 0; i < size; ++i) {
-        ls = label_set_union(ls, FastShad::query(shad, addr + i));
+        td.add(shad->query_full(addr + i));
     }
-    if (ls) ls->taint_compute_num++;
-    return ls;
+    return td;
 }
 
-static inline void bulk_set(FastShad *shad, uint64_t addr, uint64_t size, LabelSetP ls) {
+static inline void bulk_set(FastShad *shad, uint64_t addr, uint64_t size, TaintData td) {
     uint64_t i;
     for (i = 0; i < size; ++i) {
-        FastShad::set(shad, addr + i, ls);
+        shad->set_full(addr + i, td);
     }
 }
 
@@ -137,10 +127,10 @@ void taint_mix_compute(
         uint64_t src1, uint64_t src2, uint64_t src_size) {
     taint_log("mcompute: %lx[%lx+%lx] <- %lx + %lx\n",
             (uint64_t)shad, dest, dest_size, src1, src2);
-    LabelSetP ls = label_set_union(
+    TaintData td = TaintData::comp_union(
             mixed_labels(shad, src1, src_size),
             mixed_labels(shad, src2, src_size));
-    bulk_set(shad, dest, dest_size, ls);
+    bulk_set(shad, dest, dest_size, td);
 }
 
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
@@ -149,13 +139,13 @@ void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
         taint_log("Ignoring IO RW\n");
         return;
     }
-    FastShad::remove(shad, dest, size);
+    shad->remove(dest, size);
 }
 
 void taint_set(
         FastShad *shad_dest, uint64_t dest, uint64_t dest_size,
         FastShad *shad_src, uint64_t src) {
-    bulk_set(shad_dest, dest, dest_size, FastShad::query(shad_src, src));
+    bulk_set(shad_dest, dest, dest_size, shad_src->query_full(src));
 }
 
 void taint_mix(
@@ -185,14 +175,14 @@ void taint_pointer(
         src = ones; // ignore source.
     }
 
-    LabelSetP ls_ptr = mixed_labels(shad_ptr, ptr, ptr_size);
+    TaintData td = mixed_labels(shad_ptr, ptr, ptr_size);
     if (src == ones) {
-        bulk_set(shad_dest, dest, size, ls_ptr);
+        bulk_set(shad_dest, dest, size, td);
     } else {
         unsigned i;
         for (i = 0; i < size; i++) {
-            FastShad::set(shad_dest, dest + i,
-                    label_set_union(ls_ptr, FastShad::query(shad_src, src + i)));
+            shad_dest->set_full(dest + i,
+                    TaintData::copy_union(td, shad_src->query_full(src + i)));
         }
     }
 }
@@ -201,7 +191,7 @@ void taint_sext(FastShad *shad, uint64_t dest, uint64_t dest_size, uint64_t src,
     taint_log("taint_sext\n");
     FastShad::copy(shad, dest, shad, src, src_size);
     bulk_set(shad, dest + src_size, dest_size - src_size,
-            FastShad::query(shad, dest + src_size - 1));
+            shad->query_full(dest + src_size - 1));
 }
 
 // Takes a (~0UL, ~0UL)-terminated list of (value, selector) pairs.
@@ -280,7 +270,7 @@ void taint_host_copy(
             (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src, offset);
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
@@ -313,7 +303,7 @@ void taint_host_memcpy(
             dest_offset, src_offset);
     unsigned i;
     for (i = 0; i < size; i++) {
-        taint_log("%lx, ", (uint64_t)FastShad::query(shad_src, src));
+        taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
     }
     taint_log(")\n");
 #endif
@@ -337,5 +327,5 @@ void taint_host_delete(
 
     taint_log("hostdel: %lx[%lx+%lx]", (uint64_t)shad, dest, size);
 
-    FastShad::remove(shad, dest, size);
+    shad->remove(dest, size);
 }

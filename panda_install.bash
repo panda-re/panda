@@ -1,22 +1,31 @@
 #!/bin/bash
 
+#
+# This script installs all of PANDA after first taking care of current dependencies. 
+# Known to work on debian 7 install.
+#
+# The only prereq is llvm.  You need to put that in ~/llvm
+
 sudo apt-get -y install build-essential 
 sudo apt-get -y build-dep qemu
 sudo apt-get -y install nasm
 sudo apt-get -y install libssl-dev
-sudo apt-get -y install libpacap-dev
+sudo apt-get -y install libpcap-dev
 sudo apt-get -y install subversion
 sudo apt-get -y install curl
 sudo apt-get -y install autoconf
 sudo apt-get -y install libtool
 
 
+# this will install panda in ~/git/panda
 
-cd ~/git/panda/git
+mkdir -p ~/git
+
+cd ~/git
 git clone https://github.com/moyix/panda.git
 
 cd ~/git/panda
-ln -s /nas/regression/git/panda/llvm ./llvm
+ln -s ~/llvm ./llvm
 
 cd ~
 

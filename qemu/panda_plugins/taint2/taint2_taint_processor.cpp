@@ -149,22 +149,22 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
         case HADDR:
             return shad_dir_find_64(shad->hd, a->val.ha+a->off);
         case MADDR:
-            return FastShad::query(shad->ram, a->val.ma+a->off);
+            return shad->ram->query(a->val.ma+a->off);
         case IADDR:
             return shad_dir_find_64(shad->io, a->val.ia+a->off);
         case PADDR:
             return shad_dir_find_32(shad->ports, a->val.pa+a->off);
         case LADDR:
-            return FastShad::query(shad->llv, a->val.la*MAXREGSIZE + a->off);
+            return shad->llv->query(a->val.la*MAXREGSIZE + a->off);
         case GREG:
-            return FastShad::query(shad->grv, a->val.gr * WORDSIZE + a->off);
+            return shad->grv->query(a->val.gr * WORDSIZE + a->off);
         case GSPEC:
             // SpecAddr enum is offset by the number of guest registers
-            return FastShad::query(shad->gsv, a->val.gs - NUMREGS + a->off);
+            return shad->gsv->query(a->val.gs - NUMREGS + a->off);
         case CONST:
             return NULL;
         case RET:
-            return FastShad::query(shad->ret, a->off);
+            return shad->ret->query(a->off);
         default:
             assert(false);
     }
@@ -263,7 +263,7 @@ void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_64(shad->hd, a->val.ha+a->off);
             break;
         case MADDR:
-            FastShad::remove(shad->ram, a->val.ma+a->off,
+            shad->ram->remove(a->val.ma+a->off,
                     WORDSIZE - a->off);
             break;
         case IADDR:
@@ -273,19 +273,19 @@ void tp_delete(Shad *shad, Addr *a) {
             shad_dir_remove_32(shad->ports, a->val.pa+a->off);
             break;
         case LADDR:
-            FastShad::remove(shad->llv, a->val.la*MAXREGSIZE + a->off,
+            shad->llv->remove(a->val.la*MAXREGSIZE + a->off,
                     MAXREGSIZE - a->off);
             break;
         case GREG:
-            FastShad::remove(shad->grv, a->val.gr * WORDSIZE + a->off,
+            shad->grv->remove(a->val.gr * WORDSIZE + a->off,
                     WORDSIZE - a->off);
             break;
         case GSPEC:
-            FastShad::remove(shad->gsv, a->val.gs - NUMREGS + a->off,
+            shad->gsv->remove(a->val.gs - NUMREGS + a->off,
                     WORDSIZE - a->off);
             break;
         case RET:
-            FastShad::remove(shad->ret, a->off, MAXREGSIZE);
+            shad->ret->remove(a->off, MAXREGSIZE);
             break;
         default:
             assert (1==0);
@@ -305,7 +305,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
 #endif
             break;
         case MADDR:
-            FastShad::set(shad->ram, a->val.ma + a->off, ls);
+            shad->ram->set(a->val.ma + a->off, ls);
 #ifdef TAINTDEBUG
             taint_log("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
             //labelset_spit(ls);
@@ -330,7 +330,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             taint_log("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
             //labelset_spit(ls);
 #endif
-            FastShad::set(shad->llv, a->val.la*MAXREGSIZE + a->off, ls);
+            shad->llv->set(a->val.la*MAXREGSIZE + a->off, ls);
             break;
         case GREG:
 #ifdef TAINTDEBUG
@@ -338,7 +338,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
 #endif
             // need to call labelset_copy to increment ref count
-            FastShad::set(shad->grv, a->val.gr * WORDSIZE + a->off, ls);
+            shad->grv->set(a->val.gr * WORDSIZE + a->off, ls);
             break;
         case GSPEC:
 #ifdef TAINTDEBUG
@@ -346,14 +346,14 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
 #endif
             // SpecAddr enum is offset by the number of guest registers
-            FastShad::set(shad->gsv, a->val.gs - NUMREGS + a->off, ls);
+            shad->gsv->set(a->val.gs - NUMREGS + a->off, ls);
             break;
         case RET:
 #ifdef TAINTDEBUG
             taint_log("Labelset put in ret\n");
             //labelset_spit(ls);
 #endif
-            FastShad::set(shad->ret, a->off, ls);
+            shad->ret->set(a->off, ls);
             break;
         default:
             assert (1==0);

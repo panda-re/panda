@@ -36,7 +36,6 @@ typedef struct SdDir32 SdDir32;
 typedef struct SdDir64 SdDir64;
 typedef struct addr_struct Addr;
 
-//typedef void (*on_branch2_t) (LabelSetP);
 typedef void (*on_branch2_t) (uint64_t);
 
 // Unused for now.

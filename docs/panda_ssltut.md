@@ -39,10 +39,10 @@ convert these images to a lower version of qcow2 which PANDA supports. You can
 do this with:
 
     qemu-img convert -f qcow2 -O qcow2 -o compat=0.10 \
-    debian_wheezy_amd64_desktop.qcow2 debian_wheezy_amd64_desktop_panda.qcow2
+    debian_squeeze_i386_desktop.qcow2 debian_squeeze_i386_desktop_tut.qcow2
     
-where debian_wheezy_amd64_desktop.qcow2 is the example name of the qcow2 image
-you're looking to downgrade and debian_wheezy_amd64_desktop_panda.qcow2 is the
+where `debian_squeeze_i386_desktop.qcow2` is the example name of the qcow2 image
+you're looking to downgrade and `debian_squeeze_i386_desktop_tut.qcow2` is the
 new output file. Also, note again that this is using your distro's more recent 
 version of qemu-img, not PANDA's. This command is needed if you're running 
 into the following error:
@@ -97,7 +97,7 @@ To get started, boot up the VM. In addition to the arguments used to
 boot the VM in the previous section, we will also tell QEMU to capture
 all packets sent and received by the VM to a file called `ssltut.pcap`:
 
-    x86_64-softmmu/qemu-system-x86_64 -hda ~/qcow/debian_squeeze_i386_desktop_tut.qcow2 \
+    x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -net nic,model=e1000 \
         -net user -net dump,file=ssltut.pcap
 
@@ -140,7 +140,7 @@ information and create a configuration file for `keyfind`. It depends on
 the community-supported version of `scapy`, which can be installed using
 Mercurial:
 
-    $ hg clone http://hg.secdev.org/scapy-com
+    $ hg clone https://bitbucket.org/secdev/scapy-com
     $ cd scapy-com
     $ sudo python setup.py install
 
@@ -392,7 +392,7 @@ capture:
 
 If we like, we can now paste this into a Wireshark config file and
 decrypt the session using the [procedure documented
-here](http://ask.wireshark.org/answer_link/4238/). For our sample
+here](https://ask.wireshark.org/questions/4229/follow-ssl-stream-using-master-key-and-session-id). For our sample
 capture the configuration file looks like:
 
     RSA Session-ID:acd4b061aee65594d0ebdec5212076c35cfe5bf9c895305d2036584b17bdc889 Master-Key:f6e162a5891fa91fd60d16bedc1718d201e18dedde6defbcc68e5a15b82932e2a84d4832a2816fab5c6663a8d4187c91
@@ -430,7 +430,7 @@ Now, we run the replay:
 
     $ echo "begin_replay ssltut" | x86_64-softmmu/qemu-system-x86_64 -hda debian_squeeze_i386_desktop_tut.qcow2 \
         -m 256 -monitor stdio -vnc :0 -net nic,model=e1000 -net user \
-        -panda callstack_instr;textprinter
+        -panda 'callstack_instr;textprinter'
 
 It will produce two files, `read_tap_buffers.txt.gz` and
 `write_tap_buffers.txt.gz`. Let's focus on `write_tap_buffers.txt.gz`

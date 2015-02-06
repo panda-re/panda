@@ -27,6 +27,8 @@ PANDAENDCOMMENT */
 #undef NDEBUG
 #endif
 
+#include "label_set.h"
+
 extern "C" {
 
 #include <sys/time.h>
@@ -38,8 +40,6 @@ extern "C" {
 #include "panda/network.h"
 #include "rr_log.h"
 #include "cpu.h"
-
-#include "fast_shad.h"
 
 extern int loglevel;
 
@@ -74,6 +74,7 @@ void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), 
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "llvm_taint_lib.h"
+#include "fast_shad.h"
 #include "taint_ops.h"
 #include "taint2.h"
 
@@ -344,7 +345,7 @@ void i386_hypercall_callback(CPUState *env){
                 (uint64_t)ls);
         for (unsigned i = 0; i < size; i++) {
             //printf("label %u\n", i);
-            FastShad::set(shadow->ram, addr + i,
+            shadow->ram->set(addr + i,
                     label_set_singleton(i));
         }
     }
