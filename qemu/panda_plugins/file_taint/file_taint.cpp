@@ -26,6 +26,7 @@ extern "C" {
 const char *taint_filename = 0;
 bool positional_labels = true;
 bool use_taint2 = true;
+bool no_taint = true;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
@@ -39,6 +40,7 @@ uint32_t the_fd;
 void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
     uint32_t i;
     char the_filename[MAX_FILENAME];
+    the_filename[0] = 0;
     for (i=0; i<MAX_FILENAME; i++) {
         uint8_t c;
         panda_virtual_memory_rw(env, filename+i, &c, 1, 0);
@@ -48,16 +50,22 @@ void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flag
         }
     }
     the_filename[i] = 0;
-    if (strncmp(the_filename, taint_filename, strlen(the_filename)) == 0) {
-        saw_open = true;
-        printf ("saw open of [%s]\n", taint_filename);
+    if (i != 0 ) {
+        printf ("saw open of [%s]\n", the_filename);
+    }
+    if (i == strlen(taint_filename)) {
+        if (strncmp(the_filename, taint_filename, strlen(the_filename)) == 0) {
+            saw_open = true;
+            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+            the_asid = panda_current_asid(env);
+        }
     }
 }
 
 
 void open_return(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
     //    printf ("returning from open\n");
-    if (saw_open) {
+    if (saw_open && the_asid == panda_current_asid(env)) {
         saw_open = false;
         // get return value, which is the file descriptor for this file
         the_asid = panda_current_asid(env);
@@ -85,9 +93,12 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    count = EAX;
 
-    if (saw_read) {
+    
+    if (saw_read && panda_current_asid(env) == the_asid) {
+        count = EAX;
+        printf ("count=%d\n", count);
+        
         printf ("returning from read of [%s] count=%d\n", taint_filename, count);    
         printf ("*** applying %s taint labels to buffer\n",
                 positional_labels ? "positional" : "uniform");
@@ -107,14 +118,22 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                     ple.taint_label_number = 1;
                 }
                 pandalog_write_entry(&ple);           
+#if 0
+                printf ("file taint %llx %llx %d\n", 
+                        ple.taint_label_virtual_addr, 
+                        ple.taint_label_physical_addr,
+                        ple.taint_label_number);
+#endif
             }
-            if (positional_labels) {
-                if (use_taint2) taint2_label_ram(pa, i);
-                else taint_label_ram(pa, i);
-            }
-            else {
-                if (use_taint2) taint2_label_ram(pa, 0);
-                else taint_label_ram(pa, 1);
+            if (!no_taint) {
+                if (positional_labels) {
+                    if (use_taint2) taint2_label_ram(pa, i);
+                    else taint_label_ram(pa, i);
+                }
+                else {
+                    if (use_taint2) taint2_label_ram(pa, 0);
+                    else taint_label_ram(pa, 1);
+                }
             }
         }
         saw_read = false;
@@ -131,6 +150,8 @@ bool init_plugin(void *self) {
     taint_filename = panda_parse_string(args, "filename", "abc123");
     positional_labels = panda_parse_bool(args, "pos");
     use_taint2 = !panda_parse_bool(args, "taint1");
+    // used to just find the names of files that get 
+    no_taint = panda_parse_bool(args, "notaint");
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
@@ -139,14 +160,16 @@ bool init_plugin(void *self) {
     panda_require("syscalls2");
 
     // this sets up the taint api fn ptrs so we have access
-    if (use_taint2) {
-        panda_require("taint2");
-        assert(init_taint2_api());
-        taint2_enable_taint();
-    } else {
-        panda_require("taint");
-        assert(init_taint_api());
-        taint_enable_taint();
+    if (!no_taint) {
+        if (use_taint2) {
+            panda_require("taint2");
+            assert(init_taint2_api());
+            taint2_enable_taint();
+        } else {
+            panda_require("taint");
+            assert(init_taint_api());
+            taint_enable_taint();
+        }
     }
     
 #if defined(TARGET_I386)
