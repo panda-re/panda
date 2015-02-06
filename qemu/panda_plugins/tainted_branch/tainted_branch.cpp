@@ -139,7 +139,7 @@ void tbranch_on_branch(uint64_t pc, int reg_num) {
         for (uint32_t offset=0; offset<8; offset++) {
             if (taint_query_llvm(reg_num, offset)) {
                 num_labels = 0;
-                taint_labelset_llvm_iter(reg_num, 0, tb_each_label, NULL);            
+                taint_labelset_llvm_iter(reg_num, offset, tb_each_label, NULL);            
                 tbranch_pandalogging();
             }
         }
