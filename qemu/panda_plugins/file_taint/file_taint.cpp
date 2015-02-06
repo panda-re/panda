@@ -127,12 +127,16 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
             }
             if (!no_taint) {
                 if (positional_labels) {
-                    if (use_taint2) taint2_label_ram(pa, i);
-                    else taint_label_ram(pa, i);
+                    if (use_taint2) 
+                        taint2_label_ram(pa, i);
+                    else 
+                        taint_label_ram(pa, i);
                 }
                 else {
-                    if (use_taint2) taint2_label_ram(pa, 0);
-                    else taint_label_ram(pa, 1);
+                    if (use_taint2) 
+                        taint2_label_ram(pa, 1);
+                    else 
+                        taint_label_ram(pa, 1);
                 }
             }
         }
