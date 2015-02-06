@@ -85,6 +85,29 @@ sudo cp * /usr/local/include
 cd -
 ```
 
+### Protocol buffers C style
+
+Protocol buffers are used by pandalog.  You want it.
+This is how I built things and installed them.
+
+```
+cd ~/software
+git clone https://github.com/google/protobuf.git
+cd protobuf
+sh ./autogen.sh
+./configure --disable-shared
+make
+make install
+
+cd ~/software
+git clone https://github.com/protobuf-c/protobuf-c.git
+cd protobuf-c
+sh ./autogen.sh
+./configure --disable-shared
+make
+make install
+```
+
 ## Building the QEMU part
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.

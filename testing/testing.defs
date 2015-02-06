@@ -1,0 +1,32 @@
+
+replaydir=${regressiondir}/replays
+pandadir=${HOME}/git/panda
+testingdir=${pandadir}/testing
+
+# this is where to put test outputs
+outdir=/tmp
+
+# and this is where reference, blessed outputs for those tests reside
+refdir=${regressiondir}/outputs
+
+testoutsuff=out
+
+# pass this a single arg, the name of the test
+# and it will set testout and refout variables
+# which are the names of two files
+# testout is where a tests's output is expected to go
+# refout is where to find corresponding reference output 
+function set_outputs {
+  if [ -z $1 ]
+  then
+      echo "set_outputs called with no arg"
+      exit 1
+  fi
+  tst=$1
+  # output for this test is here
+  testout=${outdir}/${tst}.${testoutsuff}
+  # expected output is supposed to be here                                                                                                                                                                                                  
+  refout=${refdir}/${tst}.${testoutsuff}
+#  echo "testout set to [$testout]"
+#  echo "refout set to [$refout]"
+}

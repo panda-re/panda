@@ -8,6 +8,13 @@ Laboratory, Georgia Tech, and Northeastern University.
 Building
 ----
 Instructions for building PANDA can be found in [docs/compile.md](docs/compile.md).
+If you are looking for a (perhaps) quicker start, the panda_install.bash script should
+be able to install PANDA + all of its dependencies.
+It is basically `compile.md` translated into a script.
+Two caveats.  
+
+1. You will have to have first compiled and installed llvm-3.3 in ~/llvm.
+2. We only vouch for build on Debian 7 system. 
 
 Support
 ----

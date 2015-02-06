@@ -30,11 +30,11 @@ PANDAENDCOMMENT */
 typedef struct LabelSet *LabelSetP;
 
 FastShad::FastShad(uint64_t labelsets) {
-    uint64_t bytes = sizeof(LabelSetP) * labelsets;
+    uint64_t bytes = sizeof(TaintData) * labelsets;
 
-    LabelSetP *array;
+    TaintData *array;
     if (labelsets < (1UL << 24)) {
-        array = (LabelSetP *)malloc(bytes);
+        array = (TaintData *)malloc(bytes);
         printf("taint2: Allocating small fast_shad (%" PRIu64 " bytes) using malloc @ %lx.\n",
                 bytes, (uint64_t)array);
         assert(array);
@@ -46,18 +46,19 @@ FastShad::FastShad(uint64_t labelsets) {
         do {
             // We're going to try to make this aligned.
             vaddr += align;
-            printf("taint2: Trying to allocate large fast_shad @ 0x%" PRIx64 ".\n", vaddr);
-            array = (LabelSetP *)mmap((void *)vaddr, bytes, PROT_READ | PROT_WRITE,
+            printf("taint2: Allocating large fast_shad (%lu bytes)  @ 0x%" PRIx64 ".\n",
+                    bytes, vaddr);
+            array = (TaintData *)mmap((void *)vaddr, bytes, PROT_READ | PROT_WRITE,
                     MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED | MAP_HUGETLB,
                     -1, 0);
-            if (array == (LabelSetP *)MAP_FAILED) {
+            if (array == (TaintData *)MAP_FAILED) {
                 printf("taint2: Hugetlb failed. Trying without.\n");
                 // try without HUGETLB
-                array = (LabelSetP *)mmap((void *)vaddr, bytes, PROT_READ | PROT_WRITE,
+                array = (TaintData *)mmap((void *)vaddr, bytes, PROT_READ | PROT_WRITE,
                         MAP_ANONYMOUS | MAP_PRIVATE | MAP_FIXED, -1, 0);
             }
-        } while (array == (LabelSetP *)MAP_FAILED && vaddr <= align * 8); // only try 8 times.
-        if (array == (LabelSetP *)MAP_FAILED) {
+        } while (array == (TaintData *)MAP_FAILED && vaddr <= align * 8); // only try 8 times.
+        if (array == (TaintData *)MAP_FAILED) {
             puts(strerror(errno));
         }
     }
@@ -72,6 +73,6 @@ FastShad::~FastShad() {
     if (size < (1UL << 24)) {
         free(labels);
     } else {
-        munmap(labels, sizeof(LabelSetP ) * size);
+        munmap(labels, sizeof(TaintData) * size);
     }
 }
