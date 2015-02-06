@@ -112,12 +112,17 @@ make install
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.
 
-Before launching the `build.sh` script, make sure you have
-updated it to reflect the location of your LLVM build.
-You should pass `--with-llvm=../llvm/Debug+Asserts` or
-`--with-llvm=../llvm/Release` to the configure script, depending
-on which LLVM build you compiled earlier.
+By default, `build.sh` will attempt to use the release build of
+LLVM (faster).
+You can override this by setting the `PANDA_LLVM_BUILD`
+environment variable. E.g. to you use the debug build run:
 
+```
+export PANDA_LLVM_BUILD=Debug+Asserts
+```
+
+After making sure that the proper LLVM build will be used,
+you can launch `build.sh`.
 
 ```
 $ cd qemu

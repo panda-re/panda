@@ -11,7 +11,7 @@ sh ./pp.sh
 LLVM_BIT=""
 if [ -f ../llvm ]
 then
-  LLVM_BIT="--enable-llvm --with-llvm=../llvm/Release"
+  LLVM_BIT="--enable-llvm --with-llvm=../llvm/${PANDA_LLVM_BUILD:=Release}"
 else
   echo "No ../llvm dir found -- LLVM SUPPORT IS DISABLED"
 fi  
