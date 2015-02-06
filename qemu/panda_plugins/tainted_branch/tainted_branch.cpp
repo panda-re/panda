@@ -167,7 +167,7 @@ int tbranch_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlo
             if (use_taint2) { PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2); }
             else { PPP_REG_CB("taint", on_branch, tbranch_on_branch); }
             first_enable_taint = false;
-            printf ("turning on tainted_branch before / after execute_taint_ops callbacs\n");
+            printf ("enabling on_branch taint api callbacks\n");
         }
     }
     return 0;

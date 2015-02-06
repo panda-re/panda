@@ -49,7 +49,7 @@ void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flag
             break;
         }
     }
-    the_filename[i] = 0;
+    the_filename[MAX_FILENAME-1] = 0;
     if (i != 0 ) {
         printf ("saw open of [%s]\n", the_filename);
     }
@@ -90,6 +90,8 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
 }
 
 
+uint32_t taint_label_number_start = 0;
+
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
@@ -100,8 +102,9 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
         printf ("count=%d\n", count);
         
         printf ("returning from read of [%s] count=%d\n", taint_filename, count);    
-        printf ("*** applying %s taint labels to buffer\n",
-                positional_labels ? "positional" : "uniform");
+        printf ("*** applying %s taint labels %d..%d to buffer\n",
+                positional_labels ? "positional" : "uniform",
+                taint_label_number_start, taint_label_number_start + count - 1);
         for (uint32_t i=0; i<count; i++ ) {
             target_phys_addr_t pa = panda_virt_to_phys(env, the_buf+i);
             if (pandalog) {
@@ -112,23 +115,17 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 ple.taint_label_virtual_addr = the_buf + i;
                 ple.taint_label_physical_addr = pa;
                 if (positional_labels) {
-                    ple.taint_label_number = i;
+                    ple.taint_label_number = taint_label_number_start + i;
                 }
                 else {
                     ple.taint_label_number = 1;
                 }
                 pandalog_write_entry(&ple);           
-#if 0
-                printf ("file taint %llx %llx %d\n", 
-                        ple.taint_label_virtual_addr, 
-                        ple.taint_label_physical_addr,
-                        ple.taint_label_number);
-#endif
             }
             if (!no_taint) {
                 if (positional_labels) {
                     if (use_taint2) 
-                        taint2_label_ram(pa, i);
+                        taint2_label_ram(pa, taint_label_number_start + i);
                     else 
                         taint_label_ram(pa, i);
                 }
@@ -140,6 +137,8 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 }
             }
         }
+        taint_label_number_start += count;
+        printf (" ... done applying labels\n");
         saw_read = false;
     }
 }
