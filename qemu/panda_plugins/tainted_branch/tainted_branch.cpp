@@ -98,6 +98,7 @@ int tb_each_label(uint32_t el, void *stuff1) {
 
 uint64_t *callers64=NULL;
 uint32_t num_callers = 0;
+uint32_t max_num_callers = 0;
 
 
 void tbranch_pandalogging() {
@@ -105,9 +106,16 @@ void tbranch_pandalogging() {
     target_ulong callers[16];
     int n = get_callers(callers, 16, cpu_single_env);
     if (callers64 == NULL) {
-        callers64 = (uint64_t *) malloc(sizeof(uint64_t) * 16);
+        max_num_callers = std::max(n, 16);
+        callers64 = (uint64_t *) malloc(sizeof(uint64_t) * max_num_callers);        
     }
-    for (unsigned int i=0; i<16; i++) {
+    if (n >= max_num_callers) {
+        do {
+            max_num_callers *= 2;
+        } while (n >= max_num_callers);
+        callers64 = (uint64_t *) realloc(callers64, sizeof(uint64_t) * max_num_callers);
+    }
+    for (unsigned int i=0; i<n; i++) {
         callers64[i] = callers[i];
     }
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;

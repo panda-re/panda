@@ -203,7 +203,7 @@ uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset) {
 // iterate over 
 void tp_lsr_iter(std::set<uint32_t> rendered, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     for (uint32_t el : rendered) {     
-        printf ("el=%d\n", el);
+        //        printf ("el=%d\n", el);
         if ((app(el, stuff2)) != 0) break;
     }
 }
@@ -217,12 +217,12 @@ std::map < LabelSet *, std::set < uint32_t > > memoize_ls_rend;
 void tp_ls_iter(LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     std::set<uint32_t> rendered;
     if (memoize_ls_rend.count(ls) == 0) {
-        printf ("not yet memoized\n");
+        //        printf ("not yet memoized\n");
         rendered = label_set_render_set(ls);
         memoize_ls_rend[ls] = rendered;
     }
     else {
-        printf ("memoized\n");
+        //        printf ("memoized\n");
         rendered = memoize_ls_rend[ls];
     }
     tp_lsr_iter(rendered, app, stuff2);
