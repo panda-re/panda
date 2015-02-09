@@ -19,11 +19,15 @@ PANDAENDCOMMENT */
 #include "../taint2/label_set.h"
 #include "../taint2/taint2.h"
 
+#include <map>
+#include <vector>
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
 #include "monitor.h"
 #include "cpu.h"
+#include "rr_log.h"    
 
 #include "panda_plugin.h"
 #include "../taint2/taint2_ext.h"
@@ -82,26 +86,49 @@ void callstack() {
  the less likely that it can be considered dead.  
 
 */
-std::map < uint32_t, uint32_t > dead_data;
+
+// dde[l] is a vector of instructions at which 
+// this label was observed to participate in a tainted branch
+std::map < uint32_t, std::vector < uint64_t > > dde; 
+
+uint64_t first_tainted_branch = 0xffffffffffffffff;
+uint64_t last_tainted_branch = 0;
 
 
 bool first_time = true;
 
+const char *dead_data_filename;
+
 void dd_spit(){
+    printf ("computing dead data and writing to file [%s]\n", dead_data_filename);
     FILE *fp;
     if (first_time) {
         first_time = false;
-        fp = fopen("dead_data", "w");
+        fp = fopen(dead_data_filename, "w");
     }
     else {
-        fp = fopen("dead_data", "a");
+        fp = fopen(dead_data_filename, "a");
     }
     fprintf (fp,"\n\n-----------------------------------------\n");
     fprintf (fp, "Dead Data Summary\n");
+
+
+    std::map < uint32_t, float > dead_data;
+    float  denom = last_tainted_branch - first_tainted_branch;
+
+    for ( auto &kvp : dde ) {
+        uint32_t l = kvp.first;
+        for ( auto &ins : kvp.second ) {
+            dead_data[l] += ((float)(last_tainted_branch - ins) / denom);
+            //dead_data[l] ++;
+        }
+    }
+
+        
     for ( auto &kvp : dead_data ) {
         uint32_t el = kvp.first;
-        uint32_t count = kvp.second;
-        fprintf (fp, "%6d %d\n", el, count);
+        float val = kvp.second;
+        fprintf (fp, "%6d %0.2f\n", el, val);
     }
     fclose(fp);
 }
@@ -110,7 +137,13 @@ void dd_spit(){
 
 // el is a label
 int dd_each_label(uint32_t el, void *stuff1) {
-    dead_data[el] += 1;    
+    
+    uint64_t ins = rr_get_guest_instr_count();
+    first_tainted_branch = std::min(ins, first_tainted_branch);
+    last_tainted_branch = std::max(ins, last_tainted_branch);
+    dde[el].push_back(ins);
+    
+    //    dead_data[el] += 1;    
     // continue iteration
     return 0;
 }
@@ -132,7 +165,7 @@ void dead_data_on_branch(uint64_t pc, int reg_num) {
 void dead_data_on_branch_taint2(uint64_t reg_num) {
     for (uint32_t offset=0; offset<8; offset++) {
         if (taint2_query_llvm(reg_num, offset)) {           
-            printf ("dead_data_on_branch_taint2 offset=%d is tainted\n", offset);
+            //            printf ("dead_data_on_branch_taint2 offset=%d is tainted\n", offset);
             taint2_labelset_llvm_iter(reg_num, offset, dd_each_label, NULL);
         }
     }
@@ -169,6 +202,7 @@ bool init_plugin(void *self) {
     pcb.after_block_exec = dead_data_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     panda_arg_list *args = panda_get_args("dead_data");
+    dead_data_filename = panda_parse_string(args, "filename", "dead_data");
     use_taint2 = !panda_parse_bool(args, "taint1");
     if (use_taint2) {
         panda_require("taint2");
@@ -177,9 +211,7 @@ bool init_plugin(void *self) {
     else {
         panda_require("taint");
         assert (init_taint_api());
-    }
-    
-    //    branchfile = fopen("branches.txt", "w");
+    }    
     return true;
 }
 
