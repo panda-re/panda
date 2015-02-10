@@ -522,7 +522,7 @@ void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
     /* Do we want to exclude changes when paging is disabled?
     target_ulong oldval;
     oldval = env->cr[3]; */
-    for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+    for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.after_PGD_write(env, env->cr[3], new_cr3);
     }
     

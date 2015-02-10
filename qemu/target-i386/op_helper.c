@@ -2124,7 +2124,7 @@ void helper_cpuid(void)
 
     // PANDA instrumentation: guest hypercall
     panda_cb_list *plist;
-    for(plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL; plist = plist->next) {
+    for(plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.guest_hypercall(env);
     }
 

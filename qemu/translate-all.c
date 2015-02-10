@@ -153,7 +153,7 @@ int cpu_restore_state(TranslationBlock *tb,
     // PANDA instrumentation: CPU restore state
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_CPU_RESTORE_STATE]; plist != NULL;
-            plist = plist->next) {
+            plist = panda_cb_list_next(plist)) {
         plist->entry.cb_cpu_restore_state(env, tb);
     }
  

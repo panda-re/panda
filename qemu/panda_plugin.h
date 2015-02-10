@@ -513,7 +513,11 @@ struct _panda_cb_list {
     void *owner;
     panda_cb_list *next;
     panda_cb_list *prev;
+    bool enabled;
 };
+panda_cb_list* panda_cb_list_next(panda_cb_list* plist);
+void panda_enable_plugin(void *plugin);
+void panda_disable_plugin(void *plugin);
 
 // Structure to store metadata about a plugin
 typedef struct panda_plugin {

@@ -219,7 +219,7 @@ static bool returned_check_callback(CPUState *env, TranslationBlock* tb){
     for(auto& retVal :fork_returns){
         if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
-           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_FORK]; plist != NULL; plist = plist->next) {
+           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_FORK]; plist != NULL; plist = panda_cb_list_next(plist)) {
                 plist->entry.return_from_fork(env);
             }
            // set to 0,0 so we can remove after we finish iterating
@@ -231,7 +231,7 @@ static bool returned_check_callback(CPUState *env, TranslationBlock* tb){
         if(retVal.process_id == get_asid(env, tb->pc) && !in_kernelspace(env)){
         //if (retVal.retaddr == tb->pc /*&& retVal.process_id == get_asid(env, tb->pc)*/){
            // we returned from fork
-           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_EXEC]; plist != NULL; plist = plist->next) {
+           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
                 plist->entry.return_from_exec(env);
             }
            // set to 0,0 so we can remove after we finish iterating
@@ -242,7 +242,7 @@ static bool returned_check_callback(CPUState *env, TranslationBlock* tb){
     for(auto& retVal :clone_returns){
         if (retVal.retaddr == tb->pc && retVal.process_id == get_asid(env, tb->pc)){
            // we returned from fork
-           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_CLONE]; plist != NULL; plist = plist->next) {
+           for(plist = panda_cbs[PANDA_CB_VMI_AFTER_CLONE]; plist != NULL; plist = panda_cb_list_next(plist)) {
                 plist->entry.return_from_clone(env);
             }
            // set to 0,0 so we can remove after we finish iterating
