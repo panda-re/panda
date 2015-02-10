@@ -527,7 +527,8 @@ bool   panda_load_plugin(const char *filename);
 bool   panda_add_arg(const char *arg, int arglen);
 void * panda_get_plugin_by_name(const char *name);
 void   panda_do_unload_plugin(int index);
-void   panda_unload_plugin(int index);
+void   panda_unload_plugin(void* plugin);
+void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
 // Doesn't exist in user mode

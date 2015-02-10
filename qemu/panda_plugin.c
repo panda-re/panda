@@ -152,7 +152,17 @@ void panda_do_unload_plugin(int plugin_idx){
     dlclose(plugin);
 }
 
-void panda_unload_plugin(int plugin_idx) {
+void panda_unload_plugin(void* plugin) {
+    int i;
+    for (i = 0; i < nb_panda_plugins; i++) {
+        if (panda_plugins[i].plugin == plugin) {
+            panda_unload_plugin_idx(i);
+            break;
+        }
+    }
+}
+
+void panda_unload_plugin_idx(int plugin_idx) {
     panda_plugin_to_unload = true;
     panda_plugins_to_unload[plugin_idx] = true;
 }
@@ -492,7 +502,7 @@ void qmp_unload_plugin(int64_t index, Error **errp) {
     if (index >= nb_panda_plugins || index < 0) {
         // TODO: errp
     }
-    panda_unload_plugin(index);
+    panda_unload_plugin_idx(index);
 }
 
 void qmp_list_plugins(Error **errp) {
