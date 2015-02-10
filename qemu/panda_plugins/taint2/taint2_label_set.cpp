@@ -30,12 +30,15 @@ public:
     LabelSetP alloc() {
         assert(blocks.size() > 0);
         std::pair<uint8_t *, size_t>& block = blocks.back();
-        if (next > block.first + block.second) {
+        if (next + sizeof(struct LabelSet) > block.first + block.second) {
             alloc_block();
             assert(next != NULL);
         }
 
         LabelSetP result = new(next) struct LabelSet;
+        result->child1 = nullptr;
+        result->label = ~0U;
+        result->count = 0;
         next += sizeof(struct LabelSet);
         return result;
     }
