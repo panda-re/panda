@@ -145,10 +145,20 @@ connection_handler (int connection_fd)
 }
 
 static void *
+connection_handler_gate (void *fd)
+{
+  connection_handler(*(int *)fd);
+  printf("PMemAccess: Connection done (%d)\n", *(int *)fd);
+  free(fd);
+  return NULL;
+}
+
+static void *
 memory_access_thread (void *path)
 {
     struct sockaddr_un address;
-    int socket_fd, connection_fd;
+    int socket_fd, connection_fd, *tmp_fd;
+    pthread_t thread;
     socklen_t address_length;
 
     socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -169,8 +179,13 @@ memory_access_thread (void *path)
         goto error_exit;
     }
 
-    connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-    connection_handler(connection_fd);
+    while (true) {
+      connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
+      printf("PMemAccess: Connction accepted on %d.\n", connection_fd);
+      tmp_fd = (int *) calloc(1, sizeof(int));
+      *tmp_fd = connection_fd;
+      pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
+    }
 
     close(socket_fd);
     unlink(path);
