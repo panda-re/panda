@@ -715,6 +715,20 @@ save to disk physical memory dump starting at @var{addr} of size @var{size}.
 ETEXI
 
     {
+        .name      = "pmemaccess",
+        .args_type = "path:s",
+        .params    = "path",
+        .help       = "mount guest physical memory image at 'path'",
+        .user_print = monitor_user_noop,
+        .mhandler.cmd_new = do_physical_memory_access,
+    },
+STEXI
+@item pmemaccess @var{path}
+@findex pmemaccess
+mount guest physical memory image at @var{path}.
+ETEXI
+
+    {
         .name       = "boot_set",
         .args_type  = "bootdevice:s",
         .params     = "bootdevice",
