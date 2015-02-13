@@ -114,7 +114,7 @@ connection_handler (int connection_fd)
         else if (req.type == 2){
             // request to write
             void *write_buf = malloc(req.length);
-            nbytes = read(connection_fd, &write_buf, req.length);
+            nbytes = read(connection_fd, write_buf, req.length);
             if (nbytes != req.length){
                 // failed reading the message to write
                 send_fail_ack(connection_fd);
