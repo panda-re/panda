@@ -29,6 +29,10 @@ sudo apt-get install nasm
 sudo apt-get install libssl-dev
 sudo apt-get install libpacap-dev
 sudo apt-get install subversion
+sudo apt-get -y install curl
+sudo apt-get -y install autoconf
+sudo apt-get -y install libtool
+
 ```
 
 ## Compiled prerequisites
@@ -108,6 +112,19 @@ make
 make install
 ```
 
+### Pycparser
+
+The new version of PPP, which permits api functions that have fn pointers as arguments,
+uses a c parser written in python: pycparser.
+
+```
+cd ~/software
+git clone https://github.com/eliben/pycparser.git
+cd pycparser
+sudo python setup.py install
+```
+
+
 ## Building the QEMU part
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.
@@ -121,7 +138,7 @@ on which LLVM build you compiled earlier.
 
 ```
 $ cd qemu
-$ sh ./build.sh
+$ ./build.sh
 ```
 
 By default `gcc-4.7` and `g++-4.7` will be used for the
@@ -131,7 +148,7 @@ compiler. E.g.
 
 ```
 $ cd qemu
-$ CC=gcc-4.8 CXX=g++-4.8 sh ./build.sh
+$ CC=gcc-4.8 CXX=g++-4.8 ./build.sh
 ```
 
 
