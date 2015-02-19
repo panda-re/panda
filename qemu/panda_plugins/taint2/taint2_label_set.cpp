@@ -48,9 +48,9 @@ public:
             munmap(block.first, block.second);
         }
     }
-} *LSA = NULL;
+} LSA;
 
-std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP> *memoized_unions = NULL;
+std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP> memoized_unions;
 
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
     if (ls1 == ls2) {
@@ -60,18 +60,15 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
         LabelSetP max = std::max(ls1, ls2);
         std::pair<LabelSetP, LabelSetP> minmax(min, max);
 
-        if (!memoized_unions)
-            memoized_unions = new std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP>();
         //qemu_log_mask(CPU_LOG_TAINT_OPS, "  MEMO: %lu, %lu\n", (uint64_t)min, (uint64_t)max);
 
-        auto it = memoized_unions->find(minmax);
-        if (it != memoized_unions->end()) {
+        auto it = memoized_unions.find(minmax);
+        if (it != memoized_unions.end()) {
             return it->second;
         }
         //qemu_log_mask(CPU_LOG_TAINT_OPS, "  NOT FOUND\n");
 
-        if (!LSA) LSA = new LabelSetAlloc();
-        LabelSetP result = LSA->alloc();
+        LabelSetP result = LSA.alloc();
         //labelset_count++;
 
         result->child1 = min;
@@ -79,7 +76,7 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
         result->count = min->count + max->count;
         if (result->count < min->count) result->count = ~0UL; // handle overflows
 
-        memoized_unions->insert(std::make_pair(minmax, result));
+        memoized_unions.insert(std::make_pair(minmax, result));
         //qemu_log_mask(CPU_LOG_TAINT_OPS, "  INSERTED\n");
         return result;
     } else if (ls1) {
@@ -90,8 +87,7 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
 }
 
 LabelSetP label_set_singleton(uint32_t label) {
-    if (!LSA) LSA = new LabelSetAlloc();
-    LabelSetP result = LSA->alloc();
+    LabelSetP result = LSA.alloc();
     //labelset_count++;
 
     result->child1 = nullptr;

@@ -61,7 +61,6 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.bc \
-    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_label_set.bc \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_ops.bc
 
 	$(call quiet-command,\

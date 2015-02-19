@@ -170,6 +170,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     assert(PTV.branchF);
     EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
 
+    EE->addGlobalMapping(M.getFunction("label_set_union"), (void *)label_set_union);
+    EE->addGlobalMapping(M.getFunction("label_set_singleton"), (void *)label_set_singleton);
+
     std::cout << "taint2: Done initializing taint transformation." << std::endl;
 
     return true;

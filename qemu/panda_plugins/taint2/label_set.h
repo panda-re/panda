@@ -36,10 +36,11 @@ typedef struct LabelSet {
 
     uint64_t count;
 } *LabelSetP;
-}
 
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2);
 LabelSetP label_set_singleton(uint32_t label);
+}
+
 void label_set_iter(LabelSetP ls, void (*leaf)(uint32_t, void *), void *user);
 std::set<uint32_t> label_set_render_set(LabelSetP ls);
 uint64_t label_set_render_uint(LabelSetP ls);
