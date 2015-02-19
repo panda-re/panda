@@ -21,6 +21,7 @@ extern "C" {
 
 #include "rr_log.h"
 #include "panda_plugin.h"
+#include "pandalog.h"        
 #include "panda_common.h"
 #include "../syscalls2/gen_syscalls_ext_typedefs_windows7_x86.h"
 #include "panda_plugin_plugin.h"
@@ -39,11 +40,12 @@ void uninit_plugin(void *);
 
 #ifdef TARGET_I386
 #define DEFAULT_LOG_FILE "win7proc_report"
-FILE *proc_log;
-FILE *proc_hist;
 
-typedef std::pair<std::string,uint32_t> procid;
-std::map<procid,uint64_t> bbcount;
+//FILE *proc_log = 0;
+//FILE *proc_hist;
+
+//typedef std::pair<std::string,uint32_t> procid;
+//std::map<procid,uint64_t> bbcount;
 
 #define KMODE_FS           0x030
 #define KPCR_CURTHREAD_OFF 0x124
@@ -87,11 +89,11 @@ uint32_t cur_pid = UNKNOWN_PID;
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     bool changed = false;
-    bool in_kernel = false;
+    //    bool in_kernel = false;
     if (panda_in_kernel(env)) {
         changed = cur_pid != UNKNOWN_PID;
-        in_kernel = true;
-        bbcount[std::make_pair("Kernel",UNKNOWN_PID)]++;
+	//        in_kernel = true;
+        //        bbcount[std::make_pair("Kernel",UNKNOWN_PID)]++;
         return 0;
         cur_pid = UNKNOWN_PID;
         if (changed) strcpy(cur_procname, "Kernel");
@@ -102,17 +104,18 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         changed = cur_pid != new_pid;
         cur_pid = new_pid;
         if (changed) get_procname(env, proc, cur_procname);
-        bbcount[std::make_pair(cur_procname,cur_pid)]++;
+        //        bbcount[std::make_pair(cur_procname,cur_pid)]++;
     }
 
     if (changed) {
-        fprintf(proc_log, "%" PRId64 " Current process changed to %-16s", rr_prog_point.guest_instr_count, cur_procname);
-        if (!in_kernel) {
-            fprintf(proc_log, " [%d] [" TARGET_FMT_lx "]", cur_pid, env->cr[3]);
-        }
-        fprintf(proc_log, "\n");
+        Panda__Process *np = (Panda__Process *) malloc(sizeof(Panda__Process));
+        *np = PANDA__PROCESS__INIT;
+        np->pid = cur_pid;
+        np->name = cur_procname;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.new_pid = np;
+        pandalog_write_entry(&ple);
     }
-
     return 0;
 }
 
@@ -304,7 +307,13 @@ static char *get_file_obj_name(CPUState *env, uint32_t fobj) {
     return read_unicode_string(env, fobj+FILE_OBJECT_NAME_OFF);
 }
 
-static char * get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) {
+typedef struct handle_object_struct {
+    uint8_t objType;
+    uint32_t pObj;
+} HandleObject;
+
+
+static HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t handle) {
     uint32_t pObjectTable;
     if (-1 == panda_virtual_memory_rw(env, eproc+EPROC_OBJTABLE_OFF, (uint8_t *)&pObjectTable, 4, false)) {
         return NULL;
@@ -316,32 +325,54 @@ static char * get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) {
     if (-1 == panda_virtual_memory_rw(env, pObjHeader+0xc, &objType, 1, false)) {
         return NULL;
     }
-    switch (objType) {
+    HandleObject *ho = (HandleObject *) malloc(sizeof(HandleObject));
+    ho->objType = objType;
+    ho->pObj = pObj;
+    return ho;
+}
+
+
+static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
+    switch (ho->objType) {
         case OBJ_TYPE_File:
-            return get_file_obj_name(env, pObj);
+            return get_file_obj_name(env, ho->pObj);
         case OBJ_TYPE_Key: {
             char *fileName = (char *) calloc(100, 1);
-            sprintf(fileName, "_CM_KEY_BODY@%08x", pObj);
+            sprintf(fileName, "_CM_KEY_BODY@%08x", ho->pObj);
             return fileName;
-            }
-            break;
+        }
+	  break;
         case OBJ_TYPE_Process: {
             char *procName = (char *) calloc(100, 1);
             char procExeName[16] = {};
-            uint32_t procPid = get_pid(env, pObj);
-            get_procname(env, pObj, procExeName);
+            uint32_t procPid = get_pid(env, ho->pObj);
+            get_procname(env, ho->pObj, procExeName);
             sprintf(procName, "[%d] %s", procPid, procExeName);
             return procName;
-            }
+        }
             break;
         default:
             return NULL;
     }
 }
 
+
+static char * get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) {
+    HandleObject *ho = get_handle_object(env, eproc, handle);
+    return get_handle_object_name(env, ho);
+}
+
 // Individual system call callbacks
 
-void on_NtCreateUserProcess_return(
+Panda__Process *create_panda_process (uint32_t pid, char *name) {
+    Panda__Process *p = (Panda__Process *) malloc(sizeof(Panda__Process));
+    *p = PANDA__PROCESS__INIT;
+    p->pid = pid;
+    p->name = name;
+    return p;
+}
+
+void w7p_NtCreateUserProcess_return(
         CPUState* env,
         target_ulong pc,
         uint32_t ProcessHandle,
@@ -364,35 +395,78 @@ void on_NtCreateUserProcess_return(
             (uint8_t *) &procNameLen, 2, false);
     panda_virtual_memory_rw(env, ProcessParameters+IMAGEPATHNAME_OFF+4,
             (uint8_t *) &procNamePtr, 4, false);
-
     if (procNameLen > 259*2) {
         procNameLen = 259*2;
-    }
-    
+    }  
     panda_virtual_memory_rw(env, procNamePtr, (uint8_t *)procNameUnicode, procNameLen, false);
-
     unicode_to_ascii(procNameUnicode, procName, procNameLen/2);
-
     // Retrieve the returned handle and look up the name/PID of the newly created
     // process
     uint32_t handle;
     panda_virtual_memory_rw(env, ProcessHandle, (uint8_t *)&handle, 4, false);
-    char *newProc = get_handle_name(env, get_current_proc(env), handle);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtCreateUserProcess => %s => %s\n", 
-            rr_prog_point.guest_instr_count, cur_pid, cur_procname, procName, newProc);
+    uint32_t eproc = get_current_proc(env);
+    HandleObject *ho = get_handle_object(env, eproc, handle);
+    char *newProc = get_handle_object_name(env, ho);
+    uint32_t newPid = get_pid(env, ho->pObj);
+    Panda__Process *cur_p = create_panda_process(cur_pid, cur_procname);
+    Panda__Process *new_p = create_panda_process(newPid, newProc);
+    Panda__NtCreateUserProcess *ntcup = 
+      (Panda__NtCreateUserProcess *) malloc (sizeof(Panda__NtCreateUserProcess));
+    *ntcup = PANDA__NT_CREATE_USER_PROCESS__INIT;
+    ntcup->new_long_name = procName;
+    ntcup->cur_p = cur_p;
+    ntcup->new_p = new_p;
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_create_user_process = ntcup;
+    pandalog_write_entry(&ple);        
     free(newProc);
 }
 
-void on_NtTerminateProcess_enter(
+// terminates a process and all of its threads
+void w7p_NtTerminateProcess_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t ProcessHandle,
         uint32_t ExitStatus) {
-   fprintf(proc_log, "%" PRId64 " [%d] %s NtTerminateProcess (Handle=%#010x, ExitStatus=%#010x)\n",
-            rr_prog_point.guest_instr_count, cur_pid, cur_procname, ProcessHandle, ExitStatus);
+    Panda__Process *cur_p = create_panda_process(cur_pid, cur_procname);
+    Panda__Process *term_p = 0;
+    if (ProcessHandle == ((uint32_t) -1)) {
+        // self destruct
+        term_p = create_panda_process(cur_pid, cur_procname);
+    }
+    else {
+        // less common -- kill another process
+        uint32_t handle;
+        panda_virtual_memory_rw(env, ProcessHandle, (uint8_t *)&handle, 4, false);
+        uint32_t eproc = get_current_proc(env);
+        HandleObject *ho = get_handle_object(env, eproc, handle);
+        if (ho) {
+            term_p = create_panda_process(get_pid(env, ho->pObj),
+                                          get_handle_object_name(env, ho));
+        }
+    }
+    if (term_p) {
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        Panda__NtTerminateProcess *nttp = 
+            (Panda__NtTerminateProcess *) malloc (sizeof(Panda__NtTerminateProcess));
+        *nttp = PANDA__NT_TERMINATE_PROCESS__INIT;
+        nttp->cur_p = cur_p;
+        nttp->term_p = term_p;
+        ple.nt_terminate_process = nttp;
+        pandalog_write_entry(&ple);
+    }
 }
 
-void on_NtCreateFile_enter(
+Panda__ProcessFile *create_cur_process_file (char *filename) {
+    Panda__ProcessFile *pf = (Panda__ProcessFile *) malloc(sizeof(Panda__ProcessFile));
+    *pf = PANDA__PROCESS_FILE__INIT;
+    pf->proc = create_panda_process(cur_pid, cur_procname);
+    pf->filename = filename;
+    return pf;
+}
+
+// creates a new file or opens an existing file
+void w7p_NtCreateFile_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t FileHandle,
@@ -407,12 +481,13 @@ void on_NtCreateFile_enter(
         uint32_t EaBuffer,
         uint32_t EaLength) {
     char *fileName = get_objname(env, ObjectAttributes);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtCreateFile => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, fileName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_create_file = create_cur_process_file(fileName);
+    pandalog_write_entry(&ple);
     free(fileName);
 }
 
-void on_NtReadFile_enter(
+void w7p_NtReadFile_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t FileHandle,
@@ -425,22 +500,24 @@ void on_NtReadFile_enter(
         uint32_t ByteOffset,
         uint32_t Key) {
     char *fileName = get_handle_name(env, get_current_proc(env), FileHandle);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtReadFile => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, fileName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_read_file = create_cur_process_file(fileName);
+    pandalog_write_entry(&ple);
     free(fileName);
 }
 
-void on_NtDeleteFile_enter(
+void w7p_NtDeleteFile_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t ObjectAttributes) {
     char *fileName = get_objname(env, ObjectAttributes);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtDeleteFile => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, fileName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_delete_file = create_cur_process_file(fileName);
+    pandalog_write_entry(&ple);
     free(fileName);
 }
 
-void on_NtWriteFile_enter(
+void w7p_NtWriteFile_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t FileHandle,
@@ -453,12 +530,38 @@ void on_NtWriteFile_enter(
         uint32_t ByteOffset,
         uint32_t Key) {
     char *fileName = get_handle_name(env, get_current_proc(env), FileHandle);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtWriteFile => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, fileName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_write_file = create_cur_process_file(fileName);
+    pandalog_write_entry(&ple);
     free(fileName);
 }
 
-void on_NtCreateKey_enter(
+
+Panda__ProcessKey *create_cur_process_key (char *keyname) {
+    Panda__ProcessKey *pk = (Panda__ProcessKey *) malloc(sizeof(Panda__ProcessKey));
+    *pk = PANDA__PROCESS_KEY__INIT;
+    pk->proc = create_panda_process(cur_pid, cur_procname);
+    pk->keyname = keyname;
+    return pk;
+}
+
+
+// used to determine key from handle, by asid
+// keymap[asid][keyhandle] = keyname
+std::map < uint64_t, std::map < uint64_t, char * > > keymap;
+
+
+void save_reg_key(uint32_t KeyHandle, char *keyName) {
+    keymap[panda_current_asid(cpu_single_env)][KeyHandle] = strdup(keyName);
+}
+
+char *get_keyname(uint32_t KeyHandle) {
+    return keymap[panda_current_asid(cpu_single_env)][KeyHandle];
+}
+
+
+// CreateKey  -- creates a new registry key or opens an existing one.
+void w7p_NtCreateKey_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t KeyHandle,
@@ -469,24 +572,55 @@ void on_NtCreateKey_enter(
         uint32_t CreateOptions,
         uint32_t Disposition) {
     char *keyName = get_objname(env, ObjectAttributes);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtCreateKey => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, keyName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_create_key = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);    
+    save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
 
-void on_NtOpenKey_enter(
+
+#if 0
+//CreateKeyTransacted  -- creates a new registry key or opens an existing one, and it associates the key with a transaction.
+void w7p_NtCreateKeyTransacted_enter(
+      CPUState* env,
+      target_ulong pc,
+      uint32_t KeyHandle,
+      uint32_t DesiredAccess,
+      uint32_t ObjectAttributes,
+      uint32_t TitleIndex,
+      uint32_t Class,
+      uint32_t CreateOptions,
+      uint32_t TransactionHandle,
+      uint32_t Disposition) {
+    char *keyName = get_objname(env, ObjectAttributes);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_create_key_transacted = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);    
+    save_reg_key(KeyHandle, keyName);
+    free(keyName);
+}
+#endif
+
+
+// OpenKey -- opens an existing registry key. 
+void w7p_NtOpenKey_enter (
         CPUState* env,
         target_ulong pc,
         uint32_t KeyHandle,
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes) {
     char *keyName = get_objname(env, ObjectAttributes);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtOpenKey => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, keyName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_open_key = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);        
+    save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
 
-void on_NtOpenKeyEx_enter(
+
+// OpenKeyEx -- opens an existing registry key. 
+void w7p_NtOpenKeyEx_enter (
         CPUState* env,
         target_ulong pc,
         uint32_t KeyHandle,
@@ -494,10 +628,210 @@ void on_NtOpenKeyEx_enter(
         uint32_t ObjectAttributes,
         uint32_t OpenOptions) {
     char *keyName = get_objname(env, ObjectAttributes);
-    fprintf(proc_log, "%" PRId64 " [%d] %s NtOpenKeyEx => %s\n",
-        rr_prog_point.guest_instr_count, cur_pid, cur_procname, keyName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_open_key_ex = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);        
+    save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
+
+#if 0
+// OpenKeyTransacted -- opens an existing registry key and associates the key with a transaction. 
+void w7p_NtOpenKeyTransacted_enter (
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t DesiredAccess,
+        uint32_t ObjectAttributes,
+        uint32_t TransactionHandle) {
+    char *keyName = get_objname(env, ObjectAttributes);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_open_key_transacted = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);        
+    save_reg_key(KeyHandle, keyName);
+    free(keyName);
+}
+    
+
+// OpenKeyTransactedEx -- opens an existing registry key and associates the key with a transaction. 
+void w7p_NtOpenKeyTransactedEx_enter(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t DesiredAccess,
+        uint32_t ObjectAttributes,
+        uint32_t TransactionHandle) {
+    char *keyName = get_objname(env, ObjectAttributes);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_open_key_transacted_ex = create_cur_process_key(keyName);
+    pandalog_write_entry(&ple);        
+    save_reg_key(KeyHandle, keyName);
+    free(keyName);
+}
+#endif
+
+void forget_reg_key(uint32_t KeyHandle) {
+    keymap[panda_current_asid(cpu_single_env)].erase(KeyHandle);
+}
+
+
+// DeleteKey -- deletes an open key from the registry
+void w7p_NtDeleteKey_enter (
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle) {
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    char *keyname = get_keyname(KeyHandle);
+    if (keyname) {
+        ple.nt_delete_key = create_cur_process_key(keyname);
+        pandalog_write_entry(&ple);     
+    }
+    forget_reg_key(KeyHandle);
+}
+
+
+// QueryKey -- provides information about the class of a registry key, and the number and sizes of its subkeys.
+void w7p_NtQueryKey_enter(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t KeyInformationClass,
+        uint32_t KeyInformation,
+        uint32_t Length,
+        uint32_t ResultLength) {
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    char *keyname = get_keyname(KeyHandle);
+    if (keyname) {
+        ple.nt_query_key = create_cur_process_key(keyname);
+        pandalog_write_entry(&ple);     
+    }
+}
+
+
+Panda__ProcessKeyValue *create_cur_process_key_value (char *keyname, char *valuename) {
+    Panda__ProcessKeyValue *pkv = (Panda__ProcessKeyValue *) malloc(sizeof(Panda__ProcessKeyValue));
+    *pkv = PANDA__PROCESS_KEY_VALUE__INIT;
+    pkv->pk = (Panda__ProcessKey *) malloc(sizeof(Panda__ProcessKey));
+    *(pkv->pk) = PANDA__PROCESS_KEY__INIT;
+    pkv->pk->proc = create_panda_process(cur_pid, cur_procname);
+    pkv->pk->keyname = strdup(keyname);
+    pkv->value_name = strdup(valuename);
+    return pkv;
+}
+
+
+// QueryValueKey -- routine returns a value entry for a registry key.
+void w7p_NtQueryValueKey_enter (
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t ValueName,
+        uint32_t KeyValueInformationClass,
+        uint32_t KeyValueInformation,
+        uint32_t Length,
+        uint32_t ResultLength) {
+    char *vn = read_unicode_string(env, ValueName);
+    if (vn) {
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        char *keyname = get_keyname(KeyHandle);
+        if (keyname) {
+            ple.nt_query_value_key = create_cur_process_key_value(keyname, vn);
+            pandalog_write_entry(&ple);
+        }
+    }
+    free(vn);
+}
+
+    
+// DeleteValueKey -- deletes a value entry matching a name from an open key in the registry. If no such entry exists, an error is returned
+void w7p_NtDeleteValueKey_enter(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t ValueName) {
+    char *vn = read_unicode_string(env, ValueName);
+    if (vn) {
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        char *keyname = get_keyname(KeyHandle);
+        if (keyname) {
+            ple.nt_delete_value_key = create_cur_process_key_value(keyname, vn);
+            pandalog_write_entry(&ple);
+        }
+    }
+    free(vn);
+}
+
+
+
+Panda__ProcessKeyIndex *create_cur_process_key_index(char *keyname, uint32_t index) {
+    Panda__ProcessKeyIndex *pki = (Panda__ProcessKeyIndex *) malloc(sizeof(Panda__ProcessKeyIndex));
+    *pki = PANDA__PROCESS_KEY_INDEX__INIT;
+    pki->pk = create_cur_process_key(keyname);
+    pki->index = index;
+    return pki;
+}
+    
+
+// EnumerateKey -- returns information about a subkey of an open registry key.
+void w7p_NtEnumerateKey_enter(
+       CPUState* env,
+       target_ulong pc,
+       uint32_t KeyHandle,
+       uint32_t Index,
+       uint32_t KeyInformationClass,
+       uint32_t KeyInformation,
+       uint32_t Length,
+       uint32_t ResultLength) {
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    char *keyname = get_keyname(KeyHandle);
+    if (keyname) {
+        ple.nt_enumerate_key = create_cur_process_key_index(keyname, Index);
+        pandalog_write_entry(&ple);
+    }
+}
+
+// EnumerateValueKey -- gets information about the value entries of an open key.
+void w7p_NtEnumerateValueKey_enter(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t Index,
+        uint32_t KeyValueInformationClass,
+        uint32_t KeyValueInformation,
+        uint32_t Length,
+        uint32_t ResultLength) {
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    char *keyname = get_keyname(KeyHandle);
+    if (keyname) {
+        ple.nt_enumerate_value_key = create_cur_process_key_index(keyname, Index);
+        pandalog_write_entry(&ple);
+    }
+}
+    
+
+
+// SetValueKey -- creates or replaces a registry key's value entry.
+void w7p_NtSetValueKey_enter(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t KeyHandle,
+        uint32_t ValueName,
+        uint32_t TitleIndex,
+        uint32_t Type,
+        uint32_t Data,
+        uint32_t DataSize) {
+    char *vn = read_unicode_string(env, ValueName);
+    if (vn) {
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        char *keyname = get_keyname(KeyHandle);
+        if (keyname) {
+            ple.nt_set_value_key = create_cur_process_key_value(keyname, vn);
+            pandalog_write_entry(&ple);
+        }
+    }
+    free(vn);
+}
+
 
 #endif
 
@@ -506,41 +840,55 @@ bool init_plugin(void *self) {
 
 #ifdef TARGET_I386
 
+#if 0
     panda_arg_list *args;
     args = panda_get_args("win7proc");
-    const char *proclog_filename = panda_parse_string(args, "log_prefix", DEFAULT_LOG_FILE);
-
-    char logbuf[260] = {};
-    strcpy(logbuf, proclog_filename);
-    strcat(logbuf, "_proclog.txt");
-    proc_log = fopen(logbuf, "w");
-    if(!proc_log) {
-        fprintf(stderr, "Couldn't open %s. Abort.\n", logbuf);
-        return false;
+    if (!pandalog) {
+        const char *proclog_filename = panda_parse_string(args, "log_prefix", DEFAULT_LOG_FILE);
+        char logbuf[260] = {};
+        strcpy(logbuf, proclog_filename);
+        strcat(logbuf, "_proclog.txt");
+        proc_log = fopen(logbuf, "w");
+        if(!proc_log) {
+            fprintf(stderr, "Couldn't open %s. Abort.\n", logbuf);
+            return false;
+        }
+        strcpy(logbuf, proclog_filename);
+        strcat(logbuf, "_prochist.txt");
+        proc_hist = fopen(logbuf, "w");
+        if(!proc_hist) {
+            fprintf(stderr, "Couldn't open %s. Abort.\n", logbuf);
+            return false;
+        }
     }
-
-    strcpy(logbuf, proclog_filename);
-    strcat(logbuf, "_prochist.txt");
-    proc_hist = fopen(logbuf, "w");
-    if(!proc_hist) {
-        fprintf(stderr, "Couldn't open %s. Abort.\n", logbuf);
-        return false;
-    }
+#endif
+    //    panda_require("syscalls2");
 
     panda_cb pcb;
 
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
-    PPP_REG_CB("syscalls2", on_NtCreateFile_enter, on_NtCreateFile_enter);
-    PPP_REG_CB("syscalls2", on_NtCreateKey_enter, on_NtCreateKey_enter);
-    PPP_REG_CB("syscalls2", on_NtCreateUserProcess_return, on_NtCreateUserProcess_return);
-    PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, on_NtDeleteFile_enter);
-    PPP_REG_CB("syscalls2", on_NtOpenKeyEx_enter, on_NtOpenKeyEx_enter);
-    PPP_REG_CB("syscalls2", on_NtOpenKey_enter, on_NtOpenKey_enter);
-    PPP_REG_CB("syscalls2", on_NtReadFile_enter, on_NtReadFile_enter);
-    PPP_REG_CB("syscalls2", on_NtTerminateProcess_enter, on_NtTerminateProcess_enter);
-    PPP_REG_CB("syscalls2", on_NtWriteFile_enter, on_NtWriteFile_enter);
+    PPP_REG_CB("syscalls2", on_NtCreateUserProcess_return, w7p_NtCreateUserProcess_return);
+    PPP_REG_CB("syscalls2", on_NtTerminateProcess_enter, w7p_NtTerminateProcess_enter);
+
+    PPP_REG_CB("syscalls2", on_NtCreateFile_enter, w7p_NtCreateFile_enter);
+    PPP_REG_CB("syscalls2", on_NtReadFile_enter, w7p_NtReadFile_enter);
+    PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, w7p_NtDeleteFile_enter);
+    PPP_REG_CB("syscalls2", on_NtWriteFile_enter, w7p_NtWriteFile_enter);
+
+    PPP_REG_CB("syscalls2", on_NtCreateKey_enter, w7p_NtCreateKey_enter);
+    //    PPP_REG_CB("syscalls2", on_NtCreateKeyTransacted_enter, w7p_NtCreateKeyTransacted_enter);
+    PPP_REG_CB("syscalls2", on_NtOpenKey_enter, w7p_NtOpenKey_enter);
+    PPP_REG_CB("syscalls2", on_NtOpenKeyEx_enter, w7p_NtOpenKeyEx_enter);
+    //    PPP_REG_CB("syscalls2", on_NtOpenKeyTransacted_enter, w7p_NtOpenKeyTransacted_enter);
+    //    PPP_REG_CB("syscalls2", on_NtOpenKeyTransactedEx_enter, w7p_NtOpenKeyTransactedEx_enter);
+    PPP_REG_CB("syscalls2", on_NtDeleteKey_enter, w7p_NtDeleteKey_enter);
+    PPP_REG_CB("syscalls2", on_NtQueryKey_enter, w7p_NtQueryKey_enter);
+    PPP_REG_CB("syscalls2", on_NtQueryValueKey_enter, w7p_NtQueryValueKey_enter);
+    PPP_REG_CB("syscalls2", on_NtDeleteValueKey_enter, w7p_NtDeleteValueKey_enter);
+    PPP_REG_CB("syscalls2", on_NtEnumerateKey_enter, w7p_NtEnumerateKey_enter);
+    PPP_REG_CB("syscalls2", on_NtSetValueKey_enter, w7p_NtSetValueKey_enter);
 
     return true;
 #else
@@ -553,8 +901,9 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     printf("Unloading win7proc\n");
 #ifdef TARGET_I386
-    fclose(proc_log);
+    //    fclose(proc_log);
 
+    /*
     for (std::map<procid,uint64_t>::iterator it = bbcount.begin(); it != bbcount.end(); it++) {
         if (it->first.second == UNKNOWN_PID) {
             fprintf(proc_hist, "%s,-1,%" PRId64 "\n", it->first.first.c_str(), it->second);
@@ -564,5 +913,6 @@ void uninit_plugin(void *self) {
         }
     }
     fclose(proc_hist);
+    */
 #endif
 }
