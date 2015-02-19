@@ -1,0 +1,101 @@
+
+// a process (pid + command name)
+message Process {
+    required uint32 pid = 1;
+    required string name = 2;
+}
+
+// process created
+message NtCreateUserProcess {
+    // the parent process
+    required Process cur_p = 1;
+    // the actual pid / command name of process created
+    required Process new_p = 2;
+    // long name of process being created      
+    required string new_long_name = 3;
+}
+
+// process termination
+message NtTerminateProcess {
+    // the process that requested termination
+    required Process cur_p = 1;
+    // the process that is to be terminated
+    required Process term_p = 2;
+}
+
+// generic proc + filename message
+message ProcessFile {
+    required Process proc = 1;
+    required string filename = 2;
+}
+    
+// generic process + filename message
+message ProcessKey {
+    required Process proc = 1;
+    required string keyname = 2;
+}
+
+// delete a value entry
+message ProcessKeyValue {
+    required ProcessKey pk = 1;
+    required string value_name = 2;
+}
+
+message ProcessKeyIndex {
+    required ProcessKey pk = 1;
+    // index of the subkey
+    required uint32 index = 2;
+}
+
+
+
+
+// pid for current eproc changes
+optional Process new_pid = 11;
+// process creation
+optional NtCreateUserProcess nt_create_user_process = 12;
+// process termination
+optional NtTerminateProcess nt_terminate_process = 13;
+
+// file create / open
+optional ProcessFile nt_create_file = 14;
+// file read
+optional ProcessFile nt_read_file = 15;
+// file deletion
+optional ProcessFile nt_delete_file = 16;
+// file write
+optional ProcessFile nt_write_file = 17;
+
+// reg key create / open
+optional ProcessKey nt_create_key = 18;
+// ditto + transaction association
+optional ProcessKey nt_create_key_transacted = 19;
+
+// reg key open
+optional ProcessKey nt_open_key = 20;
+// reg key open
+optional ProcessKey nt_open_key_ex = 21;
+// reg key open + transaction assoc
+optional ProcessKey nt_open_key_transacted = 22;
+// ditto
+optional ProcessKey nt_open_key_transacted_ex = 23;
+
+// delete a key 
+optional ProcessKey nt_delete_key = 24;
+
+// query a key
+optional ProcessKey nt_query_key = 25;
+
+// returns value entry for key
+optional ProcessKeyValue nt_query_value_key = 27;
+// delete a value entry matching name from open key
+optional ProcessKeyValue nt_delete_value_key = 28;
+
+
+// gets info about a subkey
+optional ProcessKeyIndex nt_enumerate_key = 29;
+
+// gets info about a subkey
+optional ProcessKeyIndex nt_enumerate_value_key = 30;
+
+optional ProcessKeyValue nt_set_value_key = 31;
