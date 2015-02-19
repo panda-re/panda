@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# This is just everything in compile.md
+# turned into a script
+# you should be able to run it, type in
+# sudo passwd and have it install all of panda.
+# Verified that this script works
+# from a clean install of deb7.
+#
 #
 # This script installs all of PANDA after first taking care of current dependencies. 
 # Known to work on debian 7 install.
@@ -57,6 +64,13 @@ sh ./autogen.sh
 make
 sudo make install
 
+cd ~/software
+git clone https://github.com/eliben/pycparser.git
+cd pycparser
+sudo python setup.py install
+
+
+
 cd ~/git/panda/qemu
-sh ./build.sh
+./build.sh
 

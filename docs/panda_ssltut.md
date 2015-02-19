@@ -50,10 +50,7 @@ into the following error:
     'ide0-hd0' uses a qcow2 feature which is not supported by this qemu
     version: QCOW version 3
 
-If you want to follow along without creating your own recording, there is [a sample
-virtual machine image and recording log
-available](http://amnesia.gtisc.gatech.edu/~moyix/ssltut.tar.gz) (beware
-though, it clocks in at around 2GB).
+If you want to follow along without creating your own recording, you can download the [ssltut recording](http://www.rrshare.org/detail/47/) from [rrshare.org](http://www.rrshare.org/).
 
 Once you have the VM, boot it using
 
