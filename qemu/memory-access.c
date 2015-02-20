@@ -102,12 +102,12 @@ connection_handler (int connection_fd)
             if (nbytes != req.length){
                 // read failure, return failure message
                 buf[req.length] = 0; // set last byte to 0 for failure
-                nbytes = write(connection_fd, buf, 1);
+                nbytes = write(connection_fd, buf, req.length + 1);
             }
             else{
                 // read success, return bytes
                 buf[req.length] = 1; // set last byte to 1 for success
-                nbytes = write(connection_fd, buf, nbytes + 1);
+                nbytes = write(connection_fd, buf, req.length + 1);
             }
             free(buf);
         }
@@ -148,7 +148,7 @@ static void *
 connection_handler_gate (void *fd)
 {
   connection_handler(*(int *)fd);
-  printf("PMemAccess: Connection done (%d)\n", *(int *)fd);
+  printf("QemuMemoryAccess: Connection done (%d)\n", *(int *)fd);
   free(fd);
   return NULL;
 }
@@ -181,7 +181,7 @@ memory_access_thread (void *path)
 
     while (true) {
       connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-      printf("PMemAccess: Connction accepted on %d.\n", connection_fd);
+      printf("QemuMemoryAccess: Connction accepted on %d.\n", connection_fd);
       tmp_fd = (int *) calloc(1, sizeof(int));
       *tmp_fd = connection_fd;
       pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
