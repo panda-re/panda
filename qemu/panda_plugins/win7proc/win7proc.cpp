@@ -561,10 +561,10 @@ char *get_keyname(uint32_t KeyHandle) {
 
 
 // CreateKey  -- creates a new registry key or opens an existing one.
-void w7p_NtCreateKey_enter(
+void w7p_NtCreateKey_return(
         CPUState* env,
         target_ulong pc,
-        uint32_t KeyHandle,
+        uint32_t pKeyHandle,
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes,
         uint32_t TitleIndex,
@@ -575,6 +575,8 @@ void w7p_NtCreateKey_enter(
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_create_key = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);    
+    uint32_t KeyHandle;
+    panda_virtual_memory_rw(env, pKeyHandle, (uint8_t *) &KeyHandle, 4, false);
     save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
@@ -604,26 +606,28 @@ void w7p_NtCreateKeyTransacted_enter(
 
 
 // OpenKey -- opens an existing registry key. 
-void w7p_NtOpenKey_enter (
+void w7p_NtOpenKey_return (
         CPUState* env,
         target_ulong pc,
-        uint32_t KeyHandle,
+        uint32_t pKeyHandle,
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes) {
     char *keyName = get_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
+    uint32_t KeyHandle;
+    panda_virtual_memory_rw(env, pKeyHandle, (uint8_t *) &KeyHandle, 4, false);
     save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
 
 
 // OpenKeyEx -- opens an existing registry key. 
-void w7p_NtOpenKeyEx_enter (
+void w7p_NtOpenKeyEx_return (
         CPUState* env,
         target_ulong pc,
-        uint32_t KeyHandle,
+        uint32_t pKeyHandle,
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes,
         uint32_t OpenOptions) {
@@ -631,6 +635,8 @@ void w7p_NtOpenKeyEx_enter (
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key_ex = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
+    uint32_t KeyHandle;
+    panda_virtual_memory_rw(env, pKeyHandle, (uint8_t *) &KeyHandle, 4, false);
     save_reg_key(KeyHandle, keyName);
     free(keyName);
 }
@@ -877,10 +883,10 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, w7p_NtDeleteFile_enter);
     PPP_REG_CB("syscalls2", on_NtWriteFile_enter, w7p_NtWriteFile_enter);
 
-    PPP_REG_CB("syscalls2", on_NtCreateKey_enter, w7p_NtCreateKey_enter);
+    PPP_REG_CB("syscalls2", on_NtCreateKey_return, w7p_NtCreateKey_return);
     //    PPP_REG_CB("syscalls2", on_NtCreateKeyTransacted_enter, w7p_NtCreateKeyTransacted_enter);
-    PPP_REG_CB("syscalls2", on_NtOpenKey_enter, w7p_NtOpenKey_enter);
-    PPP_REG_CB("syscalls2", on_NtOpenKeyEx_enter, w7p_NtOpenKeyEx_enter);
+    PPP_REG_CB("syscalls2", on_NtOpenKey_return, w7p_NtOpenKey_return);
+    PPP_REG_CB("syscalls2", on_NtOpenKeyEx_return, w7p_NtOpenKeyEx_return);
     //    PPP_REG_CB("syscalls2", on_NtOpenKeyTransacted_enter, w7p_NtOpenKeyTransacted_enter);
     //    PPP_REG_CB("syscalls2", on_NtOpenKeyTransactedEx_enter, w7p_NtOpenKeyTransactedEx_enter);
     PPP_REG_CB("syscalls2", on_NtDeleteKey_enter, w7p_NtDeleteKey_enter);
