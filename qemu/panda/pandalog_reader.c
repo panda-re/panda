@@ -35,7 +35,7 @@ void print_process_key_value(Panda__ProcessKeyValue *pkv) {
 
 void print_process_key_index(Panda__ProcessKeyIndex *pki) {
     print_process_key(pki->pk);
-    printf (" index = [%s] ", pki->index);            
+    printf (" index = [%u] ", pki->index);            
 }
 
 
