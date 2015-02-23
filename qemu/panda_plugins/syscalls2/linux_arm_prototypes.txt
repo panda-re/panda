@@ -310,7 +310,6 @@
 358 long sys_dup3(unsigned int oldfd, unsigned int newfd, int flags);
 359 long sys_pipe2(int __user *, int);
 360 long sys_inotify_init1(int flags);
-100000 long sys_linux_arm(void);
 10420225 long ARM_breakpoint();
 10420226 long ARM_cacheflush(unsigned long start, unsigned long end, unsigned long flags);
 10420227 long ARM_user26_mode();

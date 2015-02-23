@@ -920,4 +920,3 @@
 4824 missing NtGdiSetPUMPDOBJ
 4825 missing NtGdiBRUSHOBJ_DeleteRbrush
 4827 missing NtGdiDrawStream
-100000 NTSTATUS sys_windows7_x86(void);

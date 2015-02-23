@@ -310,4 +310,3 @@
 346 long sys_setns(int fd, int nstype);
 347 long sys_process_vm_readv(pid_t pid,const struct iovec __user *lvec,unsigned long liovcnt,const struct iovec __user *rvec,unsigned long riovcnt,unsigned long flags);
 348 long sys_process_vm_writev(pid_t pid,const struct iovec __user *lvec,unsigned long liovcnt,const struct iovec __user *rvec,unsigned long riovcnt,unsigned long flags);
-100000 long sys_linux_x86(void);
