@@ -240,23 +240,13 @@ class Syscall(object):
         self.cxx_std_fn = None
         self.cargs = None
         self.args = None
-        self.precall = None
-        self.call_contents = None
         self.name = name
 
-# Prototypes for internal C++ callbacks per syscall
-callback_defs = set()
 # Typedefs for PPP C callbacks
 typedefs = set()
 # Names of all PPP C callbacks
 cb_names_enter = set()
 cb_names_return = set()
-# map from callback_def to code that comes before it in cpp file
-precall = {}
-# map from callback_def to its content in cpp file
-call_contents = {}
-# map from callback_def to call name
-call_names = {}
 
 syscalls = [] # objects, having a set is useless for dedup
 
@@ -374,17 +364,27 @@ with open(PROTOS) as calls:
         syscall_return_switch += "PPP_RUN_CB(on_{0}_return, {1}) ; \n".format(callname, _c_args)
         syscall_return_switch += "}; break;"+'\n'
        
+    # The "all" and "unknown" callbacks
     syscall_enter_switch += "default:\n"
-    syscall_enter_switch += "PPP_RUN_CB(on_sys_%s_%s_enter, env, pc);\n" % (OS,ARCH)
+    syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_%s_%s_enter, env, pc, %s);\n" % (OS,ARCH, CALLNO)
     syscall_enter_switch += "}"+'\n'
+    syscall_enter_switch += "PPP_RUN_CB(on_all_sys_%s_%s_enter, env, pc, %s);\n" % (OS,ARCH, CALLNO)
+    typedefs.add("typedef void (*on_unknown_sys_%s_%s_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
+    typedefs.add("typedef void (*on_all_sys_%s_%s_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
+    cb_names_enter.add("on_unknown_sys_%s_%s_enter" % (OS,ARCH))
+    cb_names_enter.add("on_all_sys_%s_%s_enter" % (OS,ARCH))
 
     syscall_return_switch += "default:\n"
-    syscall_return_switch += "PPP_RUN_CB(on_sys_%s_%s_return, env, pc);\n" % (OS,ARCH)
+    syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_%s_%s_return, env, pc, %s);\n" % (OS,ARCH, CALLNO)
     syscall_return_switch += "}"+'\n'
+    syscall_return_switch += "PPP_RUN_CB(on_all_sys_%s_%s_return, env, pc, %s);\n" % (OS,ARCH, CALLNO)
+    typedefs.add("typedef void (*on_unknown_sys_%s_%s_return_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
+    typedefs.add("typedef void (*on_all_sys_%s_%s_return_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
+    cb_names_return.add("on_unknown_sys_%s_%s_return" % (OS,ARCH))
+    cb_names_return.add("on_all_sys_%s_%s_return" % (OS,ARCH))
 
 syscall_return_switch += "#endif\n } \n"
 syscall_enter_switch += "#endif\n } \n"
-
 
 with open(os.path.join(DESTDIR, "gen_syscalls_ext_typedefs_%s.h" % IDS), "w") as callbacktypes:
     callbacktypes.write(GUARD + "\n")
