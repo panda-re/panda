@@ -232,7 +232,7 @@ target_ulong last_asid = 0;
 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
-    if ((a_counter % 10000000) == 0) {
+    if ((a_counter % 1000000) == 0) {
         spit_asidstory();
     }
   

@@ -145,6 +145,8 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin stringsearch\n");
 
+    panda_require("callstack_instr");
+
     panda_arg_list *args = panda_get_args("stringsearch");
 
     const char *arg_str = panda_parse_string(args, "str", "");

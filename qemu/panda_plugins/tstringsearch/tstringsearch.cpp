@@ -188,6 +188,9 @@ int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
 bool init_plugin(void *self) {
   printf ("Initializing tstringsearch\n");
 
+  panda_require("stringsearch");
+  panda_require("taint");
+
 #ifdef CONFIG_SOFTMMU
 
   panda_arg_list *args;
