@@ -215,16 +215,7 @@ std::map < LabelSet *, std::set < uint32_t > > memoize_ls_rend;
 
 // retrieve ls for this addr
 void tp_ls_iter(LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    std::set<uint32_t> rendered;
-    if (memoize_ls_rend.count(ls) == 0) {
-        //        printf ("not yet memoized\n");
-        rendered = label_set_render_set(ls);
-        memoize_ls_rend[ls] = rendered;
-    }
-    else {
-        //        printf ("memoized\n");
-        rendered = memoize_ls_rend[ls];
-    }
+    std::set<uint32_t> rendered = label_set_render_set(ls);
     tp_lsr_iter(rendered, app, stuff2);
 }
 

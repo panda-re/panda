@@ -47,6 +47,14 @@ uint64_t label_set_render_uint(LabelSetP ls);
 
 template<typename user_type, void (*leaf)(uint32_t, user_type &)>
 static void label_set_iter_rec(LabelSetP ls, user_type &user) {
+    static std::map<LabelSetP, user_type> memoized;
+
+    auto it = memoized.find(ls);
+    if (ls->count >= 65536 && it != memoized.end()) {
+        user = it->second;
+        return;
+    }
+
     if (!ls->child1) {
         leaf(ls->label, user);
         return;
@@ -54,6 +62,10 @@ static void label_set_iter_rec(LabelSetP ls, user_type &user) {
 
     label_set_iter_rec<user_type, leaf>(ls->child1, user);
     label_set_iter_rec<user_type, leaf>(ls->child2, user);
+
+    if (ls->count >= 65536) {
+        memoized[ls] = user;
+    }
 }
     
 
@@ -61,11 +73,6 @@ template<typename user_type, void (*leaf)(uint32_t, user_type &), user_type init
 static user_type label_set_iter(LabelSetP ls) {
     user_type initial_copy = initial;
     if (!ls) return initial;
-    if (ls->count > 65536) {
-        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
-                "Not iterating.\n", (unsigned long)ls, ls->count);
-        return initial;
-    }
 
     label_set_iter_rec<user_type, leaf>(ls, initial_copy);
 
@@ -77,11 +84,6 @@ static user_type label_set_iter(LabelSetP ls) {
     user_type initial;
 
     if (!ls) return initial;
-    if (ls->count > 65536) {
-        printf("taint2: WARNING: LabelSet %lx is way too big (%lu entries). "
-                "Not iterating.\n", (unsigned long)ls, ls->count);
-        return initial;
-    }
 
     label_set_iter_rec<user_type, leaf>(ls, initial);
 
