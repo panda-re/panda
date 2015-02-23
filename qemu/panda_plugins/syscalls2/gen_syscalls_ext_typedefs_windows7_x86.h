@@ -7,6 +7,7 @@ typedef void (*on_NtAssignProcessToJobObject_enter_t)(CPUState* env,target_ulong
 typedef void (*on_NtSetVolumeInformationFile_return_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FsInformation,uint32_t Length,uint32_t FsInformationClass);
 typedef void (*on_NtAreMappedFilesTheSame_enter_t)(CPUState* env,target_ulong pc,uint32_t File1MappedAsAnImage,uint32_t File2MappedAsFile);
 typedef void (*on_NtReleaseKeyedEvent_enter_t)(CPUState* env,target_ulong pc,uint32_t EventHandle,uint32_t Key,uint32_t Alertable,uint32_t Timeout);
+typedef void (*on_all_sys_windows7_x86_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_NtCreateFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t IoStatusBlock,uint32_t AllocationSize,uint32_t FileAttributes,uint32_t ShareAccess,uint32_t CreateDisposition,uint32_t CreateOptions,uint32_t EaBuffer,uint32_t EaLength);
 typedef void (*on_NtCreateJobObject_return_t)(CPUState* env,target_ulong pc,uint32_t JobHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes);
 typedef void (*on_NtSetEvent_enter_t)(CPUState* env,target_ulong pc,uint32_t EventHandle,uint32_t PreviousState);
@@ -34,7 +35,6 @@ typedef void (*on_NtPrivilegeCheck_return_t)(CPUState* env,target_ulong pc,uint3
 typedef void (*on_NtSetSystemInformation_enter_t)(CPUState* env,target_ulong pc,uint32_t SystemInformationClass,uint32_t SystemInformation,uint32_t SystemInformationLength);
 typedef void (*on_NtUnlockVirtualMemory_return_t)(CPUState* env,target_ulong pc,uint32_t ProcessHandle,uint32_t BaseAddress,uint32_t NumberOfBytesToUnlock,uint32_t NumberOfBytesUnlocked);
 typedef void (*on_NtCreateTimer_enter_t)(CPUState* env,target_ulong pc,uint32_t TimerHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t TimerType);
-typedef void (*on_sys_windows7_x86_enter_t)(CPUState* env,target_ulong pc);
 typedef void (*on_NtCreateUserProcess_enter_t)(CPUState* env,target_ulong pc,uint32_t ProcessHandle,uint32_t ThreadHandle,uint32_t ProcessDesiredAccess,uint32_t ThreadDesiredAccess,uint32_t ProcessObjectAttributes,uint32_t ThreadObjectAttributes,uint32_t ProcessFlags,uint32_t ThreadFlags,uint32_t ProcessParameters,uint32_t CreateInfo,uint32_t AttributeList);
 typedef void (*on_NtQueryDirectoryFile_return_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t Event,uint32_t ApcRoutine,uint32_t ApcContext,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass,uint32_t ReturnSingleEntry,uint32_t FileName,uint32_t RestartScan);
 typedef void (*on_NtQuerySymbolicLinkObject_return_t)(CPUState* env,target_ulong pc,uint32_t SymLinkObjHandle,uint32_t LinkTarget,uint32_t DataWritten);
@@ -155,6 +155,7 @@ typedef void (*on_NtSetInformationObject_return_t)(CPUState* env,target_ulong pc
 typedef void (*on_NtLoadKey2_enter_t)(CPUState* env,target_ulong pc,uint32_t KeyObjectAttributes,uint32_t FileObjectAttributes,uint32_t Flags);
 typedef void (*on_NtUnloadKey_enter_t)(CPUState* env,target_ulong pc,uint32_t KeyObjectAttributes);
 typedef void (*on_NtQueryDebugFilterState_return_t)(CPUState* env,target_ulong pc,uint32_t ComponentId,uint32_t Level);
+typedef void (*on_unknown_sys_windows7_x86_return_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_NtFlushInstructionCache_return_t)(CPUState* env,target_ulong pc,uint32_t ProcessHandle,uint32_t BaseAddress,uint32_t NumberOfBytesToFlush);
 typedef void (*on_NtCreateMutant_enter_t)(CPUState* env,target_ulong pc,uint32_t MutantHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t InitialOwner);
 typedef void (*on_NtUnloadDriver_return_t)(CPUState* env,target_ulong pc,uint32_t DriverServiceName);
@@ -201,7 +202,6 @@ typedef void (*on_NtQueryInformationJobObject_return_t)(CPUState* env,target_ulo
 typedef void (*on_NtCompressKey_enter_t)(CPUState* env,target_ulong pc,uint32_t Key);
 typedef void (*on_NtGetWriteWatch_enter_t)(CPUState* env,target_ulong pc,uint32_t ProcessHandle,uint32_t Flags,uint32_t BaseAddress,uint32_t RegionSize,target_ulong UserAddressArray,uint32_t EntriesInUserAddressArray,uint32_t Granularity);
 typedef void (*on_NtOpenFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t IoStatusBlock,uint32_t ShareAccess,uint32_t OpenOptions);
-typedef void (*on_sys_windows7_x86_return_t)(CPUState* env,target_ulong pc);
 typedef void (*on_NtOpenKeyedEvent_return_t)(CPUState* env,target_ulong pc,uint32_t EventHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes);
 typedef void (*on_NtCreateSection_enter_t)(CPUState* env,target_ulong pc,uint32_t SectionHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t MaximumSize,uint32_t SectionPageProtection,uint32_t AllocationAttributes,uint32_t FileHandle);
 typedef void (*on_NtCreateToken_enter_t)(CPUState* env,target_ulong pc,uint32_t TokenHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t TokenType,uint32_t AuthenticationId,uint32_t ExpirationTime,uint32_t TokenUser,uint32_t TokenGroups,uint32_t TokenPrivileges,uint32_t TokenOwner,uint32_t TokenPrimaryGroup,uint32_t TokenDefaultDacl,uint32_t TokenSource);
@@ -382,6 +382,7 @@ typedef void (*on_NtSetTimerResolution_return_t)(CPUState* env,target_ulong pc,u
 typedef void (*on_NtSetInformationFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass);
 typedef void (*on_NtSetDefaultLocale_return_t)(CPUState* env,target_ulong pc,uint32_t UserProfile,uint32_t DefaultLocaleId);
 typedef void (*on_NtSetDebugFilterState_enter_t)(CPUState* env,target_ulong pc,uint32_t ComponentId,uint32_t Level,uint32_t State);
+typedef void (*on_unknown_sys_windows7_x86_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_NtQueryInformationFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass);
 typedef void (*on_NtAccessCheckByTypeResultList_return_t)(CPUState* env,target_ulong pc,uint32_t SecurityDescriptor,uint32_t PrincipalSelfSid,uint32_t ClientToken,uint32_t DesiredAccess,uint32_t ObjectTypeList,uint32_t ObjectTypeLength,uint32_t GenericMapping,uint32_t PrivilegeSet,uint32_t PrivilegeSetLength,uint32_t GrantedAccess,uint32_t AccessStatus);
 typedef void (*on_NtDeleteKey_enter_t)(CPUState* env,target_ulong pc,uint32_t KeyHandle);
@@ -491,6 +492,7 @@ typedef void (*on_NtOpenThreadTokenEx_enter_t)(CPUState* env,target_ulong pc,uin
 typedef void (*on_NtCreateDirectoryObject_return_t)(CPUState* env,target_ulong pc,uint32_t DirectoryHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes);
 typedef void (*on_NtAllocateUuids_enter_t)(CPUState* env,target_ulong pc,uint32_t Time,uint32_t Range,uint32_t Sequence,uint32_t Seed);
 typedef void (*on_NtAccessCheckByTypeResultList_enter_t)(CPUState* env,target_ulong pc,uint32_t SecurityDescriptor,uint32_t PrincipalSelfSid,uint32_t ClientToken,uint32_t DesiredAccess,uint32_t ObjectTypeList,uint32_t ObjectTypeLength,uint32_t GenericMapping,uint32_t PrivilegeSet,uint32_t PrivilegeSetLength,uint32_t GrantedAccess,uint32_t AccessStatus);
+typedef void (*on_all_sys_windows7_x86_return_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_NtEnumerateSystemEnvironmentValuesEx_return_t)(CPUState* env,target_ulong pc,uint32_t InformationClass,uint32_t Buffer,uint32_t BufferLength);
 typedef void (*on_NtRaiseHardError_enter_t)(CPUState* env,target_ulong pc,uint32_t ErrorStatus,uint32_t NumberOfParameters,uint32_t UnicodeStringParameterMask,uint32_t Parameters,uint32_t ValidResponseOptions,uint32_t Response);
 typedef void (*on_NtCreateEvent_return_t)(CPUState* env,target_ulong pc,uint32_t EventHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t EventType,uint32_t InitialState);

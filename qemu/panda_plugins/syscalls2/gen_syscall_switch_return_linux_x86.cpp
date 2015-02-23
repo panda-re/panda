@@ -2051,12 +2051,9 @@ uint32_t arg4 = get_return_32(env, 4);
 uint32_t arg5 = get_return_32(env, 5);
 PPP_RUN_CB(on_sys_process_vm_writev_return, env,pc,arg0,arg1,arg2,arg3,arg4,arg5) ; 
 }; break;
-// 100000 long sys_linux_x86 ['void']
-case 100000: {
-PPP_RUN_CB(on_sys_linux_x86_return, env,pc) ; 
-}; break;
 default:
-PPP_RUN_CB(on_sys_linux_x86_return, env, pc);
+PPP_RUN_CB(on_unknown_sys_linux_x86_return, env, pc, EAX);
 }
+PPP_RUN_CB(on_all_sys_linux_x86_return, env, pc, EAX);
 #endif
  } 

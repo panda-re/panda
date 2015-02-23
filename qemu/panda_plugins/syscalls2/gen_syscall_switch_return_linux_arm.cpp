@@ -2059,10 +2059,6 @@ case 360: {
 int32_t arg0 = get_return_s32(env, 0);
 PPP_RUN_CB(on_sys_inotify_init1_return, env,pc,arg0) ; 
 }; break;
-// 100000 long sys_linux_arm ['void']
-case 100000: {
-PPP_RUN_CB(on_sys_linux_arm_return, env,pc) ; 
-}; break;
 // 10420225 long ARM_breakpoint ['']
 case 10420225: {
 PPP_RUN_CB(on_ARM_breakpoint_return, env,pc) ; 
@@ -2099,7 +2095,8 @@ case 10420224: {
 PPP_RUN_CB(on_ARM_null_segfault_return, env,pc) ; 
 }; break;
 default:
-PPP_RUN_CB(on_sys_linux_arm_return, env, pc);
+PPP_RUN_CB(on_unknown_sys_linux_arm_return, env, pc, env->regs[7]);
 }
+PPP_RUN_CB(on_all_sys_linux_arm_return, env, pc, env->regs[7]);
 #endif
  } 

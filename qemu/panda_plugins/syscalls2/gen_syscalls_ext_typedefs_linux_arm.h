@@ -145,6 +145,7 @@ typedef void (*on_sys_connect_return_t)(CPUState* env,target_ulong pc,int32_t ar
 typedef void (*on_sys_accept_enter_t)(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,target_ulong arg2);
 typedef void (*on_sys_vhangup_enter_t)(CPUState* env,target_ulong pc);
 typedef void (*on_sys_chmod_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,uint32_t mode);
+typedef void (*on_all_sys_linux_arm_return_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_sys_setregid_enter_t)(CPUState* env,target_ulong pc,uint32_t rgid,uint32_t egid);
 typedef void (*on_sys_swapoff_enter_t)(CPUState* env,target_ulong pc,target_ulong specialfile);
 typedef void (*on_sys_madvise_enter_t)(CPUState* env,target_ulong pc,uint32_t start,uint32_t len,int32_t behavior);
@@ -191,6 +192,7 @@ typedef void (*on_sys_semtimedop_return_t)(CPUState* env,target_ulong pc,int32_t
 typedef void (*on_sys_getdents64_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong dirent,uint32_t count);
 typedef void (*on_sys_getsid_enter_t)(CPUState* env,target_ulong pc,uint32_t pid);
 typedef void (*on_ARM_cacheflush_return_t)(CPUState* env,target_ulong pc,uint32_t start,uint32_t end,uint32_t flags);
+typedef void (*on_unknown_sys_linux_arm_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_sys_openat_return_t)(CPUState* env,target_ulong pc,int32_t dfd,target_ulong filename,int32_t flags,int32_t mode);
 typedef void (*on_sys_statfs_return_t)(CPUState* env,target_ulong pc,target_ulong path,target_ulong buf);
 typedef void (*on_sys_io_getevents_enter_t)(CPUState* env,target_ulong pc,uint32_t ctx_id,int32_t min_nr,int32_t nr,target_ulong events,target_ulong timeout);
@@ -258,13 +260,13 @@ typedef void (*on_sys_symlink_return_t)(CPUState* env,target_ulong pc,target_ulo
 typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 typedef void (*on_sys_lchown_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,uint32_t user,uint32_t group);
 typedef void (*on_sys_sendto_return_t)(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,uint32_t arg2,uint32_t arg3,target_ulong arg4,int32_t arg5);
-typedef void (*on_sys_linux_arm_return_t)(CPUState* env,target_ulong pc);
 typedef void (*on_sys_inotify_add_watch_return_t)(CPUState* env,target_ulong pc,int32_t fd,target_ulong path,uint32_t mask);
 typedef void (*on_sys_kexec_load_enter_t)(CPUState* env,target_ulong pc,uint32_t entry,uint32_t nr_segments,target_ulong segments,uint32_t flags);
 typedef void (*on_sys_times_return_t)(CPUState* env,target_ulong pc,target_ulong tbuf);
 typedef void (*on_sys_signalfd_return_t)(CPUState* env,target_ulong pc,int32_t ufd,target_ulong user_mask,uint32_t sizemask);
 typedef void (*on_sys_pipe2_return_t)(CPUState* env,target_ulong pc,target_ulong arg0,int32_t arg1);
 typedef void (*on_sys_dup2_return_t)(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_t newfd);
+typedef void (*on_all_sys_linux_arm_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_sys_umask_return_t)(CPUState* env,target_ulong pc,int32_t mask);
 typedef void (*on_sys_newlstat_return_t)(CPUState* env,target_ulong pc,target_ulong filename,target_ulong statbuf);
 typedef void (*on_sys_tee_enter_t)(CPUState* env,target_ulong pc,int32_t fdin,int32_t fdout,uint32_t len,uint32_t flags);
@@ -511,7 +513,6 @@ typedef void (*on_sys_select_return_t)(CPUState* env,target_ulong pc,int32_t n,t
 typedef void (*on_sys_getresuid16_enter_t)(CPUState* env,target_ulong pc,target_ulong ruid,target_ulong euid,target_ulong suid);
 typedef void (*on_do_mmap2_enter_t)(CPUState* env,target_ulong pc,uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff);
 typedef void (*on_sys_bind_return_t)(CPUState* env,target_ulong pc,int32_t arg0,target_ulong arg1,int32_t arg2);
-typedef void (*on_sys_linux_arm_enter_t)(CPUState* env,target_ulong pc);
 typedef void (*on_sys_ptrace_return_t)(CPUState* env,target_ulong pc,int32_t request,int32_t pid,int32_t addr,int32_t data_arg);
 typedef void (*on_sys_setpriority_enter_t)(CPUState* env,target_ulong pc,int32_t which,int32_t who,int32_t niceval);
 typedef void (*on_sys_timerfd_gettime_return_t)(CPUState* env,target_ulong pc,int32_t ufd,target_ulong otmr);
@@ -583,6 +584,7 @@ typedef void (*on_sys_getpriority_return_t)(CPUState* env,target_ulong pc,int32_
 typedef void (*on_sys_readv_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong vec,uint32_t vlen);
 typedef void (*on_sys_fstat64_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong statbuf);
 typedef void (*on_clone_enter_t)(CPUState* env,target_ulong pc,uint32_t clone_flags,uint32_t newsp,target_ulong parent_tidptr,int32_t tls_val,target_ulong child_tidptr,target_ulong regs);
+typedef void (*on_unknown_sys_linux_arm_return_t)(CPUState *env, target_ulong pc, target_ulong callno);
 typedef void (*on_sys_wait4_enter_t)(CPUState* env,target_ulong pc,uint32_t pid,target_ulong stat_addr,int32_t options,target_ulong ru);
 typedef void (*on_sys_getrlimit_return_t)(CPUState* env,target_ulong pc,uint32_t resource,target_ulong rlim);
 typedef void (*on_sys_dup3_return_t)(CPUState* env,target_ulong pc,uint32_t oldfd,uint32_t newfd,int32_t flags);
