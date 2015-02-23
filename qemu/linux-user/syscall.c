@@ -4622,7 +4622,7 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_USER_BEFORE_SYSCALL]; plist != NULL;
-            plist = plist->next) {
+            plist = panda_cb_list_next(plist)) {
         plist->entry.user_before_syscall(cpu_env, fcntl_flags_tbl,
                                          num, arg1, arg2, arg3, arg4,
                                          arg5, arg6, arg7, arg8);
@@ -8174,7 +8174,7 @@ fail:
         print_syscall_ret(num, ret);
 
     for(plist = panda_cbs[PANDA_CB_USER_AFTER_SYSCALL]; plist != NULL;
-            plist = plist->next) {
+            plist = panda_cb_list_next(plist)) {
         plist->entry.user_after_syscall(cpu_env, fcntl_flags_tbl,num, arg1,
                                         arg2, arg3, arg4, arg5, arg6, arg7,
                                         arg8, p, ret);

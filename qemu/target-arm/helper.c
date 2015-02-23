@@ -615,7 +615,7 @@ void HELPER(set_cp)(CPUState *env, uint32_t insn, uint32_t val)
         // PANDA instrumentation: guest hypercall
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL;
-                plist = plist->next){
+                plist = panda_cb_list_next(plist)){
             plist->entry.guest_hypercall(env);
         }
     }
@@ -1375,16 +1375,16 @@ void HELPER(set_cp)(CPUState *env, uint32_t insn, uint32_t val)
     int cp_info = (insn >> 5) & 7;
     int src = (insn >> 16) & 0xf;
     int operand = insn & 0xf;
-    
+
     if (env->cp[cp_num].cp_write)
         env->cp[cp_num].cp_write(env->cp[cp_num].opaque,
                                  cp_info, src, operand, val);
-    
+
     if (cp_num == 7){
         // PANDA instrumentation: guest hypercall
         panda_cb_list *plist;
         for (plist = panda_cbs[PANDA_CB_GUEST_HYPERCALL]; plist != NULL;
-                plist = plist->next){
+                plist = panda_cb_list_next(plist)) {
             plist->entry.guest_hypercall(env);
         }
     }
@@ -1506,14 +1506,14 @@ void HELPER(set_cp15)(CPUState *env, uint32_t insn, uint32_t val)
 	    switch (op2) {
 	    case 0:
                 oldval = env->cp15.c2_base0;
-		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = panda_cb_list_next(plist)) {
                     plist->entry.after_PGD_write(env, oldval, val);
 		}
 		env->cp15.c2_base0 = val;
 		break;
 	    case 1:
                 oldval = env->cp15.c2_base1;
-		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = plist->next) {
+		for(plist = panda_cbs[PANDA_CB_VMI_PGD_CHANGED]; plist != NULL; plist = panda_cb_list_next(plist)) {
                     plist->entry.after_PGD_write(env, oldval, val);
 		}
 		env->cp15.c2_base1 = val;

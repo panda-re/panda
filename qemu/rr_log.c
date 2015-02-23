@@ -1160,7 +1160,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 		    // run all callbacks registered for hd transfer
 		    RR_hd_transfer_args *hdt = &(args->variant.hd_transfer_args);
 		    panda_cb_list *plist;
-		    for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
+		    for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = panda_cb_list_next(plist)) {
 		      plist->entry.replay_hd_transfer
 			(cpu_single_env, 
 			 hdt->type,
@@ -1176,7 +1176,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
 		    // run all callbacks registered for packet handling
 		    RR_handle_packet_args *hp = &(args->variant.handle_packet_args);
 		    panda_cb_list *plist;
-		    for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET]; plist != NULL; plist = plist->next) {
+		    for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET]; plist != NULL; plist = panda_cb_list_next(plist)) {
 		      plist->entry.replay_handle_packet
 			(cpu_single_env, 
 			 hp->buf,
@@ -1196,7 +1196,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site) {
                         &(args->variant.net_transfer_args);
                     panda_cb_list *plist;
                     for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
-                            plist != NULL; plist = plist->next) {
+                            plist != NULL; plist = panda_cb_list_next(plist)) {
                       plist->entry.replay_net_transfer
                         (cpu_single_env, 
                          nta->type,
@@ -1542,7 +1542,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
   //  vm_stop(0) RUN_STATE_RESTORE_VM);
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_BEFORE_REPLAY_LOADVM]; plist != NULL;
-            plist = plist->next) {
+            plist = panda_cb_list_next(plist)) {
         plist->entry.before_loadvm();
     }
   snapshot_ret = load_vmstate_rr(name_buf);

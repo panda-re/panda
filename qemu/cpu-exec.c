@@ -177,13 +177,13 @@ static TranslationBlock *tb_find_slow(CPUState *env,
  not_found:
    /* if no translated code available, then translate it now */
 
-    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_TRANSLATE]; plist != NULL; plist = plist->next) {
+    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.before_block_translate(env, pc);
     }
 
     tb = tb_gen_code(env, pc, cs_base, flags, 0);
 
-    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_TRANSLATE]; plist != NULL; plist = plist->next) {
+    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.after_block_translate(env, tb);
     }
 
@@ -757,7 +757,7 @@ int cpu_exec(CPUState *env)
                 bool panda_invalidate_tb = false;
                 if (unlikely(!bb_invalidate_done)) {
                     for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
-                            plist != NULL; plist = plist->next) {
+                            plist != NULL; plist = panda_cb_list_next(plist)) {
                         panda_invalidate_tb |=
                             plist->entry.before_block_exec_invalidate_opt(env, tb);
                     }
@@ -871,7 +871,7 @@ int cpu_exec(CPUState *env)
 
                         // PANDA instrumentation: before basic block exec
                         for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
-                                plist != NULL; plist = plist->next) {
+                                plist != NULL; plist = panda_cb_list_next(plist)) {
                             plist->entry.before_block_exec(env, tb);
                         }
 
@@ -887,7 +887,7 @@ int cpu_exec(CPUState *env)
                         next_tb = tcg_qemu_tb_exec(env, tc_ptr);
 #endif
 
-                        for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = plist->next) {
+                        for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
                             plist->entry.after_block_exec(env, tb, (TranslationBlock *)(next_tb & ~3));
                         }
 

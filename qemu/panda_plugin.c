@@ -193,6 +193,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     new_list->owner = plugin;
     new_list->prev = NULL;
     new_list->next = NULL;
+    new_list->enabled = true;
     if(panda_cbs[type] != NULL) {
         new_list->next = panda_cbs[type];
         panda_cbs[type]->prev = new_list;
@@ -227,6 +228,48 @@ void panda_unregister_callbacks(void *plugin) {
                 plist = plist->next;
             }
         }
+    }
+}
+
+void panda_enable_plugin(void *plugin) {
+    int i;
+    for (i = 0; i < PANDA_CB_LAST; i++) {
+        panda_cb_list *plist;
+        plist = panda_cbs[i];
+        while(plist != NULL) {
+            if (plist->owner == plugin) {
+                plist->enabled = true;
+            }
+            plist = plist->next;
+        }
+    }
+}
+
+void panda_disable_plugin(void *plugin) {
+    int i;
+    for (i = 0; i < PANDA_CB_LAST; i++) {
+        panda_cb_list *plist;
+        plist = panda_cbs[i];
+        while(plist != NULL) {
+            if (plist->owner == plugin) {
+                plist->enabled = false;
+            }
+            plist = plist->next;
+        }
+    }
+}
+
+panda_cb_list* panda_cb_list_next(panda_cb_list* plist) {
+    // Allows to navigate the callback linked list skipping disabled callbacks
+    panda_cb_list* node = plist->next;
+    if (node == NULL) {
+        return node;
+    }
+
+    if (node->enabled) {
+        return node;
+    } else {
+        return panda_cb_list_next(node);
     }
 }
 
@@ -543,7 +586,7 @@ void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
 void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
     panda_cb_list *plist;
     const char *cmd = qdict_get_try_str(qdict, "cmd");
-    for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = plist->next) {
+    for(plist = panda_cbs[PANDA_CB_MONITOR]; plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.monitor(mon, cmd);
     }
 }

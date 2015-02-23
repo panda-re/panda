@@ -104,6 +104,19 @@ This can be used to allow one plugin to call functions another, since the handle
 
 Load a PANDA plugin. The `filename` parameter is currently interpreted as a simple filename; no searching is done (this may change in the future). This can be used to allow one plugin to load another.
 
+	void   panda_unload_plugin(void *plugin);
+
+Unload a PANDA plugin. This can be used to allow one plugin to unload another one.
+
+	void   panda_disable_plugin(void *plugin);
+
+Disables callbacks registered by a PANDA plugin. This can be used to allow one plugin to temporarily disable another one.
+
+	void   panda_enable_plugin(void *plugin);
+
+Enables callbacks registered by a PANDA plugin. This can be used to re-enable callbacks of a plugin that was disabled.
+
+
 ### Argument handling
 
 PANDA allows plugins to receive options on the command line. Each option should look like `-panda-arg <plugin_name>:<key>=<value>`.

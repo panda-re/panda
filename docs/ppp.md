@@ -24,8 +24,9 @@ they might permit A to obtain intermediate results from B.  So, the
 idea here is that A wants to control or communicate with B.
 
 Note that Way 1 is already well supported by the functions
-`panda_load_plugin` and `panda_unload_plugin`.  See `panda_plugin.h`
-for more details.
+`panda_load_plugin` / `panda_unload_plugin` and `panda_enable_plugin` / `panda_disable_plugin`
+(the former completely load or unload plugins while the latter allow to temporarily enable or
+disable callbacks registered by a given plugin).  See `panda_plugin.h` for more details.
 
 The interactions described in Ways 2 and 3, however, are tricky
 because panda plugins are dynamically loaded.  Thus, even if Plugin A

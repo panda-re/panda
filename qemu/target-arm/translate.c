@@ -10055,7 +10055,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         // PANDA: ask if anyone wants execution notification
         bool panda_exec_cb = false;
         panda_cb_list *plist;
-        for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = plist->next) {
+        for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
             panda_exec_cb |= plist->entry.insn_translate(env, dc->pc);
         }
 
