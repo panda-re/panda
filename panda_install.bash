@@ -10,67 +10,82 @@
 #
 # This script installs all of PANDA after first taking care of current dependencies. 
 # Known to work on debian 7 install.
-#
-# The only prereq is llvm.  You need to put that in ~/llvm
 
+progress() {
+  echo
+  echo -e "\e[32m[panda_install]\e[0m \e[1m$1\e[0m"
+}
+
+# Exit on error.
+set -e
+
+progress "Installing qemu dependencies..."
 sudo apt-get -y install build-essential 
 sudo apt-get -y build-dep qemu
-sudo apt-get -y install nasm
-sudo apt-get -y install libssl-dev
-sudo apt-get -y install libpcap-dev
-sudo apt-get -y install subversion
-sudo apt-get -y install curl
-sudo apt-get -y install autoconf
-sudo apt-get -y install libtool
+progress "Installing PANDA dependencies..."
+sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
+  python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev
 
+cwd=$(pwd)
+cd /tmp
 
-# this will install panda in ~/git/panda
+progress "Trying to install LLVM 3.3..."
+if ! sudo apt-get -y install llvm-3.3-dev
+then
+  progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
+fi
 
-mkdir -p ~/git
+if [ ! -e "/usr/local/lib/libdistorm3.so" ]
+then
+  progress "Downloading distorm into /tmp..."
+  svn checkout http://distorm.googlecode.com/svn/trunk/ distorm-read-only
+  cd distorm-read-only/make/linux
+  make
+  progress "Installing distorm..."
+  sudo make install
+  cd ../../..
+  cd distorm-read-only/include
+  sudo cp * /usr/local/include
+else
+  progress "Skipping distorm..."
+fi
 
-cd ~/git
-git clone https://github.com/moyix/panda.git
+if python -c 'import pycparser'
+then
+  if python <<EOF
+import sys
+import pycparser
+version = [int(x) for x in pycparser.__version__.split(".")]
+if version[0] < 2 or (version[0] == 2 and version[1] < 10):
+  print "pycparser too old. Please upgrade it!"
+  sys.exit(1)
+else:
+  print "pycparser version good."
+  sys.exit(0)
+EOF
+  then
+    progress "Skipping pycparser..."
+  else
+    progress "Your pycparser is too old. Please upgrade using your method of choice."
+    exit 1
+  fi
+else
+  progress "Installing pycparser..."
+  sudo pip install pycparser
+fi
 
-cd ~/git/panda
-ln -s ~/llvm ./llvm
+cd "$cwd"
 
-cd ~
-
-mkdir software
-cd software
-svn checkout http://distorm.googlecode.com/svn/trunk/ distorm
-cd distorm/make/linux
-make
-sudo make install
-cd ../../..
-cd distorm/include
-sudo cp * /usr/local/include
-cd 
-
-
-cd ~/software
-git clone https://github.com/google/protobuf.git
-cd protobuf
-sh ./autogen.sh
-./configure --disable-shared
-make
-sudo make install
-
-cd ~/software
-git clone https://github.com/protobuf-c/protobuf-c.git
-cd protobuf-c
-sh ./autogen.sh
-./configure --disable-shared
-make
-sudo make install
-
-cd ~/software
-git clone https://github.com/eliben/pycparser.git
-cd pycparser
-sudo python setup.py install
-
-
-
-cd ~/git/panda/qemu
+if [ ! -e "qemu/build.sh" ]
+then
+  progress "Cloning PANDA into $cwd ..."
+  git clone https://github.com/moyix/panda.git
+  cd panda/qemu
+else
+  progress "Already in PANDA directory."
+  cd qemu
+fi
+progress "Building PANDA..."
 ./build.sh
 
+progress "PANDA is built and ready to use in panda/qemu/[arch]-softmmu/qemu-system-[arch]."
