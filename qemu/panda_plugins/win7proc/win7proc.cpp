@@ -333,6 +333,11 @@ static HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t h
 
 
 static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
+    if (ho == NULL){
+        char *procName = (char *) calloc(8, 1);
+	sprintf(procName, "unknown");
+         procName;
+    }
     switch (ho->objType) {
         case OBJ_TYPE_File:
             return get_file_obj_name(env, ho->pObj);
@@ -352,7 +357,9 @@ static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
         }
             break;
         default:
-            return NULL;
+	  char *procName = (char *) calloc(8, 1);
+	    sprintf(procName, "unknown");
+	    return procName;
     }
 }
 
