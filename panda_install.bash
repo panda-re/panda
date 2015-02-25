@@ -37,8 +37,14 @@ fi
 
 if [ ! -e "/usr/local/lib/libdistorm3.so" ]
 then
-  progress "Downloading distorm into /tmp..."
-  svn checkout http://distorm.googlecode.com/svn/trunk/ distorm-read-only
+  for i in $(seq 1 10)
+  do
+    progress "Downloading distorm (try $i) into /tmp..."
+    if svn checkout http://distorm.googlecode.com/svn/trunk/ distorm-read-only
+    then
+      break
+    fi
+  done
   cd distorm-read-only/make/linux
   make
   progress "Installing distorm..."
@@ -50,7 +56,7 @@ else
   progress "Skipping distorm..."
 fi
 
-if python -c 'import pycparser'
+if python -c 'import pycparser' 2>/dev/null
 then
   if python <<EOF
 import sys
