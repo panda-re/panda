@@ -1,0 +1,4 @@
+language: c++
+before_install: sudo apt-get update
+install: sudo ./panda_install.bash
+script: true
