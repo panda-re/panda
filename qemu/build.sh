@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # creates api code for plugins
 python ../scripts/apigen.py
 
@@ -9,16 +11,19 @@ sh ./pp.sh
 
 # only 
 LLVM_BIT=""
-if [ -e ../llvm ]
+if [ -e ../llvm/Release ]
 then
   echo "Found ../llvm -- LLVM SUPPORT IS ENABLED"
   LLVM_BIT="--enable-llvm --with-llvm=../llvm/Release"
 else
-  echo "No ../llvm dir found -- LLVM SUPPORT IS DISABLED"
+  if [ $(llvm-config --version) == "3.3" ]
+  then
+    echo "Found system llvm -- LLVM SUPPORT IS ENABLED"
+    LLVM_BIT="--enable-llvm --with-llvm=$(llvm-config --prefix)"
+  else
+    echo "No llvm dir found -- LLVM SUPPORT IS DISABLED"
+  fi
 fi  
-
-
-    
 
 ./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --cc=${CC:=gcc-4.7} \
