@@ -16,7 +16,8 @@ then
   echo "Found ../llvm -- LLVM SUPPORT IS ENABLED"
   LLVM_BIT="--enable-llvm --with-llvm=../llvm/Release"
 else
-  if llvm-config --version >/dev/null && [ $(llvm-config --version) == "3.3" ]
+  if (( llvm-config --version >/dev/null && [ $(llvm-config --version) == "3.3" ] )) \
+    || [ -e /usr/bin/llvm-config-3.3 ]
   then
     echo "Found system llvm -- LLVM SUPPORT IS ENABLED"
     LLVM_BIT="--enable-llvm --with-llvm=$(llvm-config --prefix)"
