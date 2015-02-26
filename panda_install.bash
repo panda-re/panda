@@ -37,20 +37,14 @@ fi
 
 if [ ! -e "/usr/local/lib/libdistorm3.so" ]
 then
-  for i in $(seq 1 10)
-  do
-    progress "Downloading distorm (try $i) into /tmp..."
-    if svn checkout http://distorm.googlecode.com/svn/trunk/ distorm-read-only
-    then
-      break
-    fi
-  done
-  cd distorm-read-only/make/linux
-  make
+  curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
+  unzip distorm3.3-package.zip
+  cd distorm3/make/linux
+  make -j$(nproc)
   progress "Installing distorm..."
   sudo make install
   cd ../../..
-  cd distorm-read-only/include
+  cd distorm3/include
   sudo cp * /usr/local/include
 else
   progress "Skipping distorm..."
