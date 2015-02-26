@@ -77,7 +77,7 @@ EOF
   fi
 else
   progress "Installing pycparser..."
-  sudo pip install pycparser
+  sudo -H pip install pycparser
 fi
 
 cd "$cwd"
