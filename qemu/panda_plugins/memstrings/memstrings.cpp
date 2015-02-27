@@ -79,14 +79,14 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
             sp.ch[sp.nch++] = val;
             // If we max out the string, chop it
             if (sp.nch == MAX_STRLEN - 1) {
-                gzprintf(mem_report, "%.*s\n", sp.nch, sp.ch);
+                gzprintf(mem_report, "%llu:%.*s\n", rr_get_guest_instr_count(), sp.nch, sp.ch);
                 sp.nch = 0;
             }
         }
         else {
             // Don't bother with strings shorter than min
             if (sp.nch >= min_strlen) {
-                gzprintf(mem_report, "%.*s\n", sp.nch, sp.ch);
+                gzprintf(mem_report, "%llu:%.*s\n", rr_get_guest_instr_count(), sp.nch, sp.ch);
             }
             sp.nch = 0;
         }
@@ -109,7 +109,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 gsize bytes_written = 0;
                 gchar *out_str = g_convert((gchar *)usp.ch, usp.nch*2,
                     "UTF-8", "UTF-16LE", NULL, &bytes_written, NULL);
-                gzprintf(mem_report, "%s\n", out_str);
+                gzprintf(mem_report, "%llu:%s\n", rr_get_guest_instr_count(), out_str);
                 g_free(out_str);
                 usp.nch = 0;
             }
@@ -120,7 +120,7 @@ int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
                 gsize bytes_written = 0;
                 gchar *out_str = g_convert((gchar *)usp.ch, usp.nch*2,
                     "UTF-8", "UTF-16LE", NULL, &bytes_written, NULL);
-                gzprintf(mem_report, "%s\n", out_str);
+                gzprintf(mem_report, "%llu:%s\n", rr_get_guest_instr_count(), out_str);
                 g_free(out_str);
             }
             usp.nch = 0;
@@ -177,12 +177,12 @@ void uninit_plugin(void *self) {
     // Save any that we haven't flushed yet
     for (auto &kvp : read_text_tracker) {
         if (kvp.second.nch > min_strlen) {
-            gzprintf(mem_report, "%.*s\n", kvp.second.nch, kvp.second.ch);
+            gzprintf(mem_report, "%llu:%.*s\n", rr_get_guest_instr_count(), kvp.second.nch, kvp.second.ch);
         }
     }
     for (auto &kvp : write_text_tracker) {
         if (kvp.second.nch > min_strlen) {
-            gzprintf(mem_report, "%.*s\n", kvp.second.nch, kvp.second.ch);
+            gzprintf(mem_report, "%llu:%.*s\n", rr_get_guest_instr_count(), kvp.second.nch, kvp.second.ch);
         }
     }
     for (auto &kvp : read_utext_tracker) {
@@ -190,7 +190,7 @@ void uninit_plugin(void *self) {
             gsize bytes_written = 0;
             gchar *out_str = g_convert((gchar *)kvp.second.ch, kvp.second.nch*2,
                 "UTF-8", "UTF-16LE", NULL, &bytes_written, NULL);
-            gzprintf(mem_report, "%s\n", out_str);
+            gzprintf(mem_report, "%llu:%s\n", rr_get_guest_instr_count(), out_str);
             g_free(out_str);
         }
     }
@@ -199,7 +199,7 @@ void uninit_plugin(void *self) {
             gsize bytes_written = 0;
             gchar *out_str = g_convert((gchar *)kvp.second.ch, kvp.second.nch*2,
                 "UTF-8", "UTF-16LE", NULL, &bytes_written, NULL);
-            gzprintf(mem_report, "%s\n", out_str);
+            gzprintf(mem_report, "%llu:%s\n", rr_get_guest_instr_count(), out_str);
             g_free(out_str);
         }
     }
