@@ -123,6 +123,7 @@ audio_win_int=""
 cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 llvm="no"
+llvmver="3.3"
 android="no"
 
 target_list=""
@@ -2220,9 +2221,17 @@ if test "$llvm" != "no" ; then
 int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
 EOF
   if test "$llvmdir" != ""; then
+    if [ -x "$llvmdir/bin/llvm-config" ]; then
       llvm_config="$llvmdir/bin/llvm-config"
+    elif [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
+      llvm_config="$llvmdir/bin/llvm-config-$llvmver"
+    fi
   else
       llvm_config="llvm-config"
+  fi
+  if ! $llvm_config --version >/dev/null 2>/dev/null; then
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
   fi
   #llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
   llvm_components=""
@@ -2250,8 +2259,9 @@ if test "$llvm" != "no" ; then
 fi
 
 if test "$llvm" != "no" ; then
+  # fix symbolic link issues
   if [ -e "$llvmdir/bin/clang" ] ; then
-        clang=`cd $llvmdir/bin/ && find \`pwd\` -name clang`
+    clang=`cd $llvmdir/bin/ && find \`pwd\` -name clang`
   fi
   if [ -x "$clang" ]; then
     : clang found
@@ -2261,7 +2271,9 @@ if test "$llvm" != "no" ; then
   fi
 
   if [ -e "$llvmdir/bin/llvm-link" ] ; then
-        llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
+    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
+  elif [ -e "$llvmdir/bin/llvm-link-$llvmver" ] ; then
+    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link-$llvmver`
   fi
   if [ -x "$llvm_link" ]; then
     : llvm_link found
