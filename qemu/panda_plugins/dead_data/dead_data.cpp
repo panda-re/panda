@@ -100,7 +100,7 @@ bool first_time = true;
 const char *dead_data_filename;
 
 void dd_spit(){
-    printf ("computing dead data and writing to file [%s]\n", dead_data_filename);
+    //printf ("computing dead data and writing to file [%s]\n", dead_data_filename);
     FILE *fp;
     if (first_time) {
         first_time = false;
