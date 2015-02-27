@@ -29,7 +29,7 @@ plugin has a script to actually make a movie. Run
 
 	panda/qemu/panda_plugins/replaymovie/movie.sh
 
-(make sure you have parallel and imagemagick installed). This will
+(make sure you have parallel,graphicsmagick and imagemagick installed). This will
 create replay.mp4, which you can watch in your favorite video player.
 The movie tells you that Internet Explorer crashes after a page is
 loaded, so let's find out what page it is. First, though, we need to cut
