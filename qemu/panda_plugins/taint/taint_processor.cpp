@@ -82,6 +82,7 @@ PPP_PROT_REG_CB(on_store);
 PPP_PROT_REG_CB(on_branch);
 PPP_PROT_REG_CB(before_execute_taint_ops);
 PPP_PROT_REG_CB(after_execute_taint_ops);
+PPP_PROT_REG_CB(on_tainted_instruction);
 
 
 // this adds the actual callback machinery including
@@ -91,6 +92,7 @@ PPP_CB_BOILERPLATE(on_store);
 PPP_CB_BOILERPLATE(on_branch);
 PPP_CB_BOILERPLATE(before_execute_taint_ops);
 PPP_CB_BOILERPLATE(after_execute_taint_ops);
+PPP_CB_BOILERPLATE(on_tainted_instruction);
 }
 
 void tp_ls_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -2564,6 +2566,8 @@ void tob_process(TaintOpBuffer *buf, Shad *shad, DynValBuffer *dynval_buf) {
                     if (tainted_instructions && shad->taint_state_changed) {
                         // add last pc to set of pcs that changed taint state
                         shad->tpc[shad->asid].insert(shad->pc);
+                        // run PPP callbacks
+                        PPP_RUN_CB(on_tainted_instruction, shad);
                     }
 
                     // set taint processor's pc to correct value for

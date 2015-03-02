@@ -39,3 +39,5 @@ memstrings
 asidstory
 file_taint
 win7proc
+ida_taint
+

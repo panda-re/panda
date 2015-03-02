@@ -353,7 +353,7 @@ typedef void (*on_store_t) (uint64_t tp_pc, uint64_t addr);
 typedef void (*on_branch_t) (uint64_t pc, int reg_num);
 typedef void (*before_execute_taint_ops_t) (void);
 typedef void (*after_execute_taint_ops_t) (void);
-
+typedef void (*on_tainted_instruction_t) (Shad *shad);
 
 /*
 // scb will get called, inside the taint processor 
