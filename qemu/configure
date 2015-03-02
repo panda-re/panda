@@ -2260,7 +2260,9 @@ if test "$llvm" != "no" ; then
 fi
 
 if test "$llvm" != "no" ; then
-  if clang --version >> config.log 2>&1; then
+  if [ -x "$llvmdir/bin/clang" ]; then
+    clang="$llvmdir/bin/clang"
+  elif clang --version >> config.log 2>&1; then
     : clang found
     clang=`which clang`
   else
