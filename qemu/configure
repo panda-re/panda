@@ -2260,12 +2260,9 @@ if test "$llvm" != "no" ; then
 fi
 
 if test "$llvm" != "no" ; then
-  # fix symbolic link issues
-  if [ -e "$llvmdir/bin/clang" ] ; then
-    clang=`cd $llvmdir/bin/ && find \`pwd\` -name clang`
-  fi
-  if [ -x "$clang" ]; then
+  if clang --version >> config.log 2>&1; then
     : clang found
+    clang=`which clang`
   else
     feature_not_found "clang (required to be built with LLVM)"
     exit 1
