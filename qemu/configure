@@ -38,19 +38,20 @@ compile_object() {
 compile_prog() {
   local_cflags="$1"
   local_ldflags="$2"
-  echo $cxx $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
+  echo $cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
   $cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log 2>&1
 }
 
 compile_prog_cxx() {
   local_cxxflags="$1"
   local_ldflags="$2"
-  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags > /dev/null 2> /dev/null
+  echo $cxx $QEMU_CFLAGS $local_cxxflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags >> config.log 2>&1
 }
 
 compile_object_cxx() {
-  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX >> config.log
-  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX > /dev/null 2> /dev/null
+  echo $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX >> config.log
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS -c -o $TMPO $TMPCXX >> config.log 2>&1
 }
 
 assemble_object_asm() {
@@ -2221,15 +2222,15 @@ if test "$llvm" != "no" ; then
 int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
 EOF
   if test "$llvmdir" != ""; then
-    if [ -x "$llvmdir/bin/llvm-config" ]; then
-      llvm_config="$llvmdir/bin/llvm-config"
-    elif [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
+    if [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
       llvm_config="$llvmdir/bin/llvm-config-$llvmver"
+    else
+      llvm_config="$llvmdir/bin/llvm-config"
     fi
   else
       llvm_config="llvm-config"
   fi
-  if ! $llvm_config --version >/dev/null 2>/dev/null; then
+  if ! "$llvm_config" --version >> config.log 2>&1; then
     feature_not_found "llvm (required for --enable-llvm)"
     exit 1
   fi
