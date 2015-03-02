@@ -69,12 +69,12 @@ void taint_on_tainted_instruction(Shad *shad){
     PTR current_process_base = -1;
     panda_virtual_memory_rw(tempEnv, eproc+EPROC_PEB_OFF, (uint8_t *)&peb,
         sizeof(PTR), false);
-    assert(peb != -1);
+    assert(peb != (PTR)-1);
     //printf("Current process: %s\n", current_process->name);
     //printf("PEB: 0x%x\n", peb);
     panda_virtual_memory_rw(tempEnv, peb+PEB_IMAGE_BASE_ADDRESS,
         (uint8_t *)&current_process_base, sizeof(PTR), false);
-    assert(current_process_base != -1);
+    assert(current_process_base != (PTR)-1);
     //printf("Base address: 0x%x\n", current_process_base);
     //printf("cs_base: 0x%x\n", cs_base);
 
@@ -85,12 +85,14 @@ void taint_on_tainted_instruction(Shad *shad){
         firstCall = false;
     }
     fprintf(jsonFile, "\t{\n");
-    fprintf(jsonFile, "\t\t\"asid\" : %lu,\n", current_process->asid);
-    fprintf(jsonFile, "\t\t\"pid\" : %lu,\n", current_process->pid);
+    fprintf(jsonFile, "\t\t\"asid\" : " TARGET_FMT_ld ",\n",
+        current_process->asid);
+    fprintf(jsonFile, "\t\t\"pid\" : " TARGET_FMT_ld ",\n",
+        current_process->pid);
     fprintf(jsonFile, "\t\t\"process_name\" : \"%s\",\n", current_process->name);
     //offset is EPROCESS. need EPROCESS->PEB->ImageBaseAddress
     //http://www.nirsoft.net/kernel_struct/vista/PEB.html
-    fprintf(jsonFile, "\t\t\"virtual_program_base_address\" : %lu,\n",
+    fprintf(jsonFile, "\t\t\"virtual_program_base_address\" : %u,\n",
         current_process_base);
     fprintf(jsonFile, "\t\t\"virtual_program_address\" : %lu\n",
         shad->pc - cs_base);
