@@ -1,5 +1,11 @@
 System call tracer plugin
 ====
+
+NOTE!
+The plugin `syscalls` is deprecated in favor of [syscalls2](https://github.com/moyix/panda/blob/master/docs/syscalls2.md).
+
+
+
 Generating system call introspection
 ----
 The system call plugin includes a python script named `linux_syscall_parser.py`.
