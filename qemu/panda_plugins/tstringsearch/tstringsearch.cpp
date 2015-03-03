@@ -69,6 +69,27 @@ uint64_t enable_taint_instr_count = 0;
 
 uint32_t positional_tainting = 0;
 
+
+bool taint_is_enabled = false;
+
+// turn on taint at right instr count
+int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
+    if (taint_is_enabled) {
+        return 0;
+    }
+    // enable taint if close to instruction count
+    uint64_t ic = rr_get_guest_instr_count();
+    if (!taint_enabled()) {
+        if (ic > enable_taint_instr_count) {
+            taint_enable_taint();               
+            taint_is_enabled = true;
+        }
+    }
+    return 0;
+}
+
+
+
 void tstringsearch_label(uint64_t pc, uint64_t phys_addr) {
   if (tstringsearch_label_on == false) {
     return;
@@ -146,39 +167,6 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     }
   
   }
-}
-
-bool labeled = false;
-
-// turn on taint at right instr count
-int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
-    // enable taint if close to instruction count
-    uint64_t ic = rr_get_guest_instr_count();
-    if (!taint_enabled()) {
-
-        if (ic > enable_taint_instr_count) {
-            if (!labeled && panda_current_asid(env) == 0x3f630260) {
-                printf ("enabling taint at instr count %" PRIx64 "\n", ic);
-                taint_enable_taint();               
-                printf ("labeling that buffer\n");
-                labeled = true;
-                for (unsigned i=0; i<65536; i++) {
-                    uint64_t pa = panda_virt_to_phys(env, 0x7e0000+i);
-                    assert (pa != ~0UL);
-                    taint_label_ram(pa, i);
-                }         
-                printf ("...done\n");
-                labeled = true;
-            }
-        }
-            /*
-        if (ic + 100 > enable_taint_instr_count) {
-            printf ("enabling taint at instr count %" PRIx64 "\n", ic);
-            taint_enable_taint();           
-        }
-            */
-    }
-    return 0;
 }
 
 
