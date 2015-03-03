@@ -14,7 +14,8 @@ LLVM_BIT=""
 if [ -e ../llvm/Release ]
 then
   echo "Found ../llvm -- LLVM SUPPORT IS ENABLED"
-  LLVM_BIT="--enable-llvm --with-llvm=../llvm/Release"
+  llvm=`/bin/readlink -f ../llvm/Release`
+  LLVM_BIT="--enable-llvm --with-llvm=$llvm"
 else
   if llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]
   then
@@ -30,6 +31,8 @@ else
     fi
   fi
 fi  
+
+echo $LLVM_BIT
 
 ./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --prefix=`pwd`/install \
