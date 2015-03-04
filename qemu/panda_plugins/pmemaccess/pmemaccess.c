@@ -8,11 +8,15 @@
 #include <pthread.h>
 
 #include "panda_plugin.h"
+#include "cpus.h"
 #include "memory-access.h"
 
 // Definitions
 #define PLUGIN_NAME "pmemaccess"
-#define PLUGIN_ARG_KEY "path"
+#define PLUGIN_ARG_PATH_KEY "path"
+#define PLUGIN_ARG_PROFILE_KEY "profile"
+#define PLUGIN_ARG_COMMAND_KEY "command"
+#define PLUGIN_ARG_MODE_KEY "mode"
 
 typedef enum {
   REQ_QUIT,
@@ -31,9 +35,13 @@ bool init_plugin(void *self);
 bool uninit_plugin(void *self);
 
 void *test_mem_access(void *arg);
+int RR_before_block_exec(CPUState *env, TranslationBlock *tb);
 
 // Globals
 char *socket_path = NULL;
+char *volatility_profile = NULL;
+char *volatility_command = NULL;
+char pmemaccess_mode = -1;
 pthread_t tid;
 
 void *test_mem_access(void *arg)
@@ -46,7 +54,7 @@ void *test_mem_access(void *arg)
   char *buf = NULL;
 
   // Wait for VM to boot a little
-  sleep(20);
+  sleep(10);
 
   // Setup socket
   saddr.sun_family = AF_UNIX;
@@ -96,7 +104,6 @@ void *test_mem_access(void *arg)
   }
   printf("Read: %x\n", ((int *)buf)[0]);
   // 4 byte write + read to verify
-  sleep(10);
   req.type = REQ_WRITE;
   req.address = 0xe540;
   req.length = 4;
@@ -139,33 +146,101 @@ error_exit:
   return NULL;
 }
 
+int RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
+  FILE *fp;
+  int status;
+  char tmp_buf[PATH_MAX];
+  static int exec_once = 0;
+  int tries = 0;
+  // We only want to run volatility once
+  if (exec_once)
+    return 0;
+  exec_once = 1;
+  // Setup the volatility command
+  memset(tmp_buf, 0, PATH_MAX);
+  snprintf(tmp_buf, PATH_MAX, "python ~/git/volatility/vol.py -f %s --profile=%s %s",
+           socket_path, volatility_profile, volatility_command);
+  printf("PMemAccess: Will popen(%s)\n", tmp_buf);
+  // Start volatility
+  fp = popen(tmp_buf, "r");
+  if (fp == NULL) {
+    printf("PMemAccess: Error running volatility\n");
+    return 0;
+  }
+  // Wait for output
+  for (tries = 0; tries < 10; tries++) {
+    while (fgets(tmp_buf, PATH_MAX, fp) != NULL) {
+      printf("%s", tmp_buf);
+      // break outer loop
+      tries = 10;
+    }
+    sleep(1);
+  }
+  // Exit
+  status = pclose(fp);
+  if (status == -1) {
+    printf("PMemAccess: pclose() error.\n");
+  } else {
+    printf("PMemAccess: Volatility finished.\n");
+  }
+
+  return 0;
+}
+
 bool init_plugin(void *self)
 {
   int i = 0;
 
-  // Find the path argument
+  // Find the plugin args and make a local copy
   panda_arg_list *pargs = panda_get_args(PLUGIN_NAME);
   for (i = 0; i < pargs->nargs; i++) {
-    if(!strcmp(PLUGIN_ARG_KEY, pargs->list[i].key))
-      break;
+    if(!strcmp(PLUGIN_ARG_PATH_KEY, pargs->list[i].key)) {
+      socket_path = (char *)malloc(strlen(pargs->list[i].value)+1);
+      strncpy(socket_path, pargs->list[i].value, strlen(pargs->list[i].value)+1);
+    } else if (!strcmp(PLUGIN_ARG_PROFILE_KEY, pargs->list[i].key)) {
+      volatility_profile = calloc(strlen(pargs->list[i].value)+1, sizeof(char));
+      strncpy(volatility_profile, pargs->list[i].value, strlen(pargs->list[i].value)+1);
+    } else if (!strcmp(PLUGIN_ARG_COMMAND_KEY, pargs->list[i].key)) {
+      volatility_command = calloc(strlen(pargs->list[i].value)+1, sizeof(char));
+      strncpy(volatility_command, pargs->list[i].value, strlen(pargs->list[i].value)+1);
+    } else if (!strcmp(PLUGIN_ARG_MODE_KEY, pargs->list[i].key)) {
+      pmemaccess_mode = atoi(pargs->list[i].value);
+    }
   }
-  if (i == pargs->nargs) {
-    printf("path argument not found\n");
+  if (socket_path == NULL) {
+    printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_PATH_KEY);
+    return false;
+  }
+  if (pmemaccess_mode == -1) {
+    printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_MODE_KEY);
+    return false;
+  }
+  if (pmemaccess_mode == 1 && volatility_profile == NULL) {
+    printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_PROFILE_KEY);
+    return false;
+  }
+  if (pmemaccess_mode == 1 && volatility_command == NULL) {
+    printf("PMemAccess: %s argument not found\n", PLUGIN_ARG_COMMAND_KEY);
     return false;
   }
 
   // Start the memory access socket
-  memory_access_start(pargs->list[i].value);
-
-  // Make a local copy for ourselves
-  socket_path = (char *)malloc(strlen(pargs->list[i].value)+1);
-  strncpy(socket_path, pargs->list[i].value, strlen(pargs->list[i].value)+1);
+  memory_access_start(socket_path);
 
   // Free PANDA's copy
   panda_free_args(pargs);
 
-  // Spawn the test thread
-  pthread_create(&tid, NULL, &test_mem_access, NULL);
+  switch (pmemaccess_mode) {
+    case 0: // Spawn the test thread
+      pthread_create(&tid, NULL, &test_mem_access, NULL);
+      break;
+    case 1: ;// Test RR access with callback
+      panda_cb pcb = {.before_block_exec = RR_before_block_exec };
+      panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+      break;
+    default:
+      break;
+  }
 
   return true;
 }
