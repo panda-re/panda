@@ -31,7 +31,7 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 #include "shad_dir_64.h"
 
-typedef struct LabelSet *LabelSetP;
+typedef const std::set<uint32_t> *LabelSetP;
 
 // 64-bit addresses
 // create a new table

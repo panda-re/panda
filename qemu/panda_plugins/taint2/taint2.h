@@ -30,8 +30,12 @@
 
 //#define TAINTDEBUG // print out all debugging info for taint ops
 
-typedef struct FastShad FastShad;
+#ifdef __cplusplus
+typedef const std::set<uint32_t> *LabelSetP;
+#else
 typedef struct LabelSet *LabelSetP;
+#endif
+typedef struct FastShad FastShad;
 typedef struct SdDir32 SdDir32;
 typedef struct SdDir64 SdDir64;
 typedef struct addr_struct Addr;
@@ -94,7 +98,7 @@ uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset);
 
 void tp_delete_ram(Shad *shad, uint64_t pa) ;
 
-void tp_ls_iter(LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void tp_ls_reg_iter(Shad *shad, int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);

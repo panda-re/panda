@@ -208,20 +208,15 @@ void tp_lsr_iter(std::set<uint32_t> rendered, int (*app)(uint32_t el, void *stuf
     }
 }
     
-
-
-// memoize rendering of label sets into actual sets
-std::map < LabelSet *, std::set < uint32_t > > memoize_ls_rend;
-
 // retrieve ls for this addr
-void tp_ls_iter(LabelSet *ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     std::set<uint32_t> rendered = label_set_render_set(ls);
     tp_lsr_iter(rendered, app, stuff2);
 }
 
 void tp_ls_a_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     // retrieve the tree-representation of the 
-    LabelSet *ls = tp_labelset_get(shad, a);
+    LabelSetP ls = tp_labelset_get(shad, a);
     if (ls == NULL) return;
     tp_ls_iter(ls, app, stuff2);
 }

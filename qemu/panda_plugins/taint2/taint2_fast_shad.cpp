@@ -27,7 +27,9 @@ PANDAENDCOMMENT */
 #include "defines.h"
 #include "fast_shad.h"
 
-typedef struct LabelSet *LabelSetP;
+#include <set>
+
+typedef const std::set<uint32_t> *LabelSetP;
 
 FastShad::FastShad(uint64_t labelsets) {
     uint64_t bytes = sizeof(TaintData) * labelsets;
