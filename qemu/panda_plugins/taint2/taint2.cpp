@@ -60,6 +60,9 @@ void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, v
 void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
+uint32_t *taint2_labels_applied(void);
+uint32_t taint2_num_labels_applied(void);
+
 }
 
 #include <llvm/PassManager.h>
@@ -410,6 +413,15 @@ uint32_t __taint2_query_llvm(int reg_num, int offset) {
 }
 
 
+uint32_t *__taint2_labels_applied(void) {
+    return tp_labels_applied();
+}
+
+uint32_t __taint2_num_labels_applied(void) {
+    return tp_num_labels_applied();
+}
+
+
 
 
 void __taint2_delete_ram(uint64_t pa) {
@@ -502,6 +514,14 @@ void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, 
     __taint2_labelset_llvm_iter(reg_num, offset, app, stuff2);
 }
 
+uint32_t *taint2_labels_applied(void) {
+    return __taint2_labels_applied();
+}
+
+
+uint32_t taint2_num_labels_applied(void) {
+    return __taint2_num_labels_applied();
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////

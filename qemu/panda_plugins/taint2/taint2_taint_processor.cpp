@@ -363,17 +363,37 @@ void addr_spit(Addr *a) {
   printf (",%d,%x)", a->off, a->flag);
 }
 
-    
+
+// used to keep track of labels that have been applied
+std::set < uint32_t > labels_applied;
 
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr *a, uint32_t l) {
     assert (shad != NULL);
-
     LabelSetP ls = tp_labelset_get(shad, a);
     LabelSetP ls2 = label_set_singleton(l);
     LabelSetP result = label_set_union(ls, ls2);
     tp_labelset_put(shad, a, result);
+    labels_applied.insert(l);
 }
+
+
+// returns set of so-far applied labels as a sorted array
+// NB: This allocates memory. Caller frees.
+uint32_t *tp_labels_applied(void) {
+    uint32_t *labels = (uint32_t *) malloc(sizeof(uint32_t) * labels_applied.size());
+    uint32_t i=0;
+    for ( auto el : labels_applied ) {
+        labels[i] = el;
+        i++;
+    }
+    return labels;
+}
+
+uint32_t tp_num_labels_applied(void) {
+    return labels_applied.size();
+}
+
 
 void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l) {
     Addr a = make_maddr(pa);
