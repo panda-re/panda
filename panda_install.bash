@@ -20,6 +20,7 @@ progress() {
 set -e
 
 progress "Installing qemu dependencies..."
+sudo apt-get update -qq
 sudo apt-get -y install build-essential 
 sudo apt-get -y build-dep qemu
 progress "Installing PANDA dependencies..."
