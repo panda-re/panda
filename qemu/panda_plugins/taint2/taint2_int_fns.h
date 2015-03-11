@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-typedef struct LabelSet *LabelSetP;
+typedef void *LabelSetP;
 
 
 // turns on taint
