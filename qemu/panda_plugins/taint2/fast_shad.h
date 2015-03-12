@@ -89,6 +89,8 @@ public:
     }
 
     static inline void copy(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
+        tassert(dest + size >= dest);
+        tassert(src + size >= src);
         tassert(dest + size <= shad_dest->size);
         tassert(src + size <= shad_src->size);
         
@@ -109,6 +111,7 @@ public:
 
     // Remove taint.
     inline void remove(uint64_t addr, uint64_t remove_size) {
+        tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
         
 #ifdef TAINTDEBUG
@@ -150,6 +153,7 @@ public:
     }
 
     inline void set_full(uint64_t addr, TaintData td) {
+        tassert(addr < size);
         labels[addr] = td;
     }
 
@@ -158,6 +162,7 @@ public:
     }
 
     inline void set_tcn(uint64_t addr, uint32_t val) {
+        tassert(addr < size);
         labels[addr].tcn = val;
     }
 };
