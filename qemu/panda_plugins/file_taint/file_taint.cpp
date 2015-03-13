@@ -157,7 +157,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 taint_label_number_start, taint_label_number_start + count - 1);
         if (prob_label_u32 == 0 && bytes_labeled < 5000) {
             for (uint32_t i=0; i<count; i++) {
-                printf ("labeling virt addr 0x%x with label %d\n", the_buf+i, taint_label_number_start + i);
+                //printf ("labeling virt addr 0x%x with label %d\n", the_buf+i, taint_label_number_start + i);
                 label_byte(env, the_buf+i, taint_label_number_start + i);
                 bytes_labeled ++;
                 if (bytes_labeled > max_num_labels) {
