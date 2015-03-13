@@ -31,6 +31,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <libgen.h>
@@ -1296,27 +1298,6 @@ void rr_destroy_log(void) {
 
 struct timeval replay_start_time;
 
-void self_mem(void);
-
-// spit out memory consumption via proc
-void self_mem(void) {
-    FILE* status = fopen( "/proc/self/status", "r" );
-    size_t n = 1024;
-    char *buf = (char *) malloc(n);
-    while (1) {
-        n = getline(&buf, &n, status); 
-        if (n == -1) {
-            break;
-        }
-        // check for "Vm.." in beginning
-        if ((buf[0] == 'V') && (buf[1] == 'm')) {
-            printf ("process mem info: %s", buf);
-        }
-    }
-    fclose(status);
-}
-
-
 //mz display a measure of replay progress (using instruction counts and log size)
 void replay_progress(void) {
   if (rr_nondet_log) {
@@ -1324,21 +1305,24 @@ void replay_progress(void) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
     }
     else {
-        struct timeval time;
-        gettimeofday(&time, 0);
-        float secs = ((float) ((time.tv_sec-replay_start_time.tv_sec)*1000000LL + time.tv_usec-replay_start_time.tv_usec)) / 1000000.0;
-        printf ("%s:  %ld of %llu (%.2f%%) bytes, %llu of %llu (%.2f%%) instructions processed. %.2f sec\n", 
-              rr_nondet_log->name,
-              ftell(rr_nondet_log->fp),
-              rr_nondet_log->size,
-              (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
-              (unsigned long long)rr_queue_head->header.prog_point.guest_instr_count,
-              (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count,
-              ((rr_queue_head->header.prog_point.guest_instr_count * 100.0) / 
-               rr_nondet_log->last_prog_point.guest_instr_count),
-              secs
-          );
-        self_mem();
+        struct rusage rusage;
+        getrusage(RUSAGE_SELF, &rusage);
+
+        struct timeval *time = &rusage.ru_utime;
+        float secs = ((float)time->tv_sec*1000000 + (float)time->tv_usec) / 1000000.0;
+        char *name = basename(rr_nondet_log->name);
+        char *dot = strrchr(name, '.');
+        if (dot && dot - name > 10) *(dot - 10) = '\0';
+        printf ("%s:  %ld of %llu (%.2f%%) bytes. %lu of %lu (%.2f%%) instrs. %.2f sec. %ldK memory.\n",
+                name,
+                ftell(rr_nondet_log->fp),
+                rr_nondet_log->size,
+                (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
+                rr_get_guest_instr_count(),
+                (uint64_t)rr_nondet_log->last_prog_point.guest_instr_count,
+                ((rr_get_guest_instr_count() * 100.0) / 
+                 rr_nondet_log->last_prog_point.guest_instr_count),
+                secs, rusage.ru_maxrss);
      }
   }
 }
