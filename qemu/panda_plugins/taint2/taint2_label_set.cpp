@@ -101,15 +101,10 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
             temp.insert(l);
         }
 
-        const std::set<uint32_t> *result;
-        auto it = label_sets.find(temp);
-        if (it != label_sets.end()) {
-            result = &(*it);
-        } else {
-            // Must construct new set.
-            result = LSA.alloc(temp);
-            label_sets.insert(*result);
-        }
+        // insert returns a pair <iterator, bool>; second is whether it happened
+        // first is iterator to new/existing element
+        auto it = label_sets.insert(temp).first;
+        const std::set<uint32_t> *result = &(*it);
 
         memoized_unions.insert(std::make_pair(minmax, result));
         return result;
