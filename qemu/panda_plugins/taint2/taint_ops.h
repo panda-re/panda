@@ -15,7 +15,10 @@ PANDAENDCOMMENT */
 #ifndef __TAINT_OPS_H_
 #define __TAINT_OPS_H_
 
-namespace llvm { class FastShad; }
+#include <cstdint>
+
+//namespace llvm { class FastShad; }
+class FastShad;
 
 extern "C" {
 
@@ -58,11 +61,6 @@ void taint_branch(FastShad *shad, uint64_t src);
 // These are all the taint operations which we will inline into the LLVM code
 // as it JITs.
 void taint_copy(
-        FastShad *shad_dest, uint64_t dest,
-        FastShad *shad_src, uint64_t src,
-        uint64_t size);
-
-void taint_move(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
         uint64_t size);
