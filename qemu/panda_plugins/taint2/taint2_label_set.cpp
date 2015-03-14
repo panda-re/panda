@@ -6,6 +6,7 @@ extern "C" {
 #include <vector>
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 #include <functional>
 
 #include "label_set.h"
@@ -76,11 +77,20 @@ class hash<set<uint32_t>> {
         return result;
     }
 };
+
+template<>
+class hash<pair<LabelSetP, LabelSetP>> {
+  public:
+    size_t operator()(const pair<LabelSetP, LabelSetP> &labels) const {
+        return hash<LabelSetP>()(labels.first) ^
+            (hash<LabelSetP>()(labels.second) << (sizeof(LabelSetP) / 2));
+    }
+};
 }
 
 static std::unordered_set<std::set<uint32_t>> label_sets;
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
-    static std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP> memoized_unions;
+    static std::unordered_map<std::pair<LabelSetP, LabelSetP>, LabelSetP> memoized_unions;
 
     if (ls1 == ls2) {
         return ls1;
