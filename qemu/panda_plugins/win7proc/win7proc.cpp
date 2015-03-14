@@ -336,7 +336,7 @@ static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
     if (ho == NULL){
         char *procName = (char *) calloc(8, 1);
 	sprintf(procName, "unknown");
-         procName;
+         return procName;
     }
     switch (ho->objType) {
         case OBJ_TYPE_File:

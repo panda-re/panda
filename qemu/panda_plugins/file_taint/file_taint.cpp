@@ -98,12 +98,6 @@ uint32_t last_open_asid;
 void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
     uint32_t i;
     char the_filename[MAX_FILENAME];
-    printf ("im in open_enter for asid=0x%x \n", panda_current_asid(env));
-    printf ("EAX=%d\n", EAX);
-
-    uint32_t asid = panda_current_asid(env);
-
-    // get the filename out of guest memory
     the_filename[0] = 0;
     for (i=0; i<MAX_FILENAME; i++) {
         uint8_t c;
@@ -119,31 +113,24 @@ void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flag
     }
     if (i == strlen(taint_filename)) {
         if (strncmp(the_filename, taint_filename, strlen(the_filename)) == 0) {
-            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
             saw_open = true;
-            the_asid = asid;
+            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+            the_asid = panda_current_asid(env);
         }
     }
-    last_open_asid = asid;
-    last_open_filename = strdup(the_filename);
 }
 
 
-// typedef void (*on_sys_open_return_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
 void open_return(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
-    printf ("im in open_return for asid=0x%x EAX=%d\n", panda_current_asid(env), EAX);
-    if (saw_open && last_open_asid == panda_current_asid(env)) {
+    //    printf ("returning from open\n");
+    if (saw_open && the_asid == panda_current_asid(env)) {
         saw_open = false;
-        // get return value, which is the file descriptor for the file we want to taint
+        // get return value, which is the file descriptor for this file
+        the_asid = panda_current_asid(env);
         the_fd = EAX;
-        the_asid = last_open_asid;
-        printf ("saw return from open of file we want to taint [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
-    }    
-    // generally keep track of asid/fd -> filename map
-    asidfd_to_filename[std::make_pair(last_open_asid, EAX)] = last_open_filename;
-    for (auto kvp : asidfd_to_filename) {
-        printf ("asid=0x%x fd=%d filename=[%s]\n", kvp.first.first, kvp.first.second, kvp.second);
+        printf ("saw return from open of [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
     }
+            
 }
    
 
@@ -156,9 +143,6 @@ uint32_t last_read_count;
 uint32_t last_read_buf;
 
 void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    printf ("EAX=%d\n", EAX);
-    printf ("saw read_enter asid=0x%x fd=%d count=%d\n", panda_current_asid(env), fd);
-
     uint32_t asid = panda_current_asid(env);
     char *filename = 0;
     if (asidfd_to_filename.count(std::make_pair(asid, fd)) != 0) {
@@ -177,7 +161,7 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
     last_read_buf = buf;
 
     if (asid == the_asid && fd == the_fd) {
-        printf ("saw read of %d bytes in file we wnat to taint\n", count, taint_filename);
+        printf ("saw read of %d bytes in file we want to taint\n", count);
         saw_read = true;
     }
 }
@@ -190,8 +174,6 @@ uint32_t bytes_labeled = 0;
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    printf ("saw read_return asid=0x%x fd=%d\n", panda_current_asid(env), fd);
-
     if (saw_read && panda_current_asid(env) == the_asid) {
         count = EAX;
         printf ("count=%d\n", count);
@@ -258,25 +240,6 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
     return 0;
 }
 
-
-void all_syscalls(CPUState *env, target_ulong pc, target_ulong callno) {
-    printf ("asid=0x%x syscall %d\n",
-            panda_current_asid(env), callno);
-}
-
-int in_generated_code = 0;
-
-int before_bb (CPUState *env, TranslationBlock *tb) {
-    in_generated_code = 1;
-}
-
-
-int after_bb (CPUState *env, TranslationBlock *tb1, TranslationBlock *tb2) {
-    in_generated_code = 0;
-}
-           
-
-
 bool init_plugin(void *self) {
 
     printf("Initializing plugin file_taint\n");
@@ -327,13 +290,6 @@ bool init_plugin(void *self) {
         panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
     }
 
-    pcb.before_block_exec = before_bb;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-
-    pcb.after_block_exec = after_bb;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-
-    
 #if defined(TARGET_I386)
             
     PPP_REG_CB("syscalls2", on_sys_open_enter, open_enter);
@@ -342,8 +298,6 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_sys_read_enter, read_enter);
     PPP_REG_CB("syscalls2", on_sys_read_return, read_return);
 
-    //        PPP_REG_CB("syscalls2", on_all_sys_linux_x86_enter, all_syscalls);
-    
 #endif
     return true;
 }
