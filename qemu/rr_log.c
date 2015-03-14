@@ -1313,16 +1313,12 @@ void replay_progress(void) {
         char *name = basename(rr_nondet_log->name);
         char *dot = strrchr(name, '.');
         if (dot && dot - name > 10) *(dot - 10) = '\0';
-        printf ("%s:  %ld of %llu (%.2f%%) bytes. %lu of %lu (%.2f%%) instrs. %.2f sec. %ldK memory.\n",
+        printf("%s:  %10lu (%6.2f%%) instrs. %7.2f sec. %5.2f ram.\n",
                 name,
-                ftell(rr_nondet_log->fp),
-                rr_nondet_log->size,
-                (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
                 rr_get_guest_instr_count(),
-                (uint64_t)rr_nondet_log->last_prog_point.guest_instr_count,
                 ((rr_get_guest_instr_count() * 100.0) / 
                  rr_nondet_log->last_prog_point.guest_instr_count),
-                secs, rusage.ru_maxrss);
+                secs, rusage.ru_maxrss / 1024.0 / 1024.0);
      }
   }
 }
