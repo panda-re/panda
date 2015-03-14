@@ -307,7 +307,7 @@ void taint_host_memcpy(
     }
     taint_log(")\n");
 #endif
-    FastShad::copy(shad_dest, dest, shad_src, src, size);
+    FastShad::copy(shad_dest, addr_dest, shad_src, addr_src, size);
 }
 
 void taint_host_delete(
