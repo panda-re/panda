@@ -357,7 +357,8 @@ void i386_hypercall_callback(CPUState *env){
     // EBX contains addr.
     if (env->regs[R_EAX] == 9) {
         target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
-        if (taintEnabled){
+        if (taintEnabled && 
+            (taint2_num_labels_applied() > 0)){
             printf("taint2: Query operation detected @ %lu.\n",
                     rr_get_guest_instr_count());
             //uint64_t array;
@@ -370,7 +371,7 @@ void i386_hypercall_callback(CPUState *env){
             //label_set_iter(FastShad::query(shadow->ram, addr),
                     //print_labels, NULL);
             printf("taint2: Stopping replay.\n");
-            rr_do_end_replay(0);
+            //            rr_do_end_replay(0);
         }
     }
 }

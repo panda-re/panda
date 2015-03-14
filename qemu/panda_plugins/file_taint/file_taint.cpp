@@ -24,7 +24,7 @@ extern "C" {
 }
 
 #include <vector>
-
+#include <map>
  
 double prob_label_u32 = 0;
 const char *taint_filename = 0;
@@ -34,67 +34,12 @@ bool no_taint = true;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
-uint32_t the_asid;
+uint32_t the_asid = 0;
 uint32_t the_fd;
 
 uint32_t max_num_labels = 1000000;
 
-
-#ifdef TARGET_I386
-// 5 long sys_open(const char __user *filename,int flags, int mode);
-// typedef void (*on_sys_open_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
-void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
-    uint32_t i;
-    char the_filename[MAX_FILENAME];
-    the_filename[0] = 0;
-    for (i=0; i<MAX_FILENAME; i++) {
-        uint8_t c;
-        panda_virtual_memory_rw(env, filename+i, &c, 1, 0);
-        the_filename[i] = c;
-        if (c==0) {            
-            break;
-        }
-    }
-    the_filename[MAX_FILENAME-1] = 0;
-    if (i != 0 ) {
-        printf ("saw open of [%s]\n", the_filename);
-    }
-    if (i == strlen(taint_filename)) {
-        if (strncmp(the_filename, taint_filename, strlen(the_filename)) == 0) {
-            saw_open = true;
-            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
-            the_asid = panda_current_asid(env);
-        }
-    }
-}
-
-
-void open_return(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
-    //    printf ("returning from open\n");
-    if (saw_open && the_asid == panda_current_asid(env)) {
-        saw_open = false;
-        // get return value, which is the file descriptor for this file
-        the_asid = panda_current_asid(env);
-        the_fd = EAX;
-        printf ("saw return from open of [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
-    }
-            
-}
-   
-
-uint32_t the_buf;
-uint32_t the_count;
-bool saw_read = false;
-
-void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    if (panda_current_asid(env) == the_asid && fd == the_fd) {
-        the_buf = buf;
-        the_count = count;
-        printf ("saw read of [%s] %d bytes\n", taint_filename, count);
-        saw_read = true;
-    }
-}
-
+uint64_t first_instr = 0;
 
 uint32_t taint_label_number_start = 0;
 
@@ -104,6 +49,7 @@ float pdice(float m) {
 }
     
 
+std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
 
 
@@ -142,11 +88,110 @@ void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
 
 
 
+char *last_open_filename;
+uint32_t last_open_asid;
+
+#ifdef TARGET_I386
+// 5 long sys_open(const char __user *filename,int flags, int mode);
+// typedef void (*on_sys_open_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
+
+void open_enter(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
+    uint32_t i;
+    char the_filename[MAX_FILENAME];
+    printf ("im in open_enter for asid=0x%x \n", panda_current_asid(env));
+    printf ("EAX=%d\n", EAX);
+
+    uint32_t asid = panda_current_asid(env);
+
+    // get the filename out of guest memory
+    the_filename[0] = 0;
+    for (i=0; i<MAX_FILENAME; i++) {
+        uint8_t c;
+        panda_virtual_memory_rw(env, filename+i, &c, 1, 0);
+        the_filename[i] = c;
+        if (c==0) {            
+            break;
+        }
+    }
+    the_filename[MAX_FILENAME-1] = 0;
+    if (i != 0 ) {
+        printf ("saw open of [%s]\n", the_filename);
+    }
+    if (i == strlen(taint_filename)) {
+        if (strncmp(the_filename, taint_filename, strlen(the_filename)) == 0) {
+            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+            saw_open = true;
+            the_asid = asid;
+        }
+    }
+    last_open_asid = asid;
+    last_open_filename = strdup(the_filename);
+}
+
+
+// typedef void (*on_sys_open_return_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
+void open_return(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode) {
+    printf ("im in open_return for asid=0x%x EAX=%d\n", panda_current_asid(env), EAX);
+    if (saw_open && last_open_asid == panda_current_asid(env)) {
+        saw_open = false;
+        // get return value, which is the file descriptor for the file we want to taint
+        the_fd = EAX;
+        the_asid = last_open_asid;
+        printf ("saw return from open of file we want to taint [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
+    }    
+    // generally keep track of asid/fd -> filename map
+    asidfd_to_filename[std::make_pair(last_open_asid, EAX)] = last_open_filename;
+    for (auto kvp : asidfd_to_filename) {
+        printf ("asid=0x%x fd=%d filename=[%s]\n", kvp.first.first, kvp.first.second, kvp.second);
+    }
+}
+   
+
+uint32_t the_buf;
+uint32_t the_count;
+bool saw_read = false;
+
+uint32_t last_read_fd;
+uint32_t last_read_count;
+uint32_t last_read_buf;
+
+void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
+    printf ("EAX=%d\n", EAX);
+    printf ("saw read_enter asid=0x%x fd=%d count=%d\n", panda_current_asid(env), fd);
+
+    uint32_t asid = panda_current_asid(env);
+    char *filename = 0;
+    if (asidfd_to_filename.count(std::make_pair(asid, fd)) != 0) {
+        filename = asidfd_to_filename[std::make_pair(asid, fd)];
+    }
+    if (filename !=0) {
+        printf ("filename = [%s]\n", filename);
+    }
+    else {
+        printf ("filename is not known\n");
+    }
+
+    // these things are only known at enter of read call
+    last_read_fd = fd;
+    last_read_count = count;
+    last_read_buf = buf;
+
+    if (asid == the_asid && fd == the_fd) {
+        printf ("saw read of %d bytes in file we wnat to taint\n", count, taint_filename);
+        saw_read = true;
+    }
+}
+
+
+
+
 uint32_t bytes_labeled = 0;
 
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
+    printf ("saw read_return asid=0x%x fd=%d\n", panda_current_asid(env), fd);
+
     if (saw_read && panda_current_asid(env) == the_asid) {
         count = EAX;
         printf ("count=%d\n", count);
@@ -157,8 +202,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 taint_label_number_start, taint_label_number_start + count - 1);
         if (prob_label_u32 == 0 && bytes_labeled < 5000) {
             for (uint32_t i=0; i<count; i++) {
-                //printf ("labeling virt addr 0x%x with label %d\n", the_buf+i, taint_label_number_start + i);
-                label_byte(env, the_buf+i, taint_label_number_start + i);
+                label_byte(env, last_read_buf+i, taint_label_number_start + i);
                 bytes_labeled ++;
                 if (bytes_labeled > max_num_labels) {
                     break;
@@ -174,7 +218,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                     // we will label this uint32
                     for (uint32_t j=0; j<4; j++) {
                         uint32_t offset = i*4 + j;
-                        label_byte(env, the_buf + offset, label_num);
+                        label_byte(env, last_read_buf + offset, label_num);
                     }
                 }
             }
@@ -187,6 +231,51 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
 
 }
 #endif
+
+extern uint64_t replay_get_guest_instr_count(void);
+bool taint_is_enabled = false;
+
+int file_taint_enable(CPUState *env, target_ulong pc) {
+    if (!no_taint && !taint_is_enabled) {
+        uint64_t ins = replay_get_guest_instr_count();
+        //        printf ("ins= %" PRId64 "  first_ins = %" PRId64" %d\n",
+        //                ins, first_instr, (ins > first_instr) );
+
+        if (ins > first_instr) {
+            
+            taint_is_enabled = true;
+            if (use_taint2) {
+                printf ("enabling taint2");
+                taint2_enable_taint();
+            }
+            else {
+                taint_enable_taint();
+                printf ("enabling taint");
+            }
+            printf (" @ ins  %" PRId64 "\n", ins); 
+        }
+    }
+    return 0;
+}
+
+
+void all_syscalls(CPUState *env, target_ulong pc, target_ulong callno) {
+    printf ("asid=0x%x syscall %d\n",
+            panda_current_asid(env), callno);
+}
+
+int in_generated_code = 0;
+
+int before_bb (CPUState *env, TranslationBlock *tb) {
+    in_generated_code = 1;
+}
+
+
+int after_bb (CPUState *env, TranslationBlock *tb1, TranslationBlock *tb2) {
+    in_generated_code = 0;
+}
+           
+
 
 bool init_plugin(void *self) {
 
@@ -201,6 +290,7 @@ bool init_plugin(void *self) {
     no_taint = panda_parse_bool(args, "notaint");
     prob_label_u32 = panda_parse_double(args, "prob_label_u32", 0.0);
     max_num_labels = panda_parse_ulong(args, "max_num_labels", 1000000);
+    first_instr = panda_parse_uint64(args, "first_instr", 0);
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
@@ -208,6 +298,7 @@ bool init_plugin(void *self) {
     printf ("no_taint = %d\n", no_taint);
     printf ("prob_label_u32 = %.3f\n", prob_label_u32);
     printf ("max_num_labels = %d\n", max_num_labels);
+    printf ("first_instr = %" PRId64 " \n", first_instr);
 
     panda_require("syscalls2");
 
@@ -216,13 +307,32 @@ bool init_plugin(void *self) {
         if (use_taint2) {
             panda_require("taint2");
             assert(init_taint2_api());
-            taint2_enable_taint();
+            if (first_instr == 0) {
+                taint2_enable_taint();
+            }
         } else {
             panda_require("taint");
             assert(init_taint_api());
-            taint_enable_taint();
+            if (first_instr == 0) {
+                taint_enable_taint();
+            }
         }
     }
+    
+    panda_cb pcb;        
+
+    if (first_instr > 0) {
+        // only need this callback if we are turning on taint late
+        pcb.before_block_translate = file_taint_enable;
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
+    }
+
+    pcb.before_block_exec = before_bb;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    pcb.after_block_exec = after_bb;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+
     
 #if defined(TARGET_I386)
             
@@ -231,6 +341,8 @@ bool init_plugin(void *self) {
     
     PPP_REG_CB("syscalls2", on_sys_read_enter, read_enter);
     PPP_REG_CB("syscalls2", on_sys_read_return, read_return);
+
+    //        PPP_REG_CB("syscalls2", on_all_sys_linux_x86_enter, all_syscalls);
     
 #endif
     return true;
