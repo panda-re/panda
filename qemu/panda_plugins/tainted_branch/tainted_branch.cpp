@@ -107,7 +107,7 @@ void tbranch_pandalogging() {
         // no actual labels -- why isn't this handled by taint_query_llvm ? 
         return;
     }
-    int n = get_callers(callers, MAXCALLERS, cpu_single_env);
+    unsigned n = get_callers(callers, MAXCALLERS, cpu_single_env);
     /*
     if (callers64 == NULL) {
         max_num_callers = std::max(n, 16);

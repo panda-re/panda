@@ -27,7 +27,7 @@ def get_arglists(pf):
         if type(d) == pycparser.c_ast.Decl:
             # a prototype
             function_name = d.name
-            print "function name = [%s]" % function_name
+            #print "function name = [%s]" % function_name
             fundec = d.children()[0][1]
             args[function_name] = []
             for arg in fundec.args.params:
@@ -79,6 +79,7 @@ def generate_code(functions, module, includes):
         fn_args = ",".join(fn_args_list)
         code+= "typedef " + fn_rtype + "(*" + fn_name + "_t)(" + fn_args_with_types + ");\n"
         code+= "static " + fn_name + "_t __" + fn_name + " = NULL;\n"
+        code += "inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + ");\n"
         code += "inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + "){\n"
         code += "    assert(__" + fn_name + ");\n"
         code += "    return __" + fn_name + "(" + fn_args + ");\n"
@@ -95,6 +96,7 @@ def generate_code(functions, module, includes):
  } \\
 }
 """
+    code += "inline bool init_%s_api(void);" % module
     code += "inline bool init_%s_api(void){" % module
 
 
@@ -148,7 +150,7 @@ def generate_api(plugin_name, plugin_dir):
         return
 
 
-    print "Building API for plugin " + plugin_name
+    print "Building API for plugin " + plugin_name,
     functions = []
     includes = []
 
@@ -166,7 +168,7 @@ def generate_api(plugin_name, plugin_dir):
         if line and not line.startswith('#') and not (re.match("^/", line)):
             # not a typedef and not a comment.
             # could be a fn prototype
-            print line
+            #print line
             foo = split_fun_prototype(line)
             if not (foo is None):
                 # it is a fn prototype -- pull out return type, name, and arglist with types
@@ -189,7 +191,7 @@ plugins_dir = panda_dir + "/qemu/panda_plugins"
 # iterate over enabled plugins
 plugins = (open(plugins_dir + "/config.panda").read()).split()
 for plugin in plugins:
-    print plugin
+    #print plugin
     if plugin[0] == '#':
         continue
     plugin_dir = plugins_dir + "/" + plugin

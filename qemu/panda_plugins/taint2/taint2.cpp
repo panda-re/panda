@@ -60,6 +60,9 @@ void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, v
 void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
+uint32_t *taint2_labels_applied(void);
+uint32_t taint2_num_labels_applied(void);
+
 }
 
 #include <llvm/PassManager.h>
@@ -354,7 +357,8 @@ void i386_hypercall_callback(CPUState *env){
     // EBX contains addr.
     if (env->regs[R_EAX] == 9) {
         target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
-        if (taintEnabled){
+        if (taintEnabled && 
+            (taint2_num_labels_applied() > 0)){
             printf("taint2: Query operation detected @ %lu.\n",
                     rr_get_guest_instr_count());
             //uint64_t array;
@@ -367,7 +371,7 @@ void i386_hypercall_callback(CPUState *env){
             //label_set_iter(FastShad::query(shadow->ram, addr),
                     //print_labels, NULL);
             printf("taint2: Stopping replay.\n");
-            rr_do_end_replay(0);
+            //            rr_do_end_replay(0);
         }
     }
 }
@@ -407,6 +411,15 @@ uint32_t __taint2_query_reg(int reg_num, int offset) {
 
 uint32_t __taint2_query_llvm(int reg_num, int offset) {
     return tp_query_llvm(shadow, reg_num, offset);
+}
+
+
+uint32_t *__taint2_labels_applied(void) {
+    return tp_labels_applied();
+}
+
+uint32_t __taint2_num_labels_applied(void) {
+    return tp_num_labels_applied();
 }
 
 
@@ -502,6 +515,14 @@ void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, 
     __taint2_labelset_llvm_iter(reg_num, offset, app, stuff2);
 }
 
+uint32_t *taint2_labels_applied(void) {
+    return __taint2_labels_applied();
+}
+
+
+uint32_t taint2_num_labels_applied(void) {
+    return __taint2_num_labels_applied();
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////

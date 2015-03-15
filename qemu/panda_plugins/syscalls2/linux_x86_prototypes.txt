@@ -8,7 +8,8 @@
 8 long sys_creat(const char __user *pathname, int mode);
 9 long sys_link(const char __user *oldname,const char __user *newname);
 10 long sys_unlink(const char __user *pathname);
-11 12 long sys_chdir(const char __user *filename);
+11 
+12 long sys_chdir(const char __user *filename);
 13 long sys_time(time_t __user *tloc);
 14 long sys_mknod(const char __user *filename, int mode,unsigned dev);
 15 long sys_chmod(const char __user *filename, mode_t mode);
@@ -103,9 +104,12 @@
 116 long sys_sysinfo(struct sysinfo __user *info);
 117 long sys_ipc(unsigned int call, int first, unsigned long second,unsigned long third, void __user *ptr, long fifth);
 118 long sys_fsync(unsigned int fd);
-119 120 121 long sys_setdomainname(char __user *name, int len);
+119 
+120 
+121 long sys_setdomainname(char __user *name, int len);
 122 long sys_newuname(struct new_utsname __user *name);
-123 124 long sys_adjtimex(struct timex __user *txc_p);
+123 
+124 long sys_adjtimex(struct timex __user *txc_p);
 125 long sys_mprotect(unsigned long start, size_t len,unsigned long prot);
 126 long sys_sigprocmask(int how, old_sigset_t __user *set,old_sigset_t __user *oset);
 128 long sys_init_module(void __user *umod, unsigned long len,const char __user *uargs);
@@ -144,11 +148,13 @@
 163 long sys_mremap(unsigned long addr,unsigned long old_len, unsigned long new_len,unsigned long flags, unsigned long new_addr);
 164 long sys_setresuid16(old_uid_t ruid, old_uid_t euid, old_uid_t suid);
 165 long sys_getresuid16(old_uid_t __user *ruid,old_uid_t __user *euid, old_uid_t __user *suid);
-166 168 long sys_poll(struct pollfd __user *ufds, unsigned int nfds,long timeout);
+166 
+168 long sys_poll(struct pollfd __user *ufds, unsigned int nfds,long timeout);
 170 long sys_setresgid16(old_gid_t rgid, old_gid_t egid, old_gid_t sgid);
 171 long sys_getresgid16(old_gid_t __user *rgid,old_gid_t __user *egid, old_gid_t __user *sgid);
 172 long sys_prctl(int option, unsigned long arg2, unsigned long arg3,unsigned long arg4, unsigned long arg5);
-173 174 long rt_sigaction(int sig, const struct sigaction __user * act, struct sigaction __user * oact,  size_t sigsetsize);
+173 
+174 long rt_sigaction(int sig, const struct sigaction __user * act, struct sigaction __user * oact,  size_t sigsetsize);
 175 long sys_rt_sigprocmask(int how, sigset_t __user *set,sigset_t __user *oset, size_t sigsetsize);
 176 long sys_rt_sigpending(sigset_t __user *set, size_t sigsetsize);
 177 long sys_rt_sigtimedwait(const sigset_t __user *uthese,siginfo_t __user *uinfo,const struct timespec __user *uts,size_t sigsetsize);
@@ -160,8 +166,10 @@
 183 long sys_getcwd(char __user *buf, unsigned long size);
 184 long sys_capget(cap_user_header_t header,cap_user_data_t dataptr);
 185 long sys_capset(cap_user_header_t header,const cap_user_data_t data);
-186 187 long sys_sendfile(int out_fd, int in_fd,off_t __user *offset, size_t count);
-190 191 long sys_getrlimit(unsigned int resource,struct rlimit __user *rlim);
+186 
+187 long sys_sendfile(int out_fd, int in_fd,off_t __user *offset, size_t count);
+190 
+191 long sys_getrlimit(unsigned int resource,struct rlimit __user *rlim);
 192 long sys_mmap_pgoff(unsigned long addr, unsigned long len,unsigned long prot, unsigned long flags,unsigned long fd, unsigned long pgoff);
 193 long sys_truncate64(const char __user *path, loff_t length);
 194 long sys_ftruncate64(unsigned int fd, loff_t length);
@@ -211,7 +219,9 @@
 240 long sys_futex(u32 __user *uaddr, int op, u32 val,struct timespec __user *utime, u32 __user *uaddr2,u32 val3);
 241 long sys_sched_setaffinity(pid_t pid, unsigned int len,unsigned long __user *user_mask_ptr);
 242 long sys_sched_getaffinity(pid_t pid, unsigned int len,unsigned long __user *user_mask_ptr);
-243 244 245 long sys_io_setup(unsigned nr_reqs, aio_context_t __user *ctx);
+243 
+244 
+245 long sys_io_setup(unsigned nr_reqs, aio_context_t __user *ctx);
 246 long sys_io_destroy(aio_context_t ctx);
 247 long sys_io_getevents(aio_context_t ctx_id,long min_nr,long nr,struct io_event __user *events,struct timespec __user *timeout);
 248 long sys_io_submit(aio_context_t, long,struct iocb __user * __user *);

@@ -137,6 +137,7 @@
 #define USB_ENDPOINT_XFER_ISOC		1
 #define USB_ENDPOINT_XFER_BULK		2
 #define USB_ENDPOINT_XFER_INT		3
+#define USB_ENDPOINT_XFER_INVALID     255
 
 typedef struct USBBus USBBus;
 typedef struct USBBusOps USBBusOps;
@@ -144,6 +145,7 @@ typedef struct USBPort USBPort;
 typedef struct USBDevice USBDevice;
 typedef struct USBDeviceInfo USBDeviceInfo;
 typedef struct USBPacket USBPacket;
+typedef struct USBEndpoint USBEndpoint;
 
 typedef struct USBDesc USBDesc;
 typedef struct USBDescID USBDescID;
@@ -159,6 +161,16 @@ struct USBDescString {
     uint8_t index;
     char *str;
     QLIST_ENTRY(USBDescString) next;
+};
+
+#define USB_MAX_ENDPOINTS  15
+#define USB_MAX_INTERFACES 16
+
+struct USBEndpoint {
+    uint8_t type;
+    uint8_t ifnum;
+    int max_packet_size;
+    USBDevice *dev;
 };
 
 /* definition of a USB device */
@@ -186,9 +198,18 @@ struct USBDevice {
     int32_t setup_len;
     int32_t setup_index;
 
+    USBEndpoint ep_ctl;
+    USBEndpoint ep_in[USB_MAX_ENDPOINTS];
+    USBEndpoint ep_out[USB_MAX_ENDPOINTS];
+
     QLIST_HEAD(, USBDescString) strings;
     const USBDescDevice *device;
+
+    int configuration;
+    int ninterfaces;
+    int altsetting[USB_MAX_INTERFACES];
     const USBDescConfig *config;
+    const USBDescIface  *ifaces[USB_MAX_INTERFACES];
 };
 
 struct USBDeviceInfo {
@@ -241,6 +262,9 @@ struct USBDeviceInfo {
      */
     int (*handle_data)(USBDevice *dev, USBPacket *p);
 
+    void (*set_interface)(USBDevice *dev, int interface,
+                          int alt_old, int alt_new);
+
     const char *product_desc;
     const USBDesc *usb_desc;
 
@@ -288,7 +312,7 @@ struct USBPacket {
     QEMUIOVector iov;
     int result; /* transfer length or USB_RET_* status code */
     /* Internal use by the USB layer.  */
-    USBDevice *owner;
+    USBEndpoint *owner;
 };
 
 void usb_packet_init(USBPacket *p);
@@ -303,6 +327,17 @@ void usb_packet_cleanup(USBPacket *p);
 int usb_handle_packet(USBDevice *dev, USBPacket *p);
 void usb_packet_complete(USBDevice *dev, USBPacket *p);
 void usb_cancel_packet(USBPacket * p);
+
+void usb_ep_init(USBDevice *dev);
+void usb_ep_dump(USBDevice *dev);
+struct USBEndpoint *usb_ep_get(USBDevice *dev, int pid, int ep);
+uint8_t usb_ep_get_type(USBDevice *dev, int pid, int ep);
+uint8_t usb_ep_get_ifnum(USBDevice *dev, int pid, int ep);
+void usb_ep_set_type(USBDevice *dev, int pid, int ep, uint8_t type);
+void usb_ep_set_ifnum(USBDevice *dev, int pid, int ep, uint8_t ifnum);
+void usb_ep_set_max_packet_size(USBDevice *dev, int pid, int ep,
+                                uint16_t raw);
+int usb_ep_get_max_packet_size(USBDevice *dev, int pid, int ep);
 
 void usb_attach(USBPort *port);
 void usb_detach(USBPort *port);

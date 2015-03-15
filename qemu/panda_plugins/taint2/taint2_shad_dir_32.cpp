@@ -49,7 +49,7 @@ PANDAENDCOMMENT */
 #include "my_mem.h"
 #include "shad_dir_32.h"
 
-typedef struct LabelSet *LabelSetP;
+typedef const std::set<uint32_t> *LabelSetP;
 
 // create a new table
 static SdTable *__shad_dir_table_new_32(SdDir32 *shad_dir) {

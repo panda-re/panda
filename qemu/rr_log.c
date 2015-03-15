@@ -31,6 +31,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <libgen.h>
@@ -1294,6 +1296,8 @@ void rr_destroy_log(void) {
   rr_nondet_log = NULL;
 }
 
+struct timeval replay_start_time;
+
 //mz display a measure of replay progress (using instruction counts and log size)
 void replay_progress(void) {
   if (rr_nondet_log) {
@@ -1301,17 +1305,21 @@ void replay_progress(void) {
       printf ("%s:  log is empty.\n", rr_nondet_log->name);
     }
     else {
-      printf ("%s:  %ld of %llu (%.2f%%) bytes, %llu of %llu (%.2f%%) instructions processed.\n", 
-              rr_nondet_log->name,
-              ftell(rr_nondet_log->fp),
-              rr_nondet_log->size,
-              (ftell(rr_nondet_log->fp) * 100.0) / rr_nondet_log->size,
-              (unsigned long long)rr_queue_head->header.prog_point.guest_instr_count,
-              (unsigned long long)rr_nondet_log->last_prog_point.guest_instr_count,
-              ((rr_queue_head->header.prog_point.guest_instr_count * 100.0) / 
-                    rr_nondet_log->last_prog_point.guest_instr_count)
-      );
-    }
+        struct rusage rusage;
+        getrusage(RUSAGE_SELF, &rusage);
+
+        struct timeval *time = &rusage.ru_utime;
+        float secs = ((float)time->tv_sec*1000000 + (float)time->tv_usec) / 1000000.0;
+        char *name = basename(rr_nondet_log->name);
+        char *dot = strrchr(name, '.');
+        if (dot && dot - name > 10) *(dot - 10) = '\0';
+        printf("%s:  %10lu (%6.2f%%) instrs. %7.2f sec. %5.2f ram.\n",
+                name,
+                rr_get_guest_instr_count(),
+                ((rr_get_guest_instr_count() * 100.0) / 
+                 rr_nondet_log->last_prog_point.guest_instr_count),
+                secs, rusage.ru_maxrss / 1024.0 / 1024.0);
+     }
   }
 }
 
@@ -1385,6 +1393,7 @@ void qmp_begin_record_from(const char *snapshot, const char *file_name, Error **
 void qmp_begin_replay(const char *file_name, Error **errp) {
   rr_replay_requested = 1;
   rr_requested_name = g_strdup(file_name);
+  gettimeofday(&replay_start_time, 0);
 }
 
 
@@ -1519,6 +1528,9 @@ void rr_do_end_record(void) {
 #endif
 }
 
+extern void panda_cleanup(void);
+
+
 // file_name_full should be full path to the record/replay log
 int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
 #ifdef CONFIG_SOFTMMU
@@ -1650,6 +1662,7 @@ void rr_do_end_replay(int is_error) {
 
     //mz XXX something more graceful?
     if (is_error) {
+        panda_cleanup();
         abort();
     }
     else {

@@ -2267,6 +2267,18 @@ static void free_and_trace(gpointer mem)
 const char *qemu_loc = NULL;
 const char *qemu_file = NULL;
 
+void panda_cleanup(void);
+
+void panda_cleanup(void) {
+    // PANDA: unload plugins
+    panda_unload_plugins();
+    if (pandalog) {
+        pandalog_close();
+    }
+}
+
+
+
 int main(int argc, char **argv, char **envp)
 {
     const char *gdbstub_dev = NULL;
@@ -3811,12 +3823,7 @@ int main(int argc, char **argv, char **envp)
 
     main_loop();
 
-    // PANDA: unload plugins
-    panda_unload_plugins();
-
-    if (pandalog) {
-        pandalog_close();
-    }
+    panda_cleanup();
 
     bdrv_close_all();
 

@@ -34,6 +34,7 @@ PANDAENDCOMMENT */
 
 #include "fast_shad.h"
 #include "llvm_taint_lib.h"
+#include "taint_ops.h"
 #include "guestarch.h"
 #include "my_mem.h"
 #include "taint2.h"
@@ -126,7 +127,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
-    PTV.moveF = M.getFunction("taint_move");
     PTV.sextF = M.getFunction("taint_sext");
     PTV.selectF = M.getFunction("taint_select");
     PTV.hostCopyF = M.getFunction("taint_host_copy");
@@ -169,9 +169,30 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     }
     assert(PTV.branchF);
     EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
+#define ADD_MAPPING(func) \
+    EE->addGlobalMapping(M.getFunction(#func), (void *)(func))
+    ADD_MAPPING(taint_delete);
+    ADD_MAPPING(taint_mix);
+    ADD_MAPPING(taint_pointer);
+    ADD_MAPPING(taint_mix_compute);
+    ADD_MAPPING(taint_parallel_compute);
+    ADD_MAPPING(taint_copy);
+    ADD_MAPPING(taint_sext);
+    ADD_MAPPING(taint_select);
+    ADD_MAPPING(taint_host_copy);
+    ADD_MAPPING(taint_host_memcpy);
+    ADD_MAPPING(taint_host_delete);
 
-    EE->addGlobalMapping(M.getFunction("label_set_union"), (void *)label_set_union);
-    EE->addGlobalMapping(M.getFunction("label_set_singleton"), (void *)label_set_singleton);
+    ADD_MAPPING(taint_push_frame);
+    ADD_MAPPING(taint_pop_frame);
+    ADD_MAPPING(taint_reset_frame);
+    ADD_MAPPING(taint_breadcrumb);
+
+    ADD_MAPPING(taint_memlog_pop);
+
+    ADD_MAPPING(label_set_union);
+    ADD_MAPPING(label_set_singleton);
+#undef ADD_MAPPING
 
     std::cout << "taint2: Done initializing taint transformation." << std::endl;
 

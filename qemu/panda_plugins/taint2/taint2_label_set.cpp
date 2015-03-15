@@ -4,10 +4,15 @@ extern "C" {
 
 #include <map>
 #include <vector>
+#include <set>
+#include <unordered_set>
+#include <unordered_map>
+#include <functional>
 
 #include "label_set.h"
 
-class LabelSetAlloc {
+template<typename T>
+class ArenaAlloc {
 private:
     uint8_t *next = NULL;
     std::vector<std::pair<uint8_t *, size_t>> blocks;
@@ -22,37 +27,71 @@ private:
         next_block_size <<= 1;
     }
 
-public:
-    LabelSetAlloc() {
-        alloc_block();
-    }
-
-    LabelSetP alloc() {
+    T *alloc_imp() {
         assert(blocks.size() > 0);
         std::pair<uint8_t *, size_t>& block = blocks.back();
-        if (next + sizeof(struct LabelSet) > block.first + block.second) {
+        if (next + sizeof(T) > block.first + block.second) {
             alloc_block();
             assert(next != NULL);
         }
 
-        LabelSetP result = new(next) struct LabelSet;
-        result->child1 = nullptr;
-        result->label = ~0U;
-        result->count = 0;
-        next += sizeof(struct LabelSet);
+        T *result = new(next) T;
+        next += sizeof(T);
         return result;
     }
 
-    ~LabelSetAlloc() {
+public:
+    ArenaAlloc() {
+        alloc_block();
+    }
+
+    const T *alloc() {
+        return alloc_imp();
+    }
+
+    const T *alloc(T &old) {
+        T *result = alloc_imp();
+        result->swap(old);
+        return result;
+    }
+
+    ~ArenaAlloc() {
         for (auto&& block : blocks) {
             munmap(block.first, block.second);
         }
     }
-} LSA;
+};
 
-std::map<std::pair<LabelSetP, LabelSetP>, LabelSetP> memoized_unions;
+static ArenaAlloc<std::set<uint32_t>> LSA;
 
+namespace std {
+template<>
+class hash<set<uint32_t>> {
+  public:
+    size_t operator()(const set<uint32_t> &labels) const {
+        uint64_t result = 0;
+        for (uint32_t l : labels) {
+            result ^= l;
+            result = result << 11 | result >> 53;
+        }
+        return result;
+    }
+};
+
+template<>
+class hash<pair<LabelSetP, LabelSetP>> {
+  public:
+    size_t operator()(const pair<LabelSetP, LabelSetP> &labels) const {
+        return hash<LabelSetP>()(labels.first) ^
+            (hash<LabelSetP>()(labels.second) << (sizeof(LabelSetP) / 2));
+    }
+};
+}
+
+static std::unordered_set<std::set<uint32_t>> label_sets;
 LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
+    static std::unordered_map<std::pair<LabelSetP, LabelSetP>, LabelSetP> memoized_unions;
+
     if (ls1 == ls2) {
         return ls1;
     } else if (ls1 && ls2) {
@@ -60,24 +99,24 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
         LabelSetP max = std::max(ls1, ls2);
         std::pair<LabelSetP, LabelSetP> minmax(min, max);
 
-        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  MEMO: %lu, %lu\n", (uint64_t)min, (uint64_t)max);
-
-        auto it = memoized_unions.find(minmax);
-        if (it != memoized_unions.end()) {
-            return it->second;
+        {
+            auto it = memoized_unions.find(minmax);
+            if (it != memoized_unions.end()) {
+                return it->second;
+            }
         }
-        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  NOT FOUND\n");
 
-        LabelSetP result = LSA.alloc();
-        //labelset_count++;
+        std::set<uint32_t> temp(*min);
+        for (auto l : *max) {
+            temp.insert(l);
+        }
 
-        result->child1 = min;
-        result->child2 = max;
-        result->count = min->count + max->count;
-        if (result->count < min->count) result->count = ~0UL; // handle overflows
+        // insert returns a pair <iterator, bool>; second is whether it happened
+        // first is iterator to new/existing element
+        auto it = label_sets.insert(temp).first;
+        const std::set<uint32_t> *result = &(*it);
 
         memoized_unions.insert(std::make_pair(minmax, result));
-        //qemu_log_mask(CPU_LOG_TAINT_OPS, "  INSERTED\n");
         return result;
     } else if (ls1) {
         return ls1;
@@ -87,20 +126,12 @@ LabelSetP label_set_union(LabelSetP ls1, LabelSetP ls2) {
 }
 
 LabelSetP label_set_singleton(uint32_t label) {
-    LabelSetP result = LSA.alloc();
-    //labelset_count++;
-
-    result->child1 = nullptr;
-    result->label = label;
-    result->count = 1;
-    return result;
+    std::set<uint32_t> temp;
+    temp.insert(label);
+    return LSA.alloc(temp);
 }
 
 std::set<uint32_t> label_set_render_set(LabelSetP ls) {
-    return label_set_iter<std::set<uint32_t>, set_insert>(ls);
-}
-
-uint64_t label_set_render_uint(LabelSetP ls) {
-    constexpr uint64_t zero = 0UL;
-    return label_set_iter<uint64_t, bitset_insert, zero>(ls);
+    if (ls) return *ls;
+    else return std::set<uint32_t>();
 }
