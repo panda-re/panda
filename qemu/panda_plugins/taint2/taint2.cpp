@@ -84,6 +84,8 @@ void taint2_track_taint_state(void);
 #include "taint_ops.h"
 #include "taint2.h"
 
+#include "pirate_mark_lava_struct.h"
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -381,6 +383,45 @@ void i386_hypercall_callback(CPUState *env){
                     //print_labels, NULL);
             printf("taint2: Stopping replay.\n");
             //            rr_do_end_replay(0);
+        }
+    }
+    
+    // LAVA Query op.
+    // EBX contains addr.
+    if (env->regs[R_EAX] == 11) {
+        target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
+        PirateMarkLavaInfo pmli = {};
+        char filenameStr[500];
+        char astNodeStr[500];
+        if (taintEnabled){
+            printf("taint2: Query operation detected @ %lu.\n",
+                    rr_get_guest_instr_count());
+            //uint64_t array;
+            //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
+            
+            // TODO some way to do error checking/handling?
+            panda_virtual_memory_rw(env, env->regs[R_ESI],
+                (uint8_t*)&pmli, sizeof(PirateMarkLavaInfo), false);
+            panda_virtual_memory_rw(env, pmli.filenamePtr,
+                (uint8_t*)&filenameStr, 500, false);
+            pmli.filenamePtr = (uint64_t)filenameStr;
+            panda_virtual_memory_rw(env, pmli.astNodePtr,
+                (uint8_t*)&astNodeStr, 500, false);
+            pmli.astNodePtr = (uint64_t)astNodeStr;
+            printf("LAVA Query Info:\n");
+            printf("File name: %s\n", (char*)pmli.filenamePtr);
+            printf("Line number: %lu\n", pmli.lineNum);
+            printf("AST node: %s\n\n", (char*)pmli.astNodePtr);
+            
+            printf("taint2: %u labels.\n", taint2_query_ram(addr));
+            printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
+                    (uint64_t)addr);
+            qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
+                    (uint64_t)shadow->ram, (uint64_t)addr);
+            //label_set_iter(FastShad::query(shadow->ram, addr),
+                    //print_labels, NULL);
+            //printf("taint2: Stopping replay.\n");
+            //rr_do_end_replay(0);
         }
     }
 }
