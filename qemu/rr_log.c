@@ -1313,7 +1313,7 @@ void replay_progress(void) {
         char *name = basename(rr_nondet_log->name);
         char *dot = strrchr(name, '.');
         if (dot && dot - name > 10) *(dot - 10) = '\0';
-        printf("%s:  %10lu (%6.2f%%) instrs. %7.2f sec. %5.2f ram.\n",
+        printf("%s:  %10lu (%6.2f%%) instrs. %7.2f sec. %5.2f GB ram.\n",
                 name,
                 rr_get_guest_instr_count(),
                 ((rr_get_guest_instr_count() * 100.0) / 
