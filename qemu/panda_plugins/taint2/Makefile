@@ -4,7 +4,7 @@ PLUGIN_NAME=taint2
 include ../panda.mak
 
 # Include files and lib from LLVM
-CXXFLAGS+= $(LLVM_CXXFLAGS) -I$(PLUGIN_SRC_ROOT)/taint/pirate_utils/linux
+CXXFLAGS+= $(LLVM_CXXFLAGS) -I$(SRC_PATH)/panda_tools/pirate_utils/linux
 
 DBGFLAGS=
 DBGFLAGS+= #-DTAINTDEBUG
