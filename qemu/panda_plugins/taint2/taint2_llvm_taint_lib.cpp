@@ -36,7 +36,6 @@ PANDAENDCOMMENT */
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"
 #include "guestarch.h"
-#include "my_mem.h"
 #include "taint2.h"
 
 extern "C" {
@@ -170,7 +169,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     assert(PTV.branchF);
     EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
 #define ADD_MAPPING(func) \
-    EE->addGlobalMapping(M.getFunction(#func), (void *)(func))
+    EE->addGlobalMapping(M.getFunction(#func), (void *)(func));\
+    M.getFunction(#func)->deleteBody();
     ADD_MAPPING(taint_delete);
     ADD_MAPPING(taint_mix);
     ADD_MAPPING(taint_pointer);

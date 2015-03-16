@@ -36,6 +36,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu-all.h"
 #include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
 #include "panda_common.h"
 #include "panda/network.h"
 #include "rr_log.h"
@@ -62,6 +63,8 @@ void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), 
 
 uint32_t *taint2_labels_applied(void);
 uint32_t taint2_num_labels_applied(void);
+
+void taint2_track_taint_state(void);
 
 }
 
@@ -100,6 +103,12 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
+
+void taint_state_changed(void);
+PPP_PROT_REG_CB(on_taint_change);
+PPP_CB_BOILERPLATE(on_taint_change);
+
+bool track_taint_state = false;
 
 }
 
@@ -389,6 +398,11 @@ int guest_hypercall_callback(CPUState *env){
     return 1;
 }
 
+// Called whenever the taint state changes.
+void taint_state_changed() {
+    PPP_RUN_CB(on_taint_change);
+}
+
 bool __taint2_enabled() {
     return taintEnabled;
 }
@@ -458,6 +472,10 @@ void __taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el
     tp_ls_llvm_iter(shadow, reg_num, offset, app, stuff2);
 }
 
+void __taint2_track_taint_state(void) {
+    track_taint_state = true;
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -524,11 +542,13 @@ uint32_t taint2_num_labels_applied(void) {
     return __taint2_num_labels_applied();
 }
 
+void taint2_track_taint_state(void) {
+    __taint2_track_taint_state();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    //printf("%s\n", tb->llvm_function->getName().str().c_str());
-    //FPM->run(*(tb->llvm_function));
     return 0;
 }
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {

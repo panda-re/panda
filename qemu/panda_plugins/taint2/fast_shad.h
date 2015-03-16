@@ -24,6 +24,10 @@ PANDAENDCOMMENT */
 extern "C" {
 #include "cpu.h"
 #include "qemu-log.h"
+
+extern bool track_taint_state;
+
+extern void taint_state_changed(void);
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 14)
@@ -77,6 +81,13 @@ private:
         return &(labels[guest_addr].ls);
     }
 
+    inline bool range_tainted(uint64_t addr, uint64_t size) {
+        for (unsigned i = addr; i < size; i++) {
+            if (*get_ls_p(addr)) return true;
+        }
+        return false;
+    }
+
 public:
     FastShad(uint64_t size);
     ~FastShad();
@@ -85,6 +96,7 @@ public:
 
     // Taint an address with a labelset.
     inline void set(uint64_t addr, LabelSetP ls) {
+        if (track_taint_state && ls) taint_state_changed();
         *get_ls_p(addr) = ls;
     }
 
@@ -94,6 +106,10 @@ public:
         tassert(dest + size <= shad_dest->size);
         tassert(src + size <= shad_src->size);
         
+        if (track_taint_state &&
+                (shad_dest->range_tainted(dest, size) ||
+                 shad_src->range_tainted(src, size)))
+            taint_state_changed();
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < size; i++) {
             if (*shad_src->get_ls_p(src + i) != NULL) {
@@ -114,6 +130,8 @@ public:
         tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
         
+        if (track_taint_state && range_tainted(addr, remove_size))
+            taint_state_changed();
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < remove_size; i++) {
             if (*get_ls_p(addr + i) != NULL) {
@@ -154,16 +172,9 @@ public:
 
     inline void set_full(uint64_t addr, TaintData td) {
         tassert(addr < size);
+        if (track_taint_state && (td.ls || *get_ls_p(addr)))
+            taint_state_changed();
         labels[addr] = td;
-    }
-
-    inline uint32_t get_tcn(uint64_t addr) {
-        return labels[addr].tcn;
-    }
-
-    inline void set_tcn(uint64_t addr, uint32_t val) {
-        tassert(addr < size);
-        labels[addr].tcn = val;
     }
 };
 

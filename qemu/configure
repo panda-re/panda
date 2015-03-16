@@ -2270,6 +2270,16 @@ if test "$llvm" != "no" ; then
     exit 1
   fi
 
+  if [ -x "$llvmdir/bin/clang++" ]; then
+    clangxx="$llvmdir/bin/clang++"
+  elif clang++ --version >> config.log 2>&1; then
+    : clang++ found
+    clangxx=`which clang++`
+  else
+    feature_not_found "clang++ (required to be built with LLVM)"
+    exit 1
+  fi
+
   if [ -e "$llvmdir/bin/llvm-link" ] ; then
     llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
   elif [ -e "$llvmdir/bin/llvm-link-$llvmver" ] ; then
@@ -3289,6 +3299,7 @@ if test "$llvm" = "yes" ; then
   fi
 
   echo "LLVMCC:=$clang" >> $config_host_mak
+  echo "LLVMCXX:=$clangxx" >> $config_host_mak
   echo "LLVM_LINK:=$llvm_link" >> $config_host_mak
   echo "CONFIG_LLVM=y" >> $config_host_mak
   echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak

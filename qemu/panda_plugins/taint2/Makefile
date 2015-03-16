@@ -15,8 +15,6 @@ QEMU_CXXFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= -std=c++11 -Wno-type-limits
 
 TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector -fno-omit-frame-pointer -Wno-type-limits
-LLVM_OPS=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_taint_ops.c
-MY_MEM=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/taint2_my_mem.cpp
 
 # This will make things easier.
 $(wildcard $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_*.o): \
@@ -31,13 +29,11 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: \
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_llvm_taint_lib.o: \
     $(SRC_PATH)/panda/guestarch.h \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/llvm_taint_lib.h \
-    $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/my_mem.h \
     $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).h
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
-    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_shad_dir_32.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_shad_dir_64.o \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_llvm_taint_lib.o \
@@ -60,7 +56,6 @@ $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_%.bc: \
 			-emit-llvm -c -o $@ $<),"  LLVM    $@")
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME)_ops.bc: \
-    $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_my_mem.bc \
     $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME)_taint_ops.bc
 
 	$(call quiet-command,\

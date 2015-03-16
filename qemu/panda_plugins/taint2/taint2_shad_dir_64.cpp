@@ -28,7 +28,6 @@ PANDAENDCOMMENT */
 
 #include <stdint.h>
 #include "my_bool.h"
-#include "my_mem.h"
 #include "shad_dir_64.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
@@ -38,12 +37,12 @@ typedef const std::set<uint32_t> *LabelSetP;
 // if table_table==1 then this is a table of tables,
 // else it is a table of pages
 static SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t table_table) {
-  SdTable *table = (SdTable *) my_calloc(1, sizeof(SdTable), poolid_shad_dir);
+  SdTable *table = (SdTable *) calloc(1, sizeof(SdTable));
   if (table_table == 1) {
-    table->table = (SdTable **) my_calloc(shad_dir->table_size, sizeof(SdTable *), poolid_shad_dir);
+    table->table = (SdTable **) calloc(shad_dir->table_size, sizeof(SdTable *));
   }
   else {
-    table->page = (SdPage **) my_calloc(shad_dir->table_size, sizeof(SdPage *), poolid_shad_dir);
+    table->page = (SdPage **) calloc(shad_dir->table_size, sizeof(SdPage *));
   }
   table->num_non_empty = 0;
   return table;
@@ -53,26 +52,26 @@ static SdTable *__shad_dir_table_new_64(SdDir64 *shad_dir, uint8_t table_table) 
 static void __shad_dir_table_free_64(SdDir64 *shad_dir, SdTable *table) {
   assert (table->num_non_empty == 0);
   if (table->table != NULL) {
-    my_free(table->table, sizeof(SdTable *) * shad_dir->table_size, poolid_shad_dir);
+    free(table->table);
   }
   if (table->page != NULL) {
-    my_free(table->page, sizeof(SdPage *) * shad_dir->table_size, poolid_shad_dir);
+    free(table->page);
   }
 
-  my_free(table, sizeof(SdTable), poolid_shad_dir);
+  free(table);
 }
 
 static SdPage *__shad_dir_page_new_64(SdDir64 *shad_dir) {
-  SdPage *page = (SdPage *) my_calloc(1, sizeof(SdPage), poolid_shad_dir);
-  page->labels = (LabelSetP *) my_calloc(shad_dir->page_size, sizeof(LabelSetP ), poolid_shad_dir);
+  SdPage *page = (SdPage *) calloc(1, sizeof(SdPage));
+  page->labels = (LabelSetP *) calloc(shad_dir->page_size, sizeof(LabelSetP ));
   page->num_non_empty = 0;
   return page;
 }
 
 static void __shad_dir_page_free_64(SdDir64 *shad_dir, SdPage *page) {
   assert (page->num_non_empty == 0);
-  my_free(page->labels, sizeof(LabelSetP ) * shad_dir->page_size, poolid_shad_dir);
-  my_free(page, sizeof(SdPage), poolid_shad_dir);
+  free(page->labels);
+  free(page);
 }
 
 
@@ -89,7 +88,7 @@ SdDir64 *shad_dir_new_64
       uint32_t num_table_bits,
       uint32_t num_page_bits) {
   assert (num_dir_bits < 32 && num_table_bits < 32 && num_page_bits < 32);
-  SdDir64 *shad_dir = (SdDir64 *) my_calloc(1, sizeof(SdDir64), poolid_shad_dir);
+  SdDir64 *shad_dir = (SdDir64 *) calloc(1, sizeof(SdDir64));
   shad_dir->num_dir_bits = num_dir_bits;
   shad_dir->num_table_bits = num_table_bits;
   shad_dir->num_page_bits = num_page_bits;
@@ -104,8 +103,7 @@ SdDir64 *shad_dir_new_64
   shad_dir->table3_mask = ((uint64_t) ((1<<num_table_bits)-1)) << num_page_bits;
   shad_dir->page_mask = (uint64_t) ((1<<num_page_bits)-1);
   shad_dir->dir_mask = ((1<<num_dir_bits)-1) << (shad_dir->dir_shift);
-  shad_dir->table = (SdTable **) my_calloc(shad_dir->dir_size, sizeof(SdTable *),
-					   poolid_shad_dir);
+  shad_dir->table = (SdTable **) calloc(shad_dir->dir_size, sizeof(SdTable *));
   shad_dir->num_non_empty = 0;
   return shad_dir;
 }
@@ -212,8 +210,7 @@ uint32_t shad_dir_occ_64(SdDir64 *shad_dir) {
 
 
 int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
-  SdDir64 *shad_dir = (SdDir64 *) stuff;
-  my_free(page->labels, sizeof(LabelSetP *) * shad_dir->page_size, poolid_shad_dir);
+  free(page->labels);
   return 0;
 }
 
@@ -222,8 +219,8 @@ int shad_dir_free_aux_64(uint64_t pa, SdPage *page, void *stuff) {
 void shad_dir_free_64(SdDir64 *shad_dir) {
   __shad_dir_page_iter_64
     (shad_dir, shad_dir_free_aux_64, shad_dir);
-  my_free(shad_dir->table, shad_dir->dir_size * sizeof(SdTable *), poolid_shad_dir);
-  my_free(shad_dir, sizeof (SdDir64), poolid_shad_dir);
+  free(shad_dir->table);
+  free(shad_dir);
 }
 
 

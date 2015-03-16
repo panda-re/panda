@@ -4,6 +4,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef void *LabelSetP;
 
@@ -55,5 +56,8 @@ uint32_t *taint2_labels_applied(void);
 
 // just tells how big that labels_applied set will be
 uint32_t taint2_num_labels_applied(void);
+
+// Track whether taint state actually changed during a BB
+void taint2_track_taint_state(void);
 
 #endif                                                                                   
