@@ -3823,7 +3823,6 @@ int main(int argc, char **argv, char **envp)
 
     main_loop();
 
-    panda_cleanup();
 
     bdrv_close_all();
 
@@ -3838,6 +3837,8 @@ int main(int argc, char **argv, char **envp)
         rr_do_end_record();
         rr_end_record_requested = 0;
     }
+
+    panda_cleanup();
 
     pause_all_vcpus();
     net_cleanup();
