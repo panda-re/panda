@@ -54,6 +54,16 @@ std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
 
 void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
+    printf ("label_num = %d\n");
+#if 0
+    if ( ! 
+         ((label_num >=8 && label_num <= 15) 
+          || (label_num >= 140 && label_num <= 160)) ) {
+        printf (" discarding\n");
+        return;
+    }
+    printf ("keeping\n");
+#endif
     target_phys_addr_t pa = panda_virt_to_phys(env, virt_addr);
     if (pandalog) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
@@ -182,11 +192,12 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
         printf ("*** applying %s taint labels %d..%d to buffer\n",
                 positional_labels ? "positional" : "uniform",
                 taint_label_number_start, taint_label_number_start + count - 1);
-        if (prob_label_u32 == 0 && bytes_labeled < 5000) {
+        if (prob_label_u32 == 0 && bytes_labeled < max_num_labels) {
             for (uint32_t i=0; i<count; i++) {
                 label_byte(env, last_read_buf+i, taint_label_number_start + i);
                 bytes_labeled ++;
                 if (bytes_labeled > max_num_labels) {
+                    printf ("reached max_num_labels bytes labeled\n");
                     break;
                 }
             }
