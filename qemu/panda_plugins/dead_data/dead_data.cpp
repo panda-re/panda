@@ -28,7 +28,7 @@ extern "C" {
 #include "monitor.h"
 #include "cpu.h"
 #include "rr_log.h"    
-
+#include "pandalog.h"
 #include "panda_plugin.h"
 #include "../taint2/taint2_ext.h"
 #include "../taint/taint_ext.h"
@@ -95,22 +95,15 @@ uint64_t first_tainted_branch = 0xffffffffffffffff;
 uint64_t last_tainted_branch = 0;
 
 
-bool first_time = true;
-
 const char *dead_data_filename;
 
 void dd_spit(){
-    //printf ("computing dead data and writing to file [%s]\n", dead_data_filename);
-    FILE *fp;
-    if (first_time) {
-        first_time = false;
-        fp = fopen(dead_data_filename, "w");
+    if (pandalog) {
+        printf ("computing dead data and writing to pandalog\n");
     }
     else {
-        fp = fopen(dead_data_filename, "a");
+        printf ("computing dead data and writing to stdout\n");
     }
-    fprintf (fp,"\n\n-----------------------------------------\n");
-    fprintf (fp, "Dead Data Summary\n");
 
 
     std::map < uint32_t, float > dead_data;
@@ -132,13 +125,34 @@ void dd_spit(){
         }
     }
 
-        
-    for ( auto &kvp : dead_data ) {
-        uint32_t el = kvp.first;
-        float val = kvp.second;
-        fprintf (fp, "%6d %0.2f\n", el, val);
+    
+
+    if (pandalog) {
+        Panda__DeadData *dd = (Panda__DeadData *) malloc(sizeof(Panda__DeadData));
+        dd->num_labels = n;
+        dd->val = (float *) malloc(sizeof(float) * n);
+        uint32_t i=0;
+        for ( auto &kvp : dead_data ) {
+            uint32_t el = kvp.first;
+            float val = kvp.second;
+            dd->val[el] = val;            
+        }
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.dead_data = dd;
+        pandalog_write_entry(&ple);
     }
-    fclose(fp);
+    else {
+        FILE *fp;
+        fp = fopen(dead_data_filename, "w");
+        fprintf (fp,"\n\n-----------------------------------------\n");
+        fprintf (fp, "Dead Data Summary\n");
+        for ( auto &kvp : dead_data ) {
+            uint32_t el = kvp.first;
+            float val = kvp.second;
+            fprintf (fp, "%6d %0.2f\n", el, val);
+        }
+        fclose(fp);
+    }
 }
 
 
@@ -210,7 +224,6 @@ bool init_plugin(void *self) {
     pcb.after_block_exec = dead_data_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     panda_arg_list *args = panda_get_args("dead_data");
-    dead_data_filename = panda_parse_string(args, "filename", "dead_data");
     use_taint2 = !panda_parse_bool(args, "taint1");
     if (use_taint2) {
         panda_require("taint2");

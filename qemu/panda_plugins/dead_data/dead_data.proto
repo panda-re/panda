@@ -1,0 +1,8 @@
+
+
+message DeadData {
+    required uint32 num_labels = 1;
+    repeated float val = 2; 
+}
+
+optional DeadData dead_data = 32;
