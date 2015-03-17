@@ -82,15 +82,16 @@ void tp_free(Shad *shad);
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr *a, uint32_t l);
 
-std::set<uint32_t> tp_query(Shad *shad, Addr *a);
 
 void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l);
 
-uint32_t tp_query_ram(Shad *shad, uint64_t pa) ;
+LabelSetP tp_query(Shad *shad, Addr *a);
+LabelSetP tp_query_ram(Shad *shad, uint64_t pa) ;
+LabelSetP tp_query_reg(Shad *shad, int reg_num, int offset);
+LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset);
 
-uint32_t tp_query_reg(Shad *shad, int reg_num, int offset);
-
-uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset);
+// label set cardinality
+uint32_t ls_card(LabelSetP ls);
 
 void tp_delete_ram(Shad *shad, uint64_t pa) ;
 

@@ -172,31 +172,34 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
 }
 
 // returns std::set of labels.
-std::set<uint32_t> tp_query(Shad *shad, Addr *a) {
+LabelSetP tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
     LabelSetP ls = tp_labelset_get(shad, a);
-
-    return label_set_render_set(ls);
+    return ls;
 }
 
-// returns label set cardinality
-uint32_t tp_query_ram(Shad *shad, uint64_t pa) {
+
+// returns rendered label set 
+LabelSetP tp_query_ram(Shad *shad, uint64_t pa) {
     Addr a = make_maddr(pa);
-    return tp_query(shad, &a).size();
+    return tp_query(shad, &a);
 }
 
-// returns label set cardinality
-uint32_t tp_query_reg(Shad *shad, int reg_num, int offset) {
+// returns rendered label set 
+LabelSetP tp_query_reg(Shad *shad, int reg_num, int offset) {
     Addr a = make_greg(reg_num, offset);
-    return tp_query(shad, &a).size();
+    return tp_query(shad, &a);
 }
 
-// returns label set cardinality
-uint32_t tp_query_llvm(Shad *shad, int reg_num, int offset) {
+// returns rendered label set
+LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset) {
     Addr a = make_laddr(reg_num, offset);
-    return tp_query(shad, &a).size();
+    return tp_query(shad, &a);
 }
 
+uint32_t ls_card(LabelSetP ls) {
+    return label_set_render_set(ls).size();
+}
 
 
 
