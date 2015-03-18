@@ -415,7 +415,7 @@ void i386_hypercall_callback(CPUState *env){
                         ple.taint_query = tq;
                         pandalog_write_entry(&ple);
                         if (ii == 100){
-                            panda_end_replay();
+                            //                            panda_end_replay();
                         }
                     }
                     else {
