@@ -22,10 +22,10 @@ set -e
 progress "Installing qemu dependencies..."
 sudo apt-get update -qq
 sudo apt-get -y install build-essential 
-sudo apt-get -y build-dep qemu
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
-  python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev
+  python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev \
+  libglib2.0-dev
 
 cwd=$(pwd)
 cd /tmp
