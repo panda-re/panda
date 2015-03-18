@@ -66,6 +66,7 @@
 #include "memory.h"
 #include "qmp-commands.h"
 #include "hmp.h"
+#include "memory-access.h"
 
 /* for pic/irq_info */
 #if defined(TARGET_SPARC)
@@ -1372,6 +1373,13 @@ static void do_print(Monitor *mon, const QDict *qdict)
     }
 #endif
     monitor_printf(mon, "\n");
+}
+
+static int do_physical_memory_access(Monitor *mon, const QDict *qdict, QObject **ret_data)
+{
+    const char *path = qdict_get_str(qdict, "path");
+    memory_access_start(path);
+    return 0;
 }
 
 static int do_memory_save(Monitor *mon, const QDict *qdict, QObject **ret_data)
