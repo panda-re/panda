@@ -54,7 +54,7 @@ std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
 
 void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
-    printf ("label_num = %d\n");
+    //    printf ("label_num = %d\n", label_num);
 #if 0
     if ( ! 
          ((label_num >=8 && label_num <= 15) 
@@ -161,9 +161,11 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
     if (filename !=0) {
         printf ("filename = [%s]\n", filename);
     }
+    /*
     else {
         printf ("filename is not known\n");
     }
+    */
 
     // these things are only known at enter of read call
     last_read_fd = fd;
@@ -193,6 +195,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                 positional_labels ? "positional" : "uniform",
                 taint_label_number_start, taint_label_number_start + count - 1);
         if (prob_label_u32 == 0 && bytes_labeled < max_num_labels) {
+            uint32_t start_bytes_labeled = bytes_labeled;
             for (uint32_t i=0; i<count; i++) {
                 label_byte(env, last_read_buf+i, taint_label_number_start + i);
                 bytes_labeled ++;
@@ -201,6 +204,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
                     break;
                 }
             }
+            printf ("%d bytes labeled for this read\n", bytes_labeled - start_bytes_labeled);
         }
         else {
             // iterate over uint32 blobs
@@ -217,7 +221,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
             }
         }
         taint_label_number_start += count;
-        printf (" ... done applying labels\n");
+        //        printf (" ... done applying labels\n");
         saw_read = false;
     }
 
