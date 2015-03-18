@@ -1,7 +1,7 @@
 
 
 message TaintQuery {
-    required uint32 num_labels = 1;
+    required uint64 asid = 1;
     repeated uint32 label = 2;
 }
 

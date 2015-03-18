@@ -34,18 +34,21 @@ extern "C" {
 #include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
-#include "pandalog.h"
 #include "panda_common.h"
 #include "guestarch.h"
 }
 
 
 #include "../common/prog_point.h"
-#include "../callstack_instr/callstack_instr_ext.h"
+//#include "../callstack_instr/callstack_instr_ext.h"
 
 //#include "../taint/taint_processor.h"
 
 typedef void (*on_branch_t) (uint64_t, int); // hack since we can't include both taint.h's
+
+extern uint64_t replay_get_guest_instr_count(void);
+extern uint64_t replay_get_total_num_instructions(void);
+
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -59,10 +62,10 @@ void uninit_plugin(void *);
 #ifdef CONFIG_SOFTMMU
 
 
-bool first_enable_taint = true;
 
 bool use_taint2 = false;
 
+#if 0
 void callstack() {
     // callstack info
     target_ulong callers[16];
@@ -71,7 +74,7 @@ void callstack() {
         printf ("callstack: %d " TARGET_FMT_lx " \n", i, callers[i]);
     }
 }
-
+#endif
 
 /*
  dead_data[l] is a count of the number of number of times the label l
@@ -89,7 +92,7 @@ void callstack() {
 
 // dde[l] is a vector of instructions at which 
 // this label was observed to participate in a tainted branch
-std::map < uint32_t, std::vector < uint64_t > > dde; 
+std::map < uint32_t, float > dead_data; 
 
 uint64_t first_tainted_branch = 0xffffffffffffffff;
 uint64_t last_tainted_branch = 0;
@@ -105,18 +108,17 @@ void dd_spit(){
         printf ("computing dead data and writing to stdout\n");
     }
 
-
-    std::map < uint32_t, float > dead_data;
-    float  denom = last_tainted_branch - first_tainted_branch;
-
     uint32_t *al = taint2_labels_applied();
     uint32_t n = taint2_num_labels_applied();
     for (uint32_t i=0; i<n; i++) {
         uint32_t l = al[i];
-        dead_data[l] = 0;
+        if (dead_data.count(l) == 0) {
+            dead_data[l] = 0;
+        }
     }
     free(al);
 
+    /*
     for ( auto &kvp : dde ) {
         uint32_t l = kvp.first;
         for ( auto &ins : kvp.second ) {
@@ -124,51 +126,49 @@ void dd_spit(){
             //dead_data[l] ++;
         }
     }
-
+    */
     
 
     if (pandalog) {
-        Panda__DeadData *dd = (Panda__DeadData *) malloc(sizeof(Panda__DeadData));
-        dd->num_labels = n;
-        dd->val = (float *) malloc(sizeof(float) * n);
-        uint32_t i=0;
-        for ( auto &kvp : dead_data ) {
-            uint32_t el = kvp.first;
-            float val = kvp.second;
-            dd->val[el] = val;            
-        }
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        ple.dead_data = dd;
+        ple.n_dead_data = n;
+        ple.dead_data =  (float *) malloc(sizeof(float) * n);
+        for (uint32_t i=0; i<n; i++) {
+            ple.dead_data[i] = dead_data[i];
+        }
         pandalog_write_entry(&ple);
     }
     else {
-        FILE *fp;
-        fp = fopen(dead_data_filename, "w");
-        fprintf (fp,"\n\n-----------------------------------------\n");
-        fprintf (fp, "Dead Data Summary\n");
+        printf ("\n\n-----------------------------------------\n");
+        printf ("Dead Data Summary\n");
         for ( auto &kvp : dead_data ) {
             uint32_t el = kvp.first;
             float val = kvp.second;
-            fprintf (fp, "%6d %0.2f\n", el, val);
+            printf ("%6d %0.2f\n", el, val);
         }
-        fclose(fp);
     }
 }
 
 
 
+ 
+ 
+// only compute dead data based on first N tainted branches a label 
+// involved in.  N is MAX_INSTR_PER_EL
+#define MAX_INSTR_PER_EL 100000
+
+ 
+uint64_t current_instr;
+uint64_t total_instr;
+
 // el is a label
 int dd_each_label(uint32_t el, void *stuff1) {
-    
-    uint64_t ins = rr_get_guest_instr_count();
-    first_tainted_branch = std::min(ins, first_tainted_branch);
-    last_tainted_branch = std::max(ins, last_tainted_branch);
-    dde[el].push_back(ins);
-    
-    //    dead_data[el] += 1;    
+    dead_data[el] += ((float)(total_instr - current_instr)) / ((float)total_instr);
     // continue iteration
     return 0;
 }
+
+
 
 
 uint64_t *callers64=NULL;
@@ -178,33 +178,37 @@ uint32_t num_callers = 0;
 
 void dead_data_on_branch(uint64_t pc, int reg_num) {
     for (uint32_t offset=0; offset<8; offset++) {
-        if (taint_query_llvm(reg_num, offset)) {           
+        if (taint_query_llvm(reg_num, offset)) {                       
             taint_labelset_llvm_iter(reg_num, offset, dd_each_label, NULL);
         }
     }
 }
 
+uint64_t ii=0;
+
 void dead_data_on_branch_taint2(uint64_t reg_num) {
+    current_instr = rr_get_guest_instr_count();
+    ii++;
     for (uint32_t offset=0; offset<8; offset++) {
         if (taint2_query_llvm(reg_num, offset)) {           
-            //            printf ("dead_data_on_branch_taint2 offset=%d is tainted\n", offset);
+            // this offset of reg is tainted.
+            // iterate over labels in set & update dead data
             taint2_labelset_llvm_iter(reg_num, offset, dd_each_label, NULL);
+            if ((ii % 100000) == 0) {
+                //                panda_end_replay();
+            }
         }
     }
 }
 
 
+bool first_enable_taint = true;
 
-uint64_t ii = 0;
+
 int dead_data_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
-
-    ii ++;
-    if ((ii % 10000) == 0) {
-        //        dd_spit();
-    }
-
     if ((use_taint2 && taint2_enabled()) || (!use_taint2 && taint_enabled())) {
         if (first_enable_taint) {
+            total_instr = replay_get_total_num_instructions();
             if (use_taint2) { PPP_REG_CB("taint2", on_branch2, dead_data_on_branch_taint2); }
             else { PPP_REG_CB("taint", on_branch, dead_data_on_branch); }
             first_enable_taint = false;
@@ -218,8 +222,8 @@ int dead_data_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
 #endif
 
 bool init_plugin(void *self) {
-    panda_require("callstack_instr");
-    assert (init_callstack_instr_api());
+    //    panda_require("callstack_instr");
+    //    assert (init_callstack_instr_api());
     panda_cb pcb;
     pcb.after_block_exec = dead_data_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);

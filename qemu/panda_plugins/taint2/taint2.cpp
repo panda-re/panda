@@ -326,17 +326,19 @@ int label_spit(uint32_t el, void *stuff) {
 
 
 #define MAX_EL_ARR_IND 1000000
-uint32_t el_arr[MAX_EL_ARR_IND];
 uint32_t el_arr_ind = 0;
 
 // used by hypercall to pack pandalog array with query result
 int collect_query_labels_pandalog(uint32_t el, void *stuff) {
+    uint32_t *label = (uint32_t *) stuff;
     assert (el_arr_ind < MAX_EL_ARR_IND);
-    el_arr[el_arr_ind++] = el;
+    label[el_arr_ind++] = el;
     return 0;
 }
 
 
+
+static uint32_t ii = 0;
 
 #ifdef TARGET_I386
 // Support all features of label and query program
@@ -389,15 +391,21 @@ void i386_hypercall_callback(CPUState *env){
                 LabelSetP ls = tp_query_ram(shadow, addr);
                 if (ls) {
                     if (pandalog) {
+                        ii ++;
                         printf ("pandalogging taint query\n");
                         Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
-                        tq->num_labels = ls_card(ls);
-                        tq->label = (uint32_t *) malloc (sizeof(uint32_t) * tq->num_labels);
+                        *tq = PANDA__TAINT_QUERY__INIT;
+                        tq->asid = panda_current_asid(env);
+                        tq->n_label = ls_card(ls);
+                        tq->label = (uint32_t *) malloc (sizeof(uint32_t) * tq->n_label);
                         el_arr_ind = 0;
                         tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tq->label);
                         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
                         ple.taint_query = tq;
                         pandalog_write_entry(&ple);
+                        if (ii == 100){
+                            panda_end_replay();
+                        }
                     }
                     else {
                         printf("taint2: Query operation detected @ %lu. vaddr=0x%x paddr=0x%x\n",
