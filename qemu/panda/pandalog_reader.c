@@ -48,7 +48,12 @@ int main (int argc, char **argv) {
         if (ple == NULL) {
             break;
         }
-        printf ("instr=%lld  pc=0x%x : ", ple->instr, ple->pc);
+        if (ple->instr == -1) {
+            printf ("[after replay end] : ");
+        } 
+        else {
+            printf ("instr=%llu pc=0x%x : ", ple->instr, ple->pc);
+        }
 
         // from asidstory / osi
         if (ple->has_asid) {
@@ -97,12 +102,31 @@ int main (int argc, char **argv) {
             printf ("])");
         }
 
+        // dead data
+        if (ple->n_dead_data > 0) {
+            printf ("\n");
+            uint32_t i;
+            for (i=0; i<ple->n_dead_data; i++) {
+                printf ("  dead_data(label=%d,deadness=%.2f\n", i, ple->dead_data[i]);
+            }
+        }
+
+        // taint queries
+        if (ple->taint_query) {
+            printf ("  taint query: asid=0x%x: labels ", ple->taint_query->asid);
+            uint32_t i;
+            for (i=0; i<ple->taint_query->n_label; i++) {
+                printf ("%d ", ple->taint_query->label[i]);
+            }
+            printf ("\n");
+        }
+
         // win7proc
         if (ple->new_pid) { 
             printf (" new_pid ");
             print_process(ple->new_pid);
         }
-        else if (ple->nt_create_user_process) {
+        if (ple->nt_create_user_process) {
             printf (" nt_create_user_process ");
             printf (" [ cur " ); 
             print_process(ple->nt_create_user_process->cur_p); 
@@ -113,7 +137,7 @@ int main (int argc, char **argv) {
             printf (" name=[%s] ", 
                     ple->nt_create_user_process->new_long_name);
         }
-        else if (ple->nt_terminate_process) {
+        if (ple->nt_terminate_process) {
             printf (" nt_terminate_process ");
             printf (" [ cur " ); 
             print_process(ple->nt_terminate_process->cur_p);
@@ -123,77 +147,74 @@ int main (int argc, char **argv) {
             printf (" ]");
         }
 
-        else if (ple->nt_create_file) {
+        if (ple->nt_create_file) {
             printf (" nt_create_file ");
             print_process_file(ple->nt_create_file);
         }
 
-        else if (ple->nt_read_file) {
+        if (ple->nt_read_file) {
             printf (" nt_read_file ");
             print_process_file(ple->nt_read_file);
         }
-        else if (ple->nt_delete_file) {
+        if (ple->nt_delete_file) {
             printf (" nt_delete_file ");
             print_process_file(ple->nt_delete_file);
         }
-        else if (ple->nt_write_file) {
+        if (ple->nt_write_file) {
             printf ("nt_write_file ");
             print_process_file(ple->nt_write_file);
         }
-        else if (ple->nt_create_key) {
+        if (ple->nt_create_key) {
             printf (" nt_create_key ");
             print_process_key(ple->nt_create_key);
         }
-        else if (ple->nt_create_key_transacted) {
+        if (ple->nt_create_key_transacted) {
             printf (" nt_create_key_transacted ");
             print_process_key(ple->nt_create_key_transacted);
         }
-        else if (ple->nt_open_key) {
+        if (ple->nt_open_key) {
             printf (" nt_open_key ");
             print_process_key(ple->nt_open_key);
         }
-        else if (ple->nt_open_key_ex) {
+        if (ple->nt_open_key_ex) {
             printf (" nt_open_key_ex ");
             print_process_key(ple->nt_open_key_ex);
         }
-        else if (ple->nt_open_key_transacted) {
+        if (ple->nt_open_key_transacted) {
             printf (" nt_open_key_transacted ");
             print_process_key(ple->nt_open_key_transacted);
         }
-        else if (ple->nt_open_key_transacted_ex) {
+        if (ple->nt_open_key_transacted_ex) {
             printf (" nt_open_key_transacted_ex ");
             print_process_key(ple->nt_open_key_transacted_ex);
         }
-        else if (ple->nt_delete_key) {
+        if (ple->nt_delete_key) {
             printf (" nt_delete_key ");
             print_process_key(ple->nt_delete_key);
         }
-        else if (ple->nt_query_key) {
+        if (ple->nt_query_key) {
             printf (" nt_query_key ");
             print_process_key(ple->nt_query_key);
         }
-        else if (ple->nt_query_value_key) {
+        if (ple->nt_query_value_key) {
             printf (" nt_query_value_key ");
             print_process_key_value(ple->nt_query_value_key);
         }
-        else if (ple->nt_delete_value_key) {
+        if (ple->nt_delete_value_key) {
             printf (" nt_delete_value_key ");
             print_process_key_value(ple->nt_delete_value_key);
         }
-        else if (ple->nt_set_value_key) {
+        if (ple->nt_set_value_key) {
             printf (" nt_set_value_key ");
             print_process_key_value(ple->nt_set_value_key);
         }
-        else if (ple->nt_enumerate_key) {
+        if (ple->nt_enumerate_key) {
             printf (" nt_enumerate_key ");
             print_process_key_index(ple->nt_enumerate_key);
         }
-        else if (ple->nt_enumerate_value_key) {
+        if (ple->nt_enumerate_value_key) {
             printf (" nt_enumerate_value_key ");
             print_process_key_index(ple->nt_enumerate_value_key);
-        }
-        else {
-            printf ("unrecognized!\n");
         }
 
         printf ("\n");
