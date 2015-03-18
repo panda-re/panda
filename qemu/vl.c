@@ -210,6 +210,7 @@ extern char *panda_plugin_path(const char *name);
 void pandalog_open(const char *path, const char *mode);
 int  pandalog_close(void);
 int pandalog = 0;
+int panda_in_main_loop = 0;
 
 #include "ui/qemu-spice.h"
 
@@ -1369,6 +1370,7 @@ void qemu_kill_report(void)
 {
     if (shutdown_signal != -1) {
         fprintf(stderr, "qemu: terminating on signal %d", shutdown_signal);
+        printf ("here i am\n");
         if (shutdown_pid == 0) {
             /* This happens for eg ^C at the terminal, so it's worth
              * avoiding printing an odd message in that case.
@@ -2276,6 +2278,7 @@ void panda_cleanup(void) {
         pandalog_close();
     }
 }
+
 
 
 
@@ -3821,10 +3824,14 @@ int main(int argc, char **argv, char **envp)
 
     resume_all_vcpus();
 
+    panda_in_main_loop = 1;
     main_loop();
-
+    panda_in_main_loop = 0;
 
     bdrv_close_all();
+
+
+    panda_cleanup();
 
     // RR: end record / replay if necessary
     if (rr_in_replay()) {
@@ -3837,8 +3844,6 @@ int main(int argc, char **argv, char **envp)
         rr_do_end_record();
         rr_end_record_requested = 0;
     }
-
-    panda_cleanup();
 
     pause_all_vcpus();
     net_cleanup();

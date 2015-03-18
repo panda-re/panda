@@ -1407,6 +1407,10 @@ void qmp_end_replay(Error **errp) {
   rr_end_replay_requested = 1;
 }
 
+void panda_end_replay(void) {
+  rr_end_replay_requested = 1;
+}  
+
 #include "qemu-common.h"  // Monitor def
 #include "qdict.h"        // QDict def
 
