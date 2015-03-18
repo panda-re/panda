@@ -107,18 +107,17 @@ int main (int argc, char **argv) {
             printf ("\n");
             uint32_t i;
             for (i=0; i<ple->n_dead_data; i++) {
-                printf ("  dead_data(label=%d,deadness=%.2f\n", i, ple->dead_data[i]);
+                printf (" dead_data(label=%d,deadness=%.2f\n", i, ple->dead_data[i]);
             }
         }
 
         // taint queries
         if (ple->taint_query) {
-            printf ("  taint query: asid=0x%x: labels ", ple->taint_query->asid);
+            printf (" taint query: asid=0x%x: labels ", ple->taint_query->asid);
             uint32_t i;
             for (i=0; i<ple->taint_query->n_label; i++) {
                 printf ("%d ", ple->taint_query->label[i]);
             }
-            printf ("\n");
         }
 
         // win7proc
