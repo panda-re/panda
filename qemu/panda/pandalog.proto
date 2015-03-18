@@ -2,12 +2,8 @@
 syntax = "proto2";
 package panda;
 
-message DeadData {
-    required uint32 num_labels = 1;
-    repeated float val = 2; 
-}
 message TaintQuery {
-    required uint32 num_labels = 1;
+    required uint64 asid = 1;
     repeated uint32 label = 2;
 }
 message Process {
@@ -46,7 +42,7 @@ message LogEntry {
 required uint64 pc = 1;    
 required uint64 instr = 2;
 
-optional DeadData dead_data = 32;
+repeated float dead_data = 32;
 optional TaintQuery taint_query = 33;
 repeated uint32 tainted_branch_label = 9;
 repeated uint64 callstack = 10;
