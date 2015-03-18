@@ -42,7 +42,7 @@ the parameters.  The implementation of the hypercall can be seen in
 easy way to label and query from the guest (with a gcc compiler) can be seen in
 `panda/qemu/panda_plugins/taint/tests/include/gcc/panda_mark.h`.  Additionally,
 examples using `panda_mark.h` are in the `tests` directory.  For Windows guests,
-the utilities included in `panda/qemu/panda_plugins/taint/pirate_utils` can be
+the utilities included in `panda/qemu/panda_tools/pirate_utils` can be
 used to label files (Note: only a subset of the functionality available in
 those tools has been ported to the taint plugin).
 

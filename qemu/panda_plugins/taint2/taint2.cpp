@@ -36,6 +36,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu-all.h"
 #include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
 #include "panda_common.h"
 #include "panda/network.h"
 #include "rr_log.h"
@@ -64,6 +65,8 @@ void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), 
 uint32_t *taint2_labels_applied(void);
 uint32_t taint2_num_labels_applied(void);
 
+void taint2_track_taint_state(void);
+
 }
 
 #include <llvm/PassManager.h>
@@ -81,6 +84,8 @@ uint32_t taint2_num_labels_applied(void);
 #include "fast_shad.h"
 #include "taint_ops.h"
 #include "taint2.h"
+
+#include "pirate_mark_lava_struct.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -101,6 +106,12 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
                        target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
+
+void taint_state_changed(void);
+PPP_PROT_REG_CB(on_taint_change);
+PPP_CB_BOILERPLATE(on_taint_change);
+
+bool track_taint_state = false;
 
 }
 
@@ -427,6 +438,45 @@ void i386_hypercall_callback(CPUState *env){
             }
         }
     }
+    
+    // LAVA Query op.
+    // EBX contains addr.
+    if (env->regs[R_EAX] == 11) {
+        target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
+        PirateMarkLavaInfo pmli = {};
+        char filenameStr[500];
+        char astNodeStr[500];
+        if (taintEnabled){
+            printf("taint2: Query operation detected @ %lu.\n",
+                    rr_get_guest_instr_count());
+            //uint64_t array;
+            //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
+            
+            // TODO some way to do error checking/handling?
+            panda_virtual_memory_rw(env, env->regs[R_ESI],
+                (uint8_t*)&pmli, sizeof(PirateMarkLavaInfo), false);
+            panda_virtual_memory_rw(env, pmli.filenamePtr,
+                (uint8_t*)&filenameStr, 500, false);
+            pmli.filenamePtr = (uint64_t)filenameStr;
+            panda_virtual_memory_rw(env, pmli.astNodePtr,
+                (uint8_t*)&astNodeStr, 500, false);
+            pmli.astNodePtr = (uint64_t)astNodeStr;
+            printf("LAVA Query Info:\n");
+            printf("File name: %s\n", (char*)pmli.filenamePtr);
+            printf("Line number: %lu\n", pmli.lineNum);
+            printf("AST node: %s\n\n", (char*)pmli.astNodePtr);
+            
+            printf("taint2: %u labels.\n", taint2_query_ram(addr));
+            printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
+                    (uint64_t)addr);
+            qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
+                    (uint64_t)shadow->ram, (uint64_t)addr);
+            //label_set_iter(FastShad::query(shadow->ram, addr),
+                    //print_labels, NULL);
+            //printf("taint2: Stopping replay.\n");
+            //rr_do_end_replay(0);
+        }
+    }
 }
 #endif // TARGET_I386
 
@@ -440,6 +490,11 @@ int guest_hypercall_callback(CPUState *env){
 #endif
 
     return 1;
+}
+
+// Called whenever the taint state changes.
+void taint_state_changed() {
+    PPP_RUN_CB(on_taint_change);
 }
 
 bool __taint2_enabled() {
@@ -514,6 +569,10 @@ void __taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el
     tp_ls_llvm_iter(shadow, reg_num, offset, app, stuff2);
 }
 
+void __taint2_track_taint_state(void) {
+    track_taint_state = true;
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -580,11 +639,13 @@ uint32_t taint2_num_labels_applied(void) {
     return __taint2_num_labels_applied();
 }
 
+void taint2_track_taint_state(void) {
+    __taint2_track_taint_state();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    //printf("%s\n", tb->llvm_function->getName().str().c_str());
-    //FPM->run(*(tb->llvm_function));
     return 0;
 }
 bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {

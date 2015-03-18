@@ -22,7 +22,6 @@ PANDAENDCOMMENT */
 #include "panda_memlog.h"
 #include "guestarch.h"
 
-#include "my_mem.h"
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "max.h"
@@ -91,7 +90,7 @@ Addr make_greg(uint64_t r, uint16_t off) {
  */
 Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity) {
     //    Shad *shad = (Shad *) my_malloc(sizeof(Shad), poolid_taint_processor);
-    void *tmp = my_malloc(sizeof(Shad), poolid_taint_processor);
+    void *tmp = malloc(sizeof(Shad));
     Shad *shad = new(tmp) Shad;
     shad->port_size = 0xffff * 4; // assume a max port size of 4 bytes,
         // and 0xffff max ports according to Intel manual
@@ -138,7 +137,7 @@ void tp_free(Shad *shad){
     delete shad->ret;
     delete shad->grv;
     delete shad->gsv;
-    my_free(shad, sizeof(Shad), poolid_taint_processor);
+    free(shad);
 }
 
 // returns a copy of the labelset associated with a.  or NULL if none.

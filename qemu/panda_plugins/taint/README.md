@@ -40,7 +40,7 @@ we currently use is to make hypercalls from the guest into the hypervisor with
 the parameters.  The implementation of the hypercall can be seen in
 `panda/qemu/panda_plugins/taint/taint.cpp` at the guest hypercall callback.
 More information about using the hypercall can be seen in the file tainting
-tools in `panda/qemu/panda_plugins/taint/pirate_utils` which allow configurable
+tools in `panda/qemu/panda_tools/pirate_utils` which allow configurable
 ways to apply taint labels to files on the system.
 
 There are a number of command line arguments available to the taint plugin:
