@@ -1,9 +1,14 @@
 
-
-message TaintQuery {
-    required uint64 asid = 1;
+message TaintQueryUniqueLabelSet {
+    required uint64 ptr = 1;
     repeated uint32 label = 2;
 }
 
-optional TaintQuery taint_query = 33;
+message TaintQuery {
+    required uint64 asid = 1;
+    required uint64 ptr = 2;
+}
+
+optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
+optional TaintQuery taint_query = 34;
 

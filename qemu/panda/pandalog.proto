@@ -2,9 +2,13 @@
 syntax = "proto2";
 package panda;
 
+message TaintQueryUniqueLabelSet {
+    required uint64 ptr = 1;
+    repeated uint32 label = 2;
+}
 message TaintQuery {
     required uint64 asid = 1;
-    repeated uint32 label = 2;
+    required uint64 ptr = 2;
 }
 message Process {
     required uint32 pid = 1;
@@ -43,7 +47,8 @@ required uint64 pc = 1;
 required uint64 instr = 2;
 
 repeated float dead_data = 32;
-optional TaintQuery taint_query = 33;
+optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
+optional TaintQuery taint_query = 34;
 repeated uint32 tainted_branch_label = 9;
 repeated uint64 callstack = 10;
 optional uint64 asid = 3; 

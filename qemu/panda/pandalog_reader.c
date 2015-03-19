@@ -111,13 +111,18 @@ int main (int argc, char **argv) {
             }
         }
 
+
         // taint queries
-        if (ple->taint_query) {
-            printf (" taint query: asid=0x%x: labels ", ple->taint_query->asid);
+        if (ple->taint_query_unique_label_set) {
+            printf (" taint query unqiue label set: ptr=%llu labels: ", ple->taint_query_unique_label_set->ptr);
             uint32_t i;
-            for (i=0; i<ple->taint_query->n_label; i++) {
-                printf ("%d ", ple->taint_query->label[i]);
+            for (i=0; i<ple->taint_query_unique_label_set->n_label; i++) {
+                printf ("%d ", ple->taint_query_unique_label_set->label[i]);
             }
+        }
+        
+        if (ple->taint_query) {
+            printf (" taint query: asid=0x%x: labels ptr %llu", ple->taint_query->asid, ple->taint_query->ptr);
         }
 
         // win7proc

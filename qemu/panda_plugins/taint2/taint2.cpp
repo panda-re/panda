@@ -351,6 +351,9 @@ int collect_query_labels_pandalog(uint32_t el, void *stuff) {
 
 static uint32_t ii = 0;
 
+
+std::set < LabelSetP > ls_returned;
+
 #ifdef TARGET_I386
 // Support all features of label and query program
 void i386_hypercall_callback(CPUState *env){
@@ -404,16 +407,34 @@ void i386_hypercall_callback(CPUState *env){
                     if (pandalog) {
                         ii ++;
                         printf ("pandalogging taint query\n");
+                        // we only want to actually write a particular set contents to pandalog once
+                        if (ls_returned.count(ls) == 0) {
+                            // this ls hasn't yet been written to pandalog
+                            // write out mapping from ls pointer to labelset contents
+                            // as its own separate log entry
+                            ls_returned.insert(ls);
+                            Panda__TaintQueryUniqueLabelSet *tquls = (Panda__TaintQueryUniqueLabelSet *) malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
+                            *tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
+                            tquls->ptr = (uint64_t) ls;
+                            tquls->n_label = ls_card(ls);
+                            tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
+                            el_arr_ind = 0;
+                            tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
+                            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                            ple.taint_query_unique_label_set = tquls;
+                            pandalog_write_entry(&ple);
+                            free (tquls->label);
+                            free (tquls);
+                        }
+                        // safe to refer to the set by the pointer in this next message
                         Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
                         *tq = PANDA__TAINT_QUERY__INIT;
                         tq->asid = panda_current_asid(env);
-                        tq->n_label = ls_card(ls);
-                        tq->label = (uint32_t *) malloc (sizeof(uint32_t) * tq->n_label);
-                        el_arr_ind = 0;
-                        tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tq->label);
+                        tq->ptr = (uint64_t) ls;
                         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
                         ple.taint_query = tq;
                         pandalog_write_entry(&ple);
+                        free(tq);
                         if (ii == 100){
                             //                            panda_end_replay();
                         }
