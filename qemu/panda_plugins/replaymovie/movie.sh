@@ -4,4 +4,5 @@
 # ffmpeg
 #
 
-ffmpeg -y -threads 0 -r 20 -i replay_movie_%03d.ppm replay.mp4 -qscale 5 -b 9600
+ffmpeg -y -threads 0 -r 20 -i replay_movie_%03d.ppm replay.mp4 -qscale 5 -b 9600 || \
+avconv -y -threads 0 -r 20 -i replay_movie_%03d.ppm replay.mp4 -qscale 5 -b 9600
