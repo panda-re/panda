@@ -11,11 +11,15 @@ include ../panda.mak
 # CFLAGS+=
 # LIBS+=
 
-# The main rule for your plugin. Please stick with the panda_ naming
-# convention.
-$(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).c
+# Object files comprising the plugin.
+PLUGIN_OBJFILES=$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o\
+				$(PLUGIN_OBJ_DIR)/module1.o\
+				$(PLUGIN_OBJ_DIR)/module2.o
 
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
+.PHONY: all
+
+# Plugin dynamic library. Please stick with the panda_ naming convention.
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJFILES)
 	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
-all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
+all: $(PLUGIN_OBJ_DIR) $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
