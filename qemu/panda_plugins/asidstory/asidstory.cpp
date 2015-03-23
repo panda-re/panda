@@ -37,6 +37,7 @@
 #include <set>
 #include <cstdint>
 #include <sstream>
+#include <iomanip>
 
 extern "C" {
 
@@ -107,6 +108,15 @@ struct ProcessData {
 std::map<NamePid, ProcessData> process_datas;
 typedef std::pair<NamePid, ProcessData> ProcessKV;
 
+static unsigned digits(uint64_t num) {
+    return num > 0 ? (int)(log10((double)num) + 1) : 1;
+}
+
+using std::hex;
+using std::dec;
+using std::setw;
+using std::setfill;
+using std::endl;
 void spit_asidstory() {
     FILE *fp = fopen("asidstory", "w");
 
@@ -115,11 +125,19 @@ void spit_asidstory() {
         const ProcessData &pd = pd_kv.second;
         if (pd.count >= SAMPLE_CUTOFF) {
             std::stringstream ss;
-            ss << namepid.pid << "-" << namepid.name;
-            fprintf(fp, "%20s : (count=%lu, asid=%lx) : %lu -> %lu\n",
-                    ss.str().c_str(), (unsigned long)pd.count,
-                    (unsigned long)namepid.asid, (unsigned long)pd.first,
-                    (unsigned long)pd.last);
+            std::string shortname = namepid.name;
+            if (shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
+                shortname = shortname.substr(0, shortname.size() - 4); 
+            }
+            if (shortname.size() > 10) shortname = shortname.substr(0, 10);
+            ss << setw(6) << namepid.pid << "  " <<
+               setw(10) << shortname << " : " <<
+               "(count=" << setw(digits(max_instr / SAMPLE_RATE)) << pd.count <<
+               ", asid=0x" << setw(sizeof(target_ulong) * 2) <<
+               hex << setfill('0') << namepid.asid << dec << setfill(' ') <<
+               ") : " << setw(digits(max_instr)) << pd.first <<
+               " -> " << setw(digits(max_instr)) << pd.last << endl;
+            fprintf(fp, "%s", ss.str().c_str());
         }
     }
 
@@ -163,11 +181,9 @@ void spit_asidstory() {
 
 }
 
-
 char *last_name = 0;
 target_ulong last_pid = 0;
 target_ulong last_asid = 0;
-
 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if ((a_counter % 1000000) == 0) {
@@ -249,7 +265,8 @@ bool init_plugin(void *self) {
     pcb.after_block_exec = asidstory_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     
-    //panda_arg_list *args = panda_get_args("asidstory");
+    panda_arg_list *args = panda_get_args("asidstory");
+    num_cells = panda_parse_ulong(args, "width", 100) - 25;
     
     min_instr = 0;   
     return true;
