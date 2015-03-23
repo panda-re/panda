@@ -25,11 +25,6 @@
   of the graph is a set of indicators you can use to choose a good
   rr instruction count for various purposes.
 
-  Ok it now takes some parameters.
-  vol_instr_count determines when volatility will get called on a 
-  physical memory dump (which is written to "asidstory.vol.pmem", incidentally).
-  vol_cmds is where you can put profile and volatility commands
-
  */
 
 
@@ -37,13 +32,11 @@
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include <inttypes.h>
 #include <algorithm>
 #include <map>
 #include <set>
 #include <cstdint>
-
-
+#include <sstream>
 
 extern "C" {
 
@@ -57,47 +50,21 @@ extern "C" {
 #include "../osi/osi_ext.h"
 #include "panda_plugin_plugin.h"
     
-    bool init_plugin(void *);
-    void uninit_plugin(void *);
+bool init_plugin(void *);
+void uninit_plugin(void *);
 
 }
-
-
 
 uint32_t num_cells = 80;
 uint64_t min_instr;
 uint64_t max_instr = 0;
 double scale;
-bool vol_done = false;
-uint64_t vol_instr_count = 0;
-std::string vol_cmds = "";
-
 
 bool pid_ok(int pid) {
     if (pid < 4) {
         return false;
     }
     return true;
-}
-
-
-// write physmem to a file
-// and invoke volatility on it
-void vol(char *outfilename) {
-    printf ("vol %s\n", outfilename);
-    std::string pmf = (std::string(outfilename)) + ".pmem";
-    FILE *fp = fopen((char *) pmf.c_str(), "w");
-    panda_memsavep(fp);
-    fclose(fp);
-    std::string cmd = "/usr/bin/volatility -f " + pmf + " " + vol_cmds; // " --profile=Linux_Debian_Wheezy_3_2_0-4-686-pae_x86 linux_pslist";
-    fp = popen(cmd.c_str(), "r");
-    FILE *fp2 = fopen(outfilename, "w");
-    char line[4096];
-    while (fgets(line, sizeof(line)-1, fp) != NULL) {
-        fprintf(fp2, "%s", line);
-    }
-    fclose(fp2);
-    printf ("...done\n");
 }
  
 #define SAMPLE_CUTOFF 10    
@@ -114,107 +81,79 @@ typedef uint32_t Cell;
 typedef uint64_t Count;
 typedef uint64_t Instr;
 
-std::map < Name, std::map < Pid, std::map < Cell, Count > > > namepid_cells;
-std::map < Name, std::map < Pid, std::map < Asid, Count > > > namepid_to_asids;
-std::map < Name, std::map < Pid, Instr > > namepid_first_instr;
-std::map < Name, std::map < Pid, Instr > >  namepid_last_instr;
+struct NamePid {
+    Name name;
+    Pid pid;
+    Asid asid;
 
-//char np[256];
+    NamePid(Name name, Pid pid, Asid asid) :
+        name(name), pid(pid), asid(asid) {}
 
-void make_nps(Name &name, Pid pid, char *buf, uint32_t buf_len) {
-    snprintf (buf, buf_len, "%d-%s", pid, (const char *) name.c_str());
-}
+    bool operator<(const NamePid &rhs) const {
+        return name < rhs.name || (name == rhs.name && pid < rhs.pid) ||
+            (name == rhs.name && pid == rhs.pid && asid < rhs.asid);
+    }
+};
 
+struct ProcessData {
+    std::map<Cell, Count> cells;
+    Count count;
+    Instr first;
+    Instr last;
 
-bool npis_sort (std::tuple < Name, Pid, Instr > npi1, std::tuple < Name, Pid, Instr > npi2 ) {
-    return (std::get<2>(npi1) < std::get<2>(npi2));
-}
-  
+    ProcessData() : count(0), first(0), last(0) {}
+};
+
+std::map<NamePid, ProcessData> process_datas;
+typedef std::pair<NamePid, ProcessData> ProcessKV;
 
 void spit_asidstory() {
-    
     FILE *fp = fopen("asidstory", "w");
 
-    // write out concordance namepid to asid 
-    std::map < Name, std::set < Pid > > namepid_ignore;
-    for ( auto &kvp1 : namepid_to_asids ) {
-        Name name = kvp1.first;
-        for ( auto &kvp2 : kvp1.second ) {
-            Pid pid = kvp2.first;
-            uint64_t tc = 0;
-            for ( auto &kvp3 : kvp2.second ) {
-                //                Asid asid = kvp3.first;
-                Count count = kvp3.second;
-                tc += count;
-            }
-            // probably not a *real* process
-            if (tc < SAMPLE_CUTOFF) {
-                namepid_ignore[name].insert(pid);
-                continue;
-            }
-            char nps[256];
-            make_nps(name, pid, nps, 256);
-            fprintf (fp, "%20s : ", nps);
-            for ( auto &kvp3 : namepid_to_asids[name][pid] ) {
-                Asid asid = kvp3.first;
-                Count count = kvp3.second;            
-                fprintf (fp, "(count=%d, asid=0x%x) ", (unsigned int) count, (unsigned int) asid);
-            }            
-            fprintf (fp, "\n");
+    for (auto &pd_kv : process_datas) {
+        const NamePid &namepid = pd_kv.first;
+        const ProcessData &pd = pd_kv.second;
+        if (pd.count >= SAMPLE_CUTOFF) {
+            std::stringstream ss;
+            ss << namepid.pid << "-" << namepid.name;
+            fprintf(fp, "%20s : (count=%lu, asid=%lx) : %lu -> %lu\n",
+                    ss.str().c_str(), (unsigned long)pd.count,
+                    (unsigned long)namepid.asid, (unsigned long)pd.first,
+                    (unsigned long)pd.last);
         }
     }
-    fprintf (fp, "\n");
 
+    fprintf(fp, "\n");
 
-    // sort the name/pids by first sighting
-    std::vector < std::tuple < Name, Pid, Instr > > npis;
-    for ( auto &kvp1 : namepid_to_asids ) {
-        auto np = kvp1;
-        Name name = kvp1.first;
-        for ( auto &kvp2 : kvp1.second ) {
-            Pid pid = kvp2.first;
-            Instr ins = namepid_first_instr[name][pid];
-            npis.push_back(std::make_tuple(name, pid, ins));
-        }
-    }
-    std::sort ( npis.begin(), npis.end(), npis_sort);
-    
-    for ( auto &tup : npis ) {
-        Name name = std::get<0>(tup);
-        Pid pid = std::get<1>(tup);
-        if ( namepid_ignore[name].count(pid) != 0) {
-            continue;
-        }
-        char nps[256];
-        make_nps(name, pid, nps, 256);
-        fprintf (fp, "%20s : ", nps);            
-        fprintf (fp, 
-                 " %15" PRIu64 
-                 " %15" PRIu64
-                 " : ",                 
-                 namepid_first_instr[name][pid], namepid_last_instr[name][pid]);
-        for ( uint32_t i=0; i<num_cells; i++ ) {
-            if ( namepid_cells[name][pid].count(i) == 0 ) {
-                fprintf (fp, " ");
-            }
-            else {
-                if ( namepid_cells[name][pid][i] < 2 ) {
+    std::vector<ProcessKV> sorted_pds(process_datas.begin(), process_datas.end());
+    std::sort(sorted_pds.begin(), sorted_pds.end(),
+            [](const ProcessKV &lhs, const ProcessKV &rhs) {
+                return lhs.second.first < rhs.second.first; });
+
+    for (auto &pd_kv : sorted_pds) {
+        const NamePid &namepid = pd_kv.first;
+        const ProcessData &pd = pd_kv.second;
+
+        if (pd.count >= SAMPLE_CUTOFF) {
+            std::stringstream ss;
+            ss << namepid.pid << "-" << namepid.name;
+            fprintf(fp, "%20s : [", ss.str().c_str());
+            for (unsigned i = 0; i < num_cells; i++) {
+                auto it = pd.cells.find(i);
+                if (it == pd.cells.end() || it->second < 2) {
                     fprintf(fp, " ");
-                }
-                else {
-                    fprintf (fp, "#");
+                } else {
+                    fprintf(fp, "#");
                 }
             }
-        }        
-        fprintf (fp, "\n");
-        
+            fprintf(fp, "]\n");
+        }
     }
-    fprintf (fp, "\n");
+
+    fprintf(fp, "\n");
     for (uint32_t i=5; i<num_cells; i+=5) {
         uint64_t instr = i / scale;
-        fprintf (fp, "                      ");
-        fprintf (fp, "                 ");
-        fprintf (fp, " %15" PRIu64 " : ", instr);
+        fprintf (fp, "%20" PRIu64 " :  ", instr);
         for (uint32_t j=0; j<i; j++) {
             fprintf (fp, " ");
         }
@@ -231,11 +170,9 @@ target_ulong last_asid = 0;
 
 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-
     if ((a_counter % 1000000) == 0) {
         spit_asidstory();
     }
-  
 
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck.
@@ -250,11 +187,10 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     }
     OsiProc *p = get_current_process(env);
     if (pid_ok(p->pid)) {
-        namepid_to_asids[p->name][p->pid][p->asid]++;
+        ProcessData &pd = process_datas[NamePid(p->name, p->pid, p->asid)];
         // keep track of first rr instruction for each name/pid
-        if ((namepid_first_instr.count(p->name) == 0) 
-            || (namepid_first_instr[p->name].count(p->pid) == 0)) {
-            namepid_first_instr[p->name][p->pid] = rr_get_guest_instr_count();
+        if (pd.first == 0) {
+            pd.first = rr_get_guest_instr_count();
         }
         if (pandalog) {
             if (last_name == 0
@@ -279,10 +215,6 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 
-
-
-
-
 int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
     b_counter ++;
     if ((b_counter % SAMPLE_RATE) != 0) {
@@ -291,27 +223,15 @@ int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
     OsiProc *p = get_current_process(env);
     if (pid_ok(p->pid)) {
         Instr instr = rr_get_guest_instr_count();
-        namepid_to_asids[p->name][p->pid][p->asid]++;
+        ProcessData &pd = process_datas[NamePid(p->name, p->pid, p->asid)];
+        pd.count++;
         uint32_t cell = instr * scale;
-        namepid_cells[p->name][p->pid][cell] ++;
-        namepid_last_instr[p->name][p->pid] = std::max(namepid_last_instr[p->name][p->pid], instr);
+        pd.cells[cell]++;
+        pd.last = std::max(pd.last, instr);
     }
-    if ((vol_instr_count != 0) 
-        && (!vol_done) 
-        && (rr_get_guest_instr_count() > vol_instr_count)) {
-        printf ("instr count is %" PRIu64 " \n", rr_get_guest_instr_count());
-        std::string fn = "asidstory.vol";
-        vol((char *) fn.c_str());
-        vol_done = true;
-    }        
     free(p);
     return 0;
 }
-
-
-
-    
-
 
 bool init_plugin(void *self) {    
 
@@ -320,8 +240,7 @@ bool init_plugin(void *self) {
     panda_require("osi");
    
     // this sets up OS introspection API
-    bool x = init_osi_api();  
-    assert (x==true);
+    assert(init_osi_api());
 
     panda_cb pcb;    
     pcb.before_block_exec = asidstory_before_block_exec;
@@ -330,15 +249,11 @@ bool init_plugin(void *self) {
     pcb.after_block_exec = asidstory_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     
-    panda_arg_list *args = panda_get_args("asidstory");
-    vol_instr_count = panda_parse_uint64(args, "vol_instr_count", 0);
-    vol_cmds = panda_parse_string(args, "vol_cmds", "xxx");
+    //panda_arg_list *args = panda_get_args("asidstory");
     
     min_instr = 0;   
     return true;
 }
-
-
 
 void uninit_plugin(void *self) {
   spit_asidstory();
