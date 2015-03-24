@@ -9,6 +9,7 @@ include $(SRC_PATH)/rules.mak
 PLUGIN_TARGET_DIR=$(SRC_PATH)$(TARGET_DIR)panda_plugins
 
 PLUGIN_SRC_ROOT=$(SRC_PATH)/panda_plugins
+PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
 ifdef CONFIG_LINUX_USER
 
@@ -27,9 +28,11 @@ $(PLUGIN_OBJ_DIR):
 	@[ -d  $@ ] || mkdir -p $@
 
 $(PLUGIN_OBJ_DIR)/%.o: %.c
+	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) -c -o $@ $<,"  CC    $@")
 
 $(PLUGIN_OBJ_DIR)/%.o: %.cpp $(GENERATED_HEADERS)
+	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,$(CXX) $(filter-out -Wnested-externs -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration -Wold-style-definition, $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS)) -c -o $@ $<,"  CXX   $@")
 
 $(PLUGIN_TARGET_DIR)/%.o: %.c
