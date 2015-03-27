@@ -85,7 +85,7 @@ void taint2_track_taint_state(void);
 #include "taint_ops.h"
 #include "taint2.h"
 
-#include "pirate_mark_lava_struct.h"
+#include "panda_hypercall_struct.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -462,9 +462,9 @@ void i386_hypercall_callback(CPUState *env){
     
     // LAVA Query op.
     // EBX contains addr.
-    if (env->regs[R_EAX] == 11) {
+    if (env->regs[R_EAX] == 0xabcd) {
         target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
-        PirateMarkLavaInfo pmli = {};
+        PandaHypercallStruct phs = {};
         char filenameStr[500];
         char astNodeStr[500];
         if (taintEnabled){
@@ -473,19 +473,22 @@ void i386_hypercall_callback(CPUState *env){
             //uint64_t array;
             //label_set_iter(FastShad::query(shadow->ram, addr), record_bit, &array);
             
+            //assert(env->regs[R_EAX] == 0xabcd);
             // TODO some way to do error checking/handling?
-            panda_virtual_memory_rw(env, env->regs[R_ESI],
-                (uint8_t*)&pmli, sizeof(PirateMarkLavaInfo), false);
-            panda_virtual_memory_rw(env, pmli.filenamePtr,
+            panda_virtual_memory_rw(env, env->regs[R_ECX],
+                (uint8_t*)&phs, sizeof(PandaHypercallStruct), false);
+            panda_virtual_memory_rw(env, phs.src_filename,
                 (uint8_t*)&filenameStr, 500, false);
-            pmli.filenamePtr = (uint64_t)filenameStr;
-            panda_virtual_memory_rw(env, pmli.astNodePtr,
+            phs.src_filename = (uint64_t)filenameStr;
+            panda_virtual_memory_rw(env, phs.src_ast_node_name,
                 (uint8_t*)&astNodeStr, 500, false);
-            pmli.astNodePtr = (uint64_t)astNodeStr;
+            phs.src_ast_node_name = (uint64_t)astNodeStr;
+
+
             printf("LAVA Query Info:\n");
-            printf("File name: %s\n", (char*)pmli.filenamePtr);
-            printf("Line number: %lu\n", pmli.lineNum);
-            printf("AST node: %s\n\n", (char*)pmli.astNodePtr);
+            printf("File name: %s\n", (char*)phs.src_filename);
+            printf("Line number: %lu\n", phs.src_linenum);
+            printf("AST node: %s\n\n", (char*)phs.src_ast_node_name);
             
             printf("taint2: %u labels.\n", taint2_query_ram(addr));
             printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,

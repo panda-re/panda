@@ -7,7 +7,9 @@
  * Keep me in sync between PANDA and LAVA repos
  */
 
-#include "pirate_mark_lava_struct.h"
+#include "stdio.h"
+
+#include "panda_hypercall_struct.h"
 
 #define TARGET_I386
 
@@ -15,16 +17,16 @@
 #error "Define your architecture (TARGET_I386 or TARGET_ARM) with -D"
 #endif
 
-const int LABEL_BUFFER = 7;
-const int LABEL_BUFFER_POS = 8;
-const int QUERY_BUFFER = 9;
-const int GUEST_UTIL_DONE = 10;
-const int LAVA_QUERY_BUFFER = 11;
+static const int LABEL_BUFFER = 7;
+static const int LABEL_BUFFER_POS = 8;
+static const int QUERY_BUFFER = 9;
+static const int GUEST_UTIL_DONE = 10;
+static const int LAVA_QUERY_BUFFER = 11;
 
 #ifdef TARGET_I386
 static inline
 void hypercall(void *buf, unsigned long len, long label, unsigned long off,
-    PirateMarkLavaInfo *pmli, int action) {
+    void *pmli, int action) {
   int eax = action;
   void *ebx = buf;
   unsigned long ecx = len;
@@ -33,29 +35,42 @@ void hypercall(void *buf, unsigned long len, long label, unsigned long off,
   void *esi = pmli;
 
   asm __volatile__
-      ("push %%eax \t\n\
-        push %%ebx \t\n\
-        push %%ecx \t\n\
-        push %%edx \t\n\
-        push %%edi \t\n\
-        push %%esi \t\n\
-        mov  %0, %%eax \t\n\
+      ("mov  %0, %%eax \t\n\
         mov  %1, %%ebx \t\n\
         mov  %2, %%ecx \t\n\
         mov  %3, %%edx \t\n\
         mov  %4, %%edi \t\n\
         mov  %5, %%esi \t\n\
         cpuid \t\n\
-        pop  %%esi \t\n\
-        pop  %%edi \t\n\
-        pop  %%edx \t\n\
-        pop  %%ecx \t\n\
-        pop  %%ebx \t\n\
-        pop  %%eax \t\n\
        "
       : /* no output registers */
       : "g" (eax), "g" (ebx), "g" (ecx), "g" (edx), "g" (edi), "g" (esi) /* input operands */
-      : //"eax", "ebx", "ecx", "edx" /* clobbered registers */
+       : "eax", "ebx", "ecx", "edx", "edi", "esi" /* clobbered registers */
+      );
+  return;
+}
+
+static inline
+void hypercall2(volatile PandaHypercallStruct *phs) {
+  // a magic value (0xabcd) can be checked in panda @ cpuid 
+  // to be certain this really is a hypercall
+  // inside the panda hypercall code, ecx should point
+  // to a PandaHypercallStruct with any data we might need.
+  //
+  // EBX PIC register can't be clobbered, we have to save/restore
+  // Also need to pretend we didn't mess with the stack
+  asm __volatile__
+      ("push %%ebx \t\n\
+        add $4, %%esp \t\n\
+        mov  $0xabcd, %%eax \t\n\
+        mov  %0, %%ecx \t\n\
+        cpuid \t\n\
+        sub $4, %%esp \t\n\
+        pop %%ebx \t\n\
+       "
+       :                     /* no output registers */
+       : "g" (phs)           /* input operands */
+       : "eax", "ecx", "edx" /* clobbered registers */
       );
   return;
 }
@@ -96,7 +111,7 @@ void hypercall(void *buf, unsigned long len, long label, unsigned long off, int 
  * len is the length of the buffer to be labeled */
 static inline
 void vm_label_buffer(void *buf, int label, unsigned long len,
-    PirateMarkLavaInfo *pmli) {
+    void *pmli) {
   hypercall(buf, len, label, 0, pmli, LABEL_BUFFER);
   return;
 }
@@ -106,7 +121,7 @@ void vm_label_buffer(void *buf, int label, unsigned long len,
  * offset is currently managed by file seeking in the utils */
 static inline
 void vm_label_buffer_pos(void *buf, unsigned long len, int offset,
-    PirateMarkLavaInfo *pmli) {
+    void *pmli) {
   hypercall(buf, len, 0, offset, pmli, LABEL_BUFFER_POS);
   return;
 }
@@ -116,19 +131,24 @@ void vm_label_buffer_pos(void *buf, unsigned long len, int offset,
  * offset is currently managed by file seeking in the utils */
 static inline
 void vm_query_buffer(void *buf, unsigned long len, int offset,
-    PirateMarkLavaInfo *pmli) {
+    void *pmli) {
   hypercall(buf, len, 0, offset, pmli, QUERY_BUFFER);
   return;
 }
 
-/* buf is the address of the buffer to be queried
- * len is the length of the buffer to be queried
- * offset is currently managed by file seeking in the utils */
 static inline
-void vm_lava_query_buffer(void *buf, unsigned long len, int offset,
-    PirateMarkLavaInfo *pmli) {
-  hypercall(buf, len, 0, offset, pmli, LAVA_QUERY_BUFFER);
-  return;
+void vm_lava_query_buffer(void *buf, unsigned long len, 
+			   char *src_filename, char *src_ast_node_name,
+			   unsigned long linenum) {
+  volatile PandaHypercallStruct phs = {};
+  phs.action = LAVA_QUERY_BUFFER;
+  phs.buf = (uint64_t) ((uintptr_t) buf);
+  phs.len = (uint32_t) len;
+  phs.label_num = 0; // unused;
+  phs.src_filename = (uint64_t) ((uintptr_t) src_filename);
+  phs.src_ast_node_name = (uint64_t) ((uintptr_t) src_ast_node_name);
+  phs.src_linenum = linenum;
+  hypercall2(&phs);
 }
 
 static inline
