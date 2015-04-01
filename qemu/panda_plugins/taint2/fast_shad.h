@@ -53,7 +53,7 @@ struct TaintData {
 
     void add(TaintData td) {
         ls = label_set_union(ls, td.ls);
-        tcn = std::max(tcn, td.tcn) + 1;
+        tcn = std::max(tcn, td.tcn);
     }
 
     static TaintData copy_union(TaintData td1, TaintData td2) {
@@ -96,8 +96,8 @@ public:
 
     // Taint an address with a labelset.
     inline void set(uint64_t addr, LabelSetP ls) {
-        if (track_taint_state && ls) taint_state_changed();
         *get_ls_p(addr) = ls;
+        if (track_taint_state && ls) taint_state_changed();
     }
 
     static inline void copy(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
@@ -106,10 +106,6 @@ public:
         tassert(dest + size <= shad_dest->size);
         tassert(src + size <= shad_src->size);
         
-        if (track_taint_state &&
-                (shad_dest->range_tainted(dest, size) ||
-                 shad_src->range_tainted(src, size)))
-            taint_state_changed();
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < size; i++) {
             if (*shad_src->get_ls_p(src + i) != NULL) {
@@ -123,6 +119,11 @@ public:
 #endif
 
         memcpy(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(TaintData));
+
+        if (track_taint_state &&
+                (shad_dest->range_tainted(dest, size) ||
+                 shad_src->range_tainted(src, size)))
+            taint_state_changed();
     }
 
     // Remove taint.
@@ -130,8 +131,6 @@ public:
         tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
         
-        if (track_taint_state && range_tainted(addr, remove_size))
-            taint_state_changed();
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < remove_size; i++) {
             if (*get_ls_p(addr + i) != NULL) {
@@ -142,6 +141,9 @@ public:
 #endif
 
         memset(get_ls_p(addr), 0, remove_size * sizeof(TaintData));
+
+        if (track_taint_state && range_tainted(addr, remove_size))
+            taint_state_changed();
     }
 
     // Query. NULL if untainted.
@@ -172,9 +174,10 @@ public:
 
     inline void set_full(uint64_t addr, TaintData td) {
         tassert(addr < size);
+        labels[addr] = td;
+
         if (track_taint_state && (td.ls || *get_ls_p(addr)))
             taint_state_changed();
-        labels[addr] = td;
     }
 
     inline uint32_t query_tcn(uint64_t addr) {
