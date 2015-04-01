@@ -257,7 +257,7 @@ void __taint2_enable_taint(void) {
         exit(1);
     }
 
-    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    //tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 
     printf("taint2: Done verifying module. Running...\n");
 }
