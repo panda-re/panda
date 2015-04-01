@@ -190,8 +190,8 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     ADD_MAPPING(taint_memlog_pop);
 
-    ADD_MAPPING(label_set_union);
-    ADD_MAPPING(label_set_singleton);
+    //ADD_MAPPING(label_set_union);
+    //ADD_MAPPING(label_set_singleton);
 #undef ADD_MAPPING
 
     std::cout << "taint2: Done initializing taint transformation." << std::endl;

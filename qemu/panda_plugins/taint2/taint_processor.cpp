@@ -351,7 +351,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
 #endif
             break;
         case MADDR:
-            shad->ram->set(a->val.ma + a->off, ls);
+            shad->ram->label(a->val.ma + a->off, ls);
 #ifdef TAINTDEBUG
             taint_log("Labelset put in RAM: 0x%lx\n", (uint64_t)(a->val.ma + a->off));
             //labelset_spit(ls);
@@ -376,7 +376,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             taint_log("Labelset put in LA: 0x%lx\n", (uint64_t)(a->val.la+a->off));
             //labelset_spit(ls);
 #endif
-            shad->llv->set(a->val.la*MAXREGSIZE + a->off, ls);
+            shad->llv->label(a->val.la*MAXREGSIZE + a->off, ls);
             break;
         case GREG:
 #ifdef TAINTDEBUG
@@ -384,7 +384,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
 #endif
             // need to call labelset_copy to increment ref count
-            shad->grv->set(a->val.gr * WORDSIZE + a->off, ls);
+            shad->grv->label(a->val.gr * WORDSIZE + a->off, ls);
             break;
         case GSPEC:
 #ifdef TAINTDEBUG
@@ -392,14 +392,14 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
 #endif
             // SpecAddr enum is offset by the number of guest registers
-            shad->gsv->set(a->val.gs - NUMREGS + a->off, ls);
+            shad->gsv->label(a->val.gs - NUMREGS + a->off, ls);
             break;
         case RET:
 #ifdef TAINTDEBUG
             taint_log("Labelset put in ret\n");
             //labelset_spit(ls);
 #endif
-            shad->ret->set(a->off, ls);
+            shad->ret->label(a->off, ls);
             break;
         default:
             assert (1==0);
@@ -430,10 +430,8 @@ std::set < uint32_t > labels_applied;
 // label -- associate label l with address a
 void tp_label(Shad *shad, Addr *a, uint32_t l) {
     assert (shad != NULL);
-    LabelSetP ls = tp_labelset_get(shad, a);
-    LabelSetP ls2 = label_set_singleton(l);
-    LabelSetP result = label_set_union(ls, ls2);
-    tp_labelset_put(shad, a, result);
+    LabelSetP ls = label_set_singleton(l);
+    tp_labelset_put(shad, a, ls);
     labels_applied.insert(l);
 }
 
