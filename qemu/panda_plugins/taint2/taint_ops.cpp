@@ -154,7 +154,9 @@ void taint_mix(
         uint64_t src, uint64_t src_size) {
     taint_log("mix: %lx[%lx+%lx] <- %lx+%lx\n",
             (uint64_t)shad, dest, dest_size, src, src_size);
-    bulk_set(shad, dest, dest_size, mixed_labels(shad, src, src_size));
+    TaintData td = mixed_labels(shad, src, src_size);
+    td.tcn++;
+    bulk_set(shad, dest, dest_size, td);
 }
 
 static const uint64_t ones = ~0UL;
@@ -176,6 +178,7 @@ void taint_pointer(
     }
 
     TaintData td = mixed_labels(shad_ptr, ptr, ptr_size);
+    td.tcn++;
     if (src == ones) {
         bulk_set(shad_dest, dest, size, td);
     } else {
