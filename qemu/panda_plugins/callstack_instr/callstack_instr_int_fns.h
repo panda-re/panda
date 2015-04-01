@@ -16,5 +16,7 @@ int get_functions(target_ulong *functions, int n, CPUState *env);
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *env, prog_point *p);
 
+// writes callstack info to pandalog
+void callstack_pandalog(void);
 
 #endif

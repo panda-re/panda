@@ -1,7 +1,7 @@
 #ifndef __PANDA_ADDR_H_
 #define __PANDA_ADDR_H_
 
-
+#include <stdint.h>
 
 /* these need to be the same size because when we have an unknown dynamic value
  * that we need to fill in later, we need to fix up the taint op in the buffer

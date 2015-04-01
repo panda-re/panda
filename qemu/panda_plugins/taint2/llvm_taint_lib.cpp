@@ -44,8 +44,8 @@ extern "C" {
 extern bool tainted_pointer;
 
 PPP_PROT_REG_CB(on_branch2);
-
 PPP_CB_BOILERPLATE(on_branch2);
+
 }
 
 extern char *qemu_loc;
@@ -81,7 +81,8 @@ static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) 
 
 static void taint_branch_run(FastShad *shad, uint64_t src) {
     // this arg should be the register number
-    PPP_RUN_CB(on_branch2, src / MAXREGSIZE);
+    Addr a = make_laddr(src / MAXREGSIZE, 0);
+    PPP_RUN_CB(on_branch2, a);
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }

@@ -6,14 +6,15 @@ message TaintQueryUniqueLabelSet {
     required uint64 ptr = 1;
     repeated uint32 label = 2;
 }
+message SrcInfo {
+    required string filename = 1;
+    required uint32 linenum = 2;
+    required string astnodename = 3;
+}
 message TaintQuery {
-    required uint64 asid = 1;
-    required uint64 ptr = 2;
-    required uint32 tcn = 3;
-    required string filename = 4;
-    required uint32 linenum = 5;
-    required string astnodename = 6;
-    required uint32 offset = 7;
+    required uint64 ptr = 1;
+    required uint32 tcn = 2;
+    required uint32 offset = 3;
 }
 message Process {
     required uint32 pid = 1;
@@ -54,8 +55,10 @@ required uint64 instr = 2;
 repeated float dead_data = 32;
 optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
 optional TaintQuery taint_query = 34;
-repeated uint32 tainted_branch_label = 9;
+optional SrcInfo src_info = 35;
+optional bool taint_query_hypercall = 38;
 repeated uint64 callstack = 10;
+optional bool tainted_branch = 36;
 optional uint64 asid = 3; 
 optional string process_name = 4;
 optional uint32 process_id = 5;
@@ -82,5 +85,6 @@ optional ProcessKeyValue nt_delete_value_key = 28;
 optional ProcessKeyIndex nt_enumerate_key = 29;
 optional ProcessKeyIndex nt_enumerate_value_key = 30;
 optional ProcessKeyValue nt_set_value_key = 31;
+optional bool tainted_instr = 37;
 
 }

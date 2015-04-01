@@ -36,7 +36,7 @@ typedef struct SdDir32 SdDir32;
 typedef struct SdDir64 SdDir64;
 typedef struct addr_struct Addr;
 
-typedef void (*on_branch2_t) (uint64_t);
+typedef void (*on_branch2_t) (Addr);
 typedef void (*on_taint_change_t) (Addr);
 
 // Unused for now.
@@ -86,11 +86,12 @@ void tp_label(Shad *shad, Addr *a, uint32_t l);
 
 void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l);
 
-LabelSetP tp_query(Shad *shad, Addr *a);
+LabelSetP tp_query(Shad *shad, Addr a);
 LabelSetP tp_query_ram(Shad *shad, uint64_t pa) ;
 LabelSetP tp_query_reg(Shad *shad, int reg_num, int offset);
 LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset);
 
+uint32_t tp_query_tcn(Shad *shad, Addr a);
 uint32_t tp_query_tcn_ram(Shad *shad, uint64_t pa);
 uint32_t tp_query_tcn_reg(Shad *shad, int reg_num, int offset);
 uint32_t tp_query_tcn_llvm(Shad *shad, int reg_num, int offset);

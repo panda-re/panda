@@ -29,6 +29,9 @@ PANDAENDCOMMENT */
 
 #include "label_set.h"
 
+
+#include "../common/prog_point.h"
+
 extern "C" {
 
 #include <sys/time.h>
@@ -42,6 +45,9 @@ extern "C" {
 #include "rr_log.h"
 #include "pandalog.h"
 #include "cpu.h"
+#include "panda/panda_addr.h"
+
+#include "../callstack_instr/callstack_instr_ext.h"
 
 extern int loglevel;
 
@@ -51,10 +57,16 @@ int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_delete_ram(uint64_t pa);
 
+   
+uint8_t taint2_query_pandalog (Addr a);
+
+
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
 uint32_t taint2_query_llvm(int reg_num, int offset);
 
+
+uint32_t taint2_query_tcn(Addr a);
 uint32_t taint2_query_tcn_ram(uint64_t pa);
 uint32_t taint2_query_tcn_reg(int reg_num, int offset);
 uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
@@ -363,7 +375,56 @@ void panda_virtual_string_read(CPUState *env, target_ulong vaddr, char *str) {
     str[PANDA_MAX_STRING_READ-1] = 0;
 }
 
+// used to ensure that we only write a label sets to pandalog once
 std::set < LabelSetP > ls_returned;
+
+
+
+// queries taint on this addr and
+// if anything is tainted returns 1, else returns 0
+// if there is taint, we write an entry to the pandalog. 
+uint8_t __taint2_query_pandalog (Addr a) {
+    uint8_t saw_taint = 0;
+    LabelSetP ls = tp_query(shadow, a);
+    if (ls) {
+        saw_taint = 1;
+        if (ls_returned.count(ls) == 0) {
+            // we only want to actually write a particular set contents to pandalog once
+            // this ls hasn't yet been written to pandalog
+            // write out mapping from ls pointer to labelset contents
+            // as its own separate log entry
+            ls_returned.insert(ls);
+            Panda__TaintQueryUniqueLabelSet *tquls = (Panda__TaintQueryUniqueLabelSet *) malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
+            *tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
+            tquls->ptr = (uint64_t) ls;
+            tquls->n_label = ls_card(ls);
+            tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
+            el_arr_ind = 0;
+            tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.taint_query_unique_label_set = tquls;
+            pandalog_write_entry(&ple);
+            free (tquls->label);
+            free (tquls);
+        }
+        // safe to refer to the set by the pointer in this next message
+        Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
+        *tq = PANDA__TAINT_QUERY__INIT;
+        tq->ptr = (uint64_t) ls;
+        tq->tcn = taint2_query_tcn(a);
+        //        tq->offset = offset;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.taint_query = tq;
+        pandalog_write_entry(&ple);
+        free(tq);
+    }    
+    return saw_taint;
+}
+
+
+
+
+
 
 #ifdef TARGET_I386
 // Support all features of label and query program
@@ -418,82 +479,47 @@ void i386_hypercall_callback(CPUState *env){
 #endif
 
     
-    if (pandalog && (env->regs[R_EAX] == 0xabcd)) {
+    if (pandalog && env->regs[R_EAX] == 0xabcd) {
         // LAVA Query op.
-        // ECX contains addr.
+        // ECX contains addr of the hypercall struct
         if (taintEnabled && (taint2_num_labels_applied() > 0)){
-            printf ("lava query\n");
-            // phys addr of hypercall struct is in ECX
+            // okay, taint is on and some labels have actually been applied 
             target_ulong addr = panda_virt_to_phys(env, ECX);
             if ((int)addr == -1) {
                 printf ("taint2: query of unmapped addr?:  vaddr=0x%x paddr=0x%x\n",
                         (uint32_t) ECX, (uint32_t) addr);
             }
             else {
-                printf ("and it is a valid virtual addr\n");
-                printf ("pc=0x%x\n", (int) panda_current_pc(env));
-
                 PandaHypercallStruct phs;
                 panda_virtual_memory_rw(env, ECX, (uint8_t *) &phs, sizeof(phs), false);
                 for (uint32_t offset=0; offset<phs.len; offset++) {
-                    uint32_t pa = panda_virt_to_phys(env, phs.buf + offset);                    
-                    if ((int) pa != -1) {
-                        LabelSetP ls = tp_query_ram(shadow, pa);
-                        if (ls) {
-                            printf ("pandalogging taint query\n");
-                            // we only want to actually write a particular set contents to pandalog once
-                            if (ls_returned.count(ls) == 0) {
-                                // this ls hasn't yet been written to pandalog
-                                // write out mapping from ls pointer to labelset contents
-                                // as its own separate log entry
-                                ls_returned.insert(ls);
-                                Panda__TaintQueryUniqueLabelSet *tquls = (Panda__TaintQueryUniqueLabelSet *) malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
-                                *tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
-                                tquls->ptr = (uint64_t) ls;
-                                tquls->n_label = ls_card(ls);
-                                tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
-                                el_arr_ind = 0;
-                                tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
-                                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                                ple.taint_query_unique_label_set = tquls;
-                                pandalog_write_entry(&ple);
-                                free (tquls->label);
-                                free (tquls);
-                            }
+                    // query taint on this virt addr 
+                    // and pandalog appropriately 
+                    uint32_t va = phs.buf + offset;
+                    uint32_t pa =  panda_virt_to_phys(env, va);
+                    if ((int) pa != -1) {                         
+                        // do taint query & ONLY write results to pandalog if something is tainted
+                        Addr a = make_maddr (pa);
+                        bool res = __taint2_query_pandalog(a);
+                        if (res) {
+                            // this means something was actually tainted on va 
+                            callstack_pandalog();
+                            Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
+                            *si = PANDA__SRC_INFO__INIT;
                             char filenameStr[500];
                             char astNodeStr[500];
                             panda_virtual_string_read(env, phs.src_filename, filenameStr);
                             panda_virtual_string_read(env, phs.src_ast_node_name, astNodeStr);
-                            // safe to refer to the set by the pointer in this next message
-                            Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
-                            *tq = PANDA__TAINT_QUERY__INIT;
-                            tq->asid = panda_current_asid(env);
-                            tq->ptr = (uint64_t) ls;
-                            tq->tcn = taint2_query_tcn_ram(pa);
-                            tq->filename = filenameStr;
-                            tq->linenum = phs.src_linenum;
-                            tq->astnodename = astNodeStr;
-                            tq->offset = offset;
+                            si->filename = filenameStr;
+                            si->astnodename = astNodeStr;
+                            si->linenum = phs.src_linenum;
                             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                            ple.taint_query = tq;
+                            ple.src_info = si;
                             pandalog_write_entry(&ple);
-                            free(tq);
-                        }
-                    }
-                    else {
-                        printf("taint2: Query operation detected @ %lu. vaddr=0x%x paddr=0x%x\n",
-                               rr_get_guest_instr_count(), (uint32_t) EBX, (uint32_t) addr);
-                        
-                        uint32_t num_labels = taint2_query_ram(addr);
-                        printf("taint2: Queried %lx[%lx]\n", (uint64_t)shadow->ram,
-                               (uint64_t)addr);
-                        printf("taint2: %u labels.\n", num_labels);
-                        qemu_log_mask(CPU_LOG_TAINT_OPS, "query: %lx[%lx]\n",
-                                      (uint64_t)shadow->ram, (uint64_t)addr);
-                        if (num_labels > 0) {
-                            printf ("labels: ");
-                            tp_ls_ram_iter(shadow, addr, label_spit, NULL);
-                            printf ("\n");
+                            free(si);
+                            ple = PANDA__LOG_ENTRY__INIT;
+                            ple.taint_query_hypercall = true;
+                            pandalog_write_entry(&ple);
                         }
                     }
                 }
@@ -549,6 +575,9 @@ void __taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
+
+
+
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality
 uint32_t __taint2_query_ram(uint64_t pa) {
@@ -567,6 +596,11 @@ uint32_t __taint2_query_llvm(int reg_num, int offset) {
     return ls_card(ls);
 }
 
+
+
+uint32_t __taint2_query_tcn(Addr a) {
+    return tp_query_tcn(shadow, a);
+}
 
 uint32_t __taint2_query_tcn_ram(uint64_t pa) {
     return tp_query_tcn_ram(shadow, pa);
@@ -647,10 +681,19 @@ void taint2_label_ram(uint64_t pa, uint32_t l) {
     __taint2_label_ram(pa, l);
 }
 
+
+uint8_t taint2_query_pandalog (Addr a) {
+    return __taint2_query_pandalog(a);
+}
+
 uint32_t taint2_query_ram(uint64_t pa) {
   return __taint2_query_ram(pa);
 }
 
+
+uint32_t taint2_query_tcn(Addr a) {
+    return __taint2_query_tcn(a);
+}
 
 uint32_t taint2_query_tcn_ram(uint64_t pa) {
     return __taint2_query_tcn_ram(pa);
@@ -786,6 +829,9 @@ bool init_plugin(void *self) {
     if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
     if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
     optimize_llvm = panda_parse_bool(args, "opt");
+
+    panda_require("callstack_instr");
+    assert(init_callstack_instr_api());
 
     return true;
 }

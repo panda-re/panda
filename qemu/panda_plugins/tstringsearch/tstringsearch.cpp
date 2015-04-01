@@ -15,6 +15,7 @@
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include "panda/panda_addr.h"
 #include "../taint2/taint2.h"
 
 extern "C" {

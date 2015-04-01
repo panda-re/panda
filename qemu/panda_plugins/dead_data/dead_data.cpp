@@ -22,6 +22,8 @@ PANDAENDCOMMENT */
 #include <map>
 #include <vector>
 
+#include "panda/panda_addr.h"
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
@@ -31,7 +33,6 @@ extern "C" {
 #include "pandalog.h"
 #include "panda_plugin.h"
 #include "../taint2/taint2_ext.h"
-#include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
 #include "panda_common.h"
@@ -40,11 +41,9 @@ extern "C" {
 
 
 #include "../common/prog_point.h"
-//#include "../callstack_instr/callstack_instr_ext.h"
 
-//#include "../taint/taint_processor.h"
+#include "../taint2/taint2.h"
 
-typedef void (*on_branch_t) (uint64_t, int); // hack since we can't include both taint.h's
 
 extern uint64_t replay_get_guest_instr_count(void);
 extern uint64_t replay_get_total_num_instructions(void);
@@ -60,21 +59,6 @@ void uninit_plugin(void *);
 }
 
 #ifdef CONFIG_SOFTMMU
-
-
-
-bool use_taint2 = false;
-
-#if 0
-void callstack() {
-    // callstack info
-    target_ulong callers[16];
-    int n = get_callers(callers, 16, cpu_single_env);
-    for (int i=0; i<n; i++) {
-        printf ("callstack: %d " TARGET_FMT_lx " \n", i, callers[i]);
-    }
-}
-#endif
 
 /*
  dead_data[l] is a count of the number of number of times the label l
@@ -175,28 +159,15 @@ uint64_t *callers64=NULL;
 uint32_t num_callers = 0;
 
 
-
-void dead_data_on_branch(uint64_t pc, int reg_num) {
-    for (uint32_t offset=0; offset<8; offset++) {
-        if (taint_query_llvm(reg_num, offset)) {                       
-            taint_labelset_llvm_iter(reg_num, offset, dd_each_label, NULL);
-        }
-    }
-}
-
-uint64_t ii=0;
-
-void dead_data_on_branch_taint2(uint64_t reg_num) {
+void dead_data_on_branch(Addr a) {
+    assert (a.typ == LADDR);
+    LAddr reg_num = a.val.la;       
     current_instr = rr_get_guest_instr_count();
-    ii++;
     for (uint32_t offset=0; offset<8; offset++) {
         if (taint2_query_llvm(reg_num, offset)) {           
             // this offset of reg is tainted.
             // iterate over labels in set & update dead data
             taint2_labelset_llvm_iter(reg_num, offset, dd_each_label, NULL);
-            if ((ii % 100000) == 0) {
-                //                panda_end_replay();
-            }
         }
     }
 }
@@ -206,14 +177,11 @@ bool first_enable_taint = true;
 
 
 int dead_data_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
-    if ((use_taint2 && taint2_enabled()) || (!use_taint2 && taint_enabled())) {
-        if (first_enable_taint) {
-            total_instr = replay_get_total_num_instructions();
-            if (use_taint2) { PPP_REG_CB("taint2", on_branch2, dead_data_on_branch_taint2); }
-            else { PPP_REG_CB("taint", on_branch, dead_data_on_branch); }
-            first_enable_taint = false;
-            printf ("enabling on_branch taint api callbacks\n");
-        }
+    if ((taint2_enabled()) && (first_enable_taint)) {
+        first_enable_taint = false;        
+        total_instr = replay_get_total_num_instructions();
+        PPP_REG_CB("taint2", on_branch2, dead_data_on_branch);
+        printf ("enabling on_branch taint api callbacks\n");
     }
     return 0;
 }
@@ -227,16 +195,8 @@ bool init_plugin(void *self) {
     panda_cb pcb;
     pcb.after_block_exec = dead_data_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    panda_arg_list *args = panda_get_args("dead_data");
-    use_taint2 = !panda_parse_bool(args, "taint1");
-    if (use_taint2) {
-        panda_require("taint2");
-        assert (init_taint2_api());
-    }
-    else {
-        panda_require("taint");
-        assert (init_taint_api());
-    }    
+    panda_require("taint2");
+    assert (init_taint2_api());
     return true;
 }
 

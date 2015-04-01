@@ -26,6 +26,7 @@ extern "C" {
 
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
+#include "pandalog.h"
 
 #include "callstack_instr.h"
 
@@ -348,6 +349,31 @@ int get_callers(target_ulong callers[], int n, CPUState *env) {
     return i;
 }
 
+
+// writes an entry to the pandalog with callstack info (and instr count and pc)
+void callstack_pandalog() {
+    if (pandalog) {
+        extern CPUState *cpu_single_env;
+        CPUState *env = cpu_single_env;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        uint32_t n = 0;
+        std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
+        auto rit = v.rbegin();
+        for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
+            n ++;
+        }
+        ple.callstack = (uint64_t *) malloc (sizeof(uint64_t) * n);
+        v = callstacks[get_stackid(env,env->panda_guest_pc)];
+        rit = v.rbegin();
+        uint32_t i=0;
+        for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
+            ple.callstack[i] = rit->pc;
+        }
+        pandalog_write_entry(&ple);
+    }    
+}
+
+
 int get_functions(target_ulong functions[], int n, CPUState *env) {
     std::vector<target_ulong> &v = function_stacks[get_stackid(env,env->panda_guest_pc)];
     if (v.empty()) {
@@ -385,6 +411,8 @@ void get_prog_point(CPUState *env, prog_point *p) {
 
     p->pc = env->panda_guest_pc;
 }
+
+
 
 bool init_plugin(void *self) {
     printf("Initializing plugin callstack_instr\n");

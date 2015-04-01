@@ -1,5 +1,7 @@
 #define __STDC_FORMAT_MACROS
 
+#include "panda/panda_addr.h"
+
 #include "../taint2/taint2.h"
 
 extern "C" {
@@ -11,7 +13,6 @@ extern "C" {
 #include "pandalog.h"
 #include "panda_common.h"
 #include "../syscalls2/gen_syscalls_ext_typedefs_linux_x86.h"
-#include "../taint/taint_ext.h"
 #include "../taint2/taint2_ext.h"
 #include "panda_plugin_plugin.h" 
     
@@ -29,7 +30,6 @@ extern "C" {
 double prob_label_u32 = 0;
 const char *taint_filename = 0;
 bool positional_labels = true;
-bool use_taint2 = true;
 bool no_taint = true;
 
 #define MAX_FILENAME 256
@@ -68,16 +68,10 @@ void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
     }
     if (!no_taint) {
         if (positional_labels) {
-            if (use_taint2) 
-                taint2_label_ram(pa, label_num);
-            else 
-                taint_label_ram(pa, label_num);
+            taint2_label_ram(pa, label_num);
         }
         else {
-            if (use_taint2) 
-                taint2_label_ram(pa, 1);
-            else 
-                taint_label_ram(pa, 1);
+            taint2_label_ram(pa, 1);
         }
     }
 }
@@ -229,11 +223,7 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
         if (ins > first_instr) {
             
             taint_is_enabled = true;
-            if (use_taint2) {
-                taint2_enable_taint();
-            } else {
-                taint_enable_taint();
-            }
+            taint2_enable_taint();
             printf (" @ ins  %" PRId64 "\n", ins); 
         }
     }
@@ -248,7 +238,6 @@ bool init_plugin(void *self) {
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string(args, "filename", "abc123");
     positional_labels = panda_parse_bool(args, "pos");
-    use_taint2 = !panda_parse_bool(args, "taint1");
     // used to just find the names of files that get 
     no_taint = panda_parse_bool(args, "notaint");
     prob_label_u32 = panda_parse_double(args, "prob_label_u32", 0.0);
@@ -259,7 +248,6 @@ bool init_plugin(void *self) {
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
-    printf ("use_taint2 = %d\n", use_taint2);
     printf ("no_taint = %d\n", no_taint);
     printf ("prob_label_u32 = %.3f\n", prob_label_u32);
     printf ("end_label = %d\n", end_label);
@@ -269,18 +257,10 @@ bool init_plugin(void *self) {
 
     // this sets up the taint api fn ptrs so we have access
     if (!no_taint) {
-        if (use_taint2) {
-            panda_require("taint2");
-            assert(init_taint2_api());
-            if (first_instr == 0) {
-                taint2_enable_taint();
-            }
-        } else {
-            panda_require("taint");
-            assert(init_taint_api());
-            if (first_instr == 0) {
-                taint_enable_taint();
-            }
+        panda_require("taint2");
+        assert(init_taint2_api());
+        if (first_instr == 0) {
+            taint2_enable_taint();
         }
     }
     

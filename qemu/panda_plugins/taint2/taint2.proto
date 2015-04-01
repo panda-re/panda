@@ -4,16 +4,21 @@ message TaintQueryUniqueLabelSet {
     repeated uint32 label = 2;
 }
 
+message SrcInfo {
+    required string filename = 1;
+    required uint32 linenum = 2;
+    required string astnodename = 3;
+}     
+
 message TaintQuery {
-    required uint64 asid = 1;
-    required uint64 ptr = 2;
-    required uint32 tcn = 3;
-    required string filename = 4;
-    required uint32 linenum = 5;
-    required string astnodename = 6;
-    required uint32 offset = 7;
+    required uint64 ptr = 1;
+    required uint32 tcn = 2;
+    required uint32 offset = 3;
 }
 
 optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
 optional TaintQuery taint_query = 34;
+optional SrcInfo src_info = 35;
 
+
+optional bool taint_query_hypercall = 38;
