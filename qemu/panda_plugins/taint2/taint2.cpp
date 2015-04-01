@@ -89,7 +89,7 @@ void taint2_track_taint_state(void);
 #include "taint_ops.h"
 #include "taint2.h"
 
-//#include "pirate_mark_lava_struct.h"
+#include "panda_hypercall_struct.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -512,7 +512,6 @@ void i386_hypercall_callback(CPUState *env){
                 }
             }
         }
-    
     
     }
 }

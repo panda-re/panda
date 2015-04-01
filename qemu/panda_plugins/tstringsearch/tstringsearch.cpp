@@ -68,7 +68,22 @@ uint32_t positional_tainting = 0;
 
 void *plugin_self;
 
+// turn on taint at right instr count
+int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
+    // enable taint if close to instruction count
+    uint64_t ic = rr_get_guest_instr_count();
+    if (!taint2_enabled()) {
+        if (ic + 100 > enable_taint_instr_count) {
+            printf ("enabling taint at instr count %" PRIu64 "\n", ic);
+            taint2_enable_taint();           
+        }
+    }
+    return 0;
+}
+
 int tstringsearch_label(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    tstringsearch_enable_taint(env, pc);
+
     if (tstringsearch_label_on == false) {
         return 0;
     }
@@ -95,8 +110,6 @@ int tstringsearch_label(CPUState *env, target_ulong pc, target_ulong addr, targe
     return 0;
 }
 
-
-
 bool first_time = true;
 
 // this is called from stringsearch upon a match
@@ -109,7 +122,7 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     target_ulong p = addr - (matched_string_length-1);
     uint8_t thestring[MAX_STRLEN*2];
     panda_virtual_memory_rw(env, p, thestring, matched_string_length, 0);
-    printf ("thestring = [");
+    printf ("tstringsearch: thestring = [");
     for (unsigned i=0; i<matched_string_length; i++) {
         if (isprint(thestring[i])) {
             printf("%c", thestring[i]);
@@ -118,7 +131,7 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
             printf(".");
         }
     }
-    printf ("]\n");
+    printf ("]\ntstringsearch: ");
     for (unsigned i=0; i<matched_string_length; i++) {
         printf ("%02x ", thestring[i]);
     }
@@ -130,7 +143,7 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
     // thus, the matched_string_length - 1.
     // yes, we can get this right. but, meh.
     if ((memcmp((char *)thestring, (char *)matched_string, matched_string_length-1)) == 0) {
-        printf ("search string is sitting in memory starting at 0x%lx\n", (long unsigned int) p);    
+        printf ("tstringsearch: string in memory @ 0x%lx\n", (long unsigned int) p);    
         // ok this is ugly.  save pc, buffer addr and len
         the_pc = pc;
         the_buf = p;
@@ -152,39 +165,6 @@ void tstringsearch_match(CPUState *env, target_ulong pc, target_ulong addr,
 
 bool labeled = false;
 
-// turn on taint at right instr count
-int tstringsearch_enable_taint(CPUState *env, target_ulong pc) {
-    // enable taint if close to instruction count
-    uint64_t ic = rr_get_guest_instr_count();
-    if (!taint2_enabled()) {
-
-        if (ic > enable_taint_instr_count) {
-            if (!labeled && panda_current_asid(env) == 0x3f630260) {
-                printf ("enabling taint at instr count %" PRIx64 "\n", ic);
-                taint2_enable_taint();               
-                printf ("labeling that buffer\n");
-                labeled = true;
-                for (unsigned i=0; i<65536; i++) {
-                    uint64_t pa = panda_virt_to_phys(env, 0x7e0000+i);
-                    assert (pa != ~0UL);
-                    taint2_label_ram(pa, i);
-                }         
-                printf ("...done\n");
-                labeled = true;
-            }
-        }
-        /*
-           if (ic + 100 > enable_taint_instr_count) {
-           printf ("enabling taint at instr count %" PRIx64 "\n", ic);
-           taint_enable_taint();           
-           }
-           */
-    }
-    return 0;
-}
-
-
-
 #endif
 
 bool init_plugin(void *self) {
@@ -201,10 +181,6 @@ bool init_plugin(void *self) {
     args = panda_get_args("tstringsearch");
     enable_taint_instr_count = panda_parse_uint64(args, "instr_count", 0);
     positional_tainting = panda_parse_bool(args, "pos");
-
-    panda_cb pcb;
-    pcb.before_block_translate = tstringsearch_enable_taint;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
 
     // this sets up the taint api fn ptrs so we have access
     assert(init_taint2_api());

@@ -357,6 +357,7 @@ void on_free_osimodules(OsiModules *ms) {
 #endif
 
 bool init_plugin(void *self) {
+    panda_require("osi");
 #ifdef TARGET_I386
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
