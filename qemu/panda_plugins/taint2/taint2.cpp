@@ -363,19 +363,6 @@ void panda_virtual_string_read(CPUState *env, target_ulong vaddr, char *str) {
     str[PANDA_MAX_STRING_READ-1] = 0;
 }
 
-
-typedef struct panda_hypercall_struct {
-    uint64_t action;      // label / query / etc 
-    uint64_t buf;         // ptr to memory we want labeled or queried or ...
-    uint32_t len;         // number of bytes to label or query or ...
-    uint32_t label_num;   // if labeling, this is the label number.  if querying this should be zero 
-    uint64_t src_filename;  // if querying from src this is a char * to filename.
-    uint64_t src_linenum;   // if querying from src this is the line number 
-    uint64_t src_ast_node_name;     // if querying from src this is the name of the l-value queries 
-} PandaHypercallStruct;
-
-
-
 std::set < LabelSetP > ls_returned;
 
 #ifdef TARGET_I386
