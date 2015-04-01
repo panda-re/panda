@@ -91,6 +91,11 @@ LabelSetP tp_query_ram(Shad *shad, uint64_t pa) ;
 LabelSetP tp_query_reg(Shad *shad, int reg_num, int offset);
 LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset);
 
+uint32_t tp_query_tcn_ram(Shad *shad, uint64_t pa);
+uint32_t tp_query_tcn_reg(Shad *shad, int reg_num, int offset);
+uint32_t tp_query_tcn_llvm(Shad *shad, int reg_num, int offset);
+
+
 // label set cardinality
 uint32_t ls_card(LabelSetP ls);
 
@@ -108,5 +113,8 @@ uint32_t *tp_labels_applied(void);
 
 // just tells how big that labels_applied set will be
 uint32_t tp_num_labels_applied(void);
+
+
+
 
 #endif

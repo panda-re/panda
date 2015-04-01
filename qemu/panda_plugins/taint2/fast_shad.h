@@ -176,6 +176,11 @@ public:
             taint_state_changed();
         labels[addr] = td;
     }
+
+    inline uint32_t query_tcn(uint64_t addr) {
+        return (query_full(addr)).tcn;
+    }
+
 };
 
 #endif

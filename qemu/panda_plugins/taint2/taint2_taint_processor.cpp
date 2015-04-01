@@ -170,6 +170,41 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
     return NULL;
 }
 
+
+uint32_t tp_tcn_get(Shad *shad, Addr *a) {
+    assert(shad != NULL);
+    switch (a->typ) {
+    case HADDR:
+        // TRL FIXME
+        return 0; // had_dir_find_64(shad->hd, a->val.ha+a->off);
+    case MADDR:
+        return shad->ram->query_tcn(a->val.ma+a->off);
+    case IADDR:
+        // TRL FIXME
+        return 0; // shad_dir_find_64(shad->io, a->val.ia+a->off);
+    case PADDR:
+        // TRL FIXME
+        return 0; //        return shad_dir_find_32(shad->ports, a->val.pa+a->off);        
+    case LADDR:
+        return shad->llv->query_tcn(a->val.la*MAXREGSIZE + a->off);
+    case GREG:
+        return shad->grv->query_tcn(a->val.gr * WORDSIZE + a->off);
+    case GSPEC:
+        // SpecAddr enum is offset by the number of guest registers                                                                                                                             
+        return shad->gsv->query_tcn(a->val.gs - NUMREGS + a->off);
+    case CONST:
+        return 0;
+    case RET:
+        return shad->ret->query_tcn(a->off);
+    default:
+        assert(false);
+    }
+    return 0;
+}
+
+
+
+
 // returns std::set of labels.
 LabelSetP tp_query(Shad *shad, Addr *a) {
     assert (shad != NULL);
@@ -195,6 +230,29 @@ LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset) {
     Addr a = make_laddr(reg_num, offset);
     return tp_query(shad, &a);
 }
+
+// returns taint compute # 
+uint32_t tp_query_tcn(Shad *shad, Addr *a) {
+    assert (shad != NULL);
+    return tp_tcn_get(shad, a);
+}
+
+uint32_t tp_query_tcn_ram(Shad *shad, uint64_t pa) {
+    Addr a = make_maddr(pa);
+    return tp_query_tcn(shad, &a);
+}
+
+uint32_t tp_query_tcn_reg(Shad *shad, int reg_num, int offset) {
+    Addr a = make_greg(reg_num, offset);
+    return tp_query_tcn(shad, &a);
+}
+
+uint32_t tp_query_tcn_llvm(Shad *shad, int reg_num, int offset) {
+    Addr a = make_laddr(reg_num, offset);
+    return tp_query_tcn(shad, &a);
+}
+
+
 
 uint32_t ls_card(LabelSetP ls) {
     return label_set_render_set(ls).size();

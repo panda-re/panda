@@ -122,7 +122,9 @@ int main (int argc, char **argv) {
         }
         
         if (ple->taint_query) {
-            printf (" taint query: asid=0x%x: labels ptr %llu", ple->taint_query->asid, ple->taint_query->ptr);
+            Panda__TaintQuery *tq = ple->taint_query;
+            printf (" taint query: asid=0x%x: labels ptr %llu tcn=%d file=[%s] astnode=[%s] linenum=%d offset=%d", 
+                    tq->asid, tq->ptr, tq->tcn, tq->filename, tq->astnodename, tq->linenum, tq->offset);
         }
 
         // win7proc

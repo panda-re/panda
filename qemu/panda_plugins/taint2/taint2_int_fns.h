@@ -28,6 +28,11 @@ uint32_t taint2_query_reg(int reg_num, int offset);
 // if offset of llvm reg is untainted, ...
 uint32_t taint2_query_llvm(int reg_num, int offset);
 
+// returns taint compute number associated with addr
+uint32_t taint2_query_tcn_ram(uint64_t pa);
+uint32_t taint2_query_tcn_reg(int reg_num, int offset);
+uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
+
 // delete taint from this phys addr
 void taint2_delete_ram(uint64_t pa) ;
 
