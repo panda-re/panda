@@ -79,8 +79,12 @@ void taint_copy(
     }
     taint_log(")\n");
 #endif
-    tassert(dest + size <= shad_dest->get_size() &&
-            src + size <= shad_src->get_size());
+
+    if (dest + size >= shad_dest->get_size() || src + size >= shad_src->get_size()) {
+        taint_log("Ignoring IO\n");
+        return;
+    }
+
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 }
 
