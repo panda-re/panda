@@ -21,13 +21,15 @@ PANDAENDCOMMENT */
 #include "defines.h"
 #include "label_set.h"
 
+class FastShad;
+
 extern "C" {
 #include "cpu.h"
 #include "qemu-log.h"
 
 extern bool track_taint_state;
 
-extern void taint_state_changed(void);
+extern void taint_state_changed(FastShad *fast_shad, uint64_t addr);
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 14)
@@ -97,7 +99,7 @@ public:
     // Taint an address with a labelset.
     inline void set(uint64_t addr, LabelSetP ls) {
         *get_ls_p(addr) = ls;
-        if (track_taint_state && ls) taint_state_changed();
+        if (track_taint_state && ls) taint_state_changed(this, addr);
     }
 
     static inline void copy(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
@@ -120,10 +122,10 @@ public:
 
         memcpy(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(TaintData));
 
-        if (track_taint_state &&
-                (shad_dest->range_tainted(dest, size) ||
-                 shad_src->range_tainted(src, size)))
-            taint_state_changed();
+        if (track_taint_state && shad_src->range_tainted(src, size))
+            taint_state_changed(shad_src, src);
+        if (track_taint_state && shad_dest->range_tainted(dest, size))
+            taint_state_changed(shad_dest, dest);
     }
 
     // Remove taint.
@@ -143,7 +145,7 @@ public:
         memset(get_ls_p(addr), 0, remove_size * sizeof(TaintData));
 
         if (track_taint_state && range_tainted(addr, remove_size))
-            taint_state_changed();
+            taint_state_changed(this, addr);
     }
 
     // Query. NULL if untainted.
@@ -177,7 +179,7 @@ public:
         labels[addr] = td;
 
         if (track_taint_state && (td.ls || *get_ls_p(addr)))
-            taint_state_changed();
+            taint_state_changed(this, addr);
     }
 
     inline uint32_t query_tcn(uint64_t addr) {

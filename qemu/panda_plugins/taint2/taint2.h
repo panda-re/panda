@@ -37,7 +37,7 @@ typedef struct SdDir64 SdDir64;
 typedef struct addr_struct Addr;
 
 typedef void (*on_branch2_t) (uint64_t);
-typedef void (*on_taint_change_t) (void);
+typedef void (*on_taint_change_t) (Addr);
 
 // Unused for now.
 typedef enum {
@@ -114,7 +114,12 @@ uint32_t *tp_labels_applied(void);
 // just tells how big that labels_applied set will be
 uint32_t tp_num_labels_applied(void);
 
-
+Addr make_haddr(uint64_t a);
+Addr make_maddr(uint64_t a);
+Addr make_laddr(uint64_t a, uint64_t o);
+Addr make_iaddr(uint64_t a);
+Addr make_paddr(uint64_t a);
+Addr make_greg(uint64_t r, uint16_t off);
 
 
 #endif

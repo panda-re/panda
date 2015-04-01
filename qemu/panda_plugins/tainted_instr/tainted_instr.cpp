@@ -20,6 +20,8 @@ extern "C" {
 #include "config.h"
 #include "qemu-common.h"
 
+#include "panda_addr.h"
+
 #include "panda_common.h"
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
@@ -44,7 +46,7 @@ void taint_change(void);
 
 std::map<target_ulong, std::set<target_ulong> > tainted_instrs;
 
-void taint_change() {
+void taint_change(Addr addr) {
     extern CPUState *cpu_single_env;
     CPUState *env = cpu_single_env;
     target_ulong asid = panda_current_asid(env);

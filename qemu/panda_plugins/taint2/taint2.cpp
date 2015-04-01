@@ -111,7 +111,7 @@ int phys_mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr,
 int phys_mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr,
         target_ulong size, void *buf);
 
-void taint_state_changed(void);
+void taint_state_changed(FastShad *, uint64_t);
 PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
 
@@ -517,8 +517,27 @@ int guest_hypercall_callback(CPUState *env){
 }
 
 // Called whenever the taint state changes.
-void taint_state_changed() {
-    PPP_RUN_CB(on_taint_change);
+void taint_state_changed(FastShad *fast_shad, uint64_t shad_addr) {
+    Addr addr;
+    if (fast_shad == shadow->llv) {
+        addr = make_laddr(shad_addr / MAXREGSIZE, shad_addr % MAXREGSIZE);
+    } else if (fast_shad == shadow->ram) {
+        addr = make_maddr(shad_addr);
+    } else if (fast_shad == shadow->grv) {
+        addr = make_greg(shad_addr / sizeof(target_ulong), shad_addr % sizeof(target_ulong));
+    } else if (fast_shad == shadow->gsv) {
+        addr.typ = GSPEC;
+        addr.val.gs = shad_addr;
+        addr.off = 0;
+        addr.flag = (AddrFlag)0;
+    } else if (fast_shad == shadow->ret) {
+        addr.typ = RET;
+        addr.val.ret = 0;
+        addr.off = shad_addr;
+        addr.flag = (AddrFlag)0;
+    } else return;
+
+    PPP_RUN_CB(on_taint_change, addr);
 }
 
 bool __taint2_enabled() {
