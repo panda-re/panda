@@ -19,7 +19,8 @@ message TaintQuery {
 message TaintQueryHypercall {
     required uint64 buf = 1;
     required uint32 len = 2;
-    required uint32 num_tainted = 3;
+    repeated uint32 data = 3;
+    required uint32 num_tainted = 4;
 }
 message Process {
     required uint32 pid = 1;

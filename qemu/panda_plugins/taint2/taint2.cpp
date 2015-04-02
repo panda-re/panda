@@ -513,6 +513,18 @@ void i386_hypercall_callback(CPUState *env){
                     tqh->buf = phs.buf;
                     tqh->len = phs.len;
                     tqh->num_tainted = num_tainted;
+                    // obtain the actual data out of memory -- first 32 bytes
+                    uint32_t data[32];
+                    uint32_t n = phs.len;
+                    if (32 < phs.len) n = 32;
+                    for (uint32_t i=0; i<n; i++) {
+                        data[i] = 0;
+                        uint8_t c;
+                        panda_virtual_memory_rw(env, phs.buf+i, &c, 1, false);
+                        data[i] = c;
+                    }
+                    tqh->n_data = n;
+                    tqh->data = data;
                     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
                     ple.taint_query_hypercall = tqh;
                     pandalog_write_entry(&ple);
