@@ -22,9 +22,6 @@ class FastShad;
 
 extern "C" {
 
-// Add a label to a given address.
-void taint_label(FastShad *shad, uint64_t addr, uint32_t label);
-
 // taint2_memlog
 //
 // This will replace the dynamic log, since we now need to track values for

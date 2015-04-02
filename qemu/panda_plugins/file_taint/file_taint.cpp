@@ -38,7 +38,7 @@ uint32_t the_asid = 0;
 uint32_t the_fd;
 
 uint32_t end_label = 1000000;
-uint32_t start_label = 1000000;
+uint32_t start_label = 0;
 
 uint64_t first_instr = 0;
 
@@ -175,7 +175,7 @@ void read_return(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint
         
         printf ("returning from read of [%s] count=%u\n", taint_filename, count);    
         // check if we overlap the range we want to label.
-        if (prob_label_u32 == 0 && read_start < end_label &&
+        if (prob_label_u32 < 1e-9 && read_start < end_label &&
                 read_end > start_label) {
             uint32_t range_start = std::max(read_start, start_label);
             uint32_t range_end = std::min(read_end, end_label);
@@ -243,7 +243,7 @@ bool init_plugin(void *self) {
     prob_label_u32 = panda_parse_double(args, "prob_label_u32", 0.0);
     end_label = panda_parse_ulong(args, "max_num_labels", 1000000);
     end_label = panda_parse_ulong(args, "end", end_label);
-    start_label = panda_parse_ulong(args, "start", start_label);
+    start_label = panda_parse_ulong(args, "start", 0);
     first_instr = panda_parse_uint64(args, "first_instr", 0);
 
     printf ("taint_filename = [%s]\n", taint_filename);

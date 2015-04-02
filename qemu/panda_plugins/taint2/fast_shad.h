@@ -51,11 +51,12 @@ struct TaintData {
     uint32_t tcn;
 
     TaintData() : ls(NULL), tcn(0) {}
-    TaintData(LabelSetP ls, uint32_t tcn) : ls(ls), tcn(tcn) {}
+    TaintData(LabelSetP ls) : ls(ls), tcn(0) {}
+    TaintData(LabelSetP ls, uint32_t tcn) : ls(ls), tcn(ls ? tcn : 0) {}
 
     void add(TaintData td) {
         ls = label_set_union(ls, td.ls);
-        tcn = std::max(tcn, td.tcn);
+        tcn = ls ? std::max(tcn, td.tcn) : 0;
     }
 
     static TaintData copy_union(TaintData td1, TaintData td2) {
@@ -77,15 +78,15 @@ private:
     TaintData *orig_labels;
     uint64_t size; // Number of labelsets contained.
 
-    inline LabelSetP *get_ls_p(uint64_t guest_addr) {
+    inline TaintData *get_td_p(uint64_t guest_addr) {
         //taint_log("  %lx->get_ls_p(%lx)\n", (uint64_t)this, guest_addr);
         tassert(guest_addr < size);
-        return &(labels[guest_addr].ls);
+        return &labels[guest_addr];
     }
 
     inline bool range_tainted(uint64_t addr, uint64_t size) {
         for (unsigned i = addr; i < size; i++) {
-            if (*get_ls_p(addr)) return true;
+            if (get_td_p(addr)->ls) return true;
         }
         return false;
     }
@@ -97,9 +98,8 @@ public:
     uint64_t get_size() { return size; }
 
     // Taint an address with a labelset.
-    inline void set(uint64_t addr, LabelSetP ls) {
-        *get_ls_p(addr) = ls;
-        if (track_taint_state && ls) taint_state_changed(this, addr);
+    inline void label(uint64_t addr, LabelSetP ls) {
+        *get_td_p(addr) = TaintData(ls);
     }
 
     static inline void copy(FastShad *shad_dest, uint64_t dest, FastShad *shad_src, uint64_t src, uint64_t size) {
@@ -110,22 +110,24 @@ public:
         
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < size; i++) {
-            if (*shad_src->get_ls_p(src + i) != NULL) {
+            if (shad_src->get_td_p(src + i)->ls != NULL) {
                 taint_log("TAINTED COPY: %lx[%lx] <- %lx[%lx] (%lx)\n",
                         (uint64_t)shad_dest, dest + i,
                         (uint64_t)shad_src, src + i,
-                        (uint64_t)*shad_src->get_ls_p(src + i));
+                        (uint64_t)shad_src->get_td_p(src + i)->ls);
                 break;
             }
         }
 #endif
 
-        memcpy(shad_dest->get_ls_p(dest), shad_src->get_ls_p(src), size * sizeof(TaintData));
+        bool change = false;
+        if (track_taint_state && (shad_dest->range_tainted(dest, size) ||
+                    shad_src->range_tainted(src, size)))
+            change = true;
 
-        if (track_taint_state && shad_src->range_tainted(src, size))
-            taint_state_changed(shad_src, src);
-        if (track_taint_state && shad_dest->range_tainted(dest, size))
-            taint_state_changed(shad_dest, dest);
+        memcpy(shad_dest->get_td_p(dest), shad_src->get_td_p(src), size * sizeof(TaintData));
+
+        if (change) taint_state_changed(shad_dest, dest);
     }
 
     // Remove taint.
@@ -135,22 +137,24 @@ public:
         
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < remove_size; i++) {
-            if (*get_ls_p(addr + i) != NULL) {
+            if (get_td_p(addr + i)->ls != NULL) {
                 taint_log("TAINTED DELETE\n");
                 break;
             }
         }
 #endif
 
-        memset(get_ls_p(addr), 0, remove_size * sizeof(TaintData));
-
+        bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size))
-            taint_state_changed(this, addr);
+            change = true;
+        memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
+
+        if (change) taint_state_changed(this, addr);
     }
 
     // Query. NULL if untainted.
     inline LabelSetP query(uint64_t addr) {
-        return *get_ls_p(addr);
+        return get_td_p(addr)->ls;
     } 
 
     inline void reset_frame() {
@@ -176,10 +180,13 @@ public:
 
     inline void set_full(uint64_t addr, TaintData td) {
         tassert(addr < size);
+
+        bool change = false;
+        if (td.ls != get_td_p(addr)->ls)
+            change = true;
         labels[addr] = td;
 
-        if (track_taint_state && (td.ls || *get_ls_p(addr)))
-            taint_state_changed(this, addr);
+        if (change) taint_state_changed(this, addr);
     }
 
     inline uint32_t query_tcn(uint64_t addr) {

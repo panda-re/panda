@@ -31,12 +31,6 @@ extern "C" {
 
 uint64_t labelset_count;
 
-void taint_label(FastShad *shad, uint64_t addr, uint32_t label) {
-    shad->set(addr, label_set_union(
-            shad->query(addr),
-            label_set_singleton(label)));
-}
-
 // Memlog functions.
 
 uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
@@ -85,8 +79,12 @@ void taint_copy(
     }
     taint_log(")\n");
 #endif
-    tassert(dest + size <= shad_dest->get_size() &&
-            src + size <= shad_src->get_size());
+
+    if (dest + size >= shad_dest->get_size() || src + size >= shad_src->get_size()) {
+        taint_log("Ignoring IO\n");
+        return;
+    }
+
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 }
 
@@ -155,7 +153,7 @@ void taint_mix(
     taint_log("mix: %lx[%lx+%lx] <- %lx+%lx\n",
             (uint64_t)shad, dest, dest_size, src, src_size);
     TaintData td = mixed_labels(shad, src, src_size);
-    td.tcn++;
+    if (td.ls) td.tcn++;
     bulk_set(shad, dest, dest_size, td);
 }
 
@@ -178,7 +176,7 @@ void taint_pointer(
     }
 
     TaintData td = mixed_labels(shad_ptr, ptr, ptr_size);
-    td.tcn++;
+    if (td.ls) td.tcn++;
     if (src == ones) {
         bulk_set(shad_dest, dest, size, td);
     } else {
