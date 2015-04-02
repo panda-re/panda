@@ -52,12 +52,12 @@ int main (int argc, char **argv) {
             printf ("[after replay end] : ");
         } 
         else {
-            printf ("instr=%llu pc=0x%x : ", ple->instr, ple->pc);
+            printf ("instr=%" PRIu64 " pc=0x%" PRIx64 " :", ple->instr, ple->pc);
         }
 
         // from asidstory / osi
         if (ple->has_asid) {
-            printf (" asid=%x", ple->asid);
+            printf (" asid=%" PRIx64, ple->asid);
         }
 
         if (ple->has_process_id != 0) {
@@ -72,34 +72,39 @@ int main (int argc, char **argv) {
             printf (" tl=%d", ple->taint_label_number);
         }
         if (ple->has_taint_label_virtual_addr) {
-            printf (" va=0x%llx", ple->taint_label_virtual_addr);
+            printf (" va=0x%" PRIx64, ple->taint_label_virtual_addr);
         }
         if (ple->has_taint_label_physical_addr) {
-            printf (" pa=0x%llx", ple->taint_label_physical_addr);
+            printf (" pa=0x%" PRIx64 , ple->taint_label_physical_addr);
         }
 
-        // from tainted_branch
-        if (ple->n_tainted_branch_label > 0) {
-            printf (" tb=(%d,[", ple->n_tainted_branch_label);
-            uint32_t i;
-            for (i=0; i<ple->n_tainted_branch_label; i++) {
-                printf (" %d", ple->tainted_branch_label[i]);
-                if (i+1 < ple->n_tainted_branch_label) {
-                    printf (",");
-                }
-            }
-            printf ("])");
-        }
         if (ple->n_callstack > 0) {
-            printf (" cs=(%d,[",ple->n_callstack);
+            printf (" callstack=(%u,[", (uint32_t) ple->n_callstack);
             uint32_t i;
             for (i=0; i<ple->n_callstack; i++) {
-                printf (" 0x%llx", ple->callstack[i]);
+                printf (" 0x%" PRIx64 , ple->callstack[i]);
                 if (i+1 < ple->n_callstack) {
                     printf (",");
                 }
             }
             printf ("])");
+        }
+
+        if (ple->src_info) {
+            Panda__SrcInfo *si = ple->src_info;
+            printf (" src info filename=[%s] astnode=[%s] linenum=%d",
+                    si->filename, si->astnodename, si->linenum);
+        }
+
+        if (ple->has_tainted_branch && ple->tainted_branch) {
+            printf (" tainted branch");
+        }
+        if (ple->taint_query_hypercall) {
+            Panda__TaintQueryHypercall *tqh = ple->taint_query_hypercall;
+            printf (" taint query hypercall(buf=0x%" PRIx64 ",len=%u,num_tainted=%u)", tqh->buf, tqh->len, tqh->num_tainted);
+        }
+        if (ple->has_tainted_instr && ple->tainted_instr) {
+            printf (" tainted instr");
         }
 
         // dead data
@@ -111,10 +116,9 @@ int main (int argc, char **argv) {
             }
         }
 
-
         // taint queries
         if (ple->taint_query_unique_label_set) {
-            printf (" taint query unqiue label set: ptr=%llu labels: ", ple->taint_query_unique_label_set->ptr);
+            printf (" taint query unqiue label set: ptr=%" PRIx64" labels: ", ple->taint_query_unique_label_set->ptr);
             uint32_t i;
             for (i=0; i<ple->taint_query_unique_label_set->n_label; i++) {
                 printf ("%d ", ple->taint_query_unique_label_set->label[i]);
@@ -123,8 +127,7 @@ int main (int argc, char **argv) {
         
         if (ple->taint_query) {
             Panda__TaintQuery *tq = ple->taint_query;
-            printf (" taint query: asid=0x%x: labels ptr %llu tcn=%d file=[%s] astnode=[%s] linenum=%d offset=%d", 
-                    tq->asid, tq->ptr, tq->tcn, tq->filename, tq->astnodename, tq->linenum, tq->offset);
+            printf (" taint query: labels ptr %" PRIx64" tcn=%d ", tq->ptr, tq->tcn);
         }
 
         // win7proc

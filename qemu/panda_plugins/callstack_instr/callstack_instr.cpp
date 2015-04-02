@@ -362,6 +362,7 @@ void callstack_pandalog() {
         for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
             n ++;
         }
+        ple.n_callstack = n;
         ple.callstack = (uint64_t *) malloc (sizeof(uint64_t) * n);
         v = callstacks[get_stackid(env,env->panda_guest_pc)];
         rit = v.rbegin();

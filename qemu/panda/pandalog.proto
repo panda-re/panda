@@ -16,6 +16,11 @@ message TaintQuery {
     required uint32 tcn = 2;
     required uint32 offset = 3;
 }
+message TaintQueryHypercall {
+    required uint64 buf = 1;
+    required uint32 len = 2;
+    required uint32 num_tainted = 3;
+}
 message Process {
     required uint32 pid = 1;
     required string name = 2;
@@ -56,7 +61,7 @@ repeated float dead_data = 32;
 optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
 optional TaintQuery taint_query = 34;
 optional SrcInfo src_info = 35;
-optional bool taint_query_hypercall = 38;
+optional TaintQueryHypercall taint_query_hypercall = 38;
 repeated uint64 callstack = 10;
 optional bool tainted_branch = 36;
 optional uint64 asid = 3; 

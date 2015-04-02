@@ -60,12 +60,14 @@ bool first_enable_taint = true;
 
 
 void tbranch_on_branch_taint2(Addr a) {
-    uint8_t tainted = taint2_query_pandalog(a);
-    if (tainted) {        
-        callstack_pandalog();
+    if (taint2_query(a)) {
+        // branch is tainted
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.has_tainted_branch = true;
         ple.tainted_branch = true;
         pandalog_write_entry(&ple);
+        taint2_query_pandalog(a);
+        callstack_pandalog();
     }
 }
 

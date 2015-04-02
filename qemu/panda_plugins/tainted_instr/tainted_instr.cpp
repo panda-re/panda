@@ -50,12 +50,12 @@ void taint_change(void);
 }
 
 void taint_change(Addr a) {
-    uint8_t tainted = taint2_query_pandalog(a);    
-    if (tainted) {
-        callstack_pandalog();
+    if (taint2_query(a)) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.tainted_instr = true;
         pandalog_write_entry(&ple);
+        taint2_query_pandalog(a);    
+        callstack_pandalog();
     }
 }
 

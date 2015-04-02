@@ -19,14 +19,10 @@ int taint2_enabled(void);
 // label this phys addr in memory with label l
 void taint2_label_ram(uint64_t pa, uint32_t l);
 
-// if phys addr pa is untainted, return 0.
-// else returns label set cardinality 
+// query fns return 0 if untainted, else cardinality of taint set
+uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
-
-// if offset of reg is untainted, ...
 uint32_t taint2_query_reg(int reg_num, int offset);
-
-// if offset of llvm reg is untainted, ...
 uint32_t taint2_query_llvm(int reg_num, int offset);
 
 // returns taint compute number associated with addr
