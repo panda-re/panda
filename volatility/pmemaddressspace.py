@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import volatility.addrspace as addrspace
-import urllib
+import urlparse
 import socket
 import struct
 import sys
@@ -11,6 +11,8 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
     REQ_OUIT = 0
     REQ_READ = 1
     REQ_WRITE = 2
+    REQ_DTB = 3
+    REQ_MEMSIZE = 4
 
     def __init__(self, base, config, **kwargs):
         '''
@@ -18,19 +20,36 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
         '''
         # Address space setup
         self.as_assert(base == None, "Must be first Address Space")
+        try:
+            (scheme, netloc, path, _, _, _) = urlparse.urlparse(config.LOCATION)
+            self.as_assert(scheme == 'qemu', 'Not a qemu URN')
+        except (AttributeError, ValueError):
+            self.as_assert(False, "Unable to parse {0} as a URL".format(config.LOCATION))
+
         addrspace.BaseAddressSpace.__init__(self, None, config, **kwargs)
-        self.as_assert(config.LOCATION.startswith("file://"), 'Location is not of file scheme')
 
         # Connect to the socket
-        self.sock_path = config.LOCATION[len("file://"):]
-        print 'Connecting to: ' + self.sock_path
+        self.sock_path = path
         self.sock_fd = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.sock_fd.connect(self.sock_path)
         except socket.error, msg:
             print >>sys.stderr, 'PMemAddressSpace: ' + str(msg)
             sys.exit(1)
-        print 'SUCCESS: Connected to: ' + self.sock_path
+        
+        # Request DTB & memory size
+        self.dtb = self.get_dtb()
+        self.memsize = self.get_memsize()
+
+    def get_dtb(self):
+        self.send_request(self.REQ_DTB, 0, 0)
+        data = self.sock_fd.recv(8)
+        return struct.unpack("=Q", data)[0]
+
+    def get_memsize(self):
+        self.send_request(self.REQ_MEMSIZE, 0, 0)
+        data = self.sock_fd.recv(8)
+        return struct.unpack("=Q", data)[0]
 
     def close(self):
         '''
@@ -79,20 +98,25 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
                                        " @ " + hex(addr) + " failed.")
               read_length += read_len
         except AssertionError, e:
-            print e
-            memory = ''
+            if pad:
+                memory = memory + (length - len(memory))*'\0'
+            else:
+                memory = None
         return memory
 
     def read(self, addr, length):
-        return self.__read_bytes(addr, length, pad=False)
+        data = self.__read_bytes(addr, length, pad=False)
+        return data
 
     def zread(self, addr, length):
-        return self.__read_bytes(addr, length, pad=True)
+        data = self.__read_bytes(addr, length, pad=True)
+        return data
 
     def is_valid_address(self, addr):
         if addr == None:
             return False
-        return True
+        else:
+            return 0 <= addr < self.memsize
 
     def write(self, addr, data):
         '''
@@ -112,3 +136,6 @@ class PMemAddressSpace(addrspace.BaseAddressSpace):
             print e
             return False
         return True
+    
+    def get_available_addresses(self):
+        yield (0, self.memsize)
