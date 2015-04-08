@@ -25,11 +25,13 @@
 #include "panda_plugin.h"
 #include "panda_common.h"
 
-//  REQ_OUIT = 0
-//  REQ_READ = 1
-//  REQ_WRITE = 2
-//  REQ_DTB = 3
-//  REQ_MEMSIZE = 4
+enum request_type {
+  REQ_QUIT = 0,
+  REQ_READ = 1,
+  REQ_WRITE = 2,
+  REQ_DTB = 3,
+  REQ_MEMSIZE = 4
+};
 
 struct request {
     uint8_t type;      // 0 quit, 1 read, 2 write, ... rest reserved
@@ -111,11 +113,11 @@ connection_handler (int connection_fd)
             // error
             continue;
         }
-        else if (req.type == 0) {
+        else if (req.type == REQ_QUIT) {
             // request to quit, goodbye
             break;
         }
-        else if (req.type == 1) {
+        else if (req.type == REQ_READ) {
             // request to read
             char *buf = malloc(req.length + 1);
             if (connection_read_memory(req.address, buf, req.length)) {
@@ -128,7 +130,7 @@ connection_handler (int connection_fd)
             nbytes = write(connection_fd, buf, req.length + 1);
             free(buf);
         }
-        else if (req.type == 2) {
+        else if (req.type == REQ_WRITE) {
             // request to write
             void *write_buf = malloc(req.length);
             nbytes = read(connection_fd, write_buf, req.length);
@@ -143,7 +145,7 @@ connection_handler (int connection_fd)
             }
             free(write_buf);
         }
-        else if (req.type == 3) { // DTB
+        else if (req.type == REQ_DTB) { // DTB
             CPUState *env;
             for(env = first_cpu; env != NULL; env = env->next_cpu) {
                 if (env->cpu_index == 0) {
@@ -153,7 +155,7 @@ connection_handler (int connection_fd)
             uint64_t asid = panda_current_asid(env);
             nbytes = write(connection_fd, &asid, sizeof(asid));
         }
-        else if (req.type == 4) { // Memory size
+        else if (req.type == REQ_MEMSIZE) { // Memory size
             uint64_t mem_size = ram_size;
             nbytes = write(connection_fd, &mem_size, sizeof(mem_size));
         }
