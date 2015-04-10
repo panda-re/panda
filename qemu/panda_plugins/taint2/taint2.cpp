@@ -10,7 +10,7 @@
  * This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  *
-PANDAENDCOMMENT */
+ PANDAENDCOMMENT */
 
 /*
  * PANDA taint analysis plugin
@@ -376,6 +376,29 @@ void panda_virtual_string_read(CPUState *env, target_ulong vaddr, char *str) {
     str[PANDA_MAX_STRING_READ-1] = 0;
 }
 
+
+void lava_src_info_pandalog(PandaHypercallStruct phs) {
+    extern CPUState *cpu_single_env;
+    CPUState *env = cpu_single_env;
+    // write out src-level info    
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;                    
+    Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
+    *si = PANDA__SRC_INFO__INIT;
+    char filenameStr[500];
+    char astNodeStr[500];
+    panda_virtual_string_read(env, phs.src_filename, filenameStr);
+    panda_virtual_string_read(env, phs.src_ast_node_name, astNodeStr);
+    si->filename = filenameStr;
+    si->astnodename = astNodeStr;
+    si->linenum = phs.src_linenum;
+    ple = PANDA__LOG_ENTRY__INIT;
+    ple.src_info = si;
+    pandalog_write_entry(&ple);
+    free(si);
+} 
+
+
+
 // used to ensure that we only write a label sets to pandalog once
 std::set < LabelSetP > ls_returned;
 
@@ -425,6 +448,83 @@ uint8_t __taint2_query_pandalog (Addr a) {
 
 
 
+
+// hypercall-initiated taint query of some src-level extent
+void lava_taint_query (PandaHypercallStruct phs) {
+    extern CPUState *cpu_single_env;
+    CPUState *env = cpu_single_env;
+    if  (taintEnabled && (taint2_num_labels_applied() > 0)){
+        // okay, taint is on and some labels have actually been applied 
+        // is there *any* taint on this extent
+        uint32_t num_tainted = 0;
+        for (uint32_t offset=0; offset<phs.len; offset++) {
+            uint32_t va = phs.buf + offset;
+            uint32_t pa =  panda_virt_to_phys(env, va);
+            if ((int) pa != -1) {                         
+                Addr a = make_maddr(pa);
+                if (taint2_query(a)) {
+                    num_tainted ++;
+                }
+            }
+        }
+        if (num_tainted) {
+            // ok at least one byte in the extent is tainted
+            // 1. write the pandalog entry that tells us something was tainted on this extent
+            Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
+            *tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
+            tqh->buf = phs.buf;
+            tqh->len = phs.len;
+            tqh->num_tainted = num_tainted;
+            // obtain the actual data out of memory
+            // NOTE: first 32 bytes only!
+            uint32_t data[32];
+            uint32_t n = phs.len;
+            if (32 < phs.len) n = 32;
+            for (uint32_t i=0; i<n; i++) {
+                data[i] = 0;
+                uint8_t c;
+                panda_virtual_memory_rw(env, phs.buf+i, &c, 1, false);
+                data[i] = c;
+            }
+            tqh->n_data = n;
+            tqh->data = data;
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.taint_query_hypercall = tqh;
+            pandalog_write_entry(&ple);
+            free(tqh);
+            // 2. write out src-level info
+            lava_src_info_pandalog(phs);
+            // 3. write out callstack info
+            callstack_pandalog();
+            // 4. iterate over the bytes in the extent and pandalog detailed info about taint
+            for (uint32_t offset=0; offset<phs.len; offset++) {
+                uint32_t va = phs.buf + offset;
+                uint32_t pa =  panda_virt_to_phys(env, va);
+                if ((int) pa != -1) {                         
+                    Addr a = make_maddr(pa);
+                    if (taint2_query(a)) {
+                        __taint2_query_pandalog(a);
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void lava_attack_point(PandaHypercallStruct phs) {
+    Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
+    *ap = PANDA__ATTACK_POINT__INIT;
+    ap->info = "memcpy";
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.attack_point = ap;
+    pandalog_write_entry(&ple);
+    free(ap);
+    // write out src-level info
+    lava_src_info_pandalog(phs);
+    // write out callstack info
+    callstack_pandalog();
+}    
 
 
 #ifdef TARGET_I386
@@ -481,83 +581,22 @@ void i386_hypercall_callback(CPUState *env){
 
     
     if (pandalog && env->regs[R_EAX] == 0xabcd) {
-        // LAVA Query op.
-        // ECX contains addr of the hypercall struct
-        if (taintEnabled && (taint2_num_labels_applied() > 0)){
-            // okay, taint is on and some labels have actually been applied 
-            target_ulong addr = panda_virt_to_phys(env, ECX);
-            if ((int)addr == -1) {
-                printf ("taint2: query of unmapped addr?:  vaddr=0x%x paddr=0x%x\n",
-                        (uint32_t) ECX, (uint32_t) addr);
+        // LAVA Hypercall
+        target_ulong addr = panda_virt_to_phys(env, ECX);
+        if ((int)addr == -1) {
+            printf ("panda hypercall with ptr to invalid PandaHypercallStruct: vaddr=0x%x paddr=0x%x\n",
+                    (uint32_t) ECX, (uint32_t) addr);
+        }
+        else {
+            PandaHypercallStruct phs;
+            panda_virtual_memory_rw(env, ECX, (uint8_t *) &phs, sizeof(phs), false);
+            if  (phs.action == 11) {
+                // it's a lava query
+                lava_taint_query(phs);               
             }
-            else {
-                PandaHypercallStruct phs;
-                panda_virtual_memory_rw(env, ECX, (uint8_t *) &phs, sizeof(phs), false);
-                // is there *any* taint on this extent
-                uint32_t num_tainted = 0;
-                for (uint32_t offset=0; offset<phs.len; offset++) {
-                    uint32_t va = phs.buf + offset;
-                    uint32_t pa =  panda_virt_to_phys(env, va);
-                    if ((int) pa != -1) {                         
-                        Addr a = make_maddr(pa);
-                        if (taint2_query(a)) {
-                            num_tainted ++;
-                        }
-                    }
-                }
-                if (num_tainted) {
-                    // ok at least one byte in the extent is tainted
-                    // 1. write the pandalog entry that tells us something was tainted on this extent
-                    Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
-                    *tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
-                    tqh->buf = phs.buf;
-                    tqh->len = phs.len;
-                    tqh->num_tainted = num_tainted;
-                    // obtain the actual data out of memory -- first 32 bytes
-                    uint32_t data[32];
-                    uint32_t n = phs.len;
-                    if (32 < phs.len) n = 32;
-                    for (uint32_t i=0; i<n; i++) {
-                        data[i] = 0;
-                        uint8_t c;
-                        panda_virtual_memory_rw(env, phs.buf+i, &c, 1, false);
-                        data[i] = c;
-                    }
-                    tqh->n_data = n;
-                    tqh->data = data;
-                    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                    ple.taint_query_hypercall = tqh;
-                    pandalog_write_entry(&ple);
-                    free(tqh);
-                    // 2. write out src-level info
-                    ple = PANDA__LOG_ENTRY__INIT;                    
-                    Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
-                    *si = PANDA__SRC_INFO__INIT;
-                    char filenameStr[500];
-                    char astNodeStr[500];
-                    panda_virtual_string_read(env, phs.src_filename, filenameStr);
-                    panda_virtual_string_read(env, phs.src_ast_node_name, astNodeStr);
-                    si->filename = filenameStr;
-                    si->astnodename = astNodeStr;
-                    si->linenum = phs.src_linenum;
-                    ple = PANDA__LOG_ENTRY__INIT;
-                    ple.src_info = si;
-                    pandalog_write_entry(&ple);
-                    free(si);
-                    // 3. write out callstack info
-                    callstack_pandalog();
-                    // 4. iterate over the bytes in the extent and pandalog detailed info about taint
-                    for (uint32_t offset=0; offset<phs.len; offset++) {
-                        uint32_t va = phs.buf + offset;
-                        uint32_t pa =  panda_virt_to_phys(env, va);
-                        if ((int) pa != -1) {                         
-                            Addr a = make_maddr(pa);
-                            if (taint2_query(a)) {
-                                __taint2_query_pandalog(a);
-                            }
-                        }
-                    }
-                }
+            if (phs.action == 12) {
+                // it's an attack point sighting
+                lava_attack_point(phs);
             }
         }    
     }

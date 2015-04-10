@@ -16,6 +16,10 @@ message TaintQuery {
     required uint32 offset = 3;
 }
 
+message AttackPoint {
+    required string info = 1;
+}
+
 optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
 optional TaintQuery taint_query = 34;
 optional SrcInfo src_info = 35;
@@ -30,3 +34,5 @@ message TaintQueryHypercall {
 }
 
 optional TaintQueryHypercall taint_query_hypercall = 38;
+
+optional AttackPoint attack_point = 39;

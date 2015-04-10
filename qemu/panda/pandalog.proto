@@ -16,6 +16,9 @@ message TaintQuery {
     required uint32 tcn = 2;
     required uint32 offset = 3;
 }
+message AttackPoint {
+    required string info = 1;
+}
 message TaintQueryHypercall {
     required uint64 buf = 1;
     required uint32 len = 2;
@@ -63,6 +66,7 @@ optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
 optional TaintQuery taint_query = 34;
 optional SrcInfo src_info = 35;
 optional TaintQueryHypercall taint_query_hypercall = 38;
+optional AttackPoint attack_point = 39;
 repeated uint64 callstack = 10;
 optional bool tainted_branch = 36;
 optional uint64 asid = 3; 

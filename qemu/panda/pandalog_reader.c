@@ -90,6 +90,11 @@ int main (int argc, char **argv) {
             printf ("])");
         }
 
+        if (ple->attack_point) {
+            Panda__AttackPoint *ap = ple->attack_point;
+            printf (" attack point: info=[%s]", ap->info);
+        }
+
         if (ple->src_info) {
             Panda__SrcInfo *si = ple->src_info;
             printf (" src info filename=[%s] astnode=[%s] linenum=%d",

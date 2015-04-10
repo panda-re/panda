@@ -11,7 +11,6 @@
 
 #include "panda_hypercall_struct.h"
 
-#define TARGET_I386
 
 #if !defined(TARGET_I386) && !defined(TARGET_ARM)
 #error "Define your architecture (TARGET_I386 or TARGET_ARM) with -D"
@@ -22,6 +21,7 @@ static const int LABEL_BUFFER_POS = 8;
 static const int QUERY_BUFFER = 9;
 static const int GUEST_UTIL_DONE = 10;
 static const int LAVA_QUERY_BUFFER = 11;
+static const int LAVA_ATTACK_POINT = 12;
 
 #ifdef TARGET_I386
 static inline
@@ -77,7 +77,7 @@ void hypercall2(volatile PandaHypercallStruct *phs) {
 
 #endif // TARGET_I386
 
-#if 0
+
 #ifdef TARGET_ARM
 inline
 void hypercall(void *buf, unsigned long len, long label, unsigned long off, int action) {
@@ -103,9 +103,13 @@ void hypercall(void *buf, unsigned long len, long label, unsigned long off, int 
       );
     return;
 }
-#endif // TARGET_ARM
-#endif
 
+void hypercall2( volatile PandaHypercallStruct *phs) {
+}
+
+#endif // TARGET_ARM
+
+#if 0
 /* buf is the address of the buffer to be labeled
  * label is the label to be applied to the buffer
  * len is the length of the buffer to be labeled */
@@ -135,6 +139,7 @@ void vm_query_buffer(void *buf, unsigned long len, int offset,
   hypercall(buf, len, 0, offset, pmli, QUERY_BUFFER);
   return;
 }
+#endif
 
 static inline
 void vm_lava_query_buffer(void *buf, unsigned long len, 
@@ -147,6 +152,15 @@ void vm_lava_query_buffer(void *buf, unsigned long len,
   phs.label_num = 0; // unused;
   phs.src_filename = (uint64_t) ((uintptr_t) src_filename);
   phs.src_ast_node_name = (uint64_t) ((uintptr_t) src_ast_node_name);
+  phs.src_linenum = linenum;
+  hypercall2(&phs);
+}
+
+static inline
+void vm_lava_attack_point(char *src_filename, unsigned long linenum) {
+  volatile PandaHypercallStruct phs = {};
+  phs.action = LAVA_ATTACK_POINT;
+  phs.src_filename = (uint64_t) ((uintptr_t) src_filename);
   phs.src_linenum = linenum;
   hypercall2(&phs);
 }
