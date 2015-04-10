@@ -24,7 +24,8 @@ PANDA to tell us all the code that processes that tainted data.
 
 NOTE:  This tutorial is known to work with git checkout
 
-    40db16e602382b4ad51c6d312ff8f559f039c67f
+    52c73e19f47784e2322ecd5e755a857702a88b24
+
 
 Obtain Replay 
 -------------
