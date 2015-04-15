@@ -1,0 +1,13 @@
+syntax = "proto2";
+package volatility_render;
+
+message linux_pslist_task {
+  optional uint64 offset = 1;
+  optional string name = 2;
+  optional uint32 pid = 3;
+  optional uint32 uid = 4;
+  optional uint32 gid = 5;
+  optional uint64 dtb = 6;
+  optional uint64 start_time = 7;
+}
+

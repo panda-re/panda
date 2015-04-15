@@ -10,6 +10,7 @@
 #include "panda_plugin.h"
 #include "cpus.h"
 #include "memory-access.h"
+#include "volatility_interface.h"
 
 // Definitions
 #define PLUGIN_NAME "pmemaccess"
@@ -36,6 +37,7 @@ bool uninit_plugin(void *self);
 
 void *test_mem_access(void *arg);
 int RR_before_block_exec(CPUState *env, TranslationBlock *tb);
+void *test_vol_int(void *arg);
 
 // Globals
 char *socket_path = NULL;
@@ -187,6 +189,36 @@ int RR_before_block_exec(CPUState *env, TranslationBlock *tb) {
   return 0;
 }
 
+void *
+test_vol_int(void *arg)
+{
+    /* Wait for VM to boot a little */
+    sleep(30);
+    time_t start_time;
+    VolatilityRender__LinuxPslistTask *task = NULL;
+    vol_ll_node *list_ptr =
+        vol_run_cmd("linux_pslist", "/tmp/pmem", "Linuxdebian-2_6_32-5-amd64x64");
+    // Print header
+    fprintf(stdout, "%-19s%-21s%-16s%-16s%-7s%-19s%s\n", "offset", "name","pid", "uid", "gid",
+            "dtb", "start time");
+    // Print process info
+    while (list_ptr != NULL) {
+        task = volatility_render__linux_pslist_task__unpack(NULL, list_ptr->data_size,
+                                                            list_ptr->data_ptr);
+        start_time = task->start_time;
+        fprintf(stdout, "0x%016"PRIx64" %-21s%-16u%-16u%-7u",
+                task->offset, task->name, task->pid, task->uid, task->gid);
+	if (task->dtb == -1)
+	    fprintf(stdout, "%s", "------------------");
+	else
+	    fprintf(stdout, "0x%016"PRIx64, task->dtb);
+        fprintf(stdout, " %s", asctime(localtime(&start_time)));
+        list_ptr = list_ptr->next_ptr;
+    }
+
+    return NULL;
+}
+
 bool init_plugin(void *self)
 {
   int i = 0;
@@ -224,20 +256,24 @@ bool init_plugin(void *self)
     return false;
   }
 
-  // Start the memory access socket
-  memory_access_start(socket_path);
 
   // Free PANDA's copy
   panda_free_args(pargs);
 
   switch (pmemaccess_mode) {
     case 0: // Spawn the test thread
+      // Start the memory access socket
+      memory_access_start(socket_path);
       pthread_create(&tid, NULL, &test_mem_access, NULL);
       break;
     case 1: ;// Test RR access with callback
+      // Start the memory access socket
+      memory_access_start(socket_path);
       panda_cb pcb = {.before_block_exec = RR_before_block_exec };
       panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
       break;
+    case 2: ;//Test volatility interface
+      pthread_create(&tid, NULL, &test_vol_int, NULL);
     default:
       break;
   }
