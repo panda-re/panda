@@ -368,8 +368,12 @@ int collect_query_labels_pandalog(uint32_t el, void *stuff) {
 
 void panda_virtual_string_read(CPUState *env, target_ulong vaddr, char *str) {
     for (uint32_t i=0; i<PANDA_MAX_STRING_READ; i++) {
-        uint8_t c;
-        panda_virtual_memory_rw(env, vaddr + i, &c, 1, false);
+        uint8_t c = 0;
+        if (-1 == panda_virtual_memory_rw(env, vaddr + i, &c, 1, false)) {
+            printf("Can't access memory at " TARGET_FMT_lx "\n", vaddr + i);
+            str[i] = 0;
+            break;
+        }
         str[i] = c;
         if (c==0) break;
     }
@@ -453,6 +457,7 @@ uint8_t __taint2_query_pandalog (Addr a) {
 void lava_taint_query (PandaHypercallStruct phs) {
     extern CPUState *cpu_single_env;
     CPUState *env = cpu_single_env;
+
     if  (taintEnabled && (taint2_num_labels_applied() > 0)){
         // okay, taint is on and some labels have actually been applied 
         // is there *any* taint on this extent
@@ -530,75 +535,33 @@ void lava_attack_point(PandaHypercallStruct phs) {
 #ifdef TARGET_I386
 // Support all features of label and query program
 void i386_hypercall_callback(CPUState *env){
-
-
-#if 0
-    if (EAX == 0xabcd) {
-        printf ("\n hypercall pc=0x%x\n", (int) panda_current_pc(env));
-        for (uint32_t i=0; i<8; i++) {
-            printf ("reg[%d] = 0x%x\n", i, (int) env->regs[i]);
-        }
-    }   
-#endif
-
-
-    //printf("taint2: Hypercall! B " TARGET_FMT_lx " C " TARGET_FMT_lx " D " TARGET_FMT_lx "\n",
-    //        env->regs[R_EBX], env->regs[R_ECX], env->regs[R_EDX]);
-
-#if 0
-    // Label op.
-    // EBX contains addr of that data
-    // ECX contains size of data
-    // EDX contains the label; ~0UL for autoenc.
-    if ((env->regs[R_EAX] == 7 || env->regs[R_EAX] == 8)) {
-        printf ("hypercall -- EAX=0x%x\n", EAX);
-
-        target_ulong addr = panda_virt_to_phys(env, env->regs[R_EBX]);
-        target_ulong size = env->regs[R_ECX];
-        target_ulong label = env->regs[R_EDX];
-        if (!taintEnabled){
-            printf("taint2: Label operation detected @ %lu\n",
-                    rr_get_guest_instr_count());
-            printf("taint2: Labeling " TARGET_FMT_lx " to " TARGET_FMT_lx
-                    " with label " TARGET_FMT_lx ".\n", addr, addr + size, label);
-            __taint2_enable_taint();
-        }
-
-        LabelSetP ls = NULL;
-        if (label != (target_ulong)~0UL) {
-            ls = label_set_singleton(label);
-        } // otherwise autoinc.
-        qemu_log_mask(CPU_LOG_TAINT_OPS, "label: %lx[%lx+%lx] <- %lx (%lx)\n",
-                (uint64_t)shadow->ram, (uint64_t)addr, (uint64_t)size, (uint64_t)label,
-                (uint64_t)ls);
-        for (unsigned i = 0; i < size; i++) {
-            //printf("label %u\n", i);
-            shadow->ram->set(addr + i,
-                    label_set_singleton(i));
-        }
-    }
-#endif
-
-    
-    if (pandalog && env->regs[R_EAX] == 0xabcd) {
+    if (pandalog) {
         // LAVA Hypercall
-        target_ulong addr = panda_virt_to_phys(env, ECX);
+        target_ulong addr = panda_virt_to_phys(env, EAX);
         if ((int)addr == -1) {
             printf ("panda hypercall with ptr to invalid PandaHypercallStruct: vaddr=0x%x paddr=0x%x\n",
-                    (uint32_t) ECX, (uint32_t) addr);
+                    (uint32_t) EAX, (uint32_t) addr);
         }
         else {
             PandaHypercallStruct phs;
-            panda_virtual_memory_rw(env, ECX, (uint8_t *) &phs, sizeof(phs), false);
-            if  (phs.action == 11) {
-                // it's a lava query
-                lava_taint_query(phs);               
+            panda_virtual_memory_rw(env, EAX, (uint8_t *) &phs, sizeof(phs), false);
+            if (phs.magic == 0xabcd) {
+                if  (phs.action == 11) {
+                    // it's a lava query
+                    lava_taint_query(phs);               
+                }
+                else if (phs.action == 12) {
+                    // it's an attack point sighting
+                    lava_attack_point(phs);
+                }
+                else {
+                    printf("Unknown hypercall action %d\n", phs.action);
+                }
             }
-            if (phs.action == 12) {
-                // it's an attack point sighting
-                lava_attack_point(phs);
+            else {
+                printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
             }
-        }    
+        }
     }
 }
 #endif // TARGET_I386
