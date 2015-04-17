@@ -103,9 +103,9 @@ void taint2_track_taint_state(void);
 #include "taint_ops.h"
 #include "taint2.h"
 
-#define LAVA
+#define PANDA
 
-#ifdef LAVA
+#ifdef PANDA
 #include "../../../../lava/include/panda_hypercall_struct.h"
 #else
 #include "panda_hypercall_struct.h"
