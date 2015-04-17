@@ -47,6 +47,7 @@ extern "C" {
 #include "cpu.h"
 #include "panda/panda_addr.h"
 
+
 #include "../callstack_instr/callstack_instr_ext.h"
 
 extern int loglevel;
@@ -102,7 +103,13 @@ void taint2_track_taint_state(void);
 #include "taint_ops.h"
 #include "taint2.h"
 
+#define LAVA
+
+#ifdef LAVA
+#include "../../../../lava/include/panda_hypercall_struct.h"
+#else
 #include "panda_hypercall_struct.h"
+#endif
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -382,18 +389,12 @@ void panda_virtual_string_read(CPUState *env, target_ulong vaddr, char *str) {
 
 
 void lava_src_info_pandalog(PandaHypercallStruct phs) {
-    extern CPUState *cpu_single_env;
-    CPUState *env = cpu_single_env;
     // write out src-level info    
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;                    
     Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
     *si = PANDA__SRC_INFO__INIT;
-    char filenameStr[500];
-    char astNodeStr[500];
-    panda_virtual_string_read(env, phs.src_filename, filenameStr);
-    panda_virtual_string_read(env, phs.src_ast_node_name, astNodeStr);
-    si->filename = filenameStr;
-    si->astnodename = astNodeStr;
+    si->filename = phs.src_filename;
+    si->astnodename = phs.src_ast_node_name;
     si->linenum = phs.src_linenum;
     ple = PANDA__LOG_ENTRY__INIT;
     ple.src_info = si;
@@ -520,7 +521,7 @@ void lava_taint_query (PandaHypercallStruct phs) {
 void lava_attack_point(PandaHypercallStruct phs) {
     Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
     *ap = PANDA__ATTACK_POINT__INIT;
-    ap->info = "memcpy";
+    ap->info = phs.info;
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.attack_point = ap;
     pandalog_write_entry(&ple);

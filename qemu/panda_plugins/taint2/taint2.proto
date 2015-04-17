@@ -5,9 +5,9 @@ message TaintQueryUniqueLabelSet {
 }
 
 message SrcInfo {
-    required string filename = 1;
+    required uint32 filename = 1;
     required uint32 linenum = 2;
-    required string astnodename = 3;
+    required uint32 astnodename = 3;
 }     
 
 message TaintQuery {
@@ -17,7 +17,7 @@ message TaintQuery {
 }
 
 message AttackPoint {
-    required string info = 1;
+    required uint32 info = 1;
 }
 
 optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
