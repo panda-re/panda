@@ -1310,7 +1310,8 @@ void replay_progress(void) {
 
         struct timeval *time = &rusage.ru_utime;
         float secs = ((float)time->tv_sec*1000000 + (float)time->tv_usec) / 1000000.0;
-        char *name = basename(rr_nondet_log->name);
+        char *dup_name = strdup(rr_nondet_log->name);
+        char *name = basename(dup_name);
         char *dot = strrchr(name, '.');
         if (dot && dot - name > 10) *(dot - 10) = '\0';
         printf("%s:  %10lu (%6.2f%%) instrs. %7.2f sec. %5.2f GB ram.\n",
@@ -1319,6 +1320,7 @@ void replay_progress(void) {
                 ((rr_get_guest_instr_count() * 100.0) / 
                  rr_nondet_log->last_prog_point.guest_instr_count),
                 secs, rusage.ru_maxrss / 1024.0 / 1024.0);
+        free(dup_name);
      }
   }
 }
