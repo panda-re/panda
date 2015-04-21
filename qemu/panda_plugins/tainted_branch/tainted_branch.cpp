@@ -60,14 +60,21 @@ bool first_enable_taint = true;
 
 
 void tbranch_on_branch_taint2(Addr a) {
-    if (taint2_query(a)) {
-        // branch is tainted
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        ple.has_tainted_branch = true;
-        ple.tainted_branch = true;
-        pandalog_write_entry(&ple);
-        taint2_query_pandalog(a);
-        callstack_pandalog();
+    // a is an llvm reg
+    assert (a.typ == LADDR);
+    // query every byte of this reg
+    for (uint32_t o=0; o<8; o++) {
+        Addr ao =a;
+        ao.off = o;
+        if (taint2_query(ao)) {
+            // branch is tainted
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.has_tainted_branch = true;
+            ple.tainted_branch = true;
+            pandalog_write_entry(&ple);
+            taint2_query_pandalog(a, o);
+            callstack_pandalog();
+        }
     }
 }
 

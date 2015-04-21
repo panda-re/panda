@@ -59,7 +59,7 @@ void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_delete_ram(uint64_t pa);
 
    
-uint8_t taint2_query_pandalog (Addr a);
+uint8_t taint2_query_pandalog (Addr addr, uint32_t offset);
 
 
 uint32_t taint2_query(Addr a);
@@ -412,7 +412,7 @@ std::set < LabelSetP > ls_returned;
 // queries taint on this addr and
 // if anything is tainted returns 1, else returns 0
 // if there is taint, we write an entry to the pandalog. 
-uint8_t __taint2_query_pandalog (Addr a) {
+uint8_t __taint2_query_pandalog (Addr a, uint32_t offset) {
     uint8_t saw_taint = 0;
     LabelSetP ls = tp_query(shadow, a);
     if (ls) {
@@ -441,7 +441,7 @@ uint8_t __taint2_query_pandalog (Addr a) {
         *tq = PANDA__TAINT_QUERY__INIT;
         tq->ptr = (uint64_t) ls;
         tq->tcn = taint2_query_tcn(a);
-        //        tq->offset = offset;
+        tq->offset = offset;
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.taint_query = tq;
         pandalog_write_entry(&ple);
@@ -509,7 +509,7 @@ void lava_taint_query (PandaHypercallStruct phs) {
                 if ((int) pa != -1) {                         
                     Addr a = make_maddr(pa);
                     if (taint2_query(a)) {
-                        __taint2_query_pandalog(a);
+                        __taint2_query_pandalog(a, offset);
                     }
                 }
             }
@@ -724,8 +724,8 @@ void taint2_label_ram(uint64_t pa, uint32_t l) {
 }
 
 
-uint8_t taint2_query_pandalog (Addr a) {
-    return __taint2_query_pandalog(a);
+uint8_t taint2_query_pandalog (Addr addr, uint32_t offset) {
+    return __taint2_query_pandalog(addr, offset);
 }
 
 uint32_t taint2_query(Addr a) {

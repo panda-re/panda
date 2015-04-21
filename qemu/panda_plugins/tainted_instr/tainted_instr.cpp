@@ -66,7 +66,7 @@ void taint_change(Addr a) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.tainted_instr = true;
         pandalog_write_entry(&ple);
-        taint2_query_pandalog(a);    
+        taint2_query_pandalog(a,0);    
         callstack_pandalog();
     }
 }

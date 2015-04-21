@@ -1,6 +1,7 @@
 
 // cd panda/qemu
-// g++ -g -o pandalog_reader pandalog_reader.c pandalog.c pandalog.pb-c.c  -L/usr/local/lib -lprotobuf-c -I .. -lz -D PANDALOG_READER
+// g++ -g -o pandalog_reader pandalog_reader.cpp pandalog.c pandalog.pb-c.c ../../../lava/src_clang/lavaDB.cpp  -L/usr/local/lib -lprotobuf-c -I .. -lz -D PANDALOG_READER  -std=c++11 
+
 
 #define __STDC_FORMAT_MACROS
 
@@ -9,6 +10,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "pandalog.h"
+#include <map>
+#include <string>
+
+#include "../../../lava/src_clang/lavaDB.h"
 
 
 void print_process(Panda__Process *p) {
@@ -38,9 +43,19 @@ void print_process_key_index(Panda__ProcessKeyIndex *pki) {
     printf (" index = [%u] ", pki->index);            
 }
 
+std::map<std::string,uint32_t> str2ind;
+std::map<uint32_t,std::string> ind2str;
 
+
+char *gstr(uint32_t ind) {
+    return (char *) (ind2str[ind].c_str());
+}
 
 int main (int argc, char **argv) {
+    
+    str2ind = LoadDB(std::string("/tmp/lavadb"));
+    ind2str = InvertDB(str2ind);
+    
     pandalog_open(argv[1], "r");
     Panda__LogEntry *ple;
     while (1) {
@@ -92,13 +107,14 @@ int main (int argc, char **argv) {
 
         if (ple->attack_point) {
             Panda__AttackPoint *ap = ple->attack_point;
-            printf (" attack point: info=[%s]", ap->info);
+            printf (" attack point: info=[%u][%s]", ap->info, gstr(ap->info));
         }
 
         if (ple->src_info) {
             Panda__SrcInfo *si = ple->src_info;
-            printf (" src info filename=[%s] astnode=[%s] linenum=%d",
-                    si->filename, si->astnodename, si->linenum);
+            printf (" src info filename=[%u][%s] astnode=[%u][%s] linenum=%d",
+                    si->filename, gstr(si->filename), si->astnodename, 
+                    gstr(si->astnodename), si->linenum);
         }
 
         if (ple->has_tainted_branch && ple->tainted_branch) {
@@ -132,7 +148,7 @@ int main (int argc, char **argv) {
         
         if (ple->taint_query) {
             Panda__TaintQuery *tq = ple->taint_query;
-            printf (" taint query: labels ptr %" PRIx64" tcn=%d ", tq->ptr, tq->tcn);
+            printf (" taint query: labels ptr %" PRIx64" tcn=%d off=%d", tq->ptr, (int) tq->tcn, (int) tq->offset);
         }
 
         // win7proc
