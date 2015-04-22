@@ -31,14 +31,18 @@ int main (int argc, char **argv) {
         if (ple == NULL) {
             break;
         }
+        bool keep = 
+            (ple->has_asid || ple->n_callstack > 0 
+             || ple->taint_query_unique_label_set 
+             || ple->taint_query);
 
-        if (full) {
+        if (full && keep) {
             printf ("instr=%" PRIu64 " pc=0x%" PRIx64 " :", ple->instr, ple->pc);
         }
         
         if (ple->has_asid) {
             current_asid = ple->asid;
-            if (full) {
+            if (full && keep) {
                 printf (" asid changed to 0x%" PRIx64 , current_asid);
             }                       
         }
@@ -70,12 +74,12 @@ int main (int argc, char **argv) {
         if (ple->taint_query) {
             Panda__TaintQuery *tq = ple->taint_query;
             if (full) {
-                printf (" taint query: labels ptr %" PRIx64" tcn=%d ", tq->ptr, tq->tcn);
+                printf (" taint query: labels ptr %" PRIx64" tcn=%d offs=%d", tq->ptr, tq->tcn, tq->offset);
             }
             tainted_pcs[current_asid].insert(ple->pc);
         }
         panda__log_entry__free_unpacked(ple, NULL);
-        if (full) {
+        if (full && keep) {
             printf ("\n");
         }
     }
