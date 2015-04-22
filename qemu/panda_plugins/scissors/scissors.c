@@ -400,7 +400,7 @@ bool init_plugin(void *self) {
     if (args != NULL) {
         name = panda_parse_string(args, "name", "scissors");
         start_count = panda_parse_uint64(args, "start", 0);
-        end_count = panda_parse_uint64(args, "start", UINT64_MAX);
+        end_count = panda_parse_uint64(args, "end", UINT64_MAX);
     }
 
     snprintf(nondet_name, 128, "%s-rr-nondet.log", name);
