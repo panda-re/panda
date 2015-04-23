@@ -371,6 +371,7 @@ void callstack_pandalog() {
             ple.callstack[i] = rit->pc;
         }
         pandalog_write_entry(&ple);
+        free(ple.callstack);
     }    
 }
 
