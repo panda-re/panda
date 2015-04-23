@@ -79,8 +79,8 @@ def generate_code(functions, module, includes):
         fn_args = ",".join(fn_args_list)
         code+= "typedef " + fn_rtype + "(*" + fn_name + "_t)(" + fn_args_with_types + ");\n"
         code+= "static " + fn_name + "_t __" + fn_name + " = NULL;\n"
-        code += "inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + ");\n"
-        code += "inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + "){\n"
+        code += "static inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + ");\n"
+        code += "static inline " + fn_rtype + " " + fn_name + "(" + fn_args_with_types + "){\n"
         code += "    assert(__" + fn_name + ");\n"
         code += "    return __" + fn_name + "(" + fn_args + ");\n"
         code += "}\n"
@@ -96,8 +96,8 @@ def generate_code(functions, module, includes):
  } \\
 }
 """
-    code += "inline bool init_%s_api(void);" % module
-    code += "inline bool init_%s_api(void){" % module
+    code += "static inline bool init_%s_api(void);" % module
+    code += "static inline bool init_%s_api(void){" % module
 
 
     code += """

@@ -382,8 +382,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (snipping && !done && count > end_count) {
         end_snip();
 
-        init_timer_alarm();
-        rr_do_end_replay(0);
+        rr_end_replay_requested = 1;
     }
 
     return 0;
@@ -399,16 +398,9 @@ bool init_plugin(void *self) {
     
     panda_arg_list *args = panda_get_args("scissors");
     if (args != NULL) {
-        int i;
-        for (i = 0; i < args->nargs; i++) {
-            if (0 == strncmp(args->list[i].key, "start", 5)) {
-                start_count = strtoul(args->list[i].value, NULL, 10);
-            } else if (0 == strncmp(args->list[i].key, "end", 3)) {
-                end_count = strtoul(args->list[i].value, NULL, 10);
-            } else if (0 == strncmp(args->list[i].key, "name", 4)) {
-                name = args->list[i].value;
-            }
-        }
+        name = panda_parse_string(args, "name", "scissors");
+        start_count = panda_parse_uint64(args, "start", 0);
+        end_count = panda_parse_uint64(args, "end", UINT64_MAX);
     }
 
     snprintf(nondet_name, 128, "%s-rr-nondet.log", name);

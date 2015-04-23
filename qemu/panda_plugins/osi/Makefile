@@ -8,12 +8,20 @@ PLUGIN_NAME=osi
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-# CFLAGS+=
 # LIBS+=
+# CFLAGS+=-save-temps
+CXXFLAGS+=-std=c++11
 
-# The main rule for your plugin. Please stick with the panda_ naming
-# convention.
-$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/os_intro.o
+PLUGIN_OBJFILES=$(PLUGIN_OBJ_DIR)/os_intro.o
+ifneq (,$(findstring -DOSI_PROC_EVENTS,$(QEMU_CFLAGS)))
+PLUGIN_OBJFILES+=$(PLUGIN_OBJ_DIR)/osi_proc_events.o
+endif
+
+.PHONY: all
+
+# Plugin dynamic library. Please stick with the panda_ naming convention.
+$(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJFILES)
 	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
-all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
+all: $(PLUGIN_OBJ_DIR) $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
+	echo $(PLUGIN_OBJFILES)
