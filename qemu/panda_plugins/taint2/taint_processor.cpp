@@ -105,21 +105,21 @@ Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity) {
 
     if (granularity == TAINT_GRANULARITY_BYTE) {
         printf("taint2: Creating byte-level taint processor\n");
-        shad->ram = new FastShad(ram_size);
+        shad->ram = new FastShad("RAM", ram_size);
         // we're working with LLVM values that can be up to 128 bits
-        shad->llv = new FastShad(MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE);
-        shad->ret = new FastShad(MAXREGSIZE);
+        shad->llv = new FastShad("LLVM", MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE);
+        shad->ret = new FastShad("Ret", MAXREGSIZE);
         // guest registers are generally the size of the guest architecture
-        shad->grv = new FastShad(NUMREGS * WORDSIZE);
+        shad->grv = new FastShad("Reg", NUMREGS * WORDSIZE);
     } else {
         printf("taint2: Creating word-level taint processor\n");
-        shad->ram = new FastShad(ram_size / WORDSIZE);
-        shad->llv = new FastShad(MAXFRAMESIZE * FUNCTIONFRAMES);
-        shad->ret = new FastShad(1);
-        shad->grv = new FastShad(NUMREGS);
+        shad->ram = new FastShad("RAM", ram_size / WORDSIZE);
+        shad->llv = new FastShad("LLVM", MAXFRAMESIZE * FUNCTIONFRAMES);
+        shad->ret = new FastShad("Ret", 1);
+        shad->grv = new FastShad("Reg", NUMREGS);
     }
 
-    shad->gsv = new FastShad(sizeof(CPUState));
+    shad->gsv = new FastShad("CPUState", sizeof(CPUState));
 
     return shad;
 }

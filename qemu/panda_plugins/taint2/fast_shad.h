@@ -17,6 +17,7 @@ PANDAENDCOMMENT */
 
 #include <cassert>
 #include <cstdint>
+#include <string>
 
 #include "defines.h"
 #include "label_set.h"
@@ -81,6 +82,7 @@ private:
     TaintData *labels;
     TaintData *orig_labels;
     uint64_t size; // Number of labelsets contained.
+    std::string _name;
 
     inline TaintData *get_td_p(uint64_t guest_addr) {
         //taint_log("  %lx->get_ls_p(%lx)\n", (uint64_t)this, guest_addr);
@@ -96,7 +98,7 @@ private:
     }
 
 public:
-    FastShad(uint64_t size);
+    FastShad(std::string name, uint64_t size);
     ~FastShad();
 
     uint64_t get_size() { return size; }
@@ -193,6 +195,10 @@ public:
 
     inline uint32_t query_tcn(uint64_t addr) {
         return (query_full(addr)).tcn;
+    }
+
+    inline const char *name() {
+        return _name.c_str();
     }
 
 };

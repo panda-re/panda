@@ -70,8 +70,8 @@ void taint_copy(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
         uint64_t size) {
-    taint_log("copy: %lx[%lx+%lx] <- %lx[%lx] (",
-            (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src);
+    taint_log("copy: %s[%lx+%lx] <- %s[%lx] (",
+            shad_dest->name(), dest, size, shad_src->name(), src);
 #ifdef TAINTDEBUG
     unsigned i;
     for (i = 0; i < size; i++) {
@@ -92,8 +92,8 @@ void taint_parallel_compute(
         FastShad *shad,
         uint64_t dest, uint64_t ignored,
         uint64_t src1, uint64_t src2, uint64_t src_size) {
-    taint_log("pcompute: %lx[%lx+%lx] <- %lx + %lx\n",
-            (uint64_t)shad, dest, src_size, src1, src2);
+    taint_log("pcompute: %s[%lx+%lx] <- %lx + %lx\n",
+            shad->name(), dest, src_size, src1, src2);
     uint64_t i;
     for (i = 0; i < src_size; ++i) {
         TaintData td = TaintData::comp_union(
@@ -123,8 +123,8 @@ void taint_mix_compute(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
         uint64_t src1, uint64_t src2, uint64_t src_size) {
-    taint_log("mcompute: %lx[%lx+%lx] <- %lx + %lx\n",
-            (uint64_t)shad, dest, dest_size, src1, src2);
+    taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx\n",
+            shad->name(), dest, dest_size, src1, src2);
     TaintData td = TaintData::comp_union(
             mixed_labels(shad, src1, src_size),
             mixed_labels(shad, src2, src_size));
@@ -132,7 +132,7 @@ void taint_mix_compute(
 }
 
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
-    taint_log("remove: %lx[%lx+%lx]\n", (uint64_t)shad, dest, size);
+    taint_log("remove: %s[%lx+%lx]\n", shad->name(), dest, size);
     if (unlikely(dest >= shad->get_size())) {
         taint_log("Ignoring IO RW\n");
         return;
@@ -150,8 +150,8 @@ void taint_mix(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
         uint64_t src, uint64_t src_size) {
-    taint_log("mix: %lx[%lx+%lx] <- %lx+%lx\n",
-            (uint64_t)shad, dest, dest_size, src, src_size);
+    taint_log("mix: %s[%lx+%lx] <- %lx+%lx\n",
+            shad->name(), dest, dest_size, src, src_size);
     TaintData td = mixed_labels(shad, src, src_size);
     if (td.ls) td.tcn++;
     bulk_set(shad, dest, dest_size, td);
@@ -163,9 +163,9 @@ void taint_pointer(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
         FastShad *shad_src, uint64_t src, uint64_t size) {
-    taint_log("ptr: %lx[%lx+%lx] <- %lx[%lx] @ %lx[%lx+%lx]\n",
-            (uint64_t)shad_dest, dest, size,
-            (uint64_t)shad_src, src, (uint64_t)shad_ptr, ptr, ptr_size);
+    taint_log("ptr: %s[%lx+%lx] <- %s[%lx] @ %s[%lx+%lx]\n",
+            shad_dest->name(), dest, size,
+            shad_src->name(), src, shad_ptr->name(), ptr, ptr_size);
 
     if (unlikely(dest + size > shad_dest->get_size())) {
         taint_log("  Ignoring IO RW\n");
@@ -267,8 +267,8 @@ void taint_host_copy(
     //taint_log("\tenv: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
     //taint_log("\tgreg: %lx, gspec: %lx, size: %lx, is_store: %u\n", greg_ptr, gspec_ptr, size, is_store);
 #ifdef TAINTDEBUG
-    taint_log("hostcopy: %lx[%lx+%lx] <- %lx[%lx] (offset %lx) (",
-            (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src, offset);
+    taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx] (offset %lx) (",
+            shad_dest->name(), dest, size, shad_src->name(), src, offset);
     unsigned i;
     for (i = 0; i < size; i++) {
         taint_log("%lx, ", (uint64_t)shad_src->query(src + i));
@@ -299,8 +299,8 @@ void taint_host_memcpy(
             &shad_src, &addr_src);
 
 #ifdef TAINTDEBUG
-    taint_log("hostmemcpy: %lx[%lx+%lx] <- %lx[%lx] (offsets %lx <- %lx) (",
-            (uint64_t)shad_dest, dest, size, (uint64_t)shad_src, src,
+    taint_log("hostmemcpy: %s[%lx+%lx] <- %s[%lx] (offsets %lx <- %lx) (",
+            shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
     unsigned i;
     for (i = 0; i < size; i++) {
@@ -326,7 +326,7 @@ void taint_host_delete(
 
     find_offset(greg, gspec, offset, labels_per_reg, &shad, &dest);
 
-    taint_log("hostdel: %lx[%lx+%lx]", (uint64_t)shad, dest, size);
+    taint_log("hostdel: %s[%lx+%lx]", shad->name(), dest, size);
 
     shad->remove(dest, size);
 }

@@ -28,10 +28,11 @@ PANDAENDCOMMENT */
 #include "fast_shad.h"
 
 #include <set>
+#include <string>
 
 typedef const std::set<uint32_t> *LabelSetP;
 
-FastShad::FastShad(uint64_t labelsets) {
+FastShad::FastShad(std::string name, uint64_t labelsets) : _name(name) {
     uint64_t bytes = sizeof(TaintData) * labelsets;
 
     TaintData *array;
