@@ -50,6 +50,12 @@ PPP_CB_BOILERPLATE(on_branch2);
 
 extern char *qemu_loc;
 
+// Helper methods for doing structure computations.
+#define cpu_off(member) (uint64_t)(&((CPUState *)0)->member)
+#define cpu_size(member) sizeof(((CPUState *)0)->member)
+#define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
+#define contains_offset(member) ((signed)cpu_off(member) <= (offset) && (unsigned)(offset) < cpu_endoff(member))
+
 using namespace llvm;
 using std::vector;
 using std::pair;
@@ -650,6 +656,22 @@ void PandaTaintVisitor::visitInvokeInst(InvokeInst &I) {
  */
 void PandaTaintVisitor::visitUnreachableInst(UnreachableInst &I) {}
 
+// Check whether this instruction is just adding to an irrel. register
+// Form would be add(load(i2p(add(env, x))), y)
+// We can safely ignore those instrs.
+bool PandaTaintVisitor::isIrrelevantAdd(BinaryOperator *AI) {
+    if (!isa<ConstantInt>(AI->getOperand(1))) return false;
+
+    LoadInst *LI = dyn_cast<LoadInst>(AI->getOperand(0));
+    if (!LI) return false;
+
+    Addr addr = Addr();
+    if (getAddr(LI->getPointerOperand(), addr) && addr.flag == IRRELEVANT)
+        return true;
+
+    return false;
+}
+
 // Binary operators
 void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
@@ -659,6 +681,7 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
                 BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
                 assert(AI);
                 if (isCPUStateAdd(AI)) return;
+                else if (isIrrelevantAdd(AI)) return;
             } // fall through otherwise.
         case Instruction::Sub:
         case Instruction::Mul:
@@ -676,7 +699,8 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
         case Instruction::AShr:
             is_mixed = true;
             break;
-            // mixed
+            // mixed; i.e. operation is not bitwise, so taint transfers
+            // between bytes in the word.
 
         case Instruction::And:
         case Instruction::Or:
@@ -716,7 +740,10 @@ bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
 }
 
 // Find address and constant given a load/store (i.e. host vmem) address.
-// Argument should be an inttoptr instruction.
+// Argument should be the value from a load/store inst.
+// Returns true if addrOut has been changed.
+// This function is our main venue for avoiding taint-tracking on host data
+// structures.
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
@@ -743,32 +770,29 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     } else {
         return false;
     }
-    if (offset < 0 || (unsigned)offset >= sizeof(CPUState)) return false;
 
-#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
-#define m_size(member) sizeof(((CPUState *)0)->member)
-#define m_endoff(member) (m_off(member) + m_size(member))
-#define contains_offset(member) ((signed)m_off(member) <= (offset) && (unsigned)(offset) < m_endoff(member))
+    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) return false;
+    if (is_irrelevant(offset)) {
+        addrOut.flag = IRRELEVANT;
+        return true;
+    }
+
     if (contains_offset(regs)) {
         addrOut.typ = GREG;
-        addrOut.val.gr = (offset - m_off(regs)) / m_size(regs[0]);
-        addrOut.off = (offset - m_off(regs)) % m_size(regs[0]);
+        addrOut.val.gr = (offset - cpu_off(regs)) / cpu_size(regs[0]);
+        addrOut.off = (offset - cpu_off(regs)) % cpu_size(regs[0]);
         return true;
     }
     addrOut.typ = GSPEC;
     addrOut.val.gs = offset;
     addrOut.off = 0;
     return true;
-#undef contains_offset
-#undef m_endoff
-#undef m_size
-#undef m_off
 }
 
 void PandaTaintVisitor::insertStateOp(Instruction &I) {
     // These are loads/stores from CPUState etc.
     LLVMContext &ctx = I.getContext();
-    Addr addr;
+    Addr addr = Addr();
 
     bool isStore = isa<StoreInst>(I);
     Value *ptr = I.getOperand(isStore ? 1 : 0);

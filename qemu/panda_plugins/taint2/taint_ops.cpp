@@ -43,7 +43,7 @@ uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
 
 void taint_memlog_push(taint2_memlog *taint_memlog, uint64_t val) {
     taint_log("memlog_push: %lx\n", val);
-    taint_memlog->idx = (taint_memlog->idx + 1) % TAINT2_MEMLOG_SIZE;;
+    taint_memlog->idx = (taint_memlog->idx + 1) % TAINT2_MEMLOG_SIZE;
     taint_memlog->ring[taint_memlog->idx] = val;
 }
 
@@ -222,21 +222,27 @@ void taint_select(
     tassert(false && "Couldn't find selected argument!!");
 }
 
+#define cpu_off(member) (uint64_t)(&((CPUState *)0)->member)
+#define cpu_size(member) sizeof(((CPUState *)0)->member)
+#define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
 static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
-#define m_off(member) (uint64_t)(&((CPUState *)0)->member)
-#define m_size(member) sizeof(((CPUState *)0)->member)
-#define m_endoff(member) (m_off(member) + m_size(member))
-    if (m_off(regs) <= offset && offset < m_endoff(regs)) {
+    if (cpu_off(regs) <= offset && offset < cpu_endoff(regs)) {
         *dest = greg;
-        *addr = (offset - m_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
+        *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
     } else {
         *dest= gspec;
         *addr= offset;
     }
-#undef contains_offset
-#undef m_endoff
-#undef m_size
-#undef m_off
+}
+
+bool is_irrelevant(int64_t offset) {
+    bool irrelevant = offset < 0 || (size_t)offset >= sizeof(CPUState);
+#ifdef TARGET_I386
+    irrelevant |= (size_t)offset >= cpu_off(eip) && (size_t)offset <= cpu_off(hflags2);
+#endif
+    irrelevant |= offset == cpu_off(panda_guest_pc);
+    irrelevant |= offset == cpu_off(rr_guest_instr_count);
+    return irrelevant;
 }
 
 // This should only be called on loads/stores from CPUState.
@@ -246,7 +252,7 @@ void taint_host_copy(
         FastShad *greg, FastShad *gspec,
         uint64_t size, uint64_t labels_per_reg, bool is_store) {
     int64_t offset = addr - env_ptr;
-    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
+    if (is_irrelevant(offset)) {
         // Irrelevant
         taint_log("hostcopy: irrelevant\n");
         return;

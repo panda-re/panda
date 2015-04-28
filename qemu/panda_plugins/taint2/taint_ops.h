@@ -22,6 +22,8 @@ class FastShad;
 
 extern "C" {
 
+bool is_irrelevant(int64_t offset);
+
 // taint2_memlog
 //
 // This will replace the dynamic log, since we now need to track values for
