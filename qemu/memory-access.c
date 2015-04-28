@@ -176,7 +176,6 @@ static void *
 connection_handler_gate (void *fd)
 {
   connection_handler(*(int *)fd);
-  printf("QemuMemoryAccess: Connection done (%d)\n", *(int *)fd);
   free(fd);
   return NULL;
 }
@@ -209,7 +208,6 @@ memory_access_thread (void *path)
 
     while (true) {
       connection_fd = accept(socket_fd, (struct sockaddr *) &address, &address_length);
-      printf("QemuMemoryAccess: Connction accepted on %d.\n", connection_fd);
       tmp_fd = (int *) calloc(1, sizeof(int));
       *tmp_fd = connection_fd;
       pthread_create(&thread, NULL, connection_handler_gate, tmp_fd);
