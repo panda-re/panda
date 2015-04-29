@@ -117,9 +117,9 @@ public:
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < size; i++) {
             if (shad_src->get_td_p(src + i)->ls != NULL) {
-                taint_log("TAINTED COPY: %lx[%lx] <- %lx[%lx] (%lx)\n",
-                        (uint64_t)shad_dest, dest + i,
-                        (uint64_t)shad_src, src + i,
+                taint_log("TAINTED COPY: %s[%lx] <- %s[%lx] (%lx)\n",
+                        shad_dest->name(), dest + i,
+                        shad_src->name(), src + i,
                         (uint64_t)shad_src->get_td_p(src + i)->ls);
                 break;
             }
@@ -144,7 +144,8 @@ public:
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < remove_size; i++) {
             if (get_td_p(addr + i)->ls != NULL) {
-                taint_log("TAINTED DELETE\n");
+                taint_log("TAINTED DELETE: %s[%lx+%lx]\n",
+                        name(), addr, remove_size);
                 break;
             }
         }
