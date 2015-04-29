@@ -225,8 +225,12 @@ void taint_select(
 #define cpu_off(member) (uint64_t)(&((CPUState *)0)->member)
 #define cpu_size(member) sizeof(((CPUState *)0)->member)
 #define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
+#define cpu_contains(member, offset) \
+    (cpu_off(member) <= (size_t)(offset) && \
+     (size_t)(offset) < cpu_endoff(member))
+
 static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
-    if (cpu_off(regs) <= offset && offset < cpu_endoff(regs)) {
+    if (cpu_contains(regs, offset)) {
         *dest = greg;
         *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
     } else {
@@ -236,13 +240,20 @@ static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64
 }
 
 bool is_irrelevant(int64_t offset) {
-    bool irrelevant = offset < 0 || (size_t)offset >= sizeof(CPUState);
 #ifdef TARGET_I386
-    irrelevant |= (size_t)offset >= cpu_off(eip) && (size_t)offset <= cpu_off(hflags2);
-#endif
+    bool relevant = cpu_contains(regs, offset) ||
+        cpu_contains(fpregs, offset) ||
+        cpu_contains(xmm_regs, offset) ||
+        cpu_contains(xmm_t0, offset) ||
+        cpu_contains(mmx_t0, offset) ||
+        cpu_contains(ymmh_regs, offset);
+    return !relevant;
+#else
+    bool irrelevant = offset < 0 || (size_t)offset >= sizeof(CPUState);
     irrelevant |= offset == cpu_off(panda_guest_pc);
     irrelevant |= offset == cpu_off(rr_guest_instr_count);
     return irrelevant;
+#endif
 }
 
 // This should only be called on loads/stores from CPUState.
