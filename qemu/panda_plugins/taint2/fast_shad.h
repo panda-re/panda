@@ -54,6 +54,10 @@ struct TaintData {
     TaintData(LabelSetP ls) : ls(ls), tcn(0) {}
     TaintData(LabelSetP ls, uint32_t tcn) : ls(ls), tcn(ls ? tcn : 0) {}
 
+    bool operator==(const TaintData &other) const {
+        return ls == other.ls && tcn == other.tcn;
+    }
+
     void add(TaintData td) {
         ls = label_set_union(ls, td.ls);
         tcn = ls ? std::max(tcn, td.tcn) : 0;
@@ -85,8 +89,8 @@ private:
     }
 
     inline bool range_tainted(uint64_t addr, uint64_t size) {
-        for (unsigned i = addr; i < size; i++) {
-            if (get_td_p(addr)->ls) return true;
+        for (unsigned i = addr; i < addr+size; i++) {
+            if (get_td_p(i)->ls) return true;
         }
         return false;
     }
@@ -181,9 +185,7 @@ public:
     inline void set_full(uint64_t addr, TaintData td) {
         tassert(addr < size);
 
-        bool change = false;
-        if (td.ls != get_td_p(addr)->ls)
-            change = true;
+        bool change = !(td == *get_td_p(addr));
         labels[addr] = td;
 
         if (change) taint_state_changed(this, addr);
