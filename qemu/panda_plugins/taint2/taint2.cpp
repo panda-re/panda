@@ -59,7 +59,8 @@ void taint2_enable_taint(void);
 int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length);
-void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr, uint32_t length, uint32_t label);
+void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr,
+    uint32_t length, long label);
 void taint2_delete_ram(uint64_t pa);
 
    
@@ -551,7 +552,7 @@ void i386_hypercall_callback(CPUState *env){
         // EDI is the label integer
         // EDX = starting offset (for positional labels only)
         //     -mostly not used, this is managed in pirate_utils
-        if (EAX == 7 || R_EAX == 8){
+        if (EAX == 7 || EAX == 8){
             if (!taintEnabled){
                 printf("Taint plugin: Label operation detected\n");
                 printf("Enabling taint processing\n");
@@ -559,11 +560,13 @@ void i386_hypercall_callback(CPUState *env){
             }
             if (EAX == 7){
                 // Standard buffer label
+                printf("taint2: single taint label\n");
                 taint2_add_taint_ram_single_label(env, (uint64_t)buf_start,
                     (int)buf_len, label);
             }
             else if (EAX == 8){
                 // Positional buffer label
+                printf("taint2: positional taint label\n");
                 taint2_add_taint_ram_pos(env, (uint64_t)buf_start, (int)buf_len);
             }
         }
@@ -668,6 +671,21 @@ void __taint2_label_ram(uint64_t pa, uint32_t l) {
 
 uint32_t taint_pos_count = 0;
 
+void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
+    target_phys_addr_t pa = panda_virt_to_phys(env, virt_addr);
+    if (pandalog) {
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.has_taint_label_virtual_addr = 1;
+        ple.has_taint_label_physical_addr = 1;
+        ple.has_taint_label_number = 1;
+        ple.taint_label_virtual_addr = virt_addr;
+        ple.taint_label_physical_addr = pa;
+        ple.taint_label_number = label_num;
+        pandalog_write_entry(&ple);
+    }
+    taint2_label_ram(pa, label_num);
+}
+
 // Apply positional taint to a buffer of memory
 void taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length){
     for (unsigned i = 0; i < length; i++){
@@ -677,13 +695,16 @@ void taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length){
                 "i.e., it isnt actually there.\n", addr +i);
             continue;
         }
-        taint2_label_ram(pa, i + taint_pos_count);
+        //taint2_label_ram(pa, i + taint_pos_count);
+        printf("taint2: adding positional taint label %d\n", i+taint_pos_count);
+        label_byte(env, addr+i, i+taint_pos_count);
     }
     taint_pos_count += length;
 }
 
 // Apply single label taint to a buffer of memory
-void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr, uint32_t length, uint32_t label){
+void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr,
+        uint32_t length, long label){
     for (unsigned i = 0; i < length; i++){
         target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
         if (pa == (target_phys_addr_t)(-1)) {
@@ -691,7 +712,9 @@ void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr, uint32_t le
                 "i.e., it isnt actually there.\n", addr +i);
             continue;
         }
-        taint2_label_ram(pa, label);
+        //taint2_label_ram(pa, label);
+        printf("taint2: adding single taint label %lu\n", label);
+        label_byte(env, addr+i, label);
     }
 }
 
