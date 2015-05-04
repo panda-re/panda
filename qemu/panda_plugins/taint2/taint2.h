@@ -37,7 +37,7 @@ typedef struct SdDir64 SdDir64;
 typedef struct addr_struct Addr;
 
 typedef void (*on_branch2_t) (Addr);
-typedef void (*on_taint_change_t) (Addr);
+typedef void (*on_taint_change_t) (Addr, uint64_t);
 
 // Unused for now.
 typedef enum {

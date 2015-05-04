@@ -29,7 +29,7 @@ extern "C" {
 
 extern bool track_taint_state;
 
-extern void taint_state_changed(FastShad *fast_shad, uint64_t addr);
+extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t size);
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 14)
@@ -131,7 +131,7 @@ public:
 
         memcpy(shad_dest->get_td_p(dest), shad_src->get_td_p(src), size * sizeof(TaintData));
 
-        if (change) taint_state_changed(shad_dest, dest);
+        if (change) taint_state_changed(shad_dest, dest, size);
     }
 
     // Remove taint.
@@ -153,7 +153,7 @@ public:
             change = true;
         memset(get_td_p(addr), 0, remove_size * sizeof(TaintData));
 
-        if (change) taint_state_changed(this, addr);
+        if (change) taint_state_changed(this, addr, remove_size);
     }
 
     // Query. NULL if untainted.
@@ -188,7 +188,7 @@ public:
         bool change = !(td == *get_td_p(addr));
         labels[addr] = td;
 
-        if (change) taint_state_changed(this, addr);
+        if (change) taint_state_changed(this, addr, 1);
     }
 
     inline uint32_t query_tcn(uint64_t addr) {

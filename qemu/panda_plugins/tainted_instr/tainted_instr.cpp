@@ -51,23 +51,26 @@ void taint_change(void);
 
 target_ulong last_asid = 0;
 
-void taint_change(Addr a) {
-    if (taint2_query(a)) {
-        extern CPUState *cpu_single_env;
-        CPUState *env = cpu_single_env;
-        target_ulong asid = panda_current_asid(env);
-        if (asid != last_asid) {
+void taint_change(Addr a, uint64_t size) {
+    for (unsigned i = 0; i < size; i++){
+        a.off = i;
+        if (taint2_query(a)) {
+            extern CPUState *cpu_single_env;
+            CPUState *env = cpu_single_env;
+            target_ulong asid = panda_current_asid(env);
+            if (asid != last_asid) {
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_asid = 1;
+                ple.asid = asid;
+                pandalog_write_entry(&ple);
+                last_asid = asid;
+            }
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.has_asid = 1;
-            ple.asid = asid;
-            pandalog_write_entry(&ple);           
-            last_asid = asid;
+            ple.tainted_instr = true;
+            pandalog_write_entry(&ple);
+            taint2_query_pandalog(a, i);
+            callstack_pandalog();
         }
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        ple.tainted_instr = true;
-        pandalog_write_entry(&ple);
-        taint2_query_pandalog(a,0);    
-        callstack_pandalog();
     }
 }
 
