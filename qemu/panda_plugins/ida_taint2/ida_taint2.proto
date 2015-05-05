@@ -1,0 +1,7 @@
+
+// Defined in the tainted_instr plugin
+//optional bool tainted_instr = 37;
+
+// Also relies on other info that gets logged with win7proc.  For now, this
+// remains empty
+

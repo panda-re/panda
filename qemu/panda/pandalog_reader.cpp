@@ -17,7 +17,11 @@
 
 
 void print_process(Panda__Process *p) {
-    printf ("(%d, %s)", p->pid, p->name);
+    printf ("(%d, %s", p->pid, p->name);
+    if (p->has_virtual_base_addr){
+        printf(" : base: 0x%lx", p->virtual_base_addr);
+    }
+    printf(")");
 }
 
 void print_process_file(Panda__ProcessFile *pf) {
@@ -43,18 +47,20 @@ void print_process_key_index(Panda__ProcessKeyIndex *pki) {
     printf (" index = [%u] ", pki->index);            
 }
 
+#ifdef LAVA
 std::map<std::string,uint32_t> str2ind;
 std::map<uint32_t,std::string> ind2str;
-
 
 char *gstr(uint32_t ind) {
     return (char *) (ind2str[ind].c_str());
 }
+#endif
 
 int main (int argc, char **argv) {
-    
+#ifdef LAVA
     str2ind = LoadDB(std::string("/tmp/lavadb"));
     ind2str = InvertDB(str2ind);
+#endif
     
     pandalog_open(argv[1], "r");
     Panda__LogEntry *ple;
@@ -105,6 +111,7 @@ int main (int argc, char **argv) {
             printf ("])");
         }
 
+#ifdef LAVA
         if (ple->attack_point) {
             Panda__AttackPoint *ap = ple->attack_point;
             printf (" attack point: info=[%u][%s]", ap->info, gstr(ap->info));
@@ -116,6 +123,7 @@ int main (int argc, char **argv) {
                     si->filename, gstr(si->filename), si->astnodename, 
                     gstr(si->astnodename), si->linenum);
         }
+#endif
 
         if (ple->has_tainted_branch && ple->tainted_branch) {
             printf (" tainted branch");

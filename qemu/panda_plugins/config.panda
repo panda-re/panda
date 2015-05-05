@@ -40,5 +40,6 @@ asidstory
 file_taint
 win7proc
 ida_taint
+ida_taint2
 tainted_instr
 pmemaccess

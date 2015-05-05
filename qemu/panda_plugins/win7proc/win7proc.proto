@@ -3,6 +3,8 @@
 message Process {
     required uint32 pid = 1;
     required string name = 2;
+    optional uint64 virtual_base_addr = 3;
+
 }
 
 // process created

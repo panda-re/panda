@@ -47,11 +47,13 @@ void uninit_plugin(void *);
 //typedef std::pair<std::string,uint32_t> procid;
 //std::map<procid,uint64_t> bbcount;
 
-#define KMODE_FS           0x030
-#define KPCR_CURTHREAD_OFF 0x124
-#define KTHREAD_KPROC_OFF  0x150
-#define EPROC_PID_OFF      0x0b4
-#define EPROC_NAME_OFF     0x16c
+#define KMODE_FS                0x030
+#define KPCR_CURTHREAD_OFF      0x124
+#define KTHREAD_KPROC_OFF       0x150
+#define EPROC_PID_OFF           0x0b4
+#define EPROC_NAME_OFF          0x16c
+#define EPROC_PEB_OFF           0x1a8 // _EPROCESS.Peb
+#define PEB_IMAGE_BASE_ADDRESS  0x8   // _PEB.ImageBaseAddress (Reserved3[1])
 
 static uint32_t get_pid(CPUState *env, target_ulong eproc) {
     uint32_t pid;
@@ -83,6 +85,22 @@ static uint32_t get_current_proc(CPUState *env) {
     return proc;
 }
 
+static uint32_t get_virtual_base_addr(CPUState *env){
+    // Get EPROCESS->PEB->ImageBaseAddress
+    uint32_t eproc = get_current_proc(env);
+    uint32_t peb = -1;
+    uint32_t virtual_base_addr = -1;
+    panda_virtual_memory_rw(env, eproc+EPROC_PEB_OFF, (uint8_t *)&peb,
+        sizeof(uint32_t), false);
+    assert(peb != (uint32_t)-1);
+    //printf("Current process: %s\n", current_process->name);
+    //printf("PEB: 0x%x\n", peb);
+    panda_virtual_memory_rw(env, peb+PEB_IMAGE_BASE_ADDRESS,
+        (uint8_t *)&virtual_base_addr, sizeof(uint32_t), false);
+    assert(virtual_base_addr != (uint32_t)-1);
+    return virtual_base_addr;
+}
+
 #define UNKNOWN_PID 0xFFFFFFFF
 char cur_procname[16];
 uint32_t cur_pid = UNKNOWN_PID;
@@ -112,6 +130,8 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         *np = PANDA__PROCESS__INIT;
         np->pid = cur_pid;
         np->name = cur_procname;
+        np->has_virtual_base_addr = true;
+        np->virtual_base_addr = get_virtual_base_addr(env);
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.new_pid = np;
         pandalog_write_entry(&ple);
