@@ -24,9 +24,9 @@ Copy or symlink panda_vol_int_pb2.py, once it is built, into `$VOLATILITY/volati
 
 Usage
 ---
-*Volatility interface*
+<strong>Volatility interface</strong>
 
-Include [volatility_interface.h](../qemu/volatility_interface.h).
+Include [volatility_interface.h](../qemu/panda/volatility_interface.h).
 
 Then call `vol_run_cmd(command, unix_socket, profile)`. 
 This will return a list of protobuf data output by volatility. You can iterate over 
@@ -34,8 +34,8 @@ this list and have protobuf-c unpack the data for you.
 
 Example for linux_pslist:
 
-*Ensure that `render_protobuf` is available to linux_pslist in volatility*
-```
+<strong>Ensure that `render_protobuf` is available to linux_pslist in volatility</strong>
+```c
 time_t start_time;
 VolatilityRender__LinuxPslistTask *task = NULL;
 // Run volatility
@@ -63,7 +63,7 @@ while (list_ptr != NULL) {
 
 ```
 
-*Volatility stand-alone*
+<strong>Volatility stand-alone</strong>
 
 Run qemu as you normally would, and send `pmemaccess /path/to/socket` to the
 qemu monitor. This will start the memory-access server and create the UNIX socket 
@@ -96,7 +96,7 @@ message linux_pslist_task {
 ```
 
 Volatility render function:
-```
+```python
 def render_protobuf(self, outfd, data):
     uint64 = 0xffffffffffffffff
     uint32 = 0xffffffff
