@@ -2873,7 +2873,7 @@ fi
 # After here, no more $cc or $ld runs
 
 if test "$debug" = "no" ; then
-  CFLAGS="-O2 $CFLAGS"
+  CFLAGS="$CFLAGS"
 fi
 
 # Consult white-list to determine whether to enable werror
