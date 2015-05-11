@@ -1031,7 +1031,7 @@ TranslationBlock *tb_gen_code(CPUState *env,
     uint8_t *tc_ptr;
     tb_page_addr_t phys_pc, phys_page2;
     target_ulong virt_page2;
-    int code_gen_size;
+    int code_gen_size, i;
 
     phys_pc = get_page_addr_code(env, pc);
     tb = tb_alloc(pc);
@@ -1049,6 +1049,23 @@ TranslationBlock *tb_gen_code(CPUState *env,
     tb->flags = flags;
     tb->cflags = cflags;
     cpu_gen_code(env, tb, &code_gen_size);
+#ifdef CONFIG_LLVM
+    // Sanity check. We had a bug before where we were misrecording
+    // translated code sizes, and so TC blocks appeared to overlap.
+    if (generate_llvm) {
+        for (i = 0; i < nb_tbs; i++) {
+            TranslationBlock *other = &tbs[i];
+            if (tb == other) continue;
+            if (other->llvm_tc_ptr <= tb->llvm_tc_ptr &&
+                    tb->llvm_tc_ptr < other->llvm_tc_end) {
+                assert(false && "Allocating apparently overlapping blocks!");
+            } else if (other->llvm_tc_ptr < tb->llvm_tc_end &&
+                    tb->llvm_tc_end <= other->llvm_tc_end) {
+                assert(false && "Allocating apparently overlapping blocks!");
+            }
+        }
+    }
+#endif
     code_gen_ptr = (void *)(((unsigned long)code_gen_ptr + code_gen_size + CODE_GEN_ALIGN - 1) & ~(CODE_GEN_ALIGN - 1));
 
     /* check next page if needed */

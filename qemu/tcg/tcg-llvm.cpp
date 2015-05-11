@@ -285,22 +285,29 @@ public:
  * the last generated function */
 class TJITMemoryManager: public SectionMemoryManager {
     JITMemoryManager* m_base;
-    ptrdiff_t m_lastFunctionSize;
+    std::map<const Function *, ptrdiff_t> m_functionSizes;
 public:
     TJITMemoryManager():
-        m_base(JITMemoryManager::CreateDefaultMemManager()),
-        m_lastFunctionSize(0) {}
+        m_base(JITMemoryManager::CreateDefaultMemManager()) {}
     ~TJITMemoryManager() { delete m_base; }
 
-    ptrdiff_t getLastFunctionSize() const { return m_lastFunctionSize; }
+    ptrdiff_t getFunctionSize(const Function *F) const {
+        std::map<const Function *, ptrdiff_t>::const_iterator it
+            = m_functionSizes.find(F);
+        if (it == m_functionSizes.end()) {
+            return 0;
+        } else {
+            return it->second;
+        }
+    }
 
     uint8_t *startFunctionBody(const Function *F, uintptr_t &ActualSize) {
-        m_lastFunctionSize = 0;
+        m_functionSizes.erase(F);
         return m_base->startFunctionBody(F, ActualSize);
     }
     void endFunctionBody(const Function *F, uint8_t *FunctionStart,
                                 uint8_t *FunctionEnd) {
-        m_lastFunctionSize = FunctionEnd - FunctionStart;
+        m_functionSizes[F] = FunctionEnd - FunctionStart;
         m_base->endFunctionBody(F, FunctionStart, FunctionEnd);
     }
 
@@ -1406,7 +1413,10 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         tb->llvm_tc_ptr = (uint8_t*)
                 m_executionEngine->getPointerToFunction(m_tbFunction);
         tb->llvm_tc_end = tb->llvm_tc_ptr +
-                m_jitMemoryManager->getLastFunctionSize();
+                m_jitMemoryManager->getFunctionSize(m_tbFunction);
+
+        assert(tb->llvm_tc_ptr);
+        assert(tb->llvm_tc_end > tb->llvm_tc_ptr);
     } else {
         tb->llvm_tc_ptr = 0;
         tb->llvm_tc_end = 0;
@@ -1520,6 +1530,7 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
         tb->llvm_function->eraseFromParent();
         tb->llvm_function = NULL;
         tb->llvm_tc_ptr = NULL;
+        tb->llvm_tc_end = NULL;
     }
 }
 
