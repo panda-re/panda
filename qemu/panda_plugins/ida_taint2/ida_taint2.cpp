@@ -17,6 +17,10 @@ PANDAENDCOMMENT */
  * PANDA args:
  *  -panda 'syscalls2:profile=windows7_x86;ida_taint2' -pandalog <plog_file>'
  *
+ * If you know the name of your file and want to use the file_taint plugin, the
+ * PANDA args become:
+ *  -panda 'syscalls2:profile=windows7_x86;ida_taint2;file_taint:filename=<file>'
+ *
  * Currently, very similar to tainted_instr
  *
  * XXX: Only tested for Windows 7 32-bit
