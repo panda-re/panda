@@ -309,6 +309,17 @@ void windows_read_return(CPUState* env, target_ulong pc, uint32_t FileHandle, ui
     read_return(env, pc, Buffer, actual_count);
 }
 
+// 66 NTSTATUS NtCreateFile (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength);
+// typedef void (*on_NtCreateFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t IoStatusBlock,uint32_t AllocationSize,uint32_t FileAttributes,uint32_t ShareAccess,uint32_t CreateDisposition,uint32_t CreateOptions,uint32_t EaBuffer,uint32_t EaLength);
+void windows_create_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t AllocationSize, uint32_t FileAttributes, uint32_t ShareAccess, uint32_t CreateDisposition, uint32_t CreateOptions, uint32_t EaBuffer, uint32_t EaLength) {
+    windows_open_enter(env, pc, FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, CreateOptions);
+}
+
+// typedef void (*on_NtCreateFile_return_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t IoStatusBlock,uint32_t AllocationSize,uint32_t FileAttributes,uint32_t ShareAccess,uint32_t CreateDisposition,uint32_t CreateOptions,uint32_t EaBuffer,uint32_t EaLength);
+void windows_create_return(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t AllocationSize, uint32_t FileAttributes, uint32_t ShareAccess, uint32_t CreateDisposition, uint32_t CreateOptions, uint32_t EaBuffer, uint32_t EaLength) {
+    windows_open_return(env, pc, FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, CreateOptions);
+}
+
 void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, target_ulong buf, uint32_t count) {
     read_enter(env, pc, fd, buf, count);
 }
@@ -390,6 +401,9 @@ bool init_plugin(void *self) {
 
     PPP_REG_CB("syscalls2", on_NtOpenFile_enter, windows_open_enter);
     PPP_REG_CB("syscalls2", on_NtOpenFile_return, windows_open_return);
+
+    PPP_REG_CB("syscalls2", on_NtCreateFile_enter, windows_create_enter);
+    PPP_REG_CB("syscalls2", on_NtCreateFile_return, windows_create_return);
 
     PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
     PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
