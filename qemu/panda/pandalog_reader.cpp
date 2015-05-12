@@ -14,8 +14,9 @@
 #include <map>
 #include <string>
 
+#ifdef LAVA
 #include "../../../lava/src_clang/lavaDB.h"
-
+#endif
 
 void print_process(Panda__Process *p) {
     printf ("(%d, %s", p->pid, p->name);
