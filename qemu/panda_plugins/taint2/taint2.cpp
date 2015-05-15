@@ -50,7 +50,7 @@ extern "C" {
 
 #include "../callstack_instr/callstack_instr_ext.h"
 
-#define TAINT_LEGACY_HYPERCALL // for use with replays that use old hypercall
+    //#define TAINT_LEGACY_HYPERCALL // for use with replays that use old hypercall
 
 extern int loglevel;
 
@@ -107,6 +107,8 @@ void taint2_track_taint_state(void);
 #include "fast_shad.h"
 #include "taint_ops.h"
 #include "taint2.h"
+
+#define PANDA_LAVA
 
 #ifdef PANDA_LAVA
 #include "../../../../lava/include/panda_hypercall_struct.h"
@@ -399,6 +401,11 @@ void lava_src_info_pandalog(PandaHypercallStruct phs) {
     si->filename = phs.src_filename;
     si->astnodename = phs.src_ast_node_name;
     si->linenum = phs.src_linenum;
+    si->has_insertionpoint = 0;
+    if (phs.insertion_point) {
+        si->has_insertionpoint = 1;
+        si->insertionpoint = phs.insertion_point;
+    }
     ple = PANDA__LOG_ENTRY__INIT;
     ple.src_info = si;
     pandalog_write_entry(&ple);
@@ -539,7 +546,7 @@ void lava_attack_point(PandaHypercallStruct phs) {
 #ifdef TARGET_I386
 // Support all features of label and query program
 void i386_hypercall_callback(CPUState *env){
-    if (pandalog) {
+    if (taintEnabled && pandalog) {
         // LAVA Hypercall
 #ifdef TAINT_LEGACY_HYPERCALL
         target_ulong buf_start = EBX;

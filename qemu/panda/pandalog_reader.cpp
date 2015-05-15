@@ -120,10 +120,16 @@ int main (int argc, char **argv) {
         }
 
         if (ple->src_info) {
-            Panda__SrcInfo *si = ple->src_info;
+            Panda__SrcInfo *si = ple->src_info;            
             printf (" src info filename=[%u][%s] astnode=[%u][%s] linenum=%d",
                     si->filename, gstr(si->filename), si->astnodename, 
-                    gstr(si->astnodename), si->linenum);
+                    gstr(si->astnodename), si->linenum, si->insertionpoint);
+            if (si->insertionpoint == 1 or si->insertionpoint == 2) {
+                printf (" insertionpoint=%d\n", si->insertionpoint);
+            }
+            else {
+                printf ("\n");
+            }            
         }
 #endif
 

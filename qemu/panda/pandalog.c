@@ -82,7 +82,9 @@ Panda__LogEntry *pandalog_read_entry(void) {
     // and then read the entry iself
     gzread(pandalog_file, pandalog_buf, n);
     // and unpack it
-    return panda__log_entry__unpack(NULL, n, pandalog_buf);                                             
+    Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, pandalog_buf);
+    assert (ple != NULL);
+    return ple;
 }
 
 
