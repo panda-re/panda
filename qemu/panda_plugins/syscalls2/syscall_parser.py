@@ -22,20 +22,44 @@ import os
 from collections import defaultdict
 from sys import argv,exit
 
+KNOWN_OS = set(["linux", "windows7", "windowsxp"])
+
 def usage():
     print "Usage syscall_parser.py <destdir> <os> <arch> [<os> <arch> ...]"
-    print "os can be linux or windows7"
+    print "os can be", " or ".join(KNOWN_OS)
     print "arch can be x86 or arm"
     exit(1)
 
 if len(argv[2:]) % 2 != 0:
-    print len(argv[2:])
     usage()
 
-DESTDIR=argv[1]
+DESTDIR = argv[1]
+if not os.path.isdir(DESTDIR):
+    usage()
+
+# Typedefs and names for PPP C callbacks
+# We want these to be global so that we don't get duplicate
+# definitions when multiple OSes implement a system call with the
+# same name & semantics (if it has the same name but different
+# semantics, you should rename it in the prototypes file!)
+typedefs = defaultdict(set)
+cb_names_enter = defaultdict(set)
+cb_names_return = defaultdict(set)
+
+# Common to every OS, so we put them here
+# A little goofy, but we use #if 1 as the keyname because it will
+# be pasted verbatim into the file later
+typedefs['#if 1'].add("typedef void (*on_unknown_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_all_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+cb_names_enter['#if 1'].add("on_unknown_sys_enter")
+cb_names_enter['#if 1'].add("on_all_sys_enter")
+typedefs['#if 1'].add("typedef void (*on_unknown_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+cb_names_return['#if 1'].add("on_unknown_sys_return")
+cb_names_return['#if 1'].add("on_all_sys_return")
 
 for OS, ARCH in zip(argv[2::2], argv[3::2]):
-    if not (OS == 'windows7' or OS == 'linux'):
+    if OS not in KNOWN_OS:
         usage()
 
     if not (ARCH == 'arm' or ARCH == 'x86'):
@@ -56,10 +80,8 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
        
     ARGS = ["arg0", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10", "arg11", "arg12", "arg13", "arg14", "arg15"]
 
-
-
-    IDS="%s_%s" % (OS, ARCH)
-    PROTOS="%s_prototypes.txt" % IDS
+    osarch = "%s_%s" % (OS, ARCH)
+    PROTOS = "%s_prototypes.txt" % osarch
     MODE=ARCH
 
 
@@ -78,9 +100,6 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
                 'PUCHAR', 'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR', 'PUNICODE_STRING', 'PVOID', 'PWSTR']
     types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT']
     types_pointer = ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...']
-
-
-    osarch = "%s_%s" % (OS, ARCH)
 
     syscall_enter_switch = """
 
@@ -178,8 +197,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
 
     CPP_RESERVED = {"new": "anew", "data":"data_arg"}
 
-    NAMESPACE = "syscalls"
-
     class Argument(object):
         def __init__(self):
             self._type = None
@@ -210,14 +227,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             if newname.endswith('[]'):
                 newname = newname[:-2]
             self._name = newname
-
-    # Typedefs for PPP C callbacks
-    typedefs = set()
-    # Names of all PPP C callbacks
-    cb_names_enter = set()
-    cb_names_return = set()
-
-    syscalls = [] # objects, having a set is useless for dedup
 
     # Goldfish kernel doesn't support OABI layer. Yay!
     with open(PROTOS) as calls:
@@ -316,11 +325,11 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             # declaration info (type and name) for each arg passed to C++ and C callbacks
             _c_args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
             typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_enter", _c_args_types)
-            typedefs.add(typedef)
+            typedefs[GUARD].add(typedef)
             typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_return", _c_args_types)
-            typedefs.add(typedef )
-            cb_names_enter.add("on_{0}".format(callname + "_enter"))
-            cb_names_return.add("on_{0}".format(callname + "_return"))
+            typedefs[GUARD].add(typedef )
+            cb_names_enter[GUARD].add("on_{0}".format(callname + "_enter"))
+            cb_names_return[GUARD].add("on_{0}".format(callname + "_return"))
             # prototype for the C++ callback (with arg types and names)
             syscall_enter_switch += "PPP_RUN_CB(on_{0}_enter, {1}) ; \n".format(callname, _c_args)
             syscall_enter_switch += "}; break;"+'\n'
@@ -329,58 +338,67 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
            
         # The "all" and "unknown" callbacks
         syscall_enter_switch += "default:\n"
-        syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_%s_%s_enter, env, pc, %s);\n" % (OS,ARCH, CALLNO)
+        syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_enter, env, pc, %s);\n" % CALLNO
         syscall_enter_switch += "}"+'\n'
-        syscall_enter_switch += "PPP_RUN_CB(on_all_sys_%s_%s_enter, env, pc, %s);\n" % (OS,ARCH, CALLNO)
-        typedefs.add("typedef void (*on_unknown_sys_%s_%s_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
-        typedefs.add("typedef void (*on_all_sys_%s_%s_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
-        cb_names_enter.add("on_unknown_sys_%s_%s_enter" % (OS,ARCH))
-        cb_names_enter.add("on_all_sys_%s_%s_enter" % (OS,ARCH))
+        syscall_enter_switch += "PPP_RUN_CB(on_all_sys_enter, env, pc, %s);\n" % CALLNO
 
         syscall_return_switch += "default:\n"
-        syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_%s_%s_return, env, pc, %s);\n" % (OS,ARCH, CALLNO)
+        syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, env, pc, %s);\n" % CALLNO
         syscall_return_switch += "}"+'\n'
-        syscall_return_switch += "PPP_RUN_CB(on_all_sys_%s_%s_return, env, pc, %s);\n" % (OS,ARCH, CALLNO)
-        typedefs.add("typedef void (*on_unknown_sys_%s_%s_return_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
-        typedefs.add("typedef void (*on_all_sys_%s_%s_return_t)(CPUState *env, target_ulong pc, target_ulong callno);" % (OS,ARCH))
-        cb_names_return.add("on_unknown_sys_%s_%s_return" % (OS,ARCH))
-        cb_names_return.add("on_all_sys_%s_%s_return" % (OS,ARCH))
+        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, env, pc, %s);\n" % CALLNO
 
     syscall_return_switch += "#endif\n } \n"
     syscall_enter_switch += "#endif\n } \n"
 
-    with open(os.path.join(DESTDIR, "gen_syscalls_ext_typedefs_%s.h" % IDS), "w") as callbacktypes:
+    with open(os.path.join(DESTDIR, "gen_syscall_switch_enter_%s.cpp" % osarch), "w") as dispatchfile:
+        print "Writing", "gen_syscall_switch_enter_%s.cpp" % osarch
+        dispatchfile.write(syscall_enter_switch)
+    with open(os.path.join(DESTDIR, "gen_syscall_switch_return_%s.cpp" % osarch), "w") as dispatchfile:
+        print "Writing", "gen_syscall_switch_return_%s.cpp" % osarch
+        dispatchfile.write(syscall_return_switch)
+
+# Done with all the OS specific files we produce
+# Now generate a few big files with all the typedefs
+# and registration code. Note that we need to do this
+# as a loop over each architecture, since we need to
+# appropriately guard the code for each arch in an #ifdef
+with open(os.path.join(DESTDIR, "gen_syscalls_ext_typedefs.h"), "w") as callbacktypes:
+    print "Writing", "gen_syscalls_ext_typedefs.h"
+    for GUARD in typedefs:
         callbacktypes.write(GUARD + "\n")
-        for t in typedefs:
+        for t in typedefs[GUARD]:
             callbacktypes.write(t+"\n")
         callbacktypes.write("#endif\n")
 
-    with open(os.path.join(DESTDIR, "gen_syscall_switch_enter_%s.cpp" % IDS), "w") as dispatchfile:
-        dispatchfile.write(syscall_enter_switch)
-    with open(os.path.join(DESTDIR, "gen_syscall_switch_return_%s.cpp" % IDS), "w") as dispatchfile:
-        dispatchfile.write(syscall_return_switch)
-
-    with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_enter_%s.cpp" % IDS), "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_enter.cpp"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_register_enter.cpp"
+    for GUARD in cb_names_enter:
         pppfile.write(GUARD + "\n")
-        for ppp in cb_names_enter:
+        for ppp in cb_names_enter[GUARD]:
             pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
         pppfile.write("#endif\n")
 
-    with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_return_%s.cpp" % IDS), "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_return.cpp"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_register_return.cpp"
+    for GUARD in cb_names_return:
         pppfile.write(GUARD + "\n")
-        for ppp in cb_names_return:
+        for ppp in cb_names_return[GUARD]:
             pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
         pppfile.write("#endif\n")
 
 
-    with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_enter_%s.cpp" % IDS), "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_enter.cpp"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_boilerplate_enter.cpp"
+    for GUARD in cb_names_enter:
         pppfile.write(GUARD + "\n")
-        for ppp in cb_names_enter:
+        for ppp in cb_names_enter[GUARD]:
             pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
         pppfile.write("#endif\n")
 
-    with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_return_%s.cpp" % IDS), "w") as pppfile:
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_return.cpp"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_boilerplate_return.cpp"
+    for GUARD in cb_names_return:
         pppfile.write(GUARD + "\n")
-        for ppp in cb_names_return:
+        for ppp in cb_names_return[GUARD]:
             pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
         pppfile.write("#endif\n")
