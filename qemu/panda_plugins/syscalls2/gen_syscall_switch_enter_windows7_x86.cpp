@@ -2165,8 +2165,8 @@ uint32_t arg0 = get_32(env, 0);
 PPP_RUN_CB(on_NtYieldExecution_enter, env,pc,arg0) ; 
 }; break;
 default:
-PPP_RUN_CB(on_unknown_sys_windows7_x86_enter, env, pc, EAX);
+PPP_RUN_CB(on_unknown_sys_enter, env, pc, EAX);
 }
-PPP_RUN_CB(on_all_sys_windows7_x86_enter, env, pc, EAX);
+PPP_RUN_CB(on_all_sys_enter, env, pc, EAX);
 #endif
  } 

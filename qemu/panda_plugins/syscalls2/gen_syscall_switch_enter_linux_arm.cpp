@@ -2100,8 +2100,8 @@ case 10420224: {
 PPP_RUN_CB(on_ARM_null_segfault_enter, env,pc) ; 
 }; break;
 default:
-PPP_RUN_CB(on_unknown_sys_linux_arm_enter, env, pc, env->regs[7]);
+PPP_RUN_CB(on_unknown_sys_enter, env, pc, env->regs[7]);
 }
-PPP_RUN_CB(on_all_sys_linux_arm_enter, env, pc, env->regs[7]);
+PPP_RUN_CB(on_all_sys_enter, env, pc, env->regs[7]);
 #endif
  } 
