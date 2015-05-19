@@ -41,10 +41,12 @@ in the list at the right point.
 #define PPP_MAX_CB 256
 
 
-// use this in extern "C" { blob at head of A plugin
+// use this at head of A plugin
 #define PPP_PROT_REG_CB(cb_name) \
+extern "C" { \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
-void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;     
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
+}
 
 
 
