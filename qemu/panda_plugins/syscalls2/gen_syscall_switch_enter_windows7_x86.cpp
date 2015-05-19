@@ -9,11 +9,8 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 
 extern "C" {
-#include "gen_syscalls_ext_typedefs_windows7_x86.h"   // osarch
-#include "gen_syscall_ppp_register_enter_windows7_x86.cpp"  // osarch
+#include "gen_syscalls_ext_typedefs.h"
 }
-
-#include "gen_syscall_ppp_boilerplate_enter_windows7_x86.cpp" // osarch
 
 void syscall_enter_switch_windows7_x86 ( CPUState *env, target_ulong pc ) {  // osarch
 #ifdef TARGET_I386                                          // GUARD

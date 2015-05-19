@@ -112,11 +112,8 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 
 extern "C" {
-#include "gen_syscalls_ext_typedefs_%s.h"   // osarch
-#include "gen_syscall_ppp_register_enter_%s.cpp"  // osarch
+#include "gen_syscalls_ext_typedefs.h"
 }
-
-#include "gen_syscall_ppp_boilerplate_enter_%s.cpp" // osarch
 
 void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
 %s                                          // GUARD
@@ -126,7 +123,7 @@ void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
     rp.retaddr = calc_retaddr(env, pc);
     appendReturnPoint(rp);
     switch( %s ) {                          // CALLNO
-""" % (osarch, osarch, osarch, osarch, GUARD, CALLNO, CALLNO)
+""" % (osarch, GUARD, CALLNO, CALLNO)
 
 
     syscall_return_switch = """
@@ -140,16 +137,13 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 
 extern "C" {
-#include "gen_syscalls_ext_typedefs_%s.h"   // osarch
-#include "gen_syscall_ppp_register_return_%s.cpp"  // osarch
+#include "gen_syscalls_ext_typedefs.h"
 }
-
-#include "gen_syscall_ppp_boilerplate_return_%s.cpp" // osarch
 
 void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ordinal) {  // osarch
 %s                                          // GUARD
     switch( ordinal ) {                          // CALLNO
-""" % (osarch, osarch, osarch, osarch, GUARD)
+""" % (osarch, GUARD)
 
 
 

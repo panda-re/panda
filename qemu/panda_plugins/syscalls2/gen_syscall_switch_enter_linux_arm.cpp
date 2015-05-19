@@ -9,11 +9,8 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 
 extern "C" {
-#include "gen_syscalls_ext_typedefs_linux_arm.h"   // osarch
-#include "gen_syscall_ppp_register_enter_linux_arm.cpp"  // osarch
+#include "gen_syscalls_ext_typedefs.h"
 }
-
-#include "gen_syscall_ppp_boilerplate_enter_linux_arm.cpp" // osarch
 
 void syscall_enter_switch_linux_arm ( CPUState *env, target_ulong pc ) {  // osarch
 #ifdef TARGET_ARM                                          // GUARD
