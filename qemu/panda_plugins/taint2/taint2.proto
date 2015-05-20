@@ -8,7 +8,8 @@ message SrcInfo {
     required uint32 filename = 1;
     required uint32 linenum = 2;
     required uint32 astnodename = 3;
-}     
+    optional uint32 insertionpoint = 4;
+    }     
 
 message TaintQuery {
     required uint64 ptr = 1;
