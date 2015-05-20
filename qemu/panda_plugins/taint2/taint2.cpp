@@ -401,11 +401,13 @@ void lava_src_info_pandalog(PandaHypercallStruct phs) {
     si->filename = phs.src_filename;
     si->astnodename = phs.src_ast_node_name;
     si->linenum = phs.src_linenum;
+#ifdef PANDA_LAVA
     si->has_insertionpoint = 0;
     if (phs.insertion_point) {
         si->has_insertionpoint = 1;
         si->insertionpoint = phs.insertion_point;
     }
+#endif
     ple = PANDA__LOG_ENTRY__INIT;
     ple.src_info = si;
     pandalog_write_entry(&ple);
