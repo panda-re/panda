@@ -99,6 +99,7 @@ libobj-y += panda/panda_common.o
 libobj-y += panda/tubtf.o
 libobj-y += panda/pandalog.pb-c.o
 libobj-y += panda/pandalog.o
+libobj-y += panda/pandalog_print.o
 libobj-y += panda/guestarch.o
 libobj-y += panda/guestarch.o
 #libobj-y += panda/panda_stats.o

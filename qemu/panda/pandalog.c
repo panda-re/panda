@@ -7,6 +7,7 @@
 
 #include "pandalog.pb-c.h"
 #include "pandalog.h"
+#include "pandalog_print.h"
 #include <zlib.h>
 #include <stdlib.h>
 
@@ -65,9 +66,17 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
     resize_pandalog(n);
     panda__log_entry__pack(entry, pandalog_buf);
     // write size of log entry
-    gzwrite(pandalog_file, (void *) &n, sizeof(n));
+    int x = gzwrite(pandalog_file, (void *) &n, sizeof(n));
+    //printf ("x=%d\n", x);
+    if (x == 0) {
+      printf("gzwrite for pandalog failed\n");
+    }
     // and then the entry itself
-    gzwrite(pandalog_file, pandalog_buf, n);        
+    x=gzwrite(pandalog_file, pandalog_buf, n);        
+    //printf ("x=%d\n", x);
+    if (x == 0) {
+      printf("gzwrite for pandalog failed\n");
+    }
 }
 #endif
 
@@ -82,8 +91,10 @@ Panda__LogEntry *pandalog_read_entry(void) {
     // and then read the entry iself
     gzread(pandalog_file, pandalog_buf, n);
     // and unpack it
-    Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, pandalog_buf);
-    assert (ple != NULL);
+    Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, pandalog_buf);                                             
+    if (ple == NULL) {
+	return (Panda__LogEntry *)1; //yay special values
+    }
     return ple;
 }
 
