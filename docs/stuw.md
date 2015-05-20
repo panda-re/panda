@@ -18,6 +18,7 @@ After the replay runs, you should use stuw to read in the pandalog:
 
 Currently STUW outputs the matches in the form of an adjacency matrix, with a sender node listing the receiver nodes. Note that the sender may be a source that is pulled from, by NTReadVirtualMemory for instance. In the following example, (1404,avp.exe) uses frequent calls to NTReadVirtualMemory on explorer.exe.
 
+```
 proc(3448,WmiPrvSE.exe) : 92
   proc(1404,avp.exe) : {[section, 19]}
 proc(1404,avp.exe) : 55
@@ -46,3 +47,4 @@ proc(696,svchost.exe) : 9
   proc(1404,avp.exe) : {[section, 1]}
 proc(1180,svchost.exe) : 5
   proc(2448,avp.exe) : {[file, 5]}
+```
