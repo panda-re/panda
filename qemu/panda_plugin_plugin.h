@@ -42,14 +42,17 @@ in the list at the right point.
 
 
 // use this at head of A plugin
+#ifdef __cplusplus
 #define PPP_PROT_REG_CB(cb_name) \
 extern "C" { \
 void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
 void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ; \
 }
-
-
-
+#else
+#define PPP_PROT_REG_CB(cb_name) \
+void ppp_add_cb_##cb_name(cb_name##_t fptr) ;				\
+void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) ;
+#endif
 
 /*
   employ this somewhere in the plugin near the top.
