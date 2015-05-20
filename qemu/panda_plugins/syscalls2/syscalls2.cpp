@@ -51,20 +51,19 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 }
 
-enum ProfileType { PROFILE_LINUX_X86, PROFILE_LINUX_ARM, PROFILE_WINDOWS7_X86, PROFILE_LAST} ;
-
-ProfileType syscalls_profile;
-
 // Reinterpret the ulong as a long. Arch and host specific.
-target_long get_return_val(CPUState *env){
+target_long get_return_val_x86(CPUState *env){
 #if defined(TARGET_I386)
     return static_cast<target_long>(env->regs[R_EAX]);
-#elif defined(TARGET_ARM)
-    return static_cast<target_long>(env->regs[0]);
-#else
-#error "Not Implemented"
 #endif
+    return 0;
+}
 
+target_long get_return_val_arm(CPUState *env){
+#if defined(TARGET_ARM)
+    return static_cast<target_long>(env->regs[0]);
+#endif
+    return 0;
 }
 
 target_ulong mask_retaddr_to_pc(target_ulong retaddr){
@@ -73,7 +72,7 @@ target_ulong mask_retaddr_to_pc(target_ulong retaddr){
 }
 
 // Return address calculations
-target_ulong calc_retaddr_windows7_x86(CPUState* env, target_ulong pc) {
+target_ulong calc_retaddr_windows_x86(CPUState* env, target_ulong pc) {
 #if defined(TARGET_I386)
     target_ulong retaddr = 0;
     panda_virtual_memory_rw(env, EDX, (uint8_t *) &retaddr, 4, false);
@@ -111,24 +110,6 @@ target_ulong calc_retaddr_linux_arm(CPUState* env, target_ulong pc) {
     // shouldnt happen
     assert (1==0);
 #endif
-}
-
-target_ulong calc_retaddr(CPUState* env, target_ulong pc){
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        return calc_retaddr_linux_x86(env, pc);
-        break;
-    case PROFILE_LINUX_ARM:
-        return calc_retaddr_linux_arm(env, pc);
-        break;
-    case PROFILE_WINDOWS7_X86:
-        return calc_retaddr_windows7_x86(env, pc);
-        break;
-    default:
-        assert (1==0);
-    }
-    assert (1==0);
-    return 0;
 }
 
 // Argument getting (at syscall entry)
@@ -170,53 +151,47 @@ static uint32_t get_win_syscall_arg(CPUState* env, int nr) {
     return 0;
 }
 
-target_ulong get_32 (CPUState *env, uint32_t argnum) {
-    target_ulong ret;
-    
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        assert (argnum < 6);
-        ret = (target_ulong) get_linux_x86_argnum(env, argnum);
-        break;
-    case PROFILE_LINUX_ARM:
-        assert (argnum < 7);
-        ret =  (target_ulong) env->regs[argnum];
-        break;
-    case PROFILE_WINDOWS7_X86:
-        ret = (target_ulong) get_win_syscall_arg(env, argnum);
-        break;
-    default:
-        assert (1==0);
-    }
-    return ret;
+uint32_t get_32_linux_x86 (CPUState *env, uint32_t argnum) {
+    assert (argnum < 6);
+    return (uint32_t) get_linux_x86_argnum(env, argnum);
+}
+uint32_t get_32_linux_arm (CPUState *env, uint32_t argnum) {
+    assert (argnum < 7);
+    return (uint32_t) env->regs[argnum];
+}
+uint32_t get_32_windows_x86 (CPUState *env, uint32_t argnum) {
+    return (uint32_t) get_win_syscall_arg(env, argnum);
 }
 
-uint32_t get_pointer(CPUState *env, uint32_t argnum) {
-    return get_32(env, argnum);
+target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_32(env, argnum);
 }
 
-int32_t get_s32(CPUState *env, uint32_t argnum) {
+target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_64(env, argnum);
+}
+
+int32_t get_s32_generic(CPUState *env, uint32_t argnum) {
     return (int32_t) get_32(env, argnum);
 }
 
-uint64_t get_64(CPUState *env, uint32_t argnum) {
-    uint64_t ret;
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        assert (argnum < 6);
-        ret = (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
-        break;
-    case PROFILE_LINUX_ARM:
-        assert (argnum < 7);
-        ret = (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
-        break;
-    case PROFILE_WINDOWS7_X86:
-        assert (1==0);
-        break;
-    default:
-        assert (1==0);
-    }
-    return ret;
+uint64_t get_64_linux_x86(CPUState *env, uint32_t argnum) {
+    assert (argnum < 6);
+    return (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
+}
+
+uint64_t get_64_linux_arm(CPUState *env, uint32_t argnum) {
+    assert (argnum < 7);
+    return (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
+}
+
+uint64_t get_64_windows_x86(CPUState *env, uint32_t argnum) {
+    assert (false && "64-bit arguments not supported on Windows 7 x86");
+    return 0;
+}
+
+int64_t get_s64_generic(CPUState *env, uint32_t argnum) {
+    return (int64_t) get_64(env, argnum);
 }
 
 // Argument getting (at syscall return)
@@ -227,58 +202,145 @@ static uint32_t get_win_syscall_return_arg(CPUState* env, int nr) {
     panda_virtual_memory_rw(env, ESP + 4 + (4*nr),
                             (uint8_t *) &arg, 4, false);
     return arg;
-#endif
+#else
     return 0;
+#endif
 }
 
-target_ulong get_return_32 (CPUState *env, uint32_t argnum) {
-    target_ulong ret;
-    
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        assert (argnum < 6);
-        ret = (target_ulong) get_linux_x86_argnum(env, argnum);
-        break;
-    case PROFILE_LINUX_ARM:
-        assert (argnum < 7);
-        ret =  (target_ulong) env->regs[argnum];
-        break;
-    case PROFILE_WINDOWS7_X86:
-        ret = (target_ulong) get_win_syscall_return_arg(env, argnum);
-        break;
-    default:
-        assert (1==0);
-    }
-    return ret;
+uint32_t get_return_32_windows_x86 (CPUState *env, uint32_t argnum) {
+    return get_win_syscall_return_arg(env, argnum);
 }
 
-uint32_t get_return_pointer(CPUState *env, uint32_t argnum) {
-    return get_return_32(env, argnum);
+target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_return_32(env, argnum);
 }
 
-int32_t get_return_s32(CPUState *env, uint32_t argnum) {
+target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_return_64(env, argnum);
+}
+
+int32_t get_return_s32_generic(CPUState *env, uint32_t argnum) {
     return (int32_t) get_return_32(env, argnum);
 }
 
-uint64_t get_return_64(CPUState *env, uint32_t argnum) {
-    uint64_t ret;
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        assert (argnum < 6);
-        ret = (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
-        break;
-    case PROFILE_LINUX_ARM:
-        assert (argnum < 7);
-        ret = (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
-        break;
-    case PROFILE_WINDOWS7_X86:
-        assert (1==0);
-        break;
-    default:
-        assert (1==0);
-    }
-    return ret;
+uint64_t get_return_64_windows_x86(CPUState *env, uint32_t argnum) {
+    assert (false && "64-bit arguments not supported on Windows 7 x86");
 }
+
+enum ProfileType {
+    PROFILE_LINUX_X86,
+    PROFILE_LINUX_ARM,
+    PROFILE_WINDOWS7_X86,
+    PROFILE_LAST
+};
+
+struct ProfileFns {
+    void         *enter_switch(CPUState *, target_ulong, target_ulong);
+    void         *return_switch(CPUState *, target_ulong, target_ulong);
+    target_long  *get_return_val (CPUState *);
+    target_ulong *calc_retaddr (CPUState *, target_ulong);
+    uint32_t     *get_32 (CPUState *, uint32_t);
+    int32_t      *get_s32(CPUState *, uint32_t);
+    uint64_t     *get_64(CPUState *, uint32_t);
+    int64_t      *get_s64(CPUState *, uint32_t);
+    target_ulong *get_pointer(CPUState *, uint32_t);
+    uint32_t     *get_return_32 (CPUState *, uint32_t);
+    int32_t      *get_return_s32(CPUState *, uint32_t);
+    uint64_t     *get_return_64(CPUState *, uint32_t);
+    int64_t      *get_return_s64(CPUState *, uint32_t);
+    target_ulong *get_return_pointer(CPUState *, uint32_t);
+};
+
+ProfileFns profiles[PROFILE_LAST];
+profiles[PROFILE_LINUX_X86] = {
+    .enter_switch = syscall_enter_switch_linux_x86,
+    .return_switch = syscall_return_switch_linux_x86,
+    .get_return_val = get_return_val_x86,
+    .calc_retaddr = calc_retaddr_linux_x86,
+    .get_32 = get_32_linux_x86 ,
+    .get_s32 = get_s32_generic,
+    .get_64 = get_64_linux_x86,
+    .get_s64 = get_s64_generic,
+    .get_pointer = get_pointer_32bit,
+    .get_return_32 = get_32_linux_x86,
+    .get_return_s32 = get_return_s32_generic,
+    .get_return_64 = get_64_linux_x86 ,
+    .get_return_s64 = get_return_s64_generic,
+    .get_return_pointer = get_pointer_32bit,
+};
+profiles[PROFILE_LINUX_ARM] = {
+    .enter_switch = syscall_enter_switch_linux_x86,
+    .return_switch = syscall_return_switch_linux_arm,
+    .get_return_val = get_return_val_arm,
+    .calc_retaddr = calc_retaddr_linux_arm,
+    .get_32 = get_32_linux_arm ,
+    .get_s32 = get_s32_generic,
+    .get_64 = get_64_linux_arm,
+    .get_s64 = get_s64_generic,
+    .get_pointer = get_pointer_32bit,
+    .get_return_32 = get_32_linux_arm,
+    .get_return_s32 = get_return_s32_generic,
+    .get_return_64 = get_64_linux_arm,
+    .get_return_s64 = get_return_s64_generic,
+    .get_return_pointer = get_pointer_32bit,
+};
+profiles[PROFILE_WINDOWS7_X86] = {
+    .enter_switch = syscall_enter_switch_windows7_x86,
+    .return_switch = syscall_return_switch_windows7_x86,
+    .get_return_val = get_return_val_x86,
+    .calc_retaddr = calc_retaddr_windows_x86,
+    .get_32 = get_32_windows_x86,
+    .get_s32 = get_s32_generic,
+    .get_64 = get_64_windows_x86,
+    .get_s64 = get_s64_generic,
+    .get_pointer = get_pointer_32bit,
+    .get_return_32 = get_return_32_windows_x86,
+    .get_return_s32 = get_return_s32_generic,
+    .get_return_64 = get_return_64_windows_x86,
+    .get_return_s64 = get_return_s64_generic,
+    .get_return_pointer = get_return_pointer_32bit,
+};
+
+ProfileFns *syscalls_profile;
+
+// Wrappers
+target_long  *get_return_val (CPUState *env) {
+    return syscalls_profile->get_return_val(env);
+}
+target_ulong calc_retaddr (CPUState *env, target_ulong pc) {
+    return syscalls_profile->calc_retaddr(env, pc);
+}
+uint32_t get_32(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_32(env, argnum);
+}
+int32_t get_s32(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_s32(env, argnum);
+}
+uint64_t get_64(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_64(env, argnum);
+}
+int64_t get_s64(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_s64(env, argnum);
+}
+target_ulong get_pointer(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_pointer(env, argnum);
+}
+uint32_t get_return_32 (CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_return_32(env, argnum);
+}
+int32_t get_return_s32(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_return_s32(env, argnum);
+}
+uint64_t get_return_64(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_return_64(env, argnum);
+}
+int64_t get_return_s64(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_return_s64(env, argnum);
+}
+target_ulong *get_return_pointer(CPUState *env, uint32_t argnum) {
+    return syscalls_profile->get_return_pointer(env, argnum);
+}
+
 
 std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 
@@ -300,27 +362,13 @@ static int returned_check_callback(CPUState *env, TranslationBlock* tb){
     std::pair < target_ulong, target_ulong > ret_key = std::make_pair(tb->pc, panda_current_asid(env));
     if (returns.count(ret_key) != 0) {
         ReturnPoint &retVal = returns[ret_key];
-        switch (syscalls_profile) {
-        case PROFILE_LINUX_X86:
-            syscall_return_switch_linux_x86(env, tb->pc, retVal.ordinal);
-            break;
-        case PROFILE_LINUX_ARM:
-            syscall_return_switch_linux_arm(env, tb->pc, retVal.ordinal);
-            break;
-        case PROFILE_WINDOWS7_X86:
-            syscall_return_switch_windows7_x86(env, tb->pc, retVal.ordinal);
-            break;
-        default:
-            assert (1==0);
-        }
+        syscalls_profile->return_switch(env, tb->pc, retVal.ordinal);
         // used by remove_if to delete from returns list those values
         // that have been processed
         //        retVal.retaddr = retVal.proc_id = 0;
         returns.erase(ret_key);
     }
     
-    //    returns.remove_if(is_empty);
-    //    return invalidate;
     return false;
 }
 
@@ -331,24 +379,10 @@ int exec_callback(CPUState *env, target_ulong pc) {
     // run any code we need to update our state
     for(const auto callback : preExecCallbacks){
         callback(env, pc);
-    }    
-    switch (syscalls_profile) {
-    case PROFILE_LINUX_X86:
-        syscall_enter_switch_linux_x86(env, pc);
-        break;
-    case PROFILE_LINUX_ARM:
-        syscall_enter_switch_linux_arm(env, pc);
-        break;
-    case PROFILE_WINDOWS7_X86:
-        syscall_enter_switch_windows7_x86(env, pc);
-        break;
-    default:
-        assert (1==0);
     }
+    syscalls_profile->enter_switch(env, pc);
     return 0;
 }
-
-
 
 // Check if the instruction is sysenter (0F 34)
 bool translate_callback(CPUState *env, target_ulong pc) {
@@ -405,13 +439,13 @@ bool init_plugin(void *self) {
     args = panda_get_args("syscalls");
     const char *profile_name = panda_parse_string(args, "profile", "linux_x86");
     if (0 == strncmp(profile_name, "linux_x86", 8)) {
-        syscalls_profile = PROFILE_LINUX_X86;
+        syscalls_profile = &profiles[PROFILE_LINUX_X86];
     }
     else if (0 == strncmp(profile_name, "linux_arm", 8)) {
-        syscalls_profile = PROFILE_LINUX_ARM;
+        syscalls_profile = &profiles[PROFILE_LINUX_ARM];
     }
     else if (0 == strncmp(profile_name, "windows7_x86", 8)) {
-        syscalls_profile = PROFILE_WINDOWS7_X86;
+        syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
     }
     else {
         printf ("Unrecognized profile %s\n", profile_name);
