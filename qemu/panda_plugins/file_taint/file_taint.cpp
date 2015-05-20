@@ -12,8 +12,7 @@ extern "C" {
 #include "panda_plugin.h"
 #include "pandalog.h"
 #include "panda_common.h"
-#include "../syscalls2/gen_syscalls_ext_typedefs_linux_x86.h"
-#include "../syscalls2/gen_syscalls_ext_typedefs_windows7_x86.h"
+#include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../taint2/taint2_ext.h"
 #include "panda_plugin_plugin.h" 
     
