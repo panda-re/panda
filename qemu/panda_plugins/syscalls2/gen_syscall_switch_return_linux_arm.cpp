@@ -10,6 +10,7 @@ extern "C" {
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
+#include "gen_syscall_ppp_extern_return.h"
 }
 
 void syscall_return_switch_linux_arm ( CPUState *env, target_ulong pc, target_ulong ordinal) {  // osarch

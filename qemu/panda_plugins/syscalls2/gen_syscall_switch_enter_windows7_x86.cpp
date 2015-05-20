@@ -10,6 +10,7 @@ extern "C" {
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
+#include "gen_syscall_ppp_extern_enter.h"
 }
 
 void syscall_enter_switch_windows7_x86 ( CPUState *env, target_ulong pc ) {  // osarch

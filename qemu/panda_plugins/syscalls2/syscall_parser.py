@@ -113,6 +113,7 @@ extern "C" {
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
+#include "gen_syscall_ppp_extern_enter.h"
 }
 
 void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
@@ -138,6 +139,7 @@ extern "C" {
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
+#include "gen_syscall_ppp_extern_return.h"
 }
 
 void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ordinal) {  // osarch
@@ -396,3 +398,20 @@ with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_return.cpp"), "w") 
         for ppp in cb_names_return[GUARD]:
             pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
         pppfile.write("#endif\n")
+
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_extern_enter.h"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_extern_enter.h"
+    for GUARD in cb_names_enter:
+        pppfile.write(GUARD + "\n")
+        for ppp in cb_names_enter[GUARD]:
+            pppfile.write("PPP_CB_EXTERN({0})\n".format(ppp))
+        pppfile.write("#endif\n")
+
+with open(os.path.join(DESTDIR, "gen_syscall_ppp_extern_return.h"), "w") as pppfile:
+    print "Writing", "gen_syscall_ppp_extern_return.h"
+    for GUARD in cb_names_return:
+        pppfile.write(GUARD + "\n")
+        for ppp in cb_names_return[GUARD]:
+            pppfile.write("PPP_CB_EXTERN({0})\n".format(ppp))
+        pppfile.write("#endif\n")
+

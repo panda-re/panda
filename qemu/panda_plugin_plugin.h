@@ -78,6 +78,9 @@ void ppp_add_cb_##cb_name##_slot(cb_name##_t fptr, int slot_num) {	\
   ppp_##cb_name##_num_cb = MAX(slot_num, ppp_##cb_name##_num_cb);	\
 }									
 
+#define PPP_CB_EXTERN(cb_name) \
+extern cb_name##_t ppp_##cb_name##_cb[PPP_MAX_CB]; \
+extern int ppp_##cb_name##_num_cb;
 
 /*
   And employ this where you want the callback functions to be called 

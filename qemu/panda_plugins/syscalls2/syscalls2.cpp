@@ -44,12 +44,23 @@ void uninit_plugin(void *);
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 
 // PPP code
+#include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_boilerplate_enter.cpp"
 #include "gen_syscall_ppp_boilerplate_return.cpp"
 #include "gen_syscall_ppp_register_enter.cpp"
 #include "gen_syscall_ppp_register_return.cpp"
 
 }
+
+// Forward declarations
+target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum);
+target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum);
+target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum);
+target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum);
+int32_t get_s32_generic(CPUState *env, uint32_t argnum);
+int64_t get_s64_generic(CPUState *env, uint32_t argnum);
+int32_t get_return_s32_generic(CPUState *env, uint32_t argnum);
+int64_t get_return_s64_generic(CPUState *env, uint32_t argnum);
 
 // Reinterpret the ulong as a long. Arch and host specific.
 target_long get_return_val_x86(CPUState *env){
@@ -163,18 +174,6 @@ uint32_t get_32_windows_x86 (CPUState *env, uint32_t argnum) {
     return (uint32_t) get_win_syscall_arg(env, argnum);
 }
 
-target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_32(env, argnum);
-}
-
-target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_64(env, argnum);
-}
-
-int32_t get_s32_generic(CPUState *env, uint32_t argnum) {
-    return (int32_t) get_32(env, argnum);
-}
-
 uint64_t get_64_linux_x86(CPUState *env, uint32_t argnum) {
     assert (argnum < 6);
     return (((uint64_t) get_linux_x86_argnum(env, argnum)) << 32) | (get_linux_x86_argnum(env, argnum));
@@ -188,10 +187,6 @@ uint64_t get_64_linux_arm(CPUState *env, uint32_t argnum) {
 uint64_t get_64_windows_x86(CPUState *env, uint32_t argnum) {
     assert (false && "64-bit arguments not supported on Windows 7 x86");
     return 0;
-}
-
-int64_t get_s64_generic(CPUState *env, uint32_t argnum) {
-    return (int64_t) get_64(env, argnum);
 }
 
 // Argument getting (at syscall return)
@@ -211,18 +206,6 @@ uint32_t get_return_32_windows_x86 (CPUState *env, uint32_t argnum) {
     return get_win_syscall_return_arg(env, argnum);
 }
 
-target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_return_32(env, argnum);
-}
-
-target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_return_64(env, argnum);
-}
-
-int32_t get_return_s32_generic(CPUState *env, uint32_t argnum) {
-    return (int32_t) get_return_32(env, argnum);
-}
-
 uint64_t get_return_64_windows_x86(CPUState *env, uint32_t argnum) {
     assert (false && "64-bit arguments not supported on Windows 7 x86");
 }
@@ -234,77 +217,78 @@ enum ProfileType {
     PROFILE_LAST
 };
 
-struct ProfileFns {
-    void         *enter_switch(CPUState *, target_ulong, target_ulong);
-    void         *return_switch(CPUState *, target_ulong, target_ulong);
-    target_long  *get_return_val (CPUState *);
-    target_ulong *calc_retaddr (CPUState *, target_ulong);
-    uint32_t     *get_32 (CPUState *, uint32_t);
-    int32_t      *get_s32(CPUState *, uint32_t);
-    uint64_t     *get_64(CPUState *, uint32_t);
-    int64_t      *get_s64(CPUState *, uint32_t);
-    target_ulong *get_pointer(CPUState *, uint32_t);
-    uint32_t     *get_return_32 (CPUState *, uint32_t);
-    int32_t      *get_return_s32(CPUState *, uint32_t);
-    uint64_t     *get_return_64(CPUState *, uint32_t);
-    int64_t      *get_return_s64(CPUState *, uint32_t);
-    target_ulong *get_return_pointer(CPUState *, uint32_t);
+struct Profile {
+    void         (*enter_switch)(CPUState *, target_ulong);
+    void         (*return_switch)(CPUState *, target_ulong, target_ulong);
+    target_long  (*get_return_val )(CPUState *);
+    target_ulong (*calc_retaddr )(CPUState *, target_ulong);
+    uint32_t     (*get_32 )(CPUState *, uint32_t);
+    int32_t      (*get_s32)(CPUState *, uint32_t);
+    uint64_t     (*get_64)(CPUState *, uint32_t);
+    int64_t      (*get_s64)(CPUState *, uint32_t);
+    target_ulong (*get_pointer)(CPUState *, uint32_t);
+    uint32_t     (*get_return_32 )(CPUState *, uint32_t);
+    int32_t      (*get_return_s32)(CPUState *, uint32_t);
+    uint64_t     (*get_return_64)(CPUState *, uint32_t);
+    int64_t      (*get_return_s64)(CPUState *, uint32_t);
+    target_ulong (*get_return_pointer)(CPUState *, uint32_t);
 };
 
-ProfileFns profiles[PROFILE_LAST];
-profiles[PROFILE_LINUX_X86] = {
-    .enter_switch = syscall_enter_switch_linux_x86,
-    .return_switch = syscall_return_switch_linux_x86,
-    .get_return_val = get_return_val_x86,
-    .calc_retaddr = calc_retaddr_linux_x86,
-    .get_32 = get_32_linux_x86 ,
-    .get_s32 = get_s32_generic,
-    .get_64 = get_64_linux_x86,
-    .get_s64 = get_s64_generic,
-    .get_pointer = get_pointer_32bit,
-    .get_return_32 = get_32_linux_x86,
-    .get_return_s32 = get_return_s32_generic,
-    .get_return_64 = get_64_linux_x86 ,
-    .get_return_s64 = get_return_s64_generic,
-    .get_return_pointer = get_pointer_32bit,
-};
-profiles[PROFILE_LINUX_ARM] = {
-    .enter_switch = syscall_enter_switch_linux_x86,
-    .return_switch = syscall_return_switch_linux_arm,
-    .get_return_val = get_return_val_arm,
-    .calc_retaddr = calc_retaddr_linux_arm,
-    .get_32 = get_32_linux_arm ,
-    .get_s32 = get_s32_generic,
-    .get_64 = get_64_linux_arm,
-    .get_s64 = get_s64_generic,
-    .get_pointer = get_pointer_32bit,
-    .get_return_32 = get_32_linux_arm,
-    .get_return_s32 = get_return_s32_generic,
-    .get_return_64 = get_64_linux_arm,
-    .get_return_s64 = get_return_s64_generic,
-    .get_return_pointer = get_pointer_32bit,
-};
-profiles[PROFILE_WINDOWS7_X86] = {
-    .enter_switch = syscall_enter_switch_windows7_x86,
-    .return_switch = syscall_return_switch_windows7_x86,
-    .get_return_val = get_return_val_x86,
-    .calc_retaddr = calc_retaddr_windows_x86,
-    .get_32 = get_32_windows_x86,
-    .get_s32 = get_s32_generic,
-    .get_64 = get_64_windows_x86,
-    .get_s64 = get_s64_generic,
-    .get_pointer = get_pointer_32bit,
-    .get_return_32 = get_return_32_windows_x86,
-    .get_return_s32 = get_return_s32_generic,
-    .get_return_64 = get_return_64_windows_x86,
-    .get_return_s64 = get_return_s64_generic,
-    .get_return_pointer = get_return_pointer_32bit,
+Profile profiles[3] = {
+    {
+        .enter_switch = syscall_enter_switch_linux_x86,
+        .return_switch = syscall_return_switch_linux_x86,
+        .get_return_val = get_return_val_x86,
+        .calc_retaddr = calc_retaddr_linux_x86,
+        .get_32 = get_32_linux_x86,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_x86,
+        .get_s64 = get_s64_generic,
+        .get_pointer = get_pointer_32bit,
+        .get_return_32 = get_32_linux_x86,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_x86,
+        .get_return_s64 = get_return_s64_generic,
+        .get_return_pointer = get_pointer_32bit
+    },
+    {
+        .enter_switch = syscall_enter_switch_linux_x86,
+        .return_switch = syscall_return_switch_linux_arm,
+        .get_return_val = get_return_val_arm,
+        .calc_retaddr = calc_retaddr_linux_arm,
+        .get_32 = get_32_linux_arm,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_linux_arm,
+        .get_s64 = get_s64_generic,
+        .get_pointer = get_pointer_32bit,
+        .get_return_32 = get_32_linux_arm,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_64_linux_arm,
+        .get_return_s64 = get_return_s64_generic,
+        .get_return_pointer = get_pointer_32bit
+    },
+    {
+        .enter_switch = syscall_enter_switch_windows7_x86,
+        .return_switch = syscall_return_switch_windows7_x86,
+        .get_return_val = get_return_val_x86,
+        .calc_retaddr = calc_retaddr_windows_x86,
+        .get_32 = get_32_windows_x86,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_windows_x86,
+        .get_s64 = get_s64_generic,
+        .get_pointer = get_pointer_32bit,
+        .get_return_32 = get_return_32_windows_x86,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_return_64_windows_x86,
+        .get_return_s64 = get_return_s64_generic,
+        .get_return_pointer = get_return_pointer_32bit
+    }
 };
 
-ProfileFns *syscalls_profile;
+Profile *syscalls_profile;
 
 // Wrappers
-target_long  *get_return_val (CPUState *env) {
+target_long  get_return_val (CPUState *env) {
     return syscalls_profile->get_return_val(env);
 }
 target_ulong calc_retaddr (CPUState *env, target_ulong pc) {
@@ -337,10 +321,41 @@ uint64_t get_return_64(CPUState *env, uint32_t argnum) {
 int64_t get_return_s64(CPUState *env, uint32_t argnum) {
     return syscalls_profile->get_return_s64(env, argnum);
 }
-target_ulong *get_return_pointer(CPUState *env, uint32_t argnum) {
+target_ulong get_return_pointer(CPUState *env, uint32_t argnum) {
     return syscalls_profile->get_return_pointer(env, argnum);
 }
 
+target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_32(env, argnum);
+}
+
+target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_64(env, argnum);
+}
+
+target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_return_32(env, argnum);
+}
+
+target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum) {
+    return (target_ulong) get_return_64(env, argnum);
+}
+
+int32_t get_s32_generic(CPUState *env, uint32_t argnum) {
+    return (int32_t) get_32(env, argnum);
+}
+
+int64_t get_s64_generic(CPUState *env, uint32_t argnum) {
+    return (int64_t) get_64(env, argnum);
+}
+
+int32_t get_return_s32_generic(CPUState *env, uint32_t argnum) {
+    return (int32_t) get_return_32(env, argnum);
+}
+
+int64_t get_return_s64_generic(CPUState *env, uint32_t argnum) {
+    return (int64_t) get_return_64(env, argnum);
+}
 
 std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 
