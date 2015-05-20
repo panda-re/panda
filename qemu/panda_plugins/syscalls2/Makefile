@@ -35,7 +35,9 @@ $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(O_FILES) \
 	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_enter_linux_x86.o  \
 	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_return_linux_x86.o  \
 	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_enter_windows7_x86.o \
-	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_return_windows7_x86.o  
+	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_return_windows7_x86.o \
+	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_enter_windowsxp_x86.o \
+	$(PLUGIN_TARGET_DIR)/gen_syscall_switch_return_windowsxp_x86.o  
 	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
 

@@ -276,13 +276,10 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                     thisarg.type = BYTES_4
                     arg_types.append(thisarg)
                 else:
-                    if OS == 'windows7':
-                        thisarg.type = BYTES_4
-                        arg_types.append(thisarg)
-                    else:
-                        print "huh? " + arg
-                        syscall_enter_switch += "unknown: " + arg
-                        syscall_return_switch += "unknown: " + arg
+                    # Warn but assume it's a 32-bit argument
+                    print "Warning: %s not of known type, assuming 32-bit" % arg
+                    thisarg.type = BYTES_4
+                    arg_types.append(thisarg)
 
             syscall_enter_switch += "case " + callno + ": {\n"
             syscall_return_switch += "case " + callno + ": {\n"

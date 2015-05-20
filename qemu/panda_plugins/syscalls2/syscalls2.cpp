@@ -213,6 +213,7 @@ uint64_t get_return_64_windows_x86(CPUState *env, uint32_t argnum) {
 enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
+    PROFILE_WINDOWSXP_X86,
     PROFILE_WINDOWS7_X86,
     PROFILE_LAST
 };
@@ -266,6 +267,22 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_64 = get_64_linux_arm,
         .get_return_s64 = get_return_s64_generic,
         .get_return_pointer = get_pointer_32bit
+    },
+    {
+        .enter_switch = syscall_enter_switch_windowsxp_x86,
+        .return_switch = syscall_return_switch_windowsxp_x86,
+        .get_return_val = get_return_val_x86,
+        .calc_retaddr = calc_retaddr_windows_x86,
+        .get_32 = get_32_windows_x86,
+        .get_s32 = get_s32_generic,
+        .get_64 = get_64_windows_x86,
+        .get_s64 = get_s64_generic,
+        .get_pointer = get_pointer_32bit,
+        .get_return_32 = get_return_32_windows_x86,
+        .get_return_s32 = get_return_s32_generic,
+        .get_return_64 = get_return_64_windows_x86,
+        .get_return_s64 = get_return_s64_generic,
+        .get_return_pointer = get_return_pointer_32bit
     },
     {
         .enter_switch = syscall_enter_switch_windows7_x86,
