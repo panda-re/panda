@@ -234,7 +234,7 @@ struct Profile {
     target_ulong (*get_return_pointer)(CPUState *, uint32_t);
 };
 
-Profile profiles[3] = {
+Profile profiles[PROFILE_LAST] = {
     {
         .enter_switch = syscall_enter_switch_linux_x86,
         .return_switch = syscall_return_switch_linux_x86,
