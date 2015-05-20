@@ -3,8 +3,6 @@
 message Process {
     required uint32 pid = 1;
     required string name = 2;
-    optional uint64 virtual_base_addr = 3;
-
 }
 
 // process created
@@ -49,8 +47,33 @@ message ProcessKeyIndex {
     required uint32 index = 2;
 }
 
+message Section {
+    required Process proc = 1;
+    required uint32 section_id = 2;
+    optional string name = 3;
+    optional string file_name = 4;
+}
 
+message SectionMapView {
+    required Section section = 1;
+    required Process target = 2;
+}
+message LocalPort {
+    required Process proc = 1;
+    required uint32 id = 2;
+    optional Process client = 3;
+    optional Process server = 4;
+}
 
+message LocalPortInit {
+    required LocalPort port = 2;
+    required string port_name = 3;
+}
+
+message VirtualMemory {
+    required Process proc = 1;
+    required Process target = 2;
+}
 
 // pid for current eproc changes
 optional Process new_pid = 11;
@@ -101,3 +124,28 @@ optional ProcessKeyIndex nt_enumerate_key = 29;
 optional ProcessKeyIndex nt_enumerate_value_key = 30;
 
 optional ProcessKeyValue nt_set_value_key = 31;
+
+
+//sections
+optional Section nt_create_section = 40;
+optional Section nt_open_section = 41;
+optional SectionMapView nt_map_view_of_section = 42;
+
+
+// ALPC ports
+optional LocalPortInit nt_create_port = 43;
+optional LocalPortInit nt_connect_port = 44;
+optional LocalPort nt_listen_port = 45;
+optional LocalPort nt_accept_connect_port = 46;
+optional LocalPort nt_complete_connect_port = 47;
+optional LocalPort nt_request_port = 48;
+optional LocalPort nt_request_wait_reply_port = 49;
+optional LocalPort nt_reply_port = 50;
+optional LocalPort nt_reply_wait_reply_port = 51;
+optional LocalPort nt_reply_wait_receive_port = 52;
+optional LocalPort nt_impersonate_client_of_port = 53;
+
+// Virtual Memory
+
+optional VirtualMemory nt_read_virtual_memory = 54;
+optional VirtualMemory nt_write_virtual_memory = 55;

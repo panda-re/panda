@@ -6,6 +6,7 @@
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+ *  Tom Boning             tboning@mit.edu
  * 
  * This work is licensed under the terms of the GNU GPL, version 2. 
  * See the COPYING file in the top-level directory. 
@@ -22,19 +23,32 @@ extern "C" {
 #include "rr_log.h"
 #include "panda_plugin.h"
 #include "pandalog.h"        
+    //#include "pandalog_print.h"
 #include "panda_common.h"
 #include "../syscalls2/gen_syscalls_ext_typedefs_windows7_x86.h"
+#include "../syscalls2/syscalls_common.h"
 #include "panda_plugin_plugin.h"
 
 int before_block_exec(CPUState *env, TranslationBlock *tb);
-
+    /*
+void print_section(
+		   CPUState *env,
+		   target_ulong pc,
+		   uint32_t SectionHandle,
+		   uint32_t DesiredAccess,
+		   uint32_t ObjectAttributes,
+		   bool create);
+    */
+char *get_keyname(uint32_t KeyHandle);
 bool init_plugin(void *);
 void uninit_plugin(void *);
 }
 
+// extern void panda_cleanup(void);
+
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <iostream>
 #include <map>
 #include <string>
 
@@ -47,13 +61,34 @@ void uninit_plugin(void *);
 //typedef std::pair<std::string,uint32_t> procid;
 //std::map<procid,uint64_t> bbcount;
 
-#define KMODE_FS                0x030
-#define KPCR_CURTHREAD_OFF      0x124
-#define KTHREAD_KPROC_OFF       0x150
-#define EPROC_PID_OFF           0x0b4
-#define EPROC_NAME_OFF          0x16c
-#define EPROC_PEB_OFF           0x1a8 // _EPROCESS.Peb
-#define PEB_IMAGE_BASE_ADDRESS  0x8   // _PEB.ImageBaseAddress (Reserved3[1])
+#define KMODE_FS           0x030
+#define KPCR_CURTHREAD_OFF 0x124
+#define KTHREAD_KPROC_OFF  0x150
+#define EPROC_PID_OFF      0x0b4
+#define EPROC_NAME_OFF     0x16c
+
+const char *status_code(uint32_t code) {
+  switch (code) {
+  case 0x0:
+    return "STATUS_SUCCESS";
+  case 0x40000003:
+    return "STATUS_IMAGE_NOT_AT_BASE";
+  case 0xC0000008:
+    return "STATUS_INVALID_HANDLE";
+  case 0xC0000022:
+    return "STATUS_ACCESS_DENIED";
+  case 0xC0000034:
+    return "STATUS_OBJECT_NAME_NOT_FOUND";
+  default:
+    char result[32] = {};
+    snprintf(result, 32, "unknown code: %x", code);
+    return (const char*)result;
+  }
+}
+
+const char *get_status_code(CPUState *env){
+  return status_code(env->regs[R_EAX]);
+}
 
 static uint32_t get_pid(CPUState *env, target_ulong eproc) {
     uint32_t pid;
@@ -85,22 +120,6 @@ static uint32_t get_current_proc(CPUState *env) {
     return proc;
 }
 
-static uint32_t get_virtual_base_addr(CPUState *env){
-    // Get EPROCESS->PEB->ImageBaseAddress
-    uint32_t eproc = get_current_proc(env);
-    uint32_t peb = -1;
-    uint32_t virtual_base_addr = -1;
-    panda_virtual_memory_rw(env, eproc+EPROC_PEB_OFF, (uint8_t *)&peb,
-        sizeof(uint32_t), false);
-    assert(peb != (uint32_t)-1);
-    //printf("Current process: %s\n", current_process->name);
-    //printf("PEB: 0x%x\n", peb);
-    panda_virtual_memory_rw(env, peb+PEB_IMAGE_BASE_ADDRESS,
-        (uint8_t *)&virtual_base_addr, sizeof(uint32_t), false);
-    assert(virtual_base_addr != (uint32_t)-1);
-    return virtual_base_addr;
-}
-
 #define UNKNOWN_PID 0xFFFFFFFF
 char cur_procname[16];
 uint32_t cur_pid = UNKNOWN_PID;
@@ -108,6 +127,11 @@ uint32_t cur_pid = UNKNOWN_PID;
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     bool changed = false;
     //    bool in_kernel = false;
+    /*    if (rr_get_guest_instr_count() > 1000000000){
+      rr_end_replay_requested = 1;
+      exit(0);
+    }
+    */
     if (panda_in_kernel(env)) {
         changed = cur_pid != UNKNOWN_PID;
 	//        in_kernel = true;
@@ -130,8 +154,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         *np = PANDA__PROCESS__INIT;
         np->pid = cur_pid;
         np->name = cur_procname;
-        np->has_virtual_base_addr = true;
-        np->virtual_base_addr = get_virtual_base_addr(env);
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.new_pid = np;
         pandalog_write_entry(&ple);
@@ -314,12 +336,30 @@ static char *read_unicode_string(CPUState *env, target_ulong pUstr) {
     return fileName;
 }
 
-static char * get_objname(CPUState *env, target_ulong obj) {
-    uint32_t pObjectName;
+static std::wstring read_unicode_string_unicode(CPUState *env, target_ulong pUstr) {
+  uint16_t fileNameLen;
+  uint32_t fileNamePtr;
+  wchar_t fileNameUnicode[260] = {};
 
-    panda_virtual_memory_rw(env, obj+OBJNAME_OFF,
-            (uint8_t *) &pObjectName, 4, false);
-    return read_unicode_string(env, pObjectName);
+  panda_virtual_memory_rw(env, pUstr,
+			  (uint8_t *) &fileNameLen, 2, false);
+  panda_virtual_memory_rw(env, pUstr+4,
+			  (uint8_t *) &fileNamePtr, 4, false);
+
+  if (fileNameLen > 259*2) {
+    fileNameLen = 259*2; 
+  }
+  panda_virtual_memory_rw(env, fileNamePtr, (uint8_t *) &fileNameUnicode[0], fileNameLen, false);
+
+  return fileNameUnicode;
+}
+
+static char * get_objname(CPUState *env, target_ulong obj) {
+  uint32_t pObjectName;
+
+  panda_virtual_memory_rw(env, obj+OBJNAME_OFF,
+			  (uint8_t *) &pObjectName, 4, false);
+  return read_unicode_string(env, pObjectName);
 }
 
 #define FILE_OBJECT_NAME_OFF 0x30
@@ -351,6 +391,15 @@ static HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t h
     return ho;
 }
 
+static HandleObject *get_handle_object_current(CPUState *env, uint32_t HandleVariable) {
+  uint32_t eproc = get_current_proc(env);
+  uint32_t handle;
+  if (-1 == panda_virtual_memory_rw(env, HandleVariable, (uint8_t *)&handle, 4, false)) {
+    return NULL;
+  }
+  return get_handle_object(env, eproc, handle);
+}
+
 
 static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
     if (ho == NULL){
@@ -369,10 +418,10 @@ static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
 	  break;
         case OBJ_TYPE_Process: {
             char *procName = (char *) calloc(100, 1);
-            char procExeName[16] = {};
-            uint32_t procPid = get_pid(env, ho->pObj);
-            get_procname(env, ho->pObj, procExeName);
-            sprintf(procName, "[%d] %s", procPid, procExeName);
+            //char procExeName[16] = {};
+            //uint32_t procPid = get_pid(env, ho->pObj);
+            get_procname(env, ho->pObj, procName);
+            //sprintf(procName, "[%d] %s", procPid, procExeName);
             return procName;
         }
             break;
@@ -395,7 +444,7 @@ Panda__Process *create_panda_process (uint32_t pid, char *name) {
     Panda__Process *p = (Panda__Process *) malloc(sizeof(Panda__Process));
     *p = PANDA__PROCESS__INIT;
     p->pid = pid;
-    p->name = name;
+    p->name = strdup(name);
     return p;
 }
 
@@ -586,6 +635,33 @@ char *get_keyname(uint32_t KeyHandle) {
     return keymap[panda_current_asid(cpu_single_env)][KeyHandle];
 }
 
+bool keyname_available(uint32_t KeyHandle) {
+  return keymap[panda_current_asid(cpu_single_env)].find(KeyHandle) != keymap[panda_current_asid(cpu_single_env)].end();
+}
+
+char *get_key_objname(CPUState *env, target_ulong obj){
+  //static char *name = get_objname(env, obj);
+  uint32_t pObjectName;
+
+  panda_virtual_memory_rw(env, obj+OBJNAME_OFF,
+			  (uint8_t *) &pObjectName, 4, false);
+  uint32_t pRootDir;
+  panda_virtual_memory_rw(env, obj+0x4, (uint8_t *) &pRootDir, 4, false);
+  char *result = read_unicode_string(env, pObjectName);
+  if (pRootDir){
+    if (keyname_available(pRootDir) &&
+	(get_keyname(pRootDir) != NULL)){
+      std::string pRoot(get_keyname(pRootDir));
+      std::string str(result);
+      pRoot = pRoot + "\\" + str;
+      free(result);
+      char *buf = (char *)calloc(260*2, 1);
+      strncpy(buf, pRoot.c_str(), 259*2);
+      return buf;
+    }
+  }
+  return result;
+}
 
 // CreateKey  -- creates a new registry key or opens an existing one.
 void w7p_NtCreateKey_return(
@@ -598,7 +674,7 @@ void w7p_NtCreateKey_return(
         uint32_t Class,
         uint32_t CreateOptions,
         uint32_t Disposition) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_create_key = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);    
@@ -622,7 +698,7 @@ void w7p_NtCreateKeyTransacted_enter(
       uint32_t CreateOptions,
       uint32_t TransactionHandle,
       uint32_t Disposition) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_create_key_transacted = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);    
@@ -639,7 +715,7 @@ void w7p_NtOpenKey_return (
         uint32_t pKeyHandle,
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
@@ -658,7 +734,7 @@ void w7p_NtOpenKeyEx_return (
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes,
         uint32_t OpenOptions) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key_ex = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
@@ -677,7 +753,7 @@ void w7p_NtOpenKeyTransacted_enter (
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes,
         uint32_t TransactionHandle) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key_transacted = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
@@ -694,7 +770,7 @@ void w7p_NtOpenKeyTransactedEx_enter(
         uint32_t DesiredAccess,
         uint32_t ObjectAttributes,
         uint32_t TransactionHandle) {
-    char *keyName = get_objname(env, ObjectAttributes);
+    char *keyName = get_key_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_open_key_transacted_ex = create_cur_process_key(keyName);
     pandalog_write_entry(&ple);        
@@ -865,6 +941,479 @@ void w7p_NtSetValueKey_enter(
     free(vn);
 }
 
+std::map<uint32_t,int> body_count;
+Panda__Section *create_section(uint32_t id, char *name, char *file_name){
+  Panda__Section *section = (Panda__Section *) malloc(sizeof(Panda__Section));
+  *section = PANDA__SECTION__INIT;
+  section->section_id = id;
+  section->proc = create_panda_process(cur_pid, cur_procname);
+  if (name != NULL) {
+      section->name = strdup(name);
+  }
+  if (file_name != NULL) {
+      section->file_name = strdup(file_name);
+  }
+  return section;
+}
+
+Panda__SectionMapView *create_section_map_view (uint32_t id, uint32_t target_pid, char *target_name){
+  Panda__SectionMapView *sectionMapView = (Panda__SectionMapView *) malloc(sizeof(Panda__SectionMapView));
+  *sectionMapView = PANDA__SECTION_MAP_VIEW__INIT;
+  sectionMapView->section = create_section(id, NULL, NULL);
+  sectionMapView->target = create_panda_process(target_pid, target_name);
+  return sectionMapView;
+}
+/*
+void print_section(
+        CPUState *env,
+	target_ulong pc,
+	uint32_t SectionHandle,
+	uint32_t DesiredAccess,
+	uint32_t ObjectAttributes,
+	bool create){
+  char *sectionName = get_objname(env, ObjectAttributes); // Not always used
+  if (create) {
+    printf("  nt_create_section");
+  } else {
+    printf("  nt_open_section");
+  }
+  printf(" (%s) from [%x] %s with %s\n", sectionName, cur_pid, cur_procname, get_status_code(env));
+  uint32_t handle;
+  uint32_t eproc = get_current_proc(env);
+  panda_virtual_memory_rw(env, SectionHandle, (uint8_t *)&handle, 4, false);
+  // Not useful information
+  //printf("    pc: %x, SectionHandle: %x, handle: %x, ", (uint32_t) pc, SectionHandle, handle);
+  uint32_t pObjectTable;
+  if (-1 == panda_virtual_memory_rw(env, eproc+EPROC_OBJTABLE_OFF, (uint8_t *)&pObjectTable, 4, false)) {
+    return;
+  }
+  uint32_t pObjHeader = get_handle_table_entry(env, pObjectTable, handle); //unique object pointer
+  printf("   pObjHeader: %x, ", pObjHeader);
+  HandleObject *ho = get_handle_object(env, eproc, handle);
+  if (ho == NULL) {
+    //printf("    handle object null\n");
+    printf("\n");
+    return;
+  }
+  body_count[ho->pObj]++;
+  printf("pObj: %x, count = %d\n", ho->pObj, body_count[ho->pObj]);
+  uint32_t start_va;
+  uint32_t end_va;
+  uint32_t parent;
+  panda_virtual_memory_rw(env, ho->pObj, (uint8_t *)&start_va, 4, false);
+  panda_virtual_memory_rw(env, ho->pObj+0x4, (uint8_t *)&end_va, 4, false);
+  panda_virtual_memory_rw(env, ho->pObj+0x8, (uint8_t *)&parent, 4, false);
+  //panda_virtual_memory_rw(env, ho->pObj+0x14, (uint8_t *)&segment, 4, false);
+  printf("    start_va: %x, end_va: %x, parent: %x\n", start_va, end_va, parent);
+}
+*/
+void w7p_NtCreateSection_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t SectionHandle, //Pointer to a HANDLE variable that receives a handle to the section object.
+	uint32_t DesiredAccess, //Specifies an Access Mask
+	uint32_t ObjectAttributes, //Pointer to an OBJECT_ATTRIBUTES structure
+	uint32_t MaximumSize,
+	uint32_t SectionPageProtection,
+	uint32_t AllocationAttributes,
+	uint32_t FileHandle) { //Optional handle for an open file object. If NULL, backed by the paging file.
+  //print_section(env, pc, SectionHandle, DesiredAccess, ObjectAttributes, true);
+  //printf("  nt_create_section\n");
+  char *sectionName = get_objname(env, ObjectAttributes);
+  uint32_t handle;
+  uint32_t eproc = get_current_proc(env);
+  panda_virtual_memory_rw(env, SectionHandle, (uint8_t *)&handle, 4, false);
+  HandleObject *ho = get_handle_object(env, eproc, handle);
+  if (ho == NULL) {
+      //printf("    null ho\n");
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  uint32_t file_handle;
+  panda_virtual_memory_rw(env, FileHandle, (uint8_t *)&file_handle, 4, false);
+  if (file_handle) {
+    HandleObject *file_ho = get_handle_object(env, get_current_proc(env), file_handle);
+    //printf("    File Handle: %d: %s\n", ho->objType, get_handle_object_name(env, ho));
+    ple.nt_create_section = create_section(ho->pObj, sectionName, get_handle_object_name(env, file_ho));
+  } else {
+    ple.nt_create_section = create_section(ho->pObj, sectionName, NULL);
+  }
+  pandalog_write_entry(&ple);
+  //printf("    done\n");
+}
+
+void w7p_NtOpenSection_return (
+        CPUState* env,
+	target_ulong pc,
+	uint32_t SectionHandle,
+	uint32_t DesiredAccess,
+	uint32_t ObjectAttributes){
+    //printf("  nt_open_section\n");
+  char *sectionName = get_objname(env, ObjectAttributes);
+
+  uint32_t handle;
+  uint32_t eproc = get_current_proc(env);
+  panda_virtual_memory_rw(env, SectionHandle, (uint8_t *)&handle, 4, false);
+  HandleObject *ho = get_handle_object(env, eproc, handle);
+  if (ho == NULL) {
+      //printf("    null ho\n");
+      return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_open_section = create_section(ho->pObj, sectionName, NULL);
+  pandalog_write_entry(&ple);
+  //printf("    done\n");
+}
+
+void w7p_NtMapViewOfSection_return(
+        CPUState* env,
+	target_ulong pc,
+	uint32_t SectionHandle,
+	uint32_t ProcessHandle,
+	target_ulong BaseAddress,
+	uint32_t ZeroBits,
+	uint32_t CommitSize,
+	uint32_t SectionOffset,
+	uint32_t ViewSize,
+	uint32_t InheritDisposition,
+	uint32_t AllocationType,
+	uint32_t AccessProtection){
+  // Want to track cur_pid, the new process (ProcessHandle), in case we map into another process.
+  //printf("  nt_map_view_of_section\n");
+  uint32_t eproc = get_current_proc(env);
+  uint32_t procHandle;
+  panda_virtual_memory_rw(env, ProcessHandle, (uint8_t *)&procHandle, 4, false);
+  HandleObject *proc_ho = get_handle_object(env, eproc, procHandle);
+  static char *target_proc_name;
+  uint32_t target_pid;
+  if (proc_ho == NULL){
+    target_pid = cur_pid;
+    target_proc_name = cur_procname;
+  } else {
+      /*if (proc_ho->objType != OBJ_TYPE_Process){
+	  target_pid = cur_pid;
+	  target_proc_name = cur_procname;
+      } else {
+      */
+	  target_proc_name = get_handle_object_name(env, proc_ho);
+	  target_pid = get_pid(env, proc_ho->pObj);
+	  //}
+  }
+  //  printf("  nt_map_view_of_section from [%x] %s to [%x] %s with retval %s\n", 
+  //	 cur_pid, cur_procname, target_pid, target_proc_name, get_status_code(env));
+
+  uint32_t handle;
+  panda_virtual_memory_rw(env, SectionHandle, (uint8_t *)&handle, 4, false);
+  HandleObject *ho = get_handle_object(env, eproc, handle);
+  if (ho == NULL) {
+      //printf("    done\n");
+      return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_map_view_of_section = create_section_map_view(ho->pObj, target_pid, target_proc_name);
+  pandalog_write_entry(&ple);
+  //printf("    done\n");
+}
+
+Panda__LocalPort *create_panda_port (CPUState *env, HandleObject *ho){ // ho->pObj type is _ALPC_PORT
+  Panda__LocalPort *p = (Panda__LocalPort *) malloc(sizeof(Panda__LocalPort));
+  *p = PANDA__LOCAL_PORT__INIT;
+  uint32_t owner_process; //offset 0xc
+  panda_virtual_memory_rw(env, ho->pObj+0xc, (uint8_t *)&owner_process, 4, false);
+  uint32_t alpc_com_info; // _ALPC_COMMUNICATION_INFO
+  panda_virtual_memory_rw(env, ho->pObj + 0x8, (uint8_t *)&alpc_com_info, 4, false);
+  uint32_t server_com_port; // _ALPC_PORT_OBJECT
+  panda_virtual_memory_rw(env, alpc_com_info + 0x4, (uint8_t *)&server_com_port, 4, false);
+  char server_procname[32] = {};
+  if (server_com_port) {
+    uint32_t server_proc; // _EPROCESS object
+    panda_virtual_memory_rw(env, server_com_port +0xc, (uint8_t *)&server_proc, 4, false);
+    get_procname(env, server_proc, server_procname);
+    p->server = create_panda_process(get_pid(env, server_proc), server_procname);
+  }
+  uint32_t client_com_port; // _ALPC_PORT_OBJECT
+  panda_virtual_memory_rw(env, alpc_com_info + 0x8, (uint8_t *)&client_com_port, 4, false);
+  char client_procname[32] = {};
+  if (client_com_port) {
+    uint32_t client_proc; // _EPROCESS object
+    panda_virtual_memory_rw(env, client_com_port +0xc, (uint8_t *)&client_proc, 4, false);
+    get_procname(env, client_proc, client_procname);
+    p->client = create_panda_process(get_pid(env, client_proc), client_procname);
+  }
+  //printf(" server_name: %s, client_name: %s \n", server_procname, client_procname);
+  p->proc = create_panda_process(cur_pid, cur_procname);
+  p->id = ho->pObj; //Or a better unique identifier if one exists
+  //print_local_port(p);
+  return p;
+}
+
+Panda__LocalPortInit *create_panda_port_init (CPUState *env, HandleObject *ho, char *name){
+  Panda__LocalPortInit *p = (Panda__LocalPortInit *) malloc(sizeof(Panda__LocalPortInit));
+  *p = PANDA__LOCAL_PORT_INIT__INIT;
+  p->port = create_panda_port (env, ho);
+  p->port_name = strdup(name);
+  return p;
+}
+
+// Only some of the ALPC syscalls use pointers, for added fun.
+// You want to look the the volatility windows types
+void print_port_ho(CPUState *env, HandleObject *ho){ 
+  uint32_t owner_process; //offset 0xc
+  panda_virtual_memory_rw(env, ho->pObj+0xc, (uint8_t *)&owner_process, 4, false);
+  uint32_t alpc_com_info; // _ALPC_COMMUNICATION_INFO
+  panda_virtual_memory_rw(env, ho->pObj + 0x8, (uint8_t *)&alpc_com_info, 4, false);
+  uint32_t server_com_port; // _ALPC_PORT_OBJECT
+  panda_virtual_memory_rw(env, alpc_com_info + 0x4, (uint8_t *)&server_com_port, 4, false);
+  char server_procname[32] = {};
+  if (server_com_port) {
+    uint32_t server_proc; // _EPROCESS object
+    panda_virtual_memory_rw(env, server_com_port +0xc, (uint8_t *)&server_proc, 4, false);
+    get_procname(env, server_proc, server_procname);
+  }
+  uint32_t client_com_port; // _ALPC_PORT_OBJECT
+  panda_virtual_memory_rw(env, alpc_com_info + 0x8, (uint8_t *)&client_com_port, 4, false);
+  char client_procname[32] = {};
+  if (client_com_port) {
+    uint32_t client_proc; // _EPROCESS object
+    panda_virtual_memory_rw(env, client_com_port +0xc, (uint8_t *)&client_proc, 4, false);
+    get_procname(env, client_proc, client_procname);
+  }
+  printf("    server_procname %s, client_procname %s\n", server_procname, client_procname);
+}
+
+void print_port(CPUState *env, uint32_t PortHandle) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle); 
+  if (ho == NULL) {
+    printf("   null ho, handle = %x\n", PortHandle);
+    return;
+  }
+  print_port_ho(env, ho);
+}
+
+void print_port_pointer(CPUState *env, uint32_t PortHandle) {
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    printf("   null ho, handle = %x\n", PortHandle);
+    return;
+  }
+  print_port_ho(env, ho);
+}
+
+void w7p_NtCreatePort_return(
+        CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t ObjectAttributes,
+	uint32_t MaxConnectionInfoLength,
+	uint32_t MaxMessageLength,
+	uint32_t MaxPoolUsag) {
+  // Not very common
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_create_port = create_panda_port_init(env, ho, get_objname(env, ObjectAttributes));
+  pandalog_write_entry(&ple);
+}
+void w7p_NtConnectPort_return(
+        CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t PortName,
+	uint32_t SecurityQos,
+	uint32_t ClientView,
+	uint32_t ServerView,
+	uint32_t MaxMessageLength,
+	uint32_t ConnectionInformation,
+	uint32_t ConnectionInformationLength) {
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  char *port_name = read_unicode_string(env, PortName);
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_connect_port = create_panda_port_init(env, ho, port_name);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtListenPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t ConnectionRequest) {
+  // Not very common
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_listen_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtAcceptConnectPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t PortContext,
+	uint32_t ConnectionRequest,
+	uint32_t AcceptConnection,
+	uint32_t ServerView,
+	uint32_t ClientView) {
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_accept_connect_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtCompleteConnectPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle) {
+  HandleObject *ho = get_handle_object_current(env, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_complete_connect_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtRequestPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t LpcMessage) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_request_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtRequestWaitReplyPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle, // not a pointer because consistency doesn't matter \s
+	uint32_t LpcReply,
+	uint32_t LpcRequest) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_request_wait_reply_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtReplyPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t LpcReply) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_reply_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtReplyWaitReplyPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t ReplyMessage) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_reply_wait_reply_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtReplyWaitReceivePort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	target_ulong PortContext,
+	uint32_t ReplyMessage,
+	uint32_t ReceiveMessage) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_reply_wait_receive_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+void w7p_NtImpersonateClientOfPort_return(
+	CPUState* env,
+	target_ulong pc,
+	uint32_t PortHandle,
+	uint32_t ClientMessage) {
+  uint32_t eproc = get_current_proc(env);
+  HandleObject *ho = get_handle_object(env, eproc, PortHandle);
+  if (ho == NULL) {
+    return;
+  }
+  Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+  ple.nt_impersonate_client_of_port = create_panda_port(env, ho);
+  pandalog_write_entry(&ple);
+}
+
+Panda__VirtualMemory *create_panda_vm(uint32_t proc_pid, char *proc_name, uint32_t target_pid, char *target_name) {
+    Panda__VirtualMemory *p = (Panda__VirtualMemory *) malloc(sizeof(Panda__VirtualMemory));
+    *p = PANDA__VIRTUAL_MEMORY__INIT;
+    p->proc = create_panda_process(proc_pid, proc_name);
+    p->target = create_panda_process(target_pid, target_name);
+    return p;
+}
+
+void w7p_NtReadVirtualMemory_return(CPUState* env,
+				    target_ulong pc,
+				    uint32_t ProcessHandle,
+				    uint32_t BaseAddress,
+				    uint32_t Buffer,
+				    uint32_t NumberOfBytesToRead,
+				    uint32_t NumberOfBytesRead) {
+    uint32_t eproc = get_current_proc(env);
+    HandleObject *ho = get_handle_object(env, eproc, ProcessHandle);
+    if (ho == NULL) {
+	return;
+    }
+    uint32_t procPid = get_pid(env, ho->pObj);
+    char procExeName[16] = {};
+    get_procname(env, ho->pObj, procExeName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_read_virtual_memory = create_panda_vm( cur_pid, cur_procname, procPid, procExeName);
+    pandalog_write_entry(&ple);
+}
+void w7p_NtWriteVirtualMemory_return(CPUState* env,
+				     target_ulong pc,
+				     uint32_t ProcessHandle,
+				     uint32_t BaseAddress,
+				     uint32_t Buffer,
+				     uint32_t NumberOfBytesToWrite,
+				     uint32_t NumberOfBytesWritten) {
+    uint32_t eproc = get_current_proc(env);
+    HandleObject *ho = get_handle_object(env, eproc, ProcessHandle);
+    if (ho == NULL) {
+	return;
+    }
+    uint32_t procPid = get_pid(env, ho->pObj);
+    char procExeName[16] = {};
+    get_procname(env, ho->pObj, procExeName);
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_write_virtual_memory = create_panda_vm( cur_pid, cur_procname, procPid, procExeName);
+    pandalog_write_entry(&ple);
+}
 
 #endif
 
@@ -901,14 +1450,16 @@ bool init_plugin(void *self) {
 
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-
+    // Process Syscalls
     PPP_REG_CB("syscalls2", on_NtCreateUserProcess_return, w7p_NtCreateUserProcess_return);
     PPP_REG_CB("syscalls2", on_NtTerminateProcess_enter, w7p_NtTerminateProcess_enter);
-
+    
+    // File Syscalls
     PPP_REG_CB("syscalls2", on_NtCreateFile_enter, w7p_NtCreateFile_enter);
     PPP_REG_CB("syscalls2", on_NtReadFile_enter, w7p_NtReadFile_enter);
     PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, w7p_NtDeleteFile_enter);
     PPP_REG_CB("syscalls2", on_NtWriteFile_enter, w7p_NtWriteFile_enter);
+    // Registry Syscalls
 
     PPP_REG_CB("syscalls2", on_NtCreateKey_return, w7p_NtCreateKey_return);
     //    PPP_REG_CB("syscalls2", on_NtCreateKeyTransacted_enter, w7p_NtCreateKeyTransacted_enter);
@@ -923,6 +1474,30 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_NtEnumerateKey_enter, w7p_NtEnumerateKey_enter);
     PPP_REG_CB("syscalls2", on_NtSetValueKey_enter, w7p_NtSetValueKey_enter);
 
+    // Section Syscalls (currently no pandalog)
+
+    PPP_REG_CB("syscalls2", on_NtCreateSection_return, w7p_NtCreateSection_return);
+    PPP_REG_CB("syscalls2", on_NtOpenSection_return, w7p_NtOpenSection_return);
+    PPP_REG_CB("syscalls2", on_NtMapViewOfSection_return, w7p_NtMapViewOfSection_return);
+
+    // ALPC syscalls (currently no pandalog)
+    PPP_REG_CB("syscalls2", on_NtCreatePort_return, w7p_NtCreatePort_return);
+    PPP_REG_CB("syscalls2", on_NtConnectPort_return, w7p_NtConnectPort_return);
+    PPP_REG_CB("syscalls2", on_NtListenPort_return, w7p_NtListenPort_return);
+    PPP_REG_CB("syscalls2", on_NtAcceptConnectPort_return, w7p_NtAcceptConnectPort_return);
+    PPP_REG_CB("syscalls2", on_NtCompleteConnectPort_return, w7p_NtCompleteConnectPort_return);
+    PPP_REG_CB("syscalls2", on_NtRequestPort_return, w7p_NtRequestPort_return);
+    PPP_REG_CB("syscalls2", on_NtRequestWaitReplyPort_return, w7p_NtRequestWaitReplyPort_return);
+    PPP_REG_CB("syscalls2", on_NtReplyPort_return, w7p_NtReplyPort_return);
+    PPP_REG_CB("syscalls2", on_NtReplyWaitReplyPort_return, w7p_NtReplyWaitReplyPort_return);
+    PPP_REG_CB("syscalls2", on_NtReplyWaitReceivePort_return, w7p_NtReplyWaitReceivePort_return);
+    PPP_REG_CB("syscalls2", on_NtImpersonateClientOfPort_return, w7p_NtImpersonateClientOfPort_return);
+
+    // Virtual Memory Syscalls
+    PPP_REG_CB("syscalls2", on_NtReadVirtualMemory_return, w7p_NtReadVirtualMemory_return);
+    PPP_REG_CB("syscalls2", on_NtWriteVirtualMemory_return, w7p_NtWriteVirtualMemory_return);
+
+    printf("finished adding win7proc syscall hooks\n");
     return true;
 #else
     fprintf(stderr, "Plugin is not supported on this platform.\n");
