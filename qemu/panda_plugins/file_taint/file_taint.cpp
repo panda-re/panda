@@ -27,6 +27,7 @@ extern "C" {
 
 #include <vector>
 #include <map>
+#include <string>
  
 double prob_label_u32 = 0;
 const char *taint_filename = 0;
