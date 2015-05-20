@@ -1,0 +1,963 @@
+0 NTSTATUS NtMapUserPhysicalPagesScatter (PVOID *VirtualAddresses, ULONG NumberOfPages, PULONG UserPfnArray);
+1 NTSTATUS NtWaitForSingleObject (HANDLE Object, BOOLEAN Alertable, PLARGE_INTEGER Time);
+2 NTSTATUS NtCallbackReturn (PVOID Result, ULONG ResultLength, NTSTATUS Status);
+3 NTSTATUS NtReadFile (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE UserApcRoutine, PVOID UserApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG BufferLength, PLARGE_INTEGER ByteOffset, PULONG Key);
+4 NTSTATUS NtDeviceIoControlFile (HANDLE DeviceHandle, HANDLE Event, PIO_APC_ROUTINE UserApcRoutine, PVOID UserApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG IoControlCode, PVOID InputBuffer, ULONG InputBufferSize, PVOID OutputBuffer, ULONG OutputBufferSize);
+5 NTSTATUS NtWriteFile (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG Length, PLARGE_INTEGER ByteOffset, PULONG Key);
+6 NTSTATUS NtRemoveIoCompletion (HANDLE IoCompletionHandle, PVOID *CompletionKey, PVOID *CompletionContext, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER Timeout);
+7 NTSTATUS NtReleaseSemaphore (HANDLE SemaphoreHandle, LONG ReleaseCount, PLONG PreviousCount);
+8 NTSTATUS NtReplyWaitReceivePort (HANDLE PortHandle, PVOID *PortContext, PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage);
+9 NTSTATUS NtReplyPort (HANDLE PortHandle, PPORT_MESSAGE LpcReply);
+10 NTSTATUS NtSetInformationThread (HANDLE ThreadHandle, THREADINFOCLASS ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength);
+11 NTSTATUS NtSetEvent (HANDLE EventHandle, PLONG PreviousState );
+12 NTSTATUS NtClose (HANDLE Handle);
+13 NTSTATUS NtQueryObject (HANDLE ObjectHandle, OBJECT_INFORMATION_CLASS ObjectInformationClass, PVOID ObjectInformation, ULONG Length, PULONG ResultLength);
+14 NTSTATUS NtQueryInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation, ULONG Length, FILE_INFORMATION_CLASS FileInformationClass);
+15 NTSTATUS NtOpenKey (PHANDLE KeyHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+16 NTSTATUS NtEnumerateValueKey (HANDLE KeyHandle, ULONG Index, KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass, PVOID KeyValueInformation, ULONG Length, PULONG ResultLength);
+17 NTSTATUS NtFindAtom ( PWSTR AtomName,  ULONG AtomNameLength, PRTL_ATOM Atom);
+18 NTSTATUS NtQueryDefaultLocale (BOOLEAN UserProfile, PLCID DefaultLocaleId);
+19 NTSTATUS NtQueryKey (HANDLE KeyHandle, KEY_INFORMATION_CLASS KeyInformationClass, PVOID KeyInformation, ULONG Length, PULONG ResultLength);
+20 NTSTATUS NtQueryValueKey (HANDLE KeyHandle, PUNICODE_STRING ValueName, KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass, PVOID KeyValueInformation, ULONG Length, PULONG ResultLength);
+21 NTSTATUS NtAllocateVirtualMemory (HANDLE ProcessHandle, PVOID *BaseAddress, ULONG ZeroBits, PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect);
+22 NTSTATUS NtQueryInformationProcess (HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength, PULONG ReturnLength);
+23 missing NtWaitForMultipleObjects32
+24 NTSTATUS NtWriteFileGather (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, FILE_SEGMENT_ELEMENT BufferDescription[], ULONG BufferLength, PLARGE_INTEGER ByteOffset, PULONG Key);
+25 NTSTATUS NtSetInformationProcess (HANDLE ProcessHandle, PROCESSINFOCLASS ProcessInformationClass, PVOID ProcessInformation, ULONG ProcessInformationLength);
+26 NTSTATUS NtCreateKey (PHANDLE KeyHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, ULONG TitleIndex, PUNICODE_STRING Class, ULONG CreateOptions, PULONG Disposition);
+27 NTSTATUS NtFreeVirtualMemory (HANDLE ProcessHandle, PVOID *BaseAddress, PSIZE_T RegionSize, ULONG FreeType);
+28 NTSTATUS NtImpersonateClientOfPort (HANDLE PortHandle, PPORT_MESSAGE ClientMessage);
+29 NTSTATUS NtReleaseMutant (HANDLE MutantHandle, PLONG ReleaseCount);
+30 NTSTATUS NtQueryInformationToken (HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, PVOID TokenInformation, ULONG TokenInformationLength, PULONG ReturnLength);
+31 NTSTATUS NtRequestWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE LpcReply, PPORT_MESSAGE LpcRequest);
+32 NTSTATUS NtQueryVirtualMemory (HANDLE ProcessHandle, PVOID Address, MEMORY_INFORMATION_CLASS VirtualMemoryInformationClass, PVOID VirtualMemoryInformation, SIZE_T Length, PSIZE_T ResultLength);
+33 NTSTATUS NtOpenThreadToken (HANDLE ThreadHandle, ACCESS_MASK DesiredAccess, BOOLEAN OpenAsSelf, PHANDLE TokenHandle);
+34 NTSTATUS NtQueryInformationThread (HANDLE ThreadHandle, THREADINFOCLASS ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength, PULONG ReturnLength);
+35 NTSTATUS NtOpenProcess (PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
+36 NTSTATUS NtSetInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation, ULONG Length, FILE_INFORMATION_CLASS FileInformationClass);
+37 NTSTATUS NtMapViewOfSection (HANDLE SectionHandle, HANDLE ProcessHandle, PVOID *BaseAddress, ULONG ZeroBits, ULONG CommitSize, PLARGE_INTEGER SectionOffset, PSIZE_T ViewSize, SECTION_INHERIT InheritDisposition, ULONG AllocationType, ULONG AccessProtection);
+38 NTSTATUS NtAccessCheckAndAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, PUNICODE_STRING ObjectTypeName, PUNICODE_STRING ObjectName, PSECURITY_DESCRIPTOR SecurityDescriptor, ACCESS_MASK DesiredAccess, PGENERIC_MAPPING GenericMapping, BOOLEAN ObjectCreation, PACCESS_MASK GrantedAccess, PNTSTATUS AccessStatus, PBOOLEAN GenerateOnClose);
+39 NTSTATUS NtUnmapViewOfSection (HANDLE ProcessHandle, PVOID BaseAddress);
+40 NTSTATUS NtReplyWaitReceivePortEx (HANDLE PortHandle, PVOID *PortContext, PPORT_MESSAGE ReplyMessage, PPORT_MESSAGE ReceiveMessage, PLARGE_INTEGER Timeout);
+41 NTSTATUS NtTerminateProcess (HANDLE ProcessHandle, NTSTATUS ExitStatus);
+42 NTSTATUS NtSetEventBoostPriority (HANDLE EventHandle);
+43 NTSTATUS NtReadFileScatter (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE UserApcRoutine,  PVOID UserApcContext, PIO_STATUS_BLOCK UserIoStatusBlock, FILE_SEGMENT_ELEMENT BufferDescription[], ULONG BufferLength, PLARGE_INTEGER ByteOffset, PULONG Key);
+44 NTSTATUS NtOpenThreadTokenEx (HANDLE ThreadHandle, ACCESS_MASK DesiredAccess, BOOLEAN OpenAsSelf, ULONG HandleAttributes, PHANDLE TokenHandle);
+45 NTSTATUS NtOpenProcessTokenEx (HANDLE ProcessHandle, ACCESS_MASK DesiredAccess, ULONG HandleAttributes, PHANDLE TokenHandle);
+46 NTSTATUS NtQueryPerformanceCounter (PLARGE_INTEGER Counter, PLARGE_INTEGER Frequency);
+47 NTSTATUS NtEnumerateKey (HANDLE KeyHandle, ULONG Index, KEY_INFORMATION_CLASS KeyInformationClass, PVOID KeyInformation, ULONG Length, PULONG ResultLength);
+48 NTSTATUS NtOpenFile (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions);
+49 NTSTATUS NtDelayExecution (BOOLEAN Alertable, LARGE_INTEGER *Interval);
+50 NTSTATUS NtQueryDirectoryFile (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation, ULONG Length, FILE_INFORMATION_CLASS FileInformationClass, BOOLEAN ReturnSingleEntry, PUNICODE_STRING FileName, BOOLEAN RestartScan);
+51 NTSTATUS NtQuerySystemInformation (SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, SIZE_T Length, PSIZE_T ResultLength);
+52 NTSTATUS NtOpenSection (PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+53 NTSTATUS NtQueryTimer (HANDLE TimerHandle, TIMER_INFORMATION_CLASS TimerInformationClass, PVOID TimerInformation, ULONG Length, PULONG ResultLength);
+54 NTSTATUS NtFsControlFile (HANDLE DeviceHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG IoControlCode, PVOID InputBuffer, ULONG InputBufferSize, PVOID OutputBuffer, ULONG OutputBufferSize);
+55 NTSTATUS NtWriteVirtualMemory (HANDLE ProcessHandle, PVOID  BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToWrite, PSIZE_T NumberOfBytesWritten);
+56 NTSTATUS NtCloseObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, BOOLEAN GenerateOnClose);
+57 NTSTATUS NtDuplicateObject (HANDLE SourceProcessHandle, HANDLE SourceHandle, HANDLE TargetProcessHandle, PHANDLE TargetHandle, ACCESS_MASK DesiredAccess, ULONG HandleAttributes, ULONG Options);
+58 NTSTATUS NtQueryAttributesFile (POBJECT_ATTRIBUTES ObjectAttributes, PFILE_BASIC_INFORMATION FileInformation);
+59 NTSTATUS NtClearEvent (HANDLE EventHandle);
+60 NTSTATUS NtReadVirtualMemory (HANDLE ProcessHandle, PVOID BaseAddress, PVOID Buffer, SIZE_T NumberOfBytesToRead, PSIZE_T NumberOfBytesRead);
+61 NTSTATUS NtOpenEvent (PHANDLE EventHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+62 NTSTATUS NtAdjustPrivilegesToken (HANDLE TokenHandle, BOOLEAN DisableAllPrivileges, PTOKEN_PRIVILEGES NewState, ULONG BufferLength, PTOKEN_PRIVILEGES PreviousState, PULONG ReturnLength);
+63 NTSTATUS NtDuplicateToken (HANDLE ExistingTokenHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, BOOLEAN EffectiveOnly, TOKEN_TYPE TokenType, PHANDLE NewTokenHandle);
+64 NTSTATUS NtContinue (PCONTEXT Context, BOOLEAN TestAlert);
+65 NTSTATUS NtQueryDefaultUILanguage (PLANGID LanguageId);
+66 NTSTATUS NtQueueApcThread (HANDLE ThreadHandle, PKNORMAL_ROUTINE ApcRoutine, PVOID NormalContext, PVOID SystemArgument1, PVOID SystemArgument2);
+67 NTSTATUS NtYieldExecution (VOID);
+68 NTSTATUS NtAddAtom (PWSTR AtomName, ULONG AtomNameLength, PRTL_ATOM Atom);
+69 NTSTATUS NtCreateEvent (PHANDLE EventHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, EVENT_TYPE EventType, BOOLEAN InitialState);
+70 NTSTATUS NtQueryVolumeInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID FsInformation, ULONG Length, FS_INFORMATION_CLASS FsInformationClass);
+71 NTSTATUS NtCreateSection (PHANDLE SectionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PLARGE_INTEGER MaximumSize, ULONG SectionPageProtection, ULONG AllocationAttributes, HANDLE FileHandle);
+72 NTSTATUS NtFlushBuffersFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock);
+73 missing NtApphelpCacheControl
+74 NTSTATUS NtCreateProcessEx (PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ParentProcess, ULONG Flags, HANDLE SectionHandle, HANDLE DebugPort, HANDLE ExceptionPort, BOOLEAN InJob);
+75 NTSTATUS NtCreateThread (PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ProcessHandle, PCLIENT_ID ClientId, PCONTEXT ThreadContext, PINITIAL_TEB UserStack, BOOLEAN CreateSuspended);
+76 NTSTATUS NtIsProcessInJob (HANDLE ProcessHandle, HANDLE JobHandle);
+77 NTSTATUS NtProtectVirtualMemory (HANDLE ProcessHandle, PVOID *BaseAddress, ULONG *NumberOfBytesToProtect, ULONG NewAccessProtection, PULONG OldAccessProtection);
+78 NTSTATUS NtQuerySection (HANDLE SectionHandle, SECTION_INFORMATION_CLASS SectionInformationClass, PVOID SectionInformation, SIZE_T Length, PSIZE_T ResultLength);
+79 NTSTATUS NtResumeThread (HANDLE ThreadHandle, PULONG SuspendCount);
+80 NTSTATUS NtTerminateThread (HANDLE ThreadHandle, NTSTATUS ExitStatus);
+81 NTSTATUS NtReadRequestData (HANDLE PortHandle, PPORT_MESSAGE Message, ULONG Index, PVOID Buffer, ULONG BufferLength, PULONG ReturnLength);
+82 NTSTATUS NtCreateFile (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength);
+83 NTSTATUS NtQueryEvent (HANDLE EventHandle, EVENT_INFORMATION_CLASS EventInformationClass, PVOID EventInformation, ULONG EventInformationLength, PULONG ReturnLength);
+84 NTSTATUS NtWriteRequestData (HANDLE PortHandle, PPORT_MESSAGE Message, ULONG Index, PVOID Buffer, ULONG BufferLength, PULONG ReturnLength);
+85 NTSTATUS NtOpenDirectoryObject (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+86 missing NtAccessCheckByTypeAndAuditAlarm
+87 NTSTATUS NtQuerySystemTime (PLARGE_INTEGER CurrentTime);
+88 NTSTATUS NtWaitForMultipleObjects (ULONG Count, HANDLE Object[], WAIT_TYPE WaitType, BOOLEAN Alertable, PLARGE_INTEGER Time);
+89 NTSTATUS NtSetInformationObject (HANDLE ObjectHandle, OBJECT_INFORMATION_CLASS ObjectInformationClass, PVOID ObjectInformation, ULONG Length);
+90 NTSTATUS NtCancelIoFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock);
+91 NTSTATUS NtTraceEvent (ULONG TraceHandle, ULONG Flags, ULONG TraceHeaderLength, PEVENT_TRACE_HEADER TraceHeader);
+92 NTSTATUS NtPowerInformation (POWER_INFORMATION_LEVEL PowerInformationLevel, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength);
+93 NTSTATUS NtSetValueKey (HANDLE KeyHandle, PUNICODE_STRING ValueName, ULONG TitleIndex, ULONG Type, PVOID Data, ULONG DataSize);
+94 NTSTATUS NtCancelTimer (HANDLE TimerHandle, PBOOLEAN CurrentState);
+95 NTSTATUS NtSetTimer (HANDLE TimerHandle, PLARGE_INTEGER DueTime, PTIMER_APC_ROUTINE TimerApcRoutine, PVOID TimerContext, BOOLEAN WakeTimer, LONG Period, PBOOLEAN PreviousState);
+96 NTSTATUS NtAcceptConnectPort (PHANDLE PortHandle, PVOID PortContext, PPORT_MESSAGE ConnectionRequest, BOOLEAN AcceptConnection, PPORT_VIEW ServerView, PREMOTE_PORT_VIEW ClientView);
+97 NTSTATUS NtAccessCheck (PSECURITY_DESCRIPTOR SecurityDescriptor, HANDLE ClientToken, ACCESS_MASK DesiredAccess, PGENERIC_MAPPING GenericMapping, PPRIVILEGE_SET PrivilegeSet, PULONG ReturnLength, PACCESS_MASK GrantedAccess, PNTSTATUS AccessStatus);
+98 NTSTATUS NtAccessCheckByType (PSECURITY_DESCRIPTOR SecurityDescriptor, PSID PrincipalSelfSid, HANDLE ClientToken, ACCESS_MASK DesiredAccess, POBJECT_TYPE_LIST ObjectTypeList, ULONG ObjectTypeLength, PGENERIC_MAPPING GenericMapping, PPRIVILEGE_SET PrivilegeSet, ULONG PrivilegeSetLength, PACCESS_MASK GrantedAccess, PNTSTATUS AccessStatus);
+99 NTSTATUS NtAccessCheckByTypeResultList (PSECURITY_DESCRIPTOR SecurityDescriptor, PSID PrincipalSelfSid, HANDLE ClientToken, ACCESS_MASK DesiredAccess, POBJECT_TYPE_LIST ObjectTypeList, ULONG ObjectTypeLength, PGENERIC_MAPPING GenericMapping, PPRIVILEGE_SET PrivilegeSet, ULONG PrivilegeSetLength, PACCESS_MASK GrantedAccess, PNTSTATUS AccessStatus);
+100 missing NtAccessCheckByTypeResultListAndAuditAlarm
+101 missing NtAccessCheckByTypeResultListAndAuditAlarmByHandle
+102 missing NtAddBootEntry
+103 missing NtAddDriverEntry
+104 NTSTATUS NtAdjustGroupsToken (HANDLE TokenHandle, BOOLEAN ResetToDefault, PTOKEN_GROUPS NewState, ULONG BufferLength, PTOKEN_GROUPS PreviousState, PULONG ReturnLength);
+105 NTSTATUS NtAlertResumeThread (HANDLE ThreadHandle, PULONG SuspendCount);
+106 NTSTATUS NtAlertThread (HANDLE ThreadHandle);
+107 NTSTATUS NtAllocateLocallyUniqueId (LUID *LocallyUniqueId);
+108 NTSTATUS NtAllocateUserPhysicalPages (HANDLE ProcessHandle, PULONG NumberOfPages, PULONG UserPfnArray);
+109 NTSTATUS NtAllocateUuids (PULARGE_INTEGER Time, PULONG Range, PULONG Sequence, PUCHAR Seed);
+110 NTSTATUS NtAreMappedFilesTheSame (PVOID File1MappedAsAnImage, PVOID File2MappedAsFile);
+111 NTSTATUS NtAssignProcessToJobObject (HANDLE JobHandle, HANDLE ProcessHandle);
+112 missing NtCancelDeviceWakeupRequest
+113 NTSTATUS NtCompactKeys (ULONG Count, PHANDLE KeyArray);
+114 NTSTATUS NtCompareTokens (HANDLE FirstTokenHandle, HANDLE SecondTokenHandle, PBOOLEAN Equal);
+115 NTSTATUS NtCompleteConnectPort (HANDLE PortHandle);
+116 NTSTATUS NtCompressKey (HANDLE Key);
+117 NTSTATUS NtConnectPort (PHANDLE PortHandle, PUNICODE_STRING PortName, PSECURITY_QUALITY_OF_SERVICE SecurityQos, PPORT_VIEW ClientView, PREMOTE_PORT_VIEW ServerView, PULONG MaxMessageLength, PVOID ConnectionInformation, PULONG ConnectionInformationLength);
+118 NTSTATUS NtCreateDebugObject (PHANDLE DebugHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, BOOLEAN KillProcessOnExit);
+119 NTSTATUS NtCreateDirectoryObject (PHANDLE DirectoryHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+120 NTSTATUS NtCreateEventPair (PHANDLE EventPairHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+121 NTSTATUS NtCreateIoCompletion (PHANDLE IoCompletionHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, ULONG NumberOfConcurrentThreads);
+122 NTSTATUS NtCreateJobObject (PHANDLE JobHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+123 NTSTATUS NtCreateJobSet (ULONG NumJob, PJOB_SET_ARRAY UserJobSet, ULONG Flags);
+124 NTSTATUS NtCreateKeyedEvent (PHANDLE KeyedEventHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, ULONG Flags);
+125 NTSTATUS NtCreateMailslotFile (PHANDLE MailSlotFileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, ULONG FileAttributes, ULONG ShareAccess, ULONG MaxMessageSize, PLARGE_INTEGER TimeOut);
+126 NTSTATUS NtCreateMutant (PHANDLE MutantHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, BOOLEAN InitialOwner);
+127 NTSTATUS NtCreateNamedPipeFile (PHANDLE NamedPipeFileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, ULONG WriteModeMessage, ULONG ReadModeMessage, ULONG NonBlocking, ULONG MaxInstances, ULONG InBufferSize, ULONG OutBufferSize, PLARGE_INTEGER DefaultTimeOut);
+128 NTSTATUS NtCreatePagingFile (PUNICODE_STRING FileName, PLARGE_INTEGER InitialSize, PLARGE_INTEGER MaxiumSize, ULONG Reserved);
+129 NTSTATUS NtCreatePort (PHANDLE PortHandle, POBJECT_ATTRIBUTES ObjectAttributes, ULONG MaxConnectionInfoLength, ULONG MaxMessageLength, ULONG MaxPoolUsage);
+130 NTSTATUS NtCreateProcess (PHANDLE ProcessHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, HANDLE ParentProcess, BOOLEAN InheritObjectTable, HANDLE SectionHandle, HANDLE DebugPort, HANDLE ExceptionPort);
+131 NTSTATUS NtCreateProfile (PHANDLE ProfileHandle, HANDLE ProcessHandle, PVOID ImageBase, ULONG ImageSize, ULONG Granularity, PVOID Buffer, ULONG ProfilingSize, KPROFILE_SOURCE Source, KAFFINITY ProcessorMask);
+132 NTSTATUS NtCreateSemaphore (PHANDLE SemaphoreHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, LONG InitialCount, LONG MaximumCount);
+133 NTSTATUS NtCreateSymbolicLinkObject (PHANDLE SymbolicLinkHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PUNICODE_STRING Name);
+134 NTSTATUS NtCreateTimer (PHANDLE TimerHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, TIMER_TYPE TimerType);
+135 NTSTATUS NtCreateToken (PHANDLE TokenHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, TOKEN_TYPE TokenType, PLUID AuthenticationId, PLARGE_INTEGER ExpirationTime, PTOKEN_USER TokenUser, PTOKEN_GROUPS TokenGroups, PTOKEN_PRIVILEGES TokenPrivileges, PTOKEN_OWNER TokenOwner, PTOKEN_PRIMARY_GROUP TokenPrimaryGroup, PTOKEN_DEFAULT_DACL TokenDefaultDacl, PTOKEN_SOURCE TokenSource);
+136 NTSTATUS NtCreateWaitablePort (PHANDLE PortHandle, POBJECT_ATTRIBUTES ObjectAttributes, ULONG MaxConnectInfoLength, ULONG MaxDataLength, ULONG NPMessageQueueSize);
+137 NTSTATUS NtDebugActiveProcess (HANDLE Process, HANDLE DebugObject);
+138 NTSTATUS NtDebugContinue (HANDLE DebugObject, PCLIENT_ID AppClientId, NTSTATUS ContinueStatus);
+139 NTSTATUS NtDeleteAtom (RTL_ATOM Atom);
+140 missing NtDeleteBootEntry
+141 missing NtDeleteDriverEntry
+142 NTSTATUS NtDeleteFile (POBJECT_ATTRIBUTES ObjectAttributes);
+143 NTSTATUS NtDeleteKey (HANDLE KeyHandle);
+144 NTSTATUS NtDeleteObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, BOOLEAN GenerateOnClose);
+145 NTSTATUS NtDeleteValueKey (HANDLE KeyHandle, PUNICODE_STRING ValueName);
+146 NTSTATUS NtDisplayString (PUNICODE_STRING DisplayString);
+147 NTSTATUS NtEnumerateBootEntries (PVOID Buffer, PULONG BufferLength);
+148 missing NtEnumerateDriverEntries
+149 NTSTATUS NtEnumerateSystemEnvironmentValuesEx (ULONG InformationClass, PVOID Buffer, ULONG BufferLength);
+150 NTSTATUS NtExtendSection (HANDLE SectionHandle, PLARGE_INTEGER NewMaximumSize);
+151 missing NtFilterToken
+152 NTSTATUS NtFlushInstructionCache (HANDLE ProcessHandle, PVOID BaseAddress, ULONG NumberOfBytesToFlush);
+153 NTSTATUS NtFlushKey (HANDLE KeyHandle);
+154 NTSTATUS NtFlushVirtualMemory (HANDLE ProcessHandle, PVOID *BaseAddress, PSIZE_T RegionSize, PIO_STATUS_BLOCK IoStatus);
+155 NTSTATUS NtFlushWriteBuffer (VOID);
+156 NTSTATUS NtFreeUserPhysicalPages (HANDLE ProcessHandle, PULONG NumberOfPages, PULONG UserPfnArray);
+157 NTSTATUS NtGetContextThread (HANDLE ThreadHandle, PCONTEXT Context);
+158 missing NtGetCurrentProcessorNumber
+159 missing NtGetDevicePowerState
+160 NTSTATUS NtGetPlugPlayEvent (ULONG Reserved1, ULONG Reserved2, PPLUGPLAY_EVENT_BLOCK Buffer, ULONG BufferSize);
+161 NTSTATUS NtGetWriteWatch (HANDLE ProcessHandle, ULONG Flags, PVOID BaseAddress, ULONG RegionSize, PVOID *UserAddressArray, PULONG EntriesInUserAddressArray, PULONG Granularity);
+162 NTSTATUS NtImpersonateAnonymousToken (HANDLE Thread);
+163 NTSTATUS NtImpersonateThread (HANDLE ThreadHandle, HANDLE ThreadToImpersonate, PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService);
+164 NTSTATUS NtInitializeRegistry (USHORT Flag);
+165 NTSTATUS NtInitiatePowerAction (POWER_ACTION SystemAction, SYSTEM_POWER_STATE MinSystemState, ULONG Flags, BOOLEAN Asynchronous);
+166 missing NtIsSystemResumeAutomatic
+167 NTSTATUS NtListenPort (HANDLE PortHandle, PPORT_MESSAGE ConnectionRequest);
+168 NTSTATUS NtLoadDriver (PUNICODE_STRING DriverServiceName);
+169 NTSTATUS NtLoadKey (POBJECT_ATTRIBUTES KeyObjectAttributes, POBJECT_ATTRIBUTES FileObjectAttributes);
+170 NTSTATUS NtLoadKey2 (POBJECT_ATTRIBUTES KeyObjectAttributes, POBJECT_ATTRIBUTES FileObjectAttributes, ULONG Flags);
+171 missing NtLoadKeyEx
+172 NTSTATUS NtLockFile (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER ByteOffset, PLARGE_INTEGER Length, ULONG Key, BOOLEAN FailImmediatedly, BOOLEAN ExclusiveLock);
+173 NTSTATUS NtLockProductActivationKeys (PULONG pPrivateVer, PULONG pSafeMode);
+174 NTSTATUS NtLockRegistryKey (HANDLE KeyHandle);
+175 NTSTATUS NtLockVirtualMemory (HANDLE ProcessHandle, PVOID BaseAddress, ULONG NumberOfBytesToLock, PULONG NumberOfBytesLocked);
+176 NTSTATUS NtMakePermanentObject (HANDLE Object);
+177 NTSTATUS NtMakeTemporaryObject (HANDLE Handle);
+178 NTSTATUS NtMapUserPhysicalPages (PVOID *VirtualAddresses, ULONG NumberOfPages, PULONG UserPfnArray);
+179 NTSTATUS NtModifyBootEntry (PBOOT_ENTRY BootEntry);
+180 missing NtModifyDriverEntry
+181 NTSTATUS NtNotifyChangeDirectoryFile (HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG BufferSize, ULONG CompletionFilter, BOOLEAN WatchTree);
+182 NTSTATUS NtNotifyChangeKey (HANDLE KeyHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG CompletionFilter, BOOLEAN Asynchroneous, PVOID ChangeBuffer, ULONG Length, BOOLEAN WatchSubtree);
+183 NTSTATUS NtNotifyChangeMultipleKeys (HANDLE MasterKeyHandle, ULONG Count, POBJECT_ATTRIBUTES SlaveObjects, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, ULONG CompletionFilter, BOOLEAN WatchTree, PVOID Buffer, ULONG Length, BOOLEAN Asynchronous);
+184 NTSTATUS NtOpenEventPair (PHANDLE EventPairHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+185 NTSTATUS NtOpenIoCompletion (PHANDLE CompetionPort, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+186 NTSTATUS NtOpenJobObject (PHANDLE JobHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+187 NTSTATUS NtOpenKeyedEvent (PHANDLE EventHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+188 NTSTATUS NtOpenMutant (PHANDLE MutantHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+189 NTSTATUS NtOpenObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, PUNICODE_STRING ObjectTypeName, PUNICODE_STRING ObjectName, PSECURITY_DESCRIPTOR SecurityDescriptor, HANDLE ClientToken, ULONG DesiredAccess, ULONG GrantedAccess, PPRIVILEGE_SET Privileges, BOOLEAN ObjectCreation, BOOLEAN AccessGranted, PBOOLEAN GenerateOnClose);
+190 NTSTATUS NtOpenProcessToken (HANDLE ProcessHandle, ACCESS_MASK DesiredAccess, PHANDLE TokenHandle);
+191 NTSTATUS NtOpenSemaphore (PHANDLE SemaphoreHandle, ACCESS_MASK DesiredAcces, POBJECT_ATTRIBUTES ObjectAttributes);
+192 NTSTATUS NtOpenSymbolicLinkObject (PHANDLE SymbolicLinkHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+193 NTSTATUS NtOpenThread (PHANDLE ThreadHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PCLIENT_ID ClientId);
+194 NTSTATUS NtOpenTimer (PHANDLE TimerHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes);
+195 NTSTATUS NtPlugPlayControl (PLUGPLAY_CONTROL_CLASS PlugPlayControlClass, PVOID Buffer, ULONG BufferSize);
+196 NTSTATUS NtPrivilegeCheck (HANDLE ClientToken, PPRIVILEGE_SET RequiredPrivileges, PBOOLEAN Result);
+197 NTSTATUS NtPrivilegeObjectAuditAlarm (PUNICODE_STRING SubsystemName, PVOID HandleId, HANDLE ClientToken, ULONG DesiredAccess, PPRIVILEGE_SET Privileges, BOOLEAN AccessGranted);
+198 NTSTATUS NtPrivilegedServiceAuditAlarm (PUNICODE_STRING SubsystemName, PUNICODE_STRING ServiceName, HANDLE ClientToken, PPRIVILEGE_SET Privileges, BOOLEAN AccessGranted);
+199 NTSTATUS NtPulseEvent (HANDLE EventHandle, PLONG PulseCount);
+200 missing NtQueryBootEntryOrder
+201 missing NtQueryBootOptions
+202 NTSTATUS NtQueryDebugFilterState (ULONG ComponentId, ULONG Level);
+203 NTSTATUS NtQueryDirectoryObject (HANDLE DirectoryHandle, PVOID Buffer, ULONG BufferLength, BOOLEAN ReturnSingleEntry, BOOLEAN RestartScan, PULONG Context, PULONG ReturnLength);
+204 missing NtQueryDriverEntryOrder
+205 NTSTATUS NtQueryEaFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG Length, BOOLEAN ReturnSingleEntry, PVOID EaList, ULONG EaListLength, PULONG EaIndex, BOOLEAN RestartScan);
+206 NTSTATUS NtQueryFullAttributesFile (POBJECT_ATTRIBUTES ObjectAttributes, PFILE_NETWORK_OPEN_INFORMATION FileInformation);
+207 NTSTATUS NtQueryInformationAtom ( RTL_ATOM Atom,  ATOM_INFORMATION_CLASS AtomInformationClass, PVOID AtomInformation,  ULONG AtomInformationLength, PULONG ReturnLength);
+208 NTSTATUS NtQueryInformationJobObject (HANDLE JobHandle, JOBOBJECTINFOCLASS JobInformationClass, PVOID JobInformation, ULONG JobInformationLength, PULONG ReturnLength);
+209 NTSTATUS NtQueryInformationPort (HANDLE PortHandle, PORT_INFORMATION_CLASS PortInformationClass, PVOID PortInformation, ULONG PortInformationLength, PULONG ReturnLength);
+210 NTSTATUS NtQueryInstallUILanguage (PLANGID LanguageId);
+211 NTSTATUS NtQueryIntervalProfile ( KPROFILE_SOURCE ProfileSource, PULONG Interval);
+212 NTSTATUS NtQueryIoCompletion (HANDLE IoCompletionHandle, IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass, PVOID IoCompletionInformation, ULONG IoCompletionInformationLength, PULONG ResultLength);
+213 NTSTATUS NtQueryMultipleValueKey (HANDLE KeyHandle, PKEY_VALUE_ENTRY ValueList, ULONG NumberOfValues, PVOID Buffer, PULONG Length, PULONG ReturnLength);
+214 NTSTATUS NtQueryMutant (HANDLE MutantHandle, MUTANT_INFORMATION_CLASS MutantInformationClass, PVOID MutantInformation, ULONG Length, PULONG ResultLength);
+215 NTSTATUS NtQueryOpenSubKeys (POBJECT_ATTRIBUTES TargetKey, ULONG HandleCount);
+216 missing NtQueryOpenSubKeysEx
+217 NTSTATUS NtQueryPortInformationProcess (VOID);
+218 NTSTATUS NtQueryQuotaInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG Length, BOOLEAN ReturnSingleEntry, PVOID SidList, ULONG SidListLength, PSID StartSid, BOOLEAN RestartScan);
+219 NTSTATUS NtQuerySecurityObject (HANDLE Handle, SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR SecurityDescriptor, ULONG Length, PULONG ResultLength);
+220 NTSTATUS NtQuerySemaphore (HANDLE SemaphoreHandle, SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass, PVOID SemaphoreInformation, ULONG Length, PULONG ReturnLength);
+221 NTSTATUS NtQuerySymbolicLinkObject (HANDLE SymLinkObjHandle, PUNICODE_STRING LinkTarget, PULONG DataWritten);
+222 NTSTATUS NtQuerySystemEnvironmentValue (PUNICODE_STRING Name, PWSTR Value, ULONG Length, PULONG ReturnLength);
+223 NTSTATUS NtQuerySystemEnvironmentValueEx (PUNICODE_STRING VariableName, LPGUID VendorGuid, PVOID Value, PULONG ReturnLength, PULONG Attributes);
+224 NTSTATUS NtQueryTimerResolution (PULONG MinimumResolution, PULONG MaximumResolution, PULONG ActualResolution);
+225 NTSTATUS NtRaiseException (PEXCEPTION_RECORD ExceptionRecord, PCONTEXT Context, BOOLEAN SearchFrames);
+226 NTSTATUS NtRaiseHardError (NTSTATUS ErrorStatus, ULONG NumberOfParameters, ULONG UnicodeStringParameterMask, PULONG_PTR Parameters, ULONG ValidResponseOptions, PULONG Response);
+227 NTSTATUS NtRegisterThreadTerminatePort (HANDLE TerminationPort);
+228 NTSTATUS NtReleaseKeyedEvent (HANDLE EventHandle, PVOID Key, BOOLEAN Alertable, PLARGE_INTEGER Timeout);
+229 NTSTATUS NtRemoveProcessDebug (HANDLE Process, HANDLE DebugObject);
+230 NTSTATUS NtRenameKey (HANDLE KeyHandle, PUNICODE_STRING ReplacementName);
+231 NTSTATUS NtReplaceKey (POBJECT_ATTRIBUTES ObjectAttributes, HANDLE Key, POBJECT_ATTRIBUTES ReplacedObjectAttributes);
+232 NTSTATUS NtReplyWaitReplyPort (HANDLE PortHandle, PPORT_MESSAGE ReplyMessage);
+233 missing NtRequestDeviceWakeup
+234 NTSTATUS NtRequestPort (HANDLE PortHandle, PPORT_MESSAGE LpcMessage);
+235 missing NtRequestWakeupLatency
+236 NTSTATUS NtResetEvent (HANDLE EventHandle, PLONG NumberOfWaitingThreads);
+237 NTSTATUS NtResetWriteWatch (HANDLE ProcessHandle, PVOID BaseAddress, SIZE_T RegionSize);
+238 NTSTATUS NtRestoreKey (HANDLE KeyHandle, HANDLE FileHandle, ULONG RestoreFlags);
+239 NTSTATUS NtResumeProcess (HANDLE ProcessHandle);
+240 NTSTATUS NtSaveKey (HANDLE KeyHandle, HANDLE FileHandle);
+241 NTSTATUS NtSaveKeyEx (HANDLE KeyHandle, HANDLE FileHandle, ULONG Flags);
+242 NTSTATUS NtSaveMergedKeys (HANDLE HighPrecedenceKeyHandle, HANDLE LowPrecedenceKeyHandle, HANDLE FileHandle);
+243 NTSTATUS NtSecureConnectPort (PHANDLE PortHandle, PUNICODE_STRING PortName, PSECURITY_QUALITY_OF_SERVICE SecurityQos, PPORT_VIEW ClientView, PSID Sid, PREMOTE_PORT_VIEW ServerView, PULONG MaxMessageLength, PVOID ConnectionInformation, PULONG ConnectionInformationLength);
+244 missing NtSetBootEntryOrder
+245 missing NtSetBootOptions
+246 NTSTATUS NtSetContextThread (HANDLE ThreadHandle, PCONTEXT Context);
+247 NTSTATUS NtSetDebugFilterState (ULONG ComponentId, ULONG Level, BOOLEAN State);
+248 NTSTATUS NtSetDefaultHardErrorPort (HANDLE PortHandle);
+249 NTSTATUS NtSetDefaultLocale (BOOLEAN UserProfile, LCID DefaultLocaleId);
+250 NTSTATUS NtSetDefaultUILanguage (LANGID LanguageId);
+251 missing NtSetDriverEntryOrder
+252 NTSTATUS NtSetEaFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID EaBuffer, ULONG EaBufferSize);
+253 NTSTATUS NtSetHighEventPair (HANDLE EventPairHandle);
+254 NTSTATUS NtSetHighWaitLowEventPair (HANDLE EventPairHandle);
+255 NTSTATUS NtSetInformationDebugObject (HANDLE DebugObject, DEBUGOBJECTINFOCLASS InformationClass, PVOID Information, ULONG InformationLength, PULONG ReturnLength);
+256 NTSTATUS NtSetInformationJobObject (HANDLE JobHandle, JOBOBJECTINFOCLASS JobInformationClass, PVOID JobInformation, ULONG JobInformationLength);
+257 NTSTATUS NtSetInformationKey (HANDLE KeyHandle, KEY_SET_INFORMATION_CLASS KeyInformationClass, PVOID KeyInformation, ULONG KeyInformationLength);
+258 NTSTATUS NtSetInformationToken (HANDLE TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, PVOID TokenInformation, ULONG TokenInformationLength);
+259 NTSTATUS NtSetIntervalProfile (ULONG Interval, KPROFILE_SOURCE ClockSource);
+260 NTSTATUS NtSetIoCompletion (HANDLE IoCompletionPortHandle, PVOID CompletionKey, PVOID CompletionContext, NTSTATUS CompletionStatus, ULONG CompletionInformation);
+261 NTSTATUS NtSetLdtEntries (ULONG Selector1, LDT_ENTRY LdtEntry1, ULONG Selector2, LDT_ENTRY LdtEntry2);
+262 NTSTATUS NtSetLowEventPair (HANDLE EventPair);
+263 NTSTATUS NtSetLowWaitHighEventPair (HANDLE EventPair);
+264 NTSTATUS NtSetQuotaInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID Buffer, ULONG BufferLength);
+265 NTSTATUS NtSetSecurityObject (HANDLE Handle, SECURITY_INFORMATION SecurityInformation, PSECURITY_DESCRIPTOR SecurityDescriptor);
+266 NTSTATUS NtSetSystemEnvironmentValue (PUNICODE_STRING VariableName, PUNICODE_STRING Value);
+267 missing NtSetSystemEnvironmentValueEx
+268 NTSTATUS NtSetSystemInformation (SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, SIZE_T SystemInformationLength);
+269 NTSTATUS NtSetSystemPowerState (POWER_ACTION SystemAction, SYSTEM_POWER_STATE MinSystemState, ULONG Flags);
+270 NTSTATUS NtSetSystemTime (PLARGE_INTEGER SystemTime, PLARGE_INTEGER NewSystemTime);
+271 missing NtSetThreadExecutionState
+272 NTSTATUS NtSetTimerResolution (ULONG RequestedResolution, BOOLEAN SetOrUnset, PULONG ActualResolution);
+273 NTSTATUS NtSetUuidSeed (PUCHAR UuidSeed);
+274 NTSTATUS NtSetVolumeInformationFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PVOID FsInformation, ULONG Length, FS_INFORMATION_CLASS FsInformationClass);
+275 NTSTATUS NtShutdownSystem (SHUTDOWN_ACTION Action);
+276 NTSTATUS NtSignalAndWaitForSingleObject (HANDLE SignalObject, HANDLE WaitObject, BOOLEAN Alertable, PLARGE_INTEGER Time);
+277 NTSTATUS NtStartProfile (HANDLE ProfileHandle);
+278 NTSTATUS NtStopProfile (HANDLE ProfileHandle);
+279 NTSTATUS NtSuspendProcess (HANDLE ProcessHandle);
+280 NTSTATUS NtSuspendThread (HANDLE ThreadHandle, PULONG PreviousSuspendCount);
+281 NTSTATUS NtSystemDebugControl (SYSDBG_COMMAND ControlCode, PVOID InputBuffer, ULONG InputBufferLength, PVOID OutputBuffer, ULONG OutputBufferLength, PULONG ReturnLength);
+282 NTSTATUS NtTerminateJobObject (HANDLE JobHandle, NTSTATUS ExitStatus);
+283 NTSTATUS NtTestAlert (VOID);
+284 NTSTATUS NtTranslateFilePath (PFILE_PATH InputFilePath, ULONG OutputType, PFILE_PATH OutputFilePath, ULONG OutputFilePathLength);
+285 NTSTATUS NtUnloadDriver (PUNICODE_STRING DriverServiceName);
+286 NTSTATUS NtUnloadKey (POBJECT_ATTRIBUTES KeyObjectAttributes);
+287 missing NtUnloadKey2
+288 NTSTATUS NtUnloadKeyEx (POBJECT_ATTRIBUTES TargetKey, HANDLE Event);
+289 NTSTATUS NtUnlockFile (HANDLE FileHandle, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER ByteOffset, PLARGE_INTEGER Lenght, ULONG Key);
+290 NTSTATUS NtUnlockVirtualMemory (HANDLE ProcessHandle, PVOID BaseAddress, SIZE_T  NumberOfBytesToUnlock, PSIZE_T NumberOfBytesUnlocked);
+291 NTSTATUS NtVdmControl (ULONG ControlCode, PVOID ControlData);
+292 NTSTATUS NtWaitForDebugEvent (HANDLE DebugObject, BOOLEAN Alertable, PLARGE_INTEGER Timeout, PDBGUI_WAIT_STATE_CHANGE StateChange);
+293 NTSTATUS NtWaitForKeyedEvent (HANDLE EventHandle, PVOID Key, BOOLEAN Alertable, PLARGE_INTEGER Timeout);
+294 NTSTATUS NtWaitHighEventPair (HANDLE EventPairHandle);
+295 NTSTATUS NtWaitLowEventPair (HANDLE EventPairHandle);
+4096 missing NtUserGetThreadState
+4097 missing NtUserPeekMessage
+4098 missing NtUserCallOneParam
+4099 missing NtUserGetKeyState
+4100 missing NtUserInvalidateRect
+4101 missing NtUserCallNoParam
+4102 missing NtUserGetMessage
+4103 missing NtUserMessageCall
+4104 missing NtGdiBitBlt
+4105 missing NtGdiGetCharSet
+4106 missing NtUserGetDC
+4107 missing NtGdiSelectBitmap
+4108 missing NtUserWaitMessage
+4109 missing NtUserTranslateMessage
+4110 missing NtUserPostMessage
+4111 missing NtUserQueryWindow
+4112 missing NtUserTranslateAccelerator
+4113 missing NtGdiFlush
+4114 missing NtUserRedrawWindow
+4115 missing NtUserWindowFromPoint
+4116 missing NtUserCallMsgFilter
+4117 missing NtUserValidateTimerCallback
+4118 missing NtUserBeginPaint
+4119 missing NtUserSetTimer
+4120 missing NtUserEndPaint
+4121 missing NtUserSetCursor
+4122 missing NtUserKillTimer
+4123 missing NtUserBuildHwndList
+4124 missing NtUserSelectPalette
+4125 missing NtUserCallNextHookEx
+4126 missing NtUserHideCaret
+4127 missing NtGdiIntersectClipRect
+4128 missing NtUserCallHwndLock
+4129 missing NtUserGetProcessWindowStation
+4130 missing NtGdiDeleteObjectApp
+4131 missing NtUserSetWindowPos
+4132 missing NtUserShowCaret
+4133 missing NtUserEndDeferWindowPosEx
+4134 missing NtUserCallHwndParamLock
+4135 missing NtUserVkKeyScanEx
+4136 missing NtGdiSetDIBitsToDeviceInternal
+4137 missing NtUserCallTwoParam
+4138 missing NtGdiGetRandomRgn
+4139 missing NtUserCopyAcceleratorTable
+4140 missing NtUserNotifyWinEvent
+4141 missing NtGdiExtSelectClipRgn
+4142 missing NtUserIsClipboardFormatAvailable
+4143 missing NtUserSetScrollInfo
+4144 missing NtGdiStretchBlt
+4145 missing NtUserCreateCaret
+4146 missing NtGdiRectVisible
+4147 missing NtGdiCombineRgn
+4148 missing NtGdiGetDCObject
+4149 missing NtUserDispatchMessage
+4150 missing NtUserRegisterWindowMessage
+4151 missing NtGdiExtTextOutW
+4152 missing NtGdiSelectFont
+4153 missing NtGdiRestoreDC
+4154 missing NtGdiSaveDC
+4155 missing NtUserGetForegroundWindow
+4156 missing NtUserShowScrollBar
+4157 missing NtUserFindExistingCursorIcon
+4158 missing NtGdiGetDCDword
+4159 missing NtGdiGetRegionData
+4160 missing NtGdiLineTo
+4161 missing NtUserSystemParametersInfo
+4162 missing NtGdiGetAppClipBox
+4163 missing NtUserGetAsyncKeyState
+4164 missing NtUserGetCPD
+4165 missing NtUserRemoveProp
+4166 missing NtGdiDoPalette
+4167 missing NtGdiPolyPolyDraw
+4168 missing NtUserSetCapture
+4169 missing NtUserEnumDisplayMonitors
+4170 missing NtGdiCreateCompatibleBitmap
+4171 missing NtUserSetProp
+4172 missing NtGdiGetTextCharsetInfo
+4173 missing NtUserSBGetParms
+4174 missing NtUserGetIconInfo
+4175 missing NtUserExcludeUpdateRgn
+4176 missing NtUserSetFocus
+4177 missing NtGdiExtGetObjectW
+4178 missing NtUserDeferWindowPos
+4179 missing NtUserGetUpdateRect
+4180 missing NtGdiCreateCompatibleDC
+4181 missing NtUserGetClipboardSequenceNumber
+4182 missing NtGdiCreatePen
+4183 missing NtUserShowWindow
+4184 missing NtUserGetKeyboardLayoutList
+4185 missing NtGdiPatBlt
+4186 missing NtUserMapVirtualKeyEx
+4187 missing NtUserSetWindowLong
+4188 missing NtGdiHfontCreate
+4189 missing NtUserMoveWindow
+4190 missing NtUserPostThreadMessage
+4191 missing NtUserDrawIconEx
+4192 missing NtUserGetSystemMenu
+4193 missing NtGdiDrawStream
+4194 missing NtUserInternalGetWindowText
+4195 missing NtUserGetWindowDC
+4196 missing NtGdiD3dDrawPrimitives2
+4197 missing NtGdiInvertRgn
+4198 missing NtGdiGetRgnBox
+4199 missing NtGdiGetAndSetDCDword
+4200 missing NtGdiMaskBlt
+4201 missing NtGdiGetWidthTable
+4202 missing NtUserScrollDC
+4203 missing NtUserGetObjectInformation
+4204 missing NtGdiCreateBitmap
+4205 missing NtGdiConsoleTextOut
+4206 missing NtUserFindWindowEx
+4207 missing NtGdiPolyPatBlt
+4208 missing NtUserUnhookWindowsHookEx
+4209 missing NtGdiGetNearestColor
+4210 missing NtGdiTransformPoints
+4211 missing NtGdiGetDCPoint
+4212 missing NtUserCheckImeHotKey
+4213 missing NtGdiCreateDIBBrush
+4214 missing NtGdiGetTextMetricsW
+4215 missing NtUserCreateWindowEx
+4216 missing NtUserSetParent
+4217 missing NtUserGetKeyboardState
+4218 missing NtUserToUnicodeEx
+4219 missing NtUserGetControlBrush
+4220 missing NtUserGetClassName
+4221 missing NtGdiAlphaBlend
+4222 missing NtGdiDdBlt
+4223 missing NtGdiOffsetRgn
+4224 missing NtUserDefSetText
+4225 missing NtGdiGetTextFaceW
+4226 missing NtGdiStretchDIBitsInternal
+4227 missing NtUserSendInput
+4228 missing NtUserGetThreadDesktop
+4229 missing NtGdiCreateRectRgn
+4230 missing NtGdiGetDIBitsInternal
+4231 missing NtUserGetUpdateRgn
+4232 missing NtGdiDeleteClientObj
+4233 missing NtUserGetIconSize
+4234 missing NtUserFillWindow
+4235 missing NtGdiExtCreateRegion
+4236 missing NtGdiComputeXformCoefficients
+4237 missing NtUserSetWindowsHookEx
+4238 missing NtUserNotifyProcessCreate
+4239 missing NtGdiUnrealizeObject
+4240 missing NtUserGetTitleBarInfo
+4241 missing NtGdiRectangle
+4242 missing NtUserSetThreadDesktop
+4243 missing NtUserGetDCEx
+4244 missing NtUserGetScrollBarInfo
+4245 missing NtGdiGetTextExtent
+4246 missing NtUserSetWindowFNID
+4247 missing NtGdiSetLayout
+4248 missing NtUserCalcMenuBar
+4249 missing NtUserThunkedMenuItemInfo
+4250 missing NtGdiExcludeClipRect
+4251 missing NtGdiCreateDIBSection
+4252 missing NtGdiGetDCforBitmap
+4253 missing NtUserDestroyCursor
+4254 missing NtUserDestroyWindow
+4255 missing NtUserCallHwndParam
+4256 missing NtGdiCreateDIBitmapInternal
+4257 missing NtUserOpenWindowStation
+4258 missing NtGdiDdDeleteSurfaceObject
+4259 missing NtGdiEnumFontClose
+4260 missing NtGdiEnumFontOpen
+4261 missing NtGdiEnumFontChunk
+4262 missing NtGdiDdCanCreateSurface
+4263 missing NtGdiDdCreateSurface
+4264 missing NtUserSetCursorIconData
+4265 missing NtGdiDdDestroySurface
+4266 missing NtUserCloseDesktop
+4267 missing NtUserOpenDesktop
+4268 missing NtUserSetProcessWindowStation
+4269 missing NtUserGetAtomName
+4270 missing NtGdiDdResetVisrgn
+4271 missing NtGdiExtCreatePen
+4272 missing NtGdiCreatePaletteInternal
+4273 missing NtGdiSetBrushOrg
+4274 missing NtUserBuildNameList
+4275 missing NtGdiSetPixel
+4276 missing NtUserRegisterClassExWOW
+4277 missing NtGdiCreatePatternBrushInternal
+4278 missing NtUserGetAncestor
+4279 missing NtGdiGetOutlineTextMetricsInternalW
+4280 missing NtGdiSetBitmapBits
+4281 missing NtUserCloseWindowStation
+4282 missing NtUserGetDoubleClickTime
+4283 missing NtUserEnableScrollBar
+4284 missing NtGdiCreateSolidBrush
+4285 missing NtUserGetClassInfoEx
+4286 missing NtGdiCreateClientObj
+4287 missing NtUserUnregisterClass
+4288 missing NtUserDeleteMenu
+4289 missing NtGdiRectInRegion
+4290 missing NtUserScrollWindowEx
+4291 missing NtGdiGetPixel
+4292 missing NtUserSetClassLong
+4293 missing NtUserGetMenuBarInfo
+4294 missing NtGdiDdCreateSurfaceEx
+4295 missing NtGdiDdCreateSurfaceObject
+4296 missing NtGdiGetNearestPaletteIndex
+4297 missing NtGdiDdLockD3D
+4298 missing NtGdiDdUnlockD3D
+4299 missing NtGdiGetCharWidthW
+4300 missing NtUserInvalidateRgn
+4301 missing NtUserGetClipboardOwner
+4302 missing NtUserSetWindowRgn
+4303 missing NtUserBitBltSysBmp
+4304 missing NtGdiGetCharWidthInfo
+4305 missing NtUserValidateRect
+4306 missing NtUserCloseClipboard
+4307 missing NtUserOpenClipboard
+4308 missing NtGdiGetStockObject
+4309 missing NtUserSetClipboardData
+4310 missing NtUserEnableMenuItem
+4311 missing NtUserAlterWindowStyle
+4312 missing NtGdiFillRgn
+4313 missing NtUserGetWindowPlacement
+4314 missing NtGdiModifyWorldTransform
+4315 missing NtGdiGetFontData
+4316 missing NtUserGetOpenClipboardWindow
+4317 missing NtUserSetThreadState
+4318 missing NtGdiOpenDCW
+4319 missing NtUserTrackMouseEvent
+4320 missing NtGdiGetTransform
+4321 missing NtUserDestroyMenu
+4322 missing NtGdiGetBitmapBits
+4323 missing NtUserConsoleControl
+4324 missing NtUserSetActiveWindow
+4325 missing NtUserSetInformationThread
+4326 missing NtUserSetWindowPlacement
+4327 missing NtUserGetControlColor
+4328 missing NtGdiSetMetaRgn
+4329 missing NtGdiSetMiterLimit
+4330 missing NtGdiSetVirtualResolution
+4331 missing NtGdiGetRasterizerCaps
+4332 missing NtUserSetWindowWord
+4333 missing NtUserGetClipboardFormatName
+4334 missing NtUserRealInternalGetMessage
+4335 missing NtUserCreateLocalMemHandle
+4336 missing NtUserAttachThreadInput
+4337 missing NtGdiCreateHalftonePalette
+4338 missing NtUserPaintMenuBar
+4339 missing NtUserSetKeyboardState
+4340 missing NtGdiCombineTransform
+4341 missing NtUserCreateAcceleratorTable
+4342 missing NtUserGetCursorFrameInfo
+4343 missing NtUserGetAltTabInfo
+4344 missing NtUserGetCaretBlinkTime
+4345 missing NtGdiQueryFontAssocInfo
+4346 missing NtUserProcessConnect
+4347 missing NtUserEnumDisplayDevices
+4348 missing NtUserEmptyClipboard
+4349 missing NtUserGetClipboardData
+4350 missing NtUserRemoveMenu
+4351 missing NtGdiSetBoundsRect
+4352 missing NtUserSetInformationProcess
+4353 missing NtGdiGetBitmapDimension
+4354 missing NtUserConvertMemHandle
+4355 missing NtUserDestroyAcceleratorTable
+4356 missing NtUserGetGUIThreadInfo
+4357 missing NtGdiCloseFigure
+4358 missing NtUserSetWindowsHookAW
+4359 missing NtUserSetMenuDefaultItem
+4360 missing NtUserCheckMenuItem
+4361 missing NtUserSetWinEventHook
+4362 missing NtUserUnhookWinEvent
+4363 missing NtGdiSetupPublicCFONT
+4364 missing NtUserLockWindowUpdate
+4365 missing NtUserSetSystemMenu
+4366 missing NtUserThunkedMenuInfo
+4367 missing NtGdiBeginPath
+4368 missing NtGdiEndPath
+4369 missing NtGdiFillPath
+4370 missing NtUserCallHwnd
+4371 missing NtUserDdeInitialize
+4372 missing NtUserModifyUserStartupInfoFlags
+4373 missing NtUserCountClipboardFormats
+4374 missing NtGdiAddFontMemResourceEx
+4375 missing NtGdiEqualRgn
+4376 missing NtGdiGetSystemPaletteUse
+4377 missing NtGdiRemoveFontMemResourceEx
+4378 missing NtUserEnumDisplaySettings
+4379 missing NtUserPaintDesktop
+4380 missing NtGdiExtEscape
+4381 missing NtGdiSetBitmapDimension
+4382 missing NtGdiSetFontEnumeration
+4383 missing NtUserChangeClipboardChain
+4384 missing NtUserResolveDesktop
+4385 missing NtUserSetClipboardViewer
+4386 missing NtUserShowWindowAsync
+4387 missing NtUserSetConsoleReserveKeys
+4388 missing NtGdiCreateColorSpace
+4389 missing NtGdiDeleteColorSpace
+4390 missing NtUserActivateKeyboardLayout
+4391 missing NtGdiAbortDoc
+4392 missing NtGdiAbortPath
+4393 missing NtGdiAddEmbFontToDC
+4394 missing NtGdiAddFontResourceW
+4395 missing NtGdiAddRemoteFontToDC
+4396 missing NtGdiAddRemoteMMInstanceToDC
+4397 missing NtGdiAngleArc
+4398 missing NtGdiAnyLinkedFonts
+4399 missing NtGdiArcInternal
+4400 missing NtGdiBRUSHOBJ_DeleteRbrush
+4401 missing NtGdiBRUSHOBJ_hGetColorTransform
+4402 missing NtGdiBRUSHOBJ_pvAllocRbrush
+4403 missing NtGdiBRUSHOBJ_pvGetRbrush
+4404 missing NtGdiBRUSHOBJ_ulGetBrushColor
+4405 missing NtGdiCLIPOBJ_bEnum
+4406 missing NtGdiCLIPOBJ_cEnumStart
+4407 missing NtGdiCLIPOBJ_ppoGetPath
+4408 missing NtGdiCancelDC
+4409 missing NtGdiChangeGhostFont
+4410 missing NtGdiCheckBitmapBits
+4411 missing NtGdiClearBitmapAttributes
+4412 missing NtGdiClearBrushAttributes
+4413 missing NtGdiColorCorrectPalette
+4414 missing NtGdiConvertMetafileRect
+4415 missing NtGdiCreateColorTransform
+4416 missing NtGdiCreateEllipticRgn
+4417 missing NtGdiCreateHatchBrushInternal
+4418 missing NtGdiCreateMetafileDC
+4419 missing NtGdiCreateRoundRectRgn
+4420 missing NtGdiCreateServerMetaFile
+4421 missing NtGdiD3dContextCreate
+4422 missing NtGdiD3dContextDestroy
+4423 missing NtGdiD3dContextDestroyAll
+4424 missing NtGdiD3dValidateTextureStageState
+4425 missing NtGdiDdAddAttachedSurface
+4426 missing NtGdiDdAlphaBlt
+4427 missing NtGdiDdAttachSurface
+4428 missing NtGdiDdBeginMoCompFrame
+4429 missing NtGdiDdCanCreateD3DBuffer
+4430 missing NtGdiDdColorControl
+4431 missing NtGdiDdCreateD3DBuffer
+4432 missing NtGdiDdCreateDirectDrawObject
+4433 missing NtGdiDdCreateMoComp
+4434 missing NtGdiDdDeleteDirectDrawObject
+4435 missing NtGdiDdDestroyD3DBuffer
+4436 missing NtGdiDdDestroyMoComp
+4437 missing NtGdiDdEndMoCompFrame
+4438 missing NtGdiDdFlip
+4439 missing NtGdiDdFlipToGDISurface
+4440 missing NtGdiDdGetAvailDriverMemory
+4441 missing NtGdiDdGetBltStatus
+4442 missing NtGdiDdGetDC
+4443 missing NtGdiDdGetDriverInfo
+4444 missing NtGdiDdGetDriverState
+4445 missing NtGdiDdGetDxHandle
+4446 missing NtGdiDdGetFlipStatus
+4447 missing NtGdiDdGetInternalMoCompInfo
+4448 missing NtGdiDdGetMoCompBuffInfo
+4449 missing NtGdiDdGetMoCompFormats
+4450 missing NtGdiDdGetMoCompGuids
+4451 missing NtGdiDdGetScanLine
+4452 missing NtGdiDdLock
+4453 missing NtGdiDdQueryDirectDrawObject
+4454 missing NtGdiDdQueryMoCompStatus
+4455 missing NtGdiDdReenableDirectDrawObject
+4456 missing NtGdiDdReleaseDC
+4457 missing NtGdiDdRenderMoComp
+4458 missing NtGdiDdSetColorKey
+4459 missing NtGdiDdSetExclusiveMode
+4460 missing NtGdiDdSetGammaRamp
+4461 missing NtGdiDdSetOverlayPosition
+4462 missing NtGdiDdUnattachSurface
+4463 missing NtGdiDdUnlock
+4464 missing NtGdiDdUpdateOverlay
+4465 missing NtGdiDdWaitForVerticalBlank
+4466 missing NtGdiDeleteColorTransform
+4467 missing NtGdiDescribePixelFormat
+4468 missing NtGdiDoBanding
+4469 missing NtGdiDrawEscape
+4470 missing NtGdiDvpAcquireNotification
+4471 missing NtGdiDvpCanCreateVideoPort
+4472 missing NtGdiDvpColorControl
+4473 missing NtGdiDvpCreateVideoPort
+4474 missing NtGdiDvpDestroyVideoPort
+4475 missing NtGdiDvpFlipVideoPort
+4476 missing NtGdiDvpGetVideoPortBandwidth
+4477 missing NtGdiDvpGetVideoPortConnectInfo
+4478 missing NtGdiDvpGetVideoPortField
+4479 missing NtGdiDvpGetVideoPortFlipStatus
+4480 missing NtGdiDvpGetVideoPortInputFormats
+4481 missing NtGdiDvpGetVideoPortLine
+4482 missing NtGdiDvpGetVideoPortOutputFormats
+4483 missing NtGdiDvpGetVideoSignalStatus
+4484 missing NtGdiDvpReleaseNotification
+4485 missing NtGdiDvpUpdateVideoPort
+4486 missing NtGdiDvpWaitForVideoPortSync
+4487 missing NtGdiDxgGenericThunk
+4488 missing NtGdiEllipse
+4489 missing NtGdiEnableEudc
+4490 missing NtGdiEndDoc
+4491 missing NtGdiEndPage
+4492 missing NtGdiEngAlphaBlend
+4493 missing NtGdiEngAssociateSurface
+4494 missing NtGdiEngBitBlt
+4495 missing NtGdiEngCheckAbort
+4496 missing NtGdiEngComputeGlyphSet
+4497 missing NtGdiEngCopyBits
+4498 missing NtGdiEngCreateBitmap
+4499 missing NtGdiEngCreateClip
+4500 missing NtGdiEngCreateDeviceBitmap
+4501 missing NtGdiEngCreateDeviceSurface
+4502 missing NtGdiEngCreatePalette
+4503 missing NtGdiEngDeleteClip
+4504 missing NtGdiEngDeletePalette
+4505 missing NtGdiEngDeletePath
+4506 missing NtGdiEngDeleteSurface
+4507 missing NtGdiEngEraseSurface
+4508 missing NtGdiEngFillPath
+4509 missing NtGdiEngGradientFill
+4510 missing NtGdiEngLineTo
+4511 missing NtGdiEngLockSurface
+4512 missing NtGdiEngMarkBandingSurface
+4513 missing NtGdiEngPaint
+4514 missing NtGdiEngPlgBlt
+4515 missing NtGdiEngStretchBlt
+4516 missing NtGdiEngStretchBltROP
+4517 missing NtGdiEngStrokeAndFillPath
+4518 missing NtGdiEngStrokePath
+4519 missing NtGdiEngTextOut
+4520 missing NtGdiEngTransparentBlt
+4521 missing NtGdiEngUnlockSurface
+4522 missing NtGdiEnumObjects
+4523 missing NtGdiEudcLoadUnloadLink
+4524 missing NtGdiExtFloodFill
+4525 missing NtGdiFONTOBJ_cGetAllGlyphHandles
+4526 missing NtGdiFONTOBJ_cGetGlyphs
+4527 missing NtGdiFONTOBJ_pQueryGlyphAttrs
+4528 missing NtGdiFONTOBJ_pfdg
+4529 missing NtGdiFONTOBJ_pifi
+4530 missing NtGdiFONTOBJ_pvTrueTypeFontFile
+4531 missing NtGdiFONTOBJ_pxoGetXform
+4532 missing NtGdiFONTOBJ_vGetInfo
+4533 missing NtGdiFlattenPath
+4534 missing NtGdiFontIsLinked
+4535 missing NtGdiForceUFIMapping
+4536 missing NtGdiFrameRgn
+4537 missing NtGdiFullscreenControl
+4538 missing NtGdiGetBoundsRect
+4539 missing NtGdiGetCharABCWidthsW
+4540 missing NtGdiGetCharacterPlacementW
+4541 missing NtGdiGetColorAdjustment
+4542 missing NtGdiGetColorSpaceforBitmap
+4543 missing NtGdiGetDeviceCaps
+4544 missing NtGdiGetDeviceCapsAll
+4545 missing NtGdiGetDeviceGammaRamp
+4546 missing NtGdiGetDeviceWidth
+4547 missing NtGdiGetDhpdev
+4548 missing NtGdiGetETM
+4549 missing NtGdiGetEmbUFI
+4550 missing NtGdiGetEmbedFonts
+4551 missing NtGdiGetEudcTimeStampEx
+4552 missing NtGdiGetFontResourceInfoInternalW
+4553 missing NtGdiGetFontUnicodeRanges
+4554 missing NtGdiGetGlyphIndicesW
+4555 missing NtGdiGetGlyphIndicesWInternal
+4556 missing NtGdiGetGlyphOutline
+4557 missing NtGdiGetKerningPairs
+4558 missing NtGdiGetLinkedUFIs
+4559 missing NtGdiGetMiterLimit
+4560 missing NtGdiGetMonitorID
+4561 missing NtGdiGetObjectBitmapHandle
+4562 missing NtGdiGetPath
+4563 missing NtGdiGetPerBandInfo
+4564 missing NtGdiGetRealizationInfo
+4565 missing NtGdiGetServerMetaFileBits
+4566 missing NtGdiGetSpoolMessage
+4567 missing NtGdiGetStats
+4568 missing NtGdiGetStringBitmapW
+4569 missing NtGdiGetTextExtentExW
+4570 missing NtGdiGetUFI
+4571 missing NtGdiGetUFIPathname
+4572 missing NtGdiGradientFill
+4573 missing NtGdiHT_Get8BPPFormatPalette
+4574 missing NtGdiHT_Get8BPPMaskPalette
+4575 missing NtGdiIcmBrushInfo
+4576 missing NtGdiInit
+4577 missing NtGdiInitSpool
+4578 missing NtGdiMakeFontDir
+4579 missing NtGdiMakeInfoDC
+4580 missing NtGdiMakeObjectUnXferable
+4581 missing NtGdiMakeObjectXferable
+4582 missing NtGdiMirrorWindowOrg
+4583 missing NtGdiMonoBitmap
+4584 missing NtGdiMoveTo
+4585 missing NtGdiOffsetClipRgn
+4586 missing NtGdiPATHOBJ_bEnum
+4587 missing NtGdiPATHOBJ_bEnumClipLines
+4588 missing NtGdiPATHOBJ_vEnumStart
+4589 missing NtGdiPATHOBJ_vEnumStartClipLines
+4590 missing NtGdiPATHOBJ_vGetBounds
+4591 missing NtGdiPathToRegion
+4592 missing NtGdiPlgBlt
+4593 missing NtGdiPolyDraw
+4594 missing NtGdiPolyTextOutW
+4595 missing NtGdiPtInRegion
+4596 missing NtGdiPtVisible
+4597 missing NtGdiQueryFonts
+4598 missing NtGdiRemoveFontResourceW
+4599 missing NtGdiRemoveMergeFont
+4600 missing NtGdiResetDC
+4601 missing NtGdiResizePalette
+4602 missing NtGdiRoundRect
+4603 missing NtGdiSTROBJ_bEnum
+4604 missing NtGdiSTROBJ_bEnumPositionsOnly
+4605 missing NtGdiSTROBJ_bGetAdvanceWidths
+4606 missing NtGdiSTROBJ_dwGetCodePage
+4607 missing NtGdiSTROBJ_vEnumStart
+4608 missing NtGdiScaleViewportExtEx
+4609 missing NtGdiScaleWindowExtEx
+4610 missing GreSelectBrush
+4611 missing NtGdiSelectClipPath
+4612 missing NtGdiSelectPen
+4613 missing NtGdiSetBitmapAttributes
+4614 missing NtGdiSetBrushAttributes
+4615 missing NtGdiSetColorAdjustment
+4616 missing NtGdiSetColorSpace
+4617 missing NtGdiSetDeviceGammaRamp
+4618 missing NtGdiSetFontXform
+4619 missing NtGdiSetIcmMode
+4620 missing NtGdiSetLinkedUFIs
+4621 missing NtGdiSetMagicColors
+4622 missing NtGdiSetPUMPDOBJ
+4623 missing NtGdiSetPixelFormat
+4624 missing NtGdiSetRectRgn
+4625 missing NtGdiSetSizeDevice
+4626 missing NtGdiSetSystemPaletteUse
+4627 missing NtGdiSetTextJustification
+4628 missing NtGdiStartDoc
+4629 missing NtGdiStartPage
+4630 missing NtGdiStrokeAndFillPath
+4631 missing NtGdiStrokePath
+4632 missing NtGdiSwapBuffers
+4633 missing NtGdiTransparentBlt
+4634 missing NtGdiUMPDEngFreeUserMem
+4635 missing NtGdiUnloadPrinterDriver
+4636 missing EngRestoreFloatingPointState
+4637 missing NtGdiUpdateColors
+4638 missing NtGdiUpdateTransform
+4639 missing NtGdiWidenPath
+4640 missing NtGdiXFORMOBJ_bApplyXform
+4641 missing NtGdiXFORMOBJ_iGetXform
+4642 missing NtGdiXLATEOBJ_cGetPalette
+4643 missing NtGdiXLATEOBJ_hGetColorTransform
+4644 missing NtGdiXLATEOBJ_iXlate
+4645 missing NtUserAssociateInputContext
+4646 missing NtUserBlockInput
+4647 missing NtUserBuildHimcList
+4648 missing NtUserBuildPropList
+4649 missing NtUserCallHwndOpt
+4650 missing NtUserChangeDisplaySettings
+4651 missing NtUserChildWindowFromPointEx
+4652 missing NtUserClipCursor
+4653 missing NtUserCreateDesktop
+4654 missing NtUserCreateInputContext
+4655 missing NtUserCreateWindowStation
+4656 missing NtUserCtxDisplayIOCtl
+4657 missing NtUserDdeGetQualityOfService
+4658 missing NtUserDdeSetQualityOfService
+4659 missing NtUserDestroyInputContext
+4660 missing NtUserDisableThreadIme
+4661 missing NtUserDragDetect
+4662 missing NtUserDragObject
+4663 missing NtUserDrawAnimatedRects
+4664 missing NtUserDrawCaption
+4665 missing NtUserDrawCaptionTemp
+4666 missing NtUserDrawMenuBarTemp
+4667 missing NtUserEndMenu
+4668 missing NtUserEvent
+4669 missing NtUserFlashWindowEx
+4670 missing NtUserGetAppImeLevel
+4671 missing NtUserGetCaretPos
+4672 missing NtUserGetClipCursor
+4673 missing NtUserGetClipboardViewer
+4674 missing NtUserGetComboBoxInfo
+4675 missing NtUserGetCursorInfo
+4676 missing NtUserGetGuiResources
+4677 missing NtUserGetImeHotKey
+4678 missing NtUserGetImeInfoEx
+4679 missing NtUserGetInternalWindowPos
+4680 missing NtUserGetKeyNameText
+4681 missing NtUserGetKeyboardLayoutName
+4682 missing NtUserGetLayeredWindowAttributes
+4683 missing NtUserGetListBoxInfo
+4684 missing NtUserGetMenuIndex
+4685 missing NtUserGetMenuItemRect
+4686 missing NtUserGetMouseMovePointsEx
+4687 missing NtUserGetPriorityClipboardFormat
+4688 missing NtUserGetRawInputBuffer
+4689 missing NtUserGetRawInputData
+4690 missing NtUserGetRawInputDeviceInfo
+4691 missing NtUserGetRawInputDeviceList
+4692 missing NtUserGetRegisteredRawInputDevices
+4693 missing NtUserGetWOWClass
+4694 missing NtUserHardErrorControl
+4695 missing NtUserHiliteMenuItem
+4696 missing NtUserImpersonateDdeClientWindow
+4697 missing NtUserInitTask
+4698 missing NtUserInitialize
+4699 missing NtUserInitializeClientPfnArrays
+4700 missing NtUserLoadKeyboardLayoutEx
+4701 missing NtUserLockWindowStation
+4702 missing NtUserLockWorkStation
+4703 missing NtUserMNDragLeave
+4704 missing NtUserMNDragOver
+4705 missing NtUserMenuItemFromPoint
+4706 missing NtUserMinMaximize
+4707 missing NtUserNotifyIMEStatus
+4708 missing NtUserOpenInputDesktop
+4709 missing NtUserPrintWindow
+4710 missing NtUserQueryInformationThread
+4711 missing NtUserQueryInputContext
+4712 missing NtUserQuerySendMessage
+4713 missing NtUserRealChildWindowFromPoint
+4714 missing NtUserRealWaitMessageEx
+4715 missing NtUserRegisterHotKey
+4716 missing NtUserRegisterRawInputDevices
+4717 missing NtUserRegisterTasklist
+4718 missing NtUserRegisterUserApiHook
+4719 missing NtUserRemoteConnect
+4720 missing NtUserRemoteRedrawRectangle
+4721 missing NtUserRemoteRedrawScreen
+4722 missing NtUserRemoteStopScreenUpdates
+4723 missing NtUserResolveDesktopForWOW
+4724 missing NtUserSetAppImeLevel
+4725 missing NtUserSetClassWord
+4726 missing NtUserSetCursorContents
+4727 missing NtUserSetImeHotKey
+4728 missing NtUserSetImeInfoEx
+4729 missing NtUserSetImeOwnerWindow
+4730 missing NtUserSetInternalWindowPos
+4731 missing NtUserSetLayeredWindowAttributes
+4732 missing NtUserSetLogonNotifyWindow
+4733 missing NtUserSetMenu
+4734 missing NtUserSetMenuContextHelpId
+4735 missing NtUserSetMenuFlagRtoL
+4736 missing NtUserSetObjectInformation
+4737 missing NtUserSetShellWindowEx
+4738 missing NtUserSetSysColors
+4739 missing NtUserSetSystemCursor
+4740 missing NtUserSetSystemTimer
+4741 missing NtUserSetThreadLayoutHandles
+4742 missing NtUserSetWindowStationUser
+4743 missing NtUserSoundSentry
+4744 missing NtUserSwitchDesktop
+4745 missing NtUserTestForInteractiveUser
+4746 missing NtUserTrackPopupMenuEx
+4747 missing NtUserUnloadKeyboardLayout
+4748 missing NtUserUnlockWindowStation
+4749 missing NtUserUnregisterHotKey
+4750 missing NtUserUnregisterUserApiHook
+4751 missing NtUserUpdateInputContext
+4752 missing NtUserUpdateInstance
+4753 missing NtUserUpdateLayeredWindow
+4754 missing NtUserUpdatePerUserSystemParameters
+4755 missing NtUserUserHandleGrantAccess
+4756 missing NtUserValidateHandleSecure
+4757 missing NtUserWaitForInputIdle
+4758 missing NtUserWaitForMsgAndEvent
+4759 missing NtUserSetClassLongPtr
+4760 missing NtUserSetWindowLongPtr
+4761 missing NtUserWin32PoolAllocationStats
+4762 missing NtUserYieldTask
