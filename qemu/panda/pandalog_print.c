@@ -79,7 +79,7 @@ char *gstr(uint32_t ind) {
 }
 #endif
 
-bool started = false;
+int started = 0;
 
 void print_ple(Panda__LogEntry *ple) {
     if (!started) {
@@ -87,7 +87,7 @@ void print_ple(Panda__LogEntry *ple) {
 	str2ind = LoadDB(std::string("/tmp/lavadb"));
 	ind2str = InvertDB(str2ind);
 #endif
-	started = true;
+	started = 1;
     }
     if (ple == NULL){
 	printf("Null Panda Log Entry!\n");

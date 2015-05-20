@@ -1,9 +1,9 @@
-extern void print_ple(Panda__LogEntry *ple);
-extern void print_process(Panda__Process *p);
-extern void print_process_file(Panda__ProcessFile *pf);
-extern void print_process_key(Panda__ProcessKey *pk);
-extern void print_process_key_value(Panda__ProcessKeyValue *pkv);
-extern void print_process_key_index(Panda__ProcessKeyIndex *pki);
-extern void print_section(Panda__Section *section);
-extern void print_local_port(Panda__LocalPort *port);
-extern void print_panda_vm(Panda__VirtualMemory *pvm);
+void print_ple(Panda__LogEntry *ple);
+void print_process(Panda__Process *p);
+void print_process_file(Panda__ProcessFile *pf);
+void print_process_key(Panda__ProcessKey *pk);
+void print_process_key_value(Panda__ProcessKeyValue *pkv);
+void print_process_key_index(Panda__ProcessKeyIndex *pki);
+void print_section(Panda__Section *section);
+void print_local_port(Panda__LocalPort *port);
+void print_panda_vm(Panda__VirtualMemory *pvm);
