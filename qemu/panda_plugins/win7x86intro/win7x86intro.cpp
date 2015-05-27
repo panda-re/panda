@@ -61,12 +61,12 @@ void on_free_osimodules(OsiModules *ms);
 #define EPROC_SIZE          0x26 // Value of Size
 #define EPROC_PEB_OFF      0x1a8 // _EPROCESS.Peb
 #define PEB_LDR_OFF        0x00c // _PEB.Ldr
-#define PEB_LDR_MEM_LINKS_OFF  0x14 // _PEB_LDR_DATA.InMemoryOrderLinks
+#define PEB_LDR_MEM_LINKS_OFF  0x14 // _PEB_LDR_DATA.InMemoryOrderModuleLinks
 #define LDR_MEM_LINKS_OFF  0x008 // _LDR_DATA_TABLE_ENTRY.InMemoryOrderLinks
 #define LDR_BASE_OFF       0x018 // _LDR_DATA_TABLE_ENTRY.DllBase
 #define LDR_SIZE_OFF       0x020 // _LDR_DATA_TABLE_ENTRY.SizeOfImage
-#define LDR_BASENAME_OFF   0x02c // _LDR_DATA_TABLE_ENTRY.
-#define LDR_FILENAME_OFF   0x024 // _LDR_DATA_TABLE_ENTRY.DllBase
+#define LDR_BASENAME_OFF   0x02c // _LDR_DATA_TABLE_ENTRY.BaseDllName
+#define LDR_FILENAME_OFF   0x024 // _LDR_DATA_TABLE_ENTRY.FullDllName
 
 // Size of a guest pointer. Note that this can't just be target_ulong since
 // a 32-bit OS will run on x86_64-softmmu
