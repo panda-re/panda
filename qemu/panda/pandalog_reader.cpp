@@ -1,7 +1,6 @@
 
-// cd panda/qemu
-// g++ -g -o pandalog_reader pandalog_reader.cpp pandalog.c pandalog.pb-c.c ../../../lava/src_clang/lavaDB.cpp  -L/usr/local/lib -lprotobuf-c -I .. -lz -D PANDALOG_READER  -std=c++11 
-
+// cd panda/qemu/panda
+// g++ -g -o pandalog_reader pandalog_reader.cpp pandalog.c pandalog.pb-c.c pandalog_print.c -L/usr/local/lib -lprotobuf-c -I .. -lz -D PANDALOG_READER  -std=c++11
 
 #define __STDC_FORMAT_MACROS
 
