@@ -14,6 +14,7 @@ from volatility.plugins.overlays.windows.win8_sp0_x86_syscalls import syscalls a
 from volatility.plugins.overlays.windows.win8_sp1_x64_syscalls import syscalls as win8_sp1_x64_syscalls
 from volatility.plugins.overlays.windows.win8_sp1_x86_syscalls import syscalls as win8_sp1_x86_syscalls
 from volatility.plugins.overlays.windows.xp_sp2_x86_syscalls import syscalls as xp_sp2_x86_syscalls
+from xp_sp3_x86_syscalls import syscalls as xp_sp3_x86_syscalls
 
 tables = [
     (vista_sp0_x64_syscalls, "vista_sp0_x64"),
@@ -29,7 +30,8 @@ tables = [
     (win8_sp0_x86_syscalls, "win8_sp0_x86"),
     (win8_sp1_x64_syscalls, "win8_sp1_x64"),
     (win8_sp1_x86_syscalls, "win8_sp1_x86"),
-    (xp_sp2_x86_syscalls, "windowsxp_x86"),
+    (xp_sp2_x86_syscalls, "windowsxp_sp2_x86"),
+    (xp_sp3_x86_syscalls, "windowsxp_sp3_x86"),
 ]
 
 import sys

@@ -13,7 +13,7 @@ extern "C" {
 #include "gen_syscall_ppp_extern_enter.h"
 }
 
-void syscall_enter_switch_windowsxp_x86 ( CPUState *env, target_ulong pc ) {  // osarch
+void syscall_enter_switch_windowsxp_sp2_x86 ( CPUState *env, target_ulong pc ) {  // osarch
 #ifdef TARGET_I386                                          // GUARD
     ReturnPoint rp;
     rp.ordinal = EAX;                        // CALLNO
