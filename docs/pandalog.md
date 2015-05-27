@@ -142,7 +142,7 @@ Any specified plugins that write to the pandalog will log to that file, which is
 Looking at the Logfile
 ----------------------
 
-There is a small program in `panda/qemu/pandalog_reader.c`.
+There is a small program in `panda/qemu/panda/pandalog_reader.cpp`.
 Compilation directions are at the head of that source file.
 
 You can read a pandalog using this little program and also see how easy it is to unmarshall the pandalog.
