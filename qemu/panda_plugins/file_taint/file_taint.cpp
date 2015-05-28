@@ -115,12 +115,10 @@ void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t fl
     if (!filename.empty()) {
         printf ("saw open of [%s]\n", filename.c_str());
     }
-    if (filename.size() == strlen(taint_filename)) {
-        if (strncmp(filename.c_str(), taint_filename, strlen(taint_filename)) == 0) {
-            saw_open = true;
-            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
-            the_asid = panda_current_asid(env);
-        }
+    if (filename.find(taint_filename) != std::string::npos) {
+        saw_open = true;
+        printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+        the_asid = panda_current_asid(env);
     }
 }
 
