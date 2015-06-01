@@ -96,6 +96,7 @@ uint32_t tp_query_tcn_ram(Shad *shad, uint64_t pa);
 uint32_t tp_query_tcn_reg(Shad *shad, int reg_num, int offset);
 uint32_t tp_query_tcn_llvm(Shad *shad, int reg_num, int offset);
 
+uint64_t tp_query_cb_mask(Shad *shad, Addr a, uint8_t size);
 
 // label set cardinality
 uint32_t ls_card(LabelSetP ls);

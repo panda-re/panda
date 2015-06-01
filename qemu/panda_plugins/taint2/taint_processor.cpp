@@ -171,35 +171,35 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
 }
 
 
-uint32_t tp_tcn_get(Shad *shad, Addr a) {
+TaintData tp_query_full(Shad *shad, Addr a) {
     assert(shad != NULL);
     switch (a.typ) {
     case HADDR:
         // TRL FIXME
-        return 0; // had_dir_find_64(shad->hd, a.val.ha+a.off);
+        return TaintData(); // had_dir_find_64(shad->hd, a.val.ha+a.off);
     case MADDR:
-        return shad->ram->query_tcn(a.val.ma+a.off);
+        return shad->ram->query_full(a.val.ma+a.off);
     case IADDR:
         // TRL FIXME
-        return 0; // shad_dir_find_64(shad->io, a.val.ia+a.off);
+        return TaintData(); // shad_dir_find_64(shad->io, a.val.ia+a.off);
     case PADDR:
         // TRL FIXME
-        return 0; //        return shad_dir_find_32(shad->ports, a.val.pa+a.off);        
+        return TaintData(); //        return shad_dir_find_32(shad->ports, a.val.pa+a.off);
     case LADDR:
-        return shad->llv->query_tcn(a.val.la*MAXREGSIZE + a.off);
+        return shad->llv->query_full(a.val.la*MAXREGSIZE + a.off);
     case GREG:
-        return shad->grv->query_tcn(a.val.gr * WORDSIZE + a.off);
+        return shad->grv->query_full(a.val.gr * WORDSIZE + a.off);
     case GSPEC:
         // SpecAddr enum is offset by the number of guest registers                                                                                                                             
-        return shad->gsv->query_tcn(a.val.gs - NUMREGS + a.off);
+        return shad->gsv->query_full(a.val.gs - NUMREGS + a.off);
     case CONST:
-        return 0;
+        return TaintData();
     case RET:
-        return shad->ret->query_tcn(a.off);
+        return shad->ret->query_full(a.off);
     default:
         assert(false);
     }
-    return 0;
+    return TaintData();
 }
 
 
@@ -234,7 +234,7 @@ LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset) {
 // returns taint compute # 
 uint32_t tp_query_tcn(Shad *shad, Addr a) {
     assert (shad != NULL);
-    return tp_tcn_get(shad, a);
+    return tp_query_full(shad, a).tcn;
 }
 
 uint32_t tp_query_tcn_ram(Shad *shad, uint64_t pa) {
@@ -252,7 +252,14 @@ uint32_t tp_query_tcn_llvm(Shad *shad, int reg_num, int offset) {
     return tp_query_tcn(shad, a);
 }
 
-
+// returns CB mask.
+uint64_t tp_query_cb_mask(Shad *shad, Addr a, uint8_t size) {
+    uint64_t cb_mask = 0;
+    for (unsigned i = 0; i < size; i++, a.off++) {
+        cb_mask |= tp_query_full(shad, a).cb_mask << (i * 8);
+    }
+    return cb_mask;
+}
 
 uint32_t ls_card(LabelSetP ls) {
     return label_set_render_set(ls).size();

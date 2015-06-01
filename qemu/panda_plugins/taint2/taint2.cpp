@@ -78,6 +78,8 @@ uint32_t taint2_query_tcn_ram(uint64_t pa);
 uint32_t taint2_query_tcn_reg(int reg_num, int offset);
 uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
 
+uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
+
 void taint2_labelset_spit(LabelSetP ls);
 
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -797,6 +799,10 @@ uint32_t __taint2_query_tcn_llvm(int reg_num, int offset) {
     return tp_query_tcn_llvm(shadow, reg_num, offset);
 }
 
+uint64_t __taint2_query_cb_mask(Addr a, uint8_t size) {
+    return tp_query_cb_mask(shadow, a, size);
+}
+
 
 uint32_t *__taint2_labels_applied(void) {
     return tp_labels_applied();
@@ -899,7 +905,9 @@ uint32_t taint2_query_tcn_llvm(int reg_num, int offset) {
     return __taint2_query_tcn_llvm(reg_num, offset);
 }
 
-
+uint64_t taint2_query_cb_mask(Addr a, uint8_t size) {
+    return __taint2_query_cb_mask(a, size);
+}
 
 
 void taint2_delete_ram(uint64_t pa) {
