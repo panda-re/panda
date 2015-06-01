@@ -49,31 +49,36 @@ void *memcpy(void *dest, const void *src, size_t n);
 
 struct TaintData {
     LabelSetP ls;
+    // Taint compute number.
     uint32_t tcn;
 
-    TaintData() : ls(NULL), tcn(0) {}
-    TaintData(LabelSetP ls) : ls(ls), tcn(0) {}
-    TaintData(LabelSetP ls, uint32_t tcn) : ls(ls), tcn(ls ? tcn : 0) {}
+    // Controlled bit mask. This is an estimate of conditional entropy that
+    // we compute at the small-step level. We assume that integers are
+    // distributed according to a uniform distribution on some subset of the
+    // bits of each byte.
+    uint8_t cb_mask;
+
+    TaintData() : ls(NULL), tcn(0), cb_mask(0) {}
+    explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0) {}
+    TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask)
+        : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0) {}
 
     bool operator==(const TaintData &other) const {
-        return ls == other.ls && tcn == other.tcn;
+        return ls == other.ls &&
+            tcn == other.tcn &&
+            cb_mask == other.cb_mask;
     }
 
-    void add(TaintData td) {
-        ls = label_set_union(ls, td.ls);
-        tcn = ls ? std::max(tcn, td.tcn) : 0;
+    inline void increment_tcn() {
+        if (ls) tcn++;
     }
 
-    static TaintData copy_union(TaintData td1, TaintData td2) {
+    static TaintData make_union(const TaintData td1, const TaintData td2,
+            bool increment_tcn) {
         return TaintData(
                 label_set_union(td1.ls, td2.ls),
-                std::max(td1.tcn, td2.tcn));
-    }
-
-    static TaintData comp_union(TaintData td1, TaintData td2) {
-        return TaintData(
-                label_set_union(td1.ls, td2.ls),
-                std::max(td1.tcn, td2.tcn) + 1);
+                std::max(td1.tcn, td2.tcn) + (increment_tcn ? 1 : 0),
+                0); // Destroy controlled bits on union.
     }
 };
 

@@ -17,7 +17,8 @@ PANDAENDCOMMENT */
 
 #include <cstdint>
 
-//namespace llvm { class FastShad; }
+namespace llvm { class Instruction; }
+
 class FastShad;
 
 extern "C" {
@@ -62,7 +63,7 @@ void taint_branch(FastShad *shad, uint64_t src);
 void taint_copy(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
-        uint64_t size);
+        uint64_t size, llvm::Instruction *I);
 
 // Two compute models: parallel and mixed. Parallel for bitwise, mixed otherwise.
 // Parallel compute: take labelset vectors [1,2,3] + [4,5,6] -> [14,25,36]
@@ -91,7 +92,8 @@ void taint_set(
 void taint_mix(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
-        uint64_t src, uint64_t src_size);
+        uint64_t src, uint64_t src_size,
+        llvm::Instruction *I);
 
 // Tainted pointer load in tainted pointer mode.
 // Mixes the ptr labels and parallels that with each src label.
