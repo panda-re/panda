@@ -190,7 +190,7 @@ TaintData tp_query_full(Shad *shad, Addr a) {
     case GREG:
         return shad->grv->query_full(a.val.gr * WORDSIZE + a.off);
     case GSPEC:
-        // SpecAddr enum is offset by the number of guest registers                                                                                                                             
+        // SpecAddr enum is offset by the number of guest registers
         return shad->gsv->query_full(a.val.gs - NUMREGS + a.off);
     case CONST:
         return TaintData();
@@ -213,13 +213,13 @@ LabelSetP tp_query(Shad *shad, Addr a) {
 }
 
 
-// returns rendered label set 
+// returns rendered label set
 LabelSetP tp_query_ram(Shad *shad, uint64_t pa) {
     Addr a = make_maddr(pa);
     return tp_query(shad, a);
 }
 
-// returns rendered label set 
+// returns rendered label set
 LabelSetP tp_query_reg(Shad *shad, int reg_num, int offset) {
     Addr a = make_greg(reg_num, offset);
     return tp_query(shad, a);
@@ -231,7 +231,7 @@ LabelSetP tp_query_llvm(Shad *shad, int reg_num, int offset) {
     return tp_query(shad, a);
 }
 
-// returns taint compute # 
+// returns taint compute #
 uint32_t tp_query_tcn(Shad *shad, Addr a) {
     assert (shad != NULL);
     return tp_query_full(shad, a).tcn;
@@ -267,14 +267,14 @@ uint32_t ls_card(LabelSetP ls) {
 
 
 
-// iterate over 
+// iterate over
 void tp_lsr_iter(std::set<uint32_t> rendered, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    for (uint32_t el : rendered) {     
+    for (uint32_t el : rendered) {
         //        printf ("el=%d\n", el);
         if ((app(el, stuff2)) != 0) break;
     }
 }
-    
+
 // retrieve ls for this addr
 void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     std::set<uint32_t> rendered = label_set_render_set(ls);
@@ -282,14 +282,14 @@ void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff
 }
 
 void tp_ls_a_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    // retrieve the tree-representation of the 
+    // retrieve the tree-representation of the
     LabelSetP ls = tp_labelset_get(shad, a);
     if (ls == NULL) return;
     tp_ls_iter(ls, app, stuff2);
 }
 
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    Addr a = make_maddr(pa);    
+    Addr a = make_maddr(pa);
     tp_ls_a_iter(shad, &a, app, stuff2);
 }
 
@@ -312,7 +312,7 @@ void tp_delete(Shad *shad, Addr *a) {
     switch (a->typ) {
         case HADDR:
             // NB: just returns if nothing there
-            shad_dir_mem_64(shad->hd, a->val.ha+a->off); 
+            shad_dir_mem_64(shad->hd, a->val.ha+a->off);
             shad_dir_remove_64(shad->hd, a->val.ha+a->off);
             break;
         case MADDR:
@@ -486,7 +486,7 @@ void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
     break;
   case LADDR:
     if (a->flag == FUNCARG){
-      fprintf(fp,"l%lld[%d]", 
+      fprintf(fp,"l%lld[%d]",
 	      (long long unsigned int) a->val.la, a->off);
     }
     else {
@@ -505,7 +505,7 @@ void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
       fprintf(fp,"irrelevant");
     }
     //else if (a->flag == READLOG) {
-    else if (a->typ == UNK){ 
+    else if (a->typ == UNK){
       fprintf(fp,"unknown");
     }
     else {
