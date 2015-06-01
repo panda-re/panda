@@ -175,6 +175,10 @@ void taint_mix(
 
 static const uint64_t ones = ~0UL;
 
+// Model for tainted pointer is to mix all the labels from the pointer and then
+// union that mix with each byte of the actual copied data. So if the pointer
+// is labeled [1], [2], [3], [4], and the bytes are labeled [5], [6], [7], [8],
+// we get [12345], [12346], [12347], [12348] as output taint of the load/store.
 void taint_pointer(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
@@ -191,15 +195,19 @@ void taint_pointer(
         src = ones; // ignore source.
     }
 
-    TaintData td = mixed_labels(shad_ptr, ptr, ptr_size, false);
+    // this is [1234] in our example
+    TaintData ptr_td = mixed_labels(shad_ptr, ptr, ptr_size, false);
     if (src == ones) {
-        bulk_set(shad_dest, dest, size, td);
+        bulk_set(shad_dest, dest, size, ptr_td);
     } else {
-        unsigned i;
-        for (i = 0; i < size; i++) {
-            shad_dest->set_full(dest + i,
-                    TaintData::make_union(td,
-                        shad_src->query_full(src + i), false));
+        for (unsigned i = 0; i < size; i++) {
+            TaintData byte_td = shad_src->query_full(src + i);
+            TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
+
+            // Unions usually destroy controlled bits. Tainted pointer is
+            // a special case.
+            dest_td.cb_mask = byte_td.cb_mask;
+            shad_dest->set_full(dest + i, dest_td);
         }
     }
 }
@@ -405,6 +413,7 @@ static void update_cb(
     if (!I) return;
 
     uint64_t cb_mask = compile_cb_masks(shad_src, src, size);
+    uint64_t orig_cb_mask = cb_mask;
     llvm::Value *rhs = I->getOperand(1);
     llvm::ConstantInt *CI = rhs ? llvm::dyn_cast<llvm::ConstantInt>(rhs) : nullptr;
     uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
@@ -424,6 +433,8 @@ static void update_cb(
         case llvm::Instruction::Load:
         case llvm::Instruction::ExtractValue:
         case llvm::Instruction::InsertValue:
+            taint_log("update_cb: %s[%lx+%lx] CB 0x%lx kept\n",
+                    shad_dest->name(), dest, size, orig_cb_mask);
             return;
 
         case llvm::Instruction::Trunc:
@@ -497,11 +508,13 @@ static void update_cb(
         }
 
         default:
+            printf("Unknown instruction in update_cb: ");
             I->dump();
             return;
     }
 
-    taint_log("update_cb: %s[%lx+%lx] CB 0x%lx\n", shad_dest->name(), dest, size, cb_mask);
+    taint_log("update_cb: %s[%lx+%lx] CB 0x%lx -> 0x%lx\n",
+            shad_dest->name(), dest, size, orig_cb_mask, cb_mask);
 
     write_cb_masks(shad_dest, dest, size, cb_mask);
 }
