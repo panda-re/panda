@@ -110,6 +110,7 @@ public:
 
     // Taint an address with a labelset.
     inline void label(uint64_t addr, LabelSetP ls) {
+        taint_log("LABEL: %s[%lx] (%p)\n", name(), addr, ls);
         *get_td_p(addr) = TaintData(ls);
     }
 
@@ -122,7 +123,7 @@ public:
 #ifdef TAINTDEBUG
         for (unsigned i = 0; i < size; i++) {
             if (shad_src->get_td_p(src + i)->ls != NULL) {
-                taint_log("TAINTED COPY: %s[%lx] <- %s[%lx] (%lx)\n",
+                taint_log("TAINTED_COPY: %s[%lx] <- %s[%lx] (%lx)\n",
                         shad_dest->name(), dest + i,
                         shad_src->name(), src + i,
                         (uint64_t)shad_src->get_td_p(src + i)->ls);
@@ -147,9 +148,9 @@ public:
         tassert(addr + remove_size <= size);
         
 #ifdef TAINTDEBUG
-        for (unsigned i = 0; i < remove_size; i++) {
+        for (unsigned i = 0; i < remove_size && remove_size < 64; i++) {
             if (get_td_p(addr + i)->ls != NULL) {
-                taint_log("TAINTED DELETE: %s[%lx+%lx]\n",
+                taint_log("TAINTED_DELETE: %s[%lx+%lx]\n",
                         name(), addr, remove_size);
                 break;
             }
