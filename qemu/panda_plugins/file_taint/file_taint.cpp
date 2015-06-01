@@ -276,9 +276,9 @@ void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actu
                 read_end > start_label) {
             uint32_t range_start = std::max(read_start, start_label);
             uint32_t range_end = std::min(read_end, end_label);
-            printf("*** applying %s taint labels %u..%u to buffer\n",
+            printf("*** applying %s taint labels %u..%u to buffer @ %lu\n",
                     positional_labels ? "positional" : "uniform",
-                    range_start, range_end - 1);
+                    range_start, range_end - 1, rr_get_guest_instr_count());
 
             for (uint32_t i = range_start; i < range_end; i++) {
                 label_byte(env, last_read_buf + i,
