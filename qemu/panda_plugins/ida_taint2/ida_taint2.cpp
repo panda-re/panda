@@ -70,12 +70,18 @@ void taint_change(Addr a, uint64_t size) {
     for (unsigned i = 0; i < size; i++){
         a.off = i;
         if (taint2_query(a)) {
+            
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            /*
             ple.has_tainted_instr = true;
             ple.tainted_instr = true;
             pandalog_write_entry(&ple);
+            */
             taint2_query_pandalog(a, i);
-            callstack_pandalog();
+            ple = PANDA__LOG_ENTRY__INIT;
+            ple.call_stack = pandalog_callstack_create();
+            pandalog_write_entry(&ple);            
+            pandalog_callstack_free(ple.call_stack);
         }
     }
 }

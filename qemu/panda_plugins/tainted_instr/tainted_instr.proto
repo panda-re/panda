@@ -1,3 +1,8 @@
 
-optional bool tainted_instr = 37;
+message TaintedInstr {
+    required CallStack call_stack = 1;
+    repeated TaintQuery taint_query = 2;
+}
+
+optional TaintedInstr tainted_instr = 37;
 

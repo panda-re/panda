@@ -23,6 +23,7 @@ extern "C" {
 #include "panda_plugin.h"
 
 #include "../common/prog_point.h"
+#include "pandalog.h"
 #include "../callstack_instr/callstack_instr_ext.h"
 
 }

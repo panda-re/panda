@@ -26,11 +26,12 @@ extern "C" {
 #include "monitor.h"
 #include "cpu.h"
 
+#include "pandalog.h"
+
 #include "panda_plugin.h"
 #include "../taint2/taint2_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
-#include "pandalog.h"
 #include "panda_common.h"
 #include "guestarch.h"
 }
@@ -62,19 +63,36 @@ bool first_enable_taint = true;
 void tbranch_on_branch_taint2(Addr a) {
     // a is an llvm reg
     assert (a.typ == LADDR);
-    // query every byte of this reg
+    // count number of tainted bytes on this reg
+    // NB: assuming 8 bytes
+    uint32_t num_tainted = 0;
     for (uint32_t o=0; o<8; o++) {
         Addr ao =a;
         ao.off = o;
-        if (taint2_query(ao)) {
-            // branch is tainted
-            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.has_tainted_branch = true;
-            ple.tainted_branch = true;
-            pandalog_write_entry(&ple);
-            taint2_query_pandalog(a, o);
-            callstack_pandalog();
+        num_tainted += (taint2_query(ao) != 0);
+    }
+    if (num_tainted > 0) {
+        Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
+        *tb = PANDA__TAINTED_BRANCH__INIT;
+        tb->call_stack = pandalog_callstack_create();
+        tb->n_taint_query = num_tainted;
+        tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
+        uint32_t i=0;
+        for (uint32_t o=0; o<8; o++) {
+            Addr ao = a;
+            ao.off = o;
+            if (taint2_query(ao)) {
+                tb->taint_query[i++] = taint2_query_pandalog(ao, o);
+            }
         }
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.tainted_branch = tb;
+        pandalog_write_entry(&ple);
+        pandalog_callstack_free(tb->call_stack);
+        for (uint32_t i=0; i<num_tainted; i++) {
+            pandalog_taint_query_free(tb->taint_query[i]);
+        }
+        free(tb);
     }
 }
 

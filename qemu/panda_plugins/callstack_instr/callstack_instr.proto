@@ -1,2 +1,11 @@
 
-repeated uint64 callstack = 10;
+message CallStack {
+    repeated uint64 addr = 1;
+}
+
+optional CallStack call_stack = 10;
+
+
+
+
+        

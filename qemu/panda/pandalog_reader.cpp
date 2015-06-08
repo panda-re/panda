@@ -24,7 +24,7 @@ int main (int argc, char **argv) {
         if (ple == NULL) {
 	    break;
         }
-	print_ple(ple);
+	pprint_ple(ple);
 	panda__log_entry__free_unpacked(ple, NULL);
     }
 }

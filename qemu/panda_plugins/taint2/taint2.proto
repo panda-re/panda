@@ -1,37 +1,50 @@
 
+// describes a mapping between a pointer to a taint label set
+// and the actual contents (taint labels) of that set
 message TaintQueryUniqueLabelSet {
     required uint64 ptr = 1;
     repeated uint32 label = 2;
 }
 
+// contains program source level info
+// in compact form (assumes a dictionary mapping ints to strings)
 message SrcInfo {
     required uint32 filename = 1;
     required uint32 linenum = 2;
     required uint32 astnodename = 3;
     optional uint32 insertionpoint = 4;
-    }     
+}     
 
+// results of taint query on a single byte
+// ptr should corresponds to a ptr from TaintQueryUniqueLabelSet message
+// either from this message or a previous one
 message TaintQuery {
     required uint64 ptr = 1;
     required uint32 tcn = 2;
     required uint32 offset = 3;
+    optional TaintQueryUniqueLabelSet unique_label_set = 4;
 }
 
 message AttackPoint {
     required uint32 info = 1;
+    required CallStack call_stack = 2;
+    required SrcInfo src_info = 3;
 }
 
-optional TaintQueryUniqueLabelSet taint_query_unique_label_set = 33;
-optional TaintQuery taint_query = 34;
-optional SrcInfo src_info = 35;
 
-
-
+// results of a taint query on all bytes
+// in some extent. buf is virtual addr. len is num bytes
+// data is the actual data (first 32 bytes)
+// taint_query is results of taint query on each byte in extent
+// that actually was tainted   
 message TaintQueryHypercall {
     required uint64 buf = 1;
     required uint32 len = 2;
     repeated uint32 data = 3;
     required uint32 num_tainted = 4;
+    required CallStack call_stack = 5;
+    required SrcInfo src_info = 6;
+    repeated TaintQuery taint_query = 7;
 }
 
 optional TaintQueryHypercall taint_query_hypercall = 38;

@@ -52,24 +52,41 @@ void taint_change(void);
 target_ulong last_asid = 0;
 
 void taint_change(Addr a, uint64_t size) {
-    for (unsigned i = 0; i < size; i++){
+    uint32_t num_tainted = 0;
+    for (uint32_t i=0; i<size; i++) {
         a.off = i;
-        if (taint2_query(a)) {
-            extern CPUState *cpu_single_env;
-            CPUState *env = cpu_single_env;
-            target_ulong asid = panda_current_asid(env);
-            if (asid != last_asid) {
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.has_asid = 1;
-                ple.asid = asid;
-                pandalog_write_entry(&ple);
-                last_asid = asid;
+        num_tainted += (taint2_query(a) != 0);
+    }
+    if (num_tainted > 0) {            
+        extern CPUState *cpu_single_env;
+        CPUState *env = cpu_single_env;
+        target_ulong asid = panda_current_asid(env);
+        Panda__TaintedInstr *ti = (Panda__TaintedInstr *) malloc(sizeof(Panda__TaintedInstr));
+        *ti = PANDA__TAINTED_INSTR__INIT;
+        ti->call_stack = pandalog_callstack_create();
+        ti->n_taint_query = num_tainted;
+        ti->taint_query = (Panda__TaintQuery **) malloc (sizeof(Panda__TaintQuery *) * num_tainted);
+        uint32_t j = 0;
+        for (uint32_t i=0; i<size; i++) {
+            a.off = i;
+            if (taint2_query(a)) {
+                ti->taint_query[j++] = taint2_query_pandalog(a, 0);
             }
+        }
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.tainted_instr = ti;
+        pandalog_write_entry(&ple);
+        pandalog_callstack_free(ti->call_stack);
+        for (uint32_t i=0; i<num_tainted; i++) {
+            pandalog_taint_query_free(ti->taint_query[i]);
+        }
+        free(ti);        
+        if (asid != last_asid) {
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.tainted_instr = true;
+            ple.has_asid = 1;
+            ple.asid = asid;
             pandalog_write_entry(&ple);
-            taint2_query_pandalog(a, i);
-            callstack_pandalog();
+            last_asid = asid;
         }
     }
 }

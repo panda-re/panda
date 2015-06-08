@@ -27,7 +27,8 @@ extern "C" {
 #include "cpu.h"
 #include "panda_plugin.h"
 #include "rr_log.h"
-
+#include "pandalog.h"
+   
 #include "../stringsearch/stringsearch.h"
 #include "panda_plugin_plugin.h"
 #include "panda_common.h"

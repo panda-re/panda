@@ -8,7 +8,7 @@
 #include "../../panda/panda_addr.h"
 
 typedef void *LabelSetP;
-
+typedef void Panda__TaintQuery;
 
 // turns on taint
 void taint2_enable_taint(void);
@@ -68,7 +68,9 @@ void taint2_track_taint_state(void);
 // writes an entry to pandalog with lots of stuff like
 // label set, taint compute #, call stack
 // offset is needed since this is likely a query in the middle of an extent (of 4, 8, or more bytes)
-uint8_t taint2_query_pandalog (Addr addr, uint32_t offset) ;
+Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset) ;
 
+// used to free memory associated with that struct
+void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
 #endif                                                                                   

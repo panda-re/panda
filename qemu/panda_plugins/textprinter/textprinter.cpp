@@ -36,7 +36,10 @@ extern "C" {
 #include <iostream>
 #include <fstream>
 
+
 #include "../common/prog_point.h"
+
+#include "pandalog.h"
 #include "../callstack_instr/callstack_instr_ext.h"
 
 // These need to be extern "C" so that the ABI is compatible with

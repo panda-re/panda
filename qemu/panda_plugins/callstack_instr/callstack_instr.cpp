@@ -351,28 +351,33 @@ int get_callers(target_ulong callers[], int n, CPUState *env) {
 
 
 // writes an entry to the pandalog with callstack info (and instr count and pc)
-void callstack_pandalog() {
-    if (pandalog) {
-        extern CPUState *cpu_single_env;
-        CPUState *env = cpu_single_env;
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        uint32_t n = 0;
-        std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
-        auto rit = v.rbegin();
-        for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
-            n ++;
-        }
-        ple.n_callstack = n;
-        ple.callstack = (uint64_t *) malloc (sizeof(uint64_t) * n);
-        v = callstacks[get_stackid(env,env->panda_guest_pc)];
-        rit = v.rbegin();
-        uint32_t i=0;
-        for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
-            ple.callstack[i] = rit->pc;
-        }
-        pandalog_write_entry(&ple);
-        free(ple.callstack);
-    }    
+Panda__CallStack *pandalog_callstack_create() {
+    assert (pandalog);
+    extern CPUState *cpu_single_env;
+    CPUState *env = cpu_single_env;
+    uint32_t n = 0;
+    std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
+    auto rit = v.rbegin();
+    for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
+        n ++;
+    }
+    Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
+    *cs = PANDA__CALL_STACK__INIT;
+    cs->n_addr = n;
+    cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
+    v = callstacks[get_stackid(env,env->panda_guest_pc)];
+    rit = v.rbegin();
+    uint32_t i=0;
+    for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
+        cs->addr[i] = rit->pc;
+    }
+    return cs;
+}
+
+
+void pandalog_callstack_free(Panda__CallStack *cs) {
+    free(cs->addr);
+    free(cs);
 }
 
 
