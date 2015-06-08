@@ -83,6 +83,9 @@ char *last_open_filename;
 uint32_t last_open_asid;
 
 #ifdef TARGET_I386
+// This is our proxy for file position. Approximate because of fseek etc.
+uint64_t file_pos = 0;
+
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
     unsigned i;
@@ -115,12 +118,10 @@ void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t fl
     if (!filename.empty()) {
         printf ("saw open of [%s]\n", filename.c_str());
     }
-    if (filename.size() == strlen(taint_filename)) {
-        if (strncmp(filename.c_str(), taint_filename, strlen(taint_filename)) == 0) {
-            saw_open = true;
-            printf ("saw open of file we want to taint: [%s]\n", taint_filename);
-            the_asid = panda_current_asid(env);
-        }
+    if (filename.find(taint_filename) != std::string::npos) {
+        saw_open = true;
+        printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+        the_asid = panda_current_asid(env);
     }
 }
 
@@ -135,6 +136,42 @@ void open_return(CPUState* env, uint32_t fd) {
         printf ("saw return from open of [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
     }
             
+}
+
+void seek_enter(CPUState *env, uint32_t fd, uint64_t abs_offset) {
+    if (the_fd == fd && the_asid == panda_current_asid(env)) {
+        file_pos = abs_offset;
+    }
+}
+
+void windows_seek_enter(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass) {
+    uint64_t Position = 0;
+    if (FileInformationClass == 14) { // FilePositionInformation
+        panda_virtual_memory_rw(env, FileInformation, (uint8_t *) &Position, sizeof(Position), false);
+        printf("DEBUG: NtSetInformationFile(fd = %u, offset = %" PRIu64 ")\n", FileHandle, Position);
+        seek_enter(env, FileHandle, Position);
+    }
+}
+
+void linux_llseek_enter(CPUState* env,target_ulong pc,uint32_t fd,uint32_t offset_high,uint32_t offset_low,target_ulong result,uint32_t origin) {
+    uint64_t offset = offset_low | ((uint64_t)offset_high << 32);
+    if (origin == SEEK_SET) {
+        seek_enter(env, fd, offset);
+    }
+    else if (origin == SEEK_CUR) {
+        seek_enter(env, fd, file_pos + offset);
+    }
+    else if (origin == SEEK_END) {
+        printf ("WARN: SEEK_END not supported\n");
+    }
+    else {
+        printf ("WARN: Unknown seek origin %u\n", origin);
+    }
+}
+
+void linux_lseek_enter(CPUState *env, target_ulong pc,uint32_t fd,uint32_t offset,uint32_t origin) {
+    // just forward to the llseek callback
+    linux_llseek_enter(env, pc, fd, 0, offset, 0, origin);
 }
 
 // 5 long sys_open(const char __user *filename,int flags, int mode);
@@ -225,9 +262,6 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
     }
 }
 
-// This is our proxy for file position. Approximate because of fseek etc.
-uint32_t file_pos = 0;
-
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actual_count) {
@@ -242,9 +276,9 @@ void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actu
                 read_end > start_label) {
             uint32_t range_start = std::max(read_start, start_label);
             uint32_t range_end = std::min(read_end, end_label);
-            printf("*** applying %s taint labels %u..%u to buffer\n",
+            printf("*** applying %s taint labels %u..%u to buffer @ %lu\n",
                     positional_labels ? "positional" : "uniform",
-                    range_start, range_end - 1);
+                    range_start, range_end - 1, rr_get_guest_instr_count());
 
             for (uint32_t i = range_start; i < range_end; i++) {
                 label_byte(env, last_read_buf + i,
@@ -399,6 +433,9 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
     PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
 
+    PPP_REG_CB("syscalls2", on_sys_lseek_enter, linux_lseek_enter);
+    PPP_REG_CB("syscalls2", on_sys_llseek_enter, linux_llseek_enter);
+
     PPP_REG_CB("syscalls2", on_NtOpenFile_enter, windows_open_enter);
     PPP_REG_CB("syscalls2", on_NtOpenFile_return, windows_open_return);
 
@@ -407,6 +444,8 @@ bool init_plugin(void *self) {
 
     PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
     PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
+
+    PPP_REG_CB("syscalls2", on_NtSetInformationFile_enter, windows_seek_enter);
 
 
 #endif

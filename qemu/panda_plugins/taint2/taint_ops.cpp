@@ -25,6 +25,10 @@ extern "C" {
 #include "qemu-log.h"
 }
 
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Value.h>
+
 #include "fast_shad.h"
 #include "label_set.h"
 #include "taint_ops.h"
@@ -65,11 +69,16 @@ void taint_pop_frame(FastShad *shad) {
     shad->pop_frame(MAXREGSIZE * MAXFRAMESIZE);
 }
 
+static void update_cb(
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_src, uint64_t src, uint64_t size,
+        llvm::Instruction *I);
+
 // Taint operations
 void taint_copy(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
-        uint64_t size) {
+        uint64_t size, llvm::Instruction *I) {
     taint_log("copy: %s[%lx+%lx] <- %s[%lx] (",
             shad_dest->name(), dest, size, shad_src->name(), src);
 #ifdef TAINTDEBUG
@@ -86,6 +95,8 @@ void taint_copy(
     }
 
     FastShad::copy(shad_dest, dest, shad_src, src, size);
+
+    if (I) update_cb(shad_dest, dest, shad_src, src, size, I);
 }
 
 void taint_parallel_compute(
@@ -96,19 +107,21 @@ void taint_parallel_compute(
             shad->name(), dest, src_size, src1, src2);
     uint64_t i;
     for (i = 0; i < src_size; ++i) {
-        TaintData td = TaintData::comp_union(
+        TaintData td = TaintData::make_union(
                 shad->query_full(src1 + i),
-                shad->query_full(src2 + i));
+                shad->query_full(src2 + i), true);
         shad->set_full(dest + i, td);
     }
 }
 
-static inline TaintData mixed_labels(FastShad *shad, uint64_t addr, uint64_t size) {
-    TaintData td;
-    uint64_t i;
-    for (i = 0; i < size; ++i) {
-        td.add(shad->query_full(addr + i));
+static inline TaintData mixed_labels(FastShad *shad, uint64_t addr, uint64_t size,
+        bool increment_tcn) {
+    TaintData td(shad->query_full(addr));
+    for (uint64_t i = 1; i < size; ++i) {
+        td = TaintData::make_union(td, shad->query_full(addr + i), false);
     }
+
+    if (increment_tcn) td.increment_tcn();
     return td;
 }
 
@@ -125,9 +138,10 @@ void taint_mix_compute(
         uint64_t src1, uint64_t src2, uint64_t src_size) {
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, dest_size, src1, src2);
-    TaintData td = TaintData::comp_union(
-            mixed_labels(shad, src1, src_size),
-            mixed_labels(shad, src2, src_size));
+    TaintData td = TaintData::make_union(
+            mixed_labels(shad, src1, src_size, false),
+            mixed_labels(shad, src2, src_size, false),
+            true);
     bulk_set(shad, dest, dest_size, td);
 }
 
@@ -149,16 +163,22 @@ void taint_set(
 void taint_mix(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
-        uint64_t src, uint64_t src_size) {
+        uint64_t src, uint64_t src_size,
+        llvm::Instruction *I) {
     taint_log("mix: %s[%lx+%lx] <- %lx+%lx\n",
             shad->name(), dest, dest_size, src, src_size);
-    TaintData td = mixed_labels(shad, src, src_size);
-    if (td.ls) td.tcn++;
+    TaintData td = mixed_labels(shad, src, src_size, true);
     bulk_set(shad, dest, dest_size, td);
+
+    if (I) update_cb(shad, dest, shad, src, dest_size, I);
 }
 
 static const uint64_t ones = ~0UL;
 
+// Model for tainted pointer is to mix all the labels from the pointer and then
+// union that mix with each byte of the actual copied data. So if the pointer
+// is labeled [1], [2], [3], [4], and the bytes are labeled [5], [6], [7], [8],
+// we get [12345], [12346], [12347], [12348] as output taint of the load/store.
 void taint_pointer(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
@@ -175,15 +195,19 @@ void taint_pointer(
         src = ones; // ignore source.
     }
 
-    TaintData td = mixed_labels(shad_ptr, ptr, ptr_size);
-    if (td.ls) td.tcn++;
+    // this is [1234] in our example
+    TaintData ptr_td = mixed_labels(shad_ptr, ptr, ptr_size, false);
     if (src == ones) {
-        bulk_set(shad_dest, dest, size, td);
+        bulk_set(shad_dest, dest, size, ptr_td);
     } else {
-        unsigned i;
-        for (i = 0; i < size; i++) {
-            shad_dest->set_full(dest + i,
-                    TaintData::copy_union(td, shad_src->query_full(src + i)));
+        for (unsigned i = 0; i < size; i++) {
+            TaintData byte_td = shad_src->query_full(src + i);
+            TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
+
+            // Unions usually destroy controlled bits. Tainted pointer is
+            // a special case.
+            dest_td.cb_mask = byte_td.cb_mask;
+            shad_dest->set_full(dest + i, dest_td);
         }
     }
 }
@@ -343,7 +367,154 @@ void taint_host_delete(
 
     find_offset(greg, gspec, offset, labels_per_reg, &shad, &dest);
 
-    taint_log("hostdel: %s[%lx+%lx]", shad->name(), dest, size);
+    taint_log("hostdel: %s[%lx+%lx]\n", shad->name(), dest, size);
 
     shad->remove(dest, size);
+}
+
+__attribute__((unused))
+static void erase_cb(FastShad *shad, uint64_t addr, uint64_t size) {
+    taint_log("erase_cb: %s[%lx+%lx]\n", shad->name(), addr, size);
+    for (unsigned i = 0; i < size; i++) {
+        TaintData td = shad->query_full(addr + i);
+        td.cb_mask = 0;
+        shad->set_full(addr + i, td);
+    }
+}
+
+// Update functions for the controlled bits mask.
+// After a taint operation, we try and update the controlled bit mask to
+// estimate which bits are still attacker-controlled.
+// The information is stored on a byte level. LLVM operations give us the
+// information on how to reconstruct word-level values. We use that information
+// to reconstruct and deconstruct the full mask.
+static inline uint64_t compile_cb_masks(FastShad *shad, uint64_t addr, uint64_t size) {
+    uint64_t result = 0;
+    for (int i = size - 1; i >= 0; i--) {
+        result <<= 8;
+        result |= shad->query_full(addr + i).cb_mask;
+    }
+    return result;
+}
+
+static inline void write_cb_masks(FastShad *shad, uint64_t addr, uint64_t size, uint64_t value) {
+    for (unsigned i = 0; i < size; i++) {
+        TaintData td = shad->query_full(addr + i);
+        td.cb_mask = (uint8_t)value;
+        value >>= 8;
+        shad->set_full(addr + i, td);
+    }
+}
+
+static void update_cb(
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_src, uint64_t src, uint64_t size,
+        llvm::Instruction *I) {
+    if (!I) return;
+
+    uint64_t cb_mask = compile_cb_masks(shad_src, src, size);
+    uint64_t orig_cb_mask = cb_mask;
+    llvm::Value *rhs = I->getOperand(1);
+    llvm::ConstantInt *CI = rhs ? llvm::dyn_cast<llvm::ConstantInt>(rhs) : nullptr;
+    uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+    int log2 = 0;
+
+    switch (I->getOpcode()) {
+        // Totally reversible cases.
+        case llvm::Instruction::Add:
+        case llvm::Instruction::Sub:
+        case llvm::Instruction::Xor:
+        case llvm::Instruction::ZExt:
+        case llvm::Instruction::IntToPtr:
+        case llvm::Instruction::PtrToInt:
+        case llvm::Instruction::BitCast:
+        // Copies. These we ignore (the copy will copy the CB data for us)
+        case llvm::Instruction::Store:
+        case llvm::Instruction::Load:
+        case llvm::Instruction::ExtractValue:
+        case llvm::Instruction::InsertValue:
+            taint_log("update_cb: %s[%lx+%lx] CB 0x%lx kept\n",
+                    shad_dest->name(), dest, size, orig_cb_mask);
+            return;
+
+        case llvm::Instruction::Trunc:
+            cb_mask &= (1 << (size * 8)) - 1;
+            break;
+
+        case llvm::Instruction::Mul:
+            tassert(literal != ~0UL);
+            // Powers of two in literal destroy reversibility.
+            cb_mask <<= __builtin_ctz(literal);
+            break;
+
+        case llvm::Instruction::URem:
+        case llvm::Instruction::SRem:
+            tassert(literal != ~0UL);
+            log2 = 64 - __builtin_clz(literal);
+            cb_mask &= (1 << log2) - 1;
+            break;
+
+        case llvm::Instruction::UDiv:
+        case llvm::Instruction::SDiv:
+            tassert(literal != ~0UL);
+            log2 = 64 - __builtin_clz(literal);
+            cb_mask >>= log2;
+            break;
+
+        case llvm::Instruction::And:
+            tassert(literal != ~0UL);
+            // Bits not in the bit mask are no longer controllable
+            cb_mask &= literal;
+            break;
+
+        case llvm::Instruction::Or:
+            tassert(literal != ~0UL);
+            // Bits in the bit mask are no longer controllable
+            cb_mask &= ~literal;
+            break;
+
+        case llvm::Instruction::Shl:
+            tassert(literal != ~0UL);
+            cb_mask <<= literal;
+            break;
+
+        case llvm::Instruction::LShr:
+        case llvm::Instruction::AShr: // High bits not really controllable.
+            tassert(literal != ~0UL);
+            cb_mask >>= literal;
+            break;
+
+        // Totally irreversible cases. Erase and bail.
+        case llvm::Instruction::FAdd:
+        case llvm::Instruction::FSub:
+        case llvm::Instruction::FMul:
+        case llvm::Instruction::FDiv:
+        case llvm::Instruction::FRem:
+        case llvm::Instruction::Call:
+        case llvm::Instruction::ICmp:
+            cb_mask = 0;
+            break;
+
+        case llvm::Instruction::GetElementPtr:
+        {
+            llvm::GetElementPtrInst *GEPI =
+                llvm::dyn_cast<llvm::GetElementPtrInst>(I);
+            tassert(GEPI);
+            // Constant indices => fully reversible
+            if (GEPI->hasAllConstantIndices()) return;
+            // Otherwise we know nothing.
+            cb_mask = 0;
+            break;
+        }
+
+        default:
+            printf("Unknown instruction in update_cb: ");
+            I->dump();
+            return;
+    }
+
+    taint_log("update_cb: %s[%lx+%lx] CB 0x%lx -> 0x%lx\n",
+            shad_dest->name(), dest, size, orig_cb_mask, cb_mask);
+
+    write_cb_masks(shad_dest, dest, size, cb_mask);
 }
