@@ -4,5 +4,13 @@ message TaintedInstr {
     repeated TaintQuery taint_query = 2;
 }
 
+message TaintedInstrSummary {
+    required uint64 asid = 1;
+    required uint64 pc = 2;
+}
+   
+    
 optional TaintedInstr tainted_instr = 37;
-
+optional TaintedInstrSummary tainted_instr_summary = 56;
+    
+    

@@ -483,7 +483,7 @@ void lava_taint_query (PandaHypercallStruct phs) {
     extern CPUState *cpu_single_env;
     CPUState *env = cpu_single_env;
 
-    if  (taintEnabled && (taint2_num_labels_applied() > 0)){
+    if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)){
         // okay, taint is on and some labels have actually been applied 
         // is there *any* taint on this extent
         uint32_t num_tainted = 0;
@@ -558,17 +558,19 @@ void lava_taint_query (PandaHypercallStruct phs) {
 
 
 void lava_attack_point(PandaHypercallStruct phs) {
-    Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
-    *ap = PANDA__ATTACK_POINT__INIT;
-    ap->info = phs.info;
-    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.attack_point = ap;
-    ple.attack_point->src_info = pandalog_src_info_create(phs);
-    ple.attack_point->call_stack = pandalog_callstack_create();
-    pandalog_write_entry(&ple);
-    free(ple.attack_point->src_info);
-    pandalog_callstack_free(ple.attack_point->call_stack);
-    free(ap);
+    if (pandalog) {
+        Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
+        *ap = PANDA__ATTACK_POINT__INIT;
+        ap->info = phs.info;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.attack_point = ap;
+        ple.attack_point->src_info = pandalog_src_info_create(phs);
+        ple.attack_point->call_stack = pandalog_callstack_create();
+        pandalog_write_entry(&ple);
+        free(ple.attack_point->src_info);
+        pandalog_callstack_free(ple.attack_point->call_stack);
+        free(ap);
+    }
 }    
 
 

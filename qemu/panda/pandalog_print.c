@@ -163,7 +163,7 @@ void pprint_taint_query_hypercall(Panda__TaintQueryHypercall *tqh) {
 
        
 void pprint_tainted_branch(Panda__TaintedBranch *tb) {
-    printf ("(tainted branch,");
+    printf ("(tainted_branch,");
     pprint_call_stack(tb->call_stack);
     printf (",");
     int i;
@@ -173,17 +173,22 @@ void pprint_tainted_branch(Panda__TaintedBranch *tb) {
     printf (")");
 }
   
-void pprint_tainted_instr(Panda__TaintedInstr *tb) {
-    printf ("(tainted instr,");
-    pprint_call_stack(tb->call_stack);
+void pprint_tainted_instr(Panda__TaintedInstr *ti) {
+    printf ("(tainted_instr,");
+    pprint_call_stack(ti->call_stack);
     printf (",");
     int i;
-    for (i=0; i<tb->n_taint_query; i++) {
-        pprint_taint_query(tb->taint_query[i]);
+    for (i=0; i<ti->n_taint_query; i++) {
+        pprint_taint_query(ti->taint_query[i]);
     }
     printf (")");
 }
 
+void pprint_tainted_instr_summary(Panda__TaintedInstrSummary *tis) {
+    printf ("(tainted_instr_summary,");
+    printf ("%" PRIx64 ",%" PRIx64 ")", tis->asid, tis->pc);
+}
+    
 
 
 int started = 0;
@@ -255,6 +260,9 @@ void pprint_ple(Panda__LogEntry *ple) {
         pprint_tainted_instr(ple->tainted_instr);
     }
 
+    if (ple->tainted_instr_summary) {
+        pprint_tainted_instr_summary(ple->tainted_instr_summary);
+    }
 
     // win7proc
     if (ple->new_pid) { 
