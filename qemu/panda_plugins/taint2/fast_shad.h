@@ -58,15 +58,24 @@ struct TaintData {
     // bits of each byte.
     uint8_t cb_mask;
 
-    TaintData() : ls(NULL), tcn(0), cb_mask(0) {}
-    explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0) {}
-    TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask)
-        : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0) {}
+    // Bits known to be 1 or 0 via bitwise operations.
+    uint8_t one_mask;
+    uint8_t zero_mask;
+
+    TaintData() : ls(NULL), tcn(0), cb_mask(0), one_mask(0), zero_mask(0) {}
+    explicit TaintData(LabelSetP ls) : ls(ls), tcn(0), cb_mask(ls ? 0xFF : 0),
+            one_mask(0), zero_mask(0) {}
+    TaintData(LabelSetP ls, uint32_t tcn, uint8_t cb_mask, 
+            uint8_t one_mask, uint8_t zero_mask)
+        : ls(ls), tcn(ls ? tcn : 0), cb_mask(ls ? cb_mask : 0),
+        one_mask(one_mask), zero_mask(zero_mask) {}
 
     bool operator==(const TaintData &other) const {
         return ls == other.ls &&
             tcn == other.tcn &&
-            cb_mask == other.cb_mask;
+            cb_mask == other.cb_mask &&
+            one_mask == other.one_mask &&
+            zero_mask == other.zero_mask;
     }
 
     inline void increment_tcn() {
@@ -78,7 +87,7 @@ struct TaintData {
         return TaintData(
                 label_set_union(td1.ls, td2.ls),
                 std::max(td1.tcn, td2.tcn) + (increment_tcn ? 1 : 0),
-                0); // Destroy controlled bits on union.
+                0, 0, 0); // Destroy controlled bits on union.
     }
 };
 

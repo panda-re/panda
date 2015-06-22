@@ -561,7 +561,8 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 
     vector<Value *> args{
         llvConst, constSlot(ctx, dest), dest_size,
-        constSlot(ctx, src1), constSlot(ctx, src2), src_size
+        constSlot(ctx, src1), constSlot(ctx, src2), src_size,
+        constInstr(ctx, &I)
     };
     inlineCallAfter(I, is_mixed ? mixCompF : parallelCompF, args);
 }

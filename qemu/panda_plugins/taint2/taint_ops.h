@@ -70,14 +70,16 @@ void taint_copy(
 void taint_parallel_compute(
         FastShad *shad,
         uint64_t dest, uint64_t ignored,
-        uint64_t src1, uint64_t src2, uint64_t src_size);
+        uint64_t src1, uint64_t src2, uint64_t src_size,
+        llvm::Instruction *I);
 
 // Mixed compute: [1,2] + [3,4] -> [1234,1234]
 // Note that dest_size and src_size can differ.
 void taint_mix_compute(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
-        uint64_t src1, uint64_t src2, uint64_t src_size);
+        uint64_t src1, uint64_t src2, uint64_t src_size,
+        llvm::Instruction *ignored);
 
 // Clear taint.
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);

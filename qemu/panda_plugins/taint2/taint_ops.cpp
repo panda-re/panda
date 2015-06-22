@@ -69,10 +69,19 @@ void taint_pop_frame(FastShad *shad) {
     shad->pop_frame(MAXREGSIZE * MAXFRAMESIZE);
 }
 
+struct CBMasks {
+    uint64_t cb_mask;
+    uint64_t one_mask;
+    uint64_t zero_mask;
+};
+
 static void update_cb(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src, uint64_t size,
         llvm::Instruction *I);
+
+static inline CBMasks compile_cb_masks(FastShad *shad, uint64_t addr, uint64_t size);
+static inline void write_cb_masks(FastShad *shad, uint64_t addr, uint64_t size, CBMasks value);
 
 // Taint operations
 void taint_copy(
@@ -102,7 +111,8 @@ void taint_copy(
 void taint_parallel_compute(
         FastShad *shad,
         uint64_t dest, uint64_t ignored,
-        uint64_t src1, uint64_t src2, uint64_t src_size) {
+        uint64_t src1, uint64_t src2, uint64_t src_size,
+        llvm::Instruction *I) {
     taint_log("pcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, src_size, src1, src2);
     uint64_t i;
@@ -112,6 +122,33 @@ void taint_parallel_compute(
                 shad->query_full(src2 + i), true);
         shad->set_full(dest + i, td);
     }
+
+    // Unlike mixed computes, parallel computes guaranteed to be bitwise.
+    // This means we can honestly compute CB masks; in fact we have to because
+    // of the way e.g. the deposit TCG op is lifted to LLVM.
+    CBMasks cb_mask_1 = compile_cb_masks(shad, src1, src_size);
+    CBMasks cb_mask_2 = compile_cb_masks(shad, src2, src_size);
+    CBMasks cb_mask_out = {0};
+    if (I && I->getOpcode() == llvm::Instruction::Or) {
+        cb_mask_out.one_mask = cb_mask_1.one_mask | cb_mask_2.one_mask;
+        cb_mask_out.zero_mask = cb_mask_1.zero_mask & cb_mask_2.zero_mask;
+        // Anything that's a literal zero in one operand will not affect
+        // the other operand, so those bits are still controllable.
+        cb_mask_out.cb_mask =
+            (cb_mask_1.zero_mask & cb_mask_2.cb_mask) |
+            (cb_mask_2.zero_mask & cb_mask_1.cb_mask);
+    } else if (I && I->getOpcode() == llvm::Instruction::And) {
+        cb_mask_out.one_mask = cb_mask_1.one_mask & cb_mask_2.one_mask;
+        cb_mask_out.zero_mask = cb_mask_1.zero_mask | cb_mask_2.zero_mask;
+        // Anything that's a literal one in one operand will not affect
+        // the other operand, so those bits are still controllable.
+        cb_mask_out.cb_mask =
+            (cb_mask_1.one_mask & cb_mask_2.cb_mask) |
+            (cb_mask_2.one_mask & cb_mask_1.cb_mask);
+    }
+    taint_log("pcompute_cb: %#lx + %#lx = %lx\n",
+            cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
+    write_cb_masks(shad, dest, src_size, cb_mask_out);
 }
 
 static inline TaintData mixed_labels(FastShad *shad, uint64_t addr, uint64_t size,
@@ -135,7 +172,8 @@ static inline void bulk_set(FastShad *shad, uint64_t addr, uint64_t size, TaintD
 void taint_mix_compute(
         FastShad *shad,
         uint64_t dest, uint64_t dest_size,
-        uint64_t src1, uint64_t src2, uint64_t src_size) {
+        uint64_t src1, uint64_t src2, uint64_t src_size,
+        llvm::Instruction *ignored) {
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, dest_size, src1, src2);
     TaintData td = TaintData::make_union(
@@ -372,36 +410,35 @@ void taint_host_delete(
     shad->remove(dest, size);
 }
 
-__attribute__((unused))
-static void erase_cb(FastShad *shad, uint64_t addr, uint64_t size) {
-    taint_log("erase_cb: %s[%lx+%lx]\n", shad->name(), addr, size);
-    for (unsigned i = 0; i < size; i++) {
-        TaintData td = shad->query_full(addr + i);
-        td.cb_mask = 0;
-        shad->set_full(addr + i, td);
-    }
-}
-
 // Update functions for the controlled bits mask.
 // After a taint operation, we try and update the controlled bit mask to
 // estimate which bits are still attacker-controlled.
 // The information is stored on a byte level. LLVM operations give us the
 // information on how to reconstruct word-level values. We use that information
 // to reconstruct and deconstruct the full mask.
-static inline uint64_t compile_cb_masks(FastShad *shad, uint64_t addr, uint64_t size) {
-    uint64_t result = 0;
+static inline CBMasks compile_cb_masks(FastShad *shad, uint64_t addr, uint64_t size) {
+    CBMasks result = {0};
     for (int i = size - 1; i >= 0; i--) {
-        result <<= 8;
-        result |= shad->query_full(addr + i).cb_mask;
+        TaintData td = shad->query_full(addr + i);
+        result.cb_mask <<= 8;
+        result.one_mask <<= 8;
+        result.zero_mask <<= 8;
+        result.cb_mask |= td.cb_mask;
+        result.one_mask |= td.one_mask;
+        result.zero_mask |= td.zero_mask;
     }
     return result;
 }
 
-static inline void write_cb_masks(FastShad *shad, uint64_t addr, uint64_t size, uint64_t value) {
+static inline void write_cb_masks(FastShad *shad, uint64_t addr, uint64_t size, CBMasks cb_masks) {
     for (unsigned i = 0; i < size; i++) {
         TaintData td = shad->query_full(addr + i);
-        td.cb_mask = (uint8_t)value;
-        value >>= 8;
+        td.cb_mask = (uint8_t)cb_masks.cb_mask;
+        td.one_mask = (uint8_t)cb_masks.one_mask;
+        td.zero_mask = (uint8_t)cb_masks.zero_mask;
+        cb_masks.cb_mask >>= 8;
+        cb_masks.one_mask >>= 8;
+        cb_masks.zero_mask >>= 8;
         shad->set_full(addr + i, td);
     }
 }
@@ -412,9 +449,13 @@ static void update_cb(
         llvm::Instruction *I) {
     if (!I) return;
 
-    uint64_t cb_mask = compile_cb_masks(shad_src, src, size);
-    uint64_t orig_cb_mask = cb_mask;
-    llvm::Value *rhs = I->getOperand(1);
+    CBMasks cb_masks = compile_cb_masks(shad_src, src, size);
+    uint64_t &cb_mask = cb_masks.cb_mask;
+    uint64_t &one_mask = cb_masks.one_mask;
+    uint64_t &zero_mask = cb_masks.zero_mask;
+
+    uint64_t orig_cb_mask = cb_mask, orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+    llvm::Value *rhs = I->getNumOperands() >= 2 ? I->getOperand(1) : nullptr;
     llvm::ConstantInt *CI = rhs ? llvm::dyn_cast<llvm::ConstantInt>(rhs) : nullptr;
     uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
     int log2 = 0;
@@ -423,35 +464,57 @@ static void update_cb(
         // Totally reversible cases.
         case llvm::Instruction::Add:
         case llvm::Instruction::Sub:
+            tassert(literal != ~0UL);
+            log2 = 64 - __builtin_clz(literal);
+            one_mask &= ~((1 << log2) - 1);
+            zero_mask &= ~((1 << log2) - 1);
+            break;
+
         case llvm::Instruction::Xor:
+            one_mask &= ~literal;
+            one_mask |= literal & orig_zero_mask;
+            zero_mask &= ~literal;
+            zero_mask |= literal & orig_one_mask;
+            break;
+
         case llvm::Instruction::ZExt:
         case llvm::Instruction::IntToPtr:
         case llvm::Instruction::PtrToInt:
         case llvm::Instruction::BitCast:
+        // This one copies the existing bits and adds non-controllable bits.
+        // One and zero masks too complicated to compute. Bah.
+        case llvm::Instruction::SExt:
         // Copies. These we ignore (the copy will copy the CB data for us)
         case llvm::Instruction::Store:
         case llvm::Instruction::Load:
         case llvm::Instruction::ExtractValue:
         case llvm::Instruction::InsertValue:
-            taint_log("update_cb: %s[%lx+%lx] CB 0x%lx kept\n",
-                    shad_dest->name(), dest, size, orig_cb_mask);
-            return;
+            break;
 
         case llvm::Instruction::Trunc:
             cb_mask &= (1 << (size * 8)) - 1;
+            one_mask &= (1 << (size * 8)) - 1;
+            zero_mask &= (1 << (size * 8)) - 1;
             break;
 
         case llvm::Instruction::Mul:
+        {
             tassert(literal != ~0UL);
             // Powers of two in literal destroy reversibility.
-            cb_mask <<= __builtin_ctz(literal);
+            uint64_t trailing_zeroes = __builtin_ctz(literal);
+            cb_mask <<= trailing_zeroes;
+            zero_mask = (1 << trailing_zeroes) - 1;
+            one_mask = 0;
             break;
+        }
 
         case llvm::Instruction::URem:
         case llvm::Instruction::SRem:
             tassert(literal != ~0UL);
             log2 = 64 - __builtin_clz(literal);
             cb_mask &= (1 << log2) - 1;
+            one_mask = 0;
+            zero_mask = 0;
             break;
 
         case llvm::Instruction::UDiv:
@@ -459,29 +522,54 @@ static void update_cb(
             tassert(literal != ~0UL);
             log2 = 64 - __builtin_clz(literal);
             cb_mask >>= log2;
+            one_mask = 0;
+            zero_mask = 0;
             break;
 
         case llvm::Instruction::And:
             tassert(literal != ~0UL);
             // Bits not in the bit mask are no longer controllable
             cb_mask &= literal;
+            zero_mask |= ~literal;
+            one_mask &= literal;
             break;
 
         case llvm::Instruction::Or:
             tassert(literal != ~0UL);
             // Bits in the bit mask are no longer controllable
             cb_mask &= ~literal;
+            one_mask |= literal;
+            zero_mask &= ~literal;
             break;
 
         case llvm::Instruction::Shl:
             tassert(literal != ~0UL);
             cb_mask <<= literal;
+            one_mask <<= literal;
+            zero_mask <<= literal;
+            zero_mask |= (1 << literal) - 1;
             break;
 
         case llvm::Instruction::LShr:
+            tassert(literal != ~0UL);
+            cb_mask >>= literal;
+            one_mask >>= literal;
+            zero_mask >>= literal;
+            zero_mask |= ~((1 << (64 - literal)) - 1);
+            break;
+
         case llvm::Instruction::AShr: // High bits not really controllable.
             tassert(literal != ~0UL);
             cb_mask >>= literal;
+            one_mask >>= literal;
+            zero_mask >>= literal;
+
+            // See if high bit is a literal
+            if (orig_one_mask & (1 << (size * 8 - 1))) {
+                one_mask |= ~((1 << (64 - literal)) - 1);
+            } else if (orig_zero_mask & (1 << (size * 8 - 1))) {
+                zero_mask |= ~((1 << (64 - literal)) - 1);
+            }
             break;
 
         // Totally irreversible cases. Erase and bail.
@@ -493,6 +581,8 @@ static void update_cb(
         case llvm::Instruction::Call:
         case llvm::Instruction::ICmp:
             cb_mask = 0;
+            one_mask = 0;
+            zero_mask = 0;
             break;
 
         case llvm::Instruction::GetElementPtr:
@@ -500,8 +590,10 @@ static void update_cb(
             llvm::GetElementPtrInst *GEPI =
                 llvm::dyn_cast<llvm::GetElementPtrInst>(I);
             tassert(GEPI);
+            one_mask = 0;
+            zero_mask = 0;
             // Constant indices => fully reversible
-            if (GEPI->hasAllConstantIndices()) return;
+            if (GEPI->hasAllConstantIndices()) break;
             // Otherwise we know nothing.
             cb_mask = 0;
             break;
@@ -510,11 +602,13 @@ static void update_cb(
         default:
             printf("Unknown instruction in update_cb: ");
             I->dump();
+            fflush(stdout);
             return;
     }
 
-    taint_log("update_cb: %s[%lx+%lx] CB 0x%lx -> 0x%lx\n",
-            shad_dest->name(), dest, size, orig_cb_mask, cb_mask);
+    taint_log("update_cb: %s[%lx+%lx] CB %#lx -> 0x%#lx, 0 %#lx -> %#lx, 1 %#lx -> %#lx\n",
+            shad_dest->name(), dest, size, orig_cb_mask, cb_mask,
+            orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
-    write_cb_masks(shad_dest, dest, size, cb_mask);
+    write_cb_masks(shad_dest, dest, size, cb_masks);
 }
