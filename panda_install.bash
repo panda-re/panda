@@ -38,6 +38,7 @@ fi
 
 if [ ! -e "/usr/local/lib/libdistorm3.so" ]
 then
+  sudo apt-get -y install unzip
   curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
   unzip distorm3.3-package.zip
   cd distorm3/make/linux
