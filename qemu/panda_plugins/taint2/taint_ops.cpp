@@ -454,7 +454,7 @@ static void update_cb(
     uint64_t &one_mask = cb_masks.one_mask;
     uint64_t &zero_mask = cb_masks.zero_mask;
 
-    uint64_t orig_cb_mask = cb_mask, orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
     llvm::Value *rhs = I->getNumOperands() >= 2 ? I->getOperand(1) : nullptr;
     llvm::ConstantInt *CI = rhs ? llvm::dyn_cast<llvm::ConstantInt>(rhs) : nullptr;
     uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
