@@ -2293,6 +2293,11 @@ if test "$llvm" != "no" ; then
   fi
 fi
 
+# Check for libc++ presence
+if [ -e /usr/include/c++/v1/vector ]; then
+  clang_cxxflags="-stdlib=libc++"
+fi
+
 #
 # Check for xxxat() functions when we are building linux-user
 # emulator.  This is done because older glibc versions don't
@@ -3298,6 +3303,7 @@ if test "$llvm" = "yes" ; then
      FILTERFLAGS="-O2 -O1 -O3 -fomit-frame-pointer"
   fi
 
+  echo "CLANG_CXXFLAGS:=$clang_cxxflags" >> $config_host_mak
   echo "LLVMCC:=$clang" >> $config_host_mak
   echo "LLVMCXX:=$clangxx" >> $config_host_mak
   echo "LLVM_LINK:=$llvm_link" >> $config_host_mak

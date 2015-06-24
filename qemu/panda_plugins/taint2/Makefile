@@ -14,7 +14,7 @@ QEMU_CXXFLAGS+= $(DBGFLAGS)
 
 QEMU_CXXFLAGS+= -std=c++11 -Wno-type-limits
 
-TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++
+TAINT_OP_CFLAGS= -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector -fno-omit-frame-pointer -Wno-type-limits $(CLANG_CXXFLAGS)
 
 # This will make things easier.
 $(PLUGIN_OBJ_DIR)/%.o: $(wildcard *.h) $(wildcard $(SRC_PATH)/panda/*.h)
