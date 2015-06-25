@@ -1147,6 +1147,8 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
 
                 current_tb_modified = 1;
                 cpu_restore_state(current_tb, env, env->mem_io_pc);
+                // Fix interrupt tracking bug with SMC.
+                rr_num_instr_before_next_interrupt++;
                 cpu_get_tb_cpu_state(env, &current_pc, &current_cs_base,
                                      &current_flags);
             }
