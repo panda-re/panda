@@ -259,6 +259,7 @@ static void add_mod(CPUState *env, OsiModules *ms, PTR mod) {
 
 void on_get_current_process(CPUState *env, OsiProc **out_p) {
     OsiProc *p = (OsiProc *) malloc(sizeof(OsiProc));
+    p->name = NULL; // because I don't know if this is a valid process and free_osiproc() must work
     PTR eproc = get_current_proc(env);
 
     /*
@@ -350,7 +351,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 
 void on_free_osiproc(OsiProc *p) {
     if (!p) return;
-    free(p->name);
+    if (p->name) free(p->name);
     free(p);
 }
 
