@@ -254,7 +254,7 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_pointer = get_pointer_32bit
     },
     {
-        .enter_switch = syscall_enter_switch_linux_x86,
+        .enter_switch = syscall_enter_switch_linux_arm,
         .return_switch = syscall_return_switch_linux_arm,
         .get_return_val = get_return_val_arm,
         .calc_retaddr = calc_retaddr_linux_arm,
