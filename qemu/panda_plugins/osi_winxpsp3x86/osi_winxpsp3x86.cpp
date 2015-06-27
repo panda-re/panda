@@ -259,14 +259,25 @@ static void add_mod(CPUState *env, OsiModules *ms, PTR mod) {
 
 void on_get_current_process(CPUState *env, OsiProc **out_p) {
     OsiProc *p = (OsiProc *) malloc(sizeof(OsiProc));
-    p->name = NULL; // because I don't know if this is a valid process and free_osiproc() must work
     PTR eproc = get_current_proc(env);
 
     /*
         Since I'm using KTHREAD_KPROC_OFF as an ETHREAD, check to make
         sure this is a kernel thread that has an associated user process.
     */
-    if (is_valid_process(env, eproc)) {
+    while (!is_valid_process(env,eproc))
+    {
+        eproc = get_next_proc(env, eproc);
+
+        if (!eproc) break;
+    }
+
+    if (!eproc)
+    {
+        p->name = NULL; //free_osiproc still has to work properly
+    }
+    else
+    {
         fill_osiproc(env, p, eproc);
     }
 
