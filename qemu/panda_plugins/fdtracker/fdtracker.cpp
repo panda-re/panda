@@ -37,7 +37,7 @@ extern "C" {
 #include <fcntl.h>
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
-#include "../taint/taint_ext.h"
+//#include "../taint/taint_ext.h"
 #include "../syscalls/syscalls_ext.h"
 #include "gen_syscalls_ext_typedefs.h"
 
@@ -76,6 +76,7 @@ map<target_ulong, fdmap> asid_to_fds;
 
 #if defined(CONFIG_PANDA_VMI)
 extern "C" {
+#include "../linux_vmi/linux_vmi_types.h"
 #include "../linux_vmi/linux_vmi_ext.h"
 // sched.h contains only preprocessor defines to constant literals
 #include <linux/sched.h>
@@ -402,7 +403,7 @@ static void fdtracker_sys_readahead_callback(CPUState* env,target_ulong pc,int32
 
 /* Apply taint to all bytes in the buffer */
 static void taintify(target_ulong guest_vaddr, uint32_t len, uint32_t label, bool autoenc) {
-    taint_enable_taint();
+/*    taint_enable_taint();
     for(uint32_t i = 0; i < len; i++){
         target_ulong va = guest_vaddr + i;
         target_phys_addr_t pa = cpu_get_phys_addr(cpu_single_env, va);
@@ -410,12 +411,12 @@ static void taintify(target_ulong guest_vaddr, uint32_t len, uint32_t label, boo
             taint_label_ram(pa, i + label);
         else
             taint_label_ram(pa, label);
-    }
+    }*/
 }
 
 /* Check if any of the bytes in the buffer are tainted */
 static bool check_taint(target_ulong guest_vaddr, uint32_t len){
-    if(1 != taint_enabled()){
+    /*if(1 != taint_enabled()){
         return false;
     }
     for(uint32_t i = 0; i < len; i++){
@@ -423,7 +424,7 @@ static bool check_taint(target_ulong guest_vaddr, uint32_t len){
         target_phys_addr_t pa = cpu_get_phys_addr(cpu_single_env, va);
         if(taint_query_ram(pa))
             return true;
-    }
+    }*/
     return false;
 }
 
@@ -452,10 +453,10 @@ static Callback_RC read_callback(CPUState* env, target_asid asid, target_long fd
     // if we don't want to taint this file, we're done
     if(track_taint){
         //if the taint engine isn't on, turn it on and re-translate the TB with LLVM
-        if(1 != taint_enabled()){
+        /*if(1 != taint_enabled()){
             taint_enable_taint();
             return Callback_RC::INVALIDATE;
-        }
+        }*/
         if(ReadType::READV == type){
             for (uint32_t i = 0; i < len; i++){
                 struct target_iovec tmp;
@@ -750,10 +751,10 @@ bool init_plugin(void *self)
     panda_arg_list *args = panda_get_args("fdtracker");
     track_taint = panda_parse_bool(args, "taint");
 
-    if(track_taint){
+    /*if(track_taint){
         init_taint_api();
         taint_enable_taint();
-    }
+    }*/
 
     PPP_REG_CB("syscalls", on_sys_open_returned, fdtracker_sys_open_callback);
     PPP_REG_CB("syscalls", on_sys_openat_returned, fdtracker_sys_openat_callback);

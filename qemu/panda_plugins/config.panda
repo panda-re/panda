@@ -3,8 +3,8 @@ debianwheezyx86intro
 sample
 textfinder
 textprinter
-#syscalls
-syscalls2
+syscalls
+#syscalls2
 stringsearch
 keyfind
 memstats
@@ -28,7 +28,7 @@ useafterfree
 bufmon
 memsavep
 #tralign
-#fdtracker
+fdtracker
 printstack
 tainted_branch
 osi
@@ -44,3 +44,4 @@ ida_taint
 ida_taint2
 tainted_instr
 pmemaccess
+linux_vmi

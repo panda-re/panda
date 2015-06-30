@@ -7,7 +7,7 @@ PLUGIN_NAME=fdtracker
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-GENDIR=$(PLUGIN_TARGET_DIR)/syscalls
+GENDIR=$(PLUGIN_SRC_DIR)/../syscalls
 GENERATED_HEADERS+= $(GENDIR)/gen_syscalls_ext_typedefs.h
 
 # If you need custom CFLAGS or LIBS, set them up here

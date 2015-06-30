@@ -34,11 +34,12 @@ fi
 
 echo $LLVM_BIT
 
-./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
+./configure --target-list=arm-softmmu \
 --prefix=`pwd`/install \
 --disable-pie \
 --disable-xen \
 --disable-libiscsi \
+--enable-android \
 $LLVM_BIT \
 --extra-cflags="-O2 -I/usr/local/include" \
 --extra-cxxflags="-O2" \

@@ -17,7 +17,7 @@ SYSCALLS_PROTOS=linux_x86_prototypes.txt
 SYSCALLS_ARCH=x86
 endif
 
-GENDIR=$(PLUGIN_TARGET_DIR)/syscalls
+GENDIR=$(PLUGIN_SRC_DIR)
 
 # If you need custom CFLAGS or LIBS, set them up here
 QEMU_CXXFLAGS+=-std=c++11 -I$(GENDIR)
