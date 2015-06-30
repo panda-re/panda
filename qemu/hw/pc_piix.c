@@ -175,7 +175,7 @@ static void pc_init1(MemoryRegion *system_memory,
     }
 
     /* init basic PC hardware */
-    pc_basic_device_init(gsi, &rtc_state, &floppy, xen_enabled());
+    pc_basic_device_init(gsi, &rtc_state, &floppy, true);
 
     for(i = 0; i < nb_nics; i++) {
         NICInfo *nd = &nd_table[i];
