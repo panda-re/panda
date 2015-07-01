@@ -10,7 +10,7 @@ Background
 
 Deterministic record and replay is a technique for capturing the
 *non-deterministic inputs* to a system -- that is, the things that would
-cause a system to be have differently if it were re-started from the
+cause a system to behave differently if it were re-started from the
 same point with the same inputs. This includes things like network
 packets, hard drive reads, mouse and keyboard input, etc.
 
