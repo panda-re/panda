@@ -43,3 +43,4 @@ ida_taint
 ida_taint2
 tainted_instr
 pmemaccess
+useafterfree_taint2
