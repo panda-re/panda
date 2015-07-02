@@ -39,6 +39,19 @@ def getArgs():
     return {'pandalogFileStr': idc.ARGV[1], 'processName': idc.ARGV[2]}
 
 
+def read_log_entry(logfile):
+    le = pl.LogEntry()
+    sz = logfile.read(8)
+    if not sz: return None
+    sz = struct.unpack("<Q", sz)[0]
+    data = logfile.read(sz)
+    try:
+        le.ParseFromString(data)
+        return le
+    except Exception as e:
+        return None
+
+
 def parsePandalogFile(pandalogFileStr):
     entries = []
     try:
@@ -59,13 +72,17 @@ def parsePandalogFile(pandalogFileStr):
         return None
 
 
-def findProcessData(pandalog, processName):
-    for entry in pandalog:
-        if entry.HasField("new_pid") and entry.new_pid.name in processName:
-            return {
-                'virtual_program_base_address': entry.new_pid.virtual_base_addr,
-                'pid': entry.new_pid.pid
-            }
+def findProcessData(pandalogFile, processName):
+    with gzip.GzipFile(pandalogFile, 'rb') as f:
+        while True:
+            entry = read_log_entry(f)
+            if entry == None:
+                break
+            if entry.HasField("new_pid") and entry.new_pid.name in processName:
+                return {
+                    'virtual_program_base_address': entry.new_pid.virtual_base_addr,
+                    'pid': entry.new_pid.pid
+                }
     errstr = ( "Error: data about specified process not found in pandalog file."
         "  ida_taint.py is now exiting..." )
     fatalError(errstr)
@@ -83,17 +100,21 @@ def rebaseProgramToDynamicBase(processBaseAddress):
     return 0
 
 
-def getTaintedPCs(pandalog, processName):
+def getTaintedPCs(pandalogFile, processName):
     taintedPCs = set()
     inDesiredProcess = False
-    for entry in pandalog:
-        if entry.HasField("new_pid") and entry.new_pid.name in processName:
-            inDesiredProcess = True
-        if entry.HasField("new_pid") and entry.new_pid.name not in processName:
-            inDesiredProcess = False
-        if (inDesiredProcess and entry.HasField("tainted_instr")
-            and entry.tainted_instr and entry.pc < 0x80000000):
-            taintedPCs.add(entry.pc)
+    with gzip.GzipFile(pandalogFile, 'rb') as f:
+        while True:
+            entry = read_log_entry(f)
+            if entry == None:
+                break
+            if entry.HasField("new_pid") and entry.new_pid.name in processName:
+                inDesiredProcess = True
+            if entry.HasField("new_pid") and entry.new_pid.name not in processName:
+                inDesiredProcess = False
+            if (inDesiredProcess and entry.HasField("tainted_instr")
+                and entry.tainted_instr and entry.pc < 0x70000000):
+                taintedPCs.add(entry.pc)
     return taintedPCs
 
 
@@ -112,10 +133,10 @@ def main():
     args = getArgs()
     if args == None:
         return
-    pandalog = parsePandalogFile(args['pandalogFileStr'])
-    if pandalog == None:
-        return
-    processData = findProcessData(pandalog, args['processName'])
+    #pandalog = parsePandalogFile(args['pandalogFileStr'])
+    #if pandalog == None:
+    #    return
+    processData = findProcessData(args['pandalogFileStr'], args['processName'])
     if processData == None:
         return
     processBaseAddress = processData['virtual_program_base_address']
@@ -126,7 +147,8 @@ def main():
     rebaseStatus = rebaseProgramToDynamicBase(processBaseAddress)
     if rebaseStatus == -1:
         return
-    taintedPCs = getTaintedPCs(pandalog, args['processName'])
+    print "Parsing pandalog for tainted PCs and annotating...\n"
+    taintedPCs = getTaintedPCs(args['pandalogFileStr'], args['processName'])
     if taintedPCs == None:
         return
     annotateTaint(taintedPCs)

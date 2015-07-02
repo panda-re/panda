@@ -97,7 +97,10 @@ static uint32_t get_virtual_base_addr(CPUState *env){
     //printf("PEB: 0x%x\n", peb);
     panda_virtual_memory_rw(env, peb+PEB_IMAGE_BASE_ADDRESS,
         (uint8_t *)&virtual_base_addr, sizeof(uint32_t), false);
-    assert(virtual_base_addr != (uint32_t)-1);
+    //assert(virtual_base_addr != (uint32_t)-1);
+    if (virtual_base_addr == (uint32_t)-1){
+        printf("WARNING: virtual_base_addr -1\n");
+    }
     return virtual_base_addr;
 }
 
@@ -134,6 +137,8 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         np->virtual_base_addr = get_virtual_base_addr(env);
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.new_pid = np;
+        ple.has_asid = true;
+        ple.asid = env->cr[3];
         pandalog_write_entry(&ple);
     }
     return 0;

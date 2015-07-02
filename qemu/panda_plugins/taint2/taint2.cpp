@@ -58,8 +58,8 @@ extern int loglevel;
 void taint2_enable_taint(void);
 int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
-void taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length);
-void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr,
+void taint2_add_taint_ram_pos(CPUState *env, uint64_t vaddr, uint32_t length);
+void taint2_add_taint_ram_single_label(CPUState *env, uint64_t vaddr,
     uint32_t length, long label);
 void taint2_delete_ram(uint64_t pa);
 
@@ -89,6 +89,7 @@ uint32_t *taint2_labels_applied(void);
 uint32_t taint2_num_labels_applied(void);
 
 void taint2_track_taint_state(void);
+void taint2_set_enable_taint_flag(void);
 
 }
 
@@ -139,6 +140,7 @@ PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
 
 bool track_taint_state = false;
+bool enable_taint_flag = false;
 
 }
 
@@ -164,7 +166,8 @@ bool taintJustDisabled = false;
 static taint2_memlog taint_memlog;
 
 // Configuration
-bool tainted_pointer = true;
+//bool tainted_pointer = true;
+bool tainted_pointer = false;
 static TaintGranularity granularity;
 static TaintLabelMode mode;
 bool optimize_llvm = true;
@@ -673,6 +676,11 @@ uint32_t taint_pos_count = 0;
 
 void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
     target_phys_addr_t pa = panda_virt_to_phys(env, virt_addr);
+    if (pa == (target_phys_addr_t)(-1)) {
+        printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, "
+            "i.e., it isnt actually there.\n", pa);
+        return;
+    }
     if (pandalog) {
         Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.has_taint_label_virtual_addr = 1;
@@ -683,39 +691,35 @@ void label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
         ple.taint_label_number = label_num;
         pandalog_write_entry(&ple);
     }
+    printf("Labeling 0x%x\n", pa);
     taint2_label_ram(pa, label_num);
 }
 
 // Apply positional taint to a buffer of memory
-void taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length){
+void taint2_add_taint_ram_pos(CPUState *env, uint64_t vaddr, uint32_t length){
     for (unsigned i = 0; i < length; i++){
-        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
-        if (pa == (target_phys_addr_t)(-1)) {
-            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, "
-                "i.e., it isnt actually there.\n", addr +i);
-            continue;
-        }
-        //taint2_label_ram(pa, i + taint_pos_count);
         printf("taint2: adding positional taint label %d\n", i+taint_pos_count);
-        label_byte(env, addr+i, i+taint_pos_count);
+        label_byte(env, vaddr+i, i+taint_pos_count);
     }
     taint_pos_count += length;
 }
 
 // Apply single label taint to a buffer of memory
-void taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr,
+void taint2_add_taint_ram_single_label(CPUState *env, uint64_t vaddr,
         uint32_t length, long label){
     for (unsigned i = 0; i < length; i++){
-        target_phys_addr_t pa = cpu_get_phys_addr(env, addr + i);
-        if (pa == (target_phys_addr_t)(-1)) {
-            printf("can't label addr=0x%lx: mmu hasn't mapped virt->phys, "
-                "i.e., it isnt actually there.\n", addr +i);
-            continue;
-        }
-        //taint2_label_ram(pa, label);
         printf("taint2: adding single taint label %lu\n", label);
-        label_byte(env, addr+i, label);
+        label_byte(env, vaddr+i, label);
     }
+}
+
+void __taint2_add_taint_ram_pos(CPUState *env, uint64_t addr, uint32_t length){
+    taint2_add_taint_ram_pos(env, addr, length);
+}   
+
+void __taint2_add_taint_ram_single_label(CPUState *env, uint64_t addr,
+        uint32_t length, long label){
+    taint2_add_taint_ram_single_label(env, addr, length, label);
 }
 
 uint32_t __taint2_query(Addr a) {
@@ -808,6 +812,9 @@ void __taint2_track_taint_state(void) {
     track_taint_state = true;
 }
 
+void __taint2_set_enable_taint_flag(void){
+    enable_taint_flag = true;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -907,6 +914,9 @@ void taint2_track_taint_state(void) {
     __taint2_track_taint_state();
 }
 
+void taint2_set_enable_taint_flag(void){
+    __taint2_set_enable_taint_flag();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -940,6 +950,11 @@ bool before_block_exec_invalidate_opt(CPUState *env, TranslationBlock *tb) {
 #ifdef TAINTDEBUG
     //printf("%s\n", tcg_llvm_get_func_name(tb));
 #endif
+
+    if (enable_taint_flag){
+        __taint2_enable_taint();
+        enable_taint_flag = false;
+    }
 
     if (taintEnabled) {
         if (!tb->llvm_tc_ptr) {

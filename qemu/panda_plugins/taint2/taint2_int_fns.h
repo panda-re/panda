@@ -8,6 +8,7 @@
 #include "../../panda/panda_addr.h"
 
 typedef void *LabelSetP;
+typedef void *CPUState;
 
 
 // turns on taint
@@ -18,6 +19,14 @@ int taint2_enabled(void);
 
 // label this phys addr in memory with label l
 void taint2_label_ram(uint64_t pa, uint32_t l);
+
+// Label this virtual address with positional taint
+// (function does virtual to physical conversion)
+void taint2_add_taint_ram_pos(CPUState *env, uint64_t vaddr, uint32_t length);
+
+// Label this virtual address with a single label
+// (function does virtual to physical conversion)
+void taint2_add_taint_ram_single_label(CPUState *env, uint64_t vaddr, uint32_t length, long label);
 
 // query fns return 0 if untainted, else cardinality of taint set
 uint32_t taint2_query(Addr a);
@@ -63,6 +72,9 @@ uint32_t taint2_num_labels_applied(void);
 // Track whether taint state actually changed during a BB
 void taint2_track_taint_state(void);
 
+// Set flag to enable taint when it's a better time to do so (before
+// block_translate)
+void taint2_set_enable_taint_flag(void);
 
 // queries taint on this virtual addr and, if any taint there,
 // writes an entry to pandalog with lots of stuff like
