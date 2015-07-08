@@ -265,7 +265,19 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
         Since I'm using KTHREAD_KPROC_OFF as an ETHREAD, check to make
         sure this is a kernel thread that has an associated user process.
     */
-    if (is_valid_process(env, eproc)) {
+    while (!is_valid_process(env,eproc))
+    {
+        eproc = get_next_proc(env, eproc);
+
+        if (!eproc) break;
+    }
+
+    if (!eproc)
+    {
+        p->name = NULL; //free_osiproc still has to work properly
+    }
+    else
+    {
         fill_osiproc(env, p, eproc);
     }
 
@@ -350,7 +362,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 
 void on_free_osiproc(OsiProc *p) {
     if (!p) return;
-    free(p->name);
+    if (p->name) free(p->name);
     free(p);
 }
 
