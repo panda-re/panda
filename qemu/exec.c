@@ -4209,6 +4209,13 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                     }
                 }
                 memcpy(ptr, buf, l);
+                if (rr_mode == RR_REPLAY) {
+                    // run all callbacks registered for cpu_physical_memory_rw ram case
+                    panda_cb_list *plist;
+                    for (plist = panda_cbs[PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = panda_cb_list_next(plist)) {
+                        plist->entry.replay_after_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, addr1, l);
+                    }
+                }
                 if (!cpu_physical_memory_is_dirty(addr1)) {
                     /* invalidate code */
                     tb_invalidate_phys_page_range(addr1, addr1 + l, 0);
@@ -4278,6 +4285,13 @@ static int cpu_physical_memory_rw_ex(target_phys_addr_t addr, uint8_t *buf,
                     }
                 }
                 memcpy(buf, dest, l);
+                if (rr_mode == RR_REPLAY) {
+                    // run all callbacks registered for cpu_physical_memory_rw ram case
+                    panda_cb_list *plist;
+                    for (plist = panda_cbs[PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = panda_cb_list_next(plist)) {
+                        plist->entry.replay_after_cpu_physical_mem_rw_ram(cpu_single_env, is_write, buf, addr1, l);
+                    }
+                }
                 qemu_put_ram_ptr(ptr);
             }
         }

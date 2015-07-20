@@ -131,6 +131,24 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
     unsigned long addend;
     void *retaddr;
 
+
+#ifdef MMU_INSTR
+
+    // newer version
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.virt_mem_before_read(env, env->panda_guest_pc, addr,
+            DATA_SIZE);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.phys_mem_before_read(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE);
+    }
+    
+#endif    
+
     /* test if there is match for unaligned or IO access */
     /* XXX: could done more in memory macro in a non portable way */
     index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
@@ -177,8 +195,8 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
     }
 
 #ifdef MMU_INSTR
+    // deprecated versions
     // PANDA instrumentation: memory read
-    panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_READ]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
         plist->entry.virt_mem_read(env, env->panda_guest_pc, addr,
@@ -189,6 +207,20 @@ DATA_TYPE REGPARM glue(glue(__ld, SUFFIX), MMUSUFFIX)(target_ulong addr,
         plist->entry.phys_mem_read(env, env->panda_guest_pc,
             cpu_get_phys_addr(env, addr), DATA_SIZE, &res);
     }
+
+    // newer version
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.virt_mem_after_read(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &res);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.phys_mem_after_read(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE, &res);
+    }
+    
+
 #endif
 
     return res;
@@ -330,6 +362,8 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
 
 #ifdef MMU_INSTR
     // PANDA instrumentation: memory write
+
+    // deprecated version
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_WRITE]; plist != NULL;
             plist = panda_cb_list_next(plist)) {
@@ -341,6 +375,19 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
         plist->entry.phys_mem_write(env, env->panda_guest_pc,
             cpu_get_phys_addr(env, addr), DATA_SIZE, &val);
     }
+
+    // newer version
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.virt_mem_before_write(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &val);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.phys_mem_before_write(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE, &val);
+    }
+
 #endif
 
  redo:
@@ -384,6 +431,25 @@ void REGPARM glue(glue(__st, SUFFIX), MMUSUFFIX)(target_ulong addr,
         tlb_fill(env, addr, 1, mmu_idx, retaddr);
         goto redo;
     }
+
+
+#ifdef MMU_INSTR
+    // PANDA instrumentation: memory write
+
+    // newer version
+    for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.virt_mem_after_write(env, env->panda_guest_pc, addr,
+            DATA_SIZE, &val);
+    }
+    for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]; plist != NULL;
+            plist = panda_cb_list_next(plist)) {
+        plist->entry.phys_mem_after_write(env, env->panda_guest_pc,
+            cpu_get_phys_addr(env, addr), DATA_SIZE, &val);
+    }
+#endif
+
+
 }
 
 /* handles all unaligned cases */

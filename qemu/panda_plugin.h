@@ -33,10 +33,24 @@ typedef enum panda_cb_type {
     PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
-    PANDA_CB_VIRT_MEM_READ,     // After each memory read (virtual addr.)
+
+    // deprecated 
+    PANDA_CB_VIRT_MEM_READ,     // After each memory read (virtual addr.)    
     PANDA_CB_VIRT_MEM_WRITE,    // Before each memory write (virtual addr.)
     PANDA_CB_PHYS_MEM_READ,     // After each memory read (physical addr.)
     PANDA_CB_PHYS_MEM_WRITE,    // Before each memory write (physical addr.)
+
+    PANDA_CB_VIRT_MEM_BEFORE_READ,    
+    PANDA_CB_VIRT_MEM_BEFORE_WRITE,   
+    PANDA_CB_PHYS_MEM_BEFORE_READ,    
+    PANDA_CB_PHYS_MEM_BEFORE_WRITE,   
+
+    PANDA_CB_VIRT_MEM_AFTER_READ,     
+    PANDA_CB_VIRT_MEM_AFTER_WRITE,    
+    PANDA_CB_PHYS_MEM_AFTER_READ,     
+    PANDA_CB_PHYS_MEM_AFTER_WRITE,    
+
+
     PANDA_CB_HD_READ,           // Each HDD read
     PANDA_CB_HD_WRITE,          // Each HDD write
     PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
@@ -56,6 +70,7 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
     PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
     PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
+    PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
     PANDA_CB_LAST
 } panda_cb_type;
@@ -303,6 +318,166 @@ typedef union panda_cb {
     */
     int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
+
+
+    // New versions.
+    
+    
+    /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
+
+       virt_mem_before_read: called before memory is read
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the read
+        target_ulong addr: the (virtual) address being read
+        target_ulong size: the size of the read
+       
+       Return value:
+        unused
+
+    */
+    int (*virt_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+
+    /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_WRITE
+
+       virt_mem_before_write: called before memory is written
+       [exists]
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the write
+        target_ulong addr: the (virtual) address being written
+        target_ulong size: the size of the write
+        void *buf: pointer to the data that is to be written 
+       
+       Return value:
+        unused
+
+    */
+    int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_READ
+
+       phys_mem_before_read: called after memory is read
+       [new]
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the read
+        target_ulong addr: the (physical) address being read
+        target_ulong size: the size of the read
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+
+/* Callback ID: PANDA_CB_PHYS_MEM_BEFORE_WRITE
+
+       phys_mem_write: called before memory is written
+       [exists]
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the write
+        target_ulong addr: the (physical) address being written
+        target_ulong size: the size of the write
+        void *buf: pointer to the data that is to be written 
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    
+
+        
+    /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_READ
+
+       virt_mem_after_read: called after memory is read
+       [exists]
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the read
+        target_ulong addr: the (virtual) address being read
+        target_ulong size: the size of the read
+        void *buf: pointer to data just read
+       
+       Return value:
+        unused
+
+    */
+    int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_VIRT_MEM_AFTER_WRITE
+
+       virt_mem_after_write: called after memory is written
+       [new]
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the write
+        target_ulong addr: the (virtual) address being written
+        target_ulong size: the size of the write
+        void *buf: pointer to the data that was written 
+       
+       Return value:
+        unused
+
+    */
+    int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    /* Callback ID: PANDA_CB_PHYS_MEM_AFTER_READ
+
+       phys_mem_after_read: called after memory is read
+       [exists]
+       
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the read
+        target_ulong addr: the (physical) address being read
+        target_ulong size: the size of the read
+        void *buf: pointer to data just read
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+/* Callback ID: PANDA_CB_PHYS_MEM_AFTER_WRITE
+
+       phys_mem_write: called after memory is written
+       [new]
+
+       Arguments:
+        CPUState *env: the current CPU state
+        target_ulong pc: the guest PC doing the write
+        target_ulong addr: the (physical) address being written
+        target_ulong size: the size of the write
+        void *buf: pointer to the data that was written 
+       
+       Return value:
+        unused
+
+    */
+    int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+    
+
+
+
+
+
+
+
+    
+
+    
 /* Callback ID: PANDA_CB_CPU_RESTORE_STATE
 
        cb_cpu_restore_state: called inside of cpu_restore_state(), when there is
@@ -469,6 +644,19 @@ typedef union panda_cb {
    uint32_t num_bytes:  size of transfer
 */
     int (*replay_before_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+    /* Callback ID:     PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,
+
+   In replay only, we are about to dma between qemu buffer and guest memory
+
+   Arguments:
+   CPUState* env:       pointer to CPUState
+   uint32_t is_write:   type of transfer going on    (is_write == 1 means IO -> RAM else RAM -> IO)
+   uint8_t* buf         the QEMU device's buffer in QEMU's virtual memory
+   uint64_t paddr       "physical" address of guest RAM
+   uint32_t num_bytes:  size of transfer
+*/
+    int (*replay_after_cpu_physical_mem_rw_ram)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
 
 
   /* Callback ID:   PANDA_CB_REPLAY_HANDLE_PACKET,
