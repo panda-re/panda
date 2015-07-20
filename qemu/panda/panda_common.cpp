@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 extern "C" {
+#include "disas.h"
 #include "panda_plugin.h"
 }
 #include "panda_common.h"
@@ -54,4 +55,9 @@ bool panda_in_kernel(CPUState *env) {
 #else
     return false;
 #endif
+}
+
+
+void panda_disas(FILE *out, void *code, unsigned long size) {
+    disas(out,code,size);
 }
