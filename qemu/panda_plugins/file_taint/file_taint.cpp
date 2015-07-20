@@ -120,7 +120,7 @@ void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t fl
     }
     if (filename.find(taint_filename) != std::string::npos) {
         saw_open = true;
-        printf ("saw open of file we want to taint: [%s]\n", taint_filename);
+        printf ("saw open of file we want to taint: [%s] insn %" PRId64 "\n", taint_filename, rr_get_guest_instr_count());
         the_asid = panda_current_asid(env);
     }
 }
