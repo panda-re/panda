@@ -55,6 +55,10 @@ Construction (CC), Rome, Italy, March 2013.
 Repeatable Reverse Engineering for the Greater Good with PANDA.
 TR CUCS-023-14
 
+* [4] M. Stamatogiannakis, P. Groth, H. Bos. Decoupling Provenance
+Capture and Analysis from Execution. 7th USENIX Workshop on the Theory
+and Practice of Provenance, Edinburgh, Scotland, July 2015.
+
 License
 ----
 GPLv2.
