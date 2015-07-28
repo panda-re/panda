@@ -284,6 +284,7 @@ LDFLAGS="-g $LDFLAGS -rdynamic"
 
 # make source path absolute
 source_path=`cd "$source_path"; pwd`
+extra_plugins_path=`cd "$extra_plugins_path"; pwd`
 
 check_define() {
 cat > $TMPC <<EOF
@@ -596,6 +597,8 @@ for opt do
   --cpu=*)
   ;;
   --target-list=*) target_list="$optarg"
+  ;;
+  --extra-plugins-path=*) extra_plugins_path="$optarg"
   ;;
   --enable-trace-backend=*) trace_backend="$optarg"
   ;;
@@ -1020,6 +1023,7 @@ echo "  --prefix=PREFIX          install in PREFIX [$prefix]"
 echo "  --interp-prefix=PREFIX   where to find shared libraries, etc."
 echo "                           use %M for cpu name [$interp_prefix]"
 echo "  --target-list=LIST       set target list (default: build everything)"
+echo "  --extra-plugins-path=DIR  where to find additional plugins"
 echo "Available targets: $default_target_list" | \
     fold -s -w 53 | sed -e 's/^/                           /'
 echo ""
@@ -2971,6 +2975,7 @@ echo "Manual directory  `eval echo $mandir`"
 echo "ELF interp prefix $interp_prefix"
 fi
 echo "Source path       $source_path"
+echo "Extra plugins path $extra_plugins_path"
 echo "C compiler        $cc"
 echo "C++ compiler      $cxx"
 echo "Host C compiler   $host_cc"
@@ -3220,6 +3225,7 @@ qemu_version=`head $source_path/VERSION`
 echo "VERSION=$qemu_version" >>$config_host_mak
 echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
+echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
 if [ "$docs" = "yes" ] ; then
   echo "BUILD_DOCS=yes" >> $config_host_mak

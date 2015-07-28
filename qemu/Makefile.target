@@ -18,6 +18,9 @@ include ../panda_tools/config.panda
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
 PANDA_PLUGINS=$(shell tr -d "[:blank:]" < ../panda_plugins/config.panda | grep -v "^\#" | xargs)
 
+# ditto for extra plugins
+EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/panda_plugins/config.panda | grep -v "^\#" | xargs)
+
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
 $(call set-vpath, $(SRC_PATH):$(TARGET_PATH):$(SRC_PATH)/hw)
 
@@ -44,6 +47,9 @@ endif
 
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+EXTRA_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-plugin-%, $(EXTRA_PANDA_PLUGINS))
+EXTRA_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
 TOOL_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
 TOOL_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
@@ -80,7 +86,7 @@ endif
 
 
 
-all: $(PROGS) $(PLUGIN_SUBDIR_RULES) $(TOOL_SUBDIR_RULES) stap
+all: $(PROGS) $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES) $(TOOL_SUBDIR_RULES) stap
 
 # Dummy command so that make thinks it has done something
 	@true
@@ -549,6 +555,9 @@ $(RR_PRINT_PROG): rr_print.o
 
 plugin-%: $(libobj-y)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C ../panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
+
+extra-plugin-%: $(libobj-y)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)  
 
 tool-%: $(libobj-y)
 	$(call quiet-command,$(MAKE) $(TOOL_SUBDIR_MAKEFLAGS) -C ../panda_tools/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
