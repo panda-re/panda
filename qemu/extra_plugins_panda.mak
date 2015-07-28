@@ -1,5 +1,6 @@
-# XXX Tell it where to find panda    
-SRC_PATH=/home/tleek/git/panda-master/qemu
+# XXX You will need to change this!
+# Tell it where to find panda
+SRC_PATH=/home/you/git/panda/qemu
 
 include $(SRC_PATH)/config-host.mak
 include $(SRC_PATH)/$(TARGET_DIR)/config-devices.mak
