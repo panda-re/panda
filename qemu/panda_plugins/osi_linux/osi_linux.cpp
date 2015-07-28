@@ -15,6 +15,7 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 #include "../osi/osi_types.h"
 #include "../osi/os_intro.h"
+#include "osi_linux_int_fns.h"
 
 #include <glib.h>
 #include <stdio.h>
@@ -55,19 +56,70 @@ int panda_memory_errors;
 ****************************************************************** */
 
 /**
+ * @brief Resolves a file struct and returns its full pathname.
+ */
+static char *get_file_name(CPUState *env, PTR file_struct) {
+	char *name = NULL;
+	PTR file_dentry, file_mnt;
+
+	// Read addresses for dentry, vfsmnt structs.
+	file_dentry = get_file_dentry(env, file_struct);
+	file_mnt = get_file_mnt(env, file_struct);
+
+	if (unlikely(file_dentry == (PTR)NULL || file_mnt == (PTR)NULL)) {
+		LOG_INFO("failure resolving file struct " TARGET_FMT_PTR "/" TARGET_FMT_PTR, file_dentry, file_mnt);
+		return NULL;
+	}
+
+	char *s1, *s2;
+	s1 = read_vfsmount_name(env, file_mnt);
+	s2 = read_dentry_name(env, file_dentry);
+	name = g_strconcat(s1, s2, NULL);
+	g_free(s1);
+	g_free(s2);
+
+	return name;
+}
+
+/**
+ * @brief Resolves a file descriptor and returns its full pathname.
+ * NULL is returned for file descriptors that can't be resolved
+ * (e.g. network sockets).
+ */
+static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
+	PTR files = get_files(env, task_struct);
+	PTR fds = get_files_fds(env, files);
+	PTR fd_file_ptr, fd_file;
+
+	// fds is a flat array with struct file pointers.
+	// Calculate the address of the nth pointer and read it.
+	fd_file_ptr = fds + fd*sizeof(PTR);
+	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
+		return NULL;
+	}
+	if (fd_file == (PTR)NULL) {
+		return NULL;
+	}
+
+	// Resolve file struct to name.
+	return get_file_name(env, fd_file);
+}
+
+/**
  * @brief Fills an OsiProc struct.
  */
 static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
     p->offset = task_addr;  // XXX: Not sure what this is. Storing task_addr here seems logical.
     p->name = get_name(env, task_addr, p->name);
-    panda_memory_errors = 0;
-    p->asid = get_pgd(env, task_addr);
-    p->pages = NULL; // OsiPage - TODO
     p->pid = get_pid(env, task_addr);
     p->ppid = get_real_parent_pid(env, task_addr);
+	p->pages = NULL; // OsiPage - TODO
+
+	panda_memory_errors = 0;
+	p->asid = get_pgd(env, task_addr);
 
 #if (OSI_LINUX_TEST)
-    LOG_INFO(TARGET_FMT_lx ":%d:%d:" TARGET_FMT_lx ":%s", task_addr, (int)p->ppid, (int)p->pid, p->asid, p->name);
+	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, p->ppid, p->pid, p->asid, p->name);
 #endif
 }
 
@@ -91,7 +143,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 
     if (vma_vm_file != (PTR)NULL) {     // Memory area is mapped from a file.
         vma_dentry = get_vma_dentry(env, vma_addr);
-        m->file = read_dentry_name(env, vma_dentry, NULL, 1);
+		m->file = read_dentry_name(env, vma_dentry);
         m->name = g_strrstr (m->file, "/");
         if (m->name != NULL) m->name = g_strdup(m->name + 1);
     }
@@ -114,9 +166,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
     }
 
 #if (OSI_LINUX_TEST)
-    LOG_INFO(TARGET_FMT_lx ":" TARGET_FMT_lx ":" TARGET_FMT_ld "p:%s:%s",
-        m->offset, m->base, NPAGES(m->size), m->name, m->file
-    );
+	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PTR ":" TARGET_FMT_PID "p:%s:%s", m->offset, m->base, NPAGES(m->size), m->name, m->file);
 #endif
 }
 
@@ -174,6 +224,18 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
         // Garbage in p->name will cause fill_osiproc() to segfault.
         memset(p, 0, sizeof(OsiProc));
         fill_osiproc(env, p, ts_current);
+
+#if 0
+		/*********************************************************/
+		// Test of fd -> name resolution.
+		/*********************************************************/
+		for (int fdn=0; fdn<10; fdn++) {
+			char *s = get_fd_name(env, ts_current, fdn);
+			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
+			g_free(s);
+		}
+		/*********************************************************/
+#endif
 
         ts_current = get_task_struct_next(env, ts_current);
     } while(ts_current != (PTR)NULL && ts_current != ts_first);
@@ -278,6 +340,29 @@ void on_free_osiprocs(OsiProcs *ps) {
     g_free(ps);
     return;
 }
+
+
+
+/* ******************************************************************
+ osi_linux extra API
+****************************************************************** */
+char *osi_linux_resolve_fd(CPUState *env, OsiProc *p, int fd) {
+	char *name = get_fd_name(env, p->offset, fd);
+
+	if (unlikely(name == NULL)) goto make_name;
+
+	name = g_strchug(name);
+	if (unlikely(g_strcmp0(name, "") == 0)) goto make_name;
+
+	return name;
+
+make_name:
+	g_free(name);
+	name = g_strdup_printf("FD%d_%d", fd, (int)p->pid);
+	return name;
+}
+
+
 
 /**
  * @brief PPP callback to free memory allocated for an OsiModules struct.
@@ -393,4 +478,4 @@ void uninit_plugin(void *self) {
     return;
 }
 
-
+/* vim:set tabstop=4 softtabstop=4 noexpandtab */

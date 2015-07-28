@@ -37,6 +37,7 @@ struct task_info {
     int cred_offset;
     int comm_offset;            /**< Offset of the command name in `struct task_struct`. */
     size_t comm_size;           /**< Size of the command name. */
+    int files_offset;           /**< Offset for open files information. */
 };
 
 /*!
@@ -74,14 +75,20 @@ struct vma_info {
 };
 
 /*!
- * @brief Misc information and offsets.
+ * @brief Filesystem information and offsets.
  */
 struct fs_info {
-    int f_dentry_offset;
-    int f_path_offset;
+    int f_path_dentry_offset;
+    int f_path_mnt_offset;
+    int mnt_parent_offset;
+    int mnt_mountpoint_offset;
+    int mnt_root_offset;
     int d_name_offset;
     int d_iname_offset;
     int d_parent_offset;
+    int fdt_offset;
+    int fdtab_offset;
+    int fd_offset;
 };
 
 /*!
