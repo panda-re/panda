@@ -57,8 +57,8 @@ You can also pull plugin code from some other directory, i.e., not from `panda/q
 4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `panda_plugins/new_cool` and put the code for the new plugin there.
 5. Create a file `panda_plugins/config.panda` with names of enabled plugins as you would normally.
 6. You can use the the same makefile set-up as with regular plugins.  However, you'll have to `include ../extra-plugins-panda.mak` and not `panda.mak`
-7. configure with --extra-plugins-path=/home/you/personal_plugins
-8. Build as usual and you should compile `new_cool` plugin and its code be deposited in, e.g., `i386-softmmu/panda_plugins`
+7. configure with `--extra-plugins-path=/home/you/personal_plugins`
+8. Build as usual and you should compile `new_cool` plugin and its code will be deposited in, e.g., `i386-softmmu/panda_plugins`
 
         
     
