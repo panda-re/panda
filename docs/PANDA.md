@@ -51,14 +51,14 @@ It also means that your code can use the various target-specific macros, such as
 
 You can also pull plugin code from some other directory, i.e., not from `panda/qemu/panda_plugins`.  This allows you to maintain a separate repository of your personal plugins.  
 
-    1. Create a directory in which you will create personal plugins.  `/home/you/personal_plugins`
-    2. Create a subdirectory `personal_plugins/panda_plugins` there as well.
-    3. Copy `panda/qemu/extra_plugins_panda.mak` into that `panda_plugins` subdir.  Fix `SRC_PATH` variable in that file.
-    4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `panda_plugins/new_cool` and put the code for the new plugin there.
-    5. Create a file `panda_plugins/config.panda` with names of enabled plugins as you would normally.
-    6. You can use the the same makefile set-up as with regular plugins.  However, you'll have to `include ../extra-plugins-panda.mak` and not `panda.mak`
-    7. configure with --extra-plugins-path=/home/you/personal_plugins
-    8. Build as usual and you should compile `new_cool` plugin and its code be deposited in, e.g., `i386-softmmu/panda_plugins`
+1. Create a directory in which you will create personal plugins.  `/home/you/personal_plugins`
+2. Create a subdirectory `personal_plugins/panda_plugins` there as well.
+3. Copy `panda/qemu/extra_plugins_panda.mak` into that `panda_plugins` subdir.  Fix `SRC_PATH` variable in that file.
+4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `panda_plugins/new_cool` and put the code for the new plugin there.
+5. Create a file `panda_plugins/config.panda` with names of enabled plugins as you would normally.
+6. You can use the the same makefile set-up as with regular plugins.  However, you'll have to `include ../extra-plugins-panda.mak` and not `panda.mak`
+7. configure with --extra-plugins-path=/home/you/personal_plugins
+8. Build as usual and you should compile `new_cool` plugin and its code be deposited in, e.g., `i386-softmmu/panda_plugins`
 
         
     
