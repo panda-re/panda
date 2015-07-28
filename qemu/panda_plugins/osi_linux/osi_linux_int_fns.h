@@ -8,3 +8,5 @@
 char *osi_linux_resolve_fd(CPUState *env, OsiProc *p, int fd);
 
 #endif
+
+/* vim:set tabstop=4 softtabstop=4 noexpandtab */
