@@ -80,6 +80,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
     READ_INFO_INT(task.cred_offset, err, err_task);
     READ_INFO_INT(task.comm_offset, err, err_task);
     READ_INFO_INT(task.comm_size, err, err_task);
+    READ_INFO_INT(task.files_offset, err, err_task);
 
     /* init_task address is always read as uint64 and then cast to (target-specific) target_ulong */
     init_addr = g_key_file_get_uint64(keyfile, group_real, "task.init_addr", &err);
@@ -109,11 +110,17 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
     READ_INFO_INT(vma.vm_flags_offset, err, err_vma);
 
     /* read fs information */
-    READ_INFO_INT(fs.f_dentry_offset, err, err_fs);
-    READ_INFO_INT(fs.f_path_offset, err, err_fs);
+    READ_INFO_INT(fs.f_path_dentry_offset, err, err_fs);
+    READ_INFO_INT(fs.f_path_mnt_offset, err, err_fs);
+    READ_INFO_INT(fs.mnt_parent_offset, err, err_fs);
+    READ_INFO_INT(fs.mnt_mountpoint_offset, err, err_fs);
+    READ_INFO_INT(fs.mnt_root_offset, err, err_fs);
     READ_INFO_INT(fs.d_name_offset, err, err_fs);
     READ_INFO_INT(fs.d_iname_offset, err, err_fs);
     READ_INFO_INT(fs.d_parent_offset, err, err_fs);
+    READ_INFO_INT(fs.fdt_offset, err, err_fs);
+    READ_INFO_INT(fs.fdtab_offset, err, err_fs);
+    READ_INFO_INT(fs.fd_offset, err, err_fs);
 
     /* read kernel full name */
     READ_INFO_STRING(name, err, err_misc);
