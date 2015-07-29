@@ -23,7 +23,7 @@ extern "C" {
 #include "monitor.h"
 #include "cpu.h"
 #include "panda_plugin.h"
-#include "../taint/taint_ext.h"
+    //#include "../taint/taint_ext.h"
 #include "rr_log.h"
 #include "panda_plugin_plugin.h"
 
@@ -45,7 +45,7 @@ void uninit_plugin(void *);
 
 }
 
-#include "../taint/taint_processor.h"
+//#include "../taint/taint_processor.h"
 #include "panda_common.h"
 
 #include "index.hpp"
@@ -238,13 +238,36 @@ std::map < uint32_t, std::map < uint32_t, std::string > >  bircache;
 float sec;
 
 
+
+uint32_t run_length = 0;
+uint32_t longest_run = 0;
+
+void run_stats() {
+    //    printf ("run_stats: run_length = %d\n", run_length);
+    if (run_length > 40) {
+        printf ("long run: %d\n", run_length);
+    }
+    if (run_length > longest_run) {
+        longest_run = run_length;
+        printf ("new longest run %d\n", longest_run);
+    }
+}
+
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (tb->size > 16) {         
         target_ulong asid = panda_current_asid(env);        
         if ((bircache.count(asid) != 0) && (bircache[asid].count(tb->pc) != 0)) {
             // its in the cache
+            std::string foo = bircache[asid][tb->pc];
+            if (foo.compare("unknown") == 0) {
+                run_stats();
+                run_length = 0;
+            }
+            else {
+                run_length ++;
+            }
             printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-            printf ("bir cache --  %s \n", bircache[asid][tb->pc].c_str());
+            printf ("birc -- %s run %d \n", foo.c_str(), run_length);
         }
         else {
             // not in cache
@@ -261,15 +284,23 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             uint32_t argmax;
             float score;
             query_with_passage (indc, &passage, pps, &argmax, &score);
-            printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-            if ( score > 2.0 ) {
+            
+            if ( score > 2) {
                 uint32_t the_offset;
                 uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
+                run_length ++;
                 std::string the_filename = get_passage_name(indc, psgid, &the_offset);            
-                bircache[asid][tb->pc] = the_filename + "-" + (std::to_string(the_offset));
-                printf ("bir -- %.3f %s\n", score, bircache[asid][tb->pc].c_str()); 
-           }      
+                char scorebuf[6];
+                sprintf (scorebuf, "%.3f", score);
+                bircache[asid][tb->pc] = (std::string(scorebuf)) + " " + the_filename + "-" + (std::to_string(the_offset));
+                printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+                printf ("bir -- %s run %d\n",  bircache[asid][tb->pc].c_str(), run_length); 
+
+            }      
             else {
+                run_stats();
+                run_length = 0;
+                printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
                 printf ("bir -- %.3f unknown\n", score);
                 bircache[asid][tb->pc] = "unknown";
             }
