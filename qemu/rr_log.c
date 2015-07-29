@@ -116,7 +116,7 @@ static RR_log_entry *rr_queue_tail;
 //mz Other useful things
 //
 //mz from vl.c
-extern void log_all_cpu_states(void);
+//extern void log_all_cpu_states(void);
 
 /******************************************************************************************/
 /* UTILITIES */
@@ -1481,7 +1481,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
     snapshot_ret = do_savevm_rr(get_monitor(), name_buf);
-    log_all_cpu_states();
+    //log_all_cpu_states();
   }
 
   // save the time so we can report how long record takes
@@ -1522,7 +1522,7 @@ void rr_do_end_record(void) {
   time(&rr_end_time);
   printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
   
-  log_all_cpu_states();
+  //log_all_cpu_states();
 
   rr_destroy_log();
 
@@ -1571,7 +1571,7 @@ int rr_do_begin_replay(const char *file_name_full, void *cpu_state) {
       return snapshot_ret;
   }*/
   printf ("... done.\n");
-  log_all_cpu_states();
+  //log_all_cpu_states();
 
   // save the time so we can report how long replay takes
   time(&rr_start_time);
@@ -1660,7 +1660,7 @@ void rr_do_end_replay(int is_error) {
     rr_queue_head = NULL;
     rr_queue_tail = NULL;
     //mz print CPU state at end of replay
-    log_all_cpu_states();
+    //log_all_cpu_states();
     // close logs
     rr_destroy_log();
     // turn off replay
