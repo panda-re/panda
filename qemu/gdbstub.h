@@ -35,6 +35,7 @@ void gdb_register_coprocessor(CPUState *env,
 #ifdef CONFIG_USER_ONLY
 int gdbserver_start(int);
 #else
+bool is_gdb_device(const void *opaque);
 int gdbserver_start(const char *port);
 #endif
 
