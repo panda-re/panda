@@ -1605,7 +1605,7 @@ void rr_do_end_replay(int is_error) {
         printf ("ERROR: replay failed!\n");
     }
     else {
-        printf ("Replay completed successfully.\n");
+        printf ("Replay completed successfully. 1\n");
     }
 
     time_t rr_end_time;
@@ -1636,7 +1636,7 @@ void rr_do_end_replay(int is_error) {
     }
     //mz some more sanity checks - the queue should contain only the RR_LAST element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL && rr_queue_head->header.kind == RR_LAST) {
-        printf("Replay completed successfully.");
+        printf("Replay completed successfully 2.\n");
     }
     else {
         if (is_error) {
