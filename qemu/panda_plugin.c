@@ -452,6 +452,18 @@ target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target
     return defval;
 }
 
+uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval) {
+    if (!args) return defval;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return strtoull(args->list[i].value, NULL, 0);
+        }
+    }
+    return defval;
+}
+
+
 uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval) {
     if (!args) return defval;
     int i;
