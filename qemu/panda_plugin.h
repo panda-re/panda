@@ -777,6 +777,7 @@ panda_arg_list *panda_get_args(const char *plugin_name);
 void panda_free_args(panda_arg_list *args);
 
 target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
+uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);
 uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);
 double panda_parse_double(panda_arg_list *args, const char *argname, double defval);
 // Returns true if arg present, unless arg=false or arg=no exists.
