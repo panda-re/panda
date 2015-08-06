@@ -109,7 +109,7 @@ void qemu_iohandler_fill(int *pnfds, fd_set *readfds, fd_set *writefds, fd_set *
         //mz monitor device. if not, continue (only in replay)
         if (rr_in_replay() || rr_replay_requested) {
             //mz lives in monitor.c. opaque is CharDriverState *?
-            if ( !is_monitor_device(ioh->opaque) && !is_gdb_device(ioh->opaque))
+            if ( ! is_monitor_device(ioh->opaque))
                 continue;
         }
         if (ioh->fd_read &&

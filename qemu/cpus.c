@@ -462,10 +462,7 @@ bool all_cpu_threads_idle(void)
 {
     CPUState *env;
 
-    // PH 07.2015 This line breaks the GDB stub and the monitor by preventing
-    // vm_stops. I'm disabling it for now but no guarantees it won't cause
-    // other problems.
-    //if (rr_in_replay()) return false;
+    if (rr_in_replay()) return false;
 
     for (env = first_cpu; env != NULL; env = env->next_cpu) {
         if (!cpu_thread_is_idle(env)) {
