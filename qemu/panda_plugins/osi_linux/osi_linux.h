@@ -12,21 +12,21 @@
  *
  *
  * @author Manolis Stamatogiannakis <manolis.stamatogiannakis@vu.nl>
- * @copyright   This work is licensed under the terms of the GNU GPL, version 2.
- *              See the COPYING file in the top-level directory. 
+ * @copyright This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
  */
 #ifndef OSI_LINUX_H
 #define OSI_LINUX_H
 
 // For byte array reversal.
 #define PLUGIN_NAME "osi_linux"
-#define DEFAULT_KERNELINFO_GROUP "debian-3.2.63-i686"
+#define DEFAULT_KERNELINFO_GROUP "debian-3.2.65-i686"
 
 /**
  * @brief Pointer type of the guest VM.
  *
  * @note This definition implies that the guest VM pointer size matches the
- * size of unsigned long of the target processor. This is a reasonable 
+ * size of unsigned long of the target processor. This is a reasonable
  * assumption to make -- at least in the context of a research prototype.
  */
 #define PTR target_ulong
@@ -73,9 +73,9 @@
  * @brief Platform specific macro for retrieving the page directory address.
  */
 #if defined(TARGET_I386)
-#define _PGD    (env->cr[3])
+#define _PGD		(env->cr[3])
 #elif defined(TARGET_ARM)
-#define _PGD    (env->cp15.c2_base0 & env->cp15.c2_base_mask)
+#define _PGD		(env->cp15.c2_base0 & env->cp15.c2_base_mask)
 #else
 #error	"_PGD macro not defined for target architecture."
 #endif
@@ -90,11 +90,17 @@
 /* check for supervisor mode in the Current Program Status register */
 #define _IN_KERNEL ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC)
 #else
-#error  "_IN_KERNEL macro not defined for target architecture."
+#error	"_IN_KERNEL macro not defined for target architecture."
 #endif
 
 #define LOG_ERR(fmt, args...) fprintf(stderr, "ERROR(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
 #define LOG_INFO(fmt, args...) fprintf(stderr, "INFO(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
+
+/** @brief Print format for guest VM pointers. */
+#define TARGET_FMT_PTR TARGET_FMT_lx
+
+/** @brief Print format for guest VM pids. */
+#define TARGET_FMT_PID "%5d"
 
 extern struct kernelinfo ki;
 extern int panda_memory_errors;
@@ -103,33 +109,33 @@ extern int panda_memory_errors;
  * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
  * inlines for retrieving data based on a location+offset.
  */
-#define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue)                        \
-static inline _retType _name(CPUState* env, PTR _paramName) {                                             \
-  _retType _t;                                                                                            \
-  if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
-    panda_memory_errors++;                                                                                \
-    return (_errorRetValue);                                                                              \
-  }                                                                                                       \
-  return (_t);                                                                                            \
+#define IMPLEMENT_OFFSET_GET(_name, _paramName, _retType, _offset, _errorRetValue) \
+static inline _retType _name(CPUState* env, PTR _paramName) { \
+	_retType _t; \
+	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset, (uint8_t *)&_t, sizeof(_retType), 0)) { \
+		panda_memory_errors++; \
+		return (_errorRetValue); \
+	} \
+	return (_t); \
 }
 
 /**
- * @brief IMPLEMENT_OFFSET_GET is a macro for generating uniform
+ * @brief IMPLEMENT_OFFSET_GET2L is a macro for generating uniform
  * inlines for retrieving data based on a *(location+offset1) + offset2.
  */
-#define IMPLEMENT_OFFSET_GET2L(_name, _paramName, _retType1, _offset1, _retType2, _offset2, _errorRetValue)   \
-static inline _retType2 _name(CPUState* env, PTR _paramName) {                                                \
-  _retType1 _t1;                                                                                              \
-  _retType2 _t2;                                                                                              \
-  if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) {  \
-    panda_memory_errors++;                                                                                    \
-    return (_errorRetValue);                                                                                  \
-  }                                                                                                           \
-  if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) {         \
-    panda_memory_errors++;                                                                                    \
-    return (_errorRetValue);                                                                                  \
-  }                                                                                                           \
-  return (_t2);                                                                                               \
+#define IMPLEMENT_OFFSET_GET2L(_name, _paramName, _retType1, _offset1, _retType2, _offset2, _errorRetValue) \
+static inline _retType2 _name(CPUState* env, PTR _paramName) { \
+	_retType1 _t1; \
+	_retType2 _t2; \
+	if (-1 == panda_virtual_memory_rw(env, _paramName + _offset1, (uint8_t *)&_t1, sizeof(_retType1), 0)) { \
+		panda_memory_errors++; \
+		return (_errorRetValue); \
+	} \
+	if (-1 == panda_virtual_memory_rw(env, _t1 + _offset2, (uint8_t *)&_t2, sizeof(_retType2), 0)) { \
+		panda_memory_errors++; \
+		return (_errorRetValue); \
+	} \
+	return (_t2); \
 }
 
 
@@ -243,21 +249,58 @@ IMPLEMENT_OFFSET_GET(get_vma_vm_file, vma_struct, PTR, ki.vma.vm_file_offset, 0)
 /**
  * @brief Retrieves the dentry associated with a vma_struct.
  *
- * @note Old DECAF code used different code, depending on whether ki.fs.f_dentry_offset was available.
- * It is assumed here that the offset is always available (can't think why it shouldn't be).
- * From Linux 2.6.20 onwards, f_dentry is a pseudo-member of the file struct.
- *
- * @see https://github.com/torvalds/linux/commit/0f7fc9e4d03987fe29f6dd4aa67e4c56eb7ecb05
+ * XXX: Convert uses of this to the single level getter of f_path_dentry_offset.
+ * Operating on file structs vs vma structs, will help to share code between
+ * mm resolution and fd resolution.
  */
-IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_dentry_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_path_dentry_offset, 0)
 
 /**
  * @brief Retrieves the vfsmount dentry associated with a vma_struct.
+ *
+ * XXX: Reading the vfsmount dentry is required to get the full pathname of files not located in the root fs.
+ * This hasn't been implemented yet...
  */
-//IMPLEMENT_OFFSET_GET2L(get_vma_vfsmount_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_dentry_offset, 0)
+IMPLEMENT_OFFSET_GET2L(get_vma_vfsmount_dentry, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_path_dentry_offset, 0)
 
-// TODO: temp names
-//IMPLEMENT_OFFSET_GET2L(get_dentry1, vma_struct, PTR, ki.vma.vm_file_offset, PTR, ki.fs.f_path_offset+0000, 0)
+/**
+ * @brief Retrieves the address of the files struct associated with a task_struct.
+ */
+IMPLEMENT_OFFSET_GET(get_files, task_struct, PTR, ki.task.files_offset, 0)
+
+/**
+ * @brief Retrieves the array of file structs from the files struct.
+ * The n-th element of the array corresponds to the n-th open fd.
+ */
+IMPLEMENT_OFFSET_GET2L(get_files_fds, files_struct, PTR, ki.fs.fdt_offset, PTR, ki.fs.fd_offset, 0)
+
+/**
+ * @brief Retrieves the dentry struct associated with a file struct.
+ */
+IMPLEMENT_OFFSET_GET(get_file_dentry, file_struct, PTR, ki.fs.f_path_dentry_offset, 0)
+
+/**
+ * @brief Retrieves the vfsmount struct associated with a file struct.
+ */
+IMPLEMENT_OFFSET_GET(get_file_mnt, file_struct, PTR, ki.fs.f_path_mnt_offset, 0)
+
+/**
+ * @brief Retrieves the mnt_parent vfsmount struct associated with a vfsmount struct.
+ */
+IMPLEMENT_OFFSET_GET(get_mnt_parent, vfsmount_struct, PTR, ki.fs.mnt_parent_offset, 0)
+
+/**
+ * @brief Retrieves the dentry struct associated with a vfsmount struct.
+ */
+IMPLEMENT_OFFSET_GET(get_mnt_dentry, vfsmount_struct, PTR, ki.fs.mnt_mountpoint_offset, 0)
+
+/**
+ * @brief Retrieves the mnt_root dentry struct associated with a vfsmount struct.
+ *
+ * XXX: We don't use this anywhere. Marked for removal after verifying that we don't really need it. :)
+ */
+IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount_struct, PTR, ki.fs.mnt_root_offset, 0)
+
 
 /* ******************************************************************
  Slightly more complex inlines that can't be implemented as simple
@@ -267,107 +310,182 @@ IMPLEMENT_OFFSET_GET2L(get_vma_dentry, vma_struct, PTR, ki.vma.vm_file_offset, P
 /**
  * @brief Size of the qstr kernel struct. Used to resolve dentry struct to names.
  *
- *  Because the struct is simple with no conditionally defined members,
- *  we choose to not use kernel offsets read from kernelinfo.conf to retrieve it.
+ *	Because the struct is simple with no conditionally defined members,
+ *	we choose to not use kernel offsets read from kernelinfo.conf to retrieve it.
  *
  * @code{.c}
- *  struct qstr {
- *    unsigned int hash;
- *    unsigned int len;
- *    const unsigned char *name;
- *  };
+ *	struct qstr {
+ *		unsigned int hash;
+ *		unsigned int len;
+ *		const unsigned char *name;
+ *	};
  * @endcode
  */
 #define _SIZEOF_QSTR (2*sizeof(target_uint) + sizeof(PTR))
 
 /**
+ * @brief Retrieves the n-th file struct from an fd file array. (pp 479)
+ */
+static inline PTR get_fd_file(CPUState *env, PTR fd_file_array, int n) {
+	PTR fd_file, fd_file_ptr;
+
+	// Compute address of the pointer to the file struct of the n-th fd.
+	fd_file_ptr = fd_file_array+n*sizeof(PTR);
+
+	// Read address of the file struct.
+	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
+		panda_memory_errors++;
+		return (PTR)NULL;
+	}
+
+	return fd_file_ptr;
+}
+
+/**
  * @brief Retrieves the name of the file associated with a dentry struct.
  *
- * @note The old DECAF code used to check dentry.d_iname. This unecessary complicated
+ * The function traverses all the path components it meets until it
+ * reaches a mount point.
+ *
+ * @note The old DECAF code used to check dentry.d_iname. This unecessarily complicated
  * the implementation. dentry.d_iname is merely a buffer. When used, dentry.d_name->name
  * will merely point to this buffer instead of a dynamically allocated buffer.
  */
-static inline char *read_dentry_name(CPUState *env, PTR dentry, char *name, int recurse) {
-  PTR dentry_current;
-  uint8_t d_name[_SIZEOF_QSTR];
-  int err;
+static inline char *read_dentry_name(CPUState *env, PTR dentry) {
+	char *name = NULL;
+	PTR current_dentry;
+	uint8_t d_name[_SIZEOF_QSTR];
+	int err;
 
-  // current path component
-  char *pcomp = NULL;
-  target_uint pcomp_length = 0;
-  unsigned int pcomp_capacity = 32;
+	// current path component
+	char *pcomp = NULL;
+	target_uint pcomp_length = 0;
+	unsigned int pcomp_capacity = 32;
 
-  // all path components read so far
-  char **pcomps = NULL;
-  unsigned int pcomps_idx = 0;
-  unsigned int pcomps_capacity = 16;
+	// all path components read so far
+	char **pcomps = NULL;
+	unsigned int pcomps_idx = 0;
+	unsigned int pcomps_capacity = 16;
 
-  // for reversing pcomps
-  char **pcomps_start, **pcomps_end;
+	// for reversing pcomps
+	char **pcomps_start, **pcomps_end;
 
-  pcomp = (char *)g_malloc(pcomp_capacity * sizeof(char));
-  pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
-  do {
-    dentry_current = dentry;
+	pcomp = (char *)g_malloc(pcomp_capacity * sizeof(char));
+	pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
+	do {
+		current_dentry = dentry;
 
-    // read d_name qstr
-    err = panda_virtual_memory_rw(env, dentry_current + ki.fs.d_name_offset, d_name, _SIZEOF_QSTR, 0);
-    if (-1 == err) goto error;
+		// read d_name qstr
+		err = panda_virtual_memory_rw(env, current_dentry + ki.fs.d_name_offset, d_name, _SIZEOF_QSTR, 0);
+		if (-1 == err) goto error;
 
-    // read component
-    pcomp_length = *(target_uint *)(d_name + sizeof(target_uint)) + 1;
-    if (pcomp_capacity < pcomp_length) {
-      pcomp_capacity = pcomp_length;
-      pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
-    }
-    err = panda_virtual_memory_rw(env, *(PTR *)(d_name + 2*sizeof(target_uint)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
-    if (-1 == err) goto error;
+		// read component
+		pcomp_length = *(target_uint *)(d_name + sizeof(target_uint)) + 1;
+		if (pcomp_capacity < pcomp_length) {
+			pcomp_capacity = pcomp_length;
+			pcomp = (char *)g_realloc(pcomp, pcomp_capacity * sizeof(char));
+		}
+		err = panda_virtual_memory_rw(env, *(PTR *)(d_name + 2*sizeof(target_uint)), (uint8_t *)pcomp, pcomp_length*sizeof(char), 0);
+		if (-1 == err) goto error;
 
-    // copy component
-    if (pcomps_idx == pcomps_capacity - 1) { // -1 leaves room for NULL termination
-      pcomps_capacity *= 2;
-      pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
-    }
-    pcomps[pcomps_idx++] = g_strdup(pcomp);
+		// copy component
+		if (pcomps_idx == pcomps_capacity - 1) { // -1 leaves room for NULL termination
+			pcomps_capacity *= 2;
+			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
+		}
+		pcomps[pcomps_idx++] = g_strdup(pcomp);
 
-    // read the parent dentry
-    err = panda_virtual_memory_rw(env, dentry_current + ki.fs.d_parent_offset, (uint8_t *)&dentry, sizeof(PTR), 0);
-    if (-1 == err) goto error;
-  } while (recurse && (dentry != dentry_current));
+		// read the parent dentry
+		err = panda_virtual_memory_rw(env, current_dentry + ki.fs.d_parent_offset, (uint8_t *)&dentry, sizeof(PTR), 0);
+		if (-1 == err) goto error;
+	} while (dentry != current_dentry);
 
-  // reverse components order
-  g_free(pcomp);
-  pcomps_start = pcomps;
-  pcomps_end = &pcomps[pcomps_idx - 1];
-  while (pcomps_start < pcomps_end) {
-    pcomp = *pcomps_start;
-    *pcomps_start = *pcomps_end;
-    *pcomps_end = pcomp;
-    pcomps_start++;
-    pcomps_end--;
-  }
+	// reverse components order
+	g_free(pcomp);
+	pcomps_start = pcomps;
+	pcomps_end = &pcomps[pcomps_idx - 1];
+	while (pcomps_start < pcomps_end) {
+		pcomp = *pcomps_start;
+		*pcomps_start = *pcomps_end;
+		*pcomps_end = pcomp;
+		pcomps_start++;
+		pcomps_end--;
+	}
 
-  // join components and return
-  g_free(name);
-  pcomps[pcomps_idx] = NULL;      // NULL terminate vector
-  if (dentry == dentry_current) { // Eliminate root directory.
-    pcomps[0][0] = '\0';
-  }
-  name = g_strjoinv("/", pcomps);
-  g_strfreev(pcomps);
+	// join components and return
+	pcomps[pcomps_idx] = NULL;			// NULL terminate vector
+	if (dentry == current_dentry) { // Eliminate root directory.
+		pcomps[0][0] = '\0';
+	}
+	name = g_strjoinv("/", pcomps);
+	g_strfreev(pcomps);
 
-  return name;
+	return name;
 
 error:
-  LOG_INFO("Error reading d_entry.");
-  panda_memory_errors++;
+	LOG_INFO("Error reading d_entry.");
+	panda_memory_errors++;
+	pcomps[pcomps_idx] = NULL;
+	g_free(pcomp);
+	g_strfreev(pcomps);
 
-  g_free(name);
-  pcomps[pcomps_idx] = NULL;
-  g_free(pcomp);
-  g_strfreev(pcomps);
+	return NULL;
+}
 
-  return NULL;
+/**
+ * @brief Retrieves the name of the file associated with a dentry struct.
+ *
+ * The function traverses all the mount points to the root mount.
+ */
+static inline char *read_vfsmount_name(CPUState *env, PTR vfsmount) {
+	char *name = NULL;
+	PTR current_vfsmount, current_vfsmount_parent, current_vfsmount_dentry;
+
+	// current path component
+	char *pcomp = NULL;
+
+	// all path components read so far
+	char **pcomps = NULL;
+	unsigned int pcomps_idx = 0;
+	unsigned int pcomps_capacity = 16;
+
+	// for reversing pcomps
+	char **pcomps_start, **pcomps_end;
+
+	pcomps = (char **)g_malloc(pcomps_capacity * sizeof(char *));
+	current_vfsmount_parent = vfsmount;
+	do {
+		current_vfsmount = current_vfsmount_parent;
+		current_vfsmount_parent = get_mnt_parent(env, current_vfsmount);
+		current_vfsmount_dentry = get_mnt_dentry(env, current_vfsmount);
+
+		// read and copy component
+		pcomp = read_dentry_name(env, current_vfsmount_dentry);
+		if (pcomps_idx == pcomps_capacity - 1) { // -1 leaves room for NULL termination
+			pcomps_capacity *= 2;
+			pcomps = (char **)g_realloc(pcomps, pcomps_capacity * sizeof(char *));
+		}
+		pcomps[pcomps_idx++] = pcomp;
+
+	} while(current_vfsmount != current_vfsmount_parent);
+
+	// reverse components order
+	pcomps_start = pcomps;
+	pcomps_end = &pcomps[pcomps_idx - 1];
+	while (pcomps_start < pcomps_end) {
+		pcomp = *pcomps_start;
+		*pcomps_start = *pcomps_end;
+		*pcomps_end = pcomp;
+		pcomps_start++;
+		pcomps_end--;
+	}
+
+	// join components and return
+	pcomps[pcomps_idx] = NULL;			// NULL terminate vector
+	name = g_strjoinv("", pcomps);	// slashes are included in pcomps
+	g_strfreev(pcomps);
+
+	return name;
 }
 
 /**
@@ -377,23 +495,24 @@ error:
  * This means that we don't have to account for the terminating '\0'.
  */
 static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
-  if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
-  else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
-  if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
-    panda_memory_errors++;
-    strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
-  }
-  return name;
+	if (name == NULL) { name = (char *)g_malloc0(ki.task.comm_size * sizeof(char)); }
+	else { name = (char *)g_realloc(name, ki.task.comm_size * sizeof(char)); }
+	if (-1 == panda_virtual_memory_rw(env, task_struct + ki.task.comm_offset, (uint8_t *)name, ki.task.comm_size * sizeof(char), 0)) {
+		panda_memory_errors++;
+		strncpy(name, "N/A", ki.task.comm_size*sizeof(char));
+	}
+	return name;
 }
 
 /**
  * @brief Retrieves the address of the following task_struct in the process list.
  */
 static inline PTR get_task_struct_next(CPUState *env, PTR task_struct) {
-  PTR tasks = get_tasks(env, task_struct);
+	PTR tasks = get_tasks(env, task_struct);
 
-  if (!tasks) return (PTR)NULL;
-  else return tasks-ki.task.tasks_offset;
+	if (!tasks) return (PTR)NULL;
+	else return tasks-ki.task.tasks_offset;
 }
-
 #endif
+
+/* vim:set tabstop=4 softtabstop=4 noexpandtab */
