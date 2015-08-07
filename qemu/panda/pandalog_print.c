@@ -7,7 +7,8 @@
 #include "pandalog.h"
 #include "pandalog_print.h"
 
-#ifdef LAVA
+
+#ifdef LAVA_PANDALOG_PRINT
 #include "../../../lava/src_clang/lavaDB.h"
 
 std::map<std::string,uint32_t> str2ind;
@@ -17,7 +18,6 @@ char *gstr(uint32_t ind) {
     return (char *) (ind2str[ind].c_str());
 }
 #endif
-
 
 void pprint_process(const char *label, Panda__Process *p) {
     printf ("(process, %s, %d, %s)", label, p->pid, p->name);
@@ -95,7 +95,8 @@ void pprint_call_stack(Panda__CallStack *cs) {
 }
 
 
-#ifdef LAVA
+
+#ifdef LAVA_PANDALOG_PRINT
 
 void pprint_attack_point(Panda__AttackPoint *ap) {        
     printf ("(attack_point,(%s,", gstr(ap->info));
@@ -112,7 +113,6 @@ void pprint_src_info(Panda__SrcInfo *si) {
 }
 
 #endif
-
 
 void pprint_taint_query_unique_label_set(Panda__TaintQueryUniqueLabelSet *tquls) {
     printf("(unique_label_set,0x%" PRIx64 ",", tquls->ptr);
@@ -149,7 +149,7 @@ void pprint_taint_query_hypercall(Panda__TaintQueryHypercall *tqh) {
     printf ("%d,", tqh->num_tainted);
     pprint_call_stack(tqh->call_stack);
     printf (",");
-#ifdef LAVA
+#ifdef LAVA_PANDALOG_PRINT
     pprint_src_info(tqh->src_info);
     printf (",");
 #endif
@@ -195,7 +195,7 @@ int started = 0;
 
 void pprint_ple(Panda__LogEntry *ple) {
     if (!started) {
-#ifdef LAVA
+#ifdef LAVA_PANDALOG_PRINT
         str2ind = LoadDB(std::string("/tmp/lavadb"));
         ind2str = InvertDB(str2ind);
 #endif
@@ -239,14 +239,11 @@ void pprint_ple(Panda__LogEntry *ple) {
         pprint_call_stack(ple->call_stack);
     }
 
-#ifdef LAVA
-
+#ifdef LAVA_PANDALOG_PRINT
     if (ple->attack_point) {
         pprint_attack_point(ple->attack_point);
     }
-
 #endif
-
     if (ple->tainted_branch) {
         pprint_tainted_branch(ple->tainted_branch);
     }
