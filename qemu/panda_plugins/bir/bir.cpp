@@ -254,7 +254,7 @@ void run_stats() {
 }
 
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (tb->size > 16) {         
+    if (tb->size > 5) {         
         target_ulong asid = panda_current_asid(env);        
         if ((bircache.count(asid) != 0) && (bircache[asid].count(tb->pc) != 0)) {
             // its in the cache
@@ -276,35 +276,41 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             if (tb->size < len) {
                 len = tb->size;
             }
-            panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
-            Passage passage = index_passage (indc, /* update_lexicon = */ false,
-                                             buf, len,
-                                             /* note: we dont really care about passage ind */
-                                             /* passage_ind = */ 0xdeadbeef);
-            uint32_t argmax;
-            float score;
-            query_with_passage (indc, &passage, pps, &argmax, &score);
+            len = indc->passage_len_bytes;
+            int ret = panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
+            if (ret != -1) {
+                Passage passage = index_passage (indc, /* update_lexicon = */ false,
+                                                 buf, len,
+                                                 /* note: we dont really care about passage ind */
+                                                 /* passage_ind = */ 0xdeadbeef);
+                uint32_t argmax;
+                float score;
+                query_with_passage (indc, &passage, pps, &argmax, &score);
             
-            if ( score > 2) {
-                uint32_t the_offset;
-                uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
-                run_length ++;
-                std::string the_filename = get_passage_name(indc, psgid, &the_offset);            
-                char scorebuf[6];
-                sprintf (scorebuf, "%.3f", score);
-                bircache[asid][tb->pc] = (std::string(scorebuf)) + " " + the_filename + "-" + (std::to_string(the_offset));
-                printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                printf ("bir -- %s run %d\n",  bircache[asid][tb->pc].c_str(), run_length); 
-
-            }      
-            else {
-                run_stats();
-                run_length = 0;
-                printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                printf ("bir -- %.3f unknown\n", score);
-                bircache[asid][tb->pc] = "unknown";
+                if ( score > 2) {
+                    uint32_t the_offset;
+                    uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
+                    run_length ++;
+                    std::string the_filename = get_passage_name(indc, psgid, &the_offset);            
+                    char scorebuf[6];
+                    sprintf (scorebuf, "%.3f", score);
+                    bircache[asid][tb->pc] = (std::string(scorebuf)) + " " + the_filename + "-" + (std::to_string(the_offset));
+                    printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+                    printf ("bir -- %s run %d\n",  bircache[asid][tb->pc].c_str(), run_length); 
+                    
+                }      
+                else {
+                    run_stats();
+                    run_length = 0;
+                    printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+                    printf ("bir -- %.3f unknown\n", score);
+                    bircache[asid][tb->pc] = "unknown";
+                }
             }
         }        
+    }
+    else {
+        printf ("pc=0x" TARGET_FMT_lx " len=%d  \n", tb->pc, tb->size);
     }
     return 0;
 }
