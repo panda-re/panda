@@ -12,28 +12,47 @@ Sketch of some of the structures used for Linux OS introspection. Only relevant 
             unsigned long vm\_start;     /\* start address within vm_mm \*/
             unsigned long vm\_end;       /\* first byte after our end within vm_mm \*/
             unsigned long vm\_flags;     /\* RWXS flags \*/
-            struct file \*vm\_file {{     /\* file we map to (can be NULL): [fs.h][file], pp471 */
+            struct file \*vm\_file {{     /\* file we map to (can be NULL): [fs.h][file], pp471 \*/
                 struct path f\_path {{   /\* not pointer!: [path.h][path] \*/
-                    struct vfsmount \*mnt {{    /\* mounted fs containing file: [mount.h][vfsmount] \*/
-                        struct dentry *mnt_mountpoint; /\* dentry of mountpoint: [dcache.h][dentry], pp475 \*/
-                        struct dentry *mnt_root; /\* root of the mounted tree: [dcache.h][dentry], pp475 \*/
+                    struct vfsmount \*mnt {{    /\* mounted fs containing file: [mount.h][vfsmount], pp486 \*/
+                        struct vfsmount \*mnt_parent;
+                        struct dentry \*mnt_mountpoint; /\* dentry of mountpoint: [dcache.h][dentry], pp475 \*/
+                        struct dentry \*mnt_root; /\* root of the mounted tree: [dcache.h][dentry], pp475 \*/
                     }};
                     struct dentry \*dentry {{    /\* where file is located on fs: [dcache.h][dentry], pp475 \*/
-                        struct qstr d_name {{   /\* not pointer!: [dcache.h][qstr] \*/
+                        struct qstr d\_name {{   /\* not pointer!: [dcache.h][qstr] \*/
                         	unsigned int len;
                             const unsigned char \*name;
                         }};
                         unsigned char d\_iname[DNAME\_INLINE\_LEN]; /\* should not be used directly! when the name is small enough, d_name->name will point here. \*/  
                     }}; /\* dentry \*/
                 }}; /\* path /*
-                #define f\_dentry f\_path.dentry  /\* pseudo-member \*/
-                #define f\_vfsmnt f\_path.mnt     /\* pseudo-member \*/
             }}; /\* file \*/
         }}; /\* vm\_area\_struct \*/
     }}; /\* mm\_struct \*/
+    struct files\_struct \*files {{ /\* open files information: [fdtable.h][files_struct], ppXXX \*/
+        struct fdtable *fdt {{   /\* ??? this may point to fdtab -- VERIFY : [fdtable.h][fdtable] \*/
+            struct file **fd {{  /\* current fd array: [XXX][XXX] \*/
+            }};
+        }};
+        struct fdtable fdtab {{   /\* not pointer!: [fdtable.h][fdtable] \*/
+            struct file **fd {{  /\* current fd array: [XXX][XXX] \*/
+            }};
+        }};
+    }}; /\* files\_struct \*/
 } /\* task\_struct \*/
 </pre></big>
 
+<!-- fdt seems to point to fdtab in general. for a few tasks it doesn't.
+see
+
+print the tasks where fdt does not point to fdtab:
+grep lul f  | grep '0$' | awk '{print $3}' | sort | uniq -c
+
+see if for any of these tasks, fdt points to fdtab at some point:
+for t in $(grep lul f  | grep '0$' | awk '{print $3}' | sort | uniq); do grep  "lul.*$t.*1$" f; done
+
+-->
 
 [task_struct]: https://github.com/torvalds/linux/blob/v3.2/include/linux/sched.h#L1220
 [mm_struct]: https://github.com/torvalds/linux/blob/v3.2/include/linux/mm_types.h#L289
@@ -43,6 +62,8 @@ Sketch of some of the structures used for Linux OS introspection. Only relevant 
 [vfsmount]: https://github.com/torvalds/linux/blob/v3.2/include/linux/mount.h#L55
 [dentry]: https://github.com/torvalds/linux/blob/v3.2/include/linux/dcache.h#L116
 [qstr]: https://github.com/torvalds/linux/blob/v3.2/include/linux/dcache.h#L35
+[files_struct]: https://github.com/torvalds/linux/blob/v3.2/include/linux/fdtable.h#XXX
+[fdtable]: https://github.com/torvalds/linux/blob/v3.2/include/linux/fdtable.h#XXX
 
 
 # The kernel task list
