@@ -6,12 +6,20 @@
 
 extern "C" {
 
+    
 #include "rr_log.h"    
 #include "qemu-common.h"
 #include "cpu.h"
 #include "panda_plugin.h"
 #include "pandalog.h"
 #include "panda_common.h"
+
+#include "../osi/osi_types.h"
+#include "../osi/osi_ext.h"
+
+    // this provides the fd resolution magic
+#include "../osi_linux/osi_linux_ext.h"
+    
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../taint2/taint2_ext.h"
 #include "panda_plugin_plugin.h" 
@@ -239,8 +247,15 @@ uint32_t last_read_count;
 uint32_t last_read_buf;
 
 void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    printf ("saw read fd=%d\n", fd);
+    //    printf ("saw read fd=%d\n", fd);
 
+    /*
+    OsiProc *proc = get_current_process(env);
+    char *fn = osi_linux_resolve_fd(env, proc, fd);
+    printf ("fd=%d fn=[%s]\n", fd, fn);
+    */
+    
+    
     uint32_t asid = panda_current_asid(env);
     char *filename = 0;
     if (asidfd_to_filename.count(std::make_pair(asid, fd)) != 0) {
@@ -270,6 +285,23 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actual_count) {
+    /*
+    printf ("read_return: count=%d\n", actual_count);
+        
+    for (uint32_t i=0; i<16; i++) {
+        uint8_t c;
+        if (i < actual_count) {
+            int ret = panda_virtual_memory_rw(env, buf+i, (uint8_t *) &c, 1, 0);
+            if (ret!=-1) {
+                printf ("%d:0x%x ", i,c);
+                if ((i % 32) == 0) printf ("\n");
+            }
+        }
+    }
+    printf ("\n");
+    */
+        
+
     if (saw_read && panda_current_asid(env) == the_asid) {
         // These are the start and end of the current range of labels.
         uint32_t read_start = file_pos;
@@ -397,6 +429,15 @@ bool init_plugin(void *self) {
     printf ("end_label = %d\n", end_label);
     printf ("first_instr = %" PRId64 " \n", first_instr);
 
+    #if 0
+    panda_require("osi_linux");
+    assert(init_osi_linux_api());
+    #endif
+    
+    panda_require("osi");
+    // this sets up OS introspection API
+    assert(init_osi_api());
+    
     panda_require("syscalls2");
 
     // this sets up the taint api fn ptrs so we have access
