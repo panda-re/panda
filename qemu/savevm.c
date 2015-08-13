@@ -1991,7 +1991,7 @@ int qemu_loadvm_state(QEMUFile *f)
 
     while ((section_type = qemu_get_byte(f)) != QEMU_VM_EOF) {
         uint32_t instance_id, version_id, section_id;
-        uint64_t section_size;
+        uint64_t section_size = 0;
         SaveStateEntry *se;
         char idstr[257];
         int len;

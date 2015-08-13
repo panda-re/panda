@@ -1031,7 +1031,10 @@ TranslationBlock *tb_gen_code(CPUState *env,
     uint8_t *tc_ptr;
     tb_page_addr_t phys_pc, phys_page2;
     target_ulong virt_page2;
-    int code_gen_size, i;
+    int code_gen_size;
+#ifdef CONFIG_LLVM
+    int i;
+#endif
 
     phys_pc = get_page_addr_code(env, pc);
     tb = tb_alloc(pc);

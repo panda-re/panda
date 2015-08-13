@@ -33,6 +33,7 @@
 #endif
 
 #include "rr_log_all.h"
+#include "gdbstub.h"
 
 typedef struct IOHandlerRecord {
     int fd;

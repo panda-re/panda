@@ -57,7 +57,7 @@ std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 bool label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
     target_phys_addr_t pa = panda_virt_to_phys(env, virt_addr);
     if (pa == (target_phys_addr_t) -1) {
-        printf ("label_byte: virtual addr 0x%" PRIx64 " not available\n", virt_addr);
+        printf ("label_byte: virtual addr " TARGET_FMT_lx " not available\n", virt_addr);
         return false;
     }
     if (no_taint) {

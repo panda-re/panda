@@ -1006,7 +1006,7 @@ InvIndex *invert(IndexCommon *indc, Index *index) {
 }     
 
 
-
+__attribute__((unused))
 static bool compare_scores (const Score & s1, const Score & s2) {
     return (s1.val > s2.val);
 }
