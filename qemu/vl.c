@@ -1370,7 +1370,6 @@ void qemu_kill_report(void)
 {
     if (shutdown_signal != -1) {
         fprintf(stderr, "qemu: terminating on signal %d", shutdown_signal);
-        printf ("here i am\n");
         if (shutdown_pid == 0) {
             /* This happens for eg ^C at the terminal, so it's worth
              * avoiding printing an odd message in that case.
