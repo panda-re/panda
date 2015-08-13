@@ -2860,6 +2860,12 @@ static void gdb_sigterm_handler(int signal)
 }
 #endif
 
+bool is_gdb_device(const void *opaque) {
+    if (!gdbserver_state) return false;
+    return opaque == gdbserver_state->chr ||
+        opaque == gdbserver_state->mon_chr;
+}
+
 int gdbserver_start(const char *device)
 {
     GDBState *s;

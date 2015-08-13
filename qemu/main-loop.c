@@ -28,6 +28,7 @@
 #include "main-loop.h"
 
 #include "rr_log_all.h"
+#include "gdbstub.h"
 
 #ifndef _WIN32
 
