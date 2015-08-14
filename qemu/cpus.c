@@ -731,6 +731,10 @@ static void qemu_tcg_wait_io_event(void)
     CPUState *env;
 
     while (all_cpu_threads_idle()) {
+        // We're in replay, so replay the interrupt!
+        // Otherwise e.g. if the cpu has HLTd, it will just sit here forever.
+        if (rr_in_replay() && rr_num_instr_before_next_interrupt == 0) break;
+
        /* Start accounting real time to the virtual clock if the CPUs
           are idle.  */
         qemu_clock_warp(vm_clock);
