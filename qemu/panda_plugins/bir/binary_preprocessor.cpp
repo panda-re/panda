@@ -53,6 +53,7 @@ bool pdice (float prob_yes) {
 
 
 
+extern uint32_t max_row_length;
 
 int main (int argc, char **argv) {
 
@@ -63,7 +64,7 @@ int main (int argc, char **argv) {
         exit(1);
     }
     std::string pfx = std::string(argv[1]);
-    uint32_t max_row_length = atoi(argv[2]);
+    max_row_length = atoi(argv[2]);
 
     IndexCommon *indc = unmarshall_index_common(pfx, false);
     InvIndex *inv = unmarshall_invindex_min(pfx, indc);

@@ -847,6 +847,7 @@ int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, Gram
     //  printf ("occ=%d\n", occ);
     // some on-the-fly pruning
     if (occ > max_row_length) {
+        printf ("occ=%d\n", occ);
         return 0;
     }
     resize_doc_word(row, occ);
