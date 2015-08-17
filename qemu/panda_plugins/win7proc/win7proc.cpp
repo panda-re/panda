@@ -68,6 +68,7 @@ void uninit_plugin(void *);
 #define EPROC_NAME_OFF     0x16c
 
 const char *status_code(uint32_t code) {
+  static char result[32];
   switch (code) {
   case 0x0:
     return "STATUS_SUCCESS";
@@ -80,7 +81,6 @@ const char *status_code(uint32_t code) {
   case 0xC0000034:
     return "STATUS_OBJECT_NAME_NOT_FOUND";
   default:
-    char result[32] = {};
     snprintf(result, 32, "unknown code: %x", code);
     return (const char*)result;
   }
@@ -336,6 +336,7 @@ static char *read_unicode_string(CPUState *env, target_ulong pUstr) {
     return fileName;
 }
 
+__attribute__((unused))
 static std::wstring read_unicode_string_unicode(CPUState *env, target_ulong pUstr) {
   uint16_t fileNameLen;
   uint32_t fileNamePtr;

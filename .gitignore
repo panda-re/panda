@@ -79,6 +79,7 @@ qemu/x86_64-softmmu/
 qemu/install/*
 qemu/panda/pandalog.proto
 qemu/panda/pandalog.pb-c.*
+qemu/panda/pandalog_pb2.py
 qemu/panda_plugins/*/*_ext.h
 
 qemu/panda_plugins/syscalls/gen_syscall_ppp_boilerplate.cpp

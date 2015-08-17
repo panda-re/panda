@@ -44,4 +44,4 @@ $LLVM_BIT \
 --extra-cxxflags="-O2" \
 --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c -lprotobuf -lpthread"
 
-make -j $(nproc)
+make -j ${PANDA_NPROC:-$(nproc)}
