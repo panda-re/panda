@@ -476,7 +476,8 @@ void __pandalog_taint_query_free(Panda__TaintQuery *tq) {
 }
 
 
-
+// max length of strnlen or taint query
+#define LAVA_TAINT_QUERY_MAX_LEN 32
 
 // hypercall-initiated taint query of some src-level extent
 void lava_taint_query (PandaHypercallStruct phs) {
@@ -487,31 +488,45 @@ void lava_taint_query (PandaHypercallStruct phs) {
         // okay, taint is on and some labels have actually been applied 
         // is there *any* taint on this extent
         uint32_t num_tainted = 0;
-        for (uint32_t offset=0; offset<phs.len; offset++) {
+        bool is_strnlen = ((int) phs.len == -1);
+        uint32_t offset=0;
+        while (true) {
+        //        for (uint32_t offset=0; offset<phs.len; offset++) {
             uint32_t va = phs.buf + offset;
             uint32_t pa =  panda_virt_to_phys(env, va);
+            if (is_strnlen) {
+                uint8_t c;
+                panda_virtual_memory_rw(env, pa, &c, 1, false);
+                // null terminator
+                if (c==0) break;
+            }
             if ((int) pa != -1) {                         
                 Addr a = make_maddr(pa);
                 if (taint2_query(a)) {
                     num_tainted ++;
                 }
             }
+            offset ++;
+            // end of query by length or max string length
+            if (!is_strnlen && offset == phs.len) break;
+            if (is_strnlen && (offset == LAVA_TAINT_QUERY_MAX_LEN)) break;
         }
+        uint32_t len = offset;
         if (num_tainted) {
             // ok at least one byte in the extent is tainted
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
             *tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
             tqh->buf = phs.buf;
-            tqh->len = phs.len;
+            tqh->len = len;
             tqh->num_tainted = num_tainted;
             // obtain the actual data out of memory
-            // NOTE: first 32 bytes only!
-            uint32_t data[32];
-            uint32_t n = phs.len;
-            // grab at most 32 bytes from memory to pandalog
+            // NOTE: first X bytes only!
+            uint32_t data[LAVA_TAINT_QUERY_MAX_LEN];
+            uint32_t n = len;
+            // grab at most X bytes from memory to pandalog
             // this is just a snippet.  we dont want to write 1M buffer
-            if (32 < phs.len) n = 32;
+            if (LAVA_TAINT_QUERY_MAX_LEN < len) n = LAVA_TAINT_QUERY_MAX_LEN;
             for (uint32_t i=0; i<n; i++) {
                 data[i] = 0;
                 uint8_t c;
@@ -528,7 +543,7 @@ void lava_taint_query (PandaHypercallStruct phs) {
             tqh->call_stack = cs;
             // 4. iterate over the bytes in the extent and pandalog detailed info about taint
             std::vector<Panda__TaintQuery *> tq;
-            for (uint32_t offset=0; offset<phs.len; offset++) {
+            for (uint32_t offset=0; offset<len; offset++) {
                 uint32_t va = phs.buf + offset;
                 uint32_t pa =  panda_virt_to_phys(env, va);
                 if ((int) pa != -1) {                         
