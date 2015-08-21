@@ -273,7 +273,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             run_length ++;
         }
         fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-        fprintf (output, "birc -- %s run %d \n", foo.c_str(), run_length);
+        fprintf (output, "birc -- %s\n", foo.c_str());
     }
     else {
         // not in cache
@@ -305,7 +305,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 ss << the_filename << "-" << std::hex << the_offset;
                 bircache[asid][tb->pc] = ss.str();
                 fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                fprintf (output, "bir -- %s run %d\n",  ss.str().c_str(), run_length); 
+                fprintf (output, "bir -- %s\n",  ss.str().c_str());
                 
             }      
             else {
