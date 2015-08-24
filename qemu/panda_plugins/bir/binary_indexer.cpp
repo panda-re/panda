@@ -76,6 +76,7 @@ uint32_t index_file_aux(char *filename,
 
 
 
+uint32_t passage_num = 0;
 
 void index_file(IndexCommon *indc, Index *index, char *filename, uint32_t passage_length, uint32_t file_length, uint32_t step) {
     static uint8_t *file_buf = NULL;
@@ -96,9 +97,9 @@ void index_file(IndexCommon *indc, Index *index, char *filename, uint32_t passag
     FILE *fp = fopen(filename, "r");
     ret = fread(file_buf, 1,  s.st_size, fp);
     assert (ret == s.st_size);
-    uint32_t passage_num = indc->num_passages;
     for (uint32_t i=0; i<s.st_size-passage_length; i+=step ) {
-        index_this_passage(indc, index, file_buf+i, passage_length, passage_num+=step);
+        index_this_passage(indc, index, file_buf+i, passage_length, passage_num);
+        passage_num+=step;
     }
 
     /*     
