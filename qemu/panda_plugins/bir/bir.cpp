@@ -60,7 +60,7 @@ void uninit_plugin(void *);
 
 
 // globals
-
+bool debug = true;
 PpScores *pps = NULL; 
 IndexCommon *indc = NULL;
 InvIndex *inv = NULL;
@@ -285,6 +285,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
         uint8_t buf[4096];
         uint32_t len = 4096;
         len = std::min((unsigned)tb->size, 4096U);
+        len = std::max((unsigned)indc->passage_len_bytes, len);
         int ret = panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
         if (ret != -1) {
             Passage passage = index_passage (indc, /* update_lexicon = */ false,
@@ -296,9 +297,11 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             query_with_passage (indc, &passage, pps, &argmax, &score, topN, N);
             if ( score > 0.2) {
                 uint32_t the_offset;
-                uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
+                uint32_t uind = argmax;               
+                uint32_t psgid = *(indc->uind_to_psgs[uind].begin());
                 run_length ++;
-                std::string the_filename = get_passage_name(indc, psgid, &the_offset);                            
+                std::string the_filename = get_passage_name(indc, psgid, &the_offset);
+                //                printf ("psgid=%d the_offset=%d\n", psgid, the_offset);
                 std::stringstream ss;
                 ss << std::setprecision(3);
                 ss << score << " ";
@@ -306,6 +309,19 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 bircache[asid][tb->pc] = ss.str();
                 fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
                 fprintf (output, "bir -- %s",  ss.str().c_str());               
+
+                if (debug && score > 1) {
+                    printf ("\n");
+                    spit_passage(passage);
+                    uint32_t i;
+                    for (i=0; i<len; i++) {
+                        printf ("%02x ", buf[i]);
+                        if ((i % 8) == 0) printf ("   ");
+                        if ((i % 16) == 0) printf ("\n");
+                    }
+                    if (((i-1) % 16) != 0) printf ("\n");
+                    printf ("\n");
+                }
 #if 0
                 // this will spit out the topN
                 // NB: code to *compute* this is currently disabled in query_with_passage

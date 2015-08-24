@@ -303,6 +303,7 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     // maintain map a from binary passages to ints
     std::string sb = std::string((const char *) binary_passage, len);
     uint32_t uind;
+    // dont index same blob more than once
     if (index->binary_to_uind.find(sb) == index->binary_to_uind.end()) {
         uind = index->binary_to_uind.size();
         // this is a new passage, i.e., we haven't indexed this binary blob before
@@ -318,9 +319,6 @@ void index_this_passage(IndexCommon *indc, Index *index, uint8_t *binary_passage
     index->passages[passage_ind] = uind;
     // this is the total # of passages (not unique ones) indexed
     indc->num_passages ++;
-    //    if ((indc->num_passages % 100000) == 0) {
-    //        printf ("%lu passages\n", indc->num_passages);
-    //    }
     // keeps track of set of passages for this uind
     indc->uind_to_psgs[uind].insert(passage_ind);
 }
@@ -1039,7 +1037,7 @@ uint32_t max_num_uind = 0;
   scorepair is preprocessed score arrays. let n = scorepare[max_n_gram].first.  
   scorepair[max_n_gram].second is a c array of n Score structs 
   scorepair[max_n_gram].second[i].ind is a passage ind and .val is the preprocessed score to add for that psg.
-*/ 
+*/
 void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *best_score,
                          std::vector<Score> &topN, uint32_t n) {
     if (score == NULL) {
@@ -1069,8 +1067,8 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
         }
         assert (row != NULL);
         for (uint32_t i=0; i<row->len; i++) {
-            uint32_t psgid = row->el[i].ind;
-            score[psgid].val += gram_count * row->el[i].val;
+            uint32_t uind = row->el[i].ind;
+            score[uind].val += gram_count * row->el[i].val;
         }        
     }
     // scale the scores & determine the top N
@@ -1111,22 +1109,10 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
         // This keeps track of max
         if (score[i].val > max_score) {
             max_score = score[i].val;
-            argmax = i;
+            argmax = score[i].ind;
         }
     }
-
-    /*
-    std::sort (score.begin (), score.end (), compare_scores);  
-    for (uint32_t i=0; i<5; i++) {
-        printf ("%d %d %.4f\n", i, score[i].ind, score[i].val);
-        for ( auto &el : indc->uind_to_psgs[score[i].ind] ) {
-            printf ("%d ", el);
-        }
-        printf ("\n");
-    }
-    
-    printf ("min_score = %.5f\n", min_score);
-    */
+    // NB: this is a uind.  you'll have to use indc->uind_to_psgs to get actual psg #s 
     *ind = argmax;
     *best_score = max_score;
 }
