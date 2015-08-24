@@ -91,7 +91,7 @@ int main (int argc, char **argv) {
     }
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
         scoring_params[n] /= sum;
-        printf ("scoring_param %d = %.4f\n", n, scoring_param[n]);
+        printf ("scoring_param %d = %.4f\n", n, scoring_params[n]);
     }
 
     std::map < uint32_t, float > sc;
@@ -154,11 +154,11 @@ int main (int argc, char **argv) {
                         igp = ((float) igp_count_whole_gram) / inv->total_count[nn];
                     }
                     if (debug) printf ("ppp=%.4f  igp=%.4f\n", ppp, igp);
-                    numerator += scoring_param[nn] * ppp;
-                    denominator += scoring_param[nn] * igp;
+                    numerator += scoring_params[nn] * ppp;
+                    denominator += scoring_params[nn] * igp;
                     if (debug) {
-                        printf ("numerator += %.4f\n", scoring_param[nn] * ppp);
-                        printf ("denominator += %.4f\n", scoring_param[nn] * igp);
+                        printf ("numerator += %.4f\n", scoring_params[nn] * ppp);
+                        printf ("denominator += %.4f\n", scoring_params[nn] * igp);
                     }                    
                 }
                 pps->scorerow[n][g].el[j] = {passage_ind, log(numerator / denominator)};

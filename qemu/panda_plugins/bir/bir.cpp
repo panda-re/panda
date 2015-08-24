@@ -223,7 +223,6 @@ float *pppqs= NULL;
 std::map < Gram, std::map < uint32_t, float > > sc;
 
 
-
 bool pdice (float prob_yes) {
     if ((((float) (rand ())) / RAND_MAX) < prob_yes) 
         return true;    
@@ -295,7 +294,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             uint32_t argmax;
             float score;
             query_with_passage (indc, &passage, pps, &argmax, &score, topN, N);
-            if ( score > 0.0) {
+            if ( score > 0.2) {
                 uint32_t the_offset;
                 uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
                 run_length ++;
