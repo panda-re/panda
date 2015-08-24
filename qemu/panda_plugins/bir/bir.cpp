@@ -261,6 +261,8 @@ void run_stats() {
 
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (tb->pc < pc_start || tb->pc >= pc_end) return 0;
+    if (tb->size < 3) return 0;
+
     target_ulong asid = panda_current_asid(env);
     if (bircache[asid].count(tb->pc) != 0) {
         // its in the cache
@@ -279,10 +281,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
         // not in cache
         uint8_t buf[4096];
         uint32_t len = 4096;
-        if (tb->size < len) {
-            len = tb->size;
-        }
-        len = std::min(indc->passage_len_bytes, 4096U);
+        len = std::min((unsigned)tb->size, 4096U);
         int ret = panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
         if (ret != -1) {
             Passage passage = index_passage (indc, /* update_lexicon = */ false,
@@ -293,7 +292,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             float score;
             query_with_passage (indc, &passage, pps, &argmax, &score);
         
-            if ( score > 2) {
+            if ( score > 0.0) {
                 uint32_t the_offset;
                 uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
                 run_length ++;
@@ -305,16 +304,21 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 ss << the_filename << "-" << std::hex << the_offset;
                 bircache[asid][tb->pc] = ss.str();
                 fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                fprintf (output, "bir -- %s\n",  ss.str().c_str());
+                fprintf (output, "bir -- %s",  ss.str().c_str());
                 
             }      
             else {
                 run_stats();
                 run_length = 0;
                 fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                fprintf (output, "bir -- %.3f unknown\n", score);
+                fprintf (output, "bir -- %.3f unknown", score);
                 bircache[asid][tb->pc] = "unknown";
             }
+
+            if (tb->size < 8) {
+                fprintf(output, "  maybe 2small");
+            }
+            fprintf(output, "\n");
         }
     }        
     return 0;
