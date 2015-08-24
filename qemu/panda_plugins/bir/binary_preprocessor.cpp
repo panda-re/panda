@@ -55,19 +55,21 @@ bool pdice (float prob_yes) {
 
 
 extern uint32_t max_row_length;
+float alpha;
 
 int main (int argc, char **argv) {
 
 
     if (argc !=4) {
-        printf ("usage: inv_pfx max_row_length\n");
+        printf ("usage: inv_pfx max_row_length alpha\n");
         printf ("inv_pfx is file pfx for inv index containing counts\n");
+        printf ("alpha: sharpness of weightings on unigrams vs. whatever\n");
         exit(1);
     }
     std::string pfx = std::string(argv[1]);
     max_row_length = atoi(argv[2]);
-    float alpha = atof(argv[3]);
-    
+    alpha = atof(argv[3]);
+
     IndexCommon *indc = unmarshall_index_common(pfx, false);
     InvIndex *inv = unmarshall_invindex_min(pfx, indc);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
@@ -81,17 +83,17 @@ int main (int argc, char **argv) {
     }
     printf ("done unmarshalling inv\n");
 
-    std::vector < float > scoring_param(indc->max_n_gram + 1);
+    std::vector < float > scoring_params(indc->max_n_gram + 1);
     float sum = 0.0;
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
-        scoring_param[n] = pow(1.0 / (n + 2), alpha);
-        scoring_param[n] = 1.0 / (n + 2);
-        sum += scoring_param[n];
-    }    
+        scoring_params[n] = pow(1.0 / (n + 1), alpha);
+        sum += scoring_params[n];
+    }
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
-        scoring_param[n] /= sum;
+        scoring_params[n] /= sum;
         printf ("scoring_param %d = %.4f\n", n, scoring_param[n]);
-    }    
+    }
+
     std::map < uint32_t, float > sc;
     std::set < float > pp;
 
