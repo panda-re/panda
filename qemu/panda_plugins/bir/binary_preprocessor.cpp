@@ -13,6 +13,7 @@ extern "C" {
 
 std::map < std::string, double > starttime;
 
+bool debug = false;
 
 // returns sub-gram starting at pos of len bytes
 static inline Gram igramsub(Gram g, uint32_t pos, uint32_t len) {
@@ -58,14 +59,15 @@ extern uint32_t max_row_length;
 int main (int argc, char **argv) {
 
 
-    if (argc !=3) {
+    if (argc !=4) {
         printf ("usage: inv_pfx max_row_length\n");
         printf ("inv_pfx is file pfx for inv index containing counts\n");
         exit(1);
     }
     std::string pfx = std::string(argv[1]);
     max_row_length = atoi(argv[2]);
-
+    float alpha = atof(argv[3]);
+    
     IndexCommon *indc = unmarshall_index_common(pfx, false);
     InvIndex *inv = unmarshall_invindex_min(pfx, indc);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
@@ -79,76 +81,94 @@ int main (int argc, char **argv) {
     }
     printf ("done unmarshalling inv\n");
 
-    std::vector < float > scoring_params(indc->max_n_gram + 1);
+    std::vector < float > scoring_param(indc->max_n_gram + 1);
+    float sum = 0.0;
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
-        scoring_params[n] = 1.0 / (n + 2);
-    }
-
+        scoring_param[n] = pow(1.0 / (n + 2), alpha);
+        scoring_param[n] = 1.0 / (n + 2);
+        sum += scoring_param[n];
+    }    
+    for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
+        scoring_param[n] /= sum;
+        printf ("scoring_param %d = %.4f\n", n, scoring_param[n]);
+    }    
     std::map < uint32_t, float > sc;
     std::set < float > pp;
 
-    // iterate over grams with max n
-    uint32_t tot = indc->lexicon[indc->max_n_gram].grams.size();
-    uint32_t ii = 0;
-
     PpScores *pps = new PpScores;
-    //    pps->scorerow = std :: map < Gram, ScoreRow > ();
-    
-    //   timer_start("a");
-    // iterate over max-n grams 
-    for ( auto mgram : indc->lexicon[indc->max_n_gram].grams ) {        
-        // e.g. if max n gram is 5-gram, 
-        // this might be "abcde"
-        if ((ii%(tot/10)) == 0) {
-            printf ("ii = %d of %d\n", ii, tot);
-        }
-        ii ++;
-        // since gram is inv->max_n_gram bytes long,
-        // this is the last byte
-        // e.g. the unigram "e"
-        Gram g = igramsub(mgram, indc->max_n_gram - 1, 1);               
-        // p(q|G) 
-        float pg = ((float) inv->general_query[1][g]) / inv->total_count[1];
-        // clear per-passage for-this-q scores        
-        // here we compute the numerator in Eq 2, 
-        float is = scoring_params[0] * pg;
-        // printf ("is = %.3f\n", is);
-        std::map < uint32_t, float > pppqs;
-        // iterate over psgs that contain the max n gram
-        for (uint32_t n = indc->min_n_gram; n <= indc->max_n_gram; n++)  {
-            float w = scoring_params[n];
-            // this is the ngram for this n that ends in the unigram g (and includes it)           
-            Gram ngram = igramsub(mgram, indc->max_n_gram - n, n);
-            // prev_part  is everything but g
-            // n=5, this is "abcd"           
-            Gram prev_part = igramsub(ngram, 0, n-1);
-            for (auto &kvp : inv->docs_with_word[indc->max_n_gram][mgram]) {
+    for (uint32_t n = indc->max_n_gram; n >=indc->min_n_gram; n --) {
+        printf ("Precomputing scores for n=%d\n", n);
+        uint32_t ii = 0;                
+        uint32_t tot = indc->lexicon[n].grams.size();
+        // iterate over grams for this value of n
+        for ( auto g : indc->lexicon[n].grams ) {        
+            if (debug) {
+                printf ("Precomputing scores for ");
+                spit_gram_hex(g, n);
+                printf ("\n");
+            }
+            // case study.  say n = 4 and g = 'abcd'
+            if ((ii%(tot/10)) == 0) printf ("ii = %d of %d\n", ii, tot); 
+            ii ++;
+            pps->scorerow[n][g].len = inv->docs_with_word[n][g].size();
+            pps->scorerow[n][g].el = (Score *) malloc(sizeof(Score) * pps->scorerow[n][g].len);
+            // iterate over psgs that contain g
+            uint32_t j = 0;
+            for ( auto &kvp : inv->docs_with_word[n][g] ) {
                 uint32_t passage_ind = kvp.first;
-                // and this is the count for ngram in passage_ind
-                uint32_t c_ngram = inv->docs_with_word[indc->max_n_gram][mgram][passage_ind];
-                // e.g. iterate over psgs that have the max_n_gram           
-                float denom = indc->passage_len_bytes;
-                if (n > 1) {
-                    denom = inv->docs_with_word[n-1][prev_part][passage_ind];
+                if (debug)  printf ("  psg=%d\n", passage_ind);
+                // and now iterate 1..n to compute numerator & denominator for Eq 2.
+                double numerator = 0.0;
+                double denominator = 0.0;
+                for (uint32_t nn = indc->min_n_gram; nn <= n; nn++) {
+                    // e.g. if whole_gram = 'abc' then prev_part = 'ab'
+                    Gram whole_gram = igramsub(g, 0, nn);
+                    // compute per-passage probability, ppp
+                    // and in-general probability, igp
+                    uint32_t ppp_count_whole_gram = inv->docs_with_word[nn][whole_gram][passage_ind];
+                    uint32_t igp_count_whole_gram = inv->general_query[nn][whole_gram];
+                    if (debug) {
+                        printf ("    whole_gram ");
+                        spit_gram_hex(whole_gram, nn);
+                        printf (" c|p=%d c|g=%d\n", ppp_count_whole_gram, igp_count_whole_gram);
+                    }
+                    uint32_t ppp_count_prev_part, igp_count_prev_part;                   
+                    float ppp, igp;
+                    if (nn > indc->min_n_gram) {                        
+                        Gram prev_part; 
+                        prev_part = igramsub(g, 0, nn-1);
+                        ppp_count_prev_part = inv->docs_with_word[nn-1][prev_part][passage_ind];
+                        igp_count_prev_part = inv->general_query[nn-1][prev_part];
+                        if (debug) {
+                            printf ("    prev_part ");
+                            spit_gram_hex(prev_part, nn-1);
+                            printf (" c|p=%d c|g=%d\n", ppp_count_prev_part, igp_count_prev_part);
+                        }
+                        ppp = ((float) ppp_count_whole_gram) / ppp_count_prev_part;
+                        igp = ((float) igp_count_whole_gram) / igp_count_prev_part;
+                    }
+                    else {
+                        ppp = ((float) ppp_count_whole_gram) / indc->passage_len_bytes;
+                        igp = ((float) igp_count_whole_gram) / inv->total_count[nn];
+                    }
+                    if (debug) printf ("ppp=%.4f  igp=%.4f\n", ppp, igp);
+                    numerator += scoring_param[nn] * ppp;
+                    denominator += scoring_param[nn] * igp;
+                    if (debug) {
+                        printf ("numerator += %.4f\n", scoring_param[nn] * ppp);
+                        printf ("denominator += %.4f\n", scoring_param[nn] * igp);
+                    }                    
                 }
-                float p = ((float) c_ngram) / denom;
-                if (pppqs.find(passage_ind) == pppqs.end()) {
-                    pppqs[passage_ind] = is;
+                pps->scorerow[n][g].el[j] = {passage_ind, log(numerator / denominator)};
+                if (debug) {
+                    printf ("n=%d g=", n);
+                    spit_gram_hex(g,n);
+                    printf (" psg=%d sc=%.4f\n", passage_ind, pps->scorerow[n][g].el[j].val);
+                    printf ("\n");
                 }
-                pppqs[passage_ind] += w * p;                
+                j++;
             }
         }
-        uint32_t rowsize = pppqs.size();
-        pps->scorerow[mgram].len = rowsize;
-        pps->scorerow[mgram].el = (Score *) malloc(sizeof(Score) * rowsize);
-        int i=0;
-        for ( auto &kvp : pppqs ) {
-            //            printf ("ppqs %d %.3f\n", kvp.first, kvp.second);
-            pps->scorerow[mgram].el[i].ind = kvp.first;
-            pps->scorerow[mgram].el[i].val = log(kvp.second / pg);
-            //            printf ("ind=%d val=%.3f\n", pps->scorerow[mgram].el[i].ind, pps->scorerow[mgram].el[i].val);
-            i++;
-        }        
     }
     printf ("done precomputing\n");
     marshall_preprocessed_scores(indc, pps);

@@ -116,8 +116,8 @@ typedef struct invindex_struct {
 
 
 typedef struct score_struct {
-    uint32_t ind;
-    float val;
+    uint32_t ind; // i.e. psg index
+    double val;
 } Score;
 
 
@@ -128,8 +128,8 @@ typedef struct scorerow_struct {
 
 typedef struct pp_score_struct {
     std::vector < Score > score;
-    // scorerow[maxn_gram] is row of preprocessed scores (for maxn_gram)
-    std::map < Gram, ScoreRow > scorerow;
+    // scorerow[n][gram] is row of preprocessed scores (for gram)
+    std::map < uint32_t, std::map < Gram, ScoreRow > > scorerow;
 } PpScores;
 
 
@@ -258,7 +258,8 @@ void marshall_index_common(IndexCommon *indc);
 Index *unmarshall_index(std::string pfx, IndexCommon *indc) ;
 
 // bir.cpp uses these
-PpScores *unmarshall_preprocessed_scores(std::string filename_pfx);
+PpScores *unmarshall_preprocessed_scores(std::string filename_pfx, IndexCommon *indc) ;
+
 IndexCommon *unmarshall_index_common(const std::string pfx);
 
 Index *unmarshall_index(std::string pfx, IndexCommon *indc, bool passages) ;
@@ -266,7 +267,7 @@ Index *unmarshall_index(std::string pfx, IndexCommon *indc, bool passages) ;
 // if uind_to_psgs is false, then we DONT load
 IndexCommon *unmarshall_index_common(const std::string pfx, bool uind_to_psgs) ;
 InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc);
-void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *score);
+void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *score, std::vector<Score> &topN, uint32_t n);
 Passage index_passage (IndexCommon *indc, bool update,
                        uint8_t *binary_passage, uint32_t len,
                        uint32_t uind);

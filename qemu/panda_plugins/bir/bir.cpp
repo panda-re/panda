@@ -253,8 +253,18 @@ void run_stats() {
     }
 }
 
+
+#define N 5
+std::vector<Score> topN(N);
+
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (tb->size > 5) {         
+
+
+    // for winlogin
+    if (tb->pc >= 0xc00000 && tb->pc <= 0xe00000) {
+    //    if (!(tb->pc >= 0x8054000 && tb->pc <=0x8059a60))
+    //        return 0;
+    //    if (tb->size > 1) {         
         target_ulong asid = panda_current_asid(env);        
         if ((bircache.count(asid) != 0) && (bircache[asid].count(tb->pc) != 0)) {
             // its in the cache
@@ -276,28 +286,48 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             if (tb->size < len) {
                 len = tb->size;
             }
-            len = indc->passage_len_bytes;
+            if (len < indc->passage_len_bytes)
+                len = indc->passage_len_bytes;
             int ret = panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
             if (ret != -1) {
                 Passage passage = index_passage (indc, /* update_lexicon = */ false,
                                                  buf, len,
                                                  /* note: we dont really care about passage ind */
                                                  /* passage_ind = */ 0xdeadbeef);
+
+                
                 uint32_t argmax;
                 float score;
-                query_with_passage (indc, &passage, pps, &argmax, &score);
-            
-                if ( score > 2) {
+                query_with_passage (indc, &passage, pps, &argmax, &score, topN, N);
+
+                if ( score > 0) {
+                    /*
+                spit_passage(passage);
+                uint32_t i;
+                for (i=0; i<len; i++) {
+                    printf ("%02x ", buf[i]);
+                    if ((i % 8) == 0) printf ("   ");
+                    if ((i % 16) == 0) printf ("\n");
+                }
+                if (((i-1) % 16) != 0) printf ("\n");
+                */
                     uint32_t the_offset;
                     uint32_t psgid = *(indc->uind_to_psgs[argmax].begin());
                     run_length ++;
                     std::string the_filename = get_passage_name(indc, psgid, &the_offset);            
-                    char scorebuf[6];
+                    char scorebuf[128];
                     sprintf (scorebuf, "%.3f", score);
                     bircache[asid][tb->pc] = (std::string(scorebuf)) + " " + the_filename + "-" + (std::to_string(the_offset));
                     printf ("pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
                     printf ("bir -- %s run %d\n",  bircache[asid][tb->pc].c_str(), run_length); 
-                    
+#if 0
+                    // this is currently disabled in query_with_passage
+                    for (auto s : topN) {
+                        psgid = *(indc->uind_to_psgs[s.ind].begin());
+                        std::string pname = get_passage_name(indc, psgid, &the_offset);            
+                        printf ("  %.5f\t%s %d %d\n", s.val, pname.c_str(), s.ind, psgid);
+                    }
+#endif
                 }      
                 else {
                     run_stats();
@@ -308,10 +338,12 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 }
             }
         }        
-    }
-    else {
+            }
+        /*
+        else {
         printf ("pc=0x" TARGET_FMT_lx " len=%d  \n", tb->pc, tb->size);
     }
+        */
     return 0;
 }
 
@@ -338,10 +370,10 @@ bool init_plugin(void *self) {
             return true;
         }
         else {
-            printf ("unmarshalling preprocessed scores\n");
-            pps = unmarshall_preprocessed_scores(pfx);                      
             printf ("unmarshalling index common\n");
             indc = unmarshall_index_common(pfx, true);
+            printf ("unmarshalling preprocessed scores\n");
+            pps = unmarshall_preprocessed_scores(pfx,indc);                      
             printf ("unmarshalling inverted index\n");
             inv = unmarshall_invindex_min (pfx, indc);            
             panda_cb pcb;
