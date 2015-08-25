@@ -1,10 +1,9 @@
 message Bir {
-	required uint64 pc = 1;
-	required uint32 len = 2;
-	required bool cached = 3;
-	required float highscore = 4;
-	optional string filename = 5;
-	optional uint64 offset = 6;
+	required uint32 len = 1;
+	required bool cached = 2;
+   	required float highscore = 3;
+	optional string filename = 4;
+    optional uint64 offset = 5;	
 }
 
 optional Bir bir = 57;
