@@ -64,7 +64,7 @@ bool debug = false;
 PpScores *pps = NULL; 
 IndexCommon *indc = NULL;
 InvIndex *inv = NULL;
-
+bool ignore_bb_len = false;
 
 bool compare_scores (const Score & s1, const Score & s2) {
     return (s1.val > s2.val);
@@ -323,7 +323,8 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
         uint8_t buf[4096];
         uint32_t len = 4096;
         len = std::min((unsigned)tb->size, 4096U);
-        len = std::max((unsigned)indc->passage_len_bytes, len);
+        if (ignore_bb_len) 
+            len = std::max((unsigned)indc->passage_len_bytes, len);
         int ret = panda_virtual_memory_rw(env, tb->pc, (uint8_t *) buf, len, 0);    
         if (ret != -1) {
             Passage passage = index_passage (indc, /* update_lexicon = */ false,
@@ -413,6 +414,8 @@ bool init_plugin(void *self) {
         pc_start = panda_parse_ulong(args, "pc_start", 0);
         pc_end = panda_parse_ulong(args, "pc_end", (target_ulong)~0UL);
 
+        ignore_bb_len = panda_parse_bool(args, "ignore_bb_len");
+        
         if (!pandalog) {
             const char *output_filename = panda_parse_string(args, "output", "");
             printf("bir: writing to %s\n", output_filename);
