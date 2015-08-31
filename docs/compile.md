@@ -1,7 +1,7 @@
 # Compiling PANDA
 
 WARNING: This document is slightly out of date. Look at
-`panda_install.bash` instead.
+[panda_install.bash](../panda_install.bash) instead.
 
 In order to build PANDA, you should use the `build.sh` script
 in the QEMU directory. The script comes with some default
