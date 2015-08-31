@@ -31,7 +31,7 @@ sudo apt-get install build-essential
 sudo apt-get build-dep qemu
 sudo apt-get install nasm
 sudo apt-get install libssl-dev
-sudo apt-get install libpacap-dev
+sudo apt-get install libpcap-dev
 sudo apt-get install subversion
 sudo apt-get -y install curl
 sudo apt-get -y install autoconf
