@@ -1,7 +1,7 @@
 # Compiling PANDA
 
 WARNING: This document is slightly out of date. Look at
-`panda_install.bash` instead.
+[panda_install.bash](../panda_install.bash) instead.
 
 In order to build PANDA, you should use the `build.sh` script
 in the QEMU directory. The script comes with some default
@@ -31,7 +31,7 @@ sudo apt-get install build-essential
 sudo apt-get build-dep qemu
 sudo apt-get install nasm
 sudo apt-get install libssl-dev
-sudo apt-get install libpacap-dev
+sudo apt-get install libpcap-dev
 sudo apt-get install subversion
 sudo apt-get -y install curl
 sudo apt-get -y install autoconf
