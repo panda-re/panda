@@ -6,6 +6,9 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
+
+#define __STDC_FORMAT_MACROS
+
 extern "C" {
 #include "config.h"
 #include "qemu-common.h"
