@@ -47,3 +47,4 @@ pmemaccess
 #code_provenance
 #net_taint
 rehosting
+coverage
