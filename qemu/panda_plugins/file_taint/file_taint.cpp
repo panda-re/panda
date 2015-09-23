@@ -52,6 +52,9 @@ uint64_t first_instr = 0;
 
 std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
+std::map <target_ulong, OsiProc> running_procs;
+
+
 // label this virtual address.  might fail, so
 // returns true iff byte was labeled
 bool label_byte(CPUState *env, target_ulong virt_addr, uint32_t label_num) {
@@ -127,7 +130,7 @@ uint32_t guest_wstrncpy(CPUState *env, char *buf, size_t maxlen, target_ulong gu
 
 void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t flags, int32_t mode) {
     if (!filename.empty()) {
-        printf ("saw open of [%s]\n", filename.c_str());
+        printf ("open_enter: saw open of [%s]\n", filename.c_str());
     }
     if (filename.find(taint_filename) != std::string::npos) {
         saw_open = true;
@@ -143,7 +146,7 @@ void open_return(CPUState* env, uint32_t fd) {
         saw_open = false;
         // get return value, which is the file descriptor for this file
         the_fd = fd;
-        printf ("saw return from open of [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
+        //        printf ("saw return from open of [%s]: asid=0x%x  fd=%d\n", taint_filename, the_asid, the_fd);
     }
             
 }
@@ -163,39 +166,7 @@ void windows_seek_enter(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32
     }
 }
 
-void linux_llseek_enter(CPUState* env,target_ulong pc,uint32_t fd,uint32_t offset_high,uint32_t offset_low,target_ulong result,uint32_t origin) {
-    uint64_t offset = offset_low | ((uint64_t)offset_high << 32);
-    if (origin == SEEK_SET) {
-        seek_enter(env, fd, offset);
-    }
-    else if (origin == SEEK_CUR) {
-        seek_enter(env, fd, file_pos + offset);
-    }
-    else if (origin == SEEK_END) {
-        printf ("WARN: SEEK_END not supported\n");
-    }
-    else {
-        printf ("WARN: Unknown seek origin %u\n", origin);
-    }
-}
 
-void linux_lseek_enter(CPUState *env, target_ulong pc,uint32_t fd,uint32_t offset,uint32_t origin) {
-    // just forward to the llseek callback
-    linux_llseek_enter(env, pc, fd, 0, offset, 0, origin);
-}
-
-// 5 long sys_open(const char __user *filename,int flags, int mode);
-// typedef void (*on_sys_open_enter_t)(CPUState* env,target_ulong pc,target_ulong filename,int32_t flags,int32_t mode);
-
-void linux_open_enter(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
-    char the_filename[MAX_FILENAME];
-    guest_strncpy(env, the_filename, MAX_FILENAME, filename);
-    open_enter(env, pc, std::string(the_filename), flags, mode);
-}
-
-void linux_open_return(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
-    open_return(env, EAX);
-}
 
 // Assume 32-bit windows for this struct.
 // WARNING: THIS MAY NOT WORK ON 64-bit!
@@ -212,6 +183,10 @@ typedef struct _UNICODE_STRING {
     uint32_t Buffer;
 } UNICODE_STRING, *PUNICODE_STRING;
 
+std::map<uint32_t, std::map<target_ulong, std::string>> windows_filenames;
+
+std::string the_windows_filename;
+
 // 179 NTSTATUS NtOpenFile (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, ULONG ShareAccess, ULONG OpenOptions);
 // typedef void (*on_NtOpenFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t DesiredAccess,uint32_t ObjectAttributes,uint32_t IoStatusBlock,uint32_t ShareAccess,uint32_t OpenOptions);
 void windows_open_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t ShareAccess, uint32_t OpenOptions) {
@@ -227,6 +202,9 @@ void windows_open_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
     if (strncmp("\\??\\", the_filename, 4) == 0) {
         trunc_filename += 4;
     }
+
+    the_windows_filename = std::string(trunc_filename);
+    
     open_enter(env, pc, trunc_filename, 0, DesiredAccess);
 }
 
@@ -234,6 +212,7 @@ void windows_open_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
 void windows_open_return(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t ShareAccess, uint32_t OpenOptions) {
     uint32_t Handle;
     panda_virtual_memory_rw(env, FileHandle, (uint8_t *)&Handle, 4, 0);
+    windows_filenames[panda_current_asid(env)][FileHandle] = the_windows_filename;
     open_return(env, Handle);
 }
 
@@ -241,43 +220,17 @@ uint32_t the_buf;
 uint32_t the_count;
 bool saw_read = false;
 
-uint32_t last_read_fd;
-
-uint32_t last_read_count;
 uint32_t last_read_buf;
+uint64_t last_pos = (uint64_t) -1;
 
-void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count) { 
-    //    printf ("saw read fd=%d\n", fd);
-
-    /*
-    OsiProc *proc = get_current_process(env);
-    char *fn = osi_linux_resolve_fd(env, proc, fd);
-    printf ("fd=%d fn=[%s]\n", fd, fn);
-    */
-    
-    
-    uint32_t asid = panda_current_asid(env);
-    char *filename = 0;
-    if (asidfd_to_filename.count(std::make_pair(asid, fd)) != 0) {
-        filename = asidfd_to_filename[std::make_pair(asid, fd)];
-    }
-    if (filename !=0) {
-        printf ("filename = [%s]\n", filename);
-    }
-    /*
-    else {
-        printf ("filename is not known\n");
-    }
-    */
-
+void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t pos, target_ulong buf, uint32_t count) { 
     // these things are only known at enter of read call
-    last_read_fd = fd;
-    last_read_count = count;
+    the_asid = panda_current_asid(env);
     last_read_buf = buf;
-
+    last_pos = pos;    
     saw_read = false;
-    if (asid == the_asid && fd == the_fd) {
-        printf ("saw read of %d bytes in file we want to taint\n", count);
+    if (0 == strcmp(filename.c_str(), taint_filename)) {
+        printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
         saw_read = true;
     }
 }
@@ -285,27 +238,11 @@ void read_enter(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint3
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actual_count) {
-    /*
-    printf ("read_return: count=%d\n", actual_count);
-        
-    for (uint32_t i=0; i<16; i++) {
-        uint8_t c;
-        if (i < actual_count) {
-            int ret = panda_virtual_memory_rw(env, buf+i, (uint8_t *) &c, 1, 0);
-            if (ret!=-1) {
-                printf ("%d:0x%x ", i,c);
-                if ((i % 32) == 0) printf ("\n");
-            }
-        }
-    }
-    printf ("\n");
-    */
-        
 
     if (saw_read && panda_current_asid(env) == the_asid) {
         // These are the start and end of the current range of labels.
-        uint32_t read_start = file_pos;
-        uint32_t read_end = file_pos + actual_count;        
+        uint32_t read_start = last_pos;
+        uint32_t read_end = last_pos + actual_count;        
         printf ("returning from read of [%s] count=%u\n", taint_filename, actual_count);
         // check if we overlap the range we want to label.
         if (read_start < end_label && read_end > start_label) {
@@ -324,7 +261,7 @@ void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actu
             }
             printf("%u bytes labeled for this read\n", range_end - range_start);
         }
-        file_pos += actual_count;
+        last_pos += actual_count;
         //        printf (" ... done applying labels\n");
         saw_read = false;
     }
@@ -346,7 +283,9 @@ void windows_read_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
         //printf("NtReadFile: %lu[]\n", (unsigned long)FileHandle);
     }
 
-    read_enter(env, pc, FileHandle, Buffer, BufferLength);
+    std::string filename = windows_filenames[panda_current_asid(env)][FileHandle];
+    
+    read_enter(env, pc, filename, 0, Buffer, BufferLength);
 }
 
 #define STATUS_SUCCESS 0
@@ -380,7 +319,21 @@ void windows_create_return(CPUState* env, target_ulong pc, uint32_t FileHandle, 
 }
 
 void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, target_ulong buf, uint32_t count) {
-    read_enter(env, pc, fd, buf, count);
+    target_ulong asid = panda_current_asid(env);
+    if (running_procs.count(asid) == 0) {
+        printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
+        return;
+    }
+    OsiProc proc = running_procs[panda_current_asid(env)];        
+    char *filename = osi_linux_fd_to_filename(env, &proc, fd);
+    uint64_t pos = osi_linux_fd_to_pos(env, &proc, fd);
+    if (filename==NULL) {
+        printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
+                (unsigned int) asid, (int) proc.pid, proc.name, (int) fd);
+        return;
+    }
+    printf ("linux_read_enter for asid==0x%x fd=%d filename=[%s] count=%d pos=%u\n", (unsigned int) asid, (int) fd, filename, count, (unsigned int) pos);        
+    read_enter(env, pc, filename, pos, buf, count);
 }
 
 void linux_read_return(CPUState *env, target_ulong pc, uint32_t fd, target_ulong buf, uint32_t count) {
@@ -408,6 +361,54 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
     return 0;
 }
 
+
+
+void linux_open_enter(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
+    char the_filename[MAX_FILENAME];
+    guest_strncpy(env, the_filename, MAX_FILENAME, filename);    
+    printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
+    open_enter(env, pc, the_filename, flags, mode);
+}
+
+
+
+
+// get current process before each bb execs
+// which will probably help us actually know the current process
+int osi_foo(CPUState *env, TranslationBlock *tb) {
+
+    if (panda_in_kernel(env)) {
+
+        OsiProc *p = get_current_process(env);      
+
+        //some sanity checks on what we think the current process is
+        // this means we didnt find current task
+        if (p->offset == 0) return 0;
+        // or the name
+        if (p->name == 0) return 0;
+        // this is just not ok
+        if (((int) p->pid) == -1) return 0;
+        uint32_t n = strnlen(p->name, 32);
+        // name is one char?
+        if (n<2) return 0;
+        uint32_t np = 0;
+        for (uint32_t i=0; i<n; i++) {
+            np += (isprint(p->name[i]) != 0);
+        }
+        // name doesnt consist of solely printable characters
+        //        printf ("np=%d n=%d\n", np, n);
+        if (np != n) return 0;
+        target_ulong asid = panda_current_asid(env);
+        if (running_procs.count(asid) == 0) {
+            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+        }
+        running_procs[asid] = *p;
+    }
+    
+    return 0;
+}
+
+
 bool init_plugin(void *self) {
 
     printf("Initializing plugin file_taint\n");
@@ -429,10 +430,8 @@ bool init_plugin(void *self) {
     printf ("end_label = %d\n", end_label);
     printf ("first_instr = %" PRId64 " \n", first_instr);
 
-    #if 0
     panda_require("osi_linux");
     assert(init_osi_linux_api());
-    #endif
     
     panda_require("osi");
     // this sets up OS introspection API
@@ -458,15 +457,18 @@ bool init_plugin(void *self) {
     }
 
 #if defined(TARGET_I386)
-            
+
+    {
+        panda_cb pcb;
+        pcb.before_block_exec = osi_foo;
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    }
+
     PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
-    PPP_REG_CB("syscalls2", on_sys_open_return, linux_open_return);
+    
     
     PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
     PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
-
-    PPP_REG_CB("syscalls2", on_sys_lseek_enter, linux_lseek_enter);
-    PPP_REG_CB("syscalls2", on_sys_llseek_enter, linux_llseek_enter);
 
     PPP_REG_CB("syscalls2", on_NtOpenFile_enter, windows_open_enter);
     PPP_REG_CB("syscalls2", on_NtOpenFile_return, windows_open_return);
