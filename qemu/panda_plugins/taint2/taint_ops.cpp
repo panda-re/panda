@@ -580,6 +580,7 @@ static void update_cb(
         case llvm::Instruction::FRem:
         case llvm::Instruction::Call:
         case llvm::Instruction::ICmp:
+        case llvm::Instruction::FCmp:
             cb_mask = 0;
             one_mask = 0;
             zero_mask = 0;
