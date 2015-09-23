@@ -112,6 +112,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	/* read fs information */
 	READ_INFO_INT(fs.f_path_dentry_offset, err, err_fs);
 	READ_INFO_INT(fs.f_path_mnt_offset, err, err_fs);
+    READ_INFO_INT(fs.f_pos_offset, err, err_fs);
 	READ_INFO_INT(fs.mnt_parent_offset, err, err_fs);
 	READ_INFO_INT(fs.mnt_mountpoint_offset, err, err_fs);
 	READ_INFO_INT(fs.mnt_root_offset, err, err_fs);

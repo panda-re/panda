@@ -134,6 +134,7 @@ int init_module(void)
 
 	PRINT_OFFSET(fs_p,		f_path.dentry,	"fs");
 	PRINT_OFFSET(fs_p,		f_path.mnt,		"fs");
+    PRINT_OFFSET(fs_p,      f_pos,          "fs");
 	PRINT_OFFSET(vfsmnt_p,	mnt_parent,		"fs");
 	PRINT_OFFSET(vfsmnt_p,	mnt_mountpoint, "fs");
 	PRINT_OFFSET(vfsmnt_p,	mnt_root,		"fs");	/* XXX: We don't use this anywhere. Marked for removal. */

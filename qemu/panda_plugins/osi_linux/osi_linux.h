@@ -284,6 +284,8 @@ IMPLEMENT_OFFSET_GET(get_file_dentry, file_struct, PTR, ki.fs.f_path_dentry_offs
  */
 IMPLEMENT_OFFSET_GET(get_file_mnt, file_struct, PTR, ki.fs.f_path_mnt_offset, 0)
 
+IMPLEMENT_OFFSET_GET(get_file_pos, file_struct, PTR, ki.fs.f_pos_offset, 0)
+
 /**
  * @brief Retrieves the mnt_parent vfsmount struct associated with a vfsmount struct.
  */
