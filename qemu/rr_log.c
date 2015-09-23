@@ -1298,6 +1298,8 @@ void rr_destroy_log(void) {
 
 struct timeval replay_start_time;
 
+uint8_t spit_out_total_num_instr_once = 0;
+
 //mz display a measure of replay progress (using instruction counts and log size)
 void replay_progress(void) {
   if (rr_nondet_log) {
@@ -1321,7 +1323,12 @@ void replay_progress(void) {
                  rr_nondet_log->last_prog_point.guest_instr_count),
                 secs, rusage.ru_maxrss / 1024.0 / 1024.0);
         free(dup_name);
-     }
+        if (!spit_out_total_num_instr_once) {
+            spit_out_total_num_instr_once = 1;
+            printf("total_instr in replay: %10lu\n", rr_nondet_log->last_prog_point.guest_instr_count);
+        }
+
+    }
   }
 }
 
