@@ -14,6 +14,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "cpu.h"
 
+#include "panda_common.h"
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
 #include "../osi/osi_types.h"
@@ -84,27 +85,46 @@ static char *get_file_name(CPUState *env, PTR file_struct) {
 	return name;
 }
 
-/**
- * @brief Resolves a file struct and returns its full pathname.
- */
-static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
-	PTR files = get_files(env, task_struct);
-	PTR fds = get_files_fds(env, files);
+static uint64_t get_file_position(CPUState *env, PTR file_struct) {
+    return get_file_pos(env, file_struct);
+}
+
+
+static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
+    PTR files = get_files(env, task_struct);
+    PTR fds = get_files_fds(env, files);
 	PTR fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
 	// Calculate the address of the nth pointer and read it.
 	fd_file_ptr = fds + fd*sizeof(PTR);
 	if (-1 == panda_virtual_memory_rw(env, fd_file_ptr, (uint8_t *)&fd_file, sizeof(PTR), 0)) {
-		return NULL;
+		return (PTR)NULL;
 	}
 	if (fd_file == (PTR)NULL) {
-		return NULL;
+		return (PTR)NULL;
 	}
+    return fd_file;
+}
 
-	// Resolve file struct to name.
+
+/**
+ * @brief Resolves a file struct and returns its full pathname.
+ */
+static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
+    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);    
+    if (fd_file == (PTR)NULL) return NULL;        
 	return get_file_name(env, fd_file);
 }
+
+#define INVALID_FILE_POS (-1)
+
+static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
+    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);    
+    if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);;        
+	return get_file_position(env, fd_file);
+}
+    
 
 /**
  * @brief Fills an OsiProc struct.
@@ -172,6 +192,9 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 }
 
 
+#include <map>
+
+
 
 /* ******************************************************************
  PPP Callbacks
@@ -181,14 +204,19 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
  * @brief PPP callback to retrieve current process info for the running OS.
  */
 void on_get_current_process(CPUState *env, OsiProc **out_p) {
-	OsiProc *p;
+	OsiProc *p = NULL;
 	PTR ts;
 
-	p = (OsiProc *)g_malloc0(sizeof(OsiProc));
+    target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
-	fill_osiproc(env, p, ts);
-
-	*out_p = p;
+    if (ts) {
+        // valid task struct
+        // got a reasonable looking process.
+        // return it and save in cache
+        p = (OsiProc *)g_malloc0(sizeof(OsiProc));
+        fill_osiproc(env, p, ts);
+    }
+    *out_p = p;
 }
 
 /**
@@ -225,14 +253,14 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		// Garbage in p->name will cause fill_osiproc() to segfault.
 		memset(p, 0, sizeof(OsiProc));
 		fill_osiproc(env, p, ts_current);
-
-#if 0
+#if 0 
 		/*********************************************************/
 		// Test of fd -> name resolution.
 		/*********************************************************/
-		for (int fdn=0; fdn<10; fdn++) {
+		for (int fdn=0; fdn<256; fdn++) {
 			char *s = get_fd_name(env, ts_current, fdn);
-			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
+            //			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
+            printf ("%s fd%d -> %s", p->name, fdn, s);
 			g_free(s);
 		}
 		/*********************************************************/
@@ -347,22 +375,41 @@ void on_free_osiprocs(OsiProcs *ps) {
 /* ******************************************************************
  osi_linux extra API
 ****************************************************************** */
-char *osi_linux_resolve_fd(CPUState *env, OsiProc *p, int fd) {
-	char *name = get_fd_name(env, p->offset, fd);
 
-	if (unlikely(name == NULL)) goto make_name;
-
+char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
+    target_ulong asid = panda_current_asid(env);
+    PTR ts_current = 0;
+    ts_current = p->offset;
+    if (ts_current == 0) {
+        printf ("osi_linux_fd_to_filename -- cant get task\n");
+        return NULL;
+    }
+    char *name = get_fd_name(env, ts_current, fd);
+	if (unlikely(name == NULL)) {
+        printf ("osi_linux_fd_to_filename -- can't get filename\n");
+        goto make_name;
+    }
+    
 	name = g_strchug(name);
-	if (unlikely(g_strcmp0(name, "") == 0)) goto make_name;
-
-	return name;
+	if (unlikely(g_strcmp0(name, "") == 0)) {
+        printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
+        goto make_name;
+    }
+    return name;
 
 make_name:
-	g_free(name);
-	name = g_strdup_printf("FD%d_%d", fd, (int)p->pid);
-	return name;
+    return NULL;
 }
 
+
+unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
+    target_ulong asid = panda_current_asid(env);
+    PTR ts_current = 0;
+    ts_current = p->offset;
+    if (ts_current == 0) return INVALID_FILE_POS;
+    return get_fd_pos(env, ts_current, fd);
+}
+                        
 
 
 /**

@@ -80,6 +80,7 @@ struct vma_info {
 struct fs_info {
 	int f_path_dentry_offset;
 	int f_path_mnt_offset;
+    int f_pos_offset;
 	int mnt_parent_offset;
 	int mnt_mountpoint_offset;
 	int mnt_root_offset;
