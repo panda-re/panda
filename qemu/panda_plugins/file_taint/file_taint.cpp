@@ -362,14 +362,14 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
 }
 
 
-
+#ifdef TARGET_I386
 void linux_open_enter(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
     char the_filename[MAX_FILENAME];
     guest_strncpy(env, the_filename, MAX_FILENAME, filename);    
     printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
     open_enter(env, pc, the_filename, flags, mode);
 }
-
+#endif /* TARGET_I386 */
 
 
 
