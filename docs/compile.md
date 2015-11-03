@@ -82,7 +82,7 @@ Now, compile LLVM. For a **debug build** (REALLY slow), use the following comman
 ```
 cd llvm
 CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
-$ cd -
+cd -
 ```
 
 For a **release build**, use the following commands:
@@ -156,30 +156,39 @@ sudo python setup.py install
 -->
 
 
-## Building the QEMU part
+## Building the QEMU part and the PANDA plugins
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.
-
-Before launching the `build.sh` script, make sure you have
-updated it to reflect the location of your LLVM build.
-You should pass `--with-llvm=../llvm/Debug+Asserts` or
-`--with-llvm=../llvm/Release` to the configure script, depending
-on which LLVM build you compiled earlier.
-
+This is most conveniently done by invoking `build.sh`.
 
 ```
-$ cd qemu
-$ ./build.sh
+cd qemu
+./build.sh
 ```
 
-By default `gcc-4.7` and `g++-4.7` will be used for the
-compilation. The `build.sh` script respects the ``CC``/``CXX``
-environment variables in case you want to use a different
-compiler. E.g.
+### Overriding LLVM location
+The `build.sh` script will attempt to use the Release build of the LLVM we compiled for PANDA.
+You can specify some other LLVM directory and build type by setting the 
+`PANDA_LLVM_ROOT` and `PANDA_LLVM_BUILD` environment variables. E.g.,
 
 ```
-$ cd qemu
-$ CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+export PANDA_LLVM_ROOT="/opt/llvm"
+export PANDA_LLVM_BUILD="Debug+Asserts"
+cd qemu
+./build.sh
 ```
 
+If LLVM is not found in the specified locations, `build.sh`
+will attempt to use any other version of LLVM 3.3 found in your path.
+
+### Overriding default C/C++ compiler
+The default C and C++ compilers will be used for the compilation.
+In case you want to use a specific version of gcc/g++, the `build.sh`
+script respects the ``CC``/``CXX`` environment variables.
+E.g.,
+
+```
+cd qemu
+CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+```
 
