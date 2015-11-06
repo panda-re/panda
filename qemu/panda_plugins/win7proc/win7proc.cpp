@@ -97,7 +97,7 @@ static uint32_t get_pid(CPUState *env, target_ulong eproc) {
 }
 
 static void get_procname(CPUState *env, target_ulong eproc, char *name) {
-    panda_virtual_memory_rw(env, eproc+EPROC_NAME_OFF, (uint8_t *)name, 15, false);
+    panda_virtual_memory_rw(env, eproc+EPROC_NAME_OFF, (uint8_t *)name, 16, false);
     name[16] = '\0';
 }
 
@@ -121,7 +121,7 @@ static uint32_t get_current_proc(CPUState *env) {
 }
 
 #define UNKNOWN_PID 0xFFFFFFFF
-char cur_procname[16];
+char cur_procname[17];
 uint32_t cur_pid = UNKNOWN_PID;
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
@@ -418,7 +418,7 @@ static char *get_handle_object_name(CPUState *env, HandleObject *ho) {
         }
 	  break;
         case OBJ_TYPE_Process: {
-            char *procName = (char *) calloc(100, 1);
+            char *procName = (char *) calloc(17, 1);
             //char procExeName[16] = {};
             //uint32_t procPid = get_pid(env, ho->pObj);
             get_procname(env, ho->pObj, procName);
@@ -1125,7 +1125,7 @@ Panda__LocalPort *create_panda_port (CPUState *env, HandleObject *ho){ // ho->pO
   panda_virtual_memory_rw(env, ho->pObj + 0x8, (uint8_t *)&alpc_com_info, 4, false);
   uint32_t server_com_port; // _ALPC_PORT_OBJECT
   panda_virtual_memory_rw(env, alpc_com_info + 0x4, (uint8_t *)&server_com_port, 4, false);
-  char server_procname[32] = {};
+  char server_procname[17] = {};
   if (server_com_port) {
     uint32_t server_proc; // _EPROCESS object
     panda_virtual_memory_rw(env, server_com_port +0xc, (uint8_t *)&server_proc, 4, false);
@@ -1134,7 +1134,7 @@ Panda__LocalPort *create_panda_port (CPUState *env, HandleObject *ho){ // ho->pO
   }
   uint32_t client_com_port; // _ALPC_PORT_OBJECT
   panda_virtual_memory_rw(env, alpc_com_info + 0x8, (uint8_t *)&client_com_port, 4, false);
-  char client_procname[32] = {};
+  char client_procname[17] = {};
   if (client_com_port) {
     uint32_t client_proc; // _EPROCESS object
     panda_virtual_memory_rw(env, client_com_port +0xc, (uint8_t *)&client_proc, 4, false);
@@ -1165,7 +1165,7 @@ void print_port_ho(CPUState *env, HandleObject *ho){
   panda_virtual_memory_rw(env, ho->pObj + 0x8, (uint8_t *)&alpc_com_info, 4, false);
   uint32_t server_com_port; // _ALPC_PORT_OBJECT
   panda_virtual_memory_rw(env, alpc_com_info + 0x4, (uint8_t *)&server_com_port, 4, false);
-  char server_procname[32] = {};
+  char server_procname[17] = {};
   if (server_com_port) {
     uint32_t server_proc; // _EPROCESS object
     panda_virtual_memory_rw(env, server_com_port +0xc, (uint8_t *)&server_proc, 4, false);
@@ -1173,7 +1173,7 @@ void print_port_ho(CPUState *env, HandleObject *ho){
   }
   uint32_t client_com_port; // _ALPC_PORT_OBJECT
   panda_virtual_memory_rw(env, alpc_com_info + 0x8, (uint8_t *)&client_com_port, 4, false);
-  char client_procname[32] = {};
+  char client_procname[17] = {};
   if (client_com_port) {
     uint32_t client_proc; // _EPROCESS object
     panda_virtual_memory_rw(env, client_com_port +0xc, (uint8_t *)&client_proc, 4, false);
@@ -1390,7 +1390,7 @@ void w7p_NtReadVirtualMemory_return(CPUState* env,
 	return;
     }
     uint32_t procPid = get_pid(env, ho->pObj);
-    char procExeName[16] = {};
+    char procExeName[17] = {};
     get_procname(env, ho->pObj, procExeName);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_read_virtual_memory = create_panda_vm( cur_pid, cur_procname, procPid, procExeName);
@@ -1409,7 +1409,7 @@ void w7p_NtWriteVirtualMemory_return(CPUState* env,
 	return;
     }
     uint32_t procPid = get_pid(env, ho->pObj);
-    char procExeName[16] = {};
+    char procExeName[17] = {};
     get_procname(env, ho->pObj, procExeName);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
     ple.nt_write_virtual_memory = create_panda_vm( cur_pid, cur_procname, procPid, procExeName);
