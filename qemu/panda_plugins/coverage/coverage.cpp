@@ -62,7 +62,7 @@ int coverage_before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t asid = panda_current_asid(env);    
     if (process_asid == 0) {
         // look for process matching the one we want
-        if (p) {
+        if (p && p->name) {
             if (strcmp(process_name, p->name) == 0) {
                 process_asid = asid;
                 printf ("coverage plugin: saw cr3=0x%" PRIx64 " for process=[%s]\n",
@@ -76,7 +76,7 @@ int coverage_before_block_exec(CPUState *env, TranslationBlock *tb) {
         // and count number of bb executed (regardless of repetetion)
         process_total_bb ++;
     }
-        
+    free_osiproc(p);
 #endif
     return 0;
 }
