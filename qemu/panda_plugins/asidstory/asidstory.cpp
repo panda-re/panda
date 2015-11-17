@@ -36,6 +36,7 @@
 #include <map>
 #include <set>
 #include <cstdint>
+#include <cstring>
 #include <sstream>
 #include <iomanip>
 
@@ -181,7 +182,7 @@ void spit_asidstory() {
     fclose(fp);
 }
 
-char *last_name = 0;
+char last_name[256];
 target_ulong last_pid = 0;
 target_ulong last_asid = 0;
 
@@ -230,7 +231,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             pd.shortname = shortname;
         }
         if (pandalog) {
-            if (last_name == 0
+            if (last_name[0] == 0
                 || (p->asid != last_asid)
                 || (p->pid != last_pid) 
                 || (0 != strcmp(p->name, last_name))) {        
@@ -243,12 +244,12 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 pandalog_write_entry(&ple);           
                 last_asid = p->asid;
                 last_pid = p->pid;
-                free(last_name);
-                last_name = strdup(p->name);
+                strncpy(last_name, p->name, 256);
+                last_name[255] = '\0';
             }
         }
     }
-    free (p);
+    free_osiproc(p);
     return 0;
 }
 
@@ -266,7 +267,7 @@ int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
         pd.cells[cell]++;
         pd.last = std::max(pd.last, instr);
     }
-    free(p);
+    free_osiproc(p);
     return 0;
 }
 
