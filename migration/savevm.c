@@ -1155,7 +1155,7 @@ void qemu_savevm_state_cleanup(void)
     }
 }
 
-static int qemu_savevm_state(QEMUFile *f, Error **errp)
+int qemu_savevm_state(QEMUFile *f, Error **errp)
 {
     int ret;
     MigrationParams params = {

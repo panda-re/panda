@@ -131,6 +131,7 @@ void qemu_savevm_send_postcopy_ram_discard(QEMUFile *f, const char *name,
                                            uint64_t *length_list);
 
 int qemu_loadvm_state(QEMUFile *f);
+int qemu_savevm_state(QEMUFile *f, Error **errp);
 
 typedef enum DisplayType
 {

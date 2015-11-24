@@ -1755,6 +1755,47 @@ ETEXI
         .sub_table = info_cmds,
     },
 
+    {
+        .name       = "begin_record",
+        .args_type  = "file_name:s",
+        .params     = "[file_name]",
+        .help       = "begin recording for later replay",
+        .mhandler.cmd = hmp_begin_record,
+    },
+
+    {
+        .name       = "begin_record_from",
+        .args_type  = "snapshot:s,file_name:s",
+        .params     = "[snapshot] [file_name]",
+        .help       = "begin recording from given snapshot for later replay",
+        .mhandler.cmd = hmp_begin_record_from,
+    },
+
+    {
+        .name       = "begin_replay",
+        .args_type  = "file_name:s",
+        .params     = "[file_name]",
+        .help       = "begin replay",
+        .mhandler.cmd = hmp_begin_replay,
+    },
+
+
+    {
+        .name       = "end_record",
+        .args_type  = "",
+        .params     = "",
+        .help       = "end recording for later replay",
+        .mhandler.cmd = hmp_end_record,
+    },
+
+    {
+        .name       = "end_replay",
+        .args_type  = "",
+        .params     = "",
+        .help       = "end replay",
+        .mhandler.cmd = hmp_end_replay,
+    },
+
 STEXI
 @end table
 ETEXI
