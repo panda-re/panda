@@ -133,4 +133,11 @@ void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict);
 void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict);
 void hmp_info_dump(Monitor *mon, const QDict *qdict);
 
+// PANDA Record/Replay HMP
+void hmp_begin_record(Monitor *mon, const QDict *qdict);
+void hmp_begin_record_from(Monitor *mon, const QDict *qdict);
+void hmp_begin_replay(Monitor *mon, const QDict *qdict);
+void hmp_end_record(Monitor *mon, const QDict *qdict);
+void hmp_end_replay(Monitor *mon, const QDict *qdict);
+
 #endif
