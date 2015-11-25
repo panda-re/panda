@@ -105,7 +105,6 @@ int main(int argc, char **argv)
 
 #include "disas/disas.h"
 
-
 #include "slirp/libslirp.h"
 
 #include "trace.h"
@@ -124,6 +123,8 @@ int main(int argc, char **argv)
 #include "crypto/init.h"
 #include "sysemu/replay.h"
 #include "qapi/qmp/qerror.h"
+
+#include "rr_log_all.h"
 
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
@@ -1921,6 +1922,55 @@ static void main_loop(void)
         ti = profile_getclock();
 #endif
         last_io = main_loop_wait(nonblocking);
+
+        // rr: check for begin/end record/replay
+        sigset_t blockset, oldset;
+
+        // create a signal set containing just ALARM and USR2
+        sigemptyset(&blockset);
+        sigaddset(&blockset, SIGALRM);
+        sigaddset(&blockset, SIGUSR2);
+        sigaddset(&blockset, SIGIO);
+
+        if (__builtin_expect(rr_record_requested, 0)) {
+            //block signals
+            sigprocmask(SIG_BLOCK, &blockset, &oldset);
+            rr_do_begin_record(rr_requested_name, first_cpu);
+            rr_record_requested = 0;
+            //unblock signals
+            sigprocmask(SIG_SETMASK, &oldset, NULL);
+        }
+
+        if (__builtin_expect(rr_replay_requested, 0)) {
+            //block signals
+            sigprocmask(SIG_BLOCK, &blockset, &oldset);
+            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+                printf("Failed to start replay\n");
+            } else { // we have to unblock signals, so we can't just continue on failure
+                //quit_timers();
+                rr_replay_requested = 0;
+            }
+            //unblock signals
+            sigprocmask(SIG_SETMASK, &oldset, NULL);
+        }
+
+        //mz 05.2012 We have the global mutex here, so this should be OK.
+        if (rr_end_record_requested && rr_in_record()) {
+            rr_do_end_record();
+            rr_reset_state(first_cpu);
+            rr_end_record_requested = 0;
+            vm_start();
+        }
+        if (rr_end_replay_requested && rr_in_replay()) {
+            //mz restore timers
+#warning Figure out how timers work in new QEMU
+            //init_timer_alarm();
+            //mz FIXME this is used in the monitor for do_stop()??
+            rr_do_end_replay(/*is_error=*/0);
+            rr_end_replay_requested = 0;
+            vm_stop(RUN_STATE_PAUSED);
+        }
+
 #ifdef CONFIG_PROFILER
         dev_time += profile_getclock() - ti;
 #endif
