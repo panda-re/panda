@@ -79,6 +79,22 @@ volatile sig_atomic_t rr_use_live_exit_request = 0;
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 
+#ifdef CONFIG_SOFTMMU
+void rr_set_program_point(void) {
+    CPUState *cs = current_cpu;
+#if defined( TARGET_I386 )
+    X86CPU *cpu = X86_CPU(cs);
+    CPUX86State *env = &cpu->env;
+    if (env) {
+        rr_set_prog_point(env->eip, env->regs[R_ECX], cs->rr_guest_instr_count);
+#else
+#warning Figure out the right place to put program counter now.
+        rr_set_prog_point(0, 0, cs->rr_guest_instr_count);
+#endif
+    }
+}
+#endif
+
 double rr_get_percentage (void) {
     return 100.0 * rr_prog_point.guest_instr_count /
         rr_nondet_log->last_prog_point.guest_instr_count;
