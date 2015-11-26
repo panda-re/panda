@@ -33,7 +33,11 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
-PROGS=$(QEMU_PROG) $(QEMU_PROGW)
+ifdef CONFIG_SOFTMMU
+RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
+endif
+
+PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG)
 STPFILES=
 
 config-target.h: config-target.h-timestamp
@@ -196,6 +200,9 @@ ifdef CONFIG_DARWIN
 	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/qemu.rsrc -o $@,"  REZ   $(TARGET_DIR)$@")
 	$(call quiet-command,SetFile -a C $@,"  SETFILE $(TARGET_DIR)$@")
 endif
+
+$(RR_PRINT_PROG): rr_print.o
+	$(call LINK,$^)
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"  GEN   $(TARGET_DIR)$@")
