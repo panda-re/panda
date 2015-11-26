@@ -22,6 +22,10 @@
 #include "exec/cpu_ldst.h"
 #include "exec/address-spaces.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "rr_log.h"
+#endif
+
 void helper_outb(CPUX86State *env, uint32_t port, uint32_t data)
 {
 #ifdef CONFIG_USER_ONLY
@@ -190,7 +194,16 @@ void helper_rdtsc(CPUX86State *env)
     }
     cpu_svm_check_intercept_param(env, SVM_EXIT_RDTSC, 0);
 
-    val = cpu_get_tsc(env) + env->tsc_offset;
+#ifdef CONFIG_SOFTMMU
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/val = cpu_get_tsc(env) + env->tsc_offset,
+        /*record=*/rr_input_8(&val),
+        /*replay=*/rr_input_8(&val),
+        /*location=*/RR_CALLSITE_RDTSC);
+#else
+        val = cpu_get_tsc(env) + env->tsc_offset;
+#endif
+
     env->regs[R_EAX] = (uint32_t)(val);
     env->regs[R_EDX] = (uint32_t)(val >> 32);
 }
