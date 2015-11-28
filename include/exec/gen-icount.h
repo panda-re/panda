@@ -76,4 +76,27 @@ static inline void gen_io_end(void)
     tcg_temp_free_i32(tmp);
 }
 
+// Record and replay
+static inline void gen_op_update_rr_icount(void)
+{
+    TCGv_i64 count;
+
+    count = tcg_temp_new_i64();
+
+    tcg_gen_ld_i64(count, cpu_env, offsetof(CPUState, rr_guest_instr_count));
+    tcg_gen_addi_i64(count, count, 1);
+    tcg_gen_st_i64(count, cpu_env, offsetof(CPUState, rr_guest_instr_count));
+
+    tcg_temp_free_i64(count);
+}
+
+static inline void gen_op_update_panda_pc(uint64_t new_pc)
+{
+    TCGv_i64 tmp_pc;
+    tmp_pc = tcg_temp_new_i64();
+    tcg_gen_movi_i64(tmp_pc, new_pc);
+    tcg_gen_st_i64(tmp_pc, cpu_env, offsetof(CPUState, panda_guest_pc));
+    tcg_temp_free_i64(tmp_pc);
+}
+
 #endif
