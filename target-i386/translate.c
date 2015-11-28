@@ -25,6 +25,10 @@
 #include "tcg-op.h"
 #include "exec/cpu_ldst.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "rr_log.h"
+#endif
+
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 
@@ -8201,6 +8205,9 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     int num_insns;
     int max_insns;
 
+    // rr
+    tb->num_guest_insns = 0;
+
     /* generate intermediate code */
     pc_start = tb->pc;
     cs_base = tb->cs_base;
@@ -8273,6 +8280,14 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     cpu_ptr1 = tcg_temp_new_ptr();
     cpu_cc_srcT = tcg_temp_local_new();
 
+#ifdef CONFIG_SOFTMMU
+    //mz for record and replay, let's start each block with EIP = pc_start.
+    //mz this way, we can chain in record and not chain in replay.
+    if (rr_mode != RR_OFF) {
+        gen_jmp_im(pc_start - dc->cs_base);
+    }
+#endif
+
     dc->is_jmp = DISAS_NEXT;
     pc_ptr = pc_start;
     num_insns = 0;
@@ -8305,7 +8320,25 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
             gen_io_start();
         }
 
+        //mz let's count this instruction
+#if 0
+        if (
+#ifdef CONFIG_SOFTMMU
+                rr_mode != RR_OFF ||
+#endif
+                panda_update_pc) {
+                gen_op_update_panda_pc(pc_ptr);
+            }
+#endif
+
+#ifdef CONFIG_SOFTMMU
+            if (rr_mode != RR_OFF) {
+                gen_op_update_rr_icount();
+            }
+#endif
+
         pc_ptr = disas_insn(env, dc, pc_ptr);
+        tb->num_guest_insns++;
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;

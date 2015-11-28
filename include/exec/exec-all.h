@@ -250,6 +250,9 @@ struct TranslationBlock {
      */
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
+
+    // record and replay - might just be able to use icount
+    uint16_t num_guest_insns;
 };
 
 void tb_free(TranslationBlock *tb);
