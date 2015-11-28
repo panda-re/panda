@@ -216,6 +216,9 @@ struct TranslationBlock {
        jmp_first */
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
+
+    // record and replay - might just be able to use icount
+    uint16_t num_guest_insns;
 };
 
 #include "qemu/thread.h"

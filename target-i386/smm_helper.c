@@ -19,6 +19,7 @@
 
 #include "cpu.h"
 #include "exec/helper-proto.h"
+#include "rr_log.h"
 
 /* SMM support */
 
@@ -67,7 +68,12 @@ void do_smm_enter(X86CPU *cpu)
     } else {
         env->hflags2 |= HF2_NMI_MASK;
     }
-    cpu_smm_update(cpu);
+
+    RR_DO_RECORD_OR_REPLAY(
+    /*action=*/cpu_smm_update(cpu),
+    /*record=*/RR_NO_ACTION,
+    /*replay=*/RR_NO_ACTION,
+    /*location=*/RR_CALLSITE_DO_SMM_ENTER);
 
     sm_state = env->smbase + 0x8000;
 
@@ -327,7 +333,12 @@ void helper_rsm(CPUX86State *env)
     }
     env->hflags2 &= ~HF2_SMM_INSIDE_NMI_MASK;
     env->hflags &= ~HF_SMM_MASK;
-    cpu_smm_update(cpu);
+
+    RR_DO_RECORD_OR_REPLAY(
+    /*action=*/cpu_smm_update(cpu),
+    /*record=*/RR_NO_ACTION,
+    /*replay=*/RR_NO_ACTION,
+    /*location=*/RR_CALLSITE_HELPER_RSM);
 
     qemu_log_mask(CPU_LOG_INT, "SMM: after RSM\n");
     log_cpu_state_mask(CPU_LOG_INT, CPU(cpu), CPU_DUMP_CCOP);
