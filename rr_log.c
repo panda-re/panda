@@ -86,10 +86,10 @@ void rr_set_program_point(void) {
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
     if (env) {
-        rr_set_prog_point(env->eip, env->regs[R_ECX], cs->rr_guest_instr_count);
+        rr_set_prog_point(cs->panda_guest_pc, env->regs[R_ECX], cs->rr_guest_instr_count);
 #else
 #warning Figure out the right place to put program counter now.
-        rr_set_prog_point(0, 0, cs->rr_guest_instr_count);
+        rr_set_prog_point(cs->panda_guest_pc, 0, cs->rr_guest_instr_count);
 #endif
     }
 }
