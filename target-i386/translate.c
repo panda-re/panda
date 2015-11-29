@@ -8013,21 +8013,12 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
             gen_io_start();
         }
 
+#ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
-#if 0
-        if (
-#ifdef CONFIG_SOFTMMU
-                rr_mode != RR_OFF ||
-#endif
-                panda_update_pc) {
-                gen_op_update_panda_pc(pc_ptr);
-            }
-#endif
-
-#ifdef CONFIG_SOFTMMU
-            if (rr_mode != RR_OFF) {
-                gen_op_update_rr_icount();
-            }
+        if (rr_mode != RR_OFF) {
+            gen_op_update_panda_pc(pc_ptr);
+            gen_op_update_rr_icount();
+        }
 #endif
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
