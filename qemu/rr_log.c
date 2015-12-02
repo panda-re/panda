@@ -1537,12 +1537,20 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   if (rr_record_requested == 2) {
     printf ("loading snapshot:\t%s\n", rr_snapshot_name);
     snapshot_ret = load_vmstate(rr_snapshot_name);
+    if(snapshot_ret != 0){
+        printf("Error loading snapshot! Failed to begin recording. Code: %d\n", snapshot_ret);
+        return snapshot_ret;
+    }
     g_free(rr_snapshot_name); rr_snapshot_name = NULL;
   }
   if (rr_record_requested  == 1 || rr_record_requested == 2) {
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
     snapshot_ret = do_savevm_rr(get_monitor(), name_buf);
+    if (snapshot_ret != 0){
+        printf("Failed to save VM state! Aborting recording. Code: %d\n", snapshot_ret);
+        return snapshot_ret;
+    }
     //log_all_cpu_states();
   }
 
@@ -1562,6 +1570,7 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
   //cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
   return snapshot_ret;
 #endif
+  return 0;
 }
 
 
