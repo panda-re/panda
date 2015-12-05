@@ -21,95 +21,32 @@ using namespace std;
 
 
 
-uint32_t index_file_aux(char *filename, 
-                        long start_offset,
-                        uint32_t passage_num,
-                        IndexCommon *indc,
-                        Index *index,
-                        uint32_t passage_length,
-                        uint32_t file_length) {
-    static uint8_t *binary = NULL;
-    if (binary == NULL) {
-        binary = (uint8_t *) malloc(passage_length);
-    }
-    char *p = filename;
-    while (*p != '\0') {
-        if (*p == '\n') {
-            *p = 0;
-            break;
-        }
-        p ++;
-    }
-    FILE *fp = fopen(filename, "r");
-    fseek(fp, start_offset, SEEK_SET);
-    uint32_t n;
-    long pos = start_offset;
-    bool special = false;
-    while (n = fread(binary, 1, passage_length, fp)) {
-        if (n == 0) {
-            // done
-            break;
-        }
-        if (n < passage_length) {
-            // this is the special last, short passage
-            if (special) {
-                // only create this special once
-                break;
-            }
-            special = true;
-            // last passage is last n bytes
-            fseek(fp, file_length - passage_length, SEEK_SET);
-            pos = file_length - passage_length;
-            n = fread(binary, 1, passage_length, fp);
-        }    
-        if (n > 0) {
-            //      printf ("\npos=%d\n", pos);
-            index_this_passage(indc, index, binary, n, passage_num);
-            passage_num += 2;
-        }
-        pos += n;
-    }
-    fclose(fp);
-    printf("%d passages\n", indc->num_passages);
-    return passage_num;
-}
-
-
 
 uint32_t passage_num = 0;
 
+// count grams in this file and add to index
 void index_file(IndexCommon *indc, Index *index, char *filename, uint32_t passage_length, uint32_t file_length, uint32_t step) {
     static uint8_t *file_buf = NULL;
     static uint32_t file_buf_len = 0;
 
-    struct stat s;
-    int ret = stat(filename, &s);
-    assert (ret == 0);
-    if (file_buf_len < s.st_size) {
-        file_buf_len = s.st_size;
+    if (file_buf_len < file_length) {
+        file_buf_len = file_length;
         if (file_buf == NULL) {
-            file_buf = (uint8_t *) malloc(s.st_size);
+            file_buf = (uint8_t *) malloc(file_length);
         }
         else {
-            file_buf = (uint8_t *) realloc(file_buf, s.st_size);
+            file_buf = (uint8_t *) realloc(file_buf, file_length);
         }
     }
     FILE *fp = fopen(filename, "r");
-    ret = fread(file_buf, 1,  s.st_size, fp);
-    assert (ret == s.st_size);
-    for (uint32_t i=0; i<s.st_size-passage_length; i+=step ) {
+    int ret = fread(file_buf, 1,  file_length, fp);
+    assert (ret == file_length);
+    for (uint32_t i=0; i<file_length-passage_length; i+=step ) {
+        // passage number is offset within file
         index_this_passage(indc, index, file_buf+i, passage_length, passage_num);
-        passage_num+=step;
+        passage_num++;
     }
 
-    /*     
-    char *buf 
-    uint32_t first_passage_num = indc->num_passages;
-    // index passages starting from offset 0
-    index_file_aux(filename, 0, first_passage_num, indc, index, passage_length, file_length);
-    // index passages starting from offset passge_length/2 
-    index_file_aux(filename, passage_length/2, first_passage_num+1, indc, index, passage_length, file_length);
-    */
 }
 
 
@@ -118,8 +55,14 @@ void index_file(IndexCommon *indc, Index *index, char *filename, uint32_t passag
 
 
 int main (int argc, char **argv) {
-    if (argc != 7 ) {
-        printf ("usage: bi file_list_file filename_pfx min_n max_n passage_len step\n");
+    if (argc != 8 ) {
+        printf ("usage: bi file_list_file filename_pfx min_n max_n passage_len step ind\n");
+        printf ("where ...\n  file_list_file is the name of a file where each line is the name of a file to be indexed.\n");
+        printf ("  filename_pfx is full path pfx for index and inv index files to be created\n");
+        printf ("  min_n, max_n are ngram limits\n");
+        printf ("  passage_len is how many bytes in an indexed passage\n");
+        printf ("  step is how many bytes to step between passages\n");
+        printf ("  ind is 1 to marshall index in addition to inverted index\n");
         exit(1);
     }
     struct stat fs;
@@ -129,8 +72,16 @@ int main (int argc, char **argv) {
     uint32_t max_n_gram = atoi(argv[4]);
     uint32_t passage_len = atoi(argv[5]);
     uint32_t step = atoi(argv[6]);
+    int marshall_ind = atoi(argv[7]);
+    printf ("file_list_file = %s\n", file_list_file);
+    printf ("pfx = %s\n", filename_prefix.c_str());
+    printf ("grams = %d .. %d\n", min_n_gram, max_n_gram);
+    printf ("passage_len = %d\n", passage_len);
+    printf ("step = %d\n", step);
+    printf ("marshall_ind = %d\n", marshall_ind);
+    
     assert (min_n_gram <= max_n_gram);
-    IndexCommon *indc = new_index_common(filename_prefix, min_n_gram, max_n_gram, passage_len);  
+    IndexCommon *indc = new_index_common(filename_prefix, min_n_gram, max_n_gram, passage_len, step);  
     Index *index = new Index;
     uint32_t num_files = 0;
     uint64_t total_bytes = 0;
@@ -144,7 +95,7 @@ int main (int argc, char **argv) {
         }
         filename[strlen(filename)-1] = 0;
         stat(filename, &fs);   
-        printf ("%d indexing file %s len=%d\n", num_files, filename, fs.st_size);
+        printf ("%d indexing file %s len=%d start_psg=%d\n", num_files, filename, fs.st_size, indc->num_passages);
         indc->filename_to_first_passage[filename] = indc->num_passages;
         indc->first_passage_to_filename[indc->num_passages] = filename;
         index_file(indc, index, filename, passage_len, fs.st_size, step);    
@@ -154,6 +105,9 @@ int main (int argc, char **argv) {
     }
     printf ("%d passages in total\n", indc->num_passages);
     marshall_index_common(indc);
+    if (marshall_ind == 1) {
+        marshall_index(indc, index);
+    }
     InvIndex *inv = invert(indc, index);
     printf ("marshalling inv index\n");  
     indc->filename_prefix = filename_prefix;

@@ -34,9 +34,9 @@ void timer_start(std::string timername) {
 }
 
 
-float timer_stop(std::string timername) {
+double timer_stop(std::string timername) {
     if (starttime.count(timername) != 0) {
-        float secs = getsecs() - starttime[timername];
+        double secs = getsecs() - starttime[timername];
         printf ("time for [%s] = %.5f\n", timername.c_str(), secs);
         return secs;
     }
@@ -44,8 +44,8 @@ float timer_stop(std::string timername) {
 }
 
 
-bool pdice (float prob_yes) {
-    if ((((float) (rand ())) / RAND_MAX) < prob_yes) 
+bool pdice (double prob_yes) {
+    if ((((double) (rand ())) / RAND_MAX) < prob_yes) 
         return true;    
     else
         return false;
@@ -55,21 +55,32 @@ bool pdice (float prob_yes) {
 
 
 extern uint32_t max_row_length;
-float alpha;
+double alpha;
 
 int main (int argc, char **argv) {
 
 
-    if (argc !=4) {
+    if (argc !=6) {
         printf ("usage: inv_pfx max_row_length alpha\n");
         printf ("inv_pfx is file pfx for inv index containing counts\n");
+        printf ("weight scheme version (0 or 1)\n");
         printf ("alpha: sharpness of weightings on unigrams vs. whatever\n");
+        printf ("min_sc: discard preprocessed scores below this range\n");
         exit(1);
     }
     std::string pfx = std::string(argv[1]);
     max_row_length = atoi(argv[2]);
-    alpha = atof(argv[3]);
+    uint32_t weight_scheme = atoi(argv[3]);
+    alpha = atof(argv[4]);
+    double min_sc = atoi(argv[5]);
 
+
+    printf ("pfx = %s\n", pfx.c_str());
+    printf ("max_row_length = %d\n", max_row_length);
+    printf ("weight_scheme = %d\n", weight_scheme);
+    printf ("alpha = %.3f\n", alpha);
+    printf ("min score %.3f \n", min_sc);
+    
     IndexCommon *indc = unmarshall_index_common(pfx, false);
     InvIndex *inv = unmarshall_invindex_min(pfx, indc);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
@@ -83,10 +94,18 @@ int main (int argc, char **argv) {
     }
     printf ("done unmarshalling inv\n");
 
-    std::vector < float > scoring_params(indc->max_n_gram + 1);
-    float sum = 0.0;
+    std::vector < double > scoring_params(indc->max_n_gram + 1);
+    double sum = 0.0;
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
-        scoring_params[n] = pow(1.0 / (n + 1), alpha);
+        if (weight_scheme == 0) {
+            scoring_params[n] = pow(1.0 / (n + 1), alpha);
+        }
+        else if (weight_scheme == 1) {
+            scoring_params[n] = pow((n + 1), alpha);
+        }
+        else {
+            assert (1==0);
+        }
         sum += scoring_params[n];
     }
     for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
@@ -94,10 +113,12 @@ int main (int argc, char **argv) {
         printf ("scoring_param %d = %.4f\n", n, scoring_params[n]);
     }
 
-    std::map < uint32_t, float > sc;
-    std::set < float > pp;
+    std::map < uint32_t, double > sc;
+    std::set < double > pp;
 
     PpScores *pps = new PpScores;
+    uint32_t num_filtered = 0;
+    uint32_t num_total = 0;
     for (uint32_t n = indc->max_n_gram; n >=indc->min_n_gram; n --) {
         printf ("Precomputing scores for n=%d\n", n);
         uint32_t ii = 0;                
@@ -106,7 +127,7 @@ int main (int argc, char **argv) {
         for ( auto g : indc->lexicon[n].grams ) {        
             if (debug) {
                 printf ("Precomputing scores for ");
-                spit_gram_hex(g, n);
+                spit_gram_hex(stdout, g, n);
                 printf ("\n");
             }
             // case study.  say n = 4 and g = 'abcd'
@@ -131,11 +152,11 @@ int main (int argc, char **argv) {
                     uint32_t igp_count_whole_gram = inv->general_query[nn][whole_gram];
                     if (debug) {
                         printf ("    whole_gram ");
-                        spit_gram_hex(whole_gram, nn);
+                        spit_gram_hex(stdout, whole_gram, nn);
                         printf (" c|p=%d c|g=%d\n", ppp_count_whole_gram, igp_count_whole_gram);
                     }
                     uint32_t ppp_count_prev_part, igp_count_prev_part;                   
-                    float ppp, igp;
+                    double ppp, igp;
                     if (nn > indc->min_n_gram) {                        
                         Gram prev_part; 
                         prev_part = igramsub(g, 0, nn-1);
@@ -143,15 +164,15 @@ int main (int argc, char **argv) {
                         igp_count_prev_part = inv->general_query[nn-1][prev_part];
                         if (debug) {
                             printf ("    prev_part ");
-                            spit_gram_hex(prev_part, nn-1);
+                            spit_gram_hex(stdout, prev_part, nn-1);
                             printf (" c|p=%d c|g=%d\n", ppp_count_prev_part, igp_count_prev_part);
                         }
-                        ppp = ((float) ppp_count_whole_gram) / ppp_count_prev_part;
-                        igp = ((float) igp_count_whole_gram) / igp_count_prev_part;
+                        ppp = ((double) ppp_count_whole_gram) / ppp_count_prev_part;
+                        igp = ((double) igp_count_whole_gram) / igp_count_prev_part;
                     }
                     else {
-                        ppp = ((float) ppp_count_whole_gram) / indc->passage_len_bytes;
-                        igp = ((float) igp_count_whole_gram) / inv->total_count[nn];
+                        ppp = ((double) ppp_count_whole_gram) / indc->passage_len_bytes;
+                        igp = ((double) igp_count_whole_gram) / inv->total_count[nn];
                     }
                     if (debug) printf ("ppp=%.4f  igp=%.4f\n", ppp, igp);
                     numerator += scoring_params[nn] * ppp;
@@ -161,17 +182,29 @@ int main (int argc, char **argv) {
                         printf ("denominator += %.4f\n", scoring_params[nn] * igp);
                     }                    
                 }
-                pps->scorerow[n][g].el[j] = {passage_ind, log(numerator / denominator)};
-                if (debug) {
-                    printf ("n=%d g=", n);
-                    spit_gram_hex(g,n);
-                    printf (" psg=%d sc=%.4f\n", passage_ind, pps->scorerow[n][g].el[j].val);
-                    printf ("\n");
+                double score = log(numerator / denominator);
+                //                printf ("score = %.4f\n", score);
+                num_total++;
+                if (score >= min_sc) {
+                    pps->scorerow[n][g].el[j] = {passage_ind, log(numerator / denominator)};
+                    if (debug) {
+                        printf ("n=%d g=", n);
+                        spit_gram_hex(stdout, g,n);
+                        printf (" psg=%d sc=%.4f\n", passage_ind, pps->scorerow[n][g].el[j].val);
+                        printf ("\n");
+                    }
+                    j++;
                 }
-                j++;
+                else {
+                    num_filtered++;
+                }                    
             }
         }
     }
+
+
+    printf ("score range retained %.3f\n", ((float) (num_total - num_filtered)) / num_total);
+
     printf ("done precomputing\n");
     marshall_preprocessed_scores(indc, pps);
     printf ("done marshalling\n");
