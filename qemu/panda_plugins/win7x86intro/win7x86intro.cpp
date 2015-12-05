@@ -138,10 +138,10 @@ static PTR get_dtb(CPUState *env, PTR eproc) {
     return dtb;
 }
 
-// *must* be called on a buffer of size 16 or greater
+// *must* be called on a buffer of size 17 or greater
 static void get_procname(CPUState *env, PTR eproc, char *name) {
-    panda_virtual_memory_rw(env, eproc+EPROC_NAME_OFF, (uint8_t *)name, 15, false);
-    name[15] = '\0';
+    panda_virtual_memory_rw(env, eproc+EPROC_NAME_OFF, (uint8_t *)name, 16, false);
+    name[16] = '\0';
 }
 
 // XXX: this will have to change for 64-bit
@@ -205,7 +205,7 @@ static PTR get_next_mod(CPUState *env, PTR mod) {
 
 static void fill_osiproc(CPUState *env, OsiProc *p, PTR eproc) {
     p->offset = eproc;
-    char *name = (char *)malloc(16);
+    char *name = (char *)malloc(17);
     get_procname(env, eproc, name);
     p->name = name;
     p->asid = get_dtb(env, eproc);

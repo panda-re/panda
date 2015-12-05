@@ -36,6 +36,7 @@
 #include <map>
 #include <set>
 #include <cstdint>
+#include <cstring>
 #include <sstream>
 #include <iomanip>
 
@@ -181,7 +182,7 @@ void spit_asidstory() {
     fclose(fp);
 }
 
-char *last_name = 0;
+char last_name[256];
 target_ulong last_pid = 0;
 target_ulong last_asid = 0;
 
@@ -205,7 +206,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     }
     OsiProc *p = get_current_process(env);
     if (pid_ok(p->pid)) {
-        const NamePid namepid(p->name, p->pid, p->asid);
+        const NamePid namepid(p->name ? p->name : "", p->pid, p->asid);
         ProcessData &pd = process_datas[namepid];
         // keep track of first rr instruction for each name/pid
         if (pd.first == 0) {
@@ -215,7 +216,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             std::string count_str(std::to_string(count));
             std::string shortname(namepid.name);
 
-            if (shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
+            if (shortname.size() >= 4 && shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
                 shortname = shortname.substr(0, shortname.size() - 4); 
             }
             if (count > 1) {
@@ -230,7 +231,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
             pd.shortname = shortname;
         }
         if (pandalog) {
-            if (last_name == 0
+            if (last_name[0] == 0
                 || (p->asid != last_asid)
                 || (p->pid != last_pid) 
                 || (0 != strcmp(p->name, last_name))) {        
@@ -243,12 +244,12 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
                 pandalog_write_entry(&ple);           
                 last_asid = p->asid;
                 last_pid = p->pid;
-                free(last_name);
-                last_name = strdup(p->name);
+                strncpy(last_name, p->name, 256);
+                last_name[255] = '\0';
             }
         }
     }
-    free (p);
+    free_osiproc(p);
     return 0;
 }
 
@@ -260,13 +261,13 @@ int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationB
     OsiProc *p = get_current_process(env);
     if (pid_ok(p->pid)) {
         Instr instr = rr_get_guest_instr_count();
-        ProcessData &pd = process_datas[NamePid(p->name, p->pid, p->asid)];
+        ProcessData &pd = process_datas[NamePid(p->name ? p->name : "", p->pid, p->asid)];
         pd.count++;
         uint32_t cell = instr * scale;
         pd.cells[cell]++;
         pd.last = std::max(pd.last, instr);
     }
-    free(p);
+    free_osiproc(p);
     return 0;
 }
 

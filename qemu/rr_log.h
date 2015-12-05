@@ -118,6 +118,7 @@ typedef struct RR_log_t {
   char *name;                  // file name
   FILE *fp;                    // file pointer for log
   unsigned long long size;     // for a log being opened for read, this will be the size in bytes
+  unsigned long long bytes_read;
 
   RR_log_entry current_item;
   uint8_t current_item_valid;

@@ -36,7 +36,7 @@ sudo apt-get install subversion
 sudo apt-get -y install curl
 sudo apt-get -y install autoconf
 sudo apt-get -y install libtool
-
+sudo apt-get -y install python-pip
 ```
 
 ## Compiled prerequisites
@@ -59,11 +59,14 @@ svn checkout http://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/
 cd -
 ```
 
-<!-- Note: Maybe the patch should be copied inside the PANDA repository, or in a gist. -->
-
 If you are working with g++-4.9, you will also need to
 [patch clang](http://reviews.llvm.org/rL201729) to provide `max_align_t`.
 Otherwise building of some plugins will fail.
+
+<!--
+	In case the diff from llvm.org goes away, this is a backup:
+	https://gist.githubusercontent.com/m000/c57fa35d550b49033864/raw/1eacc0ccd0876dc3abc3c314346a83bef614e23c/llvm-3.3_gcc-4.9.diff
+-->
 
 ```
 export CLANG_PATCH=http://reviews.llvm.org/file/data/sw37fgtbupwhetydgazl/PHID-FILE-wprxzvc5yn4ylp7xwt6t/201729.diff
@@ -79,7 +82,7 @@ Now, compile LLVM. For a **debug build** (REALLY slow), use the following comman
 ```
 cd llvm
 CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
-$ cd -
+cd -
 ```
 
 For a **release build**, use the following commands:
@@ -98,6 +101,7 @@ The following commands will download, build and install diStorm
 on your system.
 
 ```
+cd ~/software
 svn checkout http://distorm.googlecode.com/svn/trunk/ distorm
 cd distorm/make/linux
 make
@@ -105,7 +109,6 @@ sudo make install
 cd -
 cd distorm/include
 sudo cp * /usr/local/include
-cd -
 ```
 
 ### Protocol buffers C style
@@ -120,7 +123,7 @@ cd protobuf
 sh ./autogen.sh
 ./configure --disable-shared
 make
-make install
+sudo make install
 
 cd ~/software
 git clone https://github.com/protobuf-c/protobuf-c.git
@@ -128,13 +131,21 @@ cd protobuf-c
 sh ./autogen.sh
 ./configure --disable-shared
 make
-make install
+sudo make install
 ```
 
 ### Pycparser
 
 The new version of PPP, which permits api functions that have fn pointers as arguments,
-uses a c parser written in python: pycparser.
+uses a c parser written in python: [pycparser](https://github.com/eliben/pycparser).
+You can directly install pycparser using [pip](https://pip.pypa.io/):
+
+```
+sudo pip install git+https://github.com/eliben/pycparser.git@master
+```
+
+<!--
+Manual installation is also possible:
 
 ```
 cd ~/software
@@ -142,32 +153,42 @@ git clone https://github.com/eliben/pycparser.git
 cd pycparser
 sudo python setup.py install
 ```
+-->
 
 
-## Building the QEMU part
+## Building the QEMU part and the PANDA plugins
 After successfully installing all the prerequisites, you can go
 on and build the QEMU part of PANDA.
-
-Before launching the `build.sh` script, make sure you have
-updated it to reflect the location of your LLVM build.
-You should pass `--with-llvm=../llvm/Debug+Asserts` or
-`--with-llvm=../llvm/Release` to the configure script, depending
-on which LLVM build you compiled earlier.
-
+This is most conveniently done by invoking `build.sh`.
 
 ```
-$ cd qemu
-$ ./build.sh
+cd qemu
+./build.sh
 ```
 
-By default `gcc-4.7` and `g++-4.7` will be used for the
-compilation. The `build.sh` script respects the ``CC``/``CXX``
-environment variables in case you want to use a different
-compiler. E.g.
+### Overriding LLVM location
+The `build.sh` script will attempt to use the Release build of the LLVM we compiled for PANDA.
+You can specify some other LLVM directory and build type by setting the 
+`PANDA_LLVM_ROOT` and `PANDA_LLVM_BUILD` environment variables. E.g.,
 
 ```
-$ cd qemu
-$ CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+export PANDA_LLVM_ROOT="/opt/llvm"
+export PANDA_LLVM_BUILD="Debug+Asserts"
+cd qemu
+./build.sh
 ```
 
+If LLVM is not found in the specified locations, `build.sh`
+will attempt to use any other version of LLVM 3.3 found in your path.
+
+### Overriding default C/C++ compiler
+The default C and C++ compilers will be used for the compilation.
+In case you want to use a specific version of gcc/g++, the `build.sh`
+script respects the ``CC``/``CXX`` environment variables.
+E.g.,
+
+```
+cd qemu
+CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+```
 
