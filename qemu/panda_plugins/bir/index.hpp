@@ -67,6 +67,8 @@ typedef struct index_common_struct {
     uint32_t passage_len_bytes;
     // total passages in the index
     uint32_t num_passages; 
+    // step used in indexing
+    uint32_t step;
     // total uniq passages in the index
     uint32_t num_uind;
     // map from ngram "words" to uniq inds
@@ -195,20 +197,20 @@ void marshall_string_int_hashtable_fp(FILE *fp, SIHashtable &sih);
 
 Index *new_index(uint32_t min_n_gram, uint32_t max_n_gram,
                  uint32_t passage_len_bytes) ;
-void spit_passage_dist(PassageDist &pd) ;
-void spit_passage(Passage &passage);
+void spit_passage_dist(FILE *output, PassageDist &pd) ;
+void spit_passage(FILE *output, Passage &passage);
 
-void spit_index(Index &index);
-void spit_inv(InvIndex &inv);
+void spit_index(FILE *output, Index &index);
+void spit_inv(FILE *output, InvIndex &inv);
 
 void marshall_invindex(InvIndex &inv);
 
-void spit_inv_min(InvIndex *inv) ;
+void spit_inv_min(FILE *output, InvIndex *inv) ;
 
 void marshall_invindex_min(InvIndex &inv);
 
 
-void spit_invindex(InvIndex &invindex);
+void spit_invindex(FILE *output, InvIndex &invindex);
 void temp_count(SIHashtable &tcount, std::string n_gram, uint32_t n);
 
 
@@ -219,7 +221,7 @@ void resize_doc_word(GramPsgCounts &row, uint32_t desired_size);
 // which use an array for rows
 // returns 0 on fail (row too long)
 // else returns 1
-int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, GramPsgCounts &row );
+int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, GramPsgCounts **row );
 
 // called by merger which keeps rows in an array
 void marshall_row_fp(FILE *fp, GramPsgCounts &row) ;
@@ -231,13 +233,14 @@ void marshall_doc_word_fp(FILE *fp, std::map < uint32_t, uint32_t > &doc_word);
 
 InvIndex  *invindex_min_new(std::string pfx, uint32_t min_n, uint32_t max_n, uint32_t passage_len_bytes) ;
 
-void spit_gram_hex(const Gram gram, uint32_t n);
+void spit_gram_hex(FILE *output, const Gram gram, uint32_t n);
 
 
 Gram gramsub(Gram g, uint32_t pos, uint32_t len);
 
 
-std::string get_passage_name(IndexCommon *indc, uint32_t passage_ind, uint32_t *start_pos);
+std::pair<std::string, uint32_t> get_passage_info(IndexCommon *indc, uint32_t passage_ind);
+
 
 
 
@@ -248,12 +251,12 @@ void marshall_invindex(IndexCommon *indc, InvIndex *inv);
 void index_this_passage(IndexCommon *indc, Index *ind, uint8_t *binary_passage, uint32_t len, uint32_t passage_ind) ;
 
 
-IndexCommon *new_index_common(std::string pfx, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes);
+IndexCommon *new_index_common(std::string pfx, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes, uint32_t step);
 
 void marshall_preprocessed_scores(IndexCommon *indc, PpScores *pps);
 void marshall_index_common(IndexCommon *indc);
 
-
+void marshall_index(IndexCommon *indc, Index *index) ;    
 
 Index *unmarshall_index(std::string pfx, IndexCommon *indc) ;
 
@@ -267,7 +270,10 @@ Index *unmarshall_index(std::string pfx, IndexCommon *indc, bool passages) ;
 // if uind_to_psgs is false, then we DONT load
 IndexCommon *unmarshall_index_common(const std::string pfx, bool uind_to_psgs) ;
 InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc);
-void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *score, std::vector<Score> &topN, uint32_t n);
+void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, double *best_score,
+                         std::vector<Score> &topN, uint32_t n, int correct_psg, bool *success) ;
+
+
 Passage index_passage (IndexCommon *indc, bool update,
                        uint8_t *binary_passage, uint32_t len,
                        uint32_t uind);

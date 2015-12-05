@@ -19,7 +19,7 @@ int main (int argc, char **argv) {
 
 
     if (argc != 3) {
-        printf ("usage: spit_psg pfx psgid");
+        printf ("usage: spit_psg pfx psgid\n");
         exit(1);
     }
     std::string pfx = std::string(argv[1]);
@@ -27,7 +27,12 @@ int main (int argc, char **argv) {
 
     IndexCommon *indc = unmarshall_index_common(pfx, true);
     InvIndex *inv = unmarshall_invindex_min(pfx, indc);
+    Index *ind = unmarshall_index(pfx, indc, true);
+            //     index->passages[passage_ind] = uind;
+    uint32_t uind = ind->passages[psgid];
+    printf ("uind[%d] = %d\n", psgid, uind);
 
+    /*    
     uint32_t no_uind = 0xffffffff;
     uint32_t uind = no_uind;
     for (uint32_t i=0; i<indc->num_uind; i++) {
@@ -38,20 +43,33 @@ int main (int argc, char **argv) {
         }
     }
     assert (uind != no_uind);
+    */
+
+    Passage &p = ind->uind_to_passage[uind];
+    spit_passage(stdout, p);
+    
+    /*
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
-        printf ("unmarshalling inv %d\n", n);
-        std::string filename;
-        filename =pfx + ".inv-" + std::to_string(n);
-        FILE *fp = fopen((const char *) filename.c_str(), "r");
+        PassageDist &d = p.contents[n];
+        
+        
+
+        //        printf ("unmarshalling inv %d\n", n);
+        //        std::string filename;
+        //        filename =pfx + ".inv-" + std::to_string(n);
+        //        FILE *fp = fopen((const char *) filename.c_str(), "r");
         for ( auto gram : indc->lexicon[n].grams ) {            
+            
+            
             inv->docs_with_word[n][gram] = unmarshall_doc_word_fp(fp, inv, n, gram);
             if (inv->docs_with_word[n][gram].count(uind) != 0) {
                 // this gram is in psg
-                spit_gram_hex(gram, n); printf (" ");
+                spit_gram_hex(stdout, gram, n); printf ("%d ", inv->docs_with_word[n][gram].count(uind));
             }
         }
         printf ("\n");
     }
     printf ("done unmarshalling inv\n");
+    */
 
 }

@@ -15,7 +15,7 @@ void marshall_invindex_c(void *vpindc, void *vpinv, char *file_pfx) ;
 
 void *unmarshall_preprocessed_scores_c (char *filename_pfx);
 
-void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, float *score);
+void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, double *score);
 
 void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
 

@@ -17,6 +17,7 @@ extern "C"{
 #include <unordered_set>
 
 uint32_t max_row_length=1000000;
+bool bu_debug = false;
 
 extern "C" {
 
@@ -33,9 +34,9 @@ void marshall_invindex_c(void *vpindc, void *vpinv, char *file_pfx) ;
 
 void *unmarshall_preprocessed_scores_c (char *filename_pfx, void *vpindc);
 
-void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, float *score);
+void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, double *score);
 
-void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes) ;
+    void *new_index_common_c(char *filename_prefix, uint32_t min_n_gram, uint32_t max_n_gram, uint32_t passage_len_bytes, uint32_t step) ;
 
 void *new_index_c() ;
 
@@ -47,25 +48,27 @@ void index_common_set_passage_len_bytes_c(void *vpindc, uint32_t passage_len_byt
    
 IndexCommon *new_index_common(std::string pfx, 
                               uint32_t min_n_gram, uint32_t max_n_gram,
-                              uint32_t passage_len_bytes) {
+                              uint32_t passage_len_bytes,
+                              uint32_t step) {
     IndexCommon *indc = new IndexCommon;  
     indc->filename_prefix = pfx;
     indc->min_n_gram = min_n_gram;
     indc->max_n_gram = max_n_gram;
     indc->passage_len_bytes = passage_len_bytes;
     indc->num_passages = 0;
+    indc->step = step;
     return indc;
 }
 
 
-void spit_gram_hex(const Gram gram, uint32_t n) {
+void spit_gram_hex(FILE *output, const Gram gram, uint32_t n) {
     uint32_t i;
-    printf ("(n=%d,", n);
+    fprintf (output, "(n=%d ", n);
     for (i=0; i<n; i++) {
         uint8_t *p = (uint8_t *) &(gram);
-        printf ("%02x", *(p +i));
+        fprintf(output, "%02x", *(p +i));
     }
-    printf (")");
+    fprintf(output, ")");
 }
 
 
@@ -90,161 +93,161 @@ Gram gramsub(Gram g, uint32_t pos, uint32_t len) {
 
 ///////////////////////////////////////////////////
 
-void spit_passage_dist(PassageDist &pd) {
+void spit_passage_dist(FILE *output, PassageDist &pd) {
     if (pd.count.size() == 0) {
         return ;
     }
-    printf ("PassageDist [\n");
-    printf ("n=%d total=%d\n", pd.n, pd.total);
+    fprintf(output, "PassageDist [\n");
+    fprintf(output, "n=%d total=%d\n", pd.n, pd.total);
     // iterate over grams in passage for this n
     for ( auto &kvp : pd.count ) {
         Gram gram = kvp.first;
         uint32_t count = kvp.second;
-        printf ("(%d,", count);
-        spit_gram_hex(gram, pd.n);
-        printf (") ");
+        fprintf(output, "(%d,", count);
+        spit_gram_hex(output, gram, pd.n);
+        fprintf(output, ") ");
     }
-    printf ("\n");
-    printf ("PassageDist ]\n");
+    fprintf(output, "\n");
+    fprintf(output, "PassageDist ]\n");
 }
   
-void spit_passage(Passage &passage) {
-    printf ("Passage [\n");
-    printf ("uind=%d \n", passage.uind);
+void spit_passage(FILE *output, Passage &passage) {
+    fprintf(output, "Passage [\n");
+    fprintf(output, "uind=%d \n", passage.uind);
     // iterate over n
     for ( auto &kvp : passage.contents ) {
-        //        printf ("n=%d\n", kvp.first);
-        spit_passage_dist(kvp.second);
+        //        fprintf(output, "n=%d\n", kvp.first);
+        spit_passage_dist(output, kvp.second);
     }
-    printf ("Passage ]\n");
+    fprintf(output, "Passage ]\n");
 }
 
-void spit_lexicon(Lexicon &lexicon) {
-    printf ("Lexicon %d [\n", lexicon.n);
-    printf ("size=%d\n", (int) lexicon.grams.size());
+void spit_lexicon(FILE *output, Lexicon &lexicon) {
+    fprintf(output, "Lexicon %d [\n", lexicon.n);
+    fprintf(output, "size=%d\n", (int) lexicon.grams.size());
     for ( auto &gram : lexicon.grams ) {    
-        printf ("gram : ") ;
-        spit_gram_hex(gram, lexicon.n);
-        printf ("\n");
+        fprintf(output, "gram : ") ;
+        spit_gram_hex(output, gram, lexicon.n);
+        fprintf(output, "\n");
     }
-    printf ("Lexicon ]\n");
+    fprintf(output, "Lexicon ]\n");
 }
 
-void spit_uind_to_psgs(std::map < uint32_t, std::set < uint32_t > > &uind_to_psgs) {
-    printf ("uind_to_psgs [\n");
-    printf ("size=%d\n", (int) uind_to_psgs.size());
+void spit_uind_to_psgs(FILE *output, std::map < uint32_t, std::set < uint32_t > > &uind_to_psgs) {
+    fprintf(output, "uind_to_psgs [\n");
+    fprintf(output, "size=%d\n", (int) uind_to_psgs.size());
     for ( auto &kvp : uind_to_psgs ) {
         uint32_t uind = kvp.first;
-        printf ("uind = %d : ", uind);
+        fprintf(output, "uind = %d : ", uind);
         for ( auto &el : kvp.second ) {
-            printf ("%d ", el);
+            fprintf(output, "%d ", el);
         }
-        printf ("\n");
+        fprintf(output, "\n");
     }
-    printf ("uind_to_psgs ]\n");
+    fprintf(output, "uind_to_psgs ]\n");
 }
 
-void spit_string_uint32_map ( std::map < std::string, uint32_t > & su32m ) {
-    printf ("size=%d\n", (int) su32m.size());
+void spit_string_uint32_map (FILE *output,  std::map < std::string, uint32_t > & su32m ) {
+    fprintf(output, "size=%d\n", (int) su32m.size());
     for ( auto &kvp : su32m ) {
-        printf ("%s -> %d\n", kvp.first.c_str(), kvp.second );
+        fprintf(output, "%s -> %d\n", kvp.first.c_str(), kvp.second );
     }
 }
 
-void spit_uint32_string_map ( std::map < uint32_t, std::string > & u32sm ) {
-    printf ("size=%d\n", (int) u32sm.size());
+void spit_uint32_string_map (FILE *output,  std::map < uint32_t, std::string > & u32sm ) {
+    fprintf(output, "size=%d\n", (int) u32sm.size());
     for ( auto &kvp : u32sm ) {
-        printf ("%d -> %s\n", kvp.first, kvp.second.c_str() );
+        fprintf(output, "%d -> %s\n", kvp.first, kvp.second.c_str() );
     }
 }    
 
-void spit_uint32_uint32_map ( std::map < uint32_t, uint32_t > & u32u32m ) {
-    printf ("size=%d\n", (int) u32u32m.size());
+void spit_uint32_uint32_map (FILE *output,  std::map < uint32_t, uint32_t > & u32u32m ) {
+    fprintf(output, "size=%d\n", (int) u32u32m.size());
     for ( auto &kvp : u32u32m ) {
-        printf ("%d -> %d\n", kvp.first, kvp.second );
+        fprintf(output, "%d -> %d\n", kvp.first, kvp.second );
     }
 }    
 
-void spit_index_common(IndexCommon *indc) {
-    printf ("min,max ngrams = (%d,%d)\n", indc->min_n_gram, indc->max_n_gram);
-    printf ("passage_len_bytes = %d\n", indc->passage_len_bytes);
-    printf ("%d passages\n", indc->num_passages);
-    printf ("Lexicons [\n");
+void spit_index_common(FILE *output, IndexCommon *indc) {
+    fprintf(output, "min,max ngrams = (%d,%d)\n", indc->min_n_gram, indc->max_n_gram);
+    fprintf(output, "passage_len_bytes = %d\n", indc->passage_len_bytes);
+    fprintf(output, "%d passages\n", indc->num_passages);
+    fprintf(output, "Lexicons [\n");
     uint32_t n;
     for (n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
-        printf ("\nlexicon n=%d\n", n);
-        spit_lexicon(indc->lexicon[n]);
+        fprintf(output, "\nlexicon n=%d\n", n);
+        spit_lexicon(output, indc->lexicon[n]);
     }
-    printf ("Lexicons ]\n");
-    spit_uind_to_psgs(indc->uind_to_psgs);
-    printf ("filename_to_first_passage [\n");
-    spit_string_uint32_map(indc->filename_to_first_passage);
-    printf ("filename_to_first_passage ]\n");
-    printf ("first_passage_to_filename [\n");
-    spit_uint32_string_map(indc->first_passage_to_filename);
-    printf ("first_passage_to_filename ]\n");
+    fprintf(output, "Lexicons ]\n");
+    spit_uind_to_psgs(output, indc->uind_to_psgs);
+    fprintf(output, "filename_to_first_passage [\n");
+    spit_string_uint32_map(output, indc->filename_to_first_passage);
+    fprintf(output, "filename_to_first_passage ]\n");
+    fprintf(output, "first_passage_to_filename [\n");
+    spit_uint32_string_map(output, indc->first_passage_to_filename);
+    fprintf(output, "first_passage_to_filename ]\n");
 }
 
-void spit_index(Index *index) {
-    printf ("Index [\n");
-    printf ("binary_to_uind is %d entries\n", (int) index->binary_to_uind.size());
-    printf ("uind_to_passage [\n");
-    printf ("size=%d\n", (int) index->uind_to_passage.size());
+void spit_index(FILE *output, Index *index) {
+    fprintf(output, "Index [\n");
+    fprintf(output, "binary_to_uind is %d entries\n", (int) index->binary_to_uind.size());
+    fprintf(output, "uind_to_passage [\n");
+    fprintf(output, "size=%d\n", (int) index->uind_to_passage.size());
     for ( auto &kvp : index->uind_to_passage ) {
-        printf ("uind = %d\n", (int) kvp.first);
-        spit_passage(kvp.second);
+        fprintf(output, "uind = %d\n", (int) kvp.first);
+        spit_passage(output, kvp.second);
     }
-    printf ("uind_to_passage ]\n");
-    printf ("passages [\n");
-    printf ("size=%d\n", (int) index->passages.size());
+    fprintf(output, "uind_to_passage ]\n");
+    fprintf(output, "passages [\n");
+    fprintf(output, "size=%d\n", (int) index->passages.size());
     // iterate over passages
     for ( auto &kvp : index->passages ) {
-        printf ("%d -> %d\n", (int) kvp.first, (int) kvp.second);
+        fprintf(output, "%d -> %d\n", (int) kvp.first, (int) kvp.second);
     }
-    printf ("passages ]\n");
-    printf ("Index ]\n");
+    fprintf(output, "passages ]\n");
+    fprintf(output, "Index ]\n");
 }
 
-void spit_docs_with_word(IndexCommon *indc, std::map < uint32_t, std::map < Gram, std::map < uint32_t, uint32_t > > > &docs_with_word) {
-    printf ("docs_with_word [\n");
-    printf ("size=%d\n", (int) docs_with_word.size());
+void spit_docs_with_word(FILE *output, IndexCommon *indc, std::map < uint32_t, std::map < Gram, std::map < uint32_t, uint32_t > > > &docs_with_word) {
+    fprintf(output, "docs_with_word [\n");
+    fprintf(output, "size=%d\n", (int) docs_with_word.size());
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {   
         for ( auto &kvp : docs_with_word[n] ) {
-            spit_gram_hex(kvp.first, n);
-            printf (" : ");
+            spit_gram_hex(output, kvp.first, n);
+            fprintf(output, " : ");
             for ( auto &kvp2 : kvp.second ) {
-                printf (" (%d,%d)", kvp2.first, kvp2.second);
+                fprintf(output, " (%d,%d)", kvp2.first, kvp2.second);
             }
-            printf ("\n");
+            fprintf(output, "\n");
         }
     }
-    printf ("docs_with_word ]\n");
+    fprintf(output, "docs_with_word ]\n");
 }
 
 
-void spit_general_query(IndexCommon *indc, std::map < uint32_t, std::map < Gram, uint32_t > > &general_query ) {
-    printf ("general_query [\n");
+void spit_general_query(FILE *output, IndexCommon *indc, std::map < uint32_t, std::map < Gram, uint32_t > > &general_query ) {
+    fprintf(output, "general_query [\n");
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
-        printf ("n=%d\n", n);
+        fprintf(output, "n=%d\n", n);
         for ( auto &kvp : general_query[n] ) {
-            printf ("  ");
-            spit_gram_hex(kvp.first, n);
-            printf (" %d\n", kvp.second);
+            fprintf(output, "  ");
+            spit_gram_hex(output, kvp.first, n);
+            fprintf(output, " %d\n", kvp.second);
         }
     }
-    printf ("general_query ]\n");
+    fprintf(output, "general_query ]\n");
 }
 
 
-void spit_inv(IndexCommon *indc, InvIndex *inv) {
-    printf ("InvIndex [\n");
-    spit_docs_with_word(indc, inv->docs_with_word);
+void spit_inv(FILE *output, IndexCommon *indc, InvIndex *inv) {
+    fprintf(output, "InvIndex [\n");
+    spit_docs_with_word(output, indc, inv->docs_with_word);
     // dont spit map_dw 
-    printf ("total_count [\n");
-    spit_uint32_uint32_map(inv->total_count);
-    printf ("total_count ]\n");    
-    spit_general_query(indc, inv->general_query);
-    printf ("InvIndex ]\n");
+    fprintf(output, "total_count [\n");
+    spit_uint32_uint32_map(output, inv->total_count);
+    fprintf(output, "total_count ]\n");    
+    spit_general_query(output, indc, inv->general_query);
+    fprintf(output, "InvIndex ]\n");
 }
 
 
@@ -575,6 +578,7 @@ std::map < uint32_t, std::set < uint32_t > > unmarshall_uind_to_psgs(std::string
 
 void marshall_index_common(IndexCommon *indc) {
     printf ("marshalling index_common\n");
+    printf ("step = %d\n", indc->step);
     std::string pfx = indc->filename_prefix;
     std::string filename = pfx + ".indc";
     FILE *fp = fopen((char *) filename.c_str(), "w");
@@ -582,6 +586,7 @@ void marshall_index_common(IndexCommon *indc) {
     WU(indc->max_n_gram);
     WU(indc->passage_len_bytes);
     WU(indc->num_passages);
+    WU(indc->step);
     WU(indc->num_uind);
     fclose(fp);
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {
@@ -608,6 +613,7 @@ void unmarshall_indc(const std::string pfx, IndexCommon *indc) {
     RU(indc->max_n_gram);
     RU(indc->passage_len_bytes);
     RU(indc->num_passages);
+    RU(indc->step);
     RU(indc->num_uind);
     fclose(fp);
 }
@@ -835,39 +841,55 @@ void marshall_doc_word_fp(FILE *fp, std::map < uint32_t, uint32_t > &doc_word) {
 
 
 
+typedef std::pair<uint32_t, Gram> Ng;
+std::map <Ng, GramPsgCounts *> row_cache;
+
 
 // unmarshall doc word row for this gram
-int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, GramPsgCounts &row ) {
-    //  printf ("pos = %d\n", inv->map_dw[n][gram]);
+int unmarshall_row_fp(FILE *fp, InvIndex *inv, uint32_t n, const Gram gram, GramPsgCounts **row ) {
+    Ng ng = std::make_pair(n, gram);
+    if (row_cache.count(ng) != 0) {
+        *row = row_cache[ng];
+        return 1;
+    }
     fseek(fp, inv->map_dw[n][gram], SEEK_SET);
     uint32_t occ;
     RU(occ);
-    //  printf ("occ=%d\n", occ);
+    GramPsgCounts *prow = (GramPsgCounts *) malloc (sizeof (GramPsgCounts));
+    *row = prow;
     // some on-the-fly pruning
     if (occ > max_row_length) {
-        printf ("too big row.  occ=%d. discard\n", occ);
-        row.size=0;  // discard
+        //        printf ("too big row.  occ=%d. discard\n", occ);
+        prow->size=0;  // discard
         return 0;
     }
-    resize_doc_word(row, occ);
-    row.size = occ;
-    fread(row.counts, sizeof(CountPair), occ, fp);
+    prow->counts = (CountPair *) malloc(sizeof(CountPair) * occ);
+    prow->size = occ;
+    prow->max_size = occ;
+    fread(prow->counts, sizeof(CountPair), occ, fp);
+    // cache
+    row_cache[ng] = prow;
     return 1;
 }  
 
  
 
+
+std::map < Ng, std::map<uint32_t, uint32_t>> dw_cache;
+
 std::map < uint32_t, uint32_t > unmarshall_doc_word_fp(FILE *fp, InvIndex *inv, uint32_t n, Gram gram) {
-    GramPsgCounts row;
-    row.max_size = 0;
-    row.size = 0;
-    row.counts = NULL;
-    int ret = unmarshall_row_fp(fp, inv, n, gram, row);
+    Ng ng = std::make_pair(n, gram);
+    if (dw_cache.count(ng) != 0) {
+        return dw_cache[ng];
+    }
+    GramPsgCounts *row;
+    int ret = unmarshall_row_fp(fp, inv, n, gram, &row);
     //    assert (ret == 1);
     std::map < uint32_t, uint32_t > dw;
-    for (uint32_t i=0; i<row.size; i++) {
-        dw[row.counts[i].passage_ind] = row.counts[i].count;
+    for (uint32_t i=0; i<row->size; i++) {
+        dw[row->counts[i].passage_ind] = row->counts[i].count;
     }
+    dw_cache[ng] = dw;
     return dw;
 }
 
@@ -965,24 +987,18 @@ PpScores *unmarshall_preprocessed_scores(std::string filename_pfx, IndexCommon *
 
 // construct passage name from ind, using first_passage_to_filename
 // passage_name assumed alloc big enough to fit filename-offset
-std::string get_passage_name(IndexCommon *indc, uint32_t passage_ind, uint32_t *start_pos) {
-    auto x = (indc->first_passage_to_filename.upper_bound(passage_ind));
-    x--;
-    std::string filename = x->second;
-    *start_pos = passage_ind - x->first;
-    /*
-    uint64_t offset;
-    if ((passage_ind % 2) == 0) {
-        uint32_t num_chunks = passage_ind / 2;
-        offset = num_chunks * indc->passage_len_bytes;
+std::pair<std::string, uint32_t> get_passage_info(IndexCommon *indc, uint32_t passage_ind) {
+    // find first passage ind that is less than passage_ind
+    uint32_t first_passage;
+    std::string filename;
+    for ( auto kvp : indc->first_passage_to_filename ) {
+        if (kvp.first > passage_ind) break;
+        first_passage = kvp.first;
+        filename = kvp.second;
     }
-    else {
-        uint32_t num_chunks = (passage_ind - 1) / 2;
-        offset = indc->passage_len_bytes/2 + num_chunks * indc->passage_len_bytes;
-    }
-    *start_pos = offset;
-    */
-    return filename;
+    // this is the start position in the file of this passage
+    uint32_t start_pos = (passage_ind - first_passage) * indc->step;
+    return std::make_pair(filename, start_pos);
 }
 
 
@@ -1037,9 +1053,15 @@ uint32_t max_num_uind = 0;
   scorepair is preprocessed score arrays. let n = scorepare[max_n_gram].first.  
   scorepair[max_n_gram].second is a c array of n Score structs 
   scorepair[max_n_gram].second[i].ind is a passage ind and .val is the preprocessed score to add for that psg.
+
+  this fn can be used to check a known result.  
+  if correct_psg != -1, then it is interpreted as the knowne psgid of the correct answer
+  then, we look for that psg in the results and set success=true iff that psg gets the top score
+  else success=false
 */
-void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, float *best_score,
-                         std::vector<Score> &topN, uint32_t n) {
+void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, double *best_score,
+                         std::vector<Score> &topN, uint32_t n, int correct_psg, bool *success) {
+    if (bu_debug) printf ("entering query_with_passage\n");
     if (score == NULL) {
         score = (Score *) malloc (sizeof(Score) * indc->num_uind);
         max_num_uind = indc->num_uind;
@@ -1059,7 +1081,8 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
         uint32_t gram_count = kvp.second;
         ScoreRow *row=NULL;
         // we will use for highest available n-gram, backing off to lower n-grams if needed
-        for (uint32_t n=indc->max_n_gram; n>=indc->min_n_gram; n--) {
+        uint32_t n;
+        for (n=indc->max_n_gram; n>=indc->min_n_gram; n--) {
             if (pps->scorerow[n].find(gram) != pps->scorerow[n].end()) {
                 row = &(pps->scorerow[n][gram]);
                 break;
@@ -1069,10 +1092,16 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
         for (uint32_t i=0; i<row->len; i++) {
             uint32_t uind = row->el[i].ind;
             score[uind].val += gram_count * row->el[i].val;
+            assert (uind == score[uind].ind);
+            if (bu_debug) {            
+                printf ("uind=%d gram: ",uind);
+                spit_gram_hex(stdout, gram, n);
+                printf (" c=%d score = %.3f  uind=%d val=%.3f\n", gram_count, row->el[i].val, uind, score[uind].val);
+            }            
         }        
     }
     // scale the scores & determine the top N
-    float max_score = -10000.0;
+    double max_score = -10000.0;
     uint32_t argmax = 0;
     // normalize scores for query length so that score is more like avg score per term for query
     // necessary if queries are going to be on different length
@@ -1104,7 +1133,7 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
                 topN[j] = score[i];
 
             }           
-        }
+        }        
 #endif
         // This keeps track of max
         if (score[i].val > max_score) {
@@ -1112,9 +1141,32 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
             argmax = score[i].ind;
         }
     }
+
+    // now that we know max, we can check truth
+    if (correct_psg != -1) {
+        *success = false;
+        for (uint32_t i = 0; i < indc->num_uind; i++) {
+            if (score[i].val == max_score) {
+                // every uind that has max score -- check every psg
+                for ( auto psgid : indc->uind_to_psgs[score[i].ind] ) {
+                    if (psgid == correct_psg) {
+                        // found it --
+                        *success = true;                        
+                    }
+                }
+            }
+        }        
+    }
+
     // NB: this is a uind.  you'll have to use indc->uind_to_psgs to get actual psg #s 
     *ind = argmax;
     *best_score = max_score;
+    if (bu_debug) {
+        printf ("argmax = %d  max = %.4f\n", argmax, max_score);
+    }
+
+    if (bu_debug) printf ("exiting query_with_passage\n");
+
 }
 
 
@@ -1161,7 +1213,7 @@ void *unmarshall_preprocessed_scores_c (char *filename_pfx, void *vpindc) {
 }
 
 /*
-void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, float *score) {
+void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t *ind, double *score) {
     IndexCommon *indc = reinterpret_cast<IndexCommon *> (vpindc);
     Passage *passage = reinterpret_cast<Passage *>(vppassage);
     PpScores *pps = reinterpret_cast<PpScores *>(vppps);
@@ -1171,9 +1223,10 @@ void query_with_passage_c (void *vpindc, void *vppassage, void *vppps, uint32_t 
 
 void *new_index_common_c(char *filename_prefix, 
                          uint32_t min_n_gram, uint32_t max_n_gram,
-                         uint32_t passage_len_bytes) {
+                         uint32_t passage_len_bytes,
+                         uint32_t step) {
     IndexCommon *indc = new_index_common(std::string(filename_prefix),
-                                         min_n_gram, max_n_gram, passage_len_bytes);
+                                         min_n_gram, max_n_gram, passage_len_bytes, step);
     return reinterpret_cast<void *> (indc);
 }
 

@@ -115,7 +115,7 @@ std::map < uint32_t, uint32_t > row_sizes;
 void query_with_passage (InvIndex & inv,
                          std::vector < FILE * >fpinv,
                          Passage & query,
-                         std::vector < float >&par,
+                         std::vector < double >&par,
                          std::vector < Score > &score,
                          uint32_t min_n, uint32_t max_n)  
 {
@@ -130,7 +130,7 @@ void query_with_passage (InvIndex & inv,
     ppngram_row.counts = NULL;
 
 
-    std::vector < float >pppqs = std::vector < float >(inv.num_passages);
+    std::vector < double >pppqs = std::vector < double >(inv.num_passages);
     std::vector < uint32_t > sc = std::vector < uint32_t > (inv.num_passages);
 
     for (int i = 0; i < inv.num_passages; i++) {
@@ -150,7 +150,7 @@ void query_with_passage (InvIndex & inv,
         // e.g. "c"
         Gram g = gramsub(gram, inv.max_n_gram - 1, 1);               
         // p(q|G) 
-        float pg = ((float) inv.general_query[1][g]) / inv.total_count[1];
+        double pg = ((double) inv.general_query[1][g]) / inv.total_count[1];
         // clear per-passage for-this-q scores        
         for (int i = 0; i < inv.num_passages; i++) 	{
             pppqs[i] = par[0] * pg;
@@ -176,7 +176,7 @@ void query_with_passage (InvIndex & inv,
                 Gram prev_part = gramsub(ngram, 0, n-1);
                 prev_part_dw = unmarshall_doc_word_fp(fpinv[n-1], inv, n-1, prev_part);
             }
-            float w = par[n];
+            double w = par[n];
             // e.g. iterate over psgs that have bigram "bc"
             if (ngram_row.size < max_row_length) {
                 //	  printf ("row_size = %d\n", ngram_row.size);
@@ -185,7 +185,7 @@ void query_with_passage (InvIndex & inv,
                     uint32_t passage_ind = ngram_row.counts[i].passage_ind;
                     // c("bc" in passage_ind)
                     uint32_t c_ngram = ngram_row.counts[i].count;
-                    float denom;
+                    double denom;
                     if (n == 1) {
                         denom = inv.passage_len_bytes; 
                     }
@@ -193,7 +193,7 @@ void query_with_passage (InvIndex & inv,
                         // c("b" in passage_ind), where "b" is prev_part 
                         denom = prev_part_dw[passage_ind];
                     }
-                    float p = ((float) c_ngram) / denom;
+                    double p = ((double) c_ngram) / denom;
                     pppqs[passage_ind] += w * p;
                 }
             }
@@ -217,8 +217,8 @@ void query_with_passage (InvIndex & inv,
 
 
 
-int pdice (float prob_yes) {
-    if ((((float) (rand ())) / RAND_MAX) < prob_yes)
+int pdice (double prob_yes) {
+    if ((((double) (rand ())) / RAND_MAX) < prob_yes)
     {
         return 1;
     }
@@ -241,7 +241,7 @@ int main (int argc, char **argv) {
 
     char *    filename_prefix = argv[1];
     uint32_t  num_tests = atoi (argv[2]);
-    float     prob_corrupt = atof (argv[3]);
+    double     prob_corrupt = atof (argv[3]);
     uint32_t  min_n = atoi (argv[4]);
     uint32_t  max_n = atoi (argv[5]);
     max_row_length  = atoi(argv[6]);
@@ -249,7 +249,7 @@ int main (int argc, char **argv) {
     auto t1 = std::chrono::high_resolution_clock::now();
 
     InvIndex  inv = unmarshall_invindex_min (filename_prefix);
-    std::vector < float >  scoring_params = std::vector < float >(inv.max_n_gram + 1);
+    std::vector < double >  scoring_params = std::vector < double >(inv.max_n_gram + 1);
     // weight for general_query = scoring_param[0] = 1/2
     // weight for n=1 is 1/3
     // weight for n=2 is 1/4
@@ -277,7 +277,7 @@ int main (int argc, char **argv) {
 
           
     auto t2 = std::chrono::high_resolution_clock::now();
-    float elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(t2-t1).count();
+    double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
     printf ("%.2f seconds\n", elapsedSeconds);
           
 
@@ -322,7 +322,7 @@ int main (int argc, char **argv) {
                                           /* passage_ind = */ 0xdeadbeef);
 
         auto t2 = std::chrono::high_resolution_clock::now();
-        float elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(t2-t1).count();
+        double elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
         printf ("index_passage %.2f seconds\n", elapsedSeconds);
 
 
@@ -330,7 +330,7 @@ int main (int argc, char **argv) {
         t1 = std::chrono::high_resolution_clock::now();
         query_with_passage (inv, fpinv, passage, scoring_params, score, min_n, max_n);
         t2 = std::chrono::high_resolution_clock::now();
-        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(t2-t1).count();
+        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(t2-t1).count();
         printf ("query_with_passage %.2f seconds\n", elapsedSeconds);
 
 
@@ -397,12 +397,12 @@ int main (int argc, char **argv) {
 
 
         auto end = std::chrono::high_resolution_clock::now();
-        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(end-start).count();
+        elapsedSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(end-start).count();
         printf ("%.2f seconds\n", elapsedSeconds);
 
     }
 
-    printf ("%.4f correct\n", ((float) num_correct) / num_tests);
+    printf ("%.4f correct\n", ((double) num_correct) / num_tests);
 
     /*
       std::vector < CountPair > rs =   std::vector < CountPair > (row_sizes.size());
