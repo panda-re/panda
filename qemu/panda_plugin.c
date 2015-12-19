@@ -201,34 +201,59 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     panda_cbs[type] = new_list;
 }
 
-void panda_unregister_callbacks(void *plugin) {
-    // Remove callbacks
+
+void spit_cbs() {
     int i;
     for (i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
-        while(plist != NULL) {
-            if (plist->owner == plugin) {
-                panda_cb_list *old_plist = plist;
-                // Unlink
-                if (plist->prev)
-                    plist->prev->next = plist->next;
-                if (plist->next)
-                    plist->next->prev = plist->prev;
-                if (!plist->prev && !plist->next){
-                    // List is now empty
-                    panda_cbs[i] = NULL;
-                }
-                // Advance the pointer
-                plist = plist->next;
-                // Free the entry we just unlinked
-                g_free(old_plist);
+        if (plist != NULL) {
+            printf ("%d: ", i);
+            while (plist != NULL) {
+                printf ("%x(%x) ", plist, plist->owner);
+                plist= plist->next;
             }
-            else {
-                plist = plist->next;
-            }
+            printf ("\n");
         }
     }
+ }
+
+// Remove callbacks for this plugin
+void panda_unregister_callbacks(void *plugin) {
+    // printf ("panda_unregister_callbacks(%x) enter\n", plugin); spit_cbs();
+    int i;
+    for (i = 0; i < PANDA_CB_LAST; i++) {
+        panda_cb_list *plist;
+        plist = panda_cbs[i];
+        bool done = false;
+        panda_cb_list *plist_head = plist;
+        while (!done && plist != NULL) {
+            panda_cb_list *plist_next = plist->next;
+            if (plist->owner == plugin) {
+                // delete this entry -- it belongs to our plugin
+                panda_cb_list *del_plist = plist;
+                if (plist->next == NULL && plist->prev == NULL) {
+                    // its the only thing in the list -- list is now empty                    
+                    plist_head = NULL;
+                }
+                else {
+                    // Unlink this entry
+                    if (plist->prev) plist->prev->next = plist->next;
+                    if (plist->next) plist->next->prev = plist->prev;
+                    // new head
+                    if (plist == plist_head) plist_head = plist->next;                   
+                }
+                // Free the entry we just unlinked
+                g_free(del_plist);
+                // there should only be one callback in list for this plugin so done
+                done = true;
+            }
+            plist = plist_next;
+        }
+        // update head 
+        panda_cbs[i] = plist_head;
+    }
+    //  printf ("panda_unregister_callbacks(%x) exit\n", plugin);  spit_cbs();  printf ("\n\n");
 }
 
 void panda_enable_plugin(void *plugin) {
