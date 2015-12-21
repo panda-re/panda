@@ -85,6 +85,7 @@ typedef uint32_t Cell;
 typedef uint64_t Count;
 typedef uint64_t Instr;
 
+    
 struct NamePid {
     Name name;
     Pid pid;
@@ -100,9 +101,9 @@ struct NamePid {
 };
 
 struct ProcessData {
-    std::string shortname;
-    std::map<Cell, Count> cells;
-    Count count;
+    std::string shortname;   
+    std::map<Cell, Count> cells;  
+    Count count;           
     Instr first;
     Instr last;
 
@@ -121,6 +122,7 @@ using std::dec;
 using std::setw;
 using std::setfill;
 using std::endl;
+
 void spit_asidstory() {
     FILE *fp = fopen("asidstory", "w");
 
@@ -182,94 +184,137 @@ void spit_asidstory() {
     fclose(fp);
 }
 
+
+    
 char last_name[256];
 target_ulong last_pid = 0;
 target_ulong last_asid = 0;
 
 static std::map<std::string, unsigned> name_count;
 
-int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if ((a_counter % 1000000) == 0) {
-        spit_asidstory();
-    }
+bool spit_out_total_instr_once = false;
 
+int num_ok = 0;
+int num_not_ok = 0;
+
+bool proc_ok = true;
+bool asid_just_changed = false;
+OsiProc *proc_at_asid_changed = NULL;
+uint64_t instr_count_at_asid_changed;
+target_ulong asid_at_asid_changed;
+
+bool check_proc_ok(OsiProc *proc) {
+    return (proc && pid_ok(proc->pid));
+}
+
+
+/* 
+   proc assumed to be ok
+   register that we saw this proc at this instr count
+   updating first / last instr and cell counts
+*/
+void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
+    const NamePid namepid(proc->name ? proc->name : "", proc->pid, proc->asid);        
+    ProcessData &pd = process_datas[namepid];
+    if (pd.first == 0) {
+        // first encounter of this name/pid -- create reasonable shortname
+        pd.first = instr_count;
+        unsigned count = ++name_count[namepid.name];
+        std::string count_str(std::to_string(count));
+        std::string shortname(namepid.name);
+        if (shortname.size() >= 4 && shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
+            shortname = shortname.substr(0, shortname.size() - 4); 
+        }
+        if (count > 1) {
+            if (shortname.size() + count_str.size() > NAMELEN) {
+                shortname = shortname.substr(0, NAMELEN - count_str.size()) + count_str;
+            } else {
+                shortname += count_str;
+            }
+        } else if (shortname.size() > NAMELEN) {
+            shortname = shortname.substr(0, NAMELEN);
+        }
+        pd.shortname = shortname;
+    }
+    pd.count++;
+    uint32_t cell = instr_count * scale;
+    pd.cells[cell]++;
+    pd.last = std::max(pd.last, instr_count);
+}
+
+
+
+// proc was seen from instr i1 to i2
+void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
+    //    printf ("saw_proc_range name=%s pid=%d asid=" TARGET_FMT_lx " i1=%" PRId64 " i2=%" PRId64 "\n",
+    //            proc->name, proc->pid, proc->asid, i1, i2);
+    uint64_t step = floor(1.0 / scale) / 2;
+    // assume that last process was running from last asid change to basically now
+    saw_proc(env, proc, i1);
+    saw_proc(env, proc, i2);
+    for (uint64_t i=i1; i<i2; i+=step) {
+        saw_proc(env, proc, i);
+    }
+}
+
+
+
+int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+    uint64_t curr_instr = rr_get_guest_instr_count();
+    //    printf ("asid changed: old=" TARGET_FMT_lx " new=" TARGET_FMT_lx " instr=%" PRId64 "\n", old_asid, new_asid, curr_instr);
+    if (proc_at_asid_changed != NULL) {
+        //        printf ("old proc valid @ asid changed -- name=%s pid=%d asid=" TARGET_FMT_lx "\n", proc_at_asid_changed->name, (int) proc_at_asid_changed->pid, proc_at_asid_changed->asid);
+        saw_proc_range(env, proc_at_asid_changed, instr_count_at_asid_changed, curr_instr-100);
+    }
+    asid_at_asid_changed = new_asid;
+    instr_count_at_asid_changed = curr_instr;
+    proc_at_asid_changed = get_current_process(env);
+    proc_ok = check_proc_ok(proc_at_asid_changed);
+    if (proc_ok) {
+        //        printf ("new proc valid @ asid changed -- name=%s pid=%d asid=" TARGET_FMT_lx "\n", proc_at_asid_changed->name, (int) proc_at_asid_changed->pid, proc_at_asid_changed->asid);
+    }
+    else {
+        //        printf ("new proc NOT valid @ asid changed \n");
+    }
+    asid_just_changed = true;    
+    spit_asidstory();
+    return 0;
+}
+
+    
+int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck.
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
         scale = ((double) num_cells) / ((double) max_instr); 
-    }
-
-    a_counter ++;
-    if ((a_counter % SAMPLE_RATE) != 0) {
-        return 0;
-    }
-    OsiProc *p = get_current_process(env);
-    if (pid_ok(p->pid)) {
-        const NamePid namepid(p->name ? p->name : "", p->pid, p->asid);
-        ProcessData &pd = process_datas[namepid];
-        // keep track of first rr instruction for each name/pid
-        if (pd.first == 0) {
-            pd.first = rr_get_guest_instr_count();
-
-            unsigned count = ++name_count[namepid.name];
-            std::string count_str(std::to_string(count));
-            std::string shortname(namepid.name);
-
-            if (shortname.size() >= 4 && shortname.compare(shortname.size() - 4, 4, ".exe") == 0) {
-                shortname = shortname.substr(0, shortname.size() - 4); 
-            }
-            if (count > 1) {
-                if (shortname.size() + count_str.size() > NAMELEN) {
-                    shortname = shortname.substr(0, NAMELEN - count_str.size()) + count_str;
-                } else {
-                    shortname += count_str;
-                }
-            } else if (shortname.size() > NAMELEN) {
-                shortname = shortname.substr(0, NAMELEN);
-            }
-            pd.shortname = shortname;
-        }
-        if (pandalog) {
-            if (last_name[0] == 0
-                || (p->asid != last_asid)
-                || (p->pid != last_pid) 
-                || (0 != strcmp(p->name, last_name))) {        
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.has_asid = 1;
-                ple.asid = p->asid;
-                ple.has_process_id = 1;
-                ple.process_id = p->pid;
-                ple.process_name = p->name;
-                pandalog_write_entry(&ple);           
-                last_asid = p->asid;
-                last_pid = p->pid;
-                strncpy(last_name, p->name, 256);
-                last_name[255] = '\0';
-            }
+        if (pandalog && (! spit_out_total_instr_once)) {
+            printf ("pandalogging total instr\n");
+            spit_out_total_instr_once = true;
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.has_total_instr = true;
+            ple.total_instr = max_instr;
+            pandalog_write_entry(&ple);
         }
     }
-    free_osiproc(p);
+    // only use rest of this callback if asid just changed and we still dont have valid proc
+    if (asid_just_changed && !proc_ok)  {
+        //        printf ("asid just changed but proc not ok\n");
+        OsiProc *proc = get_current_process(env);
+        if (check_proc_ok(proc)) {
+            //            printf ("ok we found a valid proc name=%s pid=%d asid=%x instr=%" PRId64 "\n", proc->name, proc->pid, proc->asid, rr_get_guest_instr_count());
+            //            printf ("current_asid=%x\n", panda_current_asid(env));
+            // disable this callback until next asid change
+            asid_just_changed = false;
+            proc_at_asid_changed = proc;
+        }
+        else {
+            free_osiproc(proc);
+        }
+    }
     return 0;
 }
 
-int asidstory_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *tb2) {
-    b_counter ++;
-    if ((b_counter % SAMPLE_RATE) != 0) {
-        return 0;
-    }
-    OsiProc *p = get_current_process(env);
-    if (pid_ok(p->pid)) {
-        Instr instr = rr_get_guest_instr_count();
-        ProcessData &pd = process_datas[NamePid(p->name ? p->name : "", p->pid, p->asid)];
-        pd.count++;
-        uint32_t cell = instr * scale;
-        pd.cells[cell]++;
-        pd.last = std::max(pd.last, instr);
-    }
-    free_osiproc(p);
-    return 0;
-}
 
 bool init_plugin(void *self) {    
 
@@ -281,11 +326,11 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
 
     panda_cb pcb;    
+    pcb.after_PGD_write = asidstory_asid_changed;
+    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
-    pcb.after_block_exec = asidstory_after_block_exec;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64(args, "width", 100), 80UL) - NAMELEN - 5;
