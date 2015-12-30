@@ -23,9 +23,11 @@ void pprint_process(const char *label, Panda__Process *p) {
     printf ("(process, %s, %d, %s)", label, p->pid, p->name);
 }
 
+
 void pprint_process_file(Panda__ProcessFile *pf) {
-    pprint_process("",pf->proc);
+    pprint_process("",pf->proc);    
     printf ("(filename,%s)", pf->filename);
+    printf ("(handle,%d)", pf->handle);
 }
 
         
@@ -290,6 +292,11 @@ void pprint_ple(Panda__LogEntry *ple) {
         printf (" nt_create_file ");
         pprint_process_file(ple->nt_create_file);
     }
+    if (ple->nt_create_file_ret) {
+        printf (" nt_create_file_ret ");
+        pprint_process_file(ple->nt_create_file_ret);
+    }
+    
     
     if (ple->nt_read_file) {
         printf (" nt_read_file ");
@@ -300,8 +307,14 @@ void pprint_ple(Panda__LogEntry *ple) {
         pprint_process_file(ple->nt_delete_file);
     }
     if (ple->nt_write_file) {
-        printf ("nt_write_file ");
+        printf (" nt_write_file ");
         pprint_process_file(ple->nt_write_file);
+    }
+    if (ple->nt_set_information_file) {
+        printf (" nt_set_information_file ");
+        pprint_process("",ple->nt_set_information_file->proc);
+        printf ("(orig_filename,%s)", ple->nt_set_information_file->orig_filename);
+        printf ("(new_filename,%s)", ple->nt_set_information_file->new_filename);
     }
     if (ple->nt_create_key) {
         printf (" nt_create_key ");
@@ -422,5 +435,12 @@ void pprint_ple(Panda__LogEntry *ple) {
         printf(" nt_write_virtual_memory ");
         pprint_panda_vm(ple->nt_write_virtual_memory);
     }
+    if (ple->has_nt_any_syscall) {
+        printf (" nt_any_syscall (num=%d)", ple->nt_any_syscall);
+    }
+    if (ple->has_total_instr) {
+        printf (" total instr %" PRId64, ple->total_instr);
+    }
+
     printf ("\n");
 }
