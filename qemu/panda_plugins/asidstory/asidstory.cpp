@@ -69,14 +69,15 @@ bool pid_ok(int pid) {
     return true;
 }
  
-#define SAMPLE_CUTOFF 10    
-#define SAMPLE_RATE 1
 #define MILLION 1000000
 #define NAMELEN 10
 #define NAMELENS "10"
 
 uint64_t a_counter = 0;
 uint64_t b_counter = 0;
+
+uint32_t sample_cutoff = 10;
+uint32_t sample_rate = 100;
 
 typedef std::string Name;
 typedef uint32_t Pid;
@@ -133,7 +134,7 @@ void spit_asidstory() {
 
     std::stringstream head;
     head << 
-        setw(digits(max_instr / SAMPLE_RATE)) << "Count" <<
+        setw(digits(max_instr / sample_rate)) << "Count" <<
         setw(6) << "Pid" << "  " <<
         setw(NAMELEN) << "Name" << "  " <<
         setw(sizeof(target_ulong) * 2) << "Asid" <<
@@ -143,10 +144,10 @@ void spit_asidstory() {
     for (auto &pd_kv : count_sorted_pds) {
         const NamePid &namepid = pd_kv.first;
         const ProcessData &pd = pd_kv.second;
-        if (pd.count >= SAMPLE_CUTOFF) {
+        if (pd.count >= sample_cutoff) {
             std::stringstream ss;
             ss <<
-                setw(digits(max_instr / SAMPLE_RATE)) << pd.count <<
+                setw(digits(max_instr / sample_rate)) << pd.count <<
                 setw(6) << namepid.pid << "  " <<
                 setw(NAMELEN) << pd.shortname << "  " <<
                 setw(sizeof(target_ulong) * 2) <<
@@ -167,7 +168,7 @@ void spit_asidstory() {
     for (auto &pd_kv : first_sorted_pds) {
         const ProcessData &pd = pd_kv.second;
 
-        if (pd.count >= SAMPLE_CUTOFF) {
+        if (pd.count >= sample_cutoff) {
             fprintf(fp, "%" NAMELENS "s : [", pd.shortname.c_str());
             for (unsigned i = 0; i < num_cells; i++) {
                 auto it = pd.cells.find(i);
@@ -326,6 +327,8 @@ bool init_plugin(void *self) {
     
     panda_arg_list *args = panda_get_args("asidstory");
     num_cells = std::max(panda_parse_uint64(args, "width", 100), 80UL) - NAMELEN - 5;
+    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
+    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
     
     min_instr = 0;   
     return true;

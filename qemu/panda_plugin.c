@@ -202,8 +202,25 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
 }
 
 
+void spit_cbs() {
+    int i;
+    for (i = 0; i < PANDA_CB_LAST; i++) {
+        panda_cb_list *plist;
+        plist = panda_cbs[i];
+        if (plist != NULL) {
+            printf ("%d: ", i);
+            while (plist != NULL) {
+                printf ("%x(%x) ", plist, plist->owner);
+                plist= plist->next;
+            }
+            printf ("\n");
+        }
+    }
+ }
+
 // Remove callbacks for this plugin
 void panda_unregister_callbacks(void *plugin) {
+    // printf ("panda_unregister_callbacks(%x) enter\n", plugin); spit_cbs();
     int i;
     for (i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
@@ -236,6 +253,7 @@ void panda_unregister_callbacks(void *plugin) {
         // update head
         panda_cbs[i] = plist_head;
     }
+    //  printf ("panda_unregister_callbacks(%x) exit\n", plugin);  spit_cbs();  printf ("\n\n");
 }
 
 void panda_enable_plugin(void *plugin) {
