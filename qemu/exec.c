@@ -512,7 +512,7 @@ static void code_gen_alloc(unsigned long tb_size)
 
         flags = MAP_PRIVATE | MAP_ANONYMOUS;
 #if defined(__x86_64__)
-        flags |= MAP_32BIT;
+        //        flags |= MAP_32BIT;
         /* Cannot map more than that */
         if (code_gen_buffer_size > (800 * 1024 * 1024))
             code_gen_buffer_size = (800 * 1024 * 1024);
@@ -536,6 +536,7 @@ static void code_gen_alloc(unsigned long tb_size)
         }
         start = (void *)0x90000000UL;
 #endif
+
         code_gen_buffer = mmap(start, code_gen_buffer_size,
                                PROT_WRITE | PROT_READ | PROT_EXEC,
                                flags, -1, 0);
