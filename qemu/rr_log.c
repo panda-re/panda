@@ -44,6 +44,7 @@
 #include "rr_log.h"
 
 #include "panda_plugin.h"
+#include "pandalog.h"
 
 
 /******************************************************************************************/
@@ -1380,7 +1381,15 @@ void replay_progress(void) {
         free(dup_name);
         if (!spit_out_total_num_instr_once) {
             spit_out_total_num_instr_once = 1;
-            printf("total_instr in replay: %10lu\n", rr_nondet_log->last_prog_point.guest_instr_count);
+            uint64_t max_instr = rr_nondet_log->last_prog_point.guest_instr_count;
+            printf("total_instr in replay: %10lu\n", max_instr);
+            if (pandalog) {
+                printf ("pandalogging total instr\n");
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_total_instr = true;
+                ple.total_instr = max_instr;
+                pandalog_write_entry(&ple);
+            }
         }
 
     }

@@ -288,14 +288,6 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
         scale = ((double) num_cells) / ((double) max_instr); 
-        if (pandalog && (! spit_out_total_instr_once)) {
-            printf ("pandalogging total instr\n");
-            spit_out_total_instr_once = true;
-            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.has_total_instr = true;
-            ple.total_instr = max_instr;
-            pandalog_write_entry(&ple);
-        }
     }
     // only use rest of this callback if asid just changed and we still dont have valid proc
     if (asid_just_changed && !proc_ok)  {
