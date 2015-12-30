@@ -14,8 +14,15 @@
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
+#include <sstream>
+
 extern "C" {
 
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>    
+    
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"
@@ -66,6 +73,10 @@ void uninit_plugin(void *);
 #define KTHREAD_KPROC_OFF  0x150
 #define EPROC_PID_OFF      0x0b4
 #define EPROC_NAME_OFF     0x16c
+
+bool grab_files = false;
+
+
 
 const char *status_code(uint32_t code) {
   static char result[32];
@@ -160,6 +171,9 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     }
     return 0;
 }
+
+
+
 
 #define IMAGEPATHNAME_OFF      0x38
 #define OBJNAME_OFF            0x8
@@ -449,6 +463,7 @@ Panda__Process *create_panda_process (uint32_t pid, char *name) {
     return p;
 }
 
+
 void w7p_NtCreateUserProcess_return(
         CPUState* env,
         target_ulong pc,
@@ -534,13 +549,16 @@ void w7p_NtTerminateProcess_enter(
     }
 }
 
-Panda__ProcessFile *create_cur_process_file (char *filename) {
+Panda__ProcessFile *create_cur_process_file (char *filename, uint32_t handle) {
     Panda__ProcessFile *pf = (Panda__ProcessFile *) malloc(sizeof(Panda__ProcessFile));
     *pf = PANDA__PROCESS_FILE__INIT;
     pf->proc = create_panda_process(cur_pid, cur_procname);
     pf->filename = filename;
+    pf->handle = handle;
     return pf;
 }
+
+uint32_t last_filehandle;
 
 // creates a new file or opens an existing file
 void w7p_NtCreateFile_enter(
@@ -558,11 +576,100 @@ void w7p_NtCreateFile_enter(
         uint32_t EaBuffer,
         uint32_t EaLength) {
     char *fileName = get_objname(env, ObjectAttributes);
+    //    printf ("ntcreatefile_enter %s\n", fileName);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.nt_create_file = create_cur_process_file(fileName);
+    ple.nt_create_file = create_cur_process_file(fileName, 0);
     pandalog_write_entry(&ple);
     free(fileName);
+    last_filehandle = FileHandle;
 }
+
+void w7p_NtCreateFile_return(
+        CPUState* env,
+        target_ulong pc,
+        uint32_t FileHandle,
+        uint32_t DesiredAccess,
+        uint32_t ObjectAttributes,
+        uint32_t IoStatusBlock,
+        uint32_t AllocationSize,
+        uint32_t FileAttributes,
+        uint32_t ShareAccess,
+        uint32_t CreateDisposition,
+        uint32_t CreateOptions,
+        uint32_t EaBuffer,
+        uint32_t EaLength) {
+    uint64_t instr = rr_get_guest_instr_count();
+    //    printf ("%" PRIu64 " ntcreatefile_return: EAX = %x :  FileHandle = %x last_FileHandle = %x\n", instr, (unsigned int)EAX, FileHandle,  last_filehandle);
+    uint32_t handle;
+    int ret = panda_virtual_memory_rw(env, FileHandle, (uint8_t *) &handle, 4, false);
+    bool success = false;
+    if (ret != -1) {
+        //        printf ("ntcreatefile_return: handle = %x\n", handle);
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.nt_create_file_ret = create_cur_process_file((char *) "unk(ret)", handle);
+        pandalog_write_entry(&ple);
+        success = true;
+    }
+    else {
+        ret = panda_virtual_memory_rw(env, last_filehandle, (uint8_t *) &handle, 4, false);
+        if (ret != -1) {
+            //            printf ("ntcreatefile_return: handle = %x\n", handle);
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.nt_create_file_ret = create_cur_process_file((char *) "unk(ret)", handle);
+            pandalog_write_entry(&ple);
+            success = true;
+        }
+    }
+    if (!success) {
+        //        printf ("ntcreatefile_return: couldn't get handle!\n");
+    }
+}
+
+void w7p_NtOpenFile_enter(
+      CPUState* env,
+      target_ulong pc,
+      uint32_t FileHandle,
+      uint32_t DesiredAccess,
+      uint32_t ObjectAttributes,
+      uint32_t IoStatusBlock,
+      uint32_t ShareAccess,
+      uint32_t OpenOptions) {
+    char *fileName = get_objname(env, ObjectAttributes);
+    //    printf ("ntopenfile_enter %s\n", fileName);
+    /*
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.nt_open_file = create_cur_process_file(fileName, 0);
+    pandalog_write_entry(&ple);
+    */
+    free(fileName);
+    //    last_filehandle = FileHandle;
+}
+
+void w7p_NtOpenFile_return(
+    CPUState* env,
+    target_ulong pc,
+    uint32_t FileHandle,
+    uint32_t DesiredAccess,
+    uint32_t ObjectAttributes,
+    uint32_t IoStatusBlock,
+    uint32_t ShareAccess,
+    uint32_t OpenOptions) {
+    uint64_t instr = rr_get_guest_instr_count();
+    //    printf ("%lu ntopenfile_return: EAX = %x :  FileHandle = %x \n", instr, (unsigned int) EAX, FileHandle);
+    uint32_t handle;
+    int ret = panda_virtual_memory_rw(env, FileHandle, (uint8_t *) &handle, 4, false);
+    if (ret != -1) {
+        //        printf ("ntopenfile_return: handle = %x\n", handle);
+        /*
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.nt_create_file_ret = create_cur_process_file("unk(ret)", handle);
+        pandalog_write_entry(&ple);
+        */
+    }
+}
+
+       
+
 
 void w7p_NtReadFile_enter(
         CPUState* env,
@@ -578,7 +685,7 @@ void w7p_NtReadFile_enter(
         uint32_t Key) {
     char *fileName = get_handle_name(env, get_current_proc(env), FileHandle);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.nt_read_file = create_cur_process_file(fileName);
+    ple.nt_read_file = create_cur_process_file(fileName, FileHandle);
     pandalog_write_entry(&ple);
     free(fileName);
 }
@@ -589,10 +696,23 @@ void w7p_NtDeleteFile_enter(
         uint32_t ObjectAttributes) {
     char *fileName = get_objname(env, ObjectAttributes);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.nt_delete_file = create_cur_process_file(fileName);
+    ple.nt_delete_file = create_cur_process_file(fileName, 0);
     pandalog_write_entry(&ple);
     free(fileName);
 }
+
+char *normalize_filename(char *filename) {
+    char *new_filename = strdup(filename);
+    char *p=new_filename;
+    while (*p != 0) {
+        if (!isalnum(*p)) *p = '_';
+        p++;
+    }
+    return new_filename;
+}
+        
+
+std::map <std::string, FILE *> writing_files;
 
 void w7p_NtWriteFile_enter(
         CPUState* env,
@@ -608,10 +728,105 @@ void w7p_NtWriteFile_enter(
         uint32_t Key) {
     char *fileName = get_handle_name(env, get_current_proc(env), FileHandle);
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-    ple.nt_write_file = create_cur_process_file(fileName);
+    ple.nt_write_file = create_cur_process_file(fileName, FileHandle);
     pandalog_write_entry(&ple);
-    free(fileName);
+    // grab the data for the write
+    if (grab_files) {
+        uint8_t *thebuffer = (uint8_t *) malloc(Length);
+        //        printf ("ntwritefile %s %d\n", fileName,len);
+        int ret = panda_virtual_memory_rw(env, Buffer, thebuffer, Length, false);
+        if (ret != -1) {
+            //            printf ("success\n");
+            fflush(stdout);
+            DIR *dir = opendir("output");
+            if (dir) {
+                /* Directory exists. */
+                closedir(dir);
+            }
+            else if (ENOENT == errno) {
+                /* Directory does not exist. */
+                mkdir("output", 0700);
+            }
+            else {
+                assert (1==0);
+                /* opendir() failed for some other reason. */
+            }
+            // resurrect or open a file to dump this write to
+            std::stringstream s;
+            s << cur_pid << "_" << cur_procname << ":" << fileName;
+            char *nfilename1 = normalize_filename((char*) s.str().c_str());
+            //            printf ("got data -- output file is %s num bytes is %d\n", nfilename1, Length);
+            std::string snfilename1 = std::string(nfilename1);
+            fflush(stdout);
+            FILE *fp;
+            if (writing_files.count(snfilename1) == 0) {
+                //                printf ("creating new output file %s\n", nfilename1);
+                std::stringstream s;
+                s << "output/" << snfilename1;
+                std::string foo = s.str();
+                const char *fnpath = (const char *) foo.c_str();                        
+                fp = fopen(fnpath, "w");
+                assert (fp != NULL);
+                writing_files[snfilename1] = fp;
+            }
+            else {
+                fp = writing_files[snfilename1];
+            }
+            //            printf ("ntwritefile: wrote %d bytes to %s\n", Length, nfilename1);
+            fwrite(thebuffer, 1, len, fp);
+        }
+        else {
+            //            printf ("hmm not able to get that buffer of %d bytes\n", Length);
+        }
+        free(fileName);
+    }
 }
+
+
+
+typedef struct _FILE_RENAME_INFORMATION {
+    uint32_t  ReplaceIfExists;
+    uint32_t  RootDirectory;
+    uint32_t   FileNameLength;
+    uint32_t   FileName[1];
+} FILE_RENAME_INFORMATION, *PFILE_RENAME_INFORMATION;
+
+void w7p_NtSetInformationFile_enter(CPUState* env,
+                                    target_ulong pc,
+                                    uint32_t FileHandle,
+                                    uint32_t IoStatusBlock,
+                                    uint32_t FileInformation,  /* PVOID */
+                                    uint32_t Length,
+                                    uint32_t FileInformationClass) {
+    //    printf ("%" PRId64 " : SetInformationFile_enter %d\n", rr_get_guest_instr_count(), FileInformationClass);
+    if (FileInformationClass == 10) {
+        /* this is FileRenameInformation */
+        // get current name of file
+        char *curr_filename = get_handle_name(env, get_current_proc(env), FileHandle);        
+        // get new name of file
+        uint8_t *fileinfo = (uint8_t *) malloc (Length);
+        panda_virtual_memory_rw(env, FileInformation, fileinfo, Length, false);
+        // name of file to be renamed should be at the end.
+        uint32_t l = *((uint32_t *) (fileinfo+8));
+        uint8_t new_filename[1024];
+        for (uint32_t i=0; i<l; i+=2) {
+            new_filename[i/2] = fileinfo[i+12];
+        }
+        new_filename[l] = 0;
+        Panda__NtSetInformationFile *sif = (Panda__NtSetInformationFile *) malloc (sizeof(Panda__NtSetInformationFile));
+        *sif = PANDA__NT_SET_INFORMATION_FILE__INIT;
+        sif->proc = create_panda_process(cur_pid, cur_procname);
+        sif->orig_filename = (char *) curr_filename;
+        sif->new_filename = (char *) new_filename;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.nt_set_information_file = sif;
+        pandalog_write_entry(&ple);        
+        free(sif);
+        //        printf ("SetInformationFile FileRenameInformation : curr_filename=[%s] new_filename=[%s]\n",
+        //                curr_filename, new_filename);                    
+    }
+}
+
 
 
 Panda__ProcessKey *create_cur_process_key (char *keyname) {
@@ -917,9 +1132,7 @@ void w7p_NtEnumerateValueKey_enter(
         pandalog_write_entry(&ple);
     }
 }
-    
-
-
+   
 // SetValueKey -- creates or replaces a registry key's value entry.
 void w7p_NtSetValueKey_enter(
         CPUState* env,
@@ -1021,6 +1234,7 @@ void w7p_NtCreateSection_return(
   //print_section(env, pc, SectionHandle, DesiredAccess, ObjectAttributes, true);
   //printf("  nt_create_section\n");
   char *sectionName = get_objname(env, ObjectAttributes);
+  //  printf ("ntcreatesection_return: sectionname = %s\n", sectionName);
   uint32_t handle;
   uint32_t eproc = get_current_proc(env);
   panda_virtual_memory_rw(env, SectionHandle, (uint8_t *)&handle, 4, false);
@@ -1179,14 +1393,14 @@ void print_port_ho(CPUState *env, HandleObject *ho){
     panda_virtual_memory_rw(env, client_com_port +0xc, (uint8_t *)&client_proc, 4, false);
     get_procname(env, client_proc, client_procname);
   }
-  printf("    server_procname %s, client_procname %s\n", server_procname, client_procname);
+  //  printf("    server_procname %s, client_procname %s\n", server_procname, client_procname);
 }
 
 void print_port(CPUState *env, uint32_t PortHandle) {
   uint32_t eproc = get_current_proc(env);
   HandleObject *ho = get_handle_object(env, eproc, PortHandle); 
   if (ho == NULL) {
-    printf("   null ho, handle = %x\n", PortHandle);
+      //    printf("   null ho, handle = %x\n", PortHandle);
     return;
   }
   print_port_ho(env, ho);
@@ -1195,7 +1409,7 @@ void print_port(CPUState *env, uint32_t PortHandle) {
 void print_port_pointer(CPUState *env, uint32_t PortHandle) {
   HandleObject *ho = get_handle_object_current(env, PortHandle);
   if (ho == NULL) {
-    printf("   null ho, handle = %x\n", PortHandle);
+      //    printf("   null ho, handle = %x\n", PortHandle);
     return;
   }
   print_port_ho(env, ho);
@@ -1416,6 +1630,16 @@ void w7p_NtWriteVirtualMemory_return(CPUState* env,
     pandalog_write_entry(&ple);
 }
 
+
+
+void all_sys_enter(CPUState* env, target_ulong pc, target_ulong syscall_number) {
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    ple.has_nt_any_syscall = 1;
+    ple.nt_any_syscall = syscall_number;
+    pandalog_write_entry(&ple);
+}
+              
+
 #endif
 
 bool init_plugin(void *self) {
@@ -1423,6 +1647,12 @@ bool init_plugin(void *self) {
 
 #ifdef TARGET_I386
 
+    panda_arg_list *args;
+    args = panda_get_args("win7proc");
+    grab_files = panda_parse_bool(args, "grab_files");
+    
+        
+    
 #if 0
     panda_arg_list *args;
     args = panda_get_args("win7proc");
@@ -1457,9 +1687,17 @@ bool init_plugin(void *self) {
     
     // File Syscalls
     PPP_REG_CB("syscalls2", on_NtCreateFile_enter, w7p_NtCreateFile_enter);
+    PPP_REG_CB("syscalls2", on_NtCreateFile_return, w7p_NtCreateFile_return);
+    PPP_REG_CB("syscalls2", on_NtOpenFile_enter, w7p_NtOpenFile_enter);
+    PPP_REG_CB("syscalls2", on_NtOpenFile_return, w7p_NtOpenFile_return);
+    
     PPP_REG_CB("syscalls2", on_NtReadFile_enter, w7p_NtReadFile_enter);
     PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, w7p_NtDeleteFile_enter);
     PPP_REG_CB("syscalls2", on_NtWriteFile_enter, w7p_NtWriteFile_enter);
+    PPP_REG_CB("syscalls2", on_NtSetInformationFile_enter, w7p_NtSetInformationFile_enter);
+               
+
+
     // Registry Syscalls
 
     PPP_REG_CB("syscalls2", on_NtCreateKey_return, w7p_NtCreateKey_return);
@@ -1498,6 +1736,8 @@ bool init_plugin(void *self) {
     PPP_REG_CB("syscalls2", on_NtReadVirtualMemory_return, w7p_NtReadVirtualMemory_return);
     PPP_REG_CB("syscalls2", on_NtWriteVirtualMemory_return, w7p_NtWriteVirtualMemory_return);
 
+    PPP_REG_CB("syscalls2", on_all_sys_enter, all_sys_enter);
+    
     printf("finished adding win7proc syscall hooks\n");
     return true;
 #else
@@ -1510,18 +1750,11 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     printf("Unloading win7proc\n");
 #ifdef TARGET_I386
-    //    fclose(proc_log);
 
-    /*
-    for (std::map<procid,uint64_t>::iterator it = bbcount.begin(); it != bbcount.end(); it++) {
-        if (it->first.second == UNKNOWN_PID) {
-            fprintf(proc_hist, "%s,-1,%" PRId64 "\n", it->first.first.c_str(), it->second);
-        }
-        else {
-            fprintf(proc_hist, "%s,%d,%" PRId64 "\n", it->first.first.c_str(), it->first.second, it->second);
-        }
+    for (auto kvp : writing_files) {
+        std::cout << "closing ntwritefile output " << kvp.first << "\n";
+        fclose(kvp.second);
     }
-    fclose(proc_hist);
-    */
+        
 #endif
 }

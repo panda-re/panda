@@ -5,6 +5,7 @@ message Process {
     required string name = 2;
 }
 
+    
 // process created
 message NtCreateUserProcess {
     // the parent process
@@ -27,8 +28,17 @@ message NtTerminateProcess {
 message ProcessFile {
     required Process proc = 1;
     required string filename = 2;
+    required uint32 handle = 3;
 }
-    
+
+message NtSetInformationFile {
+    // the process that did it
+    required Process proc = 1;
+    // ok rename is the only one we understand
+    required string orig_filename = 2;
+    required string new_filename = 3;
+}
+        
 // generic process + filename message
 message ProcessKey {
     required Process proc = 1;
@@ -84,13 +94,15 @@ optional NtTerminateProcess nt_terminate_process = 13;
 
 // file create / open
 optional ProcessFile nt_create_file = 14;
-// file read
+optional ProcessFile nt_create_file_ret = 60; 
+    // file read
 optional ProcessFile nt_read_file = 15;
 // file deletion
 optional ProcessFile nt_delete_file = 16;
 // file write
 optional ProcessFile nt_write_file = 17;
 
+    
 // reg key create / open
 optional ProcessKey nt_create_key = 18;
 // ditto + transaction association
@@ -149,3 +161,9 @@ optional LocalPort nt_impersonate_client_of_port = 53;
 
 optional VirtualMemory nt_read_virtual_memory = 54;
 optional VirtualMemory nt_write_virtual_memory = 55;
+
+optional uint32 nt_any_syscall = 61;
+
+// really this is just file rename
+optional NtSetInformationFile nt_set_information_file = 62;
+
