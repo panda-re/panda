@@ -773,7 +773,7 @@ void w7p_NtWriteFile_enter(
                 fp = writing_files[snfilename1];
             }
             //            printf ("ntwritefile: wrote %d bytes to %s\n", Length, nfilename1);
-            fwrite(thebuffer, 1, len, fp);
+            fwrite(thebuffer, 1, Length, fp);
         }
         else {
             //            printf ("hmm not able to get that buffer of %d bytes\n", Length);
