@@ -1,12 +1,21 @@
+#!/usr/bin/env python
 
+debug = False
 
-# takes as input the output of pandalog_reader running on plog created by win7proc.
-# only looking for create_user_process info
+# takes pandalog as single paaram.  
+# runs pandalog_reader on it and then consumes the output to produce an ascii viz of process births and deaths
 
+import subprocess as sb
 import sys
 import re
+import os
 import fileinput
 
+# have pandalog_reader parse the pandlog 
+plogfile = os.path.realpath(sys.argv[1])
+pandalog_print = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "/../panda/pandalog_reader")
+p = sb.Popen([pandalog_print, plogfile], stdout=sb.PIPE, stderr=sb.PIPE)
+(pplog,e) = p.communicate()
 
 
 def setc (x, y, c, oblit):
@@ -28,7 +37,8 @@ def hline(x1, x2, y):
         setc(x, y, '-', False)
             
 def vline(x, y1, y2):
-    print "vline %d %d -> %d" % (x, y1, 2)
+    if debug:
+        print "vline %d %d -> %d" % (x, y1, 2)
     global cells
     for y in range(y1, y2+1):
         if not (y in cells):
@@ -168,28 +178,32 @@ def seen(curr, instr):
     ind2proc[curr].sighted(instr)
 
 def birth(parent, child, instr):
-    print "birth "
-    print "parent -- %s ind=%d" % (str(ind2proc[parent]), parent)
-    print "child  -- %s ind=%d" % (str(ind2proc[child]), child)
+    if debug:
+        print "birth "
+        print "parent -- %s ind=%d" % (str(ind2proc[parent]), parent)
+        print "child  -- %s ind=%d" % (str(ind2proc[child]), child)
     seen(parent, instr)
     seen(child, instr)
     ind2proc[child].parent = parent
     ind2proc[child].birthday = instr
     ind2proc[child].first_instr.min = instr
     ind2proc[parent].children.append(child)        
-    print "%d running procs" % (len(running_procs))
+    if debug:
+        print "%d running procs" % (len(running_procs))
     
 def terminate(killer, killed, instr):
-    print "terminate"
-    print "killer -- %s ind=%d" % (str(ind2proc[killer]), killer)
-    print "killed  -- %s ind=%d" % (str(ind2proc[killed]), killed)
+    if debug:
+        print "terminate"
+        print "killer -- %s ind=%d" % (str(ind2proc[killer]), killer)
+        print "killed  -- %s ind=%d" % (str(ind2proc[killed]), killed)
     seen(killer, instr)
     seen(killed, instr)
     ind2proc[killed].deathday = instr    
     tp = ind2proc[term]
     tnp = (tp.name, tp.pid)
     running_procs.pop(tnp)
-    print "%d running procs" % (len(running_procs))
+    if debug:
+        print "%d running procs" % (len(running_procs))
     
 
 
@@ -199,12 +213,14 @@ max_instr = None
 
 ii = 0
 instrs = Mm(0)
-for line in fileinput.input():    
+for line in pplog.split("\n"):
+#for line in fileinput.input():    
 #    print line
     foo = re.search("instr=[0-9]+ pc=0x[0-9a-f]+ : total instr ([0-9]+)", line)
     if foo:
         max_instr = int(foo.groups()[0])
-        print "max_instr = %d" % max_instr
+        if debug:
+            print "max_instr = %d" % max_instr
     foo = re.search("instr=([0-9]+) pc=0x[0-9a-f]+ : nt_create_user_process (.*)$", line)
     if foo:
         y = foo.groups()[1].split()
@@ -225,7 +241,8 @@ for line in fileinput.input():
         instr = int(foo.groups()[0])
         seen(curr, instr)
 
-print "processed entire plog"
+if debug:
+    print "processed entire plog"
 
 
 # any process for which we haven't seen death is assume to last entire replay
@@ -266,16 +283,21 @@ sc = width / (float(max_instr - instrs.min))
 def render_proc(proc):
     global row
     global sname
-    print "render_proc : " + (str(proc)) + " " + str(row)    
+    if debug:
+        print "render_proc : " + (str(proc)) + " " + str(row)    
     # no reason to render a proc if it exists for entire
     # trace *unless* it has children
     if (proc.first_instr.min == 0 and proc.last_instr.max == max_instr):
-        print "-- spans entire replay"
+        if debug:
+            print "-- spans entire replay"
         if (len(proc.children) == 0):
-            print "-- has no chlidren"
+            if debug:
+                print "-- has no chlidren"
             return        
     start = int(proc.first_instr.min * sc)
     end = int(proc.last_instr.max * sc)
+    if debug:
+        print "start,end = %d,%d" % (start, end)
     hline(2+start, 2+end, row)
     if (proc.parent is None):
         setc(2+start, row, '?', True)
@@ -288,13 +310,16 @@ def render_proc(proc):
     sname[row] = proc.shortname
     row += 1
     children = []
-    print "%s has %d children" % (proc.shortname, len(proc.children))
+    if debug:
+        print "%s has %d children" % (proc.shortname, len(proc.children))
     for cind in proc.children:
         child = ind2proc[cind]
-        print child
+        if debug:
+            print child
         children.append(child)
     if len(children) > 0:
-        print "%s has %d children" % (proc.shortname, len(children))
+        if debug:
+            print "%s has %d children" % (proc.shortname, len(children))
         prow = row
         # sort them by first instr too and render
         schildren = sorted(children, key=lambda p: p.first_instr.min)    
@@ -305,20 +330,26 @@ def render_proc(proc):
             render_proc(child)
 
 
+
+
+
 row = 0
 sname = {}
 for proc in spreexisting:
     render_proc(proc)
 num_rows = row    
 
+vline(1, 0, num_rows)
+vline(3+width, 0, num_rows)
+
 for v in range(num_rows):
     if v in sname:
         f.write( "%11s : " % sname[v])
     else:
         f.write( "%11s   " % " ")
-    for h in range(width):
+    for h in range(width+5):
         if not (v in cells):
-            print " "
+            f.write(" ")
         else :
             if h in cells[v]:
                 f.write( cells[v][h] )
@@ -326,3 +357,9 @@ for v in range(num_rows):
                 f.write (' ')
     f.write("\n")
 f.close()
+
+
+f = open("procstory")
+for line in f.readlines():
+    print line,
+
