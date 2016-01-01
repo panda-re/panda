@@ -349,6 +349,11 @@ f.write( "==========================================\n")
 indent = 0
 for proc in spreexisting:
     print_proc(f, proc, indent)
+
+f.write ("Note: a process is considered lame iff\n")
+f.write ("      (1) we did not see its creation,\n")
+f.write ("      (2) we did not see its termination,\n")
+f.write ("  and (3) it has no children\n")
 f.write( "==========================================\n")    
 
 
@@ -370,6 +375,8 @@ for v in range(num_rows):
             else:
                 f.write (' ')
     f.write("\n")
+f.write( "==========================================\n")    
+f.write("Legend: [C]reation [T]ermination [?]Unknown [+]Branch\n")
 f.close()
 
 
