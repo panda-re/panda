@@ -102,6 +102,7 @@ class Proc:
         self.deathday = None
         self.parent = None
         self.children = []
+        self.boring = False
         
     def __eq__(self, other):
         return (self.pid == other.pid) and (self.fullname == other.fullname)
@@ -116,16 +117,17 @@ class Proc:
 
     def __str__(self):
         foo = "%11s %d-%s" % (self.shortname, self.pid, self.fullname)
-        if not (self.birthday is None):
-            foo += "-b%d" % self.birthday
-        else:
-            foo += "-%d" % self.first_instr.min
-        if not (self.deathday is None):
-            foo += "-d%d" % self.deathday
-        else:
-            foo += "-%d" % self.last_instr.max
-        if self.parent:
-            foo += "-p-%s" % (ind2proc[self.parent].shortname)
+        if not self.boring:
+            if not (self.birthday is None):
+                foo += "-b%d" % self.birthday
+            else:
+                foo += "-%d" % self.first_instr.min
+            if not (self.deathday is None):
+                foo += "-d%d" % self.deathday
+            else:
+                foo += "-%d" % self.last_instr.max
+            if self.parent:
+                foo += "-p-%s" % (ind2proc[self.parent].shortname)
         return foo
         
 # map from proc to ind number
@@ -254,6 +256,9 @@ for i in range(n):
         ind2proc[i].first_instr.update(0)
 
 
+sc = width / (float(max_instr - instrs.min))
+
+
 # get subset of inds that are processes that were not created during this replay
 # i.e. predated this replay
 preexisting = []
@@ -265,20 +270,16 @@ for i in range(n):
 spreexisting = sorted(preexisting, key=lambda proc: proc.first_instr.min)
 
 
-def print_proc(f, proc):
+def print_proc(f, proc, indent):
+    f.write ( "  " * indent )
+    if proc.boring is True:
+        f.write (" [lame] ")
+    else:
+        f.write (" [cool] ")
     f.write((str(proc)) + "\n")
     for cind in proc.children:
-        print_proc(f, ind2proc[cind])
+        print_proc(f, ind2proc[cind], indent+1)
         
-
-f = open("procstory", "w")
-f.write( "==========================================\n")
-for proc in spreexisting:
-    print_proc(f, proc)
-f.write( "==========================================\n")    
-
-sc = width / (float(max_instr - instrs.min))
-
 
 def render_proc(proc):
     global row
@@ -293,6 +294,7 @@ def render_proc(proc):
         if (len(proc.children) == 0):
             if debug:
                 print "-- has no chlidren"
+            proc.boring = True
             return        
     start = int(proc.first_instr.min * sc)
     end = int(proc.last_instr.max * sc)
@@ -338,6 +340,18 @@ sname = {}
 for proc in spreexisting:
     render_proc(proc)
 num_rows = row    
+
+
+
+f = open("procstory", "w")
+f.write ("max_instr = %d\n" % max_instr)
+f.write( "==========================================\n")
+indent = 0
+for proc in spreexisting:
+    print_proc(f, proc, indent)
+f.write( "==========================================\n")    
+
+
 
 vline(1, 0, num_rows)
 vline(3+width, 0, num_rows)
