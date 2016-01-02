@@ -117,9 +117,12 @@ typedef struct invindex_struct {
 } InvIndex;
 
 
-typedef struct score_struct {
-    uint32_t ind; // i.e. psg index
+
+
+typedef struct score {
+    uint32_t uind;       // unique ind 
     double val;
+    uint32_t sumsize;
 } Score;
 
 
@@ -270,8 +273,22 @@ Index *unmarshall_index(std::string pfx, IndexCommon *indc, bool passages) ;
 // if uind_to_psgs is false, then we DONT load
 IndexCommon *unmarshall_index_common(const std::string pfx, bool uind_to_psgs) ;
 InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc);
-void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint32_t *ind, double *best_score,
-                         std::vector<Score> &topN, uint32_t n, int correct_psg, bool *success) ;
+
+/*
+  query was created by index_passage
+  Score is one psg with best score (score val, some uind with that score,
+  and sumsize (bigger is better -- more intersection between query and passage).
+  also adds things to best_uind vector -- all uinds with the same score as best score
+*/
+Score query_with_passage(IndexCommon * indc,
+                         InvIndex * inv,
+                         std::vector < FILE * >fpinv,
+                         Passage & query,
+                         std::vector < double >&par,
+                         std::vector < Score > &score,
+                         std::vector<uint32_t> &best_uind);
+
+
 
 
 Passage index_passage (IndexCommon *indc, bool update,

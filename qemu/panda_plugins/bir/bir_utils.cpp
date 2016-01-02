@@ -373,7 +373,7 @@ void marshall_gram_long_map(std::string filename, std::map < Gram, long > &glmap
     WU(occ);
     for ( auto &kvp : glmap ) {
         WU(kvp.first);
-        WU(kvp.second);
+        WL(kvp.second);
     }
     fclose(fp);
 }
@@ -786,9 +786,11 @@ InvIndex *unmarshall_invindex_min(std::string pfx, IndexCommon *indc) {
     InvIndex *inv = new InvIndex;    
     std::string filename;
     for (uint32_t n=indc->min_n_gram; n<=indc->max_n_gram; n++) {        
+        // if *both* of these are running we have a problem
         inv->map_dw[n] = unmarshall_gram_long_map(pfx + ".inv-map-" + std::to_string(n));
         inv->general_query[n] = unmarshall_gram_uint32_map(pfx + ".gen-" + std::to_string(n));
     }
+    // this one is not the problem
     inv->total_count = unmarshall_uint32_uint32_map(pfx + ".total_count");
     return inv;
 }
@@ -989,7 +991,7 @@ PpScores *unmarshall_preprocessed_scores(std::string filename_pfx, IndexCommon *
 // passage_name assumed alloc big enough to fit filename-offset
 std::pair<std::string, uint32_t> get_passage_info(IndexCommon *indc, uint32_t passage_ind) {
     // find first passage ind that is less than passage_ind
-    uint32_t first_passage;
+    uint32_t first_passage=0;
     std::string filename;
     for ( auto kvp : indc->first_passage_to_filename ) {
         if (kvp.first > passage_ind) break;
@@ -1038,11 +1040,74 @@ InvIndex *invert(IndexCommon *indc, Index *index) {
 }     
 
 
-__attribute__((unused))
-static bool compare_scores (const Score & s1, const Score & s2) {
-    return (s1.val > s2.val);
+
+
+bool
+compare_scores (const Score & s1, const Score & s2) {
+    if (s1.sumsize > s2.sumsize) return true;
+    if (s1.sumsize < s2.sumsize) return false;
+    return (s1.val < s2.val);
+    
 }
 
+Score query_with_passage(IndexCommon * indc,
+                         InvIndex * inv,
+                         std::vector < FILE * >fpinv,
+                         Passage & query,
+                         std::vector < double >&par,
+                         std::vector < Score > &score,
+                         std::vector<uint32_t> &best_uind)
+{
+    //    printf ("query_with_passage\n");
+    uint32_t min_n = indc->min_n_gram;
+    uint32_t max_n = indc->max_n_gram;    
+    for (uint32_t i=0; i<indc->num_uind; i++) {
+        score[i].val = 0.0;
+        score[i].uind = i;
+        score[i].sumsize = 0;
+    }
+    GramPsgCounts *ngram_row;
+    for (auto &kvp : query.contents[max_n].count) {
+        Gram gram = kvp.first;
+        //        printf ("gram: "); spit_gram_hex(stdout, gram, max_n); printf ("\n");
+        uint32_t gram_count = kvp.second;
+        // this is prob of gram in query
+        double pq = ((double) gram_count) / indc->passage_len_bytes;
+        //        printf ("pq=%f\n", pq);
+        int res = unmarshall_row_fp (fpinv[max_n], inv, max_n, gram, &ngram_row);            
+        for (uint32_t i=0; i<ngram_row->size; i++) {
+            uint32_t uind = ngram_row->counts[i].passage_ind;
+            uint32_t c = ngram_row->counts[i].count;
+            // and this is prob of same gram in uind
+            double pu = ((double) c) / indc->passage_len_bytes;
+            score[uind].val += pq * log(pq/pu) + pu * log(pu/pq);
+            score[uind].sumsize ++;
+            //            printf ("uind=%d c=%d pu=%f val=%f sumsize=%d\n", uind, c, pu, score[uind].val, score[uind].sumsize);
+        }
+    }
+    // pull out list of uinds that have max sumsize & min topscore
+    Score best_score;
+    best_score.sumsize=0;
+    best_score.val = 10000.0;
+    for ( auto sc : score ) {
+        if (sc.sumsize > best_score.sumsize) {
+            best_score = sc;
+            continue;
+        }
+        if (sc.sumsize == best_score.sumsize) {
+            if (sc.val < best_score.val) {
+                best_score = sc;
+            }
+        }
+    }
+    //    printf ("best_score val = %f  sumsize = %d\n", best_score.val, best_score.sumsize);
+    return best_score;
+}
+
+
+
+
+#if 0
 
 // query is a passage.  
 
@@ -1168,7 +1233,7 @@ void query_with_passage (IndexCommon *indc, Passage *query, PpScores *pps, uint3
     if (bu_debug) printf ("exiting query_with_passage\n");
 
 }
-
+#endif
 
 
 ////////////////////////////////////////////

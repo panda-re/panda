@@ -17,6 +17,9 @@ PANDAENDCOMMENT */
 
 extern "C" {
 
+#include <sys/time.h>
+#include <sys/resource.h>
+    
 #include <dlfcn.h>
 #include "config.h"
 #include "qemu-common.h"
@@ -62,19 +65,19 @@ void uninit_plugin(void *);
 
 // globals
 bool debug = false;
-PpScores *pps = NULL; 
+//PpScores *pps = NULL; 
 IndexCommon *indc = NULL;
 InvIndex *inv = NULL;
-bool ignore_bb_len = false;
 char *binary_filename = NULL;
-uint8_t *binary;
+//uint8_t *binary;
 uint32_t binary_len = 0;
 bool use_cache = false;
+std::vector < double > scoring_params;
+std::vector<FILE *>fpinv;
+uint64_t first_instr=0;
 
-bool compare_scores (const Score & s1, const Score & s2) {
-    return (s1.val > s2.val);
-}
-
+// map from filename to binary contents
+std::map<std::string, std::pair<uint32_t, uint8_t *>> binary;
 
 extern uint32_t max_row_length;
 extern bool bu_debug;
@@ -228,16 +231,6 @@ double *pppqs= NULL;
 
 std::map < Gram, std::map < uint32_t, double > > sc;
 
-
-bool pdice (double prob_yes) {
-    if ((((double) (rand ())) / RAND_MAX) < prob_yes) 
-        return true;    
-    else
-        return false;
-}
-
-
-double pdice_prob = 1.0;
 FILE *output;
 target_ulong pc_start = 0;
 target_ulong pc_end = (target_ulong)~0UL;
@@ -249,8 +242,7 @@ typedef target_ulong Pc;
 typedef uint32_t Offset;
 typedef std::pair<Asid,Pc> AsidPc;
 typedef std::string Filename;
-typedef double BirScore;
-typedef std::tuple<Filename,Offset,BirScore> PsgInfo;
+typedef std::tuple<Filename,Offset,Score> PsgInfo;
 std::map<AsidPc,PsgInfo> bircache;
 
 double sec;
@@ -303,10 +295,24 @@ uint32_t query_len = 0;
 
 target_ulong last_next_pc=0;
 
+uint64_t numbb=0;
+
+
 int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (tb->pc < pc_start || tb->pc >= pc_end) return 0;
-    if (tb->size < 3) return 0;
     
+    uint64_t instr = rr_get_guest_instr_count();    
+
+    if (instr < first_instr) return 0;              
+    if (tb->pc < pc_start || tb->pc >= pc_end) return 0;
+
+    fprintf (output, "%u pc=0x" TARGET_FMT_lx " len=%d -- ", numbb, tb->pc, tb->size);
+    
+
+    numbb++;
+
+    //    if (tb->size < 3) return 0;
+
+
     target_ulong asid = panda_current_asid(env);
     AsidPc asidpc = std::make_pair(asid,tb->pc);
     if (use_cache && bircache.count(asidpc) != 0) {
@@ -314,7 +320,7 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
         auto psginfo = bircache[asidpc];
         Filename filename = std::get<0>(psginfo);
         Offset offset = std::get<1>(psginfo);
-        BirScore score = std::get<2>(psginfo);
+        Score score = std::get<2>(psginfo);
         if (filename == UNKNOWN) {
             run_stats();
             run_length = 0;
@@ -323,147 +329,120 @@ int bir_before_block_exec(CPUState *env, TranslationBlock *tb) {
             run_length ++;
         }
         if (pandalog) {
-            bir_plog(tb->size, true, score, filename, offset);
+            //            bir_plog(tb->size, true, score, filename, offset);
         }
         else {
-            fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-            fprintf (output, "birc -- %.3f %s-%x\n", score, (char *) filename.c_str(), offset);
+            //            fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+            fprintf (output, "birc -- sumsize=%d score=%.3f %s-%x\n", score.sumsize, score.val, (char *) filename.c_str(), offset);
         }
     }
     else {
-        fprintf (output, "---------------------------bir start---------------------------\n");
-
         // not in cache
-        uint8_t buf[4096];
+        uint8_t query_buffer[4096];
         uint32_t len = 4096;
         len = std::min((unsigned)tb->size, 4096U);
-
-        /*
-        if (ignore_bb_len) 
-            len = std::max((unsigned)indc->passage_len_bytes, len);
-        */
-
-        fprintf (output, "%d bytes in the query buffer out of %d\n", (int) (query_buffer_p - query_buffer), query_len);
-        fprintf(output, "len = %d\n", len);
-
-
-        // rewinds
-        if (last_next_pc != tb->pc) {
-            fprintf (output, "not contiguous -- rewind\n");
-            query_buffer_p = query_buffer;
-        }
-
-        if ((query_buffer_p + len) >= (query_buffer + query_len)) {
-            fprintf (output, "overflow -- rewind\n");
-            query_buffer_p = query_buffer;
-        }
-        
-        if (query_buffer_p != query_buffer) {
-            fprintf (output, "adding on\n");
-        }
-        
-        // actually copy the code into the query buffer at the correct place
-        int ret = panda_virtual_memory_rw(env, tb->pc, query_buffer_p, len, 0);    
-        if (ret != -1) {
-            query_buffer_p += len;
-        }
-        
-        
-        fprintf(output, "len=%d querylen=%d\n", len, (int) (query_buffer_p - query_buffer));
-        
-        Passage passage = index_passage (indc, /* update_lexicon = */ false,
-                                         query_buffer, query_len,
-                                         /* note: we dont really care about passage ind */
-                                         /* passage_ind = */ 0xdeadbeef);
-        uint32_t argmax;
-        double score;
-        query_with_passage (indc, &passage, pps, &argmax, &score, topN, N);
-        if ( score > 0.2) {
-            uint32_t the_offset;
-            uint32_t uind = argmax;               
-            uint32_t psgid = *(indc->uind_to_psgs[uind].begin());
-            run_length ++;
-            std::string the_filename = get_passage_name(indc, psgid, &the_offset);
-            // let's do a little searching in the binary
-            uint32_t srch_start = std::max((uint32_t) the_offset - 1024, 0U);
-            uint32_t srch_end = std::min((uint32_t) the_offset + 1024 - len, binary_len);
-            uint32_t max_matches = 0;
-            uint32_t argmax_matches;
-            for (uint32_t i=srch_start; i<srch_end; i++) {
-                uint32_t matches = 0;                        
-                for (uint32_t j=0; j<len; j++) {
-                    matches += (buf[j] == binary[i+j]);
-                }
-                if (matches > max_matches) {
-                    max_matches = matches;
-                    argmax_matches = i;
-                }
-                //                    fprintf (output,"i=%d matches=%d\n", i, matches);
-            }
-            double f =  ((double) max_matches) / len;
-            if (f>0.6) {
-                fprintf (output,"f=%.4f max matches = %u of %u. argmax offset=%u   the_offset=%u\n",
-                         f, max_matches, len, argmax_matches, the_offset);
-            }
-            std::stringstream ss;
-            ss << std::setprecision(3);
-            ss << score << " ";
-            ss << the_filename << "-" << std::hex << the_offset;
-            PsgInfo pi = std::make_tuple(the_filename, the_offset, score);
-            bircache[asidpc] = pi;
-            if (pandalog) {
-                bir_plog(tb->size, false, score, the_filename, the_offset);
-            }
-            else {
-                fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                fprintf (output, "bir -- %s",  ss.str().c_str());               
-            }
+        //        if (len < 8) {
+            //           fprintf (output, "2small\n");
+        //        }
+        //        else {
+        {
+            // actually copy the code into the query buffer at the correct place
+            int ret = panda_virtual_memory_rw(env, tb->pc, query_buffer, indc->passage_len_bytes, 0);    
+            Passage query_passage = index_passage (indc, /* update_lexicon = */ false,
+                                                   query_buffer, query_len,
+                                                   /* note: we dont really care about passage ind */
+                                                   /* passage_ind = */ 0xdeadbeef);
+            std::vector<uint32_t> best_uind;
+            std::vector<Score> scores = std::vector<Score>(indc->num_uind);
+            Score best_score = query_with_passage(indc, inv, fpinv, query_passage, scoring_params, scores, best_uind);
+            fprintf (output, "bestscore=%f sumsize=%d -- ", best_score.val, best_score.sumsize);
+            if ( (best_score.sumsize > query_len / 2) && (best_score.val < 0.2) ) {           
             
-            if (debug && score > 0.2) {
-                fprintf (output, "\n");
-                spit_passage(output, passage);
-                uint32_t i;
-                for (i=0; i<len; i++) {
-                    fprintf (output, "%02x ", buf[i]);
-                    if ((i % 8) == 0) fprintf (output,"   ");
-                    if ((i % 16) == 0) fprintf (output,"\n");
+                // all the uind in scores array have highest score
+                // get filename and offset for one here
+                uint32_t uind = best_score.uind;               
+                uint32_t psgid = *(indc->uind_to_psgs[uind].begin());
+                run_length ++;
+                std::pair<std::string, uint32_t> psginfo = get_passage_info(indc, psgid);
+                std::string filename = psginfo.first;
+                uint32_t offset = psginfo.second;
+                //                fprintf (output, "bir match: file=%s offset=%d sumsize=%d val=%.4f\n",
+                //                         filename.c_str(),  offset, best_score.sumsize, best_score.val);
+                // let's do a little searching in the binary and see if we can get a better offset
+                double max_f = 0;
+                uint32_t argmax_offset;
+                std::string argmax_filename;
+                for (auto kvp : binary) {
+                    std::string filename = kvp.first;
+                    uint32_t binary_len = kvp.second.first;
+                    uint8_t *bin = kvp.second.second;
+                    uint32_t srch_start = std::max((int) offset - indc->passage_len_bytes, 0U);
+                    uint32_t srch_end = std::min((uint32_t) offset + indc->passage_len_bytes, binary_len);                    
+                    //                    printf ("filename = %s  %d %d\n", filename.c_str(), srch_start, srch_end);
+                    for (uint32_t i=srch_start; i<srch_end; i++) {
+                        uint32_t matches = 0;                        
+                        uint32_t num_tries=0;
+                        for (uint32_t j=0; j<indc->passage_len_bytes; j++) {
+                            uint8_t c = query_buffer[j];
+                            if (i+j >= binary_len) {
+                                break;
+                            }
+                            matches += (c == bin[i+j]);
+                            num_tries ++;
+                        }                    
+                        double f = ((float)matches) / num_tries;
+                        if (f > max_f) {
+                            max_f = f;
+                            argmax_offset = i;
+                            argmax_filename = filename;                           
+                        }
+                    }
                 }
-                if (((i-1) % 16) != 0) fprintf (output, "\n");
-                fprintf (output,"\n");
-                // this will spit out the topN
-#if 0
-                // NB: code to *compute* this is currently disabled in query_with_passage
-                for (auto s : topN) {
-                    psgid = *(indc->uind_to_psgs[s.ind].begin());
-                    std::string pname = get_passage_name(indc, psgid, &the_offset);            
-                    fprintf (output, "  %.5f\t%s %d %d\n", s.val, pname.c_str(), s.ind, psgid);
+                if (max_f>0.6) {
+                    fprintf (output," instr=%" PRId64 " max_f=%.4f filename=%s offset=%d\n", 
+                             instr, max_f, argmax_filename.c_str(), argmax_offset);
+                    offset = argmax_offset;
                 }
-#endif
+                else {
+                    fprintf (output, "search failed? %f \n ", max_f, indc->passage_len_bytes);
+                }
+                
+                PsgInfo pi = std::make_tuple(filename, offset, best_score);
+                bircache[asidpc] = pi;
             }
-        }      
-        else {
-            run_stats();
-            run_length = 0;
-            if (pandalog) {
-                bir_plog(tb->size, false, score, UNKNOWN, 0);
-            }                       
             else {
-                fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
-                fprintf (output, "bir -- %.3f unknown", score);
-            }                
-            PsgInfo pi = std::make_tuple("unknown", 0xdeadbeef, 0.0);
-            bircache[asidpc] = pi;
+                // score not good enough
+                fprintf(output, " score too low\n");
+                run_stats();
+                run_length = 0;                
+                //                fprintf (output, "retreival fail\n");
+                /*
+                  if (pandalog) {
+                  bir_plog(tb->size, false, score, UNKNOWN, 0);
+                  }                       
+                  else {
+                  fprintf (output, "pc=0x" TARGET_FMT_lx " len=%d  ", tb->pc, tb->size);
+                  fprintf (output, "bir -- %.3f unknown", score);
+                  } 
+                */
+                Score s = {0, 0.0, 0};
+                PsgInfo pi = std::make_tuple("unknown", 0xdeadbeef, s);
+                bircache[asidpc] = pi;
+            }
         }
+            /*
         if (tb->size < 8) {
             if (!pandalog) 
                 fprintf(output, "  maybe 2small");
+        
         }
-        if (!pandalog) fprintf(output, "\n");
-
+            */
+            //if (!pandalog) fprintf(output, "\n");
+        
             
-            
-        fprintf (output, "---------------------------bir end---------------------------\n\nn");
-    
+        
+        //        fprintf (output, "---------------------------bir end---------------------------\n\nn");
+        
         
         
     }
@@ -482,37 +461,40 @@ bool init_plugin(void *self) {
         int i;
         std::string pfx(panda_parse_string(args, "pfx", "unk"));
         max_row_length = panda_parse_uint32(args, "max_row_length", 10000);
-        pdice_prob = panda_parse_double(args, "pdice", 1.0);
-
         pc_start = panda_parse_ulong(args, "pc_start", 0);
         pc_end = panda_parse_ulong(args, "pc_end", (target_ulong)~0UL);
-
-        ignore_bb_len = panda_parse_bool(args, "ignore_bb_len");
-
-        binary_filename = (char *) ( panda_parse_string(args, "binary", NULL));
-
+        //        binary_filename = (char *) ( panda_parse_string(args, "binary", NULL));
+        use_cache = panda_parse_bool(args, "use_cache");
         query_len = panda_parse_uint32(args, "query_len", 256);
+        first_instr = panda_parse_uint64(args, "first_instr", 0);
+        const char *file_list = panda_parse_string(args, "file_list", NULL);        
         query_buffer = (uint8_t *) malloc(query_len);
         query_buffer_p = query_buffer;
-        
-        use_cache = panda_parse_bool(args, "use_cache");
-
-        
-        if (binary_filename) {
-            struct stat s;
-            stat(binary_filename, &s);
-            binary = (uint8_t *) malloc(s.st_size);
-            FILE *fp = fopen(binary_filename, "r");
-            size_t n = fread(binary, 1,  s.st_size, fp);
-            assert (n==(size_t)s.st_size);
-            binary_len = n;
-            fclose(fp);
+        if (file_list) {
+            FILE *fp = fopen(file_list, "r");
+            char *filename = NULL;
+            size_t len = 0;           
+            ssize_t nread;            
+            while ((nread = getline(&filename, &len, fp)) != -1) {
+                printf ("filename=%s\n", filename);
+                filename[nread-1]=0;
+                struct stat s;
+                std::string fn = std::string(filename);
+                stat(filename, &s);                
+                printf ("reading binary [%s] %d bytes\n", filename, s.st_size);
+                FILE *fp2 = fopen(filename, "r");
+                uint8_t *b = (uint8_t *) malloc(s.st_size);
+                std::pair<uint32_t, uint8_t *> bin = std::make_pair(s.st_size, b);
+                fread(b, 1, s.st_size, fp2);
+                binary[fn] = bin; 
+            }
         }
-            
-        
-        if (!pandalog) {
+        if (pandalog) {
+            printf ("bir will use pandalog for output\n");
+        }
+        else {
             const char *output_filename = panda_parse_string(args, "output", "");
-            printf("bir: writing to %s\n", output_filename);
+            printf("bir: writing to [%s]\n", output_filename);
             if (strlen(output_filename) == 0) {
                 output = stdout;
             } else {
@@ -521,17 +503,43 @@ bool init_plugin(void *self) {
         }
         
         if (pfx.compare("none") == 0) {
-            // we just want the api
+            // we just want the api -- no callbacks get registered
             printf ("bir: I am only being used for my api fns.\n");
             return true;
         }
         else {
             printf ("unmarshalling index common\n");
             indc = unmarshall_index_common(pfx, true);
-            printf ("unmarshalling preprocessed scores\n");
-            pps = unmarshall_preprocessed_scores(pfx,indc);                      
+            //            printf ("unmarshalling preprocessed scores\n");
+            //            pps = unmarshall_preprocessed_scores(pfx,indc);                      
             printf ("unmarshalling inverted index\n");
             inv = unmarshall_invindex_min (pfx, indc);            
+            // std::vector < double >
+            scoring_params = std::vector < double >(indc->max_n_gram + 1);
+            // weight for general_query = scoring_param[0] = 1/2
+            // weight for n=1 is 1/3
+            // weight for n=2 is 1/4
+            // etc
+            double psum = 0.0;
+            double alpha = 1.0;
+            for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
+                scoring_params[n] = pow((n + 1), alpha);
+                //scoring_params[n] = 1.0 / (n + 2);
+                psum += scoring_params[n];
+            }
+            for (uint32_t n = 0; n <= indc->max_n_gram; n++) {
+                scoring_params[n] /= psum;
+            }
+            // open up all the inv files
+            printf ("opening inv files\n");
+            fpinv = std::vector < FILE * >(indc->max_n_gram + 1);
+            for (uint32_t n = indc->min_n_gram; n <= indc->max_n_gram; n++)   {
+                // the inv index for this n, i.e. list of doc/count pairs for grams of this n
+                char filename[65535];
+                snprintf (filename, 65535, "%s.inv-%d", indc->filename_prefix.c_str (), n);
+                fpinv[n] = fopen (filename, "r");
+            }
+            
             panda_cb pcb;
             pcb.before_block_exec = bir_before_block_exec;
             panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
