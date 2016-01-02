@@ -15,15 +15,10 @@ It uses the request structure format defined in [memory-access.c](../../memory-a
 Arguments
 ---------
 
-
 * `path`: string, no default. The path of the UNIX socket to create.
-
 * `mode`: 0 or 1. The test mode. 0=predefined tests, 1=Run volatility
-
 * `profile`: string, no default. The name of the volatility profile to use.
-
 * `command`: string, no default. The volatility command to run.
-
 
 Dependencies
 ------------
