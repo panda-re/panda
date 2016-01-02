@@ -145,8 +145,8 @@ def get_proc_ind(pid, fullname):
         pid = 0
         name = "unknown"
     # clean up name a little
+    fullname = fullname.strip(')')
     name = fullname
-    name = name.strip(')')
     foo = re.search("(.*).exe", name)
     if foo:
         name = foo.groups()[0]
