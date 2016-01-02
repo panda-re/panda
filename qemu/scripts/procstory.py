@@ -273,9 +273,9 @@ spreexisting = sorted(preexisting, key=lambda proc: proc.first_instr.min)
 def print_proc(f, proc, indent):
     f.write ( "  " * indent )
     if proc.boring is True:
-        f.write (" [lame] ")
+        f.write (" [b] ")
     else:
-        f.write (" [cool] ")
+        f.write (" [i] ")
     f.write((str(proc)) + "\n")
     for cind in proc.children:
         print_proc(f, ind2proc[cind], indent+1)
@@ -350,10 +350,10 @@ indent = 0
 for proc in spreexisting:
     print_proc(f, proc, indent)
 
-f.write ("Note: a process is considered lame iff\n")
-f.write ("      (1) we did not see its creation,\n")
-f.write ("      (2) we did not see its termination,\n")
-f.write ("  and (3) it has no children\n")
+f.write ("Note: A process is either [b]oring or [i]nteresting. It is boring iff\n")
+f.write ("        (1) we did not see its creation,\n")
+f.write ("        (2) we did not see its termination,\n")
+f.write ("    and (3) it has no children\n")
 f.write( "==========================================\n")    
 
 
