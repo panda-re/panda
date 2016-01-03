@@ -221,7 +221,7 @@ enum ProfileType {
 
 struct Profile {
     void         (*enter_switch)(CPUState *, target_ulong);
-    void         (*return_switch)(CPUState *, target_ulong, target_ulong);
+    void         (*return_switch)(CPUState *, target_ulong, target_ulong, ReturnPoint &);
     target_long  (*get_return_val )(CPUState *);
     target_ulong (*calc_retaddr )(CPUState *, target_ulong);
     uint32_t     (*get_32 )(CPUState *, uint32_t);
@@ -411,7 +411,7 @@ static int returned_check_callback(CPUState *env, TranslationBlock* tb){
     std::pair < target_ulong, target_ulong > ret_key = std::make_pair(tb->pc, panda_current_asid(env));
     if (returns.count(ret_key) != 0) {
         ReturnPoint &retVal = returns[ret_key];
-        syscalls_profile->return_switch(env, tb->pc, retVal.ordinal);
+        syscalls_profile->return_switch(env, tb->pc, retVal.ordinal, retVal);
         // used by remove_if to delete from returns list those values
         // that have been processed
         //        retVal.retaddr = retVal.proc_id = 0;

@@ -122,7 +122,6 @@ void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
     rp.ordinal = %s;                        // CALLNO
     rp.proc_id = panda_current_asid(env);
     rp.retaddr = calc_retaddr(env, pc);
-    appendReturnPoint(rp);
     switch( %s ) {                          // CALLNO
 """ % (osarch, GUARD, CALLNO, CALLNO)
 
@@ -142,7 +141,7 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ordinal) {  // osarch
+void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 %s                                          // GUARD
     switch( ordinal ) {                          // CALLNO
 """ % (osarch, GUARD)
@@ -291,16 +290,12 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                     break
                 if arg_type == CHAR_STAR:
                     syscall_enter_switch += get_pointer(i)
-                    syscall_return_switch += get_return_pointer(i)
                 elif arg_type == POINTER:
                     syscall_enter_switch += get_pointer(i)
-                    syscall_return_switch += get_return_pointer(i)
                 elif arg_type == BYTES_4:
                     syscall_enter_switch += get_32(i)
-                    syscall_return_switch += get_return_32(i)
                 elif arg_type == SIGNED_4:
                     syscall_enter_switch += get_s32(i)
-                    syscall_return_switch += get_return_s32(i)
                 elif arg_type == BYTES_8:
                     # alignment sadness. Linux tried to make sure none of these happen
                     if (argno % 2) == 1:
@@ -308,7 +303,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                         if argno >= len(ARGS):
                             break
                     syscall_enter_switch += get_64(i)
-                    syscall_return_switch += get_return_64(i)
                     argno+=1
                 argno+=1
 
@@ -323,6 +317,14 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             typedefs[GUARD].add(typedef )
             cb_names_enter[GUARD].add("on_{0}".format(callname + "_enter"))
             cb_names_return[GUARD].add("on_{0}".format(callname + "_return"))
+            # Marshal the args into the ReturnPoint for use at the return site
+            for i, x in enumerate(arg_types):
+                syscall_enter_switch += "memcpy(rp.params[%d], &arg%d, sizeof(%s));\n" % (i, i, ARG_TYPE_C_TRANSLATIONS[x.type])
+            # Unmarshal the args from the ReturnPoint
+            for i, x in enumerate(arg_types):
+                syscall_return_switch += "%s arg%d;\n" % (ARG_TYPE_C_TRANSLATIONS[x.type], i)
+            for i, x in enumerate(arg_types):
+                syscall_return_switch += "memcpy(&arg%d, rp.params[%d], sizeof(%s));\n" % (i, i, ARG_TYPE_C_TRANSLATIONS[x.type])
             # prototype for the C++ callback (with arg types and names)
             syscall_enter_switch += "PPP_RUN_CB(on_{0}_enter, {1}) ; \n".format(callname, _c_args)
             syscall_enter_switch += "}; break;"+'\n'
@@ -334,6 +336,7 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
         syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_enter, env, pc, %s);\n" % CALLNO
         syscall_enter_switch += "}"+'\n'
         syscall_enter_switch += "PPP_RUN_CB(on_all_sys_enter, env, pc, %s);\n" % CALLNO
+        syscall_enter_switch += "appendReturnPoint(rp);\n"
 
         syscall_return_switch += "default:\n"
         syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, env, pc, %s);\n" % CALLNO
