@@ -99,7 +99,7 @@ extern int ppp_##cb_name##_num_cb;
     }									\
   }
 
-
+#define PPP_CHECK_CB(cb_name) (ppp_##cb_name##_num_cb > 0)
 
 /****************************************************************
 This stuff gets used in "plugin B", i.e., the plugin that wants

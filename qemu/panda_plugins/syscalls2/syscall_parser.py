@@ -114,6 +114,7 @@ extern "C" {
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_extern_enter.h"
+#include "gen_syscall_ppp_extern_return.h"
 }
 
 void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
@@ -318,13 +319,19 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             cb_names_enter[GUARD].add("on_{0}".format(callname + "_enter"))
             cb_names_return[GUARD].add("on_{0}".format(callname + "_return"))
             # Marshal the args into the ReturnPoint for use at the return site
+            # Note: not a typo; we want to check if anyone is listening for the
+            # *return* before doing the memcpys in to the ReturnPoint
+            syscall_enter_switch += "if (PPP_CHECK_CB(on_{0}_return)) {{\n".format(callname)
             for i, x in enumerate(arg_types):
-                syscall_enter_switch += "memcpy(rp.params[%d], &arg%d, sizeof(%s));\n" % (i, i, ARG_TYPE_C_TRANSLATIONS[x.type])
+                syscall_enter_switch += "memcpy(rp.params[{0}], &arg{0}, sizeof({1}));\n".format(i, ARG_TYPE_C_TRANSLATIONS[x.type])
+            syscall_enter_switch += "}\n"
             # Unmarshal the args from the ReturnPoint
             for i, x in enumerate(arg_types):
                 syscall_return_switch += "%s arg%d;\n" % (ARG_TYPE_C_TRANSLATIONS[x.type], i)
+            syscall_return_switch += "if (PPP_CHECK_CB(on_{0}_return)) {{\n".format(callname)
             for i, x in enumerate(arg_types):
                 syscall_return_switch += "memcpy(&arg%d, rp.params[%d], sizeof(%s));\n" % (i, i, ARG_TYPE_C_TRANSLATIONS[x.type])
+            syscall_return_switch += "}\n"
             # prototype for the C++ callback (with arg types and names)
             syscall_enter_switch += "PPP_RUN_CB(on_{0}_enter, {1}) ; \n".format(callname, _c_args)
             syscall_enter_switch += "}; break;"+'\n'
