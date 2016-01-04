@@ -99,8 +99,3 @@ And then invoke it as:
         -panda syscalls2:profile=windows7_x86 -panda filereadmon
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.
-
-Bugs
-----
-
-Currently, the values of parameters are not guaranteed to be available at return time (even though they appear in the return callback parameters). It works fine on Windows 32-bit, which uses the stack for parameters; however, on Linux the system call ABI puts parameters in CPU registers, and these may not be preserved at the system call return.

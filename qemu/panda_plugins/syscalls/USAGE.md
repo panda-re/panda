@@ -6,10 +6,7 @@ Summary
 
 The `syscalls` plugin intercepts and logs system calls made in the guest OS, along with their arguments. Currently, only Linux x86 and ARM are supported.
 
-**Warning**: The `syscalls` plugin is officially **deprecated**, and `syscalls2` is its preferred replacement. However, `syscalls` still enjoys two advantages over `syscalls`:
-
-* `syscalls` can automatically produce a text log of system calls, with their arguments.
-* Getting the value of an out parameter at return time is not supported in `syscalls2` except for Windows 32-bit guests.
+**Warning**: The `syscalls` plugin is officially **deprecated**, and `syscalls2` is its preferred replacement. However, `syscalls` still enjoys one advantage over `syscalls2`: `syscalls` can automatically produce a text log of system calls, with their arguments.
 
 Arguments
 ---------
