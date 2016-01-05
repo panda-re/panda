@@ -13,7 +13,6 @@ f = open(sys.argv[1], 'rb')
 ulong_size = struct.unpack("<I", f.read(4))[0]
 dt = '<4u8' if ulong_size == 8 else '<4u4'
 idx = np.fromfile(f, dtype=dt)
-np.cumsum(idx[:,3])
 offsets = np.zeros(idx.shape[0]+1,dtype=np.uint64)
 offsets[1:] = np.cumsum(idx[:,3])
 
