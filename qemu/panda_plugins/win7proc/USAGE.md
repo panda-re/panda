@@ -5,12 +5,13 @@ Summary
 -------
 
 The `win7proc` plugin provides Windows 7 introspection into a number of interesting system calls, including those related to
-* processes, 
-* the registry.
-* sections (shared memory), 
-* the file system, 
-* LPC ports (Local Procedure call),
-* and shared memory.
+
+* processes
+* the registry
+* sections (shared memory)
+* the file system
+* LPC ports (Local Procedure call)
+* shared memory
 
 The plugin uses domain knowledge about how to understand pointers to important Windows types such as handles, objects, and EPROCESS data structures.
 This information is repackaged as `pandalog` entries, as described in `win7proc.proto` and (mostly) parseable by `pandalog_reader`.
@@ -91,60 +92,25 @@ Sample output for `procstory.py`:
         unknown1 :  |?-----------------------------------------T                                      |   
      ==========================================                                                           
      Legend: [C]reation [T]ermination [?]Unknown [+]Branch                                                
-
-
-
-
 Arguments
 ---------
 
+* `grab_files`: boolean. Controls whether to dump out any file data written during the replay (by intercepting calls to NtWriteFile). The files will be saved into a directory named `output` in the current directory, which will be created if it does not already exist.
 
 Dependencies
 ------------
 
-    panda_require("syscalls2");
-    PPP_REG_CB("syscalls2", on_NtCreateUserProcess_return, w7p_NtCreateUserProcess_return);
-    PPP_REG_CB("syscalls2", on_NtTerminateProcess_enter, w7p_NtTerminateProcess_enter);
-    PPP_REG_CB("syscalls2", on_NtCreateFile_enter, w7p_NtCreateFile_enter);
-    PPP_REG_CB("syscalls2", on_NtReadFile_enter, w7p_NtReadFile_enter);
-    PPP_REG_CB("syscalls2", on_NtDeleteFile_enter, w7p_NtDeleteFile_enter);
-    PPP_REG_CB("syscalls2", on_NtWriteFile_enter, w7p_NtWriteFile_enter);
-    PPP_REG_CB("syscalls2", on_NtCreateKey_return, w7p_NtCreateKey_return);
-    PPP_REG_CB("syscalls2", on_NtOpenKey_return, w7p_NtOpenKey_return);
-    PPP_REG_CB("syscalls2", on_NtOpenKeyEx_return, w7p_NtOpenKeyEx_return);
-    PPP_REG_CB("syscalls2", on_NtDeleteKey_enter, w7p_NtDeleteKey_enter);
-    PPP_REG_CB("syscalls2", on_NtQueryKey_enter, w7p_NtQueryKey_enter);
-    PPP_REG_CB("syscalls2", on_NtQueryValueKey_enter, w7p_NtQueryValueKey_enter);
-    PPP_REG_CB("syscalls2", on_NtDeleteValueKey_enter, w7p_NtDeleteValueKey_enter);
-    PPP_REG_CB("syscalls2", on_NtEnumerateKey_enter, w7p_NtEnumerateKey_enter);
-    PPP_REG_CB("syscalls2", on_NtSetValueKey_enter, w7p_NtSetValueKey_enter);
-    PPP_REG_CB("syscalls2", on_NtCreateSection_return, w7p_NtCreateSection_return);
-    PPP_REG_CB("syscalls2", on_NtOpenSection_return, w7p_NtOpenSection_return);
-    PPP_REG_CB("syscalls2", on_NtMapViewOfSection_return, w7p_NtMapViewOfSection_return);
-    PPP_REG_CB("syscalls2", on_NtCreatePort_return, w7p_NtCreatePort_return);
-    PPP_REG_CB("syscalls2", on_NtConnectPort_return, w7p_NtConnectPort_return);
-    PPP_REG_CB("syscalls2", on_NtListenPort_return, w7p_NtListenPort_return);
-    PPP_REG_CB("syscalls2", on_NtAcceptConnectPort_return, w7p_NtAcceptConnectPort_return);
-    PPP_REG_CB("syscalls2", on_NtCompleteConnectPort_return, w7p_NtCompleteConnectPort_return);
-    PPP_REG_CB("syscalls2", on_NtRequestPort_return, w7p_NtRequestPort_return);
-    PPP_REG_CB("syscalls2", on_NtRequestWaitReplyPort_return, w7p_NtRequestWaitReplyPort_return);
-    PPP_REG_CB("syscalls2", on_NtReplyPort_return, w7p_NtReplyPort_return);
-    PPP_REG_CB("syscalls2", on_NtReplyWaitReplyPort_return, w7p_NtReplyWaitReplyPort_return);
-    PPP_REG_CB("syscalls2", on_NtReplyWaitReceivePort_return, w7p_NtReplyWaitReceivePort_return);
-    PPP_REG_CB("syscalls2", on_NtImpersonateClientOfPort_return, w7p_NtImpersonateClientOfPort_return);
-    PPP_REG_CB("syscalls2", on_NtReadVirtualMemory_return, w7p_NtReadVirtualMemory_return);
-    PPP_REG_CB("syscalls2", on_NtWriteVirtualMemory_return, w7p_NtWriteVirtualMemory_return);
+`win7proc` uses `syscalls2` to monitor Windows system calls. Note that because the plugin only supports Windows 7 32-bit, you should always load `syscalls2` with the `windows7_x86` profile.
 
 APIs and Callbacks
 ------------------
 
-
-
-
+None.
 
 Example
 -------
 
-To run `asidstory` on a Windows 7 32-bit recording and generate pandalog file foo.plog:
+To run `win7proc` on a Windows 7 32-bit recording and generate pandalog file `foo.plog` and dump files:
 
-`$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -pandalog foo.plog -panda 'syscalls2:profile=windows7_x86;win7proc'
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -pandalog foo.plog \
+        -panda syscalls2:profile=windows7_x86 -panda win7proc:grab_files

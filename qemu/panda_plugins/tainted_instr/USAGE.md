@@ -16,12 +16,6 @@ Dependencies
 
 `tainted_instr` uses `taint2` to track taint, and `callstack_instr` to provide callstack information whenever tainted branches are encountered.
 
-    panda_require("taint2");
-    assert(init_taint2_api());
-    panda_require("callstack_instr");
-    assert (init_callstack_instr_api());
-    PPP_REG_CB("taint2", on_taint_change, taint_change);
-
 APIs and Callbacks
 ------------------
 

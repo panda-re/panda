@@ -4,29 +4,32 @@ Plugin: win7x86intro
 Summary
 -------
 
+`win7x86intro` is an introspection provider for Windows 7 guests, supplying information for the OSI API. Not much more to say about it; it should Just Work as long as the guest OS is Windows 7 32-bit.
+
 Arguments
 ---------
 
-
+None.
 
 Dependencies
 ------------
 
-    panda_require("osi");
-    PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
-    PPP_REG_CB("osi", on_get_processes, on_get_processes);
-    PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
-    PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
-    PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
-    PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
+`win7x86intro` is an introspection provider for the `osi` plugin.
 
 APIs and Callbacks
 ------------------
 
-
-
-
+None.
 
 Example
 -------
 
+Running `osi_test` on an Windows 7 32-bit replay:
+
+    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+        -panda osi -panda win7x86intro -panda osi_test
+
+Bugs
+----
+
+The `win7x86intro` plugin currently does not support listing loaded kernel modules, even though the OSI API suggests that it should.
