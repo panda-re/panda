@@ -50,11 +50,6 @@ void on_free_osimodules(OsiModules *ms);
 struct kernelinfo ki;
 int panda_memory_errors;
 
-/**
- * @brief Turns on/off standalone testing mode.
- */
-#define OSI_LINUX_TEST 0
-
 /* ******************************************************************
  Helpers
 ****************************************************************** */
@@ -112,19 +107,19 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
  * @brief Resolves a file struct and returns its full pathname.
  */
 static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);    
-    if (fd_file == (PTR)NULL) return NULL;        
+    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+    if (fd_file == (PTR)NULL) return NULL;
 	return get_file_name(env, fd_file);
 }
 
 #define INVALID_FILE_POS (-1)
 
 static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);    
-    if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);;        
+    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+    if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
 }
-    
+
 
 /**
  * @brief Fills an OsiProc struct.
@@ -227,15 +222,20 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	OsiProcs *ps;
 	OsiProc *p;
 	uint32_t ps_capacity = 16;
+#ifdef OSI_LINUX_LIST_THREADS
+	PTR tg_first, tg_next;
+#endif
 
+	// Get a task_struct of a process to start iterating the process list. If
+	// current task is a thread (ts->t_group != &ts->t_group), follow ts->next
+	// to get to a process.
+	// Always starting the traversal with a process has the benefits of:
+	// 	a. Simplifying the traversal when OSI_LINUX_LIST_THREADS is disabled.
+	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
+	//     the current task is a thread.
+	// See kernel_structs.md for details.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 	if (ts_current == (PTR)NULL) goto error0;
-
-	// When thread_group points to itself, the task_struct belongs to a thread
-	// (see kernel_structs.md for details). This will trigger an infinite loop
-	// in the traversal loop.
-	// Following next will lead us to a task_struct belonging to a process and
-	// help avoid the condition.
 	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
 	}
@@ -247,13 +247,28 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 			ps_capacity *= 2;
 			ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
 		}
-
 		p = &ps->proc[ps->num++];
-
-		// Garbage in p->name will cause fill_osiproc() to segfault.
-		memset(p, 0, sizeof(OsiProc));
+		memset(p, 0, sizeof(OsiProc));	// fill_osiproc() expects p to be zeroed-out.
 		fill_osiproc(env, p, ts_current);
-#if 0 
+
+#ifdef OSI_LINUX_LIST_THREADS
+		// Traverse thread group list.
+		// It is assumed that ts_current is a thread group leader.
+		tg_first = ts_current+ki.task.thread_group_offset;
+		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
+			ts_current = tg_next-ki.task.thread_group_offset;
+			if (ps->num == ps_capacity) {
+				ps_capacity *= 2;
+				ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
+			}
+			p = &ps->proc[ps->num++];
+			memset(p, 0, sizeof(OsiProc)); // fill_osiproc() expects p to be zeroed-out.
+			fill_osiproc(env, p, ts_current);
+		}
+		ts_current = tg_first-ki.task.thread_group_offset;
+#endif
+
+#if 0
 		/*********************************************************/
 		// Test of fd -> name resolution.
 		/*********************************************************/
@@ -302,17 +317,36 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 	OsiModules *ms;
 	OsiModule *m;
 	uint32_t ms_capacity = 16;
-
 	PTR vma_first, vma_current;
+#ifdef OSI_LINUX_LIST_THREADS
+	PTR tg_first, tg_next;
+#endif
 
-	// Find the process with the indicated pid.
+	// Get a starting process.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 	if (ts_current == (PTR)NULL) goto error0;
+	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
+		ts_first = ts_current = get_task_struct_next(env, ts_current);
+	}
 
+	// Find the process that matches p->pid.
+	// XXX: We could probably just use p->offset instead of traversing
+	//      the process list.
+	// XXX: An infinite loop will be triggered if p is a thread and
+	//	    OSI_LINUX_LIST_THREADS is not enabled.
 	do {
-		if ((current_pid = get_pid(env, ts_current)) == p->pid) break;
+		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
+#ifdef OSI_LINUX_LIST_THREADS
+		tg_first = ts_current+ki.task.thread_group_offset;
+		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
+			ts_current = tg_next-ki.task.thread_group_offset;
+			if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
+		}
+		ts_current = tg_first-ki.task.thread_group_offset;
+#endif
 		ts_current = get_task_struct_next(env, ts_current);
 	} while(ts_current != (PTR)NULL && ts_current != ts_first);
+pid_found:
 
 	// memory read error or process not found
 	if (ts_current == (PTR)NULL || current_pid != p->pid) goto error0;
@@ -389,7 +423,7 @@ char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
         printf ("osi_linux_fd_to_filename -- can't get filename\n");
         goto make_name;
     }
-    
+
 	name = g_strchug(name);
 	if (unlikely(g_strcmp0(name, "") == 0)) {
         printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
@@ -409,7 +443,7 @@ unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
     if (ts_current == 0) return INVALID_FILE_POS;
     return get_fd_pos(env, ts_current, fd);
 }
-                        
+
 
 
 /**
@@ -457,7 +491,7 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 	}
 	on_free_osiprocs(ps);
 	LOG_INFO("------------------------------------------------");
-	
+
 	return 0;
 
 error:
