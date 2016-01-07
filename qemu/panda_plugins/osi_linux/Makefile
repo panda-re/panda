@@ -11,9 +11,11 @@ PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 # Include the PANDA Makefile rules
 include ../panda.mak
 
-# If you need custom CFLAGS or LIBS, set them up here
-# CFLAGS+=
-# LIBS+=
+# Influential plugin-specific flags.
+# Include threads when listing all processes.
+#QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS
+# Enable test mode. See osi_linux.cpp:vmi_pgd_changed().
+#QEMU_CFLAGS += -DOSI_LINUX_TEST
 
 $(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/utils/kernelinfo/kernelinfo_read.c
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
