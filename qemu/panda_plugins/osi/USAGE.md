@@ -26,7 +26,7 @@ None.
 Dependencies
 ------------
 
-Depends on some OS-specific plugin to register callbacks that implement the various APIs OSI exposes. Otherwise, any call to OSI will simply fail to return any useful data, as the OSI plugin itself does not 
+Depends on some OS-specific plugin to register callbacks that implement the various APIs OSI exposes. Otherwise, any call to OSI will simply fail to return any useful data, as the OSI plugin itself does not know anything about specific operating systems.
 
 APIs and Callbacks
 ------------------

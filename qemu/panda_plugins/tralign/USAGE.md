@@ -4,6 +4,8 @@ Plugin: tralign
 Summary
 -------
 
+`tralign` is intended to be used with `bir`. FIXME: I don't know how any of this stuff works.
+
 Arguments
 ---------
 
@@ -19,10 +21,9 @@ tralign/tralign.cpp:    bool x = init_bir_api();
 APIs and Callbacks
 ------------------
 
-
-
-
+None.
 
 Example
 -------
+
 

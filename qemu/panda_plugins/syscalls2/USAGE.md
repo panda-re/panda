@@ -63,7 +63,7 @@ In general one uses `syscalls2` with another plugin that registers callbacks for
 #include "../syscalls2/syscalls_common.h"
 #include "panda_plugin_plugin.h"
 
-void w7p_NtReadFile_enter(
+void my_NtReadFile_enter(
         CPUState* env,
         target_ulong pc,
         uint32_t FileHandle,

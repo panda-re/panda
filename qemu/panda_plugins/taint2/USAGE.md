@@ -17,7 +17,7 @@ PANDA's taint system is implemented by translating TCG code to LLVM and then ins
 
 Note that the `taint2` plugin replaces the original `taint` plugin and is preferred for most use. The main improvements are:
 
-* Speed: `taint2` is much faster due to inlining taint operations into the generated LLVM code rather than accumulating taint operations in a buffer and the processing them after each basic block.
+* Speed: `taint2` is much faster (rough estimate: ~10x) due to inlining taint operations into the generated LLVM code rather than accumulating taint operations in a buffer and the processing them after each basic block.
 * Memory: many analyses were simply impossible in the original `taint` plugin because the memory requirements were too high. `taint2` should solve this. Note that because it uses a large `mmap`ed area for its shadow memory, you may need to adjust the value of `vm.overcommit_memory` via `sysctl`.
 * Interface: the interface to `taint2` is somewhat cleaner, and allows things like tainted branch, tainted instruction, and taint compute number counting to be implemented as separate plugins.
 

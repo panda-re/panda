@@ -4,6 +4,8 @@ Plugin: bir
 Summary
 -------
 
+FIXME: don't know how `bir` is supposed to work.
+
 Arguments
 ---------
 
