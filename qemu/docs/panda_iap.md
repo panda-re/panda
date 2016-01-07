@@ -320,8 +320,8 @@ Actually, you'll have to figure out the correct percent.
 When this replay has completed, you'll have a file `memsavep.raw` that is the contents of physical memory at the specified point in the replay.
 Now try out these `Volatility` commands to determine what processes are running.
 
-     volatiltity pslist -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86
-     volatiltity psscan -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86
+     volatility pslist -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86
+     volatility psscan -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86
 
 We don't actually need this output.  But is interesting to note that you can obtain it from the memory dump.
 
@@ -329,6 +329,12 @@ You should be able to get the PID for the process you want to extract using eith
 Here is the `Volatility` command to use to extract that process from a dump and you will have to fill in `PID`.
 
      volatility procdump -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86 -p PID --dump-dir .
+
+or
+
+     volatility procexedump -f ~/panda/qemu/memsavep.raw --profile=Win7SP1x86 -p PID --dump-dir .
+
+because the Volatility people can't make up their minds. 
 
 This will extract the image to the current directory but it will be called something like `executable.pid.exe`.
 And you can look at it.  
