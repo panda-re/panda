@@ -163,24 +163,24 @@ one has a USAGE.md file linked here for further explanation.
 ### Taint-related plugins
 * [`taint2`](../qemu/panda_plugins/taint2/USAGE.md) - Modern taint plugin.
   Required by most other taint plugins.
-* [`dead\_data`](../qemu/panda_plugins/dead_data/USAGE.md) - Track dead data
+* [`dead_data`](../qemu/panda_plugins/dead_data/USAGE.md) - Track dead data
   (tainted, but not used in branches).
-* [`ida\_taint2`](../qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
+* [`ida_taint2`](../qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
   integration.
-* [`file\_taint`](../qemu/panda_plugins/file_taint/USAGE.md) - Syscall and
+* [`file_taint`](../qemu/panda_plugins/file_taint/USAGE.md) - Syscall and
   OSI-based automatic tainting of file input by filename.
-* [`tainted\_branch`](../qemu/panda_plugins/tainted_branch/USAGE.md) - Find
+* [`tainted_branch`](../qemu/panda_plugins/tainted_branch/USAGE.md) - Find
   conditional branches where the choice depends on tainted data.
-* [`tainted\_instr`](../qemu/panda_plugins/tainted_instr/USAGE.md) - Find
+* [`tainted_instr`](../qemu/panda_plugins/tainted_instr/USAGE.md) - Find
   instructions which process tainted data.
-* [`taint\_compute\_numbers`](../qemu/panda_plugins/taint_compute_numbers/USAGE.md)
+* [`taint_compute_numbers`](../qemu/panda_plugins/taint_compute_numbers/USAGE.md)
   \- Analyze taint compute numbers (computation tree depth) for tainted data.
 * [`tstringsearch`](../qemu/panda_plugins/tstringsearch/USAGE.md) - Automatically
   taint all occurrences of a certain string.
 
 #### Old generation
 * [`taint`](../qemu/panda_plugins/taint/USAGE.md) - Old taint plugin.
-* [`ida\_taint`](../qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
+* [`ida_taint`](../qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
   integration for old taint plugin.
 
 ### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
@@ -188,7 +188,7 @@ one has a USAGE.md file linked here for further explanation.
   accesses for a particular string.
 * [`textfinder`](../qemu/panda_plugins/textfinder/USAGE.md)
 * [`textprinter`](../qemu/panda_plugins/textprinter/USAGE.md)
-* [`textprinter\_fast`](../qemu/panda_plugins/textprinter_fast/USAGE.md)
+* [`textprinter_fast`](../qemu/panda_plugins/textprinter_fast/USAGE.md)
 * [`unigrams`](../qemu/panda_plugins/unigrams/USAGE.md)
 * [`bigrams`](../qemu/panda_plugins/bigrams/USAGE.md)
 * [`memdump`](../qemu/panda_plugins/memdump/USAGE.md)
@@ -199,23 +199,23 @@ one has a USAGE.md file linked here for further explanation.
 * [`tapindex`](../qemu/panda_plugins/tapindex/USAGE.md)
 
 ### Callstack Tracking
-* [`callstack\_instr`](../qemu/panda_plugins/callstack_instr/USAGE.md) -
+* [`callstack_instr`](../qemu/panda_plugins/callstack_instr/USAGE.md) -
   Instruction-based callstack tracing.
 * [`fullstack`](../qemu/panda_plugins/fullstack/USAGE.md)
 * [`printstack`](../qemu/panda_plugins/printstack/USAGE.md)
-* [`callstack\_block\_pc`](../qemu/panda_plugins/callstack_block_pc/USAGE.md) -
+* [`callstack_block_pc`](../qemu/panda_plugins/callstack_block_pc/USAGE.md) -
   Old block-based callstack tracing.
 
 ### Operating System Introspection (OSI) plugins
 * [`osi`](../qemu/panda_plugins/osi/USAGE.md) - Operating system introspection
   framework.
-* [`osi\_linux`](../qemu/panda_plugins/osi_linux/USAGE.md) - Generic Linux OSI.
-* [`osi\_test`](../qemu/panda_plugins/osi_test/USAGE.md)
-* [`osi\_winxpsp3x86`](../qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
+* [`osi_linux`](../qemu/panda_plugins/osi_linux/USAGE.md) - Generic Linux OSI.
+* [`osi_test`](../qemu/panda_plugins/osi_test/USAGE.md)
+* [`osi_winxpsp3x86`](../qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
   Windows XP SP3 x86.
 * [`asidstory`](../qemu/panda_plugins/asidstory/USAGE.md) - ASCII art view of
   process execution inside VM.
-* [`linux\_vmi`](../qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
+* [`linux_vmi`](../qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
   system from DECAF.
 * [`debianwheezyx86intro`](../qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
   OSI for Debian 7 x86.
@@ -244,7 +244,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`bufmon`](../qemu/panda_plugins/bufmon/USAGE.md) - Monitor all memory accesses
   to a particular memory region.
 * [`coverage`](../qemu/panda_plugins/coverage/USAGE.md)
-* [`llvm\_trace`](../qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
+* [`llvm_trace`](../qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
   dynamic information necessary for later analysis.
 * [`lsmll`](../qemu/panda_plugins/lsmll/USAGE.md)
 * [`memsavep`](../qemu/panda_plugins/memsavep/USAGE.md) - Create a dump of
