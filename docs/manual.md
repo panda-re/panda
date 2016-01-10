@@ -1,13 +1,10 @@
-PANDA User Manual
-=================
+# PANDA User Manual
 
-Overview
---------
+## Overview
 
 PANDA (Platform for Architecture-Neutral Dynamic Analysis) is a whole-system dynamic analysis engine based on QEMU 1.0.1. Its strengths lie in rapid reverse engineering of software. PANDA includes a system for recording and replaying execution, a framework for running LLVM analysis on executing code, and an easily extensible plugin architecture. Together, these basic tools let you rapidly understand how individual programs work and how they interact at the system level.
 
-Quickstart
-----------
+## Quickstart
 
 To build PANDA, use `panda_install.bash`, which installs all the dependencies and builds PANDA. Don't worry; it won't actually install PANDA to a system directory, despite the name. If you already have the dependencies you can just run `qemu/build.sh`. Once it's built, you will find the QEMU binaries in `i386-softmmu/qemu-system-i386`, `x86_64-softmmu/qemu-system-x86_64`, and `arm-softmmu/qemu-system-arm`. You'll need to create a qcow (disk image) for use with PANDA; the internet has documentation on how to do this.
 
@@ -28,8 +25,7 @@ You can replay a recording (those two files) using `qemu-system-$arch -replay re
 Once you've captured a replay, you should be able to play it over and over again. We typically begin by using standard analyses to try and get a basic picture of what's going on, followed by custom plugins to get more specific analysis. Plugins reside in the [`panda_plugins`](../qemu/panda_plugins) directory. Although the process depends on the example, some of the plugins we often use to begin analysis are [`asidstory`](../qemu/panda_plugins/asidstory), [`stringsearch`](../qemu/panda_plugins/stringsearch), and [`file_taint`](../qemu/panda_plugins/file_taint).
 
 
-A Tour of Qemu Tour
--------------------
+## A Tour of Qemu Tour
 
 What does a PANDA user need to know about Qemu?
 
@@ -44,8 +40,7 @@ What does a PANDA user need to know about Qemu?
 ### Panda access to Qemu data structures
 
 
-Plugin Architecture
--------------------
+## Plugin Architecture
     
 ### Callback list with explanation of semantics and where and when each occurs in emulation
 
@@ -58,8 +53,7 @@ Plugin Architecture
 #### Plugin API
 
 
-Plugin Zoo
-----------
+## Plugin Zoo
 
 ### scissors
 
@@ -78,21 +72,18 @@ Plugin Zoo
 ### Others?    
 
     
-Pandalog
---------
+## Pandalog
 
 Why and what for.  Probably just the stuff in pandalog.md
     
     
-LLVM
-----
+## LLVM
         
 ### Execution
 
 ### How to use it for analysis
 
 
-Wish List
----------
+## Wish List
 
 What is missing from PANDA?  What do we know how to do but just don't have time for?  What do we not know how to do?
