@@ -158,58 +158,6 @@ Frees an argument list created with `panda_get_args`.
 
 ### Runtime QEMU Control
 
-	void panda_do_flush_tb(void);
-	
-Requests that the translation block cache be flushed as soon as possible. If running with translation block chaining turned off (e.g. when in LLVM mode or replay mode), this will happen when the current translation block is done executing.
-
-Flushing the translation block cache is necessary if the plugin makes changes to the way code is translated (for example, by using `panda_enable_precise_pc`). **WARNING**: failing to flush the TB before turning on something that alters code translation may cause QEMU to crash! This is because QEMU's interrupt handling mechanism relies on translation being deterministic (see the `search_pc` stuff in translate-all.c for details).
-	
-	void panda_enable_memcb(void);
-	void panda_disable_memcb(void);
-
-These functions enable and disable the memory callbacks (PANDA_CB_MEM_READ and PANDA_CB_MEM_WRITE). Because of the overhead of implementing memory callbacks, these are not on by default. They are implemented by setting a flag that both LLVM and TCG check that will cause them to use the instrumented versions _mmu functions, enabling the memory callbacks.
-
-	void panda_disable_tb_chaining(void);
-	void panda_enable_tb_chaining(void);
-
-These functions allow plugins to selectively turn translation block chaining on
-and off, regardless of whether the backend is TCG or LLVM, and independent of
-record and replay.
-
-	void panda_enable_precise_pc(void);
-	void panda_disable_precise_pc(void);
-
-Enables or disables precise tracking of the program counter. By default, QEMU does not update the program counter after every instruction, so code that relies on knowing the exact value of the PC should use these functions to change that. After enabling precise PC tracking, the program counter will be available in `env->panda_guest_pc` and can be assumed to accurately reflect the guest state.
-
-    int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
-
-Read or write `len` bytes of guest physical memory at `addr` into or from the supplied buffer `buf`. This function differs from QEMU's `cpu_physical_memory_rw` in that it will never access I/O, only RAM. This function returns zero on success, and negative values on failure.
-
-    int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
-
-Read or write `len` bytes of guest virtual memory at `addr` into or from the supplied buffer `buf`. This function differs from QEMU's `cpu_memory_rw_debug` in that it will never access I/O, only RAM. This function returns zero on success, and negative values on failure.
-
-    void panda_enable_llvm(void);
-    void panda_disable_llvm(void);
-
-These functions enable and disable the use of the LLVM JIT in replacement of the
-TCG backend.  Here, an additional translation step is added from the TCG IR to
-the LLVM IR, and that is executed on the LLVM JIT.  Currently, this only works
-when QEMU is starting up, but we are hoping to support dynamic configuration of
-code generation soon.
-
-    void panda_enable_llvm_helpers(void);
-    void panda_disable_llvm_helpers(void);
-
-These functions enable and disable the execution of QEMU helper functions in the
-LLVM JIT.  Call the enable function after calling panda_enable_llvm(), and call
-the disable function before calling panda_disable_llvm().
-
-    void panda_memsavep(FILE *out);
-
-Saves a physical memory snapshot into the open file pointer `out`. This function
-is guaranteed not to perturb guest state.
-
 ## Callbacks
 
 ---
