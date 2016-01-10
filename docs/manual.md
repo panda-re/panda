@@ -79,10 +79,35 @@ Why and what for.  Probably just the stuff in pandalog.md
     
 ## LLVM
         
+PANDA uses the LLVM architecture from the [S2E
+project](https://github.com/dslab-epfl/s2e). This means you can translate from
+QEMU's intermediate representation, TCG, to LLVM IR, which is easier to
+understand and platform-independent. We call this process "lifting". Lifting has
+non-trivial overhead, but it enables complex analyses like our `taint2` plugin.
+
 ### Execution
+
+We use the LLVM JIT to directly execute the LLVM code. In fact, `taint2` relies
+on this capability, as it inserts the taint operations directly into the stream
+of LLVM instructions. One of the quirks of the QEMU execution mopdel is that
+exotic instructions are implemented as C code which changes the `CPUState`
+struct. These are called *helper functions*. We use Clang to compile each of the
+helper functions directly into LLVM IR. We then link the compiled helper
+functions into the LLVM module containing the lifted LLVM code. When we JIT the
+lifted LLVM blocks, the helper functions can be called directly. Unfortunately,
+the LLVM infrastructure is pretty slow; expect roughly a 10x slowdown with
+respect to QEMU's normal TCG execution mode.
 
 ### How to use it for analysis
 
+You can access the LLVM code for a certain `TranslationBlock` by using the
+`llvm_tc_ptr` field in the `TranslationBlock` struct. This is a pointer to an
+`llvm::Function` object. We recommend using an `llvm::FunctionPass` to run over
+each `TranslationBlock` you would like to analyze. Have the
+`PANDA_CB_AFTER_BLOCK_TRANSLATE` callback run the LLVM pass. You want the pass
+to insert callbacks into the generated code that accept the dynamic values as
+arguments (pointers, for example). Look at `taint2` (`taint2.cpp`) for a (very
+complicated) example.
 
 ## Wish List
 
