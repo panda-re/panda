@@ -135,11 +135,126 @@ NOTE. Although it is a little out of date, the explanation of emulation in
 Fabrice Bellard's original USENIX paper on Qemu is quite a good read.  "QEMU, a
 Fast and Portable Dynamic Translator", USENIX 2005 Annual Technical Conference.
 
-### What is env?
+NOTE: Qemu has an additional cute optimization called `chaining` that links up
+cached translated blocks of code in such a way that they emulation can
+transition from one to another without the emulator being involved.  This is
+enabled for record but currently turned off for replay in order to more easily
+support callbacks before and after a basic block executes.
 
-### Virtual vs physical memory
+### What is `env`?
 
-### Panda access to Qemu data structures
+PANDA plugins need access to cpu registers and state. The Qemu abstract data
+type for this `CPUState` and is accessed through a global pointer `env`.  Note
+that the *actual* type for an emulated CPU is made more specific in the
+`qemu/target-xxx/cpu.h` directory where `xxx` is the architecture in question.
+For instance, in `qemu/target-i396/cpu.h, we find it redefined as `CPUX86State`,
+where we also find convenient definitions such as `EAX`, `EBX`, and `EIP`.
+Other information of interest such as hidden flags, segment registers, `idt`,
+and `gdt` are all available via `env.
+
+### Useful PANDA functions
+
+These functions don't really form an API to Qemu or PANDA, but they are useful
+for controlling PANDA or interacting with Qemu.
+
+#### Qemu translation control
+
+	void panda_do_flush_tb(void);
+	
+This function requests that the translation block cache be flushed as soon as
+possible. If running with translation block chaining turned off (e.g. when in
+LLVM mode or replay mode), this will happen when the current translation block
+is done executing.
+
+Flushing the translation block cache is additionally necessary if the plugin
+makes changes to the way code is translated.  For example, by using
+`panda_enable_precise_pc`.
+
+**WARNING**: failing to flush the TB before turning on something that alters
+code translation may cause QEMU to crash! This is because QEMU's interrupt
+handling mechanism relies on translation being deterministic (see the
+`search_pc` stuff in translate-all.c for details).
+
+	void panda_disable_tb_chaining(void);
+	void panda_enable_tb_chaining(void);
+
+These functions allow plugins to selectively turn translation block chaining on
+and off, regardless of whether the backend is TCG or LLVM, and independent of
+record and replay.
+
+#### Precise program counter
+
+By default, QEMU does not update the program counter after every instruction.
+
+	void panda_enable_precise_pc(void);
+	void panda_disable_precise_pc(void);
+
+These functions enable or disable precise tracking of the program counter.
+After enabling precise PC tracking, the program counter will be available in
+`env->panda_guest_pc` and can be assumed to accurately reflect the guest state.
+
+Some plugins (`taint2`, `callstack_instr`, etc) add instrumentation that runs
+*inside* a basic block of emulated code.  If such a plugin is enabled mid-replay
+then it is important to flush the cache so that all subsequent guest code will
+be properly instrumented. 
+
+#### Memory access
+
+Panda has callbacks for virtual and physical memory read and write, but these
+are off by default due to overhead.
+	
+	void panda_enable_memcb(void);
+	void panda_disable_memcb(void);
+
+Use these two functions to enable and disable the memory callbacks. 
+
+    int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
+
+This function allows a plugin to read or write `len` bytes of guest physical
+memory at `addr` into or from the supplied buffer `buf`. This function differs
+from QEMU's `cpu_physical_memory_rw` in that it will never access I/O, only
+RAM. This function returns zero on success, and negative values on failure (page not mapped).
+
+    int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
+
+This function is analogous to the previous one except that it uses the current
+virtual to physical mapping (page tables) to permit read and write of guest
+memory.  It has the same contract but the `addr` is a guest virtual address for
+the current process.
+
+#### LLVM control
+
+    void panda_enable_llvm(void);
+    void panda_disable_llvm(void);
+
+These functions enable and disable the use of the LLVM JIT in replacement of the
+TCG (Qemu intermediate language and compiler) backend.  Here, an additional
+translation step is added from the TCG IR to the LLVM IR, and that is executed
+on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
+are hoping to support dynamic configuration of code generation soon.
+
+
+#### Misellany
+
+    void panda_memsavep(FILE *out);
+
+Saves a physical memory snapshot into the open file pointer `out`. This function
+is guaranteed not to perturb guest state.
+
+    target_ulong panda_current_asid(CPUState *env);
+
+Returns the current asid for a variety of architectures (`cr3` for x86, e.g.).
+
+    bool panda_in_kernel(CPUState *env);
+
+Returns true if the processor is in the privilege level corresponding to
+executing kernel code for various architectures.
+
+
+    void panda_disas(FILE *out, void *code, unsigned long size);
+
+Writes a textual representation of disassembly of the guest code at virtual
+address `code` of `size` bytes.
 
 
 ## Plugin Architecture
