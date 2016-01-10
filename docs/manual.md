@@ -143,12 +143,888 @@ Fast and Portable Dynamic Translator", USENIX 2005 Annual Technical Conference.
 
 
 ## Plugin Architecture
-    
-### Callback list with explanation of semantics and where and when each occurs in emulation
+
+A great deal of the power of PANDA comes from its abiltiy to be extended with
+plugins. Plugins allow you to register callback functions that will be executed
+at various points as QEMU executes. Some of these callbacks and where they occur
+in QEMU's execution are shown below:
+
+![Callback Diagram](images/callback_diagram.png)
+
+### Callback List
+
+`before_block_translate`: called before translation of each basic block
+
+**Callback ID**: `PANDA_CB_BEFORE_BLOCK_TRANSLATE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC we are about to translate
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+	int (*before_block_translate)(CPUState *env, target_ulong pc);
+
+---
+
+`after_block_translate`: called after the translation of each basic block
+
+**Callback ID**: `PANDA_CB_AFTER_BLOCK_TRANSLATE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB we just translated
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+	int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+
+---
+
+`before_block_exec`: called before execution of every basic block
+
+**Callback ID**: `PANDA_CB_BEFORE_BLOCK_EXEC`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB we are about to execute
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+
+---
+
+`before_block_exec_invalidate_opt`: called before execution of every basic
+block, with the option to invalidate the TB
+
+**Callback ID**: `PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB we are about to execute
+
+**Return value**:
+
+`true` if we should invalidate the current translation block and retranslate, `false` otherwise
+
+**Signature**:
+
+    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+
+---
+
+`after_block_exec`: called after execution of every basic block
+
+**Callback ID**: `PANDA_CB_AFTER_BLOCK_EXEC`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the TB we just executed
+* `TranslationBlock *next_tb`: the TB we will execute next (may be `NULL`)
+
+**Return value**:
+
+unused
+
+**Signature:**:
+ 
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+
+---
+
+
+`insn_translate`: called before the translation of each instruction
+
+**Callback ID**: `PANDA_CB_INSN_TRANSLATE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC we are about to translate
+
+**Return value**:
+
+`true` if PANDA should insert instrumentation into the generated code,
+`false` otherwise
+
+**Notes**:
+
+This allows a plugin writer to instrument only a small number of
+instructions, avoiding the performance hit of instrumenting everything.
+If you do want to instrument every single instruction, just return
+true. See the documentation for `PANDA_CB_INSN_EXEC` for more detail.
+
+**Signature**:
+
+	bool (*insn_translate)(CPUState *env, target_ulong pc);
+
+---
+
+`insn_exec`: called before execution of any instruction identified
+by the `PANDA_CB_INSN_TRANSLATE` callback
+
+**Callback ID**: `PANDA_CB_INSN_EXEC`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC we are about to execute
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This instrumentation is implemented by generating a call to a
+helper function just before the instruction itself is generated.
+This is fairly expensive, which is why it's only enabled via
+the `PANDA_CB_INSN_TRANSLATE` callback.
+
+**Signature**:
+
+	int (*insn_exec)(CPUState *env, target_ulong pc);
+
+---
+
+`virt_mem_read`: called after memory is read
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (virtual) address being read
+* `target_ulong size`: the size of the read
+* `void *buf`: pointer to the data that was read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback is **deprecated** in favor of either
+`PANDA_CB_VIRT_MEM_BEFORE_READ` or `PANDA_CB_VIRT_MEM_AFTER_READ`.
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+	int (*virt_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`virt_mem_write`: called before memory is written
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (virtual) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that is to be written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback is **deprecated** in favor of either
+`PANDA_CB_VIRT_MEM_BEFORE_WRITE` or `PANDA_CB_VIRT_MEM_AFTER_WRITE`.
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+	int (*virt_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`phys_mem_read`: called after memory is read
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (physical) address being read
+* `target_ulong size`: the size of the read
+* `void *buf`: pointer to the data that was read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback is **deprecated** in favor of either
+`PANDA_CB_PHYS_MEM_BEFORE_READ` or `PANDA_CB_PHYS_MEM_AFTER_READ`.
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+	int (*phys_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`phys_mem_write`: called before memory is written
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (physical) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that is to be written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback is **deprecated** in favor of either
+`PANDA_CB_PHYS_MEM_BEFORE_READ` or `PANDA_CB_PHYS_MEM_AFTER_READ`.
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+	int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`virt_mem_before_read`: called before memory is read
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_BEFORE_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (virtual) address being read
+* `target_ulong size`: the size of the read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*virt_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+
+---
+
+`virt_mem_before_write`: called before memory is read
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_BEFORE_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (virtual) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that is to be written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`phys_mem_before_read`: called before memory is read
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_BEFORE_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (physical) address being read
+* `target_ulong size`: the size of the read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+
+---
+
+`phys_mem_before_write`: called before memory is written
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_BEFORE_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (physical) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that is to be written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`virt_mem_after_read`: called after memory is read
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_AFTER_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the read
+* `target_ulong addr`: the (virtual) address being read
+* `target_ulong size`: the size of the read
+* `void *buf`: pointer to data just read
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`virt_mem_after_write`: called after memory is written
+
+**Callback ID**: `PANDA_CB_VIRT_MEM_AFTER_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (virtual) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that was written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`phys_mem_after_read`: called after memory is read
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_AFTER_READ`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (physical) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that was written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`phys_mem_after_write`: called after memory is written
+
+**Callback ID**: `PANDA_CB_PHYS_MEM_AFTER_WRITE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `target_ulong pc`: the guest PC doing the write
+* `target_ulong addr`: the (physical) address being written
+* `target_ulong size`: the size of the write
+* `void *buf`: pointer to the data that was written 
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+You must call `panda_enable_memcb()` to turn on memory callbacks
+before this callback will take effect.
+
+**Signature**:
+
+    int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+
+---
+
+`guest_hypercall`: called when a program inside the guest makes a
+hypercall to pass information from inside the guest to a plugin
+
+**Callback ID**: `PANDA_CB_GUEST_HYPERCALL`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+On x86, this is called whenever CPUID is executed. Plugins then check for magic
+values in the registers to determine if it really is a guest hypercall.
+Parameters can be passed in other registers.  We have modified translate.c to
+make CPUID instructions end translation blocks.  This is useful, if, for
+example, you want to have a hypercall that turns on LLVM and enables heavyweight
+instrumentation at a specific point in execution.
+
+S2E accomplishes this by using a (currently) undefined opcode. We
+have instead opted to use an existing instruction to make development
+easier (we can use inline asm rather than defining the raw bytes).
+
+AMD's SVM and Intel's VT define hypercalls, but they are privileged
+instructions, meaning the guest must be in ring 0 to execute them.
+
+For hypercalls in ARM, we use the MCR instruction (move to coprocessor from ARM
+register), moving to coprocessor 7.  CP 7 is reserved by ARM, and isn't
+implemented in QEMU.  The MCR instruction is present in all versions of ARM, and
+it is an unprivileged instruction in this scenario.  Plugins can also check for
+magic values in registers on ARM.
+
+**Signature**:
+
+	int (*guest_hypercall)(CPUState *env);
+
+---
+
+**monitor**: called when someone uses the `plugin_cmd` monitor command
+
+**Callback ID**: `PANDA_CB_MONITOR`
+
+**Arguments**:
+
+* `Monitor *mon`: a pointer to the Monitor
+* `const char *cmd`: the command string passed to plugin_cmd
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+The command is passed as a single string. No parsing is performed
+on the string before it is passed to the plugin, so each plugin
+must parse the string as it deems appropriate (e.g. by using `strtok`
+and `getopt`) to do more complex option processing.
+
+It is recommended that each plugin implementing this callback respond
+to the "help" message by listing the commands supported by the plugin.
+
+Note that every loaded plugin will have the opportunity to respond to
+each `plugin_cmd`; thus it is a good idea to ensure that your plugin's
+monitor commands are uniquely named, e.g. by using the plugin name
+as a prefix (`sample_do_foo` rather than `do_foo`).
+
+**Signature**:
+
+	int (*monitor)(Monitor *mon, const char *cmd);
+
+---
+
+`cb_cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
+CPU fault/exception
+
+**Callback ID**: `PANDA_CB_CPU_RESTORE_STATE`
+
+**Arguments**:
+
+* `CPUState *env`: the current CPU state
+* `TranslationBlock *tb`: the current translation block
+
+**Return value**: unused
+
+**Signature**:
+
+    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+
+---
+
+`before_loadvm`: called at the start of replay, just before the snapshot state
+is loaded
+
+**Callback ID**: `PANDA_CB_BEFORE_REPLAY_LOADVM`
+
+**Arguments**:
+
+None.
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This allows us to hook devices' loadvm handlers (remember to unregister the
+existing handler for the device first)
+
+An example of how to use this callback can be found in the `sample` plugin.
+
+**Signature**
+
+    int (*before_loadvm)(void);
+
+---
+
+`user_before_syscall`: Called before a syscall for QEMU user mode.
+
+**Callback ID**: `PANDA_CB_USER_BEFORE_SYSCALL`
+
+**Arguments**:
+
+* `void *cpu_env`: pointer to CPUState
+* `bitmask_transtbl *fcntl_flags_tbl`: syscall flags table from syscall.c
+* `int num`: syscall number
+* `abi_long arg1..arg8`: syscall arguments
+
+**Return value**: unused
+
+**Notes**:
+Some system call arguments need some additional processing, as evident in
+linux-user/syscall.c.  If your plugin is particularly interested in system call
+arguments, be sure to process them in similar ways.
+
+Additionally, this callback is dependent on running qemu in linux-user mode,
+a mode for which PANDA support is being phased out. To use this callback you
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
+plugins for examples of legacy usage. This callback will likely be removed in 
+future versions of PANDA.
+
+**Signature**:
+
+    int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                               int num, abi_long arg1, abi_long arg2, abi_long
+                               arg3, abi_long arg4, abi_long arg5,
+                               abi_long arg6, abi_long arg7, abi_long arg8);
+
+---
+
+`user_after_syscall`: Called after a syscall for QEMU user mode
+
+**Callback ID**: `PANDA_CB_USER_AFTER_SYSCALL`
+
+**Arguments**:
+
+* `void *cpu_env`: pointer to CPUState
+* `bitmask_transtbl *fcntl_flags_tbl`: syscall flags table from syscall.c
+* `int num`: syscall number
+* `abi_long arg1..arg8`: syscall arguments
+* `void *p`: void pointer used for processing of some arguments
+* `abi_long ret`: return value of syscall
+
+**Return value**: unused
+
+**Notes**:
+
+Some system call arguments need some additional processing, as evident in
+linux-user/syscall.c.  If your plugin is particularly interested in system call
+arguments, be sure to process them in similar ways.
+
+Additionally, this callback is dependent on running qemu in linux-user mode,
+a mode for which PANDA support is being phased out. To use this callback you
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
+plugins for examples of legacy usage. This callback will likely be removed in 
+future versions of PANDA.
+
+**Signature**:
+
+    int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                              int num, abi_long arg1, abi_long arg2, abi_long
+                              arg3, abi_long arg4, abi_long arg5, abi_long arg6,
+                              abi_long arg7, abi_long arg8, void *p,
+                              abi_long ret);
+
+---
+
+`after_PGD_write`: called when the CPU changes to a different address space
+
+**Callback ID**: `PANDA_CB_VMI_PGD_CHANGED`
+
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState
+* `target_ulong oldval`: old PGD (address space identifier) value
+* `target_ulong newval`: new PGD (address space identifier) value
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+    int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+
+---
+
+`replay_hd_transfer`: Called during a replay of a hard drive transfer action
+
+**Callback ID**: `PANDA_CB_REPLAY_HD_TRANSFER` 
+ 
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState
+* `uint32_t type`: type of transfer (Hd_transfer_type)
+* `uint64_t src_addr`: address for src
+* `uint64_t dest_addr`: address for dest
+* `uint32_t num_bytes`: size of transfer in bytes
+
+**Return value**: unused
+
+**Notes**:
+
+In replay only, some kind of data transfer involving hard drive.  NB: We are
+neither before nor after, really.  In replay the transfer doesn't really happen.
+We are *at* the point at which it happened, really.  Even though the transfer
+doesn't happen in replay, useful instrumentations (such as taint analysis) can
+still be applied accurately.
+
+The allowed values for type are:
+
+* `HD_TRANSFER_HD_TO_IOB`
+* `HD_TRANSFER_IOB_TO_HD`
+* `HD_TRANSFER_PORT_TO_IOB`
+* `HD_TRANSFER_IOB_TO_PORT`
+* `HD_TRANSFER_HD_TO_RAM`
+* `HD_TRANSFER_RAM_TO_HD`
+
+**Signature**:
+
+    int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                              uint64_t dest_addr, uint32_t num_bytes);
+
+---
+
+`replay_net_transfer`: Called during a replay of a network transfer action
+
+**Callback ID**: `PANDA_CB_REPLAY_NET_TRANSFER` 
+ 
+**Arguments**:
+
+        CPUState* env:        pointer to CPUState
+        uint32_t type:        type of transfer  (Net_transfer_type)
+        uint64_t src_addr:    address for src
+        uint64_t dest_addr:   address for dest
+        uint32_t num_bytes:   size of transfer in bytes
+
+**Return value**: unused
+
+**Notes**:
+
+In replay only, some kind of data transfer within the network card (currently,
+only the E1000 is supported). NB: We are neither before nor after, really. In
+replay the transfer doesn't really happen.  We are *at* the point at which it
+happened, really.
+
+**Signature**:
+
+    int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                               uint64_t dest_addr, uint32_t num_bytes);
+
+---
+
+`replay_before_cpu_physical_mem_rw_ram`: In replay only, we are about to dma
+from some qemu buffer to guest memory
+
+**Callback ID**: `PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM`
+
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState
+* `uint32_t is_write`: type of transfer going on (is_write == 1 means IO -> RAM else RAM -> IO)
+* `uint64_t src_addr`: src of dma
+* `uint64_t dest_addr`: dest of dma
+* `uint32_t num_bytes`: size of transfer
+
+**Return value**: unused
+
+**Notes**:
+In the current version of QEMU, this appears to be a less commonly used method
+of performing DMA with the hard drive device.  For the hard drive, the most
+common DMA mechanism can be seen in the `PANDA_CB_REPLAY_HD_TRANSFER_TYPE` under
+type `HD_TRANSFER_HD_TO_RAM` (and vice versa). Other devices still appear to use
+cpu_physical_memory_rw() though.
+
+**Signature**:
+
+    int (*replay_before_cpu_physical_mem_rw_ram)(
+            CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
+            uint32_t num_bytes);
+
+---
+
+`replay_after_cpu_physical_mem_rw_ram`: In replay only, we have just done a DMA
+from some QEMU buffer to guest memory
+
+**Callback ID**: `PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM`
+
+**Arguments**:
+
+* `CPUState* env`: pointer to CPUState
+* `uint32_t is_write`: type of transfer going on (is_write == 1 means IO -> RAM else RAM -> IO)
+* `uint64_t src_addr`: src of DMA
+* `uint64_t dest_addr`: dest of DMA
+* `uint32_t num_bytes`: size of transfer
+
+**Return value**: unused
+
+**Notes**:
+
+In the current version of QEMU, this appears to be a less commonly used method
+of performing DMA with the hard drive device.  For the hard drive, the most
+common DMA mechanism can be seen in the PANDA_CB_REPLAY_HD_TRANSFER_TYPE under
+type HD_TRANSFER_HD_TO_RAM (and vice versa).  Other devices still appear to use
+cpu_physical_memory_rw() though.
+
+**Signature**:
+
+    int (*replay_after_cpu_physical_mem_rw_ram)(
+            CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr,
+            uint32_t num_bytes);
+
+---
+
+`replay_handle_packet`: used for network packet replay
+
+**Callback ID**: `PANDA_CB_REPLAY_HANDLE_PACKET`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+* `uint8_t *buf`: buffer containing packet data
+* `int size`: num bytes in buffer
+* `uint8_t direction`: `PANDA_NET_RX` for receive, `PANDA_NET_TX` for transmit
+* `uint64_t old_buf_addr`: the address that `buf` had when the recording was
+  taken
+
+**Return value**:
+
+unused
+
+**Signature**:
+
+    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
+                                uint8_t direction, uint64_t old_buf_addr);
 
 ### Order of execution
 
+If you're using multiple plugins that work together to perform some analysis,
+you may care about what order plugins' callbacks execute in, since some
+operations may not make sense if they're done out of order.
+
+The bad news is that PANDA does not guarantee any fixed ordering for its
+callbacks. In the current implementation, each callback of a given type will be
+executed in the order it was registered (which is usually the order in which the
+plugins were loaded; however, because callbacks can be registered at any time
+throughout a plugin's lifetime, even this is not guaranteed). This could change
+in the future, though, and in general it's not a good idea to rely on it.
+
+The good news is that there's a better way to enforce an ordering. As described
+in the next section, plugins support explicit mechanisms for interacting with
+each other. In particular, you can create plugin callbacks, which allow a
+plugins to notify each other when certain events inside the plugin occur. For
+example, if you wanted to ensure that something in Plugin B always happens after
+Plugin A does some action `foo`, Plugin A would create an `on_foo` callback that
+Plugin B could then register with. This is much safer and more robust than
+trying to guess the order in which the plugin callbacks will be called.
+
+The next section describes this mechanism in more detail.
+
 ### Plugin-plugin interaction
+
+It's often very handy to be able to allow plugins to interact with one another.
+For example, the `taint2` plugin accesses
 
 #### Plugin callbacks
 
