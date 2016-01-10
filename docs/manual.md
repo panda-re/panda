@@ -294,12 +294,23 @@ respect to QEMU's normal TCG execution mode.
 You can access the LLVM code for a certain `TranslationBlock` by using the
 `llvm_tc_ptr` field in the `TranslationBlock` struct. This is a pointer to an
 `llvm::Function` object. We recommend using an `llvm::FunctionPass` to run over
-each `TranslationBlock` you would like to analyze. Have the
-`PANDA_CB_AFTER_BLOCK_TRANSLATE` callback run the LLVM pass. You want the pass
-to insert callbacks into the generated code that accept the dynamic values as
+each `TranslationBlock` you would like to analyze. Initialize the
+`FunctionPassManager` like this:
+
+```
+extern "C" TCGLLVMContext *tcg_llvm_ctx;
+panda_enable_llvm();
+panda_enable_llvm_helpers();
+llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+fpm->add(new MyFunctionPass());
+FPM->doInitialization();
+```
+
+The pass will then run after each block is translated. You want to have the pass
+insert callbacks into the generated code that accept the dynamic values as
 arguments (pointers, for example). Look at `taint2`
-([taint2.cpp](../qemu/panda_plugins/taint2/taint2.cpp)) for a (very
-complicated) example.
+([taint2.cpp](../qemu/panda_plugins/taint2/taint2.cpp)) for a (very complicated)
+example.
 
 ## Wish List
 
