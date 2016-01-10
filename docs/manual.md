@@ -239,7 +239,7 @@ on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
 
 
-#### Misellany
+#### Miscellany
 
     void panda_memsavep(FILE *out);
 
@@ -271,7 +271,399 @@ in QEMU's execution are shown below:
 
 ![Callback Diagram](images/callback_diagram.png)
 
-### Callback List
+### Order of execution
+
+If you're using multiple plugins that work together to perform some analysis,
+you may care about what order plugins' callbacks execute in, since some
+operations may not make sense if they're done out of order.
+
+The bad news is that PANDA does not guarantee any fixed ordering for its
+callbacks. In the current implementation, each callback of a given type will be
+executed in the order it was registered (which is usually the order in which the
+plugins were loaded; however, because callbacks can be registered at any time
+throughout a plugin's lifetime, even this is not guaranteed). This could change
+in the future, though, and in general it's not a good idea to rely on it.
+
+The good news is that there's a better way to enforce an ordering. As described
+in the next section, plugins support explicit mechanisms for interacting with
+each other. In particular, you can create plugin callbacks, which allow a
+plugins to notify each other when certain events inside the plugin occur. For
+example, if you wanted to ensure that something in Plugin B always happens after
+Plugin A does some action `foo`, Plugin A would create an `on_foo` callback that
+Plugin B could then register with. This is much safer and more robust than
+trying to guess the order in which the plugin callbacks will be called.
+
+The next section describes this mechanism in more detail.
+
+### Plugin-plugin interaction
+
+It's often very handy to be able to allow plugins to interact with one another.
+For example, the `taint2` plugin accesses
+
+#### Plugin callbacks
+
+#### Plugin API
+
+
+## Plugin Zoo
+
+We have written a bunch of generic plugins for use in analyzing replays. Each
+one has a USAGE.md file linked here for further explanation.
+
+### Taint-related plugins
+* [`taint2`](../qemu/panda_plugins/taint2/USAGE.md) - Modern taint plugin.
+  Required by most other taint plugins.
+* [`dead_data`](../qemu/panda_plugins/dead_data/USAGE.md) - Track dead data
+  (tainted, but not used in branches).
+* [`ida_taint2`](../qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
+  integration.
+* [`file_taint`](../qemu/panda_plugins/file_taint/USAGE.md) - Syscall and
+  OSI-based automatic tainting of file input by filename.
+* [`tainted_branch`](../qemu/panda_plugins/tainted_branch/USAGE.md) - Find
+  conditional branches where the choice depends on tainted data.
+* [`tainted_instr`](../qemu/panda_plugins/tainted_instr/USAGE.md) - Find
+  instructions which process tainted data.
+* [`taint_compute_numbers`](../qemu/panda_plugins/taint_compute_numbers/USAGE.md)
+  \- Analyze taint compute numbers (computation tree depth) for tainted data.
+* [`tstringsearch`](../qemu/panda_plugins/tstringsearch/USAGE.md) - Automatically
+  taint all occurrences of a certain string.
+
+#### Old generation
+* [`taint`](../qemu/panda_plugins/taint/USAGE.md) - Old taint plugin.
+* [`ida_taint`](../qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
+  integration for old taint plugin.
+
+### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
+* [`stringsearch`](../qemu/panda_plugins/stringsearch/USAGE.md) - Mine memory
+  accesses for a particular string.
+* [`textfinder`](../qemu/panda_plugins/textfinder/USAGE.md)
+* [`textprinter`](../qemu/panda_plugins/textprinter/USAGE.md)
+* [`textprinter_fast`](../qemu/panda_plugins/textprinter_fast/USAGE.md)
+* [`unigrams`](../qemu/panda_plugins/unigrams/USAGE.md)
+* [`bigrams`](../qemu/panda_plugins/bigrams/USAGE.md)
+* [`memdump`](../qemu/panda_plugins/memdump/USAGE.md)
+* [`keyfind`](../qemu/panda_plugins/keyfind/USAGE.md)
+* [`memsnap`](../qemu/panda_plugins/memsnap/USAGE.md)
+* [`memstrings`](../qemu/panda_plugins/memstrings/USAGE.md)
+* [`correlatetaps`](../qemu/panda_plugins/correlatetaps/USAGE.md)
+* [`tapindex`](../qemu/panda_plugins/tapindex/USAGE.md)
+
+### Callstack Tracking
+* [`callstack_instr`](../qemu/panda_plugins/callstack_instr/USAGE.md) -
+  Instruction-based callstack tracing.
+* [`fullstack`](../qemu/panda_plugins/fullstack/USAGE.md)
+* [`printstack`](../qemu/panda_plugins/printstack/USAGE.md)
+* [`callstack_block_pc`](../qemu/panda_plugins/callstack_block_pc/USAGE.md) -
+  Old block-based callstack tracing.
+
+### Operating System Introspection (OSI) plugins
+* [`osi`](../qemu/panda_plugins/osi/USAGE.md) - Operating system introspection
+  framework.
+* [`osi_linux`](../qemu/panda_plugins/osi_linux/USAGE.md) - Generic Linux OSI.
+* [`osi_test`](../qemu/panda_plugins/osi_test/USAGE.md)
+* [`osi_winxpsp3x86`](../qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
+  Windows XP SP3 x86.
+* [`asidstory`](../qemu/panda_plugins/asidstory/USAGE.md) - ASCII art view of
+  process execution inside VM.
+* [`linux_vmi`](../qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
+  system from DECAF.
+* [`debianwheezyx86intro`](../qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
+  OSI for Debian 7 x86.
+* [`testdebintro`](../qemu/panda_plugins/testdebintro/USAGE.md)
+* [`win7x86intro`](../qemu/panda_plugins/win7x86intro/USAGE.md) - OSI for Windows
+  7 x86.
+
+### System call logging & analysis
+
+#### Current generation
+* [`syscalls2`](../qemu/panda_plugins/syscalls2/USAGE.md) - Modern syscalls
+  tracking.
+* [`win7proc`](../qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
+  interpretation of syscalls for Windows 7 x86.
+
+#### Old generation
+* [`syscalls`](../qemu/panda_plugins/syscalls/USAGE.md) - Old syscalls tracking.
+* [`fdtracker`](../qemu/panda_plugins/fdtracker/USAGE.md) - Old file descriptor
+  tracking.
+
+### Miscellaneous
+* [`bir`](../qemu/panda_plugins/bir/USAGE.md) - Binary Information Retrieval.
+  Used to correspond executables on disk with code executing in memory.
+* [`tralign`](../qemu/panda_plugins/tralign/USAGE.md) - Align parts of execution
+  traces.
+* [`bufmon`](../qemu/panda_plugins/bufmon/USAGE.md) - Monitor all memory accesses
+  to a particular memory region.
+* [`coverage`](../qemu/panda_plugins/coverage/USAGE.md)
+* [`llvm_trace`](../qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
+  dynamic information necessary for later analysis.
+* [`lsmll`](../qemu/panda_plugins/lsmll/USAGE.md)
+* [`memsavep`](../qemu/panda_plugins/memsavep/USAGE.md) - Create a dump of
+  physical memory at a given point in a replay. The dump can then be fed to
+  Volatility.
+* [`memstats`](../qemu/panda_plugins/memstats/USAGE.md)
+* [`network`](../qemu/panda_plugins/network/USAGE.md)
+* [`pmemaccess`](../qemu/panda_plugins/pmemaccess/USAGE.md)
+* [`rehosting`](../qemu/panda_plugins/rehosting/USAGE.md)
+* [`replaymovie`](../qemu/panda_plugins/replaymovie/USAGE.md) - Write a series of
+  framebuffer screenshots to the current directory. Use movie.sh to turn them
+  into a movie.
+* [`sample`](../qemu/panda_plugins/sample/USAGE.md)
+* [`scissors`](../qemu/panda_plugins/scissors/USAGE.md) - Cut out a smaller piece
+  of a given replay.
+* [`useafterfree`](../qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
+  allocations and search for uses after frees.
+    
+## Pandalog
+
+### Introduction
+
+Panda analyses run on whole system replays and the clear temptation is to just
+print out what you learn as you learn it. So panda plugins often begin life
+peppered with print statements. There is nothing wrong with print statements.
+But, as a plugin matures, it is usual for the consumers of those print
+statements to yearn for more compact, more parseable output. Pandalog provides
+this in the form of protocol buffer messages, streamed to a file through zlib's
+file access functions.
+
+
+### Design
+
+Pandalog is designed to be
+
+1. Fast to read and write
+2. Small log size
+3. Easy to add to a plugin
+4. Easy to write code that reads the log
+5. Useable from any C or C++ panda plugin
+
+Goals 1 and 2 are (arguably) provided by Google's protocol buffers.  Protocol
+buffers optimize for small message size.  Marshalling / unmarshalling is
+reasonably speedy.  Better than JSON.  We would have liked to use something like
+flatbuffers (also from Google), which is optimized more for read/write speed (we
+want FAST plugins, dammit).  But this would have violated goal 5, as there is no
+way to auto-generate code for C with flatbuffers, as yet.  A big design goal
+here (3) was for the logging spec to be distributed throughout the plugins.
+That is, if new plugin foo wants to write something to the pandalog, it should
+only have to specify what new fields it wants to add to the pandalog and add the
+actual logging statements. 
+
+### Adding Panda Logging to a Plugin
+
+The `asidstory` plugin is a good example. 
+Two small additions are all that are required to add pandalogging.
+
+First, a new file was added to the plugin directory
+
+    $ cd qemu/panda_plugins/asidstory/
+    $ cat asidstory.proto
+    optional uint64 asid = 3; 
+    optional string process_name = 4;
+    optional uint32 process_id = 5;
+
+This file contains a snippet from a protocol buffer schema.  It indicates that
+this plugin will be adding three new optional fields to the pandalog, one for
+the `asid` (address space id), one for the `process_name`, and another for the
+`process_id`.  Note that these fields are given *tag numbers*.  This is
+important in so far as no two protobuf fields can have the same number (we don't
+know why).  That is a global constraint you need to be aware of across all
+plugins.  If `asidstory` uses slot 3, then plugin `foo` better not try to use it
+as well.  Don't worry; if you screw this up, you'll get an error at build time.
+
+Second, the actual logging message was inserted into `asidstory.cpp`
+
+    extern "C" {
+    ...
+    #include "pandalog.h"
+    ...
+    }
+    ...
+    int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+    ...
+           if (pandalog) {
+            if (last_name == 0
+                || (p->asid != last_asid)
+                || (p->pid != last_pid) 
+                || (0 != strcmp(p->name, last_name))) {        
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.has_asid = 1;
+                ple.asid = p->asid;
+                ple.has_process_id = 1;
+                ple.process_id = p->pid;
+                ple.process_name = p->name;
+                pandalog_write_entry(&ple);           
+                last_asid = p->asid;
+                last_pid = p->pid;
+                free(last_name);
+                last_name = strdup(p->name);
+            }
+        }
+    ...
+
+The logging message was inserted into the function
+`asidstory_before_block_exec`, and the logic is complicated by the fact that we
+are keeping track of the last asid, process name, and process id.  When any of
+them change, we write a pandalog message.  All of that is incidental.
+
+Note that we have available to us a global `pandalog`, which we can use to
+determine if panda logging is turned on.  
+
+To add the logging message, you have to create the `ple`, initializing it as so:
+
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+
+That `ple` is just a C struct, defined in autogenerated code.  Look in
+`panda/qemu/panda/pandalog.pb-c.h` for the typedef of `Panda__LogEntry`.  Once
+you have a `ple`, you just populate it with the fields you want logged.  Note
+that, if fields are optional, there is always a `has_fieldname` bool you need to
+set to indicate its presence.  Well, not quite.  If the field is a pointer (an
+array or a string), a null pointer stands in for `has_fieldname=0`.
+
+Here is the part of the code above in which we populate the struct for logging
+
+    ple.has_asid = 1;
+    ple.asid = p->asid;
+    ple.has_process_id = 1;
+    ple.process_id = p->pid;
+    ple.process_name = p->name;
+
+Now all that is left is to write the entry to the pandalog.
+
+    pandalog_write_entry(&ple);
+
+
+### Building
+
+In order to use pandalogging, you will have to re-run `build.sh`.
+
+This build script has been modified to additionally run a new script
+`panda/pp.sh`, which peeks into all of the plugin directories, and looks for
+`.proto` snippets, concatenating them all together into a single file:
+`panda/qemu/panda/pandalog.proto`.  This script then runs `protoc-c` on that
+specification to generate two files: `panda/qemu/panda/pandalog.pb-c.[ch]`.
+
+Feel free to peek at any of those three auto-generated files.  In particular,
+you will probably want to consult the header since it defines the logging struct
+`Panda__LogEntry`, as indicated above.
+
+### Pandalogging During Replay
+
+Panda logging is enabled at runtime with a new command-line arg.
+
+    --pandalog filename
+
+Any specified plugins that write to the pandalog will log to that file, which is
+written via `zlib` file access functions for compression.
+
+### Looking at the Logfile
+
+There is a small program in `panda/qemu/panda/pandalog_reader.cpp`.  Compilation
+directions are at the head of that source file.
+
+You can read a pandalog using this little program and also see how easy it is to
+unmarshall the pandalog.  Here's how to use it and some of its output.
+
+    $ ./pandalog_reader /tmp/pandlog | head
+    instr=16356  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
+    instr=78182  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]   
+    instr=80130  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
+    instr=142967  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=209715  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
+    instr=253940  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=256674  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
+    instr=258267  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
+    instr=262487  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=268164  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
+
+Note that there are two required fields always added to every pandalog entry:
+instruction count and program counter.  The rest of thes log messages come from
+the asidstory logging.  
+
+### External References
+
+You may want to search google for "Protocol Buffers" to learn more about it.
+
+## LLVM
+        
+PANDA uses the LLVM architecture from the [S2E
+project](https://github.com/dslab-epfl/s2e). This means you can translate from
+QEMU's intermediate representation, TCG, to LLVM IR, which is easier to
+understand and platform-independent. We call this process "lifting". Lifting has
+non-trivial overhead, but it enables complex analyses like our `taint2` plugin.
+
+### Building LLVM
+
+To build LLVM (if your OS does not have llvm-3.3 packages), run the following
+script:
+
+    cd panda
+    svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_33/final/ llvm
+    cd llvm/tools
+    svn checkout http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_33/final/ clang
+    cd -
+    cd llvm/tools/clang/tools
+    svn checkout http://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/final/ extra
+    cd -
+    cd llvm
+    ./configure --enable-optimized --disable-assertions --enable-targets=x86 && \
+        REQUIRES_RTTI=1 make -j $(nproc)
+    cd -
+
+This will build a "Release" build of LLVM. You can use `PANDA_LLVM_BUILD` to
+have PANDA use a different build, like Debug or Debug+Asserts. You will also
+have to build the other build using e.g. `--disable-optimized
+--enable-debug-runtime`. You can also use `PANDA_LLVM_ROOT` to specify where to
+find your LLVM build.
+
+With LLVM enabled and g++-4.9 or greater, you will get an error involving
+max_align_t for some of the plugins. You will need to [patch
+clang](http://reviews.llvm.org/rL201729) to provide `max_align_t`. You can also
+use the CC and CXX env variables to use an earlier version of GCC to compile
+PANDA.
+
+<!--
+	In case the diff from llvm.org goes away, this is a backup:
+	https://gist.githubusercontent.com/m000/c57fa35d550b49033864/raw/1eacc0ccd0876dc3abc3c314346a83bef614e23c/llvm-3.3_gcc-4.9.diff
+-->
+
+### Execution
+
+We use the LLVM JIT to directly execute the LLVM code. In fact, `taint2` relies
+on this capability, as it inserts the taint operations directly into the stream
+of LLVM instructions. One of the quirks of the QEMU execution mopdel is that
+exotic instructions are implemented as C code which changes the `CPUState`
+struct. These are called *helper functions*. We use Clang to compile each of the
+helper functions directly into LLVM IR. We then link the compiled helper
+functions into the LLVM module containing the lifted LLVM code. When we JIT the
+lifted LLVM blocks, the helper functions can be called directly. Unfortunately,
+the LLVM infrastructure is pretty slow; expect roughly a 10x slowdown with
+respect to QEMU's normal TCG execution mode.
+
+### How to use it for analysis
+
+You can access the LLVM code for a certain `TranslationBlock` by using the
+`llvm_tc_ptr` field in the `TranslationBlock` struct. This is a pointer to an
+`llvm::Function` object. We recommend using an `llvm::FunctionPass` to run over
+each `TranslationBlock` you would like to analyze. Initialize the
+`FunctionPassManager` like this:
+
+    extern "C" TCGLLVMContext *tcg_llvm_ctx;
+    panda_enable_llvm();
+    panda_enable_llvm_helpers();
+    llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+    fpm->add(new MyFunctionPass());
+    FPM->doInitialization();
+
+The pass will then run after each block is translated. You want to have the pass
+insert callbacks into the generated code that accept the dynamic values as
+arguments (pointers, for example). Look at `taint2`
+([taint2.cpp](../qemu/panda_plugins/taint2/taint2.cpp)) for a (very complicated)
+example.
+
+## Wish List
+
+What is missing from PANDA?  What do we know how to do but just don't have time for?  What do we not know how to do?
+
+## Appendix A: Callback List
 
 `before_block_translate`: called before translation of each basic block
 
@@ -1117,394 +1509,3 @@ unused
     int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                                 uint8_t direction, uint64_t old_buf_addr);
 
-### Order of execution
-
-If you're using multiple plugins that work together to perform some analysis,
-you may care about what order plugins' callbacks execute in, since some
-operations may not make sense if they're done out of order.
-
-The bad news is that PANDA does not guarantee any fixed ordering for its
-callbacks. In the current implementation, each callback of a given type will be
-executed in the order it was registered (which is usually the order in which the
-plugins were loaded; however, because callbacks can be registered at any time
-throughout a plugin's lifetime, even this is not guaranteed). This could change
-in the future, though, and in general it's not a good idea to rely on it.
-
-The good news is that there's a better way to enforce an ordering. As described
-in the next section, plugins support explicit mechanisms for interacting with
-each other. In particular, you can create plugin callbacks, which allow a
-plugins to notify each other when certain events inside the plugin occur. For
-example, if you wanted to ensure that something in Plugin B always happens after
-Plugin A does some action `foo`, Plugin A would create an `on_foo` callback that
-Plugin B could then register with. This is much safer and more robust than
-trying to guess the order in which the plugin callbacks will be called.
-
-The next section describes this mechanism in more detail.
-
-### Plugin-plugin interaction
-
-It's often very handy to be able to allow plugins to interact with one another.
-For example, the `taint2` plugin accesses
-
-#### Plugin callbacks
-
-#### Plugin API
-
-
-## Plugin Zoo
-
-We have written a bunch of generic plugins for use in analyzing replays. Each
-one has a USAGE.md file linked here for further explanation.
-
-### Taint-related plugins
-* [`taint2`](../qemu/panda_plugins/taint2/USAGE.md) - Modern taint plugin.
-  Required by most other taint plugins.
-* [`dead_data`](../qemu/panda_plugins/dead_data/USAGE.md) - Track dead data
-  (tainted, but not used in branches).
-* [`ida_taint2`](../qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
-  integration.
-* [`file_taint`](../qemu/panda_plugins/file_taint/USAGE.md) - Syscall and
-  OSI-based automatic tainting of file input by filename.
-* [`tainted_branch`](../qemu/panda_plugins/tainted_branch/USAGE.md) - Find
-  conditional branches where the choice depends on tainted data.
-* [`tainted_instr`](../qemu/panda_plugins/tainted_instr/USAGE.md) - Find
-  instructions which process tainted data.
-* [`taint_compute_numbers`](../qemu/panda_plugins/taint_compute_numbers/USAGE.md)
-  \- Analyze taint compute numbers (computation tree depth) for tainted data.
-* [`tstringsearch`](../qemu/panda_plugins/tstringsearch/USAGE.md) - Automatically
-  taint all occurrences of a certain string.
-
-#### Old generation
-* [`taint`](../qemu/panda_plugins/taint/USAGE.md) - Old taint plugin.
-* [`ida_taint`](../qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
-  integration for old taint plugin.
-
-### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
-* [`stringsearch`](../qemu/panda_plugins/stringsearch/USAGE.md) - Mine memory
-  accesses for a particular string.
-* [`textfinder`](../qemu/panda_plugins/textfinder/USAGE.md)
-* [`textprinter`](../qemu/panda_plugins/textprinter/USAGE.md)
-* [`textprinter_fast`](../qemu/panda_plugins/textprinter_fast/USAGE.md)
-* [`unigrams`](../qemu/panda_plugins/unigrams/USAGE.md)
-* [`bigrams`](../qemu/panda_plugins/bigrams/USAGE.md)
-* [`memdump`](../qemu/panda_plugins/memdump/USAGE.md)
-* [`keyfind`](../qemu/panda_plugins/keyfind/USAGE.md)
-* [`memsnap`](../qemu/panda_plugins/memsnap/USAGE.md)
-* [`memstrings`](../qemu/panda_plugins/memstrings/USAGE.md)
-* [`correlatetaps`](../qemu/panda_plugins/correlatetaps/USAGE.md)
-* [`tapindex`](../qemu/panda_plugins/tapindex/USAGE.md)
-
-### Callstack Tracking
-* [`callstack_instr`](../qemu/panda_plugins/callstack_instr/USAGE.md) -
-  Instruction-based callstack tracing.
-* [`fullstack`](../qemu/panda_plugins/fullstack/USAGE.md)
-* [`printstack`](../qemu/panda_plugins/printstack/USAGE.md)
-* [`callstack_block_pc`](../qemu/panda_plugins/callstack_block_pc/USAGE.md) -
-  Old block-based callstack tracing.
-
-### Operating System Introspection (OSI) plugins
-* [`osi`](../qemu/panda_plugins/osi/USAGE.md) - Operating system introspection
-  framework.
-* [`osi_linux`](../qemu/panda_plugins/osi_linux/USAGE.md) - Generic Linux OSI.
-* [`osi_test`](../qemu/panda_plugins/osi_test/USAGE.md)
-* [`osi_winxpsp3x86`](../qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
-  Windows XP SP3 x86.
-* [`asidstory`](../qemu/panda_plugins/asidstory/USAGE.md) - ASCII art view of
-  process execution inside VM.
-* [`linux_vmi`](../qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
-  system from DECAF.
-* [`debianwheezyx86intro`](../qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
-  OSI for Debian 7 x86.
-* [`testdebintro`](../qemu/panda_plugins/testdebintro/USAGE.md)
-* [`win7x86intro`](../qemu/panda_plugins/win7x86intro/USAGE.md) - OSI for Windows
-  7 x86.
-
-### System call logging & analysis
-
-#### Current generation
-* [`syscalls2`](../qemu/panda_plugins/syscalls2/USAGE.md) - Modern syscalls
-  tracking.
-* [`win7proc`](../qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
-  interpretation of syscalls for Windows 7 x86.
-
-#### Old generation
-* [`syscalls`](../qemu/panda_plugins/syscalls/USAGE.md) - Old syscalls tracking.
-* [`fdtracker`](../qemu/panda_plugins/fdtracker/USAGE.md) - Old file descriptor
-  tracking.
-
-### Miscellaneous
-* [`bir`](../qemu/panda_plugins/bir/USAGE.md) - Binary Information Retrieval.
-  Used to correspond executables on disk with code executing in memory.
-* [`tralign`](../qemu/panda_plugins/tralign/USAGE.md) - Align parts of execution
-  traces.
-* [`bufmon`](../qemu/panda_plugins/bufmon/USAGE.md) - Monitor all memory accesses
-  to a particular memory region.
-* [`coverage`](../qemu/panda_plugins/coverage/USAGE.md)
-* [`llvm_trace`](../qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
-  dynamic information necessary for later analysis.
-* [`lsmll`](../qemu/panda_plugins/lsmll/USAGE.md)
-* [`memsavep`](../qemu/panda_plugins/memsavep/USAGE.md) - Create a dump of
-  physical memory at a given point in a replay. The dump can then be fed to
-  Volatility.
-* [`memstats`](../qemu/panda_plugins/memstats/USAGE.md)
-* [`network`](../qemu/panda_plugins/network/USAGE.md)
-* [`pmemaccess`](../qemu/panda_plugins/pmemaccess/USAGE.md)
-* [`rehosting`](../qemu/panda_plugins/rehosting/USAGE.md)
-* [`replaymovie`](../qemu/panda_plugins/replaymovie/USAGE.md) - Write a series of
-  framebuffer screenshots to the current directory. Use movie.sh to turn them
-  into a movie.
-* [`sample`](../qemu/panda_plugins/sample/USAGE.md)
-* [`scissors`](../qemu/panda_plugins/scissors/USAGE.md) - Cut out a smaller piece
-  of a given replay.
-* [`useafterfree`](../qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
-  allocations and search for uses after frees.
-    
-## Pandalog
-
-### Introduction
-
-Panda analyses run on whole system replays and the clear temptation is to just
-print out what you learn as you learn it. So panda plugins often begin life
-peppered with print statements. There is nothing wrong with print statements.
-But, as a plugin matures, it is usual for the consumers of those print
-statements to yearn for more compact, more parseable output. Pandalog provides
-this in the form of protocol buffer messages, streamed to a file through zlib's
-file access functions.
-
-
-### Design
-
-Pandalog is designed to be
-
-1. Fast to read and write
-2. Small log size
-3. Easy to add to a plugin
-4. Easy to write code that reads the log
-5. Useable from any C or C++ panda plugin
-
-Goals 1 and 2 are (arguably) provided by Google's protocol buffers.  Protocol
-buffers optimize for small message size.  Marshalling / unmarshalling is
-reasonably speedy.  Better than JSON.  We would have liked to use something like
-flatbuffers (also from Google), which is optimized more for read/write speed (we
-want FAST plugins, dammit).  But this would have violated goal 5, as there is no
-way to auto-generate code for C with flatbuffers, as yet.  A big design goal
-here (3) was for the logging spec to be distributed throughout the plugins.
-That is, if new plugin foo wants to write something to the pandalog, it should
-only have to specify what new fields it wants to add to the pandalog and add the
-actual logging statements. 
-
-### Adding Panda Logging to a Plugin
-
-The `asidstory` plugin is a good example. 
-Two small additions are all that are required to add pandalogging.
-
-First, a new file was added to the plugin directory
-
-    $ cd qemu/panda_plugins/asidstory/
-    $ cat asidstory.proto
-    optional uint64 asid = 3; 
-    optional string process_name = 4;
-    optional uint32 process_id = 5;
-
-This file contains a snippet from a protocol buffer schema.  It indicates that
-this plugin will be adding three new optional fields to the pandalog, one for
-the `asid` (address space id), one for the `process_name`, and another for the
-`process_id`.  Note that these fields are given *tag numbers*.  This is
-important in so far as no two protobuf fields can have the same number (we don't
-know why).  That is a global constraint you need to be aware of across all
-plugins.  If `asidstory` uses slot 3, then plugin `foo` better not try to use it
-as well.  Don't worry; if you screw this up, you'll get an error at build time.
-
-Second, the actual logging message was inserted into `asidstory.cpp`
-
-    extern "C" {
-    ...
-    #include "pandalog.h"
-    ...
-    }
-    ...
-    int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    ...
-           if (pandalog) {
-            if (last_name == 0
-                || (p->asid != last_asid)
-                || (p->pid != last_pid) 
-                || (0 != strcmp(p->name, last_name))) {        
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.has_asid = 1;
-                ple.asid = p->asid;
-                ple.has_process_id = 1;
-                ple.process_id = p->pid;
-                ple.process_name = p->name;
-                pandalog_write_entry(&ple);           
-                last_asid = p->asid;
-                last_pid = p->pid;
-                free(last_name);
-                last_name = strdup(p->name);
-            }
-        }
-    ...
-
-The logging message was inserted into the function
-`asidstory_before_block_exec`, and the logic is complicated by the fact that we
-are keeping track of the last asid, process name, and process id.  When any of
-them change, we write a pandalog message.  All of that is incidental.
-
-Note that we have available to us a global `pandalog`, which we can use to
-determine if panda logging is turned on.  
-
-To add the logging message, you have to create the `ple`, initializing it as so:
-
-    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-
-That `ple` is just a C struct, defined in autogenerated code.  Look in
-`panda/qemu/panda/pandalog.pb-c.h` for the typedef of `Panda__LogEntry`.  Once
-you have a `ple`, you just populate it with the fields you want logged.  Note
-that, if fields are optional, there is always a `has_fieldname` bool you need to
-set to indicate its presence.  Well, not quite.  If the field is a pointer (an
-array or a string), a null pointer stands in for `has_fieldname=0`.
-
-Here is the part of the code above in which we populate the struct for logging
-
-    ple.has_asid = 1;
-    ple.asid = p->asid;
-    ple.has_process_id = 1;
-    ple.process_id = p->pid;
-    ple.process_name = p->name;
-
-Now all that is left is to write the entry to the pandalog.
-
-    pandalog_write_entry(&ple);
-
-
-### Building
-
-In order to use pandalogging, you will have to re-run `build.sh`.
-
-This build script has been modified to additionally run a new script
-`panda/pp.sh`, which peeks into all of the plugin directories, and looks for
-`.proto` snippets, concatenating them all together into a single file:
-`panda/qemu/panda/pandalog.proto`.  This script then runs `protoc-c` on that
-specification to generate two files: `panda/qemu/panda/pandalog.pb-c.[ch]`.
-
-Feel free to peek at any of those three auto-generated files.  In particular,
-you will probably want to consult the header since it defines the logging struct
-`Panda__LogEntry`, as indicated above.
-
-### Pandalogging During Replay
-
-Panda logging is enabled at runtime with a new command-line arg.
-
-    --pandalog filename
-
-Any specified plugins that write to the pandalog will log to that file, which is
-written via `zlib` file access functions for compression.
-
-### Looking at the Logfile
-
-There is a small program in `panda/qemu/panda/pandalog_reader.cpp`.  Compilation
-directions are at the head of that source file.
-
-You can read a pandalog using this little program and also see how easy it is to
-unmarshall the pandalog.  Here's how to use it and some of its output.
-
-    $ ./pandalog_reader /tmp/pandlog | head
-    instr=16356  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
-    instr=78182  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]   
-    instr=80130  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
-    instr=142967  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
-    instr=209715  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
-    instr=253940  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
-    instr=256674  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
-    instr=258267  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
-    instr=262487  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
-    instr=268164  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
-
-Note that there are two required fields always added to every pandalog entry:
-instruction count and program counter.  The rest of thes log messages come from
-the asidstory logging.  
-
-### External References
-
-You may want to search google for "Protocol Buffers" to learn more about it.
-
-## LLVM
-        
-PANDA uses the LLVM architecture from the [S2E
-project](https://github.com/dslab-epfl/s2e). This means you can translate from
-QEMU's intermediate representation, TCG, to LLVM IR, which is easier to
-understand and platform-independent. We call this process "lifting". Lifting has
-non-trivial overhead, but it enables complex analyses like our `taint2` plugin.
-
-### Building LLVM
-
-To build LLVM (if your OS does not have llvm-3.3 packages), run the following
-script:
-
-    cd panda
-    svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_33/final/ llvm
-    cd llvm/tools
-    svn checkout http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_33/final/ clang
-    cd -
-    cd llvm/tools/clang/tools
-    svn checkout http://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/final/ extra
-    cd -
-    cd llvm
-    ./configure --enable-optimized --disable-assertions --enable-targets=x86 && \
-        REQUIRES_RTTI=1 make -j $(nproc)
-    cd -
-
-This will build a "Release" build of LLVM. You can use `PANDA_LLVM_BUILD` to
-have PANDA use a different build, like Debug or Debug+Asserts. You will also
-have to build the other build using e.g. `--disable-optimized
---enable-debug-runtime`. You can also use `PANDA_LLVM_ROOT` to specify where to
-find your LLVM build.
-
-With LLVM enabled and g++-4.9 or greater, you will get an error involving
-max_align_t for some of the plugins. You will need to [patch
-clang](http://reviews.llvm.org/rL201729) to provide `max_align_t`. You can also
-use the CC and CXX env variables to use an earlier version of GCC to compile
-PANDA.
-
-<!--
-	In case the diff from llvm.org goes away, this is a backup:
-	https://gist.githubusercontent.com/m000/c57fa35d550b49033864/raw/1eacc0ccd0876dc3abc3c314346a83bef614e23c/llvm-3.3_gcc-4.9.diff
--->
-
-### Execution
-
-We use the LLVM JIT to directly execute the LLVM code. In fact, `taint2` relies
-on this capability, as it inserts the taint operations directly into the stream
-of LLVM instructions. One of the quirks of the QEMU execution mopdel is that
-exotic instructions are implemented as C code which changes the `CPUState`
-struct. These are called *helper functions*. We use Clang to compile each of the
-helper functions directly into LLVM IR. We then link the compiled helper
-functions into the LLVM module containing the lifted LLVM code. When we JIT the
-lifted LLVM blocks, the helper functions can be called directly. Unfortunately,
-the LLVM infrastructure is pretty slow; expect roughly a 10x slowdown with
-respect to QEMU's normal TCG execution mode.
-
-### How to use it for analysis
-
-You can access the LLVM code for a certain `TranslationBlock` by using the
-`llvm_tc_ptr` field in the `TranslationBlock` struct. This is a pointer to an
-`llvm::Function` object. We recommend using an `llvm::FunctionPass` to run over
-each `TranslationBlock` you would like to analyze. Initialize the
-`FunctionPassManager` like this:
-
-    extern "C" TCGLLVMContext *tcg_llvm_ctx;
-    panda_enable_llvm();
-    panda_enable_llvm_helpers();
-    llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
-    fpm->add(new MyFunctionPass());
-    FPM->doInitialization();
-
-The pass will then run after each block is translated. You want to have the pass
-insert callbacks into the generated code that accept the dynamic values as
-arguments (pointers, for example). Look at `taint2`
-([taint2.cpp](../qemu/panda_plugins/taint2/taint2.cpp)) for a (very complicated)
-example.
-
-## Wish List
-
-What is missing from PANDA?  What do we know how to do but just don't have time for?  What do we not know how to do?
