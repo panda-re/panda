@@ -195,7 +195,8 @@ You can access the LLVM code for a certain `TranslationBlock` by using the
 each `TranslationBlock` you would like to analyze. Have the
 `PANDA_CB_AFTER_BLOCK_TRANSLATE` callback run the LLVM pass. You want the pass
 to insert callbacks into the generated code that accept the dynamic values as
-arguments (pointers, for example). Look at `taint2` (`taint2.cpp`) for a (very
+arguments (pointers, for example). Look at `taint2`
+([taint2.cpp](../qemu/panda_plugins/taint2/taint2.cpp)) for a (very
 complicated) example.
 
 ## Wish List
