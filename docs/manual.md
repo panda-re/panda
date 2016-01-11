@@ -339,20 +339,50 @@ them into PANDA's packed record/replay format in a file named
 
     scripts/rrunpack.py <name>.rr
 
-A central repository for sharing record/replay logs is available at the [PANDA Share](http://www.rrshare.org/) website.
+A central repository for sharing record/replay logs is available at the [PANDA
+Share](http://www.rrshare.org/) website.
 
-## Plugin Architecture
+## Plugins
 
 A great deal of the power of PANDA comes from its abiltiy to be extended with
-plugins. Plugins allow you to register callback functions that will be executed
-at various points as QEMU executes. Some of these callbacks and where they occur
-in QEMU's execution are shown below:
+plugins.  Plugins are an easy way to extend the features of PANDA, and allow a
+wide range of dynamic analyses to be implemented without modifying QEMU.
+
+### Using Plugins
+
+You will probably begin experimenting with PANDA by just using the plugins
+others have written.  To load a PANDA plugin, you must specify it via `-panda`
+on the QEMU command line followed by the plugin name. You can specify multiple
+plugins as a semicolon-separated list, and you can give the plugins arguments as
+a comma-separated list after the plugin's name and a colon. For example:
+
+	-panda 'stringsearch;callstack_instr;llvm_trace:base=/tmp,foo=6'
+
+This loads the `stringsearch`, `callstack_instr`, and `llvm_trace` plugins and
+passes `llvm_trace` the arguments `base=dir` and `foo=bar`. Note that the `;`
+character must be escaped in most shells; you can either surround the arguments
+with quotes (as in this example) or just escape the semicolon itself,
+e.g. `base=dir\;foo=bar`.
+
+Plugins are automatically unloaded when a replay ends.
+
+### Plugin Architecture
+
+Plugins allow you to register callback functions that will be executed at
+various points as QEMU executes.  While it is possible to register and run
+callbacks during *record*, it is more usual for plugins to be used during
+replay.  The PANDA RE workflow is (see Overview section for diagram) record,
+then replay multiple times under a variety of plugins, possibly some of which
+have been written for the RE task at hand.
+
+Some of these callbacks and where they occur in
+QEMU's execution are shown below:
 
 ![Callback Diagram](images/callback_diagram.png)
 
 ### Order of execution
 
-If you're using multiple plugins that work together to perform some analysis,
+If you are using multiple plugins that work together to perform some analysis,
 you may care about what order plugins' callbacks execute in, since some
 operations may not make sense if they're done out of order.
 
@@ -365,16 +395,179 @@ in the future, though, and in general it's not a good idea to rely on it.
 
 The good news is that there's a better way to enforce an ordering. As described
 in the next section, plugins support explicit mechanisms for interacting with
-each other. In particular, you can create plugin callbacks, which allow a
-plugins to notify each other when certain events inside the plugin occur. For
-example, if you wanted to ensure that something in Plugin B always happens after
-Plugin A does some action `foo`, Plugin A would create an `on_foo` callback that
-Plugin B could then register with. This is much safer and more robust than
-trying to guess the order in which the plugin callbacks will be called.
+each other. In particular, you can create plugin callbacks, which allow plugins
+to notify each other when certain events inside the plugin occur. For example,
+if you wanted to ensure that something in Plugin B always happens after Plugin A
+does some action `foo`, Plugin A would create an `on_foo` callback that Plugin B
+could then register with. This is much safer and more robust than trying to
+guess the order in which the plugin callbacks will be called.
 
-The next section describes this mechanism in more detail.
+See the Plugin-Plugin Interaction section for details on this mechanism.
 
-### Plugin-plugin interaction
+### Writing a Plugin
+
+To create a PANDA plugin, create a new directory inside `qemu/panda_plugins`,
+and copy `Makefile.example` into
+`qemu/panda_plugins/${YOUR_PLUGIN}/Makefile`. Then edit the Makefile to suit the
+needs of your plugin (at minimum, you should change the plugin name). By
+default, the source file for your plugin must be named `${YOUR_PLUGIN}.(c|cpp)`,
+but this can be changed by editing the Makefile.
+
+To have your plugin compiled as part of the main QEMU build process, you should
+add it to `qemu/panda_plugins/config.panda`.  Note that plugins in that list can
+be disable (excluded from compilation) by commenting them out with a `#`.
+Plugins can currently be written in either C or C++.
+
+When you run `make`, the QEMU build system will build your plugin for each
+target architecture that was specified in `./configure --target-list=`. This
+means that architecture-specific parts of your plugin should be guarded using
+code like:
+
+    #if defined(TARGET_I386)
+    // Do x86-specific stuff
+    #elif defined(TARGET_ARM)
+    // Do ARM-specific stuff
+    #endif
+    
+It also means that your code can use the various target-specific macros, such as
+`target_ulong`, in order to get code that works with all of QEMU's
+architectures.        
+    
+#### Plugin Initialization and Shutdown
+
+All plugins are required to contain, at minimum, two functions with the
+following signatures:
+
+	bool init_plugin(void *self);
+  	void uninit_plugin(void *self);
+
+The single void * parameter is a handle to the plugin; because this comes from
+`dlopen`, it can be safely used with `dlsym` and friends. This handle is also
+what should be passed to `panda_register_callback` in order to register a plugin
+function as a callback.
+
+In general, `init_plugin` should perform any setup the plugin needs, and call
+`panda_register_callback` to tell PANDA what plugin functions to call for
+various events. For example, to register a callback that will be executed after
+the execution of each basic block, you would use the following code:
+
+    pcb.after_block_exec = after_block_callback;
+    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+
+The `uninit_plugin` function will be called when the plugin is unloaded. You
+should free any resources used by the plugin here, as plugins can be unloaded in
+mid replay or from the monitor – so you can't rely on QEMU doing all your
+cleanup for you.
+
+#### Callback and Plugin Management
+
+Typically in the `init_plugin` function, you will register a number of
+callbacks.
+
+	void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+
+Registers a callback with PANDA. The `type` parameter specifies what type of
+callback, and `cb` is used for the callback itself (`panda_cb` is a union of all
+possible callback signatures). 
+
+    PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
+    PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
+    PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
+    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
+    PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
+    PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
+    PANDA_CB_INSN_EXEC,         // Before an instruction is executed
+    PANDA_CB_VIRT_MEM_BEFORE_READ,  // Before read of virtual memory
+    PANDA_CB_VIRT_MEM_BEFORE_WRITE, // Before write to virtual memory
+    PANDA_CB_PHYS_MEM_BEFORE_READ,  // Before read of physical memory
+    PANDA_CB_PHYS_MEM_BEFORE_WRITE, // Before write to physical memory
+    PANDA_CB_VIRT_MEM_AFTER_READ,   // After read of virtual memory
+    PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
+    PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
+    PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
+    PANDA_CB_HD_READ,           // Each HDD read                                                                   
+    PANDA_CB_HD_WRITE,          // Each HDD write                                                                  
+    PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)                                           
+    PANDA_CB_MONITOR,           // Monitor callback                                                                
+    PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)                                       
+    PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm                                        
+#ifdef CONFIG_PANDA_VMI
+    PANDA_CB_VMI_AFTER_FORK,    // After returning from fork()                                                     
+    PANDA_CB_VMI_AFTER_EXEC,    // After returning from exec()                                                     
+    PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()                                                   
+#endif
+    PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to                                                   
+    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer                                                      
+    PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)             
+    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw     
+    PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw      
+    PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out                                                
+
+For more information on each callback, see the "Callbacks" section.
+	
+	void * panda_get_plugin_by_name(const char *name);
+	
+Retrieves a handle to a plugin, given its name (the name is just the base name
+of the plugin's filename; that is, if the path to the plugin is
+`qemu/panda/panda_test.so`, the plugin name will be `panda_test.so`).
+
+This can be used to allow one plugin to call functions another, since the handle
+returned is usable with `dlsym`.
+
+	bool   panda_load_plugin(const char *filename);
+
+Load a PANDA plugin. The `filename` parameter is currently interpreted as a
+simple filename; no searching is done (this may change in the future). This can
+be used to allow one plugin to load another.
+
+	void   panda_unload_plugin(void *plugin);
+
+Unload a PANDA plugin. This can be used to allow one plugin to unload another
+one.
+
+	void   panda_disable_plugin(void *plugin);
+
+Disables callbacks registered by a PANDA plugin. This can be used to allow one
+plugin to temporarily disable another one.
+
+	void   panda_enable_plugin(void *plugin);
+
+Enables callbacks registered by a PANDA plugin. This can be used to re-enable
+callbacks of a plugin that was disabled.
+
+#### Argument handling
+
+PANDA allows plugins to receive arguments on the command line. For instance,
+consider that example from above.
+
+    -panda 'stringsearch;callstack_instr;llvm_trace:base=/tmp,foo=6'
+
+The `llvm_trace` plugin has two arguments, `base` and `foo` with values `/tmp`
+and `6`.  In `init_plugin` for `llvm_trace`, include the following code to
+retrieve just the arguments for the `llvm_trace` plugin and then to parse the individual arguments.
+
+    panda_arg_list *args = panda_get_args("llvm_trace");
+    uint32_t foo = panda_parse_uint32(args, "foo", 0);
+    char *base = panda_parse_string(args, "base", NULL);
+
+Here is the complete list of PANDA arg parsing functions.
+
+    target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);  
+    uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);         
+    uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);         
+    double panda_parse_double(panda_arg_list *args, const char *argname, double defval);             
+    bool panda_parse_bool(panda_arg_list *args, const char *argname);                                              
+    const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);   
+
+Note that calling `panda_get_args` allocates memory to store the list, which
+should be freed after use with `panda_free_args`.
+
+    void panda_free_args(panda_arg_list *args);
+
+Frees an argument list created with `panda_get_args`.
+
+
+#### Plugin-plugin interaction
 
 It's often very handy to be able to allow plugins to interact with one another.
 For example, the `taint2` tracks taint, and exposes an API for labeling data and
@@ -479,6 +672,22 @@ see the type definition for the callback functions `on_ssm_t`. Look in
 powers combined, these two plugins allow us to perform a complicated task
 (content-based taint labeling).
 
+
+### Personal Plugins 
+
+You can also pull plugin code from some other directory, i.e., not from
+`panda/qemu/panda_plugins`.  This allows you to maintain a separate repository
+of your personal plugins.
+
+1. Create a directory in which you will create personal plugins.  `/home/you/personal_plugins`
+2. Create a subdirectory `personal_plugins/panda_plugins` there as well.
+3. Copy `panda/qemu/extra_plugins_panda.mak` into that `panda_plugins` subdir.  Fix `SRC_PATH` variable in that file.
+4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `panda_plugins/new_cool` and put the code for the new plugin there.
+5. Create a file `panda_plugins/config.panda` with names of enabled plugins as you would normally.
+6. You can use the the same makefile set-up as with regular plugins.  However, you'll have to `include ../extra-plugins-panda.mak` and not `panda.mak`
+7. configure with `--extra-plugins-path=/home/you/personal_plugins`
+8. Build as usual and you should compile `new_cool` plugin and its code will be deposited in, e.g., `i386-softmmu/panda_plugins`
+
 #### Enabling or Disabling Plugins
 
 PANDA offers four functions for enabling and disabling other plugins at runtime:
@@ -487,12 +696,12 @@ PANDA offers four functions for enabling and disabling other plugins at runtime:
 latter allow to temporarily enable or disable callbacks registered by a given
 plugin). For their prototypes, have a look at `panda_plugin.h`.
 
-## Plugin Zoo
+### Plugin Zoo
 
 We have written a bunch of generic plugins for use in analyzing replays. Each
 one has a USAGE.md file linked here for further explanation.
 
-### Taint-related plugins
+#### Taint-related plugins
 * [`taint2`](../qemu/panda_plugins/taint2/USAGE.md) - Modern taint plugin.
   Required by most other taint plugins.
 * [`dead_data`](../qemu/panda_plugins/dead_data/USAGE.md) - Track dead data
@@ -510,12 +719,12 @@ one has a USAGE.md file linked here for further explanation.
 * [`tstringsearch`](../qemu/panda_plugins/tstringsearch/USAGE.md) - Automatically
   taint all occurrences of a certain string.
 
-#### Old generation
+##### Old generation
 * [`taint`](../qemu/panda_plugins/taint/USAGE.md) - Old taint plugin.
 * [`ida_taint`](../qemu/panda_plugins/ida_taint/USAGE.md) - IDA taint
   integration for old taint plugin.
 
-### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
+#### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
 * [`stringsearch`](../qemu/panda_plugins/stringsearch/USAGE.md) - Mine memory
   accesses for a particular string.
 * [`textfinder`](../qemu/panda_plugins/textfinder/USAGE.md)
@@ -530,7 +739,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`correlatetaps`](../qemu/panda_plugins/correlatetaps/USAGE.md)
 * [`tapindex`](../qemu/panda_plugins/tapindex/USAGE.md)
 
-### Callstack Tracking
+#### Callstack Tracking
 * [`callstack_instr`](../qemu/panda_plugins/callstack_instr/USAGE.md) -
   Instruction-based callstack tracing.
 * [`fullstack`](../qemu/panda_plugins/fullstack/USAGE.md)
@@ -538,7 +747,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`callstack_block_pc`](../qemu/panda_plugins/callstack_block_pc/USAGE.md) -
   Old block-based callstack tracing.
 
-### Operating System Introspection (OSI) plugins
+#### Operating System Introspection (OSI) plugins
 * [`osi`](../qemu/panda_plugins/osi/USAGE.md) - Operating system introspection
   framework.
 * [`osi_linux`](../qemu/panda_plugins/osi_linux/USAGE.md) - Generic Linux OSI.
@@ -555,20 +764,20 @@ one has a USAGE.md file linked here for further explanation.
 * [`win7x86intro`](../qemu/panda_plugins/win7x86intro/USAGE.md) - OSI for Windows
   7 x86.
 
-### System call logging & analysis
+#### System call logging & analysis
 
-#### Current generation
+##### Current generation
 * [`syscalls2`](../qemu/panda_plugins/syscalls2/USAGE.md) - Modern syscalls
   tracking.
 * [`win7proc`](../qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
   interpretation of syscalls for Windows 7 x86.
 
-#### Old generation
+##### Old generation
 * [`syscalls`](../qemu/panda_plugins/syscalls/USAGE.md) - Old syscalls tracking.
 * [`fdtracker`](../qemu/panda_plugins/fdtracker/USAGE.md) - Old file descriptor
   tracking.
 
-### Miscellaneous
+#### Miscellaneous
 * [`bir`](../qemu/panda_plugins/bir/USAGE.md) - Binary Information Retrieval.
   Used to correspond executables on disk with code executing in memory.
 * [`tralign`](../qemu/panda_plugins/tralign/USAGE.md) - Align parts of execution
