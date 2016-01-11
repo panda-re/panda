@@ -66,23 +66,23 @@ often use to begin analysis are [`asidstory`](../qemu/panda_plugins/asidstory),
 [`stringsearch`](../qemu/panda_plugins/stringsearch), and
 [`file_taint`](../qemu/panda_plugins/file_taint).
 
-## A Tour of Qemu
+## A Tour of QEMU
 
 In order to use PANDA, you will need to understand at least some things about
-the underlying emulator, QEMU.  In truth, the more you know about Qemu the
+the underlying emulator, QEMU.  In truth, the more you know about QEMU the
 better, but that it is a complicated beast
 
-### Qemu's Monitor
+### QEMU's Monitor
 
 This is how you can access and control the emulator, to do all manner of things
 including connecting an ISO to the CD drive and recording execution.  For full
-details on what you do with the monitor, consult the Qemu manual.
+details on what you do with the monitor, consult the QEMU manual.
 
 The most common way of interacting with the monitor is just via `stdio` in the
 terminal from which you originally entered the commandline that started up
-Panda.  To get this to work, just add the following to the end of your
+PANDA.  To get this to work, just add the following to the end of your
 commandline: `--monitor stdio`.  There are also ways to connect to the monitor
-over a telnet port etc -- refer to ethe Qemu manual for details.
+over a telnet port etc -- refer to ethe QEMU manual for details.
 
 Here are few monitor functions we commonly need with PANDA.
 
@@ -91,23 +91,23 @@ Here are few monitor functions we commonly need with PANDA.
 
 ### Emulation details
 
-Qemu emulates a large number of instruction set architectures, but only a few of
+QEMU emulates a large number of instruction set architectures, but only a few of
 them are heavily used by PANDA reverse engineers.  In particular, PANDA support
 is reasonably strong only for `x86`, `arm`, and `ppc`.
 
-It is necessary to have a mental model of how Qemu emulates guest code in order
-to write plugins.  Consider a basic block of guest code that Qemu wants to
+It is necessary to have a mental model of how QEMU emulates guest code in order
+to write plugins.  Consider a basic block of guest code that QEMU wants to
 emulate.  It disassembles that code into guest instructions, one by one,
 simultaneously assembling a parallel basic block of instructions in an
 intermediate language (IL).  This intermediate language is described in a
 [README](https://github.com/moyix/panda/blob/master/qemu/tcg/README) if you are
-interested.  From this IL, Qemu generates a corresponding basic block of binary
-code that is directly executable on the host.  Note that it is from this Qemu IL
+interested.  From this IL, QEMU generates a corresponding basic block of binary
+code that is directly executable on the host.  Note that it is from this QEMU IL
 that PANDA generates LLVM instructions, as the two are fairly close already (our
 LLVM translation is actually borrowed from the [S2E](http://s2e.epfl.ch/)
 project). This basic block of code is actually executed, on the host, in order
-to emulate guest behavior. Qemu toggles between translating guest code and
-executing the translated binary versions. As a critical optimization, Qemu
+to emulate guest behavior. QEMU toggles between translating guest code and
+executing the translated binary versions. As a critical optimization, QEMU
 maintains a cache of already translated basic blocks.
 
 Here is how some of the plugins fit into that emulation sequence.
@@ -119,7 +119,7 @@ Here is how some of the plugins fit into that emulation sequence.
   case we know how long the block is.
 
 * `PANDA_CB_BEFORE_BLOCK_EXEC` is after the block of guest code has been
-  translated into code that can run on the host and immediately before Qemu runs
+  translated into code that can run on the host and immediately before QEMU runs
   it.
 
 * `PANDA_CB_AFTER_BLOCK_EXEC` is immediately after the block of translated guest
@@ -139,10 +139,10 @@ Here is how some of the plugins fit into that emulation sequence.
   executes, but only exists if `INSN_TRANSLATE` callback returned true.
 
 NOTE. Although it is a little out of date, the explanation of emulation in
-Fabrice Bellard's original USENIX paper on Qemu is quite a good read.  "QEMU, a
+Fabrice Bellard's original USENIX paper on QEMU is quite a good read.  "QEMU, a
 Fast and Portable Dynamic Translator", USENIX 2005 Annual Technical Conference.
 
-NOTE: Qemu has an additional cute optimization called `chaining` that links up
+NOTE: QEMU has an additional cute optimization called `chaining` that links up
 cached translated blocks of code in such a way that they emulation can
 transition from one to another without the emulator being involved.  This is
 enabled for record but currently turned off for replay in order to more easily
@@ -150,21 +150,21 @@ support callbacks before and after a basic block executes.
 
 ### What is `env`?
 
-PANDA plugins need access to cpu registers and state. The Qemu abstract data
+PANDA plugins need access to cpu registers and state. The QEMU abstract data
 type for this `CPUState` and is accessed through a global pointer `env`.  Note
 that the *actual* type for an emulated CPU is made more specific in the
 `qemu/target-xxx/cpu.h` directory where `xxx` is the architecture in question.
-For instance, in `qemu/target-i396/cpu.h, we find it redefined as `CPUX86State`,
+For instance, in `qemu/target-i396/cpu.h`, we find it redefined as `CPUX86State`,
 where we also find convenient definitions such as `EAX`, `EBX`, and `EIP`.
 Other information of interest such as hidden flags, segment registers, `idt`,
 and `gdt` are all available via `env.
 
 ### Useful PANDA functions
 
-These functions don't really form an API to Qemu or PANDA, but they are useful
-for controlling PANDA or interacting with Qemu.
+These functions don't really form an API to QEMU or PANDA, but they are useful
+for controlling PANDA or interacting with QEMU.
 
-#### Qemu translation control
+#### QEMU translation control
 
 	void panda_do_flush_tb(void);
 	
@@ -207,7 +207,7 @@ be properly instrumented.
 
 #### Memory access
 
-Panda has callbacks for virtual and physical memory read and write, but these
+PANDA has callbacks for virtual and physical memory read and write, but these
 are off by default due to overhead.
 	
 	void panda_enable_memcb(void);
@@ -235,7 +235,7 @@ the current process.
     void panda_disable_llvm(void);
 
 These functions enable and disable the use of the LLVM JIT in replacement of the
-TCG (Qemu intermediate language and compiler) backend.  Here, an additional
+TCG (QEMU intermediate language and compiler) backend.  Here, an additional
 translation step is added from the TCG IR to the LLVM IR, and that is executed
 on the LLVM JIT.  Currently, this only works when QEMU is starting up, but we
 are hoping to support dynamic configuration of code generation soon.
@@ -493,11 +493,6 @@ possible callback signatures).
     PANDA_CB_MONITOR,           // Monitor callback                                                                
     PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)                                       
     PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm                                        
-#ifdef CONFIG_PANDA_VMI
-    PANDA_CB_VMI_AFTER_FORK,    // After returning from fork()                                                     
-    PANDA_CB_VMI_AFTER_EXEC,    // After returning from exec()                                                     
-    PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()                                                   
-#endif
     PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to                                                   
     PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer                                                      
     PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)             
@@ -826,7 +821,7 @@ one has a USAGE.md file linked here for further explanation.
 
 ### Introduction
 
-Panda analyses run on whole system replays and the clear temptation is to just
+PANDA analyses run on whole system replays and the clear temptation is to just
 print out what you learn as you learn it. So panda plugins often begin life
 peppered with print statements. There is nothing wrong with print statements.
 But, as a plugin matures, it is usual for the consumers of those print
@@ -856,7 +851,7 @@ That is, if new plugin foo wants to write something to the pandalog, it should
 only have to specify what new fields it wants to add to the pandalog and add the
 actual logging statements. 
 
-### Adding Panda Logging to a Plugin
+### Adding PANDA Logging to a Plugin
 
 The `asidstory` plugin is a good example. 
 Two small additions are all that are required to add pandalogging.
@@ -956,7 +951,7 @@ you will probably want to consult the header since it defines the logging struct
 
 ### Pandalogging During Replay
 
-Panda logging is enabled at runtime with a new command-line arg.
+PANDA logging is enabled at runtime with a new command-line arg.
 
     --pandalog filename
 
