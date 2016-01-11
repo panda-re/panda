@@ -1535,7 +1535,7 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 
 static time_t rr_start_time;
 
-extern int garc;
+extern int gargc;
 extern char **gargv;
 
 //mz file_name_full should be full path to desired record/replay log file

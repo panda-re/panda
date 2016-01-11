@@ -2288,7 +2288,7 @@ char **gargv;
 
 int main(int argc, char **argv, char **envp)
 {
-    garc = args;
+    gargc = argc;
     gargv = argv;
     const char *gdbstub_dev = NULL;
     int i;
