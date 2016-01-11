@@ -32,7 +32,9 @@ docs](record_replay.md). For now, what you need to know is that record/replay
 allows you to repeat an execution trace with all data exactly the same over and
 over again. You can then analyze the execution and slowly build understanding
 about where things are stored, what processes are running, when the key
-execution events happen, etc.
+execution events happen, etc. Pictorially:
+
+![PANDA workflow](images/panda_workflow.png)
 
 ### Record
 
@@ -591,14 +593,30 @@ them.
 
 #### Plugin API
 
-To export an API, list each function's prototype in `<plugin>_int.h` in the
-plugin's directory. The `apigen.py` script (which is run by `build.sh`) will
-automatically find all the plugins with those files, and generate a
-`<plugin>_ext.h` file for each one, in the plugin's directory.
+To export an API for use in another plugin:
 
-A user simply needs to `#include "../<plugin>/<plugin>_ext.h"` and then in the
-user's plugin's init function, call `init_<plugin>_api()`, and ensure the return
-value is `true`.
+1. Create a file named `<plugin>_int_fns.h` in the plugin's directory and list
+   each function's prototype, along with any data types it requires.
+2. Create a file named `<plugin>_int.h` in the plugin's directory looks like:
+
+        typedef void YourCustomType;
+        typedef void YourOtherCustomType;
+
+        #include "<plugin>_int_fns.h"
+
+This slightly insane-looking arrangement is necessary because the `apigen.py`
+script (which is invoked from `build.sh`) uses `pycparser` to parse each
+plugin's `<plugin>_int.h` header and generate the necessary code to seamlessly
+use the API from other plugins. Unfortunately, `pycparser` is not great at
+understanding custom types (i.e. anything that's not in the standard system
+headers), so you have to use `typedefs` to make `pycparser` happy. This is
+indeed ridiculous, and if you have a better way to do it we'd welcome your pull
+request with open arms.
+
+At build time, `apigen.py` will automatically find all the plugins with those
+files, and generate a `<plugin>_ext.h` file for each one, in the plugin's
+directory. To use the API, one simply needs to `#include "../<plugin>/<plugin>_ext.h"`
+and then call `init_<plugin>_api()` and ensure that its return value is `true`.
 
 For example, to use the functions exported by the `sample` plugin, you can do
 something like:
