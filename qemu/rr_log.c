@@ -1433,6 +1433,14 @@ static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, cha
 }
 
 
+void rr_get_cmdline_file_name(char *rr_name, char *rr_path, char *file_name, size_t file_name_len) {
+  rr_assert (rr_name != NULL && rr_path != NULL);
+  snprintf(file_name, file_name_len, "%s/%s-rr.cmd", rr_path, rr_name);
+
+}
+
+
+
 void rr_reset_state(void *cpu_state) {
     //mz reset program point
     memset(&rr_prog_point, 0, sizeof(RR_prog_point));
@@ -1527,6 +1535,9 @@ void hmp_end_replay(Monitor *mon, const QDict *qdict)
 
 static time_t rr_start_time;
 
+extern int garc;
+extern char **gargv;
+
 //mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
 #ifdef CONFIG_SOFTMMU 
@@ -1565,6 +1576,16 @@ int rr_do_begin_record(const char *file_name_full, void *cpu_state) {
 
   // save the time so we can report how long record takes
   time(&rr_start_time);
+
+  // let's also save the cmd line so we dont have to guess mem size and arch later
+  rr_get_cmdline_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
+  FILE *fp = fopen(name_buf, "w");
+  int i;
+  for (i=0; i<gargc; i++) {
+      fprintf (fp, "%s ", gargv[i]);
+  }
+  fprintf (fp, "\n");
+  fclose(fp);
 
   // second, open non-deterministic input log for write. 
   rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));

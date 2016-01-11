@@ -2283,10 +2283,13 @@ void panda_cleanup(void) {
 }
 
 
-
+int gargc;
+char **gargv;
 
 int main(int argc, char **argv, char **envp)
 {
+    garc = args;
+    gargv = argv;
     const char *gdbstub_dev = NULL;
     int i;
     int snapshot, linux_boot;
