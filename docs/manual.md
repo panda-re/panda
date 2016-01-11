@@ -32,7 +32,9 @@ docs](record_replay.md). For now, what you need to know is that record/replay
 allows you to repeat an execution trace with all data exactly the same over and
 over again. You can then analyze the execution and slowly build understanding
 about where things are stored, what processes are running, when the key
-execution events happen, etc.
+execution events happen, etc. Pictorially:
+
+![PANDA workflow](images/panda_workflow.png)
 
 ### Record
 
