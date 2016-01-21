@@ -284,7 +284,9 @@ LDFLAGS="-g $LDFLAGS -rdynamic"
 
 # make source path absolute
 source_path=`cd "$source_path"; pwd`
-extra_plugins_path=`cd "$extra_plugins_path"; pwd`
+if [ ! -z "$extra_plugins_path" ]; then
+  extra_plugins_path=`cd "$extra_plugins_path"; pwd`
+fi
 
 check_define() {
 cat > $TMPC <<EOF
@@ -3225,7 +3227,9 @@ qemu_version=`head $source_path/VERSION`
 echo "VERSION=$qemu_version" >>$config_host_mak
 echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
-echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
+if [ ! -z "$extra_plugins_path" ]; then
+  echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
+fi
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
 if [ "$docs" = "yes" ] ; then
   echo "BUILD_DOCS=yes" >> $config_host_mak
