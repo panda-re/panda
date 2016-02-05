@@ -442,6 +442,10 @@ bool translate_callback(CPUState *env, target_ulong pc) {
     if (buf[0]== 0x0F && buf[1] == 0x05) {
         return true;
     }
+    // Check if the instruction is int 0x80 (CD 80)
+    else if (buf[0]== 0xCD && buf[1] == 0x80) {
+        return true;
+    }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
         return true;
