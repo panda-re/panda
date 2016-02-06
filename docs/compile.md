@@ -81,7 +81,7 @@ Now, compile LLVM. For a **debug build** (REALLY slow), use the following comman
 
 ```
 cd llvm
-CC=gcc-4.7 CXX=g++-4.7 ./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+./configure --disable-optimized --enable-assertions --enable-debug-symbols --enable-debug-runtime --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
 cd -
 ```
 
@@ -89,7 +89,7 @@ For a **release build**, use the following commands:
 
 ```
 cd llvm
-CC=gcc-4.7 CXX=g++-4.7 ./configure --enable-optimized --disable-assertions --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
+./configure --enable-optimized --disable-assertions --enable-targets=x86 && REQUIRES_RTTI=1 make -j $(nproc)
 cd -
 ```
 
