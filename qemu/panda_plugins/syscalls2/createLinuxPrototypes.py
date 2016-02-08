@@ -1,16 +1,16 @@
 
 # /* PANDABEGINCOMMENT
-# * 
+# *
 # * Authors:
 # *  Tim Leek               tleek@ll.mit.edu
 # *  Ryan Whelan            rwhelan@ll.mit.edu
 # *  Joshua Hodosh          josh.hodosh@ll.mit.edu
 # *  Michael Zhivich        mzhivich@ll.mit.edu
 # *  Brendan Dolan-Gavitt   brendandg@gatech.edu
-# * 
-# * This work is licensed under the terms of the GNU GPL, version 2. 
-# * See the COPYING file in the top-level directory. 
-# * 
+# *
+# * This work is licensed under the terms of the GNU GPL, version 2.
+# * See the COPYING file in the top-level directory.
+# *
 #PANDAENDCOMMENT */
 
 from sys import argv, exit
@@ -25,7 +25,7 @@ NUMSOURCE = LINUXSOURCE + "/arch/" + ARCH + "/include/asm/unistd.h"
 # get names from ARCH/x86/kernel/calls.S
 CALLTABLE = LINUXSOURCE + "/arch/" + ARCH + "/kernel/" + ("syscall_table_32.S" if ARCH == "x86" else "calls.S")
 # get names from ARCH/x86/kernel/entry-common.S
-
+# include/asm-generic/syscalls.h
 # get signatures from include/linux/syscalls.h
 SIGNATURES = LINUXSOURCE + "/include/linux/syscalls.h"
 
@@ -45,6 +45,22 @@ signatures = {}
 signatures['sys_fork'] = 'unsigned long fork(void);'
 signatures['sys_vfork'] = 'unsigned long vfork(void);'
 signatures['sys_execve'] = 'unsigned long execve(const char *filename, char *const argv[], char *const envp[]);'
+# ARCH x86 syscall table signatures for fork, execve, iopl, and vm86old
+# if signatures for syscalls below did not appear in SIGNATURES, we used man pages
+signatures['ptregs_fork'] = 'pid_t sys_fork();'
+signatures['ptregs_execve'] = 'int sys_execve(const char *filename, const char *argv[], const char *const envp[]);'
+signatures['ptregs_iopl'] = 'int sys_iopl(int level);'
+signatures['ptregs_vm86old'] = 'int sys_vm86old(struct vm86_struct *info);'
+signatures['ptregs_sigreturn'] = 'int sys_sigreturn(unsigned long __unused);'
+signatures['ptregs_clone'] = 'long sys_clone(unsigned long flags, void *child_stack, void *ptid, void *ctid, struct pt_regs *regs);'
+signatures['sys_modify_ldt'] = 'int sys_modify_ldt(int func, void *ptr, unsigned long bytecount);'
+signatures['ptregs_vm86'] = 'int sys_vm86(unsigned long fn, struct vm86plus_struct *v86);'
+signatures['ptregs_rt_sigreturn'] = 'int sys_rt_sigreturn(unsigned long __unused);'
+signatures['ptregs_sigaltstack'] = 'int sys_sigaltstack(const stack_t *ss, stack_t *oss);'
+signatures['ptregs_vfork'] = 'pid_t sys_vfork();'
+signatures['sys_get_thread_area'] = 'int get_thread_area(struct user_desc *u_info);'
+signatures['sys_set_thread_area'] = 'int set_thread_area(struct user_desc *u_info);'
+
 signatures['sys_clone'] = 'long clone(unsigned long clone_flags, unsigned long newsp, int __user *parent_tidptr, int tls_val, int __user *child_tidptr, struct pt_regs *regs);'
 signatures['sys_sigsuspend'] = 'long sigsuspend(int restart, unsigned long oldmask, old_sigset_t mask);'
 signatures['sys_rt_sigsuspend'] = 'int sys_rt_sigsuspend(sigset_t __user *unewset, size_t sigsetsize);'
@@ -118,7 +134,7 @@ with open("proto_printer.cpp", 'w') as printer:
                 if callname == "sys_ni_syscall":
                     callno+=1
                     continue
-                
+
 
                 # now we have "sys_foo" and #define __NR_foo <number>
                 # fixups for the syscalls that go through SP and register adjusting wrappers
@@ -139,6 +155,7 @@ with open("proto_printer.cpp", 'w') as printer:
                 try:
                     printer.write('printf("%s\\n", \"{0}\");\n'.format(signatures[callname]))
                 except KeyError:
+                    printer.write('printf("\\n");\n')
                     print "Missing", callname
                 callno +=1
         # now deal with the ARM syscalls:
