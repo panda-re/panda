@@ -5,7 +5,7 @@
 #include "pandalog.pb-c.h"
 
 
-// NB: there is only one panda json log
+// NB: there is only one pandalog
 // so these fns dont return a Pandalog or pass one as a param
 void pandalog_open(const char *path, const char *mode);
 int  pandalog_close(void);
