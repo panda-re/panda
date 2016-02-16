@@ -50,12 +50,22 @@ extern "C" {
 #include "rr_log_all.h"  
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
+
+#include "asidstory.h"
+
 #include "panda_plugin_plugin.h"
     
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+
+// callback for when process changes
+PPP_PROT_REG_CB(on_proc_change);
+
 }
+
+PPP_CB_BOILERPLATE(on_proc_change);
+
 
 uint32_t num_cells = 80;
 uint64_t min_instr;
@@ -145,7 +155,8 @@ void spit_asidstory() {
         //        if (pd.count >= sample_cutoff) {
             std::stringstream ss;
             ss <<
-                setw(digits(max_instr)) << pd.count <<
+//                setw(digits(max_instr)) << pd.count <<
+                setw(digits(max_instr)) << 77 <<
                 setw(6) << namepid.pid << "  " <<
                 setw(NAMELEN) << pd.shortname << "  " <<
                 setw(sizeof(target_ulong) * 2) <<
@@ -208,7 +219,7 @@ bool check_proc_ok(OsiProc *proc) {
 
 
 /* 
-   proc assumed to be ok
+   proc assumed to be ok.
    register that we saw this proc at this instr count
    updating first / last instr and cell counts
 */
@@ -233,6 +244,13 @@ void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
         } else if (shortname.size() > NAMELEN) {
             shortname = shortname.substr(0, NAMELEN);
         }
+        pd.shortname = "";
+        for (uint32_t i=0; i<shortname.length(); i++) {
+            if (isprint(shortname[i])) 
+                pd.shortname += shortname[i];
+            else
+                pd.shortname += '_';
+        }
         pd.shortname = shortname;
     }
     pd.count++;
@@ -245,24 +263,37 @@ void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
 
 // proc was seen from instr i1 to i2
 void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
-    //    printf ("saw_proc_range name=%s pid=%d asid=" TARGET_FMT_lx " i1=%" PRId64 " i2=%" PRId64 "\n",
-    //            proc->name, proc->pid, proc->asid, i1, i2);
     uint64_t step = floor(1.0 / scale) / 2;
     // assume that last process was running from last asid change to basically now
     saw_proc(env, proc, i1);
     saw_proc(env, proc, i2);
-    for (uint64_t i=i1; i<i2; i+=step) {
+    for (uint64_t i=i1; i<=i2; i+=step/3) {
         saw_proc(env, proc, i);
     }
 }
 
 
+bool saw_first_reasonable = false;
 
+uint64_t num_asid_change = 0;
+uint64_t num_seq_bb = 0;
+
+// when asid changes, try to figure out current proc, which can fail in which case
+// the before_block_exec callback will try again at the start of each subsequent
+// block until we succeed in determining current proc. 
+// also, if proc has changed, we record the fact that a process was seen to be running
+// from now back to last asid change
 int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+    target_ulong asid = panda_current_asid(env);   
+    // some fool trying to use asidstory for boot? 
+    if (new_asid == 0) return 0;
+
+    printf ("%" PRId64" %"PRId64" ASID CHANGE %x %x\n", num_asid_change, num_seq_bb, old_asid, new_asid);
+    num_asid_change ++;
+    return 0;
+
     uint64_t curr_instr = rr_get_guest_instr_count();
-    //    printf ("asid changed: old=" TARGET_FMT_lx " new=" TARGET_FMT_lx " instr=%" PRId64 "\n", old_asid, new_asid, curr_instr);
     if (proc_at_asid_changed != NULL) {
-        //        printf ("old proc valid @ asid changed -- name=%s pid=%d asid=" TARGET_FMT_lx "\n", proc_at_asid_changed->name, (int) proc_at_asid_changed->pid, proc_at_asid_changed->asid);
         saw_proc_range(env, proc_at_asid_changed, instr_count_at_asid_changed, curr_instr-100);
     }
     asid_at_asid_changed = new_asid;
@@ -270,34 +301,47 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
     proc_at_asid_changed = get_current_process(env);
     proc_ok = check_proc_ok(proc_at_asid_changed);
     if (proc_ok) {
-        //        printf ("new proc valid @ asid changed -- name=%s pid=%d asid=" TARGET_FMT_lx "\n", proc_at_asid_changed->name, (int) proc_at_asid_changed->pid, proc_at_asid_changed->asid);
-    }
-    else {
-        //        printf ("new proc NOT valid @ asid changed \n");
+        PPP_RUN_CB(on_proc_change, env, new_asid, proc_at_asid_changed);
     }
     asid_just_changed = true;    
     spit_asidstory();
     return 0;
 }
 
-    
+
+
+// before every bb,  really just trying to figure out current proc correctly
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+    num_seq_bb ++;
+    if ((num_seq_bb % 100000000) == 0) {
+        printf ("%" PRId64 " bb executed.  %" PRId64 " instr\n", num_seq_bb, rr_get_guest_instr_count());
+    }
+
+    target_ulong asid = panda_current_asid(env);   
+    // some fool trying to use asidstory for boot? 
+    if (asid == 0) return 0;
+
+    OsiProc *proc = get_current_process(env);
+    printf ("asid=0x%x  pc=0x%x  proc=%s\n", panda_current_asid(env), panda_current_pc(env), proc->name);
+    free_osiproc(proc);
     // NB: we only know max instr *after* replay has started,
-    // so this code *cant* be run in init_plugin.  yuck.
+    // so this code *cant* be run in init_plugin.  yuck. only triggers once
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
         scale = ((double) num_cells) / ((double) max_instr); 
+        printf("max_instr = %" PRId64 "\n", max_instr);
     }
     // only use rest of this callback if asid just changed and we still dont have valid proc
     if (asid_just_changed && !proc_ok)  {
-        //        printf ("asid just changed but proc not ok\n");
         OsiProc *proc = get_current_process(env);
         if (check_proc_ok(proc)) {
-            //            printf ("ok we found a valid proc name=%s pid=%d asid=%x instr=%" PRId64 "\n", proc->name, proc->pid, proc->asid, rr_get_guest_instr_count());
-            //            printf ("current_asid=%x\n", panda_current_asid(env));
+            // we now have a good proc for first time after recent asid change.
             // disable this callback until next asid change
             asid_just_changed = false;
             proc_at_asid_changed = proc;
+            if (proc_ok) {
+                PPP_RUN_CB(on_proc_change, env, panda_current_asid(env), proc_at_asid_changed);
+            }
         }
         else {
             free_osiproc(proc);
