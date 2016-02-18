@@ -14,79 +14,69 @@
 
 
 
-// directory mapping instructions to chunks in the chunksfile
-// say el[0].instr = 1234
-// that means chunk 0 contains all pandalog info for instructions 0..1234
-// and say el[1].instr = 2468
-// that means chunk 1 contains all .. for instr 12345 .. 2468
-// additionally, the data for compressed chunk 0 is in the chunksfile
-// from pos[0] .. pos[1]-1
-typedef struct pandalog_dir_struct {
-    uint32_t max_size;   // max number of entries
-    uint64_t *instr;     // array of instruction counts.  instr[i] is last instruction in chunk i
-    uint64_t *pos;       // array of file positions for start of chunk 
-} PandalogDir;
+// compression level
+#define PL_Z_LEVEL 9
+// 16 MB chunk
+#define PL_CHUNKSIZE (1024 * 1024 * 16)
 
 
-typedef struct pandalog_struct {
-    char *filename;       // filename of compressed log
-    z_stream strm;        // zlib stream
-    uint32_t chunk_size;  // in mb 
-    uint32_t chunk;       // current chunk
-    FILE *chunksfile;     // file to which we write compressed chunks
-    PandalogDir dir;       
-    uint8_t writep;       // 1 if log is open for write. 0 otherwise
-} Pandalog;
-
-
-Pandalog pandalog;
+Pandalog *thePandalog = NULL;
 
 
 unsigned char *chunk_buf = 0;
 unsigned char *chunk_buf_p = 0;
 
+void grow_pandalog_dir(uint32_t new_size);
+void add_dir_entry(uint32_t chunk, uint64_t file_pos, uint64_t last_instr);
+void write_current_chunk(void);
+void check_write(size_t n);
+void pandalog_open_write(const char *path);
+void pandalog_open(const char *path, const char *mode);
+int  pandalog_close(void);
+void pandalog_write_entry(Panda__LogEntry *entry);
+
 
 // grow pandalog dir to be this new bigger size
 void grow_pandalog_dir(uint32_t new_size) {
-    assert (new_size > pandalog.dir.max_size);
-    pandalog.dir.max_size = new_size;
-    pandalog.dir.instr = (uint64_t *) realloc(pandalog.dir.instr, sizeof(uint64_t) * new_size);
-    pandalog.dir.pos = (uint64_t *) realloc(pandalog.dir.pos, sizeof(uint64_t) * new_size);
+    assert (new_size > thePandalog->dir.max_size);
+    thePandalog->dir.max_size = new_size;
+    thePandalog->dir.instr = (uint64_t *) realloc(thePandalog->dir.instr, sizeof(uint64_t) * new_size);
+    thePandalog->dir.pos = (uint64_t *) realloc(thePandalog->dir.pos, sizeof(uint64_t) * new_size);
 }
 
 // add dir entry for this chunk
 // last_instr is last instr in this chunk
 void add_dir_entry(uint32_t chunk, uint64_t file_pos, uint64_t last_instr) {
-    if (chunk >= pandalog.dir.max_size) {
-        grow_pandalog_dir(pandalog.dir.size * 1.5);
+    if (chunk >= thePandalog->dir.max_size) {
+        grow_pandalog_dir(thePandalog->dir.max_size * 1.5);
     }
-    assert (chunk <= pandalog.dir.size);
-    pandalog.dir.instr[chunk] = last_instr;
-    pandalog.dir.pos[chunk] = file_pos;
+    assert (chunk <= thePandalog->dir.max_size);
+    thePandalog->dir.instr[chunk] = last_instr;
+    thePandalog->dir.pos[chunk] = file_pos;
 }
 
 // compress current chunk and write it to chunksfile,
 // also updating directory 
-void write_current_chunk() {
+void write_current_chunk(void) {
     // uncompressed chunk size
     uint32_t cs = chunk_buf_p - chunk_buf;
     if (cs == 0) return;
     // compress pandalog chunk
-    pandalog.strm.avail_in = cs;
-    pandalog.strm.next_in = chunk_buf;
-    int ret = deflate(&(pandalog.strm), Z_NO_FLUSH);
+    thePandalog->strm.avail_in = cs;
+    thePandalog->strm.next_in = chunk_buf;
+    int ret = deflate(&(thePandalog->strm), Z_NO_FLUSH);
     assert(ret != Z_STREAM_ERROR); 
-    assert(pandalog.strm.avail_in == 0);
+    assert(thePandalog->strm.avail_in == 0);
     // size of compressed chunk
-    uint32_t css = pandalog.strm.avail_out;
+    uint32_t css = thePandalog->strm.avail_out;
     assert(css > 0);
     assert(cs >= css);
     printf ("writing chunk %d of pandalog %d / %d = %.2f compression\n",
-            pandalog.chunk, cs, css, ((float) cs) / ((float) css)); 
+            thePandalog->chunk, cs, css, ((float) cs) / ((float) css)); 
     // position in chunksfile of start of this chunk
-    uint64_t pos = ftell(pandalog.chunksfile);
-    fwrite(chunk_buf, 1, css, pandalog.chunksfile);
-    add_dir_entry(pandalog.chunk, pos, rr_get_guest_instr_count ());
+    uint64_t pos = ftell(thePandalog->chunksfile);
+    fwrite(chunk_buf, 1, css, thePandalog->chunksfile);
+    add_dir_entry(thePandalog->chunk, pos, rr_get_guest_instr_count ());
 }
 
 
@@ -97,12 +87,12 @@ void check_write(size_t n) {
         // NB: malloc chunk a little big since we need to maintain
         // the invariant that all log entries for an instruction reside in same
         // chunk.  this should be big enough...
-        chunk_buf = (unsigned char *) malloc(pandalog.chunk_size * 1.25);
+        chunk_buf = (unsigned char *) malloc(thePandalog->chunk_size * 1.25);
         chunk_buf_p = chunk_buf;
-        assert(n < pandalog.chunk_size);
+        assert(n < thePandalog->chunk_size);
         return;
     }
-    if (chunk_buf_p + n < chunk_buf + pandalog.chunk_size) {
+    if (chunk_buf_p + n < chunk_buf + thePandalog->chunk_size) {
         // fine to write -- it fits
         return;
     }
@@ -111,36 +101,32 @@ void check_write(size_t n) {
     write_current_chunk();
     // rewind chunk buf and inc chunk #
     chunk_buf_p = chunk_buf;
-    pandalog.chunk ++;
+    thePandalog->chunk ++;
 }
 
 
-
-// compression level
-#define PL_Z_LEVEL 9
-// 16 MB chunk
-#define PL_CHUNKSIZE (1024 * 1024 * 16)
 
 
 // open pandalog for write
 // path is the chunks file
 // path + '.dir' is the directory
 void pandalog_open_write(const char *path) {
-    pandalog.writep = 1;
-    pandalog.filename = path;
-    pandalog.chunksfile = fopen(path, "w");
-    pandalog.strm.zalloc = Z_NULL;
-    pandalog.strm.zfree = Z_NULL;
-    pandalog.strm.opaque = Z_NULL;
-    int ret = deflateInit(&pandalog.strm, PL_Z_LEVEL);
+    assert (thePandalog == NULL);
+    thePandalog = (Pandalog *) malloc(sizeof(Pandalog));
+    thePandalog->writep = 1;
+    thePandalog->filename = strdup(path);
+    thePandalog->chunksfile = fopen(path, "w");
+    thePandalog->strm.zalloc = Z_NULL;
+    thePandalog->strm.zfree = Z_NULL;
+    thePandalog->strm.opaque = Z_NULL;
+    int ret = deflateInit(&thePandalog->strm, PL_Z_LEVEL);
     assert (ret == Z_OK);
-    pandalog.chunk_size = PL_CHUNKSIZE;
-    pandalog.chunk = 0;   
+    thePandalog->chunk_size = PL_CHUNKSIZE;
+    thePandalog->chunk = 0;   
     // NB: dir will grow later if we need more than 128 chunks
-    pandalog.dir.max_size = 128;
-    pandalog.dir.size = 0;
-    pandalog.dir.instr = (uint64_t *) malloc(sizeof(uint64_t) * pandalog.dir.max_size);
-    pandalog.dir.pos = (uint64_t *) malloc(sizeof(uint64_t) * pandalog.dir.max_size);   
+    thePandalog->dir.max_size = 128;
+    thePandalog->dir.instr = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_size);
+    thePandalog->dir.pos = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_size);   
 }
 
 
@@ -156,26 +142,28 @@ void pandalog_open(const char *path, const char *mode) {
 
 
 int  pandalog_close(void) {
-    if (pandalog.writep) {
+    if (thePandalog->writep) {
         // finish current chunk & close chunksfile 
         write_current_chunk();
         // write directory 
-        uint32_t n = strlen(pandalog.filename);
-        char *dirfilename = (char*) malloc(strlen(pandalog.filename)+4);
+        char *dirfilename = (char*) malloc(strlen(thePandalog->filename)+4);
         dirfilename[0] = '\0';
-        strcat(dirfilename, pandalog.filename);
+        strcat(dirfilename, thePandalog->filename);
         strcat(dirfilename, ".dir");
         FILE *dfp = fopen(dirfilename, "w");
-        PandalogDir *dir = &(pandalog.dir);
-        fwrite(&(dir->size), sizeof(dir->size), 1, dfp);
+        PandalogDir *dir = &(thePandalog->dir);
+        uint32_t num_chunks = thePandalog->chunk + 1;
+        // note: this is actual dir size.  max_size generally bigger
+        fwrite(&(num_chunks), sizeof(num_chunks), 1, dfp);
         uint32_t i;
-        for (i=0; i<dir->size; i++) {
-            fwrite(&(dir->el[i].instr), sizeof(dir->el[i].start), 1, dfp);
+        for (i=0; i<=num_chunks; i++) {
+            fwrite(&(dir->instr[i]), sizeof(dir->instr[i]), 1, dfp);
             fwrite(&(dir->pos[i]), sizeof(dir->pos[i]), 1, dfp);
         }
         fclose(dfp);
     }
-    fclose(pandalog.chunksfile);
+    fclose(thePandalog->chunksfile);
+    return 0;
 }
 extern int panda_in_main_loop;
 
@@ -193,16 +181,16 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
         entry->pc = -1;
         entry->instr = -1;
     }
-    size_t n = panda__log_entry__get_packed_size(entry);   
+    size_t n = panda__log_entry__get_packed_size(entry);
     // possibly compress and write current chunk
     // but dont do so if it would spread log entries for same instruction between chunks
     // invariant: all log entries for an instruction belong in a single chunk
-    if (instr_last_entry != entr->instr) {
+    if (instr_last_entry != entry->instr) {
         check_write(n+4);
     }
     // write size of log entry first
     *((uint32_t *) chunk_buf_p) = n;
-    chunk_buf_p += sizeof(uin32_t);
+    chunk_buf_p += sizeof(uint32_t);
     // and then the entry itself (packed)
     panda__log_entry__pack(entry, chunk_buf_p);
     instr_last_entry = entry->instr;
