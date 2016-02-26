@@ -1433,7 +1433,7 @@ static inline void rr_get_nondet_log_file_name(char *rr_name, char *rr_path, cha
 }
 
 
-void rr_get_cmdline_file_name(char *rr_name, char *rr_path, char *file_name, size_t file_name_len) {
+static void rr_get_cmdline_file_name(char *rr_name, char *rr_path, char *file_name, size_t file_name_len) {
   rr_assert (rr_name != NULL && rr_path != NULL);
   snprintf(file_name, file_name_len, "%s/%s-rr.cmd", rr_path, rr_name);
 
