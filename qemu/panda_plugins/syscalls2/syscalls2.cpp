@@ -96,7 +96,20 @@ target_ulong calc_retaddr_windows_x86(CPUState* env, target_ulong pc) {
 
 target_ulong calc_retaddr_linux_x86(CPUState* env, target_ulong pc) {
 #if defined(TARGET_I386)
-    return pc+11;
+    unsigned char buf[2] = {};
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    // Check if the instruction is syscall (0F 05) or  sysenter (0F 34)
+    if ((buf[0]== 0x0F && buf[1] == 0x05) || (buf[0]== 0x0F && buf[1] == 0x34)) {
+        return pc+11;
+    }
+    // Check if the instruction is int 0x80 (CD 80)
+    else if (buf[0]== 0xCD && buf[1] == 0x80) {
+        return pc+2;
+    }
+    // shouldn't happen
+    else {
+        assert(1==0);
+    }
 #else
     // shouldn't happen
     assert (1==0);
@@ -433,13 +446,18 @@ int exec_callback(CPUState *env, target_ulong pc) {
     return 0;
 }
 
-// Check if the instruction is sysenter (0F 34)
+// Check if the instruction is sysenter (0F 34),
+// syscall (0F 05) or int 0x80 (CD 80)
 bool translate_callback(CPUState *env, target_ulong pc) {
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
+        return true;
+    }
+    // Check if the instruction is int 0x80 (CD 80)
+    else if (buf[0]== 0xCD && buf[1] == 0x80) {
         return true;
     }
     // Check if the instruction is sysenter (0F 34)

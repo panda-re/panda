@@ -35,6 +35,12 @@ memcpy(rp.params[0], &arg0, sizeof(int32_t));
 }
 PPP_RUN_CB(on_sys_exit_enter, env,pc,arg0) ; 
 }; break;
+// 2 pid_t sys_fork ['']
+case 2: {
+if (PPP_CHECK_CB(on_sys_fork_return)) {
+}
+PPP_RUN_CB(on_sys_fork_enter, env,pc) ; 
+}; break;
 // 3 long sys_read ['unsigned int fd', ' char __user *buf', ' size_t count']
 case 3: {
 uint32_t arg0 = get_32(env, 0);
@@ -118,6 +124,18 @@ if (PPP_CHECK_CB(on_sys_unlink_return)) {
 memcpy(rp.params[0], &arg0, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_unlink_enter, env,pc,arg0) ; 
+}; break;
+// 11 int sys_execve ['const char *filename', ' const char *argv[]', ' const char *const envp[]']
+case 11: {
+target_ulong arg0 = get_pointer(env, 0);
+target_ulong arg1 = get_pointer(env, 1);
+target_ulong arg2 = get_pointer(env, 2);
+if (PPP_CHECK_CB(on_sys_execve_return)) {
+memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[2], &arg2, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_sys_execve_enter, env,pc,arg0,arg1,arg2) ; 
 }; break;
 // 12 long sys_chdir ['const char __user *filename']
 case 12: {
@@ -961,11 +979,27 @@ memcpy(rp.params[0], &arg0, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_uname_enter, env,pc,arg0) ; 
 }; break;
+// 110 int sys_iopl ['int level']
+case 110: {
+int32_t arg0 = get_s32(env, 0);
+if (PPP_CHECK_CB(on_sys_iopl_return)) {
+memcpy(rp.params[0], &arg0, sizeof(int32_t));
+}
+PPP_RUN_CB(on_sys_iopl_enter, env,pc,arg0) ; 
+}; break;
 // 111 long sys_vhangup ['void']
 case 111: {
 if (PPP_CHECK_CB(on_sys_vhangup_return)) {
 }
 PPP_RUN_CB(on_sys_vhangup_enter, env,pc) ; 
+}; break;
+// 113 int sys_vm86old ['struct vm86_struct *info']
+case 113: {
+target_ulong arg0 = get_pointer(env, 0);
+if (PPP_CHECK_CB(on_sys_vm86old_return)) {
+memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_sys_vm86old_enter, env,pc,arg0) ; 
 }; break;
 // 114 long sys_wait4 ['pid_t pid', ' int __user *stat_addr', 'int options', ' struct rusage __user *ru']
 case 114: {
@@ -1023,6 +1057,30 @@ memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_sys_fsync_enter, env,pc,arg0) ; 
 }; break;
+// 119 int sys_sigreturn ['unsigned long __unused']
+case 119: {
+uint32_t arg0 = get_32(env, 0);
+if (PPP_CHECK_CB(on_sys_sigreturn_return)) {
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+}
+PPP_RUN_CB(on_sys_sigreturn_enter, env,pc,arg0) ; 
+}; break;
+// 120 long sys_clone ['unsigned long flags', ' void *child_stack', ' void *ptid', ' void *ctid', ' struct pt_regs *regs']
+case 120: {
+uint32_t arg0 = get_32(env, 0);
+target_ulong arg1 = get_pointer(env, 1);
+target_ulong arg2 = get_pointer(env, 2);
+target_ulong arg3 = get_pointer(env, 3);
+target_ulong arg4 = get_pointer(env, 4);
+if (PPP_CHECK_CB(on_sys_clone_return)) {
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[2], &arg2, sizeof(target_ulong));
+memcpy(rp.params[3], &arg3, sizeof(target_ulong));
+memcpy(rp.params[4], &arg4, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_sys_clone_enter, env,pc,arg0,arg1,arg2,arg3,arg4) ; 
+}; break;
 // 121 long sys_setdomainname ['char __user *name', ' int len']
 case 121: {
 target_ulong arg0 = get_pointer(env, 0);
@@ -1040,6 +1098,18 @@ if (PPP_CHECK_CB(on_sys_newuname_return)) {
 memcpy(rp.params[0], &arg0, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_newuname_enter, env,pc,arg0) ; 
+}; break;
+// 123 int sys_modify_ldt ['int func', ' void *ptr', ' unsigned long bytecount']
+case 123: {
+int32_t arg0 = get_s32(env, 0);
+target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg2 = get_32(env, 2);
+if (PPP_CHECK_CB(on_sys_modify_ldt_return)) {
+memcpy(rp.params[0], &arg0, sizeof(int32_t));
+memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[2], &arg2, sizeof(uint32_t));
+}
+PPP_RUN_CB(on_sys_modify_ldt_enter, env,pc,arg0,arg1,arg2) ; 
 }; break;
 // 124 long sys_adjtimex ['struct timex __user *txc_p']
 case 124: {
@@ -1441,6 +1511,16 @@ memcpy(rp.params[2], &arg2, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_getresuid16_enter, env,pc,arg0,arg1,arg2) ; 
 }; break;
+// 166 int sys_vm86 ['unsigned long fn', ' struct vm86plus_struct *v86']
+case 166: {
+uint32_t arg0 = get_32(env, 0);
+target_ulong arg1 = get_pointer(env, 1);
+if (PPP_CHECK_CB(on_sys_vm86_return)) {
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_sys_vm86_enter, env,pc,arg0,arg1) ; 
+}; break;
 // 168 long sys_poll ['struct pollfd __user *ufds', ' unsigned int nfds', 'long timeout']
 case 168: {
 target_ulong arg0 = get_pointer(env, 0);
@@ -1492,6 +1572,14 @@ memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_sys_prctl_enter, env,pc,arg0,arg1,arg2,arg3,arg4) ; 
+}; break;
+// 173 int sys_rt_sigreturn ['unsigned long __unused']
+case 173: {
+uint32_t arg0 = get_32(env, 0);
+if (PPP_CHECK_CB(on_sys_rt_sigreturn_return)) {
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+}
+PPP_RUN_CB(on_sys_rt_sigreturn_enter, env,pc,arg0) ; 
 }; break;
 // 174 long rt_sigaction ['int sig', ' const struct sigaction __user * act', ' struct sigaction __user * oact', '  size_t sigsetsize']
 case 174: {
@@ -1637,6 +1725,16 @@ memcpy(rp.params[1], &arg1, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_capset_enter, env,pc,arg0,arg1) ; 
 }; break;
+// 186 int sys_sigaltstack ['const stack_t *ss', ' stack_t *oss']
+case 186: {
+target_ulong arg0 = get_pointer(env, 0);
+target_ulong arg1 = get_pointer(env, 1);
+if (PPP_CHECK_CB(on_sys_sigaltstack_return)) {
+memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_sys_sigaltstack_enter, env,pc,arg0,arg1) ; 
+}; break;
 // 187 long sys_sendfile ['int out_fd', ' int in_fd', 'off_t __user *offset', ' size_t count']
 case 187: {
 int32_t arg0 = get_s32(env, 0);
@@ -1650,6 +1748,12 @@ memcpy(rp.params[2], &arg2, sizeof(target_ulong));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_sys_sendfile_enter, env,pc,arg0,arg1,arg2,arg3) ; 
+}; break;
+// 190 pid_t sys_vfork ['']
+case 190: {
+if (PPP_CHECK_CB(on_sys_vfork_return)) {
+}
+PPP_RUN_CB(on_sys_vfork_enter, env,pc) ; 
 }; break;
 // 191 long sys_getrlimit ['unsigned int resource', 'struct rlimit __user *rlim']
 case 191: {
@@ -2207,6 +2311,22 @@ memcpy(rp.params[2], &arg2, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_sched_getaffinity_enter, env,pc,arg0,arg1,arg2) ; 
 }; break;
+// 243 int set_thread_area ['struct user_desc *u_info']
+case 243: {
+target_ulong arg0 = get_pointer(env, 0);
+if (PPP_CHECK_CB(on_set_thread_area_return)) {
+memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_set_thread_area_enter, env,pc,arg0) ; 
+}; break;
+// 244 int get_thread_area ['struct user_desc *u_info']
+case 244: {
+target_ulong arg0 = get_pointer(env, 0);
+if (PPP_CHECK_CB(on_get_thread_area_return)) {
+memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+}
+PPP_RUN_CB(on_get_thread_area_enter, env,pc,arg0) ; 
+}; break;
 // 245 long sys_io_setup ['unsigned nr_reqs', ' aio_context_t __user *ctx']
 case 245: {
 uint32_t arg0 = get_32(env, 0);
@@ -2500,6 +2620,20 @@ memcpy(rp.params[0], &arg0, sizeof(target_ulong));
 memcpy(rp.params[1], &arg1, sizeof(target_ulong));
 }
 PPP_RUN_CB(on_sys_utimes_enter, env,pc,arg0,arg1) ; 
+}; break;
+// 272 long sys_fadvise64_64 ['int fd', ' loff_t offset', ' loff_t len', ' int advice']
+case 272: {
+int32_t arg0 = get_s32(env, 0);
+uint64_t arg1 = get_64(env, 1);
+uint64_t arg2 = get_64(env, 2);
+int32_t arg3 = get_s32(env, 3);
+if (PPP_CHECK_CB(on_sys_fadvise64_64_return)) {
+memcpy(rp.params[0], &arg0, sizeof(int32_t));
+memcpy(rp.params[1], &arg1, sizeof(uint64_t));
+memcpy(rp.params[2], &arg2, sizeof(uint64_t));
+memcpy(rp.params[3], &arg3, sizeof(int32_t));
+}
+PPP_RUN_CB(on_sys_fadvise64_64_enter, env,pc,arg0,arg1,arg2,arg3) ; 
 }; break;
 // 274 long sys_mbind ['unsigned long start', ' unsigned long len', 'unsigned long mode', 'unsigned long __user *nmask', 'unsigned long maxnode', 'unsigned flags']
 case 274: {
@@ -3018,6 +3152,20 @@ memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 memcpy(rp.params[5], &arg5, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_sys_splice_enter, env,pc,arg0,arg1,arg2,arg3,arg4,arg5) ; 
+}; break;
+// 314 long sys_sync_file_range ['int fd', ' loff_t offset', ' loff_t nbytes', 'unsigned int flags']
+case 314: {
+int32_t arg0 = get_s32(env, 0);
+uint64_t arg1 = get_64(env, 1);
+uint64_t arg2 = get_64(env, 2);
+uint32_t arg3 = get_32(env, 3);
+if (PPP_CHECK_CB(on_sys_sync_file_range_return)) {
+memcpy(rp.params[0], &arg0, sizeof(int32_t));
+memcpy(rp.params[1], &arg1, sizeof(uint64_t));
+memcpy(rp.params[2], &arg2, sizeof(uint64_t));
+memcpy(rp.params[3], &arg3, sizeof(uint32_t));
+}
+PPP_RUN_CB(on_sys_sync_file_range_enter, env,pc,arg0,arg1,arg2,arg3) ; 
 }; break;
 // 315 long sys_tee ['int fdin', ' int fdout', ' size_t len', ' unsigned int flags']
 case 315: {
