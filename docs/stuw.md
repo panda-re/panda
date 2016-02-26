@@ -6,7 +6,7 @@ Stuw is compiled in a similar manner to pandalog_reader.cpp, a simple pandalog t
 
 To use stuw, first run the replay using win7proc. Win7proc relies on syscalls2, which needs a profile, so your -panda argument should look something like this:
 
-    -panda "syscalls2;profile=windows7_x86;win7proc"
+    -panda "syscalls2:profile=windows7_x86;win7proc"
 
 STUW also requires pandalogged output, so the -pandalog arguement is also important:
 
