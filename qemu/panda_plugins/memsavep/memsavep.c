@@ -24,6 +24,7 @@ PANDAENDCOMMENT */
 #include <stdio.h>
 
 extern RR_log *rr_nondet_log;
+bool dump_done = false;
 
 static double percent = 0.0;
 static const char *filename = NULL;
@@ -34,10 +35,11 @@ void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    if (rr_get_percentage() > percent) {
+    if (rr_get_percentage() > percent && !dump_done) {
         printf("memsavep: Saving memory to %s.\n", filename);
         panda_memsavep(fopen(filename, "wb"));
-        rr_do_end_replay(0);
+        dump_done = true;
+        rr_end_replay_requested = 1;
     }
     return 0;
 }
