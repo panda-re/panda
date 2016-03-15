@@ -57,8 +57,8 @@ struct prog_point {
     }
 };
 
-std::map<prog_point,long> read_tracker;
-std::map<prog_point,long> write_tracker;
+std::map<prog_point,target_ulong> read_tracker;
+std::map<prog_point,target_ulong> write_tracker;
 FILE *read_index;
 FILE *write_index;
 
@@ -128,10 +128,10 @@ void uninit_plugin(void *self) {
     fwrite(&target_ulong_size, sizeof(uint32_t), 1, read_index);
 
     // Save reads
-    std::map<prog_point,long>::iterator it;
+    std::map<prog_point,target_ulong>::iterator it;
     for(it = read_tracker.begin(); it != read_tracker.end(); it++) {
         fwrite(&it->first, sizeof(prog_point), 1, read_index);
-        fwrite(&it->second, sizeof(long), 1, read_index);
+        fwrite(&it->second, sizeof(target_ulong), 1, read_index);
     }
     fclose(read_index);
 
@@ -141,7 +141,7 @@ void uninit_plugin(void *self) {
     // Save writes
     for(it = write_tracker.begin(); it != write_tracker.end(); it++) {
         fwrite(&it->first, sizeof(prog_point), 1, write_index);
-        fwrite(&it->second, sizeof(long), 1, write_index);
+        fwrite(&it->second, sizeof(target_ulong), 1, write_index);
     }
     fclose(write_index);
 }
