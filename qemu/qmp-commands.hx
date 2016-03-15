@@ -2002,3 +2002,26 @@ EQMP
         .mhandler.cmd_new = qmp_marshal_input_query_balloon,
     },
 
+
+
+    {
+        .name       = "begin_record",
+        .args_type  = "file_name:s",
+        .mhandler.cmd_new = qmp_marshal_input_begin_record,
+    },
+    {
+        .name       = "begin_replay",
+        .args_type  = "file_name:s",
+        .mhandler.cmd_new = qmp_marshal_input_begin_replay,
+    },
+
+    {
+        .name       = "end_record",
+        .args_type  = "",
+        .mhandler.cmd_new = qmp_marshal_input_end_record,
+    },
+    {
+        .name       = "end_replay",
+        .args_type  = "",
+        .mhandler.cmd_new = qmp_marshal_input_end_replay,
+    },

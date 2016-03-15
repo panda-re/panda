@@ -398,6 +398,7 @@ future versions of PANDA.
                                int num, abi_long arg1, abi_long arg2, abi_long
                                arg3, abi_long arg4, abi_long arg5,
                                abi_long arg6, abi_long arg7, abi_long arg8);
+
 ---
 
 **user_after_syscall**: Called after a syscall for QEMU user mode
@@ -433,6 +434,7 @@ future versions of PANDA.
                               arg3, abi_long arg4, abi_long arg5, abi_long arg6,
                               abi_long arg7, abi_long arg8, void *p,
                               abi_long ret);
+
 ---
 
 **replay_hd_transfer**: Called during a replay of a hard drive transfer action
@@ -460,6 +462,7 @@ still be applied accurately.
 
     int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
                               uint64_t dest_addr, uint32_t num_bytes);
+
 ---
 
 **replay_before_cpu_physical_mem_rw_ram**: In replay only, we are about to dma
@@ -489,6 +492,7 @@ cpu_physical_memory_rw() though.
     int (*replay_before_cpu_physical_mem_rw_ram)(
             CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
             uint32_t num_bytes);
+
 ---
 
 **replay_handle_packet**: TODO: This will be used for network packet replay.
@@ -507,6 +511,7 @@ cpu_physical_memory_rw() though.
 
     int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                                 uint8_t direction, uint64_t old_buf_addr);
+
 ---
 
 ## Sample Plugin: Syscall Monitor

@@ -154,7 +154,7 @@ PANDA plugins need access to cpu registers and state. The QEMU abstract data
 type for this `CPUState` and is accessed through a global pointer `env`.  Note
 that the *actual* type for an emulated CPU is made more specific in the
 `qemu/target-xxx/cpu.h` directory where `xxx` is the architecture in question.
-For instance, in `qemu/target-i396/cpu.h`, we find it redefined as `CPUX86State`,
+For instance, in `qemu/target-i386/cpu.h`, we find it redefined as `CPUX86State`,
 where we also find convenient definitions such as `EAX`, `EBX`, and `EIP`.
 Other information of interest such as hidden flags, segment registers, `idt`,
 and `gdt` are all available via `env.

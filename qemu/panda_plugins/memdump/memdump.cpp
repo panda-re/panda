@@ -108,7 +108,7 @@ bool init_plugin(void *self) {
     FILE *read_idx, *write_idx;
     prog_point p = {};
     unsigned long off = 0;
-    long size = 0;
+    target_ulong size = 0;
 
     read_idx = fopen("tap_reads.idx", "r");
     if (read_idx) {
@@ -116,7 +116,7 @@ bool init_plugin(void *self) {
         fseek(read_idx, 4, SEEK_SET);
         while (!feof(read_idx)) {
             fread(&p, sizeof(p), 1, read_idx);
-            fread(&size, sizeof(long), 1, read_idx);
+            fread(&size, sizeof(target_ulong), 1, read_idx);
             read_tracker[p].off = off;
             off += size;
         }
@@ -146,7 +146,7 @@ bool init_plugin(void *self) {
         fseek(write_idx, 4, SEEK_SET);
         while (!feof(write_idx)) {
             fread(&p, sizeof(p), 1, write_idx);
-            fread(&size, sizeof(long), 1, write_idx);
+            fread(&size, sizeof(target_ulong), 1, write_idx);
             write_tracker[p].off = off;
             off += size;
         }

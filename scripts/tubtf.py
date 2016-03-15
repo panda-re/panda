@@ -2,7 +2,7 @@
 from buffer import Buffer
 import numpy as np
 
-typa = ["h", "m", "i", "l", "gr", "gs", "u", "c", "r"]
+typa = ["h", "m", "i", "p", "l", "gr", "gs", "u", "c", "r"]
 
 
 class Tubtf:

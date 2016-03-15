@@ -155,8 +155,7 @@ void spit_asidstory() {
         //        if (pd.count >= sample_cutoff) {
             std::stringstream ss;
             ss <<
-//                setw(digits(max_instr)) << pd.count <<
-                setw(digits(max_instr)) << 77 <<
+                setw(digits(max_instr)) << pd.count <<
                 setw(6) << namepid.pid << "  " <<
                 setw(NAMELEN) << pd.shortname << "  " <<
                 setw(sizeof(target_ulong) * 2) <<
@@ -290,7 +289,6 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
 
     printf ("%" PRId64" %"PRId64" ASID CHANGE %x %x\n", num_asid_change, num_seq_bb, old_asid, new_asid);
     num_asid_change ++;
-    return 0;
 
     uint64_t curr_instr = rr_get_guest_instr_count();
     if (proc_at_asid_changed != NULL) {

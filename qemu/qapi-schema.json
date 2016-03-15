@@ -895,7 +895,7 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_record', 'data': { 'filename': 'str' } }
+{ 'command': 'begin_record', 'data': { 'file_name': 'str' } }
 
 ##
 # @begin_record_from
@@ -903,7 +903,7 @@
 # Requests that we revert to a snapshot and begin recording for later replay
 #
 ##
-{ 'command': 'begin_record_from', 'data': { 'snapshot': 'str', 'filename': 'str' } }
+{ 'command': 'begin_record_from', 'data': { 'snapshot': 'str', 'file_name': 'str' } }
 
 ##
 # @begin_replay
@@ -912,7 +912,7 @@
 # 
 # TRL 20120501
 ##
-{ 'command': 'begin_replay', 'data': { 'filename': 'str' } }
+{ 'command': 'begin_replay', 'data': { 'file_name': 'str' } }
 
 ##
 # @end_record
@@ -939,7 +939,7 @@
 # 
 # BDG 20120821
 ##
-{ 'command': 'load_plugin', 'data': { 'filename': 'str' } }
+{ 'command': 'load_plugin', 'data': { 'file_name': 'str' } }
 
 ##
 # @unload_plugin
