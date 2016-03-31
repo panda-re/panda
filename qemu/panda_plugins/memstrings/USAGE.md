@@ -36,4 +36,4 @@ Example
 To save the strings to `malware_strings.txt.gz` and only allow strings with at least 8 characters:
 
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-        -panda memstats:name=malware,len=8
+        -panda memstrings:name=malware,len=8
