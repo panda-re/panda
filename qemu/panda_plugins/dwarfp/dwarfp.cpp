@@ -21,10 +21,18 @@ extern "C" {
 //#include "config.h"
 #include "rr_log.h"
 #include "qemu-common.h"
-#include "cpu.h"
-#include "panda_plugin.h"
-#include "pandalog.h"
 #include "panda_common.h"
+#include "cpu.h"
+
+#include "panda_plugin.h"
+#include "panda_plugin_plugin.h"
+#include "pandalog.h"
+#include "dwarf_util.h"
+#include "dwarfp.h"
+//#include "dwarfp_types.h"
+#include "../stpi/stpi_types.h"
+#include "../stpi/stpi_ext.h"
+#include "../stpi/stpi.h"
 
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
@@ -33,13 +41,22 @@ extern "C" {
 #include "../osi_linux/osi_linux_ext.h"
 
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
-#include "panda_plugin_plugin.h"
 
 #include "../callstack_instr/callstack_instr.h"
 
 #include "../loaded/loaded.h"
 
-#include "dwarf_util.h"
+bool init_plugin(void *);
+void uninit_plugin(void *);
+void on_call(CPUState *env, target_ulong pc);
+void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
+void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+
+void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+
+void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+
+
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -56,18 +73,21 @@ extern "C" {
 
 }
 
-const char *debug_path = NULL;
+const char *guest_debug_path = NULL;
+const char *host_debug_path = NULL;
 const char *proc_to_monitor = NULL;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
 
-bool init_plugin(void *);
-void uninit_plugin(void *);
-void on_call(CPUState *env, target_ulong pc);
-void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
+#include "dwarfp_int_fns.h"
+PPP_PROT_REG_CB(on_dwarfp_line_change);
+// example lambda f()
+//auto push_var_if_live = [&live_vars](std::string var_ty, std::string var_nm, LocType loc_t, target_ulong loc) ...
 }
+PPP_CB_BOILERPLATE(on_dwarfp_line_change);
+
 
 #include <vector>
 #include <map>
@@ -75,11 +95,12 @@ void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulon
 #include <string>
 #include <boost/algorithm/string/join.hpp>
 #define MAX_FILENAME 256
+Dwarf_Unsigned prev_line = 0, cur_line;
 
 std::map <target_ulong, OsiProc> running_procs;
-std::map<std::string,std::pair<Dwarf_Addr,Dwarf_Addr>> functions;
+//std::map<std::string,std::pair<Dwarf_Addr,Dwarf_Addr>> functions;
 std::map<Dwarf_Addr,std::string> funcaddrs;
-std::map<Dwarf_Addr,std::string> funcaddrs_ret;
+//std::map<Dwarf_Addr,std::string> funcaddrs_ret;
 std::map<Dwarf_Addr,std::string> funcparams;
 std::map<std::string, Dwarf_Addr> dynl_functions;
 std::set<std::string> mods_seen;
@@ -87,9 +108,53 @@ std::set<std::string> mods_seen;
 //std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>> all_variables;
 std::map<Dwarf_Addr,std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>>> funcvars;
 std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>> global_var_list;
+std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>> local_var_list;
 std::map<Dwarf_Addr, std::tuple<std::string, std::string>> addrVarMapping;
 std::map<Dwarf_Addr,std::vector<Dwarf_Addr>> funct_to_var_addrs;
-std::map<Dwarf_Addr,Dwarf_Addr> lowpc_to_highpc;
+std::map<Dwarf_Addr,Dwarf_Addr> highpc_to_lowpc;
+std::vector<Dwarf_Unsigned> line_vector;
+//                      lowpc       highpc        line no       filename  function addr
+std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+
+
+bool sortRange(std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x1,
+               std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x2){
+    return std::get<0>(x1) <  std::get<0>(x2) ||
+           std::get<1>(x1) <  std::get<1>(x2);
+}
+
+struct CompareRangeAndPC
+{
+    bool operator () (const std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &ln_info,
+                    const Dwarf_Addr &pc) const{
+        if (std::get<0>(ln_info) <= pc && std::get<1>(ln_info) > pc){
+            return 0;
+        }
+        else
+            return std::get<0>(ln_info) < pc;
+    }
+    /* 
+
+    bool operator()(const Dwarf_Addr &pc,
+                    const std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &ln_info) const{
+        if (pc >= std::get<0>(ln_info) && pc < std::get<1>(ln_info)){
+            return 1;
+        }
+        else
+            //return pc < std::get<0>(ln_info);
+            return std::get<0>(ln_info) < pc;
+    }
+    
+    bool operator()(const std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &ln_info1,
+                    const std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &ln_info2){
+        return std::get<0>(ln_info1) < std::get<0>(ln_info2);
+    }
+    
+    bool operator()(const Dwarf_Addr &pc1, const Dwarf_Addr &pc2) const {
+        return pc1 < pc2;
+    }
+    */
+};
 
 Dwarf_Addr prev_pc = 0;
 uint32_t prev_pc_count = 0;
@@ -371,7 +436,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
     // didn't want to use a do/while loop here, so used this awful looking start variable :/
     while ((tag == DW_TAG_pointer_type  ||
             tag == DW_TAG_typedef       || 
-            tag == DW_TAG_array_type || 
+            tag == DW_TAG_array_type    || 
             tag == DW_TAG_volatile_type || 
             tag == DW_TAG_const_type)   || start)
     {
@@ -407,7 +472,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
                     Dwarf_Die struct_child;
                     if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                     {    
-                        printf("  Couldn't parse struct\n");
+                        //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
                         return std::make_pair(type_name + std::string(num_derefs, '*'), argname);
                         //return;
                     }
@@ -481,7 +546,8 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
     return std::make_pair(type_name + std::string(num_derefs, '*'), argname + arrays);
 }
 
-int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdesclist_copy, Dwarf_Signed *loccnt, uint64_t base_address, bool needs_reloc) {
+// relocates the address range for DW_OP_ADDRs and the "live ranges" for each variable
+int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdesclist_copy, Dwarf_Signed *loccnt, uint64_t base_address, uint64_t cu_base_address,bool needs_reloc) {
     //printf("Found a variable huah\n");
     Dwarf_Error err;
     Dwarf_Bool hasLocation;
@@ -514,25 +580,28 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdes
                 // for variable "liveness" - this is a different usage of word live than typical uses
                 // live in this context means that the value at the location of the variable
                 // represents the actual value of the variable
-                if (needs_reloc){
-                    // if lo = 0 and hi = 0xffffffff then variable is "live" for total scope of program
-                    // if hipc and lopc both equal 0 than object has been optimized out
-                    // if hi is 0xffffffff and lo does't equal 0 then this will add base address to hi
-                    // im basically assuming that hi will not be 0xffffffff unless the variable is
-                    // live for all scope of program
-                    if ((Dwarf_Addr) -1 != (*locdesclist_copy)[i]->ld_hipc && 0x0 != (*locdesclist_copy)[i]->ld_lopc){
+                // if lo = 0 and hi = 0xffffffff then variable is "live" for total scope of function
+                // if hipc and lopc both equal 0 than object has been optimized out
+                // if hi is 0xffffffff and lo does't equal 0 then this will add base address to hi
+                // im basically assuming that hi will not be 0xffffffff unless the variable is
+                // live for all scope of program
+                if ((Dwarf_Addr) -1 != (*locdesclist_copy)[i]->ld_hipc && 0x0 != (*locdesclist_copy)[i]->ld_lopc){
+                    if (needs_reloc){
                         (*locdesclist_copy)[i]->ld_lopc += base_address;
                         (*locdesclist_copy)[i]->ld_hipc += base_address;
+                        for (j = 0; j < (*locdesclist_copy)[i]->ld_cents; j++){
+                            if ((*locdesclist_copy)[i]->ld_s[j].lr_atom == DW_OP_addr)
+                                (*locdesclist_copy)[i]->ld_s[j].lr_number += base_address;
+                        }
                     }
-                    for (j = 0; j < (*locdesclist_copy)[i]->ld_cents; j++){
-                        if (locdesclist[i]->ld_s[j].lr_atom == DW_OP_addr)
-                            locdesclist[i]->ld_s[j].lr_number += base_address;
-                    }
+                    // we also have to add the CU base address for address ranges, but not for any other relocation.  Weird
+                    (*locdesclist_copy)[i]->ld_lopc += cu_base_address;
+                    (*locdesclist_copy)[i]->ld_hipc += cu_base_address;
                 }
                 //printf("{ %llx-%llx ", (*locdesclist_copy)[i]->ld_lopc, (*locdesclist_copy)[i]->ld_hipc);
                 // dwarf_formexprloc(attr, exprnlen, block_ptr,err)
                 //load_section(dbg, locdesclist[i]->ld_section_offset, &elem_loc_expr, &err);
-                process_dwarf_locs((*locdesclist_copy)[i]->ld_s, (*locdesclist_copy)[i]->ld_cents);
+                //process_dwarf_locs((*locdesclist_copy)[i]->ld_s, (*locdesclist_copy)[i]->ld_cents);
                 //printf("}");
             }
             //printf("]\n");
@@ -545,7 +614,9 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdes
 }
 
 void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
-        const char *basename, uint64_t base_address, bool needs_reloc) {
+        const char *basename,  uint64_t base_address,uint64_t cu_base_address, bool needs_reloc,
+        std::map<Dwarf_Addr, Dwarf_Unsigned> addr_to_line, std::map<Dwarf_Unsigned, Dwarf_Addr> line_to_addr,
+        std::vector<Dwarf_Unsigned>){
     char* die_name = 0;
     Dwarf_Error err;
     Dwarf_Half tag;
@@ -578,8 +649,13 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         /* We only take some of the attributes for display here.
         ** More can be picked with appropriate tag constants.
         */
-        if (attrcode == DW_AT_low_pc)
+        if (attrcode == DW_AT_low_pc){
             dwarf_formaddr(attrs[i], &lowpc, 0);
+            // address is line of function + 1
+            // in order to skip past function prologue
+            
+            //die("Error: line %d, address: 0x%llx, function %s\n", j, lowpc_before_prol, die_name);
+        }
         else if (attrcode == DW_AT_high_pc) {
             enum Dwarf_Form_Class fc = DW_FORM_CLASS_UNKNOWN;
             Dwarf_Half theform = 0;
@@ -598,6 +674,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             dwarf_formaddr(attrs[i], &highpc, 0);
             if (fc == DW_FORM_CLASS_CONSTANT)
                 highpc += lowpc;
+            
             found_highpc = true;
         }
     }
@@ -607,19 +684,28 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             lowpc += base_address;
             highpc += base_address;
         }
-        functions[std::string(basename)+"!"+die_name] = std::make_pair(lowpc, highpc);
+        //functions[std::string(basename)+"!"+die_name] = std::make_pair(lowpc, highpc);
+        auto lineToFuncAddress = [lowpc, highpc](std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &x){
+                // make sure low address for line is higher than address of function
+                // this will ensure that the line is PAST the function prologue
+                if (std::get<0>(x) < highpc && std::get<0>(x) > lowpc){
+                    std::get<4>(x) = lowpc;
+                }
+        };
+        std::for_each(line_range_list.begin(), line_range_list.end(), lineToFuncAddress);
         funcaddrs[lowpc] = std::string(basename) + "!" + die_name;
-        funcaddrs_ret[highpc] = std::string(basename) + "!" + die_name;
-        //lowpc_to_highpc[lowpc] = highpc;
+        highpc_to_lowpc[highpc] = lowpc;
     }
     else {
+        return;
         if (dynl_functions.find(std::string(basename) + ":plt!" + std::string(die_name)) != dynl_functions.end()){
             lowpc = dynl_functions[std::string(basename) + ":plt!" + std::string(die_name)] + base_address;
             //printf(" found a plt function defintion for %s\n", basename);
             funcaddrs[lowpc] = std::string(basename) + ":plt!" + std::string(die_name);
         }
         else {
-            //printf("No address for %s in dwarf information or .plt\n", die_name);
+            //die("Error no dwarf or .plt inforamtion for %s\n", die_name);
+            return;
         }
     }
 
@@ -633,6 +719,8 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         return;
     }
     /* Now go over all children DIEs */
+    Dwarf_Locdesc **locdesclist_copy;
+    Dwarf_Signed loccnt;
     do {
         if (dwarf_tag(arg_child, &tag, &err) != DW_DLV_OK) {
             die("Error in dwarf_tag\n");
@@ -643,19 +731,24 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             // pushes name and type information for paramater into params vector
             //getNameAndTypeFromDie(dbg, arg_child, &params);
             type_argname = getNameAndTypeFromDie(dbg, arg_child);
+            if (-1 == get_die_loc_info(dbg, arg_child, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                // value is likely optimized out, so has no location
+                //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+            }else {
+                var_list.push_back(make_tuple(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+            }
             params.push_back(type_argname.first + " " + type_argname.second);
         }
         else if (tag == DW_TAG_unspecified_parameters) 
             params.push_back("...");
         else if (tag == DW_TAG_variable){
-            Dwarf_Locdesc **locdesclist_copy;
-            Dwarf_Signed loccnt;
-            type_argname = getNameAndTypeFromDie(dbg, arg_child);
-            if (-1 == get_die_loc_info(dbg, arg_child, &locdesclist_copy,&loccnt, base_address, needs_reloc)){
-                printf("Var [%s] has no loc\n", type_argname.second.c_str());
+           type_argname = getNameAndTypeFromDie(dbg, arg_child);
+            if (-1 == get_die_loc_info(dbg, arg_child, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                // value is likely optimized out, so has no location
+                //printf("Var [%s] has no loc\n", type_argname.second.c_str());
             }else {
                 var_list.push_back(make_tuple(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
-            }
+            } 
         }
 
         rc = dwarf_siblingof(dbg, arg_child, &arg_child, &err);
@@ -692,12 +785,61 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
                 &address_size,
                 &next_cu_header,
                 &err) != DW_DLV_NO_ENTRY) {
-
         /* Expect the CU to have a single sibling - a DIE */
         if (dwarf_siblingof(dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
             die("Error getting sibling of CU\n");
             continue;
         }
+        Dwarf_Line *dwarf_lines;
+        Dwarf_Signed line_count;
+        
+        Dwarf_Addr cu_base_address;
+        Dwarf_Attribute cu_loc_attr;
+        if (dwarf_attr(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
+            //printf("CU did not have  low pc.  Setting to 0 . . .\n");
+            cu_base_address=0;
+        }
+        else{
+            dwarf_formaddr(cu_loc_attr, &cu_base_address, 0);
+            //printf("CU did have low pc 0x%llx\n", cu_base_address);
+        } 
+        std::map<Dwarf_Addr, Dwarf_Unsigned> addr_to_line;
+        std::map<Dwarf_Unsigned, Dwarf_Addr> line_to_addr;
+        int i;
+        if (DW_DLV_OK == dwarf_srclines(cu_die, &dwarf_lines, &line_count, &err)){
+            char *filenm;
+            char *filenm_copy;
+            if (line_count > 0){
+                dwarf_linesrc(dwarf_lines[0], &filenm, &err);
+                filenm_copy = (char *) malloc(strlen(filenm)+1);
+                strcpy(filenm_copy, filenm);
+            }
+            for (i = 1; i < line_count; i++){
+                Dwarf_Addr line_addr;
+                Dwarf_Addr prev_line_addr;
+                Dwarf_Unsigned line_num;
+                Dwarf_Unsigned prev_line_num;
+                dwarf_lineaddr(dwarf_lines[i-1], &prev_line_addr, &err);
+                dwarf_lineaddr(dwarf_lines[i], &line_addr, &err);
+                dwarf_lineno(dwarf_lines[i-1], &prev_line_num, &err);
+                dwarf_lineno(dwarf_lines[i], &line_num, &err);
+                addr_to_line[line_addr] = line_num;
+                line_to_addr[line_num]  = line_addr;
+                line_vector.push_back(line_num);
+                //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+                if (needs_reloc){
+                    line_range_list.push_back(std::make_tuple(base_address+prev_line_addr, base_address+line_addr,
+                                                              prev_line_num, filenm_copy, 0));
+                }
+                else{
+                    line_range_list.push_back(std::make_tuple(prev_line_addr, line_addr, prev_line_num, filenm_copy, 0));
+                }
+                //printf("line no: %lld at addr: 0x%llx\n", line_num, line_addr); 
+                
+            }
+        }
+        else
+            printf("Could not get get function line number\n");
 
         /* Expect the CU DIE to have children */
         if (dwarf_child(cu_die, &child_die, &err) == DW_DLV_ERROR) {
@@ -713,21 +855,24 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
                 die("Error in dwarf_tag\n");
 
-            if (tag == DW_TAG_subprogram)
-                load_func_from_die(dbg, child_die, basename, base_address, needs_reloc);
+            if (tag == DW_TAG_subprogram){
+                load_func_from_die(dbg, child_die, basename, base_address, cu_base_address, needs_reloc, addr_to_line, line_to_addr, line_vector);
+            }
             else if (tag == DW_TAG_variable){
 
                 Dwarf_Locdesc **locdesclist_copy=NULL;
                 Dwarf_Signed loccnt;
                 type_argname = getNameAndTypeFromDie(dbg, child_die);
-                if (-1 == get_die_loc_info(dbg, child_die, &locdesclist_copy,&loccnt, base_address, needs_reloc)){
-                    printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                if (-1 == get_die_loc_info(dbg, child_die, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                    // value is likely optimized out
+                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
                 }
                 else{
                     global_var_list.push_back(make_tuple(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
                     // add var to global addr mapping if it is DW_OP_addr
                     if (locdesclist_copy[0]->ld_s[0].lr_atom == DW_OP_addr){
-                        addrVarMapping[locdesclist_copy[0]->ld_s[0].lr_number] = (make_tuple(type_argname.first,type_argname.second));
+                            addrVarMapping[locdesclist_copy[0]->ld_s[0].lr_number] = (make_tuple(type_argname.first,
+                                                                                                 type_argname.second));
                     }
                 }
             }
@@ -742,8 +887,14 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
                 break; /* done */
             }
         }
+        addr_to_line.clear();
+        line_to_addr.clear();
+        line_vector.clear();
     }
+    // sort the line number ranges
+    std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     printf("Successfully loaded debug symbols for %s\n", basename);
+    printf("Number of address range to line mappings: %lu num globals: %lu\n", line_range_list.size(), global_var_list.size());
 }
 
 bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_address, bool needs_reloc) {
@@ -800,10 +951,20 @@ bool correct_asid(CPUState *env) {
     return true;
 }
 
-void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr){
+void on_library_load(CPUState *env, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
     if (!correct_asid(env)) return;
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
+    std::string lib = std::string(guest_lib_name);
+    std::size_t found = lib.find(guest_debug_path);
+    if (found == std::string::npos){
+        return;
+    }
+    //lib.replace(found, found+strlen(guest_debug_path), host_debug_path);
+    std::string host_lib = lib.substr(0, found) +
+                           host_debug_path +
+                           lib.substr(found+strlen(guest_debug_path));
+    char *lib_name = strdup(host_lib.c_str());
     printf("Trying to load symbols for %s at 0x%x.\n", lib_name, base_addr);
     printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
     if (access(lib_name, F_OK) == -1) {
@@ -850,7 +1011,7 @@ void ensure_dbg_initialized(CPUState *env) {
             if (mods_seen.find(m->name) != mods_seen.end()) continue;
             mods_seen.insert(m->name);
             //printf("Trying to load symbols for %s at %#x.\n", m->name, m->base);
-            sprintf(fname, "%s/%s", debug_path, m->name);
+            sprintf(fname, "%s/%s", host_debug_path, m->name);
             printf("access(%s, F_OK): %x\n", fname, access(fname, F_OK));
             if (access(fname, F_OK) == -1) {
                 //fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
@@ -869,7 +1030,7 @@ void ensure_dbg_initialized(CPUState *env) {
         //}
     }
 }
-
+// not called at the moment
 void add_var_if_live(CPUState *env, target_ulong pc, std::string var_type, std::string var_name, Dwarf_Locdesc **locdesc, Dwarf_Signed loc_cnt){
     int i;
     if (funct_to_var_addrs.find(pc) == funct_to_var_addrs.end()){
@@ -878,11 +1039,14 @@ void add_var_if_live(CPUState *env, target_ulong pc, std::string var_type, std::
     for (i=0; i < loc_cnt; i++){
         //if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc && locdesc[i]->ld_hipc != 0xffffffff && locdesc[i]->ld_lopc != 0){
        if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
-            target_ulong var_loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, ESP+4);
+            target_ulong var_loc;
+            LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, EBP+4, &var_loc);
             //printf(" Adding VAR live range: %llx - %llx: var <%s %s>", locdesc[i]->ld_lopc,locdesc[i]->ld_hipc,var_type.c_str(), var_name.c_str());
             // prints the locexpr for a loc_list
-            addrVarMapping[var_loc] = make_tuple(var_type, var_name);
-            funct_to_var_addrs[pc].push_back(var_loc);
+            if (loc_type == LocMem){
+                addrVarMapping[var_loc] = make_tuple(var_type, var_name);
+                funct_to_var_addrs[pc].push_back(var_loc);
+            }
             //printf (" {");
             //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
             //printf ("}");
@@ -891,7 +1055,7 @@ void add_var_if_live(CPUState *env, target_ulong pc, std::string var_type, std::
         } 
     }
 }
-
+// not called at the moment
 void update_live_vars(CPUState *env, target_ulong pc){
     //std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>>::iterator it;
     Dwarf_Locdesc **locdesc;
@@ -939,7 +1103,12 @@ void on_call(CPUState *env, target_ulong pc) {
     //}
 }
 
+void on_call2(CPUState *env, target_ulong pc) {
+    return;
+}
 void on_ret(CPUState *env, target_ulong func) {
+    if (!correct_asid(env)) return;
+    //printf(" on_ret address: %x\n", func);
     if (funcaddrs.find(func) != funcaddrs.end()){
         //printf("Returning from function: %s\n", funcaddrs[func].c_str());
         for(auto it = funct_to_var_addrs[func].begin(); it != funct_to_var_addrs[func].end(); it++){
@@ -950,6 +1119,171 @@ void on_ret(CPUState *env, target_ulong func) {
 }
 
 
+bool translate_callback_dwarf(CPUState *env, target_ulong pc) {
+    if (!correct_asid(env)) return false;
+    // from previous translate callback
+    //return funcaddrs.find(pc) != funcaddrs.end() || highpc_to_lowpc.find(pc) != highpc_to_lowpc.end();
+    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+    
+    auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    /*
+    auto addressInRange = [pc](std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x) { 
+        return pc >= std::get<0>(x) && pc < std::get<1>(x);
+    };
+    auto it = find_if(line_range_list.begin(), line_range_list.end(), addressInRange);
+    if (it == line_range_list.end())
+        return false;
+    */
+    /*
+    printf(" pc: 0x%x, addr1: 0x%llx-0x%llx addr2: 0x%llx-0x%llx\n", pc,std::get<0>(*it), std::get<1>(*it),
+            std::get<0>(*it2), std::get<1>(*it2)); 
+    //printf(" pc: 0x%x, addr2: 0x%llx-0x%llx\n", pc, std::get<0>(*it2), std::get<1>(*it2)); 
+    if (std::get<0>(*it) != std::get<0>(*it2)) {
+        auto before_it1 = it - 1;
+        auto after_it1 = it + 1;
+        auto before_it2 = it2 - 1;
+        auto after_it2 = it2 + 1;
+        printf(" before linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
+                std::get<0>(*before_it1), std::get<1>(*before_it1),
+                std::get<0>(*before_it2), std::get<1>(*before_it2)); 
+        printf(" after linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
+                std::get<0>(*after_it1), std::get<1>(*after_it1),
+                std::get<0>(*after_it2), std::get<1>(*after_it2)); 
+        abort();
+    }
+    */
+    if (pc < std::get<0>(*it2) || it2 == line_range_list.end())
+        return false;
+    
+
+    return true;
+
+}
+// where f is, for example . . . 
+/*
+std::vector<std::tuple<std::string, std::string, LocType, target_ulong>> live_vars;
+auto push_var_if_live = [&live_vars](std::string var_ty, std::string var_nm, LocType loc_t, target_ulong loc){
+    live_vars.push_back(std::make_tuple(var_ty, var_nm,loc_t, loc)); 
+};
+*/
+
+void livevar_iter(CPUState *env,
+        target_ulong pc,
+        std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>> vars, 
+        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+        //void (*f)(std::string, std::string, LocType, target_ulong)){
+    //for (auto it=vars.begin(); it != vars.end(); ++it){
+    for (auto it : vars){
+        std::string var_type    = std::get<0>(it);
+        std::string var_name    = std::get<1>(it);
+        Dwarf_Locdesc **locdesc = std::get<2>(it);
+        Dwarf_Signed loc_cnt    = std::get<3>(it);
+        for (int i=0; i < loc_cnt; i++){
+            //printf("var active in range 0x%llx - 0x%llx\n", locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
+            if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
+                //enum LocType { LocReg, LocMem, LocConst, LocErr };
+                target_ulong var_loc;
+                //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
+                //printf("\n");
+                LocType loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, EBP+4, &var_loc);
+                switch (loc){
+                    case LocReg:
+                        //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
+                        break;
+                    case LocMem:
+                        //printf(" VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
+                        break;
+                    case LocConst:
+                        //printf(" VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
+                        break;
+                    case LocErr:
+                        //printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
+                        break;
+                }
+                f(var_type.c_str(), var_name.c_str(),loc, var_loc); 
+                //live_vars_for_cb.push_back(std::make_tuple(var_type, var_name,loc, var_loc)); 
+            }
+        }
+    }
+    return;
+}
+void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
+    switch (loc_t){
+        case LocReg:
+            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            break;
+        case LocMem:
+            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            break;
+        case LocConst:
+            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            break;
+        case LocErr:
+            printf("VAR LocErr\n");
+            break;
+    }
+    
+    //printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
+}
+/********************************************************************
+ * end PPPs
+******************************************************************** */
+void dwarf_all_livevar_iter(CPUState *env,
+        target_ulong pc,
+        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+    livevar_iter(env, pc, local_var_list, f);
+    livevar_iter(env, pc, global_var_list, f);
+}
+void dwarf_funct_livevar_iter(CPUState *env,
+        target_ulong pc,
+        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+    livevar_iter(env, pc, local_var_list, f);
+}
+void dwarf_global_livevar_iter(CPUState *env,
+        target_ulong pc,
+        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+    livevar_iter(env, pc, local_var_list, f);
+}
+int exec_callback_dwarf(CPUState *env, target_ulong pc) {
+    if (!correct_asid(env)) return 0;
+    auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    //                      lowpc       highpc        line no       filename  function addr
+    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+    
+    Dwarf_Addr function_start_pc = std::get<4>(*it2);
+    char *file_name = std::get<3>(*it2);
+    std::string funct_name = funcaddrs[function_start_pc];
+    cur_line = std::get<2>(*it2);
+    local_var_list = funcvars[function_start_pc];
+    // check to just get rid of calls to main
+    if (funcaddrs.find(function_start_pc) == funcaddrs.end())
+        return 0;
+    if (function_start_pc == 0)
+        return 0;
+    if (funcaddrs[function_start_pc].find("tshark!main") != std::string::npos)
+        return 0;
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,function_start_pc, funct_name.c_str(),cur_line,pc);
+    //dwarf_livevar_iter(env, pc, funcvars[function_start_pc], push_var_if_live);
+    //dwarf_livevar_iter(env, pc, global_var_list, push_var_if_live);
+    //dwarf_livevar_iter(env, pc, global_var_list, print_var_if_live);
+    if (cur_line != prev_line){
+        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
+        //dwarf_livevar_iter(env, pc,pfun); 
+        stpi_runcb_on_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
+        PPP_RUN_CB(on_dwarfp_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
+    } 
+    //if (funcaddrs.find(pc) != funcaddrs.end()){
+    //    on_call(env, pc);
+    //}
+    //else if (highpc_to_lowpc.find(pc) != highpc_to_lowpc.end()){
+    //    on_ret(env, highpc_to_lowpc[pc]);
+    //}
+    prev_line = cur_line; 
+    return 0;
+}
+/********************************************************************
+ * end PPPs
+******************************************************************** */
 
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
@@ -972,7 +1306,8 @@ int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulo
     if (addrVarMapping.find(addr) != addrVarMapping.end()){
         std::string var_type = std::get<0>(addrVarMapping[addr]);
         std::string var_name = std::get<1>(addrVarMapping[addr]);
-        printf("Virtual write to addr: 0x%x.  Var %s %s\n", addr, var_type.c_str(), var_name.c_str()); 
+        // mapping of addrs to <line num, filenams>
+        //printf("Virtual write to addr: 0x%x.  Var %s %s\n", addr, var_type.c_str(), var_name.c_str());
     }
     return 0;
 }
@@ -981,7 +1316,7 @@ int virt_mem_read(CPUState *env, target_ulong pc, target_ulong addr, target_ulon
     if (addrVarMapping.find(addr) != addrVarMapping.end()){
         std::string var_type = std::get<0>(addrVarMapping[addr]);
         std::string var_name = std::get<1>(addrVarMapping[addr]);
-        printf("Virtual read to addr: 0x%x.  Var %s %s\n", addr, var_type.c_str(), var_name.c_str()); 
+        //printf("Virtual read to addr: 0x%x.  Var %s %s\n", addr, var_type.c_str(), var_name.c_str()); 
     }
     return 0;
 }
@@ -1019,25 +1354,55 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
     
     return 0;
 }
+
+
 #endif
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    panda_arg_list *args = panda_get_args("dwarf");
-    debug_path = panda_parse_string(args, "debugpath", "dbg");
+    panda_arg_list *args = panda_get_args("dwarfp");
+    guest_debug_path = panda_parse_string(args, "g_debugpath", "dbg");
+    host_debug_path = panda_parse_string(args, "h_debugpath", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
+    // panda plugin plugin includes
     panda_require("callstack_instr");
-    panda_require("osi_linux");
-    assert(init_osi_linux_api());
     panda_require("osi");
-    assert(init_osi_api());
     panda_require("loaded");
+    panda_require("stpi");
+    
+    //panda_require("osi_linux");
+    // make available the api for 
+    assert(init_osi_linux_api());
+    assert(init_osi_api());
+    assert(init_stpi_api());
 
     panda_enable_precise_pc();
     panda_enable_memcb();
-    
-    PPP_REG_CB("callstack_instr", on_call, on_call);
-    PPP_REG_CB("callstack_instr", on_ret, on_ret);
-    std::string bin_path = std::string(debug_path) + "/" + proc_to_monitor;
+    // we may want to change back to using on_call and on_ret CBs 
+    //PPP_REG_CB("callstack_instr", on_call, on_call2);
+    //PPP_REG_CB("callstack_instr", on_ret, on_ret);
+    std::string bin_path;
+    struct stat s;
+    if (stat(host_debug_path, &s) != 0){
+        printf("host_debug path does not exist. exiting . . .\n");
+        exit(1);
+    }
+    // host_debug_path is a dir
+    // if debug path doesn't point to a file assume debug path points to an install
+    // directory on host machine, so add '/bin/' in order to get the main executable
+    if (s.st_mode & S_IFDIR) {
+        bin_path = std::string(host_debug_path) + "/bin/" + proc_to_monitor;
+    }
+    // if debug path actually points to a file, then make host_debug_path the
+    // directory that contains the executable
+    else if (s.st_mode & S_IFREG) {
+        bin_path = std::string(host_debug_path);
+        //host_debug_path = dirname(strdup(host_debug_path));
+        host_debug_path = dirname(strdup(host_debug_path));
+    }
+    else {
+        printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path);
+        exit(1);
+    }
     printf("opening debug info for starting binary %s\n", bin_path.c_str());
     elf_get_baseaddr(bin_path.c_str(), proc_to_monitor);
     if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
@@ -1046,16 +1411,23 @@ bool init_plugin(void *self) {
     }
     
     {
-        panda_cb pcb;
-        pcb.before_block_exec = osi_foo;
-        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-        pcb.virt_mem_write = virt_mem_write;
-        panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb);
-        pcb.virt_mem_read = virt_mem_read;
-        panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb);
+        panda_cb pcb_dwarf;
+        pcb_dwarf.before_block_exec = osi_foo;
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb_dwarf);
+        pcb_dwarf.virt_mem_write = virt_mem_write;
+        panda_register_callback(self, PANDA_CB_VIRT_MEM_WRITE, pcb_dwarf);
+        pcb_dwarf.virt_mem_read = virt_mem_read;
+        panda_register_callback(self, PANDA_CB_VIRT_MEM_READ, pcb_dwarf);
+        pcb_dwarf.insn_translate = translate_callback_dwarf;
+        panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb_dwarf);
+        pcb_dwarf.insn_exec = exec_callback_dwarf;
+        panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb_dwarf);
     }
-    
+     
     PPP_REG_CB("loaded", on_library_load, on_library_load);
+    PPP_REG_CB("stpi", on_all_livevar_iter, dwarf_all_livevar_iter);
+    PPP_REG_CB("stpi", on_funct_livevar_iter, dwarf_funct_livevar_iter);
+    PPP_REG_CB("stpi", on_global_livevar_iter, dwarf_global_livevar_iter);
     return true;
 #else
     printf("Dwarf plugin not supported on this architecture\n");

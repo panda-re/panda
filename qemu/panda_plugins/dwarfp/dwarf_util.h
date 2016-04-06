@@ -5,6 +5,8 @@
 #include<libdwarf.h>
 #include<panda_plugin.h>
 #include<dwarf.h>
+#include"../stpi/stpi_types.h"
+//#include"dwarfp_types.h"
 
 /*
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
@@ -708,11 +710,11 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
     }
 }
 
-
-/* Decode a DW_OP stack program.  Return the top of stack.  Push INITIAL
-   onto the stack to start.  */
-target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
-        Dwarf_Half loc_cnt, target_ulong frame_ptr)
+/* Decode a DW_OP stack program.  Place top of stack in ret_loc.  Push INITIAL
+   onto the stack to start.  Return the location type: memory address, register,
+   or const value representing value of variable*/
+LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
+        Dwarf_Half loc_cnt, target_ulong frame_ptr, target_ulong *ret_loc)
 {
     //printf("\n {");
     //process_dwarf_locs(loc_list, loc_cnt);
@@ -720,6 +722,7 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
     target_ulong stack[64];	/* ??? Assume this is enough.  */
     int stack_elt, loc_idx, i;
     unsigned int next_offset;
+    bool inReg = false;
     Dwarf_Small op;
     //stack[0] = initial;
     stack[0] = 0;
@@ -860,11 +863,15 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
             case DW_OP_reg29:
             case DW_OP_reg30:
             case DW_OP_reg31:
-                result = getReg (env, op - DW_OP_reg0);
+                //result = getReg (env, op - DW_OP_reg0);
+                result = op - DW_OP_reg0;
+                inReg = true;
                 break;
             case DW_OP_regx:
                 reg = cur_loc->lr_number;
-                result = getReg (env, reg);
+                //result = getReg (env, reg);
+                result = reg;
+                inReg = true;
                 break;
 
             case DW_OP_breg0:
@@ -950,7 +957,8 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
             case DW_OP_stack_value:
                 if (stack_elt < 1)
                     assert (1==0);
-                return stack[stack_elt - 1];
+                *ret_loc = stack[stack_elt - 1];
+                return LocConst;
                 break;
             case DW_OP_rot:
                 {
@@ -970,12 +978,12 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
             // converts arg on top of stack to said base type
             case DW_OP_GNU_convert:
             case DW_OP_convert:
-                printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Retruning 0\n");
-                return 0;
+                printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning 0\n");
+                return LocErr;
             case DW_OP_piece:
             case DW_OP_bit_piece:
-                printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Retruning 0\n");
-                return 0;
+                printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning 0\n");
+                return LocErr;
             case DW_OP_deref:
             case DW_OP_deref_size:
             case DW_OP_deref_type:
@@ -1020,7 +1028,7 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
                     case DW_OP_GNU_deref_type:
                     case DW_OP_deref_type:
                         printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
-                        return 0;
+                        return LocErr;
                     case DW_OP_abs:
                         if ((target_long) result < 0)
                             result = -result;
@@ -1159,7 +1167,9 @@ target_ulong execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_lis
                 goto no_push;
 
             default:
-                assert (1==0);
+                process_dwarf_locs(loc_list, loc_cnt);
+                return LocErr; 
+                //assert (1==0);
         }
 
         /* Most things push a result value.  */
@@ -1173,7 +1183,13 @@ no_push:;
        at top of stack.  */
     if (--stack_elt < 0)
         assert (1==0);
-    return stack[stack_elt];
+    
+    *ret_loc = stack[stack_elt];
+    if (inReg)
+        return LocReg;
+    else
+        return LocMem;
+    //return stack[stack_elt];
 }
 
 #endif

@@ -48,6 +48,10 @@ pmemaccess
 #net_taint
 rehosting
 coverage
-dwarf
-strace
+#test_stpi
+stpi
+dwarfp
+#dwarf_taint
+dwarf_simple
+#strace
 loaded

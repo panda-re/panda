@@ -438,6 +438,15 @@ static int returned_check_callback(CPUState *env, TranslationBlock* tb){
 // This will only be called for instructions where the
 // translate_callback returned true
 int exec_callback(CPUState *env, target_ulong pc) {
+    unsigned char buf[2] = {};
+    panda_virtual_memory_rw(env, pc, buf, 2, 0);
+    // Check if the instruction is syscall (0F 05)
+    if (!((buf[0]== 0x0F && buf[1] == 0x05) ||
+          (buf[0]== 0xCD && buf[1] == 0x80) ||
+          (buf[0]== 0x0F && buf[1] == 0x34)))
+    {
+        return 0;
+    }
     // run any code we need to update our state
     for(const auto callback : preExecCallbacks){
         callback(env, pc);
