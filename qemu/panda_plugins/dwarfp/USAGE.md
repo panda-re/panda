@@ -1,137 +1,38 @@
-Plugin: osi
+Plugin: dwarfp
 ===========
 
 Summary
 -------
 
-The `osi` module forms the core of PANDA's OS-specific introspection support. The `osi` plugin itself acts as a glue layer, offering a uniform API that can be called by plugins without that plugin needing to know anything about the underlying operating system. An OSI provider plugin then implements the necessary functionality for each operating system.
-
-Expressed graphically, this arrangement looks like:
-
-    +-------------------+  +-------------------+
-    |    Your Plugin    |  |    Your Plugin    |
-    +-------------------+  +-------------------+
-    |        osi        |  |        osi        |
-    +-------------------+  +-------------------+
-    |     osi_linux     |  |    win7x86intro   |
-    +-------------------+  +-------------------+
-
-The key is that you can swap out the bottom layer to support a new operating system without needing to modify your plugin.
+The `dwarp` plugin is a provider plugin for `stpi` (see [stpi](stpi/USAGE.md)).  It examines dwarf information for an executable using `libdwarf.h`, `dwarf.h` and `elf.h`.  The plugin also hooks mmap syscalls using the `loaded` plugin (see [loaded](loaded/loaded.cpp)) in order to find shared objects loaded during the lifetime of a program's execution.  At these load points, `dwarfp` will load the dwarf information for the .so file if such information exists.
 
 Arguments
 ---------
 
-None.
+* `g_debugpath`: string, defaults to "dbg". The path to the debugging file on the guest.
+* `h_debugpath`: string, defaults to "dbg". The path to the debugging file on the host.
+* `proc`: string, defaults to "None". The name of the process to monitor using DWARF information.
 
 Dependencies
 ------------
 
-Depends on some OS-specific plugin to register callbacks that implement the various APIs OSI exposes. Otherwise, any call to OSI will simply fail to return any useful data, as the OSI plugin itself does not know anything about specific operating systems.
+Requires `osi` and an `osi` provider plugin.  Furthermore it requires `loaded` (hopefully this will end up in `osi`).
 
 APIs and Callbacks
 ------------------
 
-To implement OS-specific introspection support, an OSI provider should register the following callbacks:
-
-Name: **on_get_processes**
-
-Signature: `typedef void (*on_get_processes_t)(CPUState *, OsiProcs **)`
-
-Description: Called to get the process list from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProcs` struct. The returned list can be freed with `on_free_osiprocs`.
-
-Name: **on_get_current_process**
-
-Signature: `typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)`
-
-Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
-
-Name: **on_get_modules**
-
-Signature: `typedef void (*on_get_modules_t)(CPUState *, OsiModules **)`
-
-Description: Called to get the list of kernel modules loaded in the guest. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
-
-Name: **on_get_libraries**
-
-Signature: `typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, OsiModules**)`
-
-Description: Called to get the list of shared libraries loaded for some particular process in the guest. The process should be an `OsiProc` previously returned by `on_get_current_process` or `on_get_processes`. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
-
-Name: **on_free_osiproc**
-
-Signature: `typedef void (*on_free_osiproc_t)(OsiProc *p)`
-
-Description: Frees an `OsiProc` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
-
-Name: **on_free_osiprocs**
-
-Signature: `typedef void (*on_free_osiprocs_t)(OsiProcs *ps)`
-
-Description: Frees an `OsiProcs` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
-
-Name: **on_free_osimodules**
-
-Signature: `typedef void (*on_free_osimodules_t)(OsiModules *ms)`
-
-Description: Frees an `OsiModules` structure. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
-
----------------
-
-In addition, there are two callbacks intended to be used by `osi` *users*, rather than by introspection providers:
-
-Name: **on_new_process**
-
-Signature: `typedef void (*on_new_process_t)(CPUState *, OsiProc *)`
-
-Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
-
-Name: **on_finished_process**
-
-Signature: `typedef void (*on_finished_process_t)(CPUState *, OsiProc *)`
-
-Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.
-
-Data structures used by OSI:
-
-    // Represents a page of memory
-    typedef struct osi_page_struct {
-        target_ulong start;
-        target_ulong len;
-    } OsiPage;
-
-    // Represents a single process
-    typedef struct osi_proc_struct {
-        target_ulong offset;
-        char *name;
-        target_ulong asid;
-        OsiPage *pages;
-        target_ulong pid;
-        target_ulong ppid;
-    } OsiProc;
-
-    // Represents a list of processes
-    typedef struct osi_procs_struct {
-        uint32_t num;
-        OsiProc *proc;
-    } OsiProcs;
-
-    // Represents a single module (userspace library or kernel module)
-    typedef struct osi_module_struct {
-        target_ulong offset;
-        char *file;
-        target_ulong base;
-        target_ulong size;
-        char *name;
-    } OsiModule;
-
-    // Represents a list of modules
-    typedef struct osi_modules_struct {
-        uint32_t num;
-        OsiModule *module;
-    } OsiModules;
-
+Provides only support for `stpi` callbacks.
 
 Example
 -------
 
-The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](osi_test/osi_test.cpp).
+Below is an example command line usage of `dwarfp`:
+
+    ~/git/panda/qemu/i386-softmmu/qemu-system-i386 -replay \
+        /nas/ulrich/dwarf_tshark_capture2/wireshark-1.2.1-saurabh.cap.iso \
+        -panda osi \
+        -panda osi_linux:kconf_file=/nas/ulrich/kernelinfo.conf,kconf_group=debian-3.2.51-i686 \
+        -panda stpi \
+        -panda dwarfp:proc=tshark,g_debugpath=/nas/ulrich/wireshark-1.2.1/lava-install/,h_debugpath=/nas/ulrich/wireshark-1.2.1/lava-install/
+
+An example implementaiton using the `dwarfp` plugin can be found at [dwarp_simple](osi_simple/osi_simple.cpp).
