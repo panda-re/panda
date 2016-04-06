@@ -49,6 +49,10 @@ void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
     //stpi_funct_livevar_iter(env, pc, pfun);
 }
+void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
+    stpi_funct_livevar_iter(env, pc, pfun);
+}
 #endif
 
 bool init_plugin(void *self) {
@@ -61,7 +65,8 @@ bool init_plugin(void *self) {
     panda_require("dwarfp");
     assert(init_dwarfp_api());
     
-    PPP_REG_CB("stpi", on_line_change, on_line_change);
+    //PPP_REG_CB("stpi", on_line_change, on_line_change);
+    PPP_REG_CB("stpi", on_fn_start, on_fn_start);
 #endif
     return true;
 }

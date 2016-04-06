@@ -13,6 +13,7 @@ void stpi_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const ch
 void stpi_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
 
 
-// Intended for use only by SPI Providers
+// Intended for use only by STPI Providers
 void stpi_runcb_on_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
 #endif

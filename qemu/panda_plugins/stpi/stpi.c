@@ -25,15 +25,18 @@ PANDAENDCOMMENT */
 #include "stpi_int_fns.h"
 #include "../osi/osi_types.h"
 #include "stpi.h"
-
+// callbacks that symbol table provider must provide functionality for
 PPP_PROT_REG_CB(on_all_livevar_iter)
 PPP_CB_BOILERPLATE(on_all_livevar_iter)
 PPP_PROT_REG_CB(on_global_livevar_iter)
 PPP_CB_BOILERPLATE(on_global_livevar_iter)
 PPP_PROT_REG_CB(on_funct_livevar_iter)
 PPP_CB_BOILERPLATE(on_funct_livevar_iter)
+// callbacks provided to client
 PPP_PROT_REG_CB(on_line_change)
 PPP_CB_BOILERPLATE(on_line_change)
+PPP_PROT_REG_CB(on_fn_start)
+PPP_CB_BOILERPLATE(on_fn_start)
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -49,9 +52,12 @@ void stpi_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
     PPP_RUN_CB(on_funct_livevar_iter, env, pc, f);
 }
 
-// callback provided to client
+// callbacks provided to client
 void stpi_runcb_on_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_line_change, env, pc, file_name, funct_name, lno);
+}
+void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+    PPP_RUN_CB(on_fn_start, env, pc, file_name, funct_name, lno);
 }
 
 bool init_plugin(void *self) {
