@@ -96,6 +96,7 @@ PPP_CB_BOILERPLATE(on_dwarfp_line_change);
 #include <boost/algorithm/string/join.hpp>
 #define MAX_FILENAME 256
 Dwarf_Unsigned prev_line = 0, cur_line;
+Dwarf_Addr cur_function = 0;
 
 std::map <target_ulong, OsiProc> running_procs;
 //std::map<std::string,std::pair<Dwarf_Addr,Dwarf_Addr>> functions;
@@ -116,6 +117,12 @@ std::vector<Dwarf_Unsigned> line_vector;
 //                      lowpc       highpc        line no       filename  function addr
 std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
 std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> fn_start_line_range_list;
+
+// don't need this, but may want it in the future
+//std::map<Dwarf_Addr, Dwarf_Unsigned> funct_to_cu_base;
+// use this to calculate a the value of a function's base pointer at a given pc
+// curfunction -> location description list for FP
+std::map<Dwarf_Addr,std::tuple<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepointers;
 
 
 bool sortRange(std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x1,
@@ -547,9 +554,12 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
     return std::make_pair(type_name + std::string(num_derefs, '*'), argname + arrays);
 }
 
+// Copies the location list for a particular attrbibute to locdesclist_copy in order to use the location information
+// at future points in the program
+// From what I have observed, attr must be either DW_AT_location or DW_AT_frame_base, but it could theoretically be 
+// any attribute that represents a location list
 // relocates the address range for DW_OP_ADDRs and the "live ranges" for each variable
-int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdesclist_copy, Dwarf_Signed *loccnt, uint64_t base_address, uint64_t cu_base_address,bool needs_reloc) {
-    //printf("Found a variable huah\n");
+int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Half attr, Dwarf_Locdesc ***locdesclist_copy, Dwarf_Signed *loccnt, uint64_t base_address, uint64_t cu_base_address,bool needs_reloc) {
     Dwarf_Error err;
     Dwarf_Bool hasLocation;
     Dwarf_Attribute locationAttr;
@@ -557,10 +567,10 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdes
     int i, j;
 
     
-    if (dwarf_hasattr(the_die, DW_AT_location, &hasLocation, &err) != DW_DLV_OK)
+    if (dwarf_hasattr(the_die, attr, &hasLocation, &err) != DW_DLV_OK)
         die("Error in dwarf attr, for determining existences of location attr\n");
     else if (hasLocation){
-        if (dwarf_attr(the_die, DW_AT_location, &locationAttr, &err) != DW_DLV_OK)
+        if (dwarf_attr(the_die, attr, &locationAttr, &err) != DW_DLV_OK)
             die("Error obtaining location attr\n");
         // dwarf_formexprloc(attr, expr_len, block_ptr, &err);
         else if (dwarf_loclist_n(locationAttr, &locdesclist, loccnt, &err) != DW_DLV_OK){
@@ -615,6 +625,7 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Locdesc ***locdes
             //printf("]\n");
             return 0;
         }
+        printf("Attribute does not have a location\n");
     }
     // does not have location attribute or error in getting location data
     return -1;
@@ -631,6 +642,9 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
     Dwarf_Attribute* attrs;
     Dwarf_Addr lowpc = 0, highpc = 0;
     Dwarf_Signed attrcount, i;
+    Dwarf_Locdesc **locdesclist_copy;
+    Dwarf_Signed loccnt;
+    
     int rc = dwarf_diename(the_die, &die_name, &err);
     if (rc == DW_DLV_ERROR)
         die("Error in dwarf_diename\n");
@@ -649,6 +663,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         die("Error in dwarf_attlist\n");
 
     bool found_highpc = false;
+    bool found_fp_info = false;
     for (i = 0; i < attrcount; ++i) {
         Dwarf_Half attrcode;
         if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
@@ -685,6 +700,15 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             
             found_highpc = true;
         }
+        else if (attrcode == DW_AT_frame_base){
+            // get where attribute frame base attribute points
+            if (-1 == get_die_loc_info(dbg, the_die, attrcode, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                printf("Was not able to get [%s] location info for it\'s frame pointer\n", die_name);
+            }
+            else{
+                found_fp_info = true;
+            }
+        }
     }
 
     if (found_highpc) {
@@ -713,6 +737,13 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         std::for_each(line_range_list.begin(), line_range_list.end(), lineToFuncAddress);
         funcaddrs[lowpc] = std::string(basename) + "!" + die_name;
         highpc_to_lowpc[highpc] = lowpc;
+        // now add functions frame pointer locaiton list funct_to_framepointers mapping
+        if (found_fp_info){
+            funct_to_framepointers[lowpc] = std::make_tuple(locdesclist_copy, loccnt);
+        }
+        else {
+            funct_to_framepointers[lowpc] = std::make_tuple((Dwarf_Locdesc **)NULL, 0);
+        }
     }
     else {
         return;
@@ -737,8 +768,6 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         return;
     }
     /* Now go over all children DIEs */
-    Dwarf_Locdesc **locdesclist_copy;
-    Dwarf_Signed loccnt;
     do {
         if (dwarf_tag(arg_child, &tag, &err) != DW_DLV_OK) {
             die("Error in dwarf_tag\n");
@@ -749,7 +778,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             // pushes name and type information for paramater into params vector
             //getNameAndTypeFromDie(dbg, arg_child, &params);
             type_argname = getNameAndTypeFromDie(dbg, arg_child);
-            if (-1 == get_die_loc_info(dbg, arg_child, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+            if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                 // value is likely optimized out, so has no location
                 //printf("Var [%s] has no loc\n", type_argname.second.c_str());
             }else {
@@ -761,7 +790,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             params.push_back("...");
         else if (tag == DW_TAG_variable){
            type_argname = getNameAndTypeFromDie(dbg, arg_child);
-            if (-1 == get_die_loc_info(dbg, arg_child, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+            if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                 // value is likely optimized out, so has no location
                 //printf("Var [%s] has no loc\n", type_argname.second.c_str());
             }else {
@@ -779,6 +808,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             break; /* done */
         }
     } while (1);
+    //funct_to_cu_base[lowpc] = cu_base_address;
     funcvars[lowpc] = var_list;
     funcparams[lowpc] = boost::algorithm::join(params, ", ");
     //printf(" %s #variables: %lu\n", funcaddrs[lowpc].c_str(), var_list.size());
@@ -881,7 +911,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
                 Dwarf_Locdesc **locdesclist_copy=NULL;
                 Dwarf_Signed loccnt;
                 type_argname = getNameAndTypeFromDie(dbg, child_die);
-                if (-1 == get_die_loc_info(dbg, child_die, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                if (-1 == get_die_loc_info(dbg, child_die, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out
                     //printf("Var [%s] has no loc\n", type_argname.second.c_str());
                 }
@@ -1050,50 +1080,28 @@ void ensure_dbg_initialized(CPUState *env) {
     }
 }
 // not called at the moment
-void add_var_if_live(CPUState *env, target_ulong pc, std::string var_type, std::string var_name, Dwarf_Locdesc **locdesc, Dwarf_Signed loc_cnt){
-    int i;
-    if (funct_to_var_addrs.find(pc) == funct_to_var_addrs.end()){
-        funct_to_var_addrs[pc] = std::vector<Dwarf_Addr> ();
+target_ulong get_cur_fp(CPUState *env, target_ulong pc){
+    if (funct_to_framepointers.find(cur_function) == funct_to_framepointers.end()){
+        return -1;
     }
-    for (i=0; i < loc_cnt; i++){
-        //if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc && locdesc[i]->ld_hipc != 0xffffffff && locdesc[i]->ld_lopc != 0){
+    Dwarf_Locdesc **locdesc = std::get<0>(funct_to_framepointers[cur_function]);
+    Dwarf_Signed loc_cnt = std::get<1>(funct_to_framepointers[cur_function]);
+    if (loc_cnt == 0 || locdesc == NULL){
+        return -1;
+    }
+    for (int i = 0; i < loc_cnt; i++){
        if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
-            target_ulong var_loc;
-            LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, EBP+4, &var_loc);
-            //printf(" Adding VAR live range: %llx - %llx: var <%s %s>", locdesc[i]->ld_lopc,locdesc[i]->ld_hipc,var_type.c_str(), var_name.c_str());
-            // prints the locexpr for a loc_list
-            if (loc_type == LocMem){
-                addrVarMapping[var_loc] = make_tuple(var_type, var_name);
-                funct_to_var_addrs[pc].push_back(var_loc);
+            target_ulong fp_loc;
+            LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, 0, &fp_loc);
+            if (loc_type != LocMem){
+                return -1;
             }
-            //printf (" {");
-            //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
-            //printf ("}");
-            //printf(" @ 0x%x\n", var_loc);
-            break;
+            return fp_loc;
         } 
     }
+    return -1;
 }
-// not called at the moment
-void update_live_vars(CPUState *env, target_ulong pc){
-    //std::vector<std::tuple<std::string, std::string, Dwarf_Locdesc**, Dwarf_Signed>>::iterator it;
-    Dwarf_Locdesc **locdesc;
-    Dwarf_Signed loc_cnt;
-    std::string var_type, var_name;
-    // frame ptr is basically ebp + 4, but b/c of unknown magic and where we are in function prologue
-    // ESP+4 is actual value of of what will be the functions frame pointer 
-    //printf(" Frame ptr: 0x%x\n", ESP + 4);
-    // int array -28 int ref -32 local_int -36
-    auto it = funcvars[pc].begin();
-    for (; it != funcvars[pc].end(); ++it){
-        var_type = std::get<0>(*it);
-        var_name = std::get<1>(*it);
-        locdesc = std::get<2>(*it);
-        loc_cnt = std::get<3>(*it);
-        add_var_if_live(env, pc, var_type, var_name, locdesc, loc_cnt);
-    }
-}
-
+// not used, but may be used
 void on_call(CPUState *env, target_ulong pc) {
     if (!correct_asid(env)) return;
     //ensure_dbg_initialized(env);
@@ -1110,9 +1118,8 @@ void on_call(CPUState *env, target_ulong pc) {
         }
         //printf("%s(%s)\n", funcaddrs[pc].c_str(), funcparams[pc].c_str());
         prev_pc = pc;
-        //if (funcaddrs[pc].find(":plt!") == std::string::npos && lowpc_to_highpc.find(pc) != lowpc_to_highpc.end()){
         if (funcaddrs[pc].find(":plt!") == std::string::npos){
-            update_live_vars(env, pc);
+            // do something
         }
     }
     // called function is in a dynamic library AND function information
@@ -1122,9 +1129,11 @@ void on_call(CPUState *env, target_ulong pc) {
     //}
 }
 
+// not used, but may be used
 void on_call2(CPUState *env, target_ulong pc) {
     return;
 }
+// not used, but may be used
 void on_ret(CPUState *env, target_ulong func) {
     if (!correct_asid(env)) return;
     //printf(" on_ret address: %x\n", func);
@@ -1197,6 +1206,11 @@ void livevar_iter(CPUState *env,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
         //void (*f)(std::string, std::string, LocType, target_ulong)){
     //for (auto it=vars.begin(); it != vars.end(); ++it){
+    target_ulong fp = get_cur_fp(env, pc);
+    if (fp == (target_ulong) -1){
+        printf("Was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
+        return;
+    }
     for (auto it : vars){
         std::string var_type    = std::get<0>(it);
         std::string var_name    = std::get<1>(it);
@@ -1209,7 +1223,7 @@ void livevar_iter(CPUState *env,
                 target_ulong var_loc;
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
-                LocType loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, EBP+4, &var_loc);
+                LocType loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
                 switch (loc){
                     case LocReg:
                         //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
@@ -1255,18 +1269,18 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
 void dwarf_all_livevar_iter(CPUState *env,
         target_ulong pc,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    livevar_iter(env, pc, local_var_list, f);
+    livevar_iter(env, pc, funcvars[cur_function], f);
     livevar_iter(env, pc, global_var_list, f);
 }
 void dwarf_funct_livevar_iter(CPUState *env,
         target_ulong pc,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    livevar_iter(env, pc, local_var_list, f);
+    livevar_iter(env, pc, funcvars[cur_function], f);
 }
 void dwarf_global_livevar_iter(CPUState *env,
         target_ulong pc,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    livevar_iter(env, pc, local_var_list, f);
+    livevar_iter(env, pc, global_var_list, f);
 }
 int exec_callback_dwarf(CPUState *env, target_ulong pc) {
     if (!correct_asid(env)) return 0;
@@ -1277,20 +1291,19 @@ int exec_callback_dwarf(CPUState *env, target_ulong pc) {
     //                      lowpc       highpc        line no       filename  function addr
     //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
     
-    Dwarf_Addr function_start_pc = std::get<4>(*it2);
+    cur_function = std::get<4>(*it2);
     char *file_name = std::get<3>(*it2);
-    std::string funct_name = funcaddrs[function_start_pc];
+    std::string funct_name = funcaddrs[cur_function];
     cur_line = std::get<2>(*it2);
-    local_var_list = funcvars[function_start_pc];
     // check to just get rid of calls to main
-    if (funcaddrs.find(function_start_pc) == funcaddrs.end())
+    if (funcaddrs.find(cur_function) == funcaddrs.end())
         return 0;
-    if (function_start_pc == 0)
+    if (cur_function == 0)
         return 0;
-    if (funcaddrs[function_start_pc].find("tshark!main") != std::string::npos)
+    if (funcaddrs[cur_function].find("tshark!main") != std::string::npos)
         return 0;
-    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,function_start_pc, funct_name.c_str(),cur_line,pc);
-    //dwarf_livevar_iter(env, pc, funcvars[function_start_pc], push_var_if_live);
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //dwarf_livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
     //dwarf_livevar_iter(env, pc, global_var_list, push_var_if_live);
     //dwarf_livevar_iter(env, pc, global_var_list, print_var_if_live);
     if (cur_line != prev_line){

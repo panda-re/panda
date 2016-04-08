@@ -26,19 +26,22 @@ extern "C" {
 
     //void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
 }
-
+CPUState *pfun_env;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
-    
+    target_ulong guest_dword; 
     switch (loc_t){
         case LocReg:
-            printf("VAR REG %s %s in 0x%x\n", var_ty, var_nm, loc);
+            printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+            printf("    => 0x%x\n", pfun_env->regs[loc]);
             break;
         case LocMem:
-            printf("VAR MEM %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            panda_virtual_memory_rw(pfun_env, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0); 
+            printf("    => 0x%x\n", guest_dword);
             break;
         case LocConst:
-            printf("VAR CONST %s %s as 0x%x\n", var_ty, var_nm, loc);
+            printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
             break;
         case LocErr:
             printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
@@ -46,10 +49,12 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
     }
 }
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    pfun_env = env;
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    //stpi_funct_livevar_iter(env, pc, pfun);
+    stpi_funct_livevar_iter(env, pc, pfun);
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    pfun_env = env;
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
     stpi_funct_livevar_iter(env, pc, pfun);
 }
@@ -65,8 +70,8 @@ bool init_plugin(void *self) {
     panda_require("dwarfp");
     assert(init_dwarfp_api());
     
-    //PPP_REG_CB("stpi", on_line_change, on_line_change);
-    PPP_REG_CB("stpi", on_fn_start, on_fn_start);
+    PPP_REG_CB("stpi", on_line_change, on_line_change);
+    //PPP_REG_CB("stpi", on_fn_start, on_fn_start);
 #endif
     return true;
 }
