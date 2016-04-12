@@ -63,3 +63,65 @@ bool panda_in_kernel(CPUState *env) {
 void panda_disas(FILE *out, void *code, unsigned long size) {
     disas(out,code,size);
 }
+
+const char * valid_os[] = {
+    "windows-32-xpsp2", 
+    "windows-32-xpsp3", 
+    "windows-32-7", 
+    "linux-64-3.2.63",
+    "linux-32-3.2.65",
+    "linux-32-3.2.54",
+    NULL
+};
+
+
+
+PandaOsType panda_os_type = OST_UNKNOWN;
+char *panda_os_name = NULL;
+uint32_t panda_os_bits = 0;  // 32 or 64
+char *panda_os_details = NULL;
+
+void panda_set_os_name(char *os_name) {
+    int i=0;
+    bool ok_osname = false;
+    while (valid_os[i]) {
+        if (0 == strcmp(os_name, valid_os[i])) {
+            ok_osname = true;
+            break;
+        }
+        i++;
+    }
+    if (!ok_osname) {
+        i=0;
+        printf ("os_name=[%s] is not on the list :\n", os_name);
+        while (valid_os[i]) {
+            printf ("  [%s]\n",  valid_os[i]);
+            i++;
+        }
+        assert (ok_osname);
+    }
+    panda_os_name = strdup(os_name);
+    panda_os_type = OST_UNKNOWN;
+    char *p = os_name;
+    if (0 == strncmp("windows", os_name, 7))  {
+        panda_os_type = OST_WINDOWS;
+        p += 8;
+    }
+    if (0 == strncmp("linux", os_name, 5))  {
+        panda_os_type = OST_LINUX;
+        p += 6;
+    }
+    assert (!(panda_os_type == OST_UNKNOWN));
+    printf ("p= %s\n", p);
+    if (0 == strncmp("32", p, 2)) {
+        panda_os_bits = 32;
+    }
+    if (0 == strncmp("64", p, 2)) {
+        panda_os_bits = 64;
+    }
+    assert (panda_os_bits != 0);
+    p += 3;
+    panda_os_details = strdup(p);
+    printf ("os_type=%d bits=%d os_details=[%s]\n", 
+            panda_os_type, panda_os_bits, panda_os_details); 
+}

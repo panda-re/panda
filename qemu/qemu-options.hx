@@ -2630,6 +2630,10 @@ DEF("panda", HAS_ARG, QEMU_OPTION_panda_plugins,
     "               load <plugin1> with <opt1=val1> and <opt2=val2>; load <plugin2>\n"
     "               uses qemubuilddir/panda_plugins/panda_%s.so by default\n", QEMU_ARCH_ALL)
 
+DEF("os", HAS_ARG, QEMU_OPTION_panda_os_name,
+    "-os os_name\n"
+    "               inform panda about guest operating system\n", QEMU_ARCH_ALL)
+
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table
