@@ -37,7 +37,7 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
 void on_free_osimodules(OsiModules *ms);
-
+void on_identify_os(char **os_name);   
 }
 
 #include <stdio.h>
@@ -354,10 +354,15 @@ void on_free_osimodules(OsiModules *ms) {
     free(ms);
 }
 
+void on_identify_os(char **os_name) {
+    *os_name = strdup("win7x86");
+}
+
+
 #endif
 
 bool init_plugin(void *self) {
-    panda_require("osi");
+    // panda_require("osi");
 #ifdef TARGET_I386
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
@@ -365,8 +370,12 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
     PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
-#endif
+    PPP_REG_CB("osi", on_identify_os, on_identify_os);
     return true;
+#else
+    return false;
+#endif
+
 }
 
 void uninit_plugin(void *self) { }
