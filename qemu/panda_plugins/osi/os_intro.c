@@ -99,6 +99,7 @@ void free_osimodules(OsiModules *ms) {
     PPP_RUN_CB(on_free_osimodules, ms);
 }
 
+
 #ifdef OSI_PROC_EVENTS
 int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
     uint32_t i;
@@ -135,6 +136,22 @@ bool init_plugin(void *self) {
     pcb.after_PGD_write = vmi_pgd_changed;
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #endif
+    // figure out what kind of os introspection is needed and grab it? 
+    assert (!(panda_os_type == OST_UNKNOWN));
+    if (panda_os_type == OST_LINUX) {
+        char kconfgroup[512];
+        sprintf (kconfgroup, "%s-%d", panda_os_details, panda_os_bits);        
+        char osi_linux_arg[512];
+        sprintf (osi_linux_arg, "osi_linux:kconf_file=%s,kconf_group=%s",
+                 __FILE__ "/../osi_linux/kernelinfo.conf", panda_os_details);
+        printf ("osi grabbing linux introspection backend. osi_linux arg [%s]", osi_linux_arg);
+        panda_add_arg(osi_linux_arg, strlen(osi_linux_arg));
+        panda_require("osi_linux");
+    }
+    if (panda_os_type == OST_WINDOWS) {
+        printf("osi grabbing windows introspection backend\n");
+        panda_require("win7x86intro");
+    }
     return true;
 }
 
