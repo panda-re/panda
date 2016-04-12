@@ -41,6 +41,9 @@ void taint2_delete_ram(uint64_t pa) ;
 // spit labelset.
 void taint2_labelset_spit(LabelSetP ls) ; 
 
+// addr is an opaque.  it should be &a if a is known to be an Addr
+void taint2_labelset_addr_iter(void *addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+
 // apply this fn to each of the labels associated with this pa
 // fn should return 0 to continue iteration
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
