@@ -503,6 +503,48 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin syscalls2\n");
 
+// Don't bother if we're not on a supported target
+#if defined(TARGET_I386) || defined(TARGET_ARM)
+    
+    assert (!(panda_os_type == OST_UNKNOWN));
+    if (panda_os_type == OST_LINUX) {
+#if defined(TARGET_I386) 
+        if (panda_os_bits != 32) {
+            printf ("syscalls2: no support for 64-bit linux\n");
+            return false;
+        }
+        printf ("syscalls2: using profile for linux x86 32-bit\n");
+        syscalls_profile = &profiles[PROFILE_LINUX_X86];
+#endif        
+#if defined(TARGET_ARM) 
+        printf ("syscalls2: using profile for linux arm\n");
+        syscalls_profile = &profiles[PROFILE_LINUX_ARM];
+#endif
+    }
+    if (panda_os_type == OST_WINDOWS) {   
+#if defined(TARGET_I386) 
+        if (panda_os_bits != 32) {
+            printf ("syscalls2: no support for 64-bit windows\n");
+            return false;
+        }        
+        if (0 == strcmp(panda_os_details, "xpsp2")) {
+            printf ("syscalls2: using profile for windows sp2 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
+        }    
+        if (0 == strcmp(panda_os_details, "xpsp3")) {
+            printf ("syscalls2: using profile for windows sp3 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
+        }    
+        if (0 == strcmp(panda_os_details, "7")) {
+            printf ("syscalls2: using profile for windows 7 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
+        }            
+#endif       
+    }
+    assert (syscalls_profile);
+
+    // not longer necessary!
+#if 0
     args = panda_get_args("syscalls");
     const char *profile_name = panda_parse_string(args, "profile", "linux_x86");
     if (0 == strncmp(profile_name, "linux_x86", 8)) {
@@ -524,8 +566,11 @@ bool init_plugin(void *self) {
         printf ("Unrecognized profile %s\n", profile_name);
         assert (1==0);
     }
+#endif
+
+
 // Don't bother if we're not on a supported target
-#if defined(TARGET_I386) || defined(TARGET_ARM)
+    // #if defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
     pcb.insn_translate = translate_callback;
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
@@ -536,6 +581,7 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 #else
+
     fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
 #endif
