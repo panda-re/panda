@@ -1,0 +1,10 @@
+message DwarfCall {
+    required string file_callee = 1;
+    required string function_name_callee = 2;
+    required uint64 line_number_callee = 3;
+    required string file_caller = 4;
+    required uint64 line_number_caller = 5;
+}
+
+optional DwarfCall dwarf_call = 66;
+optional DwarfCall dwarf_ret = 67;
