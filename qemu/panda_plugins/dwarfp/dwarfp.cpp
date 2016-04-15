@@ -18,18 +18,18 @@ PANDAENDCOMMENT */
 #include "panda/panda_addr.h"
 extern "C" {
 
-//#include "config.h"
+#include "config.h"
 #include "rr_log.h"
 #include "qemu-common.h"
 #include "panda_common.h"
 #include "cpu.h"
 
+#include "pandalog.h"
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
-#include "pandalog.h"
 #include "dwarf_util.h"
 #include "dwarfp.h"
-//#include "dwarfp_types.h"
+
 #include "../stpi/stpi_types.h"
 #include "../stpi/stpi_ext.h"
 #include "../stpi/stpi.h"
@@ -42,13 +42,13 @@ extern "C" {
 
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 
-#include "../callstack_instr/callstack_instr.h"
 
 #include "../loaded/loaded.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-void on_call(CPUState *env, target_ulong pc);
+//void on_ret(CPUState *env, target_ulong pc);
+//void on_call(CPUState *env, target_ulong pc);
 void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
 void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
 
@@ -72,6 +72,9 @@ void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
 #include <libdwarf.h>
 
 }
+#include "../callstack_instr/callstack_instr.h"
+#include "../common/prog_point.h"
+#include "../callstack_instr/callstack_instr_ext.h"
 
 const char *guest_debug_path = NULL;
 const char *host_debug_path = NULL;
@@ -163,6 +166,45 @@ struct CompareRangeAndPC
     }
     */
 };
+/*
+    required string file_callee = 1;
+    required string function_name_callee = 2;
+    required uint64 line_number_callee = 3;
+    required string file_caller = 4;
+    required uint64 line_number_caller = 5;
+*/
+void dwarp_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, 
+        char *file_caller, uint64_t lno_caller, bool isCall) {
+    // setup
+    Panda__DwarfCall *dwarf = (Panda__DwarfCall *) malloc (sizeof (Panda__DwarfCall));
+    *dwarf = PANDA__DWARF_CALL__INIT;
+    // assign values 
+    dwarf->function_name_callee = fn_callee;
+    dwarf->file_callee = file_callee;
+    dwarf->line_number_callee = lno_callee;
+    dwarf->file_caller = file_caller;
+    dwarf->line_number_caller = lno_caller;
+    
+    /* possibly handle calls we don't have dwarf for
+    if (filename == UNKNOWN) {
+        dwarf->filename = NULL;
+    }
+    else {
+        dwarf->filename = (char *) filename.c_str();
+    }
+    */
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    // create a call or ret message
+    if (isCall){
+        ple.dwarf_call = dwarf;
+    }
+    else{
+        ple.dwarf_ret = dwarf;
+    }
+    // write to log file
+    pandalog_write_entry(&ple);
+    free(dwarf);
+}
 
 Dwarf_Addr prev_pc = 0;
 uint32_t prev_pc_count = 0;
@@ -720,9 +762,10 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         auto lineToFuncAddress = [lowpc, highpc](std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> &x){
                 // make sure low address for line is higher than address of function
                 // this will ensure that the line is PAST the function prologue
-                if (std::get<0>(x) < highpc && std::get<0>(x) > lowpc){
+                //if (std::get<0>(x) < highpc && std::get<0>(x) > lowpc){
+                if (std::get<0>(x) < highpc && std::get<0>(x) >= lowpc){
                     std::get<4>(x) = lowpc;
-                    // at this point we know the line is past the function prologu
+                    // at this point we know the line is past the function prologue
                     // make check to see if std::get<0>(x) is less than 5 from lowpc
                 }
         };
@@ -730,10 +773,13 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             return std::get<0>(x) == lowpc;
         };
         auto funct_line_it = std::find_if(line_range_list.begin(), line_range_list.end(), lineIsFunctionDef);
-        if (funct_line_it != line_range_list.end()){
-            ++funct_line_it;
-            fn_start_line_range_list.push_back(*funct_line_it);
-        }
+        fn_start_line_range_list.push_back(*funct_line_it);
+        // this is if we want the start of the function to be one PAST the line that represents start of function
+        // in order to skip past function prologue
+        //if (funct_line_it != line_range_list.end()){
+        //    ++funct_line_it;
+        //    fn_start_line_range_list.push_back(*funct_line_it);
+        //}
         std::for_each(line_range_list.begin(), line_range_list.end(), lineToFuncAddress);
         funcaddrs[lowpc] = std::string(basename) + "!" + die_name;
         highpc_to_lowpc[highpc] = lowpc;
@@ -793,7 +839,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                 // value is likely optimized out, so has no location
                 //printf("Var [%s] has no loc\n", type_argname.second.c_str());
-            }else {
+            } else {
                 var_list.push_back(make_tuple(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
             } 
         }
@@ -1079,26 +1125,31 @@ void ensure_dbg_initialized(CPUState *env) {
         //}
     }
 }
-// not called at the moment
+
 target_ulong get_cur_fp(CPUState *env, target_ulong pc){
     if (funct_to_framepointers.find(cur_function) == funct_to_framepointers.end()){
+        printf("funct_to_frame_ptrs: Could not properly determine fp\n");
         return -1;
     }
     Dwarf_Locdesc **locdesc = std::get<0>(funct_to_framepointers[cur_function]);
     Dwarf_Signed loc_cnt = std::get<1>(funct_to_framepointers[cur_function]);
     if (loc_cnt == 0 || locdesc == NULL){
+        printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
     for (int i = 0; i < loc_cnt; i++){
-       if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
+       if (pc >= locdesc[i]->ld_lopc && pc < locdesc[i]->ld_hipc){
             target_ulong fp_loc;
             LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, 0, &fp_loc);
             if (loc_type != LocMem){
+                printf("loc_type: Could not properly determine fp\n");
                 return -1;
             }
+            printf("Found pf at 0x%x\n", fp_loc);
             return fp_loc;
         } 
     }
+    printf("Not in range: Could not properly determine fp\n");
     return -1;
 }
 // not used, but may be used
@@ -1133,19 +1184,14 @@ void on_call(CPUState *env, target_ulong pc) {
 void on_call2(CPUState *env, target_ulong pc) {
     return;
 }
-// not used, but may be used
-void on_ret(CPUState *env, target_ulong func) {
-    if (!correct_asid(env)) return;
-    //printf(" on_ret address: %x\n", func);
-    if (funcaddrs.find(func) != funcaddrs.end()){
-        //printf("Returning from function: %s\n", funcaddrs[func].c_str());
-        for(auto it = funct_to_var_addrs[func].begin(); it != funct_to_var_addrs[func].end(); it++){
-            addrVarMapping.erase(*it);
-        }
-    }
-    //printf("Call to " TARGET_FMT_lx "\n", pc);
-}
 
+bool dwarf_in_target_code(CPUState *env, target_ulong pc){
+    if (!correct_asid(env)) return false;
+    auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    if (pc < std::get<0>(*it) || it == line_range_list.end())
+        return false;
+    return true;
+}
 
 bool translate_callback_dwarf(CPUState *env, target_ulong pc) {
     if (!correct_asid(env)) return false;
@@ -1199,6 +1245,49 @@ auto push_var_if_live = [&live_vars](std::string var_ty, std::string var_nm, Loc
     live_vars.push_back(std::make_tuple(var_ty, var_nm,loc_t, loc)); 
 };
 */
+void dwarf_log_callsite(CPUState *env, target_ulong pc, char *file_callee, char *fn_callee, uint64_t lno_callee, bool isCall){
+    target_ulong ra = 0;
+    
+    int num_received = get_callers(&ra, 1, env);
+    if (num_received != 1){
+        printf("Error No dwarf information. Could not get callers from callstack plugin\n");
+    }
+
+    ra -= 5; // subtract 5 to get address of call instead of return address
+    auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), ra, CompareRangeAndPC());
+    if (ra < std::get<0>(*it) || it == line_range_list.end()){
+        printf("Error No dwarf information for callsite 0x%x for current function.  Something went wrong\n", ra);
+        return;
+    }
+    //                      lowpc       highpc        line no       filename  function addr
+    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+    
+    Dwarf_Addr call_site_fn = std::get<4>(*it);
+    char *file_name = std::get<3>(*it);
+    Dwarf_Unsigned lno = std::get<2>(*it);
+    std::string funct_name = funcaddrs[call_site_fn];
+   
+    //void dwarp_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
+    dwarp_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
+    printf(" Callsite: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+    
+    return;
+}
+
+// this is the address of the function call
+void on_ret(CPUState *env, target_ulong pc_top) {
+    if (!correct_asid(env)) return;
+    //printf(" on_ret address: %x\n", func);
+    auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_top, CompareRangeAndPC());
+    if (pc_top < std::get<0>(*it) || it == line_range_list.end())
+        return;
+    Dwarf_Addr cur_function = std::get<4>(*it);
+    char *file_name = std::get<3>(*it);
+    std::string funct_name = funcaddrs[cur_function];
+    cur_line = std::get<2>(*it);
+    printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_top);
+    dwarf_log_callsite(env, pc_top, file_name,(char *)funct_name.c_str(), cur_line, false);
+}
 
 void livevar_iter(CPUState *env,
         target_ulong pc,
@@ -1315,6 +1404,8 @@ int exec_callback_dwarf(CPUState *env, target_ulong pc) {
         if (pc >= std::get<0>(*fn_start_it) && fn_start_it != fn_start_line_range_list.end()){
             // we know that this pc also represents the beginning of a function so we are going to register
             // a stpi_function_start callback
+            printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+            dwarf_log_callsite(env, pc, file_name,(char *)funct_name.c_str(), cur_line, true);
             stpi_runcb_on_fn_start(env, pc, file_name, funct_name.c_str(), cur_line);
         } 
     } 
@@ -1417,6 +1508,7 @@ bool init_plugin(void *self) {
     
     //panda_require("osi_linux");
     // make available the api for 
+    assert(init_callstack_instr_api());
     assert(init_osi_linux_api());
     assert(init_osi_api());
     assert(init_stpi_api());
@@ -1425,7 +1517,7 @@ bool init_plugin(void *self) {
     panda_enable_memcb();
     // we may want to change back to using on_call and on_ret CBs 
     //PPP_REG_CB("callstack_instr", on_call, on_call2);
-    //PPP_REG_CB("callstack_instr", on_ret, on_ret);
+    PPP_REG_CB("callstack_instr", on_ret, on_ret);
     std::string bin_path;
     struct stat s;
     if (stat(host_debug_path, &s) != 0){

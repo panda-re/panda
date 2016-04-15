@@ -137,6 +137,15 @@ void pprint_taint_query(Panda__TaintQuery *tq) {
     printf (")");
 }
         
+void pprint_dwarf(Panda__DwarfCall *d) {
+    printf ("(");
+    printf(" function_callee=[%s]", d->function_name_callee);
+    printf(" file_callee=[%s]", d->file_callee);
+    printf(" linenumber_callee=%" PRId64, d->line_number_callee);
+    printf(" file_caller=[%s]", d->file_caller);
+    printf(" linenumber_caller=%" PRId64, d->line_number_caller);
+    printf (")");
+}
 
 void pprint_taint_query_hypercall(Panda__TaintQueryHypercall *tqh) {
     printf ("(taint_query_hypercall,0x%" PRIx64 ",%d,",
@@ -214,7 +223,17 @@ void pprint_ple(Panda__LogEntry *ple) {
     else {
         printf ("instr=%" PRIu64 " pc=0x%" PRIx64 " :", ple->instr, ple->pc);
     }
-  
+ 
+    // from dwarfp
+    if (ple->dwarf_call) {
+        printf(" !dwarf call!");
+        pprint_dwarf(ple->dwarf_call);
+    }
+    if (ple->dwarf_ret) {
+        printf(" !dwarf ret!");
+        pprint_dwarf(ple->dwarf_ret);
+    }
+
     // from asidstory / osi
     if (ple->has_asid) {
         printf (" asid=%" PRIx64, ple->asid);
