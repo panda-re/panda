@@ -499,7 +499,7 @@ void w7p_NtCreateUserProcess_return(
     uint32_t eproc = get_current_proc(env);
     HandleObject *ho = get_handle_object(env, eproc, handle);
     char *newProc = get_handle_object_name(env, ho);
-    uint32_t newPid = get_pid(env, ho->pObj);
+    uint32_t newPid = ho != NULL ? get_pid(env, ho->pObj) : -1;
     Panda__Process *cur_p = create_panda_process(cur_pid, cur_procname);
     Panda__Process *new_p = create_panda_process(newPid, newProc);
     Panda__NtCreateUserProcess *ntcup = 
