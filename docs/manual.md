@@ -49,6 +49,7 @@
       - [Current generation](#current-generation)
       - [Old generation](#old-generation-1)
     - [Miscellaneous](#miscellaneous)
+- [Pandalog](#pandalog)
   - [Introduction](#introduction-1)
   - [Design](#design)
   - [Adding PANDA Logging to a Plugin](#adding-panda-logging-to-a-plugin)
@@ -879,6 +880,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`useafterfree`](../qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
   allocations and search for uses after frees.
     
+
 ## Pandalog
 
 ### Introduction
