@@ -78,8 +78,6 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
         GUARD = "#ifdef TARGET_ARM"
 
        
-    ARGS = ["arg0", "arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "arg7", "arg8", "arg9", "arg10", "arg11", "arg12", "arg13", "arg14", "arg15"]
-
     osarch = "%s_%s" % (OS, ARCH)
     PROTOS = "%s_prototypes.txt" % osarch
     MODE=ARCH
@@ -287,8 +285,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             for i, val in enumerate(arg_types):
                 arg_type = val.type
                 arg_name = val.name
-                if argno >= len(ARGS):
-                    break
                 if arg_type == CHAR_STAR:
                     syscall_enter_switch += get_pointer(i)
                 elif arg_type == POINTER:
@@ -301,8 +297,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                     # alignment sadness. Linux tried to make sure none of these happen
                     if (argno % 2) == 1:
                         argno+= 1
-                        if argno >= len(ARGS):
-                            break
                     syscall_enter_switch += get_64(i)
                     argno+=1
                 argno+=1

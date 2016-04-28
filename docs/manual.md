@@ -1,8 +1,71 @@
-
 ![LOGO](images/pandalogo-cropped.png)
 
-
 # PANDA User Manual
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Overview](#overview)
+- [Quickstart](#quickstart)
+  - [Record](#record)
+  - [Replay](#replay)
+  - [Analysis](#analysis)
+- [A Tour of QEMU](#a-tour-of-qemu)
+  - [QEMU's Monitor](#qemus-monitor)
+  - [Emulation details](#emulation-details)
+  - [What is `env`?](#what-is-env)
+  - [Useful PANDA functions](#useful-panda-functions)
+    - [QEMU translation control](#qemu-translation-control)
+    - [Precise program counter](#precise-program-counter)
+    - [Memory access](#memory-access)
+    - [LLVM control](#llvm-control)
+    - [Miscellany](#miscellany)
+- [Record/Replay Details](#recordreplay-details)
+  - [Introduction](#introduction)
+  - [Background](#background)
+  - [Usage](#usage)
+  - [Sharing Recordings](#sharing-recordings)
+- [Plugins](#plugins)
+  - [Using Plugins](#using-plugins)
+  - [Plugin Architecture](#plugin-architecture)
+  - [Order of execution](#order-of-execution)
+  - [Writing a Plugin](#writing-a-plugin)
+    - [Plugin Initialization and Shutdown](#plugin-initialization-and-shutdown)
+    - [Callback and Plugin Management](#callback-and-plugin-management)
+    - [Argument handling](#argument-handling)
+    - [Plugin-plugin interaction](#plugin-plugin-interaction)
+    - [Plugin API](#plugin-api)
+    - [Plugin callbacks](#plugin-callbacks)
+  - [Personal Plugins](#personal-plugins)
+    - [Enabling or Disabling Plugins](#enabling-or-disabling-plugins)
+  - [Plugin Zoo](#plugin-zoo)
+    - [Taint-related plugins](#taint-related-plugins)
+      - [Old generation](#old-generation)
+    - [Plugins related to Tappan Zee (North) Bridge](#plugins-related-to-tappan-zee-north-bridge)
+    - [Callstack Tracking](#callstack-tracking)
+    - [Operating System Introspection (OSI) plugins](#operating-system-introspection-osi-plugins)
+    - [System call logging & analysis](#system-call-logging-&-analysis)
+      - [Current generation](#current-generation)
+      - [Old generation](#old-generation-1)
+    - [Miscellaneous](#miscellaneous)
+- [Pandalog](#pandalog)
+  - [Introduction](#introduction-1)
+  - [Design](#design)
+  - [Adding PANDA Logging to a Plugin](#adding-panda-logging-to-a-plugin)
+  - [Building](#building)
+  - [Pandalogging During Replay](#pandalogging-during-replay)
+  - [Looking at the Logfile](#looking-at-the-logfile)
+  - [External References](#external-references)
+- [LLVM](#llvm)
+  - [Building LLVM](#building-llvm)
+  - [Execution](#execution)
+  - [How to use it for analysis](#how-to-use-it-for-analysis)
+- [Wish List](#wish-list)
+- [Appendix A: Callback List](#appendix-a-callback-list)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 
 ## Overview
@@ -817,6 +880,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`useafterfree`](../qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
   allocations and search for uses after frees.
     
+
 ## Pandalog
 
 ### Introduction
