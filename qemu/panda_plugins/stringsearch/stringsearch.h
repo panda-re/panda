@@ -6,7 +6,7 @@
 
 #define MAX_STRINGS 100
 #define MAX_CALLERS 128
-#define MAX_STRLEN  256
+#define MAX_STRLEN  1024
 
 
 // the type for the ppp callback fn that can be passed to string search to be called
