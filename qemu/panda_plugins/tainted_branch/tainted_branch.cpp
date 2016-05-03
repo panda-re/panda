@@ -54,10 +54,17 @@ void uninit_plugin(void *);
 
 }
 
+
+
 #ifdef CONFIG_SOFTMMU
 
+bool summary = false;
 
-bool first_enable_taint = true;
+#include <map>
+#include <set>
+
+// map from asid -> pc
+std::map<uint64_t,std::set<uint64_t>> tainted_branch;
 
 
 void tbranch_on_branch_taint2(Addr a) {
@@ -73,40 +80,39 @@ void tbranch_on_branch_taint2(Addr a) {
             num_tainted += (taint2_query(ao) != 0);
         }
         if (num_tainted > 0) {
-            Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
-            *tb = PANDA__TAINTED_BRANCH__INIT;
-            tb->call_stack = pandalog_callstack_create();
-            tb->n_taint_query = num_tainted;
-            tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
-            uint32_t i=0;
-            for (uint32_t o=0; o<8; o++) {
-                Addr ao = a;
-                ao.off = o;
-                if (taint2_query(ao)) {
-                    tb->taint_query[i++] = taint2_query_pandalog(ao, o);
+            if (summary) {
+                extern CPUState *cpu_single_env;
+                CPUState *env = cpu_single_env;
+                target_ulong asid = panda_current_asid(env);
+                tainted_branch[asid].insert(panda_current_pc(env));
+            }
+            else {
+                Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));
+                *tb = PANDA__TAINTED_BRANCH__INIT;
+                tb->call_stack = pandalog_callstack_create();
+                tb->n_taint_query = num_tainted;
+                tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
+                uint32_t i=0;
+                for (uint32_t o=0; o<8; o++) {
+                    Addr ao = a;
+                    ao.off = o;
+                    if (taint2_query(ao)) {
+                        tb->taint_query[i++] = taint2_query_pandalog(ao, o);
+                    }
                 }
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.tainted_branch = tb;
+                pandalog_write_entry(&ple);
+                pandalog_callstack_free(tb->call_stack);
+                for (uint32_t i=0; i<num_tainted; i++) {
+                    pandalog_taint_query_free(tb->taint_query[i]);
+                }
+                free(tb);
             }
-            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.tainted_branch = tb;
-            pandalog_write_entry(&ple);
-            pandalog_callstack_free(tb->call_stack);
-            for (uint32_t i=0; i<num_tainted; i++) {
-                pandalog_taint_query_free(tb->taint_query[i]);
-            }
-            free(tb);
         }
     }
 }
 
-
-int tbranch_after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
-    if ((taint2_enabled()) && first_enable_taint) {
-        first_enable_taint = false;
-        PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2); 
-        printf ("enabling on_branch taint api callbacks\n");
-    }
-    return 0;
-}
 
 #endif
 
@@ -115,11 +121,34 @@ bool init_plugin(void *self) {
     assert (init_callstack_instr_api());
     panda_require("taint2");
     assert (init_taint2_api());    
+    panda_arg_list *args = panda_get_args("tainted_instr");
+    summary = panda_parse_bool(args, "summary");
+    if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
+    /*
     panda_cb pcb;
     pcb.after_block_exec = tbranch_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+    */
+    PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);                                                                       
     return true;
 }
 
+
 void uninit_plugin(void *self) {
+    if (summary) {
+        Panda__TaintedBranchSummary *tbs = (Panda__TaintedBranchSummary *) malloc(sizeof(Panda__TaintedBranchSummary));
+        for (auto kvp : tainted_branch) {
+            uint64_t asid = kvp.first;
+            for (auto pc : kvp.second) {
+                *tbs = PANDA__TAINTED_BRANCH_SUMMARY__INIT;
+                tbs->asid = asid;
+                tbs->pc = pc;
+                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+                ple.tainted_branch_summary = tbs;
+                pandalog_write_entry(&ple);
+            }
+        }
+        free(tbs);
+    }    
+    
 }
