@@ -60,6 +60,12 @@ static inline void free_osiprocs_g(OsiProcs *ps) {
 	return;
 }
 
+static inline void free_osimodule_g(OsiModule *m) {
+    g_free(m->file);
+    g_free(m->name);
+    g_free(m);
+}
+
 /*! @brief Copies an OsiProc struct. Returns a pointer to the destination location.
  *
  * @note Members of `to` struct must have been freed to avoid memory leaks.
@@ -73,4 +79,15 @@ static inline OsiProc *copy_osiproc_g(OsiProc *from, OsiProc *to) {
 	to->pages = NULL; // OsiPage - TODO
 	return to;
 }
+
+static inline OsiModule *copy_osimod_g(OsiModule *from, OsiModule *to) {
+	if (from == NULL) return NULL;
+	if (to == NULL) to = (OsiModule *)g_malloc0(sizeof(OsiModule));
+
+	memcpy(to, from, sizeof(OsiModule));
+	to->name = g_strdup(from->name);
+    to->file = g_strdup(from->file);
+	return to;
+}
+
 #endif
