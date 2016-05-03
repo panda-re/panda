@@ -27,7 +27,7 @@ uint64_t get_return_64(CPUState *env, uint32_t argnum);
 int64_t get_return_s64(CPUState *env, uint32_t argnum);
 target_ulong get_return_pointer(CPUState *env, uint32_t argnum);
 
-#define SYSCALL_MAX_ARGS 16
+#define SYSCALL_MAX_ARGS 32
 
 // Params is a buffer area to hold parameters until the system call returns.
 // Needed because otherwise we can't make the parameters available reliably in
