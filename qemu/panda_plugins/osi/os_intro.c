@@ -147,6 +147,7 @@ bool init_plugin(void *self) {
         printf ("osi grabbing linux introspection backend. osi_linux arg [%s]", osi_linux_arg);
         panda_add_arg(osi_linux_arg, strlen(osi_linux_arg));
         panda_require("osi_linux");
+        panda_require("wintrospection");
     }
     if (panda_os_type == OST_WINDOWS) {
         printf("osi grabbing windows introspection backend\n");
