@@ -1,11 +1,16 @@
 #ifndef __SYSCALLS_COMMON_HPP
 #define __SYSCALLS_COMMON_HPP
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 // get definitions of QEMU types
 #include "cpu.h"
 
+#ifdef __cplusplus
 }
+#endif
+
 
 target_long get_return_val(CPUState *env);
 target_ulong mask_retaddr_to_pc(target_ulong retaddr);
