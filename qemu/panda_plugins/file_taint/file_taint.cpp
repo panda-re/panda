@@ -19,7 +19,11 @@ extern "C" {
 #include "../osi/osi_ext.h"
 
     // this provides the fd resolution magic
+
 #include "../osi_linux/osi_linux_ext.h"
+
+#include "../wintrospection/wintrospection.h"
+#include "../wintrospection/wintrospection_ext.h"
     
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../taint2/taint2_ext.h"
@@ -210,6 +214,7 @@ void windows_open_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
 void windows_open_return(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t ShareAccess, uint32_t OpenOptions) {
     uint32_t Handle;
     panda_virtual_memory_rw(env, FileHandle, (uint8_t *)&Handle, 4, 0);
+    printf ("asid=0x%x filehandle=%d filename=[%s]\n", (uint)panda_current_asid(env), FileHandle, the_windows_filename.c_str());
     windows_filenames[panda_current_asid(env)][FileHandle] = the_windows_filename;
     open_return(env, Handle);
 }
@@ -227,7 +232,9 @@ void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t p
     last_read_buf = buf;
     last_pos = pos;    
     saw_read = false;
-    if (0 == strcmp(filename.c_str(), taint_filename)) {
+    printf ("read_enter filename=[%s]\n", filename.c_str());
+    if (filename.find(taint_filename) != std::string::npos) {
+        //    if (0 == strcmp(filename.c_str(), taint_filename)) {
         printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
         saw_read = true;
     }
@@ -252,7 +259,7 @@ void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actu
             uint32_t i = 0;
             for (uint32_t l = range_start; l < range_end; l++) {
                 if (label_byte(env, last_read_buf + i,
-                               positional_labels ? l : 0))
+                               positional_labels ? l : 1))
                     num_labeled ++;
                 i ++;
             }
@@ -280,8 +287,7 @@ void windows_read_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
         //printf("NtReadFile: %lu[]\n", (unsigned long)FileHandle);
     }
 
-    std::string filename = windows_filenames[panda_current_asid(env)][FileHandle];
-    
+    char *filename = get_handle_name(env, get_current_proc(env), FileHandle);
     read_enter(env, pc, filename, 0, Buffer, BufferLength);
 }
 
@@ -393,9 +399,12 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
         }
         if (running_procs.count(asid) != 0) {
-            OsiProc *p2 = &running_procs[asid];
+            /*
+            OsiProc *p2 = running_procs[asid];
             // something there already
-            free_osiproc(p2);
+            if (p2)
+                free_osiproc(p2);
+            */
         }
         running_procs[asid] = *p;
     }
@@ -404,11 +413,11 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
 
 
 bool init_plugin(void *self) {
-    panda_cb pcb;        
 
     printf("Initializing plugin file_taint\n");
     
 #ifdef TARGET_I386
+    panda_cb pcb;        
     panda_arg_list *args;
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string(args, "filename", "abc123");
@@ -432,6 +441,9 @@ bool init_plugin(void *self) {
     panda_require("osi");
     assert(init_osi_api());    
     panda_require("syscalls2");
+
+    panda_require("wintrospection");
+    assert(init_wintrospection_api());
     
     if (panda_os_type == OST_LINUX) {        
         PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);        
