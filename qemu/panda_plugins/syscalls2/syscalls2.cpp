@@ -55,10 +55,6 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 bool inSyscallTranslate = false;
 
 // Forward declarations
-target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum);
-target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum);
-target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum);
-target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum);
 int32_t get_s32_generic(CPUState *env, uint32_t argnum);
 int64_t get_s64_generic(CPUState *env, uint32_t argnum);
 int32_t get_return_s32_generic(CPUState *env, uint32_t argnum);
@@ -243,12 +239,10 @@ struct Profile {
     int32_t      (*get_s32)(CPUState *, uint32_t);
     uint64_t     (*get_64)(CPUState *, uint32_t);
     int64_t      (*get_s64)(CPUState *, uint32_t);
-    target_ulong (*get_pointer)(CPUState *, uint32_t);
     uint32_t     (*get_return_32 )(CPUState *, uint32_t);
     int32_t      (*get_return_s32)(CPUState *, uint32_t);
     uint64_t     (*get_return_64)(CPUState *, uint32_t);
     int64_t      (*get_return_s64)(CPUState *, uint32_t);
-    target_ulong (*get_return_pointer)(CPUState *, uint32_t);
 };
 
 Profile profiles[PROFILE_LAST] = {
@@ -261,12 +255,10 @@ Profile profiles[PROFILE_LAST] = {
         .get_s32 = get_s32_generic,
         .get_64 = get_64_linux_x86,
         .get_s64 = get_s64_generic,
-        .get_pointer = get_pointer_32bit,
         .get_return_32 = get_32_linux_x86,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_64_linux_x86,
         .get_return_s64 = get_return_s64_generic,
-        .get_return_pointer = get_pointer_32bit
     },
     {
         .enter_switch = syscall_enter_switch_linux_arm,
@@ -277,12 +269,10 @@ Profile profiles[PROFILE_LAST] = {
         .get_s32 = get_s32_generic,
         .get_64 = get_64_linux_arm,
         .get_s64 = get_s64_generic,
-        .get_pointer = get_pointer_32bit,
         .get_return_32 = get_32_linux_arm,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_64_linux_arm,
         .get_return_s64 = get_return_s64_generic,
-        .get_return_pointer = get_pointer_32bit
     },
     {
         .enter_switch = syscall_enter_switch_windowsxp_sp2_x86,
@@ -293,12 +283,10 @@ Profile profiles[PROFILE_LAST] = {
         .get_s32 = get_s32_generic,
         .get_64 = get_64_windows_x86,
         .get_s64 = get_s64_generic,
-        .get_pointer = get_pointer_32bit,
         .get_return_32 = get_return_32_windows_x86,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_return_64_windows_x86,
         .get_return_s64 = get_return_s64_generic,
-        .get_return_pointer = get_return_pointer_32bit
     },
     {
         .enter_switch = syscall_enter_switch_windowsxp_sp3_x86,
@@ -309,12 +297,10 @@ Profile profiles[PROFILE_LAST] = {
         .get_s32 = get_s32_generic,
         .get_64 = get_64_windows_x86,
         .get_s64 = get_s64_generic,
-        .get_pointer = get_pointer_32bit,
         .get_return_32 = get_return_32_windows_x86,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_return_64_windows_x86,
         .get_return_s64 = get_return_s64_generic,
-        .get_return_pointer = get_return_pointer_32bit
     },
     {
         .enter_switch = syscall_enter_switch_windows7_x86,
@@ -325,12 +311,10 @@ Profile profiles[PROFILE_LAST] = {
         .get_s32 = get_s32_generic,
         .get_64 = get_64_windows_x86,
         .get_s64 = get_s64_generic,
-        .get_pointer = get_pointer_32bit,
         .get_return_32 = get_return_32_windows_x86,
         .get_return_s32 = get_return_s32_generic,
         .get_return_64 = get_return_64_windows_x86,
         .get_return_s64 = get_return_s64_generic,
-        .get_return_pointer = get_return_pointer_32bit
     }
 };
 
@@ -355,9 +339,6 @@ uint64_t get_64(CPUState *env, uint32_t argnum) {
 int64_t get_s64(CPUState *env, uint32_t argnum) {
     return syscalls_profile->get_s64(env, argnum);
 }
-target_ulong get_pointer(CPUState *env, uint32_t argnum) {
-    return syscalls_profile->get_pointer(env, argnum);
-}
 uint32_t get_return_32 (CPUState *env, uint32_t argnum) {
     return syscalls_profile->get_return_32(env, argnum);
 }
@@ -369,25 +350,6 @@ uint64_t get_return_64(CPUState *env, uint32_t argnum) {
 }
 int64_t get_return_s64(CPUState *env, uint32_t argnum) {
     return syscalls_profile->get_return_s64(env, argnum);
-}
-target_ulong get_return_pointer(CPUState *env, uint32_t argnum) {
-    return syscalls_profile->get_return_pointer(env, argnum);
-}
-
-target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_32(env, argnum);
-}
-
-target_ulong get_pointer_64bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_64(env, argnum);
-}
-
-target_ulong get_return_pointer_32bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_return_32(env, argnum);
-}
-
-target_ulong get_return_pointer_64bit(CPUState *env, uint32_t argnum) {
-    return (target_ulong) get_return_64(env, argnum);
 }
 
 int32_t get_s32_generic(CPUState *env, uint32_t argnum) {
@@ -526,6 +488,48 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin syscalls2\n");
 
+// Don't bother if we're not on a supported target
+#if defined(TARGET_I386) || defined(TARGET_ARM)
+    
+    assert (!(panda_os_type == OST_UNKNOWN));
+    if (panda_os_type == OST_LINUX) {
+#if defined(TARGET_I386) 
+        if (panda_os_bits != 32) {
+            printf ("syscalls2: no support for 64-bit linux\n");
+            return false;
+        }
+        printf ("syscalls2: using profile for linux x86 32-bit\n");
+        syscalls_profile = &profiles[PROFILE_LINUX_X86];
+#endif        
+#if defined(TARGET_ARM) 
+        printf ("syscalls2: using profile for linux arm\n");
+        syscalls_profile = &profiles[PROFILE_LINUX_ARM];
+#endif
+    }
+    if (panda_os_type == OST_WINDOWS) {   
+#if defined(TARGET_I386) 
+        if (panda_os_bits != 32) {
+            printf ("syscalls2: no support for 64-bit windows\n");
+            return false;
+        }        
+        if (0 == strcmp(panda_os_details, "xpsp2")) {
+            printf ("syscalls2: using profile for windows sp2 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
+        }    
+        if (0 == strcmp(panda_os_details, "xpsp3")) {
+            printf ("syscalls2: using profile for windows sp3 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
+        }    
+        if (0 == strcmp(panda_os_details, "7")) {
+            printf ("syscalls2: using profile for windows 7 x86 32-bit\n");
+            syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
+        }            
+#endif       
+    }
+    assert (syscalls_profile);
+
+    // not longer necessary!
+#if 0
     args = panda_get_args("syscalls");
     const char *profile_name = panda_parse_string(args, "profile", "linux_x86");
     if (0 == strncmp(profile_name, "linux_x86", 8)) {
@@ -547,8 +551,11 @@ bool init_plugin(void *self) {
         printf ("Unrecognized profile %s\n", profile_name);
         assert (1==0);
     }
+#endif
+
+
 // Don't bother if we're not on a supported target
-#if defined(TARGET_I386) || defined(TARGET_ARM)
+    // #if defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
     pcb.insn_translate = translate_callback;
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
@@ -559,6 +566,7 @@ bool init_plugin(void *self) {
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 #else
+
     fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
 #endif

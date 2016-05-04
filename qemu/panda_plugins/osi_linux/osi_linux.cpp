@@ -49,6 +49,7 @@ void on_free_osimodules(OsiModules *ms);
 
 struct kernelinfo ki;
 int panda_memory_errors;
+char *kconf_group;
 
 /* ******************************************************************
  Helpers
@@ -134,7 +135,7 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 	panda_memory_errors = 0;
 	p->asid = get_pgd(env, task_addr);
 
-#if (OSI_LINUX_TEST)
+#if (defined OSI_LINUX_TEST)
 	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, p->ppid, p->pid, p->asid, p->name);
 #endif
 }
@@ -181,7 +182,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 		}
 	}
 
-#if (OSI_LINUX_TEST)
+#if (defined OSI_LINUX_TEST)
 	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PTR ":" TARGET_FMT_PID "p:%s:%s", m->offset, m->base, NPAGES(m->size), m->name, m->file);
 #endif
 }
@@ -202,7 +203,7 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	OsiProc *p = NULL;
 	PTR ts;
 
-    target_long asid = panda_current_asid(env);
+    //    target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
     if (ts) {
         // valid task struct
@@ -411,7 +412,7 @@ void on_free_osiprocs(OsiProcs *ps) {
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    target_ulong asid = panda_current_asid(env);
+    //    target_ulong asid = panda_current_asid(env);
     PTR ts_current = 0;
     ts_current = p->offset;
     if (ts_current == 0) {
@@ -437,7 +438,7 @@ make_name:
 
 
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
-    target_ulong asid = panda_current_asid(env);
+    //    target_ulong asid = panda_current_asid(env);
     PTR ts_current = 0;
     ts_current = p->offset;
     if (ts_current == 0) return INVALID_FILE_POS;
@@ -468,7 +469,7 @@ void on_free_osimodules(OsiModules *ms) {
 /* ******************************************************************
  Testing functions
 ****************************************************************** */
-#if (OSI_LINUX_TEST)
+#if (defined OSI_LINUX_TEST)
 /**
  * @brief Fills an OsiProc struct.
  */
@@ -510,14 +511,14 @@ error:
  */
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
-#if (OSI_LINUX_TEST)
+#if (defined OSI_LINUX_TEST)
 	panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
 #endif
 
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 	char *kconf_file = g_strdup(panda_parse_string(plugin_args, "kconf_file", DEFAULT_KERNELINFO_FILE));
-	char *kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
+	kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
 	panda_free_args(plugin_args);
 
 	// Load kernel offsets.
@@ -527,9 +528,9 @@ bool init_plugin(void *self) {
 	}
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
 	g_free(kconf_file);
-	g_free(kconf_group);
+    //	g_free(kconf_group);
 
-#if (OSI_LINUX_TEST)
+#if (defined OSI_LINUX_TEST)
 	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #else
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
@@ -539,7 +540,6 @@ bool init_plugin(void *self) {
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
 #endif
-
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

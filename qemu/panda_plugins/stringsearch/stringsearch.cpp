@@ -14,7 +14,7 @@ PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
-
+ 
 extern "C" {
 
 #include "config.h"
@@ -37,6 +37,8 @@ extern "C" {
 #include <sstream>
 #include <string>
 
+#include <iostream>
+using namespace std;
 
 #include "../common/prog_point.h"
 #include "pandalog.h"
@@ -64,7 +66,7 @@ struct match_strings {
     int val[MAX_STRINGS];
 };
 struct string_pos {
-    uint8_t val[MAX_STRINGS];
+    uint32_t val[MAX_STRINGS];
 };
 struct fullstack {
     int n;
@@ -78,7 +80,7 @@ std::map<prog_point,match_strings> matches;
 std::map<prog_point,string_pos> read_text_tracker;
 std::map<prog_point,string_pos> write_text_tracker;
 uint8_t tofind[MAX_STRINGS][MAX_STRLEN];
-uint8_t strlens[MAX_STRINGS];
+uint32_t strlens[MAX_STRINGS];
 int num_strings = 0;
 int n_callers = 16;
 
@@ -165,6 +167,8 @@ bool init_plugin(void *self) {
     char stringsfile[128] = {};
     sprintf(stringsfile, "%s_search_strings.txt", prefix);
 
+    printf ("search strings file [%s]\n", stringsfile);
+
     std::ifstream search_strings(stringsfile);
     if (!search_strings) {
         printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
@@ -194,7 +198,7 @@ bool init_plugin(void *self) {
             }
             strlens[num_strings] = i;
         }
-
+ 
         printf("stringsearch: added string of length %d to search set\n", strlens[num_strings]);
 
         if(++num_strings >= MAX_STRINGS) {

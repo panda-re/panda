@@ -598,7 +598,7 @@ void w7p_NtCreateFile_return(
         uint32_t CreateOptions,
         uint32_t EaBuffer,
         uint32_t EaLength) {
-    uint64_t instr = rr_get_guest_instr_count();
+    //    uint64_t instr = rr_get_guest_instr_count();
     //    printf ("%" PRIu64 " ntcreatefile_return: EAX = %x :  FileHandle = %x last_FileHandle = %x\n", instr, (unsigned int)EAX, FileHandle,  last_filehandle);
     uint32_t handle;
     int ret = panda_virtual_memory_rw(env, FileHandle, (uint8_t *) &handle, 4, false);
@@ -654,7 +654,7 @@ void w7p_NtOpenFile_return(
     uint32_t IoStatusBlock,
     uint32_t ShareAccess,
     uint32_t OpenOptions) {
-    uint64_t instr = rr_get_guest_instr_count();
+    //    uint64_t instr = rr_get_guest_instr_count();
     //    printf ("%lu ntopenfile_return: EAX = %x :  FileHandle = %x \n", instr, (unsigned int) EAX, FileHandle);
     uint32_t handle;
     int ret = panda_virtual_memory_rw(env, FileHandle, (uint8_t *) &handle, 4, false);
@@ -1285,7 +1285,7 @@ void w7p_NtMapViewOfSection_return(
 	target_ulong pc,
 	uint32_t SectionHandle,
 	uint32_t ProcessHandle,
-	target_ulong BaseAddress,
+	uint32_t BaseAddress,
 	uint32_t ZeroBits,
 	uint32_t CommitSize,
 	uint32_t SectionOffset,
@@ -1556,7 +1556,7 @@ void w7p_NtReplyWaitReceivePort_return(
 	CPUState* env,
 	target_ulong pc,
 	uint32_t PortHandle,
-	target_ulong PortContext,
+	uint32_t PortContext,
 	uint32_t ReplyMessage,
 	uint32_t ReceiveMessage) {
   uint32_t eproc = get_current_proc(env);
@@ -1654,6 +1654,8 @@ bool init_plugin(void *self) {
         
     
 #if 0
+
+    // this stuff is for txt-based logging which is broke
     panda_arg_list *args;
     args = panda_get_args("win7proc");
     if (!pandalog) {
@@ -1675,7 +1677,9 @@ bool init_plugin(void *self) {
         }
     }
 #endif
-    //    panda_require("syscalls2");
+
+    assert (pandalog);
+    panda_require("syscalls2");
 
     panda_cb pcb;
 

@@ -287,7 +287,7 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return 0;
 
-    printf ("%" PRId64" %"PRId64" ASID CHANGE %x %x\n", num_asid_change, num_seq_bb, old_asid, new_asid);
+    //    printf ("%" PRId64 " %" PRId64 " ASID CHANGE %x %x\n", num_asid_change, num_seq_bb, old_asid, new_asid);
     num_asid_change ++;
 
     uint64_t curr_instr = rr_get_guest_instr_count();
@@ -311,16 +311,17 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
 // before every bb,  really just trying to figure out current proc correctly
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     num_seq_bb ++;
-    if ((num_seq_bb % 100000000) == 0) {
+
+    /*    if ((num_seq_bb % 100000000) == 0) {
         printf ("%" PRId64 " bb executed.  %" PRId64 " instr\n", num_seq_bb, rr_get_guest_instr_count());
     }
-
+    */
     target_ulong asid = panda_current_asid(env);   
     // some fool trying to use asidstory for boot? 
     if (asid == 0) return 0;
 
     OsiProc *proc = get_current_process(env);
-    printf ("asid=0x%x  pc=0x%x  proc=%s\n", panda_current_asid(env), panda_current_pc(env), proc->name);
+    //    printf ("asid=0x%x  pc=0x%x  proc=%s\n", panda_current_asid(env), panda_current_pc(env), proc->name);
     free_osiproc(proc);
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck. only triggers once

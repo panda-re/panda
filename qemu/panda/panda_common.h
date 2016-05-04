@@ -13,6 +13,10 @@ bool panda_in_kernel(CPUState *env);
 
 void panda_disas(FILE *out, void *code, unsigned long size);
 
+void panda_set_os_name(char *os_name);
+
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -758,6 +758,17 @@ extern bool panda_tb_chaining;
 extern char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
 extern int panda_argc;
 
+
+// this stuff is used by the new qemu cmd-line arg '-os os_name'
+typedef enum OSTypeEnum { OST_UNKNOWN, OST_WINDOWS, OST_LINUX } PandaOsType;
+
+// these are set in panda_common.c via call to panda_set_os_name(os_name)
+extern PandaOsType panda_os_type;
+extern char *panda_os_name;
+extern uint32_t panda_os_bits;
+extern char *panda_os_details;
+
+
 // Struct for holding a parsed key/value pair from
 // a -panda-arg plugin:key=value style argument.
 typedef struct panda_arg {

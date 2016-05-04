@@ -103,6 +103,7 @@ uint32_t ls_card(LabelSetP ls);
 
 void tp_delete_ram(Shad *shad, uint64_t pa) ;
 
+void tp_ls_a_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 void tp_ls_ram_iter(Shad *shad, uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);

@@ -118,6 +118,8 @@ bool init_plugin(void *self) {
     summary = panda_parse_bool(args, "summary");
     if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
     PPP_REG_CB("taint2", on_taint_change, taint_change);
+    // this tells taint system to enable extra instrumentation
+    // so it can tell when the taint state changes
     taint2_track_taint_state();
     return true;
 }

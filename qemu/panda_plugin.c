@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 #include <dlfcn.h>
 #include <string.h>
 
+//void spit_cbs(void) ;
 
 // WARNING: this is all gloriously un-thread-safe
 
@@ -69,9 +70,11 @@ bool panda_load_plugin(const char *filename) {
     for (i=0; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
             printf ("panda_load_plugin: %s already loaded\n", filename);
-            return 1;
+            return true;
         }
     }    
+    // NB: this is really a list of plugins for which we have started loading 
+    // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
     printf ("loading %s\n", filename);
@@ -86,10 +89,17 @@ bool panda_load_plugin(const char *filename) {
         dlclose(plugin);
         return false;
     }
+    // populate this element in list *before* calling init_fn, please.
+    // otherwise, when osi panda_requires win7x86intro and that does some PPP_REG_CB("osi"..),
+    // that will fail bc it traverses this list to obtain osi handle.  ugh!
+    panda_plugins[nb_panda_plugins].plugin = plugin;
+    strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
+    nb_panda_plugins++;
     if(init_fn(plugin)) {
-        panda_plugins[nb_panda_plugins].plugin = plugin;
-        strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
-        nb_panda_plugins++;
+        // TRL: Don't do this here!  See above
+        //        panda_plugins[nb_panda_plugins].plugin = plugin;
+        //        strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
+        //        nb_panda_plugins++;
         fprintf (stderr, "Success\n");
         return true;
     }
@@ -202,7 +212,8 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
 }
 
 
-void spit_cbs() {
+/*
+void spit_cbs(void) {
     int i;
     for (i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
@@ -210,13 +221,15 @@ void spit_cbs() {
         if (plist != NULL) {
             printf ("%d: ", i);
             while (plist != NULL) {
-                printf ("%x(%x) ", plist, plist->owner);
+                printf ("%" PRIx64 "(% " PRIx64" ) ", plist, plist->owner);
                 plist= plist->next;
             }
             printf ("\n");
         }
     }
  }
+*/
+
 
 // Remove callbacks for this plugin
 void panda_unregister_callbacks(void *plugin) {

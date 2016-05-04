@@ -82,6 +82,7 @@ uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
 void taint2_labelset_spit(LabelSetP ls);
 
+void taint2_labelset_addr_iter(void *addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -845,17 +846,17 @@ void __taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1)
     tp_ls_iter(ls, app, stuff2);
 }
 
-
+void __taint2_labelset_addr_iter(Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    tp_ls_a_iter(shadow, a, app, stuff2);
+}
 
 void __taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_ram_iter(shadow, pa, app, stuff2);
 }
 
-
 void __taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_reg_iter(shadow, reg_num, offset, app, stuff2);
 }
-
 
 void __taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_llvm_iter(shadow, reg_num, offset, app, stuff2);
@@ -943,6 +944,10 @@ void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), 
     __taint2_labelset_iter(ls, app, stuff2);
 }
 
+// addr is an opaque
+void taint2_labelset_addr_iter(void *addr, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+    __taint2_labelset_addr_iter(((Addr*)addr), app, stuff2);
+}
 
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     __taint2_labelset_ram_iter(pa, app, stuff2);

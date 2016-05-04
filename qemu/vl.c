@@ -206,6 +206,7 @@ extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
+void panda_set_os_name(char *os_name);
 
 void pandalog_open(const char *path, const char *mode);
 int  pandalog_close(void);
@@ -3297,6 +3298,14 @@ int main(int argc, char **argv, char **envp)
                     break;
                 }
 
+            case QEMU_OPTION_panda_os_name:
+            {
+                char *os_name = strdup(optarg);
+                // NB: this will complain if we provide an os name that panda doesnt know about
+                panda_set_os_name(os_name);                
+                break;
+            }
+
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
@@ -3343,8 +3352,8 @@ int main(int argc, char **argv, char **envp)
     int pp_idx;
     for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
       if(!panda_load_plugin(panda_plugin_files[pp_idx])) {
-	fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
-	abort();
+          fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+          abort();
       }
     }
 

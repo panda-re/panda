@@ -48,10 +48,10 @@ pmemaccess
 #net_taint
 rehosting
 coverage
-#test_stpi
 stpi
 dwarfp
 dwarf_taint
 dwarf_simple
 #strace
 loaded
+wintrospection

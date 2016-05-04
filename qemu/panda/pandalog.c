@@ -88,7 +88,7 @@ Panda__LogEntry *pandalog_read_entry(void);
 uint32_t find_chunk(uint64_t instr, uint32_t i1, uint32_t i2);
 void pandalog_free_entry(Panda__LogEntry *entry);
 void pandalog_seek(uint64_t instr);
-
+uint32_t find_ind(uint64_t instr, uint32_t i1, uint32_t i2);
  
 void pandalog_create(uint32_t chunk_size) {
     assert (thePandalog == NULL);
@@ -409,7 +409,7 @@ void unmarshall_chunk(uint32_t c) {
     assert (ccs == n);
     unsigned long cs = chunk->size;
     // uncompress it
-    printf ("cs=%d ccs=%d\n", cs, ccs);
+    printf ("cs=%d ccs=%d\n", (int) cs, (int) ccs);
     ret = uncompress(chunk->buf, &cs, chunk->zbuf, ccs);
     assert (ret == Z_OK);
     thePandalog->chunk_num = c;
@@ -539,7 +539,7 @@ void pandalog_seek(uint64_t instr) {
     if (thePandalog->mode == PL_MODE_READ_BWD) {
         // need *last* entry with that instr for backward mode
         uint32_t i;
-        uint8_t found_entry = 0;
+        //        uint8_t found_entry = 0;
         for (i=ind; i<thePandalog->dir.num_entries[c]; i++) {
             Panda__LogEntry *ple = thePandalog->chunk.entry[i];
             if (ple->instr != instr || instr > ple->instr) {
