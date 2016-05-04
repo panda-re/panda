@@ -15,6 +15,8 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <libgen.h>
+
 #include "config.h"
 #include "qemu-common.h"
 
@@ -130,6 +132,9 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 }
 #endif
 
+// ugh
+extern char **gargv;
+
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
     panda_cb pcb;
@@ -139,19 +144,38 @@ bool init_plugin(void *self) {
     // figure out what kind of os introspection is needed and grab it? 
     assert (!(panda_os_type == OST_UNKNOWN));
     if (panda_os_type == OST_LINUX) {
+        // sadly, all of this is to find kernelinfo.conf file
+        char *progname = gargv[0];
+        if (progname[0] == '/') {
+            // absolute path, yay!
+        }
+        else {
+            // relative path
+            char *cwd = get_current_dir_name();
+            char *rel_progname = strdup(progname);
+            progname = (char *) malloc(256);
+            sprintf (progname, "%s/%s", cwd, rel_progname);
+        }            
+        char *progdir = strdup(progname);
+        progdir = dirname(progdir);
         char kconfgroup[512];
-        sprintf (kconfgroup, "%s-%d", panda_os_details, panda_os_bits);        
+        sprintf (kconfgroup, "%s-%d", panda_os_details, panda_os_bits);     
+        char kconfile[256];
+        snprintf (kconfile, 256, "%s/../panda_plugins/osi_linux/kernelinfo.conf", progdir);
+        char *kconfile2 = realpath( kconfile, NULL);
+        printf ("kconfile [%s]\n", kconfile2);
         char osi_linux_arg[512];
-        sprintf (osi_linux_arg, "osi_linux:kconf_file=%s,kconf_group=%s",
-                 __FILE__ "/../osi_linux/kernelinfo.conf", panda_os_details);
-        printf ("osi grabbing linux introspection backend. osi_linux arg [%s]", osi_linux_arg);
+        sprintf (osi_linux_arg, "osi_linux:kconf_file=%s", kconfile2);
         panda_add_arg(osi_linux_arg, strlen(osi_linux_arg));
+        sprintf (osi_linux_arg, "osi_linux:kconf_group=%s", panda_os_details);
+        panda_add_arg(osi_linux_arg, strlen(osi_linux_arg));        
+        printf ("osi grabbing linux introspection backend. osi_linux arg [%s]\n", osi_linux_arg);
         panda_require("osi_linux");
-        panda_require("wintrospection");
     }
     if (panda_os_type == OST_WINDOWS) {
         printf("osi grabbing windows introspection backend\n");
         panda_require("win7x86intro");
+        panda_require("wintrospection");
     }
     return true;
 }

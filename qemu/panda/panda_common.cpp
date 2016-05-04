@@ -68,6 +68,7 @@ const char * valid_os[] = {
     "windows-32-xpsp2", 
     "windows-32-xpsp3", 
     "windows-32-7", 
+    "linux-32-lava32",
     "linux-64-3.2.63",
     "linux-32-3.2.65",
     "linux-32-3.2.54",
