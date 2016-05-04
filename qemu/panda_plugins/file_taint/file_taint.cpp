@@ -226,7 +226,7 @@ bool saw_read = false;
 uint32_t last_read_buf;
 uint64_t last_pos = (uint64_t) -1;
 
-void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t pos, target_ulong buf, uint32_t count) { 
+void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t pos, uint32_t buf, uint32_t count) { 
     // these things are only known at enter of read call
     the_asid = panda_current_asid(env);
     last_read_buf = buf;
@@ -242,7 +242,7 @@ void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t p
 
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState* env,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
-void read_return(CPUState* env, target_ulong pc, target_ulong buf, uint32_t actual_count) {
+void read_return(CPUState* env, target_ulong pc, uint32_t buf, uint32_t actual_count) {
     if (saw_read && panda_current_asid(env) == the_asid) {
         // These are the start and end of the current range of labels.
         uint32_t read_start = last_pos;
@@ -322,7 +322,7 @@ void windows_create_return(CPUState* env, target_ulong pc, uint32_t FileHandle, 
 
  
 
-void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, target_ulong buf, uint32_t count) {
+void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
     target_ulong asid = panda_current_asid(env);
     if (running_procs.count(asid) == 0) {
         printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
@@ -340,7 +340,7 @@ void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, target_ulong 
     read_enter(env, pc, filename, pos, buf, count);
 }
 
-void linux_read_return(CPUState *env, target_ulong pc, uint32_t fd, target_ulong buf, uint32_t count) {
+void linux_read_return(CPUState *env, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
     read_return(env, pc, buf, EAX);
 }
 
@@ -363,7 +363,7 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
 
 
 #ifdef TARGET_I386
-void linux_open_enter(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
+void linux_open_enter(CPUState *env, target_ulong pc, uint32_t filename, int32_t flags, int32_t mode) {
     char the_filename[MAX_FILENAME];
     guest_strncpy(env, the_filename, MAX_FILENAME, filename);    
     printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
