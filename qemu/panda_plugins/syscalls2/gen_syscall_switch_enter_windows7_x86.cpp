@@ -396,14 +396,14 @@ PPP_RUN_CB(on_NtAllocateUuids_enter, env,pc,arg0,arg1,arg2,arg3) ;
 // 19 NTSTATUS NtAllocateVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' ULONG_PTR ZeroBits', ' PSIZE_T RegionSize', ' ULONG AllocationType', ' ULONG Protect']
 case 19: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 uint32_t arg5 = get_32(env, 5);
 if (PPP_CHECK_CB(on_NtAllocateVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
@@ -2000,12 +2000,12 @@ PPP_RUN_CB(on_NtFlushProcessWriteBuffers_enter, env,pc) ;
 // 128 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' PIO_STATUS_BLOCK IoStatus']
 case 128: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 if (PPP_CHECK_CB(on_NtFlushVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
@@ -2032,12 +2032,12 @@ PPP_RUN_CB(on_NtFreeUserPhysicalPages_enter, env,pc,arg0,arg1,arg2) ;
 // 131 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG FreeType']
 case 131: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 if (PPP_CHECK_CB(on_NtFreeVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
@@ -2106,10 +2106,10 @@ PPP_RUN_CB(on_NtGetCurrentProcessorNumber_enter, env,pc) ;
 // 137 NTSTATUS NtGetDevicePowerState ['HANDLE Device', ' DEVICE_POWER_STATE *State']
 case 137: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 if (PPP_CHECK_CB(on_NtGetDevicePowerState_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtGetDevicePowerState_enter, env,pc,arg0,arg1) ; 
 }; break;
@@ -2164,13 +2164,13 @@ case 141: {
 uint32_t arg0 = get_32(env, 0);
 uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
-target_ulong arg3 = get_pointer(env, 3);
+uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 if (PPP_CHECK_CB(on_NtGetNlsSectionPtr_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
-memcpy(rp.params[3], &arg3, sizeof(target_ulong));
+memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtGetNlsSectionPtr_enter, env,pc,arg0,arg1,arg2,arg3,arg4) ; 
@@ -2215,7 +2215,7 @@ uint32_t arg0 = get_32(env, 0);
 uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
-target_ulong arg4 = get_pointer(env, 4);
+uint32_t arg4 = get_32(env, 4);
 uint32_t arg5 = get_32(env, 5);
 uint32_t arg6 = get_32(env, 6);
 if (PPP_CHECK_CB(on_NtGetWriteWatch_return)) {
@@ -2223,7 +2223,7 @@ memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
-memcpy(rp.params[4], &arg4, sizeof(target_ulong));
+memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 memcpy(rp.params[5], &arg5, sizeof(uint32_t));
 memcpy(rp.params[6], &arg6, sizeof(uint32_t));
 }
@@ -2261,11 +2261,11 @@ PPP_RUN_CB(on_NtImpersonateThread_enter, env,pc,arg0,arg1,arg2) ;
 }; break;
 // 148 NTSTATUS NtInitializeNlsFiles ['PVOID *BaseAddress', ' PLCID DefaultLocaleId', ' PLARGE_INTEGER DefaultCasingTableSize']
 case 148: {
-target_ulong arg0 = get_pointer(env, 0);
+uint32_t arg0 = get_32(env, 0);
 uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 if (PPP_CHECK_CB(on_NtInitializeNlsFiles_return)) {
-memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 }
@@ -2397,11 +2397,11 @@ PPP_RUN_CB(on_NtLockFile_enter, env,pc,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,a
 }; break;
 // 160 NTSTATUS NtLockProductActivationKeys ['ULONG *pPrivateVer', ' ULONG *pSafeMode']
 case 160: {
-target_ulong arg0 = get_pointer(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg0 = get_32(env, 0);
+uint32_t arg1 = get_32(env, 1);
 if (PPP_CHECK_CB(on_NtLockProductActivationKeys_return)) {
-memcpy(rp.params[0], &arg0, sizeof(target_ulong));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtLockProductActivationKeys_enter, env,pc,arg0,arg1) ; 
 }; break;
@@ -2416,12 +2416,12 @@ PPP_RUN_CB(on_NtLockRegistryKey_enter, env,pc,arg0) ;
 // 162 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
 case 162: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 if (PPP_CHECK_CB(on_NtLockVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
@@ -2450,14 +2450,14 @@ uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
-target_ulong arg5 = get_pointer(env, 5);
+uint32_t arg5 = get_32(env, 5);
 if (PPP_CHECK_CB(on_NtMapCMFModule_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
-memcpy(rp.params[5], &arg5, sizeof(target_ulong));
+memcpy(rp.params[5], &arg5, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtMapCMFModule_enter, env,pc,arg0,arg1,arg2,arg3,arg4,arg5) ; 
 }; break;
@@ -2475,11 +2475,11 @@ PPP_RUN_CB(on_NtMapUserPhysicalPages_enter, env,pc,arg0,arg1,arg2) ;
 }; break;
 // 167 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', ' ULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
 case 167: {
-target_ulong arg0 = get_pointer(env, 0);
+uint32_t arg0 = get_32(env, 0);
 uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 if (PPP_CHECK_CB(on_NtMapUserPhysicalPagesScatter_return)) {
-memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 }
@@ -2489,7 +2489,7 @@ PPP_RUN_CB(on_NtMapUserPhysicalPagesScatter_enter, env,pc,arg0,arg1,arg2) ;
 case 168: {
 uint32_t arg0 = get_32(env, 0);
 uint32_t arg1 = get_32(env, 1);
-target_ulong arg2 = get_pointer(env, 2);
+uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 uint32_t arg5 = get_32(env, 5);
@@ -2500,7 +2500,7 @@ uint32_t arg9 = get_32(env, 9);
 if (PPP_CHECK_CB(on_NtMapViewOfSection_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 memcpy(rp.params[1], &arg1, sizeof(uint32_t));
-memcpy(rp.params[2], &arg2, sizeof(target_ulong));
+memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 memcpy(rp.params[5], &arg5, sizeof(uint32_t));
@@ -3184,13 +3184,13 @@ PPP_RUN_CB(on_NtPropagationFailed_enter, env,pc,arg0,arg1,arg2) ;
 // 215 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' WIN32_PROTECTION_MASK NewProtectWin32', ' PULONG OldProtect']
 case 215: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 if (PPP_CHECK_CB(on_NtProtectVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
@@ -3259,9 +3259,9 @@ PPP_RUN_CB(on_NtQueryDefaultLocale_enter, env,pc,arg0,arg1) ;
 }; break;
 // 222 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
 case 222: {
-target_ulong arg0 = get_pointer(env, 0);
+uint32_t arg0 = get_32(env, 0);
 if (PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return)) {
-memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtQueryDefaultUILanguage_enter, env,pc,arg0) ; 
 }; break;
@@ -3567,9 +3567,9 @@ PPP_RUN_CB(on_NtQueryInformationWorkerFactory_enter, env,pc,arg0,arg1,arg2,arg3,
 }; break;
 // 241 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
 case 241: {
-target_ulong arg0 = get_pointer(env, 0);
+uint32_t arg0 = get_32(env, 0);
 if (PPP_CHECK_CB(on_NtQueryInstallUILanguage_return)) {
-memcpy(rp.params[0], &arg0, sizeof(target_ulong));
+memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtQueryInstallUILanguage_enter, env,pc,arg0) ; 
 }; break;
@@ -4226,14 +4226,14 @@ PPP_RUN_CB(on_NtReleaseWorkerFactoryWorker_enter, env,pc,arg0) ;
 // 287 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', ' PVOID *KeyContext', ' PVOID *ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER Timeout']
 case 287: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
-target_ulong arg2 = get_pointer(env, 2);
+uint32_t arg1 = get_32(env, 1);
+uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 if (PPP_CHECK_CB(on_NtRemoveIoCompletion_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
-memcpy(rp.params[2], &arg2, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
 }
@@ -4324,12 +4324,12 @@ PPP_RUN_CB(on_NtReplyPort_enter, env,pc,arg0,arg1) ;
 // 295 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', ' PVOID *PortContext ', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage']
 case 295: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 if (PPP_CHECK_CB(on_NtReplyWaitReceivePort_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
@@ -4338,13 +4338,13 @@ PPP_RUN_CB(on_NtReplyWaitReceivePort_enter, env,pc,arg0,arg1,arg2,arg3) ;
 // 296 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', ' PVOID *PortContext', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage', ' PLARGE_INTEGER Timeout']
 case 296: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 if (PPP_CHECK_CB(on_NtReplyWaitReceivePortEx_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));
@@ -5124,10 +5124,10 @@ PPP_RUN_CB(on_NtShutdownSystem_enter, env,pc,arg0) ;
 // 361 NTSTATUS NtShutdownWorkerFactory ['HANDLE WorkerFactoryHandle', ' LONG *PendingWorkerCount']
 case 361: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 if (PPP_CHECK_CB(on_NtShutdownWorkerFactory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 }
 PPP_RUN_CB(on_NtShutdownWorkerFactory_enter, env,pc,arg0,arg1) ; 
 }; break;
@@ -5364,12 +5364,12 @@ PPP_RUN_CB(on_NtUnlockFile_enter, env,pc,arg0,arg1,arg2,arg3,arg4) ;
 // 384 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
 case 384: {
 uint32_t arg0 = get_32(env, 0);
-target_ulong arg1 = get_pointer(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 if (PPP_CHECK_CB(on_NtUnlockVirtualMemory_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(target_ulong));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 }
@@ -5442,13 +5442,13 @@ PPP_RUN_CB(on_NtWaitForMultipleObjects_enter, env,pc,arg0,arg1,arg2,arg3,arg4) ;
 // 390 NTSTATUS NtWaitForMultipleObjects32 ['ULONG Count', ' LONG Handles[]', ' WAIT_TYPE WaitType', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
 case 390: {
 uint32_t arg0 = get_32(env, 0);
-int32_t arg1 = get_s32(env, 1);
+uint32_t arg1 = get_32(env, 1);
 uint32_t arg2 = get_32(env, 2);
 uint32_t arg3 = get_32(env, 3);
 uint32_t arg4 = get_32(env, 4);
 if (PPP_CHECK_CB(on_NtWaitForMultipleObjects32_return)) {
 memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-memcpy(rp.params[1], &arg1, sizeof(int32_t));
+memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 memcpy(rp.params[3], &arg3, sizeof(uint32_t));
 memcpy(rp.params[4], &arg4, sizeof(uint32_t));

@@ -23,6 +23,7 @@ from collections import defaultdict
 from sys import argv,exit
 
 KNOWN_OS = set(["linux", "windows7", "windowsxp_sp2", "windowsxp_sp3"])
+arch32 = set(['x86', 'arm'])
 
 def usage():
     print "Usage syscall_parser.py <destdir> <os> <arch> [<os> <arch> ...]"
@@ -147,8 +148,29 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
 
 
 
+
+
+    CHAR_STAR = 'CHAR_STAR'
+    POINTER   = 'POINTER'
+    BYTES_8   = '8BYTE'
+    BYTES_4   = '4BYTE'
+    BYTES_2   = '2BYTE'
+    SIGNED_4  = '4SIGNED'
+    # C types for callback arguments
+    ARG_TYPE_C_TRANSLATIONS = { CHAR_STAR:  'uint32_t' if ARCH in arch32 else 'uint64_t', # pointer
+                                POINTER:    'uint32_t' if ARCH in arch32 else 'uint64_t', # pointer
+                                BYTES_8:    'uint64_t',
+                                BYTES_4:    'uint32_t',
+                                SIGNED_4:   'int32_t',
+                                BYTES_2:    'uint16_t',
+                              }
+
+    CPP_RESERVED = {"new": "anew", "data":"data_arg"}
+
+    # Functions to emit the code that gets the nth syscall argument of a
+    # given type.
     def get_pointer(argnum):
-        return "target_ulong arg%d = get_pointer(env, %d);\n" % (argnum, argnum)
+        return get_32(argnum) if ARCH in arch32 else get_64(argnum)
         
     def get_32(argnum):
         return "uint32_t arg%d = get_32(env, %d);\n" % (argnum, argnum)
@@ -170,26 +192,6 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
 
     def get_return_64(argnum):
         return "uint64_t arg%d = get_return_64(env, %d);\n" % (argnum, argnum)
-
-
-
-
-    CHAR_STAR = 'CHAR_STAR'
-    POINTER   = 'POINTER'
-    BYTES_8   = '8BYTE'
-    BYTES_4   = '4BYTE'
-    BYTES_2   = '2BYTE'
-    SIGNED_4  = '4SIGNED'
-    # C types for callback arguments
-    ARG_TYPE_C_TRANSLATIONS = { CHAR_STAR:  'target_ulong', # pointer
-                                POINTER:    'target_ulong', # pointer
-                                BYTES_8:    'uint64_t',
-                                BYTES_4:    'uint32_t',
-                                SIGNED_4:   'int32_t',
-                                BYTES_2:    'uint16_t',
-                              }
-
-    CPP_RESERVED = {"new": "anew", "data":"data_arg"}
 
     class Argument(object):
         def __init__(self):
@@ -256,7 +258,7 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                 if charre.search(arg) and not argname.endswith('buf') and argname != '...' and not argname.endswith('[]'):
                     thisarg.type = CHAR_STAR
                     arg_types.append(thisarg)
-                elif '*' in arg or any([x in arg for x in types_pointer]):
+                elif '*' in arg or any([x in arg for x in types_pointer]) or argname.endswith('[]'):
                     thisarg.type = POINTER
                     arg_types.append(thisarg)
                 elif any([x in arg for x in types_64]):

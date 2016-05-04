@@ -1285,7 +1285,7 @@ void w7p_NtMapViewOfSection_return(
 	target_ulong pc,
 	uint32_t SectionHandle,
 	uint32_t ProcessHandle,
-	target_ulong BaseAddress,
+	uint32_t BaseAddress,
 	uint32_t ZeroBits,
 	uint32_t CommitSize,
 	uint32_t SectionOffset,
@@ -1556,7 +1556,7 @@ void w7p_NtReplyWaitReceivePort_return(
 	CPUState* env,
 	target_ulong pc,
 	uint32_t PortHandle,
-	target_ulong PortContext,
+	uint32_t PortContext,
 	uint32_t ReplyMessage,
 	uint32_t ReceiveMessage) {
   uint32_t eproc = get_current_proc(env);
