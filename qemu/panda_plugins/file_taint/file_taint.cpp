@@ -442,16 +442,20 @@ bool init_plugin(void *self) {
     assert(init_osi_api());    
     panda_require("syscalls2");
 
-    panda_require("wintrospection");
-    assert(init_wintrospection_api());
     
     if (panda_os_type == OST_LINUX) {        
+        panda_require("osi_linux");
+        assert(init_osi_linux_api());
+        
         PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);        
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
     }
     
     if (panda_os_type == OST_WINDOWS) {
+        panda_require("wintrospection");
+        assert(init_wintrospection_api());
+        
         PPP_REG_CB("syscalls2", on_NtOpenFile_enter, windows_open_enter);
         PPP_REG_CB("syscalls2", on_NtOpenFile_return, windows_open_return);
         PPP_REG_CB("syscalls2", on_NtCreateFile_enter, windows_create_enter);
