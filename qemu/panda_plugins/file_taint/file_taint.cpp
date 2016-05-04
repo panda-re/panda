@@ -229,7 +229,8 @@ void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t p
     last_read_buf = buf;
     last_pos = pos;    
     saw_read = false;
-    if (0 == strcmp(filename.c_str(), taint_filename)) {
+    if (filename.find(taint_filename) != std::string::npos) {
+    //if (0 == strcmp(filename.c_str(), taint_filename)) {
         printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
         saw_read = true;
     }

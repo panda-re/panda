@@ -33,8 +33,10 @@ PPP_CB_BOILERPLATE(on_global_livevar_iter)
 PPP_PROT_REG_CB(on_funct_livevar_iter)
 PPP_CB_BOILERPLATE(on_funct_livevar_iter)
 // callbacks provided to client
-PPP_PROT_REG_CB(on_line_change)
-PPP_CB_BOILERPLATE(on_line_change)
+PPP_PROT_REG_CB(on_before_line_change)
+PPP_CB_BOILERPLATE(on_before_line_change)
+PPP_PROT_REG_CB(on_after_line_change)
+PPP_CB_BOILERPLATE(on_after_line_change)
 PPP_PROT_REG_CB(on_fn_start)
 PPP_CB_BOILERPLATE(on_fn_start)
 
@@ -53,8 +55,11 @@ void stpi_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
 }
 
 // callbacks provided to client
-void stpi_runcb_on_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
-    PPP_RUN_CB(on_line_change, env, pc, file_name, funct_name, lno);
+void stpi_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+    PPP_RUN_CB(on_before_line_change, env, pc, file_name, funct_name, lno);
+}
+void stpi_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+    PPP_RUN_CB(on_after_line_change, env, pc, file_name, funct_name, lno);
 }
 void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_fn_start, env, pc, file_name, funct_name, lno);

@@ -88,7 +88,9 @@ void taint_change(Addr a, uint64_t size) {
             }
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
             ple.tainted_instr = ti;
-            pandalog_write_entry(&ple);
+            if (pandalog) {
+                pandalog_write_entry(&ple);
+            }
             pandalog_callstack_free(ti->call_stack);
             for (uint32_t i=0; i<num_tainted; i++) {
                 pandalog_taint_query_free(ti->taint_query[i]);
@@ -99,7 +101,9 @@ void taint_change(Addr a, uint64_t size) {
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
             ple.has_asid = 1;
             ple.asid = asid;
-            pandalog_write_entry(&ple);
+            if (pandalog) {
+                pandalog_write_entry(&ple);
+            }
             last_asid = asid;
         }
     }

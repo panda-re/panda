@@ -51,6 +51,8 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 #include "gen_syscall_ppp_register_return.cpp"
 
 }
+// Used to confirm that entry into exec call back is from a syscall translate cb returning true
+bool inSyscallTranslate = false;
 
 // Forward declarations
 target_ulong get_pointer_32bit(CPUState *env, uint32_t argnum);
@@ -445,32 +447,41 @@ int exec_callback(CPUState *env, target_ulong pc) {
           (buf[0]== 0xCD && buf[1] == 0x80) ||
           (buf[0]== 0x0F && buf[1] == 0x34)))
     {
+        //printf("in exec syscall2 callback but not a syscall instruction!\n");
         return 0;
     }
     // run any code we need to update our state
-    for(const auto callback : preExecCallbacks){
-        callback(env, pc);
-    }
-    syscalls_profile->enter_switch(env, pc);
+    //if (inSyscallTranslate){
+        //printf("in syscall exec callback\n");
+        for(const auto callback : preExecCallbacks){
+            callback(env, pc);
+        }
+        syscalls_profile->enter_switch(env, pc);
+    //}
+    inSyscallTranslate = false;
     return 0;
 }
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
 bool translate_callback(CPUState *env, target_ulong pc) {
+    inSyscallTranslate = false;
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
     panda_virtual_memory_rw(env, pc, buf, 2, 0);
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
+        inSyscallTranslate = true;
         return true;
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == 0x80) {
+        inSyscallTranslate = true;
         return true;
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
+        inSyscallTranslate = true;
         return true;
     }
     else {
@@ -484,10 +495,12 @@ bool translate_callback(CPUState *env, target_ulong pc) {
         panda_virtual_memory_rw(env, pc, buf, 4, 0);
         // EABI
         if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
+            inSyscallTranslate = true;
             return true;
         }
 #if defined(CAPTURE_ARM_OABI)
         else if (((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
+            inSyscallTranslate = true;
             return true;
         }
 #endif
@@ -496,6 +509,7 @@ bool translate_callback(CPUState *env, target_ulong pc) {
         panda_virtual_memory_rw(env, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
+            inSyscallTranslate = true;
             return true;
         }
     }

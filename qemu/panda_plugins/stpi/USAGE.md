@@ -53,11 +53,17 @@ Description: iterate through live vars local to the current function and apply f
 
 In addition, there are two callbacks intended to be used by `stpi` *users*, rather than by introspection providers:
 
-Name: **on_line_change**
+Name: **on_before_line_change**
 
-Signature: `typedef void (*on_line_change_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno)`
+Signature: `typedef void (*on_before_line_change_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno)`
 
-Description: Called when execution hits a line change in source code.
+Description: Called before execution starts a line in source code.
+
+Name: **on_after_line_change**
+
+Signature: `typedef void (*on_after_line_change_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno)`
+
+Description: Called after execution finishes a line in source code.
 
 Name: **on_fn_start**
 
@@ -78,9 +84,10 @@ There are three API functions provided to clients that allow them to iterate thr
     // iterate through the global vars at the current state of execution
     void stpi_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     
-There are two API functions provided to stpi providers that allow them to run callbacks that will be available to clients through the `stpi` interface.
+There are three API functions provided to stpi providers that allow them to run callbacks that will be available to clients through the `stpi` interface.
     // run a line change callback
-    void stpi_runcb_on_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+    void stpi_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+    void stpi_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
     // run a callback signaling the beginning of a function AFTER the function prologue
     void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
 
