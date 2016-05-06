@@ -96,7 +96,8 @@ PPP_CB_BOILERPLATE(on_dwarfp_line_change);
 #include <map>
 #include <set>
 #include <string>
-#include <boost/algorithm/string/join.hpp>
+#include <algorithm>
+//#include <boost/algorithm/string/join.hpp>
 #define MAX_FILENAME 256
 Dwarf_Unsigned prev_line = 0, cur_line;
 Dwarf_Addr prev_function = 0, cur_function;
@@ -109,7 +110,7 @@ std::map <target_ulong, OsiProc> running_procs;
 //std::map<std::string,std::pair<Dwarf_Addr,Dwarf_Addr>> functions;
 std::map<Dwarf_Addr,std::string> funcaddrs;
 //std::map<Dwarf_Addr,std::string> funcaddrs_ret;
-std::map<Dwarf_Addr,std::string> funcparams;
+//std::map<Dwarf_Addr,std::string> funcparams;
 std::map<std::string, Dwarf_Addr> dynl_functions;
 std::set<std::string> mods_seen;
 
@@ -830,7 +831,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
     } while (1);
     //funct_to_cu_base[lowpc] = cu_base_address;
     funcvars[lowpc] = var_list;
-    funcparams[lowpc] = boost::algorithm::join(params, ", ");
+    //funcparams[lowpc] = boost::algorithm::join(params, ", ");
     //printf(" %s #variables: %lu\n", funcaddrs[lowpc].c_str(), var_list.size());
 
 }
