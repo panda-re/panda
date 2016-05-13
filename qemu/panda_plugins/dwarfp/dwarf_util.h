@@ -628,6 +628,7 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
             case DW_OP_stack_value:
                 printf("%s", "DW_OP_stack_value");
                 break;
+/* breaks on older versions of libdwarf
             case DW_OP_implicit_pointer:
                 printf("%s", "DW_OP_implicit_pointer");
                 break;
@@ -658,6 +659,8 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
             case DW_OP_reinterpret:
                 printf("%s", "DW_OP_reinterpret");
                 break;
+*/
+
             /* GNU extensions. */
             case DW_OP_GNU_push_tls_address:
                 printf("%s", "DW_OP_GNU_push_tls_address");
@@ -674,6 +677,7 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
             case DW_OP_GNU_entry_value:
                 printf("%s", "DW_OP_GNU_entry_value");
                 break;
+/* breaks on older versions of libdwarf
             case DW_OP_GNU_const_type:
                 printf("%s", "DW_OP_GNU_const_type");
                 break;
@@ -701,6 +705,7 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
             case DW_OP_hi_user:
                 printf("%s", "DW_OP_hi_user");
                 break;
+*/
             default:
                 printf("UNKNOWN OP at 0x%x\n", loc->lr_atom);
                 exit(1);
@@ -976,18 +981,22 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                 }
             // takes an argument (which is offset into debugging information for a die entry that is a base type
             // converts arg on top of stack to said base type
+/*
             case DW_OP_GNU_convert:
             case DW_OP_convert:
                 printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning 0\n");
                 return LocErr;
+*/ 
             case DW_OP_piece:
             case DW_OP_bit_piece:
                 printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning 0\n");
                 return LocErr;
-            case DW_OP_deref:
-            case DW_OP_deref_size:
+            /*
             case DW_OP_deref_type:
             case DW_OP_GNU_deref_type:
+            */            
+	    case DW_OP_deref:
+            case DW_OP_deref_size:
             case DW_OP_abs:
             case DW_OP_neg:
             case DW_OP_not:
@@ -1025,10 +1034,12 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                             }
                         }
                         break;
+/*            
                     case DW_OP_GNU_deref_type:
                     case DW_OP_deref_type:
                         printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
                         return LocErr;
+*/
                     case DW_OP_abs:
                         if ((target_long) result < 0)
                             result = -result;
