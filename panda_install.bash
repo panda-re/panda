@@ -54,7 +54,7 @@ fi
 
 if [ ! -e "/usr/local/lib/libdwarf.so" ]
 then
-  wget http://www.prevanders.net/libdwarf-20151114.tar.gz  
+  wget http://www.prevanders.net/libdwarf-20151114.tar.gz --no-check-certificate 
   tar -xzvf libdwarf-20151114.tar.gz
   cd dwarf-20151114
   progress "Installing libdwarf..."
