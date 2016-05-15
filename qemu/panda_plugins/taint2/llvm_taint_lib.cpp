@@ -1147,14 +1147,19 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         int argBytes = getValueSize(arg);
         assert(argBytes > 0);
 
-        // if arg is constant then do nothing
+        auto arg_dest = const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE);
+        auto arg_bytes = const_uint64(ctx, argBytes);
+        // if arg is constant then delete taint
         if (!isa<Constant>(arg)) {
             vector<Value *> copyargs{
-                llvConst, const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE),
-                llvConst, constSlot(ctx, arg), const_uint64(ctx, argBytes),
+                llvConst, arg_dest,
+                llvConst, constSlot(ctx, arg), arg_bytes,
                 constInstr(ctx, nullptr)
             };
             inlineCallBefore(I, copyF, copyargs);
+        } else {
+            vector<Value *> args { llvConst, arg_dest, arg_bytes };
+            inlineCallBefore(I, deleteF, args);
         }
     }
     if (!callType->getReturnType()->isVoidTy()) { // Copy from return slot.
