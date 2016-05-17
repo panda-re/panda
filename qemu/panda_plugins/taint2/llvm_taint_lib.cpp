@@ -762,6 +762,7 @@ bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
+    addrOut.flag = NONE;
     int offset = -1;
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
