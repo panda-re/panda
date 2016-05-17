@@ -46,8 +46,6 @@ extern "C" {
 #include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>
-#include <dwarf.h>
-#include <libdwarf.h>
 
 }
 
