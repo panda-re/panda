@@ -762,7 +762,7 @@ bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
-    addrOut.flag = NONE;
+    addrOut.flag = (AddrFlag)0;
     int offset = -1;
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
@@ -843,6 +843,12 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             grvConst, gsvConst, const_uint64(ctx, size), const_uint64(ctx, WORDSIZE)
         };
         inlineCallAfter(I, hostDeleteF, args);
+    } else if (isa<AllocaInst>(ptr) && isStore) {
+        if (isa<Constant>(val)) {
+            insertTaintDelete(I, llvConst, ptr, const_uint64(ctx, size));
+        } else {
+            insertTaintCopy(I, llvConst, ptr, llvConst, val, size);
+        }
     } else {
         PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
