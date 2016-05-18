@@ -762,6 +762,7 @@ bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
 bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     IntToPtrInst *I2PI;
     GetElementPtrInst *GEPI;
+    addrOut.flag = (AddrFlag)0;
     int offset = -1;
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
@@ -842,6 +843,12 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             grvConst, gsvConst, const_uint64(ctx, size), const_uint64(ctx, WORDSIZE)
         };
         inlineCallAfter(I, hostDeleteF, args);
+    } else if (isa<AllocaInst>(ptr) && isStore) {
+        if (isa<Constant>(val)) {
+            insertTaintDelete(I, llvConst, ptr, const_uint64(ctx, size));
+        } else {
+            insertTaintCopy(I, llvConst, ptr, llvConst, val, size);
+        }
     } else {
         PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
@@ -1147,14 +1154,19 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         int argBytes = getValueSize(arg);
         assert(argBytes > 0);
 
-        // if arg is constant then do nothing
+        auto arg_dest = const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE);
+        auto arg_bytes = const_uint64(ctx, argBytes);
+        // if arg is constant then delete taint
         if (!isa<Constant>(arg)) {
             vector<Value *> copyargs{
-                llvConst, const_uint64(ctx, (shad->num_vals + i) * MAXREGSIZE),
-                llvConst, constSlot(ctx, arg), const_uint64(ctx, argBytes),
+                llvConst, arg_dest,
+                llvConst, constSlot(ctx, arg), arg_bytes,
                 constInstr(ctx, nullptr)
             };
             inlineCallBefore(I, copyF, copyargs);
+        } else {
+            vector<Value *> args { llvConst, arg_dest, arg_bytes };
+            inlineCallBefore(I, deleteF, args);
         }
     }
     if (!callType->getReturnType()->isVoidTy()) { // Copy from return slot.
