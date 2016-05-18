@@ -875,14 +875,16 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
         } 
         int i;
         if (DW_DLV_OK == dwarf_srclines(cu_die, &dwarf_lines, &line_count, &err)){
-            char *filenm;
-            char *filenm_copy;
+            char *filenm_tmp;
+            char *filenm_cu;
             if (line_count > 0){
-                dwarf_linesrc(dwarf_lines[0], &filenm, &err);
-                filenm_copy = (char *) malloc(strlen(filenm)+1);
-                strcpy(filenm_copy, filenm);
+                dwarf_linesrc(dwarf_lines[0], &filenm_tmp, &err);
+                filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
+                strcpy(filenm_cu, filenm_tmp);
                 
                 for (i = 1; i < line_count; i++){
+                    char *filenm_line;
+                    filenm_tmp = NULL;
                     Dwarf_Addr upper_bound_addr;
                     Dwarf_Addr lower_bound_addr;
                     Dwarf_Unsigned line_num;
@@ -892,15 +894,23 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 
                     dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
                     dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
+                    dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
+                    if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
+                        filenm_line = filenm_cu;
+                    }
+                    else {
+                        filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
+                        strcpy(filenm_line, filenm_tmp);
+                    }
                     //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
                     if (needs_reloc){
                         line_range_list.push_back(LineRange(base_address+lower_bound_addr, 
                                                             base_address+upper_bound_addr,
-                                                            line_num, filenm_copy, line_off, 0));
+                                                            line_num, filenm_line, line_off, 0));
                     }
                     else{
                         line_range_list.push_back(LineRange(lower_bound_addr, upper_bound_addr, line_num, 
-                                                            filenm_copy, line_off, 0));
+                                                            filenm_line, line_off, 0));
                     }
                     //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr); 
                 }      
@@ -1182,8 +1192,8 @@ void dwarf_log_callsite(CPUState *env, char *file_callee, char *fn_callee, uint6
     ra -= 5; // subtract 5 to get address of call instead of return address
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), ra, CompareRangeAndPC());
     if (ra < it->lowpc || it == line_range_list.end()){
-        printf("No DWARF information for callsite 0x%x for current function.\n", ra);
-        printf("Callsite must be in an external library we do not have DWARF information for.\n");
+        //printf("No DWARF information for callsite 0x%x for current function.\n", ra);
+        //printf("Callsite must be in an external library we do not have DWARF information for.\n");
         return;
     }
     //                      lowpc       highpc        line no       filename  function addr
