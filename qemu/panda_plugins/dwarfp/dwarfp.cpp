@@ -1211,7 +1211,7 @@ void on_call(CPUState *env, target_ulong pc) {
     char *file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
-    printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
     dwarf_log_callsite(env, file_name,(char *)funct_name.c_str(), cur_line, true);
     stpi_runcb_on_fn_start(env, pc, file_name, funct_name.c_str(), cur_line);
 
@@ -1253,7 +1253,7 @@ void on_ret(CPUState *env, target_ulong pc_func) {
     char *file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
-    printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_func);
+    //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_func);
     dwarf_log_callsite(env, file_name,(char *)funct_name.c_str(), cur_line, false);
 }
 
@@ -1263,7 +1263,7 @@ void livevar_iter(CPUState *env,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
         //void (*f)(std::string, std::string, LocType, target_ulong)){
     //for (auto it=vars.begin(); it != vars.end(); ++it){
-    printf("size of vars: %ld\n", vars.size());
+    //printf("size of vars: %ld\n", vars.size());
     target_ulong fp = get_cur_fp(env, pc);
     if (fp == (target_ulong) -1){
         printf("Error was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
@@ -1333,7 +1333,7 @@ void dwarf_all_livevar_iter(CPUState *env,
 void dwarf_funct_livevar_iter(CPUState *env,
         target_ulong pc,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    printf("iterating through live vars\n");
+    //printf("iterating through live vars\n");
     livevar_iter(env, pc, funcvars[cur_function], f);
 }
 void dwarf_global_livevar_iter(CPUState *env,

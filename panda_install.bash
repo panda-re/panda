@@ -60,9 +60,9 @@ then
   progress "Installing libdwarf..."
   ./configure --enable-shared
   make
-  cp libdwarf/libdwarf.h /usr/local/include
-  cp libdwarf/dwarf.h /usr/local/include
-  cp libdwarf/libdwarf.so /usr/local/lib/
+  sudo cp libdwarf/libdwarf.h /usr/local/include
+  sudo cp libdwarf/dwarf.h /usr/local/include
+  sudo cp libdwarf/libdwarf.so /usr/local/lib/
   cd ../
 else
   progress "Skipping libdwarf..."

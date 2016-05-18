@@ -3,6 +3,8 @@
 #include "panda/panda_addr.h"
 #include "../taint2/label_set.h"
 #include "../taint2/taint2.h"
+#include <algorithm>
+
 extern "C" {
 
     
@@ -32,37 +34,52 @@ void set_loglevel(int new_loglevel);
 CPUState *pfun_env;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
-    target_ulong guest_dword; 
+    target_ulong guest_dword;
+    std::string ty_string = std::string(var_ty);
+    size_t num_derefs = std::count(ty_string.begin(), ty_string.end(), '*');
+    size_t i;
     switch (loc_t){
         case LocReg:
-            printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
-            if (0 != taint2_query_reg(loc, 0)) {
-                printf("    => 0x%x\n", pfun_env->regs[loc]);
-                printf(" ==Location is tainted!==\n");
-            }
-            break;
-        case LocMem:
-            printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
-            if (0 == panda_virtual_memory_rw(pfun_env, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){ 
-                printf("    => 0x%x\n", guest_dword);
-                if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
-                    printf(" ==Dereferenced location is tainted!==\n");
+            guest_dword = pfun_env->regs[loc];
+            if (num_derefs > 0) {
+                for (i = 0; i < num_derefs; i++) {
+                    int rc = panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0); 
+                    if (0 != rc)
+                        break;
                 }
-                else {
-                    if (0 == panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){
-                        printf("    => 0x%x\n", guest_dword);
-                    }
+                if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
+                    printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+                    printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
+                    printf(" ==Location is tainted!==\n");
                 }
             }
             else {
-                printf("not able to resolve address in guest memory\n");
-            } 
-            if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, loc)))  {
-                    printf(" ==Location is tainted!==\n");
+                // only query reg taint if the reg number is less than the number of registers
+                if (loc < CPU_NB_REGS) {
+                    if (0 != taint2_query_reg(loc, 0)) {
+                        printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+                        printf("    => 0x%x, derefs: %d\n", guest_dword, 0);
+                        printf(" ==Reg is tainted!==\n");
+                    }
+                }
             }
+            
+            break;
+        case LocMem:
+            guest_dword = loc;
+            for (i = 0; i < num_derefs; i++) {
+                if (0 != panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){ 
+                    break;
+                }
+            }
+            if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
+                printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
+                printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
+                printf(" ==Location is tainted!==\n");
+            } 
             break;
         case LocConst:
-            printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
+            //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
             break;
         case LocErr:
             printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
