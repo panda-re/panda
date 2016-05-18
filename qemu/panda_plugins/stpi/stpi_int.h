@@ -17,6 +17,7 @@
 //  Just the prototypes, please.  
 
 
+typedef void PC_Info;
 typedef void liveVarCB;
 typedef void CPUState;
 typedef void LocType;

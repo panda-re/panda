@@ -50,6 +50,7 @@ void uninit_plugin(void *);
 //void on_ret(CPUState *env, target_ulong pc);
 //void on_call(CPUState *env, target_ulong pc);
 void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
+int on_get_pc_source_info(CPUState *env, target_ulong pc,  PC_Info *info);
 void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
 
 void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
@@ -131,10 +132,10 @@ std::vector<VarInfo> global_var_list;
 struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
     char *filename;
-    Dwarf_Unsigned line_number;
+    unsigned long line_number;
     Dwarf_Unsigned line_off;
 
-    LineRange(Dwarf_Addr lowpc, Dwarf_Addr highpc, Dwarf_Unsigned line_number,
+    LineRange(Dwarf_Addr lowpc, Dwarf_Addr highpc, unsigned long line_number,
             char *filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
         lowpc(lowpc), highpc(highpc), function_addr(function_addr),
         filename(filename), line_number(line_number), line_off(line_off) {}
@@ -1324,6 +1325,26 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
 /********************************************************************
  * end PPPs
 ******************************************************************** */
+void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, PC_Info *info, int *rc){
+    if (!correct_asid(env)) {
+        *rc = -1;
+        return;
+    }
+    auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    if (pc < it->lowpc || it == line_range_list.end()){
+        *rc = -1;
+        return;
+    }
+    
+    // we are in dwarf-land, so populate info struct
+    Dwarf_Addr call_site_fn = it->function_addr;
+    info->filename = it->filename;
+    info->line_number = it->line_number;
+    std::string funct_name = funcaddrs[call_site_fn];
+    info->funct_name = funct_name.c_str();
+    *rc = 0;
+    return;
+}
 void dwarf_all_livevar_iter(CPUState *env,
         target_ulong pc,
         void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
@@ -1509,6 +1530,7 @@ bool init_plugin(void *self) {
      
     PPP_REG_CB("loaded", on_library_load, on_library_load);
     // contracts we fulfill for stpi plugin
+    PPP_REG_CB("stpi", on_get_pc_source_info, dwarf_get_pc_source_info);
     PPP_REG_CB("stpi", on_all_livevar_iter, dwarf_all_livevar_iter);
     PPP_REG_CB("stpi", on_funct_livevar_iter, dwarf_funct_livevar_iter);
     PPP_REG_CB("stpi", on_global_livevar_iter, dwarf_global_livevar_iter);

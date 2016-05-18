@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include "../osi/osi_types.h"
 #include "stpi.h"
 // callbacks that symbol table provider must provide functionality for
+PPP_PROT_REG_CB(on_get_pc_source_info)
+PPP_CB_BOILERPLATE(on_get_pc_source_info)
 PPP_PROT_REG_CB(on_all_livevar_iter)
 PPP_CB_BOILERPLATE(on_all_livevar_iter)
 PPP_PROT_REG_CB(on_global_livevar_iter)
@@ -44,6 +46,12 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 
 // callback provided to symbol table provider
+int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info) {
+    int rc;
+    PPP_RUN_CB(on_get_pc_source_info, env, pc, info, &rc);
+    return rc;
+}
+
 void stpi_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
     PPP_RUN_CB(on_all_livevar_iter, env, pc, f);
 }

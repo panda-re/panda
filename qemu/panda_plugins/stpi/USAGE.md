@@ -31,6 +31,12 @@ APIs and Callbacks
 ------------------
 To implement debugging information process introspection support, an stpi provider should register the following callbacks:
 
+Name: **on_get_pc_source_info**
+
+Signature: `typedef void (*on_get_pc_source_info_t)(CPUState *a, target_ulong pc, PC_Info *info, int *rc)`
+
+Description: get dwarf info for a pc at current execution return -1 if not in dwarf-land
+
 Name: **on_all_livevar_iter**
 
 Signature: `typedef void (*on_all_livevar_iter_t)(CPUState *a, target_ulong pc, liveVarCB f)`
@@ -75,6 +81,9 @@ Description: Called when execution hits the start of a function after the functi
 
 There are three API functions provided to clients that allow them to iterate through live variables at the current state of execution.
 
+    // get dwarf info for a pc at current execution return -1 if not in dwarf-land
+    int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
+    
     // iterate through the live vars at the current state of execution
     void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
 

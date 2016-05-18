@@ -3,6 +3,9 @@
 
 // Public Interface
 
+// get dwarf info for a pc at current execution return -1 if not in dwarf-land
+int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
+
 // iterate through the live vars at the current state of execution
 void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
 

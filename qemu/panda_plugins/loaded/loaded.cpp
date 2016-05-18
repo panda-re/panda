@@ -75,9 +75,6 @@ void die(const char* fmt, ...) {
     va_end(args);
 }
 
-target_ulong monitored_asid = 0;
-
-
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
     unsigned i;
@@ -106,19 +103,16 @@ void linux_mmap_pgoff_return(CPUState *env,target_ulong pc,uint32_t addr,uint32_
     }
     OsiProc proc = running_procs[asid];        
     char *filename = osi_linux_fd_to_filename(env, &proc, fd);
+    // gets us offset into the file.  could be useful
     //uint64_t pos = osi_linux_fd_to_pos(env, &proc, fd);
     // if a filename exists and permission is executable
-    // TODO: fix this magic constant of 0x04 for PROT_EXEC could be different on different linux distros
+    // TODO: fix this magic constant of 0x04 for PROT_EXEC
     if (filename != NULL && ((prot & 0x04) == 0x04)) {
-        printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x flags=%x pgoff=%d)=%x\n", (int) fd, filename, len, prot, flags, pgoff, EAX);        
+        printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x flags=%x pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd, filename, len, prot, flags, pgoff, EAX);        
+        //printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x flags=%x pgoff=%d)=%x\n", (int) fd, filename, len, prot, flags, pgoff, EAX);        
         PPP_RUN_CB(on_library_load, env, pc, filename, EAX)
 
     }
-}
-void linux_open_enter(CPUState *env, target_ulong pc, target_ulong filename, int32_t flags, int32_t mode) {
-    char the_filename[MAX_FILENAME];
-    guest_strncpy(env, the_filename, MAX_FILENAME, filename);    
-    printf ("linux_open_enter asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
 }
 #endif
 
