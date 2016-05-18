@@ -37,6 +37,7 @@ sudo apt-get -y install curl
 sudo apt-get -y install autoconf
 sudo apt-get -y install libtool
 sudo apt-get -y install python-pip
+sudo apt-get -y install libelf-dev
 ```
 
 ## Compiled prerequisites
@@ -109,6 +110,24 @@ sudo make install
 cd -
 cd distorm/include
 sudo cp * /usr/local/include
+```
+
+### libdwarf
+[libdwarf](https://www.prevanders.net/dwarf.html) is a DWARF
+producer and consumer. It is used by `dwarfp` in order to 
+provide source level introspection to PANDA plugins.
+
+```
+wget http://www.prevanders.net/libdwarf-20160507.tar.gz --no-check-certificate 
+tar -xzvf libdwarf-20151114.tar.gz
+cd dwarf-20160507
+progress "Installing libdwarf..."
+./configure --enable-shared
+make
+sudo cp libdwarf/libdwarf.h /usr/local/include
+sudo cp libdwarf/dwarf.h /usr/local/include
+sudo cp libdwarf/libdwarf.so /usr/local/lib/
+cd ../
 ```
 
 ### Protocol buffers C style
