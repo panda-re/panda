@@ -783,6 +783,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
     // Load information about arguments
     //printf("Loading arguments for %s\n", die_name);
     Dwarf_Die arg_child;
+    Dwarf_Die tmp_die;
     std::vector<std::string> params;
     std::pair<std::string, std::string> type_argname;
     std::vector<VarInfo> var_list;
@@ -790,46 +791,65 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         return;
     }
     /* Now go over all children DIEs */
-    do {
+    while (arg_child != NULL) {
         if (dwarf_tag(arg_child, &tag, &err) != DW_DLV_OK) {
             die("Error in dwarf_tag\n");
             break;
         }
- 
-        if (tag == DW_TAG_formal_parameter) {
-            // pushes name and type information for paramater into params vector
-            //getNameAndTypeFromDie(dbg, arg_child, &params);
-            type_argname = getNameAndTypeFromDie(dbg, arg_child);
-            if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
-                // value is likely optimized out, so has no location
-                //printf("Var [%s] has no loc\n", type_argname.second.c_str());
-            }else {
-                var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
-            }
-            params.push_back(type_argname.first + " " + type_argname.second);
+        switch (tag) { 
+            /* fall through to default case to get sibling die */
+            case DW_TAG_formal_parameter:
+                // pushes name and type information for paramater into params vector
+                //getNameAndTypeFromDie(dbg, arg_child, &params);
+                type_argname = getNameAndTypeFromDie(dbg, arg_child);
+                if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                    // value is likely optimized out, so has no location
+                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                }else {
+                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                }
+                params.push_back(type_argname.first + " " + type_argname.second);
+                break;
+            /* fall through to default case to get sibling die */
+            case DW_TAG_unspecified_parameters:
+                params.push_back("...");
+                break;
+            /* does NOT fall through to default case to get sibling die because gets child die */
+            case DW_TAG_lexical_block:
+                /* Expect the Lexical block DIE to have children */
+                if (dwarf_child(arg_child, &tmp_die, &err) == DW_DLV_ERROR) {
+                    arg_child = NULL;
+                    die("Error getting child of CU DIE\n");
+                }
+                else {
+                    arg_child = tmp_die;
+                }
+                // skip the dwarf_sibling code() and go to the top of while loop to collect
+                // dwarf information within the lexical block
+                continue;
+            case DW_TAG_variable:
+                type_argname = getNameAndTypeFromDie(dbg, arg_child);
+                if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                    // value is likely optimized out, so has no location
+                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                } else {
+                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                }
+                break;
+            default:
+                //printf("UNKNOWN tag in function dwarf analysis\n");
+                break;
         }
-        else if (tag == DW_TAG_unspecified_parameters) 
-            params.push_back("...");
-        else if (tag == DW_TAG_variable){
-           type_argname = getNameAndTypeFromDie(dbg, arg_child);
-            if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
-                // value is likely optimized out, so has no location
-                //printf("Var [%s] has no loc\n", type_argname.second.c_str());
-            } else {
-                var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
-            } 
-        }
-
         rc = dwarf_siblingof(dbg, arg_child, &arg_child, &err);
 
         if (rc == DW_DLV_ERROR) {
             die("Error getting sibling of DIE\n");
-            break;
+            arg_child = NULL;
         }
         else if (rc == DW_DLV_NO_ENTRY) {
-            break; /* done */
+            arg_child = NULL; /* done */
         }
-    } while (1);
+    }
     //funct_to_cu_base[lowpc] = cu_base_address;
     funcvars[lowpc] = var_list;
     //funcparams[lowpc] = boost::algorithm::join(params, ", ");
