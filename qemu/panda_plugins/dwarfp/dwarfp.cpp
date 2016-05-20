@@ -114,6 +114,7 @@ std::map<Dwarf_Addr,std::string> funcaddrs;
 //std::map<Dwarf_Addr,std::string> funcparams;
 std::vector<std::string> processed_libs;
 std::map<std::string, Dwarf_Addr> dynl_functions;
+std::map<Dwarf_Addr, std::string> addr_to_dynl_function;
 std::set<std::string> mods_seen;
 
 struct VarInfo {
@@ -426,6 +427,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         }
         else {
             dynl_functions[std::string(basename) + ":plt!" + plt_fun_name] = plt_fun_addr;
+            addr_to_dynl_function[plt_fun_addr] = "plt!" + plt_fun_name;
         }
     }
     // sort the line_range_list because we changed it
@@ -1424,7 +1426,16 @@ void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, PC_Info *info, int
     }
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (pc < it->lowpc || it == line_range_list.end()){
-        *rc = -1;
+        auto it_dyn = addr_to_dynl_function.find(pc);
+        if (it_dyn != addr_to_dynl_function.end()){
+            info->filename = NULL;
+            info->line_number = 0;
+            info->funct_name = it_dyn->second.c_str();
+            *rc = 0;
+        }
+        else {
+            *rc = -1;
+        }
         return;
     }
     
