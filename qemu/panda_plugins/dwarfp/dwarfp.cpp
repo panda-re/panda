@@ -112,6 +112,7 @@ std::map <target_ulong, OsiProc> running_procs;
 std::map<Dwarf_Addr,std::string> funcaddrs;
 //std::map<Dwarf_Addr,std::string> funcaddrs_ret;
 //std::map<Dwarf_Addr,std::string> funcparams;
+std::vector<std::string> processed_libs;
 std::map<std::string, Dwarf_Addr> dynl_functions;
 std::set<std::string> mods_seen;
 
@@ -129,7 +130,7 @@ struct VarInfo {
 std::map<Dwarf_Addr,std::vector<VarInfo>> funcvars;
 std::vector<VarInfo> global_var_list;
 
-struct LineRange {
+typedef struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
     char *filename;
     unsigned long line_number;
@@ -139,9 +140,10 @@ struct LineRange {
             char *filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
         lowpc(lowpc), highpc(highpc), function_addr(function_addr),
         filename(filename), line_number(line_number), line_off(line_off) {}
-};
+} LineRange;
 std::vector<LineRange> line_range_list;
 std::vector<LineRange> fn_start_line_range_list;
+std::map<std::string, LineRange> fn_name_to_line_info;
 
 // don't need this, but may want it in the future
 //std::map<Dwarf_Addr, Dwarf_Unsigned> funct_to_cu_base;
@@ -160,7 +162,7 @@ struct CompareRangeAndPC
 {
     bool operator () (const LineRange &ln_info,
                     const Dwarf_Addr &pc) const{
-        if (ln_info.lowpc <= pc && ln_info.highpc > pc){
+        if (ln_info.lowpc <= pc && ln_info.highpc >= pc){
             return 0;
         }
         else
@@ -255,7 +257,7 @@ static bool elf_check_ehdr(struct elfhdr *ehdr)
             && (ehdr->e_type == ET_EXEC || ehdr->e_type == ET_DYN));
 }
 
-uint64_t elf_get_baseaddr(const char *fname, const char *basename) {
+uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong actual_base_address) {
     // XXX: note: byte swapping omitted
     // XXX: 64-bit support omitted. Mess with ELFCLASS
     struct elfhdr ehdr;
@@ -391,20 +393,43 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename) {
             }
         }
     }
-
+    // load address is the low addr
     load_addr = loaddr;
-    printf("load addr: 0x%x\n", load_addr);
-
-    // now add plt functions to global plt function mapping
+    bool norelro = (actual_base_address == 0 || load_addr == actual_base_address);
+    //printf("load addr: 0x%x\n", load_addr);
+    // check if there is a .plt and a dynamic str table 
     if (relplt == NULL || dynsym == NULL || dynstrtable == NULL){
         return load_addr;
     }
+    // put libname in the a processed_libs list to iterate through when we process the function later on
+    processed_libs.push_back(std::string(basename));
+    // now add plt functions to global plt function mapping
+    Dwarf_Addr plt_fun_addr;
+    std::string plt_fun_name;
     for (i = 0; i < relplt_size; i++){
-        //uint32_t f_name_strndx = symtab[ELF32_R_SYM(relplt[i].r_info)].st_name;
+        if (norelro){
+            plt_fun_addr = (unsigned long)plt_addr+16*i;
+        }
+        else {
+            plt_fun_addr = (unsigned long)plt_addr+16*i + actual_base_address;
+        }
         uint32_t f_name_strndx = dynsym[ELF32_R_SYM(relplt[i].r_info)].st_name;
-        //printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
-        dynl_functions[std::string(basename) + ":plt!" + std::string(&dynstrtable[f_name_strndx])] = (unsigned long)plt_addr+16*i;
+        plt_fun_name = std::string(&dynstrtable[f_name_strndx]);
+        printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
+        // check if we have already processed this symbol name
+        //char * test = "test"; 
+        auto it = fn_name_to_line_info.find(plt_fun_name);
+        if (it != fn_name_to_line_info.end()){
+            const LineRange &lr = it->second;
+            line_range_list.push_back(LineRange(plt_fun_addr, plt_fun_addr,
+                        lr.line_number, lr.filename, lr.function_addr, lr.line_off));
+        }
+        else {
+            dynl_functions[std::string(basename) + ":plt!" + plt_fun_name] = plt_fun_addr;
+        }
     }
+    // sort the line_range_list because we changed it
+    std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     
     return load_addr;
 }
@@ -748,9 +773,44 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             return x.lowpc == lowpc;
         };
         auto funct_line_it = std::find_if(line_range_list.begin(), line_range_list.end(), lineIsFunctionDef);
+
         if (funct_line_it != line_range_list.end()){
             fn_start_line_range_list.push_back(*funct_line_it);
+            // add the LineRange information for the function to fn_name_to_line_info for later use
+            // when resolving dwarf information for .plt functions
+            // NOTE: this assumes that all function names are unique.
+             
+            fn_name_to_line_info.insert(std::make_pair(std::string(die_name), 
+                        LineRange(lowpc,
+                            highpc,
+                            funct_line_it->line_number,
+                            funct_line_it->filename,
+                            lowpc,
+                            funct_line_it->line_off)));
+             
+            // now check if current function we are processing is in dynl_functions if so 
+            // point the dynl_function to this function's line number, filename, and line_off
+            for (auto lib_name : processed_libs) {
+                if (dynl_functions.find(lib_name + ":plt!" + std::string(die_name)) != dynl_functions.end()){
+                    //printf("Trying to match function to %s\n",(lib_name + ":plt!" + std::string(die_name)).c_str());
+                    Dwarf_Addr plt_addr = dynl_functions[lib_name + ":plt!" + std::string(die_name)];
+                    //printf("Found it at 0x%llx, adding to line_range_list\n", plt_addr);
+                    //printf(" found a plt function defintion for %s\n", basename);
+                    
+                    line_range_list.push_back(LineRange(plt_addr, 
+                                                        plt_addr, 
+                                                        funct_line_it->line_number, 
+                                                        funct_line_it->filename, 
+                                                        lowpc,
+                                                        funct_line_it->line_off));
+                    
+                }
+            }
         }
+        else {
+            printf("Could not find start of function [%s] in line number table something went wrong\n", die_name);
+        }
+
         // this is if we want the start of the function to be one PAST the line that represents start of function
         // in order to skip past function prologue
         //if (funct_line_it != line_range_list.end()){
@@ -768,18 +828,11 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         }
     }
     else {
+        // we are processing a function that is in the .plt so we skip it because the function
+        // is either defined in a library we don't have access to or a library our dwarf processor
+        // will process later (or maybe already has!)
         return;
-        if (dynl_functions.find(std::string(basename) + ":plt!" + std::string(die_name)) != dynl_functions.end()){
-            lowpc = dynl_functions[std::string(basename) + ":plt!" + std::string(die_name)] + base_address;
-            //printf(" found a plt function defintion for %s\n", basename);
-            funcaddrs[lowpc] = std::string(basename) + ":plt!" + std::string(die_name);
-        }
-        else {
-            //die("Error no dwarf or .plt inforamtion for %s\n", die_name);
-            return;
-        }
     }
-
     // Load information about arguments
     //printf("Loading arguments for %s\n", die_name);
     Dwarf_Die arg_child;
@@ -1062,7 +1115,7 @@ void on_library_load(CPUState *env, target_ulong pc, char *guest_lib_name, targe
         fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
         return;
     }
-    uint64_t elf_base = elf_get_baseaddr(lib_name, basename(lib_name));
+    uint64_t elf_base = elf_get_baseaddr(lib_name, basename(lib_name), base_addr);
     bool needs_reloc = elf_base != base_addr;
     if (!read_debug_info(lib_name, basename(lib_name), base_addr, needs_reloc)) {
         fprintf(stderr, "Couldn't load symbols from %s.\n", lib_name);
@@ -1105,7 +1158,7 @@ void ensure_dbg_initialized(CPUState *env) {
                 //fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
                 continue;
             }
-            uint64_t elf_base = elf_get_baseaddr(fname, m->name);
+            uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
             bool needs_reloc = elf_base != m->base;
             if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
                 fprintf(stderr, "Couldn't load symbols from %s.\n", fname);
@@ -1226,8 +1279,14 @@ void dwarf_log_callsite(CPUState *env, char *file_callee, char *fn_callee, uint6
    
     //void dwarfp_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
     dwarfp_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
-    printf(" Callsite: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
-    
+    /*
+    if (isCall) {
+    }
+        printf(" CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+    else {
+        printf(" RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+    }
+    */
     return;
 }
 
@@ -1242,6 +1301,9 @@ void on_call(CPUState *env, target_ulong pc) {
     char *file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
+    if (it->lowpc == it->highpc){
+        //printf("Calling %s through .plt\n",file_name);
+    }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
     dwarf_log_callsite(env, file_name,(char *)funct_name.c_str(), cur_line, true);
     stpi_runcb_on_fn_start(env, pc, file_name, funct_name.c_str(), cur_line);
@@ -1538,7 +1600,9 @@ bool init_plugin(void *self) {
         exit(1);
     }
     printf("opening debug info for starting binary %s\n", bin_path.c_str());
-    elf_get_baseaddr(bin_path.c_str(), proc_to_monitor);
+    // third arg (actual_base address or executable) is 0 because we don't know what it is, but for now
+    // assume that it is not pie
+    elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
     if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
         fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
         return false; 
