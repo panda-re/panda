@@ -6,6 +6,9 @@
 // get dwarf info for a pc at current execution return -1 if not in dwarf-land
 int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
 
+// get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return -1 if not in dwarf-land
+int stpi_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name);
+
 // iterate through the live vars at the current state of execution
 void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
 

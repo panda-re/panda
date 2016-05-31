@@ -58,6 +58,17 @@ void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const ch
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
     stpi_funct_livevar_iter(env, pc, pfun);
 }
+int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    char *symbol_name;
+    if (stpi_get_vma_symbol(env, pc, addr, &symbol_name)){
+        // symbol was not found for particular addr
+        return 0;
+    }
+    else {
+        //printf ("Virt mem write at 0x%x - \"%s\"\n", addr, symbol_name);
+    }
+    return 0;
+}
 #endif
 
 bool init_plugin(void *self) {
@@ -72,6 +83,11 @@ bool init_plugin(void *self) {
     
     PPP_REG_CB("stpi", on_before_line_change, on_line_change);
     //PPP_REG_CB("stpi", on_fn_start, on_fn_start);
+    {
+        panda_cb pcb;
+        pcb.virt_mem_write = virt_mem_write;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
+    }
 #endif
     return true;
 }

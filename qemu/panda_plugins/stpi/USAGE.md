@@ -37,6 +37,12 @@ Signature: `typedef void (*on_get_pc_source_info_t)(CPUState *a, target_ulong pc
 
 Description: get dwarf info for a pc at current execution return -1 if not in dwarf-land
 
+Name: **on_get_vma_symbol**
+
+Signature: `typedef void (*on_get_vma_symbol)(CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name, int *rc)`
+
+Description: get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return -1 if not in dwarf-land
+
 Name: **on_all_livevar_iter**
 
 Signature: `typedef void (*on_all_livevar_iter_t)(CPUState *a, target_ulong pc, liveVarCB f)`
@@ -84,6 +90,12 @@ There are three API functions provided to clients that allow them to iterate thr
     // get dwarf info for a pc at current execution return -1 if not in dwarf-land
     int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
     
+    // get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return -1 if not in dwarf-land
+    int stpi_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name);
+
+    // iterate through the live vars at the current state of execution
+    void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    // iterate through the live vars at the current state of execution
     // iterate through the live vars at the current state of execution
     void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
 

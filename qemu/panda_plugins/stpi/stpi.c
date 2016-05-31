@@ -28,6 +28,8 @@ PANDAENDCOMMENT */
 // callbacks that symbol table provider must provide functionality for
 PPP_PROT_REG_CB(on_get_pc_source_info)
 PPP_CB_BOILERPLATE(on_get_pc_source_info)
+PPP_PROT_REG_CB(on_get_vma_symbol)
+PPP_CB_BOILERPLATE(on_get_vma_symbol)
 PPP_PROT_REG_CB(on_all_livevar_iter)
 PPP_CB_BOILERPLATE(on_all_livevar_iter)
 PPP_PROT_REG_CB(on_global_livevar_iter)
@@ -49,6 +51,13 @@ void uninit_plugin(void *);
 int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info) {
     int rc;
     PPP_RUN_CB(on_get_pc_source_info, env, pc, info, &rc);
+    return rc;
+}
+
+// callback provided to symbol table provider
+int stpi_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name) {
+    int rc;
+    PPP_RUN_CB(on_get_vma_symbol, env, pc, vma, symbol_name, &rc);
     return rc;
 }
 

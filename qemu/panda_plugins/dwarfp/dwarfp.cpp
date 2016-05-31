@@ -50,7 +50,6 @@ void uninit_plugin(void *);
 //void on_ret(CPUState *env, target_ulong pc);
 //void on_call(CPUState *env, target_ulong pc);
 void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
-int on_get_pc_source_info(CPUState *env, target_ulong pc,  PC_Info *info);
 void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
 
 void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
@@ -87,8 +86,6 @@ extern "C" {
 
 #include "dwarfp_int_fns.h"
 PPP_PROT_REG_CB(on_dwarfp_line_change);
-// example lambda f()
-//auto push_var_if_live = [&live_vars](std::string var_ty, std::string var_nm, LocType loc_t, target_ulong loc) ...
 }
 PPP_CB_BOILERPLATE(on_dwarfp_line_change);
 
@@ -1398,6 +1395,46 @@ void livevar_iter(CPUState *env,
     }
     return;
 }
+
+// returns 1 if successful find, 0 ow
+// will assign found variable to ret_var
+int livevar_find(CPUState *env,
+        target_ulong pc,
+        std::vector<VarInfo> vars, 
+        int (*pred)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *args),
+        void *args,
+        VarInfo &ret_var){
+    
+    target_ulong fp = get_cur_fp(env, pc);
+    if (fp == (target_ulong) -1){
+        printf("Error was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
+        return 0;
+    }
+    for (auto it : vars){
+        std::string var_type    = it.var_type;
+        std::string var_name    = it.var_name;
+        Dwarf_Locdesc **locdesc = it.locations;
+        Dwarf_Signed loc_cnt    = it.num_locations;
+        for (int i=0; i < loc_cnt; i++){
+            //printf("var active in range 0x%llx - 0x%llx\n", locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
+            if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
+                //enum LocType { LocReg, LocMem, LocConst, LocErr };
+                target_ulong var_loc;
+                //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
+                //printf("\n");
+                LocType loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
+                if (pred(var_type.c_str(), var_name.c_str(),loc, var_loc, args)){
+                    ret_var.var_type = it.var_type;
+                    ret_var.var_name = it.var_name;
+                    ret_var.locations = it.locations;
+                    ret_var.num_locations = it.num_locations;
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
 void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
     switch (loc_t){
         case LocReg:
@@ -1419,6 +1456,58 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
 /********************************************************************
  * end PPPs
 ******************************************************************** */
+int compare_address(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *query_address){
+    switch (loc_t){
+        case LocReg:
+            break;
+        case LocMem:
+            if (loc == (*(target_ulong *) query_address) ){
+            //if (loc == *query_address) {
+                return 1;
+            }
+            break;
+        case LocConst:
+            break;
+        case LocErr:
+            break;
+    }
+    return 0;
+}
+void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char ** symbol_name, int *rc){
+    if (!correct_asid(env)) {
+        *rc = -1;
+        return;
+    }
+    target_ulong fn_address;
+
+    auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    if (pc < it->lowpc || it == line_range_list.end() ) {
+        *rc = -1;
+        return;
+    }
+    // either get fn_address for local vars by finding
+    // function that pc appears in OR use the most recent
+    // dwarf_function in callstack
+    //fn_address = cur_function
+    fn_address = it->function_addr;
+    
+    //VarInfo ret_var = VarInfo(NULL, NULL, NULL, 0);
+    VarInfo ret_var = VarInfo(std::string (""), std::string( ""), NULL, 0);
+    if (livevar_find(env, pc, funcvars[fn_address], compare_address, (void *) &vma, ret_var)){
+        *symbol_name = (char *)ret_var.var_name.c_str();
+        *rc = 0;
+        return;
+    }
+    /*
+    if (livevar_find(env, pc, global_var_list, compare_address, (void *) &vma, ret_var)){
+        *symbol_name = (char *)ret_var.var_name.c_str();
+        *rc = 0;
+        return;
+    }
+    */
+    *rc = -1;
+    return;
+}
 void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, PC_Info *info, int *rc){
     if (!correct_asid(env)) {
         *rc = -1;
@@ -1483,15 +1572,13 @@ int exec_callback_dwarf(CPUState *env, target_ulong pc) {
         if (cur_function == 0)
             return 0;
         //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
-        //dwarf_livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
-        //dwarf_livevar_iter(env, pc, global_var_list, push_var_if_live);
-        //dwarf_livevar_iter(env, pc, global_var_list, print_var_if_live);
+        //livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
+        //livevar_iter(env, pc, global_var_list, push_var_if_live);
+        //livevar_iter(env, pc, global_var_list, print_var_if_live);
         if (cur_line != prev_line){
             //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
-            //dwarf_livevar_iter(env, pc,pfun); 
             stpi_runcb_on_after_line_change(env,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
             stpi_runcb_on_before_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
-            //stpi_runcb_on_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
             PPP_RUN_CB(on_dwarfp_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
             
             // reset previous line information
@@ -1636,6 +1723,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("loaded", on_library_load, on_library_load);
     // contracts we fulfill for stpi plugin
     PPP_REG_CB("stpi", on_get_pc_source_info, dwarf_get_pc_source_info);
+    PPP_REG_CB("stpi", on_get_vma_symbol, dwarf_get_vma_symbol);
     PPP_REG_CB("stpi", on_all_livevar_iter, dwarf_all_livevar_iter);
     PPP_REG_CB("stpi", on_funct_livevar_iter, dwarf_funct_livevar_iter);
     PPP_REG_CB("stpi", on_global_livevar_iter, dwarf_global_livevar_iter);
