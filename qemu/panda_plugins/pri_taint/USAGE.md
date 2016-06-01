@@ -23,7 +23,7 @@ None.
 Example
 -------
 
-Here is an example run of the `pri_taint` plugin using the `pri_taint` plugin.
+Here is an example run of the `pri_taint` plugin using the `file_taint` plugin.
     ~/git/panda/qemu/i386-softmmu/qemu-system-i386 \
         -replay "/path/to/replaylog" \
         -panda osi \
