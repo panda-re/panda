@@ -15,10 +15,10 @@ extern "C" {
 #include "pandalog.h"
 #include "panda_common.h"
 
-#include "../stpi/stpi_types.h"
-#include "../stpi/stpi_ext.h"
-#include "../stpi/stpi.h"
-#include "../dwarfp/dwarfp_ext.h"
+#include "../pri/pri_types.h"
+#include "../pri/pri_ext.h"
+#include "../pri/pri.h"
+//#include "../pri_dwarf/pri_dwarf_ext.h"
 #include "panda_plugin_plugin.h" 
     
 // taint 
@@ -92,12 +92,12 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     pfun_env = env;
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    stpi_funct_livevar_iter(env, pc, pfun);
+    pri_funct_livevar_iter(env, pc, pfun);
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     pfun_env = env;
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
-    stpi_funct_livevar_iter(env, pc, pfun);
+    pri_funct_livevar_iter(env, pc, pfun);
 }
 #endif
 /*
@@ -115,18 +115,18 @@ void on_taint_change(Addr a, uint64_t size){
 bool init_plugin(void *self) {
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("Initializing plugin dwarf_taint\n");
+    //printf("Initializing plugin dwarf_taint\n");
     //panda_arg_list *args = panda_get_args("dwarf_taint");
-    panda_require("stpi");
-    assert(init_stpi_api());
-    panda_require("dwarfp");
-    assert(init_dwarfp_api());
+    panda_require("pri");
+    assert(init_pri_api());
+    //panda_require("pri_dwarf");
+    //assert(init_pri_dwarf_api());
     panda_require("taint2");
     assert(init_taint2_api());
     //assert(init_file_taint_api());
     
-    PPP_REG_CB("stpi", on_before_line_change, on_line_change);
-    //PPP_REG_CB("stpi", on_fn_start, on_fn_start);
+    PPP_REG_CB("pri", on_before_line_change, on_line_change);
+    //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     //PPP_REG_CB("taint2", on_taint_change, on_taint_change);
     //taint2_track_taint_state();
 #endif

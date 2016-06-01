@@ -21,10 +21,10 @@ PANDAENDCOMMENT */
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
 
-#include "stpi_types.h"
-#include "stpi_int_fns.h"
+#include "pri_types.h"
+#include "pri_int_fns.h"
 #include "../osi/osi_types.h"
-#include "stpi.h"
+#include "pri.h"
 // callbacks that symbol table provider must provide functionality for
 PPP_PROT_REG_CB(on_get_pc_source_info)
 PPP_CB_BOILERPLATE(on_get_pc_source_info)
@@ -48,37 +48,37 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 
 // callback provided to symbol table provider
-int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info) {
+int pri_get_pc_source_info (CPUState *env, target_ulong pc, SrcInfo *info) {
     int rc;
     PPP_RUN_CB(on_get_pc_source_info, env, pc, info, &rc);
     return rc;
 }
 
 // callback provided to symbol table provider
-int stpi_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name) {
-    int rc;
-    PPP_RUN_CB(on_get_vma_symbol, env, pc, vma, symbol_name, &rc);
-    return rc;
+char* pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma) {
+    char *symbol_name = NULL;
+    PPP_RUN_CB(on_get_vma_symbol, env, pc, vma, &symbol_name);
+    return symbol_name;
 }
 
-void stpi_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
+void pri_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
     PPP_RUN_CB(on_all_livevar_iter, env, pc, f);
 }
-void stpi_global_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
+void pri_global_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
     PPP_RUN_CB(on_global_livevar_iter, env, pc, f);
 }
-void stpi_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
+void pri_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
     PPP_RUN_CB(on_funct_livevar_iter, env, pc, f);
 }
 
 // callbacks provided to client
-void stpi_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+void pri_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_before_line_change, env, pc, file_name, funct_name, lno);
 }
-void stpi_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+void pri_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_after_line_change, env, pc, file_name, funct_name, lno);
 }
-void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
+void pri_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_fn_start, env, pc, file_name, funct_name, lno);
 }
 

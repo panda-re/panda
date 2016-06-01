@@ -1,17 +1,17 @@
-Plugin: stpi
+Plugin: pri
 ===========
 
 Summary
 -------
 
-The `stpi` module forms the core of PANDA's OS-specific introspection support. The `stpi` plugin itself acts as a glue layer, offering a uniform API that can be called by plugins without that plugin needing to know anything about the underlying symbol table. An `stpi` povider plugin then implements the necessary functionality for each debugging information file format and executable file format.
+The `pri` module forms the core of PANDA's OS-specific introspection support. The `pri` plugin itself acts as a glue layer, offering a uniform API that can be called by plugins without that plugin needing to know anything about the underlying symbol table. An `pri` povider plugin then implements the necessary functionality for each debugging information file format and executable file format.
 
 Expressed graphically, this arrangement looks like:
 
     +-------------------+  +-------------------+
     |    Your Plugin    |  |    Your Plugin    |
     +-------------------+  +-------------------+
-    |        stpi       |  |        stpi       |
+    |        pri        |  |        pri        |
     +-------------------+  +-------------------+
     |       dwarfp      |  |pdb (in the future)|
     +-------------------+  +-------------------+
@@ -25,23 +25,23 @@ None.
 Dependencies
 ------------
 Depends on a debugging file format specific plugin.  
-Without this, stpi will return no useful information becuase it is just a shell for provider plugins. 
+Without this, pri will return no useful information becuase it is just a shell for provider plugins. 
 
 APIs and Callbacks
 ------------------
-To implement debugging information process introspection support, an stpi provider should register the following callbacks:
+To implement debugging information process introspection support, an pri provider should register the following callbacks:
 
 Name: **on_get_pc_source_info**
 
-Signature: `typedef void (*on_get_pc_source_info_t)(CPUState *a, target_ulong pc, PC_Info *info, int *rc)`
+Signature: `typedef void (*on_get_pc_source_info_t)(CPUState *a, target_ulong pc, SrcInfo *info, int *rc)`
 
-Description: get dwarf info for a pc at current execution return -1 if not in dwarf-land
+Description: get source info for a pc at current execution return -1 if pc is in external libraries that do not have symbol information
 
 Name: **on_get_vma_symbol**
 
-Signature: `typedef void (*on_get_vma_symbol)(CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name, int *rc)`
+Signature: `typedef void (*on_get_vma_symbol)(CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name)`
 
-Description: get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return -1 if not in dwarf-land
+Description: get dwarf symbol info for a Virtual Memory Address while execution is at pc. Sets `symbol_name` to  `NULL` if pc is in external libraries that do not have symbol information.
 
 Name: **on_all_livevar_iter**
 
@@ -63,7 +63,7 @@ Description: iterate through live vars local to the current function and apply f
 
 ---------------
 
-In addition, there are two callbacks intended to be used by `stpi` *users*, rather than by introspection providers:
+In addition, there are two callbacks intended to be used by `pri` *users*, rather than by introspection providers:
 
 Name: **on_before_line_change**
 
@@ -87,34 +87,35 @@ Description: Called when execution hits the start of a function after the functi
 
 There are three API functions provided to clients that allow them to iterate through live variables at the current state of execution.
 
-    // get dwarf info for a pc at current execution return -1 if not in dwarf-land
-    int stpi_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
+    // get source info for a pc at current execution return -1 if in external libraries that do not have symbol information
+    int pri_get_pc_source_info (CPUState *env, target_ulong pc, PC_Info *info);
     
-    // get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return -1 if not in dwarf-land
-    int stpi_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char **symbol_name);
+    // get dwarf symbol info for a Virtual Memory Address while execution is at pc. Return `NULL` if external libraries that do not have symbol information
+    // do not free string returned from function
+    char *pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma);
 
     // iterate through the live vars at the current state of execution
-    void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     // iterate through the live vars at the current state of execution
     // iterate through the live vars at the current state of execution
-    void stpi_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
+    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
 
     // iterate through the function vars at the current state of execution
-    void stpi_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     
     // iterate through the global vars at the current state of execution
-    void stpi_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     
-There are three API functions provided to stpi providers that allow them to run callbacks that will be available to clients through the `stpi` interface.
+There are three API functions provided to pri providers that allow them to run callbacks that will be available to clients through the `pri` interface.
     // run a line change callback
-    void stpi_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
-    void stpi_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+    void pri_runcb_on_before_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+    void pri_runcb_on_after_line_change(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
     // run a callback signaling the beginning of a function AFTER the function prologue
-    void stpi_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+    void pri_runcb_on_fn_start(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
 
 ---------------
 
-Data Structures used by `stpi`:
+Data Structures used by `pri`:
     
     // A location is one of three types: Register, Memory, or a Constant (variable is not stored anywhere in memory or registers)
     // but we know it's value at compile time.
@@ -128,17 +129,17 @@ Data Structures used by `stpi`:
 
 Example
 -------
-This is an example of a use of `stpi`.  Note that for this to be useful it needs to include a provider plugin to support the `stpi` callbacks for a specific debuggin format: DWARF, pdb, etc
+This is an example of a use of `pri`.  Note that for this to be useful it needs to include a provider plugin to support the `pri` callbacks for a specific debuggin format: DWARF, pdb, etc
 
     extern "C" {
     
     // usual panda includes . . .    
     
-    // stpi specific includes
-    #include "../stpi/stpi_types.h"
-    #include "../stpi/stpi_ext.h"
-    #include "../stpi/stpi.h"
-    // stpi provider include
+    // pri specific includes
+    #include "../pri/pri_types.h"
+    #include "../pri/pri_ext.h"
+    #include "../pri/pri.h"
+    // pri provider include
     #include "../dwarfp/dwarfp_ext.h"
         
         bool init_plugin(void *);
@@ -146,7 +147,7 @@ This is an example of a use of `stpi`.  Note that for this to be useful it needs
         
     }
     
-    // stpi is only supported 32 bit linux
+    // pri is only supported 32 bit linux
     #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
         
@@ -167,11 +168,11 @@ This is an example of a use of `stpi`.  Note that for this to be useful it needs
     }
     void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
         printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-        //stpi_funct_livevar_iter(env, pc, pfun);
+        //pri_funct_livevar_iter(env, pc, pfun);
     }
     void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
         printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
-        stpi_funct_livevar_iter(env, pc, pfun);
+        pri_funct_livevar_iter(env, pc, pfun);
     }
     #endif
     
@@ -180,13 +181,13 @@ This is an example of a use of `stpi`.  Note that for this to be useful it needs
     #if defined(TARGET_I386) && !defined(TARGET_X86_64)
         printf("Initializing plugin dwarf_simple\n");
         //panda_arg_list *args = panda_get_args("dwarf_taint");
-        panda_require("stpi");
-        assert(init_stpi_api());
+        panda_require("pri");
+        assert(init_pri_api());
         panda_require("dwarfp");
         assert(init_dwarfp_api());
         
-        //PPP_REG_CB("stpi", on_line_change, on_line_change);
-        PPP_REG_CB("stpi", on_fn_start, on_fn_start);
+        //PPP_REG_CB("pri", on_line_change, on_line_change);
+        PPP_REG_CB("pri", on_fn_start, on_fn_start);
     #endif
         return true;
     }

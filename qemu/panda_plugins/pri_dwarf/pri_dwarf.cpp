@@ -28,11 +28,11 @@ extern "C" {
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
 #include "dwarf_util.h"
-#include "dwarfp.h"
+#include "pri_dwarf.h"
 
-#include "../stpi/stpi_types.h"
-#include "../stpi/stpi_ext.h"
-#include "../stpi/stpi.h"
+#include "../pri/pri_types.h"
+#include "../pri/pri_ext.h"
+#include "../pri/pri.h"
 
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
@@ -84,10 +84,10 @@ const char *proc_to_monitor = NULL;
 // QEMU/PANDA, which is written in C
 extern "C" {
 
-#include "dwarfp_int_fns.h"
-PPP_PROT_REG_CB(on_dwarfp_line_change);
+#include "pri_dwarf_int_fns.h"
+PPP_PROT_REG_CB(on_pri_dwarf_line_change);
 }
-PPP_CB_BOILERPLATE(on_dwarfp_line_change);
+PPP_CB_BOILERPLATE(on_pri_dwarf_line_change);
 
 
 #include <vector>
@@ -174,7 +174,7 @@ struct CompareRangeAndPC
     required string file_caller = 4;
     required uint64 line_number_caller = 5;
 */
-void dwarfp_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, 
+void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, 
         char *file_caller, uint64_t lno_caller, bool isCall) {
     // setup
     Panda__DwarfCall *dwarf = (Panda__DwarfCall *) malloc (sizeof (Panda__DwarfCall));
@@ -413,9 +413,8 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         }
         uint32_t f_name_strndx = dynsym[ELF32_R_SYM(relplt[i].r_info)].st_name;
         plt_fun_name = std::string(&dynstrtable[f_name_strndx]);
-        printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
+        //printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
         // check if we have already processed this symbol name
-        //char * test = "test"; 
         auto it = fn_name_to_line_info.find(plt_fun_name);
         if (it != fn_name_to_line_info.end()){
             const LineRange &lr = it->second;
@@ -1182,10 +1181,11 @@ target_ulong get_cur_fp(CPUState *env, target_ulong pc){
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
-    for (int i = 0; i < loc_cnt; i++){
+    target_ulong fp_loc;
+    int i;
+    for (i = 0; i < loc_cnt; i++){
        //printf("in loc description for frame pointer:0x%llx-0x%llx\n",locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
        if (pc >= locdesc[i]->ld_lopc && pc < locdesc[i]->ld_hipc){
-            target_ulong fp_loc;
             LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, 0, &fp_loc);
             if (loc_type != LocMem){
                 printf("loc_type: Could not properly determine fp\n");
@@ -1193,7 +1193,20 @@ target_ulong get_cur_fp(CPUState *env, target_ulong pc){
             }
             //printf("Found fp at 0x%x\n", fp_loc);
             return fp_loc;
-       }
+        } 
+    }
+    // check if pc = upperbound of last location element
+    i = loc_cnt - 1; 
+    if (pc == locdesc[i]->ld_hipc) {
+        if (pc >= locdesc[i]->ld_lopc && pc < locdesc[i]->ld_hipc){
+            LocType loc_type = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, 0, &fp_loc);
+            if (loc_type != LocMem){
+                printf("loc_type: Could not properly determine fp\n");
+                return -1;
+            }
+            //printf("Found fp at 0x%x\n", fp_loc);
+            return fp_loc;
+        }
     }
     printf("Not in range: Could not properly determine fp\n");
     return -1;
@@ -1276,8 +1289,8 @@ void dwarf_log_callsite(CPUState *env, char *file_callee, char *fn_callee, uint6
     Dwarf_Unsigned lno = it->line_number;
     std::string funct_name = funcaddrs[call_site_fn];
    
-    //void dwarfp_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
-    dwarfp_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
+    //void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
+    pri_dwarf_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
     /*
     if (isCall) {
     }
@@ -1305,7 +1318,7 @@ void on_call(CPUState *env, target_ulong pc) {
     }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
     dwarf_log_callsite(env, file_name,(char *)funct_name.c_str(), cur_line, true);
-    stpi_runcb_on_fn_start(env, pc, file_name, funct_name.c_str(), cur_line);
+    pri_runcb_on_fn_start(env, pc, file_name, funct_name.c_str(), cur_line);
 
     /*
     if (funcaddrs.find(pc) != funcaddrs.end()){
@@ -1473,16 +1486,16 @@ int compare_address(const char *var_ty, const char *var_nm, LocType loc_t, targe
     }
     return 0;
 }
-void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char ** symbol_name, int *rc){
+void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, char ** symbol_name){
     if (!correct_asid(env)) {
-        *rc = -1;
+        *symbol_name = NULL;
         return;
     }
     target_ulong fn_address;
 
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (pc < it->lowpc || it == line_range_list.end() ) {
-        *rc = -1;
+        *symbol_name = NULL;
         return;
     }
     // either get fn_address for local vars by finding
@@ -1495,7 +1508,6 @@ void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, cha
     VarInfo ret_var = VarInfo(std::string (""), std::string( ""), NULL, 0);
     if (livevar_find(env, pc, funcvars[fn_address], compare_address, (void *) &vma, ret_var)){
         *symbol_name = (char *)ret_var.var_name.c_str();
-        *rc = 0;
         return;
     }
     /*
@@ -1505,10 +1517,10 @@ void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, cha
         return;
     }
     */
-    *rc = -1;
+    *symbol_name = NULL;
     return;
 }
-void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, PC_Info *info, int *rc){
+void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, SrcInfo *info, int *rc){
     if (!correct_asid(env)) {
         *rc = -1;
         return;
@@ -1577,9 +1589,9 @@ int exec_callback_dwarf(CPUState *env, target_ulong pc) {
         //livevar_iter(env, pc, global_var_list, print_var_if_live);
         if (cur_line != prev_line){
             //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
-            stpi_runcb_on_after_line_change(env,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
-            stpi_runcb_on_before_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
-            PPP_RUN_CB(on_dwarfp_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
+            pri_runcb_on_after_line_change(env,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
+            pri_runcb_on_before_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
+            PPP_RUN_CB(on_pri_dwarf_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
             
             // reset previous line information
             prev_file_name = file_name;
@@ -1652,7 +1664,7 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
 #endif
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    panda_arg_list *args = panda_get_args("dwarfp");
+    panda_arg_list *args = panda_get_args("pri_dwarf");
     guest_debug_path = panda_parse_string(args, "g_debugpath", "dbg");
     host_debug_path = panda_parse_string(args, "h_debugpath", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
@@ -1660,14 +1672,14 @@ bool init_plugin(void *self) {
     panda_require("callstack_instr");
     panda_require("osi");
     panda_require("loaded");
-    panda_require("stpi");
+    panda_require("pri");
     
     //panda_require("osi_linux");
     // make available the api for 
     assert(init_callstack_instr_api());
     assert(init_osi_linux_api());
     assert(init_osi_api());
-    assert(init_stpi_api());
+    assert(init_pri_api());
 
     panda_enable_precise_pc();
     panda_enable_memcb();
@@ -1721,12 +1733,12 @@ bool init_plugin(void *self) {
     }
      
     PPP_REG_CB("loaded", on_library_load, on_library_load);
-    // contracts we fulfill for stpi plugin
-    PPP_REG_CB("stpi", on_get_pc_source_info, dwarf_get_pc_source_info);
-    PPP_REG_CB("stpi", on_get_vma_symbol, dwarf_get_vma_symbol);
-    PPP_REG_CB("stpi", on_all_livevar_iter, dwarf_all_livevar_iter);
-    PPP_REG_CB("stpi", on_funct_livevar_iter, dwarf_funct_livevar_iter);
-    PPP_REG_CB("stpi", on_global_livevar_iter, dwarf_global_livevar_iter);
+    // contracts we fulfill for pri plugin
+    PPP_REG_CB("pri", on_get_pc_source_info, dwarf_get_pc_source_info);
+    PPP_REG_CB("pri", on_get_vma_symbol, dwarf_get_vma_symbol);
+    PPP_REG_CB("pri", on_all_livevar_iter, dwarf_all_livevar_iter);
+    PPP_REG_CB("pri", on_funct_livevar_iter, dwarf_funct_livevar_iter);
+    PPP_REG_CB("pri", on_global_livevar_iter, dwarf_global_livevar_iter);
     return true;
 #else
     printf("Dwarf plugin not supported on this architecture\n");

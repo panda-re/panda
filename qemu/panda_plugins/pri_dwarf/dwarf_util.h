@@ -5,8 +5,7 @@
 #include<libdwarf.h>
 #include<panda_plugin.h>
 #include<dwarf.h>
-#include"../stpi/stpi_types.h"
-//#include"dwarfp_types.h"
+#include"../pri/pri_types.h"
 
 /*
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
