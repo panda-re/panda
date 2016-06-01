@@ -302,9 +302,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     for (int i = v.size()-1; i > ((int)(v.size()-10)) && i >= 0; i--) {
         if (tb->pc == v[i].pc) {
             //printf("Matched at depth %d\n", v.size()-i);
-            v.erase(v.begin()+i, v.end());
+            //v.erase(v.begin()+i, v.end());
 
             PPP_RUN_CB(on_ret, env, w[i]);
+            v.erase(v.begin()+i, v.end());
             w.erase(w.begin()+i, w.end());
 
             break;

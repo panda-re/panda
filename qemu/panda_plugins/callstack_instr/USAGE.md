@@ -33,7 +33,7 @@ Name: **on_ret**
 
 Signature: `typedef void (* on_ret_t)(CPUState *env, target_ulong func)`
 
-Description: Called every time a function call returns in guest (e.g., at the `ret` instruction). Arguments are the CPU state pointer `env` and the virtual address of the function we're returning from. This can be used to match up the return with the appropriate call, but does not indicate the level of nesting in the case of recursive calls. If you want to match returns with calls in this case, 
+Description: Called every time a function call returns in guest (e.g., at the `ret` instruction). Arguments are the CPU state pointer `env` and the virtual address of the function we're returning from. This can be used to match up the return with the appropriate call, but does not indicate the level of nesting in the case of recursive calls. If you want to match returns with calls in this case, you will need to keep a counter inside your plugin.
 
 
 `callstack_instr` also provides the following API functions that can be called from other plugins:

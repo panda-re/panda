@@ -25,7 +25,7 @@ sudo apt-get -y install build-essential
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
   python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev \
-  libglib2.0-dev
+  libglib2.0-dev libelf-dev
 
 cwd=$(pwd)
 cd /tmp
@@ -52,6 +52,21 @@ else
   progress "Skipping distorm..."
 fi
 
+if [ ! -e "/usr/local/lib/libdwarf.so" ]
+then
+  wget http://www.prevanders.net/libdwarf-20160507.tar.gz --no-check-certificate 
+  tar -xzvf libdwarf-20160507.tar.gz
+  cd dwarf-20160507
+  progress "Installing libdwarf..."
+  ./configure --enable-shared
+  make
+  sudo cp libdwarf/libdwarf.h /usr/local/include
+  sudo cp libdwarf/dwarf.h /usr/local/include
+  sudo cp libdwarf/libdwarf.so /usr/local/lib/
+  cd ../
+else
+  progress "Skipping libdwarf..."
+fi
 if python -c 'import pycparser' 2>/dev/null
 then
   if python <<EOF

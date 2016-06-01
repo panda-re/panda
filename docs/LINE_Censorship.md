@@ -13,29 +13,23 @@ Start by downloading and unpacking the LINE recording from rrshare.org:
     line2-rr-nondet.log
     Unacking RR log line2.rr with 10367712943 instructions... Done.
 
-Get the version of PANDA used in the paper:
+Get PANDA:
 
     $ git clone https://github.com/moyix/panda.git
-    $ git checkout b8d3dbb
 
-Modify the `build.sh` script to build with Android support. It will end
-up looking like:
-
-    #!/bin/sh
-
-    python ../scripts/apigen.py
+Modify the `build.sh` script and edit the configure line to build with Android
+support. It will end up looking like:
 
     ./configure --target-list=arm-softmmu \
-    --cc=gcc-4.7 \
-    --cxx=g++-4.7 \
     --prefix=`pwd`/install \
     --enable-android \
     --disable-pie \
-    --enable-llvm \
-    --with-llvm=../llvm-3.3/Release \
-    --extra-cflags="-O2" \
+    --disable-xen \
+    --disable-libiscsi \
+    $LLVM_BIT \
+    --extra-cflags="-O2 -I/usr/local/include" \
     --extra-cxxflags="-O2" \
-    && make -j $(nproc)
+    --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c -lprotobuf -lpthread"
 
 Build PANDA (see the documentation for details on dependencies).
 
@@ -55,7 +49,7 @@ Analysis
 Now, we suspect that the censorship list will include Tiananmen (天安门)
 and Falun (法轮). So we will use TZB to search all memory reads and
 writes for the UTF-8 encoded versions of these strings. Create a file
-`search_strings.txt` that looks like:
+`line_search_strings.txt` that looks like:
 
     e5:a4:a9:e5:ae:89:e9:97:a8
     e6:b3:95:e8:bd:ae
@@ -63,10 +57,10 @@ writes for the UTF-8 encoded versions of these strings. Create a file
 Now, run the replay. Note that we have to pass in the dummy QCOW2 we
 created:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -cpu cortex-a9 -kernel /dev/null -vnc :0 \
+    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
       -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
-      -panda 'callstack_instr;stringsearch'
+      -panda 'callstack_instr;stringsearch:name=line'
 
 About 19% of the way through the replay, we begin seeing matches:
 
@@ -83,7 +77,7 @@ About 19% of the way through the replay, we begin seeing matches:
     WRITE Match of str 1 at: instr_count=2013214014 :  407a7ada 4b50817c 28210000
     WRITE Match of str 1 at: instr_count=2013231331 :  407a7ada 4b50817c 28210000
 
-Once the replay is finished, we will have a file `string_matches.txt` 
+Once the replay is finished, we will have a file `line_string_matches.txt` 
 that summarizes these matches:
 
     4b536c00 4b536c00 4b536c00 4b536c00 4b536c00 407a7ada 40796784 4075222c 40796784 400417a8 40041e6a 407a7ada 40796784 4075222c 40796784 40796784 40038678 28210000  16 12
@@ -107,7 +101,7 @@ information where both strings matched:
 
 And run another replay with `textprinter` turned on:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -cpu cortex-a9 -kernel /dev/null -vnc :0 \
+    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
       -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;textprinter'
@@ -211,8 +205,8 @@ address space identifier:
 
 Now we run `bufmon`:
 
-    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -cpu cortex-a9 -kernel /dev/null -vnc :0 \
-      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy.qcow2 \
+    ../arm-softmmu/qemu-system-arm -m 2048 -replay line2 -M android_arm -android -cpu cortex-a9 -kernel /dev/null \
+      -global goldfish_mmc.sd_path=/dev/null -global goldfish_nand.system_path=dummy2.qcow2 \
       -global goldfish_nand.user_data_path=dummy.qcow2 \
       -panda 'callstack_instr;bufmon'
 
