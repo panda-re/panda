@@ -15,8 +15,6 @@
 // header at most this many bytes
 #define PL_HEADER_SIZE 128
 
-// this is how much bigger than chunk size we'll alloc buf and zbuf
-#define SLACK_MULT (1.25)
 
 typedef enum {
     PL_MODE_WRITE,
