@@ -34,6 +34,8 @@ extern "C" {
 #include <map>
 
 #include "../common/prog_point.h"
+#include "pandalog.h"
+#include "../callstack_instr/callstack_instr_ext.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -44,14 +46,11 @@ void uninit_plugin(void *);
 int mem_write_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int mem_read_callback(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-typedef void (* get_prog_point_t)(CPUState *env, prog_point *p);
-get_prog_point_t get_prog_point;
 }
 
-uint64_t bytes_read, bytes_written;
-uint64_t num_reads, num_writes;
-
-struct text_counter { unsigned int hist[256]; };
+struct text_counter {
+    std::map<uint8_t,unsigned int> hist;
+};
 
 std::map<prog_point,text_counter> read_tracker;
 std::map<prog_point,text_counter> write_tracker;
@@ -64,7 +63,7 @@ static int mem_callback(CPUState *env, target_ulong pc, target_ulong addr,
 
     text_counter &tc = tracker[p];
     for (unsigned int i = 0; i < size; i++) {
-        unsigned char val = ((unsigned char *)buf)[i];
+        uint8_t val = ((uint8_t *)buf)[i];
         tc.hist[val]++;
     }
  
@@ -86,19 +85,8 @@ bool init_plugin(void *self) {
 
     printf("Initializing plugin unigrams\n");
 
-    void *cs_plugin = panda_get_plugin_by_name("panda_callstack_instr.so");
-    if (!cs_plugin) {
-        printf("Couldn't load callstack plugin\n");
-        return false;
-    }
-    dlerror();
-    get_prog_point = (get_prog_point_t) dlsym(cs_plugin, "get_prog_point");
-    char *err = dlerror();
-    if (err) {
-        printf("Couldn't find get_prog_point function in callstack library.\n");
-        printf("Error: %s\n", err);
-        return false;
-    }
+    panda_require("callstack_instr");
+    if (!init_callstack_instr_api()) return false;
 
     // Need this to get EIP with our callbacks
     panda_enable_precise_pc();
@@ -121,7 +109,12 @@ void write_report(FILE *report, std::map<prog_point,text_counter> &tracker) {
     std::map<prog_point,text_counter>::iterator it;
     for(it = tracker.begin(); it != tracker.end(); it++) {
         fwrite(&it->first, sizeof(prog_point), 1, report);
-        fwrite(&it->second, sizeof(text_counter), 1, report);
+        unsigned int hist[256] = {};
+        for(int i = 0; i < 256; i++) {
+            if (it->second.hist.find(i) != it->second.hist.end())
+                hist[i] = it->second.hist[i];
+        }
+        fwrite(hist, sizeof(hist), 1, report);
     }
 }
 
