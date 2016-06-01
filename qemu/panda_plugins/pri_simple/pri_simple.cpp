@@ -32,16 +32,16 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
     target_ulong guest_dword; 
     switch (loc_t){
         case LocReg:
-            printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
-            printf("    => 0x%x\n", pfun_env->regs[loc]);
+            //printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+            //printf("    => 0x%x\n", pfun_env->regs[loc]);
             break;
         case LocMem:
-            printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
+            //printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
             panda_virtual_memory_rw(pfun_env, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0); 
-            printf("    => 0x%x\n", guest_dword);
+            //printf("    => 0x%x\n", guest_dword);
             break;
         case LocConst:
-            printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
+            //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
             break;
         case LocErr:
             printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
@@ -50,7 +50,7 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
 }
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     pfun_env = env;
-    printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
+    //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
     pri_funct_livevar_iter(env, pc, pfun);
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
@@ -95,8 +95,8 @@ int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulo
 bool init_plugin(void *self) {
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("Initializing plugin dwarf_simple\n");
-    //panda_arg_list *args = panda_get_args("dwarf_taint");
+    printf("Initializing plugin pri_simple\n");
+    //panda_arg_list *args = panda_get_args("pri_taint");
     panda_require("pri");
     assert(init_pri_api());
     //panda_require("dwarfp");
@@ -106,10 +106,10 @@ bool init_plugin(void *self) {
     //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     {
         panda_cb pcb;
-        pcb.virt_mem_write = virt_mem_write;
-        panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
-        pcb.virt_mem_read = virt_mem_read;
-        panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
+        //pcb.virt_mem_write = virt_mem_write;
+        //panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
+        //pcb.virt_mem_read = virt_mem_read;
+        //panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
     }
 #endif
     return true;

@@ -23,6 +23,7 @@ extern "C" {
 #include "qemu-common.h"
 #include "panda_common.h"
 #include "cpu.h"
+#include "cpu.h"
 
 #include "pandalog.h"
 #include "panda_plugin.h"
@@ -160,7 +161,8 @@ struct CompareRangeAndPC
 {
     bool operator () (const LineRange &ln_info,
                     const Dwarf_Addr &pc) const{
-        if (ln_info.lowpc <= pc && ln_info.highpc >= pc){
+        //if (ln_info.lowpc <= pc && ln_info.highpc >= pc){
+        if (ln_info.lowpc <= pc && ln_info.highpc > pc){
             return 0;
         }
         else
@@ -1208,7 +1210,7 @@ target_ulong get_cur_fp(CPUState *env, target_ulong pc){
             return fp_loc;
         }
     }
-    printf("Not in range: Could not properly determine fp\n");
+    printf("Not in range: Could not properly determine fp for pc @ 0x" TARGET_FMT_lx "\n", pc);
     return -1;
 }
 
@@ -1221,7 +1223,7 @@ bool dwarf_in_target_code(CPUState *env, target_ulong pc){
 }
 
 bool translate_callback_dwarf(CPUState *env, target_ulong pc) {
-    inDwarfTranslate = false;
+    //inDwarfTranslate = false;
     if (!correct_asid(env)) return false;
     
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
@@ -1261,7 +1263,7 @@ bool translate_callback_dwarf(CPUState *env, target_ulong pc) {
         return false;
     
 
-    inDwarfTranslate = true;
+    //inDwarfTranslate = true;
     return true;
 
 }
@@ -1281,9 +1283,6 @@ void dwarf_log_callsite(CPUState *env, char *file_callee, char *fn_callee, uint6
         //printf("Callsite must be in an external library we do not have DWARF information for.\n");
         return;
     }
-    //                      lowpc       highpc        line no       filename  function addr
-    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
-    
     Dwarf_Addr call_site_fn = it->function_addr;
     char *file_name = it->filename;
     Dwarf_Unsigned lno = it->line_number;
@@ -1371,7 +1370,7 @@ void livevar_iter(CPUState *env,
     //printf("size of vars: %ld\n", vars.size());
     target_ulong fp = get_cur_fp(env, pc);
     if (fp == (target_ulong) -1){
-        printf("Error was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
+        printf("Error: was not able to get the Frame Pointer for the function %s at @0x%llx\n", funcaddrs[cur_function].c_str(), cur_function);
         return;
     }
     for (auto it : vars){
@@ -1420,7 +1419,7 @@ int livevar_find(CPUState *env,
     
     target_ulong fp = get_cur_fp(env, pc);
     if (fp == (target_ulong) -1){
-        printf("Error was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
+        printf("Error: was not able to get the Frame Pointer for the function %s\n", funcaddrs[cur_function].c_str());
         return 0;
     }
     for (auto it : vars){
@@ -1510,13 +1509,12 @@ void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, cha
         *symbol_name = (char *)ret_var.var_name.c_str();
         return;
     }
-    /*
+    
     if (livevar_find(env, pc, global_var_list, compare_address, (void *) &vma, ret_var)){
         *symbol_name = (char *)ret_var.var_name.c_str();
-        *rc = 0;
         return;
     }
-    */
+    
     *symbol_name = NULL;
     return;
 }
@@ -1567,43 +1565,41 @@ void dwarf_global_livevar_iter(CPUState *env,
     livevar_iter(env, pc, global_var_list, f);
 }
 int exec_callback_dwarf(CPUState *env, target_ulong pc) {
-    // just make a check that we got here from our translate callback instead of syscall translate
-    if (inDwarfTranslate){
-        if (!correct_asid(env)) return 0;
-        auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-        if (pc < it2->lowpc || it2 == line_range_list.end())
-            return 0;
+    if (!correct_asid(env)) return 0;
+    auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    if (pc < it2->lowpc || it2 == line_range_list.end())
+        return 0;
+    
+    cur_function = it2->function_addr;
+    char *file_name = it2->filename;
+    std::string funct_name = funcaddrs[cur_function];
+    cur_line = it2->line_number;
+    
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    if (funcaddrs.find(cur_function) == funcaddrs.end())
+        return 0;
+    if (cur_function == 0)
+        return 0;
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
+    //livevar_iter(env, pc, global_var_list, push_var_if_live);
+    //livevar_iter(env, pc, global_var_list, print_var_if_live);
+    if (cur_line != prev_line){
+        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
+        pri_runcb_on_after_line_change(env,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
+        pri_runcb_on_before_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
+        PPP_RUN_CB(on_pri_dwarf_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
         
-        cur_function = it2->function_addr;
-        char *file_name = it2->filename;
-        std::string funct_name = funcaddrs[cur_function];
-        cur_line = it2->line_number;
-        
-        if (funcaddrs.find(cur_function) == funcaddrs.end())
-            return 0;
-        if (cur_function == 0)
-            return 0;
-        //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
-        //livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
-        //livevar_iter(env, pc, global_var_list, push_var_if_live);
-        //livevar_iter(env, pc, global_var_list, print_var_if_live);
-        if (cur_line != prev_line){
-            //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
-            pri_runcb_on_after_line_change(env,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
-            pri_runcb_on_before_line_change(env, pc, file_name, funct_name.c_str(), cur_line);
-            PPP_RUN_CB(on_pri_dwarf_line_change, env, pc, file_name, funct_name.c_str(), cur_line);
-            
-            // reset previous line information
-            prev_file_name = file_name;
-            prev_funct_name = funct_name;
-            prev_line_pc = pc;
-            prev_function = cur_function;
-            prev_line = cur_line; 
-        } 
-        //if (funcaddrs.find(pc) != funcaddrs.end()){
-        //    on_call(env, pc);
-        //}
-    }
+        // reset previous line information
+        prev_file_name = file_name;
+        prev_funct_name = funct_name;
+        prev_line_pc = pc;
+        prev_function = cur_function;
+        prev_line = cur_line; 
+    } 
+    //if (funcaddrs.find(pc) != funcaddrs.end()){
+    //    on_call(env, pc);
+    //}
     return 0;
 }
 /********************************************************************
