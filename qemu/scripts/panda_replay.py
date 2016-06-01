@@ -36,7 +36,7 @@ cmdline = open("%s-rr.cmd" % sys.argv[1]).read()
 
 arch = None
 for arg in cmdline.split():
-    foo = re.search("^(.*)-softmmu", arg)
+    foo = re.search("\/([^/]*)-softmmu", arg)
     if foo:
         arch = foo.groups()[0]
 
@@ -54,6 +54,8 @@ print "panda_replay: deduced mem=[%s]" % mem
 
 
 qemu_dir = os.path.realpath(script_dir + "/..") 
+
+print "qemu_dir = [%s]" % qemu_dir
 
 qemu_cmds = "%s/%s-softmmu/qemu-system-%s -m %s -replay " % (qemu_dir, arch, arch, mem)
 qemu_cmds += " ".join(sys.argv[1:])
