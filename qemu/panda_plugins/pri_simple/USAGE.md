@@ -5,7 +5,7 @@ Summary
 -------
 
 The `pri_simple` plugin is an example of using `pri` and a `pri` provider to query source level constructs
-during a PANDA replay
+during a PANDA replay.
 `pri_simple` registers a callback on every line change (in the source code) during the life time of a process
 we have symbol information for.
 On these line changes, the plugin will print line and variable information.
@@ -29,6 +29,7 @@ Example
 -------
 
 Here is an example run of the `pri_simple` plugin:
+
     ~/git/panda/qemu/i386-softmmu/qemu-system-i386 \
         -replay "/path/to/replaylog" \
         -panda osi \
