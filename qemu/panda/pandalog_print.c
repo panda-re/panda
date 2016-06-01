@@ -200,6 +200,12 @@ void pprint_tainted_instr_summary(Panda__TaintedInstrSummary *tis) {
     printf ("(tainted_instr_summary,");
     printf ("%" PRIx64 ",%" PRIx64 ")", tis->asid, tis->pc);
 }
+
+void pprint_tainted_branch_summary(Panda__TaintedBranchSummary *tbs) {
+    printf ("(tainted_branch_summary,");
+    printf ("%" PRIx64 ",%" PRIx64 ")", tbs->asid, tbs->pc);
+}
+    
     
 
 
@@ -270,6 +276,11 @@ void pprint_ple(Panda__LogEntry *ple) {
         pprint_tainted_branch(ple->tainted_branch);
     }
 
+//    printf ("ple->tainted_branch_summary = 0x%x\n", ple->tainted_branch_summary);
+
+    if (ple->tainted_branch_summary) {
+        pprint_tainted_branch_summary(ple->tainted_branch_summary);
+    }
     
     if (ple->taint_query_hypercall) {
         pprint_taint_query_hypercall(ple->taint_query_hypercall);

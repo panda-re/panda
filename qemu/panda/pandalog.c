@@ -105,9 +105,9 @@ void pandalog_create(uint32_t chunk_size) {
     // NB: malloc chunk a little big since we need to maintain
     // the invariant that all log entries for an instruction reside in same
     // chunk.  this should be big enough but don't worry, we'll be monitoring it.
-    thePandalog->chunk.buf = (unsigned char *) malloc(thePandalog->chunk.size * SLACK_MULT);
+    thePandalog->chunk.buf = (unsigned char *) malloc(thePandalog->chunk.size);
     thePandalog->chunk.buf_p = thePandalog->chunk.buf;
-    thePandalog->chunk.zbuf = (unsigned char *) malloc(thePandalog->chunk.zsize * SLACK_MULT);
+    thePandalog->chunk.zbuf = (unsigned char *) malloc(thePandalog->chunk.zsize);
     thePandalog->chunk.start_instr = 0;
     thePandalog->chunk.start_pos = PL_HEADER_SIZE;
     thePandalog->chunk.entry = 0;
@@ -158,7 +158,7 @@ void write_current_chunk(void) {
         ret = compress2(thePandalog->chunk.zbuf, &ccs, thePandalog->chunk.buf, cs, Z_BEST_COMPRESSION);
         if (ret == Z_OK) break;
         // bigger output buffer needed to perform compression?
-        thePandalog->chunk.zsize *= SLACK_MULT;
+        thePandalog->chunk.zsize *= 2;
         thePandalog->chunk.zbuf = (unsigned char *) realloc(thePandalog->chunk.zbuf, thePandalog->chunk.zsize);
         assert (thePandalog->chunk.zbuf != NULL);
     }
@@ -260,11 +260,22 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
         // and new entry is a different instr from last entry written
         write_current_chunk();
     }
+    
     // sanity check.  If this fails, that means a large number of pandalog entries
     // for same instr went off the end of a chunk, which was already allocated bigger than needed.  
     // possible.  but I'd rather assert its not and understand why before adding auto realloc here.
-    assert (thePandalog->chunk.buf_p + sizeof(uint32_t) + n 
-            < thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size * SLACK_MULT))));
+    // TRL 2016-05-10: Ok here's a time when this legit happens.  When you pandalog in uninit_plugin
+    // this can be a lot of entries for the same instr (the very last one in the trace).  
+    // So no more assert.  
+    if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n 
+        >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
+        uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
+        uint32_t new_size = offset * 2;
+        printf ("reallocing chunk.buf to %d bytes\n", new_size);
+        thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
+        thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
+        assert (thePandalog->chunk.buf != NULL);
+    }                                                          
     // now write the entry itself to the buffer.  size then entry itself
     *((uint32_t *) thePandalog->chunk.buf_p) = n;
     thePandalog->chunk.buf_p += sizeof(uint32_t);
@@ -312,8 +323,8 @@ void read_dir(void) {
     assert (thePandalog->file != NULL);
     assert(in_read_mode());
     PlHeader *plh = read_header();
-    thePandalog->chunk.size = plh->chunk_size * SLACK_MULT;
-    thePandalog->chunk.zsize = plh->chunk_size * SLACK_MULT;
+    thePandalog->chunk.size = plh->chunk_size;
+    thePandalog->chunk.zsize = plh->chunk_size;
     // realloc those chunk bufs
     thePandalog->chunk.buf = (unsigned char *)
         realloc(thePandalog->chunk.buf, thePandalog->chunk.size);
@@ -410,12 +421,31 @@ void unmarshall_chunk(uint32_t c) {
     unsigned long cs = chunk->size;
     // uncompress it
     printf ("cs=%d ccs=%d\n", (int) cs, (int) ccs);
-    ret = uncompress(chunk->buf, &cs, chunk->zbuf, ccs);
+    uint8_t done = 0;
+    while (!done) {
+        ret = uncompress(chunk->buf, &cs, chunk->zbuf, ccs);
+        printf ("ret = %d\n", ret);
+        if (ret == Z_OK) done = 1;
+        else {
+            if (ret == Z_BUF_ERROR) {
+                // need a bigger buffer
+                // make sure we won't int overflow
+                assert (chunk->size < UINT32_MAX/2);
+                chunk->size *= 2;
+                printf ("grew chunk buffer to %d\n", chunk->size);
+                chunk->buf = (unsigned char *) 
+                    realloc(chunk->buf,chunk->size);
+                chunk->buf_p = chunk->buf;
+                cs = chunk->size;
+            }
+        }
+    }                                
+    printf ("ret =%d\n", ret);
     assert (ret == Z_OK);
     thePandalog->chunk_num = c;
     // realloc current chunk arrays if necessary
     if (chunk->max_num_entries < thePandalog->dir.num_entries[c]) {
-        chunk->max_num_entries = thePandalog->dir.num_entries[c] * SLACK_MULT;
+        chunk->max_num_entries = thePandalog->dir.num_entries[c];
         chunk->entry = 
             (Panda__LogEntry **) 
             realloc(chunk->entry, 
