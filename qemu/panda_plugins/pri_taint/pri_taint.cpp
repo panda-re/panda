@@ -108,6 +108,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
         }
         uint32_t len = offset;
         if (num_tainted) {
+            printf("logging lava query\n");
             // ok at least one byte in the extent is tainted
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryPri *tqh = (Panda__TaintQueryPri *) malloc (sizeof (Panda__TaintQueryPri));
@@ -158,6 +159,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
             }
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
             ple.taint_query_pri = tqh;
+            printf("about to write out taint query entry\n");
             pandalog_write_entry(&ple);
             free(tqh->src_info);
             pandalog_callstack_free(tqh->call_stack);
@@ -197,8 +199,6 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
                     if (0 != rc)
                         break;
                 }
-                printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
-                printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
                 if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
                     printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
                     printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
@@ -209,9 +209,9 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
             else {
                 // only query reg taint if the reg number is less than the number of registers
                 if (loc < CPU_NB_REGS) {
-                    printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
-                    printf("    => 0x%x, derefs: %d\n", guest_dword, 0);
                     if (0 != taint2_query_reg(loc, 0)) {
+                        printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+                        printf("    => 0x%x, derefs: %d\n", guest_dword, 0);
                         printf(" ==Reg is tainted!==\n");
                     }
                 }
@@ -225,9 +225,9 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
                     break;
                 }
             }
-            printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
-            printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
             if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
+                printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
+                printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
                 printf(" ==Location is tainted!==\n");
                 lava_taint_query(si, guest_dword, 1);
             } 
@@ -272,6 +272,8 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     //printf("Initializing plugin dwarf_taint\n");
     //panda_arg_list *args = panda_get_args("dwarf_taint");
+    panda_require("callstack_instr");
+    assert(init_callstack_instr_api());
     panda_require("pri");
     assert(init_pri_api());
     //panda_require("pri_dwarf");

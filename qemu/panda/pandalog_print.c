@@ -26,12 +26,12 @@ void pprint_process(const char *label, Panda__Process *p) {
 
 
 void pprint_process_file(Panda__ProcessFile *pf) {
-    pprint_process("",pf->proc);    
+    pprint_process("",pf->proc);
     printf ("(filename,%s)", pf->filename);
     printf ("(handle,%d)", pf->handle);
 }
 
-        
+
 void pprint_process_key(Panda__ProcessKey *pk) {
     pprint_process("",pk->proc);
     printf ("(process_key,%s)", pk->keyname);
@@ -40,13 +40,13 @@ void pprint_process_key(Panda__ProcessKey *pk) {
 
 void pprint_process_key_value(Panda__ProcessKeyValue *pkv) {
     pprint_process_key(pkv->pk);
-    printf ("(process_key_value,%s)", pkv->value_name);            
+    printf ("(process_key_value,%s)", pkv->value_name);
 }
 
 
 void pprint_process_key_index(Panda__ProcessKeyIndex *pki) {
     pprint_process_key(pki->pk);
-    printf ("(process_key_index,%u)", pki->index);            
+    printf ("(process_key_index,%u)", pki->index);
 }
 
 void pprint_section(Panda__Section *section) {
@@ -101,7 +101,7 @@ void pprint_call_stack(Panda__CallStack *cs) {
 
 #ifdef LAVA_PANDALOG_PRINT
 
-void pprint_attack_point(Panda__AttackPoint *ap) {        
+void pprint_attack_point(Panda__AttackPoint *ap) {
     printf ("(attack_point,(%s,", gstr(ap->info));
     pprint_call_stack(ap->call_stack);
     printf (",");
@@ -116,6 +116,11 @@ void pprint_src_info(Panda__SrcInfo *si) {
 }
 
 #endif
+
+void pprint_src_info_pri(Panda__SrcInfoPri *sip) {
+    printf ("(src_info_pri,%s,%s,%d,%d)",sip->filename,sip->astnodename,
+            sip->linenum, sip->insertionpoint);
+}
 
 void pprint_taint_query_unique_label_set(Panda__TaintQueryUniqueLabelSet *tquls) {
     printf("(unique_label_set,0x%" PRIx64 ",", tquls->ptr);
@@ -136,7 +141,7 @@ void pprint_taint_query(Panda__TaintQuery *tq) {
         printf ("None");
     printf (")");
 }
-        
+
 void pprint_dwarf(Panda__DwarfCall *d) {
     printf ("(");
     printf(" function_callee=[%s]", d->function_name_callee);
@@ -169,11 +174,37 @@ void pprint_taint_query_hypercall(Panda__TaintQueryHypercall *tqh) {
     for (i=0; i<tqh->n_taint_query; i++) {
         pprint_taint_query(tqh->taint_query[i]);
         printf (",");
-    }    
+    }
+    printf (")");
+}
+void pprint_taint_query_pri(Panda__TaintQueryPri *tqp) {
+    printf ("(taint_query_pri,0x%" PRIx64 ",%d,",
+            tqp->buf, tqp->len);
+    if (tqp->n_data > 0) {
+        printf ("(");
+        int i;
+        for (i=0; i<tqp->n_data; i++) {
+            printf("%x,", tqp->data[i]);
+        }
+        printf ("),");
+    }
+    printf ("%d,", tqp->num_tainted);
+    pprint_call_stack(tqp->call_stack);
+    printf (",");
+
+    pprint_src_info_pri(tqp->src_info);
+    printf (",");
+
+    int i;
+    for (i=0; i<tqp->n_taint_query; i++) {
+        pprint_taint_query(tqp->taint_query[i]);
+        printf (",");
+    }
     printf (")");
 }
 
-       
+
+
 void pprint_tainted_branch(Panda__TaintedBranch *tb) {
     printf ("(tainted_branch,");
     pprint_call_stack(tb->call_stack);
@@ -184,7 +215,7 @@ void pprint_tainted_branch(Panda__TaintedBranch *tb) {
     }
     printf (")");
 }
-  
+
 void pprint_tainted_instr(Panda__TaintedInstr *ti) {
     printf ("(tainted_instr,");
     pprint_call_stack(ti->call_stack);
@@ -205,8 +236,8 @@ void pprint_tainted_branch_summary(Panda__TaintedBranchSummary *tbs) {
     printf ("(tainted_branch_summary,");
     printf ("%" PRIx64 ",%" PRIx64 ")", tbs->asid, tbs->pc);
 }
-    
-    
+
+
 
 
 int started = 0;
@@ -225,11 +256,11 @@ void pprint_ple(Panda__LogEntry *ple) {
     }
     if (ple->instr == -1) {
         printf ("[after replay end] : ");
-    } 
+    }
     else {
         printf ("instr=%" PRIu64 " pc=0x%" PRIx64 " :", ple->instr, ple->pc);
     }
- 
+
     // from dwarfp
     if (ple->dwarf_call) {
         printf(" !dwarf call!");
@@ -244,7 +275,7 @@ void pprint_ple(Panda__LogEntry *ple) {
     if (ple->has_asid) {
         printf (" asid=%" PRIx64, ple->asid);
     }
-    
+
     if (ple->has_process_id != 0) {
         printf (" pid=%d", ple->process_id);
     }
@@ -281,9 +312,13 @@ void pprint_ple(Panda__LogEntry *ple) {
     if (ple->tainted_branch_summary) {
         pprint_tainted_branch_summary(ple->tainted_branch_summary);
     }
-    
+
     if (ple->taint_query_hypercall) {
         pprint_taint_query_hypercall(ple->taint_query_hypercall);
+    }
+
+    if (ple->taint_query_pri) {
+        pprint_taint_query_pri(ple->taint_query_pri);
     }
 
     if (ple->tainted_instr) {
@@ -295,30 +330,30 @@ void pprint_ple(Panda__LogEntry *ple) {
     }
 
     // win7proc
-    if (ple->new_pid) { 
+    if (ple->new_pid) {
     pprint_process("new_pid", ple->new_pid);
     }
     if (ple->nt_create_user_process) {
         printf (" nt_create_user_process ");
-        printf (" [ " ); 
-        pprint_process("cur",ple->nt_create_user_process->cur_p); 
+        printf (" [ " );
+        pprint_process("cur",ple->nt_create_user_process->cur_p);
         printf (" ]");
-        printf (" [ " ); 
-        pprint_process("new",ple->nt_create_user_process->new_p); 
+        printf (" [ " );
+        pprint_process("new",ple->nt_create_user_process->new_p);
         printf (" ]");
-        printf (" name=[%s] ", 
+        printf (" name=[%s] ",
                 ple->nt_create_user_process->new_long_name);
     }
     if (ple->nt_terminate_process) {
         printf (" nt_terminate_process ");
-        printf (" [ " ); 
+        printf (" [ " );
         pprint_process("cur",ple->nt_terminate_process->cur_p);
         printf (" ]");
-        printf (" [ " ); 
+        printf (" [ " );
         pprint_process("term",ple->nt_terminate_process->term_p);
         printf (" ]");
     }
-    
+
     if (ple->nt_create_file) {
         printf (" nt_create_file ");
         pprint_process_file(ple->nt_create_file);
@@ -327,8 +362,8 @@ void pprint_ple(Panda__LogEntry *ple) {
         printf (" nt_create_file_ret ");
         pprint_process_file(ple->nt_create_file_ret);
     }
-    
-    
+
+
     if (ple->nt_read_file) {
         printf (" nt_read_file ");
         pprint_process_file(ple->nt_read_file);
