@@ -1,4 +1,5 @@
-# PANDA
+# PANDA [FORKED]
+*This project is forked in order to correct some issues relating to plugins. See 'Changelog' for further information.*
 
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
 is built upon the QEMU whole system emulator, and so analyses have access to all
@@ -32,6 +33,25 @@ source. On Ubuntu 14.04 this will happen automatically via `panda_install.bash`.
 
 We don't currently support building on Mac/BSD, although it shouldn't be
 impossible with a few patches. We do rely on a few Linux-specific APIs.
+
+## Changelog
+
+This fork fixes an error caused when loading some plugins to a PANDA session.
+When plugins are called to a command line in this style: 
+
+..x86_64-softmmu$ ./qemu-system-x86_64 -m 1024 -replay appname \
+  -panda-plugin x86_64-softmmu/panda_plugins/panda_callstack_instr.so \
+  -panda-plugin x86_64-softmmu/panda_plugins/panda_unigrams.so
+  
+Sometimes may fail with the following error message:
+
+Failed to load x86_64-softmmu/panda_plugins/panda_callstack_instr.so: x86_64-softmmu/panda_plugins/panda_callstack_instr.so: cannot open shared object file: No such file or directory
+FAIL: Unable to load plugin `x86_64-softmmu/panda_plugins/panda_callstack_instr.so'
+Aborted
+
+This can be avoided if plugins are called the following way, as seen on PANDA Manuals:
+
+..x86_64-softmmu$ ./qemu-system-x86_64 -m 1024 -replay appname -panda 'callstack_instr;unigrams'
 
 ## Support
 
@@ -79,7 +99,7 @@ and Practice of Provenance, Edinburgh, Scotland, July 2015.
 
 ## License
 
-GPLv2.
+GPLv3 or later.
 
 ## Acknowledgements
 
