@@ -18,6 +18,7 @@ void pprint_src_info(Panda__SrcInfo *si);
 void pprint_taint_query_unique_label_set(Panda__TaintQueryUniqueLabelSet *tquls);
 void pprint_taint_query(Panda__TaintQuery *tq);
 void pprint_taint_query_hypercall(Panda__TaintQueryHypercall *tqh);
+void pprint_tainted_branch_summary(Panda__TaintedBranchSummary *tbs);
 void pprint_tainted_branch(Panda__TaintedBranch *tb);
 void pprint_tainted_instr(Panda__TaintedInstr *tb);
 void pprint_tainted_instr_summary(Panda__TaintedInstrSummary *tb);

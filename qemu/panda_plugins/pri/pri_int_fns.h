@@ -10,13 +10,13 @@ int pri_get_pc_source_info (CPUState *env, target_ulong pc, SrcInfo *info);
 char *pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma);
 
 // iterate through the live vars at the current state of execution
-void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+void pri_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
 // iterate through the function vars at the current state of execution
-void pri_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+void pri_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args); 
 
 // iterate through the global vars at the current state of execution
-void pri_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+void pri_global_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
 
 // Intended for use only by pri Providers

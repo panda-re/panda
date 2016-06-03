@@ -61,14 +61,14 @@ char* pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma) {
     return symbol_name;
 }
 
-void pri_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
-    PPP_RUN_CB(on_all_livevar_iter, env, pc, f);
+void pri_all_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args) {
+    PPP_RUN_CB(on_all_livevar_iter, env, pc, f, args);
 }
-void pri_global_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
-    PPP_RUN_CB(on_global_livevar_iter, env, pc, f);
+void pri_global_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args) {
+    PPP_RUN_CB(on_global_livevar_iter, env, pc, f, args);
 }
-void pri_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f) {
-    PPP_RUN_CB(on_funct_livevar_iter, env, pc, f);
+void pri_funct_livevar_iter (CPUState *env, target_ulong pc, liveVarCB f, void *args) {
+    PPP_RUN_CB(on_funct_livevar_iter, env, pc, f, args);
 }
 
 // callbacks provided to client

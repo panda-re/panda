@@ -51,11 +51,11 @@ void uninit_plugin(void *);
 //void on_ret(CPUState *env, target_ulong pc);
 //void on_call(CPUState *env, target_ulong pc);
 void on_library_load(CPUState *env, target_ulong pc, char *lib_name, target_ulong base_addr);
-void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
-void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
-void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f);
+void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
 
 
@@ -1364,7 +1364,9 @@ void on_ret(CPUState *env, target_ulong pc_func) {
 void livevar_iter(CPUState *env,
         target_ulong pc,
         std::vector<VarInfo> vars, 
-        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+        liveVarCB f,
+        void *args){
+        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
         //void (*f)(std::string, std::string, LocType, target_ulong)){
     //for (auto it=vars.begin(); it != vars.end(); ++it){
     //printf("size of vars: %ld\n", vars.size());
@@ -1400,7 +1402,7 @@ void livevar_iter(CPUState *env,
                         printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
                         break;
                 }
-                f(var_type.c_str(), var_name.c_str(),loc, var_loc); 
+                f(var_type.c_str(), var_name.c_str(),loc, var_loc, args); 
                 //live_vars_for_cb.push_back(std::make_tuple(var_type, var_name,loc, var_loc)); 
             }
         }
@@ -1549,20 +1551,26 @@ void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, SrcInfo *info, int
 }
 void dwarf_all_livevar_iter(CPUState *env,
         target_ulong pc,
-        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    livevar_iter(env, pc, funcvars[cur_function], f);
-    livevar_iter(env, pc, global_var_list, f);
+        liveVarCB f,
+        void *args){
+        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+    livevar_iter(env, pc, funcvars[cur_function], f, args);
+    livevar_iter(env, pc, global_var_list, f, args);
 }
 void dwarf_funct_livevar_iter(CPUState *env,
         target_ulong pc,
-        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+        liveVarCB f,
+        void *args){
+        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
     //printf("iterating through live vars\n");
-    livevar_iter(env, pc, funcvars[cur_function], f);
+    livevar_iter(env, pc, funcvars[cur_function], f, args);
 }
 void dwarf_global_livevar_iter(CPUState *env,
         target_ulong pc,
-        void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
-    livevar_iter(env, pc, global_var_list, f);
+        liveVarCB f,
+        void *args){
+        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
+    livevar_iter(env, pc, global_var_list, f, args);
 }
 int exec_callback_dwarf(CPUState *env, target_ulong pc) {
     if (!correct_asid(env)) return 0;
