@@ -14,7 +14,7 @@ python ../scripts/apigen.py
 # creates pandalog code
 sh ./pp.sh
 
-echo "Creating dirs... {HACKED}" ####################¿QEMUPANDA?
+echo "Doing some file placing..."
 sh ../scripts/archer
 
 # set the LLVM_BIT
