@@ -6,7 +6,7 @@ include $(SRC_PATH)/rules.mak
 #include $(HWDIR)/config.mak
 #endif
 
-PLUGIN_TARGET_DIR=$(SRC_PATH)$(TARGET_DIR)panda_plugins
+PLUGIN_TARGET_DIR=$(SRC_PATH)/$(TARGET_DIR)panda_plugins
 
 PLUGIN_SRC_ROOT=$(SRC_PATH)/panda_plugins
 PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
