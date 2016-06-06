@@ -14,6 +14,9 @@ python ../scripts/apigen.py
 # creates pandalog code
 sh ./pp.sh
 
+echo "Creating dirs... {HACKED}" ####################¿QEMUPANDA?
+sh ../scripts/archer
+
 # set the LLVM_BIT
 if [ "$PANDA_LLVM" != "" ]; then
   # Using PANDA LLVM.
