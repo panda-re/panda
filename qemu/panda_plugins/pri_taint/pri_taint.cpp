@@ -1,6 +1,6 @@
 #define __STDC_FORMAT_MACROS
 
-// taint 
+// taint
 #include "../taint2/label_set.h"
 #include "../taint2/taint2.h"
 #include "../common/prog_point.h"
@@ -8,13 +8,13 @@
 #include <algorithm>
 
 extern "C" {
-    
+
 #include "panda/panda_addr.h"
-#include "rr_log.h"    
+#include "rr_log.h"
 #include "qemu-common.h"
 #include "cpu.h"
 #include "panda_plugin.h"
-#include "panda_plugin_plugin.h" 
+#include "panda_plugin_plugin.h"
 #include "pandalog.h"
 #include "panda_common.h"
 
@@ -22,8 +22,8 @@ extern "C" {
 #include "../pri/pri_ext.h"
 #include "../pri/pri.h"
 
-    
-// taint 
+
+// taint
 #include "../taint2/taint2_ext.h"
 
 // needed for callstack logging
@@ -40,25 +40,15 @@ void set_loglevel(int new_loglevel);
 Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
     Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
     *si = PANDA__SRC_INFO_PRI__INIT;
-    //si->filename = phs.src_filename;
-    //si->astnodename = phs.src_ast_node_name;
-    //si->linenum = phs.src_linenum;
-    
+
     si->filename = (char *) src_filename;
     si->astnodename = (char *) src_ast_node_name;
     si->linenum = src_linenum;
-    
+
     si->has_insertionpoint = 1;
     si->insertionpoint = src_linenum - 1;
-    /*
-    si->has_insertionpoint = 0;
-    if (phs.insertion_point) {
-        si->has_insertionpoint = 1;
-        si->insertionpoint = phs.insertion_point;
-    }
-    */
     return si;
-} 
+}
 // should just be able to include this from taint2.h but not able to, so just copied the function
 Addr make_maddr(uint64_t a) {
   Addr ma;
@@ -77,7 +67,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
 
     //if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)){
     if  (pandalog && taint2_enabled() && (taint2_num_labels_applied() > 0)){
-        // okay, taint is on and some labels have actually been applied 
+        // okay, taint is on and some labels have actually been applied
         // is there *any* taint on this extent
         uint32_t num_tainted = 0;
         bool is_strnlen = false;
@@ -94,7 +84,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
                 // null terminator
                 if (c==0) break;
             }
-            if ((int) pa != -1) {                         
+            if ((int) pa != -1) {
                 Addr a = make_maddr(pa);
                 if (taint2_query(a)) {
                     num_tainted ++;
@@ -135,7 +125,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
             tqh->data = data;
             // 2. write out src-level info
             //Panda__SrcInfoPri *si = pandalog_src_info_create(phs);
-            tqh->src_info = si;          
+            tqh->src_info = si;
             // 3. write out callstack info
             Panda__CallStack *cs = pandalog_callstack_create();
             tqh->call_stack = cs;
@@ -145,7 +135,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
                 uint32_t va = buf + offset;
                 //uint32_t va = phs.buf + offset;
                 uint32_t pa =  panda_virt_to_phys(env, va);
-                if ((int) pa != -1) {                         
+                if ((int) pa != -1) {
                     Addr a = make_maddr(pa);
                     if (taint2_query(a)) {
                         tq.push_back(taint2_query_pandalog(a, offset));
@@ -195,7 +185,7 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
             guest_dword = pfun_env->regs[loc];
             if (num_derefs > 0) {
                 for (i = 0; i < num_derefs; i++) {
-                    int rc = panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0); 
+                    int rc = panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
                     if (0 != rc)
                         break;
                 }
@@ -216,12 +206,12 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
                     }
                 }
             }
-            
+
             break;
         case LocMem:
             guest_dword = loc;
             for (i = 0; i < num_derefs; i++) {
-                if (0 != panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){ 
+                if (0 != panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){
                     break;
                 }
             }
@@ -230,7 +220,7 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
                 printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
                 printf(" ==Location is tainted!==\n");
                 lava_taint_query(si, guest_dword, 1);
-            } 
+            }
             break;
         case LocConst:
             //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
@@ -281,7 +271,7 @@ bool init_plugin(void *self) {
     panda_require("taint2");
     assert(init_taint2_api());
     //assert(init_file_taint_api());
-    
+
     PPP_REG_CB("pri", on_before_line_change, on_line_change);
     //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     //PPP_REG_CB("taint2", on_taint_change, on_taint_change);
