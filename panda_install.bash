@@ -10,6 +10,7 @@
 #
 # This script installs all of PANDA after first taking care of current dependencies. 
 # Known to work on debian 7 install.
+# Revised by xVlaze on 04/06/2016
 
 progress() {
   echo
@@ -20,8 +21,8 @@ progress() {
 set -e
 
 progress "Installing qemu dependencies..."
-sudo apt-get update -qq
-sudo apt-get -y install build-essential 
+#Avoids stopping if error detected. Will show errors though.
+sudo apt-get update -qq && sudo apt-get -y install build-essential 
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
   python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev \
