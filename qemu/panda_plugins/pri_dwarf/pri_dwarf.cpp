@@ -460,7 +460,21 @@ void enumerate_die_attrs(Dwarf_Die the_die)
 
 }
 
-std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
+std::string getNameFromDie(Dwarf_Die the_die){
+    Dwarf_Error err;
+    int rc;
+    char *die_name = 0;
+    std::string ret_string;
+
+    rc = dwarf_diename(the_die, &die_name, &err);
+    if (rc == DW_DLV_ERROR) {
+        die("Error in dwarf_diename\n");
+    }
+    if (rc != DW_DLV_OK) ret_string = "?";
+    else ret_string = die_name;
+    return ret_string;
+}
+std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
     Dwarf_Error err;
     Dwarf_Half tag;
     int rc;
@@ -528,8 +542,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
                     if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                     {
                         //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
-                        return std::make_pair(type_name + std::string(num_derefs, '*'), argname);
-                        //return;
+                        return type_name + std::string(num_derefs, '*');
                     }
                     char *field_name;
                     while (1) // enumerate struct arguments
@@ -550,11 +563,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
                     }
                     break;
                 case DW_TAG_typedef:
-                    //printf("  [+] typedef: skipping enumeration\n");
-                    //dwarf_attr(type_die, DW_AT_type, &type_attr, &err);
-                    //dwarf_global_formref(type_attr, &offset, &err);
-                    //dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
-                    //dwarf_tag(type_die, &tag, &err);
+                    // continue enumerating type to get actual type
                     break;
                 case DW_TAG_base_type:
                     // hit base_type, do something
@@ -598,7 +607,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
 
     //printf("  Added argument %s, type: %s, numderefs: %d\n", argname.c_str(), type_name.c_str(), num_derefs);
     //params->push_back(type_name + std::string(num_derefs, '*') + " " + argname);
-    return std::make_pair(type_name + std::string(num_derefs, '*'), argname + arrays);
+    return type_name;
 }
 
 // Copies the location list for a particular attrbibute to locdesclist_copy in order to use the location information
@@ -838,7 +847,8 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
     Dwarf_Die arg_child;
     Dwarf_Die tmp_die;
     std::vector<std::string> params;
-    std::pair<std::string, std::string> type_argname;
+    std::string type_name;
+    std::string argname;
     std::vector<VarInfo> var_list;
     if (dwarf_child(the_die, &arg_child, &err) != DW_DLV_OK) {
         return;
@@ -853,15 +863,16 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             /* fall through to default case to get sibling die */
             case DW_TAG_formal_parameter:
                 // pushes name and type information for paramater into params vector
-                //getNameAndTypeFromDie(dbg, arg_child, &params);
-                type_argname = getNameAndTypeFromDie(dbg, arg_child);
+                //getTypeFromDie(dbg, arg_child, &params);
+                argname = getNameFromDie(arg_child);
+                type_name = getTypeFromDie(dbg, arg_child);
                 if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
-                }else {
-                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    //printf("Var [%s] has no loc\n", argname.c_str());
+                } else {
+                    var_list.push_back(VarInfo(type_name,argname,locdesclist_copy,loccnt));
                 }
-                params.push_back(type_argname.first + " " + type_argname.second);
+                params.push_back(type_name + " " + argname);
                 break;
             /* fall through to default case to get sibling die */
             case DW_TAG_unspecified_parameters:
@@ -881,12 +892,13 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
                 // dwarf information within the lexical block
                 continue;
             case DW_TAG_variable:
-                type_argname = getNameAndTypeFromDie(dbg, arg_child);
+                argname = getNameFromDie(arg_child);
+                type_name = getTypeFromDie(dbg, arg_child);
                 if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                    //printf("Var [%s] has no loc\n", argname.c_str());
                 } else {
-                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    var_list.push_back(VarInfo(type_name, argname, locdesclist_copy, loccnt));
                 }
                 break;
             default:
@@ -1000,7 +1012,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 
         /* Now go over all children DIEs */
         while (1) {
-            std::pair<std::string, std::string> type_argname;
+            std::string type_name, argname;
             int rc;
             Dwarf_Half tag;
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
@@ -1013,13 +1025,14 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 
                 Dwarf_Locdesc **locdesclist_copy=NULL;
                 Dwarf_Signed loccnt;
-                type_argname = getNameAndTypeFromDie(dbg, child_die);
+                argname = getNameFromDie(child_die);
+                type_name = getTypeFromDie(dbg, child_die);
                 if (-1 == get_die_loc_info(dbg, child_die, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                    //printf("Var [%s] has no loc\n", argname.c_str());
                 }
                 else{
-                    global_var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    global_var_list.push_back(VarInfo(type_name,argname,locdesclist_copy,loccnt));
                 }
             }
 
@@ -1057,12 +1070,13 @@ bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_ad
 
     load_debug_info(dbg, basename, base_address, needs_reloc);
 
+    /* don't free dbg info anymore
     if (dwarf_finish(dbg, &err) != DW_DLV_OK) {
         fprintf(stderr, "Failed DWARF finalization\n");
         return false;
     }
-
-    close(fd);
+    */
+    //close(fd);
     return true;
 }
 

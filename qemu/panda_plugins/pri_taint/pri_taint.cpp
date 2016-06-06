@@ -36,7 +36,6 @@ int get_loglevel() ;
 void set_loglevel(int new_loglevel);
 }
 
-//Panda__SrcInfoPri *pandalog_src_info_create(PandaHypercallStruct phs) {
 Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
     Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
     *si = PANDA__SRC_INFO_PRI__INIT;
