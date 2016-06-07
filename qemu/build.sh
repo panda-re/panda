@@ -14,9 +14,6 @@ python ../scripts/apigen.py
 # creates pandalog code
 sh ./pp.sh
 
-echo "Doing some file placing..."
-sh ../scripts/archer
-
 # set the LLVM_BIT
 if [ "$PANDA_LLVM" != "" ]; then
   # Using PANDA LLVM.
@@ -47,3 +44,4 @@ $LLVM_BIT \
 --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c -lprotobuf -lpthread"
 
 make -j ${PANDA_NPROC:-$(nproc)}
+
