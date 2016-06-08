@@ -17,12 +17,12 @@
 //  Just the prototypes, please.  
 
 
-typedef void PC_Info;
+typedef void SrcInfo;
 typedef void liveVarCB;
 typedef void CPUState;
 typedef void LocType;
 typedef void target_ulong;
 
-#include "stpi_int_fns.h"
+#include "pri_int_fns.h"
 
 

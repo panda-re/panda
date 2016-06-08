@@ -12,10 +12,10 @@ extern "C" {
 #include "pandalog.h"
 #include "panda_common.h"
 
-#include "../stpi/stpi_types.h"
-#include "../stpi/stpi_ext.h"
-#include "../stpi/stpi.h"
-#include "../dwarfp/dwarfp_ext.h"
+#include "../pri/pri_types.h"
+#include "../pri/pri_ext.h"
+#include "../pri/pri.h"
+//#include "../dwarfp/dwarfp_ext.h"
 #include "panda_plugin_plugin.h" 
     
     bool init_plugin(void *);
@@ -26,9 +26,19 @@ extern "C" {
 
     //void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
 }
-CPUState *pfun_env;
+struct args {
+    CPUState *env;
+    const char *src_filename;
+    uint64_t src_linenum;
+};
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
+void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
+    // restore args
+    struct args *args = (struct args *) in_args;
+    CPUState *pfun_env = args->env;
+    //const char *src_filename = args->src_filename;
+    //uint64_t src_linenum = args->src_linenum;
+
     target_ulong guest_dword; 
     switch (loc_t){
         case LocReg:
@@ -49,44 +59,67 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
     }
 }
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    pfun_env = env;
+    struct args args = {env, file_Name, lno};
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    stpi_funct_livevar_iter(env, pc, pfun);
+    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    pfun_env = env;
+    struct args args = {env, file_Name, lno};
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
-    stpi_funct_livevar_iter(env, pc, pfun);
+    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
 }
-int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    char *symbol_name;
-    if (stpi_get_vma_symbol(env, pc, addr, &symbol_name)){
+
+
+int virt_mem_helper(CPUState *env, target_ulong pc, target_ulong addr, bool isRead) {
+    SrcInfo info;
+    // if NOT in source code, just return
+    if (pri_get_pc_source_info(env, pc, &info)){
+        return 0;
+    }
+    char *symbol_name = pri_get_vma_symbol(env, pc, addr);
+    if (!symbol_name){
         // symbol was not found for particular addr
         return 0;
     }
     else {
-        //printf ("Virt mem write at 0x%x - \"%s\"\n", addr, symbol_name);
+        if (isRead) {
+            printf ("Virt mem read at 0x%x - \"%s\"\n", addr, symbol_name);
+        }
+        else {
+            printf ("Virt mem write at 0x%x - \"%s\"\n", addr, symbol_name);
+        }
     }
     return 0;
+}
+
+int virt_mem_read(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return virt_mem_helper(env, pc, addr, true);
+
+}
+
+int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return virt_mem_helper(env, pc, addr, false);
 }
 #endif
 
 bool init_plugin(void *self) {
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("Initializing plugin dwarf_simple\n");
-    //panda_arg_list *args = panda_get_args("dwarf_taint");
-    panda_require("stpi");
-    assert(init_stpi_api());
-    panda_require("dwarfp");
-    assert(init_dwarfp_api());
+    printf("Initializing plugin pri_simple\n");
+    //panda_arg_list *args = panda_get_args("pri_taint");
+    panda_require("pri");
+    assert(init_pri_api());
+    //panda_require("dwarfp");
+    //assert(init_dwarfp_api());
     
-    PPP_REG_CB("stpi", on_before_line_change, on_line_change);
-    //PPP_REG_CB("stpi", on_fn_start, on_fn_start);
+    PPP_REG_CB("pri", on_before_line_change, on_line_change);
+    //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     {
         panda_cb pcb;
         pcb.virt_mem_write = virt_mem_write;
         panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
+        pcb.virt_mem_read = virt_mem_read;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
     }
 #endif
     return true;
