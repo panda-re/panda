@@ -40,6 +40,8 @@ extern "C" {
 #include <vector>
 #include <map>
 #include <string>
+
+static bool debug = true;
  
 const char *taint_filename = 0;
 bool positional_labels = true;
@@ -136,7 +138,7 @@ uint32_t guest_wstrncpy(CPUState *env, char *buf, size_t maxlen, target_ulong gu
 
 void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t flags, int32_t mode) {
     if (!filename.empty()) {
-        printf ("open_enter: saw open of [%s]\n", filename.c_str());
+        if (debug) printf ("open_enter: saw open of [%s]\n", filename.c_str());
     }
     if (filename.find(taint_filename) != std::string::npos) {
         saw_open = true;
@@ -167,7 +169,7 @@ void windows_seek_enter(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32
     uint64_t Position = 0;
     if (FileInformationClass == 14) { // FilePositionInformation
         panda_virtual_memory_rw(env, FileInformation, (uint8_t *) &Position, sizeof(Position), false);
-        printf("DEBUG: NtSetInformationFile(fd = %u, offset = %" PRIu64 ")\n", FileHandle, Position);
+        if (debug) printf("DEBUG: NtSetInformationFile(fd = %u, offset = %" PRIu64 ")\n", FileHandle, Position);
         seek_enter(env, FileHandle, Position);
     }
 }
@@ -214,7 +216,7 @@ void windows_open_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uin
 void windows_open_return(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t DesiredAccess, uint32_t ObjectAttributes, uint32_t IoStatusBlock, uint32_t ShareAccess, uint32_t OpenOptions) {
     uint32_t Handle;
     panda_virtual_memory_rw(env, FileHandle, (uint8_t *)&Handle, 4, 0);
-    printf ("asid=0x%x filehandle=%d filename=[%s]\n", (uint)panda_current_asid(env), FileHandle, the_windows_filename.c_str());
+    if (debug) printf ("asid=0x%x filehandle=%d filename=[%s]\n", (uint)panda_current_asid(env), FileHandle, the_windows_filename.c_str());
     windows_filenames[panda_current_asid(env)][FileHandle] = the_windows_filename;
     open_return(env, Handle);
 }
@@ -232,10 +234,10 @@ void read_enter(CPUState* env, target_ulong pc, std::string filename, uint64_t p
     last_read_buf = buf;
     last_pos = pos;    
     saw_read = false;
-    printf ("read_enter filename=[%s]\n", filename.c_str());
+    if (debug) printf ("read_enter filename=[%s]\n", filename.c_str());
     if (filename.find(taint_filename) != std::string::npos) {
         //    if (0 == strcmp(filename.c_str(), taint_filename)) {
-        printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
+        if (debug) printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
         saw_read = true;
     }
 }
@@ -247,7 +249,7 @@ void read_return(CPUState* env, target_ulong pc, uint32_t buf, uint32_t actual_c
         // These are the start and end of the current range of labels.
         uint32_t read_start = last_pos;
         uint32_t read_end = last_pos + actual_count;        
-        printf ("returning from read of [%s] count=%u\n", taint_filename, actual_count);
+        if (debug) printf ("returning from read of [%s] count=%u\n", taint_filename, actual_count);
         // check if we overlap the range we want to label.
         if (read_start < end_label && read_end > start_label) {
             uint32_t range_start = std::max(read_start, start_label);
@@ -304,7 +306,7 @@ void windows_read_return(CPUState* env, target_ulong pc, uint32_t FileHandle, ui
     if (panda_virtual_memory_rw(env, IoStatusBlock, (uint8_t *)&io_status_block, sizeof(io_status_block), 0) != -1) {
         actual_count = io_status_block.Information;
     } else {
-        printf("file_taint: failed to read IoStatusBlock @ %x\n", IoStatusBlock);
+        if (debug) printf("file_taint: failed to read IoStatusBlock @ %x\n", IoStatusBlock);
     }
     read_return(env, pc, Buffer, actual_count);
 }
@@ -325,18 +327,19 @@ void windows_create_return(CPUState* env, target_ulong pc, uint32_t FileHandle, 
 void linux_read_enter(CPUState *env, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
     target_ulong asid = panda_current_asid(env);
     if (running_procs.count(asid) == 0) {
-        printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
+        if (debug) printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
         return;
     }
     OsiProc& proc = running_procs[asid];
     char *filename = osi_linux_fd_to_filename(env, &proc, fd);
     uint64_t pos = osi_linux_fd_to_pos(env, &proc, fd);
     if (filename==NULL) {
-        printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
-                (unsigned int) asid, (int) proc.pid, proc.name, (int) fd);
+        if (debug) 
+            printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
+                    (unsigned int) asid, (int) proc.pid, proc.name, (int) fd);
         return;
     }
-    printf ("linux_read_enter for asid==0x%x fd=%d filename=[%s] count=%d pos=%u\n", (unsigned int) asid, (int) fd, filename, count, (unsigned int) pos);
+    if (debug) printf ("linux_read_enter for asid==0x%x fd=%d filename=[%s] count=%d pos=%u\n", (unsigned int) asid, (int) fd, filename, count, (unsigned int) pos);
     read_enter(env, pc, filename, pos, buf, count);
 }
 
@@ -355,7 +358,7 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
         if (ins > first_instr) {            
             taint_is_enabled = true;
             taint2_enable_taint();
-            printf (" @ ins  %" PRId64 "\n", ins); 
+            if (debug) printf (" enabled taint2 @ ins  %" PRId64 "\n", ins); 
         }
     }
     return 0;
@@ -366,7 +369,7 @@ int file_taint_enable(CPUState *env, target_ulong pc) {
 void linux_open_enter(CPUState *env, target_ulong pc, uint32_t filename, int32_t flags, int32_t mode) {
     char the_filename[MAX_FILENAME];
     guest_strncpy(env, the_filename, MAX_FILENAME, filename);    
-    printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
+    if (debug) printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(env), the_filename);
     open_enter(env, pc, the_filename, flags, mode);
 }
 #endif /* TARGET_I386 */
@@ -396,7 +399,7 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
         if (np != n) return 0;
         target_ulong asid = panda_current_asid(env);
         if (running_procs.count(asid) == 0) {
-            printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+            if (debug) printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
         }
         if (running_procs.count(asid) != 0) {
             /*
