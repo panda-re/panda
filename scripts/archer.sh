@@ -13,5 +13,4 @@ cp ../qemu/$ARCH-softmmu/config-devices.mak ../qemu
 cp ../qemu/$ARCH-softmmu/config-target.mak ../qemu
 cp ../qemu/$ARCH-softmmu/config-target.h ..
 cp ../qemu/$ARCH-softmmu/config-target.h ../qemu
-cp ../$ARCH-softmmu/config-devices.h ..
 
