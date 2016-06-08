@@ -166,8 +166,10 @@ struct args {
 };
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
+void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
+//void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
     // restore args
+    const char *var_ty = (const char *) var_ty_void;
     struct args *args = (struct args *) in_args;
     CPUState *pfun_env = args->env;
     const char *src_filename = args->src_filename;
@@ -225,7 +227,7 @@ void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong lo
             //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
             break;
         case LocErr:
-            printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
+            //printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
             break;
         // should not get here
         default:
