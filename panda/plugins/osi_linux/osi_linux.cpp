@@ -47,6 +47,8 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osimodules(OsiModules *ms);
 }
 
+static bool debug = false;
+
 struct kernelinfo ki;
 int panda_memory_errors;
 char *kconf_group;
@@ -416,18 +418,18 @@ char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     PTR ts_current = 0;
     ts_current = p->offset;
     if (ts_current == 0) {
-        printf ("osi_linux_fd_to_filename -- cant get task\n");
+        if (debug) printf ("osi_linux_fd_to_filename -- cant get task\n");
         return NULL;
     }
     char *name = get_fd_name(env, ts_current, fd);
 	if (unlikely(name == NULL)) {
-        printf ("osi_linux_fd_to_filename -- can't get filename\n");
+        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename\n");
         goto make_name;
     }
 
 	name = g_strchug(name);
 	if (unlikely(g_strcmp0(name, "") == 0)) {
-        printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
+        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
         goto make_name;
     }
     return name;
