@@ -740,13 +740,17 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     Dwarf_Signed loccnt;
 
     int rc = dwarf_diename(the_die, &die_name, &err);
-    if (rc == DW_DLV_ERROR)
+    if (rc == DW_DLV_ERROR){
         die("Error in dwarf_diename\n");
+        return;
+    }
     else if (rc == DW_DLV_NO_ENTRY)
         return;
 
-    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK)
+    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK){
         die("Error in dwarf_tag\n");
+        return;
+    }
 
     /* Only interested in subprogram DIEs here */
     if (tag != DW_TAG_subprogram)
@@ -882,8 +886,8 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         // will process later (or maybe already has!)
         return;
     }
-    // Load information about arguments
-    //printf("Loading arguments for %s\n", die_name);
+    // Load information about arguments and local variables
+    //printf("Loading arguments and variables for %s\n", die_name);
     Dwarf_Die arg_child;
     Dwarf_Die tmp_die;
     std::vector<std::string> params;
@@ -920,17 +924,26 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 break;
             /* does NOT fall through to default case to get sibling die because gets child die */
             case DW_TAG_lexical_block:
-                /* Expect the Lexical block DIE to have children */
-                if (dwarf_child(arg_child, &tmp_die, &err) == DW_DLV_ERROR) {
+                /* Check the Lexical block DIE for children */
+                rc = dwarf_child(arg_child, &tmp_die, &err);
+                if (rc == DW_DLV_NO_ENTRY) {
+                    // no children, so skip to end of loop
+                    // and get the sibling die
                     arg_child = NULL;
-                    die("Error getting child of CU DIE\n");
+                    break;
                 }
-                else {
+                else if (rc == DW_DLV_OK) {
                     arg_child = tmp_die;
+                    // skip the dwarf_sibling code() 
+                    // and go to the top of while loop to collect
+                    // dwarf information within the lexical block
+                    continue;
                 }
-                // skip the dwarf_sibling code() and go to the top of while loop to collect
-                // dwarf information within the lexical block
-                continue;
+                // there is not arg_child so set it to null
+                else {
+                    arg_child = NULL;
+                    continue;
+                }
             case DW_TAG_variable:
                 argname = getNameFromDie(arg_child);
                 type_name = getTypeFromDie(*dbg, arg_child);
@@ -941,6 +954,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                     var_list.push_back(VarInfo(type_name, argname, locdesclist, loccnt));
                 }
                 break;
+            case DW_TAG_label:
             default:
                 //printf("UNKNOWN tag in function dwarf analysis\n");
                 break;
