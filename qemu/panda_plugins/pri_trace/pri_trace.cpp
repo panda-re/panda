@@ -29,26 +29,16 @@ void uninit_plugin(void *);
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
-Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
-    Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
-    *si = PANDA__SRC_INFO_PRI__INIT;
-    si->filename = (char *) src_filename;
-    si->astnodename = NULL;
-    si->linenum = src_linenum;
-    si->has_insertionpoint = 0;
-    return si;
-}
-
 
 // this will run whenever we are in code that we have pri info for and file / line have changed
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     if (pandalog) {
-        Panda__SrcInfoPri psi = PANDA__SRC_INFO_PRI__INIT;
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        Panda__SrcInfoPri psi = PANDA__SRC_INFO_PRI__INIT; // pandalog_src_info_pri_create(file_Name, lno, "none");
         psi.filename = (char *) file_Name;
         psi.astnodename = NULL;
         psi.linenum = lno;
         psi.has_insertionpoint = 0;
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
         ple.pri_trace_src_info = &psi;
         pandalog_write_entry(&ple);
     }

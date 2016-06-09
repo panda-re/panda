@@ -507,6 +507,10 @@ void pprint_ple(Panda__LogEntry *ple) {
     if (ple->has_total_instr) {
         printf (" total instr %" PRId64, ple->total_instr);
     }
+    if (ple->pri_trace_src_info) {
+        printf (" pri_trace ");
+        pprint_src_info_pri(ple->pri_trace_src_info);
+    }
 
     printf ("\n");
 }
