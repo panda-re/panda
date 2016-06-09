@@ -55,3 +55,4 @@ pri_simple
 #strace
 loaded
 wintrospection
+pri_trace
