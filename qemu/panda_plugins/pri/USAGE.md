@@ -95,16 +95,16 @@ There are three API functions provided to clients that allow them to iterate thr
     char *pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma);
 
     // iterate through the live vars at the current state of execution
-    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     // iterate through the live vars at the current state of execution
     // iterate through the live vars at the current state of execution
-    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
+    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
 
     // iterate through the function vars at the current state of execution
-    void pri_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_funct_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     
     // iterate through the global vars at the current state of execution
-    void pri_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
+    void pri_global_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
     
 There are three API functions provided to pri providers that allow them to run callbacks that will be available to clients through the `pri` interface.
     // run a line change callback
@@ -124,7 +124,7 @@ Data Structures used by `pri`:
     typedef enum { LocReg, LocMem, LocConst, LocErr } LocType;
     
     // the live_var_iter functions take in this callback and apply it to all vars that are live at the current program state
-    typedef void (*liveVarCB)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc);
+    typedef void (*liveVarCB)(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc);
 
 
 Example
@@ -149,17 +149,17 @@ This is an example of a use of `pri`.  Note that for this to be useful it needs 
     
     // pri is only supported 32 bit linux
     #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
+    void pfun(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
         
         switch (loc_t){
             case LocReg:
-                printf("VAR REG %s %s in 0x%x\n", var_ty, var_nm, loc);
+                printf("VAR REG %s in 0x%x\n", var_nm, loc);
                 break;
             case LocMem:
-                printf("VAR MEM %s %s @ 0x%x\n", var_ty, var_nm, loc);
+                printf("VAR MEM %s @ 0x%x\n", var_nm, loc);
                 break;
             case LocConst:
-                printf("VAR CONST %s %s as 0x%x\n", var_ty, var_nm, loc);
+                printf("VAR CONST %s as 0x%x\n", var_nm, loc);
                 break;
             case LocErr:
                 printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");

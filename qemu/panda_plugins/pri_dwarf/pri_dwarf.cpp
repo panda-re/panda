@@ -105,6 +105,37 @@ char *prev_file_name = NULL;
 std::string prev_funct_name = std::string("");
 bool inExecutableSource = false;
 
+//////// consider putting this in pri
+// current process
+OsiProc *current_proc = NULL;
+OsiModule *current_lib = NULL;
+OsiModules *current_libs = NULL;
+bool proc_diff(OsiProc *p_curr, OsiProc *p_new) {
+    if (p_curr == NULL) {
+        return (p_new != NULL);
+    }
+    if (p_curr->offset != p_new->offset
+        || p_curr->asid != p_new->asid
+        || p_curr->pid != p_new->pid
+        || p_curr->ppid != p_new->ppid)
+        return true;
+    return false;
+}
+bool proc_changed = false;
+bool bbbexec_check_proc = false;
+//////// end effects plugin globals
+
+// asid changed -- start looking for valid proc info
+int asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
+    bbbexec_check_proc = true;
+    if (current_proc) {
+        free_osiproc(current_proc);
+        current_proc = NULL;
+        current_libs = NULL;
+        current_lib = NULL;
+    }
+    return 0;
+}
 std::map <target_ulong, OsiProc> running_procs;
 //std::map<std::string,std::pair<Dwarf_Addr,Dwarf_Addr>> functions;
 std::map<Dwarf_Addr,std::string> funcaddrs;
@@ -113,7 +144,16 @@ std::map<Dwarf_Addr,std::string> funcaddrs;
 std::vector<std::string> processed_libs;
 std::map<std::string, Dwarf_Addr> dynl_functions;
 std::map<Dwarf_Addr, std::string> addr_to_dynl_function;
+std::map<target_ulong, std::pair<Dwarf_Debug*, int>> libBaseAddr_to_debugInfo;
 std::set<std::string> mods_seen;
+
+struct VarType {
+    Dwarf_Debug* dbg;
+    Dwarf_Die type_die;
+
+    VarType(Dwarf_Debug* dbg, Dwarf_Die type_die) :
+        dbg(dbg), type_die(type_die) {}
+};
 
 struct VarInfo {
     std::string var_type, var_name;
@@ -460,7 +500,21 @@ void enumerate_die_attrs(Dwarf_Die the_die)
 
 }
 
-std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
+std::string getNameFromDie(Dwarf_Die the_die){
+    Dwarf_Error err;
+    int rc;
+    char *die_name = 0;
+    std::string ret_string;
+
+    rc = dwarf_diename(the_die, &die_name, &err);
+    if (rc == DW_DLV_ERROR) {
+        die("Error in dwarf_diename\n");
+    }
+    if (rc != DW_DLV_OK) ret_string = "?";
+    else ret_string = die_name;
+    return ret_string;
+}
+std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
     Dwarf_Error err;
     Dwarf_Half tag;
     int rc;
@@ -528,8 +582,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
                     if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                     {
                         //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
-                        return std::make_pair(type_name + std::string(num_derefs, '*'), argname);
-                        //return;
+                        return type_name + std::string(num_derefs, '*');
                     }
                     char *field_name;
                     while (1) // enumerate struct arguments
@@ -550,11 +603,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
                     }
                     break;
                 case DW_TAG_typedef:
-                    //printf("  [+] typedef: skipping enumeration\n");
-                    //dwarf_attr(type_die, DW_AT_type, &type_attr, &err);
-                    //dwarf_global_formref(type_attr, &offset, &err);
-                    //dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
-                    //dwarf_tag(type_die, &tag, &err);
+                    // continue enumerating type to get actual type
                     break;
                 case DW_TAG_base_type:
                     // hit base_type, do something
@@ -598,7 +647,7 @@ std::pair<std::string, std::string> getNameAndTypeFromDie(Dwarf_Debug dbg, Dwarf
 
     //printf("  Added argument %s, type: %s, numderefs: %d\n", argname.c_str(), type_name.c_str(), num_derefs);
     //params->push_back(type_name + std::string(num_derefs, '*') + " " + argname);
-    return std::make_pair(type_name + std::string(num_derefs, '*'), argname + arrays);
+    return type_name;
 }
 
 // Copies the location list for a particular attrbibute to locdesclist_copy in order to use the location information
@@ -679,7 +728,7 @@ int get_die_loc_info(Dwarf_Debug dbg, Dwarf_Die the_die, Dwarf_Half attr, Dwarf_
 
 }
 
-void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
+void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         const char *basename,  uint64_t base_address,uint64_t cu_base_address, bool needs_reloc){
     char* die_name = 0;
     Dwarf_Error err;
@@ -687,17 +736,21 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
     Dwarf_Attribute* attrs;
     Dwarf_Addr lowpc = 0, highpc = 0;
     Dwarf_Signed attrcount, i;
-    Dwarf_Locdesc **locdesclist_copy;
+    Dwarf_Locdesc **locdesclist;
     Dwarf_Signed loccnt;
 
     int rc = dwarf_diename(the_die, &die_name, &err);
-    if (rc == DW_DLV_ERROR)
+    if (rc == DW_DLV_ERROR){
         die("Error in dwarf_diename\n");
+        return;
+    }
     else if (rc == DW_DLV_NO_ENTRY)
         return;
 
-    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK)
+    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK){
         die("Error in dwarf_tag\n");
+        return;
+    }
 
     /* Only interested in subprogram DIEs here */
     if (tag != DW_TAG_subprogram)
@@ -747,7 +800,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         }
         else if (attrcode == DW_AT_frame_base){
             // get where attribute frame base attribute points
-            if (-1 == get_die_loc_info(dbg, the_die, attrcode, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+            if (-1 == get_die_loc_info(*dbg, the_die, attrcode, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                 printf("Was not able to get [%s] location info for it\'s frame pointer\n", die_name);
             }
             else{
@@ -821,7 +874,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         funcaddrs[lowpc] = std::string(basename) + "!" + die_name;
         // now add functions frame pointer locaiton list funct_to_framepointers mapping
         if (found_fp_info){
-            funct_to_framepointers[lowpc] = std::make_tuple(locdesclist_copy, loccnt);
+            funct_to_framepointers[lowpc] = std::make_tuple(locdesclist, loccnt);
         }
         else {
             funct_to_framepointers[lowpc] = std::make_tuple((Dwarf_Locdesc **)NULL, 0);
@@ -833,12 +886,13 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
         // will process later (or maybe already has!)
         return;
     }
-    // Load information about arguments
-    //printf("Loading arguments for %s\n", die_name);
+    // Load information about arguments and local variables
+    //printf("Loading arguments and variables for %s\n", die_name);
     Dwarf_Die arg_child;
     Dwarf_Die tmp_die;
     std::vector<std::string> params;
-    std::pair<std::string, std::string> type_argname;
+    std::string type_name;
+    std::string argname;
     std::vector<VarInfo> var_list;
     if (dwarf_child(the_die, &arg_child, &err) != DW_DLV_OK) {
         return;
@@ -853,15 +907,16 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
             /* fall through to default case to get sibling die */
             case DW_TAG_formal_parameter:
                 // pushes name and type information for paramater into params vector
-                //getNameAndTypeFromDie(dbg, arg_child, &params);
-                type_argname = getNameAndTypeFromDie(dbg, arg_child);
-                if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                //getTypeFromDie(*dbg, arg_child, &params);
+                argname = getNameFromDie(arg_child);
+                type_name = getTypeFromDie(*dbg, arg_child);
+                if (-1 == get_die_loc_info(*dbg, arg_child, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
-                }else {
-                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    //printf("Var [%s] has no loc\n", argname.c_str());
+                } else {
+                    var_list.push_back(VarInfo(type_name,argname,locdesclist,loccnt));
                 }
-                params.push_back(type_argname.first + " " + type_argname.second);
+                params.push_back(type_name + " " + argname);
                 break;
             /* fall through to default case to get sibling die */
             case DW_TAG_unspecified_parameters:
@@ -869,31 +924,42 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
                 break;
             /* does NOT fall through to default case to get sibling die because gets child die */
             case DW_TAG_lexical_block:
-                /* Expect the Lexical block DIE to have children */
-                if (dwarf_child(arg_child, &tmp_die, &err) == DW_DLV_ERROR) {
+                /* Check the Lexical block DIE for children */
+                rc = dwarf_child(arg_child, &tmp_die, &err);
+                if (rc == DW_DLV_NO_ENTRY) {
+                    // no children, so skip to end of loop
+                    // and get the sibling die
                     arg_child = NULL;
-                    die("Error getting child of CU DIE\n");
+                    break;
                 }
-                else {
+                else if (rc == DW_DLV_OK) {
                     arg_child = tmp_die;
+                    // skip the dwarf_sibling code() 
+                    // and go to the top of while loop to collect
+                    // dwarf information within the lexical block
+                    continue;
                 }
-                // skip the dwarf_sibling code() and go to the top of while loop to collect
-                // dwarf information within the lexical block
-                continue;
+                // there is not arg_child so set it to null
+                else {
+                    arg_child = NULL;
+                    continue;
+                }
             case DW_TAG_variable:
-                type_argname = getNameAndTypeFromDie(dbg, arg_child);
-                if (-1 == get_die_loc_info(dbg, arg_child, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                argname = getNameFromDie(arg_child);
+                type_name = getTypeFromDie(*dbg, arg_child);
+                if (-1 == get_die_loc_info(*dbg, arg_child, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                    //printf("Var [%s] has no loc\n", argname.c_str());
                 } else {
-                    var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    var_list.push_back(VarInfo(type_name, argname, locdesclist, loccnt));
                 }
                 break;
+            case DW_TAG_label:
             default:
                 //printf("UNKNOWN tag in function dwarf analysis\n");
                 break;
         }
-        rc = dwarf_siblingof(dbg, arg_child, &arg_child, &err);
+        rc = dwarf_siblingof(*dbg, arg_child, &arg_child, &err);
 
         if (rc == DW_DLV_ERROR) {
             die("Error getting sibling of DIE\n");
@@ -912,7 +978,7 @@ void load_func_from_die(Dwarf_Debug dbg, Dwarf_Die the_die,
 
 /* Load all function and globar variable info.
 */
-void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
+void load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
     Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
     Dwarf_Half version_stamp, address_size;
     Dwarf_Error err;
@@ -921,7 +987,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 
     /* Find compilation unit header */
     while (dwarf_next_cu_header(
-                dbg,
+                *dbg,
                 &cu_header_length,
                 &version_stamp,
                 &abbrev_offset,
@@ -929,7 +995,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
                 &next_cu_header,
                 &err) != DW_DLV_NO_ENTRY) {
         /* Expect the CU to have a single sibling - a DIE */
-        if (dwarf_siblingof(dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
+        if (dwarf_siblingof(*dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
             die("Error getting sibling of CU\n");
             continue;
         }
@@ -1000,7 +1066,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 
         /* Now go over all children DIEs */
         while (1) {
-            std::pair<std::string, std::string> type_argname;
+            std::string type_name, argname;
             int rc;
             Dwarf_Half tag;
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
@@ -1011,19 +1077,20 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
             }
             else if (tag == DW_TAG_variable){
 
-                Dwarf_Locdesc **locdesclist_copy=NULL;
+                Dwarf_Locdesc **locdesclist=NULL;
                 Dwarf_Signed loccnt;
-                type_argname = getNameAndTypeFromDie(dbg, child_die);
-                if (-1 == get_die_loc_info(dbg, child_die, DW_AT_location, &locdesclist_copy,&loccnt, base_address, cu_base_address, needs_reloc)){
+                argname = getNameFromDie(child_die);
+                type_name = getTypeFromDie(*dbg, child_die);
+                if (-1 == get_die_loc_info(*dbg, child_die, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out
-                    //printf("Var [%s] has no loc\n", type_argname.second.c_str());
+                    //printf("Var [%s] has no loc\n", argname.c_str());
                 }
                 else{
-                    global_var_list.push_back(VarInfo(type_argname.first,type_argname.second,locdesclist_copy,loccnt));
+                    global_var_list.push_back(VarInfo(type_name,argname,locdesclist,loccnt));
                 }
             }
 
-            rc = dwarf_siblingof(dbg, child_die, &child_die, &err);
+            rc = dwarf_siblingof(*dbg, child_die, &child_die, &err);
 
             if (rc == DW_DLV_ERROR) {
                 die("Error getting sibling of DIE\n");
@@ -1042,7 +1109,7 @@ void load_debug_info(Dwarf_Debug dbg, const char *basename, uint64_t base_addres
 }
 
 bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_address, bool needs_reloc) {
-    Dwarf_Debug dbg = 0;
+    Dwarf_Debug *dbg = (Dwarf_Debug *) malloc(sizeof(Dwarf_Debug));
     Dwarf_Error err;
     int fd = -1;
     if ((fd = open(dbgfile, O_RDONLY)) < 0) {
@@ -1050,19 +1117,22 @@ bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_ad
         return false;
     }
 
-    if (dwarf_init(fd, DW_DLC_READ, 0, 0, &dbg, &err) != DW_DLV_OK) {
+    if (dwarf_init(fd, DW_DLC_READ, 0, 0, dbg, &err) != DW_DLV_OK) {
         fprintf(stderr, "Failed DWARF initialization\n");
         return false;
     }
 
     load_debug_info(dbg, basename, base_address, needs_reloc);
 
+    /* don't free dbg info anymore
     if (dwarf_finish(dbg, &err) != DW_DLV_OK) {
         fprintf(stderr, "Failed DWARF finalization\n");
         return false;
     }
-
-    close(fd);
+    */
+    //close(fd);
+    //std::map<target_ulong, std::pair<Dwarf_Debug, int>> libBaseAddr_to_debugInfo;
+    libBaseAddr_to_debugInfo[base_address] = std::make_pair(dbg, fd);
     return true;
 }
 
@@ -1380,7 +1450,7 @@ void __livevar_iter(CPUState *env,
                         printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
                         break;
                 }
-                f(var_type.c_str(), var_name.c_str(),loc, var_loc, args);
+                f((void *)var_type.c_str(), var_name.c_str(),loc, var_loc, args);
                 //live_vars_for_cb.push_back(std::make_tuple(var_type, var_name,loc, var_loc));
             }
         }
@@ -1507,10 +1577,11 @@ void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, SrcInfo *info, int
     if (pc < it->lowpc || it == line_range_list.end()){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
+            //printf("In a a plt function\n");
             info->filename = NULL;
             info->line_number = 0;
             info->funct_name = it_dyn->second.c_str();
-            *rc = 0;
+            *rc = 1;
         }
         else {
             *rc = -1;
@@ -1518,6 +1589,11 @@ void dwarf_get_pc_source_info(CPUState *env, target_ulong pc, SrcInfo *info, int
         return;
     }
 
+    if (it->lowpc == it->highpc){
+        //printf("In a a plt function\n");
+        *rc = 1;
+        return;
+    }
     // we are in dwarf-land, so populate info struct
     Dwarf_Addr call_site_fn = it->function_addr;
     info->filename = it->filename;
@@ -1572,12 +1648,11 @@ int exec_callback_dwarf(CPUState *env, target_ulong pc) {
     inExecutableSource = false;
     if (!correct_asid(env)) return 0;
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it2->lowpc || it2 == line_range_list.end())
+    if (it2 == line_range_list.end() || pc < it2->lowpc)
         return 0;
     inExecutableSource = true;
     if (it2->lowpc == it2->highpc) {
         inExecutableSource = false;
-        printf("in a plt function\n");
     }
     cur_function = it2->function_addr;
     char *file_name = it2->filename;
@@ -1660,6 +1735,34 @@ int osi_foo(CPUState *env, TranslationBlock *tb) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
         }
         running_procs[asid] = *p;
+        proc_changed = proc_diff(current_proc, p);
+        if (proc_changed) {
+            if (current_proc != NULL) {
+                free_osiproc(current_proc);
+                current_proc = NULL;
+            }
+            current_proc = copy_osiproc_g(p, current_proc);
+            //printf ("proc changed to [%s]\n", current_proc->name);
+        }
+        free_osiproc(p);
+        // turn this off until next asid change
+        bbbexec_check_proc = false;
+        if (current_proc != NULL && proc_changed) {
+            // if we get here, we have a valid proc in current_proc
+            // that is new.  That is, we believe process has changed
+            if (current_libs) {
+                free_osimodules(current_libs);
+            }
+            current_libs = get_libraries(env, current_proc);
+            if (current_libs) {
+                for (unsigned i=0; i<current_libs->num; i++) {
+                    OsiModule *m = &(current_libs->module[i]);
+                    if (tb->pc >= m->base && tb->pc < (m->base + m->size)) {
+                        current_lib = m;
+                    }
+                }
+            }
+        }
     }
 
     return 0;
