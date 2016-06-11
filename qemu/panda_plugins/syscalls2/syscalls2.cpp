@@ -32,6 +32,7 @@ extern "C" {
 #include <set>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 #include "syscalls2.h"
 
