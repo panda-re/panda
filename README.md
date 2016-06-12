@@ -79,7 +79,7 @@ and Practice of Provenance, Edinburgh, Scotland, July 2015.
 
 ## License
 
-GPLv2
+GPLv2.
 
 ## Acknowledgements
 
