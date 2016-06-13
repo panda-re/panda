@@ -1177,23 +1177,29 @@ static MemTxResult memory_region_dispatch_read1(MemoryRegion *mr,
 {
     *pval = 0;
 
+    MemTxResult result;
     if (mr->ops->read) {
-        return access_with_adjusted_size(addr, pval, size,
+        result = access_with_adjusted_size(addr, pval, size,
                                          mr->ops->impl.min_access_size,
                                          mr->ops->impl.max_access_size,
                                          memory_region_read_accessor,
                                          mr, attrs);
     } else if (mr->ops->read_with_attrs) {
-        return access_with_adjusted_size(addr, pval, size,
+        result = access_with_adjusted_size(addr, pval, size,
                                          mr->ops->impl.min_access_size,
                                          mr->ops->impl.max_access_size,
                                          memory_region_read_with_attrs_accessor,
                                          mr, attrs);
     } else {
-        return access_with_adjusted_size(addr, pval, size, 1, 4,
+        result = access_with_adjusted_size(addr, pval, size, 1, 4,
                                          memory_region_oldmmio_read_accessor,
                                          mr, attrs);
     }
+
+    fprintf(stderr, "memory_region_dispatch_read1: %s %lx %lx --> %lx\n", 
+            mr->name, (uint64_t) addr, (uint64_t) size, (uint64_t) *pval);
+    return result;
+
 }
 
 MemTxResult memory_region_dispatch_read(MemoryRegion *mr,
@@ -1246,6 +1252,7 @@ MemTxResult memory_region_dispatch_write(MemoryRegion *mr,
                                          unsigned size,
                                          MemTxAttrs attrs)
 {
+    #warning memory_region_dispatch_write should drop data on replay
     if (!memory_region_access_valid(mr, addr, size, true)) {
         unassigned_mem_write(mr, addr, data, size);
         return MEMTX_DECODE_ERROR;

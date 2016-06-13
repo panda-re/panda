@@ -1222,14 +1222,17 @@ default_target_list=""
 mak_wilds=""
 
 if [ "$softmmu" = "yes" ]; then
-    mak_wilds="${mak_wilds} $source_path/default-configs/*-softmmu.mak"
+#    mak_wilds="${mak_wilds} $source_path/default-configs/*-softmmu.mak"
+    mak_wilds="${mak_wilds} $source_path/default-configs/i386-softmmu.mak"
+    mak_wilds="${mak_wilds} $source_path/default-configs/x86_64-softmmu.mak"
+    #mak_wilds="${mak_wilds} $source_path/default-configs/arm-softmmu.mak"
 fi
-if [ "$linux_user" = "yes" ]; then
-    mak_wilds="${mak_wilds} $source_path/default-configs/*-linux-user.mak"
-fi
-if [ "$bsd_user" = "yes" ]; then
-    mak_wilds="${mak_wilds} $source_path/default-configs/*-bsd-user.mak"
-fi
+#if [ "$linux_user" = "yes" ]; then
+#    mak_wilds="${mak_wilds} $source_path/default-configs/*-linux-user.mak"
+#fi
+#if [ "$bsd_user" = "yes" ]; then
+#    mak_wilds="${mak_wilds} $source_path/default-configs/*-bsd-user.mak"
+#fi
 
 for config in $mak_wilds; do
     default_target_list="${default_target_list} $(basename "$config" .mak)"
