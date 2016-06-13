@@ -88,6 +88,7 @@
 .sdk
 *.gcda
 *.gcno
+*.swp
 /pc-bios/bios-pq/status
 /pc-bios/vgabios-pq/status
 /pc-bios/optionrom/linuxboot.asm
