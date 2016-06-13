@@ -35,6 +35,8 @@
 #include "sysemu/replay.h"
 #include "rr_log.h"
 
+#include "panda/include/plugin.h"
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -52,6 +54,14 @@ typedef struct SyncClocks {
 #define THRESHOLD_REDUCE 1.5
 #define MAX_DELAY_PRINT_RATE 2000000000LL
 #define MAX_NB_PRINTS 100
+
+
+// Needed to prevent before_block_exec_invalidate_opt from
+// running more than once
+bool bb_invalidate_done = false;
+
+int tb_invalidated_flag;
+
 
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
 {
@@ -142,6 +152,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     TranslationBlock *last_tb;
     int tb_exit;
     uint8_t *tb_ptr = itb->tc_ptr;
+    panda_cb_list *plist;
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [" TARGET_FMT_lx "] %s\n",
@@ -164,7 +175,23 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #endif /* DEBUG_DISAS */
 
     cpu->can_do_io = !use_icount;
+
+    // If we got here we are definitely going to exec
+    // this block. Clear the before_bb_invalidate_opt flag
+    bb_invalidate_done = false;
+    
+    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
+        plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.before_block_exec(env, tb);
+    }
+
+    // actually execute the bb. 
     ret = tcg_qemu_tb_exec(env, tb_ptr);
+
+    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.after_block_exec(env, tb, (TranslationBlock *)(next_tb & ~3));
+    }
+    
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     tb_exit = ret & TB_EXIT_MASK;
@@ -284,6 +311,7 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
                                       target_ulong cs_base,
                                       uint32_t flags)
 {
+    panda_cb_list *plist;
     TranslationBlock *tb;
 
     tb = tb_find_physical(cpu, pc, cs_base, flags);
@@ -307,8 +335,16 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
     }
 #endif
 
+    for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.before_block_translate(env, pc);
+    }
+
     /* if no translated code available, then translate it now */
     tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
+
+    for(plist = panda_cbs[PANDA_CB_AFTER_BLOCK_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
+        plist->entry.after_block_translate(env, tb);
+    }
 
 #ifdef CONFIG_USER_ONLY
     mmap_unlock();
@@ -601,6 +637,63 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
     }
 }
 
+void panda_before_find_fast() {
+    if (panda_plugin_to_unload){
+        panda_plugin_to_unload = false;
+        int i;
+        for (i = 0; i < MAX_PANDA_PLUGINS; i++){
+            if (panda_plugins_to_unload[i]){
+                panda_do_unload_plugin(i);
+                panda_plugins_to_unload[i] = false;
+            }
+        }
+    }    
+    if (panda_flush_tb()) {
+        tb_flush(env);
+        tb_invalidated_flag = 1;
+    }
+}
+
+TranslationBlock *panda_after_find_fast(CPUState *cpu, TranslationBlock *tb) {
+    // PANDA instrumentation: before basic block exec (with option
+    // to invalidate tb)
+    // Note: we can hit this point multiple times without actually having
+    // executed the block in question if there are interrupts pending.
+    // So we guard the callback execution with bb_invalidate_done, which
+    // will get cleared when we actually get to execute the basic block.
+    panda_cb_list *plist;
+    bool panda_invalidate_tb = false;
+    if (unlikely(!bb_invalidate_done)) {
+        for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
+            plist != NULL; plist = panda_cb_list_next(plist)) {
+            panda_invalidate_tb |=
+                plist->entry.before_block_exec_invalidate_opt(env, tb);
+        }
+        bb_invalidate_done = true;
+    }    
+#ifdef CONFIG_SOFTMMU
+    if (panda_invalidate_tb ||
+        (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
+         tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
+        //mz invalidate current TB and retranslate
+        invalidate_single_tb(env, tb->pc);
+        //mz try again.
+        tb = tb_find_fast(env);
+    }    
+    /* Note: we do it here to avoid a gcc bug on Mac OS X when
+       doing it in tb_find_slow */
+    if (tb_invalidated_flag) {
+        /* as some TB could have been invalidated because
+           of memory exceptions while generating the code, we
+           must recompute the hash index here */
+        next_tb = 0;
+        tb_invalidated_flag = 0;
+    }
+#endif //CONFIG_SOFTMMU    
+    return tb;
+}    
+
+
 /* main execution loop */
 
 int cpu_exec(CPUState *cpu)
@@ -660,8 +753,8 @@ int cpu_exec(CPUState *cpu)
                     rr_replay_skipped_calls();
                 }
                 cpu_handle_interrupt(cpu, &last_tb);
+                panda_before_find_fast();
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
-
                 if (qemu_loglevel_mask(CPU_LOG_RR)) {
                     RR_prog_point pp = rr_prog_point();
                     qemu_log_mask(CPU_LOG_RR,
@@ -693,6 +786,7 @@ int cpu_exec(CPUState *cpu)
                 }
 
                 if (!rr_in_replay() || rr_num_instr_before_next_interrupt() > 0) {
+                    tb = panda_after_find_fast(cpu, tb);
                     cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                     /* Try to align the host and virtual clocks
                        if the guest is in advance */
