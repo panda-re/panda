@@ -31,6 +31,8 @@
 #include "sysemu/kvm.h"
 #include "sysemu/sysemu.h"
 
+#include "rr_log_all.h"
+
 //#define DEBUG_UNASSIGNED
 
 static unsigned memory_region_transaction_depth;
@@ -1195,6 +1197,12 @@ static MemTxResult memory_region_dispatch_read1(MemoryRegion *mr,
                                          memory_region_oldmmio_read_accessor,
                                          mr, attrs);
     }
+
+    RR_DO_RECORD_OR_REPLAY(
+        /*action=*/ result,
+        /*record=*/ rr_input_8(pval),
+        /*replay=*/ rr_input_8(pval),
+        /*location=*/ RR_CALLSITE_MRDR1);
 
     fprintf(stderr, "memory_region_dispatch_read1: %s %lx %lx --> %lx\n", 
             mr->name, (uint64_t) addr, (uint64_t) size, (uint64_t) *pval);
