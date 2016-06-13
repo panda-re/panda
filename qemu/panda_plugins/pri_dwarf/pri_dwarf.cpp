@@ -30,6 +30,7 @@ extern "C" {
 #include "panda_plugin_plugin.h"
 #include "dwarf_util.h"
 #include "pri_dwarf.h"
+#include "pri_dwarf_types.h"
 
 #include "../pri/pri_types.h"
 #include "../pri/pri_ext.h"
@@ -147,20 +148,13 @@ std::map<Dwarf_Addr, std::string> addr_to_dynl_function;
 std::map<target_ulong, std::pair<Dwarf_Debug*, int>> libBaseAddr_to_debugInfo;
 std::set<std::string> mods_seen;
 
-struct VarType {
-    Dwarf_Debug* dbg;
-    Dwarf_Die type_die;
-
-    VarType(Dwarf_Debug* dbg, Dwarf_Die type_die) :
-        dbg(dbg), type_die(type_die) {}
-};
-
 struct VarInfo {
-    std::string var_type, var_name;
+    void *var_type;
+    std::string var_name;
     Dwarf_Locdesc** locations;
     Dwarf_Signed num_locations;
 
-    VarInfo(std::string var_type, std::string var_name,
+    VarInfo(void *var_type, std::string var_name,
             Dwarf_Locdesc** locations, Dwarf_Signed num_locations) :
         var_type(var_type), var_name(var_name),
         locations(locations), num_locations(num_locations) {}
@@ -188,7 +182,7 @@ std::map<std::string, LineRange> fn_name_to_line_info;
 //std::map<Dwarf_Addr, Dwarf_Unsigned> funct_to_cu_base;
 // use this to calculate a the value of a function's base pointer at a given pc
 // curfunction -> location description list for FP
-std::map<Dwarf_Addr,std::tuple<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepointers;
+std::map<Dwarf_Addr,std::pair<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepointers;
 
 
 bool sortRange(const LineRange &x1,
@@ -499,6 +493,40 @@ void enumerate_die_attrs(Dwarf_Die the_die)
     }
 
 }
+Dwarf_Unsigned get_struct_member_offset(Dwarf_Die the_die) {
+    Dwarf_Error err;
+    Dwarf_Bool hasLocation;
+    Dwarf_Attribute locationAttr;
+    Dwarf_Locdesc **locdesclist = NULL;
+    Dwarf_Signed loccnt = 0;
+
+    if (dwarf_hasattr(the_die, DW_AT_data_member_location, &hasLocation, &err) != DW_DLV_OK)
+        die("Error in dwarf attr, for determining existences of location attr\n");
+    else if (hasLocation){
+        if (dwarf_attr(the_die, DW_AT_data_member_location, &locationAttr, &err) != DW_DLV_OK)
+            die("Error obtaining location attr\n");
+        // dwarf_formexprloc(attr, expr_len, block_ptr, &err);
+        else if (dwarf_loclist_n(locationAttr, &locdesclist, &loccnt, &err) != DW_DLV_OK){
+            char *die_name = 0;
+            if (dwarf_diename(the_die, &die_name, &err) != DW_DLV_OK){
+                die("Not able to get location list for var without a name.  Probably optimized out\n");
+            }
+            else{
+                die("Not able to get location list for \'%s\'.  Probably optimized out\n", die_name);
+            }
+        }
+        else {
+            assert(loccnt == 1);
+            assert(locdesclist[0]->ld_cents == 1);
+            assert(locdesclist[0]->ld_s[0].lr_atom == DW_OP_plus_uconst);
+            return locdesclist[0]->ld_s[0].lr_number & 0xff;
+        }
+        printf("Attribute does not have a location\n");
+    }
+    // does not have location attribute or error in getting location data
+    return -1;
+
+}
 
 std::string getNameFromDie(Dwarf_Die the_die){
     Dwarf_Error err;
@@ -514,7 +542,192 @@ std::string getNameFromDie(Dwarf_Die the_die){
     else ret_string = die_name;
     return ret_string;
 }
-std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
+
+Dwarf_Unsigned die_get_attr_unsigned(Dwarf_Half attr, Dwarf_Die the_die) {
+    Dwarf_Attribute byte_size;
+    Dwarf_Error err;
+    Dwarf_Bool hasAttr;
+    if (dwarf_hasattr(the_die, attr, &hasAttr, &err) != DW_DLV_OK)
+        die("Error in dwarf attr, for determining existences of byte_size attr\n");
+    else if (hasAttr){
+        if (dwarf_attr(the_die, attr, &byte_size, &err) != DW_DLV_OK)
+            return (Dwarf_Unsigned) byte_size;
+    }
+    return 0;
+}
+
+void __dwarf_type_iter (CPUState *env, target_ulong base_addr, Dwarf_Debug dbg,
+        Dwarf_Die the_die, dwarfTypeCB cb, int recursion_level);
+
+void dwarf_type_iter (CPUState *env, target_ulong base_addr, DwarfVarType *var_ty, dwarfTypeCB cb,
+        int recursion_level){
+    Dwarf_Debug dbg = var_ty->dbg;
+    Dwarf_Die the_die = var_ty->var_die;
+    __dwarf_type_iter (env, base_addr, dbg, the_die, cb, recursion_level);
+    return;
+}
+void __dwarf_type_iter (CPUState *env, target_ulong base_addr,
+        Dwarf_Debug dbg, Dwarf_Die the_die, dwarfTypeCB cb, int recursion_level){
+    if (recursion_level <= 0) return;
+    Dwarf_Error err;
+    Dwarf_Half tag;
+    int rc;
+    std::string astnodename, temp_name;
+    char *die_name = 0;
+    Dwarf_Attribute type_attr;
+    Dwarf_Off offset;
+    Dwarf_Die type_die;
+    Dwarf_Die temp_die;
+    Dwarf_Die cur_die;
+    target_ulong cur_base_addr = base_addr;
+
+    // We need to get the die name in order to build ast nodenames
+    rc = dwarf_diename(the_die, &die_name, &err);
+    if (rc != DW_DLV_OK) {
+        die("Error: no var name. Cannot make astnodename\n");
+        return;
+    }
+    else astnodename = die_name;
+
+    Dwarf_Unsigned elem_typesize;
+    Dwarf_Unsigned array_typesize;
+    Dwarf_Unsigned base_typesize;
+    Dwarf_Unsigned struct_offset;
+    cur_die = the_die;
+    // initialize tag to DW_TAG_pointer_type to enter the while loop
+    tag = DW_TAG_pointer_type;
+    while (tag == DW_TAG_pointer_type  ||
+           tag == DW_TAG_typedef       ||
+           tag == DW_TAG_array_type    ||
+           tag == DW_TAG_volatile_type ||
+           tag == DW_TAG_const_type)
+    {
+        rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+        if (rc == DW_DLV_ERROR){
+            // error getting type
+            die("Error getting type attr for var %s\n", die_name);
+            return;
+        }
+        else if (rc == DW_DLV_NO_ENTRY)
+        {
+            // http://web.mit.edu/freebsd/head/cddl/contrib/opensolaris/tools/ctf/cvt/dwarf.c
+            // the lack of a type reference implies a reference to a void type
+            return;
+        }
+        else
+        {
+            
+            // http://stackoverflow.com/questions/12233061/any-experienced-dwarf-parsers-users-need-to-get-the-attribute-type-offset-of-a
+            // user swann outlines these two functions are necessary to jump to a dwarf reference
+            
+            dwarf_global_formref(type_attr, &offset, &err);
+            dwarf_offdie_b(dbg, offset, 1, &type_die, &err);
+            // end swann code
+            dwarf_tag(type_die, &tag, &err);
+            cur_die = type_die;
+            switch (tag)
+            {
+                case DW_TAG_structure_type:
+                    //printf("  [+] structure_type: enumerating . . .\n");
+                    rc = dwarf_diename(type_die, &die_name, &err);
+                    if (rc != DW_DLV_OK)
+                        die_name = (char *) "?";
+                    Dwarf_Die struct_child;
+                    if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
+                    {
+                        //printf("  Couldn't parse struct for var: %s\n",astnodename.c_str() );
+                        return;
+                    }
+                    char *field_name;
+                    while (1) // enumerate struct arguments
+                    {
+                        rc = dwarf_siblingof(dbg, struct_child, &struct_child, &err);
+                        if (rc == DW_DLV_ERROR) {
+                            die("Struct: Error getting sibling of DIE\n");
+                            break;
+                        }
+                        else if (rc == DW_DLV_NO_ENTRY) {
+                            break;
+                        }
+                        rc = dwarf_diename(struct_child, &field_name, &err);
+                        struct_offset = get_struct_member_offset(struct_child);
+                        if (rc != DW_DLV_OK){
+                            strncpy(field_name, "?\0", 2);
+                            break;
+                        }
+                        temp_name = "(" + astnodename + ")." + field_name;
+                        printf(" struct: %s, offset: %llu\n", temp_name.c_str(), struct_offset);
+                        //__dwarf_type_iter(env, cur_base_addr + struct_offset, dbg,
+                        //                struct_child, cb, recursion_level - 1);
+                    }
+                    return;
+                case DW_TAG_base_type:
+                    // hit base_type, do taint based on size of base type
+                    base_typesize = die_get_attr_unsigned(DW_AT_byte_size, type_die);
+                    if (base_typesize != 0)
+                        cb(cur_base_addr, base_typesize, false);
+                    break;
+                case DW_TAG_pointer_type: // increment derefs
+                    // check if it is a pointer to the char type, if so
+                    // strnlen = true and then return
+                    //rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
+                    //dwarf_global_formref(type_attr, &offset, &err);
+                    //dwarf_offdie_b(dbg, offset, 1, &temp_die, &err);
+                    //dwarf_tag(type_die, &tag, &err);
+                    //if (tag == DW_TAG_base_type){
+                        //rc = dwarf_diename(temp_die, &die_name, &err);
+                        //if (0 == strcmp("char", die_name)){
+                            //cb(cur_base_addr, sizeof(cur_base_addr), true);
+                        //}
+                        //return;
+                    //}
+                    cb(cur_base_addr, sizeof(cur_base_addr), false);
+                    astnodename = "*(" + astnodename + ")";
+                    rc = panda_virtual_memory_rw(env, cur_base_addr,
+                            (uint8_t *)&cur_base_addr, sizeof(cur_base_addr), 0);
+                    if (rc == -1){
+                        printf("Could not dereference pointer so done tainting");
+                        return;
+                    }
+                    break;
+                case DW_TAG_array_type:
+                    Dwarf_Die array_child;
+                    if (dwarf_child(type_die, &array_child, &err) != DW_DLV_OK){
+                         break;
+                    }
+                    elem_typesize = 1;
+                    array_typesize = 1 + die_get_attr_unsigned(DW_AT_upper_bound, array_child);
+                    cb(cur_base_addr, array_typesize*elem_typesize, false);
+                    break;
+                // can probably treat it as querying taint on an int
+                case DW_TAG_enumeration_type:
+                    cb(cur_base_addr, 4, false);
+                    return;
+                case DW_TAG_union_type: // what to do here? should just treat it like a struct
+                    break;
+                case DW_TAG_subroutine_type: // what to do here? just going to default, and continuing to enum die
+                    cb(cur_base_addr, sizeof(cur_base_addr), false);
+                    break;
+                case DW_TAG_ptr_to_member_type: // what to do here?
+                    break;
+                // continue enumerating type to get actual type
+                case DW_TAG_typedef:
+                // just "skip" these types by continuing to descend type tree
+                case DW_TAG_volatile_type:
+                case DW_TAG_const_type:
+                case DW_TAG_imported_declaration:
+                case DW_TAG_unspecified_parameters:
+                case DW_TAG_constant:
+                    break;
+                default: // we may want to do something different for the default case
+                    printf("Got unknown DW_TAG: 0x%x\n", tag);
+                    exit(1);
+            }
+        }
+    }
+    return;
+}
+const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
     Dwarf_Error err;
     Dwarf_Half tag;
     int rc;
@@ -525,11 +738,14 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
     Dwarf_Die type_die;
     Dwarf_Die cur_die;
     std::string type_name;
+    Dwarf_Debug dbg = var_ty->dbg;
+    Dwarf_Die the_die = var_ty->var_die;
 
     rc = dwarf_diename(the_die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR) {
         die("Error in dwarf_diename\n");
+        die_name = (char *)"?";
     }
     // if we can't get the argname, that is ok, we can still get the type of the argument
     // and since we are assuming arguments are pushed on the stack, we can still find it's
@@ -538,20 +754,22 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
     else argname = die_name;
 
     cur_die = the_die;
-    int num_derefs = 0;
-    std::string arrays = "";
-    int start = 1;
     type_name = "";
-    // didn't want to use a do/while loop here, so used this awful looking start variable :/
-    while ((tag == DW_TAG_pointer_type  ||
-            tag == DW_TAG_typedef       ||
-            tag == DW_TAG_array_type    ||
-            tag == DW_TAG_volatile_type ||
-            tag == DW_TAG_const_type)   || start)
+    // initialize tag to DW_TAG_pointer_type to enter the while loop
+    tag = DW_TAG_pointer_type;
+    while (tag == DW_TAG_pointer_type  ||
+           tag == DW_TAG_typedef       ||
+           tag == DW_TAG_array_type    ||
+           tag == DW_TAG_volatile_type ||
+           tag == DW_TAG_const_type)
     {
-        start = 0;
         rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
-        if (rc != DW_DLV_OK)
+        if (rc == DW_DLV_ERROR){
+            // error getting type
+            die("Error getting type name for var %s\n", die_name);
+            return type_name.c_str();
+        }
+        else if (rc == DW_DLV_NO_ENTRY)
         {
             // http://web.mit.edu/freebsd/head/cddl/contrib/opensolaris/tools/ctf/cvt/dwarf.c
             // the lack of a type reference implies a reference to a void type
@@ -582,7 +800,7 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
                     if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                     {
                         //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
-                        return type_name + std::string(num_derefs, '*');
+                        return type_name.c_str();
                     }
                     char *field_name;
                     while (1) // enumerate struct arguments
@@ -602,8 +820,7 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
                         //printf("    [+] %s\n", field_name);
                     }
                     break;
-                case DW_TAG_typedef:
-                    // continue enumerating type to get actual type
+                case DW_TAG_union_type: // what to do here? should just treat it like a struct?
                     break;
                 case DW_TAG_base_type:
                     // hit base_type, do something
@@ -612,31 +829,29 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
                     else type_name += die_name;
                     break;
                 case DW_TAG_pointer_type: // increment derefs
-                    num_derefs += 1;
+                    type_name = "*" + type_name;
                     break;
-                case DW_TAG_array_type: // what to do here? just going to default, and continuing to enum die
-                    arrays += "[]";
+                case DW_TAG_array_type:
+                    type_name += "[]";
                     break;
-                case DW_TAG_enumeration_type: // what to do here? should just treat it like a struct
+                case DW_TAG_enumeration_type:
+                    type_name += "enum";
                     break;
-                case DW_TAG_union_type: // what to do here? should just treat it like a struct
-                    break;
-                case DW_TAG_volatile_type: // what to do here?
-                    type_name += "volatile";
-                    break;
-                case DW_TAG_subroutine_type: // what to do here? just going to default, and continuing to enum die
+                case DW_TAG_subroutine_type:
                     type_name += "func_pointer ";
                     break;
-                case DW_TAG_imported_declaration: // what to do here?
+                case DW_TAG_volatile_type:
+                    type_name += "volatile";
                     break;
-                case DW_TAG_unspecified_parameters: // what to do here?
-                    break;
-                case DW_TAG_ptr_to_member_type: // what to do here?
-                    break;
-                case DW_TAG_const_type: // what to do here?
+                case DW_TAG_const_type:
                     type_name += "const ";
                     break;
-                case DW_TAG_constant: // what to do here?
+                // just "skip" these types by continuing to descend type tree
+                case DW_TAG_typedef: // continue enumerating type to get actual type
+                case DW_TAG_ptr_to_member_type: // what to do here?
+                case DW_TAG_imported_declaration:
+                case DW_TAG_unspecified_parameters:
+                case DW_TAG_constant:
                     break;
                 default: // we may want to do something different for the default case
                     printf("Got unknown DW_TAG: 0x%x\n", tag);
@@ -645,9 +860,7 @@ std::string getTypeFromDie(Dwarf_Debug dbg, Dwarf_Die the_die){
         }
     }
 
-    //printf("  Added argument %s, type: %s, numderefs: %d\n", argname.c_str(), type_name.c_str(), num_derefs);
-    //params->push_back(type_name + std::string(num_derefs, '*') + " " + argname);
-    return type_name;
+    return type_name.c_str();
 }
 
 // Copies the location list for a particular attrbibute to locdesclist_copy in order to use the location information
@@ -874,10 +1087,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         funcaddrs[lowpc] = std::string(basename) + "!" + die_name;
         // now add functions frame pointer locaiton list funct_to_framepointers mapping
         if (found_fp_info){
-            funct_to_framepointers[lowpc] = std::make_tuple(locdesclist, loccnt);
+            funct_to_framepointers[lowpc] = std::make_pair(locdesclist, loccnt);
         }
         else {
-            funct_to_framepointers[lowpc] = std::make_tuple((Dwarf_Locdesc **)NULL, 0);
+            funct_to_framepointers[lowpc] = std::make_pair((Dwarf_Locdesc **)NULL, 0);
         }
     }
     else {
@@ -891,12 +1104,12 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     Dwarf_Die arg_child;
     Dwarf_Die tmp_die;
     std::vector<std::string> params;
-    std::string type_name;
     std::string argname;
     std::vector<VarInfo> var_list;
     if (dwarf_child(the_die, &arg_child, &err) != DW_DLV_OK) {
         return;
     }
+    DwarfVarType *dvt;
     /* Now go over all children DIEs */
     while (arg_child != NULL) {
         if (dwarf_tag(arg_child, &tag, &err) != DW_DLV_OK) {
@@ -906,21 +1119,24 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         switch (tag) {
             /* fall through to default case to get sibling die */
             case DW_TAG_formal_parameter:
-                // pushes name and type information for paramater into params vector
-                //getTypeFromDie(*dbg, arg_child, &params);
                 argname = getNameFromDie(arg_child);
-                type_name = getTypeFromDie(*dbg, arg_child);
+
+                dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
+                *dvt = {*dbg, arg_child};
+
                 if (-1 == get_die_loc_info(*dbg, arg_child, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
                     //printf("Var [%s] has no loc\n", argname.c_str());
                 } else {
-                    var_list.push_back(VarInfo(type_name,argname,locdesclist,loccnt));
+                    var_list.push_back(VarInfo((void *)dvt,argname,locdesclist,loccnt));
                 }
-                params.push_back(type_name + " " + argname);
+                // doesn't work but if we wanted to keep track of params we
+                // could do something like this
+                //params.push_back(dvt, argname);
                 break;
             /* fall through to default case to get sibling die */
             case DW_TAG_unspecified_parameters:
-                params.push_back("...");
+                //params.push_back("...");
                 break;
             /* does NOT fall through to default case to get sibling die because gets child die */
             case DW_TAG_lexical_block:
@@ -934,7 +1150,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 }
                 else if (rc == DW_DLV_OK) {
                     arg_child = tmp_die;
-                    // skip the dwarf_sibling code() 
+                    // skip the dwarf_sibling code()
                     // and go to the top of while loop to collect
                     // dwarf information within the lexical block
                     continue;
@@ -946,12 +1162,15 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 }
             case DW_TAG_variable:
                 argname = getNameFromDie(arg_child);
-                type_name = getTypeFromDie(*dbg, arg_child);
+
+                dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
+                *dvt = {*dbg, arg_child};
+
                 if (-1 == get_die_loc_info(*dbg, arg_child, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out, so has no location
                     //printf("Var [%s] has no loc\n", argname.c_str());
                 } else {
-                    var_list.push_back(VarInfo(type_name, argname, locdesclist, loccnt));
+                    var_list.push_back(VarInfo((void *)dvt, argname, locdesclist, loccnt));
                 }
                 break;
             case DW_TAG_label:
@@ -1065,8 +1284,9 @@ void load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
         }
 
         /* Now go over all children DIEs */
+        DwarfVarType *dvt;
         while (1) {
-            std::string type_name, argname;
+            std::string argname;
             int rc;
             Dwarf_Half tag;
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
@@ -1080,13 +1300,14 @@ void load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
                 Dwarf_Locdesc **locdesclist=NULL;
                 Dwarf_Signed loccnt;
                 argname = getNameFromDie(child_die);
-                type_name = getTypeFromDie(*dbg, child_die);
+                dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
+                *dvt = {*dbg, child_die};
                 if (-1 == get_die_loc_info(*dbg, child_die, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                     // value is likely optimized out
                     //printf("Var [%s] has no loc\n", argname.c_str());
                 }
                 else{
-                    global_var_list.push_back(VarInfo(type_name,argname,locdesclist,loccnt));
+                    global_var_list.push_back(VarInfo((void *)dvt,argname,locdesclist,loccnt));
                 }
             }
 
@@ -1247,8 +1468,8 @@ target_ulong get_cur_fp(CPUState *env, target_ulong pc){
         printf("funct_to_framepointers: could not find fp information for current function\n");
         return -1;
     }
-    Dwarf_Locdesc **locdesc = std::get<0>(funct_to_framepointers[cur_function]);
-    Dwarf_Signed loc_cnt = std::get<1>(funct_to_framepointers[cur_function]);
+    Dwarf_Locdesc **locdesc = funct_to_framepointers[cur_function].first;
+    Dwarf_Signed loc_cnt = funct_to_framepointers[cur_function].second;
     if (loc_cnt == 0 || locdesc == NULL){
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
@@ -1424,7 +1645,7 @@ void __livevar_iter(CPUState *env,
         target_ulong fp){
     //printf("size of vars: %ld\n", vars.size());
     for (auto it : vars){
-        std::string var_type    = it.var_type;
+        void *var_type    = it.var_type;
         std::string var_name    = it.var_name;
         Dwarf_Locdesc **locdesc = it.locations;
         Dwarf_Signed loc_cnt    = it.num_locations;
@@ -1447,11 +1668,10 @@ void __livevar_iter(CPUState *env,
                         //printf(" VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
                         break;
                     case LocErr:
-                        printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
+                        //printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
                         break;
                 }
-                f((void *)var_type.c_str(), var_name.c_str(),loc, var_loc, args);
-                //live_vars_for_cb.push_back(std::make_tuple(var_type, var_name,loc, var_loc));
+                f((void *)var_type, var_name.c_str(),loc, var_loc, args);
             }
         }
     }
@@ -1463,7 +1683,7 @@ void __livevar_iter(CPUState *env,
 int livevar_find(CPUState *env,
         target_ulong pc,
         std::vector<VarInfo> vars,
-        int (*pred)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *args),
+        liveVarPred pred,
         void *args,
         VarInfo &ret_var){
 
@@ -1473,19 +1693,18 @@ int livevar_find(CPUState *env,
         return 0;
     }
     for (auto it : vars){
-        std::string var_type    = it.var_type;
+        void *var_type    = it.var_type;
         std::string var_name    = it.var_name;
         Dwarf_Locdesc **locdesc = it.locations;
         Dwarf_Signed loc_cnt    = it.num_locations;
         for (int i=0; i < loc_cnt; i++){
             //printf("var active in range 0x%llx - 0x%llx\n", locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
             if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
-                //enum LocType { LocReg, LocMem, LocConst, LocErr };
                 target_ulong var_loc;
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
                 LocType loc = execute_stack_op(env,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
-                if (pred(var_type.c_str(), var_name.c_str(),loc, var_loc, args)){
+                if (pred(var_type, var_name.c_str(),loc, var_loc, args)){
                     ret_var.var_type = it.var_type;
                     ret_var.var_name = it.var_name;
                     ret_var.locations = it.locations;
@@ -1497,28 +1716,11 @@ int livevar_find(CPUState *env,
     }
     return 0;
 }
-void pfun(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc){
-    switch (loc_t){
-        case LocReg:
-            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
-            break;
-        case LocMem:
-            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
-            break;
-        case LocConst:
-            printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
-            break;
-        case LocErr:
-            printf("VAR LocErr\n");
-            break;
-    }
 
-    //printf("VAR %s %s @ 0x%x\n", var_ty, var_nm, loc);
-}
 /********************************************************************
  * end PPPs
 ******************************************************************** */
-int compare_address(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *query_address){
+int compare_address(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *query_address){
     switch (loc_t){
         case LocReg:
             break;
@@ -1554,17 +1756,17 @@ void dwarf_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma, cha
     fn_address = it->function_addr;
 
     //VarInfo ret_var = VarInfo(NULL, NULL, NULL, 0);
-    VarInfo ret_var = VarInfo(std::string (""), std::string( ""), NULL, 0);
+    VarInfo ret_var = VarInfo((void *) NULL, std::string( ""), NULL, 0);
     if (livevar_find(env, pc, funcvars[fn_address], compare_address, (void *) &vma, ret_var)){
         *symbol_name = (char *)ret_var.var_name.c_str();
         return;
     }
-
+    /*
     if (livevar_find(env, pc, global_var_list, compare_address, (void *) &vma, ret_var)){
         *symbol_name = (char *)ret_var.var_name.c_str();
         return;
     }
-
+    */
     *symbol_name = NULL;
     return;
 }
@@ -1625,7 +1827,6 @@ void dwarf_funct_livevar_iter(CPUState *env,
         target_ulong pc,
         liveVarCB f,
         void *args){
-        //void (*f)(const char *var_ty, const char *var_nm, LocType loc_t, target_ulong loc)){
     //printf("iterating through live vars\n");
     if (inExecutableSource){
         target_ulong fp = get_cur_fp(env, pc);
