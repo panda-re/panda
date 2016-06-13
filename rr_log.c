@@ -37,6 +37,7 @@
 
 #include <libgen.h>
 
+#include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qmp-commands.h"
 #include "hmp.h"
