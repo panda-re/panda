@@ -4,6 +4,7 @@
 #include <glib.h>
 
 #define RR_LOG_STANDALONE
+#include "qemu/osdep.h"
 #include "cpu.h"
 #include "rr_log.h"
 

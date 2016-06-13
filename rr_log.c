@@ -43,8 +43,8 @@
 #include "hmp.h"
 #include "rr_log.h"
 #include "migration/qemu-file.h"
+#include "io/channel-file.h"
 #include "sysemu/sysemu.h"
-
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -88,11 +88,11 @@ void rr_set_program_point(void) {
     CPUX86State *env = &cpu->env;
     if (env) {
         rr_set_prog_point(cs->panda_guest_pc, env->regs[R_ECX], cs->rr_guest_instr_count);
+    }
 #else
 #warning Figure out the right place to put program counter now.
-        rr_set_prog_point(cs->panda_guest_pc, 0, cs->rr_guest_instr_count);
+    rr_set_prog_point(cs->panda_guest_pc, 0, cs->rr_guest_instr_count);
 #endif
-    }
 }
 #endif
 
@@ -1438,7 +1438,8 @@ int rr_do_begin_record(const char *file_name_full, CPUState *cpu_state) {
   if (rr_record_requested  == 1 || rr_record_requested == 2) {
     rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf ("writing snapshot:\t%s\n", name_buf);
-    QEMUFile *snp = qemu_fopen(name_buf, "wb");
+    QIOChannelFile *ioc = qio_channel_file_new_path(name_buf, O_WRONLY | O_CREAT, 0660, NULL);
+    QEMUFile *snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
     snapshot_ret = qemu_savevm_state(snp, NULL);
     qemu_fclose(snp);
     //log_all_cpu_states();
@@ -1518,7 +1519,8 @@ int rr_do_begin_replay(const char *file_name_full, CPUState *cpu_state) {
     qemu_log ("reading snapshot:\t%s\n", name_buf);
   }
   printf ("loading snapshot\n");
-  QEMUFile *snp = qemu_fopen(name_buf, "rb");
+  QIOChannelFile *ioc = qio_channel_file_new_path(name_buf, O_RDONLY, 0, NULL);
+  QEMUFile *snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
   snapshot_ret = qemu_loadvm_state(snp);
   qemu_fclose(snp);
   printf ("... done.\n");
