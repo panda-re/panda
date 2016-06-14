@@ -117,10 +117,11 @@ typedef struct RR_log_t {
   char *name;                  // file name
   FILE *fp;                    // file pointer for log
   unsigned long long size;     // for a log being opened for read, this will be the size in bytes
+  uint64_t bytes_read;
 
   RR_log_entry current_item;
   uint8_t current_item_valid;
-  unsigned long long item_number;
+  uint64_t item_number;
 } RR_log;
 
 RR_log_entry *rr_get_queue_head(void);
