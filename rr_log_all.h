@@ -608,10 +608,6 @@ static inline void rr_flush_tb_off(void) {
   rr_please_flush_tb = 0;
 }
 
-// our own assertion mechanism
-
-#define rr_assert(exp) if(exp); \
-    else rr_assert_fail(#exp, __FILE__, __LINE__, __FUNCTION__);
 
 //
 // Debug level
