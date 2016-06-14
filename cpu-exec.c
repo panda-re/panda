@@ -33,6 +33,7 @@
 #include "hw/i386/apic.h"
 #endif
 #include "sysemu/replay.h"
+#include "rr_log.h"
 
 /* -icount align implementation. */
 
@@ -586,6 +587,19 @@ int cpu_exec(CPUState *cpu)
 
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
+
+#ifdef CONFIG_SOFTMMU
+    RR_prog_point saved_prog_point = rr_prog_point;
+    int rr_loop_tries = 20;
+    
+    //mz This is done once at the start of record and once at the start of
+    //replay.  So we should be ok.
+    if (unlikely(rr_flush_tb())) {
+        qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
+        tb_flush(cpu);
+        rr_flush_tb_off();  // just the first time, eh?
+    }
+#endif
 
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
