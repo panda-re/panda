@@ -1204,8 +1204,6 @@ static MemTxResult memory_region_dispatch_read1(MemoryRegion *mr,
         /*replay=*/ rr_input_8(pval),
         /*location=*/ RR_CALLSITE_MRDR1);
 
-    fprintf(stderr, "memory_region_dispatch_read1: %s %lx %lx --> %lx\n", 
-            mr->name, (uint64_t) addr, (uint64_t) size, (uint64_t) *pval);
     return result;
 
 }
