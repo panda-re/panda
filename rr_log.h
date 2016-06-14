@@ -125,9 +125,6 @@ typedef struct RR_log_t {
 
 RR_log_entry *rr_get_queue_head(void);
 
-uint64_t replay_get_guest_instr_count(void);
-uint64_t replay_get_total_num_instructions(void);
-
 void panda_end_replay(void);
 
 #endif

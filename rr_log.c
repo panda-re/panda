@@ -1283,15 +1283,6 @@ void replay_progress(void) {
   }
 }
 
-uint64_t replay_get_guest_instr_count(void) {
-  if (rr_nondet_log) {
-    return rr_queue_head->header.prog_point.guest_instr_count;
-  }
-  else {
-    return 0;
-  }
-}    
-
 uint64_t replay_get_total_num_instructions(void) {
   if (rr_nondet_log) {
     return rr_nondet_log->last_prog_point.guest_instr_count;
@@ -1417,7 +1408,7 @@ static time_t rr_start_time;
 //mz file_name_full should be full path to desired record/replay log file
 int rr_do_begin_record(const char *file_name_full, CPUState *cpu_state) {
 #ifdef CONFIG_SOFTMMU 
- char name_buf[1024];
+  char name_buf[1024];
   // decompose file_name_base into path & file. 
   char *rr_path_base = g_strdup(file_name_full);
   char *rr_name_base = g_strdup(file_name_full);
