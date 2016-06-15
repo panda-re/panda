@@ -1958,7 +1958,8 @@ static void main_loop(void)
             if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
                 printf("Failed to start replay\n");
             } else { // we have to unblock signals, so we can't just continue on failure
-                //quit_timers();
+                // ru: qemu_quit_timers() defined by PANDA team to stop timers
+                qemu_quit_timers();
                 rr_replay_requested = 0;
             }
             //unblock signals
@@ -1976,6 +1977,8 @@ static void main_loop(void)
             //mz restore timers
 #warning Figure out how timers work in new QEMU
             //init_timer_alarm();
+            // ru: add new version of init_timer_alarm()
+            qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??
             rr_do_end_replay(/*is_error=*/0);
             rr_end_replay_requested = 0;
