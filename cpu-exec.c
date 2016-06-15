@@ -356,9 +356,15 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
     }
 #endif
     /* See if we can patch the calling TB. */
-    if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
-        tb_add_jump(*last_tb, tb_exit, tb);
+#ifdef CONFIG_SOFTMMU
+    if (rr_mode != RR_REPLAY && panda_tb_chaining) {
+#endif
+        if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
+            tb_add_jump(*last_tb, tb_exit, tb);
+        }
+#ifdef CONFIG_SOFTMMU
     }
+#endif
     tb_unlock();
     return tb;
 }
@@ -374,7 +380,7 @@ static inline bool cpu_handle_halt(CPUState *cpu)
             cpu_reset_interrupt(cpu, CPU_INTERRUPT_POLL);
         }
 #endif
-        if (!cpu_has_work(cpu)) {
+        if (!cpu_has_work(cpu) && !rr_in_replay()) {
             current_cpu = NULL;
             return true;
         }
@@ -453,7 +459,20 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int interrupt_request = cpu->interrupt_request;
-
+#ifdef CONFIG_SOFTMMU
+    //mz Record and Replay.
+    //mz it is important to do this in the order written, as
+    //during record env->interrupt_request can be changed at any
+    //time via a signal.  Thus, we want to make sure that we
+    //record the same value in the log as the one being used in
+    //these decisions.
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_1;
+    rr_interrupt_request(&interrupt_request);
+    
+    if (rr_in_replay()) {
+        env->interrupt_request = interrupt_request;
+    }
+#endif
     if (unlikely(interrupt_request)) {
         if (unlikely(cpu->singlestep_enabled & SSTEP_NOIRQ)) {
             /* Mask out external interrupts for this step. */
@@ -503,6 +522,13 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
              * reload the 'interrupt_request' value */
             interrupt_request = cpu->interrupt_request;
         }
+#ifdef CONFIG_SOFTMMU
+        //mz set program point after handling interrupts.
+        rr_set_program_point();
+        //mz record the value again in case do_interrupt has set EXITTB flag
+        rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
+        rr_interrupt_request((int *)&env->interrupt_request);
+#endif
         if (interrupt_request & CPU_INTERRUPT_EXITTB) {
             cpu->interrupt_request &= ~CPU_INTERRUPT_EXITTB;
             /* ensure that no TB jump will be modified as
@@ -600,7 +626,6 @@ int cpu_exec(CPUState *cpu)
         rr_flush_tb_off();  // just the first time, eh?
     }
 #endif
-
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
     }
@@ -627,16 +652,40 @@ int cpu_exec(CPUState *cpu)
 
         /* prepare setjmp context for exception handling */
         if (sigsetjmp(cpu->jmp_env, 0) == 0) {
+            rr_set_program_point();
             /* if an exception is pending, we execute it here */
             if (cpu_handle_exception(cpu, &ret)) {
                 break;
             }
-
             last_tb = NULL; /* forget the last executed TB after exception */
             cpu->tb_flushed = false; /* reset before first TB lookup */
-            for(;;) {
+            for (;;) {
+                //bdg Replay skipped calls from the I/O thread here
+                if (rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                    rr_set_program_point();
+                    rr_replay_skipped_calls();
+                }           
+                //mz Set the program point here.
+                rr_set_program_point();
                 cpu_handle_interrupt(cpu, &last_tb);
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
+#ifdef CONFIG_SOFTMMU
+                if (panda_invalidate_tb ||
+                    (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
+                        tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
+                    // retranslate so that basic block boundary matches record & replay
+                    //  for interrupt delivery
+                    invalidate_single_tb(env, tb->pc);
+                    tb = tb_find_fast(env);
+                }
+#endif //CONFIG_SOFTMMU
+                // Check for termination in replay
+                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+                    rr_end_replay_requested = 1;
+                    break;
+                }
+                if (rr_in_replay()) assert (rr_num_instr_before_next_interrupt != 0);
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */

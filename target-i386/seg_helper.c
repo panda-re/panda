@@ -1360,7 +1360,9 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
             cpu_svm_check_intercept_param(env, SVM_EXIT_INTR, 0);
             cs->interrupt_request &= ~(CPU_INTERRUPT_HARD |
                                        CPU_INTERRUPT_VIRQ);
-
+            // dont bother calling this if we are replaying       
+            // ... just obtain "intno" from (or record it to) 
+            // non-deterministic inputs log
             RR_DO_RECORD_OR_REPLAY(
                 /*action=*/intno = cpu_get_pic_interrupt(env),
                 /*record=*/rr_input_4((uint32_t*)&intno),
