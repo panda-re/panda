@@ -8205,9 +8205,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     int num_insns;
     int max_insns;
 
-    // rr
-    tb->num_guest_insns = 0;
-
     /* generate intermediate code */
     pc_start = tb->pc;
     cs_base = tb->cs_base;
@@ -8299,6 +8296,13 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    if (rr_mode == RR_REPLAY) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
     gen_tb_start(tb);
     for(;;) {
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
@@ -8329,7 +8333,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 #endif
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
-        tb->num_guest_insns++;
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;
@@ -8370,17 +8373,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
             gen_jmp_im(pc_ptr - dc->cs_base);
             gen_eob(dc);
             break;
-        }
-        if (rr_mode == RR_REPLAY) {
-            //mz make sure we'll terminate in time for next interrupt
-            //mz NOTE: we cannot muck with size of translation block if search_pc
-            //is set - must be the same as last translation!
-            if (tb->num_guest_insns == rr_num_instr_before_next_interrupt) {
-                //printf("Terminating block %#x early because we have an interrupt coming up.\n", pc_start);
-                gen_jmp_im(pc_ptr - dc->cs_base);
-                gen_eob(dc);
-                break;
-            }
         }
     }
     if (tb->cflags & CF_LAST_IO)
