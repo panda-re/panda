@@ -655,10 +655,20 @@ bool qemu_clock_run_all_timers(void)
 
     return progress;
 }
+
+static bool debug = false;
 // ru: function to stop timers in timerlist
 static void qemu_clock_stop_timers(QEMUClockType type)
 {
-    timer_del(main_loop_tlg.tl[type]->active_timers);
+    QEMUTimerList *timer_list;
+    QEMUClock *clock = qemu_clock_ptr(type);
+    QLIST_FOREACH(timer_list, &clock->timerlists, list) {
+        if (timer_list->active_timers) {
+            if (debug)
+                printf("Deleting timerlist for QEMUClockType: %d\n", type);
+            timer_del(timer_list->active_timers);
+        }
+    }
     return;
 }
 // ru: function to stop all timers for every clock
