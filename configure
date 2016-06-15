@@ -1222,10 +1222,7 @@ default_target_list=""
 mak_wilds=""
 
 if [ "$softmmu" = "yes" ]; then
-#    mak_wilds="${mak_wilds} $source_path/default-configs/*-softmmu.mak"
-    mak_wilds="${mak_wilds} $source_path/default-configs/i386-softmmu.mak"
-    mak_wilds="${mak_wilds} $source_path/default-configs/x86_64-softmmu.mak"
-    #mak_wilds="${mak_wilds} $source_path/default-configs/arm-softmmu.mak"
+    mak_wilds="${mak_wilds} $source_path/default-configs/*-softmmu.mak"
 fi
 #if [ "$linux_user" = "yes" ]; then
 #    mak_wilds="${mak_wilds} $source_path/default-configs/*-linux-user.mak"
