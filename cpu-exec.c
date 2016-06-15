@@ -466,9 +466,9 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
     //time via a signal.  Thus, we want to make sure that we
     //record the same value in the log as the one being used in
     //these decisions.
-    rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_1;
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT;
     rr_interrupt_request(&interrupt_request);
-    
+
     if (rr_in_replay()) {
         cpu->interrupt_request = interrupt_request;
     }
