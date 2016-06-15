@@ -47,6 +47,8 @@
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
 
+#include "rr_log.h"
+
 #ifndef _WIN32
 #include "qemu/compatfd.h"
 #endif
@@ -1026,6 +1028,10 @@ static void qemu_wait_io_event_common(CPUState *cpu)
 static void qemu_tcg_wait_io_event(CPUState *cpu)
 {
     while (all_cpu_threads_idle()) {
+        // We're in replay, so replay the interrupt!
+        // Otherwise e.g. if the CPU has HLTd it will just sit here forever.
+        if (rr_in_replay() && rr_num_instr_before_next_interrupt() == 0) break;
+
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
 

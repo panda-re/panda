@@ -13,9 +13,6 @@
 // accessors
 uint64_t rr_get_pc(void);
 uint64_t rr_get_secondary(void);
-uint64_t rr_get_guest_instr_count(void);
-double rr_get_percentage(void);
-
 
 // mz structure for arguments to cpu_physical_memory_rw()
 typedef struct {
@@ -143,5 +140,49 @@ typedef struct RR_log_t {
 RR_log_entry* rr_get_queue_head(void);
 
 void panda_end_replay(void);
+
+extern RR_log_entry *rr_queue_tail;
+static inline uint64_t rr_get_guest_instr_count(void) {
+    assert(first_cpu);
+    return first_cpu->rr_guest_instr_count;
+}
+
+//mz program execution state
+static inline RR_prog_point rr_prog_point(void) {
+    RR_prog_point ret = {0};
+    CPUArchState *env = first_cpu->env_ptr;
+
+#ifdef TARGET_I386
+    ret.pc = env->eip;
+    ret.secondary = env->regs[R_ECX];
+#else
+    target_ulong pc, cs_base;
+    uint32_t flags;
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    ret.pc = pc;
+#endif
+    ret.guest_instr_count = first_cpu->rr_guest_instr_count;
+    return ret;
+}
+
+static inline uint64_t rr_num_instr_before_next_interrupt(void) {
+    if (!rr_queue_tail) {
+        return -1;
+    }
+    RR_log_entry last = *rr_queue_tail;
+    switch (last.header.kind) {
+        case RR_SKIPPED_CALL:
+            if (last.header.callsite_loc != RR_CALLSITE_MAIN_LOOP_WAIT) {
+                return -1;
+            } // otherwise fall through
+        case RR_LAST:
+        case RR_INTERRUPT_REQUEST:
+            return last.header.prog_point.guest_instr_count -
+                rr_get_guest_instr_count();
+        default:
+            return -1;
+    }
+}
+
 
 #endif

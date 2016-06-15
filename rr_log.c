@@ -53,19 +53,9 @@
 // mz record/replay mode
 volatile RR_mode rr_mode = RR_OFF;
 
-// mz program execution state
-RR_prog_point rr_prog_point = {0, 0, 0};
-
-
-uint64_t rr_get_secondary(void) { return rr_prog_point.secondary; }
-
-uint64_t rr_get_guest_instr_count(void)
-{
-    return rr_prog_point.guest_instr_count;
-}
-
-// volatile uint64_t rr_guest_instr_count;
-volatile uint64_t rr_num_instr_before_next_interrupt;
+// mz FIFO queue of log entries read from the log file
+RR_log_entry* rr_queue_head;
+RR_log_entry* rr_queue_tail;
 
 // mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
@@ -82,28 +72,10 @@ RR_log* rr_nondet_log = NULL;
         rr_assert_fail(#exp, __FILE__, __LINE__, __FUNCTION__);                \
     }
 
-#ifdef CONFIG_SOFTMMU
-void rr_set_program_point(void)
-{
-    CPUState* cs = current_cpu;
-#if defined(TARGET_I386)
-    X86CPU* cpu = X86_CPU(cs);
-    CPUX86State* env = &cpu->env;
-    if (env) {
-        rr_set_prog_point(cs->panda_guest_pc, env->regs[R_ECX],
-                          cs->rr_guest_instr_count);
-    }
-#else
-#warning Figure out the right place to put program counter now.
-    rr_set_prog_point(cs->panda_guest_pc, 0, cs->rr_guest_instr_count);
-#endif
-}
-#endif
-
 double rr_get_percentage(void)
 {
-    return 100.0 * rr_prog_point.guest_instr_count /
-           rr_nondet_log->last_prog_point.guest_instr_count;
+    return 100.0 * rr_get_guest_instr_count() /
+        rr_nondet_log->last_prog_point.guest_instr_count;
 }
 
 static inline uint8_t rr_log_is_empty(void)
@@ -129,10 +101,6 @@ volatile sig_atomic_t rr_end_replay_requested = 0;
 char* rr_requested_name = NULL;
 char* rr_snapshot_name = NULL;
 
-// mz FIFO queue of log entries read from the log file
-static RR_log_entry* rr_queue_head;
-static RR_log_entry* rr_queue_tail;
-
 //
 // mz Other useful things
 //
@@ -148,8 +116,9 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 // 2) The only thing in the queue is RR_LAST
 uint8_t rr_replay_finished(void)
 {
-    return rr_log_is_empty() && rr_queue_head->header.kind == RR_LAST &&
-           rr_prog_point.guest_instr_count >=
+    return rr_log_is_empty()
+        && rr_queue_head->header.kind == RR_LAST
+        && rr_get_guest_instr_count() >=
                rr_queue_head->header.prog_point.guest_instr_count;
 }
 
@@ -269,7 +238,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
         printf("<queue empty>\n");
     }
     printf("Current replay point:\n");
-    rr_spit_prog_point(rr_prog_point);
+    rr_spit_prog_point(rr_prog_point());
     if (rr_debug_whisper()) {
         qemu_log("RR rr_assertion `%s' failed at %s:%d in %s\n", exp, file,
                  line, function);
@@ -409,7 +378,7 @@ void rr_record_debug(RR_callsite_id call_site)
 
     item->header.kind = RR_DEBUG;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     rr_write_item();
 }
@@ -423,7 +392,7 @@ void rr_record_input_1(RR_callsite_id call_site, uint8_t data)
 
     item->header.kind = RR_INPUT_1;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.input_1 = data;
 
@@ -439,7 +408,7 @@ void rr_record_input_2(RR_callsite_id call_site, uint16_t data)
 
     item->header.kind = RR_INPUT_2;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.input_2 = data;
 
@@ -455,7 +424,7 @@ void rr_record_input_4(RR_callsite_id call_site, uint32_t data)
 
     item->header.kind = RR_INPUT_4;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.input_4 = data;
 
@@ -471,7 +440,7 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data)
 
     item->header.kind = RR_INPUT_8;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.input_8 = data;
 
@@ -490,7 +459,7 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
 
         item->header.kind = RR_INTERRUPT_REQUEST;
         item->header.callsite_loc = call_site;
-        item->header.prog_point = rr_prog_point;
+        item->header.prog_point = rr_prog_point();
 
         item->variant.interrupt_request = interrupt_request;
 
@@ -507,7 +476,7 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
 
         item->header.kind = RR_EXIT_REQUEST;
         item->header.callsite_loc = call_site;
-        item->header.prog_point = rr_prog_point;
+        item->header.prog_point = rr_prog_point();
 
         item->variant.exit_request = exit_request;
 
@@ -526,7 +495,7 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
 
     item->header.kind = RR_SKIPPED_CALL;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_CPU_MEM_RW;
     item->variant.call_args.variant.cpu_mem_rw_args.addr = addr;
@@ -552,7 +521,7 @@ void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
 
     item->header.kind = RR_SKIPPED_CALL;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_CPU_MEM_UNMAP;
     item->variant.call_args.variant.cpu_mem_unmap.addr = addr;
@@ -574,7 +543,7 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
 
     item->header.kind = RR_SKIPPED_CALL;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_CPU_REG_MEM_REGION;
     item->variant.call_args.variant.cpu_mem_reg_region_args.start_addr =
@@ -597,7 +566,7 @@ void rr_record_hd_transfer(RR_callsite_id call_site,
     item->header.kind = RR_SKIPPED_CALL;
     // item->header.qemu_loc = rr_qemu_location;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_HD_TRANSFER;
     item->variant.call_args.variant.hd_transfer_args.type = transfer_type;
@@ -619,7 +588,7 @@ void rr_record_net_transfer(RR_callsite_id call_site,
     item->header.kind = RR_SKIPPED_CALL;
     // item->header.qemu_loc = rr_qemu_location;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_NET_TRANSFER;
     item->variant.call_args.variant.net_transfer_args.type = transfer_type;
@@ -640,7 +609,7 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t* buf,
     item->header.kind = RR_SKIPPED_CALL;
     // item->header.qemu_loc = rr_qemu_location;
     item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     item->variant.call_args.kind = RR_CALL_HANDLE_PACKET;
     item->variant.call_args.variant.handle_packet_args.buf = buf;
@@ -659,7 +628,7 @@ static void rr_record_end_of_log(void)
 
     item->header.kind = RR_LAST;
     item->header.callsite_loc = RR_CALLSITE_LAST;
-    item->header.prog_point = rr_prog_point;
+    item->header.prog_point = rr_prog_point();
 
     rr_write_item();
 }
@@ -940,29 +909,13 @@ static void rr_fill_queue(void)
         }
         num_entries++;
 
-        if (log_entry->header.kind == RR_LAST) {
-            // It's not really an interrupt, but needs to be set here so
-            // that we can execute any remaining code.
-            rr_num_instr_before_next_interrupt =
-                log_entry->header.prog_point.guest_instr_count -
-                rr_prog_point.guest_instr_count;
-            break;
-        } else if ((log_entry->header.kind == RR_SKIPPED_CALL &&
-                    log_entry->header.callsite_loc ==
-                        RR_CALLSITE_MAIN_LOOP_WAIT) ||
-                   log_entry->header.kind == RR_INTERRUPT_REQUEST) {
-            rr_num_instr_before_next_interrupt =
-                log_entry->header.prog_point.guest_instr_count -
-                rr_prog_point.guest_instr_count;
-            break;
-        }
-
-        // Cut off queue so we don't run out of memory on long runs of
-        // non-interrupts
-        if (num_entries > RR_MAX_QUEUE_LEN) {
-            // No longer know how many instructions it will be until next
-            // interrupt, so assume it's (uint64_t) -1
-            rr_num_instr_before_next_interrupt = (uint64_t)-1;
+        RR_log_entry entry = *log_entry;
+        if ((entry.header.kind == RR_SKIPPED_CALL &&
+                    entry.header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
+                || entry.header.kind == RR_INTERRUPT_REQUEST
+                || num_entries > RR_MAX_QUEUE_LEN) {
+            // Cut off queue so we don't run out of memory on long runs of
+            // non-interrupts
             break;
         }
     }
@@ -970,13 +923,10 @@ static void rr_fill_queue(void)
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
     }
-    static uint64_t num = 1;
-    if ((rr_prog_point.guest_instr_count /
-         (double)rr_nondet_log->last_prog_point.guest_instr_count) *
-            100 >=
-        num) {
+    static uint64_t next_progress = 1;
+    if (rr_get_percentage() >= next_progress) {
         replay_progress();
-        num += 1;
+        next_progress += 1;
     }
 }
 
@@ -1011,24 +961,25 @@ static inline RR_log_entry* get_next_entry(RR_log_entry_kind kind,
         }
     }
 
-    if (rr_queue_head->header.kind != kind) {
+    RR_log_entry head = *rr_queue_head;
+    if (head.header.kind != kind) {
         return NULL;
     }
 
-    if (check_callsite && rr_queue_head->header.callsite_loc != call_site) {
+    if (check_callsite && head.header.callsite_loc != call_site) {
         return NULL;
     }
 
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
-    if (rr_queue_head->header.prog_point.pc == 0 &&
-        rr_queue_head->header.prog_point.secondary == 0 &&
-        rr_queue_head->header.prog_point.guest_instr_count == 0) {
+    if (head.header.prog_point.pc == 0 &&
+        head.header.prog_point.secondary == 0 &&
+        head.header.prog_point.guest_instr_count == 0) {
         // We'll process this one beacuse it's the start of the log
     }
     // mz rr_prog_point_compare will fail if we're ahead of the log
-    else if (rr_prog_point_compare(
-                 rr_prog_point, rr_queue_head->header.prog_point, kind) != 0) {
+    else if (rr_prog_point_compare(rr_prog_point(),
+                head.header.prog_point, kind) != 0) {
         return NULL;
     }
     // mz remove log entry from queue and return it.
@@ -1054,17 +1005,18 @@ void rr_replay_debug(RR_callsite_id call_site)
     }
 
     RR_prog_point log_point = rr_queue_head->header.prog_point;
+    RR_prog_point current = rr_prog_point();
 
-    if (log_point.guest_instr_count > rr_prog_point.guest_instr_count) {
+    if (log_point.guest_instr_count > current.guest_instr_count) {
         // This is normal -- in replay we may hit the checkpoint more often
         // than in record due to TB chaining being off
         return;
-    } else if (log_point.guest_instr_count == rr_prog_point.guest_instr_count) {
+    } else if (log_point.guest_instr_count == current.guest_instr_count) {
         // We think we're in the right place now, so let's do more stringent
         // checks
-        if (log_point.secondary != rr_prog_point.secondary ||
-            log_point.pc != rr_prog_point.pc)
-            rr_signal_disagreement(rr_prog_point, log_point);
+        if (log_point.secondary != current.secondary ||
+            log_point.pc != current.pc)
+            rr_signal_disagreement(current, log_point);
 
         // We passed all these, so consume the log entry
         current_item = rr_queue_head;
@@ -1076,10 +1028,10 @@ void rr_replay_debug(RR_callsite_id call_site)
 
         add_to_recycle_list(current_item);
         printf("RR_DEBUG check passed: ");
-        rr_spit_prog_point(rr_prog_point);
-    } else { // log_point.guest_instr_count > rr_prog_point.guest_instr_count
+        rr_spit_prog_point(current);
+    } else { // log_point.guest_instr_count < current.guest_instr_count
         // This shouldn't happen. We're ahead of the log.
-        // rr_signal_disagreement(rr_prog_point, log_point);
+        // rr_signal_disagreement(current, log_point);
         current_item = rr_queue_head;
         rr_queue_head = rr_queue_head->next;
         current_item->next = NULL;
@@ -1229,36 +1181,36 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             // point
             replay_done = 1;
         } else {
-            RR_skipped_call_args* args = &current_item->variant.call_args;
-            switch (args->kind) {
+            RR_skipped_call_args args = current_item->variant.call_args;
+            switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
-                cpu_physical_memory_rw(args->variant.cpu_mem_rw_args.addr,
-                                       args->variant.cpu_mem_rw_args.buf,
-                                       args->variant.cpu_mem_rw_args.len,
+                cpu_physical_memory_rw(args.variant.cpu_mem_rw_args.addr,
+                                       args.variant.cpu_mem_rw_args.buf,
+                                       args.variant.cpu_mem_rw_args.len,
                                        /*is_write=*/1);
             } break;
             case RR_CALL_CPU_REG_MEM_REGION: {
 #warning "Need to figure out what replaces cpu_register_physical_memory"
 #if 0
                           cpu_register_physical_memory_log(
-						       args->variant.cpu_mem_reg_region_args.start_addr,
-						       args->variant.cpu_mem_reg_region_args.size,
-						       args->variant.cpu_mem_reg_region_args.phys_offset,
-						       0, false
-						       );
+                               args.variant.cpu_mem_reg_region_args.start_addr,
+                               args.variant.cpu_mem_reg_region_args.size,
+                               args.variant.cpu_mem_reg_region_args.phys_offset,
+                               0, false
+                               );
 #endif
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
                 void* host_buf;
-                hwaddr plen = args->variant.cpu_mem_unmap.len;
+                hwaddr plen = args.variant.cpu_mem_unmap.len;
                 host_buf = cpu_physical_memory_map(
-                    args->variant.cpu_mem_unmap.addr, &plen,
+                    args.variant.cpu_mem_unmap.addr, &plen,
                     /*is_write=*/1);
-                memcpy(host_buf, args->variant.cpu_mem_unmap.buf,
-                       args->variant.cpu_mem_unmap.len);
+                memcpy(host_buf, args.variant.cpu_mem_unmap.buf,
+                       args.variant.cpu_mem_unmap.len);
                 cpu_physical_memory_unmap(host_buf, plen,
                                           /*is_write=*/1,
-                                          args->variant.cpu_mem_unmap.len);
+                                          args.variant.cpu_mem_unmap.len);
             } break;
             default:
                 // mz sanity check
@@ -1429,8 +1381,6 @@ static inline void rr_get_nondet_log_file_name(char* rr_name, char* rr_path,
 
 void rr_reset_state(CPUState* cpu_state)
 {
-    // mz reset program point
-    memset(&rr_prog_point, 0, sizeof(RR_prog_point));
     // set flag to signal that we'll be needing the tb flushed.
     rr_flush_tb_on();
     // clear flags

@@ -523,8 +523,6 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
             interrupt_request = cpu->interrupt_request;
         }
 #ifdef CONFIG_SOFTMMU
-        //mz set program point after handling interrupts.
-        rr_set_program_point();
         //mz record the value again in case do_interrupt has set EXITTB flag
         rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
         rr_interrupt_request((int *)&cpu->interrupt_request);
@@ -615,9 +613,9 @@ int cpu_exec(CPUState *cpu)
     current_cpu = cpu;
 
 #ifdef CONFIG_SOFTMMU
-    RR_prog_point saved_prog_point = rr_prog_point;
+    RR_prog_point saved_prog_point = rr_prog_point();
     int rr_loop_tries = 20;
-    
+
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (unlikely(rr_flush_tb())) {
@@ -652,7 +650,6 @@ int cpu_exec(CPUState *cpu)
 
         /* prepare setjmp context for exception handling */
         if (sigsetjmp(cpu->jmp_env, 0) == 0) {
-            rr_set_program_point();
             /* if an exception is pending, we execute it here */
             if (cpu_handle_exception(cpu, &ret)) {
                 break;
@@ -663,21 +660,20 @@ int cpu_exec(CPUState *cpu)
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_set_program_point();
                     rr_replay_skipped_calls();
-                }           
-                //mz Set the program point here.
-                rr_set_program_point();
+                }
                 cpu_handle_interrupt(cpu, &last_tb);
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
 
                 bool panda_invalidate_tb = false;
+
 #ifdef CONFIG_SOFTMMU
+                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
                 if (panda_invalidate_tb ||
-                    (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
-                        tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
-                    // retranslate so that basic block boundary matches record & replay
-                    //  for interrupt delivery
+                    (rr_mode == RR_REPLAY && until_interrupt > 0
+                     && tb->icount > until_interrupt)) {
+                    // retranslate so that basic block boundary matches
+                    // record & replay for interrupt delivery
                     panda_invalidate_single_tb(cpu, tb->pc);
                     tb = tb_find_fast(cpu, &last_tb, tb_exit);
                 }
@@ -687,7 +683,10 @@ int cpu_exec(CPUState *cpu)
                     rr_end_replay_requested = 1;
                     break;
                 }
-                if (rr_in_replay()) assert (rr_num_instr_before_next_interrupt != 0);
+                if (rr_in_replay()) {
+                    assert(rr_num_instr_before_next_interrupt() != 0);
+                }
+
                 cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                 /* Try to align the host and virtual clocks
                    if the guest is in advance */
