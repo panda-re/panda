@@ -11802,6 +11802,18 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
                           default_exception_el(dc));
             goto done_generating;
         }
+        
+        // PANDA: ask if anyone wants execution notification
+        bool panda_exec_cb = false;
+        panda_cb_list *plist;
+        for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
+            panda_exec_cb |= plist->entry.insn_translate(env, dc->pc);
+        }
+
+        // PANDA: Insert the instrumentation
+        if (unlikely(panda_exec_cb)) {
+            gen_helper_panda_insn_exec(tcg_const_tl(dc->pc));
+        }
 
         if (dc->thumb) {
             disas_thumb_insn(env, dc);

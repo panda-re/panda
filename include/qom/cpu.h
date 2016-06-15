@@ -844,6 +844,8 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr,
 void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint);
 void cpu_watchpoint_remove_all(CPUState *cpu, int mask);
 
+void invalidate_single_tb(CPUState *env, target_ulong pc);
+
 /**
  * cpu_get_address_space:
  * @cpu: CPU to get address space from

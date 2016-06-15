@@ -1431,7 +1431,9 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
             mr = address_space_translate(as, addr, &addr1, &l, false);
             if (len == l && memory_access_is_direct(mr, false)) {
                 ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+                panda_before_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
                 memcpy(buf, ptr, len);
+                panda_after_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
             } else {
                 result = address_space_read_continue(as, addr, attrs, buf, len,
                                                      addr1, l, mr);

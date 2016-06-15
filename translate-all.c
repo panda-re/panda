@@ -59,6 +59,7 @@
 #include "exec/log.h"
 
 #include "rr_log.h"
+#include "panda/plugin.h"
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -263,6 +264,8 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 #ifdef CONFIG_PROFILER
     int64_t ti = profile_getclock();
 #endif
+
+    panda_callbacks_cpu_restore_state(cpu->env, tb);
 
     if (searched_pc < host_pc) {
         return -1;
