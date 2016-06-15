@@ -672,7 +672,7 @@ static void qemu_clock_stop_timers(QEMUClockType type)
     return;
 }
 // ru: function to stop all timers for every clock
-void qemu_quit_timers(void)
+void qemu_rr_quit_timers(void)
 {
     QEMUClockType type;
 
