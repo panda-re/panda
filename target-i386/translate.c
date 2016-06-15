@@ -35,6 +35,7 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
+#include "panda/include/plugins.h"
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -8331,6 +8332,17 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
             gen_op_update_rr_icount();
         }
 #endif
+
+        // PANDA: ask if anyone wants execution notification
+        bool panda_exec_cb = false;
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; plist = panda_cb_list_next(plist)) {
+            panda_exec_cb |= plist->entry.insn_translate(env, pc_ptr);
+        }
+        
+        if (unlikely(panda_insn_translate(env, pc_ptr)) {
+            gen_helper_panda_insn_exec(tcg_const_tl(pc_ptr));
+        }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
         /* stop translation if indicated */

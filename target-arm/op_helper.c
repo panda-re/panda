@@ -23,6 +23,9 @@
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 
+#include "panda/include/plugin.h"
+#include "panda/include/helper_impl.h"
+
 #define SIGNBIT (uint32_t)0x80000000
 #define SIGNBIT64 ((uint64_t)1 << 63)
 

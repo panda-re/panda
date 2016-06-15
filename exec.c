@@ -65,6 +65,8 @@
 #include "qemu/mmap-alloc.h"
 #endif
 
+#include "panda/include/plugin.h"
+
 //#define DEBUG_SUBPAGE
 
 #if !defined(CONFIG_USER_ONLY)
@@ -2581,6 +2583,7 @@ static bool prepare_mmio_access(MemoryRegion *mr)
     return release_lock;
 }
 
+
 /* Called within RCU critical section.  */
 static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                 MemTxAttrs attrs,
@@ -2637,7 +2640,9 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
                 rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
             }
+            panda_callbacks_before_dma(cpu, addr1, buf, l, /*is_write=1*/ 1);
             memcpy(ptr, buf, l);
+            panda_callbacks_after_dma(cpu, addr1, buf, l, /*is_write=1*/ 1);
             invalidate_and_set_dirty(mr, addr1, l);
         }
 
@@ -2744,7 +2749,9 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            panda_callbacks_before_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
             memcpy(buf, ptr, l);
+            panda_callbacks_after_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
         }
 
         if (release_lock) {
