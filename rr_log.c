@@ -66,6 +66,9 @@ volatile sig_atomic_t rr_use_live_exit_request = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
+#define RR_RECORD_FROM_REQUEST 2
+#define RR_RECORD_REQUEST 1
+
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
     if (!(exp)) {                                                              \
@@ -1398,14 +1401,14 @@ void rr_reset_state(CPUState* cpu_state)
 #include "qapi/error.h"
 static void qmp_begin_record(const char* file_name, Error** errp)
 {
-    rr_record_requested = 1;
+    rr_record_requested = RR_RECORD_REQUEST;
     rr_requested_name = g_strdup(file_name);
 }
 
 static void qmp_begin_record_from(const char* snapshot, const char* file_name,
                                   Error** errp)
 {
-    rr_record_requested = 2;
+    rr_record_requested = RR_RECORD_FROM_REQUEST;
     rr_snapshot_name = g_strdup(snapshot);
     rr_requested_name = g_strdup(file_name);
 }
@@ -1491,13 +1494,13 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     }
     // first take a snapshot or load snapshot
 
-    if (rr_record_requested == 2) {
+    if (rr_record_requested == RR_RECORD_FROM_REQUEST) {
         printf("loading snapshot:\t%s\n", rr_snapshot_name);
         snapshot_ret = load_vmstate(rr_snapshot_name);
         g_free(rr_snapshot_name);
         rr_snapshot_name = NULL;
     }
-    if (rr_record_requested == 1 || rr_record_requested == 2) {
+    if (rr_record_requested == RR_RECORD_REQUEST || rr_record_requested == RR_RECORD_FROM_REQUEST) {
         rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
         printf("writing snapshot:\t%s\n", name_buf);
         QIOChannelFile* ioc =
