@@ -357,7 +357,7 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY && panda_tb_chaining) {
+    if (rr_mode != RR_REPLAY /* && panda_tb_chaining */) {
 #endif
         if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
             tb_add_jump(*last_tb, tb_exit, tb);
@@ -470,7 +470,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
     rr_interrupt_request(&interrupt_request);
     
     if (rr_in_replay()) {
-        env->interrupt_request = interrupt_request;
+        cpu->interrupt_request = interrupt_request;
     }
 #endif
     if (unlikely(interrupt_request)) {
@@ -527,7 +527,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
         rr_set_program_point();
         //mz record the value again in case do_interrupt has set EXITTB flag
         rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
-        rr_interrupt_request((int *)&env->interrupt_request);
+        rr_interrupt_request((int *)&cpu->interrupt_request);
 #endif
         if (interrupt_request & CPU_INTERRUPT_EXITTB) {
             cpu->interrupt_request &= ~CPU_INTERRUPT_EXITTB;
@@ -670,14 +670,16 @@ int cpu_exec(CPUState *cpu)
                 rr_set_program_point();
                 cpu_handle_interrupt(cpu, &last_tb);
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
+
+                bool panda_invalidate_tb = false;
 #ifdef CONFIG_SOFTMMU
                 if (panda_invalidate_tb ||
                     (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
                         tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
                     // retranslate so that basic block boundary matches record & replay
                     //  for interrupt delivery
-                    invalidate_single_tb(env, tb->pc);
-                    tb = tb_find_fast(env);
+                    panda_invalidate_single_tb(cpu, tb->pc);
+                    tb = tb_find_fast(cpu, &last_tb, tb_exit);
                 }
 #endif //CONFIG_SOFTMMU
                 // Check for termination in replay
