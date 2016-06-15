@@ -758,6 +758,12 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     return -ENOSYS;
 }
 #else
+void panda_invalidate_single_tb(CPUState *cpu, target_ulong pc)
+{
+    breakpoint_invalidate(cpu, pc);
+}
+
+
 /* Add a watchpoint.  */
 int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
                           int flags, CPUWatchpoint **watchpoint)

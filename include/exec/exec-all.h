@@ -400,7 +400,7 @@ hwaddr memory_region_section_get_iotlb(CPUState *cpu,
                                        int prot,
                                        target_ulong *address);
 bool memory_region_is_unassigned(MemoryRegion *mr);
-
+void panda_invalidate_single_tb(CPUState* env, target_ulong pc);
 #endif
 
 /* vl.c */
