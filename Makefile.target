@@ -88,10 +88,12 @@ all: $(PROGS) stap
 
 #########################################################
 # cpu emulator library
+panda/llvm/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
 obj-y = exec.o translate-all.o cpu-exec.o
 obj-y += translate-common.o
 obj-y += cpu-exec-common.o
 obj-y += tcg/tcg.o tcg/tcg-op.o tcg/optimize.o
+obj-$(CONFIG_LLVM) += panda/llvm/tcg-llvm.o
 obj-$(CONFIG_TCG_INTERPRETER) += tci.o
 obj-y += tcg/tcg-common.o
 obj-$(CONFIG_TCG_INTERPRETER) += disas/tci.o
