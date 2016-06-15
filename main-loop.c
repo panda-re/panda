@@ -32,6 +32,9 @@
 #include "qemu/main-loop.h"
 #include "block/aio.h"
 
+// ru: add include for rr_log_all
+#include "rr_log_all.h"
+
 #ifndef _WIN32
 
 #include "qemu/compatfd.h"
@@ -511,7 +514,9 @@ int main_loop_wait(int nonblocking)
     /* CPU thread can infinitely wait for event after
        missing the warp */
     qemu_start_warp_timer();
-    qemu_clock_run_all_timers();
+    // ru: add check if in in replay for running timers
+    //if (!rr_in_replay())
+        qemu_clock_run_all_timers();
 
     return ret;
 }

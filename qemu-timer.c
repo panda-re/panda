@@ -655,3 +655,18 @@ bool qemu_clock_run_all_timers(void)
 
     return progress;
 }
+// ru: function to stop timers in timerlist
+static void qemu_clock_stop_timers(QEMUClockType type)
+{
+    timer_del(main_loop_tlg.tl[type]->active_timers);
+    return;
+}
+// ru: function to stop all timers for every clock
+void qemu_quit_timers(void)
+{
+    QEMUClockType type;
+
+    for (type = 0; type < QEMU_CLOCK_MAX; type++) {
+        qemu_clock_stop_timers(type);
+    }
+}
