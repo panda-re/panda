@@ -1224,12 +1224,12 @@ mak_wilds=""
 if [ "$softmmu" = "yes" ]; then
     mak_wilds="${mak_wilds} $source_path/default-configs/*-softmmu.mak"
 fi
-#if [ "$linux_user" = "yes" ]; then
-#    mak_wilds="${mak_wilds} $source_path/default-configs/*-linux-user.mak"
-#fi
-#if [ "$bsd_user" = "yes" ]; then
-#    mak_wilds="${mak_wilds} $source_path/default-configs/*-bsd-user.mak"
-#fi
+if [ "$linux_user" = "yes" ]; then
+    mak_wilds="${mak_wilds} $source_path/default-configs/*-linux-user.mak"
+fi
+if [ "$bsd_user" = "yes" ]; then
+    mak_wilds="${mak_wilds} $source_path/default-configs/*-bsd-user.mak"
+fi
 
 for config in $mak_wilds; do
     default_target_list="${default_target_list} $(basename "$config" .mak)"
@@ -1635,7 +1635,7 @@ if test "$solaris" = "yes" ; then
 fi
 
 if test -z "${target_list+xxx}" ; then
-    target_list="$default_target_list"
+    target_list="i386-softmmu x86_64-softmmu arm-softmmu"
 else
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
 fi
