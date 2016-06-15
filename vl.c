@@ -1959,7 +1959,7 @@ static void main_loop(void)
                 printf("Failed to start replay\n");
             } else { // we have to unblock signals, so we can't just continue on failure
                 // ru: qemu_quit_timers() defined by PANDA team to stop timers
-                qemu_quit_timers();
+                qemu_rr_quit_timers();
                 rr_replay_requested = 0;
             }
             //unblock signals
