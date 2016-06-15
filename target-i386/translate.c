@@ -8371,6 +8371,17 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
             gen_eob(dc);
             break;
         }
+        if (rr_mode == RR_REPLAY) {
+            //mz make sure we'll terminate in time for next interrupt
+            //mz NOTE: we cannot muck with size of translation block if search_pc
+            //is set - must be the same as last translation!
+            if (tb->num_guest_insns == rr_num_instr_before_next_interrupt) {
+                //printf("Terminating block %#x early because we have an interrupt coming up.\n", pc_start);
+                gen_jmp_im(pc_ptr - dc->cs_base);
+                gen_eob(dc);
+                break;
+            }
+        }
     }
     if (tb->cflags & CF_LAST_IO)
         gen_io_end();
