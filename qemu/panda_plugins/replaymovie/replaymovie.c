@@ -34,7 +34,7 @@ int before_block_callback(CPUState *env, TranslationBlock *tb) {
     char fname[256] = {0};
     static uint64_t total_insns = 0;
     if (total_insns == 0) total_insns = replay_get_total_num_instructions();
-    if ((rr_prog_point.guest_instr_count / (double)total_insns) * 100 >= num) {
+    if (rr_get_percentage() >= num) {
         snprintf(fname, 255, "replay_movie_%03d.ppm", (int)num);
         vga_hw_screen_dump(fname);
         num += 1;

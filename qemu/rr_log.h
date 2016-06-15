@@ -10,13 +10,11 @@
 #include "cpu.h"
 #include "targphys.h"
 #include "rr_log_all.h"
+#include "panda_common.h"
 
 // accessors
 uint64_t rr_get_pc(void);
 uint64_t rr_get_secondary(void);
-uint64_t rr_get_guest_instr_count (void);
-double rr_get_percentage(void);
-
 
 void rr_clear_rr_guest_instr_count(CPUState *cpu_state);
 
@@ -131,5 +129,48 @@ uint64_t replay_get_guest_instr_count(void);
 uint64_t replay_get_total_num_instructions(void);
 
 void panda_end_replay(void);
+
+extern CPUState *first_cpu;
+extern RR_log_entry *rr_queue_tail;
+static inline uint64_t rr_get_guest_instr_count(void) {
+    assert(first_cpu);
+    return first_cpu->rr_guest_instr_count;
+}
+
+//mz program execution state
+static inline RR_prog_point rr_prog_point(void) {
+    RR_prog_point ret = {0};
+    assert(first_cpu);
+
+#ifdef TARGET_I386
+    ret.pc = first_cpu->eip;
+    ret.secondary = first_cpu->regs[R_ECX];
+#else
+    ret.pc = panda_current_pc(first_cpu);
+    ret.secondary = 0;
+#endif
+    ret.guest_instr_count = rr_get_guest_instr_count();
+    return ret;
+}
+
+static inline uint64_t rr_num_instr_before_next_interrupt(void) {
+    if (!rr_queue_tail) {
+        return -1;
+    }
+    RR_log_entry last = *rr_queue_tail;
+    switch (last.header.kind) {
+        case RR_SKIPPED_CALL:
+            if (last.header.callsite_loc != RR_CALLSITE_MAIN_LOOP_WAIT) {
+                return -1;
+            } // otherwise fall through
+        case RR_LAST:
+        case RR_INTERRUPT_REQUEST:
+            return last.header.prog_point.guest_instr_count -
+                rr_get_guest_instr_count();
+        default:
+            return -1;
+    }
+}
+
 
 #endif

@@ -285,7 +285,7 @@ void process_ret(CPUState *env, target_ulong func) {
             }
         }
         if (print) {
-            printf("PP %lu: return from alloc; addr {%lx, %lx}, size %lx\n", rr_prog_point.guest_instr_count, env->cr[3], env->regs[R_EAX], info.size);
+            printf("PP %lu: return from alloc; addr {%lx, %lx}, size %lx\n", rr_get_guest_instr_count(), env->cr[3], env->regs[R_EAX], info.size);
             printf("    alloc_now: ");
             alloc_now[cr3].dump();
             printf("    alloc_ever: ");
@@ -314,7 +314,7 @@ void process_ret(CPUState *env, target_ulong func) {
             }
         }
         if (print) {
-            printf("PP %lu: return from free; addr {%lx, %lx}!\n", rr_prog_point.guest_instr_count, env->cr[3], info.addr);
+            printf("PP %lu: return from free; addr {%lx, %lx}!\n", rr_get_guest_instr_count(), env->cr[3], info.addr);
             printf("    alloc_now: ");
             alloc_now[cr3].dump();
             printf("\n");

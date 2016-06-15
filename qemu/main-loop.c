@@ -491,7 +491,6 @@ int main_loop_wait(int nonblocking)
     if(rr_in_record()) {
         rr_record_in_progress = 1;
         rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-        rr_set_program_point();
     }
 
     //mz 05.2012 this should be safe to do as only the monitor fds were

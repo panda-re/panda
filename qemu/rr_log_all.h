@@ -65,9 +65,9 @@ extern void replay_progress(void);
 //bdg helper to find out how many instructions
 //    are in our log
 uint64_t replay_get_total_num_instructions(void);
+double rr_get_percentage(void);
 
 void rr_quit_cpu_loop(void);
-void rr_set_program_point(void);
 
 //mz 10.20.2009 
 //mz A record of a point in the program.  This is a subset of guest CPU state
@@ -77,14 +77,7 @@ typedef struct RR_prog_point_t {
   uint64_t secondary;
   uint64_t guest_instr_count;
 } RR_prog_point;
-extern RR_prog_point rr_prog_point;
 
-//mz number of guest instructions executed since start of session (for both
-//mz record and replay)
-//extern volatile uint64_t rr_guest_instr_count;
-//mz part of replay state that determines whether we need to terminate a
-//mz translation block early
-extern volatile uint64_t rr_num_instr_before_next_interrupt;
 //mz location of a call initiated by hardware emulation during record
 //mz see RR_DO_RECORD_OR_REPLAY() macro
 extern volatile sig_atomic_t rr_skipped_callsite_location;
@@ -93,13 +86,6 @@ extern volatile sig_atomic_t rr_skipped_callsite_location;
 extern volatile sig_atomic_t rr_record_in_progress; 
 
 extern volatile sig_atomic_t rr_use_live_exit_request;
-
-static inline void rr_set_prog_point(uint64_t pc, uint64_t secondary, uint64_t guest_instr_count) {
-  rr_num_instr_before_next_interrupt -= (guest_instr_count - rr_prog_point.guest_instr_count);
-  rr_prog_point.guest_instr_count = guest_instr_count;
-  rr_prog_point.pc = pc;
-  rr_prog_point.secondary = secondary;
-}
 
 //mz Routine that handles the situation when program points disagree during
 //mz replay. Typically, this means a fatal error - the routine prints some
@@ -538,7 +524,6 @@ static inline void rr_replay_skipped_calls(void) {
                     else { \
                         rr_record_in_progress = 1; \
                         rr_skipped_callsite_location = LOCATION; \
-                        rr_set_program_point();    \
                         ACTION;                    \
                         RECORD_ACTION;             \
                         rr_record_in_progress = 0; \
@@ -549,7 +534,6 @@ static inline void rr_replay_skipped_calls(void) {
                 { \
                     rr_skipped_callsite_location = LOCATION; \
                     /* mz we need to update program point! */ \
-                    rr_set_program_point(); \
                     rr_replay_skipped_calls(); \
                     REPLAY_ACTION; \
                 } \

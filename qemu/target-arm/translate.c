@@ -9925,8 +9925,8 @@ static inline void gen_intermediate_code_internal(CPUState *env,
 #ifdef CONFIG_SOFTMMU
     // Terminate translation early if we have an interrupt coming up
     if (!search_pc && rr_in_replay())
-        max_insns = max_insns < rr_num_instr_before_next_interrupt ?
-                        max_insns : rr_num_instr_before_next_interrupt;
+        max_insns = max_insns < rr_num_instr_before_next_interrupt() ?
+                        max_insns : rr_num_instr_before_next_interrupt();
 #endif
     // But during search_pc always translate the same number we did last time
     if (search_pc)

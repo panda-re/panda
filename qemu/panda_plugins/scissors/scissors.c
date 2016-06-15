@@ -317,15 +317,15 @@ static RR_prog_point copy_entry(void) {
 }
 
 static void end_snip(void) {
-    RR_prog_point prog_point = rr_prog_point;
+    RR_prog_point prog_point = rr_prog_point();
     printf("Ending cut-and-paste on prog point:\n");
-    rr_spit_prog_point(rr_prog_point);
+    rr_spit_prog_point(prog_point);
     prog_point.guest_instr_count -= actual_start_count;
 
     RR_header end;
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
-    end.prog_point = rr_prog_point;
+    end.prog_point = prog_point;
     end.prog_point.guest_instr_count -= actual_start_count;
     sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
@@ -339,7 +339,7 @@ static void end_snip(void) {
 }
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    uint64_t count = rr_prog_point.guest_instr_count;
+    uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->num_guest_insns > start_count) {
         sassert((oldlog = fopen(rr_nondet_log->name, "r")));
         sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1);
@@ -351,7 +351,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         do_savevm_rr(get_monitor(), snp_name);
 
         printf("Beginning cut-and-paste process at prog point:\n");
-        rr_spit_prog_point(rr_prog_point);
+        rr_spit_prog_point(rr_prog_point());
         printf("Writing entries to %s...\n", nondet_name);
         newlog = fopen(nondet_name, "w");
         sassert(newlog);

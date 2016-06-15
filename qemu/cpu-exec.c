@@ -243,16 +243,6 @@ static void cpu_handle_debug_exception(CPUState *env)
 
 
 #ifdef CONFIG_SOFTMMU
-void rr_set_program_point(void) {
-    if (cpu_single_env) {
-#if defined( TARGET_I386 )
-        rr_set_prog_point(cpu_single_env->eip, cpu_single_env->regs[R_ECX], GUEST_ICOUNT);
-#else
-        rr_set_prog_point(cpu_single_env->panda_guest_pc, 0, GUEST_ICOUNT);
-#endif
-    }
-}
-
 void rr_quit_cpu_loop(void) {
     if (cpu_single_env) {
         cpu_single_env->exception_index = EXCP_INTERRUPT;
@@ -279,7 +269,7 @@ int cpu_exec(CPUState *env)
     unsigned long next_tb;
 
 #ifdef CONFIG_SOFTMMU
-    RR_prog_point saved_prog_point = rr_prog_point;
+    RR_prog_point saved_prog_point = rr_prog_point();
     int rr_loop_tries = 20;
     
     //mz This is done once at the start of record and once at the start of
@@ -352,10 +342,6 @@ int cpu_exec(CPUState *env)
 	    // NB: we can only be here if we came from immediately before
 	    // the if (setjmp...)  stmt.  
 	    // the else block gets executed when we longjmp(env->jmp_env)
-#ifdef CONFIG_SOFTMMU
-            //mz Set the program point here.
-            rr_set_program_point();
-#endif
             /* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
                 if (env->exception_index >= EXCP_INTERRUPT) {
@@ -388,12 +374,8 @@ int cpu_exec(CPUState *env)
                 //bdg Replay skipped calls from the I/O thread here
                 if(rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_set_program_point();
                     rr_replay_skipped_calls();
                 }
-            
-                //mz Set the program point here.
-                rr_set_program_point();
 #endif
                 // cache interrupt request value.
                 interrupt_request = env->interrupt_request;
@@ -546,8 +528,6 @@ int cpu_exec(CPUState *env)
                     }
 #elif defined(TARGET_SPARC)
                     if (interrupt_request & CPU_INTERRUPT_HARD) {
-                        // This appears to be set in device code
-                        rr_set_program_point();
                         rr_skipped_callsite_location = RR_CALLSITE_SPARC_CPU_EXEC_1;
                         rr_input_4((uint32_t *)&env->interrupt_index);
 
@@ -674,8 +654,6 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_SOFTMMU
-                    //mz set program point after handling interrupts.
-                    rr_set_program_point();
                     //mz record the value again in case do_interrupt has set EXITTB flag
                     rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
                     rr_interrupt_request((int *)&env->interrupt_request);
@@ -739,12 +717,13 @@ int cpu_exec(CPUState *env)
                 tb = tb_find_fast(env);
 
 #ifdef CONFIG_SOFTMMU
+                RR_prog_point pp = rr_prog_point();
                 qemu_log_mask(CPU_LOG_RR, 
 			      "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
                   tb->pc,
-			      (unsigned long long)rr_prog_point.guest_instr_count, 
-                  (unsigned long long)rr_prog_point.pc,
-                  (unsigned long long)rr_prog_point.secondary);
+                 (unsigned long long)pp.guest_instr_count,
+                  (unsigned long long)pp.pc,
+                  (unsigned long long)pp.secondary);
 #endif
 
                 // PANDA instrumentation: before basic block exec (with option
@@ -765,9 +744,10 @@ int cpu_exec(CPUState *env)
                 }
 
 #ifdef CONFIG_SOFTMMU
+                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
                 if (panda_invalidate_tb ||
-                    (rr_mode == RR_REPLAY && rr_num_instr_before_next_interrupt > 0 &&
-                        tb->num_guest_insns > rr_num_instr_before_next_interrupt)) {
+                        (rr_mode == RR_REPLAY && until_interrupt > 0 &&
+                         tb->num_guest_insns > until_interrupt)) {
                     //mz invalidate current TB and retranslate
                     invalidate_single_tb(env, tb->pc);
                     //mz try again.
@@ -834,34 +814,31 @@ int cpu_exec(CPUState *env)
 
                 // Check for replay failure (otherwise infinite loop would result)
                 if (rr_mode == RR_REPLAY) {
-                    if (rr_prog_point.pc == saved_prog_point.pc &&
-                            rr_prog_point.secondary == saved_prog_point.secondary &&
-                            rr_prog_point.guest_instr_count == saved_prog_point.guest_instr_count) {
+                    RR_prog_point pp = rr_prog_point();
+                    if (pp.pc == saved_prog_point.pc &&
+                            pp.secondary == saved_prog_point.secondary &&
+                            pp.guest_instr_count == saved_prog_point.guest_instr_count) {
                         rr_loop_tries--;
                     }
                     else {
                         rr_loop_tries = 20;
-                        saved_prog_point = rr_prog_point;
+                        saved_prog_point = pp;
                     }
 
                     if (!rr_loop_tries) {
                         // Signal failure
                         printf("Infinite loop detected during replay, aborting.\n");
-                        rr_spit_prog_point(rr_prog_point);
+                        rr_spit_prog_point(pp);
                         rr_do_end_replay(1);
                     }
                 }
 #endif
 
 #ifdef CONFIG_SOFTMMU
-                if (!rr_in_replay() || rr_num_instr_before_next_interrupt > 0) {
+                if (!rr_in_replay() || rr_num_instr_before_next_interrupt() > 0) {
 #endif
                     if (likely(!env->exit_request)) {
                         tc_ptr = tb->tc_ptr;
-                        //mz setting program point just before call to gen_func()
-#ifdef CONFIG_SOFTMMU
-                        rr_set_program_point();
-#endif
                         //mz Actually jump into the generated code
                         /* execute the generated code */
 

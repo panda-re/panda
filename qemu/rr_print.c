@@ -14,9 +14,6 @@
 volatile RR_mode rr_mode = RR_REPLAY;
 
 //mz program execution state
-RR_prog_point rr_prog_point = {0, 0, 0};
-//volatile uint64_t rr_guest_instr_count;
-volatile uint64_t rr_num_instr_before_next_interrupt;
 
 //mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
