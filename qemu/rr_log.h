@@ -141,16 +141,16 @@ static inline uint64_t rr_get_guest_instr_count(void) {
 //mz program execution state
 static inline RR_prog_point rr_prog_point(void) {
     RR_prog_point ret = {0};
-    assert(first_cpu);
+    CPUState *env = first_cpu;
 
 #ifdef TARGET_I386
-    ret.pc = first_cpu->eip;
-    ret.secondary = first_cpu->regs[R_ECX];
+    ret.pc = env->eip;
+    ret.secondary = env->regs[R_ECX];
 #else
-    ret.pc = panda_current_pc(first_cpu);
+    ret.pc = panda_current_pc(env);
     ret.secondary = 0;
 #endif
-    ret.guest_instr_count = rr_get_guest_instr_count();
+    ret.guest_instr_count = env->rr_guest_instr_count;
     return ret;
 }
 
