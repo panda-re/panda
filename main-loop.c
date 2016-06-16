@@ -31,6 +31,7 @@
 #include "slirp/libslirp.h"
 #include "qemu/main-loop.h"
 #include "block/aio.h"
+#include "rr_log_all.h"
 
 // ru: add include for rr_log_all
 #include "rr_log_all.h"
@@ -257,7 +258,6 @@ static int os_host_main_loop_wait(int64_t timeout)
     if (timeout) {
         qemu_mutex_lock_iothread();
     }
-
     glib_pollfds_poll();
     return ret;
 }
@@ -507,6 +507,12 @@ int main_loop_wait(int nonblocking)
                                           &main_loop_tlg));
 
     ret = os_host_main_loop_wait(timeout_ns);
+
+    if (rr_in_record()) {
+        rr_record_in_progress = 1;
+        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+    }
+
 #ifdef CONFIG_SLIRP
     slirp_pollfds_poll(gpollfds, (ret < 0));
 #endif
