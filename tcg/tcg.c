@@ -965,6 +965,13 @@ static inline const char *tcg_find_helper(TCGContext *s, uintptr_t val)
     return ret;
 }
 
+// Yanked from QEMU 1.0.1
+const char *tcg_helper_get_name(TCGContext *s, void *func)
+{
+    TCGHelperInfo *info = (TCGHelperInfo *)tcg_find_helper(s, (tcg_target_ulong) func);
+    return info ? info->name : NULL;
+}
+
 static const char * const cond_name[] =
 {
     [TCG_COND_NEVER] = "never",
