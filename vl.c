@@ -3028,7 +3028,7 @@ int main(int argc, char **argv, char **envp)
     Error *main_loop_err = NULL;
     Error *err = NULL;
 
-    const char* replay_name;
+    const char* replay_name = NULL;
 
     qemu_init_cpu_loop();
     qemu_mutex_lock_iothread();
