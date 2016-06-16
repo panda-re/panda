@@ -685,14 +685,13 @@ int cpu_exec(CPUState *cpu)
                     rr_end_replay_requested = 1;
                     break;
                 }
-                if (rr_in_replay()) {
-                    assert(rr_num_instr_before_next_interrupt() != 0);
-                }
 
-                cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-                /* Try to align the host and virtual clocks
-                   if the guest is in advance */
-                align_clocks(&sc, cpu);
+                if (rr_in_replay() && rr_num_instr_before_next_interrupt() > 0) {
+                    cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
+                    /* Try to align the host and virtual clocks
+                       if the guest is in advance */
+                    align_clocks(&sc, cpu);
+                }
             } /* for(;;) */
         } else {
 #if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
