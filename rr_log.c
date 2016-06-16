@@ -1593,8 +1593,9 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     }
     printf("loading snapshot\n");
     QIOChannelFile* ioc =
-        qio_channel_file_new_path(name_buf, O_RDONLY | O_WRONLY, 0, NULL);
+        qio_channel_file_new_path(name_buf, O_RDONLY, 0, NULL);
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+    migration_incoming_state_new(snp);
     snapshot_ret = qemu_loadvm_state(snp);
     if (snapshot_ret < 0) {
         fprintf(stderr, "Failed to load vmstate\n");
