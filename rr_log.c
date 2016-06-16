@@ -1586,8 +1586,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     }
     printf("loading snapshot\n");
     QIOChannelFile* ioc =
-        qio_channel_file_new_path(name_buf, O_RDONLY, 0, NULL);
-    QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+        qio_channel_file_new_path(name_buf, O_RDONLY | O_WRONLY, 0, NULL);
+    QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
     snapshot_ret = qemu_loadvm_state(snp);
     qemu_fclose(snp);
     printf("... done.\n");
