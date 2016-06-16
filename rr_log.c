@@ -43,10 +43,10 @@
 #include "qmp-commands.h"
 #include "hmp.h"
 #include "rr_log.h"
+#include "migration/migration.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
-
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -59,6 +59,7 @@ RR_log_entry* rr_queue_tail;
 
 // mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
+volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
 volatile sig_atomic_t rr_use_live_exit_request = 0;

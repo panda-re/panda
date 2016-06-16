@@ -509,7 +509,7 @@ int main_loop_wait(int nonblocking)
     ret = os_host_main_loop_wait(timeout_ns);
 
     if (rr_in_record()) {
-        rr_record_in_progress = 1;
+        rr_record_in_main_loop_wait = 1;
         rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
     }
 
@@ -522,12 +522,11 @@ int main_loop_wait(int nonblocking)
     qemu_start_warp_timer();
     // ru: add check if in in replay for running timers
     //if (!rr_in_replay())
-    qemu_clock_run_all_timers();
+        qemu_clock_run_all_timers();
 
     if (rr_in_record()) {
-        rr_record_in_progress = 0;
+        rr_record_in_main_loop_wait = 0;
     }
-
     return ret;
 }
 
