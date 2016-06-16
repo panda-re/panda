@@ -450,12 +450,19 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data)
     rr_write_item();
 }
 
+static uint64_t last_interrupt_instr_map[RR_CALLSITE_LAST] =
+        {[0 ... RR_CALLSITE_LAST - 1] = ~0UL};
 // mz record interrupt request value to file (but only if non-zero)
 void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request)
 {
     // mz we only record interrupt_requests if the value is non-zero
-    if (interrupt_request != 0) {
+    uint64_t last_interrupt_instr = last_interrupt_instr_map[call_site];
+    uint64_t current_instr = rr_get_guest_instr_count();
+    if (interrupt_request != 0
+            && (last_interrupt_instr != current_instr)) {
+        last_interrupt_instr_map[call_site] = current_instr;
+
         RR_log_entry* item = &(rr_nondet_log->current_item);
         // mz just in case
         memset(item, 0, sizeof(RR_log_entry));
