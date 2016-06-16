@@ -666,6 +666,14 @@ int cpu_exec(CPUState *cpu)
                 cpu_handle_interrupt(cpu, &last_tb);
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
 
+                RR_prog_point pp;
+                qemu_log_mask(CPU_LOG_RR,
+                  "Prog point: 0x" TARGET_FMT_lx
+                  " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
+                  tb->pc,
+                 (unsigned long long)(pp = rr_prog_point()).guest_instr_count,
+                  (unsigned long long)pp.pc,
+                  (unsigned long long)pp.secondary);
 
 #ifdef CONFIG_SOFTMMU
                 if (rr_mode == RR_REPLAY) {
