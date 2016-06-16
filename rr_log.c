@@ -490,7 +490,7 @@ void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
 // mz record call to cpu_physical_memory_rw() that will need to be replayed.
 // mz only "write" modifications are recorded
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
-                               uint8_t* buf, int len, int is_write)
+                               const uint8_t* buf, int len, int is_write)
 {
     RR_log_entry* item = &(rr_nondet_log->current_item);
     // mz just in case

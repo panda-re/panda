@@ -36,7 +36,7 @@ typedef struct {
 } RR_cpu_mem_unmap;
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
-                               uint8_t* buf, int len, int is_write);
+                               const uint8_t* buf, int len, int is_write);
 void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
                                      hwaddr start_addr, ram_addr_t size,
                                      ram_addr_t phys_offset);
@@ -52,7 +52,7 @@ static inline void rr_cpu_physical_memory_unmap_record(hwaddr addr,
 }
 
 // mz XXX addr should be hwaddr
-static inline void rr_device_mem_rw_call_record(hwaddr addr, uint8_t* buf,
+static inline void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
                                                 int len, int is_write)
 {
     rr_record_cpu_mem_rw_call((RR_callsite_id)rr_skipped_callsite_location,

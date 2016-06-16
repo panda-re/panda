@@ -46,6 +46,7 @@
 #include "exec/address-spaces.h"
 #include "sysemu/xen-mapcache.h"
 #include "trace.h"
+#include "rr_log.h"
 #endif
 #include "exec/cpu-all.h"
 #include "qemu/rcu_queue.h"
@@ -2603,6 +2604,9 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            if (rr_in_record() && rr_record_in_progress) {
+                rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
+            }
             memcpy(ptr, buf, l);
             invalidate_and_set_dirty(mr, addr1, l);
         }
