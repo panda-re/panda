@@ -189,7 +189,7 @@ typedef enum {
     RR_CALLSITE_CPU_EXEC_00,
     RR_CALLSITE_CPU_EXEC_000,
     RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE,
-    RR_CALLSITE_CPU_EXEC_2,
+    RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO,
     RR_CALLSITE_CPU_EXEC_3,
     RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER,
     RR_CALLSITE_CPU_EXEC_DBG,
@@ -262,7 +262,7 @@ static const char* callsite_str[] = {
     "RR_CALLSITE_CPU_EXEC_00",
     "RR_CALLSITE_CPU_EXEC_000",
     "RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE",
-    "RR_CALLSITE_CPU_EXEC_2",
+    "RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO",
     "RR_CALLSITE_CPU_EXEC_3",
     "RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER",
     "RR_CALLSITE_CPU_EXEC_DBG",
@@ -554,7 +554,6 @@ static inline void rr_replay_skipped_calls(void)
         } break;                                                               \
         case RR_REPLAY: {                                                      \
             rr_skipped_callsite_location = LOCATION;                           \
-            /* mz we need to update program point! */                          \
             rr_replay_skipped_calls();                                         \
             REPLAY_ACTION;                                                     \
         } break;                                                               \

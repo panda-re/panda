@@ -208,6 +208,8 @@ ifdef CONFIG_DARWIN
 	$(call quiet-command,SetFile -a C $@,"  SETFILE $(TARGET_DIR)$@")
 endif
 
+rr_print.o: rr_log.h rr_log_all.h
+
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
