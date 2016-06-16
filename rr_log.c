@@ -249,7 +249,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
                  line, function);
     }
     // just abort
-    exit(1);
+    abort();
     rr_end_replay_requested = 1;
     // mz need to get out of cpu loop so that we can process the end_replay
     // request
