@@ -110,3 +110,4 @@ tags
 TAGS
 docker-src.*
 *~
+*.plist
