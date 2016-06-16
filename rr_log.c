@@ -44,6 +44,7 @@
 #include "hmp.h"
 #include "rr_log.h"
 #include "migration/migration.h"
+#include "include/exec/address-spaces.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
@@ -332,10 +333,12 @@ static inline void rr_write_item(void)
             fwrite(args->variant.cpu_mem_unmap.buf, 1,
                    args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
             break;
-        case RR_CALL_CPU_REG_MEM_REGION:
-            fwrite(&(args->variant.cpu_mem_reg_region_args),
-                   sizeof(args->variant.cpu_mem_reg_region_args), 1,
+        case RR_CALL_MEM_REGION_CHANGE:
+            fwrite(&(args->variant.mem_region_change_args),
+                   sizeof(args->variant.mem_region_change_args), 1,
                    rr_nondet_log->fp);
+            fwrite(args->variant.mem_region_change_args.name, 1,
+                   args->variant.mem_region_change_args.len, rr_nondet_log->fp);
             break;
         case RR_CALL_HD_TRANSFER:
             fwrite(&(args->variant.hd_transfer_args),
@@ -537,10 +540,10 @@ void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
     rr_write_item();
 }
 
-// mz record a call to cpu_register_io_memory() that will need to be replayed.
-void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
-                                     hwaddr start_addr, ram_addr_t size,
-                                     ram_addr_t phys_offset)
+// bdg Record a change in the I/O memory map
+void rr_record_memory_region_change(RR_callsite_id call_site,
+                                     hwaddr start_addr, uint64_t size,
+                                     const char *name, bool added)
 {
     RR_log_entry* item = &(rr_nondet_log->current_item);
     // mz just in case
@@ -550,12 +553,13 @@ void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
     item->header.callsite_loc = call_site;
     item->header.prog_point = rr_prog_point();
 
-    item->variant.call_args.kind = RR_CALL_CPU_REG_MEM_REGION;
-    item->variant.call_args.variant.cpu_mem_reg_region_args.start_addr =
+    item->variant.call_args.kind = RR_CALL_MEM_REGION_CHANGE;
+    item->variant.call_args.variant.mem_region_change_args.start_addr =
         start_addr;
-    item->variant.call_args.variant.cpu_mem_reg_region_args.size = size;
-    item->variant.call_args.variant.cpu_mem_reg_region_args.phys_offset =
-        phys_offset;
+    item->variant.call_args.variant.mem_region_change_args.size = size;
+    item->variant.call_args.variant.mem_region_change_args.name = name;
+    item->variant.call_args.variant.mem_region_change_args.len = strlen(name);
+    item->variant.call_args.variant.mem_region_change_args.added = added;
 
     rr_write_item();
 }
@@ -826,15 +830,20 @@ static RR_log_entry* rr_read_item(void)
             rr_size_of_log_entries[item->header.kind] +=
                 args->variant.cpu_mem_unmap.len;
             break;
-
-        case RR_CALL_CPU_REG_MEM_REGION:
-            rr_assert(fread(&(args->variant.cpu_mem_reg_region_args),
-                            sizeof(args->variant.cpu_mem_reg_region_args), 1,
+        case RR_CALL_MEM_REGION_CHANGE:
+            rr_assert(fread(&(args->variant.mem_region_change_args),
+                            sizeof(args->variant.mem_region_change_args), 1,
                             rr_nondet_log->fp) == 1);
             rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.cpu_mem_reg_region_args);
+                sizeof(args->variant.mem_region_change_args);
+            args->variant.mem_region_change_args.name =
+                g_malloc0(args->variant.mem_region_change_args.len + 1);
+            rr_assert(fread(&(args->variant.mem_region_change_args.name), 1,
+                            args->variant.mem_region_change_args.len,
+                            rr_nondet_log->fp) > 0);
+            rr_size_of_log_entries[item->header.kind] +=
+                args->variant.mem_region_change_args.len;
             break;
-
         case RR_CALL_HD_TRANSFER:
             rr_assert(fread(&(args->variant.hd_transfer_args),
                             sizeof(args->variant.hd_transfer_args), 1,
@@ -1170,6 +1179,13 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
     }
 }
 
+static void rr_create_memory_region(hwaddr start, uint64_t size, char *name) {
+    MemoryRegion *mr = g_new0(MemoryRegion, 1);
+    memory_region_init_io(mr, NULL, NULL, NULL, name, size);
+    memory_region_add_subregion_overlap(get_system_memory(),
+            start, mr, 1);
+}
+
 // mz this function consumes 2 types of entries:
 // RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION
 // XXX call_site parameter no longer used...
@@ -1194,16 +1210,21 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                                        args.variant.cpu_mem_rw_args.len,
                                        /*is_write=*/1);
             } break;
-            case RR_CALL_CPU_REG_MEM_REGION: {
-#warning "Need to figure out what replaces cpu_register_physical_memory"
-#if 0
-                          cpu_register_physical_memory_log(
-                               args.variant.cpu_mem_reg_region_args.start_addr,
-                               args.variant.cpu_mem_reg_region_args.size,
-                               args.variant.cpu_mem_reg_region_args.phys_offset,
-                               0, false
-                               );
-#endif
+            case RR_CALL_MEM_REGION_CHANGE: {
+                // Add a mapping
+                if (args.variant.mem_region_change_args.added) {
+                    rr_create_memory_region(
+                            args.variant.mem_region_change_args.start_addr,
+                            args.variant.mem_region_change_args.size,
+                            args.variant.mem_region_change_args.name);
+                }
+                // Delete a mapping
+                else {
+                    MemoryRegionSection mrs = memory_region_find(get_system_memory(),
+                            args.variant.mem_region_change_args.start_addr,
+                            args.variant.mem_region_change_args.size);
+                    memory_region_del_subregion(get_system_memory(), mrs.mr);
+                }
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
                 void* host_buf;

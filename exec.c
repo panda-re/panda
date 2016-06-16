@@ -563,6 +563,27 @@ CPUState *qemu_get_cpu(int index)
 }
 
 #if !defined(CONFIG_USER_ONLY)
+
+MemoryListener rr_listener;
+
+static void rr_mem_region_added_cb(MemoryListener *listener, MemoryRegionSection *section) {
+    if (!rr_in_record()) return;
+    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
+        // XXX: Assuming that even though size is an Int128 it will in practice
+        //      never be larger than 64 bits
+        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, true);
+    }
+}
+
+static void rr_mem_region_deleted_cb(MemoryListener *listener, MemoryRegionSection *section) {
+    if (!rr_in_record()) return;
+    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
+        // XXX: Assuming that even though size is an Int128 it will in practice
+        //      never be larger than 64 bits
+        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, false);
+    }
+}
+
 void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
 {
     CPUAddressSpace *newas;
@@ -588,6 +609,11 @@ void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
     if (tcg_enabled()) {
         newas->tcg_as_listener.commit = tcg_commit;
         memory_listener_register(&newas->tcg_as_listener, as);
+
+        // PANDA Record and Replay
+        rr_listener.region_add = rr_mem_region_added_cb;
+        rr_listener.region_del = rr_mem_region_deleted_cb;
+        memory_listener_register(&rr_listener, as);
     }
 }
 

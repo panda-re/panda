@@ -109,7 +109,7 @@ extern void rr_signal_disagreement(RR_prog_point current,
 
 typedef enum {
     RR_CALL_CPU_MEM_RW,         // cpu_physical_memory_rw()
-    RR_CALL_CPU_REG_MEM_REGION, // cpu_register_physical_memory()
+    RR_CALL_MEM_REGION_CHANGE,  // cpu_register_physical_memory()
     RR_CALL_CPU_MEM_UNMAP,      // cpu_physical_memory_unmap()
     RR_CALL_HD_TRANSFER,        // hd transfer
     RR_CALL_NET_TRANSFER,       // network transfer in device
@@ -118,10 +118,14 @@ typedef enum {
 } RR_skipped_call_kind;
 
 static const char* skipped_call_kind_str[] = {
-    "RR_CALL_CPU_MEM_RW",    "RR_CALL_CPU_REG_MEM_REGION",
-    "RR_CALL_CPU_MEM_UNMAP", "RR_CALL_HD_TRANSFER",
-    "RR_CALL_NET_TRANSFER",  "RR_CALL_HANDLE_PACKET",
-    "RR_CALL_LAST"};
+    "RR_CALL_CPU_MEM_RW",
+    "RR_CALL_MEM_REGION_CHANGE",
+    "RR_CALL_CPU_MEM_UNMAP",
+    "RR_CALL_HD_TRANSFER",
+    "RR_CALL_NET_TRANSFER",
+    "RR_CALL_HANDLE_PACKET",
+    "RR_CALL_LAST"
+};
 
 static inline const char*
 get_skipped_call_kind_string(RR_skipped_call_kind kind)

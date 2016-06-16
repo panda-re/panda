@@ -86,8 +86,8 @@ static void rr_spit_log_entry(RR_log_entry item) {
                     case RR_CALL_CPU_MEM_RW:
                         callbytes = sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
                         break;
-                    case RR_CALL_CPU_REG_MEM_REGION:
-                        callbytes = sizeof(args->variant.cpu_mem_reg_region_args);
+                    case RR_CALL_MEM_REGION_CHANGE:
+                        callbytes = sizeof(args->variant.mem_region_change_args) + args->variant.mem_region_change_args.len;
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
                         callbytes = sizeof(args->variant.cpu_mem_unmap) + args->variant.cpu_mem_unmap.len;
@@ -225,9 +225,11 @@ static RR_log_entry *rr_read_item(void) {
                         //assert(fread(args->variant.cpu_mem_unmap.buf, 1, args->variant.cpu_mem_unmap.len, rr_nondet_log->fp) > 0);
                         fseek(rr_nondet_log->fp, args->variant.cpu_mem_unmap.len, SEEK_CUR);
                         break;
-                    case RR_CALL_CPU_REG_MEM_REGION:
-                        assert(fread(&(args->variant.cpu_mem_reg_region_args), 
-                              sizeof(args->variant.cpu_mem_reg_region_args), 1, rr_nondet_log->fp) == 1);
+                    case RR_CALL_MEM_REGION_CHANGE:
+                        assert(fread(&(args->variant.mem_region_change_args),
+                            sizeof(args->variant.mem_region_change_args), 1,
+                            rr_nondet_log->fp) == 1);
+                        fseek(rr_nondet_log->fp, args->variant.mem_region_change_args.len, SEEK_CUR);
                         break;
                     case RR_CALL_HD_TRANSFER:
                         assert(fread(&(args->variant.hd_transfer_args),
