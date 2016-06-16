@@ -260,11 +260,11 @@ bool qemu_clock_run_timers(QEMUClockType type);
 bool qemu_clock_run_all_timers(void);
 
 /**
- * qemu_quit_timers:
+ * qemu_rr_quit_timers:
  *
  * Deletes timers for all clocks.
  */
-void qemu_quit_timers(void);
+void qemu_rr_quit_timers(void);
 
 /*
  * QEMUTimerList
