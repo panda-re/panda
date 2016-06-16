@@ -1957,6 +1957,7 @@ static void main_loop(void)
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
             if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
                 printf("Failed to start replay\n");
+                exit(1);
             } else { // we have to unblock signals, so we can't just continue on failure
                 // ru: qemu_quit_timers() defined by PANDA team to stop timers
                 qemu_rr_quit_timers();
@@ -3027,6 +3028,8 @@ int main(int argc, char **argv, char **envp)
     Error *main_loop_err = NULL;
     Error *err = NULL;
 
+    const char* replay_name;
+
     qemu_init_cpu_loop();
     qemu_mutex_lock_iothread();
 
@@ -4044,6 +4047,9 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 break;
+            case QEMU_OPTION_replay:
+                display_type = DT_NONE;
+                replay_name = optarg;
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
@@ -4644,6 +4650,11 @@ int main(int argc, char **argv, char **envp)
     }
 
     replay_start();
+    if (replay_name) {
+        // TODO does this need to be qmp?
+        Error* error;
+        qmp_begin_replay(replay_name, &err);
+    }
 
     /* This checkpoint is required by replay to separate prior clock
        reading from the other reads, because timer polling functions query

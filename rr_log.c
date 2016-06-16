@@ -1399,13 +1399,13 @@ void rr_reset_state(CPUState* cpu_state)
 #ifdef CONFIG_SOFTMMU
 
 #include "qapi/error.h"
-static void qmp_begin_record(const char* file_name, Error** errp)
+void qmp_begin_record(const char* file_name, Error** errp)
 {
     rr_record_requested = RR_RECORD_REQUEST;
     rr_requested_name = g_strdup(file_name);
 }
 
-static void qmp_begin_record_from(const char* snapshot, const char* file_name,
+void qmp_begin_record_from(const char* snapshot, const char* file_name,
                                   Error** errp)
 {
     rr_record_requested = RR_RECORD_FROM_REQUEST;
@@ -1413,20 +1413,20 @@ static void qmp_begin_record_from(const char* snapshot, const char* file_name,
     rr_requested_name = g_strdup(file_name);
 }
 
-static void qmp_begin_replay(const char* file_name, Error** errp)
+void qmp_begin_replay(const char* file_name, Error** errp)
 {
     rr_replay_requested = 1;
     rr_requested_name = g_strdup(file_name);
     gettimeofday(&replay_start_time, 0);
 }
 
-static void qmp_end_record(Error** errp)
+void qmp_end_record(Error** errp)
 {
     qmp_stop(NULL);
     rr_end_record_requested = 1;
 }
 
-static void qmp_end_replay(Error** errp)
+void qmp_end_replay(Error** errp)
 {
     qmp_stop(NULL);
     rr_end_replay_requested = 1;
@@ -1589,6 +1589,10 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         qio_channel_file_new_path(name_buf, O_RDONLY | O_WRONLY, 0, NULL);
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
     snapshot_ret = qemu_loadvm_state(snp);
+    if (snapshot_ret < 0) {
+        fprintf(stderr, "Failed to load vmstate\n");
+        return snapshot_ret;
+    }
     qemu_fclose(snp);
     printf("... done.\n");
     // log_all_cpu_states();
