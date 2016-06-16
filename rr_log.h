@@ -24,9 +24,11 @@ typedef struct {
 // mz structure for arguments to cpu_register_physical_memory()
 typedef struct {
     hwaddr start_addr;
-    ram_addr_t size;
-    ram_addr_t phys_offset;
-} RR_cpu_reg_mem_region_args;
+    uint64_t size;
+    char *name;
+    uint32_t len;
+    bool added;
+} RR_mem_region_change_args;
 
 // structure for arguments to cpu_physical_memory_unmap
 typedef struct {
@@ -37,9 +39,9 @@ typedef struct {
 
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
                                const uint8_t* buf, int len, int is_write);
-void rr_record_cpu_reg_io_mem_region(RR_callsite_id call_site,
-                                     hwaddr start_addr, ram_addr_t size,
-                                     ram_addr_t phys_offset);
+void rr_record_memory_region_change(RR_callsite_id call_site,
+                                     hwaddr start_addr, uint64_t size,
+                                     const char *name, bool added);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
                              uint8_t* buf, hwaddr len, int is_write);
 
@@ -60,12 +62,12 @@ static inline void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
 }
 
 // mz XXX addr should be hwaddr
-static inline void rr_reg_mem_call_record(hwaddr start_addr, ram_addr_t size,
-                                          ram_addr_t phys_offset)
+static inline void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
+                                          const char *name, bool added)
 {
-    rr_record_cpu_reg_io_mem_region(
+    rr_record_memory_region_change(
         (RR_callsite_id)rr_skipped_callsite_location, start_addr, size,
-        phys_offset);
+        name, added);
 }
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default
@@ -82,7 +84,8 @@ typedef struct {
 typedef struct {
     uint8_t kind;
     union {
-        RR_cpu_reg_mem_region_args cpu_mem_reg_region_args;
+        
+        RR_mem_region_change_args mem_region_change_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
         RR_hd_transfer_args hd_transfer_args;
