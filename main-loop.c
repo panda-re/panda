@@ -519,9 +519,9 @@ int main_loop_wait(int nonblocking)
 
     /* CPU thread can infinitely wait for event after
        missing the warp */
-    qemu_start_warp_timer();
     // ru: add check if in in replay for running timers
-    //if (!rr_in_replay())
+    if (!rr_in_replay())
+        qemu_start_warp_timer();
         qemu_clock_run_all_timers();
 
     if (rr_in_record()) {
