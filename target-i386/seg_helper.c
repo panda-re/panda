@@ -1367,7 +1367,7 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
                 /*action=*/intno = cpu_get_pic_interrupt(env),
                 /*record=*/rr_input_4((uint32_t*)&intno),
                 /*replay=*/rr_input_4((uint32_t*)&intno),
-                /*location=*/ RR_CALLSITE_CPU_EXEC_2);
+                /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
 
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);
