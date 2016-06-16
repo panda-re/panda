@@ -17,6 +17,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #ifndef _EXEC_ALL_H_
 #define _EXEC_ALL_H_
 
@@ -364,6 +377,9 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
     /* add in TB jmp circular list */
     tb->jmp_list_next[n] = tb_next->jmp_list_first;
     tb_next->jmp_list_first = (uintptr_t)tb | n;
+#ifdef CONFIG_LLVM
+    tb->llvm_tb_next[n] = tb_next;
+#endif
 }
 
 /* GETRA is the true target of the return instruction that we'll execute,

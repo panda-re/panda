@@ -3976,6 +3976,12 @@ contents of @code{iv.b64} to the second secret
 
 ETEXI
 
+#if defined(CONFIG_LLVM)
+DEF("llvm", 0, QEMU_OPTION_execute_llvm,
+    "-llvm           execute code using LLVM JIT\n", QEMU_ARCH_ALL)
+DEF("generate-llvm", 0, QEMU_OPTION_generate_llvm,
+    "-generate-llvm  translate code into LLVM but don't execute it\n", QEMU_ARCH_ALL)
+#endif
 
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI

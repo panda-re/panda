@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace.h"
@@ -171,7 +185,20 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #endif /* DEBUG_DISAS */
 
     cpu->can_do_io = !use_icount;
+
+#if defined(CONFIG_LLVM)
+    if (execute_llvm){
+        assert(itb->llvm_tc_ptr);
+        //next_tb = tcg_llvm_qemu_tb_exec(env, tb);
+        ret = tcg_llvm_qemu_tb_exec(env, itb);
+    } else {
+        assert(tb_ptr);
+        ret = tcg_qemu_tb_exec(env, tb_ptr);
+    }
+#else
     ret = tcg_qemu_tb_exec(env, tb_ptr);
+#endif // CONFIG_LLVM
+
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     tb_exit = ret & TB_EXIT_MASK;
