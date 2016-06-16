@@ -18,6 +18,7 @@ volatile RR_mode rr_mode = RR_REPLAY;
 
 //mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
+volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
 volatile sig_atomic_t rr_use_live_exit_request = 0;

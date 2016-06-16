@@ -87,6 +87,8 @@ extern volatile sig_atomic_t rr_skipped_callsite_location;
 // mz flag to manage nested recording attempts
 // mz see RR_DO_RECORD_OR_REPLAY() macro
 extern volatile sig_atomic_t rr_record_in_progress;
+// should be true iff we are executing device code
+extern volatile sig_atomic_t rr_record_in_main_loop_wait;
 
 extern volatile sig_atomic_t rr_use_live_exit_request;
 
