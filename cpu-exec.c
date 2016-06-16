@@ -34,6 +34,14 @@
 #endif
 #include "sysemu/replay.h"
 
+#if defined(CONFIG_LLVM)
+#include "panda/llvm/tcg-llvm.h"
+const int has_llvm_engine = 1;
+#endif
+
+int generate_llvm = 0;
+int execute_llvm = 0;
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {

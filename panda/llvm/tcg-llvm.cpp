@@ -34,26 +34,42 @@
  *
  */
 
+// Thank you to the QEMU authors for using C++ keywords in QEMU C code
+#define new noo
+#define class klass
+#define typename typenaim
 extern "C" {
+#include "qemu/osdep.h"
+#include "qemu-common.h"
+#include "config-target.h"
+#include "cpu.h"
 #include "tcg.h"
+}
+#undef new
+#undef class
+#undef typename
+
+extern "C" {
+#include "exec/exec-all.h"
 }
 
 #include "tcg-llvm.h"
-#include "panda_memlog.h"
+
+// XXX still need this?
+//#include "panda_memlog.h"
 
 extern "C" {
-#include "config.h"
-#include "qemu-common.h"
-#include "disas.h"
 
-#include "panda_plugin.h"
+// XXX do this later
+//#include "panda_plugin.h"
 
 #if defined(CONFIG_SOFTMMU)
 
-#include "../../softmmu_defs.h"
+//#include "../../softmmu_defs.h"
 
 // To support other architectures, make similar minor changes to op_helper.c
 // These functions perform logging of dynamic values
+/*
 #if (defined(TARGET_I386) || defined(TARGET_ARM))
 static void *qemu_panda_ld_helpers[5] = {
     (void*) __ldb_mmu_panda,
@@ -87,21 +103,36 @@ static char *qemu_panda_st_helper_names[5] = {
     (char*)"__stq_mmu_panda",
 };
 #endif
+*/
 
-static void *qemu_ld_helpers[5] = {
-    (void*) __ldb_mmu,
+static void *qemu_ld_helpers[7] = {
+    /*(void*) __ldb_mmu,
     (void*) __ldw_mmu,
     (void*) __ldl_mmu,
     (void*) __ldq_mmu,
-    (void*) __ldq_mmu,
+    (void*) __ldq_mmu,*/
+    helper_ret_ldub_mmu,
+    helper_le_lduw_mmu,
+    helper_le_ldul_mmu,
+    helper_le_ldq_mmu,
+    helper_be_lduw_mmu,
+    helper_be_ldul_mmu,
+    helper_be_ldq_mmu,
 };
 
-static void *qemu_st_helpers[5] = {
-    (void*) __stb_mmu,
+static void *qemu_st_helpers[7] = {
+    /*(void*) __stb_mmu,
     (void*) __stw_mmu,
     (void*) __stl_mmu,
     (void*) __stq_mmu,
-    (void*) __stq_mmu,
+    (void*) __stq_mmu,*/
+    helper_ret_stb_mmu,
+    helper_le_stw_mmu,
+    helper_le_stl_mmu,
+    helper_le_stq_mmu,
+    helper_be_stw_mmu,
+    helper_be_stl_mmu,
+    helper_be_stq_mmu,
 };
 
 static char *qemu_ld_helper_names[5] = {
@@ -219,11 +250,11 @@ public:
     }
 
     /* Shortcuts */
-    Type* intType(int w) { return IntegerType::get(m_context, w); }
-    Type* intPtrType(int w) { return PointerType::get(intType(w), 0); }
-    Type* wordType() { return intType(TCG_TARGET_REG_BITS); }
-    Type* wordType(int bits) { return intType(bits); }
-    Type* wordPtrType() { return intPtrType(TCG_TARGET_REG_BITS); }
+    llvm::Type* intType(int w) { return IntegerType::get(m_context, w); }
+    llvm::Type* intPtrType(int w) { return PointerType::get(intType(w), 0); }
+    llvm::Type* wordType() { return intType(TCG_TARGET_REG_BITS); }
+    llvm::Type* wordType(int bits) { return intType(bits); }
+    llvm::Type* wordPtrType() { return intPtrType(TCG_TARGET_REG_BITS); }
 
     void adjustTypeSize(unsigned target, Value **v1) {
         Value *va = *v1;
@@ -241,11 +272,11 @@ public:
         adjustTypeSize(target, v2);
     }
 
-    Type* tcgType(int type) {
+    llvm::Type* tcgType(int type) {
         return type == TCG_TYPE_I64 ? intType(64) : intType(32);
     }
 
-    Type* tcgPtrType(int type) {
+    llvm::Type* tcgPtrType(int type) {
         return type == TCG_TYPE_I64 ? intPtrType(64) : intPtrType(32);
     }
 
@@ -597,7 +628,11 @@ void TCGLLVMContextPrivate::initGlobalsAndLocalTemps()
         } else {
             // This global is in memory at (mem_reg + mem_offset).
             // Base value is not known yet, so just store mem_reg
-            m_globalsIdx[i] = s->temps[i].mem_reg;
+
+            // Change in QEMU according to commit
+            // b3a62939561e07bc34493444fa926b6137cba4e8
+            //m_globalsIdx[i] = s->temps[i].mem_reg;
+            m_globalsIdx[i] = s->temps[i].mem_base->reg;
         }
     }
 
@@ -678,9 +713,10 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 
     uintptr_t helperFuncAddr;
 
-    if (panda_use_memcb){
-        helperFuncAddr = ld ? (uint64_t) qemu_panda_ld_helpers[bits>>4]:
-                               (uint64_t) qemu_panda_st_helpers[bits>>4];
+    if (0 /*panda_use_memcb*/){
+        // XXX FIXME
+        //helperFuncAddr = ld ? (uint64_t) qemu_panda_ld_helpers[bits>>4]:
+        //                       (uint64_t) qemu_panda_st_helpers[bits>>4];
     }
     else {
         helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
@@ -694,7 +730,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         argValues.push_back(value);
     argValues.push_back(ConstantInt::get(intType(8*sizeof(int)), mem_index));
 
-    std::vector<Type*> argTypes;
+    std::vector<llvm::Type*> argTypes;
     argTypes.reserve(3);
     for(int i=0; i<(ld?2:3); ++i)
         argTypes.push_back(argValues[i]->getType());
@@ -704,14 +740,15 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         helperFunctionTy = FunctionType::get(intType(bits),
             argTypes, false);
     } else {
-        helperFunctionTy = FunctionType::get(Type::getVoidTy(m_context),
+        helperFunctionTy = FunctionType::get(llvm::Type::getVoidTy(m_context),
             argTypes, false);
     }
 
     char *funcName;
-    if (panda_use_memcb){
-        funcName = ld ? qemu_panda_ld_helper_names[bits>>4]:
-            qemu_panda_st_helper_names[bits>>4];
+    if (0 /*panda_use_memcb*/){
+        // XXX FIXME
+        //funcName = ld ? qemu_panda_ld_helper_names[bits>>4]:
+        //    qemu_panda_st_helper_names[bits>>4];
     }
     else {
         funcName = ld ? qemu_ld_helper_names[bits>>4]:
@@ -752,19 +789,20 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     int nb_args = def.nb_args;
 
     switch(opc) {
-    case INDEX_op_debug_insn_start:
+    case INDEX_op_insn_start:
         break;
 
     /* predefined ops */
-    case INDEX_op_nop:
-    case INDEX_op_nop1:
-    case INDEX_op_nop2:
-    case INDEX_op_nop3:
-        break;
-
-    case INDEX_op_nopn:
-        nb_args = args[0];
-        break;
+    // No longer present
+    //case INDEX_op_nop:
+    //case INDEX_op_nop1:
+    //case INDEX_op_nop2:
+    //case INDEX_op_nop3:
+    //    break;
+    //
+    //case INDEX_op_nopn:
+    //    nb_args = args[0];
+    //    break;
 
     case INDEX_op_discard:
         delValue(args[0]);
@@ -780,7 +818,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             //assert((flags & TCG_CALL_TYPE_MASK) == TCG_CALL_TYPE_STD);
 
             std::vector<Value*> argValues;
-            std::vector<Type*> argTypes;
+            std::vector<llvm::Type*> argTypes;
             argValues.reserve(nb_iargs-1);
             argTypes.reserve(nb_iargs-1);
             for(int i=0; i < nb_iargs-1; ++i) {
@@ -793,8 +831,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             }
 
             assert(nb_oargs == 0 || nb_oargs == 1);
-            Type* retType = nb_oargs == 0 ?
-                Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
+            llvm::Type* retType = nb_oargs == 0 ?
+                llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
 
             Value* helperAddr = getValue(args[nb_oargs + nb_iargs]);
             Value* result;
@@ -1104,9 +1142,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #define __ARITH_OP_BSWAP(opc_name, sBits, bits)                     \
     case opc_name: {                                                \
         assert(getValue(args[1])->getType() == intType(bits));      \
-        Type* Tys[] = { intType(sBits) };                     \
+        llvm::Type* Tys[] = { intType(sBits) };                     \
         Function *bswap = Intrinsic::getDeclaration(m_module,       \
-                Intrinsic::bswap, ArrayRef<Type*>(Tys,1));                          \
+                Intrinsic::bswap, ArrayRef<llvm::Type*>(Tys,1));                          \
         v = m_builder.CreateTrunc(getValue(args[1]),intType(sBits));\
         setValue(args[0], m_builder.CreateZExt(                     \
                 m_builder.CreateCall(bswap, v), intType(bits)));    \
@@ -1211,6 +1249,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         setValue(args[0], v);         \
         break;
 
+    /*
     __OP_QEMU_ST(INDEX_op_qemu_st8,   8)
     __OP_QEMU_ST(INDEX_op_qemu_st16, 16)
     __OP_QEMU_ST(INDEX_op_qemu_st32, 32)
@@ -1225,6 +1264,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     __OP_QEMU_LD(INDEX_op_qemu_ld64,  64, Z)
 
     __OP_QEMU_LDD(INDEX_op_qemu_ld32, 32)
+    */
 
 #undef __OP_QEMU_LD
 #undef __OP_QEMU_ST
@@ -1338,7 +1378,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
     FunctionType *tbFunctionType = FunctionType::get(
             wordType(),
-            std::vector<Type*>(1, intPtrType(64)), false);
+            std::vector<llvm::Type*>(1, intPtrType(64)), false);
     m_tbFunction = Function::Create(tbFunctionType,
             Function::PrivateLinkage, fName.str(), m_module);
     BasicBlock *basicBlock = BasicBlock::Create(m_context,
@@ -1351,14 +1391,14 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     initGlobalsAndLocalTemps();
 
     /* Generate code for each opc */
-    const TCGArg *args = gen_opparam_buf;
+    const TCGArg *args = s->gen_opparam_buf;
     for(int opc_index=0; ;++opc_index) {
-        int opc = gen_opc_buf[opc_index];
+        int opc = s->gen_op_buf[opc_index].opc;
 
-        if(opc == INDEX_op_end)
+        if(opc == INDEX_op_exit_tb) // XXX correct replacement for op_end?
             break;
 
-        if(opc == INDEX_op_debug_insn_start) {
+        if(opc == INDEX_op_insn_start) {
             // volatile store of current OPC index
             m_builder.CreateStore(ConstantInt::get(wordType(), opc_index),
                 m_builder.CreateIntToPtr(
@@ -1552,13 +1592,14 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 }
 
 #ifdef CONFIG_LLVM
-extern CPUState *env;
+//extern CPUState *env;
 #endif
 
-uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
+//uintptr_t tcg_llvm_qemu_tb_exec(void *env1, TranslationBlock *tb)
+uintptr_t tcg_llvm_qemu_tb_exec(CPUState *env, TranslationBlock *tb)
 {
     tcg_llvm_runtime.last_tb = tb;
-    env = (CPUState*)env1;
+    //env = (CPUState*)env1;
     uintptr_t next_tb;
     next_tb = ((uintptr_t (*)(void*)) tb->llvm_tc_ptr)(&env);
     return next_tb;

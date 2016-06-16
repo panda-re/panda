@@ -43,6 +43,9 @@
 extern "C" {
 #endif
 
+// Definition from QEMU 1.0.1
+#define TCG_MAX_LABELS 512
+
 //#include "tcg.h"
 
 /*****************************/
