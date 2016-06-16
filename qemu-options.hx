@@ -3976,6 +3976,10 @@ contents of @code{iv.b64} to the second secret
 
 ETEXI
 
+DEF("replay", HAS_ARG, QEMU_OPTION_replay,
+    "-replay </path/to/snapshot-prefix>\n"
+    "                replay the recording that starts at <snapshot>\n", QEMU_ARCH_ALL)
+
 
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI
