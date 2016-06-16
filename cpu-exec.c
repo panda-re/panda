@@ -686,7 +686,7 @@ int cpu_exec(CPUState *cpu)
                     break;
                 }
 
-                if (rr_in_replay() && rr_num_instr_before_next_interrupt() > 0) {
+                if (!rr_in_replay() || rr_num_instr_before_next_interrupt() > 0) {
                     cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                     /* Try to align the host and virtual clocks
                        if the guest is in advance */
