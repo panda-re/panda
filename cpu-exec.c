@@ -665,17 +665,18 @@ int cpu_exec(CPUState *cpu)
                 cpu_handle_interrupt(cpu, &last_tb);
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
 
-                bool panda_invalidate_tb = false;
 
 #ifdef CONFIG_SOFTMMU
-                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if (panda_invalidate_tb ||
-                    (rr_mode == RR_REPLAY && until_interrupt > 0
-                     && tb->icount > until_interrupt)) {
-                    // retranslate so that basic block boundary matches
-                    // record & replay for interrupt delivery
-                    panda_invalidate_single_tb(cpu, tb->pc);
-                    tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                if (rr_mode == RR_REPLAY) {
+                    bool panda_invalidate_tb = false;
+                    uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+                    if (panda_invalidate_tb || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
+                                                tb->icount > until_interrupt)) {
+                        // retranslate so that basic block boundary matches
+                        // record & replay for interrupt delivery
+                        panda_invalidate_single_tb(cpu, tb->pc);
+                        tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                    }
                 }
 #endif //CONFIG_SOFTMMU
                 // Check for termination in replay
