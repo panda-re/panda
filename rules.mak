@@ -1,4 +1,7 @@
 
+# Enable verbose compile options
+#V=1
+
 COMMA := ,
 
 # Don't use implicit rules or variables

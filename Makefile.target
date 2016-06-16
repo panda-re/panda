@@ -88,7 +88,7 @@ all: $(PROGS) stap
 
 #########################################################
 # cpu emulator library
-panda/llvm/tcg-llvm.o: QEMU_CXXFLAGS+=$(LLVM_CXXFLAGS)
+panda/llvm/tcg-llvm.o: QEMU_CXXFLAGS+=-Wno-narrowing -Wno-sign-compare -fpermissive $(LLVM_CXXFLAGS)
 obj-y = exec.o translate-all.o cpu-exec.o
 obj-y += translate-common.o
 obj-y += cpu-exec-common.o
