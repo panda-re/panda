@@ -41,6 +41,9 @@ typedef ram_addr_t tb_page_addr_t;
 #define DISAS_UPDATE  2 /* cpu state was modified dynamically */
 #define DISAS_TB_JUMP 3 /* only pc was modified statically */
 
+//struct TranslationBlock;
+//typedef struct TranslationBlock TranslationBlock;
+
 #include "qemu/log.h"
 
 void gen_intermediate_code(CPUArchState *env, struct TranslationBlock *tb);
@@ -199,6 +202,17 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
 #define USE_DIRECT_JUMP
 #endif
 
+#ifdef CONFIG_LLVM
+struct TCGLLVMTranslationBlock;
+struct TCGLLVMContext;
+#ifdef __cplusplus
+namespace llvm { class Function; }
+using llvm::Function;
+#else
+struct Function;
+#endif
+#endif
+
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -253,6 +267,20 @@ struct TranslationBlock {
 
     // record and replay - might just be able to use icount
     uint16_t num_guest_insns;
+
+#ifdef CONFIG_LLVM
+    /* pointer to LLVM translated code */
+    struct TCGLLVMContext *tcg_llvm_context;
+#ifdef __cplusplus
+    Function *llvm_function;
+#else
+    struct Function *llvm_function;
+#endif
+    uint8_t *llvm_tc_ptr;
+    uint8_t *llvm_tc_end;
+    struct TranslationBlock* llvm_tb_next[2];
+#endif
+
 };
 
 void tb_free(TranslationBlock *tb);
@@ -409,5 +437,9 @@ extern int singlestep;
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;
 extern bool exit_request;
+
+extern int generate_llvm;
+extern int execute_llvm;
+extern const int has_llvm_engine;
 
 #endif
