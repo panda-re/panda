@@ -522,7 +522,11 @@ int main_loop_wait(int nonblocking)
     qemu_start_warp_timer();
     // ru: add check if in in replay for running timers
     //if (!rr_in_replay())
-        qemu_clock_run_all_timers();
+    qemu_clock_run_all_timers();
+
+    if (rr_in_record()) {
+        rr_record_in_progress = 0;
+    }
 
     return ret;
 }
