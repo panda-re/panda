@@ -21,6 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu/osdep.h"
 #include "qemu-version.h"
 #include "qemu/cutils.h"
@@ -122,6 +136,18 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 
 #include "rr_log_all.h"
+
+#ifdef CONFIG_LLVM
+struct TCGLLVMContext;
+
+extern struct TCGLLVMContext* tcg_llvm_ctx;
+extern int generate_llvm;
+extern int execute_llvm;
+extern const int has_llvm_engine;
+
+struct TCGLLVMContext* tcg_llvm_initialize(void);
+void tcg_llvm_destroy(void);
+#endif
 
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
@@ -1919,6 +1945,16 @@ static bool main_loop_should_exit(void)
     }
     return false;
 }
+
+#ifdef CONFIG_LLVM
+static void tcg_llvm_cleanup(void)
+{
+    if(tcg_llvm_ctx) {
+        tcg_llvm_destroy();
+        tcg_llvm_ctx = NULL;
+    }
+}
+#endif
 
 static void main_loop(void)
 {
@@ -4041,6 +4077,23 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 break;
+#if defined(CONFIG_LLVM)
+            case QEMU_OPTION_execute_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+                generate_llvm = 1;
+                execute_llvm = 1;
+                break;
+            case QEMU_OPTION_generate_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+                generate_llvm = 1;
+                break;
+#endif
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
@@ -4140,6 +4193,14 @@ int main(int argc, char **argv, char **envp)
     if (data_dir_idx < ARRAY_SIZE(data_dir)) {
         data_dir[data_dir_idx++] = CONFIG_QEMU_DATADIR;
     }
+
+#if defined(CONFIG_LLVM)
+    if (generate_llvm || execute_llvm){
+        if (tcg_llvm_ctx == NULL){
+            tcg_llvm_ctx = tcg_llvm_initialize();
+        }
+    }
+#endif
 
     smp_parse(qemu_opts_find(qemu_find_opts("smp-opts"), NULL));
 
@@ -4682,6 +4743,12 @@ int main(int argc, char **argv, char **envp)
     res_free();
 #ifdef CONFIG_TPM
     tpm_cleanup();
+#endif
+
+#ifdef CONFIG_LLVM
+    if (generate_llvm || execute_llvm){
+        tcg_llvm_cleanup();
+    }
 #endif
 
     return 0;

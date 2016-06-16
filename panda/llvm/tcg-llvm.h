@@ -80,7 +80,7 @@ void tcg_llvm_gen_code(struct TCGLLVMContext *l, struct TCGContext *s,
                        struct TranslationBlock *tb);
 const char* tcg_llvm_get_func_name(struct TranslationBlock *tb);
 
-uintptr_t tcg_llvm_qemu_tb_exec(void *env, TranslationBlock *tb);
+uintptr_t tcg_llvm_qemu_tb_exec(CPUState *env, TranslationBlock *tb);
 
 int tcg_llvm_search_last_pc(struct TranslationBlock *tb, uintptr_t searched_pc);
 
