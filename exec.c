@@ -3419,7 +3419,11 @@ static inline void address_space_stl_internal(AddressSpace *as,
             val = bswap32(val);
         }
 #endif
-        r = memory_region_dispatch_write(mr, addr1, val, 4, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action=*/ r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
+            /*record=*/ RR_NO_ACTION,
+            /*replay=*/ RR_NO_ACTION,
+            /*location=*/ RR_CALLSITE_STL_PHYS);        
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
