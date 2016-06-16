@@ -459,6 +459,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int interrupt_request = cpu->interrupt_request;
+    static int last_interrupt_request = 0;
 #ifdef CONFIG_SOFTMMU
     //mz Record and Replay.
     //mz it is important to do this in the order written, as
@@ -466,7 +467,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
     //time via a signal.  Thus, we want to make sure that we
     //record the same value in the log as the one being used in
     //these decisions.
-    rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT;
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
     rr_interrupt_request(&interrupt_request);
 
     if (rr_in_replay()) {
@@ -524,7 +525,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
         }
 #ifdef CONFIG_SOFTMMU
         //mz record the value again in case do_interrupt has set EXITTB flag
-        rr_skipped_callsite_location = RR_CALLSITE_CPU_EXEC_4;
+        rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER;
         rr_interrupt_request((int *)&cpu->interrupt_request);
 #endif
         if (interrupt_request & CPU_INTERRUPT_EXITTB) {
