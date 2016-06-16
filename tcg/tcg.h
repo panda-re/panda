@@ -878,7 +878,7 @@ static inline TCGLabel *arg_label(TCGArg i)
 
 static inline ptrdiff_t tcg_ptr_byte_diff(void *a, void *b)
 {
-    return a - b;
+    return (uintptr_t)a - (uintptr_t)b;
 }
 
 /**
