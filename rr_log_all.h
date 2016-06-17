@@ -369,35 +369,7 @@ static inline int rr_prog_point_compare(RR_prog_point current,
     if (current.guest_instr_count < recorded.guest_instr_count) {
         return (-1);
     } else if (current.guest_instr_count == recorded.guest_instr_count) {
-        // the two counts are the same.
-        // other things should agree.  else, we are in trouble
-        if (current.pc == recorded.pc &&
-            current.secondary == recorded.secondary) {
-            return 0;
-        } else if (current.pc == 0 && current.guest_instr_count == 0) {
-            return 0;
-        } else {
-            // jh old record/replay translated ops in the order:
-            // increment instr count, do micro ops, update PC to next
-            // instruction
-            // PANDA increments the instr count, sets the RR PC to the current
-            // instruction,
-            // and executes the instruction. We no longer have wierd cases like
-            // hlt on x86
-            // that don't account for themselves. The PC's definition has also
-            // changed from
-            // next instruction to previous instruction, which is why we
-            // sometimes need the
-            // bootstrap code above for pc == 0, instr count == 0
-
-            // mz
-            // rr_spit_queue_head();
-            // rr_signal_disagreement(current, recorded);
-            // mz we don't come back from rr_do_end_replay() - this is just to
-            // clean things up.
-            // rr_do_end_replay(/*is_error=*/1);
-            return -1;
-        }
+        return 0;
     } else {
         // mz if we've managed to get here, we're either ahead of the log or
         // eip/ecx
