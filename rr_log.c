@@ -976,14 +976,6 @@ static inline RR_log_entry* get_next_entry(RR_log_entry_kind kind,
     }
 
     RR_log_entry head = *rr_queue_head;
-    if (head.header.kind != kind) {
-        return NULL;
-    }
-
-    if (check_callsite && head.header.callsite_loc != call_site) {
-        return NULL;
-    }
-
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
     if (head.header.prog_point.pc == 0 &&
@@ -996,6 +988,15 @@ static inline RR_log_entry* get_next_entry(RR_log_entry_kind kind,
                 head.header.prog_point, kind) != 0) {
         return NULL;
     }
+
+    if (head.header.kind != kind) {
+        return NULL;
+    }
+
+    if (check_callsite && head.header.callsite_loc != call_site) {
+        return NULL;
+    }
+
     // mz remove log entry from queue and return it.
     current = rr_queue_head;
     rr_queue_head = rr_queue_head->next;
