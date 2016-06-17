@@ -221,12 +221,6 @@ void rr_signal_disagreement(RR_prog_point current, RR_prog_point recorded)
     if (current.guest_instr_count != recorded.guest_instr_count) {
         printf(">>> guest instruction counts disagree\n");
     }
-    if (current.pc != recorded.pc) {
-        printf(">>> guest PCs disagree\n");
-    }
-    if (current.secondary != recorded.secondary) {
-        printf(">>> guest secondary info disagrees\n");
-    }
 }
 
 // our debug rr_assert
@@ -978,9 +972,7 @@ static inline RR_log_entry* get_next_entry(RR_log_entry_kind kind,
     RR_log_entry head = *rr_queue_head;
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
-    if (head.header.prog_point.pc == 0 &&
-        head.header.prog_point.secondary == 0 &&
-        head.header.prog_point.guest_instr_count == 0) {
+    if (head.header.prog_point.guest_instr_count == 0) {
         // We'll process this one beacuse it's the start of the log
     }
     // mz rr_prog_point_compare will fail if we're ahead of the log
@@ -1027,13 +1019,6 @@ void rr_replay_debug(RR_callsite_id call_site)
         // than in record due to TB chaining being off
         return;
     } else if (log_point.guest_instr_count == current.guest_instr_count) {
-        // We think we're in the right place now, so let's do more stringent
-        // checks
-        if (log_point.secondary != current.secondary ||
-            log_point.pc != current.pc)
-            rr_signal_disagreement(current, log_point);
-
-        // We passed all these, so consume the log entry
         current_item = rr_queue_head;
         rr_queue_head = rr_queue_head->next;
         current_item->next = NULL;
