@@ -658,7 +658,6 @@ int cpu_exec(CPUState *cpu)
             last_tb = NULL; /* forget the last executed TB after exception */
             cpu->tb_flushed = false; /* reset before first TB lookup */
             for (;;) {
-                if (rr_get_guest_instr_count() == 726605) __asm__("int3");
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
