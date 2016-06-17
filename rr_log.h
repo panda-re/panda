@@ -153,17 +153,6 @@ static inline uint64_t rr_get_guest_instr_count(void) {
 //mz program execution state
 static inline RR_prog_point rr_prog_point(void) {
     RR_prog_point ret = {0};
-    CPUArchState *env = first_cpu->env_ptr;
-
-#ifdef TARGET_I386
-    ret.pc = env->eip;
-    ret.secondary = env->regs[R_ECX];
-#else
-    target_ulong pc, cs_base;
-    uint32_t flags;
-    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-    ret.pc = pc;
-#endif
     ret.guest_instr_count = first_cpu->rr_guest_instr_count;
     return ret;
 }
