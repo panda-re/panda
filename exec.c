@@ -2595,6 +2595,10 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
 
     for (;;) {
         if (!memory_access_is_direct(mr, true)) {
+            if (rr_in_replay()) {
+#warning come back and validate
+                return result;
+            }
             release_lock |= prepare_mmio_access(mr);
             l = memory_access_size(mr, l, addr1);
             /* XXX: could force current_cpu to NULL to avoid
@@ -2687,7 +2691,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
     uint64_t val;
     MemTxResult result = MEMTX_OK;
     bool release_lock = false;
-
+    _Static_assert(sizeof(MemTxResult) == 4, "Unexpected size of MemTxResult (does not match rr_input_4)");
     for (;;) {
         if (!memory_access_is_direct(mr, false)) {
             /* I/O case */
@@ -2696,26 +2700,42 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
             switch (l) {
             case 8:
                 /* 64 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 8,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 8,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_8);
                 stq_p(buf, val);
                 break;
             case 4:
                 /* 32 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 4,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 4,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_4);
                 stl_p(buf, val);
                 break;
             case 2:
                 /* 16 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 2,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 2,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_2);
                 stw_p(buf, val);
                 break;
             case 1:
                 /* 8 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 1,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 1,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_1);
                 stb_p(buf, val);
                 break;
             default:

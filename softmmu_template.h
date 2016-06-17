@@ -24,7 +24,7 @@
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
-
+#include "rr_log_all.h"
 #define DATA_SIZE (1 << SHIFT)
 
 #if DATA_SIZE == 8
@@ -159,8 +159,12 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(CPUArchState *env,
     }
 
     cpu->mem_io_vaddr = addr;
-    memory_region_dispatch_read(mr, physaddr, &val, 1 << SHIFT,
-                                iotlbentry->attrs);
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/ memory_region_dispatch_read(mr, physaddr, &val, 1 << SHIFT,
+                                iotlbentry->attrs),
+            /*record=*/ rr_input_8(&val),
+            /*replay=*/ rr_input_8(&val),
+            /*location=*/ RR_CALLSITE_IO_READ_ALL);
     return val;
 }
 #endif

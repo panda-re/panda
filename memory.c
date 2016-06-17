@@ -1198,11 +1198,6 @@ static MemTxResult memory_region_dispatch_read1(MemoryRegion *mr,
                                          mr, attrs);
     }
 
-    RR_DO_RECORD_OR_REPLAY(
-        /*action=*/ RR_NO_ACTION,
-        /*record=*/ rr_input_8(pval),
-        /*replay=*/ rr_input_8(pval),
-        /*location=*/ RR_CALLSITE_MRDR1);
 
     return result;
 
