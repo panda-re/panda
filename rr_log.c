@@ -1618,6 +1618,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_reset_state(cpu_state);
     // set global to turn on replay
     rr_mode = RR_REPLAY;
+    qemu_cond_broadcast(cpu_state->halt_cond);
 
     // cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
 
