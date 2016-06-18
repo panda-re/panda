@@ -3056,9 +3056,9 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
 
         mr = memory_region_from_host(buffer, &addr1);
         assert(mr != NULL);
-        if (is_write) {           
-            //bdg Save addr1,access_len,buffer contents   
-            if (rr_in_record() && rr_record_in_main_loop_wait ) {
+        if (is_write) {
+            //bdg Save addr1,access_len,buffer contents
+            if (rr_in_record()) {
                 rr_cpu_physical_memory_unmap_record(addr1, buffer, access_len, is_write);
             }
             invalidate_and_set_dirty(mr, addr1, access_len);
