@@ -8,6 +8,7 @@ extern "C"{
 #include <sys/stat.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 }
 
 #include "index.hpp"
