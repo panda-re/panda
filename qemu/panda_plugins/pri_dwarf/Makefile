@@ -14,6 +14,6 @@ LIBS+=-ldwarf -lelf
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
-	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
+	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) -shared -o $@ $^ $(LDFLAGS) $(LIBS),"  PLUGIN  $@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
