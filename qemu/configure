@@ -3831,10 +3831,6 @@ if test "$smartcard_nss" = "yes" ; then
   echo "libcacard_cflags=$libcacard_cflags" >> $config_host_mak
 fi
 
-if [ "$llvm" = "yes" ]; then
-   echo "LIBS:=$llvm_libs $llvm_ldflags \$(LIBS)" >> $config_target_mak
-fi
-
 list=""
 if test ! -z "$gdb_xml_files" ; then
   for x in $gdb_xml_files; do
