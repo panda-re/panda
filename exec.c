@@ -3111,9 +3111,12 @@ static inline uint32_t address_space_ldl_internal(AddressSpace *as, hwaddr addr,
     mr = address_space_translate(as, addr, &addr1, &l, false);
     if (l < 4 || !memory_access_is_direct(mr, false)) {
         release_lock |= prepare_mmio_access(mr);
-
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 4, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 4, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDL_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap32(val);
@@ -3204,9 +3207,12 @@ static inline uint64_t address_space_ldq_internal(AddressSpace *as, hwaddr addr,
                                  false);
     if (l < 8 || !memory_access_is_direct(mr, false)) {
         release_lock |= prepare_mmio_access(mr);
-
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 8, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 8, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDQ_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap64(val);
@@ -3319,7 +3325,11 @@ static inline uint32_t address_space_lduw_internal(AddressSpace *as,
         release_lock |= prepare_mmio_access(mr);
 
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 2, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 2, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDUW_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap16(val);
@@ -3466,10 +3476,10 @@ static inline void address_space_stl_internal(AddressSpace *as,
         }
 #endif
         RR_DO_RECORD_OR_REPLAY(
-            /*action=*/ r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
-            /*record=*/ RR_NO_ACTION,
-            /*replay=*/ RR_NO_ACTION,
-            /*location=*/ RR_CALLSITE_STL_PHYS);        
+            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
+            /*record*/   rr_input_4(&r); rr_input_4(&val),
+            /*replay*/   rr_input_4(&r); rr_input_4(&val),
+            /*location*/ RR_CALLSITE_STL_INTERNAL);        
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3578,7 +3588,11 @@ static inline void address_space_stw_internal(AddressSpace *as,
             val = bswap16(val);
         }
 #endif
-        r = memory_region_dispatch_write(mr, addr1, val, 2, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
+            /*record*/   rr_input_4(&r); rr_input_4(&val),
+            /*replay*/   rr_input_4(&r); rr_input_4(&val),
+            /*location*/ RR_CALLSITE_STW_INTERNAL);        
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
