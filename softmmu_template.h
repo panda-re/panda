@@ -370,8 +370,13 @@ static inline void glue(io_write, SUFFIX)(CPUArchState *env,
 
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
-    memory_region_dispatch_write(mr, physaddr, val, 1 << SHIFT,
-                                 iotlbentry->attrs);
+
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/ memory_region_dispatch_write(mr, physaddr, val, 1 << SHIFT,
+                                iotlbentry->attrs),
+            /*record=*/ RR_NO_ACTION,
+            /*replay=*/ RR_NO_ACTION,
+            /*location=*/ RR_CALLSITE_IO_WRITE_ALL);
 }
 
 void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,

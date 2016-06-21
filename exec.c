@@ -2634,7 +2634,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-            if (rr_in_record() && rr_record_in_main_loop_wait ) {
+            if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
                 rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
             }
             memcpy(ptr, buf, l);
