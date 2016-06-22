@@ -7,10 +7,10 @@
 # Licensed under the GNU General Public License version 3 or later.
 
 ARCH=$(arch)
-cp ../qemu/$ARCH-softmmu/config-devices.mak ..
-cp ../qemu/$ARCH-softmmu/config-target.mak ..
-cp ../qemu/$ARCH-softmmu/config-devices.mak ../qemu
-cp ../qemu/$ARCH-softmmu/config-target.mak ../qemu
-cp ../qemu/$ARCH-softmmu/config-target.h ..
-cp ../qemu/$ARCH-softmmu/config-target.h ../qemu
+ln -sf ../qemu/$ARCH-softmmu/config-devices.mak ..
+ln -sf ../qemu/$ARCH-softmmu/config-target.mak ..
+ln -sf ../qemu/$ARCH-softmmu/config-devices.mak ../qemu
+ln -sf ../qemu/$ARCH-softmmu/config-target.mak ../qemu
+ln -sf ../qemu/$ARCH-softmmu/config-target.h ..
+ln -sf ../qemu/$ARCH-softmmu/config-target.h ../qemu
 
