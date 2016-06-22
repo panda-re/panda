@@ -12,14 +12,21 @@ from __future__ import print_function
 import subprocess
 import re
 import sys
+import os
 
 start = 'KERNELINFO-BEGIN'
 end = 'KERNELINFO-END'
 inblock = False
-proc = subprocess.Popen(['dmesg',],stdout=subprocess.PIPE)
+
+# Choose input.
+if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
+    dmesg_in = open(sys.argv[1], 'r')
+else:
+    proc = subprocess.Popen(['dmesg',],stdout=subprocess.PIPE)
+    dmesg_in = proc.stdout
 
 # Retrieve the last block of kernel information lines.
-for line in proc.stdout:
+for line in dmesg_in:
     if start in line:
         inblock = True
         lines = []
