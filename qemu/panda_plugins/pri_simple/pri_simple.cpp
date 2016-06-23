@@ -134,14 +134,14 @@ bool init_plugin(void *self) {
     panda_require("pri_dwarf");
     assert(init_pri_dwarf_api());
 
-    PPP_REG_CB("pri", on_before_line_change, on_line_change);
+    //PPP_REG_CB("pri", on_before_line_change, on_line_change);
     //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     {
-        //panda_cb pcb;
-        //pcb.virt_mem_write = virt_mem_write;
-        //panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
-        //pcb.virt_mem_read = virt_mem_read;
-        //panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
+        panda_cb pcb;
+        pcb.virt_mem_write = virt_mem_write;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
+        pcb.virt_mem_read = virt_mem_read;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
     }
 #endif
     return true;

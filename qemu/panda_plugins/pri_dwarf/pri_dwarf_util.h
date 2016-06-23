@@ -1,11 +1,12 @@
 
-#ifndef __DWARF_UTIL_H
-#define __DWARF_UTIL_H
+#ifndef __PRI_DWARF_UTIL_H
+#define __PRI_DWARF_UTIL_H
 
 #include<libdwarf.h>
 #include<panda_plugin.h>
 #include<dwarf.h>
 #include"../pri/pri_types.h"
+
 
 /*
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
@@ -25,7 +26,7 @@ uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong gue
 */
 
 // util functions to read DW_OP char array
-    const unsigned char *
+const unsigned char *
 read_uleb128 (const unsigned char *p, target_ulong *val)
 {
     unsigned int shift = 0;
