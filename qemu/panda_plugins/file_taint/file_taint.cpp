@@ -46,6 +46,9 @@ static bool debug = true;
 const char *taint_filename = 0;
 bool positional_labels = true;
 bool no_taint = true;
+bool enable_taint_on_open = false;
+
+extern uint64_t replay_get_guest_instr_count(void);
 
 #define MAX_FILENAME 256
 bool saw_open = false;
@@ -144,6 +147,11 @@ void open_enter(CPUState *env, target_ulong pc, std::string filename, int32_t fl
         saw_open = true;
         printf ("saw open of file we want to taint: [%s] insn %" PRId64 "\n", taint_filename, rr_get_guest_instr_count());
         the_asid = panda_current_asid(env);
+        if (enable_taint_on_open && !no_taint && !taint2_enabled()) {
+            uint64_t ins = replay_get_guest_instr_count();
+            taint2_enable_taint();
+            if (debug) printf ("file_taint: enabled taint2 @ ins  %" PRId64 "\n", ins);
+        }
     }
 }
 
@@ -349,14 +357,11 @@ void linux_read_return(CPUState *env, target_ulong pc, uint32_t fd, uint32_t buf
 
 #endif
 
-extern uint64_t replay_get_guest_instr_count(void);
-bool taint_is_enabled = false;
 
 int file_taint_enable(CPUState *env, target_ulong pc) {
-    if (!no_taint && !taint_is_enabled) {
+    if (!no_taint && !taint2_enabled()) {
         uint64_t ins = replay_get_guest_instr_count();
         if (ins > first_instr) {            
-            taint_is_enabled = true;
             taint2_enable_taint();
             if (debug) printf (" enabled taint2 @ ins  %" PRId64 "\n", ins); 
         }
@@ -430,6 +435,7 @@ bool init_plugin(void *self) {
     end_label = panda_parse_ulong(args, "max_num_labels", 1000000);
     end_label = panda_parse_ulong(args, "end", end_label);
     start_label = panda_parse_ulong(args, "start", 0);
+    enable_taint_on_open = panda_parse_bool(args, "enable_taint_on_open");
     first_instr = panda_parse_uint64(args, "first_instr", 0);
 
     printf ("taint_filename = [%s]\n", taint_filename);
@@ -470,16 +476,17 @@ bool init_plugin(void *self) {
     
     // this sets up the taint api fn ptrs so we have access
     if (!no_taint) {
-        printf ("foo\n");
+        if (debug) printf ("file_taint: initializing taint2 plugin\n");
         panda_require("taint2");
         assert(init_taint2_api());
-        if (first_instr == 0) {
+        if (!enable_taint_on_open && first_instr == 0) {
+            if (debug) printf ("file_taint: turning on taint at replay beginning\n");
             taint2_enable_taint();
         }
     }
 
     if (!no_taint && first_instr > 0) {
-        printf ("bar\n");
+        if (debug) printf ("file_taint: turning on taint at instruction %" PRId64 "\n", first_instr);
         // only need this callback if we are turning on taint late
         pcb.before_block_translate = file_taint_enable;
         panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);

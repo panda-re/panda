@@ -8,7 +8,7 @@ PLUGIN_NAME=pri_dwarf
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++11 -O3
 LIBS+=-ldwarf -lelf
 
 # The main rule for your plugin. Please stick with the panda_ naming
