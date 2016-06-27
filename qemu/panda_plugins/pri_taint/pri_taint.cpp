@@ -53,7 +53,7 @@ Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64
     si->linenum = src_linenum;
 
     si->has_insertionpoint = 1;
-    si->insertionpoint = src_linenum - 1;
+    si->insertionpoint = 1;
     return si;
 }
 // should just be able to include these from taint2.h or taint_processor.cpp
