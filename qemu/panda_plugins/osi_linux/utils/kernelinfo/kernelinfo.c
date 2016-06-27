@@ -89,7 +89,7 @@ int init_module(void)
 	vfsmnt_p = &vfsmountstruct;
 
 	printk(KERN_INFO "--KERNELINFO-BEGIN--\n");
-	printk(KERN_INFO "name = %s %s\n", utsname()->version, utsname()->machine);
+	printk(KERN_INFO "name = %s|%s|%s\n", utsname()->release, utsname()->version, utsname()->machine);
 
 	printk(KERN_INFO "task.size = %zu\n", sizeof(init_task));
 	printk(KERN_INFO "#task.init_addr = 0x%08lX\n", (unsigned long)ts_p);
