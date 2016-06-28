@@ -149,16 +149,21 @@ bool init_plugin(void *self) {
     assert (!(panda_os_type == OST_UNKNOWN));
     if (panda_os_type == OST_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
-        gchar *progname = gargv[0];
+        char *progname = gargv[0];
+        gchar *progname_path;
+        gchar *progdir;
 
         // get absolute path to qemu program name and dir
         if (!g_path_is_absolute(progname)) {
             gchar *cwd = g_get_current_dir();
-            progname = g_build_filename(cwd, progname, NULL);
+            progname_path = g_build_filename(cwd, progname, NULL);
             g_free(cwd);
+            progdir = g_path_get_dirname(progname_path);
+            g_free(progname_path);
         }
-        gchar *progdir = g_path_get_dirname(progname);
-        g_free(progname);
+        else {
+            progdir = g_path_get_dirname(progname);
+        }
 
         // get path to kconffile and canonicalize
         gchar *kconffile = g_build_filename(progdir, "..", "panda_plugins", "osi_linux", "kernelinfo.conf", NULL);
