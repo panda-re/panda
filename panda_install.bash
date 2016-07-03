@@ -24,16 +24,22 @@ sudo apt-get update -qq
 sudo apt-get -y install build-essential 
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
-  python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c-dev libprotoc-dev \
+  python-pip git protobuf-compiler protobuf-c-compiler libprotoc-dev \
   libglib2.0-dev libelf-dev
+
+if lsb_release -r | grep -q "16"; then
+  sudo apt-get install libprotobuf-c-dev;
+else
+  sudo apt-get install libprotobuf-c0-dev;
+fi
 
 cwd=$(pwd)
 cd /tmp
 
-progress "Trying to install LLVM 3.8..."
-if ! sudo apt-get -y install libc++-dev llvm-3.8-dev clang-3.8
+progress "Trying to install LLVM 3.3..."
+if ! sudo apt-get -y install libc++-dev llvm-3.3-dev clang-3.3
 then
-  progress "Couldn't find OS package for LLVM 3.8. Proceeding without..."
+  progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
 fi
 
 if [ ! -e "/usr/local/lib/libdistorm3.so" ]
