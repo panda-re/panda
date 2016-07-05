@@ -48,6 +48,9 @@ void on_free_osimodules(OsiModules *ms);
 // are redefined. Possibly we should move them to a config file?
 #define KMODE_FS           0x030 // Segment number of FS in kernel mode
 #define KPCR_CURTHREAD_OFF 0x124 // _KPCR.PrcbData.CurrentThread
+#define KPCR_KDVERSION_OFF 0x34  // _KPCR.KdVersionBlock
+#define KDVERSION_DDL_OFF  0x20  // _DBGKD_GET_VERSION64.DebuggerDataList
+#define KDBG_PSLML         0x48  // _KDDEBUGGER_DATA64.PsLoadedModuleList
 #define KTHREAD_KPROC_OFF  0x150 // _KTHREAD.Process
 #define EPROC_LINKS_OFF    0x0b8 // _EPROCESS.ActiveProcessLinks
 #define EPROC_DTB_OFF      0x018 // _EPROCESS.Pcb.DirectoryTableBase
@@ -61,7 +64,9 @@ void on_free_osimodules(OsiModules *ms);
 #define EPROC_PEB_OFF      0x1a8 // _EPROCESS.Peb
 #define PEB_LDR_OFF        0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x14 // _PEB_LDR_DATA.InMemoryOrderModuleLinks
+#define PEB_LDR_LOAD_LINKS_OFF 0x0c // _PEB_LDR_DATA.InMemoryOrderModuleLinks
 #define LDR_MEM_LINKS_OFF  0x008 // _LDR_DATA_TABLE_ENTRY.InMemoryOrderLinks
+#define LDR_LOAD_LINKS_OFF 0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 #define LDR_BASE_OFF       0x018 // _LDR_DATA_TABLE_ENTRY.DllBase
 #define LDR_SIZE_OFF       0x020 // _LDR_DATA_TABLE_ENTRY.SizeOfImage
 #define LDR_BASENAME_OFF   0x02c // _LDR_DATA_TABLE_ENTRY.BaseDllName
@@ -144,10 +149,10 @@ static void get_procname(CPUState *env, PTR eproc, char *name) {
 }
 
 // XXX: this will have to change for 64-bit
-static PTR get_current_proc(CPUState *env) {
+static PTR get_kpcr(CPUState *env) {
     // Read the kernel-mode FS segment base
     uint32_t e1, e2;
-    uint32_t fs_base, thread, proc;
+    PTR fs_base;
 
     // Read out the two 32-bit ints that make up a segment descriptor
     panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS, (uint8_t *)&e1, sizeof(PTR), false);
@@ -156,8 +161,32 @@ static PTR get_current_proc(CPUState *env) {
     // Turn wacky segment into base
     fs_base = (e1 >> 16) | ((e2 & 0xff) << 16) | (e2 & 0xff000000);
 
+    return fs_base;
+}
+
+static PTR get_kdbg(CPUState *env) {
+    PTR kpcr = get_kpcr(env);
+    PTR kdversion, kddl, kddlp;
+    if (-1 == panda_virtual_memory_rw(env, kpcr+KPCR_KDVERSION_OFF, (uint8_t *)&kdversion, sizeof(PTR), false)) {
+        return 0;
+    }
+    // DebuggerDataList is a pointer to a pointer to the _KDDEBUGGER_DATA64
+    // So we need to dereference it twice.
+    if (-1 == panda_virtual_memory_rw(env, kdversion+KDVERSION_DDL_OFF, (uint8_t *)&kddlp, sizeof(PTR), false)) {
+        return 0;
+    }
+    if (-1 == panda_virtual_memory_rw(env, kddlp, (uint8_t *)&kddl, sizeof(PTR), false)) {
+        return 0;
+    }
+    return kddl;
+}
+
+static PTR get_current_proc(CPUState *env) {
+    PTR thread, proc;
+    PTR kpcr = get_kpcr(env);
+    
     // Read KPCR->CurrentThread->Process
-    panda_virtual_memory_rw(env, fs_base+KPCR_CURTHREAD_OFF, (uint8_t *)&thread, sizeof(PTR), false);
+    panda_virtual_memory_rw(env, kpcr+KPCR_CURTHREAD_OFF, (uint8_t *)&thread, sizeof(PTR), false);
     panda_virtual_memory_rw(env, thread+KTHREAD_KPROC_OFF, (uint8_t *)&proc, sizeof(PTR), false);
 
     return proc;
@@ -196,9 +225,9 @@ static PTR get_mod_size(CPUState *env, PTR mod) {
 
 static PTR get_next_mod(CPUState *env, PTR mod) {
     PTR next;
-    if (-1 == panda_virtual_memory_rw(env, mod+LDR_MEM_LINKS_OFF, (uint8_t *)&next, sizeof(PTR), false))
+    if (-1 == panda_virtual_memory_rw(env, mod+LDR_LOAD_LINKS_OFF, (uint8_t *)&next, sizeof(PTR), false))
         return 0;
-    next -= LDR_MEM_LINKS_OFF;
+    next -= LDR_LOAD_LINKS_OFF;
     return next;
 }
 
@@ -312,9 +341,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
         *out_ms = NULL; return;
     }
 
-    // Fake "first mod": the address of where the list list head would
+    // Fake "first mod": the address of where the list head would
     // be if it were a LDR_DATA_TABLE_ENTRY
-    PTR first_mod = ldr+PEB_LDR_MEM_LINKS_OFF-LDR_MEM_LINKS_OFF;
+    PTR first_mod = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
     PTR current_mod = get_next_mod(env, first_mod);
     // We want while loop here -- we are starting at the head,
     // which is not a valid module
@@ -326,6 +355,31 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 
     *out_ms = ms;
     return;
+}
+
+void on_get_modules(CPUState *env, OsiModules **out_ms) {
+    PTR kdbg = get_kdbg(env);
+
+    OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
+    ms->num = 0;
+    ms->module = NULL;
+    PTR PsLoadedModuleList;
+    // Dbg.PsLoadedModuleList
+    if (-1 == panda_virtual_memory_rw(env, kdbg+KDBG_PSLML, (uint8_t *)&PsLoadedModuleList, sizeof(PTR), false)) {
+        *out_ms = NULL;
+        return;
+    }
+
+    PTR current_mod = get_next_mod(env, PsLoadedModuleList);
+    // We want while loop here -- we are starting at the head,
+    // which is not a valid module
+    while (current_mod != PsLoadedModuleList) {
+        add_mod(env, ms, current_mod);
+        current_mod = get_next_mod(env, current_mod);
+        if (!current_mod) break;
+    }
+    
+    *out_ms = ms;
 }
 
 void on_free_osiproc(OsiProc *p) {
@@ -353,7 +407,6 @@ void on_free_osimodules(OsiModules *ms) {
     free(ms);
 }
 
-
 #endif
 
 bool init_plugin(void *self) {
@@ -362,6 +415,7 @@ bool init_plugin(void *self) {
     PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
     PPP_REG_CB("osi", on_get_processes, on_get_processes);
     PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
+    PPP_REG_CB("osi", on_get_modules, on_get_modules);
     PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
     PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
     PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
