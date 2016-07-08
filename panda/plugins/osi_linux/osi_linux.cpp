@@ -51,7 +51,6 @@ static bool debug = false;
 
 struct kernelinfo ki;
 int panda_memory_errors;
-char *kconf_group;
 
 /* ******************************************************************
  Helpers
@@ -520,7 +519,7 @@ bool init_plugin(void *self) {
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 	char *kconf_file = g_strdup(panda_parse_string(plugin_args, "kconf_file", DEFAULT_KERNELINFO_FILE));
-	kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
+	char *kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
 	panda_free_args(plugin_args);
 
 	// Load kernel offsets.
@@ -530,7 +529,7 @@ bool init_plugin(void *self) {
 	}
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
 	g_free(kconf_file);
-    //	g_free(kconf_group);
+	g_free(kconf_group);
 
 #if (defined OSI_LINUX_TEST)
 	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
