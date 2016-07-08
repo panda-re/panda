@@ -69,30 +69,6 @@
 #error	"_ESP macro not defined for target architecture."
 #endif
 
-/**
- * @brief Platform specific macro for retrieving the page directory address.
- */
-#if defined(TARGET_I386)
-#define _PGD		(env->cr[3])
-#elif defined(TARGET_ARM)
-#define _PGD		(env->cp15.c2_base0 & env->cp15.c2_base_mask)
-#else
-#error	"_PGD macro not defined for target architecture."
-#endif
-
-/**
- * @brief Platform specific macro for getting the current privillege level.
- */
-#if defined(TARGET_I386)
-/* check the Current Privillege Level in the flags register */
-#define _IN_KERNEL ((env->hflags & HF_CPL_MASK) == 0)
-#elif defined(TARGET_ARM)
-/* check for supervisor mode in the Current Program Status register */
-#define _IN_KERNEL ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC)
-#else
-#error	"_IN_KERNEL macro not defined for target architecture."
-#endif
-
 #define LOG_ERR(fmt, args...) fprintf(stderr, "ERROR(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
 #define LOG_INFO(fmt, args...) fprintf(stderr, "INFO(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
 
