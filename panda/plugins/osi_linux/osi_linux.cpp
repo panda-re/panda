@@ -475,7 +475,7 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 	OsiModules *ms;
 	uint32_t i;
 
-	if (!_IN_KERNEL) {
+	if (!panda_in_kernel(env)) {
 		// This shouldn't ever happen, as PGD is updated only in kernel mode.
 		LOG_ERR("Can't do introspection in user mode.");
 		goto error;
