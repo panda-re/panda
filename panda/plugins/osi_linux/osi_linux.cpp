@@ -83,13 +83,13 @@ static char *get_file_name(CPUState *env, PTR file_struct) {
 }
 
 static uint64_t get_file_position(CPUState *env, PTR file_struct) {
-    return get_file_pos(env, file_struct);
+	return get_file_pos(env, file_struct);
 }
 
 
 static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
-    PTR files = get_files(env, task_struct);
-    PTR fds = get_files_fds(env, files);
+	PTR files = get_files(env, task_struct);
+	PTR fds = get_files_fds(env, files);
 	PTR fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
@@ -101,7 +101,7 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
 	if (fd_file == (PTR)NULL) {
 		return (PTR)NULL;
 	}
-    return fd_file;
+	return fd_file;
 }
 
 
@@ -109,16 +109,16 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
  * @brief Resolves a file struct and returns its full pathname.
  */
 static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-    if (fd_file == (PTR)NULL) return NULL;
+	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (PTR)NULL) return NULL;
 	return get_file_name(env, fd_file);
 }
 
 #define INVALID_FILE_POS (-1)
 
 static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-    if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
+	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
 }
 
@@ -204,16 +204,16 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	OsiProc *p = NULL;
 	PTR ts;
 
-    //    target_long asid = panda_current_asid(env);
+	//	target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
-    if (ts) {
-        // valid task struct
-        // got a reasonable looking process.
-        // return it and save in cache
-        p = (OsiProc *)g_malloc0(sizeof(OsiProc));
-        fill_osiproc(env, p, ts);
-    }
-    *out_p = p;
+	if (ts) {
+		// valid task struct
+		// got a reasonable looking process.
+		// return it and save in cache
+		p = (OsiProc *)g_malloc0(sizeof(OsiProc));
+		fill_osiproc(env, p, ts);
+	}
+	*out_p = p;
 }
 
 /**
@@ -234,7 +234,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// Always starting the traversal with a process has the benefits of:
 	// 	a. Simplifying the traversal when OSI_LINUX_LIST_THREADS is disabled.
 	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
-	//     the current task is a thread.
+	//	 the current task is a thread.
 	// See kernel_structs.md for details.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 	if (ts_current == (PTR)NULL) goto error0;
@@ -276,7 +276,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		/*********************************************************/
 		for (int fdn=0; fdn<256; fdn++) {
 			char *s = get_fd_name(env, ts_current, fdn);
-            LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
+			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
 			g_free(s);
 		}
 		/*********************************************************/
@@ -332,9 +332,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 
 	// Find the process that matches p->pid.
 	// XXX: We could probably just use p->offset instead of traversing
-	//      the process list.
+	//	  the process list.
 	// XXX: An infinite loop will be triggered if p is a thread and
-	//	    OSI_LINUX_LIST_THREADS is not enabled.
+	//		OSI_LINUX_LIST_THREADS is not enabled.
 	do {
 		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
 #ifdef OSI_LINUX_LIST_THREADS
@@ -412,34 +412,34 @@ void on_free_osiprocs(OsiProcs *ps) {
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    //    target_ulong asid = panda_current_asid(env);
-    PTR ts_current = 0;
-    ts_current = p->offset;
-    if (ts_current == 0) {
-        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get task\n", (int)p->pid, fd);
-        return NULL;
-    }
-    char *name = get_fd_name(env, ts_current, fd);
-	if (unlikely(name == NULL)) {
-        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get filename\n", (int)p->pid, fd);
+	//	target_ulong asid = panda_current_asid(env);
+	PTR ts_current = 0;
+	ts_current = p->offset;
+	if (ts_current == 0) {
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get task\n", (int)p->pid, fd);
 		return NULL;
-    }
+	}
+	char *name = get_fd_name(env, ts_current, fd);
+	if (unlikely(name == NULL)) {
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get filename\n", (int)p->pid, fd);
+		return NULL;
+	}
 	name = g_strchug(name);
 	if (unlikely(g_strcmp0(name, "") == 0)) {
-        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- filename is empty\n", (int)p->pid, fd);
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- filename is empty\n", (int)p->pid, fd);
 		g_free(name);
-        return NULL;
-    }
-    return name;
+		return NULL;
+	}
+	return name;
 }
 
 
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
-    //    target_ulong asid = panda_current_asid(env);
-    PTR ts_current = 0;
-    ts_current = p->offset;
-    if (ts_current == 0) return INVALID_FILE_POS;
-    return get_fd_pos(env, ts_current, fd);
+	//	target_ulong asid = panda_current_asid(env);
+	PTR ts_current = 0;
+	ts_current = p->offset;
+	if (ts_current == 0) return INVALID_FILE_POS;
+	return get_fd_pos(env, ts_current, fd);
 }
 
 
