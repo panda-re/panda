@@ -276,8 +276,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		/*********************************************************/
 		for (int fdn=0; fdn<256; fdn++) {
 			char *s = get_fd_name(env, ts_current, fdn);
-            //			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
-            printf ("%s fd%d -> %s", p->name, fdn, s);
+            LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
 			g_free(s);
 		}
 		/*********************************************************/
@@ -417,24 +416,21 @@ char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
     PTR ts_current = 0;
     ts_current = p->offset;
     if (ts_current == 0) {
-        if (debug) printf ("osi_linux_fd_to_filename -- cant get task\n");
+        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get task\n", (int)p->pid, fd);
         return NULL;
     }
     char *name = get_fd_name(env, ts_current, fd);
 	if (unlikely(name == NULL)) {
-        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename\n");
-        goto make_name;
+        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get filename\n", (int)p->pid, fd);
+		return NULL;
     }
-
 	name = g_strchug(name);
 	if (unlikely(g_strcmp0(name, "") == 0)) {
-        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
-        goto make_name;
+        if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- filename is empty\n", (int)p->pid, fd);
+		g_free(name);
+        return NULL;
     }
     return name;
-
-make_name:
-    return NULL;
 }
 
 
