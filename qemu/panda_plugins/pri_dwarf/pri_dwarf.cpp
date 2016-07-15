@@ -261,23 +261,18 @@ get_form_values(Dwarf_Attribute attrib,
 // stolen from libdwarf dwarfdump implementation
 // in order to read a signed attribute from a die
 static int
-dwarf_upper_bound(Dwarf_Die the_die,
+dwarf_get_attr_unsigned(Dwarf_Die the_die, Dwarf_Half attr_code,
     Dwarf_Unsigned *sd,
     Dwarf_Error * err)
 {
     Dwarf_Attribute attr;
-    int rc = 0;
-    rc = dwarf_attr(the_die, DW_AT_upper_bound, &attr, err);
+    int rc;
+    rc = dwarf_attr(the_die, attr_code, &attr, err);
     if (rc == DW_DLV_OK) {
         rc = dwarf_formudata(attr, sd, err);
-        if (rc == DW_DLV_ERROR){
+        if (rc == DW_DLV_ERROR || rc == DW_DLV_NO_ENTRY){
              assert (1==0);
         }
-        else if (rc == DW_DLV_NO_ENTRY) {
-            printf("no entry \"upper_bound\"\n");
-            *sd = 1;
-        }
-        return rc;
     }
     return rc;
 }
@@ -624,7 +619,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         assert(array_child_tag == DW_TAG_subrange_type);
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
-                        rc = dwarf_upper_bound(array_child, 
+                        rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
                                 &array_typesize, 
                                 &err);
                         // array size is 0 than we likely have a 0 length
@@ -674,7 +669,7 @@ std::string getNameFromDie(Dwarf_Die the_die){
 }
 
 void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t, Dwarf_Debug dbg,
-        Dwarf_Die the_die, const char *astnodename, dwarfTypeCB cb, int recursion_level);
+        Dwarf_Die the_die, std::string astnodename, dwarfTypeCB cb, int recursion_level);
 
 void dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t, DwarfVarType *var_ty, dwarfTypeCB cb,
         int recursion_level){
@@ -682,6 +677,15 @@ void dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t, Dwar
     int rc;
     Dwarf_Debug dbg = var_ty->dbg;
     Dwarf_Die the_die = var_ty->var_die;
+    Dwarf_Unsigned dec_line;
+    rc = dwarf_get_attr_unsigned(the_die, DW_AT_decl_line, &dec_line, &err);
+    if (rc != DW_DLV_OK)
+        return;
+    // TODO: fix this to account for global variables declared in different
+    // files
+    else if (dec_line >= cur_line)
+        return;
+
     // We need to get the die name in order to build ast nodenames
     char *die_name = 0;
     rc = dwarf_diename(the_die, &die_name, &err);
@@ -689,11 +693,12 @@ void dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t, Dwar
         die("Error: no var name. Cannot make astnodename\n");
         return;
     }
-    __dwarf_type_iter (env, base_addr, loc_t, dbg, the_die, die_name, cb, recursion_level);
+    std::string die_name_str(die_name);
+    __dwarf_type_iter (env, base_addr, loc_t, dbg, the_die, "&" + die_name_str, cb, recursion_level);
     return;
 }
 void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
-        Dwarf_Debug dbg, Dwarf_Die the_die, const char *astnodename, dwarfTypeCB cb, int recursion_level){
+        Dwarf_Debug dbg, Dwarf_Die the_die, std::string astnodename, dwarfTypeCB cb, int recursion_level){
     if (recursion_level <= 0) return;
     Dwarf_Error err;
     Dwarf_Half tag;
@@ -743,20 +748,38 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                 case DW_TAG_structure_type:
                     //printf("  [+] structure_type: enumerating . . .\n");
                     {
-                        Dwarf_Unsigned struct_offset;
-                        std::string temp_name;
                         rc = dwarf_diename(type_die, &die_name, &err);
-                        if (rc != DW_DLV_OK)
-                            die_name = (char *) "?";
+                        //printf("Querying: (%s) %s\n", rc != DW_DLV_OK ? "?" : die_name, cur_astnodename.c_str());
+                        Dwarf_Unsigned struct_size;
+                        rc = dwarf_bytesize(type_die, &struct_size, &err);
+                        if (rc == DW_DLV_OK){
+                            cb(cur_base_addr, loc_t, struct_size, cur_astnodename.c_str());
+                        }
+                        if (cur_astnodename.find("&") == 0)
+                            cur_astnodename  = cur_astnodename.substr(1);
+                        else
+                            cur_astnodename = "(*" + cur_astnodename + ")";
+                        
                         Dwarf_Die struct_child;
                         if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                         {
                             //printf("  Couldn't parse struct for var: %s\n",cur_astnodename.c_str() );
                             return;
                         }
+                        Dwarf_Unsigned struct_offset;
+                        std::string temp_name;
                         char *field_name;
                         while (1) // enumerate struct arguments
                         {
+                            rc = dwarf_diename(struct_child, &field_name, &err);
+                            struct_offset = get_struct_member_offset(struct_child);
+                            if (rc != DW_DLV_OK){
+                                break;
+                            }
+                            temp_name = "&(" + cur_astnodename + "." + field_name + ")";
+                            //printf(" struct: %s, offset: %llu\n", temp_name.c_str(), struct_offset);
+                            __dwarf_type_iter(env, cur_base_addr + struct_offset, loc_t, dbg,
+                                           struct_child, temp_name, cb, recursion_level - 1);
                             rc = dwarf_siblingof(dbg, struct_child, &struct_child, &err);
                             if (rc == DW_DLV_ERROR) {
                                 die("Struct: Error getting sibling of DIE\n");
@@ -765,15 +788,6 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                             else if (rc == DW_DLV_NO_ENTRY) {
                                 break;
                             }
-                            rc = dwarf_diename(struct_child, &field_name, &err);
-                            struct_offset = get_struct_member_offset(struct_child);
-                            if (rc != DW_DLV_OK){
-                                break;
-                            }
-                            temp_name = "(" + cur_astnodename + ")." + field_name;
-                            //printf(" struct: %s, offset: %llu\n", temp_name.c_str(), struct_offset);
-                            __dwarf_type_iter(env, cur_base_addr + struct_offset, loc_t, dbg,
-                                           struct_child, temp_name.c_str(), cb, recursion_level - 1);
                         }
                         return;
                     }
@@ -796,7 +810,10 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         //printf("Querying: (*) %s\n", cur_astnodename.c_str());
                         cb(cur_base_addr, loc_t, sizeof(cur_base_addr),
                                 cur_astnodename.c_str());
-                        cur_astnodename = "*(" + cur_astnodename + ")";
+                        if (cur_astnodename.find("&") == 0)
+                            cur_astnodename  = cur_astnodename.substr(1);
+                        else
+                            cur_astnodename = "*(" + cur_astnodename + ")";
                         if (loc_t == LocMem) {
                             rc = panda_virtual_memory_rw(env, cur_base_addr,
                                     (uint8_t *)&cur_base_addr,
@@ -821,7 +838,10 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
                         dwarf_global_formref(type_attr, &offset, &err);
                         dwarf_offdie_b(dbg, offset, 1, &tmp_die, &err);
-                        dwarf_tag(type_die, &tag, &err);
+                        dwarf_tag(tmp_die, &tag, &err);
+                        if (tag == DW_TAG_structure_type) {
+                            cur_astnodename = "*(" + cur_astnodename + ")";
+                        }
                         rc = dwarf_diename(tmp_die, &die_name, &err);
                         // either query element as a null terminated char *
                         // or a one element array of the type of whatever
@@ -841,6 +861,32 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         Dwarf_Unsigned elem_typesize;
                         Dwarf_Unsigned array_typesize;
                         Dwarf_Die array_child;
+                        cb(cur_base_addr, loc_t, sizeof(cur_base_addr),
+                                cur_astnodename.c_str());
+                        if (cur_astnodename.find("&") == 0)
+                            cur_astnodename  = cur_astnodename.substr(1);
+                        else
+                            cur_astnodename = "*(" + cur_astnodename + ")";
+                        if (loc_t == LocMem) {
+                            rc = panda_virtual_memory_rw(env, cur_base_addr,
+                                    (uint8_t *)&cur_base_addr,
+                                    sizeof(cur_base_addr), 0);
+                            if (rc == -1){
+                                //printf("Could not dereference pointer so done"
+                                       //" tainting\n");
+                                return;
+                            }
+                        }
+                        else if (loc_t == LocReg){
+                            if (cur_base_addr < CPU_NB_REGS)
+                                cur_base_addr = env->regs[cur_base_addr];
+                            else
+                                return;
+                        }
+                        else {
+                            // shouldn't get herer
+                            abort();
+                        }
                         if (dwarf_child(type_die,
                                     &array_child, &err) != DW_DLV_OK){
                              break;
@@ -850,7 +896,7 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
                         //printf("Querying: ([]) %s\n", cur_astnodename.c_str());
-                        rc = dwarf_upper_bound(array_child, 
+                        rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
                                 &array_typesize, 
                                 &err);
                         // array size is 0 than we likely have a 0 length

@@ -10,7 +10,7 @@ PLUGIN_NAME=pri_taint
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-# CFLAGS+=
+CXXFLAGS+= -I$(SRC_PATH)/panda_tools/pirate_utils/linux
 # LIBS+=
 QEMU_CXXFLAGS+= -std=c++11
 
@@ -19,6 +19,6 @@ QEMU_CXXFLAGS+= -std=c++11
 $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/$(PLUGIN_NAME).cpp
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_TARGET_DIR)/$(PLUGIN_NAME).o
-	$(call quiet-command,$(CXX) $(QEMU_CXXFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
+	$(call quiet-command,$(CXX) $(QEMU_CXXFLAGS) $(CXXFLAGS) -shared -o $@ $^ $(LIBS),"  PLUGIN  $@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
