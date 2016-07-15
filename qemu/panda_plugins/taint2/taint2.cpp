@@ -665,6 +665,11 @@ void i386_hypercall_callback(CPUState *env){
                     // it's an attack point sighting
                     lava_attack_point(phs);
                 }
+                else if (phs.action == 13) {
+                    // it's a pri taint query point
+                    // do nothing and let pri_taint with hypercall
+                    // option handle it
+                }
                 else {
                     printf("Unknown hypercall action %d\n", phs.action);
                 }
