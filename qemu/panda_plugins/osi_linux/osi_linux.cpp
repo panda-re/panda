@@ -137,7 +137,7 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 	p->asid = get_pgd(env, task_addr);
 
 #if (defined OSI_LINUX_TEST)
-	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, p->ppid, p->pid, p->asid, p->name);
+	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, (int)p->ppid, (int)p->pid, p->asid, p->name);
 #endif
 }
 
@@ -471,6 +471,7 @@ void on_free_osimodules(OsiModules *ms) {
  * @brief Fills an OsiProc struct.
  */
 int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
+	static int vmi_pgd_changed_count = 0;
 	OsiProcs *ps;
 	OsiModules *ms;
 	uint32_t i;
@@ -481,14 +482,17 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 		goto error;
 	}
 
-	LOG_INFO("------------------------------------------------");
+	// Directly call the linux-specific introspection functions.
+	// For testing the functions via their callbacks, use the osi_test plugin.
+	LOG_INFO("--- START %4d ---------------------------------------------", vmi_pgd_changed_count);
 	on_get_processes(env, &ps);
 	for (i=0; i< ps->num; i++) {
 		on_get_libraries(env, &ps->proc[i], &ms);
 		on_free_osimodules(ms);
 	}
 	on_free_osiprocs(ps);
-	LOG_INFO("------------------------------------------------");
+	LOG_INFO("--- END  %4d ---------------------------------------------", vmi_pgd_changed_count);
+	vmi_pgd_changed_count++;
 
 	return 0;
 
@@ -510,6 +514,7 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 #if (defined OSI_LINUX_TEST)
 	panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
+	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #endif
 
 	// Read the name of the kernel configuration to use.
@@ -527,9 +532,7 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
-#if (defined OSI_LINUX_TEST)
-	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
-#else
+#if !(defined OSI_LINUX_TEST)
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
