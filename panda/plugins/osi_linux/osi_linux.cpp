@@ -532,14 +532,12 @@ bool init_plugin(void *self) {
 	g_free(kconf_file);
 	g_free(kconf_group);
 
-#if !(defined OSI_LINUX_TEST)
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
 	PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
-#endif
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else
