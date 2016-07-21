@@ -269,8 +269,8 @@ void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const
     if (taint2_enabled()){
         struct args args = {env, file_Name, lno};
         //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-        //pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
-        pri_all_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+        pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+        //pri_all_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
     }
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){

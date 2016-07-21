@@ -799,7 +799,8 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         if (rc == DW_DLV_OK){
                             rc = dwarf_diename(type_die, &die_name, &err);
                             //printf("Querying: (%s) %s\n", die_name, cur_astnodename.c_str());
-                            cb(cur_base_addr, loc_t, base_typesize, cur_astnodename.c_str());
+                            cb(cur_base_addr, loc_t, base_typesize < 4 ? 4 : base_typesize,
+                                    cur_astnodename.c_str());
                         }
                         break;
                     }
