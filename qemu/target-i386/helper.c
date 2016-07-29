@@ -874,6 +874,15 @@ int cpu_x86_handle_mmu_fault(CPUX86State *env, target_ulong addr,
     return 1;
 }
 
+static bool cpu_page_entry_is_valid(uint64_t entry) {
+    if (entry & PG_PRESENT_MASK) return true;
+    if (panda_os_type == OST_WINDOWS && (entry & (1 << 11)) && !(entry & (1 << 10)))
+        return true;
+    if (panda_os_type == OST_LINUX && (entry & (1 << 8)))
+        return true;
+    return false;
+}
+
 static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
         uint32_t *page_offset_addr, int *page_size_addr, uint64_t *pte_addr2){
     target_ulong pde_addr, pte_addr;
@@ -904,13 +913,13 @@ static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
                 pml4e_addr = ((env->cr[3] & ~0xfff) + (((addr >> 39) & 0x1ff) << 3)) &
                     env->a20_mask;
                 pml4e = ldq_phys(pml4e_addr);
-                if (!(pml4e & PG_PRESENT_MASK))
+                if (!cpu_page_entry_is_valid(pml4e))
                     return -1;
 
                 pdpe_addr = ((pml4e & ~0xfff & ~(PG_NX_MASK | PG_HI_USER_MASK)) +
                              (((addr >> 30) & 0x1ff) << 3)) & env->a20_mask;
                 pdpe = ldq_phys(pdpe_addr);
-                if (!(pdpe & PG_PRESENT_MASK))
+                if (!cpu_page_entry_is_valid(pdpe))
                     return -1;
             } else
     #endif
@@ -918,14 +927,14 @@ static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
                 pdpe_addr = ((env->cr[3] & ~0x1f) + ((addr >> 27) & 0x18)) &
                     env->a20_mask;
                 pdpe = ldq_phys(pdpe_addr);
-                if (!(pdpe & PG_PRESENT_MASK))
+                if (!cpu_page_entry_is_valid(pdpe))
                     return -1;
             }
 
             pde_addr = ((pdpe & ~0xfff & ~(PG_NX_MASK | PG_HI_USER_MASK)) +
                         (((addr >> 21) & 0x1ff) << 3)) & env->a20_mask;
             pde = ldq_phys(pde_addr);
-            if (!(pde & PG_PRESENT_MASK)) {
+            if (!cpu_page_entry_is_valid(pde)) {
                 return -1;
             }
             if (pde & PG_PSE_MASK) {
@@ -940,7 +949,7 @@ static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
                 pte = ldq_phys(pte_addr);
             }
             pte &= ~(PG_NX_MASK | PG_HI_USER_MASK);
-            if (!(pte & PG_PRESENT_MASK))
+            if (!cpu_page_entry_is_valid(pte))
                 return -1;
         } else {
             uint32_t pde;
@@ -948,7 +957,7 @@ static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
             /* page directory entry */
             pde_addr = ((env->cr[3] & ~0xfff) + ((addr >> 20) & 0xffc)) & env->a20_mask;
             pde = ldl_phys(pde_addr);
-            if (!(pde & PG_PRESENT_MASK))
+            if (!cpu_page_entry_is_valid(pde))
                 return -1;
             if ((pde & PG_PSE_MASK) && (env->cr[4] & CR4_PSE_MASK)) {
                 pte = pde & ~0x003ff000; /* align to 4MB */
@@ -957,7 +966,7 @@ static int cpu_get_phys_page_stuff(CPUState *env, target_ulong addr,
                 /* page directory entry */
                 pte_addr = ((pde & ~0xfff) + ((addr >> 10) & 0xffc)) & env->a20_mask;
                 pte = ldl_phys(pte_addr);
-                if (!(pte & PG_PRESENT_MASK))
+                if (!cpu_page_entry_is_valid(pte))
                     return -1;
                 page_size = 4096;
             }

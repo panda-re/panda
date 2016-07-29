@@ -17,6 +17,8 @@ include ../panda.mak
 # Enable test mode. See osi_linux.cpp:vmi_pgd_changed().
 #QEMU_CFLAGS += -DOSI_LINUX_TEST
 
+.PHONY: all
+
 $(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)/utils/kernelinfo/kernelinfo_read.c
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $^,"  PLUGINOBJ CC $@")

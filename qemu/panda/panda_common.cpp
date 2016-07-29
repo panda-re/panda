@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdint.h>
+#include <glib.h>
 
 extern "C" {
 #include "disas.h"
@@ -68,61 +69,67 @@ const char * valid_os[] = {
     "windows-32-xpsp2", 
     "windows-32-xpsp3", 
     "windows-32-7", 
-    "linux-32-lava32",
-    "linux-64-3.2.63",
-    "linux-32-3.2.65",
-    "linux-32-3.2.54",
+    "linux-32-*",
+    "linux-64-*",
     NULL
 };
 
 
 
 PandaOsType panda_os_type = OST_UNKNOWN;
-char *panda_os_name = NULL;
+gchar *panda_os_name = NULL;
 uint32_t panda_os_bits = 0;  // 32 or 64
-char *panda_os_details = NULL;
+gchar *panda_os_details = NULL;
 
 void panda_set_os_name(char *os_name) {
-    int i=0;
-    bool ok_osname = false;
-    while (valid_os[i]) {
-        if (0 == strcmp(os_name, valid_os[i])) {
-            ok_osname = true;
-            break;
-        }
-        i++;
-    }
-    if (!ok_osname) {
-        i=0;
-        printf ("os_name=[%s] is not on the list :\n", os_name);
-        while (valid_os[i]) {
-            printf ("  [%s]\n",  valid_os[i]);
-            i++;
-        }
-        assert (ok_osname);
-    }
-    panda_os_name = strdup(os_name);
-    panda_os_type = OST_UNKNOWN;
-    char *p = os_name;
-    if (0 == strncmp("windows", os_name, 7))  {
-        panda_os_type = OST_WINDOWS;
-        p += 8;
-    }
-    if (0 == strncmp("linux", os_name, 5))  {
-        panda_os_type = OST_LINUX;
-        p += 6;
-    }
+    // set os name and split it
+    panda_os_name = g_strdup(os_name);
+    gchar **osparts = g_strsplit(panda_os_name, "-", 3);
+
+    // set os type
+    if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_type = OST_WINDOWS; }
+    else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_type = OST_LINUX; }
+    else { panda_os_type = OST_UNKNOWN; }
+
+    // set os bits
+    if (0 == g_ascii_strncasecmp("32", osparts[1], strlen("32"))) { panda_os_bits = 32; }
+    else if (0 == g_ascii_strncasecmp("64", osparts[1], strlen("64"))) { panda_os_bits = 64; }
+    else { panda_os_bits = 0; }
+
+    // set os details
+    panda_os_details = g_strdup(osparts[2]);
+
+    // abort for invalid os type/bits
     assert (!(panda_os_type == OST_UNKNOWN));
-    printf ("p= %s\n", p);
-    if (0 == strncmp("32", p, 2)) {
-        panda_os_bits = 32;
-    }
-    if (0 == strncmp("64", p, 2)) {
-        panda_os_bits = 64;
-    }
     assert (panda_os_bits != 0);
-    p += 3;
-    panda_os_details = strdup(p);
-    printf ("os_type=%d bits=%d os_details=[%s]\n", 
-            panda_os_type, panda_os_bits, panda_os_details); 
+    g_strfreev(osparts);
+
+    gboolean os_details_ok = FALSE;
+    if (panda_os_type == OST_WINDOWS) {
+        for (const char **os=valid_os; *os != NULL; os++) {
+            if (0 == strcmp(panda_os_name, *os)) {
+                os_details_ok = TRUE;
+                break;
+            }
+        }
+
+        if (!os_details_ok) {
+            fprintf(stderr, "os_name=[%s] is not on the list :\n", panda_os_name);
+            for (const char **os=valid_os; *os != NULL; os++) {
+                fprintf(stderr, "\t[%s]\n", *os);
+            }
+        }
+    }
+    else if (panda_os_type == OST_LINUX) {
+        // Don't do any further checking on panda_os_details for linux.
+        //
+        // Currently panda_os_details is only used by the osi plugin to determine
+        // what arguments to pass to the osi_linux plugin.
+        // However, the list of acceptable arguments is not known at compile time,
+        // because osi_linux reads it from kernelinfo.conf.
+        os_details_ok = TRUE;
+    }
+    assert (os_details_ok);
+
+    printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
 }

@@ -48,7 +48,7 @@ those tools has been ported to the taint plugin).
 
 There are a number of command line arguments available to the taint plugin:
 
-* `no_tainted_pointer` (default: 0)
+* `no_tp` (default: 0)
 
    Tainted pointer mode is on by default, where we propagate taint if the
    pointer is tainted for memory accesses.  This disables that setting.

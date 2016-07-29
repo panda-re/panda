@@ -1,11 +1,12 @@
 
-#ifndef __DWARF_UTIL_H
-#define __DWARF_UTIL_H
+#ifndef __PRI_DWARF_UTIL_H
+#define __PRI_DWARF_UTIL_H
 
 #include<libdwarf.h>
 #include<panda_plugin.h>
 #include<dwarf.h>
 #include"../pri/pri_types.h"
+
 
 /*
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
@@ -25,7 +26,7 @@ uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong gue
 */
 
 // util functions to read DW_OP char array
-    const unsigned char *
+const unsigned char *
 read_uleb128 (const unsigned char *p, target_ulong *val)
 {
     unsigned int shift = 0;
@@ -974,15 +975,18 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                     stack[stack_elt - 3] = t1;
                     goto no_push;
                 }
+            case DW_OP_GNU_entry_value:
+                //printf(" DW_OP_entry_value: Must figure out stack unwinding. Not implemented. Returning LocErr\n");
+                return LocErr;
             // takes an argument (which is offset into debugging information for a die entry that is a base type
             // converts arg on top of stack to said base type
             case DW_OP_GNU_convert:
             case DW_OP_convert:
-                printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning 0\n");
+                //printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning LocErr\n");
                 return LocErr;
             case DW_OP_piece:
             case DW_OP_bit_piece:
-                printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning 0\n");
+                //printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning LocErr\n");
                 return LocErr;
             case DW_OP_deref_type:
             case DW_OP_GNU_deref_type:
@@ -1028,7 +1032,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
             
                     case DW_OP_GNU_deref_type:
                     case DW_OP_deref_type:
-                        printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
+                        //printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
                         return LocErr;
 
                     case DW_OP_abs:
@@ -1169,7 +1173,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                 goto no_push;
 
             default:
-                process_dwarf_locs(loc_list, loc_cnt);
+                //process_dwarf_locs(loc_list, loc_cnt);
                 return LocErr; 
                 //assert (1==0);
         }

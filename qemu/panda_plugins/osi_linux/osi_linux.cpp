@@ -51,7 +51,6 @@ static bool debug = false;
 
 struct kernelinfo ki;
 int panda_memory_errors;
-char *kconf_group;
 
 /* ******************************************************************
  Helpers
@@ -84,13 +83,13 @@ static char *get_file_name(CPUState *env, PTR file_struct) {
 }
 
 static uint64_t get_file_position(CPUState *env, PTR file_struct) {
-    return get_file_pos(env, file_struct);
+	return get_file_pos(env, file_struct);
 }
 
 
 static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
-    PTR files = get_files(env, task_struct);
-    PTR fds = get_files_fds(env, files);
+	PTR files = get_files(env, task_struct);
+	PTR fds = get_files_fds(env, files);
 	PTR fd_file_ptr, fd_file;
 
 	// fds is a flat array with struct file pointers.
@@ -102,7 +101,7 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
 	if (fd_file == (PTR)NULL) {
 		return (PTR)NULL;
 	}
-    return fd_file;
+	return fd_file;
 }
 
 
@@ -110,16 +109,16 @@ static PTR get_file_struct_ptr(CPUState *env, PTR task_struct, int fd) {
  * @brief Resolves a file struct and returns its full pathname.
  */
 static char *get_fd_name(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-    if (fd_file == (PTR)NULL) return NULL;
+	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (PTR)NULL) return NULL;
 	return get_file_name(env, fd_file);
 }
 
 #define INVALID_FILE_POS (-1)
 
 static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
-    PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
-    if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
+	PTR fd_file = get_file_struct_ptr(env, task_struct, fd);
+	if (fd_file == (PTR)NULL) return ((uint64_t) INVALID_FILE_POS);
 	return get_file_position(env, fd_file);
 }
 
@@ -138,7 +137,7 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 	p->asid = get_pgd(env, task_addr);
 
 #if (defined OSI_LINUX_TEST)
-	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, p->ppid, p->pid, p->asid, p->name);
+	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, (int)p->ppid, (int)p->pid, p->asid, p->name);
 #endif
 }
 
@@ -205,16 +204,16 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	OsiProc *p = NULL;
 	PTR ts;
 
-    //    target_long asid = panda_current_asid(env);
+	//	target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
-    if (ts) {
-        // valid task struct
-        // got a reasonable looking process.
-        // return it and save in cache
-        p = (OsiProc *)g_malloc0(sizeof(OsiProc));
-        fill_osiproc(env, p, ts);
-    }
-    *out_p = p;
+	if (ts) {
+		// valid task struct
+		// got a reasonable looking process.
+		// return it and save in cache
+		p = (OsiProc *)g_malloc0(sizeof(OsiProc));
+		fill_osiproc(env, p, ts);
+	}
+	*out_p = p;
 }
 
 /**
@@ -235,7 +234,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// Always starting the traversal with a process has the benefits of:
 	// 	a. Simplifying the traversal when OSI_LINUX_LIST_THREADS is disabled.
 	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
-	//     the current task is a thread.
+	//	 the current task is a thread.
 	// See kernel_structs.md for details.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 	if (ts_current == (PTR)NULL) goto error0;
@@ -277,8 +276,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		/*********************************************************/
 		for (int fdn=0; fdn<256; fdn++) {
 			char *s = get_fd_name(env, ts_current, fdn);
-            //			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
-            printf ("%s fd%d -> %s", p->name, fdn, s);
+			LOG_INFO("%s fd%d -> %s", p->name, fdn, s);
 			g_free(s);
 		}
 		/*********************************************************/
@@ -334,9 +332,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 
 	// Find the process that matches p->pid.
 	// XXX: We could probably just use p->offset instead of traversing
-	//      the process list.
+	//	  the process list.
 	// XXX: An infinite loop will be triggered if p is a thread and
-	//	    OSI_LINUX_LIST_THREADS is not enabled.
+	//		OSI_LINUX_LIST_THREADS is not enabled.
 	do {
 		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
 #ifdef OSI_LINUX_LIST_THREADS
@@ -414,37 +412,34 @@ void on_free_osiprocs(OsiProcs *ps) {
 ****************************************************************** */
 
 char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd) {
-    //    target_ulong asid = panda_current_asid(env);
-    PTR ts_current = 0;
-    ts_current = p->offset;
-    if (ts_current == 0) {
-        if (debug) printf ("osi_linux_fd_to_filename -- cant get task\n");
-        return NULL;
-    }
-    char *name = get_fd_name(env, ts_current, fd);
+	//	target_ulong asid = panda_current_asid(env);
+	PTR ts_current = 0;
+	ts_current = p->offset;
+	if (ts_current == 0) {
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get task\n", (int)p->pid, fd);
+		return NULL;
+	}
+	char *name = get_fd_name(env, ts_current, fd);
 	if (unlikely(name == NULL)) {
-        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename\n");
-        goto make_name;
-    }
-
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- can't get filename\n", (int)p->pid, fd);
+		return NULL;
+	}
 	name = g_strchug(name);
 	if (unlikely(g_strcmp0(name, "") == 0)) {
-        if (debug) printf ("osi_linux_fd_to_filename -- can't get filename 2\n");
-        goto make_name;
-    }
-    return name;
-
-make_name:
-    return NULL;
+		if (debug) printf ("osi_linux_fd_to_filename(pid=%d, fd=%d) -- filename is empty\n", (int)p->pid, fd);
+		g_free(name);
+		return NULL;
+	}
+	return name;
 }
 
 
 unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd) {
-    //    target_ulong asid = panda_current_asid(env);
-    PTR ts_current = 0;
-    ts_current = p->offset;
-    if (ts_current == 0) return INVALID_FILE_POS;
-    return get_fd_pos(env, ts_current, fd);
+	//	target_ulong asid = panda_current_asid(env);
+	PTR ts_current = 0;
+	ts_current = p->offset;
+	if (ts_current == 0) return INVALID_FILE_POS;
+	return get_fd_pos(env, ts_current, fd);
 }
 
 
@@ -476,24 +471,28 @@ void on_free_osimodules(OsiModules *ms) {
  * @brief Fills an OsiProc struct.
  */
 int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
+	static int vmi_pgd_changed_count = 0;
 	OsiProcs *ps;
 	OsiModules *ms;
 	uint32_t i;
 
-	if (!_IN_KERNEL) {
+	if (!panda_in_kernel(env)) {
 		// This shouldn't ever happen, as PGD is updated only in kernel mode.
 		LOG_ERR("Can't do introspection in user mode.");
 		goto error;
 	}
 
-	LOG_INFO("------------------------------------------------");
+	// Directly call the linux-specific introspection functions.
+	// For testing the functions via their callbacks, use the osi_test plugin.
+	LOG_INFO("--- START %4d ---------------------------------------------", vmi_pgd_changed_count);
 	on_get_processes(env, &ps);
 	for (i=0; i< ps->num; i++) {
 		on_get_libraries(env, &ps->proc[i], &ms);
 		on_free_osimodules(ms);
 	}
 	on_free_osiprocs(ps);
-	LOG_INFO("------------------------------------------------");
+	LOG_INFO("--- END  %4d ---------------------------------------------", vmi_pgd_changed_count);
+	vmi_pgd_changed_count++;
 
 	return 0;
 
@@ -515,12 +514,13 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 #if (defined OSI_LINUX_TEST)
 	panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
+	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #endif
 
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 	char *kconf_file = g_strdup(panda_parse_string(plugin_args, "kconf_file", DEFAULT_KERNELINFO_FILE));
-	kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
+	char *kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
 	panda_free_args(plugin_args);
 
 	// Load kernel offsets.
@@ -530,18 +530,14 @@ bool init_plugin(void *self) {
 	}
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
 	g_free(kconf_file);
-    //	g_free(kconf_group);
+	g_free(kconf_group);
 
-#if (defined OSI_LINUX_TEST)
-	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
-#else
 	PPP_REG_CB("osi", on_get_current_process, on_get_current_process);
 	PPP_REG_CB("osi", on_get_processes, on_get_processes);
 	PPP_REG_CB("osi", on_free_osiproc, on_free_osiproc);
 	PPP_REG_CB("osi", on_free_osiprocs, on_free_osiprocs);
 	PPP_REG_CB("osi", on_get_libraries, on_get_libraries);
 	PPP_REG_CB("osi", on_free_osimodules, on_free_osimodules);
-#endif
 	LOG_INFO(PLUGIN_NAME " initialization complete.");
 	return true;
 #else

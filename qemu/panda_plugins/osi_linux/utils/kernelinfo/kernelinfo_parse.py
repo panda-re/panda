@@ -12,14 +12,21 @@ from __future__ import print_function
 import subprocess
 import re
 import sys
+import os
 
 start = 'KERNELINFO-BEGIN'
 end = 'KERNELINFO-END'
 inblock = False
-proc = subprocess.Popen(['dmesg',],stdout=subprocess.PIPE)
+
+# Choose input.
+if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
+    dmesg_in = open(sys.argv[1], 'r')
+else:
+    proc = subprocess.Popen(['dmesg',],stdout=subprocess.PIPE)
+    dmesg_in = proc.stdout
 
 # Retrieve the last block of kernel information lines.
-for line in proc.stdout:
+for line in dmesg_in:
     if start in line:
         inblock = True
         lines = []
@@ -40,20 +47,28 @@ if not lines:
 # Get and parse the name line.
 name_grep = lambda l: re.match(r'^\s*name\s*=', l)
 kname = filter(name_grep, lines)[-1].split('=', 1)[1].strip().lower()
-kcomponents = re.split(r'\s+', kname)
+krelease, kversion, kmachine = kname.strip().split('|')
 
-# Find the version component of the name line.
-version_idx=-1
-for i, val in enumerate(kcomponents):
-    if re.match(r'^[23]\.[0-9]*', val):
-        version_idx = i
-        break
+# Match the distribution-specific version.
+kversion_m = re.search(r'(?<=\s)(?P<kversion_dist>[234]\.[0-9]+\.[0-9]+)', kversion)
+
+# Match the base version and variant.
+krelease_m = re.search(r'(?P<kversion_base>[234]\.[0-9]+\.[0-9]+-[0-9]+)-(?P<kversion_variant>[0-9a-z-]+)', krelease)
+
+# Partial heuristics for dist name.
+if 'debian' in kversion.lower():
+    distname = 'debian'
+elif 'ubuntu' in kversion.lower():
+    distname = 'ubuntu'
+else:
+    distname = 'unknown'
 
 # Print group line.
-print('[%s-%s-%s]' % (
-    kcomponents[version_idx-1],
-    re.split(r'[^0-9.]*', kcomponents[version_idx])[0],
-    kcomponents[-1]
+print('[%s-%s-%s:%d]' % (
+    distname,
+    kversion_m.group('kversion_dist'),
+    krelease_m.group('kversion_variant'),
+    64 if kmachine == 'x86_64' else 32
 ))
 
 # Print key-value pairs.

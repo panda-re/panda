@@ -15,7 +15,11 @@ extern "C" {
 #include "../pri/pri_types.h"
 #include "../pri/pri_ext.h"
 #include "../pri/pri.h"
-//#include "../dwarfp/dwarfp_ext.h"
+
+// include these to resolve pri types for linux
+#include "../pri_dwarf/pri_dwarf_types.h"
+#include "../pri_dwarf/pri_dwarf_ext.h"
+
 #include "panda_plugin_plugin.h"
 
     bool init_plugin(void *);
@@ -34,7 +38,8 @@ struct args {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 //void pfun(VarType var_ty, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
 void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc, void *in_args){
-    //const char *var_ty = (const char *) var_ty_void;
+    const char *var_ty = dwarf_type_to_string((DwarfVarType *) var_ty_void);
+    //const char *var_ty = "";
     // restore args
     struct args *args = (struct args *) in_args;
     CPUState *pfun_env = args->env;
@@ -44,16 +49,16 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     target_ulong guest_dword;
     switch (loc_t){
         case LocReg:
-            printf("VAR REG: %s in Reg %d", var_nm, loc);
+            printf("VAR REG: %s %s in Reg %d", var_ty, var_nm, loc);
             printf("    => 0x%x\n", pfun_env->regs[loc]);
             break;
         case LocMem:
-            printf("VAR MEM: %s @ 0x%x", var_nm, loc);
+            printf("VAR MEM: %s %s @ 0x%x", var_ty, var_nm, loc);
             panda_virtual_memory_rw(pfun_env, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
             printf("    => 0x%x\n", guest_dword);
             break;
         case LocConst:
-            //printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
+            printf("VAR CONST: %s %s as 0x%x\n", var_ty, var_nm, loc);
             break;
         case LocErr:
             printf("VAR does not have a location we could determine. Most likely because the var is split among multiple locations\n");
@@ -61,9 +66,9 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     }
 }
 void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    //struct args args = {env, file_Name, lno};
-    //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    //pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
+    struct args args = {env, file_Name, lno};
+    printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
+    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     struct args args = {env, file_Name, lno};
@@ -126,10 +131,10 @@ bool init_plugin(void *self) {
     //panda_arg_list *args = panda_get_args("pri_taint");
     panda_require("pri");
     assert(init_pri_api());
-    //panda_require("dwarfp");
-    //assert(init_dwarfp_api());
+    panda_require("pri_dwarf");
+    assert(init_pri_dwarf_api());
 
-    PPP_REG_CB("pri", on_before_line_change, on_line_change);
+    //PPP_REG_CB("pri", on_before_line_change, on_line_change);
     //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     {
         panda_cb pcb;

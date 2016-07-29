@@ -63,6 +63,7 @@ PPP_PROT_REG_CB(on_library_load);
 // This creates the global for this call back fn (on_library_load)
 PPP_CB_BOILERPLATE(on_library_load)
 
+bool debug = false;
 #include <map>
 #define MAX_FILENAME 256
 std::map <target_ulong, OsiProc> running_procs;
@@ -89,7 +90,6 @@ uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong gue
     buf[maxlen-1] = 0;
     return i;
 }
-
 #if defined(TARGET_I386)
 void linux_mmap_pgoff_return(CPUState *env,target_ulong pc,uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff) {
     target_ulong asid = panda_current_asid(env);
@@ -108,7 +108,12 @@ void linux_mmap_pgoff_return(CPUState *env,target_ulong pc,uint32_t addr,uint32_
     // if a filename exists and permission is executable
     // TODO: fix this magic constant of 0x04 for PROT_EXEC
     if (filename != NULL && ((prot & 0x04) == 0x04)) {
-        printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x flags=%x pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd, filename, len, prot, flags, pgoff, EAX);        
+        if (debug){
+            printf ("linux_mmap_pgoff(fd=%d filename=[%s] "
+                    "len=%d prot=%x flags=%x "
+                    "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
+                    filename, len, prot, flags, pgoff, EAX);
+        }
         //printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x flags=%x pgoff=%d)=%x\n", (int) fd, filename, len, prot, flags, pgoff, EAX);        
         PPP_RUN_CB(on_library_load, env, pc, filename, EAX)
 

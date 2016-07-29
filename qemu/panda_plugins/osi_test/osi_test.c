@@ -60,6 +60,18 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
             printf("  %-16s\t" TARGET_FMT_ld "\t" TARGET_FMT_ld "\n", ps->proc[i].name, ps->proc[i].pid, ps->proc[i].ppid);
     }
 
+    printf("\n");
+
+    OsiModules *kms = get_modules(env);
+    if (kms == NULL) {
+        printf("No mapped kernel modules.\n");
+    }
+    else {
+        printf("Kernel module list (%d modules):\n", kms->num);
+        for (i = 0; i < kms->num; i++)
+            printf("\t0x" TARGET_FMT_lx "\t" TARGET_FMT_ld "\t%-24s %s\n", kms->module[i].base, kms->module[i].size, kms->module[i].name, kms->module[i].file);
+    }
+
     printf("\n-------------------------------------------------\n\n");
 
     // Cleanup
