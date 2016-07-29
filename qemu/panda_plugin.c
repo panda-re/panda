@@ -468,7 +468,7 @@ bool panda_parse_bool(panda_arg_list *args, const char *argname) {
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
             char *val = args->list[i].value;
-            if (strcmp("false", val) == 0 || strcmp("no", val) == 0) {
+            if (strcmp("false", val) == 0 || strcmp("no", val) == 0 || strcmp("0", val) == 0 ) {
                 return false;
             } else {
                 return true;
