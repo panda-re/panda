@@ -112,6 +112,9 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
     OsiProcs *ps, *in, *out;
     ps = in = out = NULL;
 
+    /* some callback has to be registered for retrieving processes */
+    assert(PPP_CHECK_CB(on_get_processes) != 0);
+
     /* update process state */
     ps = get_processes(env);
     procstate_update(ps, &in, &out);
@@ -141,8 +144,7 @@ extern char **gargv;
 
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
-    panda_cb pcb;
-    pcb.after_PGD_write = vmi_pgd_changed;
+    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #endif
     // figure out what kind of os introspection is needed and grab it? 
