@@ -1143,13 +1143,14 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
             case DW_OP_skip:
                 offset = cur_loc->lr_offset;
                 stmp = cur_loc->lr_number;
-                next_offset = offset + 2 + stmp;
+                next_offset = offset + 1 + 2 + stmp;
                 for (i = 0; i < loc_cnt; i++){
                     if (loc_list[i].lr_offset == next_offset){
                         loc_idx = i;
                         goto no_push;
                     }
                 }
+                //return LocErr;
                 assert (1==0);
 
             case DW_OP_bra:
@@ -1157,15 +1158,16 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                     assert (1==0);
                 offset = cur_loc->lr_offset;
                 stmp = cur_loc->lr_number;
-                next_offset = offset + 2 + stmp;
+                next_offset = offset + 1 + 2 + stmp;
                 if (stack[stack_elt] != 0){
                     for (i = 0; i < loc_cnt; i++){
                         if (loc_list[i].lr_offset == next_offset){
                             loc_idx = i;
                             goto no_push;
                         }
-                        assert (1==0);
                     }
+                    //return LocErr;
+                    assert (1==0);
                 }
                 goto no_push;
 
