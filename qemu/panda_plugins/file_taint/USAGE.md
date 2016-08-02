@@ -16,7 +16,7 @@ Arguments
 ---------
 
 * `filename`: string, defaults to "abc123". The filename we want to taint.
-* `pos`: boolean, whether to use *positional labels*, i.e. labels that correspond to 
+* `pos`: boolean, defaults to false. Enables use of positional labels. I.e. the file offset where the data were read from is used as their initial taint label.
 * `notaint`: boolean: whether to actually do any tainting. This option is useful because we can run `file_taint` without taint to find out when the first use of the file in the replay is, and then re-run it with the `first_instr` option to turn on taint just before the file is opened. This can dramatically speed up the process, since running with taint enabled (even if nothing is tainted) can be very slow.
 * `max_num_labels` ulong, defaults to 1000000. How many labels to apply to input bytes. The default value corresponds to a roughly 1MB chunk of the file.
 * `start`: ulong, the first offset in the file to label.
