@@ -326,7 +326,6 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
-    end.prog_point.guest_instr_count -= actual_start_count;
     sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
     sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
