@@ -25,7 +25,7 @@ sudo apt-get -y install build-essential
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
   python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev \
-  libglib2.0-dev libelf-dev
+  libglib2.0-dev libelf-dev libwiretap-dev libwsutil-dev
 
 cwd=$(pwd)
 cd /tmp
