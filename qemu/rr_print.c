@@ -86,7 +86,8 @@ static void rr_spit_log_entry(RR_log_entry item) {
                                args->variant.cpu_mem_rw_args.addr,
                                args->variant.cpu_mem_rw_args.len);
                         printf("Buffer:");
-                        for (int i = 0; i < args->variant.cpu_mem_rw_args.len && i < 16; i++) {
+                        int i;
+                        for (i = 0; i < args->variant.cpu_mem_rw_args.len && i < 16; i++) {
                             printf(" %02x", args->variant.cpu_mem_rw_args.buf[i]);
                         }
                         if (args->variant.cpu_mem_rw_args.len >= 16) {

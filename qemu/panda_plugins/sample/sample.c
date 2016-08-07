@@ -140,7 +140,8 @@ int exec_callback(CPUState *env, target_ulong pc) {
     // testing and debugging
     unsigned char buf[15];
     panda_virtual_memory_rw(env, pc, buf, 15, 0);
-    for (int i = 0; i < 15; i++) {
+    int i;
+    for (i = 0; i < 15; i++) {
         fprintf(plugin_log, " %02x", buf[i]);
     }
     fprintf(plugin_log, "\n");
