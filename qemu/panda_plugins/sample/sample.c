@@ -29,6 +29,8 @@ PANDAENDCOMMENT */
 // This is a C file, so we don't need "extern C"
 #include "sample_int_fns.h"
 
+#include "rr_log.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -43,6 +45,9 @@ int before_loadvm_callback(void);
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+bool active = false;
+long long begin_at = 0;
+long long exit_at = -1;
 FILE *plugin_log;
 
 int guest_hypercall_callback(CPUState *env) {
@@ -52,7 +57,23 @@ int guest_hypercall_callback(CPUState *env) {
     return 1;
 }
 
+// write this program point to this file
+static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
+    fprintf(fp, "{guest_instr_count=%llu pc=0x%08llx, secondary=0x%08llx}\n",
+        (unsigned long long)pp.guest_instr_count,
+        (unsigned long long)pp.pc,
+        (unsigned long long)pp.secondary);
+}
+
 int before_block_callback(CPUState *env, TranslationBlock *tb) {
+    RR_prog_point pp = rr_prog_point();
+    if (pp.guest_instr_count >= begin_at) active = true;
+    if (exit_at != -1 && pp.guest_instr_count >= exit_at) {
+        rr_end_replay_requested = 1;
+        active = false;
+    }
+    if (!active) return 1;
+    rr_spit_prog_point_fp(plugin_log, pp);
     fprintf(plugin_log, "Next TB: " TARGET_FMT_lx 
 #ifdef TARGET_I386
         ", CR3=" TARGET_FMT_lx
@@ -66,6 +87,7 @@ int before_block_callback(CPUState *env, TranslationBlock *tb) {
 }
 
 int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb) {
+    if (!active) return 1;
     fprintf(plugin_log, "After TB " TARGET_FMT_lx 
 #ifdef TARGET_I386
         ", CR3=" TARGET_FMT_lx
@@ -81,6 +103,7 @@ int after_block_callback(CPUState *env, TranslationBlock *tb, TranslationBlock *
 // Monitor callback. This gets a string that you can then parse for
 // commands. Could do something more complex here, e.g. getopt.
 int monitor_callback(Monitor *mon, const char *cmd) {
+  if (!active) return 1;
 #ifdef CONFIG_SOFTMMU
     char *cmd_work = g_strdup(cmd);
     char *word;
@@ -110,7 +133,17 @@ bool translate_callback(CPUState *env, target_ulong pc) {
 }
 
 int exec_callback(CPUState *env, target_ulong pc) {
-    printf("User insn 0x" TARGET_FMT_lx " executed.\n", pc);
+    if (!active) return 1;
+    fprintf(plugin_log, "User insn 0x" TARGET_FMT_lx " executed:", pc);
+    // An x86 instruction must always fit in 15 bytes; this does not
+    // make much sense for other architectures, but is just for
+    // testing and debugging
+    unsigned char buf[15];
+    panda_virtual_memory_rw(env, pc, buf, 15, 0);
+    for (int i = 0; i < 15; i++) {
+        fprintf(plugin_log, " %02x", buf[i]);
+    }
+    fprintf(plugin_log, "\n");
     return 1;
 }
 
@@ -206,6 +239,12 @@ bool init_plugin(void *self) {
                         " \\         /\n"
                         "  '._____.'  \n");
                 }
+            } else if (0 == strncmp(args->list[i].key, "begin_at", 8)) {
+                begin_at = atoll(args->list[i].value);
+                fprintf(stderr, "Will begin at %lld\n", begin_at);
+            } else if (0 == strncmp(args->list[i].key, "exit_at", 7)) {
+                exit_at = atoll(args->list[i].value);
+                fprintf(stderr, "Will exit at %lld\n", exit_at);
             }
         }
     }

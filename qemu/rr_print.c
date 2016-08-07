@@ -79,9 +79,21 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item.variant.call_args;
-                int callbytes;
+                int callbytes = -1;
                 switch (item.variant.call_args.kind) {
                     case RR_CALL_CPU_MEM_RW:
+                        printf("This is a memory write. Target memory address: %lx, length: %d\n",
+                               args->variant.cpu_mem_rw_args.addr,
+                               args->variant.cpu_mem_rw_args.len);
+                        printf("Buffer:");
+                        for (int i = 0; i < args->variant.cpu_mem_rw_args.len && i < 16; i++) {
+                            printf(" %02x", args->variant.cpu_mem_rw_args.buf[i]);
+                        }
+                        if (args->variant.cpu_mem_rw_args.len >= 16) {
+                            printf(" ... \n");
+                        } else {
+                            printf("\n");
+                        }
                         callbytes = sizeof(args->variant.cpu_mem_rw_args) + args->variant.cpu_mem_rw_args.len;
                         break;
                     case RR_CALL_CPU_REG_MEM_REGION:
@@ -99,10 +111,14 @@ static void rr_spit_log_entry(RR_log_entry item) {
 
                         break;
                 }
-                printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
+                printf("\tRR_SKIPPED_CALL_(%s) from %s",
                         get_skipped_call_kind_string(item.variant.call_args.kind),
-                        get_callsite_string(item.header.callsite_loc),
-                        callbytes);
+                        get_callsite_string(item.header.callsite_loc));
+                if (callbytes != -1) {
+                  printf(" %d bytes\n", callbytes);
+                } else {
+                  printf("\n");
+                }
                 break;
             }
         case RR_LAST:
@@ -209,10 +225,10 @@ static RR_log_entry *rr_read_item(void) {
                         assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) == 1);
                         //mz buffer length in args->variant.cpu_mem_rw_args.len
                         //mz always allocate a new one. we free it when the item is added to the recycle list
-                        //args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
+                        args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
                         //mz read the buffer
-                        //assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
-                        fseek(rr_nondet_log->fp, args->variant.cpu_mem_rw_args.len, SEEK_CUR);
+                        assert(fread(args->variant.cpu_mem_rw_args.buf, 1, args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp) > 0);
+                        //fseek(rr_nondet_log->fp, args->variant.cpu_mem_rw_args.len, SEEK_CUR);
                         break;
                     case RR_CALL_CPU_MEM_UNMAP:
                         assert(fread(&(args->variant.cpu_mem_unmap), sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp) == 1);
