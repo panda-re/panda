@@ -675,7 +675,7 @@ static inline RR_log_entry *alloc_new_entry(void)
 static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
 
-    item->file_pos = ftell(rr_nondet_log->fp);
+    item->file_pos = rr_nondet_log->bytes_read;
 
     //mz read header
     rr_assert (rr_in_replay());
