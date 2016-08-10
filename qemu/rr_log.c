@@ -675,6 +675,8 @@ static inline RR_log_entry *alloc_new_entry(void)
 static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = alloc_new_entry();
 
+    item->file_pos = rr_nondet_log->bytes_read;
+
     //mz read header
     rr_assert (rr_in_replay());
     rr_assert ( ! rr_log_is_empty());
@@ -1287,6 +1289,10 @@ void rr_create_record_log (const char *filename) {
   //This way, when we print progress, we can use something better than size of log consumed
   //(as that can jump //sporadically).
   fwrite(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp);
+
+  // For record logs the current_item's file position will never be
+  // touched; we set it to -1 so it does not confuse anyone
+  rr_nondet_log->current_item.file_pos = -1;
 }
 
 
