@@ -14,6 +14,8 @@ PANDAENDCOMMENT */
 
 #define __STDC_FORMAT_MACROS
 
+#define COMMENT_BUF_LEN 1024
+
 extern "C" {
 
 #include "config.h"
@@ -28,7 +30,8 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <pcap/pcap.h>
+#include <inttypes.h>
+#include <wiretap/wtap.h>
 
 extern "C" {
 
@@ -38,10 +41,12 @@ void uninit_plugin(void *);
 int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
     uint64_t old_buf_addr);
 
+extern uint64_t replay_get_guest_instr_count(void);
+
 }
 
 panda_arg_list *args;
-pcap_dumper_t *plugin_log;
+wtap_dumper *plugin_log;
 
 // RW Yanked from net.c
 static void hex_dump(FILE *f, const uint8_t *buf, int size)
@@ -90,10 +95,12 @@ bool init_plugin(void *self) {
         return false;
     }
 
-    pcap_t *p = pcap_open_dead(DLT_EN10MB, 65535);
-    pcap_activate(p);
-    plugin_log = pcap_dump_open(p, tblog_filename);
-    if(!plugin_log) return false;
+    int err;
+    plugin_log = wtap_dump_open_ng(tblog_filename, WTAP_FILE_TYPE_SUBTYPE_PCAPNG, WTAP_ENCAP_ETHERNET, 65535, 1, NULL, NULL, NULL, &err);
+    if(!plugin_log) {
+      fprintf(stderr, "Plugin 'network': failed wtap_dump_open_ng() with error %d\n", err);
+      return false;
+    }
 
     pcb.replay_handle_packet = handle_packet;
     panda_register_callback(self, PANDA_CB_REPLAY_HANDLE_PACKET, pcb);
@@ -104,7 +111,11 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     printf("Unloading network plugin.\n");
     panda_free_args(args);
-    pcap_dump_close(plugin_log);
+    int err;
+    gboolean ret = wtap_dump_close(plugin_log, &err);
+    if (!ret) {
+      fprintf(stderr, "Plugin 'network': failed wtap_dump_close() with error %d\n", err);
+    }
 }
 
 int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
@@ -122,11 +133,26 @@ int handle_packet(CPUState *env, uint8_t *buf, int size, uint8_t direction,
 //    }
 //    hex_dump(plugin_log, buf, size);
 //    fprintf(plugin_log, "\n");
-    struct pcap_pkthdr h = {};
-    gettimeofday(&h.ts, NULL);
-    h.caplen = size;
-    h.len = size;
-    pcap_dump((u_char *)plugin_log, &h, buf);
+
+    int err;
+    char *err_info;
+    struct wtap_pkthdr header;
+    struct timeval now_tv;
+    char comment_buf[COMMENT_BUF_LEN];
+
+    wtap_phdr_init(&header);
+    gettimeofday(&now_tv, NULL);
+    header.ts.secs = now_tv.tv_sec;
+    header.ts.nsecs = now_tv.tv_usec * 1000;
+    header.caplen = size;
+    header.len = size;
+    header.opt_comment = comment_buf;
+    snprintf(comment_buf, COMMENT_BUF_LEN, "Guest instruction count: %" PRIu64, replay_get_guest_instr_count());
+    gboolean ret = wtap_dump(plugin_log, &header, buf, &err, &err_info);
+    if (!ret) {
+      fprintf(stderr, "Plugin 'network': failed wtap_dump() with error %d and error_info %s\n", err, err_info);
+    }
+    wtap_phdr_cleanup(&header);
 
     return 0;
 }

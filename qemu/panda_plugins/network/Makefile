@@ -8,8 +8,8 @@ PLUGIN_NAME=network
 include ../panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-# CFLAGS+=
-LIBS+=-lpcap
+CXXFLAGS+=-I/usr/include/wireshark
+LIBS+=-lwiretap
 
 # The main rule for your plugin. Please stick with the panda_ naming
 # convention.

@@ -104,6 +104,7 @@ typedef struct rr_log_entry_t {
         // no variant fields
     } variant;
     struct rr_log_entry_t *next;
+  long file_pos;
 } RR_log_entry;
 
 // a program-point indexed record/replay log

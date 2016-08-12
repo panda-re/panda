@@ -848,8 +848,10 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                         // or a one element array of the type of whatever
                         // we are pointing to
                         if (rc == DW_DLV_OK){
-                            if (0 == strcmp("char", die_name)){
-                                //printf("Querying: (char *) %s\n", cur_astnodename.c_str());
+                            if (0 == strcmp("unsigned char", die_name) ||
+                                0 == strcmp("char", die_name) ||
+                                0 == strcmp("signed char", die_name)){
+                                printf("Querying: char-type %s  %s\n", die_name, cur_astnodename.c_str());
                                 cb(cur_base_addr, loc_t, -1, cur_astnodename.c_str());
                                 return;
                             }

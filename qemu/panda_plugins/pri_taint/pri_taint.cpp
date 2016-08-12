@@ -304,8 +304,8 @@ void i386_hypercall_callback(CPUState *env){
                         struct args args = {env, info.filename, info.line_number};
                         printf("panda hypercall: [%s], "
                                "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",info.filename,info.line_number,pc);
-                        //pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
-                        pri_all_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+                        pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+                        //pri_all_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
                         //lava_attack_point(phs);
                     }
                 }

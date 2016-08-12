@@ -44,9 +44,9 @@ extern "C" {
 static bool debug = true;
  
 const char *taint_filename = 0;
-bool positional_labels = true;
-bool no_taint = true;
-bool enable_taint_on_open = false;
+bool positional_labels;
+bool no_taint;
+bool enable_taint_on_open;
 
 extern uint64_t replay_get_guest_instr_count(void);
 
@@ -430,7 +430,6 @@ bool init_plugin(void *self) {
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string(args, "filename", "abc123");
     positional_labels = panda_parse_bool(args, "pos");
-    // used to just find the names of files that get 
     no_taint = panda_parse_bool(args, "notaint");
     end_label = panda_parse_ulong(args, "max_num_labels", 1000000);
     end_label = panda_parse_ulong(args, "end", end_label);
