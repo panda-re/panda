@@ -275,6 +275,14 @@ char *get_file_obj_name(CPUState *env, uint32_t fobj) {
     return read_unicode_string(env, fobj+FILE_OBJECT_NAME_OFF);
 }
 
+#define FILE_OBJECT_POS_OFF 0x38
+int64_t get_file_obj_pos(CPUState *env, uint32_t fobj) {
+    int64_t file_pos = -1;
+    if (-1 == panda_virtual_memory_rw(env, fobj+FILE_OBJECT_POS_OFF, (uint8_t *)&file_pos, 8, false))
+        return -1;
+    else
+        return file_pos;
+}
 
 HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t handle) {
     uint32_t pObjectTable;
@@ -341,6 +349,16 @@ char *get_handle_object_name(CPUState *env, HandleObject *ho) {
 char * get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(env, eproc, handle);
     return get_handle_object_name(env, ho);
+}
+
+int64_t get_file_handle_pos(CPUState *env, uint32_t eproc, uint32_t handle) {
+    HandleObject *ho = get_handle_object(env, eproc, handle);
+    if (!ho) {
+        return -1;
+    }
+    else {
+        return get_file_obj_pos(env, ho->pObj);
+    }
 }
 
 #endif

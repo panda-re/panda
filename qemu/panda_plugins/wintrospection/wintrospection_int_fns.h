@@ -16,14 +16,15 @@ char *get_handle_object_name(CPUState *env, HandleObject *ho);
 
 char *get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) ;
 
+int64_t get_file_handle_pos(CPUState *env, uint32_t eproc, uint32_t handle) ;
+
 char * get_objname(CPUState *env, uint32_t obj) ;
 
 uint32_t get_handle_table_entry(CPUState *env, uint32_t pHandleTable, uint32_t handle) ;
 
 char *get_file_obj_name(CPUState *env, uint32_t fobj) ;
 
-
-
 char *read_unicode_string(CPUState *env, uint32_t pUstr);
+
 
 #endif

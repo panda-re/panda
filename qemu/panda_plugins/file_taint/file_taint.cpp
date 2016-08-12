@@ -108,8 +108,6 @@ char *last_open_filename;
 uint32_t last_open_asid;
 
 #ifdef TARGET_I386
-// This is our proxy for file position. Approximate because of fseek etc.
-uint64_t file_pos = 0;
 
 uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
@@ -166,23 +164,6 @@ void open_return(CPUState* env, uint32_t fd) {
     }
             
 }
-
-void seek_enter(CPUState *env, uint32_t fd, uint64_t abs_offset) {
-    if (the_fd == fd && the_asid == panda_current_asid(env)) {
-        file_pos = abs_offset;
-    }
-}
-
-void windows_seek_enter(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass) {
-    uint64_t Position = 0;
-    if (FileInformationClass == 14) { // FilePositionInformation
-        panda_virtual_memory_rw(env, FileInformation, (uint8_t *) &Position, sizeof(Position), false);
-        if (debug) printf("DEBUG: NtSetInformationFile(fd = %u, offset = %" PRIu64 ")\n", FileHandle, Position);
-        seek_enter(env, FileHandle, Position);
-    }
-}
-
-
 
 // Assume 32-bit windows for this struct.
 // WARNING: THIS MAY NOT WORK ON 64-bit!
@@ -285,20 +266,26 @@ void read_return(CPUState* env, target_ulong pc, uint32_t buf, uint32_t actual_c
 // typedef void (*on_NtReadFile_enter_t)(CPUState* env,target_ulong pc,uint32_t FileHandle,uint32_t Event,uint32_t UserApcRoutine,uint32_t UserApcContext,uint32_t IoStatusBlock,uint32_t Buffer,uint32_t BufferLength,uint32_t ByteOffset,uint32_t Key);
 
 void windows_read_enter(CPUState* env, target_ulong pc, uint32_t FileHandle, uint32_t Event, uint32_t UserApcRoutine, uint32_t UserApcContext, uint32_t IoStatusBlock, uint32_t Buffer, uint32_t BufferLength, uint32_t ByteOffset, uint32_t Key) {
-    int64_t offset;
+    int64_t offset = -1;
     if (ByteOffset != 0) {
         // Byte offset into file is specified (pointer to LARGE_INTEGER). Read and interpret.
         panda_virtual_memory_rw(env, ByteOffset, (uint8_t *)&offset, sizeof(offset), 0);
         //printf("NtReadFile: %lu[%ld]\n", (unsigned long)FileHandle, offset);
-        if (offset >= 0 && offset < (1L << 48)) { // otherwise invalid.
-            file_pos = offset;
-        }
     } else {
         //printf("NtReadFile: %lu[]\n", (unsigned long)FileHandle);
     }
 
     char *filename = get_handle_name(env, get_current_proc(env), FileHandle);
-    read_enter(env, pc, filename, 0, Buffer, BufferLength);
+    if (ByteOffset && (offset >= 0 && offset < (1L << 48))) {
+        read_enter(env, pc, filename, offset, Buffer, BufferLength);
+    }
+    else {
+        offset = get_file_handle_pos(env, get_current_proc(env), FileHandle);
+        if (offset != -1)
+            read_enter(env, pc, filename, offset, Buffer, BufferLength);
+        else // last resort. just assume last_pos.
+            read_enter(env, pc, filename, last_pos, Buffer, BufferLength);
+    }
 }
 
 #define STATUS_SUCCESS 0
@@ -470,7 +457,6 @@ bool init_plugin(void *self) {
         PPP_REG_CB("syscalls2", on_NtCreateFile_return, windows_create_return);
         PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
         PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
-        PPP_REG_CB("syscalls2", on_NtSetInformationFile_enter, windows_seek_enter);
     }
     
     // this sets up the taint api fn ptrs so we have access
