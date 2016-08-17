@@ -459,7 +459,6 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int interrupt_request = cpu->interrupt_request;
-    static int last_interrupt_request = 0;
 #ifdef CONFIG_SOFTMMU
     //mz Record and Replay.
     //mz it is important to do this in the order written, as
@@ -614,9 +613,6 @@ int cpu_exec(CPUState *cpu)
     current_cpu = cpu;
 
 #ifdef CONFIG_SOFTMMU
-    RR_prog_point saved_prog_point = rr_prog_point();
-    int rr_loop_tries = 20;
-
     //mz This is done once at the start of record and once at the start of
     //replay.  So we should be ok.
     if (unlikely(rr_flush_tb())) {

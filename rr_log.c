@@ -453,7 +453,6 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request)
 {
     // mz we only record interrupt_requests if the value is non-zero
-    uint64_t current_instr = rr_get_guest_instr_count();
     if (interrupt_request != 0) {
         RR_log_entry* item = &(rr_nondet_log->current_item);
         // mz just in case
@@ -501,7 +500,7 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
 
     item->variant.call_args.kind = RR_CALL_CPU_MEM_RW;
     item->variant.call_args.variant.cpu_mem_rw_args.addr = addr;
-    item->variant.call_args.variant.cpu_mem_rw_args.buf = buf;
+    item->variant.call_args.variant.cpu_mem_rw_args.buf = (uint8_t *)buf;
     item->variant.call_args.variant.cpu_mem_rw_args.len = len;
     // mz is_write is dropped on the floor, as we only record writes
 
@@ -527,7 +526,7 @@ void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
 
     item->variant.call_args.kind = RR_CALL_CPU_MEM_UNMAP;
     item->variant.call_args.variant.cpu_mem_unmap.addr = addr;
-    item->variant.call_args.variant.cpu_mem_unmap.buf = buf;
+    item->variant.call_args.variant.cpu_mem_unmap.buf = (uint8_t *)buf;
     item->variant.call_args.variant.cpu_mem_unmap.len = len;
     // mz is_write is dropped on the floor, as we only record writes
 
@@ -551,7 +550,7 @@ void rr_record_memory_region_change(RR_callsite_id call_site,
     item->variant.call_args.variant.mem_region_change_args.start_addr =
         start_addr;
     item->variant.call_args.variant.mem_region_change_args.size = size;
-    item->variant.call_args.variant.mem_region_change_args.name = name;
+    item->variant.call_args.variant.mem_region_change_args.name = (char *)name;
     item->variant.call_args.variant.mem_region_change_args.len = strlen(name);
     item->variant.call_args.variant.mem_region_change_args.added = added;
 

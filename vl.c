@@ -4651,9 +4651,9 @@ int main(int argc, char **argv, char **envp)
 
     replay_start();
     if (replay_name) {
-        // TODO does this need to be qmp?
+        // TODO: Might want to replace qmp_begin_* with generic funcs
         Error* error;
-        qmp_begin_replay(replay_name, &err);
+        qmp_begin_replay(replay_name, &error);
     }
 
     /* This checkpoint is required by replay to separate prior clock
