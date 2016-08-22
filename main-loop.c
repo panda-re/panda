@@ -225,7 +225,7 @@ static int os_host_main_loop_wait(int64_t timeout)
     int ret;
     static int spin_counter;
 
-    if (!(rr_in_replay() || rr_replay_requested)) {
+    if (!rr_in_replay()) {
         glib_pollfds_fill(&timeout);
     }
 
@@ -495,7 +495,7 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
-    if (!(rr_in_replay() || rr_replay_requested)) {
+    if (!rr_in_replay()) {
         slirp_pollfds_fill(gpollfds, &timeout);
     }
 #endif
