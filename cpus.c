@@ -1526,14 +1526,14 @@ static int tcg_cpu_exec(CPUState *cpu)
 #ifdef CONFIG_PROFILER
     int64_t ti;
 #endif
-    // Don't run code if we're about to record from an existing 
-    // snapshot or replay a recording.        
-    // Don't waste effort running guest code when we're about 
-    // to load a VMstate anyway. Especially useful for recording     
-    // or replaying from boot or the command line.     
-    // It probably wouldn't hurt to also return for  
-    // rr_record_requested == 1 (record from current state)      
-    if(2 == rr_record_requested || 0 != rr_replay_requested){
+    // Don't run code if we're about to record from an existing
+    // snapshot or replay a recording.
+    // Don't waste effort running guest code when we're about
+    // to load a VMstate anyway. Especially useful for recording
+    // or replaying from boot or the command line.
+    // It probably wouldn't hurt to also return for
+    // rr_record_requested == 1 (record from current state)
+    if (2 == rr_record_requested) {
         return EXCP_HALTED;
     }
 

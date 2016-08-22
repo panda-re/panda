@@ -99,7 +99,6 @@ RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 uint8_t rr_please_flush_tb = 0;
 
 // mz Flags set by monitor to indicate requested record/replay action
-volatile sig_atomic_t rr_replay_requested = 0;
 volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
@@ -1421,13 +1420,6 @@ void qmp_begin_record_from(const char* snapshot, const char* file_name,
     rr_requested_name = g_strdup(file_name);
 }
 
-void qmp_begin_replay(const char* file_name, Error** errp)
-{
-    rr_replay_requested = 1;
-    rr_requested_name = g_strdup(file_name);
-    gettimeofday(&replay_start_time, 0);
-}
-
 void qmp_end_record(Error** errp)
 {
     qmp_stop(NULL);
@@ -1460,13 +1452,6 @@ void hmp_begin_record_from(Monitor* mon, const QDict* qdict)
     const char* snapshot = qdict_get_try_str(qdict, "snapshot");
     const char* file_name = qdict_get_try_str(qdict, "file_name");
     qmp_begin_record_from(snapshot, file_name, &err);
-}
-
-void hmp_begin_replay(Monitor* mon, const QDict* qdict)
-{
-    Error* err;
-    const char* file_name = qdict_get_try_str(qdict, "file_name");
-    qmp_begin_replay(file_name, &err);
 }
 
 void hmp_end_record(Monitor* mon, const QDict* qdict)
@@ -1600,13 +1585,17 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         abort();
     }
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+
+    qemu_system_reset(VMRESET_SILENT);
     migration_incoming_state_new(snp);
     snapshot_ret = qemu_loadvm_state(snp);
+    qemu_fclose(snp);
+    migration_incoming_state_destroy();
+
     if (snapshot_ret < 0) {
         fprintf(stderr, "Failed to load vmstate\n");
         return snapshot_ret;
     }
-    qemu_fclose(snp);
     printf("... done.\n");
     // log_all_cpu_states();
 
@@ -1621,9 +1610,6 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_reset_state(cpu_state);
     // set global to turn on replay
     rr_mode = RR_REPLAY;
-    qemu_cond_broadcast(cpu_state->halt_cond);
-
-    // cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
 
     // mz fill the queue!
     rr_fill_queue();
