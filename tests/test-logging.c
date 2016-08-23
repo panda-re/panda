@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     g_test_add_func("/logging/parse_invalid_range", test_parse_invalid_range);
     g_test_add_func("/logging/parse_zero_range/subprocess", test_parse_zero_range_subprocess);
     g_test_add_func("/logging/parse_zero_range", test_parse_zero_range);
-    g_test_add_func("/logging/parse_path", test_parse_path);
+    g_test_add_func("/subprocess/logging/parse_path", test_parse_path);
     g_test_add_func("/logging/parse_path/subprocess", test_parse_path_subprocess);
     g_test_add_func("/logging/parse_invalid_path", test_parse_invalid_path);
     g_test_add_func("/logging/parse_invalid_path/subprocess", test_parse_invalid_path_subprocess);
