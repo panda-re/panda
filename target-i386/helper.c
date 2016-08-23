@@ -28,7 +28,7 @@
 #include "hw/i386/apic_internal.h"
 #endif
 
-#include "panda/plugin.h"
+#include "panda/include/panda/plugin.h"
 
 static void cpu_x86_version(CPUX86State *env, int *family, int *model)
 {
@@ -639,7 +639,7 @@ void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
 {
     X86CPU *cpu = x86_env_get_cpu(env);
 
-    panda_callbacks_asid_changed(env, env->cr[3], new_cr3);
+    panda_callbacks_asid_changed(ENV_GET_CPU(env), env->cr[3], new_cr3);
 
     env->cr[3] = new_cr3;
     if (env->cr[0] & CR0_PG_MASK) {

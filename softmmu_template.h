@@ -25,7 +25,7 @@
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
 #include "rr_log_all.h"
-#include "panda/plugin.h"
+#include "panda/include/panda/plugin.h"
 
 #define DATA_SIZE (1 << SHIFT)
 
@@ -180,7 +180,8 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     uintptr_t haddr;
     DATA_TYPE res;
 
-    panda_before_mem_read(env, env->panda_guest_pc, addr, DATA_SIZE);
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
     
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -255,7 +256,8 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 #endif
 
 panda_return:
-    panda_after_mem_read(env, env->panda_guest_pc, addr, DATA_SIZE, res);
+
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &res);
     return res;
 }
 
@@ -269,7 +271,8 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
     uintptr_t haddr;
     DATA_TYPE res;
 
-    panda_before_mem_read(env, env->panda_guest_pc, addr, DATA_SIZE);
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -340,7 +343,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
     res = glue(glue(ld, LSUFFIX), _be_p)((uint8_t *)haddr);
 
 panda_return:
-    panda_after_mem_read(env, env->panda_guest_pc, addr, res);
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &res);
     return res;
 }
 #endif /* DATA_SIZE > 1 */
@@ -399,7 +402,8 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     uintptr_t haddr;
 
-    panda_before_mem_write(env, env->panda_guest_pc, addr, val);
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -472,7 +476,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 #endif
 
 panda_return:
-    panda_after_mem_write(env, pc, addr, DATA_SIZE, val);
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 }
 
 #if DATA_SIZE > 1
@@ -484,7 +488,8 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     uintptr_t haddr;
 
-    panda_before_mem_write(env, pc, addr, DATA_SIZE, val);
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -553,7 +558,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     glue(glue(st, SUFFIX), _be_p)((uint8_t *)haddr, val);
 
 panda_return:
-    panda_after_mem_write(env, pc, addr, DATA_SIZE, val);
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 
 }
 #endif /* DATA_SIZE > 1 */

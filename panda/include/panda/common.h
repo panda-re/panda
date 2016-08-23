@@ -17,6 +17,18 @@ void panda_set_os_name(char *os_name);
 
 
 
+target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr);
+
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, 
+                            int len, int is_write);
+
+int panda_virtual_memory_read(CPUState *env, target_ulong addr, uint8_t *buf, 
+                              int len);
+
+int panda_virtual_memory_write(CPUState *env, target_ulong addr, uint8_t *buf, 
+                               int len);
+
+
 #ifdef __cplusplus
 }
 #endif
