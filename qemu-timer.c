@@ -27,7 +27,7 @@
 #include "qemu/timer.h"
 #include "sysemu/replay.h"
 #include "sysemu/sysemu.h"
-#include "rr_log.h"
+#include "rr_log_all.h"
 
 #ifdef CONFIG_POSIX
 #include <pthread.h>
