@@ -38,6 +38,8 @@
 
 #include <libgen.h>
 
+#include <zlib.h>
+
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qmp-commands.h"
@@ -1715,5 +1717,34 @@ void rr_do_end_replay(int is_error)
     }
 #endif // CONFIG_SOFTMMU
 }
+
+#ifdef CONFIG_SOFTMMU
+uint32_t rr_checksum_memory(void);
+uint32_t rr_checksum_memory(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    crc = crc32(crc, ptr, ram->size.lo);
+    rcu_read_unlock();
+
+    return crc;
+}
+
+uint32_t rr_checksum_regs(void);
+uint32_t rr_checksum_regs(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    crc = crc32(crc, first_cpu->env_ptr, sizeof(CPUArchState));
+    return crc;
+}
+#endif
 
 /**************************************************************************/
