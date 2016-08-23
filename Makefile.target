@@ -189,14 +189,13 @@ GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
 #########################################################  
 # Panda code 
-panda-obj-y =  panda/callbacks.o
-panda-obj-y += panda/callback-support.o
-panda-obj-y += panda/common.o
-panda-obj-y += panda/pandalog/plog.o
-panda-obj-y += panda/pandalog/plog_print.o
-panda-obj-y += panda/pandalog/plog_reader.o
-panda-obj-y += panda/guestarch.o
-
+obj-y +=  panda/callbacks.o
+obj-y += panda/callback_support.o
+obj-y += panda/common.o
+obj-y += panda/pandalog/plog.o
+obj-y += panda/pandalog/plog_print.o
+obj-y += panda/pandalog/plog_reader.o
+obj-y += panda/guestarch.o
 
 endif # CONFIG_SOFTMMU
 
