@@ -31,10 +31,10 @@
 #include "slirp/libslirp.h"
 #include "qemu/main-loop.h"
 #include "block/aio.h"
-#include "rr_log_all.h"
 
-// ru: add include for rr_log_all
+#ifdef CONFIG_SOFTMMU
 #include "rr_log_all.h"
+#endif
 
 #ifndef _WIN32
 
@@ -226,6 +226,7 @@ static int os_host_main_loop_wait(int64_t timeout)
     static int spin_counter;
 
     glib_pollfds_fill(&timeout);
+
 
     /* If the I/O thread is very busy or we are incorrectly busy waiting in
      * the I/O thread, this can lead to starvation of the BQL such that the
@@ -493,7 +494,11 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
+#ifdef CONFIG_SOFTMMU
     if (!rr_in_replay()) {
+#else
+    if (true){
+#endif
         slirp_pollfds_fill(gpollfds, &timeout);
     }
 #endif
@@ -510,10 +515,12 @@ int main_loop_wait(int nonblocking)
 
     ret = os_host_main_loop_wait(timeout_ns);
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_record()) {
         rr_record_in_main_loop_wait = 1;
         rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
     }
+#endif
 
 #ifdef CONFIG_SLIRP
     slirp_pollfds_poll(gpollfds, (ret < 0));
@@ -522,14 +529,20 @@ int main_loop_wait(int nonblocking)
     /* CPU thread can infinitely wait for event after
        missing the warp */
     // ru: add check if in in replay for running timers
+#ifdef CONFIG_SOFTMMU
     if (!rr_in_replay()) {
+#else
+    if (true){
+#endif
         qemu_start_warp_timer();
         qemu_clock_run_all_timers();
     }
 
+#ifdef CONFIG_SOFTMMU
     if (rr_in_record()) {
         rr_record_in_main_loop_wait = 0;
     }
+#endif
     return ret;
 }
 
