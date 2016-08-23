@@ -1745,6 +1745,24 @@ uint32_t rr_checksum_regs(void) {
     crc = crc32(crc, first_cpu->env_ptr, sizeof(CPUArchState));
     return crc;
 }
+
+uint8_t rr_debug_readb(target_ulong addr);
+uint8_t rr_debug_readb(target_ulong addr) {
+    CPUState *cpu = first_cpu;
+    uint8_t out = 0;
+
+    cpu_memory_rw_debug(cpu, addr, (uint8_t *)&out, sizeof(out), 0);
+    return out;
+}
+
+uint32_t rr_debug_readl(target_ulong addr);
+uint32_t rr_debug_readl(target_ulong addr) {
+    CPUState *cpu = first_cpu;
+    uint32_t out = 0;
+
+    cpu_memory_rw_debug(cpu, addr, (uint8_t *)&out, sizeof(out), 0);
+    return out;
+}
 #endif
 
 /**************************************************************************/
