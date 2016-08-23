@@ -830,7 +830,7 @@ static RR_log_entry* rr_read_item(void)
                 sizeof(args->variant.mem_region_change_args);
             args->variant.mem_region_change_args.name =
                 g_malloc0(args->variant.mem_region_change_args.len + 1);
-            rr_assert(fread(&(args->variant.mem_region_change_args.name), 1,
+            rr_assert(fread(args->variant.mem_region_change_args.name, 1,
                             args->variant.mem_region_change_args.len,
                             rr_nondet_log->fp) > 0);
             rr_size_of_log_entries[item->header.kind] +=
@@ -1170,6 +1170,16 @@ static void rr_create_memory_region(hwaddr start, uint64_t size, char *name) {
             start, mr, 1);
 }
 
+static MemoryRegion * rr_memory_region_find_parent(MemoryRegion *root, MemoryRegion *search) {
+    MemoryRegion *submr;
+    QTAILQ_FOREACH(submr, &root->subregions, subregions_link) {
+        if (submr == search) return root;
+        MemoryRegion *ssmr = rr_memory_region_find_parent(submr, search);
+        if (ssmr) return ssmr;
+    }
+    return NULL;
+}
+
 // mz this function consumes 2 types of entries:
 // RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION
 // XXX call_site parameter no longer used...
@@ -1207,7 +1217,9 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     MemoryRegionSection mrs = memory_region_find(get_system_memory(),
                             args.variant.mem_region_change_args.start_addr,
                             args.variant.mem_region_change_args.size);
-                    memory_region_del_subregion(get_system_memory(), mrs.mr);
+                    MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
+                            mrs.mr);
+                    memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
@@ -1494,6 +1506,8 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         rr_snapshot_name = NULL;
     }
     if (rr_record_requested == RR_RECORD_REQUEST || rr_record_requested == RR_RECORD_FROM_REQUEST) {
+        // Force running state
+        global_state_store_running();
         rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
         printf("writing snapshot:\t%s\n", name_buf);
         QIOChannelFile* ioc =
