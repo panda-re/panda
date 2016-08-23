@@ -844,7 +844,10 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr,
 void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint);
 void cpu_watchpoint_remove_all(CPUState *cpu, int mask);
 
-void invalidate_single_tb(CPUState *env, target_ulong pc);
+//#ifdef CONFIG_SOFTMMU
+//#include "../exec/cpu-defs.h"
+//void invalidate_single_tb(CPUState *env, target_ulong pc);
+//h#endif
 
 /**
  * cpu_get_address_space:

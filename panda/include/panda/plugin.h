@@ -11,11 +11,17 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
-#ifndef __PLUGIN_CALLBACKS_H__
+#ifndef __PANDA_PLUGIN_H__
 #define __PANDA_PLUGIN_H__
 
-#include "config.h"
+//#include "config.h"
+// NB: this includes cpu-defs.h
 #include "cpu.h"
+#include "exec/exec-all.h"
+ 
+
+
+
 
 #ifndef CONFIG_SOFTMMU
 #include "linux-user/qemu-types.h"
@@ -725,8 +731,8 @@ void   panda_unload_plugins(void);
 
 // Doesn't exist in user mode
 #ifdef CONFIG_SOFTMMU
-int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
-target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr);
+int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write);
+hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr);
 #endif
 
 // is_write == 1 means this is a write to the virtual memory addr of the contents of buf.
@@ -804,23 +810,23 @@ void panda_require(const char *plugin_name);
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) ; 
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) ;
 // cpu-exec.c
-void panda_callbacks_before_block_exec(CPUState *cpu, uint8_t *tb_ptr) ;
-void panda_callbacks_after_block_exec(CPUState *cpu, uint8_t *tb_ptr, TranslationBlock *next_tb) ;    
+void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) ;
+void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, TranslationBlock *next_tb) ;    
 void panda_callbacks_before_block_translate(CPUState *cpu, target_ulong pc) ;
 void panda_callbacks_after_block_translate(CPUState *cpu, target_ulong pc) ;
 void panda_callbacks_before_find_fast(void) ;
 TranslationBlock *panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb) ;
 // target-i386/translate.c
-void panda_callbacks_insn_translate(CPUState *env, target_ulong pc) ;
+bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) ;
 // softmmu_template.h
 void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc, target_ulong addr, 
-                                uint32_t data_size) ;
-void panda_callbacks_callbacks_after_mem_read(CPUState *env, target_ulong pc, target_ulong addr, 
-                               uint32_t data_size, target_ulong res) ;
+                                     uint32_t data_size) ;
+void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc, target_ulong addr, 
+                                    uint32_t data_size, uint64_t *pres) ;
 void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, target_ulong addr, 
-                            uint32_t data_size) ;
+                                      uint32_t data_size, uint64_t *pres) ;
 void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, target_ulong addr, 
-                           uint32_t data_size, target_ulong val) ;
+                                     uint32_t data_size, uint64_t *pval) ;
 // target-i386/misc_helper.c
 void panda_callbacks_cpuid(CPUState *env) ;
 // translate-all.c

@@ -32,6 +32,11 @@
 #include "qom/object.h"
 #include "qemu/rcu.h"
 
+#warning Disabled panda dma callbacks here because cant get them to compile
+//#ifdef CONFIG_SOFTMMU
+//#include "panda/include/panda/plugin.h"
+//#endif
+
 #define RAM_ADDR_INVALID (~(ram_addr_t)0)
 
 #define MAX_PHYS_ADDR_SPACE_BITS 62
@@ -1431,9 +1436,15 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
             mr = address_space_translate(as, addr, &addr1, &l, false);
             if (len == l && memory_access_is_direct(mr, false)) {
                 ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-                panda_before_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
+
+// TRL disabling these callbacks for now b/c compiler unhappy
+//#ifdef CONFIG_SOFTMMU
+//                panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
+//#endif
                 memcpy(buf, ptr, len);
-                panda_after_dma(cpu, addr1, buf, l, /*is_write=1*/ 0);
+//#ifdef CONFIG_SOFTMMU
+//                panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
+//#endif
             } else {
                 result = address_space_read_continue(as, addr, attrs, buf, len,
                                                      addr1, l, mr);

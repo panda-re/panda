@@ -1,4 +1,4 @@
-#include "panda/include/helper_defs.h"
+#include "panda/include/panda/helper_defs.h"
 
 DEF_HELPER_FLAGS_4(cc_compute_all, TCG_CALL_NO_RWG_SE, tl, tl, tl, tl, int)
 DEF_HELPER_FLAGS_4(cc_compute_c, TCG_CALL_NO_RWG_SE, tl, tl, tl, tl, int)

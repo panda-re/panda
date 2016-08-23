@@ -11,8 +11,8 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
-#include "config.h"
-#include "plugin.h"
+//#include "config.h"
+#include "include/panda/plugin.h"
 #include "qemu-common.h"
 #include "qdict.h"
 #include "qmp-commands.h"

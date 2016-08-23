@@ -35,7 +35,7 @@
 #include "sysemu/replay.h"
 #include "rr_log.h"
 
-#include "panda/plugin.h"
+#include "panda/include/panda/plugin.h" 
 
 /* -icount align implementation. */
 

@@ -33,9 +33,29 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
+# determine list of plugins
+# remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
+PANDA_PLUGINS=$(shell tr -d "[:blank:]" < ../panda/plugins/config.panda | grep -v "^\#" | xargs)
+
+# ditto for extra plugins
+ifdef EXTRA_PLUGINS_PATH
+	EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
+endif
+
 ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
 endif
+
+PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
+PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+ifdef EXTRA_PLUGINS_PATH
+	EXTRA_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-plugin-%, $(EXTRA_PANDA_PLUGINS))
+	EXTRA_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+endif
+
+#TOOL_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
+#TOOL_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
 PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG)
 STPFILES=
@@ -100,6 +120,7 @@ obj-y += target-$(TARGET_BASE_ARCH)/
 obj-y += disas.o
 obj-$(call notempty,$(TARGET_XML_FILES)) += gdbstub-xml.o
 obj-$(call lnot,$(CONFIG_KVM)) += kvm-stub.o
+
 
 obj-$(CONFIG_LIBDECNUMBER) += libdecnumber/decContext.o
 obj-$(CONFIG_LIBDECNUMBER) += libdecnumber/decNumber.o
@@ -166,13 +187,24 @@ endif
 
 GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
+#########################################################  
+# Panda code 
+panda-obj-y =  panda/callbacks.o
+panda-obj-y += panda/callback-support.o
+panda-obj-y += panda/common.o
+panda-obj-y += panda/pandalog/plog.o
+panda-obj-y += panda/pandalog/plog_print.o
+panda-obj-y += panda/pandalog/plog_reader.o
+panda-obj-y += panda/guestarch.o
+
+
 endif # CONFIG_SOFTMMU
 
 # Workaround for http://gcc.gnu.org/PR55489, see configure.
 %/translate.o: QEMU_CFLAGS += $(TRANSLATE_OPT_CFLAGS)
 
 dummy := $(call unnest-vars,,obj-y)
-all-obj-y := $(obj-y)
+all-obj-y := $(obj-y) $(panda-obj-y)
 
 target-obj-y :=
 block-obj-y :=
@@ -212,6 +244,15 @@ rr_print.o: rr_log.h rr_log_all.h
 
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
+
+plugin-%: $(libobj-y)
+	panda/scripts/apigen.py
+	panda/scripts/pp.sh
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C ../panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
+
+extra-plugin-%: $(libobj-y)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)  
+
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"  GEN   $(TARGET_DIR)$@")
