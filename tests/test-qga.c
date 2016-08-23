@@ -916,7 +916,7 @@ int main(int argc, char **argv)
     g_test_add_data_func("/qga/network-get-interfaces", &fix,
                          test_qga_network_get_interfaces);
     g_test_add_data_func("/qga/get-vcpus", &fix, test_qga_get_vcpus);
-    g_test_add_data_func("/qga/get-fsinfo", &fix, test_qga_get_fsinfo);
+    g_test_add_data_func("/subprocess/qga/get-fsinfo", &fix, test_qga_get_fsinfo);
     g_test_add_data_func("/qga/get-memory-block-info", &fix,
                          test_qga_get_memory_block_info);
     g_test_add_data_func("/qga/get-memory-blocks", &fix,
@@ -928,10 +928,10 @@ int main(int argc, char **argv)
     g_test_add_data_func("/qga/fsfreeze-status", &fix,
                          test_qga_fsfreeze_status);
 
-    g_test_add_data_func("/qga/blacklist", NULL, test_qga_blacklist);
+    g_test_add_data_func("/subprocess/qga/blacklist", NULL, test_qga_blacklist);
     g_test_add_data_func("/qga/config", NULL, test_qga_config);
     g_test_add_data_func("/qga/guest-exec", &fix, test_qga_guest_exec);
-    g_test_add_data_func("/qga/guest-exec-invalid", &fix,
+    g_test_add_data_func("/subprocess/qga/guest-exec-invalid", &fix,
                          test_qga_guest_exec_invalid);
 
     if (g_getenv("QGA_TEST_SIDE_EFFECTING")) {
