@@ -1711,9 +1711,7 @@ void rr_do_end_replay(int is_error)
         // panda_cleanup();
         abort();
     } else {
-#ifdef RR_QUIT_AFTER_REPLAY
         qemu_system_shutdown_request();
-#endif
     }
 #endif // CONFIG_SOFTMMU
 }
