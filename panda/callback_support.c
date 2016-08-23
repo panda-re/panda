@@ -1,12 +1,17 @@
 
+#include "qemu/osdep.h"
 #include "cpu.h"
-#include "panda/plugin.h"
+#include <stdint.h>
+#include "include/panda/plugin.h"
+#include "include/panda/common.h"
+
 #include "rr_log.h"
+#include "exec/cpu-common.h"
 
 
-target_phys_addr_t panda_virt_to_phys(CPUState *env, target_ulong addr){
+hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr){
     target_ulong page;
-    target_phys_addr_t phys_addr;
+    hwaddr phys_addr;
     page = addr & TARGET_PAGE_MASK;
     phys_addr = cpu_get_phys_page_debug(env, page);
     /* if no physical page mapped, return an error */
@@ -21,7 +26,7 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
 {
     int l;
     int ret;
-    target_phys_addr_t phys_addr;
+    hwaddr phys_addr;
     target_ulong page;
 
     while (len > 0) {
@@ -34,12 +39,14 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
         if (l > len)
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
-        if (is_write)
-            cpu_physical_memory_write_rom(phys_addr, buf, l);
-        else {
+        #warning TRL fixme
+        assert (!is_write);
+//        if (is_write)
+//            cpu_physical_memory_write_rom(phys_addr, buf, l);
+//        else {
             ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
             if(ret < 0) return ret;
-        }
+//        }
         len -= l;
         buf += l;
         addr += l;

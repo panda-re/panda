@@ -729,11 +729,6 @@ void   panda_unload_plugin(void* plugin);
 void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
-// Doesn't exist in user mode
-#ifdef CONFIG_SOFTMMU
-int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write);
-hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr);
-#endif
 
 // is_write == 1 means this is a write to the virtual memory addr of the contents of buf.
 // is_write == 0 is a read from that addr into buf.  
