@@ -225,9 +225,7 @@ static int os_host_main_loop_wait(int64_t timeout)
     int ret;
     static int spin_counter;
 
-    if (!rr_in_replay()) {
-        glib_pollfds_fill(&timeout);
-    }
+    glib_pollfds_fill(&timeout);
 
     /* If the I/O thread is very busy or we are incorrectly busy waiting in
      * the I/O thread, this can lead to starvation of the BQL such that the

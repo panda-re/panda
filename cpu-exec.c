@@ -688,7 +688,8 @@ int cpu_exec(CPUState *cpu)
 #endif //CONFIG_SOFTMMU
                 // Check for termination in replay
                 if (rr_mode == RR_REPLAY && rr_replay_finished()) {
-                    rr_end_replay_requested = 1;
+                    rr_do_end_replay(0);
+                    qemu_cpu_kick(cpu);
                     break;
                 }
 
