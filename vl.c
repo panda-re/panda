@@ -122,6 +122,7 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 
 
+extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *);
 extern void panda_unload_plugins(void);
@@ -3003,8 +3004,8 @@ static void set_memory_options(uint64_t *ram_slots, ram_addr_t *maxram_size,
     loc_pop(&loc);
 }
 
-
 const char *qemu_file = NULL;
+
 
 int main(int argc, char **argv, char **envp)
 {
@@ -3043,9 +3044,12 @@ int main(int argc, char **argv, char **envp)
     Error *main_loop_err = NULL;
     Error *err = NULL;
 
+    // PANDA stuff
     qemu_file = canonicalize_file_name(argv[0]);
-
     const char* replay_name = NULL;
+    // In order to load PANDA plugins all at once at the end
+    const char * panda_plugin_files[64] = {};
+    int nb_panda_plugins = 0;
 
     qemu_init_cpu_loop();
     qemu_mutex_lock_iothread();
@@ -4067,6 +4071,68 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_replay:
                 display_type = DT_NONE;
                 replay_name = optarg;
+                break;
+            case QEMU_OPTION_pandalog:
+                pandalog = 1;
+                pandalog_open(optarg, "w");
+                printf ("pandalogging to [%s]\n", optarg);
+                break;
+            case QEMU_OPTION_panda_arg:
+                if(!panda_add_arg(optarg, strlen(optarg))) {
+                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
+                }
+                break;
+            case QEMU_OPTION_panda_plugin:
+                panda_plugin_files[nb_panda_plugins++] = optarg;
+                printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
+                break;
+            case QEMU_OPTION_panda_plugins:
+                {
+                    char *new_optarg = strdup(optarg);
+                    char *plugin_start = new_optarg;
+                    char *plugin_end = new_optarg;
+
+                    while (plugin_end != NULL) {
+                        plugin_end = strchr(plugin_start, ';');
+                        if (plugin_end != NULL) *plugin_end = '\0';
+                        
+                        char *opt_list;
+                        if ((opt_list = strchr(plugin_start, ':'))) {
+                            char arg_str[255];
+                            *opt_list = '\0';
+                            opt_list++;
+                            
+                            char *opt_start = opt_list, *opt_end = opt_list;
+                            while (opt_end != NULL) {
+                                opt_end = strchr(opt_start, ',');
+                                if (opt_end != NULL) *opt_end = '\0';
+                                
+                                snprintf(arg_str, 255, "%s:%s", plugin_start, opt_start);
+                                if (panda_add_arg(arg_str, strlen(arg_str))) // copies arg
+                                    printf("Adding PANDA arg %s.\n", arg_str);
+                                else
+                                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", arg_str);
+
+                                opt_start = opt_end + 1;
+                            }
+                        }
+
+                        char *plugin_path = panda_plugin_path((const char *) plugin_start);
+                        panda_plugin_files[nb_panda_plugins++] = plugin_path;
+                        printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                        
+                        plugin_start = plugin_end + 1;
+                    }
+                    free(new_optarg);
+                    break;
+                }
+            case QEMU_OPTION_panda_os_name:
+            {
+                char *os_name = strdup(optarg);
+                // NB: this will complain if we provide an os name that panda doesnt know about
+                panda_set_os_name(os_name);                
+                break;
+            }
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
@@ -4077,6 +4143,15 @@ int main(int argc, char **argv, char **envp)
      * Best done right after the loop.  Do not insert code here!
      */
     loc_set_none();
+
+    // Now that all arguments are available, we can load plugins
+    int pp_idx;
+    for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
+      if(!panda_load_plugin(panda_plugin_files[pp_idx])) {
+          fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
+          abort();
+      }
+    }
 
     replay_configure(icount_opts);
 
@@ -4712,6 +4787,8 @@ int main(int argc, char **argv, char **envp)
     replay_disable_events();
 
     bdrv_close_all();
+    panda_cleanup();
+
     pause_all_vcpus();
     res_free();
 #ifdef CONFIG_TPM
