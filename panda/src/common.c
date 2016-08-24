@@ -7,6 +7,7 @@
 #include "disas/disas.h"
 #include "../include/panda/plugin.h"
 #include "../include/panda/common.h"
+#include "../include/panda/plog.h"
 
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;
@@ -198,4 +199,14 @@ int panda_virtual_memory_write(CPUState *env, target_ulong addr,
                                uint8_t *buf, int len) {
     return panda_virtual_memory_rw(env, addr, buf, len, 1);
 }
+
+
+void panda_cleanup(void) {
+    // PANDA: unload plugins
+    panda_unload_plugins();
+    if (pandalog) {
+        pandalog_close();
+    }
+}
+
 
