@@ -407,4 +407,7 @@ extern int singlestep;
 extern CPUState *tcg_current_cpu;
 extern bool exit_request;
 
+// panda needs
+void breakpoint_invalidate(CPUState *cpu, target_ulong pc);
+
 #endif

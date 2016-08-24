@@ -1,15 +1,17 @@
 #include <assert.h>
 #include <stdint.h>
 
-extern "C" {
-#include "disas.h"
-#include "panda_plugin.h"
-}
-#include "panda_common.h"
 
-target_ulong panda_current_pc(CPUState *env) {
+#include "qemu/osdep.h"
+#include "cpu.h"
+#include "disas/disas.h"
+#include "../include/panda/plugin.h"
+#include "../include/panda/common.h"
+
+target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;
-    int flags;
+    uint32_t flags;
+    CPUArchState *env = cpu->env_ptr;  
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
     return pc;
 }
@@ -33,7 +35,8 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
   returns current asid or address-space id.
   architecture-independent
 */
-target_ulong panda_current_asid(CPUState *env) {
+target_ulong panda_current_asid(CPUState *cpu) {
+  CPUArchState *env = cpu->env_ptr;
 #if (defined TARGET_I386 || defined TARGET_X86_64)
   return env->cr[3];
 #elif defined(TARGET_ARM)
@@ -48,7 +51,8 @@ target_ulong panda_current_asid(CPUState *env) {
   returns true if we are currently executing in kernel-mode
 */
 
-bool panda_in_kernel(CPUState *env) {
+bool panda_in_kernel(CPUState *cpu) {
+   CPUArchState *env = cpu->env_ptr;
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
@@ -126,3 +130,72 @@ void panda_set_os_name(char *os_name) {
     printf ("os_type=%d bits=%d os_details=[%s]\n", 
             panda_os_type, panda_os_bits, panda_os_details); 
 }
+
+
+// Note: these call things in exec.c
+void panda_invalidate_single_tb(CPUState *cpu, target_ulong pc) {
+    breakpoint_invalidate(cpu, pc);
+}
+
+int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
+    return cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
+}
+
+
+hwaddr panda_virt_to_phys(CPUState *env, target_ulong addr){
+    target_ulong page;
+    hwaddr phys_addr;
+    page = addr & TARGET_PAGE_MASK;
+    phys_addr = cpu_get_phys_page_debug(env, page);
+    /* if no physical page mapped, return an error */
+    if (phys_addr == -1)
+        return -1;
+    phys_addr += (addr & ~TARGET_PAGE_MASK);
+    return phys_addr;
+}
+
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
+                        uint8_t *buf, int len, int is_write)
+{
+    int l;
+    int ret;
+    hwaddr phys_addr;
+    target_ulong page;
+
+    while (len > 0) {
+        page = addr & TARGET_PAGE_MASK;
+        phys_addr = cpu_get_phys_page_debug(env, page);
+        /* if no physical page mapped, return an error */
+        if (phys_addr == -1)
+            return -1;
+        l = (page + TARGET_PAGE_SIZE) - addr;
+        if (l > len)
+            l = len;
+        phys_addr += (addr & ~TARGET_PAGE_MASK);
+        #warning TRL fixme if necessary
+        assert (!is_write);
+//        if (is_write)
+//            cpu_physical_memory_write_rom(phys_addr, buf, l);
+//        else {
+            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+            if(ret < 0) return ret;
+//        }
+        len -= l;
+        buf += l;
+        addr += l;
+    }
+    return 0;
+}
+
+
+int panda_virtual_memory_read(CPUState *env, target_ulong addr,
+                              uint8_t *buf, int len) {
+    return panda_virtual_memory_rw(env, addr, buf, len, 0);
+}
+
+
+int panda_virtual_memory_write(CPUState *env, target_ulong addr,
+                               uint8_t *buf, int len) {
+    return panda_virtual_memory_rw(env, addr, buf, len, 1);
+}
+

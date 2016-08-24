@@ -36,6 +36,7 @@
 #include "rr_log.h"
 
 #include "panda/include/panda/plugin.h" 
+#include "panda/include/panda/common.h" 
 
 /* -icount align implementation. */
 
@@ -55,13 +56,9 @@ typedef struct SyncClocks {
 #define MAX_DELAY_PRINT_RATE 2000000000LL
 #define MAX_NB_PRINTS 100
 
-
-// Needed to prevent before_block_exec_invalidate_opt from
+// Needed to prevent before_block_exec_invalidate_opt from 
 // running more than once
-bool bb_invalidate_done = false;
-
-int tb_invalidated_flag;
-
+bool panda_bb_invalidate_done = false;
 
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
 {
@@ -175,6 +172,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
+    // NB: This is where we did this in panda1
+    panda_bb_invalidate_done = false;
     panda_callbacks_before_block_exec(cpu, itb);
 
     // actually execute the bb. 
@@ -184,7 +183,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
 #warning Need to dynamically verify that last_tb is actually next_tb.
-    panda_callbacks_after_block_exec(cpu, itb, last_tb);    
+    panda_callbacks_after_block_exec(cpu, itb, ((TranslationBlock*)(((uintptr_t)last_tb) & ~3)));
 
     tb_exit = ret & TB_EXIT_MASK;
     trace_exec_tb_exit(last_tb, tb_exit);
@@ -331,7 +330,7 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
     /* if no translated code available, then translate it now */
     tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
 
-    panda_callbacks_after_block_translate(cpu, pc);
+    panda_callbacks_after_block_translate(cpu, tb);
 
 #ifdef CONFIG_USER_ONLY
     mmap_unlock();
@@ -685,8 +684,9 @@ int cpu_exec(CPUState *cpu)
                     rr_replay_skipped_calls();
                 }
                 cpu_handle_interrupt(cpu, &last_tb);
-                panda_callbacks_before_find_fast();
+                panda_before_find_fast();
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done);
                 if (qemu_loglevel_mask(CPU_LOG_RR)) {
                     RR_prog_point pp = rr_prog_point();
                     qemu_log_mask(CPU_LOG_RR,
@@ -702,17 +702,17 @@ int cpu_exec(CPUState *cpu)
                 if (rr_mode == RR_REPLAY) {
                     bool panda_invalidate_tb = false;
                     uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                    if (panda_invalidate_tb || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
-                                                tb->icount > until_interrupt)) {
+                    if ( panda_invalidate_tb
+                         || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
+                             tb->icount > until_interrupt)) {
                         // retranslate so that basic block boundary matches
                         // record & replay for interrupt delivery
-                        panda_invalidate_single_tb(cpu, tb->pc);
+                        breakpoint_invalidate(cpu,tb->pc);
+//                        panda_invalidate_single_tb(cpu, tb->pc);
                         tb = tb_find_fast(cpu, &last_tb, tb_exit);
-                   }
+                    }
                 }
 #endif //CONFIG_SOFTMMU
-                // TRL: need to accomodate the possible 2nd call to tb_find_fast
-                tb = panda_callbacks_after_find_fast(cpu, tb);                        
                 // Check for termination in replay
                 if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                     rr_end_replay_requested = 1;

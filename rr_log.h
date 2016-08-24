@@ -177,4 +177,6 @@ static inline uint64_t rr_num_instr_before_next_interrupt(void) {
 }
 
 
+//void breakpoint_invalidate(CPUState *cpu, target_ulong pc);
+
 #endif

@@ -877,4 +877,7 @@ extern const struct VMStateDescription vmstate_cpu_common;
     .offset = 0,                                                            \
 }
 
+
+
+
 #endif

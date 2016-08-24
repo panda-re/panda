@@ -121,6 +121,18 @@ int main(int argc, char **argv)
 #include "sysemu/replay.h"
 #include "qapi/qmp/qerror.h"
 
+
+extern bool panda_add_arg(const char *, int);
+extern bool panda_load_plugin(const char *);
+extern void panda_unload_plugins(void);
+extern char *panda_plugin_path(const char *name);
+void panda_set_os_name(char *os_name);
+
+void pandalog_open(const char *path, const char *mode);
+int  pandalog_close(void);
+int pandalog = 0;
+int panda_in_main_loop = 0;
+
 #include "rr_log_all.h"
 
 #define MAX_VIRTIO_CONSOLES 1
@@ -2991,6 +3003,9 @@ static void set_memory_options(uint64_t *ram_slots, ram_addr_t *maxram_size,
     loc_pop(&loc);
 }
 
+
+const char *qemu_file = NULL;
+
 int main(int argc, char **argv, char **envp)
 {
     int i;
@@ -3027,6 +3042,8 @@ int main(int argc, char **argv, char **envp)
     FILE *vmstate_dump_file = NULL;
     Error *main_loop_err = NULL;
     Error *err = NULL;
+
+    qemu_file = canonicalize_file_name(argv[0]);
 
     const char* replay_name = NULL;
 
@@ -4688,7 +4705,10 @@ int main(int argc, char **argv, char **envp)
 
     os_setup_post();
 
+    panda_in_main_loop = 1;
     main_loop();
+    panda_in_main_loop = 0;
+
     replay_disable_events();
 
     bdrv_close_all();

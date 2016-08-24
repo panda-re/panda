@@ -748,12 +748,12 @@ void cpu_exec_init(CPUState *cpu, Error **errp)
 }
 
 #if defined(CONFIG_USER_ONLY)
-static void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
+void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
 {
     tb_invalidate_phys_page_range(pc, pc + 1, 0);
 }
 #else
-static void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
+ void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
 {
     MemTxAttrs attrs;
     hwaddr phys = cpu_get_phys_page_attrs_debug(cpu, pc, &attrs);
@@ -787,10 +787,6 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     return -ENOSYS;
 }
 #else
-void panda_invalidate_single_tb(CPUState *cpu, target_ulong pc)
-{
-    breakpoint_invalidate(cpu, pc);
-}
 
 
 /* Add a watchpoint.  */
@@ -2804,12 +2800,28 @@ MemTxResult address_space_rw(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
     }
 }
 
+
 void cpu_physical_memory_rw(hwaddr addr, uint8_t *buf,
                             int len, int is_write)
 {
     address_space_rw(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED,
-                     buf, len, is_write);
+                            buf, len, is_write);
+    
 }
+
+// if safe == true that means we want this to fail for IO mem
+MemTxResult cpu_physical_memory_rw_ex(hwaddr addr, uint8_t *buf,
+                                     int len, int is_write, bool safe) {    
+    hwaddr l = len;
+    hwaddr addr1; 
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr, &addr1, &l, is_write);
+    if (safe && !memory_access_is_direct(mr, is_write)) {
+        return MEMTX_ERROR;
+    }
+    return address_space_rw(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED,
+                            buf, len, is_write);
+}
+
 
 enum write_rom_type {
     WRITE_DATA,

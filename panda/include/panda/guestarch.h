@@ -25,13 +25,19 @@ PANDAENDCOMMENT */
 #ifndef GUESTARCH_H
 #define GUESTARCH_H
 
+#ifdef __cplusplus
 extern "C" {
+#endif
+
 #include "cpu.h"
+
+#ifdef __cplusplus
 }
+#endif
 
 //#include "../panda_plugins/taint/taint_processor.h"
 
-#include "panda_addr.h"
+#include "./addr.h"
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 
