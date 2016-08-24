@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <zlib.h>
-#include "pandalog.pb-c.h"
+#include "plog.pb-c.h"
 
 #define PL_CURRENT_VERSION 2
 // compression level

@@ -730,10 +730,6 @@ void   panda_unload_plugin_idx(int idx);
 void   panda_unload_plugins(void);
 
 
-// is_write == 1 means this is a write to the virtual memory addr of the contents of buf.
-// is_write == 0 is a read from that addr into buf.  
-int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
-
 bool panda_flush_tb(void);
 
 void panda_do_flush_tb(void);
@@ -808,9 +804,9 @@ void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, 
 void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) ;
 void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, TranslationBlock *next_tb) ;    
 void panda_callbacks_before_block_translate(CPUState *cpu, target_ulong pc) ;
-void panda_callbacks_after_block_translate(CPUState *cpu, target_ulong pc) ;
-void panda_callbacks_before_find_fast(void) ;
-TranslationBlock *panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb) ;
+void panda_callbacks_after_block_translate(CPUState *cpu, TranslationBlock *tb) ;
+bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool panda_bb_invalidate_done);
+
 // target-i386/translate.c
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) ;
 // softmmu_template.h

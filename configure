@@ -676,6 +676,7 @@ Haiku)
   vhost_net="yes"
   vhost_scsi="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
+  LIBS="-ldl  -lprotobuf-c -lprotobuf  $LIBS"
 ;;
 esac
 

@@ -15,7 +15,7 @@ PANDAENDCOMMENT */
 #include <stdint.h>
 
 #include "qemu/osdep.h"
-#include "include/panda/plugin.h"
+#include "../include/panda/plugin.h"
 #include "qemu-common.h"
 //#include "qdict.h"
 #include "qapi/qmp/qdict.h"
@@ -36,6 +36,8 @@ PANDAENDCOMMENT */
 
 #include <dlfcn.h>
 #include <string.h>
+
+#include "../include/panda/common.h"
 
 //void spit_cbs(void) ;
 
