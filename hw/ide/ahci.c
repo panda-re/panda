@@ -34,7 +34,7 @@
 #include <hw/ide/pci.h>
 #include <hw/ide/ahci.h>
 
-#define DEBUG_AHCI 1
+#define DEBUG_AHCI 0
 
 #define DPRINTF(port, fmt, ...) \
 do { \
@@ -277,6 +277,9 @@ static void  ahci_port_write(AHCIState *s, int port, int offset, uint32_t val)
 
             /* Check FIS RX and CLB engines */
             ahci_cond_start_engines(&s->dev[port]);
+            DPRINTF(s->dev[port].port_no, "\n");
+            ahci_map_fis_address(&s->dev[port]);
+            ahci_map_clb_address(&s->dev[port]);
 
             /* XXX usually the FIS would be pending on the bus here and
                    issuing deferred until the OS enables FIS receival.
@@ -288,6 +291,9 @@ static void  ahci_port_write(AHCIState *s, int port, int offset, uint32_t val)
             }
 
             check_cmd(s, port);
+            DPRINTF(s->dev[port].port_no, "\n");
+            ahci_unmap_fis_address(&s->dev[port]);
+            ahci_unmap_clb_address(&s->dev[port]);
             break;
         case PORT_TFDATA:
             /* Read Only. */
@@ -314,7 +320,13 @@ static void  ahci_port_write(AHCIState *s, int port, int offset, uint32_t val)
             break;
         case PORT_CMD_ISSUE:
             pr->cmd_issue |= val;
+            DPRINTF(s->dev[port].port_no, "\n");
+            ahci_map_fis_address(&s->dev[port]);
+            ahci_map_clb_address(&s->dev[port]);
             check_cmd(s, port);
+            DPRINTF(s->dev[port].port_no, "\n");
+            ahci_unmap_fis_address(&s->dev[port]);
+            ahci_unmap_clb_address(&s->dev[port]);
             break;
         default:
             break;
@@ -644,6 +656,7 @@ static void debug_print_fis(uint8_t *fis, int cmd_len)
 static bool ahci_enable_fis(AHCIDevice *ad)
 {
     AHCIPortRegs *pr = &ad->port_regs;
+    DPRINTF(ad->port_no, "\n");
     /* Make sure we can map this address. */
     map_page(ad->hba->as, &ad->res_fis,
              ((uint64_t)pr->fis_addr_hi << 32) | pr->fis_addr, 256);
@@ -651,6 +664,8 @@ static bool ahci_enable_fis(AHCIDevice *ad)
         pr->cmd |= PORT_CMD_FIS_ON;
         dma_memory_unmap(ad->hba->as, ad->res_fis, 256,
                          DMA_DIRECTION_FROM_DEVICE, 256);
+        ad->res_fis = NULL;
+        ad->res_fis_count = 0;
         return true;
     }
 
@@ -661,6 +676,7 @@ static bool ahci_enable_fis(AHCIDevice *ad)
 static void ahci_disable_fis(AHCIDevice *ad)
 {
     AHCIPortRegs *pr = &ad->port_regs;
+    DPRINTF(ad->port_no, "\n");
     if (ad->res_fis != NULL) {
         DPRINTF(ad->port_no, "Attempt to disable FIS while mapped.");
         return;
@@ -671,24 +687,34 @@ static void ahci_disable_fis(AHCIDevice *ad)
 static void ahci_map_fis_address(AHCIDevice *ad)
 {
     AHCIPortRegs *pr = &ad->port_regs;
+    DPRINTF(ad->port_no, "\n");
+    if (ad->res_fis != NULL) {
+        ad->res_fis_count++;
+        return;
+    }
     map_page(ad->hba->as, &ad->res_fis,
              ((uint64_t)pr->fis_addr_hi << 32) | pr->fis_addr, 256);
 }
 
 static void ahci_unmap_fis_address(AHCIDevice *ad)
 {
+    DPRINTF(ad->port_no, "\n");
     if (ad->res_fis == NULL) {
         DPRINTF(ad->port_no, "Attempt to unmap NULL FIS address\n");
         return;
     }
-    dma_memory_unmap(ad->hba->as, ad->res_fis, 256,
-                     DMA_DIRECTION_FROM_DEVICE, 256);
-    ad->res_fis = NULL;
+    ad->res_fis_count--;
+    if (ad->res_fis_count == 0) {
+        dma_memory_unmap(ad->hba->as, ad->res_fis, 256,
+                         DMA_DIRECTION_FROM_DEVICE, 256);
+        ad->res_fis = NULL;
+    }
 }
 
 static bool ahci_enable_clb(AHCIDevice *ad)
 {
     AHCIPortRegs *pr = &ad->port_regs;
+    DPRINTF(ad->port_no, "\n");
     ad->cur_cmd = NULL;
     map_page(ad->hba->as, &ad->lst,
              ((uint64_t)pr->lst_addr_hi << 32) | pr->lst_addr, 1024);
@@ -696,6 +722,8 @@ static bool ahci_enable_clb(AHCIDevice *ad)
         pr->cmd |= PORT_CMD_LIST_ON;
         dma_memory_unmap(ad->hba->as, ad->lst, 1024,
                          DMA_DIRECTION_FROM_DEVICE, 1024);
+        ad->lst = NULL;
+        ad->lst_count = 0;
         return true;
     }
 
@@ -705,6 +733,7 @@ static bool ahci_enable_clb(AHCIDevice *ad)
 
 static void ahci_disable_clb(AHCIDevice *ad)
 {
+    DPRINTF(ad->port_no, "\n");
     if (ad->lst != NULL) {
         DPRINTF(ad->port_no, "Attempt to disable CLB while mapped\n");
         return;
@@ -715,20 +744,29 @@ static void ahci_disable_clb(AHCIDevice *ad)
 
 static void ahci_map_clb_address(AHCIDevice *ad)
 {
+    DPRINTF(ad->port_no, "\n");
     AHCIPortRegs *pr = &ad->port_regs;
+    if (ad->lst != NULL) {
+        ad->lst_count++;
+        return;
+    }
     map_page(ad->hba->as, &ad->lst,
              ((uint64_t)pr->lst_addr_hi << 32) | pr->lst_addr, 1024);
 }
 
 static void ahci_unmap_clb_address(AHCIDevice *ad)
 {
+    DPRINTF(ad->port_no, "\n");
     if (ad->lst == NULL) {
         DPRINTF(ad->port_no, "Attempt to unmap NULL CLB address\n");
         return;
     }
-    dma_memory_unmap(ad->hba->as, ad->lst, 1024,
-                     DMA_DIRECTION_FROM_DEVICE, 1024);
-    ad->lst = NULL;
+    ad->lst_count--;
+    if (ad->lst_count == 0) {
+        dma_memory_unmap(ad->hba->as, ad->lst, 1024,
+                         DMA_DIRECTION_FROM_DEVICE, 1024);
+        ad->lst = NULL;
+    }
 }
 
 static void ahci_write_fis_sdb(AHCIState *s, NCQTransferState *ncq_tfs)
@@ -738,6 +776,7 @@ static void ahci_write_fis_sdb(AHCIState *s, NCQTransferState *ncq_tfs)
     IDEState *ide_state;
     SDBFIS *sdb_fis;
 
+    DPRINTF(ad->port_no, "\n");
     ahci_map_fis_address(ad);
 
     if (!ad->res_fis ||
@@ -768,6 +807,7 @@ static void ahci_write_fis_sdb(AHCIState *s, NCQTransferState *ncq_tfs)
         ahci_trigger_irq(s, ad, PORT_IRQ_SDB_FIS);
     }
 
+    DPRINTF(ad->port_no, "\n");
     ahci_unmap_fis_address(ad);
 }
 
@@ -777,6 +817,7 @@ static void ahci_write_fis_pio(AHCIDevice *ad, uint16_t len)
     uint8_t *pio_fis;
     IDEState *s = &ad->port.ifs[0];
 
+    DPRINTF(ad->port_no, "\n");
     ahci_map_fis_address(ad);
 
     if (!ad->res_fis || !(pr->cmd & PORT_CMD_FIS_RX)) {
@@ -817,6 +858,7 @@ static void ahci_write_fis_pio(AHCIDevice *ad, uint16_t len)
 
     ahci_trigger_irq(ad->hba, ad, PORT_IRQ_PIOS_FIS);
 
+    DPRINTF(ad->port_no, "\n");
     ahci_unmap_fis_address(ad);
 }
 
@@ -827,6 +869,7 @@ static bool ahci_write_fis_d2h(AHCIDevice *ad)
     int i;
     IDEState *s = &ad->port.ifs[0];
 
+    DPRINTF(ad->port_no, "\n");
     ahci_map_fis_address(ad);
 
     if (!ad->res_fis || !(pr->cmd & PORT_CMD_FIS_RX)) {
@@ -864,6 +907,7 @@ static bool ahci_write_fis_d2h(AHCIDevice *ad)
 
     ahci_trigger_irq(ad->hba, ad, PORT_IRQ_D2H_REG_FIS);
 
+    DPRINTF(ad->port_no, "\n");
     ahci_unmap_fis_address(ad);
     return true;
 }
@@ -1100,6 +1144,7 @@ static void process_ncq_command(AHCIState *s, int port, uint8_t *cmd_fis,
         return;
     }
 
+    DPRINTF(ad->port_no, "\n");
     ahci_map_clb_address(ad);
 
     ncq_tfs->used = 1;
@@ -1163,6 +1208,7 @@ static void process_ncq_command(AHCIState *s, int port, uint8_t *cmd_fis,
 
     execute_ncq_command(ncq_tfs);
 
+    DPRINTF(ad->port_no, "\n");
     ahci_unmap_clb_address(ad);
 }
 
@@ -1643,6 +1689,8 @@ static int ahci_state_post_load(void *opaque, int version_id)
             return -1;
         }
 
+        ahci_map_fis_address(ad);
+        ahci_map_clb_address(ad);
         for (j = 0; j < AHCI_MAX_CMDS; j++) {
             ncq_tfs = &ad->ncq_tfs[j];
             ncq_tfs->drive = ad;
@@ -1692,6 +1740,8 @@ static int ahci_state_post_load(void *opaque, int version_id)
             }
             ad->cur_cmd = get_cmd_header(s, i, ad->busy_slot);
         }
+        ahci_unmap_fis_address(ad);
+        ahci_unmap_clb_address(ad);
     }
 
     return 0;
