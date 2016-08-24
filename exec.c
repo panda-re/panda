@@ -2599,6 +2599,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             l = memory_access_size(mr, l, addr1);
             /* XXX: could force current_cpu to NULL to avoid
                potential bugs */
+#warning Maybe we want to record the value of result in this switch statement
             switch (l) {
             case 8:
                 /* 64 bit write access */
@@ -2625,8 +2626,6 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             case 2:
                 /* 16 bit write access */
                 val = lduw_p(buf);
-                result |= memory_region_dispatch_write(mr, addr1, val, 2,
-                                                       attrs);
                 RR_DO_RECORD_OR_REPLAY(
                 /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 2,
