@@ -2594,38 +2594,55 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
 
     for (;;) {
         if (!memory_access_is_direct(mr, true)) {
-            if (rr_in_replay()) {
-#warning come back and validate
-                return result;
-            }
             release_lock |= prepare_mmio_access(mr);
             l = memory_access_size(mr, l, addr1);
             /* XXX: could force current_cpu to NULL to avoid
                potential bugs */
+#warning Maybe we want to record the value of result in this switch statement
             switch (l) {
             case 8:
                 /* 64 bit write access */
                 val = ldq_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 8,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_8);
                 break;
             case 4:
                 /* 32 bit write access */
                 val = ldl_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 4,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_4);
                 break;
             case 2:
                 /* 16 bit write access */
                 val = lduw_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 2,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_2);
                 break;
             case 1:
                 /* 8 bit write access */
                 val = ldub_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 1,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_1);
                 break;
             default:
                 abort();
