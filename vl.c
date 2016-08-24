@@ -1965,21 +1965,6 @@ static void main_loop(void)
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
 
-        if (__builtin_expect(rr_replay_requested, 0)) {
-            //block signals
-            sigprocmask(SIG_BLOCK, &blockset, &oldset);
-            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
-                printf("Failed to start replay\n");
-                exit(1);
-            } else { // we have to unblock signals, so we can't just continue on failure
-                // ru: qemu_quit_timers() defined by PANDA team to stop timers
-                qemu_rr_quit_timers();
-                rr_replay_requested = 0;
-            }
-            //unblock signals
-            sigprocmask(SIG_SETMASK, &oldset, NULL);
-        }
-
         //mz 05.2012 We have the global mutex here, so this should be OK.
         if (rr_end_record_requested && rr_in_record()) {
             rr_do_end_record();
@@ -4742,11 +4727,6 @@ int main(int argc, char **argv, char **envp)
     }
 
     replay_start();
-    if (replay_name) {
-        // TODO: Might want to replace qmp_begin_* with generic funcs
-        Error* error;
-        qmp_begin_replay(replay_name, &error);
-    }
 
     /* This checkpoint is required by replay to separate prior clock
        reading from the other reads, because timer polling functions query
@@ -4754,6 +4734,24 @@ int main(int argc, char **argv, char **envp)
     replay_checkpoint(CHECKPOINT_RESET);
     qemu_system_reset(VMRESET_SILENT);
     register_global_state();
+
+    if (replay_name) {
+        // rr: check for begin/end record/replay
+        sigset_t blockset, oldset;
+
+        //block signals
+        sigprocmask(SIG_BLOCK, &blockset, &oldset);
+        if (0 != rr_do_begin_replay(replay_name, first_cpu)){
+            printf("Failed to start replay\n");
+            exit(1);
+        }
+        // ru: qemu_quit_timers() defined by PANDA team to stop timers
+        qemu_rr_quit_timers();
+
+        //unblock signals
+        sigprocmask(SIG_SETMASK, &oldset, NULL);
+    }
+
     if (loadvm) {
         if (load_vmstate(loadvm) < 0) {
             autostart = 0;

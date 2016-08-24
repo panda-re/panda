@@ -38,6 +38,8 @@
 
 #include <libgen.h>
 
+#include <zlib.h>
+
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qmp-commands.h"
@@ -99,7 +101,6 @@ RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 uint8_t rr_please_flush_tb = 0;
 
 // mz Flags set by monitor to indicate requested record/replay action
-volatile sig_atomic_t rr_replay_requested = 0;
 volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
@@ -831,7 +832,7 @@ static RR_log_entry* rr_read_item(void)
                 sizeof(args->variant.mem_region_change_args);
             args->variant.mem_region_change_args.name =
                 g_malloc0(args->variant.mem_region_change_args.len + 1);
-            rr_assert(fread(&(args->variant.mem_region_change_args.name), 1,
+            rr_assert(fread(args->variant.mem_region_change_args.name, 1,
                             args->variant.mem_region_change_args.len,
                             rr_nondet_log->fp) > 0);
             rr_size_of_log_entries[item->header.kind] +=
@@ -1171,6 +1172,16 @@ static void rr_create_memory_region(hwaddr start, uint64_t size, char *name) {
             start, mr, 1);
 }
 
+static MemoryRegion * rr_memory_region_find_parent(MemoryRegion *root, MemoryRegion *search) {
+    MemoryRegion *submr;
+    QTAILQ_FOREACH(submr, &root->subregions, subregions_link) {
+        if (submr == search) return root;
+        MemoryRegion *ssmr = rr_memory_region_find_parent(submr, search);
+        if (ssmr) return ssmr;
+    }
+    return NULL;
+}
+
 // mz this function consumes 2 types of entries:
 // RR_SKIPPED_CALL_CPU_MEM_RW and RR_SKIPPED_CALL_CPU_REG_MEM_REGION
 // XXX call_site parameter no longer used...
@@ -1208,7 +1219,9 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     MemoryRegionSection mrs = memory_region_find(get_system_memory(),
                             args.variant.mem_region_change_args.start_addr,
                             args.variant.mem_region_change_args.size);
-                    memory_region_del_subregion(get_system_memory(), mrs.mr);
+                    MemoryRegion *parent = rr_memory_region_find_parent(get_system_memory(),
+                            mrs.mr);
+                    memory_region_del_subregion(parent, mrs.mr);
                 }
             } break;
             case RR_CALL_CPU_MEM_UNMAP: {
@@ -1421,13 +1434,6 @@ void qmp_begin_record_from(const char* snapshot, const char* file_name,
     rr_requested_name = g_strdup(file_name);
 }
 
-void qmp_begin_replay(const char* file_name, Error** errp)
-{
-    rr_replay_requested = 1;
-    rr_requested_name = g_strdup(file_name);
-    gettimeofday(&replay_start_time, 0);
-}
-
 void qmp_end_record(Error** errp)
 {
     qmp_stop(NULL);
@@ -1460,13 +1466,6 @@ void hmp_begin_record_from(Monitor* mon, const QDict* qdict)
     const char* snapshot = qdict_get_try_str(qdict, "snapshot");
     const char* file_name = qdict_get_try_str(qdict, "file_name");
     qmp_begin_record_from(snapshot, file_name, &err);
-}
-
-void hmp_begin_replay(Monitor* mon, const QDict* qdict)
-{
-    Error* err;
-    const char* file_name = qdict_get_try_str(qdict, "file_name");
-    qmp_begin_replay(file_name, &err);
 }
 
 void hmp_end_record(Monitor* mon, const QDict* qdict)
@@ -1509,6 +1508,8 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
         rr_snapshot_name = NULL;
     }
     if (rr_record_requested == RR_RECORD_REQUEST || rr_record_requested == RR_RECORD_FROM_REQUEST) {
+        // Force running state
+        global_state_store_running();
         rr_get_snapshot_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
         printf("writing snapshot:\t%s\n", name_buf);
         QIOChannelFile* ioc =
@@ -1600,13 +1601,17 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         abort();
     }
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
+
+    qemu_system_reset(VMRESET_SILENT);
     migration_incoming_state_new(snp);
     snapshot_ret = qemu_loadvm_state(snp);
+    qemu_fclose(snp);
+    migration_incoming_state_destroy();
+
     if (snapshot_ret < 0) {
         fprintf(stderr, "Failed to load vmstate\n");
         return snapshot_ret;
     }
-    qemu_fclose(snp);
     printf("... done.\n");
     // log_all_cpu_states();
 
@@ -1621,9 +1626,6 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     rr_reset_state(cpu_state);
     // set global to turn on replay
     rr_mode = RR_REPLAY;
-    qemu_cond_broadcast(cpu_state->halt_cond);
-
-    // cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
 
     // mz fill the queue!
     rr_fill_queue();
@@ -1711,11 +1713,56 @@ void rr_do_end_replay(int is_error)
         // panda_cleanup();
         abort();
     } else {
-#ifdef RR_QUIT_AFTER_REPLAY
         qemu_system_shutdown_request();
-#endif
     }
 #endif // CONFIG_SOFTMMU
 }
+
+#ifdef CONFIG_SOFTMMU
+uint32_t rr_checksum_memory(void);
+uint32_t rr_checksum_memory(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+    rcu_read_lock();
+    void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    crc = crc32(crc, ptr, ram->size.lo);
+    rcu_read_unlock();
+
+    return crc;
+}
+
+uint32_t rr_checksum_regs(void);
+uint32_t rr_checksum_regs(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    crc = crc32(crc, first_cpu->env_ptr, sizeof(CPUArchState));
+    return crc;
+}
+
+uint8_t rr_debug_readb(target_ulong addr);
+uint8_t rr_debug_readb(target_ulong addr) {
+    CPUState *cpu = first_cpu;
+    uint8_t out = 0;
+
+    cpu_memory_rw_debug(cpu, addr, (uint8_t *)&out, sizeof(out), 0);
+    return out;
+}
+
+uint32_t rr_debug_readl(target_ulong addr);
+uint32_t rr_debug_readl(target_ulong addr) {
+    CPUState *cpu = first_cpu;
+    uint32_t out = 0;
+
+    cpu_memory_rw_debug(cpu, addr, (uint8_t *)&out, sizeof(out), 0);
+    return out;
+}
+#endif
 
 /**************************************************************************/

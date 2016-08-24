@@ -28,6 +28,10 @@
 #include "sysemu/replay.h"
 #include "sysemu/sysemu.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "rr_log_all.h"
+#endif
+
 #ifdef CONFIG_POSIX
 #include <pthread.h>
 #endif
@@ -39,6 +43,8 @@
 #ifdef CONFIG_PRCTL_PR_SET_TIMERSLACK
 #include <sys/prctl.h>
 #endif
+
+#define RR_REPLAY_DEADLINE 1000000 /* one millisecond. */
 
 /***********************************************************/
 /* timers */
@@ -571,6 +577,11 @@ int64_t timerlistgroup_deadline_ns(QEMUTimerListGroup *tlg)
     int64_t deadline = -1;
     QEMUClockType type;
     bool play = replay_mode == REPLAY_MODE_PLAY;
+
+#ifdef CONFIG_SOFTMMU
+    if (rr_in_replay()) return RR_REPLAY_DEADLINE;
+#endif
+
     for (type = 0; type < QEMU_CLOCK_MAX; type++) {
         if (qemu_clock_use_for_deadline(type)) {
             if (!play || type == QEMU_CLOCK_REALTIME) {
