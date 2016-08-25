@@ -204,6 +204,7 @@ def sync(instr_low, instr_high, target):
     # Now we do a slower synchronization. Optimally, run behind forward until it matches ahead.
     disable_all()
     enable("cpu_tb_exec")
+    gdb_run_both("reverse-continue")
     instr_counts = get_instr_counts()
 
     ahead = argmax(instr_counts)
@@ -262,7 +263,7 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
-while replay_event_low < replay_event_high:
+while replay_event_low < replay_event_high - 1:
     mid = (replay_event_low + replay_event_high) / 2
 
     print "Moving replay to event {} to find divergence".format(mid)
