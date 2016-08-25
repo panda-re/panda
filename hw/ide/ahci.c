@@ -678,10 +678,12 @@ static void ahci_disable_fis(AHCIDevice *ad)
 {
     AHCIPortRegs *pr = &ad->port_regs;
     if (ad->res_fis != NULL) {
-        DPRINTF(ad->port_no, "Attempt to disable FIS while mapped.");
-        return;
+        ad->res_fis_count = 1;
+        ahci_unmap_fis_address(ad);
     }
     pr->cmd &= ~PORT_CMD_FIS_ON;
+    ad->res_fis_count = 0;
+    ad->res_fis = NULL;
 }
 
 static void ahci_map_fis_address(AHCIDevice *ad)
@@ -731,11 +733,13 @@ static bool ahci_enable_clb(AHCIDevice *ad)
 
 static void ahci_disable_clb(AHCIDevice *ad)
 {
+    ad->cur_cmd = NULL;
     if (ad->lst != NULL) {
-        DPRINTF(ad->port_no, "Attempt to disable CLB while mapped\n");
-        return;
+        ad->lst_count = 1;
+        ahci_unmap_clb_address(ad);
     }
     ad->port_regs.cmd &= ~PORT_CMD_LIST_ON;
+    ad->lst_count = 0;
     ad->lst = NULL;
 }
 
@@ -761,6 +765,7 @@ static void ahci_unmap_clb_address(AHCIDevice *ad)
         dma_memory_unmap(ad->hba->as, ad->lst, 1024,
                          DMA_DIRECTION_FROM_DEVICE, 1024);
         ad->lst = NULL;
+        ad->cur_cmd = NULL;
     }
 }
 
