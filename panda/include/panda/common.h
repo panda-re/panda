@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+// ugh these are here so that g++ can actually handle gnarly qemu code
+#define class pandaclass
+#define new pandanew
+#define typename
 #include "cpu.h"
 
 target_ulong panda_current_pc(CPUState *env);

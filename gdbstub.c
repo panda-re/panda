@@ -1269,7 +1269,7 @@ static void gdb_vm_state_change(void *opaque, int running, RunState state)
             snprintf(buf, sizeof(buf),
                      "T%02xthread:%02x;%swatch:" TARGET_FMT_lx ";",
                      GDB_SIGNAL_TRAP, cpu_index(cpu), type,
-                     (target_ulong)cpu->watchpoint_hit->vaddr);
+                     (target_ulong)cpu->watchpoint_hit->vaddr_wtf);
             cpu->watchpoint_hit = NULL;
             goto send_packet;
         }
