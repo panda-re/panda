@@ -92,7 +92,7 @@ def gdb_run_both(cmd, timeout=-1):
         assert False
 
     for proc in cmds:
-        print "(rr-{}) {}".format(descriptions[proc], cmd)
+        print "(rr-{}) {}".format(descriptions[proc], cmds[proc])
         proc.work.put((cmds[proc], timeout))
 
     results = {}
@@ -157,6 +157,7 @@ def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
 def get_checksums(procs=[record, replay]):
+    gdb_run_both("thread 3")
     return get_value(procs, "rr_checksum_memory()")
 
 instr_count_max = get_instr_count(replay)
@@ -171,7 +172,7 @@ def sync(instr_low, instr_high, target):
 
     whens = get_whens()
     target_event_low = minimum_events[target]
-    target_event_high = whens[target]
+    target_event_high = maximum_events[target]
     static = other[target]
     print "Syncing {} @ {} to match {} @ {}".format(
         target, instr_counts[target], static, instr_counts[static]
@@ -205,6 +206,8 @@ def sync(instr_low, instr_high, target):
     enable("cpu_tb_exec")
     instr_counts = get_instr_counts()
 
+    ahead = argmax(instr_counts)
+    behind = other[ahead]
     BACKWARD = 0
     FORWARD = 1
     if instr_counts[ahead] >= instr_high - 10000:
@@ -246,26 +249,46 @@ maximum_events = get_whens()
 disable_all()
 replay_event_low = minimum_events[replay]
 replay_event_high = maximum_events[replay]
+record_event_low = minimum_events[record]
+record_event_high = maximum_events[record]
+max_converged_instr = 0
+min_diverged_instr = instr_count_max
+divergence_info = """
+-----------------------------------------------------
+Current divergence understanding:
+    Instr range: [{instr_lo}, {instr_hi}]
+    Record event range: [{record_lo}, {record_hi}]
+    Replay event range: [{replay_lo}, {replay_hi}]
+------------------------------------------------------
+"""
+
 while replay_event_low < replay_event_high:
     mid = (replay_event_low + replay_event_high) / 2
 
-    print
     print "Moving replay to event {} to find divergence".format(mid)
     gdb_run(replay, "run {}".format(mid))
 
     now_instr = sync(0, instr_count_max, record)
-    now_event = get_whens()[replay]
+    whens = get_whens()
 
     checksums = get_checksums()
+
+    print
     print "Current checksums:", checksums
     if checksums[replay] != checksums[record]: # after divergence
-        replay_event_high = now_event - 1
+        min_diverged_instr = min(min_diverged_instr, now_instr)
+        record_event_high = min(record_event_high, whens[record])
+        replay_event_high = whens[replay] - 1 # we're looking too late, go back
     else:
-        replay_event_low = now_event
+        max_converged_instr = max(max_converged_instr, now_instr)
+        record_event_low = max(record_event_low, whens[record])
+        replay_event_low = whens[replay] # look forwards
 
-record.interact()
-
-#record.sendline("run {}".format(record_last))
-#replay.sendline("run {}".format(replay_last))
-#record.expect_exact("(rr)")
-#replay.expect_exact("(rr)")
+    print divergence_info.format(
+        instr_lo=max_converged_instr,
+        instr_hi=min_diverged_instr,
+        record_lo=record_event_low,
+        record_hi=record_event_high,
+        replay_lo=replay_event_low,
+        replay_hi=replay_event_high,
+    )
