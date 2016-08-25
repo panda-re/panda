@@ -2,7 +2,7 @@
 pproto=./panda/src/plog.proto
 
 # assembles pandalog.proto file
-panda/scripts/pp.py $pproto
+$(dirname $0)/pp.py $pproto
 
 echo "generating protobuf code with protoc-c"
 protoc-c --c_out=. $pproto

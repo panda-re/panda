@@ -187,17 +187,24 @@ endif
 
 GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
-
-
 #########################################################  
 # Panda code 
+
+PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
+
+panda/include/plog.pb-c.h: $(PROTO_FILES)
+	cd $(SRC_PATH) ; panda/scripts/apigen.py ; panda/scripts/pp.sh
+
+panda/src/plog.pb-c.o: panda/include/plog.pb-c.h
+panda/src/common.o: panda/include/plog.pb-c.h
+
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
+obj-y += panda/src/plog.pb-c.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
-obj-y += panda/src/plog.pb-c.o
 #obj-y += panda/src/guestarch.o
 
 
@@ -249,8 +256,6 @@ $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
 
-#	panda/scripts/apigen.py
-#	panda/scripts/pp.sh
 
 plugin-%: 
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C $(SRC_PATH)/panda/plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
