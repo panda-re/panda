@@ -35,7 +35,7 @@ endif
 
 # determine list of plugins
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
-PANDA_PLUGINS=$(shell tr -d "[:blank:]" < ../panda/plugins/config.panda | grep -v "^\#" | xargs)
+PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
 
 # ditto for extra plugins
 ifdef EXTRA_PLUGINS_PATH
@@ -101,7 +101,7 @@ else
 stap:
 endif
 
-all: $(PROGS) stap
+all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap 
 
 # Dummy command so that make thinks it has done something
 	@true
@@ -248,13 +248,15 @@ rr_print.o: rr_log.h rr_log_all.h
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
-plugin-%: $(libobj-y)
-	panda/scripts/apigen.py
-	panda/scripts/pp.sh
-	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C ../panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
 
-extra-plugin-%: $(libobj-y)
-	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda_plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)  
+#	panda/scripts/apigen.py
+#	panda/scripts/pp.sh
+
+plugin-%: 
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C $(SRC_PATH)/panda/plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
+
+extra-plugin-%: $(obj-y)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda/plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)  
 
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
@@ -273,6 +275,7 @@ clean:
 	rm -f *.a *~ $(PROGS)
 	rm -f $(shell find . -name '*.[od]')
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
+	find panda/plugins -depth -mindepth 1 -delete
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp
 endif
