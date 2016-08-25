@@ -182,6 +182,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
         MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
         rcu_read_lock();
         uint8_t *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
+        memcpy(ptr+0x2000000,cpu_tb_exec,0x100);
         rcu_read_unlock();
         rr_chaos_done = true;
     }

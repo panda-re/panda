@@ -17,27 +17,26 @@ PANDAENDCOMMENT */
 // ugh these are here so that g++ can actually handle gnarly qemu code
 
 #ifdef __cplusplus
-#define class pandaclass
 #define new pandanew
 #define typename
-#define typeof decltype
+#define typeof(x) auto
 #endif
 
 #include "config-host.h"
 #include "config-target.h"
 #include "qemu/osdep.h"
 #include "qemu-common.h"
-
-#include "../../include/panda/common.h"
-
-
 #include "cpu.h"
 
+#include "../../include/panda/common.h"
 #include "exec/exec-all.h"
  
-
-
-
+// Don't forget to undefine it so people can actually use C++ stuff...
+#ifdef __cplusplus
+#undef new
+#undef typename
+#undef typeof
+#endif
 
 #ifndef CONFIG_SOFTMMU
 #include "linux-user/qemu-types.h"
