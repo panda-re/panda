@@ -35,53 +35,54 @@ replay_last = 25326 #get_last_event(replay_rr)
 
 print record_last, replay_last
 
-def rr_driver_thread(command, logfile, work, results):
-    process = pexpect.spawn(command, timeout=5)
-    process.logfile = open(logfile, "w")
-    process.expect_exact("(rr) ")
 
-    while True:
-        item, timeout = work.get()
-        process.sendline(item)
-
-        if item == "quit": break
-
-        try:
-            process.expect_exact("(rr) ", timeout=timeout)
-        except pexpect.TIMEOUT:
-            print process.before
-            raise
-
-        #print process.before + "(rr)",
-        results.put(process.before)
-
-class RRInstance(object):
-    def __init__(self, replay, logfile):
+class RRInstance(Process):
+    def __init__(self, description, replay, logfile, results_queue):
+        self.description = description
         self.work = Queue()
-        self.results = Queue()
-        self.process = Process(target=rr_driver_thread, args=(
-            "{} replay {}".format(rr_bin, replay),
-            logfile,
-            self.work,
-            self.results
-        ))
+        self.results_queue = results_queue
+        self.spawn_cmd = "{} replay {}".format(rr_bin, replay)
+        self.logfile = logfile
 
-    def start(self):
-        self.process.start()
+        Process.__init__(self)
 
-record = RRInstance(record_rr, "record_log.txt")
+    def __repr__(self):
+        return "RRInstance({!r})".format(self.description)
+
+    def run(self):
+        process = pexpect.spawn(self.spawn_cmd, timeout=5)
+        process.logfile = open(self.logfile, "w")
+        process.expect_exact("(rr) ")
+
+        while True:
+            item, timeout = self.work.get()
+            process.sendline(item)
+
+            if item == "quit": break
+
+            try:
+                process.expect_exact("(rr) ", timeout=timeout)
+            except pexpect.TIMEOUT:
+                print process.before
+                raise
+
+            #print process.before + "(rr)",
+            self.results_queue.put((self.description, process.before))
+
+results_queue = Queue()
+record = RRInstance("record", record_rr, "record_log.txt", results_queue)
 record.start()
-replay = RRInstance(replay_rr, "replay_log.txt")
+replay = RRInstance("replay", replay_rr, "replay_log.txt", results_queue)
 replay.start()
 
 other = { record: replay, replay: record }
 descriptions = { record: "record", replay: "replay" }
+objs = { "record": record, "replay": replay }
 
 def gdb_run(proc, cmd, timeout=-1):
     print "(rr-{}) {}".format(descriptions[proc], cmd)
     proc.work.put((cmd, timeout))
-    proc.results.get()
-    return proc.before
+    return results_queue.get()[1]
 
 def gdb_run_both(cmd, timeout=-1):
     if isinstance(cmd, str):
@@ -94,17 +95,12 @@ def gdb_run_both(cmd, timeout=-1):
     for proc in cmds:
         proc.work.put((cmds[proc], timeout))
 
-    record_str = None
-    replay_str = None
-    while not record_str and not replay_str:
-        try:
-            if not record_str:
-                record_str = record.results.get(timeout=0.1)
-            if not replay_str:
-                replay_str = replay.results.get(timeout=0.1)
-        except Queue_Empty: pass
+    results = {}
+    for i in range(2):
+        name, value = results_queue.get()
+        results[objs[name]] = value
 
-    return {record: record_str, replay: replay_str}
+    return results
 
 replay.logfile = open("replay_log.txt", "w")
 
@@ -162,10 +158,10 @@ def get_checksums(procs=[record, replay]):
 
 def back_up():
     instr_counts = get_instr_counts()
-    print_result(instr_counts)
+    print instr_counts
 
     if instr_counts[record] == instr_counts[replay]:
-        return False
+        return instr_counts[record]
 
     ahead = argmax(instr_counts)
     behind = other[ahead]
@@ -189,10 +185,13 @@ def back_up():
                 ahead_event_low = mid
             else:
                 ahead_event_high = mid
-        if ahead_event_low == ahead_event_high:
+        if ahead_event_low >= ahead_event_high:
             raise Exception()
 
-    return True
+    return None
+
+while not back_up(): pass
+maximum_events = get_instr_counts()
 
 disable_all()
 record_event_low = minimum_events[record]
@@ -200,15 +199,16 @@ record_event_high = maximum_events[record]
 while record_event_low < record_event_high:
     mid = (record_event_low + record_event_high) / 2
     gdb_run(record, "run {}".format(mid))
-    while back_up():
-        pass
+
+    now = None
+    while not now:
+        now = back_up()
 
     checksums = get_checksums()
-    if checksums[record] == checksums[replay]: # before divergence
-        record_event_low = mid
+    if checksums[record] != checksums[replay]: # after divergence
+        record_event_high = now
     else:
-        record_event_high = mid
-
+        record_event_low = now
 
 record.interact()
 
