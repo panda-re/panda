@@ -50,6 +50,7 @@ def rr_driver_thread(command, logfile, work, results):
             process.expect_exact("(rr) ", timeout=timeout)
         except pexpect.TIMEOUT:
             print process.before
+            raise
 
         #print process.before + "(rr)",
         results.put(process.before)
@@ -60,7 +61,7 @@ class RRInstance(object):
         self.results = Queue()
         self.process = Process(target=rr_driver_thread, args=(
             "{} replay {}".format(rr_bin, replay),
-            "record_log.txt",
+            logfile,
             self.work,
             self.results
         ))
@@ -74,15 +75,24 @@ replay = RRInstance(replay_rr, "replay_log.txt")
 replay.start()
 
 other = { record: replay, replay: record }
+descriptions = { record: "record", replay: "replay" }
 
 def gdb_run(proc, cmd, timeout=-1):
+    print "(rr-{}) {}".format(descriptions[proc], cmd)
     proc.work.put((cmd, timeout))
     proc.results.get()
     return proc.before
 
 def gdb_run_both(cmd, timeout=-1):
-    record.work.put((cmd, timeout))
-    replay.work.put((cmd, timeout))
+    if isinstance(cmd, str):
+        cmds = { record: cmd, replay: cmd }
+    elif isinstance(cmd, dict):
+        cmds = cmd
+    else:
+        assert False
+
+    for proc in cmds:
+        proc.work.put((cmds[proc], timeout))
 
     record_str = None
     replay_str = None
@@ -128,8 +138,10 @@ minimum_events = get_whens()
 maximum_events = { record: record_last, replay: replay_last }
 
 # get last instruction in failed replay
-gdb_run(record, "run {}".format(record_last))
-gdb_run(replay, "run {}".format(replay_last))
+gdb_run_both({
+    record: "run {}".format(record_last),
+    replay: "run {}".format(replay_last)
+}, timeout=120)
 
 breakpoint("cpu_tb_exec")
 gdb_run_both("reverse-continue")
@@ -187,7 +199,7 @@ record_event_low = minimum_events[record]
 record_event_high = maximum_events[record]
 while record_event_low < record_event_high:
     mid = (record_event_low + record_event_high) / 2
-    gdb_run()
+    gdb_run(record, "run {}".format(mid))
     while back_up():
         pass
 
