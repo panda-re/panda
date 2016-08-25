@@ -277,7 +277,9 @@ struct AHCIDevice {
     AHCIPortRegs port_regs;
     struct AHCIState *hba;
     QEMUBH *check_bh;
+    uint32_t lst_count;
     uint8_t *lst;
+    uint32_t res_fis_count;
     uint8_t *res_fis;
     bool done_atapi_packet;
     int32_t busy_slot;
