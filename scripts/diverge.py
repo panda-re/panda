@@ -35,7 +35,6 @@ replay_last = 25326 #get_last_event(replay_rr)
 
 print record_last, replay_last
 
-
 class RRInstance(Process):
     def __init__(self, description, replay, logfile, results_queue):
         self.description = description
@@ -64,9 +63,9 @@ class RRInstance(Process):
                 process.expect_exact("(rr) ", timeout=timeout)
             except pexpect.TIMEOUT:
                 print process.before
-                raise
+                print "EXCEPTION!"
+                process.interact()
 
-            #print process.before + "(rr)",
             self.results_queue.put((self.description, process.before))
 
 results_queue = Queue()
@@ -93,6 +92,7 @@ def gdb_run_both(cmd, timeout=-1):
         assert False
 
     for proc in cmds:
+        print "(rr-{}) {}".format(descriptions[proc], cmd)
         proc.work.put((cmds[proc], timeout))
 
     results = {}
@@ -153,62 +153,115 @@ def get_value(procs, value_str):
 def get_instr_counts(procs=[record, replay]):
     return get_value(procs, "cpus->tqh_first->rr_guest_instr_count")
 
+def get_instr_count(proc):
+    return get_instr_counts([proc])[proc]
+
 def get_checksums(procs=[record, replay]):
     return get_value(procs, "rr_checksum_memory()")
 
-def back_up():
+instr_count_max = get_instr_count(replay)
+print "Failing replay instr count: {}", instr_count_max
+
+def sync(instr_low, instr_high, target):
     instr_counts = get_instr_counts()
     print instr_counts
 
     if instr_counts[record] == instr_counts[replay]:
         return instr_counts[record]
 
-    ahead = argmax(instr_counts)
-    behind = other[ahead]
+    whens = get_whens()
+    target_event_low = minimum_events[target]
+    target_event_high = whens[target]
+    static = other[target]
+    print "Syncing {} @ {} to match {} @ {}".format(
+        target, instr_counts[target], static, instr_counts[static]
+    )
 
-    if abs(instr_counts[record] - instr_counts[replay]) < 100000:
-        disable_all()
-        enable("cpu_tb_exec")
-        condition("cpu_tb_exec", "cpus->tqh_first->rr_guest_instr_count <= {}"
-                .format(instr_counts[behind]))
-        gdb_run(ahead, "reverse-continue", timeout=None)
+    print "Event binary search."
+
+    # Goal for first loop is to move target-session as close to static-session
+    # as possible. Event-jumping is pretty fast.
+    while target_event_low < target_event_high and \
+            abs(instr_counts[record] - instr_counts[replay]) >= 10000:
+        print "Bounds: [{}, {}]".format(target_event_low, target_event_high)
+        mid = (target_event_low + target_event_high) / 2
+
+        gdb_run(target, "run {}".format(mid), timeout=None)
+        instr_counts = get_instr_counts()
+        print instr_counts
+        if instr_counts[target] < instr_counts[static]:
+            # gone too far. go forward
+            target_event_low = mid + 1
+        elif instr_counts[target] > instr_counts[static]:
+            target_event_high = mid - 1
+        else:
+            return instr_counts[target]
+
+    if target_event_low == target_event_high:
+        gdb_run(target, "run {}".format(target_event_low), timeout=None)
+
+    # Now we do a slower synchronization. Optimally, run behind forward until it matches ahead.
+    disable_all()
+    enable("cpu_tb_exec")
+    instr_counts = get_instr_counts()
+
+    BACKWARD = 0
+    FORWARD = 1
+    if instr_counts[ahead] >= instr_high - 10000:
+        direction = BACKWARD
     else:
-        whens = get_whens()
-        ahead_event_low = minimum_events[ahead]
-        ahead_event_high = whens[ahead]
-        while ahead_event_low < ahead_event_high and \
-                abs(instr_counts[record] - instr_counts[replay]) >= 100000:
-            mid = (ahead_event_low + ahead_event_high) / 2
-            gdb_run(ahead, "run {}".format(mid), timeout=None)
-            if get_instr_counts([ahead]) < instr_counts[behind]:
-                # gone too far. go forward
-                ahead_event_low = mid
-            else:
-                ahead_event_high = mid
-        if ahead_event_low >= ahead_event_high:
-            raise Exception()
+        direction = FORWARD
+    while instr_counts[record] != instr_counts[replay]:
+        assert instr_counts[behind] <= instr_high
+        assert instr_counts[ahead] >= instr_low
 
-    return None
+        ahead = argmax(instr_counts)
+        behind = other[ahead]
+        print "Close. Doing slow sync up on {} @ {} behind {} @ {}".format(
+            behind, instr_counts[behind], ahead, instr_counts[ahead]
+        )
 
-while not back_up(): pass
-maximum_events = get_instr_counts()
+        # If our ahead guy is too far ahead, gotta bring it back.
+        if direction == BACKWARD:
+            condition("cpu_tb_exec", "cpus->tqh_first->rr_guest_instr_count <= {}"
+                      .format(instr_counts[behind]))
+            while get_instr_count(ahead) == instr_counts[ahead]:
+                print "Rewinding {}".format(ahead)
+                gdb_run(ahead, "reverse-continue", timeout=None)
+        elif direction == FORWARD:
+            condition("cpu_tb_exec", "cpus->tqh_first->rr_guest_instr_count >= {}"
+                      .format(instr_counts[ahead]))
+            while get_instr_count(behind) == instr_counts[behind]:
+                print "Advancing {}".format(behind)
+                gdb_run(behind, "continue", timeout=None)
+        else: assert False
+        instr_counts = get_instr_counts()
+
+    return instr_counts[record]
+
+sync(0, instr_count_max, record)
+
+maximum_events = get_whens()
 
 disable_all()
-record_event_low = minimum_events[record]
-record_event_high = maximum_events[record]
-while record_event_low < record_event_high:
-    mid = (record_event_low + record_event_high) / 2
-    gdb_run(record, "run {}".format(mid))
+replay_event_low = minimum_events[replay]
+replay_event_high = maximum_events[replay]
+while replay_event_low < replay_event_high:
+    mid = (replay_event_low + replay_event_high) / 2
 
-    now = None
-    while not now:
-        now = back_up()
+    print
+    print "Moving replay to event {} to find divergence".format(mid)
+    gdb_run(replay, "run {}".format(mid))
+
+    now_instr = sync(0, instr_count_max, record)
+    now_event = get_whens()[replay]
 
     checksums = get_checksums()
-    if checksums[record] != checksums[replay]: # after divergence
-        record_event_high = now
+    print "Current checksums:", checksums
+    if checksums[replay] != checksums[record]: # after divergence
+        replay_event_high = now_event - 1
     else:
-        record_event_low = now
+        replay_event_low = now_event
 
 record.interact()
 
