@@ -14,9 +14,25 @@ PANDAENDCOMMENT */
 #ifndef __PANDA_PLUGIN_H__
 #define __PANDA_PLUGIN_H__
 
-//#include "config.h"
-// NB: this includes cpu-defs.h
+// ugh these are here so that g++ can actually handle gnarly qemu code
+
+#ifdef __cplusplus
+#define class pandaclass
+#define new pandanew
+#define typename
+#define typeof decltype
+#endif
+
+#include "config-host.h"
+#include "config-target.h"
+#include "qemu/osdep.h"
+#include "qemu-common.h"
+
+#include "../../include/panda/common.h"
+
+
 #include "cpu.h"
+
 #include "exec/exec-all.h"
  
 

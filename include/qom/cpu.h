@@ -208,7 +208,7 @@ typedef struct CPUBreakpoint {
 } CPUBreakpoint;
 
 struct CPUWatchpoint {
-    vaddr vaddr;
+    vaddr vaddr_wtf;
     vaddr len;
     vaddr hitaddr;
     MemTxAttrs hitattrs;

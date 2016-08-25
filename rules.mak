@@ -17,7 +17,7 @@ MAKEFLAGS += -rR
 
 # Flags for C++ compilation
 #QEMU_CXXFLAGS = -D__STDC_LIMIT_MACROS $(filter-out -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs -Wold-style-declaration -Wold-style-definition -Wredundant-decls, $(QEMU_CFLAGS))
-QEMU_CXXFLAGS = -fpermissive -Wno-sign-compare 
+QEMU_CXXFLAGS = -fpermissive -Wno-sign-compare -std=c++11
 
 # Flags for dependency generation
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
