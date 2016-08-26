@@ -77,10 +77,10 @@ required uint64 instr = 2;
 
 messages = []
 rests = []
-for plugin in open("panda/plugins/config.panda"):
+for plugin in open(sys.argv[2]): # "panda/plugins/config.panda"):
     print "processing plugin " + plugin
     p = plugin.strip()
-    proto_part_file = "panda/plugins/%s/%s.proto" % (p, p)
+    proto_part_file = os.path.join(os.path.basename(sys.argv[2]), '%s/%s.proto') % (p, p)
     if os.path.isfile(proto_part_file):
         print proto_part_file
         proto_part = get_proto_text(proto_part_file)

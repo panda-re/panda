@@ -192,17 +192,18 @@ GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
 PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
 
-panda/include/plog.pb-c.h: $(PROTO_FILES)
-	cd $(SRC_PATH) ; panda/scripts/apigen.py ; panda/scripts/pp.sh
+plog.pb-c.h plog.pb-c.c: $(PROTO_FILES)
+	$(SRC_PATH)/panda/scripts/pp.sh $(BUILD_DIR)/plog.proto $(SRC_PATH)/panda/plugins/config.panda
 
-panda/src/plog.pb-c.o: panda/include/plog.pb-c.h
-panda/src/common.o: panda/include/plog.pb-c.h
+GENERATED_HEADERS += plog.pb-c.h
+
+# panda/scripts/apigen.py
 
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
-obj-y += panda/src/plog.pb-c.o
+obj-y += plog.pb-c.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
