@@ -621,6 +621,7 @@ Darwin)
   # won't work when we're compiling with gcc as a C compiler.
   QEMU_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $QEMU_CFLAGS"
   HOST_VARIANT_DIR="darwin"
+  LIBS="-lprotobuf-c -lprotobuf $LIBS"
 ;;
 SunOS)
   solaris="yes"

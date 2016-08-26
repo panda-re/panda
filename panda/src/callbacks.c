@@ -22,7 +22,7 @@ PANDAENDCOMMENT */
 
 #include "qmp-commands.h"
 #include "hmp.h"
-#include "error.h"
+#include "qapi/error.h"
 
 #include "monitor/monitor.h"
 
