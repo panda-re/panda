@@ -3,12 +3,10 @@ import IPython
 import argparse
 import pexpect
 import os
-import sys
 import re
 import operator
 from subprocess32 import check_output
 from multiprocessing import Process, Queue
-from Queue import Empty as Queue_Empty
 
 def get_default_rr_path():
     try:
@@ -144,6 +142,7 @@ def condition(break_arg, cond):
     })
 
 gdb_run_both("set confirm off")
+gdb_run_both("set pagination off")
 
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
@@ -231,7 +230,6 @@ def sync(instr_low, instr_high, target):
     instr_counts = get_instr_counts()
     print instr_counts
 
-    whens = get_whens()
     target_event_low = minimum_events[target]
     target_event_high = maximum_events[target]
     static = other[target]
@@ -293,7 +291,7 @@ def sync(instr_low, instr_high, target):
                 ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
                       .format(instr_counts[behind])
             })
-            if "cpu_tb_exec" not in gdb_run(behind, "backtrace"):
+            if "cpu_loop_exec_tb" not in gdb_run(behind, "backtrace"):
                 gdb_run_both("reverse-continue", timeout=None)
             while get_instr_count(ahead) == instr_counts[ahead]:
                 gdb_run(ahead, "reverse-continue", timeout=None)
@@ -304,7 +302,7 @@ def sync(instr_low, instr_high, target):
                 behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
                       .format(instr_counts[ahead])
             })
-            if "cpu_tb_exec" not in gdb_run(ahead, "backtrace"):
+            if "cpu_loop_exec_tb" not in gdb_run(ahead, "backtrace"):
                 gdb_run_both("continue", timeout=None)
             while get_instr_count(behind) == instr_counts[behind]:
                 gdb_run(behind, "continue", timeout=None)
@@ -388,6 +386,13 @@ while last_event_range != (replay_event_low, replay_event_high):
 print "Haven't made progress since last iteration. Moving to memory checksum."
 print_divergence_info()
 
+gdb_run_both({
+    record: "run {}".format(record_event_high),
+    replay: "run {}".format(replay_event_high),
+}, timeout=None)
+disable_all()
+sync(0, instr_count_max, record)
+
 ram_size = get_value([record], "ram_size")[record]
 
 def get_crc32s(low, size):
@@ -433,9 +438,16 @@ print diverged_ranges
 ram_ptrs = get_value([record, replay], "(uint64_t)memory_region_find(" + \
              "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
 
+gdb_run_both({
+    record: "run {}".format(record_event_low),
+    replay: "run {}".format(replay_event_low),
+}, timeout=None)
 disable_all()
-enable("rr_do_begin_record")
-enable("rr_do_begin_replay")
+sync(0, max_converged_instr, record)
+
+disable_all()
+if len(diverged_ranges) > 4:
+    print "WARNING: Too much divergence! Trying anyway."
 for d in diverged_ranges[-4:]:
     gdb_run_both({
         k: "watch *0x{:x}".format(ram_ptrs[k] + d[0]) for k in [record, replay]
@@ -444,7 +456,7 @@ for d in diverged_ranges[-4:]:
 instr_counts = get_instr_counts()
 while instr_counts[record] == instr_counts[replay] and \
         instr_counts[record] > 0:
-    gdb_run_both("reverse-continue", timeout=None)
+    gdb_run_both("continue", timeout=None)
     instr_counts = get_instr_counts()
 
 if instr_counts[record] > 0:
