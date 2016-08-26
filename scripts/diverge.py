@@ -22,7 +22,15 @@ parser = argparse.ArgumentParser(description="A script to automatically find rep
 parser.add_argument("record_rr", help="Path to the rr directory for the recording replay")
 parser.add_argument("replay_rr", help="Path to the rr directory for the replay replay")
 parser.add_argument("--rr", default=default_rr,
-                                help="A path to the rr binary (default={})".format(default_rr))
+                    help="A path to the rr binary (default={})".format(default_rr))
+parser.add_argument("--record-event-bounds",
+                    help="Event bounds for record to seed search, comma-separated.")
+parser.add_argument("--replay-event-bounds",
+                    help="Event bounds for replay to seed search, comma-separated.")
+parser.add_argument("--instr-bounds",
+                    help=("Instruction bounds where divergence could have occurred.\n" + \
+                          "Also to seed search."))
+parser.add_argument("--instr-max", help="Last instruction before replay failed.")
 args = parser.parse_args()
 
 # Check arguments
@@ -38,32 +46,14 @@ def argmax(d):
 def argmin(d):
     return min(d.iteritems(), key=operator.itemgetter(1))[0]
 
-rr_bin = args.rr
-if len(sys.argv) != 3:
-    print "diverge.py record replay"
-
-def get_last_event(replay_dir):
-    cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
-        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(rr_bin, replay_dir)
-
-    print cmd
-    str_result = check_output(cmd, shell=True)
-    return int(str_result)
-
-record_rr = args.record_rr
-replay_rr = args.replay_rr
-
-record_last = get_last_event(record_rr)
-replay_last = get_last_event(replay_rr)
-
-print record_last, replay_last
+assert args.rr
 
 class RRInstance(Process):
     def __init__(self, description, replay, logfile, results_queue):
         self.description = description
         self.work = Queue()
         self.results_queue = results_queue
-        self.spawn_cmd = "{} replay {}".format(rr_bin, replay)
+        self.spawn_cmd = "{} replay {}".format(args.rr, replay)
         self.logfile = logfile
 
         Process.__init__(self)
@@ -92,9 +82,9 @@ class RRInstance(Process):
             self.results_queue.put((self.description, process.before))
 
 results_queue = Queue()
-record = RRInstance("record", record_rr, "record_log.txt", results_queue)
+record = RRInstance("record", args.record_rr, "record_log.txt", results_queue)
 record.start()
-replay = RRInstance("replay", replay_rr, "replay_log.txt", results_queue)
+replay = RRInstance("replay", args.replay_rr, "replay_log.txt", results_queue)
 replay.start()
 
 other = { record: replay, replay: record }
@@ -125,8 +115,6 @@ def gdb_run_both(cmd, timeout=-1):
 
     return results
 
-gdb_run_both("set confirm off")
-
 breakpoints = {}
 def breakpoint(break_arg):
     result = gdb_run_both("break {}".format(break_arg))[record]
@@ -142,6 +130,8 @@ def enable(break_arg):
 def condition(break_arg, cond):
     gdb_run_both("condition {} {}".format(breakpoints[break_arg], cond))
 
+gdb_run_both("set confirm off")
+
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
 gdb_run_both("continue", timeout=None)
@@ -149,24 +139,11 @@ gdb_run_both("finish", timeout=None)
 gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
 gdb_run_both("continue", timeout=None)
 
+breakpoint("cpu_tb_exec")
+
 def get_whens():
     result = gdb_run_both("when")
     return { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
-
-minimum_events = { k: v + 1 for k, v in get_whens().items() }
-maximum_events = { record: record_last, replay: replay_last }
-
-# get last instruction in failed replay
-gdb_run_both({
-    record: "run {}".format(record_last),
-    replay: "run {}".format(replay_last)
-}, timeout=None)
-
-breakpoint("cpu_tb_exec")
-gdb_run_both("reverse-continue", timeout=None)
-
-def print_result(result):
-    print "{{ record: {!r}, replay: {!r} }}".format(result[record], result[replay])
 
 def get_value(procs, value_str):
     result = { proc: gdb_run(proc, "print {}".format(value_str)) \
@@ -180,12 +157,56 @@ def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
 def get_checksums(procs=[record, replay]):
+    # FIXME: This sometimes fails because it's on the wrong thread.
     gdb_run_both("info threads")
-    #gdb_run_both("thread 3")
     return get_value(procs, "rr_checksum_memory()")
 
-instr_count_max = get_instr_count(replay)
-print "Failing replay instr count: {}", instr_count_max
+def get_last_event(replay_dir):
+    cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
+        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(args.rr, replay_dir)
+
+    str_result = check_output(cmd, shell=True)
+    return int(str_result)
+
+record_last = get_last_event(args.record_rr)
+replay_last = get_last_event(args.replay_rr)
+
+print "Last known events: record={}, replay={}".format(record_last, replay_last)
+
+if args.record_event_bounds and args.replay_event_bounds and args.instr_bounds:
+    record_bounds = map(int, args.record_event_bounds.split(','))
+    replay_bounds = map(int, args.replay_event_bounds.split(','))
+    minimum_events = { record: record_bounds[0], replay: replay_bounds[0] }
+    maximum_events = { record: record_bounds[1], replay: replay_bounds[1] }
+
+    if args.instr_max:
+        instr_count_max = int(args.instr_max)
+    else:
+        gdb_run(replay, "run {}".format(replay_last), timeout=None)
+        gdb_run(replay, "reverse-continue", timeout=None)
+        instr_count_max = get_instr_count(replay)
+
+    gdb_run_both({
+        record: "run {}".format(maximum_events[record]),
+        replay: "run {}".format(maximum_events[replay])
+    }, timeout=None)
+
+    gdb_run_both("reverse-continue", timeout=None)
+
+else:
+    minimum_events = { k: v + 1 for k, v in get_whens().items() }
+    maximum_events = { record: record_last, replay: replay_last }
+
+    # get last instruction in failed replay
+    gdb_run_both({
+        record: "run {}".format(record_last),
+        replay: "run {}".format(replay_last)
+    }, timeout=None)
+
+    gdb_run_both("reverse-continue", timeout=None)
+
+    instr_count_max = get_instr_count(replay)
+    print "Failing replay instr count:", instr_count_max
 
 def sync(instr_low, instr_high, target):
     instr_counts = get_instr_counts()
@@ -277,14 +298,27 @@ replay_event_low = minimum_events[replay]
 replay_event_high = maximum_events[replay]
 record_event_low = minimum_events[record]
 record_event_high = maximum_events[record]
-max_converged_instr = 0
-min_diverged_instr = instr_count_max
+
+if args.instr_bounds:
+    instr_bounds = map(int, args.instr_bounds.split(','))
+    max_converged_instr = instr_bounds[0]
+    min_diverged_instr = instr_bounds[1]
+else:
+    max_converged_instr = 0
+    min_diverged_instr = instr_count_max
+
 divergence_info = """
 -----------------------------------------------------
 Current divergence understanding:
     Instr range: [{instr_lo}, {instr_hi}]
     Record event range: [{record_lo}, {record_hi}]
     Replay event range: [{replay_lo}, {replay_hi}]
+
+    Args to get back here:
+    --record-event-bounds={record_lo},{record_hi} \\
+    --replay-event-bounds={replay_lo},{replay_hi} \\
+    --instr-bounds={instr_lo},{instr_hi} \\\
+    --instr-max={instr_max}
 ------------------------------------------------------
 """
 
@@ -296,6 +330,7 @@ def print_divergence_info():
         record_hi=record_event_high,
         replay_lo=replay_event_low,
         replay_hi=replay_event_high,
+        instr_max=instr_count_max
     )
 
 last_event_range = (0, 0)
