@@ -49,11 +49,11 @@ def argmin(d):
 assert args.rr
 
 class RRInstance(Process):
-    def __init__(self, description, replay, logfile, results_queue):
+    def __init__(self, description, rr_replay, logfile, results_queue):
         self.description = description
         self.work = Queue()
         self.results_queue = results_queue
-        self.spawn_cmd = "{} replay {}".format(args.rr, replay)
+        self.spawn_cmd = "{} replay {}".format(args.rr, rr_replay)
         self.logfile = logfile
 
         Process.__init__(self)
@@ -70,7 +70,9 @@ class RRInstance(Process):
             item, timeout = self.work.get()
             process.sendline(item)
 
-            if item == "quit": break
+            if item == "quit":
+                self.results_queue.put((self.description, "quit"))
+                break
 
             try:
                 process.expect_exact("(rr) ", timeout=timeout)
@@ -80,6 +82,8 @@ class RRInstance(Process):
                 IPython.embed()
 
             self.results_queue.put((self.description, process.before))
+
+        process.terminate()
 
 results_queue = Queue()
 record = RRInstance("record", args.record_rr, "record_log.txt", results_queue)
@@ -438,9 +442,7 @@ else:
             diverged_ranges)
     print_divergence_info()
 
-
 IPython.embed()
-
 
 gdb_run_both("quit")
 
