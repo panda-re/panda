@@ -9,6 +9,8 @@ from subprocess32 import check_output
 from multiprocessing import Process, Queue
 from Queue import Empty as Queue_Empty
 
+import IPython
+
 def argmax(d):
     return max(d.iteritems(), key=operator.itemgetter(1))[0]
 def argmin(d):
@@ -19,9 +21,9 @@ rr_bin = "/home/moyix/git/rr/build/bin/rr"
 if len(sys.argv) != 3:
     print "diverge.py record replay"
 
-def get_last_event(replay):
+def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
-        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(rr_bin, replay)
+        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(rr_bin, replay_dir)
 
     print cmd
     str_result = check_output(cmd, shell=True)
@@ -30,8 +32,8 @@ def get_last_event(replay):
 record_rr = sys.argv[1]
 replay_rr = sys.argv[2]
 
-record_last = 1153018 #get_last_event(record_rr)
-replay_last = 25326 #get_last_event(replay_rr)
+record_last = get_last_event(record_rr)
+replay_last = get_last_event(replay_rr)
 
 print record_last, replay_last
 
@@ -102,8 +104,6 @@ def gdb_run_both(cmd, timeout=-1):
 
     return results
 
-replay.logfile = open("replay_log.txt", "w")
-
 gdb_run_both("set confirm off")
 
 breakpoints = {}
@@ -125,12 +125,14 @@ breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
 gdb_run_both("continue", timeout=120)
 gdb_run_both("finish", timeout=10)
+gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
+gdb_run_both("continue")
 
 def get_whens():
     result = gdb_run_both("when")
     return { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
 
-minimum_events = get_whens()
+minimum_events = { k: v + 1 for k, v in get_whens().items() }
 maximum_events = { record: record_last, replay: replay_last }
 
 # get last instruction in failed replay
@@ -140,7 +142,7 @@ gdb_run_both({
 }, timeout=120)
 
 breakpoint("cpu_tb_exec")
-gdb_run_both("reverse-continue")
+gdb_run_both("reverse-continue", timeout=None)
 
 def print_result(result):
     print "{{ record: {!r}, replay: {!r} }}".format(result[record], result[replay])
@@ -157,7 +159,8 @@ def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
 def get_checksums(procs=[record, replay]):
-    gdb_run_both("thread 3")
+    gdb_run_both("info threads")
+    #gdb_run_both("thread 3")
     return get_value(procs, "rr_checksum_memory()")
 
 instr_count_max = get_instr_count(replay)
@@ -204,7 +207,8 @@ def sync(instr_low, instr_high, target):
     # Now we do a slower synchronization. Optimally, run behind forward until it matches ahead.
     disable_all()
     enable("cpu_tb_exec")
-    gdb_run_both("reverse-continue")
+    condition("cpu_tb_exec", "")
+    gdb_run_both("reverse-continue", timeout=None)
     instr_counts = get_instr_counts()
 
     ahead = argmax(instr_counts)
@@ -263,7 +267,19 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
-while replay_event_low < replay_event_high - 1:
+last_event_range = (0, 0)
+whens = get_whens()
+while last_event_range != (replay_event_low, replay_event_high):
+    last_event_range = (replay_event_low, replay_event_high)
+    print divergence_info.format(
+        instr_lo=max_converged_instr,
+        instr_hi=min_diverged_instr,
+        record_lo=record_event_low,
+        record_hi=record_event_high,
+        replay_lo=replay_event_low,
+        replay_hi=replay_event_high,
+    )
+
     mid = (replay_event_low + replay_event_high) / 2
 
     print "Moving replay to event {} to find divergence".format(mid)
@@ -275,21 +291,88 @@ while replay_event_low < replay_event_high - 1:
     checksums = get_checksums()
 
     print
+    print whens
     print "Current checksums:", checksums
     if checksums[replay] != checksums[record]: # after divergence
         min_diverged_instr = min(min_diverged_instr, now_instr)
         record_event_high = min(record_event_high, whens[record])
-        replay_event_high = whens[replay] - 1 # we're looking too late, go back
+        replay_event_high = whens[replay] # we're looking too late, go back
     else:
         max_converged_instr = max(max_converged_instr, now_instr)
         record_event_low = max(record_event_low, whens[record])
         replay_event_low = whens[replay] # look forwards
 
-    print divergence_info.format(
-        instr_lo=max_converged_instr,
-        instr_hi=min_diverged_instr,
-        record_lo=record_event_low,
-        record_hi=record_event_high,
-        replay_lo=replay_event_low,
-        replay_hi=replay_event_high,
-    )
+print "Haven't made progress since last iteration. Moving to memory checksum."
+
+ram_size = get_value([record], "ram_size")[record]
+
+def get_crc32s(low, size):
+    return get_value([record, replay],
+                     "(uint32_t)crc32(0, $ptr + {}, {})".format(
+                         hex(low), hex(size)))
+
+gdb_run_both("set $ptr = memory_region_find(" + \
+             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+
+search_queue = [(0, ram_size)]
+divergences = []
+while search_queue:
+    low, high = search_queue.pop()
+    if high - low <= 8:
+        print "Divergence occurred in range [{:08x}, {:08x}]".format(
+            low, high)
+        divergences.append(low)
+        continue
+
+    size = (high - low) / 2
+    crc32s_low = get_crc32s(low, size)
+    crc32s_high = get_crc32s(low + size, size)
+
+    if crc32s_low[record] != crc32s_low[replay]:
+        search_queue.append((low, high - size))
+    if crc32s_high[record] != crc32s_high[replay]:
+        search_queue.append((low + size, high))
+
+divergences.sort()
+diverged_ranges = []
+for d in divergences:
+    if not diverged_ranges:
+        diverged_ranges.append([d, d+8])
+    elif diverged_ranges[-1][1] == d:
+        diverged_ranges[-1][1] += 8
+    else:
+        diverged_ranges.append([d, d+8])
+
+print divergences
+print diverged_ranges
+
+ram_ptrs = get_value([record, replay], "(uint64_t)memory_region_find(" + \
+             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+
+disable_all()
+enable("rr_do_begin_record")
+enable("rr_do_begin_replay")
+for d in diverged_ranges[-4:]:
+    gdb_run_both({
+        k: "watch *0x{:x}".format(ram_ptrs[k] + d[0]) for k in [record, replay]
+    })
+
+instr_counts = get_instr_counts()
+while instr_counts[record] == instr_counts[replay]:
+    gdb_run_both("reverse-continue", timeout=None)
+    instr_counts = get_instr_counts()
+backtraces = gdb_run_both("backtrace")
+
+print
+print "RECORD BACKTRACE: "
+print backtraces[record]
+print
+print "REPLAY BACKTRACE: "
+print backtraces[replay]
+
+IPython.embed()
+
+gdb_run_both("quit")
+
+record.join()
+replay.join()
