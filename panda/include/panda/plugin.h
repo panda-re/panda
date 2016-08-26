@@ -17,9 +17,10 @@ PANDAENDCOMMENT */
 // ugh these are here so that g++ can actually handle gnarly qemu code
 
 #ifdef __cplusplus
+#include <type_traits>
 #define new pandanew
 #define typename
-#define typeof(x) auto
+#define typeof(x) std::remove_const<std::remove_reference<decltype(x)>::type>::type
 #endif
 
 #include "config-host.h"
@@ -35,7 +36,6 @@ PANDAENDCOMMENT */
 #ifdef __cplusplus
 #undef new
 #undef typename
-#undef typeof
 #endif
 
 #ifndef CONFIG_SOFTMMU
