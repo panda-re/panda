@@ -87,7 +87,7 @@ class RRInstance(Process):
             except pexpect.TIMEOUT:
                 print process.before
                 print "EXCEPTION!"
-                process.interact()
+                IPython.embed()
 
             self.results_queue.put((self.description, process.before))
 
@@ -144,10 +144,10 @@ def condition(break_arg, cond):
 
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
-gdb_run_both("continue", timeout=120)
-gdb_run_both("finish", timeout=10)
+gdb_run_both("continue", timeout=None)
+gdb_run_both("finish", timeout=None)
 gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
-gdb_run_both("continue")
+gdb_run_both("continue", timeout=None)
 
 def get_whens():
     result = gdb_run_both("when")
@@ -160,7 +160,7 @@ maximum_events = { record: record_last, replay: replay_last }
 gdb_run_both({
     record: "run {}".format(record_last),
     replay: "run {}".format(replay_last)
-}, timeout=120)
+}, timeout=None)
 
 breakpoint("cpu_tb_exec")
 gdb_run_both("reverse-continue", timeout=None)
@@ -288,10 +288,7 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
-last_event_range = (0, 0)
-whens = get_whens()
-while last_event_range != (replay_event_low, replay_event_high):
-    last_event_range = (replay_event_low, replay_event_high)
+def print_divergence_info():
     print divergence_info.format(
         instr_lo=max_converged_instr,
         instr_hi=min_diverged_instr,
@@ -301,10 +298,16 @@ while last_event_range != (replay_event_low, replay_event_high):
         replay_hi=replay_event_high,
     )
 
+last_event_range = (0, 0)
+whens = get_whens()
+while last_event_range != (replay_event_low, replay_event_high):
+    last_event_range = (replay_event_low, replay_event_high)
+    print_divergence_info()
+
     mid = (replay_event_low + replay_event_high) / 2
 
     print "Moving replay to event {} to find divergence".format(mid)
-    gdb_run(replay, "run {}".format(mid))
+    gdb_run(replay, "run {}".format(mid), timeout=None)
 
     now_instr = sync(0, instr_count_max, record)
     whens = get_whens()
@@ -324,6 +327,7 @@ while last_event_range != (replay_event_low, replay_event_high):
         replay_event_low = whens[replay] # look forwards
 
 print "Haven't made progress since last iteration. Moving to memory checksum."
+print_divergence_info()
 
 ram_size = get_value([record], "ram_size")[record]
 
@@ -339,7 +343,7 @@ search_queue = [(0, ram_size)]
 divergences = []
 while search_queue:
     low, high = search_queue.pop()
-    if high - low <= 8:
+    if high - low <= 4:
         print "Divergence occurred in range [{:08x}, {:08x}]".format(
             low, high)
         divergences.append(low)
@@ -358,11 +362,11 @@ divergences.sort()
 diverged_ranges = []
 for d in divergences:
     if not diverged_ranges:
-        diverged_ranges.append([d, d+8])
+        diverged_ranges.append([d, d+4])
     elif diverged_ranges[-1][1] == d:
-        diverged_ranges[-1][1] += 8
+        diverged_ranges[-1][1] += 4
     else:
-        diverged_ranges.append([d, d+8])
+        diverged_ranges.append([d, d+4])
 
 print divergences
 print diverged_ranges
@@ -379,19 +383,29 @@ for d in diverged_ranges[-4:]:
     })
 
 instr_counts = get_instr_counts()
-while instr_counts[record] == instr_counts[replay]:
+while instr_counts[record] == instr_counts[replay] and \
+        instr_counts[record] > 0:
     gdb_run_both("reverse-continue", timeout=None)
     instr_counts = get_instr_counts()
-backtraces = gdb_run_both("backtrace")
 
-print
-print "RECORD BACKTRACE: "
-print backtraces[record]
-print
-print "REPLAY BACKTRACE: "
-print backtraces[replay]
+if instr_counts[record] > 0:
+    backtraces = gdb_run_both("backtrace")
+
+    print
+    print "RECORD BACKTRACE: "
+    print backtraces[record]
+    print
+    print "REPLAY BACKTRACE: "
+    print backtraces[replay]
+else:
+    print
+    print "Failed to find exact divergence. Look at mem ranges {}".format(
+            diverged_ranges)
+    print_divergence_info()
+
 
 IPython.embed()
+
 
 gdb_run_both("quit")
 
