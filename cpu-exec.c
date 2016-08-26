@@ -560,6 +560,9 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
         //mz record the value again in case do_interrupt has set EXITTB flag
         rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER;
         rr_interrupt_request((int *)&cpu->interrupt_request);
+        if (rr_in_replay()) {
+            interrupt_request = cpu->interrupt_request;
+        }
 #endif
         if (interrupt_request & CPU_INTERRUPT_EXITTB) {
             cpu->interrupt_request &= ~CPU_INTERRUPT_EXITTB;
