@@ -317,7 +317,7 @@ Current divergence understanding:
     Args to get back here:
     --record-event-bounds={record_lo},{record_hi} \\
     --replay-event-bounds={replay_lo},{replay_hi} \\
-    --instr-bounds={instr_lo},{instr_hi} \\\
+    --instr-bounds={instr_lo},{instr_hi} \\
     --instr-max={instr_max}
 ------------------------------------------------------
 """
