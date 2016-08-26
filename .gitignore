@@ -111,3 +111,4 @@ TAGS
 docker-src.*
 *~
 *.plist
+.gdb_history
