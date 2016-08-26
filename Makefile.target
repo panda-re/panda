@@ -281,7 +281,9 @@ clean:
 	rm -f *.a *~ $(PROGS)
 	rm -f $(shell find . -name '*.[od]')
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
-	find panda/plugins -depth -mindepth 1 -delete
+	@if [[ -d "panda/plugins" ]]; then\
+		find panda/plugins -depth -mindepth 1 -delete;\
+	fi
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp
 endif
