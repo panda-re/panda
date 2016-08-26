@@ -1,13 +1,10 @@
-# generates c protobuf ode
-pproto=./panda/src/plog.proto
+# generates c protobuf code
 
 # assembles pandalog.proto file
-$(dirname $0)/pp.py $pproto
+$(dirname $0)/pp.py "$1" "$2"
 
 echo "generating protobuf code with protoc-c"
-protoc-c --c_out=. $pproto
-protoc --python_out=. $pproto
-
-sed -i 's/#include "panda\/src\/plog.pb-c.h"/#include "..\/include\/panda\/plog.pb-c.h"/g' panda/src/plog.pb-c.c
-
-mv panda/src/plog.pb-c.h panda/include/panda
+echo protoc-c --proto_path=$(dirname $1) --c_out=. "$1"
+protoc-c --proto_path=$(dirname $1) --c_out=. "$1"
+echo protoc --proto_path=$(dirname $1) --python_out=. "$1"
+protoc --proto_path=$(dirname $1) --python_out=. "$1"

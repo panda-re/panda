@@ -63,7 +63,6 @@
 
 #include <string.h>
 #include <math.h>
-#include "../include/panda/plog.pb-c.h"
 #include "../include/panda/plog.h"
 
 #include <zlib.h>
