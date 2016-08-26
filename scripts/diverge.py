@@ -132,7 +132,16 @@ def enable(break_arg):
     gdb_run_both("enable {}".format(breakpoints[break_arg]))
 
 def condition(break_arg, cond):
-    gdb_run_both("condition {} {}".format(breakpoints[break_arg], cond))
+    if isinstance(cond, str):
+        conds = { record: cond, replay: cond }
+    elif isinstance(cond, dict):
+        conds = cond
+    else: assert False
+
+    gdb_run_both({
+        record: "condition {} {}".format(breakpoints[break_arg], conds[record]),
+        replay: "condition {} {}".format(breakpoints[break_arg], conds[replay])
+    })
 
 gdb_run_both("set confirm off")
 
@@ -150,8 +159,11 @@ def get_whens():
     return { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
 
 def get_value(procs, value_str):
-    result = { proc: gdb_run(proc, "print {}".format(value_str)) \
-              for proc in procs }
+    if set(procs) != set([record, replay]):
+        result = { proc: gdb_run(proc, "print {}".format(value_str)) \
+                for proc in procs }
+    else:
+        result = gdb_run_both("print {}".format(value_str))
     return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
 
 def get_instr_counts(procs=[record, replay]):
@@ -161,9 +173,12 @@ def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
 def get_checksums(procs=[record, replay]):
-    # FIXME: This sometimes fails because it's on the wrong thread.
+    # NB: Only run when you are at a breakpoint in CPU thread!
     gdb_run_both("info threads")
-    return get_value(procs, "rr_checksum_memory()")
+    result = gdb_run_both("print rr_checksum_memory()")
+    for proc, result_str in result.items():
+        assert "Need to be in VCPU" not in result_str
+    return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
 
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
@@ -216,9 +231,6 @@ def sync(instr_low, instr_high, target):
     instr_counts = get_instr_counts()
     print instr_counts
 
-    if instr_counts[record] == instr_counts[replay]:
-        return instr_counts[record]
-
     whens = get_whens()
     target_event_low = minimum_events[target]
     target_event_high = maximum_events[target]
@@ -244,8 +256,6 @@ def sync(instr_low, instr_high, target):
             target_event_low = mid + 1
         elif instr_counts[target] > instr_counts[static]:
             target_event_high = mid - 1
-        else:
-            return instr_counts[target]
 
     if target_event_low == target_event_high:
         gdb_run(target, "run {}".format(target_event_low), timeout=None)
@@ -277,16 +287,26 @@ def sync(instr_low, instr_high, target):
 
         # If our ahead guy is too far ahead, gotta bring it back.
         if direction == BACKWARD:
-            condition("cpu_tb_exec", "cpus->tqh_first->rr_guest_instr_count <= {}"
-                      .format(instr_counts[behind]))
+            print "Rewinding {}".format(ahead)
+            condition("cpu_tb_exec", {
+                behind: "",
+                ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
+                      .format(instr_counts[behind])
+            })
+            if "cpu_tb_exec" not in gdb_run(behind, "backtrace"):
+                gdb_run_both("reverse-continue", timeout=None)
             while get_instr_count(ahead) == instr_counts[ahead]:
-                print "Rewinding {}".format(ahead)
                 gdb_run(ahead, "reverse-continue", timeout=None)
         elif direction == FORWARD:
-            condition("cpu_tb_exec", "cpus->tqh_first->rr_guest_instr_count >= {}"
-                      .format(instr_counts[ahead]))
+            print "Advancing {}".format(behind)
+            condition("cpu_tb_exec", {
+                ahead: "",
+                behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
+                      .format(instr_counts[ahead])
+            })
+            if "cpu_tb_exec" not in gdb_run(ahead, "backtrace"):
+                gdb_run_both("continue", timeout=None)
             while get_instr_count(behind) == instr_counts[behind]:
-                print "Advancing {}".format(behind)
                 gdb_run(behind, "continue", timeout=None)
         else: assert False
         instr_counts = get_instr_counts()
