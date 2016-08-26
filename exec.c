@@ -568,22 +568,29 @@ CPUState *qemu_get_cpu(int index)
 
 MemoryListener rr_listener;
 
+static RR_mem_type rr_mem_region_type(MemoryRegion* mr) {
+    RR_mem_type mtype = RR_MEM_UNKNOWN;
+    if (!(memory_region_is_ram(mr) || memory_region_is_romd(mr))) {
+        mtype = RR_MEM_IO;
+    } else if (memory_region_is_ram(mr)) {
+        mtype = RR_MEM_RAM;
+    }
+    return mtype;
+}
+
 static void rr_mem_region_added_cb(MemoryListener *listener, MemoryRegionSection *section) {
     if (!rr_in_record()) return;
-    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
-        // XXX: Assuming that even though size is an Int128 it will in practice
-        //      never be larger than 64 bits
-        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, true);
-    }
+    RR_mem_type mtype = rr_mem_region_type(section->mr);
+
+    rr_mem_region_change_record(section->offset_within_address_space, section->size.lo,
+                                section->mr->name, mtype, true);
 }
 
 static void rr_mem_region_deleted_cb(MemoryListener *listener, MemoryRegionSection *section) {
     if (!rr_in_record()) return;
-    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
-        // XXX: Assuming that even though size is an Int128 it will in practice
-        //      never be larger than 64 bits
-        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, false);
-    }
+    RR_mem_type mtype = rr_mem_region_type(section->mr);
+    rr_mem_region_change_record(section->offset_within_address_space, section->size.lo,
+                                section->mr->name, mtype, false);
 }
 
 void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)

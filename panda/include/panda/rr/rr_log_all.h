@@ -43,6 +43,8 @@
 
 typedef enum { RR_OFF, RR_RECORD, RR_REPLAY } RR_mode;
 
+typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN} RR_mem_type;
+
 extern volatile RR_mode rr_mode;
 
 // Log management
