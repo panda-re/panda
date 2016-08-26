@@ -18,6 +18,9 @@ PANDAENDCOMMENT */
 
 #ifdef __cplusplus
 #include <type_traits>
+#pragma push_macro("new")
+#pragma push_macro("typename")
+#pragma push_macro("typeof")
 #define new pandanew
 #define typename
 #define typeof(x) std::remove_const<std::remove_reference<decltype(x)>::type>::type
@@ -34,8 +37,9 @@ PANDAENDCOMMENT */
  
 // Don't forget to undefine it so people can actually use C++ stuff...
 #ifdef __cplusplus
-#undef new
-#undef typename
+#pragma pop_macro("new")
+#pragma pop_macro("typename")
+#pragma pop_macro("typeof")
 #endif
 
 #ifndef CONFIG_SOFTMMU
