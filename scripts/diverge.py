@@ -1,5 +1,6 @@
 #!/usr/bin/python
-
+import IPython
+import argparse
 import pexpect
 import os
 import sys
@@ -9,15 +10,35 @@ from subprocess32 import check_output
 from multiprocessing import Process, Queue
 from Queue import Empty as Queue_Empty
 
-import IPython
+def get_default_rr_path():
+    try:
+        rr_path = check_output(["which", "rr"]).strip()
+    except:
+        rr_path = None
+    return rr_path
+
+default_rr = get_default_rr_path()
+parser = argparse.ArgumentParser(description="A script to automatically find replay divergences")
+parser.add_argument("record_rr", help="Path to the rr directory for the recording replay")
+parser.add_argument("replay_rr", help="Path to the rr directory for the replay replay")
+parser.add_argument("--rr", default=default_rr,
+                                help="A path to the rr binary (default={})".format(default_rr))
+args = parser.parse_args()
+
+# Check arguments
+if not os.path.isfile(args.rr):
+    raise IOError("Cannot find rr bin at {}".format(args.rr))
+if not os.path.isdir(args.record_rr):
+    raise IOError("Cannot find recording replay at {}".format(args.record_rr))
+if not os.path.isdir(args.replay_rr):
+    raise IOError("Cannot find replay replay at {}".format(args.replay_rr))
 
 def argmax(d):
     return max(d.iteritems(), key=operator.itemgetter(1))[0]
 def argmin(d):
     return min(d.iteritems(), key=operator.itemgetter(1))[0]
 
-rr_bin = "/home/moyix/git/rr/build/bin/rr"
-
+rr_bin = args.rr
 if len(sys.argv) != 3:
     print "diverge.py record replay"
 
@@ -29,8 +50,8 @@ def get_last_event(replay_dir):
     str_result = check_output(cmd, shell=True)
     return int(str_result)
 
-record_rr = sys.argv[1]
-replay_rr = sys.argv[2]
+record_rr = args.record_rr
+replay_rr = args.replay_rr
 
 record_last = get_last_event(record_rr)
 replay_last = get_last_event(replay_rr)
