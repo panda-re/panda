@@ -11,6 +11,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <glib.h>
+#include "config-host.h"
+#include "config-target.h"
+#include "qemu/osdep.h"
+#include "qemu-common.h"
 #include "cpu.h"
 #include "kernelinfo.h"	/* must come after cpu.h, glib.h */
 
@@ -50,7 +54,7 @@ int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki
 	GKeyFile *keyfile;
 	gchar *group_real = NULL;
 	int err_task = 0, err_mm = 0, err_cred = 0, err_vma = 0, err_fs = 0, err_misc = 0;
-	uint64 init_addr = 0;
+	uint64_t init_addr = 0;
 
 	/* open file */
 	memset(ki, '\0', sizeof(struct kernelinfo));
