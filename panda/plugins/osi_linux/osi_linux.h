@@ -62,9 +62,9 @@
  * @brief Platform specific macro for retrieving ESP.
  */
 #if defined(TARGET_I386)
-#define _ESP	(env->regs[R_ESP])
+#define _ESP	((CPUX86State *)env)->regs[R_ESP]
 #elif defined(TARGET_ARM)
-#define _ESP	(env->regs[13])
+#define _ESP	((CPUARMState *)env)->regs[13]
 #else
 #error	"_ESP macro not defined for target architecture."
 #endif
@@ -299,6 +299,8 @@ IMPLEMENT_OFFSET_GET(get_mnt_root_dentry, vfsmount_struct, PTR, ki.fs.mnt_root_o
  *	};
  * @endcode
  */
+// bdg: target_uint is assumed to be 32-bit uint
+#define target_uint uint32_t
 #define _SIZEOF_QSTR (2*sizeof(target_uint) + sizeof(PTR))
 
 /**

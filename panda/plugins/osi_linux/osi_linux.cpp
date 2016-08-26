@@ -9,8 +9,6 @@
 
 #define __STDC_FORMAT_MACROS
 
-extern "C" {
-
 #include "../../include/panda/plugin.h"
 #include "../../include/panda/plugin_plugin.h"
 
@@ -26,9 +24,6 @@ extern "C" {
 #include "utils/kernelinfo/kernelinfo.h"	/* must come after cpu.h, glib.h */
 #include "osi_linux.h"						/* must come after kernelinfo.h */
 
-}
-
-
 /*
  * Functions interfacing with QEMU/PANDA should be linked as C.
  * C++ function name mangling breaks linkage.
@@ -36,6 +31,7 @@ extern "C" {
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+}
 
 void on_get_current_process(CPUState *env, OsiProc **out_p);
 void on_get_processes(CPUState *env, OsiProcs **out_ps);
@@ -43,7 +39,6 @@ void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
 void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms);
 void on_free_osimodules(OsiModules *ms);
-}
 
 static bool debug = false;
 
