@@ -257,12 +257,14 @@ $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
 
+plugin-%:
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
-plugin-%: 
-	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) -C $(SRC_PATH)/panda/plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)
-
-extra-plugin-%: $(obj-y)
-	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda/plugins/$* V="$(V)" TARGET_DIR="$(SRC_DIR)/$(TARGET_DIR)" all,)  
+extra-plugin-%:
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda/plugins/$* V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
