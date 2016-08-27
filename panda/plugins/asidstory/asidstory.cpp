@@ -54,7 +54,7 @@ extern "C" {
 #include "asidstory.h"
 
 #include "panda/plugin_plugin.h"
-    
+
 bool init_plugin(void *);
 void uninit_plugin(void *);
 

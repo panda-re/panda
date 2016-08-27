@@ -32,9 +32,9 @@ PANDAENDCOMMENT */
 #include "qemu-common.h"
 #include "cpu.h"
 
-#include "../../include/panda/common.h"
+#include "panda/common.h"
 #include "exec/exec-all.h"
- 
+
 // Don't forget to undefine it so people can actually use C++ stuff...
 #ifdef __cplusplus
 #pragma pop_macro("new")

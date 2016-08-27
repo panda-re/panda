@@ -23,7 +23,7 @@ QEMU_CXXFLAGS = -fpermissive -Wno-sign-compare -std=c++11
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 
 # Same as -I$(SRC_PATH) -I., but for the nested source/object directories
-QEMU_INCLUDES += -I$(<D) -I$(@D)
+QEMU_INCLUDES += -I$(<D) -I$(@D) -I$(SRC_PATH)/panda/include
 
 WL_U := -Wl,-u,
 find-symbols = $(if $1, $(sort $(shell $(NM) -P -g $1 | $2)))
@@ -78,13 +78,8 @@ LINK = $(call quiet-command, $(LINKPROG) $(QEMU_CFLAGS) $(CFLAGS) $(LDFLAGS) -o 
 %.o: %.cc
 	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $($@-cflags) -c -o $@ $<,"  CXX   $(TARGET_DIR)$@")
 
-# orig
 %.o: %.cpp
 	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $($@-cflags) -c -o $@ $<,"  CXX   $(TARGET_DIR)$@")
-
-# new
-#%.o: %.cpp
-#	$(call quiet-command,$(CXX) $(filter-out -Wnested-externs -Wmissing-prototypes -Wstrict-prototypes -Wold-style-declaration -Wold-style-definition, #$(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $(CXXFLAGS)) -c -o $@ $<,"  CXX   $(TARGET_DIR)$@")
 
 %.o: %.m
 	$(call quiet-command,$(OBJCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $($@-cflags) -c -o $@ $<,"  OBJC  $(TARGET_DIR)$@")
