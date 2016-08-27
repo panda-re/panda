@@ -172,7 +172,9 @@ bool init_plugin(void *self) {
         }
 
         // get path to kconffile and canonicalize
-        gchar *kconffile = g_build_filename(progdir, "..", "panda_plugins", "osi_linux", "kernelinfo.conf", NULL);
+#warning Fix this up once we figure out where out of tree/installed plugins go
+        gchar *kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
+        printf("Looking for kconffile in %s\n", kconffile);
         g_free(progdir);
         gchar *kconffile_canon = realpath(kconffile, NULL);
         assert(kconffile_canon != NULL);

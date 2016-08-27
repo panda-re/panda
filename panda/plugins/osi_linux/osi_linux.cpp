@@ -9,8 +9,10 @@
 
 #define __STDC_FORMAT_MACROS
 
-#include "../../include/panda/plugin.h"
-#include "../../include/panda/plugin_plugin.h"
+#include <map>
+
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
 #include "../osi/osi_types.h"
 #include "../osi/os_intro.h"
@@ -180,9 +182,6 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PTR ":" TARGET_FMT_PID "p:%s:%s", m->offset, m->base, NPAGES(m->size), m->name, m->file);
 #endif
 }
-
-
-#include <map>
 
 
 

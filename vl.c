@@ -2991,6 +2991,9 @@ static void set_memory_options(uint64_t *ram_slots, ram_addr_t *maxram_size,
 
 const char *qemu_file = NULL;
 
+// bdg: This is Tim's fault
+char **gargv;
+int gargc;
 
 int main(int argc, char **argv, char **envp)
 {
@@ -3030,7 +3033,9 @@ int main(int argc, char **argv, char **envp)
     Error *err = NULL;
 
     // PANDA stuff
-    qemu_file = canonicalize_file_name(argv[0]);
+    gargv = argv;
+    gargc = argc;
+    qemu_file = realpath(argv[0], NULL);
     const char* replay_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
