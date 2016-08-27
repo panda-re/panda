@@ -57,7 +57,7 @@ endif
 #TOOL_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
 #TOOL_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
-PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG)
+PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG) plog_pb2.py
 STPFILES=
 
 config-target.h: config-target.h-timestamp
@@ -192,8 +192,20 @@ GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
 PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
 
-plog.pb-c.h plog.pb-c.c: $(PROTO_FILES)
-	$(SRC_PATH)/panda/scripts/pp.sh $(BUILD_DIR)/plog.proto $(SRC_PATH)/panda/plugins/config.panda
+plog.proto: $(PROTO_FILES)
+	$(call quiet-command,\
+		$(SRC_PATH)/panda/scripts/pp.py $@ $(SRC_PATH)/panda/plugins/config.panda,\
+		"  PROTO $@")
+
+%.pb-c.h %.pb-c.c: %.proto
+	$(call quiet-command,\
+		protoc-c --proto_path=. --c_out=. $<,\
+		"  PROTO plog.pb-c.h plog.pb-c.c")
+
+plog_pb2.py: plog.proto
+	$(call quiet-command,\
+		protoc --proto_path=. --python_out=. $<,\
+		"  PROTO plog_pb2.py")
 
 GENERATED_HEADERS += plog.pb-c.h
 
@@ -256,14 +268,13 @@ rr_print.o: rr_log.h rr_log_all.h
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
-
-plugin-%:
+plugin-%: plog.pb-c.h
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
 		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
-extra-plugin-%:
+extra-plugin-%: plog.pb-c.h
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \

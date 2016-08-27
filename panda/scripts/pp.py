@@ -6,9 +6,6 @@ import os.path
 
 pproto_filename = sys.argv[1]
 
-print "creating " + pproto_filename
-
-
 def find_message(buf):
     i = buf.find("message")
     if i == -1:
@@ -87,7 +84,7 @@ for plugin in open(sys.argv[2]): # "panda/plugins/config.panda"):
         (m, r) = parse_proto_part(proto_part)
         messages.extend(m)
         rests.extend(r)
-    
+
 
 f = open(pproto_filename, "w")
 
