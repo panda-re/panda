@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "disas/disas.h"
@@ -18,17 +17,74 @@ target_ulong panda_current_pc(CPUState *cpu) {
 }
 
 #ifdef TARGET_ARM
-// ARM: stolen from target-arm/helper.c
-static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
+/* Return the exception level which controls this address translation regime */
+static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
 {
-  uint32_t table;
+    switch (mmu_idx) {
+    case ARMMMUIdx_S2NS:
+    case ARMMMUIdx_S1E2:
+        return 2;
+    case ARMMMUIdx_S1E3:
+        return 3;
+    case ARMMMUIdx_S1SE0:
+        return arm_el_is_aa64(env, 3) ? 1 : 3;
+    case ARMMMUIdx_S1SE1:
+    case ARMMMUIdx_S1NSE0:
+    case ARMMMUIdx_S1NSE1:
+        return 1;
+    default:
+        g_assert_not_reached();
+    }
+}
 
-  if (address & env->cp15.c2_mask)
-    table = env->cp15.c2_base1 & 0xffffc000;
-  else
-    table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
+/* Return the TCR controlling this translation regime */
+static inline TCR *regime_tcr(CPUARMState *env, ARMMMUIdx mmu_idx)
+{
+    if (mmu_idx == ARMMMUIdx_S2NS) {
+        return &env->cp15.vtcr_el2;
+    }
+    return &env->cp15.tcr_el[regime_el(env, mmu_idx)];
+}
 
-  return table;
+/* Return the TTBR associated with this translation regime */
+static inline uint64_t regime_ttbr(CPUARMState *env, ARMMMUIdx mmu_idx,
+                                   int ttbrn)
+{
+    if (mmu_idx == ARMMMUIdx_S2NS) {
+        return env->cp15.vttbr_el2;
+    }
+    if (ttbrn == 0) {
+        return env->cp15.ttbr0_el[regime_el(env, mmu_idx)];
+    } else {
+        return env->cp15.ttbr1_el[regime_el(env, mmu_idx)];
+    }
+}
+
+// ARM: stolen get_level1_table_address ()
+// from target-arm/helper.c
+bool arm_get_vaddr_table(CPUState *cpu, uint32_t *table, uint32_t address);
+bool arm_get_vaddr_table(CPUState *cpu, uint32_t *table, uint32_t address)
+{
+    CPUARMState *env = (CPUARMState *)cpu->env_ptr;
+    ARMMMUIdx mmu_idx = cpu_mmu_index(env, false);
+    /* Note that we can only get here for an AArch32 PL0/PL1 lookup */
+    TCR *tcr = regime_tcr(env, mmu_idx);
+
+    if (address & tcr->mask) {
+        if (tcr->raw_tcr & TTBCR_PD1) {
+            /* Translation table walk disabled for TTBR1 */
+            return false;
+        }
+        *table = regime_ttbr(env, mmu_idx, 1) & 0xffffc000;
+    } else {
+        if (tcr->raw_tcr & TTBCR_PD0) {
+            /* Translation table walk disabled for TTBR0 */
+            return false;
+        }
+        *table = regime_ttbr(env, mmu_idx, 0) & tcr->base_mask;
+    }
+    *table |= (address >> 18) & 0x3ffc;
+    return true;
 }
 #endif
 
@@ -37,11 +93,17 @@ static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
   architecture-independent
 */
 target_ulong panda_current_asid(CPUState *cpu) {
-  CPUArchState *env = cpu->env_ptr;
-#if (defined TARGET_I386 || defined TARGET_X86_64)
+#if defined(TARGET_I386)
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->cr[3];
 #elif defined(TARGET_ARM)
-  return arm_get_vaddr_table(env, panda_current_pc(env));
+  target_ulong table;
+  bool rc = arm_get_vaddr_table(cpu,
+          &table,
+          panda_current_pc(cpu));
+  assert(rc);
+  return table;
+  /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;
