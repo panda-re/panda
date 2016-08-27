@@ -264,7 +264,10 @@ plugin-%:
 		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
 extra-plugin-%:
-	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) -C $(EXTRA_PLUGINS_PATH)/panda/plugins/$* V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
@@ -283,7 +286,7 @@ clean:
 	rm -f *.a *~ $(PROGS)
 	rm -f $(shell find . -name '*.[od]')
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
-	@if [[ -d "panda/plugins" ]]; then\
+	@if [ -d "panda/plugins" ]; then\
 		find panda/plugins -depth -mindepth 1 -delete;\
 	fi
 ifdef CONFIG_TRACE_SYSTEMTAP
