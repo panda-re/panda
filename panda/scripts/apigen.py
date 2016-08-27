@@ -150,7 +150,7 @@ def generate_api(plugin_name, plugin_dir):
         return
 
 
-    print "Building API for plugin " + plugin_name,
+    print "  APIGEN panda/plugins/{}".format(plugin_name)
     functions = []
     includes = []
 
@@ -178,7 +178,6 @@ def generate_api(plugin_name, plugin_dir):
     code = generate_code(functions, plugin_name, includes)
     with open(os.path.join(plugin_dir, '{0}_ext.h'.format(plugin_name)), 'w') as extAPI:
         extAPI.write(code)
-    print "... Done!"
 
 
 # the directory this script is in
