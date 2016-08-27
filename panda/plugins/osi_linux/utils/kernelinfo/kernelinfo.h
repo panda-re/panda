@@ -112,7 +112,14 @@ struct kernelinfo {
  */
 #define DEFAULT_KERNELINFO_FILE "kernelinfo.conf"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int read_kernelinfo(gchar const *file, gchar const *group, struct kernelinfo *ki);
+#ifdef __cplusplus
+}
+#endif
 #endif
 #endif
 

@@ -50,6 +50,10 @@ PANDAENDCOMMENT */
 #define MAX_PANDA_PLUGINS 16
 #define MAX_PANDA_PLUGIN_ARGS 32
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum panda_cb_type {
     PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
     PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
@@ -845,5 +849,9 @@ void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb) ;
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) ;
 
 void panda_cleanup(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
