@@ -17,4 +17,4 @@ endif
 
 # Plugin dynamic library. At ../panda_$(PLUGIN_NAME).so
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJFILES)
-	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUG  $@")
+	$(call quiet-command,$(CC) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUG  $@")
