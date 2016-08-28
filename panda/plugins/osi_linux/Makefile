@@ -20,6 +20,6 @@ $(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelin
 # The main rule for your plugin. Please stick with the panda_ naming convention.
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o $(PLUGIN_OBJ_FILES)
-	$(call quiet-command,$(CC) $(QEMU_CFLAGS) -shared -o $@ $^ $(LIBS),"  PLUG  $(TARGET_DIR)$@")
+	$(call quiet-command,$(CC) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUG  $(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
