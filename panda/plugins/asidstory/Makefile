@@ -13,4 +13,4 @@ CFLAGS+=-lm
 # convention.
 
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: $(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o
-	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUGIN  $@")
+	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUG  $(TARGET_DIR)$@")
