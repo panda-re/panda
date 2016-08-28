@@ -145,20 +145,12 @@ def resolve_type(modifiers, name):
     else:
         return rtype, name
 
-def generate_api(plugin_name, plugin_dir):
-    if ("%s_int.h" % plugin_name) not in os.listdir(plugin_dir):
-        return
-
-
-    print "  APIGEN panda/plugins/{}".format(plugin_name)
+def generate_api(interface_file, ext_file):
     functions = []
     includes = []
 
-    interface_file = os.path.join(plugin_dir, '{0}_int.h'.format(plugin_name))
-
     # use preprocessor 
     pf = subprocess.check_output( ("gcc -E " + interface_file).split())
-
 
     # use pycparser to get arglists
     arglist = get_arglists(pf)
@@ -175,21 +167,14 @@ def generate_api(plugin_name, plugin_dir):
                 (fn_rtype, fn_name, args_with_types) = foo
                 tup = (fn_rtype, fn_name, args_with_types, arglist[fn_name])
                 functions.append(tup)
+    # Plugin interface file will look like [...]/plugins/<name>/<name>_int.h
+    plugin_name = os.path.basename(os.path.dirname(interface_file))
     code = generate_code(functions, plugin_name, includes)
-    with open(os.path.join(plugin_dir, '{0}_ext.h'.format(plugin_name)), 'w') as extAPI:
+    with open(ext_file,"w") as extAPI:
         extAPI.write(code)
 
-
-# the directory this script is in
-script_dir = os.path.dirname(os.path.realpath(__file__))
-# which means this is the plugins dir
-plugins_dir = os.path.realpath(script_dir + "/../plugins")
-
-# iterate over enabled plugins
-plugins = (open(plugins_dir + "/config.panda").read()).split()
-for plugin in plugins:
-    #print plugin
-    if plugin[0] == '#':
-        continue
-    plugin_dir = plugins_dir + "/" + plugin
-    generate_api(plugin, plugin_dir)
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print >>sys.stderr, "usage: %s <interface_file.h> <external_api_file.h>" % sys.argv[0]
+        sys.exit(1)
+    generate_api(sys.argv[1], sys.argv[2])
