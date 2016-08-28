@@ -209,7 +209,12 @@ plog_pb2.py: plog.proto
 
 GENERATED_HEADERS += plog.pb-c.h
 
-# panda/scripts/apigen.py
+PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(wildcard $(SRC_PATH)/panda/plugins/*/*_int.h))
+
+%_ext.h: %_int.h
+	$(call quiet-command,\
+		$(SRC_PATH)/panda/scripts/apigen.py $< $@,\
+		" APIGEN $@")
 
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
@@ -268,13 +273,13 @@ rr_print.o: rr_log.h rr_log_all.h
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
 
-plugin-%: plog.pb-c.h
+plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
 		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
-extra-plugin-%: plog.pb-c.h
+extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \

@@ -44,7 +44,7 @@ extern "C" {
 
 #include "panda/plugin.h"
 #include "panda/common.h"
-#include "panda/pandalog.h"
+#include "panda/plog.h"
 
 #include "rr_log.h"
 #include "rr_log_all.h"  
@@ -283,7 +283,6 @@ uint64_t num_seq_bb = 0;
 // also, if proc has changed, we record the fact that a process was seen to be running
 // from now back to last asid change
 int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
-    target_ulong asid = panda_current_asid(env);   
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return 0;
 
@@ -360,8 +359,8 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
 
     panda_cb pcb;    
-    pcb.after_PGD_write = asidstory_asid_changed;
-    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    pcb.asid_changed = asidstory_asid_changed;
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
     
     pcb.before_block_exec = asidstory_before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
