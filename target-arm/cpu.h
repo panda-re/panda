@@ -1763,7 +1763,7 @@ bool write_cpustate_to_list(ARMCPU *cpu);
 static inline bool arm_excp_unmasked(CPUState *cs, unsigned int excp_idx,
                                      unsigned int target_el)
 {
-    CPUARMState *env = cs->env_ptr;
+    CPUARMState *env = (CPUARMState *) cs->env_ptr;
     unsigned int cur_el = arm_current_el(env);
     bool secure = arm_is_secure(env);
     bool pstate_unmasked;
