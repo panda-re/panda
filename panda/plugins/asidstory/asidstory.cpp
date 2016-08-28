@@ -39,6 +39,9 @@
 #include <cstring>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include <algorithm>
+#include <cmath>
 
 extern "C" {
 
@@ -366,7 +369,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     
     panda_arg_list *args = panda_get_args("asidstory");
-    num_cells = std::max(panda_parse_uint64(args, "width", 100), 80UL) - NAMELEN - 5;
+    num_cells = std::max(panda_parse_uint64(args, "width", 100), UINT64_C(80)) - NAMELEN - 5;
     //    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
     //    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
     
