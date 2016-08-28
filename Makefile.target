@@ -214,7 +214,7 @@ PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(wildcard $(SRC_PATH)/panda/plugins/*/
 %_ext.h: %_int.h
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@,\
-		" APIGEN $@")
+		"  API   $@")
 
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
