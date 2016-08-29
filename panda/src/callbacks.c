@@ -130,7 +130,7 @@ char *panda_plugin_path(const char *plugin_name) {
     } else {
         char *dir = strdup(qemu_file);
         dir = dirname( (char *) dir);
-        snprintf(plugin_path, 1024, "%s/panda_plugins/panda_%s.so", dir, plugin_name);
+        snprintf(plugin_path, 1024, "%s/panda/plugins/panda_%s.so", dir, plugin_name);
     }
     return plugin_path;
 }
