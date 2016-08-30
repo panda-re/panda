@@ -62,7 +62,8 @@
  * @brief Platform specific macro for retrieving ESP.
  */
 #if defined(TARGET_I386)
-#define _ESP	((CPUX86State *)env)->regs[R_ESP]
+//#define _ESP	((CPUX86State *)env)->regs[R_ESP]
+#define _ESP	((CPUX86State *)((CPUState *)env->env_ptr))->regs[R_ESP]
 #elif defined(TARGET_ARM)
 #define _ESP	((CPUARMState *)env)->regs[13]
 #else

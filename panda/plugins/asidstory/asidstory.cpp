@@ -323,7 +323,7 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
     if (asid == 0) return 0;
 
     OsiProc *proc = get_current_process(env);
-    if (proc) printf ("asid=0x" TARGET_FMT_lx "  pc=0x" TARGET_FMT_lx "  proc=%s\n", panda_current_asid(env), panda_current_pc(env), proc->name);
+    //if (proc) printf ("asid=0x" TARGET_FMT_lx "  pc=0x" TARGET_FMT_lx "  proc=%s\n", panda_current_asid(env), panda_current_pc(env), proc->name);
     free_osiproc(proc);
     // NB: we only know max instr *after* replay has started,
     // so this code *cant* be run in init_plugin.  yuck. only triggers once
