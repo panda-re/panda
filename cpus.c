@@ -47,6 +47,8 @@
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
 
+#include "rr_log.h"
+
 #ifndef _WIN32
 #include "qemu/compatfd.h"
 #endif
@@ -1026,6 +1028,10 @@ static void qemu_wait_io_event_common(CPUState *cpu)
 static void qemu_tcg_wait_io_event(CPUState *cpu)
 {
     while (all_cpu_threads_idle()) {
+        // We're in replay, so replay the interrupt!
+        // Otherwise e.g. if the CPU has HLTd it will just sit here forever.
+        if (rr_in_replay() && rr_num_instr_before_next_interrupt() == 0) break;
+
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
 
@@ -1520,6 +1526,16 @@ static int tcg_cpu_exec(CPUState *cpu)
 #ifdef CONFIG_PROFILER
     int64_t ti;
 #endif
+    // Don't run code if we're about to record from an existing
+    // snapshot or replay a recording.
+    // Don't waste effort running guest code when we're about
+    // to load a VMstate anyway. Especially useful for recording
+    // or replaying from boot or the command line.
+    // It probably wouldn't hurt to also return for
+    // rr_record_requested == 1 (record from current state)
+    if (2 == rr_record_requested) {
+        return EXCP_HALTED;
+    }
 
 #ifdef CONFIG_PROFILER
     ti = profile_getclock();
@@ -1586,6 +1602,10 @@ static void tcg_exec_all(void)
 
     /* Pairs with smp_wmb in qemu_cpu_kick.  */
     atomic_mb_set(&exit_request, 0);
+
+    if (rr_in_replay()) {
+        rr_use_live_exit_request = 0;
+    }
 }
 
 void list_cpus(FILE *f, fprintf_function cpu_fprintf, const char *optarg)

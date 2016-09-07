@@ -206,11 +206,11 @@ void target_disas(FILE *out, CPUState *cpu, target_ulong code,
 
 #if defined(TARGET_I386)
     if (flags == 2) {
-        s.info.mach = bfd_mach_x86_64;
+        s.info.mach = bfd_mach_x86_64_intel_syntax;
     } else if (flags == 1) {
         s.info.mach = bfd_mach_i386_i8086;
     } else {
-        s.info.mach = bfd_mach_i386_i386;
+        s.info.mach = bfd_mach_i386_i386_intel_syntax;
     }
     s.info.print_insn = print_insn_i386;
 #elif defined(TARGET_PPC)

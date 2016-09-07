@@ -343,7 +343,7 @@ static inline void tb_set_jmp_target(TranslationBlock *tb,
                                      int n, uintptr_t addr)
 {
     uint16_t offset = tb->jmp_insn_offset[n];
-    tb_set_jmp_target1((uintptr_t)(tb->tc_ptr + offset), addr);
+    tb_set_jmp_target1((uintptr_t)(tb->tc_ptr) + offset, addr);
 }
 
 #else
@@ -444,7 +444,7 @@ hwaddr memory_region_section_get_iotlb(CPUState *cpu,
                                        int prot,
                                        target_ulong *address);
 bool memory_region_is_unassigned(MemoryRegion *mr);
-
+void panda_invalidate_single_tb(CPUState* env, target_ulong pc);
 #endif
 
 /* vl.c */
@@ -457,5 +457,8 @@ extern bool exit_request;
 extern int generate_llvm;
 extern int execute_llvm;
 extern const int has_llvm_engine;
+
+// panda needs
+void breakpoint_invalidate(CPUState *cpu, target_ulong pc);
 
 #endif

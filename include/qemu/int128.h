@@ -37,7 +37,7 @@ static inline Int128 int128_2_64(void)
 
 static inline Int128 int128_exts64(int64_t a)
 {
-    return (Int128) { .lo = a, .hi = (a < 0) ? -1 : 0 };
+    return (Int128) { .lo = (uint64_t) a, .hi = (a < 0) ? -1 : 0 };
 }
 
 static inline Int128 int128_and(Int128 a, Int128 b)
@@ -53,7 +53,7 @@ static inline Int128 int128_rshift(Int128 a, int n)
     }
     h = a.hi >> (n & 63);
     if (n >= 64) {
-        return (Int128) { h, h >> 63 };
+        return (Int128) { (uint64_t) h, h >> 63 };
     } else {
         return (Int128) { (a.lo >> n) | ((uint64_t)a.hi << (64 - n)), h };
     }
@@ -69,18 +69,19 @@ static inline Int128 int128_add(Int128 a, Int128 b)
      *
      * So the carry is lo < a.lo.
      */
-    return (Int128) { lo, (uint64_t)a.hi + b.hi + (lo < a.lo) };
+
+    return (Int128) { lo, (int64_t) ((uint64_t)a.hi + b.hi + (lo < a.lo)) };
 }
 
 static inline Int128 int128_neg(Int128 a)
 {
     uint64_t lo = -a.lo;
-    return (Int128) { lo, ~(uint64_t)a.hi + !lo };
+    return (Int128) { lo, (int64_t) (~(uint64_t)a.hi + !lo) };
 }
 
 static inline Int128 int128_sub(Int128 a, Int128 b)
 {
-    return (Int128){ a.lo - b.lo, (uint64_t)a.hi - b.hi - (a.lo < b.lo) };
+    return (Int128){ a.lo - b.lo, (int64_t) ((uint64_t)a.hi - b.hi - (a.lo < b.lo)) };
 }
 
 static inline bool int128_nonneg(Int128 a)

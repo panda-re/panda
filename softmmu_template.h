@@ -24,6 +24,8 @@
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
+#include "rr_log_all.h"
+#include "panda/include/panda/plugin.h"
 
 #define DATA_SIZE (1 << SHIFT)
 
@@ -159,8 +161,12 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(CPUArchState *env,
     }
 
     cpu->mem_io_vaddr = addr;
-    memory_region_dispatch_read(mr, physaddr, &val, 1 << SHIFT,
-                                iotlbentry->attrs);
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/ memory_region_dispatch_read(mr, physaddr, &val, 1 << SHIFT,
+                                iotlbentry->attrs),
+            /*record=*/ rr_input_8(&val),
+            /*replay=*/ rr_input_8(&val),
+            /*location=*/ RR_CALLSITE_IO_READ_ALL);
     return val;
 }
 #endif
@@ -174,6 +180,9 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     uintptr_t haddr;
     DATA_TYPE res;
 
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
+    
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
@@ -214,7 +223,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
            byte ordering.  We should push the LE/BE request down into io.  */
         res = glue(io_read, SUFFIX)(env, iotlbentry, addr, retaddr);
         res = TGT_LE(res);
-        return res;
+        goto panda_return;
     }
 
     /* Handle slow unaligned access (it spans two pages or IO).  */
@@ -239,7 +248,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 
         /* Little-endian combine.  */
         res = (res1 >> shift) | (res2 << ((DATA_SIZE * 8) - shift));
-        return res;
+        goto panda_return;
     }
 
     /* Handle aligned access or unaligned access in the same page.  */
@@ -255,6 +264,10 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 #else
     res = glue(glue(ld, LSUFFIX), _le_p)((uint8_t *)haddr);
 #endif
+
+panda_return:
+
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &res);
     return res;
 }
 
@@ -267,6 +280,9 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].ADDR_READ;
     uintptr_t haddr;
     DATA_TYPE res;
+
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -298,7 +314,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
            byte ordering.  We should push the LE/BE request down into io.  */
         res = glue(io_read, SUFFIX)(env, iotlbentry, addr, retaddr);
         res = TGT_BE(res);
-        return res;
+        goto panda_return;
     }
 
     /* Handle slow unaligned access (it spans two pages or IO).  */
@@ -323,7 +339,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
 
         /* Big-endian combine.  */
         res = (res1 << shift) | (res2 >> ((DATA_SIZE * 8) - shift));
-        return res;
+        goto panda_return;
     }
 
     /* Handle aligned access or unaligned access in the same page.  */
@@ -335,6 +351,9 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
     res = glue(glue(ld, LSUFFIX), _be_p)((uint8_t *)haddr);
+
+panda_return:
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &res);
     return res;
 }
 #endif /* DATA_SIZE > 1 */
@@ -376,8 +395,18 @@ static inline void glue(io_write, SUFFIX)(CPUArchState *env,
 
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
-    memory_region_dispatch_write(mr, physaddr, val, 1 << SHIFT,
-                                 iotlbentry->attrs);
+
+    if (mr != &io_mem_notdirty && mr != &io_mem_rom) {
+        RR_DO_RECORD_OR_REPLAY(
+                /*action=*/ memory_region_dispatch_write(mr, physaddr, val,
+                    1 << SHIFT, iotlbentry->attrs),
+                /*record=*/ RR_NO_ACTION,
+                /*replay=*/ RR_NO_ACTION,
+                /*location=*/ RR_CALLSITE_IO_WRITE_ALL);
+    } else {
+        memory_region_dispatch_write(mr, physaddr, val, 1 << SHIFT,
+                iotlbentry->attrs);
+    }
 }
 
 void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
@@ -387,6 +416,9 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     uintptr_t haddr;
+
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -427,7 +459,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
            byte ordering.  We should push the LE/BE request down into io.  */
         val = TGT_LE(val);
         glue(io_write, SUFFIX)(env, iotlbentry, val, addr, retaddr);
-        return;
+        goto panda_return;
     }
 
     /* Handle slow unaligned access (it spans two pages or IO).  */
@@ -451,7 +483,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr + GETPC_ADJ);
         }
-        return;
+        goto panda_return;
     }
 
     /* Handle aligned access or unaligned access in the same page.  */
@@ -467,6 +499,9 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 #else
     glue(glue(st, SUFFIX), _le_p)((uint8_t *)haddr, val);
 #endif
+
+panda_return:
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 }
 
 #if DATA_SIZE > 1
@@ -477,6 +512,9 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     uintptr_t haddr;
+
+    CPUState *cpu = ENV_GET_CPU(env);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -507,7 +545,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
            byte ordering.  We should push the LE/BE request down into io.  */
         val = TGT_BE(val);
         glue(io_write, SUFFIX)(env, iotlbentry, val, addr, retaddr);
-        return;
+        goto panda_return;
     }
 
     /* Handle slow unaligned access (it spans two pages or IO).  */
@@ -531,7 +569,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr + GETPC_ADJ);
         }
-        return;
+        goto panda_return;
     }
 
     /* Handle aligned access or unaligned access in the same page.  */
@@ -543,6 +581,10 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
     glue(glue(st, SUFFIX), _be_p)((uint8_t *)haddr, val);
+
+panda_return:
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t *) &val);
+
 }
 #endif /* DATA_SIZE > 1 */
 

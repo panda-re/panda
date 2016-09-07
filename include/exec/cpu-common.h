@@ -65,17 +65,19 @@ void qemu_ram_set_idstr(RAMBlock *block, const char *name, DeviceState *dev);
 void qemu_ram_unset_idstr(RAMBlock *block);
 const char *qemu_ram_get_idstr(RAMBlock *rb);
 
+
+
 void cpu_physical_memory_rw(hwaddr addr, uint8_t *buf,
                             int len, int is_write);
 static inline void cpu_physical_memory_read(hwaddr addr,
                                             void *buf, int len)
 {
-    cpu_physical_memory_rw(addr, buf, len, 0);
+    cpu_physical_memory_rw(addr, (uint8_t *) buf, len, 0);
 }
 static inline void cpu_physical_memory_write(hwaddr addr,
                                              const void *buf, int len)
 {
-    cpu_physical_memory_rw(addr, (void *)buf, len, 1);
+    cpu_physical_memory_rw(addr, (uint8_t *)buf, len, 1);
 }
 void *cpu_physical_memory_map(hwaddr addr,
                               hwaddr *plen,
@@ -120,6 +122,7 @@ typedef int (RAMBlockIterFunc)(const char *block_name, void *host_addr,
     ram_addr_t offset, ram_addr_t length, void *opaque);
 
 int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque);
+
 
 #endif
 

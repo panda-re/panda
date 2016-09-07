@@ -253,6 +253,7 @@ gcov_tool="gcov"
 EXESUF=""
 DSOSUF=".so"
 LDFLAGS_SHARED="-shared"
+LDFLAGS="-rdynamic $LDFLAGS"
 modules="no"
 prefix="/usr/local"
 mandir="\${prefix}/share/man"
@@ -301,7 +302,8 @@ guest_agent_ntddscsi="no"
 guest_agent_msi=""
 vss_win32_sdk=""
 win_sdk="no"
-want_tools="yes"
+#PANDA EDIT
+want_tools="no"
 libiscsi=""
 libnfs=""
 coroutine=""
@@ -629,6 +631,7 @@ Darwin)
   # won't work when we're compiling with gcc as a C compiler.
   QEMU_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $QEMU_CFLAGS"
   HOST_VARIANT_DIR="darwin"
+  LIBS="-lprotobuf-c -lprotobuf $LIBS"
 ;;
 SunOS)
   solaris="yes"
@@ -684,6 +687,7 @@ Haiku)
   vhost_net="yes"
   vhost_scsi="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
+  LIBS="-ldl  -lprotobuf-c -lprotobuf  $LIBS"
 ;;
 esac
 
@@ -1651,7 +1655,7 @@ if test "$solaris" = "yes" ; then
 fi
 
 if test -z "${target_list+xxx}" ; then
-    target_list="$default_target_list"
+    target_list="i386-softmmu x86_64-softmmu arm-softmmu"
 else
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
 fi

@@ -8205,9 +8205,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     int num_insns;
     int max_insns;
 
-    // rr
-    tb->num_guest_insns = 0;
-
     /* generate intermediate code */
     pc_start = tb->pc;
     cs_base = tb->cs_base;
@@ -8299,6 +8296,13 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    if (rr_mode == RR_REPLAY) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
     /*
      * This function call emits a few instructions at the beginning of every
      * basic block checking for an exit request.  This probably won't affect
@@ -8333,8 +8337,12 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 #endif
 
+        // PANDA: ask if anyone wants execution notification
+        if (unlikely(panda_callbacks_insn_translate(ENV_GET_CPU(env), pc_ptr))) {
+            gen_helper_panda_insn_exec(tcg_const_tl(pc_ptr));
+        }
+
         pc_ptr = disas_insn(env, dc, pc_ptr);
-        tb->num_guest_insns++;
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;

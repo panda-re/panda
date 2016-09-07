@@ -274,6 +274,8 @@ const QEMULogItem qemu_log_items[] = {
     { CPU_LOG_LLVM_ASM, "llvm_asm",
       "show LLVM-generated assembly code" },
 #endif
+    { CPU_LOG_RR, "rr",
+        "record/replay program points" },
     { 0, NULL, NULL },
 };
 
