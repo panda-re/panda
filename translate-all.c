@@ -284,6 +284,26 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         return -1;
     }
 
+#if defined(CONFIG_LLVM)
+    // XXX things have changed.  See line 9990 from
+    // /nas/common/newpanda/diff/diff-ubr.out
+    if (execute_llvm){
+        //assert(0 && "Figure out how new cpu_restore_state works for LLVM!");
+        assert(tcg_llvm_runtime.last_pc >= tb->pc);
+        assert(tcg_llvm_runtime.last_pc < tb->pc + tb->size);
+        for (i = 0; i < num_insns; ++i) {
+            for (j = 0; j < TARGET_INSN_START_WORDS; ++j) {
+                data[j] += decode_sleb128(&p);
+            }
+            decode_sleb128(&p); // throw away value
+            if (data[0] >= tcg_llvm_runtime.last_pc) {
+                goto found;
+            }
+        }
+        return -1;
+    } else {
+#endif
+
     /* Reconstruct the stored insn data while looking for the point at
        which the end of the insn exceeds the searched_pc.  */
     for (i = 0; i < num_insns; ++i) {
@@ -297,6 +317,9 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
     }
     return -1;
 
+#ifdef CONFIG_LLVM
+    }
+#endif
  found:
     if (tb->cflags & CF_USE_ICOUNT) {
         assert(use_icount);
@@ -305,15 +328,6 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         /* Clear the IO flag.  */
         cpu->can_do_io = 0;
     }
-
-#if defined(CONFIG_LLVM)
-    // XXX things have changed.  See line 9990 from
-    // /nas/common/newpanda/diff/diff-ubr.out
-    if (execute_llvm){
-        assert(0 && "Figure out how new cpu_restore_state works for LLVM!");
-    }
-#endif
-
     cpu->icount_decr.u16.low -= i;
     restore_state_to_opc(env, tb, data);
 

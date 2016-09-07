@@ -8299,6 +8299,11 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    /*
+     * This function call emits a few instructions at the beginning of every
+     * basic block checking for an exit request.  This probably won't affect
+     * LLVM code translation and any analyses that are built on top of that.
+     */
     gen_tb_start(tb);
     for(;;) {
         tcg_gen_insn_start(pc_ptr, dc->cc_op);

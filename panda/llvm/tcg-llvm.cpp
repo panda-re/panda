@@ -105,51 +105,72 @@ static char *qemu_panda_st_helper_names[5] = {
 #endif
 */
 
-static void *qemu_ld_helpers[7] = {
+static void *qemu_ld_helpers[16];
+static void *qemu_st_helpers[16];
+static char *qemu_ld_helper_names[16];
+static char *qemu_st_helper_names[16];
+
+#if 0
+static void *qemu_ld_helpers[16] = {
     /*(void*) __ldb_mmu,
     (void*) __ldw_mmu,
     (void*) __ldl_mmu,
     (void*) __ldq_mmu,
     (void*) __ldq_mmu,*/
-    helper_ret_ldub_mmu,
-    helper_le_lduw_mmu,
-    helper_le_ldul_mmu,
-    helper_le_ldq_mmu,
-    helper_be_lduw_mmu,
-    helper_be_ldul_mmu,
-    helper_be_ldq_mmu,
+    [MO_UB]   = helper_ret_ldub_mmu,
+    [MO_LEUW] = helper_le_lduw_mmu,
+    [MO_LEUL] = helper_le_ldul_mmu,
+    [MO_LEQ]  = helper_le_ldq_mmu,
+    [MO_BEUW] = helper_be_lduw_mmu,
+    [MO_BEUL] = helper_be_ldul_mmu,
+    [MO_BEQ]  = helper_be_ldq_mmu,
 };
 
-static void *qemu_st_helpers[7] = {
+static void *qemu_st_helpers[16] = {
     /*(void*) __stb_mmu,
     (void*) __stw_mmu,
     (void*) __stl_mmu,
     (void*) __stq_mmu,
     (void*) __stq_mmu,*/
-    helper_ret_stb_mmu,
-    helper_le_stw_mmu,
-    helper_le_stl_mmu,
-    helper_le_stq_mmu,
-    helper_be_stw_mmu,
-    helper_be_stl_mmu,
-    helper_be_stq_mmu,
+    [MO_UB]   = helper_ret_stb_mmu,
+    [MO_LEUW] = helper_le_stw_mmu,
+    [MO_LEUL] = helper_le_stl_mmu,
+    [MO_LEQ]  = helper_le_stq_mmu,
+    [MO_BEUW] = helper_be_stw_mmu,
+    [MO_BEUL] = helper_be_stl_mmu,
+    [MO_BEQ]  = helper_be_stq_mmu,
 };
 
-static char *qemu_ld_helper_names[5] = {
-    (char*)"__ldb_mmu",
+static char *qemu_ld_helper_names[7] = {
+    /*(char*)"__ldb_mmu",
     (char*)"__ldw_mmu",
     (char*)"__ldl_mmu",
     (char*)"__ldq_mmu",
-    (char*)"__ldq_mmu",
+    (char*)"__ldq_mmu",*/
+    (char*)"helper_ret_ldub_mmu",
+    (char*)"helper_le_lduw_mmu",
+    (char*)"helper_le_ldul_mmu",
+    (char*)"helper_le_ldq_mmu",
+    (char*)"helper_be_lduw_mmu",
+    (char*)"helper_be_ldul_mmu",
+    (char*)"helper_be_ldq_mmu"
 };
 
-static char *qemu_st_helper_names[5] = {
-    (char*)"__stb_mmu",
+static char *qemu_st_helper_names[7] = {
+    /*(char*)"__stb_mmu",
     (char*)"__stw_mmu",
     (char*)"__stl_mmu",
     (char*)"__stq_mmu",
-    (char*)"__stq_mmu",
+    (char*)"__stq_mmu",*/
+    (char*)"helper_ret_stb_mmu",
+    (char*)"helper_le_stw_mmu",
+    (char*)"helper_le_stl_mmu",
+    (char*)"helper_le_stq_mmu",
+    (char*)"helper_be_stw_mmu",
+    (char*)"helper_be_stl_mmu",
+    (char*)"helper_be_stq_mmu"
 };
+#endif
 
 #endif // CONFIG_SOFTMMU
 
@@ -281,6 +302,7 @@ public:
     }
 
     /* Helpers */
+    void initMemoryHelpers();
     Value* getValue(int idx);
     void setValue(int idx, Value *v);
     void delValue(int idx);
@@ -305,10 +327,13 @@ public:
     void startNewBasicBlock(BasicBlock *bb = NULL);
 
     /* Code generation */
-    Value* generateQemuMemOp(bool ld, Value *value, Value *addr,
-                             int mem_index, int bits);
+    Value* getEnv();
+    //Value* generateQemuMemOp(bool ld, Value *value, Value *addr,
+    //                         int mem_index, uintptr_t ret_addr, int bits);
+    Value* generateQemuMemOp(bool ld, Value *value, Value *addr, int flags,
+                             int mem_index, int bits, uintptr_t ret_addr);
     void generateTraceCall(uintptr_t pc);
-    int generateOperation(int opc, const TCGArg *args);
+    int generateOperation(int opc, const TCGOp *op, const TCGArg *args);
     void generateCode(TCGContext *s, TranslationBlock *tb);
 };
 
@@ -405,6 +430,8 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
 
     InitializeNativeTarget();
 
+    initMemoryHelpers();
+
     m_module = new Module("tcg-llvm", m_context);
 
     m_jitMemoryManager = new TJITMemoryManager();
@@ -478,19 +505,65 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
     }
 }
 
+void TCGLLVMContextPrivate::initMemoryHelpers(){
+    qemu_ld_helpers[MO_UB] = helper_ret_ldub_mmu;
+    qemu_ld_helpers[MO_LEUW] = helper_le_lduw_mmu;
+    qemu_ld_helpers[MO_LEUL] = helper_le_ldul_mmu;
+    qemu_ld_helpers[MO_LEQ] = helper_le_ldq_mmu;
+    qemu_ld_helpers[MO_BEUW] = helper_be_lduw_mmu;
+    qemu_ld_helpers[MO_BEUL] = helper_be_ldul_mmu;
+    qemu_ld_helpers[MO_BEQ] = helper_be_ldq_mmu;
+    qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu";
+    qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu";
+    qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu";
+    qemu_ld_helper_names[MO_LEQ] = "helper_le_ldq_mmu";
+    qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu";
+    qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu";
+    qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu";
+    qemu_st_helpers[MO_UB] = helper_ret_stb_mmu;
+    qemu_st_helpers[MO_LEUW] = helper_le_stw_mmu;
+    qemu_st_helpers[MO_LEUL] = helper_le_stl_mmu;
+    qemu_st_helpers[MO_LEQ] = helper_le_stq_mmu;
+    qemu_st_helpers[MO_BEUW] = helper_be_stw_mmu;
+    qemu_st_helpers[MO_BEUL] = helper_be_stl_mmu;
+    qemu_st_helpers[MO_BEQ] = helper_be_stq_mmu;
+    qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu";
+    qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu";
+    qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu";
+    qemu_st_helper_names[MO_LEQ] = "helper_le_stq_mmu";
+    qemu_st_helper_names[MO_BEUW] = "helper_be_stw_mmu";
+    qemu_st_helper_names[MO_BEUL] = "helper_be_stl_mmu";
+    qemu_st_helper_names[MO_BEQ] = "helper_be_stq_mmu";
+}
+
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 {
+    //printf("getptrforvalue: %d\n", idx);
     TCGContext *s = m_tcgContext;
     TCGTemp &temp = s->temps[idx];
+    int globalsIdx;
 
     assert(idx < s->nb_globals || s->temps[idx].temp_local);
+
+    /* rwhelan: hack to deal with the fact that this code is written assuming
+     * 'env' was the 0th index in the array.  This is no longer true, as the
+     * '_frame' variable is the 0th index, and 'env' is the 1st index.
+     * Generated code will probably not be touching the TCG stack frame, so this
+     * should be ok.
+     */
+    if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))){
+        globalsIdx = 0;
+    }
+    else {
+        globalsIdx = m_globalsIdx[idx];
+    }
 
     if(m_memValuesPtr[idx] == NULL) {
         assert(idx < s->nb_globals);
 
         if(temp.fixed_reg) {
             Value *v = m_builder.CreateConstGEP1_32(
-                    m_tbFunction->arg_begin(), m_globalsIdx[idx]);
+                    m_tbFunction->arg_begin(), globalsIdx);
             m_memValuesPtr[idx] = m_builder.CreatePointerCast(
                     v, tcgPtrType(temp.type)
                     , StringRef(temp.name) + "_ptr"
@@ -699,18 +772,34 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
 }
 
 /*
+ * rwhelan: This is needed since the memory access helpers now need a handle to
+ * env
+ */
+inline Value* TCGLLVMContextPrivate::getEnv(){
+    TCGContext *s = m_tcgContext;
+    for(int i = 0; i<s->nb_globals; i++){
+        TCGTemp &temp = s->temps[i];
+        if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))){
+            return getValue(i);
+        }
+    }
+    assert(0 && "Error finding env in TCG globals");
+}
+
+/*
  * rwhelan: This now just calls the helper functions for whole system mode, and
  * we take care of the logging in there.  For user mode, we log in the IR.
  */
 inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
-        Value *value, Value *addr, int mem_index, int bits)
+        Value *value, Value *addr, int flags, int mem_index, int bits, uintptr_t ret_addr)
 {
     assert(addr->getType() == intType(TARGET_LONG_BITS));
     assert(ld || value->getType() == intType(bits));
     assert(TCG_TARGET_REG_BITS == 64); //XXX
 
 #ifdef CONFIG_SOFTMMU
-
+    TCGMemOp opc = get_memop(flags);
+    int memIdx = opc & (MO_BSWAP | MO_SIZE);
     uintptr_t helperFuncAddr;
 
     if (0 /*panda_use_memcb*/){
@@ -719,20 +808,22 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         //                       (uint64_t) qemu_panda_st_helpers[bits>>4];
     }
     else {
-        helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
-                               (uint64_t) qemu_st_helpers[bits>>4];
+        helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[memIdx]:
+                               (uint64_t) qemu_st_helpers[memIdx];
     }
 
     std::vector<Value*> argValues;
-    argValues.reserve(3);
+    argValues.reserve(4);
+    argValues.push_back(getEnv());
     argValues.push_back(addr);
     if(!ld)
         argValues.push_back(value);
     argValues.push_back(ConstantInt::get(intType(8*sizeof(int)), mem_index));
+    argValues.push_back(ConstantInt::get(intType(8*sizeof(uintptr_t)), ret_addr));
 
     std::vector<llvm::Type*> argTypes;
-    argTypes.reserve(3);
-    for(int i=0; i<(ld?2:3); ++i)
+    argTypes.reserve(4);
+    for(int i=0; i<(ld?4:5); ++i)
         argTypes.push_back(argValues[i]->getType());
 
     FunctionType* helperFunctionTy;
@@ -751,8 +842,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         //    qemu_panda_st_helper_names[bits>>4];
     }
     else {
-        funcName = ld ? qemu_ld_helper_names[bits>>4]:
-            qemu_st_helper_names[bits>>4];
+        funcName = ld ? qemu_ld_helper_names[memIdx]:
+            qemu_st_helper_names[memIdx];
     }
     assert(funcName);
     Function* helperFunction = m_module->getFunction(funcName);
@@ -782,7 +873,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
 #endif // CONFIG_SOFTMMU
 }
 
-int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
+int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
+    const TCGArg *args)
 {
     Value *v;
     TCGOpDef &def = tcg_op_defs[opc];
@@ -810,8 +902,14 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
     case INDEX_op_call:
         {
-            int nb_oargs = args[0] >> 16;
-            int nb_iargs = args[0] & 0xffff;
+            for (int i = 0; i < 7; i++){
+                //printf("call arg %d: %d\n", i, args[i]);
+            }
+            //int nb_oargs = args[0] >> 16;
+            //int nb_iargs = args[0] & 0xffff;
+            int nb_oargs = op->callo;
+            int nb_iargs = op->calli;
+            //printf("in: %d, out: %d\n", nb_iargs, nb_oargs);
             nb_args = nb_oargs + nb_iargs + def.nb_cargs + 1;
 
             //int flags = args[nb_oargs + nb_iargs + 1];
@@ -819,10 +917,14 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 
             std::vector<Value*> argValues;
             std::vector<llvm::Type*> argTypes;
-            argValues.reserve(nb_iargs-1);
-            argTypes.reserve(nb_iargs-1);
-            for(int i=0; i < nb_iargs-1; ++i) {
-                TCGArg arg = args[nb_oargs + i + 1];
+            //argValues.reserve(nb_iargs-1);
+            //argTypes.reserve(nb_iargs-1);
+            argValues.reserve(nb_iargs);
+            argTypes.reserve(nb_iargs);
+            //argValues.push_back(getEnv());
+            //argTypes.push_back(getEnv()->getType());
+            for(int i=0; i < nb_iargs/*-1*/; ++i) {
+                TCGArg arg = args[nb_oargs + i /*+ 1*/];
                 if(arg != TCG_CALL_DUMMY_ARG) {
                     Value *v = getValue(arg);
                     argValues.push_back(v);
@@ -834,14 +936,20 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             llvm::Type* retType = nb_oargs == 0 ?
                 llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
 
-            Value* helperAddr = getValue(args[nb_oargs + nb_iargs]);
+            //Value* helperAddr = getValue(args[nb_oargs + nb_iargs]);
+            //uintptr_t helperAddr = args[nb_oargs + nb_iargs];
+            Value* helperAddr = ConstantInt::get(intType(sizeof(uintptr_t)*4),
+                args[nb_oargs + nb_iargs]);
             Value* result;
 
             tcg_target_ulong helperAddrC = (tcg_target_ulong)
                    cast<ConstantInt>(helperAddr)->getZExtValue();
 
-            const char *helperName = tcg_helper_get_name(m_tcgContext,
+            //const char *helperName = tcg_helper_get_name(m_tcgContext,
+            //                                             (void*) helperAddrC);
+            const char *helperName = tcg_find_helper(m_tcgContext,
                                                          (void*) helperAddrC);
+            //printf("call to helper: %s\n", helperName);
             assert(helperName);
 
             std::string funcName = std::string("helper_") + helperName;
@@ -871,7 +979,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                 delPtrForValue(i);
 
             if(nb_oargs == 1)
-                setValue(args[1], result);
+                //setValue(args[1], result);
+                // XXX trying
+                setValue(args[0], result);
+                //printf("Returning from call: args0 idx is %d\n", args[0]);
+                result->dump();
 
         }
         break;
@@ -906,7 +1018,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
                 tcg_abort();                                        \
         }                                                           \
         BasicBlock* bb = BasicBlock::Create(m_context);             \
-        m_builder.CreateCondBr(v, getLabel(args[3]), bb);           \
+        m_builder.CreateCondBr(v,                                   \
+            getLabel(arg_label(args[3])->id), bb);                  \
         startNewBasicBlock(bb);                                     \
     } break;
 
@@ -923,15 +1036,22 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
             case tcg_cond:                                          \
                 v = m_builder.CreateICmp ## cond(v1, v2);           \
             break;
+        
+        // XXX setcond - why is this needed if it's unused?
+        // Also, why is args[0] set then deleted below?
+        //delValue(args[0]);                                          \
 
-#define __OP_SETCOND(opc_name, bits)                                \
-    case opc_name: {                                                \
-        Value* retptr = getPtrForValue(args[0]);                    \
+        /*Value* retptr = getPtrForValue(args[0]);                    \
         __attribute__((unused))                                     \
         Value* ret = m_builder.CreateLoad(retptr);                  \
         Value* v1  = getValue(args[1]);                             \
         Value* v2  = getValue(args[2]);                             \
-        assert(ret->getType() == intType(bits));                    \
+        assert(ret->getType() == intType(bits));                    \*/
+
+#define __OP_SETCOND(opc_name, bits)                                \
+    case opc_name: {                                                \
+        Value* v1  = getValue(args[1]);                             \
+        Value* v2  = getValue(args[2]);                             \
         assert(v1->getType() == intType(bits));                     \
         assert(v2->getType() == intType(bits));                     \
         switch(args[3]) {                                           \
@@ -955,12 +1075,10 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
         m_tbFunction->getBasicBlockList().push_back(bbSet);         \
         m_builder.SetInsertPoint(bbSet);                            \
         setValue(args[0], ConstantInt::get(intType(bits), 1));      \
-        delValue(args[0]);                                          \
         m_builder.CreateBr(finished);                               \
         m_tbFunction->getBasicBlockList().push_back(bb);            \
         m_builder.SetInsertPoint(bb);                               \
         setValue(args[0], ConstantInt::get(intType(bits), 0));      \
-        delValue(args[0]);                                          \
         m_builder.CreateBr(finished);                               \
         m_tbFunction->getBasicBlockList().push_back(finished);      \
         m_builder.SetInsertPoint(finished);                         \
@@ -976,8 +1094,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
 #undef __OP_SETCOND
 
     case INDEX_op_set_label:
-        assert(getLabel(args[0])->getParent() == 0);
-        startNewBasicBlock(getLabel(args[0]));
+        assert(getLabel(arg_label(args[0])->id)->getParent() == 0);
+        startNewBasicBlock(getLabel(arg_label(args[0])->id));
         break;
 
     case INDEX_op_movi_i32:
@@ -1225,51 +1343,42 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGArg *args)
     /* QEMU specific */
 #if TCG_TARGET_REG_BITS == 64
 
-#define __OP_QEMU_ST(opc_name, bits)                                \
-    case opc_name:                                                  \
+// retaddr is set to 0xDEADBEEF for now...see note in softmmu_template.h
+#define __OP_QEMU_ST(opc_name)                                      \
+    case opc_name: {                                                \
+        TCGMemOp op = get_memop(args[2]);                           \
+        bool signE = op & MO_SIGN;                                  \
+        int bits = (1 << (op & MO_SIZE)) * 8;                       \
+        unsigned memIndex = get_mmuidx(args[2]);                    \
         generateQemuMemOp(false,                                    \
             m_builder.CreateIntCast(                                \
-                getValue(args[0]), intType(bits), false),           \
-            getValue(args[1]), args[2], bits);                      \
-        break;
+                getValue(args[0]), intType(bits), signE),           \
+            getValue(args[1]), args[2], memIndex, bits, 0xDEADBEEF);\
+        break; }                                                    \
 
+#define __OP_QEMU_LD(opc_name)                                      \
+    case opc_name: {                                                \
+        TCGMemOp op = get_memop(args[2]);                           \
+        bool signE = op & MO_SIGN;                                  \
+        int bits = (1 << (op & MO_SIZE)) * 8;                       \
+        unsigned memIndex = get_mmuidx(args[2]);                    \
+        Value *v = generateQemuMemOp(true, NULL,                    \
+            getValue(args[1]), args[2], memIndex, bits, 0xDEADBEEF);\
+        setValue(args[0], m_builder.CreateIntCast(                  \
+            v, intType(std::max(TARGET_LONG_BITS, bits)), signE));  \
+        break; }                                                    \
 
-#define __OP_QEMU_LD(opc_name, bits, signE)                         \
-    case opc_name:                                                  \
-        v = generateQemuMemOp(true, NULL,                           \
-            getValue(args[1]), args[2], bits);                      \
-        setValue(args[0], m_builder.Create ## signE ## Ext(         \
-            v, intType(std::max(TARGET_LONG_BITS, bits))));         \
-        break;
+    __OP_QEMU_ST(INDEX_op_qemu_st_i32)
+    __OP_QEMU_ST(INDEX_op_qemu_st_i64)
 
-#define __OP_QEMU_LDD(opc_name, bits)                               \
-    case opc_name:                                                  \
-        v = generateQemuMemOp(true, NULL,                           \
-            getValue(args[1]), args[2], bits);                      \
-        setValue(args[0], v);         \
-        break;
-
-    /*
-    __OP_QEMU_ST(INDEX_op_qemu_st8,   8)
-    __OP_QEMU_ST(INDEX_op_qemu_st16, 16)
-    __OP_QEMU_ST(INDEX_op_qemu_st32, 32)
-    __OP_QEMU_ST(INDEX_op_qemu_st64, 64)
-
-    __OP_QEMU_LD(INDEX_op_qemu_ld8s,   8, S)
-    __OP_QEMU_LD(INDEX_op_qemu_ld8u,   8, Z)
-    __OP_QEMU_LD(INDEX_op_qemu_ld16s, 16, S)
-    __OP_QEMU_LD(INDEX_op_qemu_ld16u, 16, Z)
-    __OP_QEMU_LD(INDEX_op_qemu_ld32s, 32, S)
-    __OP_QEMU_LD(INDEX_op_qemu_ld32u, 32, Z)
-    __OP_QEMU_LD(INDEX_op_qemu_ld64,  64, Z)
-
-    __OP_QEMU_LDD(INDEX_op_qemu_ld32, 32)
-    */
+    __OP_QEMU_LD(INDEX_op_qemu_ld_i32)
+    __OP_QEMU_LD(INDEX_op_qemu_ld_i64)
 
 #undef __OP_QEMU_LD
 #undef __OP_QEMU_ST
-#undef __OP_QEMU_LDD
 
+#else
+#error "Can't build LLVM stuff on 32-bit machine :("
 #endif
 
     case INDEX_op_exit_tb:
@@ -1391,12 +1500,19 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     initGlobalsAndLocalTemps();
 
     /* Generate code for each opc */
-    const TCGArg *args = s->gen_opparam_buf;
-    for(int opc_index=0; ;++opc_index) {
-        int opc = s->gen_op_buf[opc_index].opc;
+    const TCGArg *args;
+    TCGOp *op;
+    //for(int opc_index=0; ;++opc_index) {
+    for(int opc_index = s->gen_first_op_idx; opc_index >= 0;
+            opc_index = op->next) {
+        op = &s->gen_op_buf[opc_index];
+        args = &s->gen_opparam_buf[op->args];
+        int opc = op->opc;
 
-        if(opc == INDEX_op_exit_tb) // XXX correct replacement for op_end?
-            break;
+        //if(opc == INDEX_op_exit_tb){
+        //    m_builder.CreateRet(ConstantInt::get(wordType(), args[0]));
+        //    break;
+        //}
 
         if(opc == INDEX_op_insn_start) {
             // volatile store of current OPC index
@@ -1421,7 +1537,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 	    i->setMetadata("pcupdate.md", N);
         }
 
-        args += generateOperation(opc, args);
+        args += generateOperation(opc, op, args);
         //llvm::errs() << *m_tbFunction << "\n";
     }
 

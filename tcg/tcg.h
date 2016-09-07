@@ -828,7 +828,7 @@ void tcg_op_remove(TCGContext *s, TCGOp *op);
 void tcg_optimize(TCGContext *s);
 
 /* only used for debugging purposes */
-const char *tcg_helper_get_name(TCGContext *s, void *func);
+const char *tcg_find_helper(TCGContext *s, uintptr_t val);
 void tcg_dump_ops(TCGContext *s);
 
 void dump_ops(const uint16_t *opc_buf, const TCGArg *opparam_buf);
