@@ -177,6 +177,16 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF-GETPC_ADJ)){
+        retaddr = GETPC();
+        //printf("llvm mem retaddr: 0x%lx\n", retaddr);
+    }
+
     /* If the TLB entry is for a different page, reload and try again.  */
     if ((addr & TARGET_PAGE_MASK)
          != (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
@@ -380,6 +390,16 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
+    
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF-GETPC_ADJ)){
+        retaddr = GETPC();
+        //printf("llvm mem retaddr: 0x%lx\n", retaddr);
+    }
 
     /* If the TLB entry is for a different page, reload and try again.  */
     if ((addr & TARGET_PAGE_MASK)

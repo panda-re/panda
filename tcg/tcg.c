@@ -953,7 +953,7 @@ static char *tcg_get_arg_str_idx(TCGContext *s, char *buf,
 }
 
 /* Find helper name.  */
-static inline const char *tcg_find_helper(TCGContext *s, uintptr_t val)
+const char *tcg_find_helper(TCGContext *s, uintptr_t val)
 {
     const char *ret = NULL;
     if (s->helpers) {
@@ -963,13 +963,6 @@ static inline const char *tcg_find_helper(TCGContext *s, uintptr_t val)
         }
     }
     return ret;
-}
-
-// Yanked from QEMU 1.0.1
-const char *tcg_helper_get_name(TCGContext *s, void *func)
-{
-    TCGHelperInfo *info = (TCGHelperInfo *)tcg_find_helper(s, (tcg_target_ulong) func);
-    return info ? info->name : NULL;
 }
 
 static const char * const cond_name[] =
