@@ -47,9 +47,13 @@
 #include "hw/i386/apic.h"
 #endif
 #include "sysemu/replay.h"
+#include "rr_log.h"
+
+#include "panda/plugin.h" 
+#include "panda/common.h" 
 
 #if defined(CONFIG_LLVM)
-#include "panda/llvm/tcg-llvm.h"
+#include "tcg-llvm.h"
 const int has_llvm_engine = 1;
 #endif
 
@@ -73,6 +77,10 @@ typedef struct SyncClocks {
 #define THRESHOLD_REDUCE 1.5
 #define MAX_DELAY_PRINT_RATE 2000000000LL
 #define MAX_NB_PRINTS 100
+
+// Needed to prevent before_block_exec_invalidate_opt from 
+// running more than once
+bool panda_bb_invalidate_done = false;
 
 static void align_clocks(SyncClocks *sc, const CPUState *cpu)
 {
@@ -199,8 +207,28 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     ret = tcg_qemu_tb_exec(env, tb_ptr);
 #endif // CONFIG_LLVM
 
+    // NB: This is where we did this in panda1
+    panda_bb_invalidate_done = false;
+    panda_callbacks_before_block_exec(cpu, itb);
+
+#ifdef RR_CHAOS_MONKEY
+    static bool rr_chaos_done = false;
+    if (!rr_chaos_done && rr_in_record() && rr_get_guest_instr_count() > 100000) {
+        MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
+        rcu_read_lock();
+        uint8_t *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
+        memcpy(ptr+0x2000000,cpu_tb_exec,0x100);
+        rcu_read_unlock();
+        rr_chaos_done = true;
+    }
+#endif
+
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
+
+#warning Need to dynamically verify that last_tb is actually next_tb.
+    panda_callbacks_after_block_exec(cpu, itb, ((TranslationBlock*)(((uintptr_t)last_tb) & ~3)));
+
     tb_exit = ret & TB_EXIT_MASK;
     trace_exec_tb_exit(last_tb, tb_exit);
 
@@ -341,8 +369,12 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
     }
 #endif
 
+    panda_callbacks_before_block_translate(cpu, pc);
+
     /* if no translated code available, then translate it now */
     tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
+
+    panda_callbacks_after_block_translate(cpu, tb);
 
 #ifdef CONFIG_USER_ONLY
     mmap_unlock();
@@ -390,9 +422,15 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
     }
 #endif
     /* See if we can patch the calling TB. */
-    if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
-        tb_add_jump(*last_tb, tb_exit, tb);
+#ifdef CONFIG_SOFTMMU
+    if (rr_mode != RR_REPLAY /* && panda_tb_chaining */) {
+#endif
+        if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
+            tb_add_jump(*last_tb, tb_exit, tb);
+        }
+#ifdef CONFIG_SOFTMMU
     }
+#endif
     tb_unlock();
     return tb;
 }
@@ -408,7 +446,7 @@ static inline bool cpu_handle_halt(CPUState *cpu)
             cpu_reset_interrupt(cpu, CPU_INTERRUPT_POLL);
         }
 #endif
-        if (!cpu_has_work(cpu)) {
+        if (!cpu_has_work(cpu) && !rr_in_replay()) {
             current_cpu = NULL;
             return true;
         }
@@ -487,7 +525,20 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int interrupt_request = cpu->interrupt_request;
+#ifdef CONFIG_SOFTMMU
+    //mz Record and Replay.
+    //mz it is important to do this in the order written, as
+    //during record env->interrupt_request can be changed at any
+    //time via a signal.  Thus, we want to make sure that we
+    //record the same value in the log as the one being used in
+    //these decisions.
+    rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
+    rr_interrupt_request(&interrupt_request);
 
+    if (rr_in_replay()) {
+        cpu->interrupt_request = interrupt_request;
+    }
+#endif
     if (unlikely(interrupt_request)) {
         if (unlikely(cpu->singlestep_enabled & SSTEP_NOIRQ)) {
             /* Mask out external interrupts for this step. */
@@ -537,6 +588,11 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
              * reload the 'interrupt_request' value */
             interrupt_request = cpu->interrupt_request;
         }
+#ifdef CONFIG_SOFTMMU
+        //mz record the value again in case do_interrupt has set EXITTB flag
+        rr_skipped_callsite_location = RR_CALLSITE_CPU_HANDLE_INTERRUPT_AFTER;
+        rr_interrupt_request((int *)&cpu->interrupt_request);
+#endif
         if (interrupt_request & CPU_INTERRUPT_EXITTB) {
             cpu->interrupt_request &= ~CPU_INTERRUPT_EXITTB;
             /* ensure that no TB jump will be modified as
@@ -611,6 +667,8 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
     }
 }
 
+
+
 /* main execution loop */
 
 int cpu_exec(CPUState *cpu)
@@ -622,6 +680,15 @@ int cpu_exec(CPUState *cpu)
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
 
+#ifdef CONFIG_SOFTMMU
+    //mz This is done once at the start of record and once at the start of
+    //replay.  So we should be ok.
+    if (unlikely(rr_flush_tb())) {
+        qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
+        tb_flush(cpu);
+        rr_flush_tb_off();  // just the first time, eh?
+    }
+#endif
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
     }
@@ -652,16 +719,56 @@ int cpu_exec(CPUState *cpu)
             if (cpu_handle_exception(cpu, &ret)) {
                 break;
             }
-
             last_tb = NULL; /* forget the last executed TB after exception */
             cpu->tb_flushed = false; /* reset before first TB lookup */
-            for(;;) {
+            for (;;) {
+                //bdg Replay skipped calls from the I/O thread here
+                if (rr_in_replay()) {
+                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                    rr_replay_skipped_calls();
+                }
                 cpu_handle_interrupt(cpu, &last_tb);
+                panda_before_find_fast();
                 tb = tb_find_fast(cpu, &last_tb, tb_exit);
-                cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-                /* Try to align the host and virtual clocks
-                   if the guest is in advance */
-                align_clocks(&sc, cpu);
+                panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done);
+                if (qemu_loglevel_mask(CPU_LOG_RR)) {
+                    RR_prog_point pp = rr_prog_point();
+                    qemu_log_mask(CPU_LOG_RR,
+                      "Prog point: 0x" TARGET_FMT_lx
+                      " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
+                      tb->pc,
+                     (unsigned long long)pp.guest_instr_count,
+                      (unsigned long long)pp.pc,
+                      (unsigned long long)pp.secondary);
+                }
+
+#ifdef CONFIG_SOFTMMU
+                if (rr_mode == RR_REPLAY) {
+                    bool panda_invalidate_tb = false;
+                    uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+                    if ( panda_invalidate_tb
+                         || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
+                             tb->icount > until_interrupt)) {
+                        // retranslate so that basic block boundary matches
+                        // record & replay for interrupt delivery
+                        breakpoint_invalidate(cpu,tb->pc);
+//                        panda_invalidate_single_tb(cpu, tb->pc);
+                        tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                    }
+                }
+#endif //CONFIG_SOFTMMU
+                // Check for termination in replay
+                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+                    rr_do_end_replay(0);
+                    qemu_cpu_kick(cpu);
+                    break;
+                }
+                if (!rr_in_replay() || rr_num_instr_before_next_interrupt() > 0) {
+                    cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
+                    /* Try to align the host and virtual clocks
+                       if the guest is in advance */
+                    align_clocks(&sc, cpu);
+                }
             } /* for(;;) */
         } else {
 #if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)

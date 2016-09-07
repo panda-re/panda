@@ -73,8 +73,11 @@
 #include "exec/log.h"
 
 #ifdef CONFIG_LLVM
-#include "panda/llvm/tcg-llvm.h"
+#include "tcg-llvm.h"
 #endif
+
+#include "rr_log.h"
+#include "panda/include/panda/plugin.h"
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -279,6 +282,8 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 #ifdef CONFIG_PROFILER
     int64_t ti = profile_getclock();
 #endif
+
+    panda_callbacks_cpu_restore_state(cpu->env_ptr, tb);
 
     if (searched_pc < host_pc) {
         return -1;
@@ -1456,7 +1461,6 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
                 that the modification is after the current PC, but it
                 would require a specialized function to partially
                 restore the CPU state */
-
                 current_tb_modified = 1;
                 cpu_restore_state_from_tb(cpu, current_tb, cpu->mem_io_pc);
                 cpu_get_tb_cpu_state(env, &current_pc, &current_cs_base,

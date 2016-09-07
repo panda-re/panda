@@ -33,11 +33,31 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
+# determine list of plugins
+# remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
+PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
+
+# ditto for extra plugins
+ifdef EXTRA_PLUGINS_PATH
+	EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
+endif
+
 ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
 endif
 
-PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG)
+PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
+PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+ifdef EXTRA_PLUGINS_PATH
+	EXTRA_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-plugin-%, $(EXTRA_PANDA_PLUGINS))
+	EXTRA_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+endif
+
+#TOOL_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
+#TOOL_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
+PROGS=$(QEMU_PROG) $(QEMU_PROGW) $(RR_PRINT_PROG) plog_pb2.py
 STPFILES=
 
 config-target.h: config-target.h-timestamp
@@ -81,7 +101,7 @@ else
 stap:
 endif
 
-all: $(PROGS) stap
+all: $(PROGS) $(PLUGIN_SUBDIR_RULES) stap 
 
 # Dummy command so that make thinks it has done something
 	@true
@@ -102,6 +122,7 @@ obj-y += target-$(TARGET_BASE_ARCH)/
 obj-y += disas.o
 obj-$(call notempty,$(TARGET_XML_FILES)) += gdbstub-xml.o
 obj-$(call lnot,$(CONFIG_KVM)) += kvm-stub.o
+
 
 obj-$(CONFIG_LIBDECNUMBER) += libdecnumber/decContext.o
 obj-$(CONFIG_LIBDECNUMBER) += libdecnumber/decNumber.o
@@ -168,13 +189,55 @@ endif
 
 GENERATED_HEADERS += hmp-commands.h hmp-commands-info.h qmp-commands-old.h
 
+#########################################################  
+# Panda code 
+
+PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
+
+plog.proto: $(PROTO_FILES)
+	$(call quiet-command,\
+		$(SRC_PATH)/panda/scripts/pp.py $@ $(SRC_PATH)/panda/plugins/config.panda,\
+		"  PROTO $@")
+
+%.pb-c.h %.pb-c.c: %.proto
+	$(call quiet-command,\
+		protoc-c --proto_path=. --c_out=. $<,\
+		"  PROTO plog.pb-c.h plog.pb-c.c")
+
+plog_pb2.py: plog.proto
+	$(call quiet-command,\
+		protoc --proto_path=. --python_out=. $<,\
+		"  PROTO plog_pb2.py")
+
+GENERATED_HEADERS += plog.pb-c.h
+
+PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(wildcard $(SRC_PATH)/panda/plugins/*/*_int.h))
+
+# This keeps make from thinking it's an "intermediate" file
+.PRECIOUS: %_ext.h
+
+%_ext.h: %_int.h
+	$(call quiet-command,\
+		$(SRC_PATH)/panda/scripts/apigen.py $< $@,\
+		"  API   $@")
+
+obj-y += panda/src/callbacks.o
+obj-y += panda/src/callback_support.o
+obj-y += panda/src/common.o
+obj-y += panda/src/plog.o
+obj-y += plog.pb-c.o
+#obj-y += panda/src/plog_print.o
+#obj-y += panda/src/plog_reader.o
+#obj-y += panda/src/guestarch.o
+
+
 endif # CONFIG_SOFTMMU
 
 # Workaround for http://gcc.gnu.org/PR55489, see configure.
 %/translate.o: QEMU_CFLAGS += $(TRANSLATE_OPT_CFLAGS)
 
 dummy := $(call unnest-vars,,obj-y)
-all-obj-y := $(obj-y)
+all-obj-y := $(obj-y) $(panda-obj-y)
 
 target-obj-y :=
 block-obj-y :=
@@ -210,8 +273,23 @@ ifdef CONFIG_DARWIN
 	$(call quiet-command,SetFile -a C $@,"  SETFILE $(TARGET_DIR)$@")
 endif
 
+rr_print.o: rr_log.h rr_log_all.h
+
 $(RR_PRINT_PROG): rr_print.o
 	$(call LINK,$^)
+
+plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+
+extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+
 
 gdbstub-xml.c: $(TARGET_XML_FILES) $(SRC_PATH)/scripts/feature_to_c.sh
 	$(call quiet-command,rm -f $@ && $(SHELL) $(SRC_PATH)/scripts/feature_to_c.sh $@ $(TARGET_XML_FILES),"  GEN   $(TARGET_DIR)$@")
@@ -229,6 +307,9 @@ clean:
 	rm -f *.a *~ $(PROGS)
 	rm -f $(shell find . -name '*.[od]')
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
+	@if [ -d "panda/plugins" ]; then\
+		find panda/plugins -depth -mindepth 1 -delete;\
+	fi
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp
 endif

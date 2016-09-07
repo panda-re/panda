@@ -1,0 +1,4 @@
+optional uint64 asid = 3; 
+optional string process_name = 4;
+optional uint32 process_id = 5;
+optional uint64 total_instr = 65;

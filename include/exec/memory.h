@@ -32,6 +32,7 @@
 #include "qom/object.h"
 #include "qemu/rcu.h"
 
+
 #define RAM_ADDR_INVALID (~(ram_addr_t)0)
 
 #define MAX_PHYS_ADDR_SPACE_BITS 62
@@ -1424,8 +1425,7 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
     hwaddr l, addr1;
     void *ptr;
     MemoryRegion *mr;
-
-    if (__builtin_constant_p(len)) {
+    if (__builtin_constant_p(len) && false) {
         if (len) {
             rcu_read_lock();
             l = len;

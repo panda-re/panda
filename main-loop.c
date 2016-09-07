@@ -31,6 +31,7 @@
 #include "slirp/libslirp.h"
 #include "qemu/main-loop.h"
 #include "block/aio.h"
+#include "rr_log_all.h"
 
 #ifndef _WIN32
 
@@ -223,6 +224,7 @@ static int os_host_main_loop_wait(int64_t timeout)
 
     glib_pollfds_fill(&timeout);
 
+
     /* If the I/O thread is very busy or we are incorrectly busy waiting in
      * the I/O thread, this can lead to starvation of the BQL such that the
      * VCPU threads never run.  To make sure we can detect the later case,
@@ -254,7 +256,6 @@ static int os_host_main_loop_wait(int64_t timeout)
     if (timeout) {
         qemu_mutex_lock_iothread();
     }
-
     glib_pollfds_poll();
     return ret;
 }
@@ -490,7 +491,9 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
-    slirp_pollfds_fill(gpollfds, &timeout);
+    if (!rr_in_replay()) {
+        slirp_pollfds_fill(gpollfds, &timeout);
+    }
 #endif
 
     if (timeout == UINT32_MAX) {
@@ -504,14 +507,27 @@ int main_loop_wait(int nonblocking)
                                           &main_loop_tlg));
 
     ret = os_host_main_loop_wait(timeout_ns);
+
+    if (rr_in_record()) {
+        rr_record_in_main_loop_wait = 1;
+        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+    }
+
 #ifdef CONFIG_SLIRP
     slirp_pollfds_poll(gpollfds, (ret < 0));
 #endif
 
     /* CPU thread can infinitely wait for event after
        missing the warp */
-    qemu_start_warp_timer();
-    qemu_clock_run_all_timers();
+    // ru: add check if in in replay for running timers
+    if (!rr_in_replay()) {
+        qemu_start_warp_timer();
+        qemu_clock_run_all_timers();
+    }
+
+    if (rr_in_record()) {
+        rr_record_in_main_loop_wait = 0;
+    }
 
     return ret;
 }

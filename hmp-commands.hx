@@ -1773,15 +1773,6 @@ ETEXI
     },
 
     {
-        .name       = "begin_replay",
-        .args_type  = "file_name:s",
-        .params     = "[file_name]",
-        .help       = "begin replay",
-        .mhandler.cmd = hmp_begin_replay,
-    },
-
-
-    {
         .name       = "end_record",
         .args_type  = "",
         .params     = "",

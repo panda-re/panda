@@ -46,6 +46,7 @@
 #include "exec/address-spaces.h"
 #include "sysemu/xen-mapcache.h"
 #include "trace.h"
+#include "rr_log.h"
 #endif
 #include "exec/cpu-all.h"
 #include "qemu/rcu_queue.h"
@@ -562,6 +563,27 @@ CPUState *qemu_get_cpu(int index)
 }
 
 #if !defined(CONFIG_USER_ONLY)
+
+MemoryListener rr_listener;
+
+static void rr_mem_region_added_cb(MemoryListener *listener, MemoryRegionSection *section) {
+    if (!rr_in_record()) return;
+    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
+        // XXX: Assuming that even though size is an Int128 it will in practice
+        //      never be larger than 64 bits
+        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, true);
+    }
+}
+
+static void rr_mem_region_deleted_cb(MemoryListener *listener, MemoryRegionSection *section) {
+    if (!rr_in_record()) return;
+    if (!memory_region_is_ram(section->mr) && !memory_region_is_romd(section->mr)) {
+        // XXX: Assuming that even though size is an Int128 it will in practice
+        //      never be larger than 64 bits
+        rr_mem_region_change_record(section->offset_within_address_space, section->size.lo, section->mr->name, false);
+    }
+}
+
 void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
 {
     CPUAddressSpace *newas;
@@ -587,6 +609,11 @@ void cpu_address_space_init(CPUState *cpu, AddressSpace *as, int asidx)
     if (tcg_enabled()) {
         newas->tcg_as_listener.commit = tcg_commit;
         memory_listener_register(&newas->tcg_as_listener, as);
+
+        // PANDA Record and Replay
+        rr_listener.region_add = rr_mem_region_added_cb;
+        rr_listener.region_del = rr_mem_region_deleted_cb;
+        memory_listener_register(&rr_listener, as);
     }
 }
 
@@ -719,12 +746,12 @@ void cpu_exec_init(CPUState *cpu, Error **errp)
 }
 
 #if defined(CONFIG_USER_ONLY)
-static void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
+void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
 {
     tb_invalidate_phys_page_range(pc, pc + 1, 0);
 }
 #else
-static void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
+ void breakpoint_invalidate(CPUState *cpu, target_ulong pc)
 {
     MemTxAttrs attrs;
     hwaddr phys = cpu_get_phys_page_attrs_debug(cpu, pc, &attrs);
@@ -758,6 +785,8 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     return -ENOSYS;
 }
 #else
+
+
 /* Add a watchpoint.  */
 int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
                           int flags, CPUWatchpoint **watchpoint)
@@ -2548,6 +2577,7 @@ static bool prepare_mmio_access(MemoryRegion *mr)
     return release_lock;
 }
 
+
 /* Called within RCU critical section.  */
 static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                 MemTxAttrs attrs,
@@ -2566,30 +2596,51 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             l = memory_access_size(mr, l, addr1);
             /* XXX: could force current_cpu to NULL to avoid
                potential bugs */
+#warning Maybe we want to record the value of result in this switch statement
             switch (l) {
             case 8:
                 /* 64 bit write access */
                 val = ldq_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 8,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_8);
                 break;
             case 4:
                 /* 32 bit write access */
                 val = ldl_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 4,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_4);
                 break;
             case 2:
                 /* 16 bit write access */
                 val = lduw_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 2,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_2);
                 break;
             case 1:
                 /* 8 bit write access */
                 val = ldub_p(buf);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/
                 result |= memory_region_dispatch_write(mr, addr1, val, 1,
-                                                       attrs);
+                                                       attrs),
+                /*record=*/RR_NO_ACTION,
+                /*replay=*/RR_NO_ACTION,
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_1);
                 break;
             default:
                 abort();
@@ -2597,7 +2648,12 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+                rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
+            }
+            panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
             memcpy(ptr, buf, l);
+            panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
             invalidate_and_set_dirty(mr, addr1, l);
         }
 
@@ -2651,7 +2707,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
     uint64_t val;
     MemTxResult result = MEMTX_OK;
     bool release_lock = false;
-
+    _Static_assert(sizeof(MemTxResult) == 4, "Unexpected size of MemTxResult (does not match rr_input_4)");
     for (;;) {
         if (!memory_access_is_direct(mr, false)) {
             /* I/O case */
@@ -2660,26 +2716,42 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
             switch (l) {
             case 8:
                 /* 64 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 8,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 8,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_8);
                 stq_p(buf, val);
                 break;
             case 4:
                 /* 32 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 4,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 4,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_4);
                 stl_p(buf, val);
                 break;
             case 2:
                 /* 16 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 2,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 2,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_2);
                 stw_p(buf, val);
                 break;
             case 1:
                 /* 8 bit read access */
-                result |= memory_region_dispatch_read(mr, addr1, &val, 1,
-                                                      attrs);
+                RR_DO_RECORD_OR_REPLAY(
+                /*action=*/result |= memory_region_dispatch_read(mr, addr1, &val, 1,
+                                                      attrs),
+                /*record=*/rr_input_4(&result); rr_input_8(&val),
+                /*replay=*/rr_input_4(&result); rr_input_8(&val),
+                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_1);
                 stb_p(buf, val);
                 break;
             default:
@@ -2688,7 +2760,9 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+            panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
             memcpy(buf, ptr, l);
+            panda_callbacks_after_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 0);
         }
 
         if (release_lock) {
@@ -2741,12 +2815,28 @@ MemTxResult address_space_rw(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
     }
 }
 
+
 void cpu_physical_memory_rw(hwaddr addr, uint8_t *buf,
                             int len, int is_write)
 {
     address_space_rw(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED,
-                     buf, len, is_write);
+                            buf, len, is_write);
+
 }
+
+// if safe == true that means we want this to fail for IO mem
+MemTxResult cpu_physical_memory_rw_ex(hwaddr addr, uint8_t *buf,
+                                     int len, int is_write, bool safe) {
+    hwaddr l = len;
+    hwaddr addr1;
+    MemoryRegion *mr = address_space_translate(&address_space_memory, addr, &addr1, &l, is_write);
+    if (safe && !memory_access_is_direct(mr, is_write)) {
+        return MEMTX_ERROR;
+    }
+    return address_space_rw(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED,
+                            buf, len, is_write);
+}
+
 
 enum write_rom_type {
     WRITE_DATA,
@@ -3001,6 +3091,10 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
         mr = memory_region_from_host(buffer, &addr1);
         assert(mr != NULL);
         if (is_write) {
+            //bdg Save addr1,access_len,buffer contents
+            if (rr_in_record()) {
+                rr_cpu_physical_memory_unmap_record(addr1, buffer, access_len, is_write);
+            }
             invalidate_and_set_dirty(mr, addr1, access_len);
         }
         if (xen_enabled()) {
@@ -3051,9 +3145,12 @@ static inline uint32_t address_space_ldl_internal(AddressSpace *as, hwaddr addr,
     mr = address_space_translate(as, addr, &addr1, &l, false);
     if (l < 4 || !memory_access_is_direct(mr, false)) {
         release_lock |= prepare_mmio_access(mr);
-
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 4, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 4, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDL_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap32(val);
@@ -3144,9 +3241,12 @@ static inline uint64_t address_space_ldq_internal(AddressSpace *as, hwaddr addr,
                                  false);
     if (l < 8 || !memory_access_is_direct(mr, false)) {
         release_lock |= prepare_mmio_access(mr);
-
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 8, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 8, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDQ_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap64(val);
@@ -3259,7 +3359,11 @@ static inline uint32_t address_space_lduw_internal(AddressSpace *as,
         release_lock |= prepare_mmio_access(mr);
 
         /* I/O case */
-        r = memory_region_dispatch_read(mr, addr1, &val, 2, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 2, attrs),
+            /*record*/   rr_input_4(&r); rr_input_8(&val),
+            /*replay*/   rr_input_4(&r); rr_input_8(&val),
+            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDUW_INTERNAL);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap16(val);
@@ -3405,7 +3509,11 @@ static inline void address_space_stl_internal(AddressSpace *as,
             val = bswap32(val);
         }
 #endif
-        r = memory_region_dispatch_write(mr, addr1, val, 4, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
+            /*record*/   rr_input_4(&r); rr_input_4(&val),
+            /*replay*/   rr_input_4(&r); rr_input_4(&val),
+            /*location*/ RR_CALLSITE_STL_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3514,7 +3622,11 @@ static inline void address_space_stw_internal(AddressSpace *as,
             val = bswap16(val);
         }
 #endif
-        r = memory_region_dispatch_write(mr, addr1, val, 2, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
+            /*record*/   rr_input_4(&r); rr_input_4(&val),
+            /*replay*/   rr_input_4(&r); rr_input_4(&val),
+            /*location*/ RR_CALLSITE_STW_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);

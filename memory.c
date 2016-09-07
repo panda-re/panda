@@ -31,6 +31,8 @@
 #include "sysemu/kvm.h"
 #include "sysemu/sysemu.h"
 
+#include "rr_log_all.h"
+
 //#define DEBUG_UNASSIGNED
 
 static unsigned memory_region_transaction_depth;
@@ -1177,23 +1179,28 @@ static MemTxResult memory_region_dispatch_read1(MemoryRegion *mr,
 {
     *pval = 0;
 
+    MemTxResult result;
     if (mr->ops->read) {
-        return access_with_adjusted_size(addr, pval, size,
+        result = access_with_adjusted_size(addr, pval, size,
                                          mr->ops->impl.min_access_size,
                                          mr->ops->impl.max_access_size,
                                          memory_region_read_accessor,
                                          mr, attrs);
     } else if (mr->ops->read_with_attrs) {
-        return access_with_adjusted_size(addr, pval, size,
+        result = access_with_adjusted_size(addr, pval, size,
                                          mr->ops->impl.min_access_size,
                                          mr->ops->impl.max_access_size,
                                          memory_region_read_with_attrs_accessor,
                                          mr, attrs);
     } else {
-        return access_with_adjusted_size(addr, pval, size, 1, 4,
+        result = access_with_adjusted_size(addr, pval, size, 1, 4,
                                          memory_region_oldmmio_read_accessor,
                                          mr, attrs);
     }
+
+
+    return result;
+
 }
 
 MemTxResult memory_region_dispatch_read(MemoryRegion *mr,

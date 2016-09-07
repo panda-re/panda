@@ -26,6 +26,10 @@
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "rr_log.h"
+#endif
+
 //#define DEBUG_PCALL
 
 #ifdef DEBUG_PCALL
@@ -1352,11 +1356,19 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
                     (!(env->hflags2 & HF2_VINTR_MASK) &&
                      (env->eflags & IF_MASK &&
                       !(env->hflags & HF_INHIBIT_IRQ_MASK))))) {
-            int intno;
+            int intno = 0;
             cpu_svm_check_intercept_param(env, SVM_EXIT_INTR, 0);
             cs->interrupt_request &= ~(CPU_INTERRUPT_HARD |
                                        CPU_INTERRUPT_VIRQ);
-            intno = cpu_get_pic_interrupt(env);
+            // dont bother calling this if we are replaying       
+            // ... just obtain "intno" from (or record it to) 
+            // non-deterministic inputs log
+            RR_DO_RECORD_OR_REPLAY(
+                /*action=*/intno = cpu_get_pic_interrupt(env),
+                /*record=*/rr_input_4((uint32_t*)&intno),
+                /*replay=*/rr_input_4((uint32_t*)&intno),
+                /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
+
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);
             do_interrupt_x86_hardirq(env, intno, 1);
