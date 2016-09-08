@@ -329,8 +329,6 @@ public:
 
     /* Code generation */
     Value* getEnv();
-    //Value* generateQemuMemOp(bool ld, Value *value, Value *addr,
-    //                         int mem_index, uintptr_t ret_addr, int bits);
     Value* generateQemuMemOp(bool ld, Value *value, Value *addr, int flags,
                              int mem_index, int bits, uintptr_t ret_addr);
     void generateTraceCall(uintptr_t pc);
@@ -588,10 +586,10 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 
 inline void TCGLLVMContextPrivate::delValue(int idx)
 {
-    if(m_values[idx] && m_values[idx]->use_empty()) {
-        if(!isa<Instruction>(m_values[idx]) ||
-                !cast<Instruction>(m_values[idx])->getParent())
-            delete m_values[idx];
+    Value *V = m_values[idx];
+    if(V && V->use_empty() && !isa<Constant>(V)) {
+        if(!isa<Instruction>(V) || !cast<Instruction>(V)->getParent())
+            delete V;
     }
     m_values[idx] = NULL;
 }
@@ -946,7 +944,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
             if(nb_oargs == 1) {
                 setValue(args[0], result);
-            } else tcg_abort();
+            }
 
         }
         break;
@@ -1476,13 +1474,11 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
-            llvm::Instruction *i =
-                m_builder.CreateStore(ConstantInt::get(wordType(), args[0]),
-                        m_builder.CreateIntToPtr(
-                            ConstantInt::get(wordType(),
-                                (uint64_t) &tcg_llvm_runtime.last_pc),
-                            wordPtrType()),
-                        true);
+            Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
+                        (uintptr_t)&tcg_llvm_runtime.last_pc);
+            Value *Ptr = m_builder.CreateIntToPtr(LastPCPtrInt, wordPtrType());
+            Constant *Val = ConstantInt::get(wordType(), args[0]);
+            llvm::Instruction *i = m_builder.CreateStore(Val, Ptr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
             LLVMContext& C = i->getContext();
@@ -1491,7 +1487,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         }
 
         args += generateOperation(opc, op, args);
-        //llvm::errs() << *m_tbFunction << "\n";
     }
 
     /* Finalize function */
