@@ -65,8 +65,6 @@
 #include "qemu/mmap-alloc.h"
 #endif
 
-#include "panda/include/panda/plugin.h"
-
 //#define DEBUG_SUBPAGE
 
 #if !defined(CONFIG_USER_ONLY)
@@ -803,7 +801,7 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     }
     wp = g_malloc(sizeof(*wp));
 
-    wp->vaddr_wtf = addr;
+    wp->virtaddr = addr;
     wp->len = len;
     wp->flags = flags;
 
@@ -828,7 +826,7 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr, vaddr len,
     CPUWatchpoint *wp;
 
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
-        if (addr == wp->vaddr_wtf && len == wp->len
+        if (addr == wp->virtaddr && len == wp->len
                 && flags == (wp->flags & ~BP_WATCHPOINT_HIT)) {
             cpu_watchpoint_remove_by_ref(cpu, wp);
             return 0;
@@ -842,7 +840,7 @@ void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint)
 {
     QTAILQ_REMOVE(&cpu->watchpoints, watchpoint, entry);
 
-    tlb_flush_page(cpu, watchpoint->vaddr_wtf);
+    tlb_flush_page(cpu, watchpoint->virtaddr);
 
     g_free(watchpoint);
 }
@@ -873,10 +871,10 @@ static inline bool cpu_watchpoint_address_matches(CPUWatchpoint *wp,
      * exactly at the top of the address space and so addr + len
      * wraps round to zero.
      */
-    vaddr wpend = wp->vaddr_wtf + wp->len - 1;
+    vaddr wpend = wp->virtaddr + wp->len - 1;
     vaddr addrend = addr + len - 1;
 
-    return !(addr > wpend || wp->vaddr_wtf > addrend);
+    return !(addr > wpend || wp->virtaddr > addrend);
 }
 
 #endif
@@ -2823,14 +2821,14 @@ void cpu_physical_memory_rw(hwaddr addr, uint8_t *buf,
 {
     address_space_rw(&address_space_memory, addr, MEMTXATTRS_UNSPECIFIED,
                             buf, len, is_write);
-    
+
 }
 
 // if safe == true that means we want this to fail for IO mem
 MemTxResult cpu_physical_memory_rw_ex(hwaddr addr, uint8_t *buf,
-                                     int len, int is_write, bool safe) {    
+                                     int len, int is_write, bool safe) {
     hwaddr l = len;
-    hwaddr addr1; 
+    hwaddr addr1;
     MemoryRegion *mr = address_space_translate(&address_space_memory, addr, &addr1, &l, is_write);
     if (safe && !memory_access_is_direct(mr, is_write)) {
         return MEMTX_ERROR;
@@ -3515,7 +3513,7 @@ static inline void address_space_stl_internal(AddressSpace *as,
             /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
             /*record*/   rr_input_4(&r); rr_input_4(&val),
             /*replay*/   rr_input_4(&r); rr_input_4(&val),
-            /*location*/ RR_CALLSITE_STL_INTERNAL);        
+            /*location*/ RR_CALLSITE_STL_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3628,7 +3626,7 @@ static inline void address_space_stw_internal(AddressSpace *as,
             /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
             /*record*/   rr_input_4(&r); rr_input_4(&val),
             /*replay*/   rr_input_4(&r); rr_input_4(&val),
-            /*location*/ RR_CALLSITE_STW_INTERNAL);        
+            /*location*/ RR_CALLSITE_STW_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);

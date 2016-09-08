@@ -17,6 +17,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qemu/log.h"
@@ -255,6 +268,12 @@ const QEMULogItem qemu_log_items[] = {
     { CPU_LOG_TB_NOCHAIN, "nochain",
       "do not chain compiled TBs so that \"exec\" and \"cpu\" show\n"
       "complete traces" },
+#ifdef CONFIG_LLVM
+    { CPU_LOG_LLVM_IR, "llvm_ir",
+      "show generated LLVM IR code" },
+    { CPU_LOG_LLVM_ASM, "llvm_asm",
+      "show LLVM-generated assembly code" },
+#endif
     { CPU_LOG_RR, "rr",
         "record/replay program points" },
     { 0, NULL, NULL },

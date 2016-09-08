@@ -953,7 +953,7 @@ static char *tcg_get_arg_str_idx(TCGContext *s, char *buf,
 }
 
 /* Find helper name.  */
-static inline const char *tcg_find_helper(TCGContext *s, uintptr_t val)
+const char *tcg_find_helper(TCGContext *s, uintptr_t val)
 {
     const char *ret = NULL;
     if (s->helpers) {
@@ -2550,6 +2550,9 @@ void tcg_dump_info(FILE *f, fprintf_function cpu_fprintf)
 */
 
 /* Begin GDB interface.  THE FOLLOWING MUST MATCH GDB DOCS.  */
+
+// LLVM also presents a GDB JIT interface which causes linking issues
+#ifndef CONFIG_LLVM
 typedef enum {
     JIT_NOACTION = 0,
     JIT_REGISTER_FN,
@@ -2805,4 +2808,5 @@ static void tcg_register_jit_int(void *buf, size_t size,
 void tcg_register_jit(void *buf, size_t buf_size)
 {
 }
-#endif /* ELF_HOST_MACHINE */
+#endif // CONFIG_LLVM
+#endif /* ELF_HOST_MACHINE  */

@@ -35,7 +35,6 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
-#include "panda/include/panda/plugin.h"
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -8304,6 +8303,11 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
     }
 
+    /*
+     * This function call emits a few instructions at the beginning of every
+     * basic block checking for an exit request.  This probably won't affect
+     * LLVM code translation and any analyses that are built on top of that.
+     */
     gen_tb_start(tb);
     for(;;) {
         tcg_gen_insn_start(pc_ptr, dc->cc_op);

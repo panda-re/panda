@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -58,9 +72,12 @@
 #include "qemu/timer.h"
 #include "exec/log.h"
 
+#ifdef CONFIG_LLVM
+#include "tcg-llvm.h"
+#endif
+
 #include "rr_log.h"
 #include "panda/include/panda/plugin.h"
-
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -272,6 +289,26 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         return -1;
     }
 
+#if defined(CONFIG_LLVM)
+    // XXX things have changed.  See line 9990 from
+    // /nas/common/newpanda/diff/diff-ubr.out
+    if (execute_llvm){
+        //assert(0 && "Figure out how new cpu_restore_state works for LLVM!");
+        assert(tcg_llvm_runtime.last_pc >= tb->pc);
+        assert(tcg_llvm_runtime.last_pc < tb->pc + tb->size);
+        for (i = 0; i < num_insns; ++i) {
+            for (j = 0; j < TARGET_INSN_START_WORDS; ++j) {
+                data[j] += decode_sleb128(&p);
+            }
+            decode_sleb128(&p); // throw away value
+            if (data[0] >= tcg_llvm_runtime.last_pc) {
+                goto found;
+            }
+        }
+        return -1;
+    } else {
+#endif
+
     /* Reconstruct the stored insn data while looking for the point at
        which the end of the insn exceeds the searched_pc.  */
     for (i = 0; i < num_insns; ++i) {
@@ -285,6 +322,9 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
     }
     return -1;
 
+#ifdef CONFIG_LLVM
+    }
+#endif
  found:
     if (tb->cflags & CF_USE_ICOUNT) {
         assert(use_icount);
@@ -781,6 +821,9 @@ static TranslationBlock *tb_alloc(target_ulong pc)
     tb = &tcg_ctx.tb_ctx.tbs[tcg_ctx.tb_ctx.nb_tbs++];
     tb->pc = pc;
     tb->cflags = 0;
+#ifdef CONFIG_LLVM
+    tcg_llvm_tb_alloc(tb);
+#endif
     return tb;
 }
 
@@ -792,6 +835,9 @@ void tb_free(TranslationBlock *tb)
     if (tcg_ctx.tb_ctx.nb_tbs > 0 &&
             tb == &tcg_ctx.tb_ctx.tbs[tcg_ctx.tb_ctx.nb_tbs - 1]) {
         tcg_ctx.code_gen_ptr = tb->tc_ptr;
+#if defined(CONFIG_LLVM)
+        tcg_llvm_tb_free(tb);
+#endif
         tcg_ctx.tb_ctx.nb_tbs--;
     }
 }
@@ -854,6 +900,13 @@ void tb_flush(CPUState *cpu)
         cpu_abort(cpu, "Internal error: code buffer overflow\n");
     }
     tcg_ctx.tb_ctx.nb_tbs = 0;
+
+#if defined(CONFIG_LLVM)
+    int i2;
+    for(i2 = 0; i2 <tcg_ctx.tb_ctx. nb_tbs; ++i2){
+        tcg_llvm_tb_free(&tcg_ctx.tb_ctx.tbs[i2]);
+    }
+#endif
 
     CPU_FOREACH(cpu) {
         memset(cpu->tb_jmp_cache, 0, sizeof(cpu->tb_jmp_cache));
@@ -964,6 +1017,9 @@ static inline void tb_reset_jump(TranslationBlock *tb, int n)
 {
     uintptr_t addr = (uintptr_t)(tb->tc_ptr + tb->jmp_reset_offset[n]);
     tb_set_jmp_target(tb, n, addr);
+#ifdef CONFIG_LLVM
+    tb->llvm_tb_next[n] = NULL;
+#endif
 }
 
 /* remove any jumps to the TB */
@@ -1218,6 +1274,12 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
        that should be required is to flush the TBs, allocate a new TB,
        re-initialize it per above, and re-do the actual code generation.  */
     gen_code_size = tcg_gen_code(&tcg_ctx, tb);
+
+#if defined(CONFIG_LLVM)
+    if(generate_llvm)
+        tcg_llvm_gen_code(tcg_llvm_ctx, &tcg_ctx, tb);
+#endif
+
     if (unlikely(gen_code_size < 0)) {
         goto buffer_overflow;
     }
@@ -1233,6 +1295,18 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tcg_ctx.search_out_len += search_size;
 #endif
 
+#if defined(CONFIG_LLVM)
+    if(generate_llvm && qemu_loglevel_mask(CPU_LOG_LLVM_ASM)
+            && tb->llvm_tc_ptr) {
+        ptrdiff_t size = tb->llvm_tc_end - tb->llvm_tc_ptr;
+        qemu_log("OUT (LLVM ASM) [size=%ld] (%s)\n", size,
+                    tcg_llvm_get_func_name(tb));
+        log_disas((void*) tb->llvm_tc_ptr, size);
+        qemu_log("\n");
+        qemu_log_flush();
+    }
+#endif
+
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_OUT_ASM) &&
         qemu_log_in_addr_range(tb->pc)) {
@@ -1240,6 +1314,25 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         log_disas(tb->tc_ptr, gen_code_size);
         qemu_log("\n");
         qemu_log_flush();
+    }
+#endif
+
+#ifdef CONFIG_LLVM
+    // Sanity check. We had a bug before where we were misrecording
+    // translated code sizes, and so TC blocks appeared to overlap.
+    int i;
+    if (generate_llvm) {
+        for (i = 0; i < tcg_ctx.tb_ctx.nb_tbs; i++) {
+            TranslationBlock *other = &tcg_ctx.tb_ctx.tbs[i];
+            if (tb == other) continue;
+            if (other->llvm_tc_ptr <= tb->llvm_tc_ptr &&
+                    tb->llvm_tc_ptr < other->llvm_tc_end) {
+                assert(false && "Allocating apparently overlapping blocks!");
+            } else if (other->llvm_tc_ptr < tb->llvm_tc_end &&
+                    tb->llvm_tc_end <= other->llvm_tc_end) {
+                assert(false && "Allocating apparently overlapping blocks!");
+            }
+        }
     }
 #endif
 
@@ -1516,6 +1609,21 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
     if (tcg_ctx.tb_ctx.nb_tbs <= 0) {
         return NULL;
     }
+
+#if defined(CONFIG_LLVM)
+    if(execute_llvm) {
+        for(m=0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
+            tb = &tcg_ctx.tb_ctx.tbs[m];
+            if(tb->llvm_function) {
+                if(tc_ptr >= (uintptr_t) tb->llvm_tc_ptr &&
+                   tc_ptr <  (uintptr_t) tb->llvm_tc_end)
+                    return tb;
+            }
+        }
+        return NULL;
+    }
+#endif
+
     if (tc_ptr < (uintptr_t)tcg_ctx.code_gen_buffer ||
         tc_ptr >= (uintptr_t)tcg_ctx.code_gen_ptr) {
         return NULL;

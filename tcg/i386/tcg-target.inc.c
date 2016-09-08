@@ -2478,7 +2478,7 @@ static const DebugFrame debug_frame = {
 };
 #endif
 
-#if defined(ELF_HOST_MACHINE)
+#if defined(ELF_HOST_MACHINE) && !defined(CONFIG_LLVM)
 void tcg_register_jit(void *buf, size_t buf_size)
 {
     tcg_register_jit_int(buf, buf_size, &debug_frame, sizeof(debug_frame));

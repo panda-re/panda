@@ -21,6 +21,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu/osdep.h"
 #include "qemu-version.h"
 #include "qemu/cutils.h"
@@ -135,6 +149,18 @@ int pandalog = 0;
 int panda_in_main_loop = 0;
 
 #include "rr_log_all.h"
+
+#ifdef CONFIG_LLVM
+struct TCGLLVMContext;
+
+extern struct TCGLLVMContext* tcg_llvm_ctx;
+extern int generate_llvm;
+extern int execute_llvm;
+extern const int has_llvm_engine;
+
+struct TCGLLVMContext* tcg_llvm_initialize(void);
+void tcg_llvm_destroy(void);
+#endif
 
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
@@ -1932,6 +1958,16 @@ static bool main_loop_should_exit(void)
     }
     return false;
 }
+
+#ifdef CONFIG_LLVM
+static void tcg_llvm_cleanup(void)
+{
+    if(tcg_llvm_ctx) {
+        tcg_llvm_destroy();
+        tcg_llvm_ctx = NULL;
+    }
+}
+#endif
 
 static void main_loop(void)
 {
@@ -4058,6 +4094,23 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 break;
+#if defined(CONFIG_LLVM)
+            case QEMU_OPTION_execute_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+                generate_llvm = 1;
+                execute_llvm = 1;
+                break;
+            case QEMU_OPTION_generate_llvm:
+                if (!has_llvm_engine) {
+                    fprintf(stderr, "Cannot execute un LLVM mode (S2E mode present or LLVM mode missing)\n");
+                    exit(1);
+                }
+                generate_llvm = 1;
+                break;
+#endif
             case QEMU_OPTION_replay:
                 display_type = DT_NONE;
                 replay_name = optarg;
@@ -4085,18 +4138,18 @@ int main(int argc, char **argv, char **envp)
                     while (plugin_end != NULL) {
                         plugin_end = strchr(plugin_start, ';');
                         if (plugin_end != NULL) *plugin_end = '\0';
-                        
+
                         char *opt_list;
                         if ((opt_list = strchr(plugin_start, ':'))) {
                             char arg_str[255];
                             *opt_list = '\0';
                             opt_list++;
-                            
+
                             char *opt_start = opt_list, *opt_end = opt_list;
                             while (opt_end != NULL) {
                                 opt_end = strchr(opt_start, ',');
                                 if (opt_end != NULL) *opt_end = '\0';
-                                
+
                                 snprintf(arg_str, 255, "%s:%s", plugin_start, opt_start);
                                 if (panda_add_arg(arg_str, strlen(arg_str))) // copies arg
                                     printf("Adding PANDA arg %s.\n", arg_str);
@@ -4110,7 +4163,7 @@ int main(int argc, char **argv, char **envp)
                         char *plugin_path = panda_plugin_path((const char *) plugin_start);
                         panda_plugin_files[nb_panda_plugins++] = plugin_path;
                         printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
-                        
+
                         plugin_start = plugin_end + 1;
                     }
                     free(new_optarg);
@@ -4120,7 +4173,7 @@ int main(int argc, char **argv, char **envp)
             {
                 char *os_name = strdup(optarg);
                 // NB: this will complain if we provide an os name that panda doesnt know about
-                panda_set_os_name(os_name);                
+                panda_set_os_name(os_name);
                 break;
             }
             default:
@@ -4231,6 +4284,14 @@ int main(int argc, char **argv, char **envp)
     if (data_dir_idx < ARRAY_SIZE(data_dir)) {
         data_dir[data_dir_idx++] = CONFIG_QEMU_DATADIR;
     }
+
+#if defined(CONFIG_LLVM)
+    if (generate_llvm || execute_llvm){
+        if (tcg_llvm_ctx == NULL){
+            tcg_llvm_ctx = tcg_llvm_initialize();
+        }
+    }
+#endif
 
     smp_parse(qemu_opts_find(qemu_find_opts("smp-opts"), NULL));
 
@@ -4796,6 +4857,12 @@ int main(int argc, char **argv, char **envp)
     res_free();
 #ifdef CONFIG_TPM
     tpm_cleanup();
+#endif
+
+#ifdef CONFIG_LLVM
+    if (generate_llvm || execute_llvm){
+        tcg_llvm_cleanup();
+    }
 #endif
 
     return 0;

@@ -16,6 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace.h"
@@ -35,8 +49,16 @@
 #include "sysemu/replay.h"
 #include "rr_log.h"
 
-#include "panda/include/panda/plugin.h" 
-#include "panda/include/panda/common.h" 
+#include "panda/plugin.h" 
+#include "panda/common.h" 
+
+#if defined(CONFIG_LLVM)
+#include "tcg-llvm.h"
+const int has_llvm_engine = 1;
+#endif
+
+int generate_llvm = 0;
+int execute_llvm = 0;
 
 /* -icount align implementation. */
 
@@ -172,6 +194,19 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
+#if defined(CONFIG_LLVM)
+    if (execute_llvm){
+        assert(itb->llvm_tc_ptr);
+        //next_tb = tcg_llvm_qemu_tb_exec(env, tb);
+        ret = tcg_llvm_qemu_tb_exec(env, itb);
+    } else {
+        assert(tb_ptr);
+        ret = tcg_qemu_tb_exec(env, tb_ptr);
+    }
+#else
+    ret = tcg_qemu_tb_exec(env, tb_ptr);
+#endif // CONFIG_LLVM
+
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
     panda_callbacks_before_block_exec(cpu, itb);
@@ -187,9 +222,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
         rr_chaos_done = true;
     }
 #endif
-
-    // actually execute the bb. 
-    ret = tcg_qemu_tb_exec(env, tb_ptr);
 
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
