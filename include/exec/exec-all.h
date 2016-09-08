@@ -17,6 +17,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * The file was modified for S2E Selective Symbolic Execution Framework
+ *
+ * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
+ *
+ * Currently maintained by:
+ *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
+ *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
+ *
+ * All contributors are listed in S2E-AUTHORS file.
+ *
+ */
+
 #ifndef _EXEC_ALL_H_
 #define _EXEC_ALL_H_
 
@@ -40,6 +53,9 @@ typedef ram_addr_t tb_page_addr_t;
 #define DISAS_JUMP    1 /* only pc was modified dynamically */
 #define DISAS_UPDATE  2 /* cpu state was modified dynamically */
 #define DISAS_TB_JUMP 3 /* only pc was modified statically */
+
+//struct TranslationBlock;
+//typedef struct TranslationBlock TranslationBlock;
 
 #include "qemu/log.h"
 
@@ -199,6 +215,17 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
 #define USE_DIRECT_JUMP
 #endif
 
+#ifdef CONFIG_LLVM
+struct TCGLLVMTranslationBlock;
+struct TCGLLVMContext;
+#ifdef __cplusplus
+namespace llvm { class Function; }
+using llvm::Function;
+#else
+struct Function;
+#endif
+#endif
+
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -250,6 +277,23 @@ struct TranslationBlock {
      */
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
+
+    // record and replay - might just be able to use icount
+    uint16_t num_guest_insns;
+
+#ifdef CONFIG_LLVM
+    /* pointer to LLVM translated code */
+    struct TCGLLVMContext *tcg_llvm_context;
+#ifdef __cplusplus
+    Function *llvm_function;
+#else
+    struct Function *llvm_function;
+#endif
+    uint8_t *llvm_tc_ptr;
+    uint8_t *llvm_tc_end;
+    struct TranslationBlock* llvm_tb_next[2];
+#endif
+
 };
 
 void tb_free(TranslationBlock *tb);
@@ -333,6 +377,9 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
     /* add in TB jmp circular list */
     tb->jmp_list_next[n] = tb_next->jmp_list_first;
     tb_next->jmp_list_first = (uintptr_t)tb | n;
+#ifdef CONFIG_LLVM
+    tb->llvm_tb_next[n] = tb_next;
+#endif
 }
 
 /* GETRA is the true target of the return instruction that we'll execute,
@@ -406,6 +453,10 @@ extern int singlestep;
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;
 extern bool exit_request;
+
+extern int generate_llvm;
+extern int execute_llvm;
+extern const int has_llvm_engine;
 
 // panda needs
 void breakpoint_invalidate(CPUState *cpu, target_ulong pc);

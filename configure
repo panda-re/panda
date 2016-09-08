@@ -117,6 +117,13 @@ compile_prog() {
   do_cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags
 }
 
+compile_prog_cxx() {
+  local_cxxflags="$1"
+  local_ldflags="$2"
+  echo $cxx $QEMU_CFLAGS $local_cxxflags -o $TMPE $TMPC $LDFLAGS $local_ldflags >> config.log
+  $cxx $QEMU_CFLAGS $QEMU_CXXFLAGS $local_cxxflags -o $TMPE $TMPCXX $LDFLAGS $local_ldflags >> config.log 2>&1
+}
+
 # symbolically link $1 to $2.  Portable version of "ln -sf".
 symlink() {
   rm -rf "$2"
@@ -183,6 +190,8 @@ cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 debug_info="yes"
 stack_protector=""
+llvm="no"
+llvmver="3.3"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -918,6 +927,10 @@ for opt do
   ;;
   --enable-bluez) bluez="yes"
   ;;
+  --enable-llvm) llvm="yes"
+  ;;
+  --with-llvm=*) llvmdir="$optarg"
+  ;;
   --disable-kvm) kvm="no"
   ;;
   --enable-kvm) kvm="yes"
@@ -1306,6 +1319,9 @@ Advanced options (experts only):
   --disable-blobs          disable installing provided firmware blobs
   --with-vss-sdk=SDK-path  enable Windows VSS support in QEMU Guest Agent
   --with-win-sdk=SDK-path  path to Windows Platform SDK (to build VSS .tlb)
+
+  --enable-llvm            enable LLVM support (for all targets)"
+  --with-llvm=PATH         LLVM path (PATH/bin/llvm-config must exist)"
 
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
@@ -3067,6 +3083,87 @@ else
   mkdir -p pixman/pixman
   pixman_cflags="-I\$(SRC_PATH)/pixman/pixman -I\$(BUILD_DIR)/pixman/pixman"
   pixman_libs="-L\$(BUILD_DIR)/pixman/pixman/.libs -lpixman-1"
+fi
+
+##########################################
+# llvm support probe
+
+if test "$llvm" != "no" ; then
+  cat > $TMPCXX << EOF
+#include <llvm/IR/LLVMContext.h>
+int main(void) { llvm::LLVMContext& c = llvm::getGlobalContext(); return 0; }
+EOF
+  if test "$llvmdir" != ""; then
+    if [ -x "$llvmdir/bin/llvm-config-$llvmver" ]; then
+      llvm_config="$llvmdir/bin/llvm-config-$llvmver"
+    else
+      llvm_config="$llvmdir/bin/llvm-config"
+    fi
+  else
+      llvm_config="llvm-config"
+  fi
+  if ! "$llvm_config" --version >> config.log 2>&1; then
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  fi
+  #llvm_components="jit bitreader bitwriter asmparser ipo linker engine"
+  llvm_components=""
+  llvm_cxxflags=`$llvm_config $llvm_components --cxxflags 2> /dev/null`
+
+  llvm_ldflags=`$llvm_config $llvm_components --ldflags 2> /dev/null`
+  llvm_ldflags="$llvm_ldflags"
+  llvm_libs=`$llvm_config $llvm_components --libs 2> /dev/null`
+
+  if compile_prog_cxx "$llvm_cxxflags" "$llvm_libs $llvm_ldflags" ; then
+    : LLVM found
+  else
+    feature_not_found "llvm (required for --enable-llvm)"
+    exit 1
+  fi
+fi
+
+if test "$llvm" != "no" ; then
+  llvm="yes"
+  #These will be automatically added by klee and we don't want
+  #duplicated libs on the command line.
+  #if [ "x$s2e" != "xyes" ]; then
+    LIBS="$llvm_libs $LIBS $llvm_ldflags"
+  #fi
+  linker="$cxx"
+fi
+
+if test "$llvm" != "no" ; then
+  if [ -x "$llvmdir/bin/clang" ]; then
+    clang="$llvmdir/bin/clang"
+  elif clang --version >> config.log 2>&1; then
+    : clang found
+    clang=`which clang`
+  else
+    feature_not_found "clang (required to be built with LLVM)"
+    exit 1
+  fi
+
+  if [ -x "$llvmdir/bin/clang++" ]; then
+    clangxx="$llvmdir/bin/clang++"
+  elif clang++ --version >> config.log 2>&1; then
+    : clang++ found
+    clangxx=`which clang++`
+  else
+    feature_not_found "clang++ (required to be built with LLVM)"
+    exit 1
+  fi
+
+  if [ -e "$llvmdir/bin/llvm-link" ] ; then
+    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link`
+  elif [ -e "$llvmdir/bin/llvm-link-$llvmver" ] ; then
+    llvm_link=`cd $llvmdir/bin/ && find \`pwd\` -name llvm-link-$llvmver`
+  fi
+  if [ -x "$llvm_link" ]; then
+    : llvm_link found
+  else
+    feature_not_found "llvm-link (required to be built with LLVM)"
+    exit 1
+  fi
 fi
 
 ##########################################
@@ -4860,6 +4957,7 @@ echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
 echo "KVM support       $kvm"
 echo "RDMA support      $rdma"
+echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
 echo "fdt support       $fdt"
 echo "preadv support    $preadv"
@@ -5229,6 +5327,21 @@ if test "$virglrenderer" = "yes" ; then
   echo "VIRGL_CFLAGS=$virgl_cflags" >> $config_host_mak
   echo "VIRGL_LIBS=$virgl_libs" >> $config_host_mak
 fi
+
+if test "$llvm" = "yes" ; then
+  if test "$debug" = "yes" ; then
+     FILTERFLAGS="-O2 -O1 -O3 -fomit-frame-pointer"
+  fi
+
+  echo "CLANG_CXXFLAGS:=$clang_cxxflags" >> $config_host_mak
+  echo "LLVMCC:=$clang" >> $config_host_mak
+  echo "LLVMCXX:=$clangxx" >> $config_host_mak
+  echo "LLVM_LINK:=$llvm_link" >> $config_host_mak
+  echo "CONFIG_LLVM=y" >> $config_host_mak
+  echo "LLVM_CXXFLAGS=\$(filter-out $FILTERFLAGS,$llvm_cxxflags)" >> $config_host_mak
+  echo "LLVMDIR=$llvmdir" >> $config_host_mak
+fi
+
 if test "$xen" = "yes" ; then
   echo "CONFIG_XEN_BACKEND=y" >> $config_host_mak
   echo "CONFIG_XEN_CTRL_INTERFACE_VERSION=$xen_ctrl_version" >> $config_host_mak
@@ -5825,6 +5938,11 @@ fi
 if test "$target_linux_user" = "yes" ; then
   echo "CONFIG_LINUX_USER=y" >> $config_target_mak
 fi
+
+if [ "$llvm" = "yes" ]; then
+   echo "LIBS:=$llvm_libs $llvm_ldflags \$(LIBS)" >> $config_target_mak
+fi
+
 list=""
 if test ! -z "$gdb_xml_files" ; then
   for x in $gdb_xml_files; do
@@ -5959,6 +6077,12 @@ fi
 
 if test "$ccache_cpp2" = "yes"; then
   echo "export CCACHE_CPP2=y" >> $config_host_mak
+fi
+
+# XXX FIXME
+echo "\n\nWARNING: FIXME in configure for dealing with LLVM_HELPER_MORPH stuff\n\n"
+if test "$llvm" = "yes" ; then
+  echo "LLVM_HELPER_MORPH:=$source_path/$target_dir/panda_tools/helper_call_modifier" >> $config_target_mak
 fi
 
 # build tree in object directory in case the source is not in the current directory

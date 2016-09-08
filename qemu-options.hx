@@ -3976,6 +3976,13 @@ contents of @code{iv.b64} to the second secret
 
 ETEXI
 
+#if defined(CONFIG_LLVM)
+DEF("llvm", 0, QEMU_OPTION_execute_llvm,
+    "-llvm           execute code using LLVM JIT\n", QEMU_ARCH_ALL)
+DEF("generate-llvm", 0, QEMU_OPTION_generate_llvm,
+    "-generate-llvm  translate code into LLVM but don't execute it\n", QEMU_ARCH_ALL)
+#endif
+
 DEF("record-from", HAS_ARG, QEMU_OPTION_record_from,
     "-record-from <snapshot>\n"
     "                load snapshot <snapshot> and begin recording\n", QEMU_ARCH_ALL)
@@ -4004,9 +4011,6 @@ DEF("panda", HAS_ARG, QEMU_OPTION_panda_plugins,
 DEF("os", HAS_ARG, QEMU_OPTION_panda_os_name,
     "-os os_name\n"
     "               inform panda about guest operating system\n", QEMU_ARCH_ALL)
-
-
-
 
 HXCOMM This is the last statement. Insert new options before this line!
 STEXI

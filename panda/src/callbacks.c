@@ -29,7 +29,7 @@ PANDAENDCOMMENT */
 #include <libgen.h>
 
 #ifdef CONFIG_LLVM
-#include "panda/panda_helper_call_morph.h"
+//#include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
 #include "tcg-llvm.h"
 #endif
@@ -369,17 +369,17 @@ extern CPUState *env;
 void panda_disable_llvm(void){
     execute_llvm = 0;
     generate_llvm = 0;
-    tb_flush(env);
+    tb_flush(first_cpu);
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }
 
 void panda_enable_llvm_helpers(void){
-    init_llvm_helpers();
+    //init_llvm_helpers();
 }
 
 void panda_disable_llvm_helpers(void){
-    uninit_llvm_helpers();
+    //uninit_llvm_helpers();
 }
 
 #endif
