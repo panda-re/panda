@@ -34,25 +34,6 @@
  *
  */
 
-// Thank you to the QEMU authors for using C++ keywords in QEMU C code
-#define new noo
-#define class klass
-#define typename typenaim
-extern "C" {
-#include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "config-target.h"
-#include "cpu.h"
-#include "tcg.h"
-}
-#undef new
-#undef class
-#undef typename
-
-extern "C" {
-#include "exec/exec-all.h"
-}
-
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/JIT.h>
@@ -77,6 +58,7 @@ extern "C" {
 #include <iostream>
 #include <sstream>
 
+#include "panda/cheaders.h"
 #include "tcg-llvm.h"
 
 #if defined(CONFIG_SOFTMMU)
@@ -1509,7 +1491,7 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
     return buf;
 }
 
-uintptr_t tcg_llvm_qemu_tb_exec(CPUState *env, TranslationBlock *tb)
+uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
 {
     tcg_llvm_runtime.last_tb = tb;
     uintptr_t next_tb;

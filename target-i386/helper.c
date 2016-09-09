@@ -28,7 +28,7 @@
 #include "hw/i386/apic_internal.h"
 #endif
 
-#include "panda/include/panda/plugin.h"
+#include "panda/callback_support.h"
 
 static void cpu_x86_version(CPUX86State *env, int *family, int *model)
 {

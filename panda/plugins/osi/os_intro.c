@@ -22,15 +22,8 @@ PANDAENDCOMMENT */
 #include <glib.h>
 #include <glib/gprintf.h>
 
-//#include "config-host.h"
-//#include "config-target.h"
-
-#include "qemu/osdep.h"   
-
-//#include "qemu-common.h"
-
-#include "../../include/panda/plugin.h"
-#include "../../include/panda/plugin_plugin.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
 #include "osi_types.h"
 #include "osi_int_fns.h"
