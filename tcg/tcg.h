@@ -1069,6 +1069,36 @@ uint32_t helper_be_ldl_cmmu(CPUArchState *env, target_ulong addr,
 uint64_t helper_be_ldq_cmmu(CPUArchState *env, target_ulong addr,
                             TCGMemOpIdx oi, uintptr_t retaddr);
 
+/* PANDA versions */
+tcg_target_ulong helper_ret_ldub_mmu_panda(CPUArchState *env, target_ulong addr,
+                                     TCGMemOpIdx oi, uintptr_t retaddr);
+tcg_target_ulong helper_le_lduw_mmu_panda(CPUArchState *env, target_ulong addr,
+                                    TCGMemOpIdx oi, uintptr_t retaddr);
+tcg_target_ulong helper_le_ldul_mmu_panda(CPUArchState *env, target_ulong addr,
+                                    TCGMemOpIdx oi, uintptr_t retaddr);
+uint64_t helper_le_ldq_mmu_panda(CPUArchState *env, target_ulong addr,
+                           TCGMemOpIdx oi, uintptr_t retaddr);
+tcg_target_ulong helper_be_lduw_mmu_panda(CPUArchState *env, target_ulong addr,
+                                    TCGMemOpIdx oi, uintptr_t retaddr);
+tcg_target_ulong helper_be_ldul_mmu_panda(CPUArchState *env, target_ulong addr,
+                                    TCGMemOpIdx oi, uintptr_t retaddr);
+uint64_t helper_be_ldq_mmu_panda(CPUArchState *env, target_ulong addr,
+                           TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_ret_stb_mmu_panda(CPUArchState *env, target_ulong addr, uint8_t val,
+                        TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_le_stw_mmu_panda(CPUArchState *env, target_ulong addr, uint16_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_le_stl_mmu_panda(CPUArchState *env, target_ulong addr, uint32_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_le_stq_mmu_panda(CPUArchState *env, target_ulong addr, uint64_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_be_stw_mmu_panda(CPUArchState *env, target_ulong addr, uint16_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_be_stl_mmu_panda(CPUArchState *env, target_ulong addr, uint32_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+void helper_be_stq_mmu_panda(CPUArchState *env, target_ulong addr, uint64_t val,
+                       TCGMemOpIdx oi, uintptr_t retaddr);
+
 /* Temporary aliases until backends are converted.  */
 #ifdef TARGET_WORDS_BIGENDIAN
 # define helper_ret_ldsw_mmu  helper_be_ldsw_mmu

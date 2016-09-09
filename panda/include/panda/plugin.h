@@ -836,11 +836,11 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) ;
 void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc, target_ulong addr, 
                                      uint32_t data_size) ;
 void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc, target_ulong addr, 
-                                    uint32_t data_size, uint64_t *pres) ;
+                                    uint32_t data_size, uint64_t result) ;
 void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, target_ulong addr, 
-                                      uint32_t data_size, uint64_t *pres) ;
+                                      uint32_t data_size, uint64_t result) ;
 void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, target_ulong addr, 
-                                     uint32_t data_size, uint64_t *pval) ;
+                                     uint32_t data_size, uint64_t val) ;
 // target-i386/misc_helper.c
 void panda_callbacks_cpuid(CPUState *env) ;
 // translate-all.c

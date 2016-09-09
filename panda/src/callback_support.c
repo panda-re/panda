@@ -10,11 +10,11 @@
 
 
 
-// These are used in exec.c 
-void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) { 
+// These are used in exec.c
+void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) {
     if (rr_mode == RR_REPLAY) {
         panda_cb_list *plist;
-        for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_DMA]; 
+        for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_DMA];
              plist != NULL; plist = panda_cb_list_next(plist)) {
             plist->entry.replay_before_dma(cpu, is_write, (uint8_t *) buf, (uint64_t) addr1, l);
         }
@@ -31,7 +31,7 @@ void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, 
     }
 }
 
-// These are used in cpu-exec.c 
+// These are used in cpu-exec.c
 void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     panda_cb_list *plist;
     for (plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC];
@@ -41,9 +41,9 @@ void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb) {
 }
 
 
-void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, TranslationBlock *next_tb) {    
+void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, TranslationBlock *next_tb) {
     panda_cb_list *plist;
-    for (plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC]; 
+    for (plist = panda_cbs[PANDA_CB_AFTER_BLOCK_EXEC];
          plist != NULL; plist = panda_cb_list_next(plist)) {
         plist->entry.after_block_exec(cpu, tb, next_tb);
     }
@@ -77,7 +77,7 @@ void panda_before_find_fast(void) {
                 panda_plugins_to_unload[i] = false;
             }
         }
-    }    
+    }
     if (panda_flush_tb()) {
         tb_flush(first_cpu);
     }
@@ -94,16 +94,16 @@ bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool b
                 plist->entry.before_block_exec_invalidate_opt(cpu, tb);
         }
         return true;
-    }    
+    }
     return false;
 }
 
 
-// These are used in target-i386/translate.c 
+// These are used in target-i386/translate.c
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {
     panda_cb_list *plist;
     bool panda_exec_cb = false;
-    for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL; 
+    for(plist = panda_cbs[PANDA_CB_INSN_TRANSLATE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         panda_exec_cb |= plist->entry.insn_translate(env, pc);
     }
@@ -112,67 +112,73 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {
 
 
 // These are used in softmmu_template.h
-void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc, 
+void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc,
                                      target_ulong addr, uint32_t data_size) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.virt_mem_before_read(env, env->panda_guest_pc, addr, data_size);
+        plist->entry.virt_mem_before_read(env, env->panda_guest_pc, addr,
+                                          data_size);
     }
     hwaddr paddr = panda_virt_to_phys(env, addr);
     for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.phys_mem_before_read(env, env->panda_guest_pc, paddr, data_size);
+        plist->entry.phys_mem_before_read(env, env->panda_guest_pc, paddr,
+                                          data_size);
     }
 }
 
 
-void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc, 
-                                              target_ulong addr, uint32_t data_size, 
-                                              uint64_t *pres) {
+void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc,
+                                    target_ulong addr, uint32_t data_size,
+                                    uint64_t result) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.virt_mem_after_read(env, env->panda_guest_pc, addr, data_size, pres);
+        plist->entry.virt_mem_after_read(env, env->panda_guest_pc, addr,
+                                         data_size, &result);
     }
     hwaddr paddr = panda_virt_to_phys(env, addr);
     for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.phys_mem_after_read(env, env->panda_guest_pc, paddr, data_size, pres);
+        plist->entry.phys_mem_after_read(env, env->panda_guest_pc, paddr,
+                                         data_size, &result);
     }
 }
 
 
-void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, 
+void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc,
                                       target_ulong addr, uint32_t data_size,
-                                      uint64_t *pval) {
+                                      uint64_t val) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         plist->entry.virt_mem_before_write(env, env->panda_guest_pc, addr,
-                                           data_size, pval);
+                                           data_size, &val);
     }
     hwaddr paddr = panda_virt_to_phys(env, addr);
     for(plist = panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.phys_mem_before_write(env, env->panda_guest_pc, paddr, data_size, pval);
+        plist->entry.phys_mem_before_write(env, env->panda_guest_pc, paddr,
+                                           data_size, &val);
     }
 }
 
 
-void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, 
-                                     target_ulong addr, uint32_t data_size, 
-                                     uint64_t *pval) {
+void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
+                                     target_ulong addr, uint32_t data_size,
+                                     uint64_t val) {
     panda_cb_list *plist;
     for(plist = panda_cbs[PANDA_CB_VIRT_MEM_AFTER_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
         plist->entry.virt_mem_after_write(env, env->panda_guest_pc, addr,
-                                          data_size, pval);
+                                          data_size, &val);
     }
     hwaddr paddr = panda_virt_to_phys(env, addr);
     for(plist = panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]; plist != NULL;
         plist = panda_cb_list_next(plist)) {
-        plist->entry.phys_mem_after_write(env, env->panda_guest_pc, paddr, data_size, pval);
+        plist->entry.phys_mem_after_write(env, env->panda_guest_pc, paddr,
+                                          data_size, &val);
     }
 }
 
