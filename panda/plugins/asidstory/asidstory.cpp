@@ -49,8 +49,8 @@ extern "C" {
 #include "panda/common.h"
 #include "panda/plog.h"
 
-#include "rr_log.h"
-#include "rr_log_all.h"  
+#include "panda/rr/rr_log.h"
+#include "panda/rr/rr_log_all.h"  
 #include "../osi/osi_types.h"
 #include "../osi/osi_ext.h"
 

@@ -47,7 +47,7 @@
 #include "hw/i386/apic.h"
 #endif
 #include "sysemu/replay.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 
 #include "panda/callback_support.h"
 #include "panda/common.h"

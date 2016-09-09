@@ -8,7 +8,7 @@
 */
 
 #include "cpu.h"
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 
 // accessors
 uint64_t rr_get_pc(void);

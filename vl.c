@@ -148,7 +148,7 @@ int  pandalog_close(void);
 int pandalog = 0;
 int panda_in_main_loop = 0;
 
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 
 #ifdef CONFIG_LLVM
 struct TCGLLVMContext;

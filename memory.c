@@ -31,7 +31,7 @@
 #include "sysemu/kvm.h"
 #include "sysemu/sysemu.h"
 
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 
 //#define DEBUG_UNASSIGNED
 

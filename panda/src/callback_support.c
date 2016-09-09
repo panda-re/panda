@@ -6,7 +6,7 @@
 #include "panda/callback_support.h"
 #include "panda/common.h"
 
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #include "exec/cpu-common.h"
 
 

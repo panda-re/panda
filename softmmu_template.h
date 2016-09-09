@@ -24,7 +24,7 @@
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 #include "panda/callback_support.h"
 
 #define DATA_SIZE (1 << SHIFT)

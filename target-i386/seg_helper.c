@@ -27,7 +27,7 @@
 #include "exec/log.h"
 
 #ifdef CONFIG_SOFTMMU
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #endif
 
 //#define DEBUG_PCALL

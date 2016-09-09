@@ -25,7 +25,7 @@
 #include "exec/address-spaces.h"
 
 #ifdef CONFIG_SOFTMMU
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #endif
 
 #include "panda/callback_support.h"

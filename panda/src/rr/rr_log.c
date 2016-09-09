@@ -44,7 +44,7 @@
 #include "qemu-common.h"
 #include "qmp-commands.h"
 #include "hmp.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
 #include "migration/qemu-file.h"
