@@ -19,7 +19,17 @@ ifdef EXTRA_PLUGINS_PATH
 	EXTRA_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 endif
 
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+
+extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p panda/plugins/$*,)
+	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
+		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \
+		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
 
 all: $(PLUGIN_SUBDIR_RULES)
 
@@ -72,17 +82,7 @@ panda/src/rr/rr_print.o: \
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
-	$(call quiet-command,mkdir -p panda/plugins/$*,)
-	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
-		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
-		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
-
-extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
-	$(call quiet-command,mkdir -p panda/plugins/$*,)
-	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
-		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \
-		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py
 
 clean: clean-panda
 
