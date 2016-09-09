@@ -53,7 +53,7 @@
 #include "panda/common.h"
 
 #ifdef CONFIG_LLVM
-#include "tcg-llvm.h"
+#include "panda/tcg-llvm.h"
 const int has_llvm_engine = 1;
 #endif
 
