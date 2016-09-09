@@ -58,7 +58,7 @@
 
 
 #include "../include/panda/common.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #endif
 
 #include <string.h>

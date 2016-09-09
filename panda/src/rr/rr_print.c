@@ -6,7 +6,7 @@
 #define RR_LOG_STANDALONE
 #include "qemu/osdep.h"
 #include "cpu.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 
 /******************************************************************************************/
 /* GLOBALS */

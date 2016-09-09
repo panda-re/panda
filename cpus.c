@@ -47,7 +47,7 @@
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
 
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 
 #ifndef _WIN32
 #include "qemu/compatfd.h"

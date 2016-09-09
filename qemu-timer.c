@@ -29,7 +29,7 @@
 #include "sysemu/sysemu.h"
 
 #ifdef CONFIG_SOFTMMU
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 #endif
 
 #ifdef CONFIG_POSIX

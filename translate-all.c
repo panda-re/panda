@@ -76,7 +76,7 @@
 #include "panda/tcg-llvm.h"
 #endif
 
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #include "panda/callback_support.h"
 
 //#define DEBUG_TB_INVALIDATE

@@ -46,7 +46,7 @@
 #include "exec/address-spaces.h"
 #include "sysemu/xen-mapcache.h"
 #include "trace.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #endif
 #include "exec/cpu-all.h"
 #include "qemu/rcu_queue.h"

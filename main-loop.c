@@ -31,7 +31,7 @@
 #include "slirp/libslirp.h"
 #include "qemu/main-loop.h"
 #include "block/aio.h"
-#include "rr_log_all.h"
+#include "panda/rr/rr_log_all.h"
 
 #ifndef _WIN32
 

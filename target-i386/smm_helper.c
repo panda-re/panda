@@ -21,7 +21,7 @@
 #include "cpu.h"
 #include "exec/helper-proto.h"
 #include "exec/log.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 
 /* SMM support */
 
