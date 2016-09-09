@@ -1139,10 +1139,13 @@ static void tcg_out_nopn(TCGContext *s, int n)
 }
 
 #if defined(CONFIG_SOFTMMU)
+extern bool panda_use_memcb;
+
 /* helper signature: helper_ret_ld_mmu(CPUState *env, target_ulong addr,
  *                                     int mmu_idx, uintptr_t ra)
  */
-static void * const qemu_ld_helpers[16] = {
+
+static void * const qemu_ld_helpers_normal[16] = {
     [MO_UB]   = helper_ret_ldub_mmu,
     [MO_LEUW] = helper_le_lduw_mmu,
     [MO_LEUL] = helper_le_ldul_mmu,
@@ -1151,11 +1154,23 @@ static void * const qemu_ld_helpers[16] = {
     [MO_BEUL] = helper_be_ldul_mmu,
     [MO_BEQ]  = helper_be_ldq_mmu,
 };
+static void * const qemu_ld_helpers_panda[16] = {
+    [MO_UB]   = helper_ret_ldub_mmu_panda,
+    [MO_LEUW] = helper_le_lduw_mmu_panda,
+    [MO_LEUL] = helper_le_ldul_mmu_panda,
+    [MO_LEQ]  = helper_le_ldq_mmu_panda,
+    [MO_BEUW] = helper_be_lduw_mmu_panda,
+    [MO_BEUL] = helper_be_ldul_mmu_panda,
+    [MO_BEQ]  = helper_be_ldq_mmu_panda,
+};
+#define qemu_ld_helpers \
+    (panda_use_memcb ? qemu_ld_helpers_normal : qemu_ld_helpers_panda)
 
 /* helper signature: helper_ret_st_mmu(CPUState *env, target_ulong addr,
  *                                     uintxx_t val, int mmu_idx, uintptr_t ra)
  */
-static void * const qemu_st_helpers[16] = {
+
+static void * const qemu_st_helpers_normal[16] = {
     [MO_UB]   = helper_ret_stb_mmu,
     [MO_LEUW] = helper_le_stw_mmu,
     [MO_LEUL] = helper_le_stl_mmu,
@@ -1164,6 +1179,17 @@ static void * const qemu_st_helpers[16] = {
     [MO_BEUL] = helper_be_stl_mmu,
     [MO_BEQ]  = helper_be_stq_mmu,
 };
+static void * const qemu_st_helpers_panda[16] = {
+    [MO_UB]   = helper_ret_stb_mmu_panda,
+    [MO_LEUW] = helper_le_stw_mmu_panda,
+    [MO_LEUL] = helper_le_stl_mmu_panda,
+    [MO_LEQ]  = helper_le_stq_mmu_panda,
+    [MO_BEUW] = helper_be_stw_mmu_panda,
+    [MO_BEUL] = helper_be_stl_mmu_panda,
+    [MO_BEQ]  = helper_be_stq_mmu_panda,
+};
+#define qemu_st_helpers \
+    (panda_use_memcb ? qemu_st_helpers_normal : qemu_st_helpers_panda)
 
 /* Perform the TLB load and compare.
 
