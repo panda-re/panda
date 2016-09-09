@@ -73,7 +73,7 @@
 #include "exec/log.h"
 
 #ifdef CONFIG_LLVM
-#include "tcg-llvm.h"
+#include "panda/tcg-llvm.h"
 #endif
 
 #include "rr_log.h"
