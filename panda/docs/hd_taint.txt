@@ -1,0 +1,285 @@
+
+PANDA Version 
+
+Here is a map of all the information flows getting data to and from the hard
+drive.  Note, there are obviously flows between RAM and Regs.  But these aren't
+exclusive to HD.
+
+
+                        J 
+   +----------------------------------------+
+   |                                        |
+   |   +--------------------------------+   |
+   |   |                I               |   |
+   v   |                                v   |
++--------+    A    +--------+    C    +-------+
+|        | ------> |        | ------> |       |
+| Hard   |         | I/O    |         |  RAM  |
+| Drive  | <------ | Buffer | <------ |       |
+|        |    B    |        |    D    |       |
++--------+         +--------+         +-------+
+                     ^   |
+                     |   | E
+                     |   |    +-------+    G    +-------+
+                   F |   +--> |       | ------> |       |
+                     |        |  Port |         | Reg   |
+                     +------- | 0x1f0 | <------ | T0/T1 |
+                              |       |    H    |       |
+                              +-------+         +-------+
+
+
+A: Transfer from HD to ide device IO buffer.
+
+   During record, in hw/ide/core.c, we insert an entry into the replay log about 
+   the transfer.  
+
+   This happens in both ide_sector_read, 
+ 
+        rr_record_hd_transfer
+          (RR_CALLSITE_IDE_SECTOR_READ,
+           HD_TRANSFER_HD_TO_IOB,
+           HD_BASE_ADDR + sector_num*512,
+           (uint64_t) s->io_buffer,
+           n*512);
+
+   and in ide_dma_cb
+
+        rr_record_hd_transfer
+          (RR_CALLSITE_IDE_DMA_CB,
+           HD_TRANSFER_HD_TO_IOB,
+           HD_BASE_ADDR + sector_num*512,
+           (uint64_t) s->io_buffer, 
+           n*512);
+
+   The function rr_record_hd_transfer lives in rr_log.c.  
+   It writes to the replay log a skipped call to RR_CALL_HD_TRANSFER.
+
+   During replay, the following code in cpu-exec.c 
+
+   if (rr_in_replay()) {
+     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+     rr_set_program_point();
+     rr_replay_skipped_calls();
+   }
+
+   will execute all skipped calls that were logged in the io thread during record. 
+   When the skipped call to RR_CALL_HD_TRANSFER is "executed" in replay, it 
+   executes the folowing code in rr_log.c's rr_replay_skipped_calls_internal():
+
+   case RR_CALL_HD_TRANSFER:
+   {
+     // run all callbacks registered for hd transfer                                                                   
+     RR_hd_transfer *hdt = &(args->variant.hd_transfer_args);
+     panda_cb_list *plist;
+     for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER]; plist != NULL; plist = plist->next) {
+       plist->entry.replay_hd_transfer
+         (cpu_single_env,
+          hdt->type,
+          hdt->src_addr,
+          hdt->dest_addr,
+          hdt->num_bytes);
+     }
+   }
+
+   In taint.cpp, there is a callback registered for PANDA_CB_REPLAY_HD_TRANSFER,
+   cb_replay_hd_transfer_taint(), which uses the arguments passed to it to
+   construct a taint op for the bulk taint copy and add it to the taint op buffer
+   tob_op_thread.
+
+   Note that the taint ops in tob_io_thread get consumed in before_block_exec().
+
+
+B: Transfer from IO buffer to HD
+
+   Similar to A, but in reverse.
+
+   in hw/ide/core.c: 
+
+   ide_sector_write() has
+
+      rr_record_hd_transfer
+        (RR_CALLSITE_IDE_SECTOR_WRITE,
+         HD_TRANSFER_IOB_TO_HD,
+         (uint64_t) s->io_buffer,
+         HD_BASE_ADDR + sector_num*512, 
+         n*512);
+
+   ide_dma_cb() has
+
+        rr_record_hd_transfer
+          (RR_CALLSITE_IDE_DMA_CB,
+           HD_TRANSFER_IOB_TO_HD,
+           (uint64_t) s->io_buffer,
+           HD_BASE_ADDR + sector_num*512, 
+           n*512);
+
+
+C: Transfer from IO buffer to RAM directly via DMA
+
+   During record, in hw/ide/pci.c, bmdma_rw_buf calls pci_dma_write or pci_dma_read,
+   which call pci_dma_rw, which finally calls cpu_physical_memory_rw.
+   cpu_physical_memory_rw does the actual DMA, but also, when we are recording,
+   it writes an entry to the replay log when it calls 
+
+   rr_device_mem_rw_call_record which just calls rr_record_cpu_mem_rw_call
+   to record a skipped call to cpu_physical_memory_rw
+
+   In replay, that rr log entry results in a call to cpu_physical_memory_rw in rr_replay_skipped_calls_internal.
+
+   This, in turn, activates the appropriate panda callbacks in cpu_physical_memory_rw_ex 
+   in exec.c for the RAM case. Note, this code appears twice, once for is_write=1 (qemu buf -> guest ram)
+   and again for is_write=0 (guest ram -> qemu buf)
+
+   if (rr_mode == RR_REPLAY) {
+     // run all callbacks registered for cpu_physical_memory_rw ram case             
+     panda_cb_list *plist;
+     for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM]; plist != NULL; plist = plist->next) {
+       plist->entry.replay_before_cpu_physical_mem_rw_ram
+         (env, is_write, buf, dest, l);
+     }
+   }
+
+   For taint transfer, in taint.cpp, the following function gets registered under PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM
+
+    cb_replay_cpu_physical_mem_rw_ram(CPUState *env,
+     uint32_t is_write, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) 
+
+   And this is what adds a bulk copy taint op to the TaintOpBuffer tob_io_thread corresponding to
+   the dma.  If is_write=1 it adds a copy corresponding to IO -> RAM.  Else, it adds a copy in the other direction.  
+
+   Note that the taint ops in tob_io_thread get consumed in before_block_exec().
+
+   Updated note: The code path described here in C and D is still present, but
+   is used very infrequently.  DMA now most commonly occurs through the
+   mechanism described in I and J.
+
+
+D: Transfer from RAM directly to IO buffer via DMA
+
+   This is actually the is_write == 0 case mentioned in C.  
+
+   
+
+E: Transfer from IO buffer to port for output
+
+   During record, in ide/core.c, in ide_data_readw, we call 
+
+      rr_record_hd_transfer
+        (RR_CALLSITE_IDE_DATA_READW,
+         HD_TRANSFER_IOB_TO_PORT,
+         (uint64_t) s->data_ptr, 2);
+   
+   Again, this is recorded as a skipped call.  From here on, things
+   work about the same as in A & B.  Replay runs the PANDA_CB_REPLAY_HD_TRANSFER callbacks,
+   and the cb_replay_hd_transfer_taint one does taint transfer IOB -> Port via another
+   block copy. 
+
+   
+F: Transfer from port to IO buffer
+
+  Same as E, except in reverse.
+
+   During record, in ide.c, in ide_data_writew, we call 
+
+      rr_record_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEW,
+         HD_TRANSFER_PORT_TO_IOB,
+         (uint64_t) s->data_ptr, 2);
+
+   ide_data_writel is simlar.
+
+      rr_record_hd_transfer
+        (RR_CALLSITE_IDE_DATA_WRITEL,
+         HD_TRANSFER_PORT_TO_IOB,
+         (uint64_t) s->data_ptr, 4);
+
+
+G: Transfer from port to a register
+
+   iFerret functionality:
+   In ops_template.h, in the fn op_inw_T0_T1, if something is tainted 
+   (some labeling event occurred in the past), then we just go ahead and
+   write a taint op to the taint op buffer for processing:
+
+   iferret_log_info_flow_op_write_81(IFLO_HD_TRANSFER_6_DEST, T1_BASE, 2);
+
+   This is part of a taint transfer initiated by E above.  Here we have the 
+   destination, which is the register T1, in this case.  
+
+   Note that there are no checks if we are in record or replay.  That is
+   because this code executes both during record and replay, as it isnt
+   device code.  We rely on the fact that taint is only tracked during replay
+   to ensure that it will only do something during replay and only after
+   some taint labels have been applied.  
+
+   port	-> T1, i.e., T1 = in(port=T0)
+
+   op_inw_T0_T1                 IFLO_HD_TRANSFER_6_DEST
+   op_inl_T0_T1                 IFLO_HD_TRANSFER_7_DEST
+
+   port -> T0, i.e., T0	= in(port=DX)
+
+   op_inw_DX_T0                 IFLO_HD_TRANSFER_8_DEST	
+   op_inl_DX_T0                 IFLO_HD_TRANSFER_9_DEST
+
+   Updated PANDA functionality:
+   In code that has been translated from TCG to LLVM, we see calls to
+   helper_inb(), helper_inw(), and helper_inl().  It looks something like this:
+        %tmp1_v7 = call i64 @helper_inb(i32 146)
+   where the argument is port number.  We treat this as a load from the port into
+   the LLVM register.  In the PandaInstrumentVisitor LLVM pass, we log this
+   accordingly as usual by inserting code to call log_dynval() as a load in
+   panda/panda_dynval_inst.cpp.  Our taint model consists of simple copy
+   operations from the port into the register, which can be seen in
+   portLoadHelper() in panda_plugins/taint/llvm_taint_lib.cpp.  As with other
+   load and store operations, we reconcile the actual port logged dynamically
+   and fix up the associated taint operations in process_insn_start_op() in
+   panda/taint_processor.c.
+
+
+H: Transfer from register to port
+ 
+   iFerret functionality:
+   in ops_template.h
+
+   T1 -> port, i.e., out(port=T0, T1)
+
+   op_outb_T0_T1                IFLO_HD_TRANSFER_SRC_5B_T1_BASE
+   op_outw_T0_T1                IFLO_HD_TRANSFER_SRC_5W_T1_BASE
+   op_outl_T0_T1                IFLO_HD_TRANSFER_SRC_5L_T1_BASE
+
+   T0 -> port, i.e., out(port=DX, T0)
+
+   op_outb_DX_T0                IFLO_HD_TRANSFER_SRC_10B_T0_BASE
+   op_outw_DX_T0                IFLO_HD_TRANSFER_SRC_10W_T0_BASE
+   op_outl_DX_T0                IFLO_HD_TRANSFER_SRC_10L_T0_BASE
+
+   Updated PANDA functionality:
+   In code that has been translated from TCG to LLVM, we see calls to
+   helper_outb(), helper_outw(), and helper_outl().  It looks something like
+   this:
+        call void @helper_outb(i32 146, i32 %tmp7_v)
+   where the arguments are port number, data.  We treat this as a store from the
+   LLVM register into the port.  The handling is similar to the handling case G
+   described above, except in the reverse direction.
+
+
+I: Transfer from hard drive directly to RAM via scatter-gather DMA
+
+   Scatter-gather DMA, or vectored I/O is the most common mechanism for data to
+   pass between hard drive sectors and physical memory in the current version of
+   QEMU.  This is carried out in hw/ide/core.c in ide_dma_cb() under the
+   IDE_DMA_READ case.  rr_record_sg_transfer() was implemented to iterate
+   through the vector of I/O operations and enter them into the record/replay
+   log sequentially for eventual generation of taint operations.  Each entry in
+   the vector consists of a physical address and length.  These operations
+   happen over contiguous sectors, so the sector is set at the beginning of the
+   transfer, and incremented according to the parameters of each entry in the
+   vector.
+
+
+J: Transfer from RAM directly to hard drive via scatter-gather DMA
+
+   Same as above, except that this is carried out in the IDE_DMA_WRITE case in
+   ide_dma_cb() in hw/ide/core.c.
+
