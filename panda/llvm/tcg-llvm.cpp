@@ -128,16 +128,16 @@ struct TCGLLVMContextPrivate {
     Function *m_tbFunction;
 
     /* Current temp m_values */
-    Value* m_values[TCG_MAX_TEMPS] = {0};
+    Value* m_values[TCG_MAX_TEMPS];
 
     /* Pointers to in-memory versions of globals or local temps */
-    Value* m_memValuesPtr[TCG_MAX_TEMPS] = {0};
+    Value* m_memValuesPtr[TCG_MAX_TEMPS];
 
     /* For reg-based globals, store argument number,
      * for mem-based globals, store base value index */
-    int m_globalsIdx[TCG_MAX_TEMPS] = {0};
+    int m_globalsIdx[TCG_MAX_TEMPS];
 
-    BasicBlock* m_labels[TCG_MAX_LABELS] = {0};
+    BasicBlock* m_labels[TCG_MAX_LABELS];
 
 public:
     TCGLLVMContextPrivate();
@@ -309,6 +309,11 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     : m_context(getGlobalContext()), m_builder(m_context), m_tbCount(0),
       m_tcgContext(NULL), m_tbFunction(NULL)
 {
+    std::memset(m_values, 0, sizeof(m_values));
+    std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
+    std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
+    std::memset(m_labels, 0, sizeof(m_labels));
+
     InitializeNativeTarget();
 
     initMemoryHelpers();
