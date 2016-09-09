@@ -53,129 +53,6 @@ extern "C" {
 #include "exec/exec-all.h"
 }
 
-#include "tcg-llvm.h"
-
-// XXX still need this?
-//#include "panda_memlog.h"
-
-extern "C" {
-
-// XXX do this later
-//#include "panda_plugin.h"
-
-#if defined(CONFIG_SOFTMMU)
-
-//#include "../../softmmu_defs.h"
-
-// To support other architectures, make similar minor changes to op_helper.c
-// These functions perform logging of dynamic values
-/*
-#if (defined(TARGET_I386) || defined(TARGET_ARM))
-static void *qemu_panda_ld_helpers[5] = {
-    (void*) __ldb_mmu_panda,
-    (void*) __ldw_mmu_panda,
-    (void*) __ldl_mmu_panda,
-    (void*) __ldq_mmu_panda,
-    (void*) __ldq_mmu_panda,
-};
-
-static void *qemu_panda_st_helpers[5] = {
-    (void*) __stb_mmu_panda,
-    (void*) __stw_mmu_panda,
-    (void*) __stl_mmu_panda,
-    (void*) __stq_mmu_panda,
-    (void*) __stq_mmu_panda,
-};
-
-static char *qemu_panda_ld_helper_names[5] = {
-    (char*)"__ldb_mmu_panda",
-    (char*)"__ldw_mmu_panda",
-    (char*)"__ldl_mmu_panda",
-    (char*)"__ldq_mmu_panda",
-    (char*)"__ldq_mmu_panda",
-};
-
-static char *qemu_panda_st_helper_names[5] = {
-    (char*)"__stb_mmu_panda",
-    (char*)"__stw_mmu_panda",
-    (char*)"__stl_mmu_panda",
-    (char*)"__stq_mmu_panda",
-    (char*)"__stq_mmu_panda",
-};
-#endif
-*/
-
-static void *qemu_ld_helpers[16];
-static void *qemu_st_helpers[16];
-static const char *qemu_ld_helper_names[16];
-static const char *qemu_st_helper_names[16];
-
-#if 0
-static void *qemu_ld_helpers[16] = {
-    /*(void*) __ldb_mmu,
-    (void*) __ldw_mmu,
-    (void*) __ldl_mmu,
-    (void*) __ldq_mmu,
-    (void*) __ldq_mmu,*/
-    [MO_UB]   = helper_ret_ldub_mmu,
-    [MO_LEUW] = helper_le_lduw_mmu,
-    [MO_LEUL] = helper_le_ldul_mmu,
-    [MO_LEQ]  = helper_le_ldq_mmu,
-    [MO_BEUW] = helper_be_lduw_mmu,
-    [MO_BEUL] = helper_be_ldul_mmu,
-    [MO_BEQ]  = helper_be_ldq_mmu,
-};
-
-static void *qemu_st_helpers[16] = {
-    /*(void*) __stb_mmu,
-    (void*) __stw_mmu,
-    (void*) __stl_mmu,
-    (void*) __stq_mmu,
-    (void*) __stq_mmu,*/
-    [MO_UB]   = helper_ret_stb_mmu,
-    [MO_LEUW] = helper_le_stw_mmu,
-    [MO_LEUL] = helper_le_stl_mmu,
-    [MO_LEQ]  = helper_le_stq_mmu,
-    [MO_BEUW] = helper_be_stw_mmu,
-    [MO_BEUL] = helper_be_stl_mmu,
-    [MO_BEQ]  = helper_be_stq_mmu,
-};
-
-static char *qemu_ld_helper_names[7] = {
-    /*(char*)"__ldb_mmu",
-    (char*)"__ldw_mmu",
-    (char*)"__ldl_mmu",
-    (char*)"__ldq_mmu",
-    (char*)"__ldq_mmu",*/
-    (char*)"helper_ret_ldub_mmu",
-    (char*)"helper_le_lduw_mmu",
-    (char*)"helper_le_ldul_mmu",
-    (char*)"helper_le_ldq_mmu",
-    (char*)"helper_be_lduw_mmu",
-    (char*)"helper_be_ldul_mmu",
-    (char*)"helper_be_ldq_mmu"
-};
-
-static char *qemu_st_helper_names[7] = {
-    /*(char*)"__stb_mmu",
-    (char*)"__stw_mmu",
-    (char*)"__stl_mmu",
-    (char*)"__stq_mmu",
-    (char*)"__stq_mmu",*/
-    (char*)"helper_ret_stb_mmu",
-    (char*)"helper_le_stw_mmu",
-    (char*)"helper_le_stl_mmu",
-    (char*)"helper_le_stq_mmu",
-    (char*)"helper_be_stw_mmu",
-    (char*)"helper_be_stl_mmu",
-    (char*)"helper_be_stq_mmu"
-};
-#endif
-
-#endif // CONFIG_SOFTMMU
-
-}
-
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/ExecutionEngine/JIT.h>
@@ -200,7 +77,17 @@ static char *qemu_st_helper_names[7] = {
 #include <iostream>
 #include <sstream>
 
-//#undef NDEBUG
+#include "tcg-llvm.h"
+
+#if defined(CONFIG_SOFTMMU)
+
+// To support other architectures, make similar minor changes to op_helper.c
+static void *qemu_ld_helpers[16];
+static void *qemu_st_helpers[16];
+static const char *qemu_ld_helper_names[16];
+static const char *qemu_st_helper_names[16];
+
+#endif // CONFIG_SOFTMMU
 
 extern "C" {
     TCGLLVMContext* tcg_llvm_ctx = 0;
@@ -241,16 +128,16 @@ struct TCGLLVMContextPrivate {
     Function *m_tbFunction;
 
     /* Current temp m_values */
-    Value* m_values[TCG_MAX_TEMPS];
+    Value* m_values[TCG_MAX_TEMPS] = {0};
 
     /* Pointers to in-memory versions of globals or local temps */
-    Value* m_memValuesPtr[TCG_MAX_TEMPS];
+    Value* m_memValuesPtr[TCG_MAX_TEMPS] = {0};
 
     /* For reg-based globals, store argument number,
      * for mem-based globals, store base value index */
-    int m_globalsIdx[TCG_MAX_TEMPS];
+    int m_globalsIdx[TCG_MAX_TEMPS] = {0};
 
-    BasicBlock* m_labels[TCG_MAX_LABELS];
+    BasicBlock* m_labels[TCG_MAX_LABELS] = {0};
 
 public:
     TCGLLVMContextPrivate();
@@ -422,11 +309,6 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     : m_context(getGlobalContext()), m_builder(m_context), m_tbCount(0),
       m_tcgContext(NULL), m_tbFunction(NULL)
 {
-    std::memset(m_values, 0, sizeof(m_values));
-    std::memset(m_memValuesPtr, 0, sizeof(m_memValuesPtr));
-    std::memset(m_globalsIdx, 0, sizeof(m_globalsIdx));
-    std::memset(m_labels, 0, sizeof(m_labels));
-
     InitializeNativeTarget();
 
     initMemoryHelpers();
@@ -451,31 +333,6 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
     m_functionPassManager = new FunctionPassManager(m_module);
     m_functionPassManager->add(
             new DataLayout(*m_executionEngine->getDataLayout()));
-
-    /* Try doing -O3 -Os: optimization level 3, with extra optimizations for
-     * code size
-     */
-     //PassManagerBuilder PMBuilder;
-     //PMBuilder.OptLevel = 2;
-     //PMBuilder.SizeLevel = 2;
-     //PMBuilder.populateFunctionPassManager(*m_functionPassManager);
-
-    /*m_functionPassManager->add(createReassociatePass());
-    m_functionPassManager->add(createConstantPropagationPass());
-    m_functionPassManager->add(createInstructionCombiningPass());
-    m_functionPassManager->add(createGVNPass());
-    m_functionPassManager->add(createDeadStoreEliminationPass());
-    m_functionPassManager->add(createCFGSimplificationPass());
-    m_functionPassManager->add(createPromoteMemoryToRegisterPass());
-    m_functionPassManager->add(createDeadInstEliminationPass());
-    */
-
-    //m_functionPassManager->add(new SelectRemovalPass());
-
-
-    /* Note: another good place to look for optimization passes is in
-     * clang/lib/CodeGen/BackendUtil.cpp
-     */
 
     m_functionPassManager->doInitialization();
 }
@@ -732,11 +589,9 @@ inline BasicBlock* TCGLLVMContextPrivate::getLabel(int idx)
 
 inline void TCGLLVMContextPrivate::delLabel(int idx)
 {
-    /* XXX
     if(m_labels[idx] && m_labels[idx]->use_empty() &&
             !m_labels[idx]->getParent())
         delete m_labels[idx];
-    */
     m_labels[idx] = NULL;
 }
 
