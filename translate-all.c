@@ -77,7 +77,7 @@
 #endif
 
 #include "rr_log.h"
-#include "panda/include/panda/plugin.h"
+#include "panda/callback_support.h"
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH

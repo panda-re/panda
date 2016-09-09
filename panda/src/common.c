@@ -1,12 +1,10 @@
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 
-#include "qemu/osdep.h"
-#include "cpu.h"
-#include "disas/disas.h"
-#include "../include/panda/plugin.h"
-#include "../include/panda/common.h"
-#include "../include/panda/plog.h"
+#include "panda/plugin.h"
+#include "panda/common.h"
+#include "panda/plog.h"
 
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;

@@ -29,6 +29,8 @@
 #include "rr_log.h"
 #endif
 
+#include "panda/callback_support.h"
+
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 

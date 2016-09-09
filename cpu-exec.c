@@ -49,10 +49,10 @@
 #include "sysemu/replay.h"
 #include "rr_log.h"
 
-#include "panda/plugin.h" 
-#include "panda/common.h" 
+#include "panda/callback_support.h"
+#include "panda/common.h"
 
-#if defined(CONFIG_LLVM)
+#ifdef CONFIG_LLVM
 #include "tcg-llvm.h"
 const int has_llvm_engine = 1;
 #endif

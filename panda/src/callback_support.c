@@ -2,8 +2,9 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include <stdint.h>
-#include "../include/panda/plugin.h"
-#include "../include/panda/common.h"
+#include "panda/plugin.h"
+#include "panda/callback_support.h"
+#include "panda/common.h"
 
 #include "rr_log.h"
 #include "exec/cpu-common.h"

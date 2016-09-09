@@ -65,6 +65,8 @@
 #include "qemu/mmap-alloc.h"
 #endif
 
+#include "panda/callback_support.h"
+
 //#define DEBUG_SUBPAGE
 
 #if !defined(CONFIG_USER_ONLY)

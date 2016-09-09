@@ -8,12 +8,6 @@ PANDA_LLVM="$(/bin/readlink -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/n
 # stop on any error
 set -e
 
-# creates api code for plugins
-#python ../scripts/apigen.py
-
-# creates pandalog code
-#sh ./pp.sh
-
 # set the LLVM_BIT
 if [ "$PANDA_LLVM" != "" ]; then
   ## Using PANDA LLVM.
@@ -42,12 +36,9 @@ fi
 #--extra-cflags="-O2 -I/usr/local/include" \
 #--extra-cxxflags="-O2" \
 #--extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c -lprotobuf -lpthread"
-./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
+"$(dirname $0)/configure" --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
 --prefix=`pwd`/install \
---disable-werror \
---disable-pie \
---disable-xen \
---disable-libiscsi \
+--extra-cflags="-Wno-error=cpp" \
 $LLVM_BIT
 
 make -j ${PANDA_NPROC:-$(nproc)}

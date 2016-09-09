@@ -28,8 +28,8 @@
 #include "rr_log.h"
 #endif
 
-#include "panda/include/panda/plugin.h"
-#include "panda/include/panda/helper_impl.h"
+#include "panda/callback_support.h"
+#include "panda/helper_impl.h"
 
 
 void helper_outb(CPUX86State *env, uint32_t port, uint32_t data)
