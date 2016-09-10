@@ -527,6 +527,8 @@ int main_loop_wait(int nonblocking)
 
     if (rr_in_record()) {
         rr_record_in_main_loop_wait = 0;
+        // Check if DMA-mapped regions have changed
+        rr_tracked_mem_regions_record();
     }
 
     return ret;

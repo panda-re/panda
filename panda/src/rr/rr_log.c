@@ -534,6 +534,22 @@ void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
     rr_write_item();
 }
 
+extern QLIST_HEAD(rr_map_list, RR_MapList) rr_map_list;
+
+void rr_tracked_mem_regions_record(void) {
+    RR_MapList *region;
+    QLIST_FOREACH(region, &rr_map_list, link) {
+        uint32_t crc = crc32(0, Z_NULL, 0);
+        crc = crc32(crc, region->ptr, region->len);
+        if (crc != region->crc) {
+            // Pretend this is just a mem_rw call
+            rr_device_mem_rw_call_record(region->addr, region->ptr, region->len, 1);
+        }
+        // Update it so we don't keep recording it
+        region->crc = crc;
+    }
+}
+
 // bdg Record a change in the I/O memory map
 void rr_record_memory_region_change(RR_callsite_id call_site,
                                      hwaddr start_addr, uint64_t size,

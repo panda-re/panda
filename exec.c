@@ -65,6 +65,7 @@
 #include "qemu/mmap-alloc.h"
 #endif
 
+#include <zlib.h>
 #include "panda/callback_support.h"
 
 //#define DEBUG_SUBPAGE
@@ -3005,6 +3006,9 @@ bool address_space_access_valid(AddressSpace *as, hwaddr addr, int len, bool is_
     return true;
 }
 
+QLIST_HEAD(rr_map_list, RR_MapList) rr_map_list
+    = QLIST_HEAD_INITIALIZER(rr_map_list);
+
 /* Map a physical memory region into a host virtual address.
  * May map a subset of the requested range, given by and returned in *plen.
  * May return NULL if resources needed to perform the mapping are exhausted.
@@ -3076,6 +3080,16 @@ void *address_space_map(AddressSpace *as,
     ptr = qemu_ram_ptr_length(mr->ram_block, base, plen);
     rcu_read_unlock();
 
+    if (!rr_in_replay()) {
+        // Keep a list of these so we can find out when they change
+        RR_MapList *region = g_malloc(sizeof(*region));
+        region->addr = base; // can't use addr because it was modified
+        region->len = *plen; // can't use len because it was modified
+        region->ptr = ptr;
+        region->crc = crc32(crc32(0, Z_NULL, 0), region->ptr, region->len);
+        QLIST_INSERT_HEAD(&rr_map_list, region, link);
+    }
+
     return ptr;
 }
 
@@ -3103,6 +3117,23 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
             xen_invalidate_map_cache_entry(buffer);
         }
         memory_region_unref(mr);
+
+        // Remove it from the tracked map regions for rec/replay
+        if (!rr_in_replay()) {
+            RR_MapList *region;
+            bool found = false;
+            QLIST_FOREACH(region, &rr_map_list, link) {
+                if (region->ptr == buffer && region->len == len) {
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                QLIST_REMOVE(region, link);
+                g_free(region);
+            }
+        }
+
         return;
     }
     if (is_write) {
