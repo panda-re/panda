@@ -641,4 +641,7 @@ void rr_record_net_transfer(RR_callsite_id call_site,
                             Net_transfer_type transfer_type, uint64_t src_addr,
                             uint64_t dest_addr, uint32_t num_bytes);
 
+// Needed from main-loop.c which is not target-specific
+void rr_tracked_mem_regions_record(void);
+
 #endif

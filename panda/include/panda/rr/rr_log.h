@@ -37,6 +37,14 @@ typedef struct {
     hwaddr len;
 } RR_cpu_mem_unmap;
 
+typedef struct RR_MapList {
+    void *ptr;
+    hwaddr addr;
+    hwaddr len;
+    uint32_t crc;
+    QLIST_ENTRY(RR_MapList) link;
+} RR_MapList;
+
 void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
                                const uint8_t* buf, int len, int is_write);
 void rr_record_memory_region_change(RR_callsite_id call_site,
