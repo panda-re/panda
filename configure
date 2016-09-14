@@ -6079,12 +6079,6 @@ if test "$ccache_cpp2" = "yes"; then
   echo "export CCACHE_CPP2=y" >> $config_host_mak
 fi
 
-# XXX FIXME
-echo "\n\nWARNING: FIXME in configure for dealing with LLVM_HELPER_MORPH stuff\n\n"
-if test "$llvm" = "yes" ; then
-  echo "LLVM_HELPER_MORPH:=$source_path/$target_dir/panda_tools/helper_call_modifier" >> $config_target_mak
-fi
-
 # build tree in object directory in case the source is not in the current directory
 DIRS="tests tests/tcg tests/tcg/cris tests/tcg/lm32 tests/libqos tests/qapi-schema tests/tcg/xtensa tests/qemu-iotests"
 DIRS="$DIRS fsdev"

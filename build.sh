@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Get the location of the LLVM compiled for PANDA, respecting environment variables.
-PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-../llvm}"
+PANDA_LLVM_ROOT="${PANDA_LLVM_ROOT:-$(dirname $0)/../llvm}"
 PANDA_LLVM_BUILD="${PANDA_LLVM_BUILD:-Release}"
 PANDA_LLVM="$(/bin/readlink -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/null)"
 
@@ -27,18 +27,11 @@ else
   fi
 fi
 
-#./configure --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
-#--prefix=`pwd`/install \
-#--disable-pie \
-#--disable-xen \
-#--disable-libiscsi \
-#$LLVM_BIT \
-#--extra-cflags="-O2 -I/usr/local/include" \
-#--extra-cxxflags="-O2" \
-#--extra-ldflags="-L/usr/local/lib -L/usr/local/lib64 -L/usr/local/lib -lprotobuf-c -lprotobuf -lpthread"
-"$(dirname $0)/configure" --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
---prefix=`pwd`/install \
---extra-cflags="-Wno-error=cpp" \
-$LLVM_BIT
+"$(dirname $0)/configure" \
+    --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
+    --prefix="$(pwd)/install" \
+    --extra-cflags="-Wno-error=cpp" \
+    $LLVM_BIT \
+    $*
 
 make -j ${PANDA_NPROC:-$(nproc)}
