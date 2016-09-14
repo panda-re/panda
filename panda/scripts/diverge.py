@@ -255,9 +255,6 @@ def sync(instr_low, instr_high, target):
         elif instr_counts[target] > instr_counts[static]:
             target_event_high = mid - 1
 
-    if target_event_low == target_event_high:
-        gdb_run(target, "run {}".format(target_event_low), timeout=None)
-
     # Now we do a slower synchronization. Optimally, run behind forward until it matches ahead.
     disable_all()
     enable("cpu_tb_exec")
