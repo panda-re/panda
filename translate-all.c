@@ -285,15 +285,8 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 
     panda_callbacks_cpu_restore_state(cpu->env_ptr, tb);
 
-    if (searched_pc < host_pc) {
-        return -1;
-    }
-
 #if defined(CONFIG_LLVM)
-    // XXX things have changed.  See line 9990 from
-    // /nas/common/newpanda/diff/diff-ubr.out
-    if (execute_llvm){
-        //assert(0 && "Figure out how new cpu_restore_state works for LLVM!");
+    if (execute_llvm) {
         assert(tcg_llvm_runtime.last_pc >= tb->pc);
         assert(tcg_llvm_runtime.last_pc < tb->pc + tb->size);
         for (i = 0; i < num_insns; ++i) {
@@ -306,8 +299,12 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
             }
         }
         return -1;
-    } else {
+    }
 #endif
+
+    if (searched_pc < host_pc) {
+        return -1;
+    }
 
     /* Reconstruct the stored insn data while looking for the point at
        which the end of the insn exceeds the searched_pc.  */
@@ -322,9 +319,6 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
     }
     return -1;
 
-#ifdef CONFIG_LLVM
-    }
-#endif
  found:
     if (tb->cflags & CF_USE_ICOUNT) {
         assert(use_icount);
@@ -1610,14 +1604,22 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
         return NULL;
     }
 
-#if defined(CONFIG_LLVM)
-    if(execute_llvm) {
-        for(m=0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
+#ifdef CONFIG_LLVM
+    if (execute_llvm) {
+        /* first check last tb. optimization for coming from generated code. */
+        tb = tcg_llvm_runtime.last_tb;
+        if (tb && tb->llvm_function
+                && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
+                && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
+            return tb;
+        }
+        /* then do linear search. */
+        for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
             tb = &tcg_ctx.tb_ctx.tbs[m];
-            if(tb->llvm_function) {
-                if(tc_ptr >= (uintptr_t) tb->llvm_tc_ptr &&
-                   tc_ptr <  (uintptr_t) tb->llvm_tc_end)
-                    return tb;
+            if (tb->llvm_function
+                    && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
+                    && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
+                return tb;
             }
         }
         return NULL;
