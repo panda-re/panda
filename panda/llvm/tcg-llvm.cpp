@@ -618,6 +618,7 @@ inline Value* TCGLLVMContextPrivate::getEnv(){
         }
     }
     assert(0 && "Error finding env in TCG globals");
+    return NULL;
 }
 
 /*
