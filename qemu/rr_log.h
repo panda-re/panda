@@ -147,7 +147,7 @@ static inline RR_prog_point rr_prog_point(void) {
     ret.pc = env->eip;
     ret.secondary = env->regs[R_ECX];
 #else
-    ret.pc = panda_current_pc(env);
+    ret.pc = env->panda_guest_pc;
     ret.secondary = 0;
 #endif
     ret.guest_instr_count = env->rr_guest_instr_count;
