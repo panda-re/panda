@@ -19,6 +19,10 @@ ifdef EXTRA_PLUGINS_PATH
 	EXTRA_PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 endif
 
+PANDA_API_INT=$(wildcard $(SRC_PATH)/panda/plugins/*/*_int.h)
+PANDA_API_INT_REL=$(subst $(SRC_PATH)/,,$(PANDA_API_INT))
+PANDA_API_EXT=$(subst _int.h,_ext.h,$(PANDA_API_INT_REL))
+
 plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -54,16 +58,16 @@ plog_pb2.py: plog.proto
 		"  PROTO plog_pb2.py")
 
 GENERATED_HEADERS += plog.pb-c.h
-
-PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(wildcard $(SRC_PATH)/panda/plugins/*/*_int.h))
+GENERATED_HEADERS += $(PANDA_API_EXT)
 
 # This keeps make from thinking it's an "intermediate" file
-.PRECIOUS: %_ext.h
+.PRECIOUS: $(PANDA_API_EXT)
 
-%_ext.h: %_int.h
+$(PANDA_API_EXT): $(PANDA_API_INT_REL)
+	$(call quiet-command,mkdir -p $(dir $@),)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@,\
-		"  API   $@")
+		"  API   $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
