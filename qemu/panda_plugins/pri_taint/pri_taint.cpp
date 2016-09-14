@@ -52,6 +52,7 @@ bool hypercall_taint = true;
 Panda__SrcInfoPri *si = NULL;
 const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
+bool debug = false;
 
 Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
     Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
@@ -127,7 +128,8 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
                 Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);
                 if (taint2_query(a)) {
                     if (loc_t == LocMem) { 
-                        printf("\"%s\" @ 0x%x is tainted\n", astnodename, va);
+                        if (debug)
+                            printf("\"%s\" @ 0x%x is tainted\n", astnodename, va);
                     }
                     else {
                         printf("\"%s\" in REG " TARGET_FMT_ld ", byte %d is tainted\n", astnodename, buf, offset);
@@ -190,7 +192,8 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
                     }
                 }
             }
-            printf("num taint queries: %lu\n", tq.size());
+            if (debug)
+                printf("num taint queries: %lu\n", tq.size());
             tqh->n_taint_query = tq.size();
             tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
             for (uint32_t i=0; i<tqh->n_taint_query; i++) {
@@ -245,7 +248,8 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     //size_t i;
     switch (loc_t){
         case LocReg:
-            printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
+            if (debug)
+                printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
             dwarf_type_iter(pfun_env, loc, loc_t, (DwarfVarType *) var_ty_void, lava_taint_query, 3);
             break;
         case LocMem:
@@ -275,7 +279,8 @@ void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const
 }
 void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     struct args args = {env, file_Name, lno};
-    printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
+    if (debug)
+        printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
     pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
 }
 
@@ -293,17 +298,20 @@ void i386_hypercall_callback(CPUState *env){
             PandaHypercallStruct phs;
             panda_virtual_memory_rw(env, EAX, (uint8_t *) &phs, sizeof(phs), false);
             if (phs.magic == 0xabcd) {
-                //if (phs.action == 12 || phs.action == 13) {
+                // if the phs action is a pri_query point, see
+                // lava/include/pirate_mark_lava.h
                 if (phs.action == 13) {
-                    // it's an attack point sighting, but we will query taint at
-                    // this point anyway
                     target_ulong pc = panda_current_pc(env);
                     SrcInfo info;
                     int rc = pri_get_pc_source_info(env, pc, &info);
                     if (!rc) {
                         struct args args = {env, info.filename, info.line_number};
-                        printf("panda hypercall: [%s], "
-                               "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",info.filename,info.line_number,pc);
+                        if (debug) {
+                            printf("panda hypercall: [%s], "
+                                   "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",
+                                   info.filename,
+                                   info.line_number,pc);
+                        }
                         pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
                         //pri_all_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
                         //lava_attack_point(phs);

@@ -99,6 +99,7 @@ PPP_CB_BOILERPLATE(on_pri_dwarf_line_change);
 #include <algorithm>
 //#include <boost/algorithm/string/join.hpp>
 #define MAX_FILENAME 256
+bool debug = false;
 Dwarf_Unsigned prev_line = 0, cur_line;
 Dwarf_Addr prev_function = 0, cur_function;
 Dwarf_Addr prev_line_pc = 0;
@@ -851,7 +852,9 @@ void __dwarf_type_iter (CPUState *env, target_ulong base_addr, LocType loc_t,
                             if (0 == strcmp("unsigned char", die_name) ||
                                 0 == strcmp("char", die_name) ||
                                 0 == strcmp("signed char", die_name)){
-                                printf("Querying: char-type %s  %s\n", die_name, cur_astnodename.c_str());
+                                if (debug)
+                                    printf("Querying: char-type %s  %s\n", die_name, cur_astnodename.c_str());
+
                                 cb(cur_base_addr, loc_t, -1, cur_astnodename.c_str());
                                 return;
                             }
