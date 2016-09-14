@@ -143,7 +143,7 @@ public:
     llvm::Type* wordType(int bits) { return intType(bits); }
     llvm::Type* wordPtrType() { return intPtrType(TCG_TARGET_REG_BITS); }
 
-    llvm::Constant* constInt(int bits, int value) {
+    llvm::Constant* constInt(int bits, uint64_t value) {
         return ConstantInt::get(intType(bits), value);
     }
 
