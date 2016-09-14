@@ -183,16 +183,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
-    /*
-     * rwhelan: Hack to deal with the fact that we don't have the retaddr
-     * available at the time when we are translating from TCG, retaddr is
-     * handled in the TCG backend.  We get it here for LLVM.
-     */
-    if (execute_llvm && (retaddr == 0xDEADBEEF-GETPC_ADJ)){
-        retaddr = GETPC();
-        //printf("llvm mem retaddr: 0x%lx\n", retaddr);
-    }
-
     /* If the TLB entry is for a different page, reload and try again.  */
     if ((addr & TARGET_PAGE_MASK)
          != (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
@@ -408,16 +398,6 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
-    /*
-     * rwhelan: Hack to deal with the fact that we don't have the retaddr
-     * available at the time when we are translating from TCG, retaddr is
-     * handled in the TCG backend.  We get it here for LLVM.
-     */
-    if (execute_llvm && (retaddr == 0xDEADBEEF-GETPC_ADJ)){
-        retaddr = GETPC();
-        //printf("llvm mem retaddr: 0x%lx\n", retaddr);
-    }
-
     /* If the TLB entry is for a different page, reload and try again.  */
     if ((addr & TARGET_PAGE_MASK)
         != (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
@@ -590,6 +570,16 @@ WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
+
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF)){
+        retaddr = GETPC();
+    }
+
     panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
     WORD_TYPE ret = helper_le_ld_name(env, addr, oi, retaddr);
     panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret);
@@ -601,6 +591,16 @@ void glue(helper_le_st_name, _panda)(CPUArchState *env, target_ulong addr,
                                      uintptr_t retaddr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
+
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF)){
+        retaddr = GETPC();
+    }
+
     panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
     helper_le_st_name(env, addr, val, oi, retaddr);
     panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
@@ -611,6 +611,16 @@ WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
+
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF)){
+        retaddr = GETPC();
+    }
+
     panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
     WORD_TYPE ret = helper_be_ld_name(env, addr, oi, retaddr);
     panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret);
@@ -622,6 +632,16 @@ void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
                                      uintptr_t retaddr)
 {
     CPUState *cpu = ENV_GET_CPU(env);
+
+    /*
+     * rwhelan: Hack to deal with the fact that we don't have the retaddr
+     * available at the time when we are translating from TCG, retaddr is
+     * handled in the TCG backend.  We get it here for LLVM.
+     */
+    if (execute_llvm && (retaddr == 0xDEADBEEF)){
+        retaddr = GETPC();
+    }
+
     panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
     helper_be_st_name(env, addr, val, oi, retaddr);
     panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);

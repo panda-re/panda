@@ -349,34 +349,34 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 }
 
 void TCGLLVMContextPrivate::initMemoryHelpers(){
-    qemu_ld_helpers[MO_UB] = (void *)helper_ret_ldub_mmu;
-    qemu_ld_helpers[MO_LEUW] = (void *)helper_le_lduw_mmu;
-    qemu_ld_helpers[MO_LEUL] = (void *)helper_le_ldul_mmu;
-    qemu_ld_helpers[MO_LEQ] = (void *)helper_le_ldq_mmu;
-    qemu_ld_helpers[MO_BEUW] = (void *)helper_be_lduw_mmu;
-    qemu_ld_helpers[MO_BEUL] = (void *)helper_be_ldul_mmu;
-    qemu_ld_helpers[MO_BEQ] = (void *)helper_be_ldq_mmu;
-    qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu";
-    qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu";
-    qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu";
-    qemu_ld_helper_names[MO_LEQ] = "helper_le_ldq_mmu";
-    qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu";
-    qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu";
-    qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu";
-    qemu_st_helpers[MO_UB] = (void *)helper_ret_stb_mmu;
-    qemu_st_helpers[MO_LEUW] = (void *)helper_le_stw_mmu;
-    qemu_st_helpers[MO_LEUL] = (void *)helper_le_stl_mmu;
-    qemu_st_helpers[MO_LEQ] = (void *)helper_le_stq_mmu;
-    qemu_st_helpers[MO_BEUW] = (void *)helper_be_stw_mmu;
-    qemu_st_helpers[MO_BEUL] = (void *)helper_be_stl_mmu;
-    qemu_st_helpers[MO_BEQ] = (void *)helper_be_stq_mmu;
-    qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu";
-    qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu";
-    qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu";
-    qemu_st_helper_names[MO_LEQ] = "helper_le_stq_mmu";
-    qemu_st_helper_names[MO_BEUW] = "helper_be_stw_mmu";
-    qemu_st_helper_names[MO_BEUL] = "helper_be_stl_mmu";
-    qemu_st_helper_names[MO_BEQ] = "helper_be_stq_mmu";
+    qemu_ld_helpers[MO_UB] = (void *)helper_ret_ldub_mmu_panda;
+    qemu_ld_helpers[MO_LEUW] = (void *)helper_le_lduw_mmu_panda;
+    qemu_ld_helpers[MO_LEUL] = (void *)helper_le_ldul_mmu_panda;
+    qemu_ld_helpers[MO_LEQ] = (void *)helper_le_ldq_mmu_panda;
+    qemu_ld_helpers[MO_BEUW] = (void *)helper_be_lduw_mmu_panda;
+    qemu_ld_helpers[MO_BEUL] = (void *)helper_be_ldul_mmu_panda;
+    qemu_ld_helpers[MO_BEQ] = (void *)helper_be_ldq_mmu_panda;
+    qemu_ld_helper_names[MO_UB] = "helper_ret_ldub_mmu_panda";
+    qemu_ld_helper_names[MO_LEUW] = "helper_le_lduw_mmu_panda";
+    qemu_ld_helper_names[MO_LEUL] = "helper_le_ldul_mmu_panda";
+    qemu_ld_helper_names[MO_LEQ] = "helper_le_ldq_mmu_panda";
+    qemu_ld_helper_names[MO_BEUW] = "helper_be_lduw_mmu_panda";
+    qemu_ld_helper_names[MO_BEUL] = "helper_be_ldul_mmu_panda";
+    qemu_ld_helper_names[MO_BEQ] = "helper_be_ldq_mmu_panda";
+    qemu_st_helpers[MO_UB] = (void *)helper_ret_stb_mmu_panda;
+    qemu_st_helpers[MO_LEUW] = (void *)helper_le_stw_mmu_panda;
+    qemu_st_helpers[MO_LEUL] = (void *)helper_le_stl_mmu_panda;
+    qemu_st_helpers[MO_LEQ] = (void *)helper_le_stq_mmu_panda;
+    qemu_st_helpers[MO_BEUW] = (void *)helper_be_stw_mmu_panda;
+    qemu_st_helpers[MO_BEUL] = (void *)helper_be_stl_mmu_panda;
+    qemu_st_helpers[MO_BEQ] = (void *)helper_be_stq_mmu_panda;
+    qemu_st_helper_names[MO_UB] = "helper_ret_stb_mmu_panda";
+    qemu_st_helper_names[MO_LEUW] = "helper_le_stw_mmu_panda";
+    qemu_st_helper_names[MO_LEUL] = "helper_le_stl_mmu_panda";
+    qemu_st_helper_names[MO_LEQ] = "helper_le_stq_mmu_panda";
+    qemu_st_helper_names[MO_BEUW] = "helper_be_stw_mmu_panda";
+    qemu_st_helper_names[MO_BEUL] = "helper_be_stl_mmu_panda";
+    qemu_st_helper_names[MO_BEQ] = "helper_be_stq_mmu_panda";
 }
 
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
@@ -639,15 +639,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     int memIdx = opc & (MO_BSWAP | MO_SIZE);
     uintptr_t helperFuncAddr;
 
-    if (0 /*panda_use_memcb*/){
-#warning "Reintroduce PANDA memory callbacks in LLVM mode."
-        //helperFuncAddr = ld ? (uint64_t) qemu_panda_ld_helpers[bits>>4]:
-        //                       (uint64_t) qemu_panda_st_helpers[bits>>4];
-    }
-    else {
-        helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[memIdx]:
-                               (uint64_t) qemu_st_helpers[memIdx];
-    }
+    helperFuncAddr = ld ? (uint64_t) qemu_ld_helpers[bits>>4]:
+                           (uint64_t) qemu_st_helpers[bits>>4];
 
     std::vector<Value*> argValues;
     argValues.reserve(4);
@@ -673,14 +666,8 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
     }
 
     const char *funcName;
-    if (0 /*panda_use_memcb*/){
-        // XXX FIXME
-        //funcName = ld ? qemu_panda_ld_helper_names[bits>>4]:
-        //    qemu_panda_st_helper_names[bits>>4];
-    } else {
-        funcName = ld ? qemu_ld_helper_names[memIdx]:
-            qemu_st_helper_names[memIdx];
-    }
+    funcName = ld ? qemu_ld_helper_names[memIdx]:
+        qemu_st_helper_names[memIdx];
     assert(funcName);
     Function* helperFunction = m_module->getFunction(funcName);
     if(!helperFunction) {
@@ -747,7 +734,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
             llvm::Type* retType = nb_oargs == 0 ?
                 llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
 
-            Value* helperAddr = ConstantInt::get(intType(sizeof(uintptr_t)*4),
+            Value* helperAddr = ConstantInt::get(intType(sizeof(uintptr_t)*8),
                 args[nb_oargs + nb_iargs]);
             Value* result;
 
@@ -1007,6 +994,17 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         setValue(args[0], m_builder.Create ## op(v1, v2));          \
     } break;
 
+#define __ARITH_OP_COMPUTE(opc_name, bits, compute)                 \
+    case opc_name: {                                                \
+        Value *v1 = getValue(args[1]);                              \
+        Value *v2 = getValue(args[2]);                              \
+        adjustTypeSize(bits, &v1, &v2);                             \
+        assert(v1->getType() == intType(bits));                     \
+        assert(v2->getType() == intType(bits));                     \
+        Value *out = compute;                                       \
+        setValue(args[0], out);                                     \
+    } break;
+
 #define __ARITH_OP_DIV2(opc_name, signE, bits)                      \
     case opc_name:                                                  \
         assert(getValue(args[2])->getType() == intType(bits));      \
@@ -1102,6 +1100,21 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_and_i32, And, 32)
     __ARITH_OP(INDEX_op_or_i32,   Or, 32)
     __ARITH_OP(INDEX_op_xor_i32, Xor, 32)
+
+    __ARITH_OP_COMPUTE(INDEX_op_andc_i32, 32,
+            m_builder.CreateAnd(v1, m_builder.CreateNot(v2)))
+
+    __ARITH_OP_COMPUTE(INDEX_op_orc_i32, 32,
+            m_builder.CreateOr(v1, m_builder.CreateNot(v2)))
+
+    __ARITH_OP_COMPUTE(INDEX_op_eqv_i32, 32,
+            m_builder.CreateNot(m_builder.CreateXor(v1, v2)))
+
+    __ARITH_OP_COMPUTE(INDEX_op_nand_i32, 32,
+            m_builder.CreateNot(m_builder.CreateAnd(v1, v2)))
+
+    __ARITH_OP_COMPUTE(INDEX_op_nor_i32, 32,
+            m_builder.CreateNot(m_builder.CreateOr(v1, v2)))
 
     __ARITH_OP(INDEX_op_shl_i32,  Shl, 32)
     __ARITH_OP(INDEX_op_shr_i32, LShr, 32)
