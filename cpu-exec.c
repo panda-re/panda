@@ -211,18 +211,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     panda_bb_invalidate_done = false;
     panda_callbacks_before_block_exec(cpu, itb);
 
-#ifdef RR_CHAOS_MONKEY
-    static bool rr_chaos_done = false;
-    if (!rr_chaos_done && rr_in_record() && rr_get_guest_instr_count() > 100000) {
-        MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
-        rcu_read_lock();
-        uint8_t *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
-        memcpy(ptr+0x2000000,cpu_tb_exec,0x100);
-        rcu_read_unlock();
-        rr_chaos_done = true;
-    }
-#endif
-
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
