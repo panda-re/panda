@@ -136,7 +136,6 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 }
 #endif
 
-// ugh
 extern char **gargv;
 
 bool init_plugin(void *self) {
@@ -165,7 +164,6 @@ bool init_plugin(void *self) {
         }
 
         // get path to kconffile and canonicalize
-#warning Fix this up once we figure out where out of tree/installed plugins go
         gchar *kconffile = g_build_filename(progdir, "panda", "plugins", "osi_linux", "kernelinfo.conf", NULL);
         printf("Looking for kconffile in %s\n", kconffile);
         gchar *kconffile_canon = realpath(kconffile, NULL);
