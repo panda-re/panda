@@ -278,9 +278,6 @@ struct TranslationBlock {
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
 
-    // record and replay - might just be able to use icount
-    uint16_t num_guest_insns;
-
 #ifdef CONFIG_LLVM
     /* pointer to LLVM translated code */
     struct TCGLLVMContext *tcg_llvm_context;
