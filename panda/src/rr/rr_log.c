@@ -1369,6 +1369,13 @@ void replay_progress(void)
             char* dot = strrchr(name, '.');
             if (dot && dot - name > 10)
                 *(dot - 10) = '\0';
+
+            if (!spit_out_total_num_instr_once) {
+                spit_out_total_num_instr_once = 1;
+                printf("total_instr in replay: %10" PRIu64 "\n",
+                       rr_nondet_log->last_prog_point.guest_instr_count);
+            }
+
             printf("%s:  %10" PRIu64
                    " (%6.2f%%) instrs. %7.2f sec. %5.2f GB ram.\n",
                    name, rr_get_guest_instr_count(),
@@ -1376,11 +1383,6 @@ void replay_progress(void)
                     rr_nondet_log->last_prog_point.guest_instr_count),
                    secs, rusage.ru_maxrss / 1024.0 / 1024.0);
             free(dup_name);
-            if (!spit_out_total_num_instr_once) {
-                spit_out_total_num_instr_once = 1;
-                printf("total_instr in replay: %10" PRIu64 "\n",
-                       rr_nondet_log->last_prog_point.guest_instr_count);
-            }
         }
     }
 }
