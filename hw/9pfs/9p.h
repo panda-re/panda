@@ -1,5 +1,5 @@
-#ifndef _QEMU_9P_H
-#define _QEMU_9P_H
+#ifndef QEMU_9P_H
+#define QEMU_9P_H
 
 #include <dirent.h>
 #include <utime.h>
@@ -236,6 +236,7 @@ typedef struct V9fsState
     int32_t root_fid;
     Error *migration_blocker;
     V9fsConf fsconf;
+    V9fsQID root_qid;
 } V9fsState;
 
 /* 9p2000.L open flags */

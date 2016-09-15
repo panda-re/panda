@@ -1,6 +1,5 @@
-#ifndef _QEMU_ELF_H
-#define _QEMU_ELF_H
-
+#ifndef QEMU_ELF_H
+#define QEMU_ELF_H
 
 /* 32-bit ELF base types. */
 typedef uint32_t Elf32_Addr;
@@ -53,6 +52,8 @@ typedef int64_t  Elf64_Sxword;
 #define EF_MIPS_OPTIONS_FIRST	0x00000080
 #define EF_MIPS_32BITMODE	0x00000100
 #define EF_MIPS_ABI		0x0000f000
+#define EF_MIPS_FP64      0x00000200
+#define EF_MIPS_NAN2008   0x00000400
 #define EF_MIPS_ARCH      0xf0000000
 
 /* These constants define the different elf file types */
@@ -476,6 +477,19 @@ typedef struct {
 
 #define PPC_FEATURE_TRUE_LE             0x00000002
 #define PPC_FEATURE_PPC_LE              0x00000001
+
+/* Bits present in AT_HWCAP2 for PowerPC.  */
+
+#define PPC_FEATURE2_ARCH_2_07          0x80000000
+#define PPC_FEATURE2_HAS_HTM            0x40000000
+#define PPC_FEATURE2_HAS_DSCR           0x20000000
+#define PPC_FEATURE2_HAS_EBB            0x10000000
+#define PPC_FEATURE2_HAS_ISEL           0x08000000
+#define PPC_FEATURE2_HAS_TAR            0x04000000
+#define PPC_FEATURE2_HAS_VEC_CRYPTO     0x02000000
+#define PPC_FEATURE2_HTM_NOSC           0x01000000
+#define PPC_FEATURE2_ARCH_3_00          0x00800000
+#define PPC_FEATURE2_HAS_IEEE128        0x00400000
 
 /* Bits present in AT_HWCAP for Sparc.  */
 
@@ -1558,4 +1572,4 @@ struct elf32_fdpic_loadmap {
 #endif /* ELF_CLASS */
 
 
-#endif /* _QEMU_ELF_H */
+#endif /* QEMU_ELF_H */

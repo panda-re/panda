@@ -33,6 +33,7 @@
 #include "qapi/qmp/qerror.h"
 #include "qapi/qmp/qjson.h"
 #include "qemu/coroutine.h"
+#include "qemu/id.h"
 #include "qmp-commands.h"
 #include "qemu/timer.h"
 #include "qapi-event.h"
@@ -60,15 +61,90 @@ BlockJob *block_job_next(BlockJob *job)
     return QLIST_NEXT(job, job_list);
 }
 
-void *block_job_create(const BlockJobDriver *driver, BlockDriverState *bs,
-                       int64_t speed, BlockCompletionFunc *cb,
-                       void *opaque, Error **errp)
+BlockJob *block_job_get(const char *id)
+{
+    BlockJob *job;
+
+    QLIST_FOREACH(job, &block_jobs, job_list) {
+        if (!strcmp(id, job->id)) {
+            return job;
+        }
+    }
+
+    return NULL;
+}
+
+/* Normally the job runs in its BlockBackend's AioContext.  The exception is
+ * block_job_defer_to_main_loop() where it runs in the QEMU main loop.  Code
+ * that supports both cases uses this helper function.
+ */
+static AioContext *block_job_get_aio_context(BlockJob *job)
+{
+    return job->deferred_to_main_loop ?
+           qemu_get_aio_context() :
+           blk_get_aio_context(job->blk);
+}
+
+static void block_job_attached_aio_context(AioContext *new_context,
+                                           void *opaque)
+{
+    BlockJob *job = opaque;
+
+    if (job->driver->attached_aio_context) {
+        job->driver->attached_aio_context(job, new_context);
+    }
+
+    block_job_resume(job);
+}
+
+static void block_job_detach_aio_context(void *opaque)
+{
+    BlockJob *job = opaque;
+
+    /* In case the job terminates during aio_poll()... */
+    block_job_ref(job);
+
+    block_job_pause(job);
+
+    if (!job->paused) {
+        /* If job is !job->busy this kicks it into the next pause point. */
+        block_job_enter(job);
+    }
+    while (!job->paused && !job->completed) {
+        aio_poll(block_job_get_aio_context(job), true);
+    }
+
+    block_job_unref(job);
+}
+
+void *block_job_create(const char *job_id, const BlockJobDriver *driver,
+                       BlockDriverState *bs, int64_t speed,
+                       BlockCompletionFunc *cb, void *opaque, Error **errp)
 {
     BlockBackend *blk;
     BlockJob *job;
 
+    assert(cb);
     if (bs->job) {
         error_setg(errp, QERR_DEVICE_IN_USE, bdrv_get_device_name(bs));
+        return NULL;
+    }
+
+    if (job_id == NULL) {
+        job_id = bdrv_get_device_name(bs);
+        if (!*job_id) {
+            error_setg(errp, "An explicit job ID is required for this node");
+            return NULL;
+        }
+    }
+
+    if (!id_wellformed(job_id)) {
+        error_setg(errp, "Invalid job ID '%s'", job_id);
+        return NULL;
+    }
+
+    if (block_job_get(job_id)) {
+        error_setg(errp, "Job ID '%s' already in use", job_id);
         return NULL;
     }
 
@@ -82,7 +158,7 @@ void *block_job_create(const BlockJobDriver *driver, BlockDriverState *bs,
     bdrv_op_unblock(bs, BLOCK_OP_TYPE_DATAPLANE, job->blocker);
 
     job->driver        = driver;
-    job->id            = g_strdup(bdrv_get_device_name(bs));
+    job->id            = g_strdup(job_id);
     job->blk           = blk;
     job->cb            = cb;
     job->opaque        = opaque;
@@ -91,6 +167,9 @@ void *block_job_create(const BlockJobDriver *driver, BlockDriverState *bs,
     bs->job = job;
 
     QLIST_INSERT_HEAD(&block_jobs, job, job_list);
+
+    blk_add_aio_context_notifier(blk, block_job_attached_aio_context,
+                                 block_job_detach_aio_context, job);
 
     /* Only set speed when necessary to avoid NotSupported error */
     if (speed != 0) {
@@ -117,6 +196,9 @@ void block_job_unref(BlockJob *job)
         BlockDriverState *bs = blk_bs(job->blk);
         bs->job = NULL;
         bdrv_op_unblock_all(bs, job->blocker);
+        blk_remove_aio_context_notifier(job->blk,
+                                        block_job_attached_aio_context,
+                                        block_job_detach_aio_context, job);
         blk_unref(job->blk);
         error_free(job->blocker);
         g_free(job->id);
@@ -240,7 +322,8 @@ void block_job_set_speed(BlockJob *job, int64_t speed, Error **errp)
 void block_job_complete(BlockJob *job, Error **errp)
 {
     if (job->pause_count || job->cancelled || !job->driver->complete) {
-        error_setg(errp, QERR_BLOCK_JOB_NOT_READY, job->id);
+        error_setg(errp, "The active block job '%s' cannot be completed",
+                   job->id);
         return;
     }
 
@@ -252,9 +335,35 @@ void block_job_pause(BlockJob *job)
     job->pause_count++;
 }
 
-bool block_job_is_paused(BlockJob *job)
+static bool block_job_should_pause(BlockJob *job)
 {
     return job->pause_count > 0;
+}
+
+void coroutine_fn block_job_pause_point(BlockJob *job)
+{
+    if (!block_job_should_pause(job)) {
+        return;
+    }
+    if (block_job_is_cancelled(job)) {
+        return;
+    }
+
+    if (job->driver->pause) {
+        job->driver->pause(job);
+    }
+
+    if (block_job_should_pause(job) && !block_job_is_cancelled(job)) {
+        job->paused = true;
+        job->busy = false;
+        qemu_coroutine_yield(); /* wait for block_job_resume() */
+        job->busy = true;
+        job->paused = false;
+    }
+
+    if (job->driver->resume) {
+        job->driver->resume(job);
+    }
 }
 
 void block_job_resume(BlockJob *job)
@@ -269,15 +378,15 @@ void block_job_resume(BlockJob *job)
 
 void block_job_enter(BlockJob *job)
 {
-    block_job_iostatus_reset(job);
     if (job->co && !job->busy) {
-        qemu_coroutine_enter(job->co, NULL);
+        qemu_coroutine_enter(job->co);
     }
 }
 
 void block_job_cancel(BlockJob *job)
 {
     job->cancelled = true;
+    block_job_iostatus_reset(job);
     block_job_enter(job);
 }
 
@@ -311,9 +420,7 @@ static int block_job_finish_sync(BlockJob *job,
         return -EBUSY;
     }
     while (!job->completed) {
-        aio_poll(job->deferred_to_main_loop ? qemu_get_aio_context() :
-                                              blk_get_aio_context(job->blk),
-                 true);
+        aio_poll(block_job_get_aio_context(job), true);
     }
     ret = (job->cancelled && job->ret == 0) ? -ECANCELED : job->ret;
     block_job_unref(job);
@@ -361,12 +468,12 @@ void block_job_sleep_ns(BlockJob *job, QEMUClockType type, int64_t ns)
     }
 
     job->busy = false;
-    if (block_job_is_paused(job)) {
-        qemu_coroutine_yield();
-    } else {
+    if (!block_job_should_pause(job)) {
         co_aio_sleep_ns(blk_get_aio_context(job->blk), type, ns);
     }
     job->busy = true;
+
+    block_job_pause_point(job);
 }
 
 void block_job_yield(BlockJob *job)
@@ -379,8 +486,12 @@ void block_job_yield(BlockJob *job)
     }
 
     job->busy = false;
-    qemu_coroutine_yield();
+    if (!block_job_should_pause(job)) {
+        qemu_coroutine_yield();
+    }
     job->busy = true;
+
+    block_job_pause_point(job);
 }
 
 BlockJobInfo *block_job_query(BlockJob *job)
@@ -446,6 +557,7 @@ BlockErrorAction block_job_error_action(BlockJob *job, BlockdevOnError on_err,
 
     switch (on_err) {
     case BLOCKDEV_ON_ERROR_ENOSPC:
+    case BLOCKDEV_ON_ERROR_AUTO:
         action = (error == ENOSPC) ?
                  BLOCK_ERROR_ACTION_STOP : BLOCK_ERROR_ACTION_REPORT;
         break;

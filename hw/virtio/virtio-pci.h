@@ -31,6 +31,9 @@
 #ifdef CONFIG_VHOST_SCSI
 #include "hw/virtio/vhost-scsi.h"
 #endif
+#ifdef CONFIG_VHOST_VSOCK
+#include "hw/virtio/vhost-vsock.h"
+#endif
 
 typedef struct VirtIOPCIProxy VirtIOPCIProxy;
 typedef struct VirtIOBlkPCI VirtIOBlkPCI;
@@ -44,6 +47,7 @@ typedef struct VirtIOInputPCI VirtIOInputPCI;
 typedef struct VirtIOInputHIDPCI VirtIOInputHIDPCI;
 typedef struct VirtIOInputHostPCI VirtIOInputHostPCI;
 typedef struct VirtIOGPUPCI VirtIOGPUPCI;
+typedef struct VHostVSockPCI VHostVSockPCI;
 
 /* virtio-pci-bus */
 
@@ -61,11 +65,10 @@ typedef struct VirtioBusClass VirtioPCIBusClass;
 enum {
     VIRTIO_PCI_FLAG_BUS_MASTER_BUG_MIGRATION_BIT,
     VIRTIO_PCI_FLAG_USE_IOEVENTFD_BIT,
-    VIRTIO_PCI_FLAG_DISABLE_LEGACY_BIT,
-    VIRTIO_PCI_FLAG_DISABLE_MODERN_BIT,
     VIRTIO_PCI_FLAG_MIGRATE_EXTRA_BIT,
     VIRTIO_PCI_FLAG_MODERN_PIO_NOTIFY_BIT,
     VIRTIO_PCI_FLAG_DISABLE_PCIE_BIT,
+    VIRTIO_PCI_FLAG_PAGE_PER_VQ_BIT,
 };
 
 /* Need to activate work-arounds for buggy guests at vmstate load. */
@@ -77,8 +80,6 @@ enum {
 #define VIRTIO_PCI_FLAG_USE_IOEVENTFD   (1 << VIRTIO_PCI_FLAG_USE_IOEVENTFD_BIT)
 
 /* virtio version flags */
-#define VIRTIO_PCI_FLAG_DISABLE_LEGACY (1 << VIRTIO_PCI_FLAG_DISABLE_LEGACY_BIT)
-#define VIRTIO_PCI_FLAG_DISABLE_MODERN (1 << VIRTIO_PCI_FLAG_DISABLE_MODERN_BIT)
 #define VIRTIO_PCI_FLAG_DISABLE_PCIE (1 << VIRTIO_PCI_FLAG_DISABLE_PCIE_BIT)
 
 /* migrate extra state */
@@ -87,6 +88,10 @@ enum {
 /* have pio notification for modern device ? */
 #define VIRTIO_PCI_FLAG_MODERN_PIO_NOTIFY \
     (1 << VIRTIO_PCI_FLAG_MODERN_PIO_NOTIFY_BIT)
+
+/* page per vq flag to be used by split drivers within guests */
+#define VIRTIO_PCI_FLAG_PAGE_PER_VQ \
+    (1 << VIRTIO_PCI_FLAG_PAGE_PER_VQ_BIT)
 
 typedef struct {
     MSIMessage msg;
@@ -144,6 +149,8 @@ struct VirtIOPCIProxy {
     uint32_t modern_mem_bar;
     int config_cap;
     uint32_t flags;
+    bool disable_modern;
+    OnOffAuto disable_legacy;
     uint32_t class_code;
     uint32_t nvectors;
     uint32_t dfselect;
@@ -158,6 +165,21 @@ struct VirtIOPCIProxy {
     VirtioBusState bus;
 };
 
+static inline bool virtio_pci_modern(VirtIOPCIProxy *proxy)
+{
+    return !proxy->disable_modern;
+}
+
+static inline bool virtio_pci_legacy(VirtIOPCIProxy *proxy)
+{
+    return proxy->disable_legacy == ON_OFF_AUTO_OFF;
+}
+
+static inline void virtio_pci_force_virtio_1(VirtIOPCIProxy *proxy)
+{
+    proxy->disable_modern = false;
+    proxy->disable_legacy = ON_OFF_AUTO_ON;
+}
 
 /*
  * virtio-scsi-pci: This extends VirtioPCIProxy.
@@ -310,6 +332,20 @@ struct VirtIOGPUPCI {
     VirtIOPCIProxy parent_obj;
     VirtIOGPU vdev;
 };
+
+#ifdef CONFIG_VHOST_VSOCK
+/*
+ * vhost-vsock-pci: This extends VirtioPCIProxy.
+ */
+#define TYPE_VHOST_VSOCK_PCI "vhost-vsock-pci"
+#define VHOST_VSOCK_PCI(obj) \
+        OBJECT_CHECK(VHostVSockPCI, (obj), TYPE_VHOST_VSOCK_PCI)
+
+struct VHostVSockPCI {
+    VirtIOPCIProxy parent_obj;
+    VHostVSock vdev;
+};
+#endif
 
 /* Virtio ABI version, if we increment this, we break the guest driver. */
 #define VIRTIO_PCI_ABI_VERSION          0

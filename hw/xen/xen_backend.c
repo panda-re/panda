@@ -23,15 +23,19 @@
  */
 
 #include "qemu/osdep.h"
-#include <sys/mman.h>
 #include <sys/signal.h>
 
 #include "hw/hw.h"
+#include "hw/sysbus.h"
 #include "sysemu/char.h"
 #include "qemu/log.h"
 #include "hw/xen/xen_backend.h"
 
 #include <xen/grant_table.h>
+
+#define TYPE_XENSYSDEV "xensysdev"
+
+DeviceState *xen_sysdev;
 
 /* ------------------------------------------------------------- */
 
@@ -317,48 +321,28 @@ static struct XenDevice *xen_be_get_xendev(const char *type, int dom, int dev,
 /*
  * release xen backend device.
  */
-static struct XenDevice *xen_be_del_xendev(int dom, int dev)
+static void xen_be_del_xendev(struct XenDevice *xendev)
 {
-    struct XenDevice *xendev, *xnext;
-
-    /*
-     * This is pretty much like QTAILQ_FOREACH(xendev, &xendevs, next) but
-     * we save the next pointer in xnext because we might free xendev.
-     */
-    xnext = xendevs.tqh_first;
-    while (xnext) {
-        xendev = xnext;
-        xnext = xendev->next.tqe_next;
-
-        if (xendev->dom != dom) {
-            continue;
-        }
-        if (xendev->dev != dev && dev != -1) {
-            continue;
-        }
-
-        if (xendev->ops->free) {
-            xendev->ops->free(xendev);
-        }
-
-        if (xendev->fe) {
-            char token[XEN_BUFSIZE];
-            snprintf(token, sizeof(token), "fe:%p", xendev);
-            xs_unwatch(xenstore, xendev->fe, token);
-            g_free(xendev->fe);
-        }
-
-        if (xendev->evtchndev != NULL) {
-            xenevtchn_close(xendev->evtchndev);
-        }
-        if (xendev->gnttabdev != NULL) {
-            xengnttab_close(xendev->gnttabdev);
-        }
-
-        QTAILQ_REMOVE(&xendevs, xendev, next);
-        g_free(xendev);
+    if (xendev->ops->free) {
+        xendev->ops->free(xendev);
     }
-    return NULL;
+
+    if (xendev->fe) {
+        char token[XEN_BUFSIZE];
+        snprintf(token, sizeof(token), "fe:%p", xendev);
+        xs_unwatch(xenstore, xendev->fe, token);
+        g_free(xendev->fe);
+    }
+
+    if (xendev->evtchndev != NULL) {
+        xenevtchn_close(xendev->evtchndev);
+    }
+    if (xendev->gnttabdev != NULL) {
+        xengnttab_close(xendev->gnttabdev);
+    }
+
+    QTAILQ_REMOVE(&xendevs, xendev, next);
+    g_free(xendev);
 }
 
 /*
@@ -678,7 +662,7 @@ static void xenstore_update_be(char *watch, char *type, int dom,
     if (xendev != NULL) {
         bepath = xs_read(xenstore, 0, xendev->be, &len);
         if (bepath == NULL) {
-            xen_be_del_xendev(dom, dev);
+            xen_be_del_xendev(xendev);
         } else {
             free(bepath);
             xen_be_backend_changed(xendev, path);
@@ -763,6 +747,10 @@ int xen_be_init(void)
         /* Check if xen_init() have been called */
         goto err;
     }
+
+    xen_sysdev = qdev_create(NULL, TYPE_XENSYSDEV);
+    qdev_init_nofail(xen_sysdev);
+
     return 0;
 
 err:
@@ -790,6 +778,16 @@ int xen_be_register(const char *type, struct XenDevOps *ops)
     xenstore_mkdir(path, XS_PERM_NONE);
 
     return xenstore_scan(type, xen_domid, ops);
+}
+
+void xen_be_register_common(void)
+{
+    xen_be_register("console", &xen_console_ops);
+    xen_be_register("vkbd", &xen_kbdmouse_ops);
+    xen_be_register("qdisk", &xen_blkdev_ops);
+#ifdef CONFIG_USB_LIBUSB
+    xen_be_register("qusb", &xen_usb_ops);
+#endif
 }
 
 int xen_be_bind_evtchn(struct XenDevice *xendev)
@@ -863,3 +861,35 @@ void xen_be_printf(struct XenDevice *xendev, int msg_level, const char *fmt, ...
     }
     qemu_log_flush();
 }
+
+static int xen_sysdev_init(SysBusDevice *dev)
+{
+    return 0;
+}
+
+static Property xen_sysdev_properties[] = {
+    {/* end of property list */},
+};
+
+static void xen_sysdev_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+
+    k->init = xen_sysdev_init;
+    dc->props = xen_sysdev_properties;
+}
+
+static const TypeInfo xensysdev_info = {
+    .name          = TYPE_XENSYSDEV,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(SysBusDevice),
+    .class_init    = xen_sysdev_class_init,
+};
+
+static void xenbe_register_types(void)
+{
+    type_register_static(&xensysdev_info);
+}
+
+type_init(xenbe_register_types);

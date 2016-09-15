@@ -19,8 +19,9 @@
  * You should have received a copy of the GNU (Lesser) General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CPU_S390X_H
-#define CPU_S390X_H
+
+#ifndef S390X_CPU_H
+#define S390X_CPU_H
 
 #include "qemu-common.h"
 #include "cpu-qom.h"
@@ -187,6 +188,7 @@ struct S390CPU {
 
     CPUS390XState env;
     int64_t id;
+    S390CPUModel *model;
     /* needed for live migration */
     void *irqstate;
     uint32_t irqstate_saved_size;
@@ -219,7 +221,7 @@ int s390_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 void s390_cpu_gdb_init(CPUState *cs);
 void s390x_cpu_debug_excp_handler(CPUState *cs);
 
-#include <sysemu/kvm.h>
+#include "sysemu/kvm.h"
 
 /* distinguish between 24 bit and 31 bit addressing */
 #define HIGH_ORDER_BIT 0x80000000
@@ -393,6 +395,8 @@ static inline void cpu_get_tb_cpu_state(CPUS390XState* env, target_ulong *pc,
              ((env->psw.mask & PSW_MASK_32) ? FLAG_MASK_32 : 0);
 }
 
+#define MAX_ILEN 6
+
 /* While the PoO talks about ILC (a number between 1-3) what is actually
    stored in LowCore is shifted left one bit (an even between 2-6).  As
    this is the actual length of the insn and therefore more useful, that
@@ -463,7 +467,6 @@ S390CPU *cpu_s390x_init(const char *cpu_model);
 S390CPU *s390x_new_cpu(const char *cpu_model, int64_t id, Error **errp);
 S390CPU *cpu_s390x_create(const char *cpu_model, Error **errp);
 void s390x_translate_init(void);
-int cpu_s390x_exec(CPUState *cpu);
 
 /* you can call this signal handler from your SIGBUS and SIGSEGV
    signal handlers to inform the virtual CPU of exceptions. non zero
@@ -627,11 +630,14 @@ void cpu_unlock(void);
 extern void subsystem_reset(void);
 
 #define cpu_init(model) CPU(cpu_s390x_init(model))
-#define cpu_exec cpu_s390x_exec
 #define cpu_signal_handler cpu_s390x_signal_handler
 
 void s390_cpu_list(FILE *f, fprintf_function cpu_fprintf);
 #define cpu_list s390_cpu_list
+void s390_cpu_model_register_props(Object *obj);
+void s390_cpu_model_class_register_props(ObjectClass *oc);
+void s390_realize_cpu_model(CPUState *cs, Error **errp);
+ObjectClass *s390_cpu_class_by_name(const char *name);
 
 #define EXCP_EXT 1 /* external interrupt */
 #define EXCP_SVC 2 /* supervisor call (syscall) */

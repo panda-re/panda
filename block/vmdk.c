@@ -252,7 +252,7 @@ static uint32_t vmdk_read_cid(BlockDriverState *bs, int parent)
     int ret;
 
     desc = g_malloc0(DESC_SIZE);
-    ret = bdrv_pread(bs->file->bs, s->desc_offset, desc, DESC_SIZE);
+    ret = bdrv_pread(bs->file, s->desc_offset, desc, DESC_SIZE);
     if (ret < 0) {
         g_free(desc);
         return 0;
@@ -286,7 +286,7 @@ static int vmdk_write_cid(BlockDriverState *bs, uint32_t cid)
 
     desc = g_malloc0(DESC_SIZE);
     tmp_desc = g_malloc0(DESC_SIZE);
-    ret = bdrv_pread(bs->file->bs, s->desc_offset, desc, DESC_SIZE);
+    ret = bdrv_pread(bs->file, s->desc_offset, desc, DESC_SIZE);
     if (ret < 0) {
         goto out;
     }
@@ -306,7 +306,7 @@ static int vmdk_write_cid(BlockDriverState *bs, uint32_t cid)
         pstrcat(desc, DESC_SIZE, tmp_desc);
     }
 
-    ret = bdrv_pwrite_sync(bs->file->bs, s->desc_offset, desc, DESC_SIZE);
+    ret = bdrv_pwrite_sync(bs->file, s->desc_offset, desc, DESC_SIZE);
 
 out:
     g_free(desc);
@@ -350,7 +350,7 @@ static int vmdk_parent_open(BlockDriverState *bs)
     int ret;
 
     desc = g_malloc0(DESC_SIZE + 1);
-    ret = bdrv_pread(bs->file->bs, s->desc_offset, desc, DESC_SIZE);
+    ret = bdrv_pread(bs->file, s->desc_offset, desc, DESC_SIZE);
     if (ret < 0) {
         goto out;
     }
@@ -454,7 +454,7 @@ static int vmdk_init_tables(BlockDriverState *bs, VmdkExtent *extent,
         return -ENOMEM;
     }
 
-    ret = bdrv_pread(extent->file->bs,
+    ret = bdrv_pread(extent->file,
                      extent->l1_table_offset,
                      extent->l1_table,
                      l1_size);
@@ -474,7 +474,7 @@ static int vmdk_init_tables(BlockDriverState *bs, VmdkExtent *extent,
             ret = -ENOMEM;
             goto fail_l1;
         }
-        ret = bdrv_pread(extent->file->bs,
+        ret = bdrv_pread(extent->file,
                          extent->l1_backup_table_offset,
                          extent->l1_backup_table,
                          l1_size);
@@ -508,7 +508,7 @@ static int vmdk_open_vmfs_sparse(BlockDriverState *bs,
     VMDK3Header header;
     VmdkExtent *extent;
 
-    ret = bdrv_pread(file->bs, sizeof(magic), &header, sizeof(header));
+    ret = bdrv_pread(file, sizeof(magic), &header, sizeof(header));
     if (ret < 0) {
         error_setg_errno(errp, -ret,
                          "Could not read header from file '%s'",
@@ -538,14 +538,13 @@ static int vmdk_open_vmfs_sparse(BlockDriverState *bs,
 static int vmdk_open_desc_file(BlockDriverState *bs, int flags, char *buf,
                                QDict *options, Error **errp);
 
-static char *vmdk_read_desc(BlockDriverState *file, uint64_t desc_offset,
-                            Error **errp)
+static char *vmdk_read_desc(BdrvChild *file, uint64_t desc_offset, Error **errp)
 {
     int64_t size;
     char *buf;
     int ret;
 
-    size = bdrv_getlength(file);
+    size = bdrv_getlength(file->bs);
     if (size < 0) {
         error_setg_errno(errp, -size, "Could not access file");
         return NULL;
@@ -586,7 +585,7 @@ static int vmdk_open_vmdk4(BlockDriverState *bs,
     int64_t l1_backup_offset = 0;
     bool compressed;
 
-    ret = bdrv_pread(file->bs, sizeof(magic), &header, sizeof(header));
+    ret = bdrv_pread(file, sizeof(magic), &header, sizeof(header));
     if (ret < 0) {
         error_setg_errno(errp, -ret,
                          "Could not read header from file '%s'",
@@ -596,7 +595,7 @@ static int vmdk_open_vmdk4(BlockDriverState *bs,
     if (header.capacity == 0) {
         uint64_t desc_offset = le64_to_cpu(header.desc_offset);
         if (desc_offset) {
-            char *buf = vmdk_read_desc(file->bs, desc_offset << 9, errp);
+            char *buf = vmdk_read_desc(file, desc_offset << 9, errp);
             if (!buf) {
                 return -EINVAL;
             }
@@ -636,7 +635,7 @@ static int vmdk_open_vmdk4(BlockDriverState *bs,
             } QEMU_PACKED eos_marker;
         } QEMU_PACKED footer;
 
-        ret = bdrv_pread(file->bs,
+        ret = bdrv_pread(file,
             bs->file->bs->total_sectors * 512 - 1536,
             &footer, sizeof(footer));
         if (ret < 0) {
@@ -874,7 +873,7 @@ static int vmdk_parse_extents(const char *desc, BlockDriverState *bs,
             extent->flat_start_offset = flat_offset << 9;
         } else if (!strcmp(type, "SPARSE") || !strcmp(type, "VMFSSPARSE")) {
             /* SPARSE extent and VMFSSPARSE extent are both "COWD" sparse file*/
-            char *buf = vmdk_read_desc(extent_file->bs, 0, errp);
+            char *buf = vmdk_read_desc(extent_file, 0, errp);
             if (!buf) {
                 ret = -EINVAL;
             } else {
@@ -943,7 +942,7 @@ static int vmdk_open(BlockDriverState *bs, QDict *options, int flags,
     BDRVVmdkState *s = bs->opaque;
     uint32_t magic;
 
-    buf = vmdk_read_desc(bs->file->bs, 0, errp);
+    buf = vmdk_read_desc(bs->file, 0, errp);
     if (!buf) {
         return -EINVAL;
     }
@@ -1046,14 +1045,14 @@ static int get_whole_cluster(BlockDriverState *bs,
     /* Read backing data before skip range */
     if (skip_start_bytes > 0) {
         if (bs->backing) {
-            ret = bdrv_pread(bs->backing->bs, offset, whole_grain,
+            ret = bdrv_pread(bs->backing, offset, whole_grain,
                              skip_start_bytes);
             if (ret < 0) {
                 ret = VMDK_ERROR;
                 goto exit;
             }
         }
-        ret = bdrv_pwrite(extent->file->bs, cluster_offset, whole_grain,
+        ret = bdrv_pwrite(extent->file, cluster_offset, whole_grain,
                           skip_start_bytes);
         if (ret < 0) {
             ret = VMDK_ERROR;
@@ -1063,7 +1062,7 @@ static int get_whole_cluster(BlockDriverState *bs,
     /* Read backing data after skip range */
     if (skip_end_bytes < cluster_bytes) {
         if (bs->backing) {
-            ret = bdrv_pread(bs->backing->bs, offset + skip_end_bytes,
+            ret = bdrv_pread(bs->backing, offset + skip_end_bytes,
                              whole_grain + skip_end_bytes,
                              cluster_bytes - skip_end_bytes);
             if (ret < 0) {
@@ -1071,7 +1070,7 @@ static int get_whole_cluster(BlockDriverState *bs,
                 goto exit;
             }
         }
-        ret = bdrv_pwrite(extent->file->bs, cluster_offset + skip_end_bytes,
+        ret = bdrv_pwrite(extent->file, cluster_offset + skip_end_bytes,
                           whole_grain + skip_end_bytes,
                           cluster_bytes - skip_end_bytes);
         if (ret < 0) {
@@ -1091,8 +1090,7 @@ static int vmdk_L2update(VmdkExtent *extent, VmdkMetaData *m_data,
 {
     offset = cpu_to_le32(offset);
     /* update L2 table */
-    if (bdrv_pwrite_sync(
-                extent->file->bs,
+    if (bdrv_pwrite_sync(extent->file,
                 ((int64_t)m_data->l2_offset * 512)
                     + (m_data->l2_index * sizeof(offset)),
                 &offset, sizeof(offset)) < 0) {
@@ -1101,8 +1099,7 @@ static int vmdk_L2update(VmdkExtent *extent, VmdkMetaData *m_data,
     /* update backup L2 table */
     if (extent->l1_backup_table_offset != 0) {
         m_data->l2_offset = extent->l1_backup_table[m_data->l1_index];
-        if (bdrv_pwrite_sync(
-                    extent->file->bs,
+        if (bdrv_pwrite_sync(extent->file,
                     ((int64_t)m_data->l2_offset * 512)
                         + (m_data->l2_index * sizeof(offset)),
                     &offset, sizeof(offset)) < 0) {
@@ -1191,8 +1188,7 @@ static int get_cluster_offset(BlockDriverState *bs,
         }
     }
     l2_table = extent->l2_cache + (min_index * extent->l2_size);
-    if (bdrv_pread(
-                extent->file->bs,
+    if (bdrv_pread(extent->file,
                 (int64_t)l2_offset * 512,
                 l2_table,
                 extent->l2_size * sizeof(uint32_t)
@@ -1206,13 +1202,6 @@ static int get_cluster_offset(BlockDriverState *bs,
     l2_index = ((offset >> 9) / extent->cluster_sectors) % extent->l2_size;
     cluster_sector = le32_to_cpu(l2_table[l2_index]);
 
-    if (m_data) {
-        m_data->valid = 1;
-        m_data->l1_index = l1_index;
-        m_data->l2_index = l2_index;
-        m_data->l2_offset = l2_offset;
-        m_data->l2_cache_entry = &l2_table[l2_index];
-    }
     if (extent->has_zero_grain && cluster_sector == VMDK_GTE_ZEROED) {
         zeroed = true;
     }
@@ -1234,6 +1223,13 @@ static int get_cluster_offset(BlockDriverState *bs,
                                 offset, skip_start_bytes, skip_end_bytes);
         if (ret) {
             return ret;
+        }
+        if (m_data) {
+            m_data->valid = 1;
+            m_data->l1_index = l1_index;
+            m_data->l2_index = l2_index;
+            m_data->l2_offset = l2_offset;
+            m_data->l2_cache_entry = &l2_table[l2_index];
         }
     }
     *cluster_offset = cluster_sector << BDRV_SECTOR_BITS;
@@ -1260,15 +1256,13 @@ static VmdkExtent *find_extent(BDRVVmdkState *s,
 static inline uint64_t vmdk_find_offset_in_cluster(VmdkExtent *extent,
                                                    int64_t offset)
 {
-    uint64_t offset_in_cluster, extent_begin_offset, extent_relative_offset;
+    uint64_t extent_begin_offset, extent_relative_offset;
     uint64_t cluster_size = extent->cluster_sectors * BDRV_SECTOR_SIZE;
 
     extent_begin_offset =
         (extent->end_sector - extent->sectors) * BDRV_SECTOR_SIZE;
     extent_relative_offset = offset - extent_begin_offset;
-    offset_in_cluster = extent_relative_offset % cluster_size;
-
-    return offset_in_cluster;
+    return extent_relative_offset % cluster_size;
 }
 
 static inline uint64_t vmdk_find_index_in_cluster(VmdkExtent *extent,
@@ -1375,7 +1369,7 @@ static int vmdk_write_extent(VmdkExtent *extent, int64_t cluster_offset,
     }
 
     write_offset = cluster_offset + offset_in_cluster,
-    ret = bdrv_co_pwritev(extent->file->bs, write_offset, n_bytes,
+    ret = bdrv_co_pwritev(extent->file, write_offset, n_bytes,
                           &local_qiov, 0);
 
     write_end_sector = DIV_ROUND_UP(write_offset + n_bytes, BDRV_SECTOR_SIZE);
@@ -1413,7 +1407,7 @@ static int vmdk_read_extent(VmdkExtent *extent, int64_t cluster_offset,
 
 
     if (!extent->compressed) {
-        ret = bdrv_co_preadv(extent->file->bs,
+        ret = bdrv_co_preadv(extent->file,
                              cluster_offset + offset_in_cluster, bytes,
                              qiov, 0);
         if (ret < 0) {
@@ -1426,7 +1420,7 @@ static int vmdk_read_extent(VmdkExtent *extent, int64_t cluster_offset,
     buf_bytes = cluster_bytes * 2;
     cluster_buf = g_malloc(buf_bytes);
     uncomp_buf = g_malloc(cluster_bytes);
-    ret = bdrv_pread(extent->file->bs,
+    ret = bdrv_pread(extent->file,
                 cluster_offset,
                 cluster_buf, buf_bytes);
     if (ret < 0) {
@@ -1503,7 +1497,7 @@ vmdk_co_preadv(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
                 qemu_iovec_reset(&local_qiov);
                 qemu_iovec_concat(&local_qiov, qiov, bytes_done, n_bytes);
 
-                ret = bdrv_co_preadv(bs->backing->bs, offset, n_bytes,
+                ret = bdrv_co_preadv(bs->backing, offset, n_bytes,
                                      &local_qiov, 0);
                 if (ret < 0) {
                     goto fail;
@@ -1651,56 +1645,11 @@ vmdk_co_pwritev(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
     return ret;
 }
 
-typedef struct VmdkWriteCompressedCo {
-    BlockDriverState *bs;
-    int64_t sector_num;
-    const uint8_t *buf;
-    int nb_sectors;
-    int ret;
-} VmdkWriteCompressedCo;
-
-static void vmdk_co_write_compressed(void *opaque)
+static int coroutine_fn
+vmdk_co_pwritev_compressed(BlockDriverState *bs, uint64_t offset,
+                           uint64_t bytes, QEMUIOVector *qiov)
 {
-    VmdkWriteCompressedCo *co = opaque;
-    QEMUIOVector local_qiov;
-    uint64_t offset = co->sector_num * BDRV_SECTOR_SIZE;
-    uint64_t bytes = co->nb_sectors * BDRV_SECTOR_SIZE;
-
-    struct iovec iov = (struct iovec) {
-        .iov_base   = (uint8_t*) co->buf,
-        .iov_len    = bytes,
-    };
-    qemu_iovec_init_external(&local_qiov, &iov, 1);
-
-    co->ret = vmdk_pwritev(co->bs, offset, bytes, &local_qiov, false, false);
-}
-
-static int vmdk_write_compressed(BlockDriverState *bs,
-                                 int64_t sector_num,
-                                 const uint8_t *buf,
-                                 int nb_sectors)
-{
-    BDRVVmdkState *s = bs->opaque;
-
-    if (s->num_extents == 1 && s->extents[0].compressed) {
-        Coroutine *co;
-        AioContext *aio_context = bdrv_get_aio_context(bs);
-        VmdkWriteCompressedCo data = {
-            .bs         = bs,
-            .sector_num = sector_num,
-            .buf        = buf,
-            .nb_sectors = nb_sectors,
-            .ret        = -EINPROGRESS,
-        };
-        co = qemu_coroutine_create(vmdk_co_write_compressed);
-        qemu_coroutine_enter(co, &data);
-        while (data.ret == -EINPROGRESS) {
-            aio_poll(aio_context, true);
-        }
-        return data.ret;
-    } else {
-        return -ENOTSUP;
-    }
+    return vmdk_co_pwritev(bs, offset, bytes, qiov, 0);
 }
 
 static int coroutine_fn vmdk_co_pwrite_zeroes(BlockDriverState *bs,
@@ -2399,7 +2348,7 @@ static BlockDriver bdrv_vmdk = {
     .bdrv_reopen_prepare          = vmdk_reopen_prepare,
     .bdrv_co_preadv               = vmdk_co_preadv,
     .bdrv_co_pwritev              = vmdk_co_pwritev,
-    .bdrv_write_compressed        = vmdk_write_compressed,
+    .bdrv_co_pwritev_compressed   = vmdk_co_pwritev_compressed,
     .bdrv_co_pwrite_zeroes        = vmdk_co_pwrite_zeroes,
     .bdrv_close                   = vmdk_close,
     .bdrv_create                  = vmdk_create,

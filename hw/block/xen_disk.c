@@ -21,7 +21,6 @@
 
 #include "qemu/osdep.h"
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <sys/uio.h>
 
 #include "hw/hw.h"
@@ -575,9 +574,10 @@ static int ioreq_runio_qemu_aio(struct ioreq *ioreq)
     {
         struct blkif_request_discard *discard_req = (void *)&ioreq->req;
         ioreq->aio_inflight++;
-        blk_aio_discard(blkdev->blk,
-                        discard_req->sector_number, discard_req->nr_sectors,
-                        qemu_aio_complete, ioreq);
+        blk_aio_pdiscard(blkdev->blk,
+                         discard_req->sector_number << BDRV_SECTOR_BITS,
+                         discard_req->nr_sectors << BDRV_SECTOR_BITS,
+                         qemu_aio_complete, ioreq);
         break;
     }
     default:
@@ -679,6 +679,8 @@ static int blk_get_request(struct XenBlkDev *blkdev, struct ioreq *ioreq, RING_I
                              RING_GET_REQUEST(&blkdev->rings.x86_64_part, rc));
         break;
     }
+    /* Prevent the compiler from accessing the on-ring fields instead. */
+    barrier();
     return 0;
 }
 
@@ -974,14 +976,16 @@ static int blk_connect(struct XenDevice *xendev)
         blkdev->feature_persistent = !!pers;
     }
 
-    blkdev->protocol = BLKIF_PROTOCOL_NATIVE;
-    if (blkdev->xendev.protocol) {
-        if (strcmp(blkdev->xendev.protocol, XEN_IO_PROTO_ABI_X86_32) == 0) {
-            blkdev->protocol = BLKIF_PROTOCOL_X86_32;
-        }
-        if (strcmp(blkdev->xendev.protocol, XEN_IO_PROTO_ABI_X86_64) == 0) {
-            blkdev->protocol = BLKIF_PROTOCOL_X86_64;
-        }
+    if (!blkdev->xendev.protocol) {
+        blkdev->protocol = BLKIF_PROTOCOL_NATIVE;
+    } else if (strcmp(blkdev->xendev.protocol, XEN_IO_PROTO_ABI_NATIVE) == 0) {
+        blkdev->protocol = BLKIF_PROTOCOL_NATIVE;
+    } else if (strcmp(blkdev->xendev.protocol, XEN_IO_PROTO_ABI_X86_32) == 0) {
+        blkdev->protocol = BLKIF_PROTOCOL_X86_32;
+    } else if (strcmp(blkdev->xendev.protocol, XEN_IO_PROTO_ABI_X86_64) == 0) {
+        blkdev->protocol = BLKIF_PROTOCOL_X86_64;
+    } else {
+        blkdev->protocol = BLKIF_PROTOCOL_NATIVE;
     }
 
     blkdev->sring = xengnttab_map_grant_ref(blkdev->xendev.gnttabdev,

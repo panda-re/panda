@@ -37,8 +37,8 @@
  *      @(#)queue.h     8.5 (Berkeley) 8/20/94
  */
 
-#ifndef QEMU_SYS_QUEUE_H_
-#define QEMU_SYS_QUEUE_H_
+#ifndef QEMU_SYS_QUEUE_H
+#define QEMU_SYS_QUEUE_H
 
 /*
  * This file defines four types of data structures: singly-linked lists,
@@ -407,6 +407,7 @@ struct {                                                                \
         else                                                            \
                 (head)->tqh_last = (elm)->field.tqe_prev;               \
         *(elm)->field.tqe_prev = (elm)->field.tqe_next;                 \
+        (elm)->field.tqe_prev = NULL;                                   \
 } while (/*CONSTCOND*/0)
 
 #define QTAILQ_FOREACH(var, head, field)                                \
@@ -430,10 +431,11 @@ struct {                                                                \
 #define QTAILQ_EMPTY(head)               ((head)->tqh_first == NULL)
 #define QTAILQ_FIRST(head)               ((head)->tqh_first)
 #define QTAILQ_NEXT(elm, field)          ((elm)->field.tqe_next)
+#define QTAILQ_IN_USE(elm, field)        ((elm)->field.tqe_prev != NULL)
 
 #define QTAILQ_LAST(head, headname) \
         (*(((struct headname *)((head)->tqh_last))->tqh_last))
 #define QTAILQ_PREV(elm, headname, field) \
         (*(((struct headname *)((elm)->field.tqe_prev))->tqh_last))
 
-#endif  /* !QEMU_SYS_QUEUE_H_ */
+#endif /* QEMU_SYS_QUEUE_H */

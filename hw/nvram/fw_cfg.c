@@ -552,7 +552,7 @@ static bool is_version_1(void *opaque, int version_id)
     return version_id == 1;
 }
 
-static bool fw_cfg_dma_enabled(void *opaque)
+bool fw_cfg_dma_enabled(void *opaque)
 {
     FWCfgState *s = opaque;
 
@@ -744,7 +744,7 @@ static int get_fw_cfg_order(FWCfgState *s, const char *name)
     }
 
     /* Stick unknown stuff at the end. */
-    error_report("warning: Unknown firmware file in legacy mode: %s\n", name);
+    error_report("warning: Unknown firmware file in legacy mode: %s", name);
     return FW_CFG_ORDER_OVERRIDE_LAST;
 }
 
@@ -990,6 +990,7 @@ static void fw_cfg_class_init(ObjectClass *klass, void *data)
 static const TypeInfo fw_cfg_info = {
     .name          = TYPE_FW_CFG,
     .parent        = TYPE_SYS_BUS_DEVICE,
+    .abstract      = true,
     .instance_size = sizeof(FWCfgState),
     .class_init    = fw_cfg_class_init,
 };

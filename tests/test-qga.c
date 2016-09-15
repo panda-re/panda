@@ -398,6 +398,7 @@ static void test_qga_file_ops(gconstpointer fix)
     /* check content */
     path = g_build_filename(fixture->test_dir, "foo", NULL);
     f = fopen(path, "r");
+    g_free(path);
     g_assert_nonnull(f);
     count = fread(tmp, 1, sizeof(tmp), f);
     g_assert_cmpint(count, ==, sizeof(helloworld));
@@ -691,39 +692,27 @@ static void test_qga_blacklist(gconstpointer data)
 static void test_qga_config(gconstpointer data)
 {
     GError *error = NULL;
-    char *cwd, *cmd, *out, *err, *str, **strv, *conf, **argv = NULL;
+    char *cwd, *cmd, *out, *err, *str, **strv, **argv = NULL;
     char *env[2];
-    int status, tmp;
+    int status;
     gsize n;
     GKeyFile *kf;
-    const char *qga_config =
-        "[general]\n"
-        "daemon=false\n"
-        "method=virtio-serial\n"
-        "path=/path/to/org.qemu.guest_agent.0\n"
-        "pidfile=/var/foo/qemu-ga.pid\n"
-        "statedir=/var/state\n"
-        "verbose=true\n"
-        "blacklist=guest-ping;guest-get-time\n";
-
-    tmp = g_file_open_tmp(NULL, &conf, &error);
-    g_assert_no_error(error);
-    g_assert_cmpint(tmp, >=, 0);
-    g_assert_cmpstr(conf, !=, "");
-
-    g_file_set_contents(conf, qga_config, -1, &error);
-    g_assert_no_error(error);
 
     cwd = g_get_current_dir();
     cmd = g_strdup_printf("%s%cqemu-ga -D",
                           cwd, G_DIR_SEPARATOR);
+    g_free(cwd);
     g_shell_parse_argv(cmd, NULL, &argv, &error);
+    g_free(cmd);
     g_assert_no_error(error);
 
-    env[0] = g_strdup_printf("QGA_CONF=%s", conf);
+    env[0] = g_strdup_printf("QGA_CONF=tests%cdata%ctest-qga-config",
+                             G_DIR_SEPARATOR, G_DIR_SEPARATOR);
     env[1] = NULL;
     g_spawn_sync(NULL, argv, env, 0,
                  NULL, NULL, &out, &err, &status, &error);
+    g_strfreev(argv);
+
     g_assert_no_error(error);
     g_assert_cmpstr(err, ==, "");
     g_assert_cmpint(status, ==, 0);
@@ -775,11 +764,8 @@ static void test_qga_config(gconstpointer data)
 
     g_free(out);
     g_free(err);
-    g_free(conf);
     g_free(env[0]);
     g_key_file_free(kf);
-
-    close(tmp);
 }
 
 static void test_qga_fsfreeze_status(gconstpointer fix)

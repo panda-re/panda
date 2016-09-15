@@ -1,5 +1,5 @@
 #ifndef QEMU_HW_XEN_BACKEND_H
-#define QEMU_HW_XEN_BACKEND_H 1
+#define QEMU_HW_XEN_BACKEND_H
 
 #include "hw/xen/xen_common.h"
 #include "sysemu/sysemu.h"
@@ -87,6 +87,7 @@ void xen_be_check_state(struct XenDevice *xendev);
 
 /* xen backend driver bits */
 int xen_be_init(void);
+void xen_be_register_common(void);
 int xen_be_register(const char *type, struct XenDevOps *ops);
 int xen_be_set_state(struct XenDevice *xendev, enum xenbus_state state);
 int xen_be_bind_evtchn(struct XenDevice *xendev);

@@ -91,7 +91,7 @@ struct %(c_name)s {
     # potential issues with attempting to malloc space for zero-length
     # structs in C, and also incompatibility with C++ (where an empty
     # struct is size 1).
-    if not (base and base.members) and not members and not variants:
+    if (not base or base.is_empty()) and not members and not variants:
         ret += mcgen('''
     char qapi_dummy_for_empty_struct;
 ''')
@@ -150,17 +150,15 @@ def gen_type_cleanup(name):
 
 void qapi_free_%(c_name)s(%(c_name)s *obj)
 {
-    QapiDeallocVisitor *qdv;
     Visitor *v;
 
     if (!obj) {
         return;
     }
 
-    qdv = qapi_dealloc_visitor_new();
-    v = qapi_dealloc_get_visitor(qdv);
+    v = qapi_dealloc_visitor_new();
     visit_type_%(c_name)s(v, NULL, &obj, NULL);
-    qapi_dealloc_visitor_cleanup(qdv);
+    visit_free(v);
 }
 ''',
                 c_name=c_name(name))

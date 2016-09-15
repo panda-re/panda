@@ -53,7 +53,7 @@ static void acpi_dsdt_add_cpus(Aml *scope, int smp_cpus)
     uint16_t i;
 
     for (i = 0; i < smp_cpus; i++) {
-        Aml *dev = aml_device("C%03x", i);
+        Aml *dev = aml_device("C%.03X", i);
         aml_append(dev, aml_name_decl("_HID", aml_string("ACPI0007")));
         aml_append(dev, aml_name_decl("_UID", aml_int(i)));
         aml_append(scope, dev);
@@ -523,6 +523,7 @@ build_madt(GArray *table_data, BIOSLinker *linker, VirtGuestInfo *guest_info)
     gicd->type = ACPI_APIC_GENERIC_DISTRIBUTOR;
     gicd->length = sizeof(*gicd);
     gicd->base_address = memmap[VIRT_GIC_DIST].base;
+    gicd->version = guest_info->gic_version;
 
     for (i = 0; i < guest_info->smp_cpus; i++) {
         AcpiMadtGenericInterrupt *gicc = acpi_data_push(table_data,
@@ -538,6 +539,10 @@ build_madt(GArray *table_data, BIOSLinker *linker, VirtGuestInfo *guest_info)
         gicc->arm_mpidr = armcpu->mp_affinity;
         gicc->uid = i;
         gicc->flags = cpu_to_le32(ACPI_GICC_ENABLED);
+
+        if (armcpu->has_pmu) {
+            gicc->performance_interrupt = cpu_to_le32(PPI(VIRTUAL_PMU_IRQ));
+        }
     }
 
     if (guest_info->gic_version == 3) {

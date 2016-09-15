@@ -1,5 +1,5 @@
-#ifndef HW_ACPI_GEN_UTILS_H
-#define HW_ACPI_GEN_UTILS_H
+#ifndef HW_ACPI_AML_BUILD_H
+#define HW_ACPI_AML_BUILD_H
 
 #include "hw/acpi/acpi-defs.h"
 #include "hw/acpi/bios-linker-loader.h"
@@ -277,6 +277,8 @@ Aml *aml_call1(const char *method, Aml *arg1);
 Aml *aml_call2(const char *method, Aml *arg1, Aml *arg2);
 Aml *aml_call3(const char *method, Aml *arg1, Aml *arg2, Aml *arg3);
 Aml *aml_call4(const char *method, Aml *arg1, Aml *arg2, Aml *arg3, Aml *arg4);
+Aml *aml_call5(const char *method, Aml *arg1, Aml *arg2, Aml *arg3, Aml *arg4,
+               Aml *arg5);
 Aml *aml_gpio_int(AmlConsumerAndProducer con_and_pro,
                   AmlLevelAndEdge edge_level,
                   AmlActiveHighAndLow active_level, AmlShared shared,
@@ -363,6 +365,7 @@ Aml *aml_refof(Aml *arg);
 Aml *aml_derefof(Aml *arg);
 Aml *aml_sizeof(Aml *arg);
 Aml *aml_concatenate(Aml *source1, Aml *source2, Aml *target);
+Aml *aml_object_type(Aml *object);
 
 void
 build_header(BIOSLinker *linker, GArray *table_data,

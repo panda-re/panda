@@ -15,8 +15,9 @@
  */
 
 #include "qemu/osdep.h"
-#include "qapi/error.h"
+#include <linux/vhost.h>
 #include <sys/ioctl.h>
+#include "qapi/error.h"
 #include "qemu/error-report.h"
 #include "qemu/queue.h"
 #include "monitor/monitor.h"
@@ -27,7 +28,6 @@
 #include "hw/virtio/virtio-bus.h"
 #include "hw/virtio/virtio-access.h"
 #include "hw/fw-path-provider.h"
-#include "linux/vhost.h"
 #include "qemu/cutils.h"
 
 /* Features supported by host kernel. */
@@ -248,7 +248,7 @@ static void vhost_scsi_realize(DeviceState *dev, Error **errp)
     s->dev.backend_features = 0;
 
     ret = vhost_dev_init(&s->dev, (void *)(uintptr_t)vhostfd,
-                         VHOST_BACKEND_TYPE_KERNEL);
+                         VHOST_BACKEND_TYPE_KERNEL, 0);
     if (ret < 0) {
         error_setg(errp, "vhost-scsi: vhost initialization failed: %s",
                    strerror(-ret));

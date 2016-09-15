@@ -27,9 +27,10 @@
 #include "hw/compat.h"
 #include "ipl.h"
 #include "hw/s390x/s390-virtio-ccw.h"
+#include "hw/s390x/css-bridge.h"
 
 static const char *const reset_dev_types[] = {
-    "virtual-css-bridge",
+    TYPE_VIRTUAL_CSS_BRIDGE,
     "s390-sclp-event-facility",
     "s390-flic",
     "diag288",
@@ -180,10 +181,8 @@ static HotplugHandler *s390_get_hotplug_handler(MachineState *machine,
 static void s390_hot_add_cpu(const int64_t id, Error **errp)
 {
     MachineState *machine = MACHINE(qdev_get_machine());
-    Error *err = NULL;
 
-    s390x_new_cpu(machine->cpu_model, id, &err);
-    error_propagate(errp, err);
+    s390x_new_cpu(machine->cpu_model, id, errp);
 }
 
 static void ccw_machine_class_init(ObjectClass *oc, void *data)
@@ -204,7 +203,7 @@ static void ccw_machine_class_init(ObjectClass *oc, void *data)
     mc->no_parallel = 1;
     mc->no_sdcard = 1;
     mc->use_sclp = 1;
-    mc->max_cpus = 255;
+    mc->max_cpus = 248;
     mc->get_hotplug_handler = s390_get_hotplug_handler;
     hc->plug = s390_machine_device_plug;
     nc->nmi_monitor_handler = s390_nmi;
@@ -250,6 +249,11 @@ bool ri_allowed(void)
 
             return s390mc->ri_allowed;
         }
+        /*
+         * Make sure the "none" machine can have ri, otherwise it won't * be
+         * unlocked in KVM and therefore the host CPU model might be wrong.
+         */
+        return true;
     }
     return 0;
 }
@@ -317,11 +321,19 @@ static const TypeInfo ccw_machine_info = {
     }                                                                         \
     type_init(ccw_machine_register_##suffix)
 
+#define CCW_COMPAT_2_7 \
+        HW_COMPAT_2_7
+
 #define CCW_COMPAT_2_6 \
+        CCW_COMPAT_2_7 \
         HW_COMPAT_2_6 \
         {\
             .driver   = TYPE_S390_IPL,\
             .property = "iplbext_migration",\
+            .value    = "off",\
+        }, {\
+            .driver   = TYPE_VIRTUAL_CSS_BRIDGE,\
+            .property = "css_dev_path",\
             .value    = "off",\
         },
 
@@ -369,14 +381,26 @@ static const TypeInfo ccw_machine_info = {
             .value    = "0",\
         },
 
+static void ccw_machine_2_8_instance_options(MachineState *machine)
+{
+}
+
+static void ccw_machine_2_8_class_options(MachineClass *mc)
+{
+}
+DEFINE_CCW_MACHINE(2_8, "2.8", true);
+
 static void ccw_machine_2_7_instance_options(MachineState *machine)
 {
+    ccw_machine_2_8_instance_options(machine);
 }
 
 static void ccw_machine_2_7_class_options(MachineClass *mc)
 {
+    ccw_machine_2_8_class_options(mc);
+    SET_MACHINE_COMPAT(mc, CCW_COMPAT_2_7);
 }
-DEFINE_CCW_MACHINE(2_7, "2.7", true);
+DEFINE_CCW_MACHINE(2_7, "2.7", false);
 
 static void ccw_machine_2_6_instance_options(MachineState *machine)
 {

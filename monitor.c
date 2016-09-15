@@ -54,15 +54,11 @@
 #include "qemu/acl.h"
 #include "sysemu/tpm.h"
 #include "qapi/qmp/qerror.h"
-#include "qapi/qmp/qint.h"
-#include "qapi/qmp/qfloat.h"
-#include "qapi/qmp/qlist.h"
-#include "qapi/qmp/qbool.h"
-#include "qapi/qmp/qstring.h"
+#include "qapi/qmp/types.h"
 #include "qapi/qmp/qjson.h"
 #include "qapi/qmp/json-streamer.h"
 #include "qapi/qmp/json-parser.h"
-#include <qom/object_interfaces.h>
+#include "qom/object_interfaces.h"
 #include "cpu.h"
 #include "trace.h"
 #include "trace/control.h"
@@ -639,6 +635,13 @@ static void monitor_data_init(Monitor *mon)
 
 static void monitor_data_destroy(Monitor *mon)
 {
+    if (mon->chr) {
+        qemu_chr_add_handlers(mon->chr, NULL, NULL, NULL, NULL);
+    }
+    if (monitor_is_qmp(mon)) {
+        json_message_parser_destroy(&mon->qmp.parser);
+    }
+    g_free(mon->rs);
     QDECREF(mon->outbuf);
     qemu_mutex_destroy(&mon->out_lock);
 }
@@ -908,9 +911,16 @@ static void hmp_trace_event(Monitor *mon, const QDict *qdict)
 {
     const char *tp_name = qdict_get_str(qdict, "name");
     bool new_state = qdict_get_bool(qdict, "option");
+    bool has_vcpu = qdict_haskey(qdict, "vcpu");
+    int vcpu = qdict_get_try_int(qdict, "vcpu", 0);
     Error *local_err = NULL;
 
-    qmp_trace_event_set_state(tp_name, new_state, true, true, &local_err);
+    if (vcpu < 0) {
+        monitor_printf(mon, "argument vcpu must be positive");
+        return;
+    }
+
+    qmp_trace_event_set_state(tp_name, new_state, true, true, has_vcpu, vcpu, &local_err);
     if (local_err) {
         error_report_err(local_err);
     }
@@ -1069,8 +1079,26 @@ static void hmp_info_cpustats(Monitor *mon, const QDict *qdict)
 
 static void hmp_info_trace_events(Monitor *mon, const QDict *qdict)
 {
-    TraceEventInfoList *events = qmp_trace_event_get_state("*", NULL);
+    const char *name = qdict_get_try_str(qdict, "name");
+    bool has_vcpu = qdict_haskey(qdict, "vcpu");
+    int vcpu = qdict_get_try_int(qdict, "vcpu", 0);
+    TraceEventInfoList *events;
     TraceEventInfoList *elem;
+    Error *local_err = NULL;
+
+    if (name == NULL) {
+        name = "*";
+    }
+    if (vcpu < 0) {
+        monitor_printf(mon, "argument vcpu must be positive");
+        return;
+    }
+
+    events = qmp_trace_event_get_state(name, has_vcpu, vcpu, &local_err);
+    if (local_err) {
+        error_report_err(local_err);
+        return;
+    }
 
     for (elem = events; elem != NULL; elem = elem->next) {
         monitor_printf(mon, "%s : state %u\n",
@@ -1111,7 +1139,12 @@ void qmp_client_migrate_info(const char *protocol, const char *hostname,
 
 static void hmp_logfile(Monitor *mon, const QDict *qdict)
 {
-    qemu_set_log_filename(qdict_get_str(qdict, "filename"));
+    Error *err = NULL;
+
+    qemu_set_log_filename(qdict_get_str(qdict, "filename"), &err);
+    if (err) {
+        error_report_err(err);
+    }
 }
 
 static void hmp_log(Monitor *mon, const QDict *qdict)
@@ -3054,8 +3087,8 @@ void netdev_add_completion(ReadLineState *rs, int nb_args, const char *str)
     }
     len = strlen(str);
     readline_set_completion_index(rs, len);
-    for (i = 0; NetClientOptionsKind_lookup[i]; i++) {
-        add_completion_option(rs, str, NetClientOptionsKind_lookup[i]);
+    for (i = 0; NetClientDriver_lookup[i]; i++) {
+        add_completion_option(rs, str, NetClientDriver_lookup[i]);
     }
 }
 
@@ -3255,7 +3288,7 @@ void set_link_completion(ReadLineState *rs, int nb_args, const char *str)
         NetClientState *ncs[MAX_QUEUE_NUM];
         int count, i;
         count = qemu_find_net_clients_except(NULL, ncs,
-                                             NET_CLIENT_OPTIONS_KIND_NONE,
+                                             NET_CLIENT_DRIVER_NONE,
                                              MAX_QUEUE_NUM);
         for (i = 0; i < MIN(count, MAX_QUEUE_NUM); i++) {
             const char *name = ncs[i]->name;
@@ -3280,7 +3313,7 @@ void netdev_del_completion(ReadLineState *rs, int nb_args, const char *str)
 
     len = strlen(str);
     readline_set_completion_index(rs, len);
-    count = qemu_find_net_clients_except(NULL, ncs, NET_CLIENT_OPTIONS_KIND_NIC,
+    count = qemu_find_net_clients_except(NULL, ncs, NET_CLIENT_DRIVER_NIC,
                                          MAX_QUEUE_NUM);
     for (i = 0; i < MIN(count, MAX_QUEUE_NUM); i++) {
         QemuOpts *opts;
@@ -3291,6 +3324,23 @@ void netdev_del_completion(ReadLineState *rs, int nb_args, const char *str)
         opts = qemu_opts_find(qemu_find_opts_err("netdev", NULL), name);
         if (opts) {
             readline_add_completion(rs, name);
+        }
+    }
+}
+
+void info_trace_events_completion(ReadLineState *rs, int nb_args, const char *str)
+{
+    size_t len;
+
+    len = strlen(str);
+    readline_set_completion_index(rs, len);
+    if (nb_args == 2) {
+        TraceEventID id;
+        for (id = 0; id < trace_event_count(); id++) {
+            const char *event_name = trace_event_get_name(trace_event_id(id));
+            if (!strncmp(str, event_name, len)) {
+                readline_add_completion(rs, event_name);
+            }
         }
     }
 }
@@ -3392,7 +3442,7 @@ void host_net_remove_completion(ReadLineState *rs, int nb_args, const char *str)
     readline_set_completion_index(rs, len);
     if (nb_args == 2) {
         count = qemu_find_net_clients_except(NULL, ncs,
-                                             NET_CLIENT_OPTIONS_KIND_NONE,
+                                             NET_CLIENT_DRIVER_NONE,
                                              MAX_QUEUE_NUM);
         for (i = 0; i < MIN(count, MAX_QUEUE_NUM); i++) {
             int id;
@@ -3409,13 +3459,13 @@ void host_net_remove_completion(ReadLineState *rs, int nb_args, const char *str)
         return;
     } else if (nb_args == 3) {
         count = qemu_find_net_clients_except(NULL, ncs,
-                                             NET_CLIENT_OPTIONS_KIND_NIC,
+                                             NET_CLIENT_DRIVER_NIC,
                                              MAX_QUEUE_NUM);
         for (i = 0; i < MIN(count, MAX_QUEUE_NUM); i++) {
             int id;
             const char *name;
 
-            if (ncs[i]->info->type == NET_CLIENT_OPTIONS_KIND_HUBPORT ||
+            if (ncs[i]->info->type == NET_CLIENT_DRIVER_HUBPORT ||
                 net_hub_id_for_client(ncs[i], &id)) {
                 continue;
             }
@@ -4092,15 +4142,6 @@ static void sortcmdlist(void)
     qsort((void *)info_cmds, array_num, elem_size, compare_mon_cmd);
 }
 
-
-/*
- * Local variables:
- *  c-indent-level: 4
- *  c-basic-offset: 4
- *  tab-width: 8
- * End:
- */
-
 /* These functions just adapt the readline interface in a typesafe way.  We
  * could cast function pointers but that discards compiler checks.
  */
@@ -4159,6 +4200,19 @@ void monitor_init(CharDriverState *chr, int flags)
 
     qemu_mutex_lock(&monitor_lock);
     QLIST_INSERT_HEAD(&mon_list, mon, entry);
+    qemu_mutex_unlock(&monitor_lock);
+}
+
+void monitor_cleanup(void)
+{
+    Monitor *mon, *next;
+
+    qemu_mutex_lock(&monitor_lock);
+    QLIST_FOREACH_SAFE(mon, &mon_list, entry, next) {
+        QLIST_REMOVE(mon, entry);
+        monitor_data_destroy(mon);
+        g_free(mon);
+    }
     qemu_mutex_unlock(&monitor_lock);
 }
 
@@ -4273,3 +4327,16 @@ GICCapabilityList *qmp_query_gic_capabilities(Error **errp)
     return NULL;
 }
 #endif
+
+HotpluggableCPUList *qmp_query_hotpluggable_cpus(Error **errp)
+{
+    MachineState *ms = MACHINE(qdev_get_machine());
+    MachineClass *mc = MACHINE_GET_CLASS(ms);
+
+    if (!mc->query_hotpluggable_cpus) {
+        error_setg(errp, QERR_FEATURE_DISABLED, "query-hotpluggable-cpus");
+        return NULL;
+    }
+
+    return mc->query_hotpluggable_cpus(ms);
+}

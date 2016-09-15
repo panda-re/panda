@@ -1013,8 +1013,8 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
         uint32_t rx_space = rxdw0 & CP_RX_BUFFER_SIZE_MASK;
 
         /* write VLAN info to descriptor variables. */
-        if (s->CpCmd & CPlusRxVLAN && be16_to_cpup((uint16_t *)
-                &buf[ETH_ALEN * 2]) == ETH_P_VLAN) {
+        if (s->CpCmd & CPlusRxVLAN &&
+            lduw_be_p(&buf[ETH_ALEN * 2]) == ETH_P_VLAN) {
             dot1q_buf = &buf[ETH_ALEN * 2];
             size -= VLAN_HLEN;
             /* if too small buffer, use the tailroom added duing expansion */
@@ -1024,11 +1024,10 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
 
             rxdw1 &= ~CP_RX_VLAN_TAG_MASK;
             /* BE + ~le_to_cpu()~ + cpu_to_le() = BE */
-            rxdw1 |= CP_RX_TAVA | le16_to_cpup((uint16_t *)
-                &dot1q_buf[ETHER_TYPE_LEN]);
+            rxdw1 |= CP_RX_TAVA | lduw_le_p(&dot1q_buf[ETHER_TYPE_LEN]);
 
             DPRINTF("C+ Rx mode : extracted vlan tag with tci: ""%u\n",
-                be16_to_cpup((uint16_t *)&dot1q_buf[ETHER_TYPE_LEN]));
+                lduw_be_p(&dot1q_buf[ETHER_TYPE_LEN]));
         } else {
             /* reset VLAN tag flag */
             rxdw1 &= ~CP_RX_TAVA;
@@ -1351,29 +1350,6 @@ static void RTL8139TallyCounters_dma_write(RTL8139State *s, dma_addr_t tc_addr)
     val16 = cpu_to_le16(tally_counters->TxUndrn);
     pci_dma_write(d, tc_addr + 62,    (uint8_t *)&val16, 2);
 }
-
-/* Loads values of tally counters from VM state file */
-
-static const VMStateDescription vmstate_tally_counters = {
-    .name = "tally_counters",
-    .version_id = 1,
-    .minimum_version_id = 1,
-    .fields = (VMStateField[]) {
-        VMSTATE_UINT64(TxOk, RTL8139TallyCounters),
-        VMSTATE_UINT64(RxOk, RTL8139TallyCounters),
-        VMSTATE_UINT64(TxERR, RTL8139TallyCounters),
-        VMSTATE_UINT32(RxERR, RTL8139TallyCounters),
-        VMSTATE_UINT16(MissPkt, RTL8139TallyCounters),
-        VMSTATE_UINT16(FAE, RTL8139TallyCounters),
-        VMSTATE_UINT32(Tx1Col, RTL8139TallyCounters),
-        VMSTATE_UINT32(TxMCol, RTL8139TallyCounters),
-        VMSTATE_UINT64(RxOkPhy, RTL8139TallyCounters),
-        VMSTATE_UINT64(RxOkBrd, RTL8139TallyCounters),
-        VMSTATE_UINT16(TxAbt, RTL8139TallyCounters),
-        VMSTATE_UINT16(TxUndrn, RTL8139TallyCounters),
-        VMSTATE_END_OF_LIST()
-    }
-};
 
 static void rtl8139_ChipCmd_write(RTL8139State *s, uint32_t val)
 {
@@ -3222,7 +3198,7 @@ static void rtl8139_pre_save(void *opaque)
 
 static const VMStateDescription vmstate_rtl8139 = {
     .name = "rtl8139",
-    .version_id = 4,
+    .version_id = 5,
     .minimum_version_id = 3,
     .post_load = rtl8139_post_load,
     .pre_save  = rtl8139_pre_save,
@@ -3293,8 +3269,19 @@ static const VMStateDescription vmstate_rtl8139 = {
         VMSTATE_UINT32(TimerInt, RTL8139State),
         VMSTATE_INT64(TCTR_base, RTL8139State),
 
-        VMSTATE_STRUCT(tally_counters, RTL8139State, 0,
-                       vmstate_tally_counters, RTL8139TallyCounters),
+        VMSTATE_UINT64(tally_counters.TxOk, RTL8139State),
+        VMSTATE_UINT64(tally_counters.RxOk, RTL8139State),
+        VMSTATE_UINT64(tally_counters.TxERR, RTL8139State),
+        VMSTATE_UINT32(tally_counters.RxERR, RTL8139State),
+        VMSTATE_UINT16(tally_counters.MissPkt, RTL8139State),
+        VMSTATE_UINT16(tally_counters.FAE, RTL8139State),
+        VMSTATE_UINT32(tally_counters.Tx1Col, RTL8139State),
+        VMSTATE_UINT32(tally_counters.TxMCol, RTL8139State),
+        VMSTATE_UINT64(tally_counters.RxOkPhy, RTL8139State),
+        VMSTATE_UINT64(tally_counters.RxOkBrd, RTL8139State),
+        VMSTATE_UINT32_V(tally_counters.RxOkMul, RTL8139State, 5),
+        VMSTATE_UINT16(tally_counters.TxAbt, RTL8139State),
+        VMSTATE_UINT16(tally_counters.TxUndrn, RTL8139State),
 
         VMSTATE_UINT32_V(cplus_enabled, RTL8139State, 4),
         VMSTATE_END_OF_LIST()
@@ -3406,7 +3393,7 @@ static void rtl8139_set_link_status(NetClientState *nc)
 }
 
 static NetClientInfo net_rtl8139_info = {
-    .type = NET_CLIENT_OPTIONS_KIND_NIC,
+    .type = NET_CLIENT_DRIVER_NIC,
     .size = sizeof(NICState),
     .can_receive = rtl8139_can_receive,
     .receive = rtl8139_receive,

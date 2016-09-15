@@ -13,7 +13,7 @@
  */
 
 #include "qemu/osdep.h"
-#include <hw/qdev.h>
+#include "hw/qdev.h"
 #include "qemu/thread.h"
 #include "qemu/error-report.h"
 
@@ -168,6 +168,8 @@ static ssize_t write_console_data(SCLPEvent *event, const uint8_t *buf,
         return len;
     }
 
+    /* XXX this blocks entire thread. Rewrite to use
+     * qemu_chr_fe_write and background I/O callbacks */
     return qemu_chr_fe_write_all(scon->chr, buf, len);
 }
 

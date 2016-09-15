@@ -22,21 +22,22 @@
 typedef struct QStackEntry
 {
     QObject *value;
-    QTAILQ_ENTRY(QStackEntry) node;
+    void *qapi; /* sanity check that caller uses same pointer */
+    QSLIST_ENTRY(QStackEntry) node;
 } QStackEntry;
-
-typedef QTAILQ_HEAD(QStack, QStackEntry) QStack;
 
 struct QmpOutputVisitor
 {
     Visitor visitor;
-    QStack stack; /* Stack of containers that haven't yet been finished */
+    QSLIST_HEAD(, QStackEntry) stack; /* Stack of unfinished containers */
     QObject *root; /* Root of the output visit */
+    QObject **result; /* User's storage location for result */
 };
 
 #define qmp_output_add(qov, name, value) \
     qmp_output_add_obj(qov, name, QOBJECT(value))
-#define qmp_output_push(qov, value) qmp_output_push_obj(qov, QOBJECT(value))
+#define qmp_output_push(qov, value, qapi) \
+    qmp_output_push_obj(qov, QOBJECT(value), qapi)
 
 static QmpOutputVisitor *to_qov(Visitor *v)
 {
@@ -44,24 +45,27 @@ static QmpOutputVisitor *to_qov(Visitor *v)
 }
 
 /* Push @value onto the stack of current QObjects being built */
-static void qmp_output_push_obj(QmpOutputVisitor *qov, QObject *value)
+static void qmp_output_push_obj(QmpOutputVisitor *qov, QObject *value,
+                                void *qapi)
 {
     QStackEntry *e = g_malloc0(sizeof(*e));
 
     assert(qov->root);
     assert(value);
     e->value = value;
-    QTAILQ_INSERT_HEAD(&qov->stack, e, node);
+    e->qapi = qapi;
+    QSLIST_INSERT_HEAD(&qov->stack, e, node);
 }
 
 /* Pop a value off the stack of QObjects being built, and return it. */
-static QObject *qmp_output_pop(QmpOutputVisitor *qov)
+static QObject *qmp_output_pop(QmpOutputVisitor *qov, void *qapi)
 {
-    QStackEntry *e = QTAILQ_FIRST(&qov->stack);
+    QStackEntry *e = QSLIST_FIRST(&qov->stack);
     QObject *value;
 
     assert(e);
-    QTAILQ_REMOVE(&qov->stack, e, node);
+    assert(e->qapi == qapi);
+    QSLIST_REMOVE_HEAD(&qov->stack, node);
     value = e->value;
     assert(value);
     g_free(e);
@@ -74,7 +78,7 @@ static QObject *qmp_output_pop(QmpOutputVisitor *qov)
 static void qmp_output_add_obj(QmpOutputVisitor *qov, const char *name,
                                QObject *value)
 {
-    QStackEntry *e = QTAILQ_FIRST(&qov->stack);
+    QStackEntry *e = QSLIST_FIRST(&qov->stack);
     QObject *cur = e ? e->value : NULL;
 
     if (!cur) {
@@ -104,13 +108,13 @@ static void qmp_output_start_struct(Visitor *v, const char *name, void **obj,
     QDict *dict = qdict_new();
 
     qmp_output_add(qov, name, dict);
-    qmp_output_push(qov, dict);
+    qmp_output_push(qov, dict, obj);
 }
 
-static void qmp_output_end_struct(Visitor *v)
+static void qmp_output_end_struct(Visitor *v, void **obj)
 {
     QmpOutputVisitor *qov = to_qov(v);
-    QObject *value = qmp_output_pop(qov);
+    QObject *value = qmp_output_pop(qov, obj);
     assert(qobject_type(value) == QTYPE_QDICT);
 }
 
@@ -122,7 +126,7 @@ static void qmp_output_start_list(Visitor *v, const char *name,
     QList *list = qlist_new();
 
     qmp_output_add(qov, name, list);
-    qmp_output_push(qov, list);
+    qmp_output_push(qov, list, listp);
 }
 
 static GenericList *qmp_output_next_list(Visitor *v, GenericList *tail,
@@ -131,10 +135,10 @@ static GenericList *qmp_output_next_list(Visitor *v, GenericList *tail,
     return tail->next;
 }
 
-static void qmp_output_end_list(Visitor *v)
+static void qmp_output_end_list(Visitor *v, void **obj)
 {
     QmpOutputVisitor *qov = to_qov(v);
-    QObject *value = qmp_output_pop(qov);
+    QObject *value = qmp_output_pop(qov, obj);
     assert(qobject_type(value) == QTYPE_QLIST);
 }
 
@@ -195,34 +199,35 @@ static void qmp_output_type_null(Visitor *v, const char *name, Error **errp)
 /* Finish building, and return the root object.
  * The root object is never null. The caller becomes the object's
  * owner, and should use qobject_decref() when done with it.  */
-QObject *qmp_output_get_qobject(QmpOutputVisitor *qov)
+static void qmp_output_complete(Visitor *v, void *opaque)
 {
+    QmpOutputVisitor *qov = to_qov(v);
+
     /* A visit must have occurred, with each start paired with end.  */
-    assert(qov->root && QTAILQ_EMPTY(&qov->stack));
+    assert(qov->root && QSLIST_EMPTY(&qov->stack));
+    assert(opaque == qov->result);
 
     qobject_incref(qov->root);
-    return qov->root;
+    *qov->result = qov->root;
+    qov->result = NULL;
 }
 
-Visitor *qmp_output_get_visitor(QmpOutputVisitor *v)
+static void qmp_output_free(Visitor *v)
 {
-    return &v->visitor;
-}
+    QmpOutputVisitor *qov = to_qov(v);
+    QStackEntry *e;
 
-void qmp_output_visitor_cleanup(QmpOutputVisitor *v)
-{
-    QStackEntry *e, *tmp;
-
-    QTAILQ_FOREACH_SAFE(e, &v->stack, node, tmp) {
-        QTAILQ_REMOVE(&v->stack, e, node);
+    while (!QSLIST_EMPTY(&qov->stack)) {
+        e = QSLIST_FIRST(&qov->stack);
+        QSLIST_REMOVE_HEAD(&qov->stack, node);
         g_free(e);
     }
 
-    qobject_decref(v->root);
-    g_free(v);
+    qobject_decref(qov->root);
+    g_free(qov);
 }
 
-QmpOutputVisitor *qmp_output_visitor_new(void)
+Visitor *qmp_output_visitor_new(QObject **result)
 {
     QmpOutputVisitor *v;
 
@@ -241,8 +246,11 @@ QmpOutputVisitor *qmp_output_visitor_new(void)
     v->visitor.type_number = qmp_output_type_number;
     v->visitor.type_any = qmp_output_type_any;
     v->visitor.type_null = qmp_output_type_null;
+    v->visitor.complete = qmp_output_complete;
+    v->visitor.free = qmp_output_free;
 
-    QTAILQ_INIT(&v->stack);
+    *result = NULL;
+    v->result = result;
 
-    return v;
+    return &v->visitor;
 }

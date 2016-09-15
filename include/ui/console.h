@@ -217,6 +217,7 @@ typedef struct DisplayChangeListenerOps {
 
     void (*dpy_gl_scanout)(DisplayChangeListener *dcl,
                            uint32_t backing_id, bool backing_y_0_top,
+                           uint32_t backing_width, uint32_t backing_height,
                            uint32_t x, uint32_t y, uint32_t w, uint32_t h);
     void (*dpy_gl_update)(DisplayChangeListener *dcl,
                           uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -285,6 +286,7 @@ bool dpy_gfx_check_format(QemuConsole *con,
 
 void dpy_gl_scanout(QemuConsole *con,
                     uint32_t backing_id, bool backing_y_0_top,
+                    uint32_t backing_width, uint32_t backing_height,
                     uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 void dpy_gl_update(QemuConsole *con,
                    uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -460,7 +462,6 @@ void vnc_display_add_client(const char *id, int csock, bool skipauth);
 #ifdef CONFIG_VNC
 int vnc_display_password(const char *id, const char *password);
 int vnc_display_pw_expire(const char *id, time_t expires);
-char *vnc_display_local_addr(const char *id);
 QemuOpts *vnc_parse(const char *str, Error **errp);
 int vnc_init_func(void *opaque, QemuOpts *opts, Error **errp);
 #else
@@ -481,12 +482,6 @@ static inline int vnc_init_func(void *opaque, QemuOpts *opts, Error **errp)
 {
     error_setg(errp, "VNC support is disabled");
     return -1;
-}
-static inline char *vnc_display_local_addr(const char *id)
-{
-    /* This must never be called if CONFIG_VNC is disabled */
-    error_report("VNC support is disabled");
-    abort();
 }
 #endif
 

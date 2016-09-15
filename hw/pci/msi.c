@@ -22,6 +22,7 @@
 #include "hw/pci/msi.h"
 #include "hw/xen/xen.h"
 #include "qemu/range.h"
+#include "qapi/error.h"
 
 /* PCI_MSI_ADDRESS_LO */
 #define PCI_MSI_ADDRESS_LO_MASK         (~0x3)
@@ -165,8 +166,25 @@ bool msi_enabled(const PCIDevice *dev)
          PCI_MSI_FLAGS_ENABLE);
 }
 
+/*
+ * Make PCI device @dev MSI-capable.
+ * Non-zero @offset puts capability MSI at that offset in PCI config
+ * space.
+ * @nr_vectors is the number of MSI vectors (1, 2, 4, 8, 16 or 32).
+ * If @msi64bit, make the device capable of sending a 64-bit message
+ * address.
+ * If @msi_per_vector_mask, make the device support per-vector masking.
+ * @errp is for returning errors.
+ * Return 0 on success; set @errp and return -errno on error.
+ *
+ * -ENOTSUP means lacking msi support for a msi-capable platform.
+ * -EINVAL means capability overlap, happens when @offset is non-zero,
+ *  also means a programming error, except device assignment, which can check
+ *  if a real HW is broken.
+ */
 int msi_init(struct PCIDevice *dev, uint8_t offset,
-             unsigned int nr_vectors, bool msi64bit, bool msi_per_vector_mask)
+             unsigned int nr_vectors, bool msi64bit,
+             bool msi_per_vector_mask, Error **errp)
 {
     unsigned int vectors_order;
     uint16_t flags;
@@ -174,6 +192,7 @@ int msi_init(struct PCIDevice *dev, uint8_t offset,
     int config_offset;
 
     if (!msi_nonbroken) {
+        error_setg(errp, "MSI is not supported by interrupt controller");
         return -ENOTSUP;
     }
 
@@ -197,7 +216,8 @@ int msi_init(struct PCIDevice *dev, uint8_t offset,
     }
 
     cap_size = msi_cap_sizeof(flags);
-    config_offset = pci_add_capability(dev, PCI_CAP_ID_MSI, offset, cap_size);
+    config_offset = pci_add_capability2(dev, PCI_CAP_ID_MSI, offset,
+                                        cap_size, errp);
     if (config_offset < 0) {
         return config_offset;
     }
@@ -220,7 +240,8 @@ int msi_init(struct PCIDevice *dev, uint8_t offset,
         pci_set_long(dev->wmask + msi_mask_off(dev, msi64bit),
                      0xffffffff >> (PCI_MSI_VECTORS_MAX - nr_vectors));
     }
-    return config_offset;
+
+    return 0;
 }
 
 void msi_uninit(struct PCIDevice *dev)

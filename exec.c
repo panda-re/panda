@@ -19,7 +19,6 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #ifndef _WIN32
-#include <sys/mman.h>
 #endif
 
 #include "qemu/cutils.h"
@@ -37,7 +36,7 @@
 #include "qemu/config-file.h"
 #include "qemu/error-report.h"
 #if defined(CONFIG_USER_ONLY)
-#include <qemu.h>
+#include "qemu.h"
 #else /* !CONFIG_USER_ONLY */
 #include "hw/hw.h"
 #include "exec/memory.h"
@@ -192,10 +191,12 @@ struct CPUAddressSpace {
 
 static void phys_map_node_reserve(PhysPageMap *map, unsigned nodes)
 {
+    static unsigned alloc_hint = 16;
     if (map->nodes_nb + nodes > map->nodes_nb_alloc) {
-        map->nodes_nb_alloc = MAX(map->nodes_nb_alloc * 2, 16);
+        map->nodes_nb_alloc = MAX(map->nodes_nb_alloc, alloc_hint);
         map->nodes_nb_alloc = MAX(map->nodes_nb_alloc, map->nodes_nb + nodes);
         map->nodes = g_renew(Node, map->nodes, map->nodes_nb_alloc);
+        alloc_hint = map->nodes_nb_alloc;
     }
 }
 
@@ -627,67 +628,36 @@ AddressSpace *cpu_get_address_space(CPUState *cpu, int asidx)
 }
 #endif
 
-#ifndef CONFIG_USER_ONLY
-static DECLARE_BITMAP(cpu_index_map, MAX_CPUMASK_BITS);
+static bool cpu_index_auto_assigned;
 
-static int cpu_get_free_index(Error **errp)
-{
-    int cpu = find_first_zero_bit(cpu_index_map, MAX_CPUMASK_BITS);
-
-    if (cpu >= MAX_CPUMASK_BITS) {
-        error_setg(errp, "Trying to use more CPUs than max of %d",
-                   MAX_CPUMASK_BITS);
-        return -1;
-    }
-
-    bitmap_set(cpu_index_map, cpu, 1);
-    return cpu;
-}
-
-static void cpu_release_index(CPUState *cpu)
-{
-    bitmap_clear(cpu_index_map, cpu->cpu_index, 1);
-}
-#else
-
-static int cpu_get_free_index(Error **errp)
+static int cpu_get_free_index(void)
 {
     CPUState *some_cpu;
     int cpu_index = 0;
 
+    cpu_index_auto_assigned = true;
     CPU_FOREACH(some_cpu) {
         cpu_index++;
     }
     return cpu_index;
 }
 
-static void cpu_release_index(CPUState *cpu)
-{
-    return;
-}
-#endif
-
 void cpu_exec_exit(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
-#if defined(CONFIG_USER_ONLY)
     cpu_list_lock();
-#endif
-    if (cpu->cpu_index == -1) {
-        /* cpu_index was never allocated by this @cpu or was already freed. */
-#if defined(CONFIG_USER_ONLY)
+    if (!QTAILQ_IN_USE(cpu, node)) {
+        /* there is nothing to undo since cpu_exec_init() hasn't been called */
         cpu_list_unlock();
-#endif
         return;
     }
 
+    assert(!(cpu_index_auto_assigned && cpu != QTAILQ_LAST(&cpus, CPUTailQ)));
+
     QTAILQ_REMOVE(&cpus, cpu, node);
-    cpu_release_index(cpu);
-    cpu->cpu_index = -1;
-#if defined(CONFIG_USER_ONLY)
+    cpu->cpu_index = UNASSIGNED_CPU_INDEX;
     cpu_list_unlock();
-#endif
 
     if (cc->vmsd != NULL) {
         vmstate_unregister(NULL, cc->vmsd, cpu);
@@ -699,8 +669,8 @@ void cpu_exec_exit(CPUState *cpu)
 
 void cpu_exec_init(CPUState *cpu, Error **errp)
 {
-    CPUClass *cc = CPU_GET_CLASS(cpu);
-    Error *local_err = NULL;
+    CPUClass *cc ATTRIBUTE_UNUSED = CPU_GET_CLASS(cpu);
+    Error *local_err ATTRIBUTE_UNUSED = NULL;
 
     cpu->as = NULL;
     cpu->num_ases = 0;
@@ -723,22 +693,17 @@ void cpu_exec_init(CPUState *cpu, Error **errp)
     object_ref(OBJECT(cpu->memory));
 #endif
 
-#if defined(CONFIG_USER_ONLY)
     cpu_list_lock();
-#endif
-    cpu->cpu_index = cpu_get_free_index(&local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-#if defined(CONFIG_USER_ONLY)
-        cpu_list_unlock();
-#endif
-        return;
+    if (cpu->cpu_index == UNASSIGNED_CPU_INDEX) {
+        cpu->cpu_index = cpu_get_free_index();
+        assert(cpu->cpu_index != UNASSIGNED_CPU_INDEX);
+    } else {
+        assert(!cpu_index_auto_assigned);
     }
     QTAILQ_INSERT_TAIL(&cpus, cpu, node);
-#if defined(CONFIG_USER_ONLY)
-    (void) cc;
     cpu_list_unlock();
-#else
+
+#ifndef CONFIG_USER_ONLY
     if (qdev_get_vmsd(DEVICE(cpu)) == NULL) {
         vmstate_register(NULL, cpu->cpu_index, &vmstate_cpu_common, cpu);
     }
@@ -1299,7 +1264,7 @@ static void *file_ram_alloc(RAMBlock *block,
     char *filename;
     char *sanitized_name;
     char *c;
-    void *area;
+    void *area = MAP_FAILED;
     int fd = -1;
     int64_t page_size;
 
@@ -1387,13 +1352,19 @@ static void *file_ram_alloc(RAMBlock *block,
     }
 
     if (mem_prealloc) {
-        os_mem_prealloc(fd, area, memory);
+        os_mem_prealloc(fd, area, memory, errp);
+        if (errp && *errp) {
+            goto error;
+        }
     }
 
     block->fd = fd;
     return area;
 
 error:
+    if (area != MAP_FAILED) {
+        qemu_ram_munmap(area, memory);
+    }
     if (unlink_on_error) {
         unlink(path);
     }
@@ -1682,10 +1653,8 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
     if (new_block->host) {
         qemu_ram_setup_dump(new_block->host, new_block->max_length);
         qemu_madvise(new_block->host, new_block->max_length, QEMU_MADV_HUGEPAGE);
+        /* MADV_DONTFORK is also needed by KVM in absence of synchronous MMU */
         qemu_madvise(new_block->host, new_block->max_length, QEMU_MADV_DONTFORK);
-        if (kvm_enabled()) {
-            kvm_setup_guest_memory(new_block->host, new_block->max_length);
-        }
     }
 }
 

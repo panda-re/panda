@@ -32,6 +32,7 @@
 #include "sysemu/sysemu.h"
 #include "hw/sysbus.h"
 #include "sysemu/kvm.h"
+#include "e500.h"
 
 #define MAX_CPUS 32
 
@@ -72,12 +73,6 @@ static void spin_reset(void *opaque)
     }
 }
 
-/* Create -kernel TLB entries for BookE, linearly spanning 256MB.  */
-static inline hwaddr booke206_page_size_to_tlb(uint64_t size)
-{
-    return ctz32(size >> 10) >> 1;
-}
-
 static void mmubooke_create_initial_mapping(CPUPPCState *env,
                                      target_ulong va,
                                      hwaddr pa,
@@ -104,7 +99,7 @@ static void spin_kick(void *data)
     hwaddr map_start;
 
     cpu_synchronize_state(cpu);
-    stl_p(&curspin->pir, env->spr[SPR_PIR]);
+    stl_p(&curspin->pir, env->spr[SPR_BOOKE_PIR]);
     env->nip = ldq_p(&curspin->addr) & (map_size - 1);
     env->gpr[3] = ldq_p(&curspin->r3);
     env->gpr[4] = 0;

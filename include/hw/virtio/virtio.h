@@ -11,8 +11,8 @@
  *
  */
 
-#ifndef _QEMU_VIRTIO_H
-#define _QEMU_VIRTIO_H
+#ifndef QEMU_VIRTIO_H
+#define QEMU_VIRTIO_H
 
 #include "hw/hw.h"
 #include "net/net.h"
@@ -138,9 +138,13 @@ void virtio_cleanup(VirtIODevice *vdev);
 /* Set the child bus name. */
 void virtio_device_set_child_bus_name(VirtIODevice *vdev, char *bus_name);
 
+typedef void (*VirtIOHandleOutput)(VirtIODevice *, VirtQueue *);
+
 VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
-                            void (*handle_output)(VirtIODevice *,
-                                                  VirtQueue *));
+                            VirtIOHandleOutput handle_output);
+
+VirtQueue *virtio_add_queue_aio(VirtIODevice *vdev, int queue_size,
+                                VirtIOHandleOutput handle_output);
 
 void virtio_del_queue(VirtIODevice *vdev, int n);
 
@@ -150,6 +154,7 @@ void virtqueue_push(VirtQueue *vq, const VirtQueueElement *elem,
 void virtqueue_flush(VirtQueue *vq, unsigned int count);
 void virtqueue_discard(VirtQueue *vq, const VirtQueueElement *elem,
                        unsigned int len);
+bool virtqueue_rewind(VirtQueue *vq, unsigned int num);
 void virtqueue_fill(VirtQueue *vq, const VirtQueueElement *elem,
                     unsigned int len, unsigned int idx);
 
@@ -167,6 +172,26 @@ bool virtio_should_notify(VirtIODevice *vdev, VirtQueue *vq);
 void virtio_notify(VirtIODevice *vdev, VirtQueue *vq);
 
 void virtio_save(VirtIODevice *vdev, QEMUFile *f);
+void virtio_vmstate_save(QEMUFile *f, void *opaque, size_t size);
+
+#define VMSTATE_VIRTIO_DEVICE(devname, v, getf, putf) \
+    static const VMStateDescription vmstate_virtio_ ## devname = { \
+        .name = "virtio-" #devname ,          \
+        .minimum_version_id = v,              \
+        .version_id = v,                      \
+        .fields = (VMStateField[]) {          \
+            {                                 \
+                .name = "virtio",             \
+                .info = &(const VMStateInfo) {\
+                        .name = "virtio",     \
+                        .get = getf,          \
+                        .put = putf,          \
+                    },                        \
+                .flags = VMS_SINGLE,          \
+            },                                \
+            VMSTATE_END_OF_LIST()             \
+        }                                     \
+    }
 
 int virtio_load(VirtIODevice *vdev, QEMUFile *f, int version_id);
 

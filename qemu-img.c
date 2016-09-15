@@ -32,6 +32,7 @@
 #include "qemu/config-file.h"
 #include "qemu/option.h"
 #include "qemu/error-report.h"
+#include "qemu/log.h"
 #include "qom/object_interfaces.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/block-backend.h"
@@ -39,10 +40,11 @@
 #include "block/blockjob.h"
 #include "block/qapi.h"
 #include "crypto/init.h"
+#include "trace/control.h"
 #include <getopt.h>
 
 #define QEMU_IMG_VERSION "qemu-img version " QEMU_VERSION QEMU_PKGVERSION \
-                          ", Copyright (c) 2004-2008 Fabrice Bellard\n"
+                          ", " QEMU_COPYRIGHT "\n"
 
 typedef struct img_cmd_t {
     const char *name;
@@ -91,8 +93,13 @@ static void QEMU_NORETURN help(void)
 {
     const char *help_msg =
            QEMU_IMG_VERSION
-           "usage: qemu-img command [command options]\n"
+           "usage: qemu-img [standard options] command [command options]\n"
            "QEMU disk image utility\n"
+           "\n"
+           "    '-h', '--help'       display this help and exit\n"
+           "    '-V', '--version'    output version information and exit\n"
+           "    '-T', '--trace'      [[enable=]<pattern>][,events=<file>][,file=<file>]\n"
+           "                         specify tracing options\n"
            "\n"
            "Command syntax:\n"
 #define DEF(option, callback, arg_string)        \
@@ -483,18 +490,17 @@ fail:
 
 static void dump_json_image_check(ImageCheck *check, bool quiet)
 {
-    Error *local_err = NULL;
     QString *str;
-    QmpOutputVisitor *ov = qmp_output_visitor_new();
     QObject *obj;
-    visit_type_ImageCheck(qmp_output_get_visitor(ov), NULL, &check,
-                          &local_err);
-    obj = qmp_output_get_qobject(ov);
+    Visitor *v = qmp_output_visitor_new(&obj);
+
+    visit_type_ImageCheck(v, NULL, &check, &error_abort);
+    visit_complete(v, &obj);
     str = qobject_to_json_pretty(obj);
     assert(str != NULL);
     qprintf(quiet, "%s\n", qstring_get_str(str));
     qobject_decref(obj);
-    qmp_output_visitor_cleanup(ov);
+    visit_free(v);
     QDECREF(str);
 }
 
@@ -914,8 +920,8 @@ static int img_commit(int argc, char **argv)
         .bs   = bs,
     };
 
-    commit_active_start(bs, base_bs, 0, BLOCKDEV_ON_ERROR_REPORT,
-                        common_block_job_cb, &cbi, &local_err);
+    commit_active_start("commit", bs, base_bs, 0, BLOCKDEV_ON_ERROR_REPORT,
+                        common_block_job_cb, &cbi, &local_err, false);
     if (local_err) {
         goto done;
     }
@@ -1584,7 +1590,9 @@ static int convert_write(ImgConvertState *s, int64_t sector_num, int nb_sectors,
                     break;
                 }
 
-                ret = blk_write_compressed(s->target, sector_num, buf, n);
+                ret = blk_pwrite_compressed(s->target,
+                                            sector_num << BDRV_SECTOR_BITS,
+                                            buf, n << BDRV_SECTOR_BITS);
                 if (ret < 0) {
                     return ret;
                 }
@@ -1641,7 +1649,7 @@ static int convert_do_copy(ImgConvertState *s)
     if (!s->has_zero_init && !s->target_has_backing &&
         bdrv_can_write_zeroes_with_unmap(blk_bs(s->target)))
     {
-        ret = bdrv_make_zero(blk_bs(s->target), BDRV_REQ_MAY_UNMAP);
+        ret = blk_make_zero(s->target, BDRV_REQ_MAY_UNMAP);
         if (ret == 0) {
             s->has_zero_init = true;
         }
@@ -1721,7 +1729,7 @@ static int convert_do_copy(ImgConvertState *s)
 
     if (s->compressed) {
         /* signal EOF to align */
-        ret = blk_write_compressed(s->target, 0, NULL, 0);
+        ret = blk_pwrite_compressed(s->target, 0, NULL, 0);
         if (ret < 0) {
             goto fail;
         }
@@ -2026,7 +2034,7 @@ static int img_convert(int argc, char **argv)
         const char *preallocation =
             qemu_opt_get(opts, BLOCK_OPT_PREALLOC);
 
-        if (!drv->bdrv_write_compressed) {
+        if (!drv->bdrv_co_pwritev_compressed) {
             error_report("Compression not supported for this file format");
             ret = -1;
             goto out;
@@ -2078,13 +2086,14 @@ static int img_convert(int argc, char **argv)
     }
     out_bs = blk_bs(out_blk);
 
-    /* increase bufsectors from the default 4096 (2M) if opt_transfer_length
+    /* increase bufsectors from the default 4096 (2M) if opt_transfer
      * or discard_alignment of the out_bs is greater. Limit to 32768 (16MB)
      * as maximum. */
     bufsectors = MIN(32768,
-                     MAX(bufsectors, MAX(out_bs->bl.opt_transfer_length,
-                                         out_bs->bl.discard_alignment))
-                    );
+                     MAX(bufsectors,
+                         MAX(out_bs->bl.opt_transfer >> BDRV_SECTOR_BITS,
+                             out_bs->bl.pdiscard_alignment >>
+                             BDRV_SECTOR_BITS)));
 
     if (skip_create) {
         int64_t output_sectors = blk_nb_sectors(out_blk);
@@ -2174,34 +2183,33 @@ static void dump_snapshots(BlockDriverState *bs)
 
 static void dump_json_image_info_list(ImageInfoList *list)
 {
-    Error *local_err = NULL;
     QString *str;
-    QmpOutputVisitor *ov = qmp_output_visitor_new();
     QObject *obj;
-    visit_type_ImageInfoList(qmp_output_get_visitor(ov), NULL, &list,
-                             &local_err);
-    obj = qmp_output_get_qobject(ov);
+    Visitor *v = qmp_output_visitor_new(&obj);
+
+    visit_type_ImageInfoList(v, NULL, &list, &error_abort);
+    visit_complete(v, &obj);
     str = qobject_to_json_pretty(obj);
     assert(str != NULL);
     printf("%s\n", qstring_get_str(str));
     qobject_decref(obj);
-    qmp_output_visitor_cleanup(ov);
+    visit_free(v);
     QDECREF(str);
 }
 
 static void dump_json_image_info(ImageInfo *info)
 {
-    Error *local_err = NULL;
     QString *str;
-    QmpOutputVisitor *ov = qmp_output_visitor_new();
     QObject *obj;
-    visit_type_ImageInfo(qmp_output_get_visitor(ov), NULL, &info, &local_err);
-    obj = qmp_output_get_qobject(ov);
+    Visitor *v = qmp_output_visitor_new(&obj);
+
+    visit_type_ImageInfo(v, NULL, &info, &error_abort);
+    visit_complete(v, &obj);
     str = qobject_to_json_pretty(obj);
     assert(str != NULL);
     printf("%s\n", qstring_get_str(str));
     qobject_decref(obj);
-    qmp_output_visitor_cleanup(ov);
+    visit_free(v);
     QDECREF(str);
 }
 
@@ -3277,7 +3285,7 @@ static int img_resize(int argc, char **argv)
         error_report("Image is read-only");
         break;
     default:
-        error_report("Error resizing image (%d)", -ret);
+        error_report("Error resizing image: %s", strerror(-ret));
         break;
     }
 out:
@@ -3484,7 +3492,7 @@ typedef struct BenchData {
 static void bench_undrained_flush_cb(void *opaque, int ret)
 {
     if (ret < 0) {
-        error_report("Failed flush request: %s\n", strerror(-ret));
+        error_report("Failed flush request: %s", strerror(-ret));
         exit(EXIT_FAILURE);
     }
 }
@@ -3495,7 +3503,7 @@ static void bench_cb(void *opaque, int ret)
     BlockAIOCB *acb;
 
     if (ret < 0) {
-        error_report("Failed request: %s\n", strerror(-ret));
+        error_report("Failed request: %s", strerror(-ret));
         exit(EXIT_FAILURE);
     }
 
@@ -3570,7 +3578,7 @@ static int img_bench(int argc, char **argv)
     BlockBackend *blk = NULL;
     BenchData data = {};
     int flags = 0;
-    bool writethrough;
+    bool writethrough = false;
     struct timeval t1, t2;
     int i;
 
@@ -3803,10 +3811,12 @@ int main(int argc, char **argv)
     const img_cmd_t *cmd;
     const char *cmdname;
     Error *local_error = NULL;
+    char *trace_file = NULL;
     int c;
     static const struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'v'},
+        {"version", no_argument, 0, 'V'},
+        {"trace", required_argument, NULL, 'T'},
         {0, 0, 0, 0}
     };
 
@@ -3829,26 +3839,47 @@ int main(int argc, char **argv)
     if (argc < 2) {
         error_exit("Not enough arguments");
     }
-    cmdname = argv[1];
 
     qemu_add_opts(&qemu_object_opts);
     qemu_add_opts(&qemu_source_opts);
+    qemu_add_opts(&qemu_trace_opts);
+
+    while ((c = getopt_long(argc, argv, "+hVT:", long_options, NULL)) != -1) {
+        switch (c) {
+        case 'h':
+            help();
+            return 0;
+        case 'V':
+            printf(QEMU_IMG_VERSION);
+            return 0;
+        case 'T':
+            g_free(trace_file);
+            trace_file = trace_opt_parse(optarg);
+            break;
+        }
+    }
+
+    cmdname = argv[optind];
+
+    /* reset getopt_long scanning */
+    argc -= optind;
+    if (argc < 1) {
+        return 0;
+    }
+    argv += optind;
+    optind = 0;
+
+    if (!trace_init_backends()) {
+        exit(1);
+    }
+    trace_init_file(trace_file);
+    qemu_set_log(LOG_TRACE);
 
     /* find the command */
     for (cmd = img_cmds; cmd->name != NULL; cmd++) {
         if (!strcmp(cmdname, cmd->name)) {
-            return cmd->handler(argc - 1, argv + 1);
+            return cmd->handler(argc, argv);
         }
-    }
-
-    c = getopt_long(argc, argv, "h", long_options, NULL);
-
-    if (c == 'h') {
-        help();
-    }
-    if (c == 'v') {
-        printf(QEMU_IMG_VERSION);
-        return 0;
     }
 
     /* not found */

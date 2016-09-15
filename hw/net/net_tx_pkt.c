@@ -15,6 +15,7 @@
  *
  */
 
+#include "qemu/osdep.h"
 #include "net_tx_pkt.h"
 #include "net/eth.h"
 #include "net/checksum.h"
@@ -64,10 +65,9 @@ void net_tx_pkt_init(struct NetTxPkt **pkt, PCIDevice *pci_dev,
 
     p->pci_dev = pci_dev;
 
-    p->vec = g_malloc((sizeof *p->vec) *
-        (max_frags + NET_TX_PKT_PL_START_FRAG));
+    p->vec = g_new(struct iovec, max_frags + NET_TX_PKT_PL_START_FRAG);
 
-    p->raw = g_malloc((sizeof *p->raw) * max_frags);
+    p->raw = g_new(struct iovec, max_frags);
 
     p->max_payload_frags = max_frags;
     p->max_raw_frags = max_frags;
@@ -589,7 +589,7 @@ static bool net_tx_pkt_do_sw_fragmentation(struct NetTxPkt *pkt,
 
         fragment_offset += fragment_len;
 
-    } while (more_frags);
+    } while (fragment_len && more_frags);
 
     return true;
 }

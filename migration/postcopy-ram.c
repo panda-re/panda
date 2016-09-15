@@ -51,7 +51,6 @@ struct PostcopyDiscardState {
 #if defined(__linux__)
 
 #include <poll.h>
-#include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <asm/types.h> /* for __u64 */
@@ -605,7 +604,8 @@ void *postcopy_get_tmp_page(MigrationIncomingState *mis)
         mis->postcopy_tmp_page = mmap(NULL, getpagesize(),
                              PROT_READ | PROT_WRITE, MAP_PRIVATE |
                              MAP_ANONYMOUS, -1, 0);
-        if (!mis->postcopy_tmp_page) {
+        if (mis->postcopy_tmp_page == MAP_FAILED) {
+            mis->postcopy_tmp_page = NULL;
             error_report("%s: %s", __func__, strerror(errno));
             return NULL;
         }

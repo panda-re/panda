@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#if !defined(__TRICORE_CPU_H__)
-#define __TRICORE_CPU_H__
+
+#ifndef TRICORE_CPU_H
+#define TRICORE_CPU_H
 
 #include "tricore-defs.h"
 #include "qemu-common.h"
@@ -374,7 +375,6 @@ void fpu_set_state(CPUTriCoreState *env);
 
 void tricore_cpu_list(FILE *f, fprintf_function cpu_fprintf);
 
-#define cpu_exec cpu_tricore_exec
 #define cpu_signal_handler cpu_tricore_signal_handler
 #define cpu_list tricore_cpu_list
 
@@ -400,7 +400,6 @@ enum {
 };
 
 void cpu_state_reset(CPUTriCoreState *s);
-int cpu_tricore_exec(CPUState *cpu);
 void tricore_tcg_init(void);
 int cpu_tricore_signal_handler(int host_signum, void *pinfo, void *puc);
 
@@ -422,4 +421,4 @@ int cpu_tricore_handle_mmu_fault(CPUState *cpu, target_ulong address,
                                  int rw, int mmu_idx);
 #define cpu_handle_mmu_fault cpu_tricore_handle_mmu_fault
 
-#endif /*__TRICORE_CPU_H__ */
+#endif /* TRICORE_CPU_H */

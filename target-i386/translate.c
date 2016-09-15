@@ -7182,7 +7182,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_regs[R_ECX]);
             gen_helper_xsetbv(cpu_env, cpu_tmp2_i32, cpu_tmp1_i64);
             /* End TB because translation flags may change.  */
-            gen_jmp_im(s->pc - pc_start);
+            gen_jmp_im(s->pc - s->cs_base);
             gen_eob(s);
             break;
 
@@ -8158,6 +8158,7 @@ void tcg_x86_init(void)
     initialized = true;
 
     cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
+    tcg_ctx.tcg_env = cpu_env;
     cpu_cc_op = tcg_global_mem_new_i32(cpu_env,
                                        offsetof(CPUX86State, cc_op), "cc_op");
     cpu_cc_dst = tcg_global_mem_new(cpu_env, offsetof(CPUX86State, cc_dst),
@@ -8229,9 +8230,9 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     dc->popl_esp_hack = 0;
     /* select memory access functions */
     dc->mem_index = 0;
-    if (flags & HF_SOFTMMU_MASK) {
-	dc->mem_index = cpu_mmu_index(env, false);
-    }
+#ifdef CONFIG_SOFTMMU
+    dc->mem_index = cpu_mmu_index(env, false);
+#endif
     dc->cpuid_features = env->features[FEAT_1_EDX];
     dc->cpuid_ext_features = env->features[FEAT_1_ECX];
     dc->cpuid_ext2_features = env->features[FEAT_8000_0001_EDX];
@@ -8244,11 +8245,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 #endif
     dc->flags = flags;
     dc->jmp_opt = !(dc->tf || cs->singlestep_enabled ||
-                    (flags & HF_INHIBIT_IRQ_MASK)
-#ifndef CONFIG_SOFTMMU
-                    || (flags & HF_SOFTMMU_MASK)
-#endif
-                    );
+                    (flags & HF_INHIBIT_IRQ_MASK));
     /* Do not optimize repz jumps at all in icount mode, because
        rep movsS instructions are execured with different paths
        in !repz_opt and repz_opt modes. The first one was used

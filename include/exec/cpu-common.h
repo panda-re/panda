@@ -1,5 +1,5 @@
 #ifndef CPU_COMMON_H
-#define CPU_COMMON_H 1
+#define CPU_COMMON_H
 
 /* CPU interfaces that are target independent.  */
 
@@ -22,12 +22,6 @@ typedef struct CPUListState {
     fprintf_function cpu_fprintf;
     FILE *file;
 } CPUListState;
-
-typedef enum MMUAccessType {
-    MMU_DATA_LOAD  = 0,
-    MMU_DATA_STORE = 1,
-    MMU_INST_FETCH = 2
-} MMUAccessType;
 
 #if !defined(CONFIG_USER_ONLY)
 
@@ -126,4 +120,4 @@ int qemu_ram_foreach_block(RAMBlockIterFunc func, void *opaque);
 
 #endif
 
-#endif /* !CPU_COMMON_H */
+#endif /* CPU_COMMON_H */

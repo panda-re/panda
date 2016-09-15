@@ -35,6 +35,7 @@
 #include "qemu/error-report.h"
 #include "hw/hotplug.h"
 #include "hw/boards.h"
+#include "hw/sysbus.h"
 #include "qapi-event.h"
 
 int qdev_hotplug = 0;
@@ -140,6 +141,12 @@ DeviceState *qdev_try_create(BusState *bus, const char *type)
     }
 
     if (!bus) {
+        /* Assert that the device really is a SysBusDevice before
+         * we put it onto the sysbus. Non-sysbus devices which aren't
+         * being put onto a bus should be created with object_new(TYPE_FOO),
+         * not qdev_create(NULL, TYPE_FOO).
+         */
+        g_assert(object_dynamic_cast(OBJECT(dev), TYPE_SYS_BUS_DEVICE));
         bus = sysbus_get_default();
     }
 
@@ -347,12 +354,14 @@ void qdev_init_nofail(DeviceState *dev)
 
     assert(!dev->realized);
 
+    object_ref(OBJECT(dev));
     object_property_set_bool(OBJECT(dev), true, "realized", &err);
     if (err) {
         error_reportf_err(err, "Initialization of device %s failed: ",
                           object_get_typename(OBJECT(dev)));
         exit(1);
     }
+    object_unref(OBJECT(dev));
 }
 
 void qdev_machine_creation_done(void)
@@ -878,6 +887,8 @@ static void device_set_realized(Object *obj, bool value, Error **errp)
     HotplugHandler *hotplug_ctrl;
     BusState *bus;
     Error *local_err = NULL;
+    bool unattached_parent = false;
+    static int unattached_count;
 
     if (dev->hotplugged && !dc->hotpluggable) {
         error_setg(errp, QERR_DEVICE_NO_HOTPLUG, object_get_typename(obj));
@@ -886,13 +897,21 @@ static void device_set_realized(Object *obj, bool value, Error **errp)
 
     if (value && !dev->realized) {
         if (!obj->parent) {
-            static int unattached_count;
             gchar *name = g_strdup_printf("device[%d]", unattached_count++);
 
             object_property_add_child(container_get(qdev_get_machine(),
                                                     "/unattached"),
                                       name, obj, &error_abort);
+            unattached_parent = true;
             g_free(name);
+        }
+
+        hotplug_ctrl = qdev_get_hotplug_handler(dev);
+        if (hotplug_ctrl) {
+            hotplug_handler_pre_plug(hotplug_ctrl, dev, &local_err);
+            if (local_err != NULL) {
+                goto fail;
+            }
         }
 
         if (dc->realize) {
@@ -905,7 +924,6 @@ static void device_set_realized(Object *obj, bool value, Error **errp)
 
         DEVICE_LISTENER_CALL(realize, Forward, dev);
 
-        hotplug_ctrl = qdev_get_hotplug_handler(dev);
         if (hotplug_ctrl) {
             hotplug_handler_plug(hotplug_ctrl, dev, &local_err);
         }
@@ -973,6 +991,10 @@ post_realize_fail:
 
 fail:
     error_propagate(errp, local_err);
+    if (unattached_parent) {
+        object_unparent(OBJECT(dev));
+        unattached_count--;
+    }
 }
 
 static bool device_get_hotpluggable(Object *obj, Error **errp)

@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#if !defined (__CPU_PPC_H__)
-#define __CPU_PPC_H__
+
+#ifndef PPC_CPU_H
+#define PPC_CPU_H
 
 #include "qemu-common.h"
 
@@ -116,6 +117,9 @@ enum {
     POWERPC_EXCP_HYPPRIV  = 41, /* Embedded hypervisor priv instruction      */
     /* Vectors 42 to 63 are reserved                                         */
     /* Exceptions defined in the PowerPC server specification                */
+    /* Server doorbell variants */
+#define POWERPC_EXCP_SDOOR      POWERPC_EXCP_GDOORI
+#define POWERPC_EXCP_SDOOR_HV   POWERPC_EXCP_DOORI
     POWERPC_EXCP_RESET    = 64, /* System reset exception                    */
     POWERPC_EXCP_DSEG     = 65, /* Data segment exception                    */
     POWERPC_EXCP_ISEG     = 66, /* Instruction segment exception             */
@@ -158,8 +162,12 @@ enum {
     /* VSX Unavailable (Power ISA 2.06 and later)                            */
     POWERPC_EXCP_VSXU     = 94, /* VSX Unavailable                           */
     POWERPC_EXCP_FU       = 95, /* Facility Unavailable                      */
+    /* Additional ISA 2.06 and later server exceptions                       */
+    POWERPC_EXCP_HV_EMU   = 96, /* HV emulation assistance                   */
+    POWERPC_EXCP_HV_MAINT = 97, /* HMI                                       */
+    POWERPC_EXCP_HV_FU    = 98, /* Hypervisor Facility unavailable           */
     /* EOL                                                                   */
-    POWERPC_EXCP_NB       = 96,
+    POWERPC_EXCP_NB       = 99,
     /* QEMU exceptions: used internally during code translation              */
     POWERPC_EXCP_STOP         = 0x200, /* stop translation                   */
     POWERPC_EXCP_BRANCH       = 0x201, /* branch instruction                 */
@@ -370,12 +378,30 @@ struct ppc_slb_t {
 #define LPCR_VPM1         (1ull << (63 - 1))
 #define LPCR_ISL          (1ull << (63 - 2))
 #define LPCR_KBV          (1ull << (63 - 3))
+#define LPCR_DPFD_SHIFT   (63 - 11)
+#define LPCR_DPFD         (0x3ull << LPCR_DPFD_SHIFT)
+#define LPCR_VRMASD_SHIFT (63 - 16)
+#define LPCR_VRMASD       (0x1full << LPCR_VRMASD_SHIFT)
+#define LPCR_RMLS_SHIFT   (63 - 37)
+#define LPCR_RMLS         (0xfull << LPCR_RMLS_SHIFT)
 #define LPCR_ILE          (1ull << (63 - 38))
-#define LPCR_MER          (1ull << (63 - 52))
-#define LPCR_LPES0        (1ull << (63 - 60))
-#define LPCR_LPES1        (1ull << (63 - 61))
 #define LPCR_AIL_SHIFT    (63 - 40)      /* Alternate interrupt location */
 #define LPCR_AIL          (3ull << LPCR_AIL_SHIFT)
+#define LPCR_ONL          (1ull << (63 - 45))
+#define LPCR_P7_PECE0     (1ull << (63 - 49))
+#define LPCR_P7_PECE1     (1ull << (63 - 50))
+#define LPCR_P7_PECE2     (1ull << (63 - 51))
+#define LPCR_P8_PECE0     (1ull << (63 - 47))
+#define LPCR_P8_PECE1     (1ull << (63 - 48))
+#define LPCR_P8_PECE2     (1ull << (63 - 49))
+#define LPCR_P8_PECE3     (1ull << (63 - 50))
+#define LPCR_P8_PECE4     (1ull << (63 - 51))
+#define LPCR_MER          (1ull << (63 - 52))
+#define LPCR_TC           (1ull << (63 - 54))
+#define LPCR_LPES0        (1ull << (63 - 60))
+#define LPCR_LPES1        (1ull << (63 - 61))
+#define LPCR_RMI          (1ull << (63 - 62))
+#define LPCR_HDICE        (1ull << (63 - 63))
 
 #define msr_sf   ((env->msr >> MSR_SF)   & 1)
 #define msr_isf  ((env->msr >> MSR_ISF)  & 1)
@@ -1022,6 +1048,8 @@ struct CPUPPCState {
     uint64_t insns_flags2;
 #if defined(TARGET_PPC64)
     struct ppc_segment_page_sizes sps;
+    ppc_slb_t vrma_slb;
+    target_ulong rmls;
     bool ci_large_pages;
 #endif
 
@@ -1052,6 +1080,11 @@ struct CPUPPCState {
      * instructions and SPRs are diallowed if MSR:HV is 0
      */
     bool has_hv_mode;
+    /* On P7/P8, set when in PM state, we need to handle resume
+     * in a special way (such as routing some resume causes to
+     * 0x100), so flag this here.
+     */
+    bool in_pm_state;
 #endif
 
     /* Those resources are used only during code translation */
@@ -1168,8 +1201,7 @@ extern const struct VMStateDescription vmstate_ppc_cpu;
 /*****************************************************************************/
 PowerPCCPU *cpu_ppc_init(const char *cpu_model);
 void ppc_translate_init(void);
-void gen_update_current_nip(void *opaque);
-int cpu_ppc_exec (CPUState *s);
+const char *ppc_cpu_lookup_alias(const char *alias);
 /* you can call this signal handler from your SIGBUS and SIGSEGV
    signal handlers to inform the virtual CPU of exceptions. non zero
    is returned if the signal was handled by the virtual CPU.  */
@@ -1187,7 +1219,9 @@ void ppc_store_msr (CPUPPCState *env, target_ulong value);
 
 void ppc_cpu_list (FILE *f, fprintf_function cpu_fprintf);
 int ppc_get_compat_smt_threads(PowerPCCPU *cpu);
+#if defined(TARGET_PPC64)
 void ppc_set_compat(PowerPCCPU *cpu, uint32_t cpu_version, Error **errp);
+#endif
 
 /* Time-base and decrementer management */
 #ifndef NO_CPU_IO_DEFS
@@ -1246,7 +1280,6 @@ int ppc_dcr_write (ppc_dcr_t *dcr_env, int dcrn, uint32_t val);
 
 #define cpu_init(cpu_model) CPU(cpu_ppc_init(cpu_model))
 
-#define cpu_exec cpu_ppc_exec
 #define cpu_signal_handler cpu_ppc_signal_handler
 #define cpu_list ppc_cpu_list
 
@@ -1903,6 +1936,8 @@ enum {
     PPC_POPCNTB        = 0x0000000000001000ULL,
     /*   string load / store                                                 */
     PPC_STRING         = 0x0000000000002000ULL,
+    /*   real mode cache inhibited load / store                              */
+    PPC_CILDST         = 0x0000000000004000ULL,
 
     /* Floating-point unit extensions                                        */
     /*   Optional floating point instructions                                */
@@ -2017,7 +2052,7 @@ enum {
                         | PPC_MFAPIDI | PPC_TLBIVA | PPC_TLBIVAX \
                         | PPC_4xx_COMMON | PPC_40x_ICBT | PPC_RFMCI \
                         | PPC_RFDI | PPC_DCR | PPC_DCRX | PPC_DCRUX \
-                        | PPC_POPCNTWD)
+                        | PPC_POPCNTWD | PPC_CILDST)
 
     /* extended type values */
 
@@ -2057,6 +2092,10 @@ enum {
     PPC2_FP_CVT_S64    = 0x0000000000010000ULL,
     /* Transactional Memory (ISA 2.07, Book II)                              */
     PPC2_TM            = 0x0000000000020000ULL,
+    /* Server PM instructgions (ISA 2.06, Book III)                          */
+    PPC2_PM_ISA206     = 0x0000000000040000ULL,
+    /* POWER ISA 3.0                                                         */
+    PPC2_ISA300        = 0x0000000000080000ULL,
 
 #define PPC_TCG_INSNS2 (PPC2_BOOKE206 | PPC2_VSX | PPC2_PRCNTL | PPC2_DBRX | \
                         PPC2_ISA205 | PPC2_VSX207 | PPC2_PERM_ISA206 | \
@@ -2064,7 +2103,8 @@ enum {
                         PPC2_FP_CVT_ISA206 | PPC2_FP_TST_ISA206 | \
                         PPC2_BCTAR_ISA207 | PPC2_LSQ_ISA207 | \
                         PPC2_ALTIVEC_207 | PPC2_ISA207S | PPC2_DFP | \
-                        PPC2_FP_CVT_S64 | PPC2_TM)
+                        PPC2_FP_CVT_S64 | PPC2_TM | PPC2_PM_ISA206 | \
+                        PPC2_ISA300)
 };
 
 /*****************************************************************************/
@@ -2194,12 +2234,15 @@ enum {
     PPC_INTERRUPT_CDOORBELL,      /* Critical doorbell interrupt          */
     PPC_INTERRUPT_DOORBELL,       /* Doorbell interrupt                   */
     PPC_INTERRUPT_PERFM,          /* Performance monitor interrupt        */
+    PPC_INTERRUPT_HMI,            /* Hypervisor Maintainance interrupt    */
+    PPC_INTERRUPT_HDOORBELL,      /* Hypervisor Doorbell interrupt        */
 };
 
 /* Processor Compatibility mask (PCR) */
 enum {
     PCR_COMPAT_2_05     = 1ull << (63-62),
     PCR_COMPAT_2_06     = 1ull << (63-61),
+    PCR_COMPAT_2_07     = 1ull << (63-60),
     PCR_VEC_DIS         = 1ull << (63-0), /* Vec. disable (bit NA since POWER8) */
     PCR_VSX_DIS         = 1ull << (63-1), /* VSX disable (bit NA since POWER8) */
     PCR_TM_DIS          = 1ull << (63-2), /* Trans. memory disable (POWER8) */
@@ -2254,6 +2297,14 @@ static inline void cpu_get_tb_cpu_state(CPUPPCState *env, target_ulong *pc,
     *cs_base = 0;
     *flags = env->hflags;
 }
+
+void QEMU_NORETURN raise_exception(CPUPPCState *env, uint32_t exception);
+void QEMU_NORETURN raise_exception_ra(CPUPPCState *env, uint32_t exception,
+                                      uintptr_t raddr);
+void QEMU_NORETURN raise_exception_err(CPUPPCState *env, uint32_t exception,
+                                       uint32_t error_code);
+void QEMU_NORETURN raise_exception_err_ra(CPUPPCState *env, uint32_t exception,
+                                          uint32_t error_code, uintptr_t raddr);
 
 #if !defined(CONFIG_USER_ONLY)
 static inline int booke206_tlbm_id(CPUPPCState *env, ppcmas_tlb_t *tlbm)
@@ -2393,4 +2444,4 @@ int ppc_get_vcpu_dt_id(PowerPCCPU *cpu);
 PowerPCCPU *ppc_get_vcpu_by_dt_id(int cpu_dt_id);
 
 void ppc_maybe_bswap_register(CPUPPCState *env, uint8_t *mem_buf, int len);
-#endif /* !defined (__CPU_PPC_H__) */
+#endif /* PPC_CPU_H */

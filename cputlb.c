@@ -30,6 +30,8 @@
 #include "exec/ram_addr.h"
 #include "exec/exec-all.h"
 #include "tcg/tcg.h"
+#include "qemu/error-report.h"
+#include "exec/log.h"
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
 /* #define DEBUG_TLB */
@@ -427,6 +429,39 @@ void tlb_set_page(CPUState *cpu, target_ulong vaddr,
                             prot, mmu_idx, size);
 }
 
+static void report_bad_exec(CPUState *cpu, target_ulong addr)
+{
+    /* Accidentally executing outside RAM or ROM is quite common for
+     * several user-error situations, so report it in a way that
+     * makes it clear that this isn't a QEMU bug and provide suggestions
+     * about what a user could do to fix things.
+     */
+    error_report("Trying to execute code outside RAM or ROM at 0x"
+                 TARGET_FMT_lx, addr);
+    error_printf("This usually means one of the following happened:\n\n"
+                 "(1) You told QEMU to execute a kernel for the wrong machine "
+                 "type, and it crashed on startup (eg trying to run a "
+                 "raspberry pi kernel on a versatilepb QEMU machine)\n"
+                 "(2) You didn't give QEMU a kernel or BIOS filename at all, "
+                 "and QEMU executed a ROM full of no-op instructions until "
+                 "it fell off the end\n"
+                 "(3) Your guest kernel has a bug and crashed by jumping "
+                 "off into nowhere\n\n"
+                 "This is almost always one of the first two, so check your "
+                 "command line and that you are using the right type of kernel "
+                 "for this machine.\n"
+                 "If you think option (3) is likely then you can try debugging "
+                 "your guest with the -d debug options; in particular "
+                 "-d guest_errors will cause the log to include a dump of the "
+                 "guest register state at this point.\n\n"
+                 "Execution cannot continue; stopping here.\n\n");
+
+    /* Report also to the logs, with more detail including register dump */
+    qemu_log_mask(LOG_GUEST_ERROR, "qemu: fatal: Trying to execute code "
+                  "outside RAM or ROM at 0x" TARGET_FMT_lx "\n", addr);
+    log_cpu_state_mask(LOG_GUEST_ERROR, cpu, CPU_DUMP_FPU | CPU_DUMP_CCOP);
+}
+
 /* NOTE: this function can trigger an exception */
 /* NOTE2: the returned address is not exactly the physical address: it
  * is actually a ram_addr_t (in system mode; the user mode emulation
@@ -455,13 +490,42 @@ tb_page_addr_t get_page_addr_code(CPUArchState *env1, target_ulong addr)
         if (cc->do_unassigned_access) {
             cc->do_unassigned_access(cpu, addr, false, true, 0, 4);
         } else {
-            cpu_abort(cpu, "Trying to execute code outside RAM or ROM at 0x"
-                      TARGET_FMT_lx "\n", addr);
+            report_bad_exec(cpu, addr);
+            exit(1);
         }
     }
     p = (void *)((uintptr_t)addr + env1->tlb_table[mmu_idx][page_index].addend);
     return qemu_ram_addr_from_host_nofail(p);
 }
+
+/* Return true if ADDR is present in the victim tlb, and has been copied
+   back to the main tlb.  */
+static bool victim_tlb_hit(CPUArchState *env, size_t mmu_idx, size_t index,
+                           size_t elt_ofs, target_ulong page)
+{
+    size_t vidx;
+    for (vidx = 0; vidx < CPU_VTLB_SIZE; ++vidx) {
+        CPUTLBEntry *vtlb = &env->tlb_v_table[mmu_idx][vidx];
+        target_ulong cmp = *(target_ulong *)((uintptr_t)vtlb + elt_ofs);
+
+        if (cmp == page) {
+            /* Found entry in victim tlb, swap tlb and iotlb.  */
+            CPUTLBEntry tmptlb, *tlb = &env->tlb_table[mmu_idx][index];
+            CPUIOTLBEntry tmpio, *io = &env->iotlb[mmu_idx][index];
+            CPUIOTLBEntry *vio = &env->iotlb_v[mmu_idx][vidx];
+
+            tmptlb = *tlb; *tlb = *vtlb; *vtlb = tmptlb;
+            tmpio = *io; *io = *vio; *vio = tmpio;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Macro to call the above, with local variables from the use context.  */
+#define VICTIM_TLB_HIT(TY, ADDR) \
+  victim_tlb_hit(env, mmu_idx, index, offsetof(CPUTLBEntry, TY), \
+                 (ADDR) & TARGET_PAGE_MASK)
 
 #define MMUSUFFIX _mmu
 

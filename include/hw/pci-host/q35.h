@@ -55,12 +55,11 @@ typedef struct MCHPCIState {
     MemoryRegion smram_region, open_high_smram;
     MemoryRegion smram, low_smram, high_smram;
     MemoryRegion tseg_blackhole, tseg_window;
-    PcPciInfo pci_info;
-    ram_addr_t below_4g_mem_size;
-    ram_addr_t above_4g_mem_size;
+    Range pci_hole;
+    uint64_t below_4g_mem_size;
+    uint64_t above_4g_mem_size;
     uint64_t pci_hole64_size;
     uint32_t short_root_bus;
-    IntelIOMMUState *iommu;
 } MCHPCIState;
 
 typedef struct Q35PCIHost {
@@ -77,6 +76,11 @@ typedef struct Q35PCIHost {
 /*
  * gmch part
  */
+
+#define MCH_HOST_PROP_RAM_MEM "ram-mem"
+#define MCH_HOST_PROP_PCI_MEM "pci-mem"
+#define MCH_HOST_PROP_SYSTEM_MEM "system-mem"
+#define MCH_HOST_PROP_IO_MEM "io-mem"
 
 /* PCI configuration */
 #define MCH_HOST_BRIDGE                        "MCH"
@@ -174,5 +178,13 @@ typedef struct Q35PCIHost {
 #define MCH_PCIE_FUNC                          0
 
 uint64_t mch_mcfg_base(void);
+
+/*
+ * Arbitary but unique BNF number for IOAPIC device.
+ *
+ * TODO: make sure there would have no conflict with real PCI bus
+ */
+#define Q35_PSEUDO_BUS_PLATFORM         (0xff)
+#define Q35_PSEUDO_DEVFN_IOAPIC         (0x00)
 
 #endif /* HW_Q35_H */

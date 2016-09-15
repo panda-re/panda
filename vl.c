@@ -134,6 +134,7 @@ int main(int argc, char **argv)
 #include "crypto/init.h"
 #include "sysemu/replay.h"
 #include "qapi/qmp/qerror.h"
+#include "sysemu/iothread.h"
 
 
 extern void panda_cleanup(void);
@@ -194,7 +195,7 @@ CharDriverState *sclp_hds[MAX_SCLP_CONSOLES];
 int win2k_install_hack = 0;
 int singlestep = 0;
 int smp_cpus = 1;
-int max_cpus = 0;
+int max_cpus = 1;
 int smp_cores = 1;
 int smp_threads = 1;
 int acpi_enabled = 1;
@@ -297,26 +298,6 @@ static QemuOptsList qemu_sandbox_opts = {
         {
             .name = "enable",
             .type = QEMU_OPT_BOOL,
-        },
-        { /* end of list */ }
-    },
-};
-
-static QemuOptsList qemu_trace_opts = {
-    .name = "trace",
-    .implied_opt_name = "enable",
-    .head = QTAILQ_HEAD_INITIALIZER(qemu_trace_opts.head),
-    .desc = {
-        {
-            .name = "enable",
-            .type = QEMU_OPT_STRING,
-        },
-        {
-            .name = "events",
-            .type = QEMU_OPT_STRING,
-        },{
-            .name = "file",
-            .type = QEMU_OPT_STRING,
         },
         { /* end of list */ }
     },
@@ -1112,11 +1093,6 @@ bool defaults_enabled(void)
     return has_defaults;
 }
 
-bool usb_enabled(void)
-{
-    return machine_usb(current_machine);
-}
-
 #ifndef _WIN32
 static int parse_add_fd(void *opaque, QemuOpts *opts, Error **errp)
 {
@@ -1263,7 +1239,6 @@ static QemuOptsList qemu_smp_opts = {
 static void smp_parse(QemuOpts *opts)
 {
     if (opts) {
-
         unsigned cpus    = qemu_opt_get_number(opts, "cpus", 0);
         unsigned sockets = qemu_opt_get_number(opts, "sockets", 0);
         unsigned cores   = qemu_opt_get_number(opts, "cores", 0);
@@ -1280,8 +1255,10 @@ static void smp_parse(QemuOpts *opts)
         } else if (cores == 0) {
             threads = threads > 0 ? threads : 1;
             cores = cpus / (sockets * threads);
+            cores = cores > 0 ? cores : 1;
         } else if (threads == 0) {
             threads = cpus / (cores * sockets);
+            threads = threads > 0 ? threads : 1;
         } else if (sockets * cores * threads < cpus) {
             error_report("cpu topology: "
                          "sockets (%u) * cores (%u) * threads (%u) < "
@@ -1291,6 +1268,17 @@ static void smp_parse(QemuOpts *opts)
         }
 
         max_cpus = qemu_opt_get_number(opts, "maxcpus", cpus);
+
+        if (max_cpus > MAX_CPUMASK_BITS) {
+            error_report("unsupported number of maxcpus");
+            exit(1);
+        }
+
+        if (max_cpus < cpus) {
+            error_report("maxcpus must be equal to or greater than smp");
+            exit(1);
+        }
+
         if (sockets * cores * threads > max_cpus) {
             error_report("cpu topology: "
                          "sockets (%u) * cores (%u) * threads (%u) > "
@@ -1300,25 +1288,11 @@ static void smp_parse(QemuOpts *opts)
         }
 
         smp_cpus = cpus;
-        smp_cores = cores > 0 ? cores : 1;
-        smp_threads = threads > 0 ? threads : 1;
-
+        smp_cores = cores;
+        smp_threads = threads;
     }
 
-    if (max_cpus == 0) {
-        max_cpus = smp_cpus;
-    }
-
-    if (max_cpus > MAX_CPUMASK_BITS) {
-        error_report("unsupported number of maxcpus");
-        exit(1);
-    }
-    if (max_cpus < smp_cpus) {
-        error_report("maxcpus must be equal to or greater than smp");
-        exit(1);
-    }
-
-    if (smp_cpus > 1 || smp_cores > 1 || smp_threads > 1) {
+    if (smp_cpus > 1) {
         Error *blocker = NULL;
         error_setg(&blocker, QERR_REPLAY_NOT_SUPPORTED, "smp");
         replay_add_blocker(blocker);
@@ -1433,7 +1407,7 @@ static int usb_device_add(const char *devname)
     const char *p;
 #endif
 
-    if (!usb_enabled()) {
+    if (!machine_usb(current_machine)) {
         return -1;
     }
 
@@ -1465,7 +1439,7 @@ static int usb_device_del(const char *devname)
         return -1;
     }
 
-    if (!usb_enabled()) {
+    if (!machine_usb(current_machine)) {
         return -1;
     }
 
@@ -1573,6 +1547,7 @@ MachineInfoList *qmp_query_machines(Error **errp)
 
         info->name = g_strdup(mc->name);
         info->cpu_max = !mc->max_cpus ? 1 : mc->max_cpus;
+        info->hotpluggable_cpus = !!mc->query_hotpluggable_cpus;
 
         entry = g_malloc0(sizeof(*entry));
         entry->value = info;
@@ -2028,7 +2003,8 @@ static void main_loop(void)
 
 static void version(void)
 {
-    printf("QEMU emulator version " QEMU_VERSION QEMU_PKGVERSION ", Copyright (c) 2003-2008 Fabrice Bellard\n");
+    printf("QEMU emulator version " QEMU_VERSION QEMU_PKGVERSION ", "
+           QEMU_COPYRIGHT "\n");
 }
 
 static void help(int exitcode)
@@ -2449,10 +2425,7 @@ static int chardev_init_func(void *opaque, QemuOpts *opts, Error **errp)
 #ifdef CONFIG_VIRTFS
 static int fsdev_init_func(void *opaque, QemuOpts *opts, Error **errp)
 {
-    int ret;
-    ret = qemu_fsdev_add(opts);
-
-    return ret;
+    return qemu_fsdev_add(opts);
 }
 #endif
 
@@ -2792,6 +2765,11 @@ void qemu_add_machine_init_done_notifier(Notifier *notify)
     }
 }
 
+void qemu_remove_machine_init_done_notifier(Notifier *notify)
+{
+    notifier_remove(notify);
+}
+
 static void qemu_run_machine_init_done_notifiers(void)
 {
     notifier_list_notify(&machine_init_done_notifiers, NULL);
@@ -2921,6 +2899,19 @@ static bool object_create_initial(const char *type)
         return false;
     }
 
+    /* Memory allocation by backends needs to be done
+     * after configure_accelerator() (due to the tcg_enabled()
+     * checks at memory_region_init_*()).
+     *
+     * Also, allocation of large amounts of memory may delay
+     * chardev initialization for too long, and trigger timeouts
+     * on software that waits for a monitor socket to be created
+     * (e.g. libvirt).
+     */
+    if (g_str_has_prefix(type, "memory-backend-")) {
+        return false;
+    }
+
     return true;
 }
 
@@ -3031,6 +3022,20 @@ const char *qemu_file = NULL;
 char **gargv;
 int gargc;
 
+static int global_init_func(void *opaque, QemuOpts *opts, Error **errp)
+{
+    GlobalProperty *g;
+
+    g = g_malloc0(sizeof(*g));
+    g->driver   = qemu_opt_get(opts, "driver");
+    g->property = qemu_opt_get(opts, "property");
+    g->value    = qemu_opt_get(opts, "value");
+    g->user_provided = true;
+    g->errp = &error_fatal;
+    qdev_prop_register_global(g);
+    return 0;
+}
+
 int main(int argc, char **argv, char **envp)
 {
     int i;
@@ -3053,7 +3058,6 @@ int main(int argc, char **argv, char **envp)
     const char *qtest_log = NULL;
     const char *pid_file = NULL;
     const char *incoming = NULL;
-    int show_vnc_port = 0;
     bool defconfig = true;
     bool userconfig = true;
     bool nographic = false;
@@ -3067,6 +3071,7 @@ int main(int argc, char **argv, char **envp)
     FILE *vmstate_dump_file = NULL;
     Error *main_loop_err = NULL;
     Error *err = NULL;
+    bool list_data_dirs = false;
 
     // PANDA stuff
     gargv = argv;
@@ -3179,7 +3184,7 @@ int main(int argc, char **argv, char **envp)
 
             popt = lookup_opt(argc, argv, &optarg, &optind);
             if (!(popt->arch_mask & arch_type)) {
-                printf("Option %s not supported for this target\n", popt->name);
+                error_report("Option not supported for this target");
                 exit(1);
             }
             switch(popt->index) {
@@ -3453,7 +3458,7 @@ int main(int argc, char **argv, char **envp)
                 log_file = optarg;
                 break;
             case QEMU_OPTION_DFILTER:
-                qemu_set_dfilter_ranges(optarg);
+                qemu_set_dfilter_ranges(optarg, &error_fatal);
                 break;
             case QEMU_OPTION_s:
                 add_device_config(DEV_GDB, "tcp::" DEFAULT_GDBSTUB_PORT);
@@ -3462,7 +3467,9 @@ int main(int argc, char **argv, char **envp)
                 add_device_config(DEV_GDB, optarg);
                 break;
             case QEMU_OPTION_L:
-                if (data_dir_idx < ARRAY_SIZE(data_dir)) {
+                if (is_help_option(optarg)) {
+                    list_data_dirs = true;
+                } else if (data_dir_idx < ARRAY_SIZE(data_dir)) {
                     data_dir[data_dir_idx++] = optarg;
                 }
                 break;
@@ -3955,43 +3962,29 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_xen_domid:
                 if (!(xen_available())) {
-                    printf("Option %s not supported for this target\n", popt->name);
+                    error_report("Option not supported for this target");
                     exit(1);
                 }
                 xen_domid = atoi(optarg);
                 break;
             case QEMU_OPTION_xen_create:
                 if (!(xen_available())) {
-                    printf("Option %s not supported for this target\n", popt->name);
+                    error_report("Option not supported for this target");
                     exit(1);
                 }
                 xen_mode = XEN_CREATE;
                 break;
             case QEMU_OPTION_xen_attach:
                 if (!(xen_available())) {
-                    printf("Option %s not supported for this target\n", popt->name);
+                    error_report("Option not supported for this target");
                     exit(1);
                 }
                 xen_mode = XEN_ATTACH;
                 break;
             case QEMU_OPTION_trace:
-            {
-                opts = qemu_opts_parse_noisily(qemu_find_opts("trace"),
-                                               optarg, true);
-                if (!opts) {
-                    exit(1);
-                }
-                if (qemu_opt_get(opts, "enable")) {
-                    trace_enable_events(qemu_opt_get(opts, "enable"));
-                }
-                trace_init_events(qemu_opt_get(opts, "events"));
-                if (trace_file) {
-                    g_free(trace_file);
-                }
-                trace_file = g_strdup(qemu_opt_get(opts, "file"));
-                qemu_opts_del(opts);
+                g_free(trace_file);
+                trace_file = trace_opt_parse(optarg);
                 break;
-            }
             case QEMU_OPTION_readconfig:
                 {
                     int ret = qemu_read_config_file(optarg);
@@ -4257,7 +4250,7 @@ int main(int argc, char **argv, char **envp)
     /* Open the logfile at this point and set the log mask if necessary.
      */
     if (log_file) {
-        qemu_set_log_filename(log_file);
+        qemu_set_log_filename(log_file, &error_fatal);
     }
 
     if (log_mask) {
@@ -4292,6 +4285,14 @@ int main(int argc, char **argv, char **envp)
         }
     }
 #endif
+
+    /* -L help lists the data directories and exits. */
+    if (list_data_dirs) {
+        for (i = 0; i < data_dir_idx; i++) {
+            printf("%s\n", data_dir[i]);
+        }
+        exit(0);
+    }
 
     smp_parse(qemu_opts_find(qemu_find_opts("smp-opts"), NULL));
 
@@ -4419,7 +4420,6 @@ int main(int argc, char **argv, char **envp)
         display_type = DT_COCOA;
 #elif defined(CONFIG_VNC)
         vnc_parse("localhost:0,to=99,id=default", &error_abort);
-        show_vnc_port = 1;
 #else
         display_type = DT_NONE;
 #endif
@@ -4563,9 +4563,6 @@ int main(int argc, char **argv, char **envp)
         qemu_opts_del(icount_opts);
     }
 
-    /* clean up network at qemu process termination */
-    atexit(&net_cleanup);
-
     if (default_net) {
         QemuOptsList *net = qemu_find_opts("net");
         qemu_opts_set(net, NULL, "type", "nic", &error_abort);
@@ -4666,14 +4663,10 @@ int main(int argc, char **argv, char **envp)
             exit (i == 1 ? 1 : 0);
     }
 
-    if (machine_class->compat_props) {
-        GlobalProperty *p;
-        for (i = 0; i < machine_class->compat_props->len; i++) {
-            p = g_array_index(machine_class->compat_props, GlobalProperty *, i);
-            qdev_prop_register_global(p);
-        }
-    }
-    qemu_add_globals();
+    machine_register_compat_props(current_machine);
+
+    qemu_opts_foreach(qemu_find_opts("global"),
+                      global_init_func, NULL, NULL);
 
     /* This checkpoint is required by replay to separate prior clock
        reading from the other reads, because timer polling functions query
@@ -4703,7 +4696,7 @@ int main(int argc, char **argv, char **envp)
     }
 
     /* init USB devices */
-    if (usb_enabled()) {
+    if (machine_usb(current_machine)) {
         if (foreach_device_config(DEV_USB, usb_parse) < 0)
             exit(1);
     }
@@ -4764,13 +4757,10 @@ int main(int argc, char **argv, char **envp)
     os_setup_signal_handling();
 
     /* init remote displays */
+#ifdef CONFIG_VNC
     qemu_opts_foreach(qemu_find_opts("vnc"),
                       vnc_init_func, NULL, NULL);
-    if (show_vnc_port) {
-        char *ret = vnc_display_local_addr("default");
-        printf("VNC server running on '%s'\n", ret);
-        g_free(ret);
-    }
+#endif
 
     if (using_spice) {
         qemu_spice_display_init();
@@ -4845,19 +4835,24 @@ int main(int argc, char **argv, char **envp)
     os_setup_post();
 
     panda_in_main_loop = 1;
+    trace_init_vcpu_events();
     main_loop();
     panda_in_main_loop = 0;
 
     replay_disable_events();
+    iothread_stop_all();
 
     bdrv_close_all();
     panda_cleanup();
 
     pause_all_vcpus();
     res_free();
-#ifdef CONFIG_TPM
-    tpm_cleanup();
-#endif
+
+    /* vhost-user must be cleaned up before chardevs.  */
+    net_cleanup();
+    audio_cleanup();
+    monitor_cleanup();
+    qemu_chr_cleanup();
 
 #ifdef CONFIG_LLVM
     if (generate_llvm || execute_llvm){

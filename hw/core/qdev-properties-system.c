@@ -1,5 +1,5 @@
 /*
- * qdev property parsing and global properties
+ * qdev property parsing
  * (parts specific for qemu-system-*)
  *
  * This file is based on code from hw/qdev-properties.c from
@@ -72,17 +72,26 @@ static void parse_drive(DeviceState *dev, const char *str, void **ptr,
                         const char *propname, Error **errp)
 {
     BlockBackend *blk;
+    bool blk_created = false;
 
     blk = blk_by_name(str);
     if (!blk) {
+        BlockDriverState *bs = bdrv_lookup_bs(NULL, str, NULL);
+        if (bs) {
+            blk = blk_new();
+            blk_insert_bs(blk, bs);
+            blk_created = true;
+        }
+    }
+    if (!blk) {
         error_setg(errp, "Property '%s.%s' can't find value '%s'",
                    object_get_typename(OBJECT(dev)), propname, str);
-        return;
+        goto fail;
     }
     if (blk_attach_dev(blk, dev) < 0) {
         DriveInfo *dinfo = blk_legacy_dinfo(blk);
 
-        if (dinfo->type != IF_NONE) {
+        if (dinfo && dinfo->type != IF_NONE) {
             error_setg(errp, "Drive '%s' is already in use because "
                        "it has been automatically connected to another "
                        "device (did you need 'if=none' in the drive options?)",
@@ -91,9 +100,16 @@ static void parse_drive(DeviceState *dev, const char *str, void **ptr,
             error_setg(errp, "Drive '%s' is already in use by another device",
                        str);
         }
-        return;
+        goto fail;
     }
+
     *ptr = blk;
+
+fail:
+    if (blk_created) {
+        /* If we need to keep a reference, blk_attach_dev() took it */
+        blk_unref(blk);
+    }
 }
 
 static void release_drive(Object *obj, const char *name, void *opaque)
@@ -103,14 +119,23 @@ static void release_drive(Object *obj, const char *name, void *opaque)
     BlockBackend **ptr = qdev_get_prop_ptr(dev, prop);
 
     if (*ptr) {
-        blk_detach_dev(*ptr, dev);
         blockdev_auto_del(*ptr);
+        blk_detach_dev(*ptr, dev);
     }
 }
 
 static char *print_drive(void *ptr)
 {
-    return g_strdup(blk_name(ptr));
+    const char *name;
+
+    name = blk_name(ptr);
+    if (!*name) {
+        BlockDriverState *bs = blk_bs(ptr);
+        if (bs) {
+            name = bdrv_get_node_name(bs);
+        }
+    }
+    return g_strdup(name);
 }
 
 static void get_drive(Object *obj, Visitor *v, const char *name, void *opaque,
@@ -127,7 +152,7 @@ static void set_drive(Object *obj, Visitor *v, const char *name, void *opaque,
 
 PropertyInfo qdev_prop_drive = {
     .name  = "str",
-    .description = "ID of a drive to use as a backend",
+    .description = "Node name or ID of a block device to use as a backend",
     .get   = get_drive,
     .set   = set_drive,
     .release = release_drive,
@@ -231,7 +256,7 @@ static void set_netdev(Object *obj, Visitor *v, const char *name,
     }
 
     queues = qemu_find_net_clients_except(str, peers,
-                                          NET_CLIENT_OPTIONS_KIND_NIC,
+                                          NET_CLIENT_DRIVER_NIC,
                                           MAX_QUEUE_NUM);
     if (queues == 0) {
         err = -ENOENT;
@@ -362,8 +387,19 @@ PropertyInfo qdev_prop_vlan = {
 void qdev_prop_set_drive(DeviceState *dev, const char *name,
                          BlockBackend *value, Error **errp)
 {
-    object_property_set_str(OBJECT(dev), value ? blk_name(value) : "",
-                            name, errp);
+    const char *ref = "";
+
+    if (value) {
+        ref = blk_name(value);
+        if (!*ref) {
+            BlockDriverState *bs = blk_bs(value);
+            if (bs) {
+                ref = bdrv_get_node_name(bs);
+            }
+        }
+    }
+
+    object_property_set_str(OBJECT(dev), ref, name, errp);
 }
 
 void qdev_prop_set_chr(DeviceState *dev, const char *name,
@@ -393,23 +429,4 @@ void qdev_set_nic_properties(DeviceState *dev, NICInfo *nd)
         qdev_prop_set_uint32(dev, "vectors", nd->nvectors);
     }
     nd->instantiated = 1;
-}
-
-static int qdev_add_one_global(void *opaque, QemuOpts *opts, Error **errp)
-{
-    GlobalProperty *g;
-
-    g = g_malloc0(sizeof(*g));
-    g->driver   = qemu_opt_get(opts, "driver");
-    g->property = qemu_opt_get(opts, "property");
-    g->value    = qemu_opt_get(opts, "value");
-    g->user_provided = true;
-    qdev_prop_register_global(g);
-    return 0;
-}
-
-void qemu_add_globals(void)
-{
-    qemu_opts_foreach(qemu_find_opts("global"),
-                      qdev_add_one_global, NULL, NULL);
 }

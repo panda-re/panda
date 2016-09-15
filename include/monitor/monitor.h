@@ -17,6 +17,7 @@ extern Monitor *cur_mon;
 bool monitor_cur_is_qmp(void);
 
 void monitor_init(CharDriverState *chr, int flags);
+void monitor_cleanup(void);
 
 int monitor_suspend(Monitor *mon);
 void monitor_resume(Monitor *mon);
@@ -51,4 +52,4 @@ int monitor_fdset_dup_fd_add(int64_t fdset_id, int dup_fd);
 void monitor_fdset_dup_fd_remove(int dup_fd);
 int monitor_fdset_dup_fd_find(int dup_fd);
 
-#endif /* !MONITOR_H */
+#endif /* MONITOR_H */

@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CPU_MICROBLAZE_H
-#define CPU_MICROBLAZE_H
+
+#ifndef MICROBLAZE_CPU_H
+#define MICROBLAZE_CPU_H
 
 #include "qemu-common.h"
 #include "cpu-qom.h"
@@ -321,7 +322,6 @@ int mb_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
 void mb_tcg_init(void);
 MicroBlazeCPU *cpu_mb_init(const char *cpu_model);
-int cpu_mb_exec(CPUState *cpu);
 /* you can call this signal handler from your SIGBUS and SIGSEGV
    signal handlers to inform the virtual CPU of exceptions. non zero
    is returned if the signal was handled by the virtual CPU.  */
@@ -336,7 +336,6 @@ int cpu_mb_signal_handler(int host_signum, void *pinfo,
 
 #define cpu_init(cpu_model) CPU(cpu_mb_init(cpu_model))
 
-#define cpu_exec cpu_mb_exec
 #define cpu_signal_handler cpu_mb_signal_handler
 
 /* MMU modes definitions */

@@ -33,12 +33,12 @@
  * NULL, it means that the function was called in C code (i.e. not
  * from generated code or from helper.c)
  */
-void tlb_fill(CPUState *cs, target_ulong addr, int is_write, int mmu_idx,
-              uintptr_t retaddr)
+void tlb_fill(CPUState *cs, target_ulong addr, MMUAccessType access_type,
+              int mmu_idx, uintptr_t retaddr)
 {
     int ret;
 
-    ret = mb_cpu_handle_mmu_fault(cs, addr, is_write, mmu_idx);
+    ret = mb_cpu_handle_mmu_fault(cs, addr, access_type, mmu_idx);
     if (unlikely(ret)) {
         if (retaddr) {
             /* now we have a real cpu fault */
@@ -288,12 +288,14 @@ uint32_t helper_fcmp_un(CPUMBState *env, uint32_t a, uint32_t b)
     fa.l = a;
     fb.l = b;
 
-    if (float32_is_signaling_nan(fa.f) || float32_is_signaling_nan(fb.f)) {
+    if (float32_is_signaling_nan(fa.f, &env->fp_status) ||
+        float32_is_signaling_nan(fb.f, &env->fp_status)) {
         update_fpu_flags(env, float_flag_invalid);
         r = 1;
     }
 
-    if (float32_is_quiet_nan(fa.f) || float32_is_quiet_nan(fb.f)) {
+    if (float32_is_quiet_nan(fa.f, &env->fp_status) ||
+        float32_is_quiet_nan(fb.f, &env->fp_status)) {
         r = 1;
     }
 

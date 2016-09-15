@@ -16,13 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#if !defined(__HW_SPAPR_H__)
-#error Please include spapr.h before this file!
-#endif
 
-#if !defined(__HW_SPAPR_PCI_H__)
-#define __HW_SPAPR_PCI_H__
+#ifndef PCI_HOST_SPAPR_H
+#define PCI_HOST_SPAPR_H
 
+#include "hw/ppc/spapr.h"
 #include "hw/pci/pci.h"
 #include "hw/pci/pci_host.h"
 #include "hw/ppc/xics.h"
@@ -31,6 +29,8 @@
 
 #define SPAPR_PCI_HOST_BRIDGE(obj) \
     OBJECT_CHECK(sPAPRPHBState, (obj), TYPE_SPAPR_PCI_HOST_BRIDGE)
+
+#define SPAPR_PCI_DMA_MAX_WINDOWS    2
 
 typedef struct sPAPRPHBState sPAPRPHBState;
 
@@ -56,7 +56,7 @@ struct sPAPRPHBState {
     hwaddr mem_win_addr, mem_win_size, io_win_addr, io_win_size;
     MemoryRegion memwindow, iowindow, msiwindow;
 
-    uint32_t dma_liobn;
+    uint32_t dma_liobn[SPAPR_PCI_DMA_MAX_WINDOWS];
     hwaddr dma_win_addr, dma_win_size;
     AddressSpace iommu_as;
     MemoryRegion iommu_root;
@@ -71,6 +71,10 @@ struct sPAPRPHBState {
     spapr_pci_msi_mig *msi_devs;
 
     QLIST_ENTRY(sPAPRPHBState) list;
+
+    bool ddw_enabled;
+    uint64_t page_size_mask;
+    uint64_t dma64_win_addr;
 };
 
 #define SPAPR_PCI_MAX_INDEX          255
@@ -93,7 +97,7 @@ static inline qemu_irq spapr_phb_lsi_qirq(struct sPAPRPHBState *phb, int pin)
 {
     sPAPRMachineState *spapr = SPAPR_MACHINE(qdev_get_machine());
 
-    return xics_get_qirq(spapr->icp, phb->lsi_table[pin].irq);
+    return xics_get_qirq(spapr->xics, phb->lsi_table[pin].irq);
 }
 
 PCIHostState *spapr_create_phb(sPAPRMachineState *spapr, int index);
@@ -149,4 +153,4 @@ static inline void spapr_phb_vfio_reset(DeviceState *qdev)
 
 void spapr_phb_dma_reset(sPAPRPHBState *sphb);
 
-#endif /* __HW_SPAPR_PCI_H__ */
+#endif /* PCI_HOST_SPAPR_H */

@@ -1,5 +1,6 @@
 #ifndef QEMU_HW_XEN_H
-#define QEMU_HW_XEN_H 1
+#define QEMU_HW_XEN_H
+
 /*
  * public xen header
  *   stuff needed outside xen-*.c, i.e. interfaces to qemu.
@@ -8,7 +9,6 @@
  */
 
 #include "qemu-common.h"
-#include "qemu/typedefs.h"
 #include "exec/cpu-common.h"
 #include "hw/irq.h"
 

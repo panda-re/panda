@@ -151,6 +151,7 @@ void alpha_translate_init(void)
     done_init = 1;
 
     cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
+    tcg_ctx.tcg_env = cpu_env;
 
     for (i = 0; i < 31; i++) {
         cpu_std_ir[i] = tcg_global_mem_new_i64(cpu_env,
@@ -448,10 +449,13 @@ static ExitStatus gen_store_conditional(DisasContext *ctx, int ra, int rb,
 
 static bool in_superpage(DisasContext *ctx, int64_t addr)
 {
+#ifndef CONFIG_USER_ONLY
     return ((ctx->tb->flags & TB_FLAGS_USER_MODE) == 0
-            && addr < 0
-            && ((addr >> 41) & 3) == 2
-            && addr >> TARGET_VIRT_ADDR_SPACE_BITS == addr >> 63);
+            && addr >> TARGET_VIRT_ADDR_SPACE_BITS == -1
+            && ((addr >> 41) & 3) == 2);
+#else
+    return false;
+#endif
 }
 
 static bool use_goto_tb(DisasContext *ctx, uint64_t dest)

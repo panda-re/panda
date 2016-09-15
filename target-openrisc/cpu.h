@@ -17,8 +17,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CPU_OPENRISC_H
-#define CPU_OPENRISC_H
+#ifndef OPENRISC_CPU_H
+#define OPENRISC_CPU_H
 
 #define TARGET_LONG_BITS 32
 
@@ -344,7 +344,6 @@ static inline OpenRISCCPU *openrisc_env_get_cpu(CPUOpenRISCState *env)
 OpenRISCCPU *cpu_openrisc_init(const char *cpu_model);
 
 void cpu_openrisc_list(FILE *f, fprintf_function cpu_fprintf);
-int cpu_openrisc_exec(CPUState *cpu);
 void openrisc_cpu_do_interrupt(CPUState *cpu);
 bool openrisc_cpu_exec_interrupt(CPUState *cpu, int int_req);
 void openrisc_cpu_dump_state(CPUState *cpu, FILE *f,
@@ -358,7 +357,6 @@ int openrisc_cpu_handle_mmu_fault(CPUState *cpu, vaddr address,
 int cpu_openrisc_signal_handler(int host_signum, void *pinfo, void *puc);
 
 #define cpu_list cpu_openrisc_list
-#define cpu_exec cpu_openrisc_exec
 #define cpu_signal_handler cpu_openrisc_signal_handler
 
 #ifndef CONFIG_USER_ONLY
@@ -410,4 +408,4 @@ static inline int cpu_mmu_index(CPUOpenRISCState *env, bool ifetch)
 
 #define CPU_INTERRUPT_TIMER   CPU_INTERRUPT_TGT_INT_0
 
-#endif /* CPU_OPENRISC_H */
+#endif /* OPENRISC_CPU_H */

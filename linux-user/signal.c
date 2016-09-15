@@ -195,7 +195,6 @@ int block_signals(void)
 {
     TaskState *ts = (TaskState *)thread_cpu->opaque;
     sigset_t set;
-    int pending;
 
     /* It's OK to block everything including SIGSEGV, because we won't
      * run any further guest code before unblocking signals in
@@ -204,9 +203,7 @@ int block_signals(void)
     sigfillset(&set);
     sigprocmask(SIG_SETMASK, &set, 0);
 
-    pending = atomic_xchg(&ts->signal_pending, 1);
-
-    return pending;
+    return atomic_xchg(&ts->signal_pending, 1);
 }
 
 /* Wrapper for sigprocmask function
@@ -280,6 +277,14 @@ static inline void host_to_target_siginfo_noswap(target_siginfo_t *tinfo,
     tinfo->si_signo = sig;
     tinfo->si_errno = 0;
     tinfo->si_code = info->si_code;
+
+    /* This memset serves two purposes:
+     * (1) ensure we don't leak random junk to the guest later
+     * (2) placate false positives from gcc about fields
+     *     being used uninitialized if it chooses to inline both this
+     *     function and tswap_siginfo() into host_to_target_siginfo().
+     */
+    memset(tinfo->_sifields._pad, 0, sizeof(tinfo->_sifields._pad));
 
     /* This is awkward, because we have to use a combination of
      * the si_code and si_signo to figure out which of the union's
@@ -400,8 +405,9 @@ static void tswap_siginfo(target_siginfo_t *tinfo,
 
 void host_to_target_siginfo(target_siginfo_t *tinfo, const siginfo_t *info)
 {
-    host_to_target_siginfo_noswap(tinfo, info);
-    tswap_siginfo(tinfo, tinfo);
+    target_siginfo_t tgt_tmp;
+    host_to_target_siginfo_noswap(&tgt_tmp, info);
+    tswap_siginfo(tinfo, &tgt_tmp);
 }
 
 /* XXX: we support only POSIX RT signals are used. */
@@ -630,8 +636,16 @@ static void host_signal_handler(int host_signum, siginfo_t *info,
      * code in case the guest code provokes one in the window between
      * now and it getting out to the main loop. Signals will be
      * unblocked again in process_pending_signals().
+     *
+     * WARNING: we cannot use sigfillset() here because the uc_sigmask
+     * field is a kernel sigset_t, which is much smaller than the
+     * libc sigset_t which sigfillset() operates on. Using sigfillset()
+     * would write 0xff bytes off the end of the structure and trash
+     * data on the struct.
+     * We can't use sizeof(uc->uc_sigmask) either, because the libc
+     * headers define the struct field with the wrong (too large) type.
      */
-    sigfillset(&uc->uc_sigmask);
+    memset(&uc->uc_sigmask, 0xff, SIGSET_T_SIZE);
     sigdelset(&uc->uc_sigmask, SIGSEGV);
     sigdelset(&uc->uc_sigmask, SIGBUS);
 
@@ -3956,9 +3970,7 @@ static void setup_sigcontext(struct target_sigcontext *sc,
 
 static inline unsigned long align_sigframe(unsigned long sp)
 {
-    unsigned long i;
-    i = sp & ~3UL;
-    return i;
+    return sp & ~3UL;
 }
 
 static inline abi_ulong get_sigframe(struct target_sigaction *ka,
@@ -4555,7 +4567,7 @@ static target_ulong get_sigframe(struct target_sigaction *ka,
                                  CPUPPCState *env,
                                  int frame_size)
 {
-    target_ulong oldsp, newsp;
+    target_ulong oldsp;
 
     oldsp = env->gpr[1];
 
@@ -4565,9 +4577,7 @@ static target_ulong get_sigframe(struct target_sigaction *ka,
                  + target_sigaltstack_used.ss_size);
     }
 
-    newsp = (oldsp - frame_size) & ~0xFUL;
-
-    return newsp;
+    return (oldsp - frame_size) & ~0xFUL;
 }
 
 static void save_user_regs(CPUPPCState *env, struct target_mcontext *frame)
@@ -5816,7 +5826,8 @@ long do_rt_sigreturn(CPUArchState *env)
 
 #endif
 
-static void handle_pending_signal(CPUArchState *cpu_env, int sig)
+static void handle_pending_signal(CPUArchState *cpu_env, int sig,
+                                  struct emulated_sigtable *k)
 {
     CPUState *cpu = ENV_GET_CPU(cpu_env);
     abi_ulong handler;
@@ -5824,7 +5835,6 @@ static void handle_pending_signal(CPUArchState *cpu_env, int sig)
     target_sigset_t target_old_set;
     struct target_sigaction *sa;
     TaskState *ts = cpu->opaque;
-    struct emulated_sigtable *k = &ts->sigtab[sig - 1];
 
     trace_user_handle_signal(cpu_env, sig);
     /* dequeue signal */
@@ -5927,7 +5937,7 @@ void process_pending_signals(CPUArchState *cpu_env)
                 sigact_table[sig - 1]._sa_handler = TARGET_SIG_DFL;
             }
 
-            handle_pending_signal(cpu_env, sig);
+            handle_pending_signal(cpu_env, sig, &ts->sync_signal);
         }
 
         for (sig = 1; sig <= TARGET_NSIG; sig++) {
@@ -5937,7 +5947,7 @@ void process_pending_signals(CPUArchState *cpu_env)
             if (ts->sigtab[sig - 1].pending &&
                 (!sigismember(blocked_set,
                               target_to_host_signal_table[sig]))) {
-                handle_pending_signal(cpu_env, sig);
+                handle_pending_signal(cpu_env, sig, &ts->sigtab[sig - 1]);
                 /* Restart scan from the beginning */
                 sig = 1;
             }

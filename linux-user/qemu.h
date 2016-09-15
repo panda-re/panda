@@ -20,6 +20,11 @@
 
 #define THREAD __thread
 
+/* This is the size of the host kernel's sigset_t, needed where we make
+ * direct system calls that take a sigset_t pointer and a size.
+ */
+#define SIGSET_T_SIZE (_NSIG / 8)
+
 /* This struct is used to hold certain information about the image.
  * Basically, it replicates in user space what would be certain
  * task_struct fields in the kernel
@@ -111,10 +116,10 @@ typedef struct TaskState {
 #endif
 #if defined(TARGET_ARM) || defined(TARGET_M68K) || defined(TARGET_UNICORE32)
     /* Extra fields for semihosted binaries.  */
-    uint32_t heap_base;
-    uint32_t heap_limit;
+    abi_ulong heap_base;
+    abi_ulong heap_limit;
 #endif
-    uint32_t stack_base;
+    abi_ulong stack_base;
     int used; /* non zero if used */
     struct image_info *info;
     struct linux_binprm *bprm;
@@ -414,8 +419,6 @@ int target_msync(abi_ulong start, abi_ulong len, int flags);
 extern unsigned long last_brk;
 extern abi_ulong mmap_next_start;
 abi_ulong mmap_find_vma(abi_ulong, abi_ulong);
-void cpu_list_lock(void);
-void cpu_list_unlock(void);
 void mmap_fork_start(void);
 void mmap_fork_end(int child);
 

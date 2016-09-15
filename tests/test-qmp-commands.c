@@ -59,6 +59,14 @@ QObject *qmp_guest_sync(QObject *arg, Error **errp)
     return arg;
 }
 
+void qmp_boxed_struct(UserDefZero *arg, Error **errp)
+{
+}
+
+void qmp_boxed_union(UserDefNativeListUnion *arg, Error **errp)
+{
+}
+
 __org_qemu_x_Union1 *qmp___org_qemu_x_command(__org_qemu_x_EnumList *a,
                                               __org_qemu_x_StructList *b,
                                               __org_qemu_x_Union2 *c,
@@ -95,7 +103,7 @@ static void test_dispatch_cmd(void)
 }
 
 /* test commands that return an error due to invalid parameters */
-static void test_dispatch_cmd_error(void)
+static void test_dispatch_cmd_failure(void)
 {
     QDict *req = qdict_new();
     QObject *resp;
@@ -216,14 +224,14 @@ static void test_dealloc_partial(void)
     /* create partial object */
     {
         QDict *ud2_dict;
-        QmpInputVisitor *qiv;
+        Visitor *v;
 
         ud2_dict = qdict_new();
         qdict_put_obj(ud2_dict, "string0", QOBJECT(qstring_from_str(text)));
 
-        qiv = qmp_input_visitor_new(QOBJECT(ud2_dict), true);
-        visit_type_UserDefTwo(qmp_input_get_visitor(qiv), NULL, &ud2, &err);
-        qmp_input_visitor_cleanup(qiv);
+        v = qmp_input_visitor_new(QOBJECT(ud2_dict), true);
+        visit_type_UserDefTwo(v, NULL, &ud2, &err);
+        visit_free(v);
         QDECREF(ud2_dict);
     }
 
@@ -245,7 +253,7 @@ int main(int argc, char **argv)
     g_test_init(&argc, &argv, NULL);
 
     g_test_add_func("/0.15/dispatch_cmd", test_dispatch_cmd);
-    g_test_add_func("/0.15/dispatch_cmd_error", test_dispatch_cmd_error);
+    g_test_add_func("/0.15/dispatch_cmd_failure", test_dispatch_cmd_failure);
     g_test_add_func("/0.15/dispatch_cmd_io", test_dispatch_cmd_io);
     g_test_add_func("/0.15/dealloc_types", test_dealloc_types);
     g_test_add_func("/0.15/dealloc_partial", test_dealloc_partial);

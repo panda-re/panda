@@ -18,12 +18,13 @@
  */
 #include "qemu/osdep.h"
 #include "qemu-version.h"
-#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/resource.h>
 
+#include "qapi/error.h"
 #include "qemu.h"
 #include "qemu/path.h"
+#include "qemu/config-file.h"
 #include "qemu/cutils.h"
 #include "qemu/help_option.h"
 #include "cpu.h"
@@ -33,6 +34,8 @@
 #include "qemu/envlist.h"
 #include "elf.h"
 #include "exec/log.h"
+#include "trace/control.h"
+#include "glib-compat.h"
 
 char *exec_path;
 
@@ -157,7 +160,7 @@ static inline void exclusive_idle(void)
 }
 
 /* Start an exclusive operation.
-   Must only be called from outside cpu_arm_exec.   */
+   Must only be called from outside cpu_exec.   */
 static inline void start_exclusive(void)
 {
     CPUState *other_cpu;
@@ -291,7 +294,7 @@ void cpu_loop(CPUX86State *env)
 
     for(;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_x86_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch(trapnr) {
         case 0x80:
@@ -732,7 +735,7 @@ void cpu_loop(CPUARMState *env)
 
     for(;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_arm_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch(trapnr) {
         case EXCP_UDEF:
@@ -1068,7 +1071,7 @@ void cpu_loop(CPUARMState *env)
 
     for (;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_arm_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
 
         switch (trapnr) {
@@ -1156,7 +1159,7 @@ void cpu_loop(CPUUniCore32State *env)
 
     for (;;) {
         cpu_exec_start(cs);
-        trapnr = uc32_cpu_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch (trapnr) {
         case UC32_EXCP_PRIV:
@@ -1361,7 +1364,7 @@ void cpu_loop (CPUSPARCState *env)
 
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_sparc_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
 
         /* Compute PSR before exposing state.  */
@@ -1633,7 +1636,7 @@ void cpu_loop(CPUPPCState *env)
 
     for(;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_ppc_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch(trapnr) {
         case POWERPC_EXCP_NONE:
@@ -1648,11 +1651,10 @@ void cpu_loop(CPUPPCState *env)
                       "Aborting\n");
             break;
         case POWERPC_EXCP_DSI:      /* Data storage exception                */
-            EXCP_DUMP(env, "Invalid data memory access: 0x" TARGET_FMT_lx "\n",
-                      env->spr[SPR_DAR]);
             /* XXX: check this. Seems bugged */
             switch (env->error_code & 0xFF000000) {
             case 0x40000000:
+            case 0x42000000:
                 info.si_signo = TARGET_SIGSEGV;
                 info.si_errno = 0;
                 info.si_code = TARGET_SEGV_MAPERR;
@@ -1680,8 +1682,6 @@ void cpu_loop(CPUPPCState *env)
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_ISI:      /* Instruction storage exception         */
-            EXCP_DUMP(env, "Invalid instruction fetch: 0x\n" TARGET_FMT_lx
-                      "\n", env->spr[SPR_SRR0]);
             /* XXX: check this */
             switch (env->error_code & 0xFF000000) {
             case 0x40000000:
@@ -1712,7 +1712,6 @@ void cpu_loop(CPUPPCState *env)
                       "Aborting\n");
             break;
         case POWERPC_EXCP_ALIGN:    /* Alignment exception                   */
-            EXCP_DUMP(env, "Unaligned memory access\n");
             /* XXX: check this */
             info.si_signo = TARGET_SIGBUS;
             info.si_errno = 0;
@@ -1721,10 +1720,10 @@ void cpu_loop(CPUPPCState *env)
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_PROGRAM:  /* Program exception                     */
+        case POWERPC_EXCP_HV_EMU:   /* HV emulation                          */
             /* XXX: check this */
             switch (env->error_code & ~0xF) {
             case POWERPC_EXCP_FP:
-                EXCP_DUMP(env, "Floating point program exception\n");
                 info.si_signo = TARGET_SIGFPE;
                 info.si_errno = 0;
                 switch (env->error_code & 0xF) {
@@ -1760,7 +1759,6 @@ void cpu_loop(CPUPPCState *env)
                 }
                 break;
             case POWERPC_EXCP_INVAL:
-                EXCP_DUMP(env, "Invalid instruction\n");
                 info.si_signo = TARGET_SIGILL;
                 info.si_errno = 0;
                 switch (env->error_code & 0xF) {
@@ -1784,7 +1782,6 @@ void cpu_loop(CPUPPCState *env)
                 }
                 break;
             case POWERPC_EXCP_PRIV:
-                EXCP_DUMP(env, "Privilege violation\n");
                 info.si_signo = TARGET_SIGILL;
                 info.si_errno = 0;
                 switch (env->error_code & 0xF) {
@@ -1810,15 +1807,14 @@ void cpu_loop(CPUPPCState *env)
                           env->error_code);
                 break;
             }
-            info._sifields._sigfault._addr = env->nip - 4;
+            info._sifields._sigfault._addr = env->nip;
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_FPU:      /* Floating-point unavailable exception  */
-            EXCP_DUMP(env, "No floating point allowed\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_COPROC;
-            info._sifields._sigfault._addr = env->nip - 4;
+            info._sifields._sigfault._addr = env->nip;
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_SYSCALL:  /* System call exception                 */
@@ -1826,11 +1822,10 @@ void cpu_loop(CPUPPCState *env)
                       "Aborting\n");
             break;
         case POWERPC_EXCP_APU:      /* Auxiliary processor unavailable       */
-            EXCP_DUMP(env, "No APU instruction allowed\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_COPROC;
-            info._sifields._sigfault._addr = env->nip - 4;
+            info._sifields._sigfault._addr = env->nip;
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_DECR:     /* Decrementer exception                 */
@@ -1854,11 +1849,10 @@ void cpu_loop(CPUPPCState *env)
                       "Aborting\n");
             break;
         case POWERPC_EXCP_SPEU:     /* SPE/embedded floating-point unavail.  */
-            EXCP_DUMP(env, "No SPE/floating-point instruction allowed\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_COPROC;
-            info._sifields._sigfault._addr = env->nip - 4;
+            info._sifields._sigfault._addr = env->nip;
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_EFPDI:    /* Embedded floating-point data IRQ      */
@@ -1918,11 +1912,10 @@ void cpu_loop(CPUPPCState *env)
                       "while in user mode. Aborting\n");
             break;
         case POWERPC_EXCP_VPU:      /* Vector unavailable exception          */
-            EXCP_DUMP(env, "No Altivec instructions allowed\n");
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_COPROC;
-            info._sifields._sigfault._addr = env->nip - 4;
+            info._sifields._sigfault._addr = env->nip;
             queue_signal(env, info.si_signo, &info);
             break;
         case POWERPC_EXCP_PIT:      /* Programmable interval timer IRQ       */
@@ -1997,9 +1990,9 @@ void cpu_loop(CPUPPCState *env)
                              env->gpr[5], env->gpr[6], env->gpr[7],
                              env->gpr[8], 0, 0);
             if (ret == -TARGET_ERESTARTSYS) {
-                env->nip -= 4;
                 break;
             }
+            env->nip += 4;
             if (ret == (target_ulong)(-TARGET_QEMU_ESIGRETURN)) {
                 /* Returning from a successful sigreturn syscall.
                    Avoid corrupting register state.  */
@@ -2037,7 +2030,7 @@ void cpu_loop(CPUPPCState *env)
             /* just indicate that signals should be handled asap */
             break;
         default:
-            cpu_abort(cs, "Unknown exception 0x%d. Aborting\n", trapnr);
+            cpu_abort(cs, "Unknown exception 0x%x. Aborting\n", trapnr);
             break;
         }
         process_pending_signals(env);
@@ -2489,7 +2482,7 @@ void cpu_loop(CPUMIPSState *env)
 
     for(;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_mips_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch(trapnr) {
         case EXCP_SYSCALL:
@@ -2729,7 +2722,7 @@ void cpu_loop(CPUOpenRISCState *env)
 
     for (;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_openrisc_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         gdbsig = 0;
 
@@ -2823,7 +2816,7 @@ void cpu_loop(CPUSH4State *env)
 
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_sh4_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
 
         switch (trapnr) {
@@ -2889,7 +2882,7 @@ void cpu_loop(CPUCRISState *env)
     
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_cris_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch (trapnr) {
         case 0xaa:
@@ -2954,7 +2947,7 @@ void cpu_loop(CPUMBState *env)
     
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_mb_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch (trapnr) {
         case 0xaa:
@@ -3071,7 +3064,7 @@ void cpu_loop(CPUM68KState *env)
 
     for(;;) {
         cpu_exec_start(cs);
-        trapnr = cpu_m68k_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch(trapnr) {
         case EXCP_ILLEGAL:
@@ -3214,7 +3207,7 @@ void cpu_loop(CPUAlphaState *env)
 
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_alpha_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
 
         /* All of the traps imply a transition through PALcode, which
@@ -3406,7 +3399,7 @@ void cpu_loop(CPUS390XState *env)
 
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_s390x_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch (trapnr) {
         case EXCP_INTERRUPT:
@@ -3715,7 +3708,7 @@ void cpu_loop(CPUTLGState *env)
 
     while (1) {
         cpu_exec_start(cs);
-        trapnr = cpu_tilegx_exec(cs);
+        trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         switch (trapnr) {
         case TILEGX_EXCP_SYSCALL:
@@ -3846,7 +3839,7 @@ static void handle_arg_log(const char *arg)
 
 static void handle_arg_log_filename(const char *arg)
 {
-    qemu_set_log_filename(arg);
+    qemu_set_log_filename(arg, &error_fatal);
 }
 
 static void handle_arg_set_env(const char *arg)
@@ -3996,8 +3989,15 @@ static void handle_arg_strace(const char *arg)
 static void handle_arg_version(const char *arg)
 {
     printf("qemu-" TARGET_NAME " version " QEMU_VERSION QEMU_PKGVERSION
-           ", Copyright (c) 2003-2008 Fabrice Bellard\n");
+           ", " QEMU_COPYRIGHT "\n");
     exit(EXIT_SUCCESS);
+}
+
+static char *trace_file;
+static void handle_arg_trace(const char *arg)
+{
+    g_free(trace_file);
+    trace_file = trace_opt_parse(arg);
 }
 
 struct qemu_argument {
@@ -4047,6 +4047,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "log system calls"},
     {"seed",       "QEMU_RAND_SEED",   true,  handle_arg_randseed,
      "",           "Seed for pseudo-random number generator"},
+    {"trace",      "QEMU_TRACE",       true,  handle_arg_trace,
+     "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
     {NULL, NULL, false, NULL, NULL, NULL}
@@ -4236,7 +4238,14 @@ int main(int argc, char **argv, char **envp)
 
     srand(time(NULL));
 
+    qemu_add_opts(&qemu_trace_opts);
+
     optind = parse_args(argc, argv);
+
+    if (!trace_init_backends()) {
+        exit(1);
+    }
+    trace_init_file(trace_file);
 
     /* Zero out regs */
     memset(regs, 0, sizeof(struct target_pt_regs));
@@ -4686,6 +4695,20 @@ int main(int argc, char **argv, char **envp)
         if (regs->cp0_epc & 1) {
             env->hflags |= MIPS_HFLAG_M16;
         }
+        if (((info->elf_flags & EF_MIPS_NAN2008) != 0) !=
+            ((env->active_fpu.fcr31 & (1 << FCR31_NAN2008)) != 0)) {
+            if ((env->active_fpu.fcr31_rw_bitmask &
+                  (1 << FCR31_NAN2008)) == 0) {
+                fprintf(stderr, "ELF binary's NaN mode not supported by CPU\n");
+                exit(1);
+            }
+            if ((info->elf_flags & EF_MIPS_NAN2008) != 0) {
+                env->active_fpu.fcr31 |= (1 << FCR31_NAN2008);
+            } else {
+                env->active_fpu.fcr31 &= ~(1 << FCR31_NAN2008);
+            }
+            restore_snan_bit_mode(env);
+        }
     }
 #elif defined(TARGET_OPENRISC)
     {
@@ -4776,6 +4799,7 @@ int main(int argc, char **argv, char **envp)
         }
         gdb_handlesig(cpu, 0);
     }
+    trace_init_vcpu_events();
     cpu_loop(env);
     /* never exits */
     return 0;

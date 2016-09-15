@@ -58,12 +58,14 @@ struct StringOutputVisitor
     Visitor visitor;
     bool human;
     GString *string;
+    char **result;
     ListMode list_mode;
     union {
         int64_t s;
         uint64_t u;
     } range_start, range_end;
     GList *ranges;
+    void *list; /* Only needed for sanity checking the caller */
 };
 
 static StringOutputVisitor *to_sov(Visitor *v)
@@ -83,37 +85,37 @@ static void string_output_set(StringOutputVisitor *sov, char *string)
 static void string_output_append(StringOutputVisitor *sov, int64_t a)
 {
     Range *r = g_malloc0(sizeof(*r));
-    r->begin = a;
-    r->end = a + 1;
-    sov->ranges = g_list_insert_sorted_merged(sov->ranges, r, range_compare);
+
+    range_set_bounds(r, a, a);
+    sov->ranges = range_list_insert(sov->ranges, r);
 }
 
 static void string_output_append_range(StringOutputVisitor *sov,
                                        int64_t s, int64_t e)
 {
     Range *r = g_malloc0(sizeof(*r));
-    r->begin = s;
-    r->end = e + 1;
-    sov->ranges = g_list_insert_sorted_merged(sov->ranges, r, range_compare);
+
+    range_set_bounds(r, s, e);
+    sov->ranges = range_list_insert(sov->ranges, r);
 }
 
 static void format_string(StringOutputVisitor *sov, Range *r, bool next,
                           bool human)
 {
-    if (r->end - r->begin > 1) {
+    if (range_lob(r) != range_upb(r)) {
         if (human) {
             g_string_append_printf(sov->string, "0x%" PRIx64 "-0x%" PRIx64,
-                                   r->begin, r->end - 1);
+                                   range_lob(r), range_upb(r));
 
         } else {
             g_string_append_printf(sov->string, "%" PRId64 "-%" PRId64,
-                                   r->begin, r->end - 1);
+                                   range_lob(r), range_upb(r));
         }
     } else {
         if (human) {
-            g_string_append_printf(sov->string, "0x%" PRIx64, r->begin);
+            g_string_append_printf(sov->string, "0x%" PRIx64, range_lob(r));
         } else {
-            g_string_append_printf(sov->string, "%" PRId64, r->begin);
+            g_string_append_printf(sov->string, "%" PRId64, range_lob(r));
         }
     }
     if (next) {
@@ -274,6 +276,7 @@ start_list(Visitor *v, const char *name, GenericList **list, size_t size,
     assert(sov->list_mode == LM_NONE);
     /* We don't support visits without a list */
     assert(list);
+    sov->list = list;
     /* List handling is only needed if there are at least two elements */
     if (*list && (*list)->next) {
         sov->list_mode = LM_STARTED;
@@ -291,10 +294,11 @@ static GenericList *next_list(Visitor *v, GenericList *tail, size_t size)
     return ret;
 }
 
-static void end_list(Visitor *v)
+static void end_list(Visitor *v, void **obj)
 {
     StringOutputVisitor *sov = to_sov(v);
 
+    assert(sov->list == obj);
     assert(sov->list_mode == LM_STARTED ||
            sov->list_mode == LM_END ||
            sov->list_mode == LM_NONE ||
@@ -302,16 +306,13 @@ static void end_list(Visitor *v)
     sov->list_mode = LM_NONE;
 }
 
-char *string_output_get_string(StringOutputVisitor *sov)
+static void string_output_complete(Visitor *v, void *opaque)
 {
-    char *string = g_string_free(sov->string, false);
-    sov->string = NULL;
-    return string;
-}
+    StringOutputVisitor *sov = to_sov(v);
 
-Visitor *string_output_get_visitor(StringOutputVisitor *sov)
-{
-    return &sov->visitor;
+    assert(opaque == sov->result);
+    *sov->result = g_string_free(sov->string, false);
+    sov->string = NULL;
 }
 
 static void free_range(void *range, void *dummy)
@@ -319,8 +320,10 @@ static void free_range(void *range, void *dummy)
     g_free(range);
 }
 
-void string_output_visitor_cleanup(StringOutputVisitor *sov)
+static void string_output_free(Visitor *v)
 {
+    StringOutputVisitor *sov = to_sov(v);
+
     if (sov->string) {
         g_string_free(sov->string, true);
     }
@@ -330,7 +333,7 @@ void string_output_visitor_cleanup(StringOutputVisitor *sov)
     g_free(sov);
 }
 
-StringOutputVisitor *string_output_visitor_new(bool human)
+Visitor *string_output_visitor_new(bool human, char **result)
 {
     StringOutputVisitor *v;
 
@@ -338,6 +341,9 @@ StringOutputVisitor *string_output_visitor_new(bool human)
 
     v->string = g_string_new(NULL);
     v->human = human;
+    v->result = result;
+    *result = NULL;
+
     v->visitor.type = VISITOR_OUTPUT;
     v->visitor.type_int64 = print_type_int64;
     v->visitor.type_uint64 = print_type_uint64;
@@ -348,6 +354,8 @@ StringOutputVisitor *string_output_visitor_new(bool human)
     v->visitor.start_list = start_list;
     v->visitor.next_list = next_list;
     v->visitor.end_list = end_list;
+    v->visitor.complete = string_output_complete;
+    v->visitor.free = string_output_free;
 
-    return v;
+    return &v->visitor;
 }

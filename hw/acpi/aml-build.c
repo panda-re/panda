@@ -324,12 +324,9 @@ static void aml_free(gpointer data, gpointer user_data)
 
 Aml *init_aml_allocator(void)
 {
-    Aml *var;
-
     assert(!alloc_list);
     alloc_list = g_ptr_array_new();
-    var = aml_alloc();
-    return var;
+    return aml_alloc();
 }
 
 void free_aml_allocator(void)
@@ -451,12 +448,10 @@ Aml *aml_name_decl(const char *name, Aml *val)
 /* ACPI 1.0b: 16.2.6.1 Arg Objects Encoding */
 Aml *aml_arg(int pos)
 {
-    Aml *var;
     uint8_t op = 0x68 /* ARG0 op */ + pos;
 
     assert(pos <= 6);
-    var = aml_opcode(op);
-    return var;
+    return aml_opcode(op);
 }
 
 /* ACPI 2.0a: 17.2.4.4 Type 2 Opcodes Encoding: DefToInteger */
@@ -662,6 +657,20 @@ Aml *aml_call4(const char *method, Aml *arg1, Aml *arg2, Aml *arg3, Aml *arg4)
     aml_append(var, arg2);
     aml_append(var, arg3);
     aml_append(var, arg4);
+    return var;
+}
+
+/* helper to call method with 5 arguments */
+Aml *aml_call5(const char *method, Aml *arg1, Aml *arg2, Aml *arg3, Aml *arg4,
+               Aml *arg5)
+{
+    Aml *var = aml_alloc();
+    build_append_namestring(var->buf, "%s", method);
+    aml_append(var, arg1);
+    aml_append(var, arg2);
+    aml_append(var, arg3);
+    aml_append(var, arg4);
+    aml_append(var, arg5);
     return var;
 }
 
@@ -1082,12 +1091,10 @@ Aml *aml_string(const char *name_format, ...)
 /* ACPI 1.0b: 16.2.6.2 Local Objects Encoding */
 Aml *aml_local(int num)
 {
-    Aml *var;
     uint8_t op = 0x60 /* Local0Op */ + num;
 
     assert(num <= 7);
-    var = aml_opcode(op);
-    return var;
+    return aml_opcode(op);
 }
 
 /* ACPI 2.0a: 17.2.2 Data Objects Encoding: DefVarPackage */
@@ -1486,6 +1493,14 @@ Aml *aml_concatenate(Aml *source1, Aml *source2, Aml *target)
 {
     return build_opcode_2arg_dst(0x73 /* ConcatOp */, source1, source2,
                                  target);
+}
+
+/* ACPI 1.0b: 16.2.5.4 Type 2 Opcodes Encoding: DefObjectType */
+Aml *aml_object_type(Aml *object)
+{
+    Aml *var = aml_opcode(0x8E /* ObjectTypeOp */);
+    aml_append(var, object);
+    return var;
 }
 
 void

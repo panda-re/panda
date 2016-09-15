@@ -38,6 +38,7 @@
 #include "slirp/libslirp.h"
 #include "slirp/ip6.h"
 #include "sysemu/char.h"
+#include "sysemu/sysemu.h"
 #include "qemu/cutils.h"
 
 static int get_str_sep(char *buf, int buf_size, const char **pp, int sep)
@@ -76,6 +77,7 @@ typedef struct SlirpState {
     NetClientState nc;
     QTAILQ_ENTRY(SlirpState) entry;
     Slirp *slirp;
+    Notifier exit_notifier;
 #ifndef _WIN32
     char smb_dir[128];
 #endif
@@ -118,17 +120,26 @@ static ssize_t net_slirp_receive(NetClientState *nc, const uint8_t *buf, size_t 
     return size;
 }
 
+static void slirp_smb_exit(Notifier *n, void *data)
+{
+    SlirpState *s = container_of(n, SlirpState, exit_notifier);
+    slirp_smb_cleanup(s);
+}
+
 static void net_slirp_cleanup(NetClientState *nc)
 {
     SlirpState *s = DO_UPCAST(SlirpState, nc, nc);
 
     slirp_cleanup(s->slirp);
+    if (s->exit_notifier.notify) {
+        qemu_remove_exit_notifier(&s->exit_notifier);
+    }
     slirp_smb_cleanup(s);
     QTAILQ_REMOVE(&slirp_stacks, s, entry);
 }
 
 static NetClientInfo net_slirp_info = {
-    .type = NET_CLIENT_OPTIONS_KIND_USER,
+    .type = NET_CLIENT_DRIVER_USER,
     .size = sizeof(SlirpState),
     .receive = net_slirp_receive,
     .cleanup = net_slirp_cleanup,
@@ -349,6 +360,8 @@ static int net_slirp_init(NetClientState *peer, const char *model,
     }
 #endif
 
+    s->exit_notifier.notify = slirp_smb_exit;
+    qemu_add_exit_notifier(&s->exit_notifier);
     return 0;
 
 error:
@@ -817,7 +830,7 @@ static const char **slirp_dnssearch(const StringList *dnsname)
     return ret;
 }
 
-int net_init_slirp(const NetClientOptions *opts, const char *name,
+int net_init_slirp(const Netdev *netdev, const char *name,
                    NetClientState *peer, Error **errp)
 {
     /* FIXME error_setg(errp, ...) on failure */
@@ -828,8 +841,8 @@ int net_init_slirp(const NetClientOptions *opts, const char *name,
     const char **dnssearch;
     bool ipv4 = true, ipv6 = true;
 
-    assert(opts->type == NET_CLIENT_OPTIONS_KIND_USER);
-    user = opts->u.user.data;
+    assert(netdev->type == NET_CLIENT_DRIVER_USER);
+    user = &netdev->u.user;
 
     if ((user->has_ipv6 && user->ipv6 && !user->has_ipv4) ||
         (user->has_ipv4 && !user->ipv4)) {

@@ -95,8 +95,9 @@ struct VirtQueue
     int inuse;
 
     uint16_t vector;
-    void (*handle_output)(VirtIODevice *vdev, VirtQueue *vq);
-    void (*handle_aio_output)(VirtIODevice *vdev, VirtQueue *vq);
+    VirtIOHandleOutput handle_output;
+    VirtIOHandleOutput handle_aio_output;
+    bool use_aio;
     VirtIODevice *vdev;
     EventNotifier guest_notifier;
     EventNotifier host_notifier;
@@ -267,7 +268,30 @@ void virtqueue_discard(VirtQueue *vq, const VirtQueueElement *elem,
                        unsigned int len)
 {
     vq->last_avail_idx--;
+    vq->inuse--;
     virtqueue_unmap_sg(vq, elem, len);
+}
+
+/* virtqueue_rewind:
+ * @vq: The #VirtQueue
+ * @num: Number of elements to push back
+ *
+ * Pretend that elements weren't popped from the virtqueue.  The next
+ * virtqueue_pop() will refetch the oldest element.
+ *
+ * Use virtqueue_discard() instead if you have a VirtQueueElement.
+ *
+ * Returns: true on success, false if @num is greater than the number of in use
+ * elements.
+ */
+bool virtqueue_rewind(VirtQueue *vq, unsigned int num)
+{
+    if (num > vq->inuse) {
+        return false;
+    }
+    vq->last_avail_idx -= num;
+    vq->inuse -= num;
+    return true;
 }
 
 void virtqueue_fill(VirtQueue *vq, const VirtQueueElement *elem,
@@ -457,6 +481,11 @@ static void virtqueue_map_desc(unsigned int *p_num_sg, hwaddr *addr, struct iove
     unsigned num_sg = *p_num_sg;
     assert(num_sg <= max_num_sg);
 
+    if (!sz) {
+        error_report("virtio: zero sized buffers are not allowed");
+        exit(1);
+    }
+
     while (sz) {
         hwaddr len = sz;
 
@@ -560,6 +589,11 @@ void *virtqueue_pop(VirtQueue *vq, size_t sz)
     out_num = in_num = 0;
 
     max = vq->vring.num;
+
+    if (vq->inuse >= vq->vring.num) {
+        error_report("Virtqueue size exceeded");
+        exit(1);
+    }
 
     i = head = virtqueue_get_head(vq, vq->last_avail_idx++);
     if (virtio_vdev_has_feature(vdev, VIRTIO_RING_F_EVENT_IDX)) {
@@ -810,6 +844,7 @@ void virtio_reset(void *opaque)
         vdev->vq[i].signalled_used_valid = false;
         vdev->vq[i].notification = true;
         vdev->vq[i].vring.num = vdev->vq[i].vring.num_default;
+        vdev->vq[i].inuse = 0;
     }
 }
 
@@ -1130,8 +1165,9 @@ void virtio_queue_set_vector(VirtIODevice *vdev, int n, uint16_t vector)
     }
 }
 
-VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
-                            void (*handle_output)(VirtIODevice *, VirtQueue *))
+static VirtQueue *virtio_add_queue_internal(VirtIODevice *vdev, int queue_size,
+                                            VirtIOHandleOutput handle_output,
+                                            bool use_aio)
 {
     int i;
 
@@ -1148,8 +1184,26 @@ VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
     vdev->vq[i].vring.align = VIRTIO_PCI_VRING_ALIGN;
     vdev->vq[i].handle_output = handle_output;
     vdev->vq[i].handle_aio_output = NULL;
+    vdev->vq[i].use_aio = use_aio;
 
     return &vdev->vq[i];
+}
+
+/* Add a virt queue and mark AIO.
+ * An AIO queue will use the AioContext based event interface instead of the
+ * default IOHandler and EventNotifier interface.
+ */
+VirtQueue *virtio_add_queue_aio(VirtIODevice *vdev, int queue_size,
+                                VirtIOHandleOutput handle_output)
+{
+    return virtio_add_queue_internal(vdev, queue_size, handle_output, true);
+}
+
+/* Add a normal virt queue (on the contrary to the AIO version above. */
+VirtQueue *virtio_add_queue(VirtIODevice *vdev, int queue_size,
+                            VirtIOHandleOutput handle_output)
+{
+    return virtio_add_queue_internal(vdev, queue_size, handle_output, false);
 }
 
 void virtio_del_queue(VirtIODevice *vdev, int n)
@@ -1444,6 +1498,12 @@ void virtio_save(VirtIODevice *vdev, QEMUFile *f)
     vmstate_save_state(f, &vmstate_virtio, vdev, NULL);
 }
 
+/* A wrapper for use as a VMState .put function */
+void virtio_vmstate_save(QEMUFile *f, void *opaque, size_t size)
+{
+    virtio_save(VIRTIO_DEVICE(opaque), f);
+}
+
 static int virtio_set_features_nocheck(VirtIODevice *vdev, uint64_t val)
 {
     VirtioDeviceClass *k = VIRTIO_DEVICE_GET_CLASS(vdev);
@@ -1498,6 +1558,16 @@ int virtio_load(VirtIODevice *vdev, QEMUFile *f, int version_id)
         return -1;
     }
     qemu_get_be32s(f, &features);
+
+    /*
+     * Temporarily set guest_features low bits - needed by
+     * virtio net load code testing for VIRTIO_NET_F_CTRL_GUEST_OFFLOADS
+     * VIRTIO_NET_F_GUEST_ANNOUNCE and VIRTIO_NET_F_CTRL_VQ.
+     *
+     * Note: devices should always test host features in future - don't create
+     * new dependencies like this.
+     */
+    vdev->guest_features = features;
 
     config_len = qemu_get_be32(f);
 
@@ -1602,6 +1672,21 @@ int virtio_load(VirtIODevice *vdev, QEMUFile *f, int version_id)
             }
             vdev->vq[i].used_idx = vring_used_idx(&vdev->vq[i]);
             vdev->vq[i].shadow_avail_idx = vring_avail_idx(&vdev->vq[i]);
+
+            /*
+             * Some devices migrate VirtQueueElements that have been popped
+             * from the avail ring but not yet returned to the used ring.
+             */
+            vdev->vq[i].inuse = vdev->vq[i].last_avail_idx -
+                                vdev->vq[i].used_idx;
+            if (vdev->vq[i].inuse > vdev->vq[i].vring.num) {
+                error_report("VQ %d size 0x%x < last_avail_idx 0x%x - "
+                             "used_idx 0x%x",
+                             i, vdev->vq[i].vring.num,
+                             vdev->vq[i].last_avail_idx,
+                             vdev->vq[i].used_idx);
+                return -1;
+            }
         }
     }
 
@@ -1794,8 +1879,7 @@ static void virtio_queue_host_notifier_aio_read(EventNotifier *n)
 }
 
 void virtio_queue_aio_set_host_notifier_handler(VirtQueue *vq, AioContext *ctx,
-                                                void (*handle_output)(VirtIODevice *,
-                                                                      VirtQueue *))
+                                                VirtIOHandleOutput handle_output)
 {
     if (handle_output) {
         vq->handle_aio_output = handle_output;
@@ -1821,11 +1905,21 @@ static void virtio_queue_host_notifier_read(EventNotifier *n)
 void virtio_queue_set_host_notifier_fd_handler(VirtQueue *vq, bool assign,
                                                bool set_handler)
 {
+    AioContext *ctx = qemu_get_aio_context();
     if (assign && set_handler) {
-        event_notifier_set_handler(&vq->host_notifier, true,
+        if (vq->use_aio) {
+            aio_set_event_notifier(ctx, &vq->host_notifier, true,
                                    virtio_queue_host_notifier_read);
+        } else {
+            event_notifier_set_handler(&vq->host_notifier, true,
+                                       virtio_queue_host_notifier_read);
+        }
     } else {
-        event_notifier_set_handler(&vq->host_notifier, true, NULL);
+        if (vq->use_aio) {
+            aio_set_event_notifier(ctx, &vq->host_notifier, true, NULL);
+        } else {
+            event_notifier_set_handler(&vq->host_notifier, true, NULL);
+        }
     }
     if (!assign) {
         /* Test and clear notifier before after disabling event,

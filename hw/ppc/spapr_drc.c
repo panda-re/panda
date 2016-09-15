@@ -140,6 +140,8 @@ static uint32_t set_allocation_state(sPAPRDRConnector *drc,
             DPRINTFN("finalizing device removal");
             drck->detach(drc, DEVICE(drc->dev), drc->detach_cb,
                          drc->detach_cb_opaque, NULL);
+        } else if (drc->allocation_state == SPAPR_DR_ALLOCATION_STATE_USABLE) {
+            drc->awaiting_allocation = false;
         }
     }
     return RTAS_OUT_SUCCESS;
@@ -298,7 +300,7 @@ static void prop_get_fdt(Object *obj, Visitor *v, const char *name,
             /* shouldn't ever see an FDT_END_NODE before FDT_BEGIN_NODE */
             g_assert(fdt_depth > 0);
             visit_check_struct(v, &err);
-            visit_end_struct(v);
+            visit_end_struct(v, NULL);
             if (err) {
                 error_propagate(errp, err);
                 return;
@@ -321,7 +323,7 @@ static void prop_get_fdt(Object *obj, Visitor *v, const char *name,
                     return;
                 }
             }
-            visit_end_list(v);
+            visit_end_list(v, NULL);
             break;
         }
         default:
@@ -373,6 +375,10 @@ static void attach(sPAPRDRConnector *drc, DeviceState *d, void *fdt,
     drc->signalled = (drc->type != SPAPR_DR_CONNECTOR_TYPE_PCI)
                      ? true : coldplug;
 
+    if (drc->type != SPAPR_DR_CONNECTOR_TYPE_PCI) {
+        drc->awaiting_allocation = true;
+    }
+
     object_property_add_link(OBJECT(drc), "device",
                              object_get_typename(OBJECT(drc->dev)),
                              (Object **)(&drc->dev),
@@ -418,6 +424,12 @@ static void detach(sPAPRDRConnector *drc, DeviceState *d,
         drc->allocation_state != SPAPR_DR_ALLOCATION_STATE_UNUSABLE) {
         DPRINTFN("awaiting transition to unusable state before removal");
         drc->awaiting_release = true;
+        return;
+    }
+
+    if (drc->awaiting_allocation) {
+        drc->awaiting_release = true;
+        DPRINTFN("awaiting allocation to complete before removal");
         return;
     }
 
@@ -804,7 +816,7 @@ int spapr_drc_populate_dt(void *fdt, int fdt_offset, Object *owner,
                       drc_indexes->data,
                       drc_indexes->len * sizeof(uint32_t));
     if (ret) {
-        fprintf(stderr, "Couldn't create ibm,drc-indexes property\n");
+        error_report("Couldn't create ibm,drc-indexes property");
         goto out;
     }
 
@@ -812,21 +824,21 @@ int spapr_drc_populate_dt(void *fdt, int fdt_offset, Object *owner,
                       drc_power_domains->data,
                       drc_power_domains->len * sizeof(uint32_t));
     if (ret) {
-        fprintf(stderr, "Couldn't finalize ibm,drc-power-domains property\n");
+        error_report("Couldn't finalize ibm,drc-power-domains property");
         goto out;
     }
 
     ret = fdt_setprop(fdt, fdt_offset, "ibm,drc-names",
                       drc_names->str, drc_names->len);
     if (ret) {
-        fprintf(stderr, "Couldn't finalize ibm,drc-names property\n");
+        error_report("Couldn't finalize ibm,drc-names property");
         goto out;
     }
 
     ret = fdt_setprop(fdt, fdt_offset, "ibm,drc-types",
                       drc_types->str, drc_types->len);
     if (ret) {
-        fprintf(stderr, "Couldn't finalize ibm,drc-types property\n");
+        error_report("Couldn't finalize ibm,drc-types property");
         goto out;
     }
 

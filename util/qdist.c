@@ -6,6 +6,7 @@
  * License: GNU GPL, version 2 or later.
  *   See the COPYING file in the top-level directory.
  */
+#include "qemu/osdep.h"
 #include "qemu/qdist.h"
 
 #include <math.h>
@@ -13,9 +14,11 @@
 #define NAN (0.0 / 0.0)
 #endif
 
+#define QDIST_EMPTY_STR "(empty)"
+
 void qdist_init(struct qdist *dist)
 {
-    dist->entries = g_malloc(sizeof(*dist->entries));
+    dist->entries = g_new(struct qdist_entry, 1);
     dist->size = 1;
     dist->n = 0;
 }
@@ -61,8 +64,7 @@ void qdist_add(struct qdist *dist, double x, long count)
 
     if (unlikely(dist->n == dist->size)) {
         dist->size *= 2;
-        dist->entries = g_realloc(dist->entries,
-                                  sizeof(*dist->entries) * (dist->size));
+        dist->entries = g_renew(struct qdist_entry, dist->entries, dist->size);
     }
     dist->n++;
     entry = &dist->entries[dist->n - 1];
@@ -187,7 +189,7 @@ void qdist_bin__internal(struct qdist *to, const struct qdist *from, size_t n)
             }
         }
         /* they're equally spaced, so copy the dist and bail out */
-        to->entries = g_new(struct qdist_entry, from->n);
+        to->entries = g_renew(struct qdist_entry, to->entries, n);
         to->n = from->n;
         memcpy(to->entries, from->entries, sizeof(*to->entries) * to->n);
         return;
@@ -233,7 +235,7 @@ char *qdist_pr_plain(const struct qdist *dist, size_t n)
     char *ret;
 
     if (dist->n == 0) {
-        return NULL;
+        return g_strdup(QDIST_EMPTY_STR);
     }
     qdist_bin__internal(&binned, dist, n);
     ret = qdist_pr_internal(&binned);
@@ -308,7 +310,7 @@ char *qdist_pr(const struct qdist *dist, size_t n_bins, uint32_t opt)
     GString *s;
 
     if (dist->n == 0) {
-        return NULL;
+        return g_strdup(QDIST_EMPTY_STR);
     }
 
     s = g_string_new("");

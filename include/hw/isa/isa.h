@@ -102,6 +102,7 @@ ISABus *isa_bus_new(DeviceState *dev, MemoryRegion *address_space,
 void isa_bus_irqs(ISABus *bus, qemu_irq *irqs);
 qemu_irq isa_get_irq(ISADevice *dev, int isairq);
 void isa_init_irq(ISADevice *dev, qemu_irq *p, int isairq);
+void isa_connect_gpio_out(ISADevice *isadev, int gpioirq, int isairq);
 void isa_bus_dma(ISABus *bus, IsaDma *dma8, IsaDma *dma16);
 IsaDma *isa_get_dma(ISABus *bus, int nchan);
 MemoryRegion *isa_address_space(ISADevice *dev);
@@ -133,12 +134,15 @@ void isa_register_ioport(ISADevice *dev, MemoryRegion *io, uint16_t start);
  * device and use the legacy portio routines.
  *
  * @dev: the ISADevice against which these are registered; may be NULL.
+ * @piolist: the PortioList associated with the io ports
  * @start: the base I/O port against which the portio->offset is applied.
  * @portio: the ports, sorted by offset.
  * @opaque: passed into the portio callbacks.
  * @name: passed into memory_region_init_io.
  */
-void isa_register_portio_list(ISADevice *dev, uint16_t start,
+void isa_register_portio_list(ISADevice *dev,
+                              PortioList *piolist,
+                              uint16_t start,
                               const MemoryRegionPortio *portio,
                               void *opaque, const char *name);
 

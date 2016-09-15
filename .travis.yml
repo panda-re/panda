@@ -17,6 +17,7 @@ addons:
       - libgtk-3-dev
       - libiscsi-dev
       - liblttng-ust-dev
+      - libnfs-dev
       - libncurses5-dev
       - libnss3-dev
       - libpixman-1-dev
@@ -33,10 +34,13 @@ addons:
       - sparse
       - uuid-dev
 
+# The channel name "irc.oftc.net#qemu" is encrypted against qemu/qemu
+# to prevent IRC notifications from forks. This was created using:
+# $ travis encrypt -r "qemu/qemu" "irc.oftc.net#qemu"
 notifications:
   irc:
     channels:
-      - "irc.oftc.net#qemu"
+      - secure: "F7GDRgjuOo5IUyRLqSkmDL7kvdU4UcH3Lm/W2db2JnDHTGCqgEdaYEYKciyCLZ57vOTsTsOgesN8iUT7hNHBd1KWKjZe9KDTZWppWRYVwAwQMzVeSOsbbU4tRoJ6Pp+3qhH1Z0eGYR9ZgKYAoTumDFgSAYRp4IscKS8jkoedOqM="
     on_success: change
     on_failure: always
 env:
@@ -63,9 +67,6 @@ script:
   - make -j3 && ${TEST_CMD}
 matrix:
   include:
-    # Sparse is GCC only
-    - env: CONFIG="--enable-sparse"
-      compiler: gcc
     # gprof/gcov are GCC features
     - env: CONFIG="--enable-gprof --enable-gcov --disable-pie"
       compiler: gcc
@@ -88,3 +89,13 @@ matrix:
     - env: CONFIG=""
       os: osx
       compiler: clang
+    - env: CONFIG=""
+      sudo: required
+      addons:
+      dist: trusty
+      compiler: gcc
+      before_install:
+        - sudo apt-get update -qq
+        - sudo apt-get build-dep -qq qemu
+        - wget -O - http://people.linaro.org/~alex.bennee/qemu-submodule-git-seed.tar.xz | tar -xvJ
+        - git submodule update --init --recursive

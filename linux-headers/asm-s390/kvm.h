@@ -25,6 +25,7 @@
 #define KVM_DEV_FLIC_APF_DISABLE_WAIT	5
 #define KVM_DEV_FLIC_ADAPTER_REGISTER	6
 #define KVM_DEV_FLIC_ADAPTER_MODIFY	7
+#define KVM_DEV_FLIC_CLEAR_IO_IRQ	8
 /*
  * We can have up to 4*64k pending subchannels + 8 adapter interrupts,
  * as well as up  to ASYNC_PF_PER_VCPU*KVM_MAX_VCPUS pfault done interrupts.
@@ -90,6 +91,47 @@ struct kvm_s390_vm_cpu_machine {
 	__u8  pad[4];
 	__u64 fac_mask[256];
 	__u64 fac_list[256];
+};
+
+#define KVM_S390_VM_CPU_PROCESSOR_FEAT	2
+#define KVM_S390_VM_CPU_MACHINE_FEAT	3
+
+#define KVM_S390_VM_CPU_FEAT_NR_BITS	1024
+#define KVM_S390_VM_CPU_FEAT_ESOP	0
+#define KVM_S390_VM_CPU_FEAT_SIEF2	1
+#define KVM_S390_VM_CPU_FEAT_64BSCAO	2
+#define KVM_S390_VM_CPU_FEAT_SIIF	3
+#define KVM_S390_VM_CPU_FEAT_GPERE	4
+#define KVM_S390_VM_CPU_FEAT_GSLS	5
+#define KVM_S390_VM_CPU_FEAT_IB		6
+#define KVM_S390_VM_CPU_FEAT_CEI	7
+#define KVM_S390_VM_CPU_FEAT_IBS	8
+#define KVM_S390_VM_CPU_FEAT_SKEY	9
+#define KVM_S390_VM_CPU_FEAT_CMMA	10
+#define KVM_S390_VM_CPU_FEAT_PFMFI	11
+#define KVM_S390_VM_CPU_FEAT_SIGPIF	12
+struct kvm_s390_vm_cpu_feat {
+	__u64 feat[16];
+};
+
+#define KVM_S390_VM_CPU_PROCESSOR_SUBFUNC	4
+#define KVM_S390_VM_CPU_MACHINE_SUBFUNC		5
+/* for "test bit" instructions MSB 0 bit ordering, for "query" raw blocks */
+struct kvm_s390_vm_cpu_subfunc {
+	__u8 plo[32];		/* always */
+	__u8 ptff[16];		/* with TOD-clock steering */
+	__u8 kmac[16];		/* with MSA */
+	__u8 kmc[16];		/* with MSA */
+	__u8 km[16];		/* with MSA */
+	__u8 kimd[16];		/* with MSA */
+	__u8 klmd[16];		/* with MSA */
+	__u8 pckmo[16];		/* with MSA3 */
+	__u8 kmctr[16];		/* with MSA4 */
+	__u8 kmf[16];		/* with MSA4 */
+	__u8 kmo[16];		/* with MSA4 */
+	__u8 pcc[16];		/* with MSA4 */
+	__u8 ppno[16];		/* with MSA5 */
+	__u8 reserved[1824];
 };
 
 /* kvm attributes for crypto */

@@ -189,8 +189,8 @@ F: hw/sh4/
 F: disas/sh4.c
 
 SPARC
-M: Blue Swirl <blauwirbel@gmail.com>
 M: Mark Cave-Ayland <mark.cave-ayland@ilande.co.uk>
+M: Artyom Tarasenko <atar4qemu@gmail.com>
 S: Maintained
 F: target-sparc/
 F: hw/sparc/
@@ -449,23 +449,23 @@ S: Maintained
 F: hw/*/versatile*
 
 Xilinx Zynq
+M: Edgar E. Iglesias <edgar.iglesias@gmail.com>
 M: Alistair Francis <alistair.francis@xilinx.com>
-M: Peter Crosthwaite <crosthwaite.peter@gmail.com>
 L: qemu-arm@nongnu.org
 S: Maintained
-F: hw/arm/xilinx_zynq.c
-F: hw/misc/zynq_slcr.c
+F: hw/*/xilinx_*
 F: hw/*/cadence_*
-F: hw/ssi/xilinx_spips.c
+F: hw/misc/zynq_slcr.c
+F: include/hw/xilinx.h
+X: hw/ssi/xilinx_*
 
 Xilinx ZynqMP
 M: Alistair Francis <alistair.francis@xilinx.com>
-M: Peter Crosthwaite <crosthwaite.peter@gmail.com>
+M: Edgar E. Iglesias <edgar.iglesias@gmail.com>
 L: qemu-arm@nongnu.org
 S: Maintained
-F: hw/arm/xlnx-zynqmp.c
-F: hw/arm/xlnx-ep108.c
-F: include/hw/arm/xlnx-zynqmp.h
+F: hw/*/xlnx*.c
+F: include/hw/*/xlnx*.c
 
 ARM ACPI Subsystem
 M: Shannon Zhao <zhaoshenglong@huawei.com>
@@ -715,6 +715,10 @@ F: hw/misc/pc-testdev.c
 F: hw/timer/hpet*
 F: hw/timer/i8254*
 F: hw/timer/mc146818rtc*
+F: include/hw/i2c/pm_smbus.h
+F: include/hw/timer/hpet.h
+F: include/hw/timer/i8254*
+F: include/hw/timer/mc146818rtc*
 
 Machine core
 M: Eduardo Habkost <ehabkost@redhat.com>
@@ -780,6 +784,7 @@ F: hw/ipack/
 
 PCI
 M: Michael S. Tsirkin <mst@redhat.com>
+M: Marcel Apfelbaum <marcel@redhat.com>
 S: Supported
 F: include/hw/pci/*
 F: hw/misc/pci-testdev.c
@@ -830,7 +835,7 @@ T: git git://github.com/jasowang/qemu.git net
 SCSI
 M: Paolo Bonzini <pbonzini@redhat.com>
 S: Supported
-F: include/hw/scsi*
+F: include/hw/scsi/*
 F: hw/scsi/*
 T: git git://github.com/bonzini/qemu.git scsi-next
 
@@ -887,12 +892,13 @@ F: include/hw/virtio/
 
 virtio-9p
 M: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-M: Greg Kurz <gkurz@linux.vnet.ibm.com>
+M: Greg Kurz <groug@kaod.org>
 S: Supported
 F: hw/9pfs/
 F: fsdev/
 F: tests/virtio-9p-test.c
 T: git git://github.com/kvaneesh/QEMU.git
+T: git git://github.com/gkurz/qemu.git 9p-next
 
 virtio-blk
 M: Stefan Hajnoczi <stefanha@redhat.com>
@@ -946,14 +952,6 @@ S: Supported
 F: hw/scsi/megasas.c
 F: hw/scsi/mfi.h
 
-Xilinx EDK
-M: Edgar E. Iglesias <edgar.iglesias@gmail.com>
-M: Alistair Francis <alistair.francis@xilinx.com>
-M: Peter Crosthwaite <crosthwaite.peter@gmail.com>
-S: Maintained
-F: hw/*/xilinx_*
-F: include/hw/xilinx.h
-
 Network packet abstractions
 M: Dmitry Fleytman <dmitry@daynix.com>
 S: Maintained
@@ -969,7 +967,6 @@ F: hw/net/vmxnet*
 F: hw/scsi/vmw_pvscsi*
 
 Rocker
-M: Scott Feldman <sfeldma@gmail.com>
 M: Jiri Pirko <jiri@resnulli.us>
 S: Maintained
 F: hw/net/rocker/
@@ -1025,6 +1022,7 @@ F: async.c
 F: aio-*.c
 F: block/io.c
 F: migration/block*
+F: include/block/aio.h
 T: git git://github.com/stefanha/qemu.git block
 
 Block Jobs
@@ -1175,6 +1173,13 @@ F: numa.c
 F: include/sysemu/numa.h
 T: git git://github.com/ehabkost/qemu.git numa
 
+Host Memory Backends
+M: Eduardo Habkost <ehabkost@redhat.com>
+M: Igor Mammedov <imammedo@redhat.com>
+S: Maintained
+F: backends/hostmem*.c
+F: include/sysemu/hostmem.h
+
 QAPI
 M: Markus Armbruster <armbru@redhat.com>
 M: Michael Roth <mdroth@linux.vnet.ibm.com>
@@ -1241,6 +1246,12 @@ F: docs/*qmp-*
 F: scripts/qmp/
 T: git git://repo.or.cz/qemu/armbru.git qapi-next
 
+Register API
+M: Alistair Francis <alistair.francis@xilinx.com>
+S: Maintained
+F: hw/core/register.c
+F: include/hw/register.h
+
 SLIRP
 M: Samuel Thibault <samuel.thibault@ens-lyon.org>
 M: Jan Kiszka <jan.kiszka@siemens.com>
@@ -1249,6 +1260,11 @@ F: slirp/
 F: net/slirp.c
 F: include/net/slirp.h
 T: git git://git.kiszka.org/qemu.git queues/slirp
+
+Stubs
+M: Paolo Bonzini <pbonzini@redhat.com>
+S: Maintained
+F: stubs/
 
 Tracing
 M: Stefan Hajnoczi <stefanha@redhat.com>
@@ -1260,7 +1276,6 @@ F: docs/tracing.txt
 T: git git://github.com/stefanha/qemu.git tracing
 
 Checkpatch
-M: Blue Swirl <blauwirbel@gmail.com>
 S: Odd Fixes
 F: scripts/checkpatch.pl
 
@@ -1333,8 +1348,7 @@ F: thunk.c
 F: user-exec.c
 
 BSD user
-M: Blue Swirl <blauwirbel@gmail.com>
-S: Maintained
+S: Orphan
 F: bsd-user/
 
 Linux user
@@ -1397,8 +1411,7 @@ F: tcg/s390/
 F: disas/s390.c
 
 SPARC target
-M: Blue Swirl <blauwirbel@gmail.com>
-S: Maintained
+S: Odd Fixes
 F: tcg/sparc/
 F: disas/sparc.c
 
@@ -1619,6 +1632,15 @@ M: Stefan Hajnoczi <stefanha@redhat.com>
 L: qemu-block@nongnu.org
 S: Supported
 F: tests/image-fuzzer/
+
+Replication
+M: Wen Congyang <wency@cn.fujitsu.com>
+M: Changlong Xie <xiecl.fnst@cn.fujitsu.com>
+S: Supported
+F: replication*
+F: block/replication.c
+F: tests/test-replication.c
+F: docs/block-replication.txt
 
 Build and test automation
 -------------------------

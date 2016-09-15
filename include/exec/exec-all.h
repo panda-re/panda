@@ -30,8 +30,8 @@
  *
  */
 
-#ifndef _EXEC_ALL_H_
-#define _EXEC_ALL_H_
+#ifndef EXEC_ALL_H
+#define EXEC_ALL_H
 
 #include "qemu-common.h"
 #include "exec/tb-context.h"
@@ -72,6 +72,18 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
                               target_ulong pc, target_ulong cs_base,
                               uint32_t flags,
                               int cflags);
+#if defined(CONFIG_USER_ONLY)
+void cpu_list_lock(void);
+void cpu_list_unlock(void);
+#else
+static inline void cpu_list_unlock(void)
+{
+}
+static inline void cpu_list_lock(void)
+{
+}
+#endif
+
 void cpu_exec_init(CPUState *cpu, Error **errp);
 void QEMU_NORETURN cpu_loop_exit(CPUState *cpu);
 void QEMU_NORETURN cpu_loop_exit_restore(CPUState *cpu, uintptr_t pc);
@@ -240,6 +252,8 @@ struct TranslationBlock {
 #define CF_USE_ICOUNT  0x20000
 #define CF_IGNORE_ICOUNT 0x40000 /* Do not generate icount code */
 
+    uint16_t invalid;
+
     void *tc_ptr;    /* pointer to the translated code */
     uint8_t *tc_search;  /* pointer to search data */
     /* original tb when cflags has CF_NOCACHE */
@@ -405,8 +419,8 @@ extern uintptr_t tci_tb_ptr;
 struct MemoryRegion *iotlb_to_region(CPUState *cpu,
                                      hwaddr index, MemTxAttrs attrs);
 
-void tlb_fill(CPUState *cpu, target_ulong addr, int is_write, int mmu_idx,
-              uintptr_t retaddr);
+void tlb_fill(CPUState *cpu, target_ulong addr, MMUAccessType access_type,
+              int mmu_idx, uintptr_t retaddr);
 
 #endif
 

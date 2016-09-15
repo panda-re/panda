@@ -26,7 +26,6 @@
 #include "qemu/osdep.h"
 #include <sys/wait.h>
 /*needed for MAP_POPULATE before including qemu-options.h */
-#include <sys/mman.h>
 #include <pwd.h>
 #include <grp.h>
 #include <libgen.h>
@@ -90,7 +89,7 @@ char *os_find_datadir(void)
     if (exec_dir == NULL) {
         return NULL;
     }
-    dir = dirname(exec_dir);
+    dir = g_path_get_dirname(exec_dir);
 
     max_len = strlen(dir) +
         MAX(strlen(SHARE_SUFFIX), strlen(BUILD_SUFFIX)) + 1;
@@ -104,6 +103,7 @@ char *os_find_datadir(void)
         }
     }
 
+    g_free(dir);
     g_free(exec_dir);
     return res;
 }
