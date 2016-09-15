@@ -120,7 +120,7 @@ typedef union panda_cb {
        Return value:
         unused
     */
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
 
     /*
     // Callback ID: PANDA_CB_BEFORE_BLOCK_TRANSLATE

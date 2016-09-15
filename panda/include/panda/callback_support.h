@@ -6,7 +6,7 @@ void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf,
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 // cpu-exec.c
 void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb);
-void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb, TranslationBlock *next_tb);
+void panda_callbacks_after_block_exec(CPUState *cpu, TranslationBlock *tb);
 void panda_callbacks_before_block_translate(CPUState *cpu, target_ulong pc);
 void panda_callbacks_after_block_translate(CPUState *cpu, TranslationBlock *tb);
 bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool panda_bb_invalidate_done);
