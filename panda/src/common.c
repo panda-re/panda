@@ -223,6 +223,10 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     hwaddr phys_addr;
     target_ulong page;
 
+    /* Yes, this func should be called something else.
+     * If you really want to write to memory, remove this assert.
+     */
+    assert (!is_write);
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         phys_addr = cpu_get_phys_page_debug(env, page);
@@ -233,14 +237,8 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
         if (l > len)
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
-        #warning TRL fixme if necessary
-        assert (!is_write);
-//        if (is_write)
-//            cpu_physical_memory_write_rom(phys_addr, buf, l);
-//        else {
-            ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
-            if(ret < 0) return ret;
-//        }
+        ret = panda_physical_memory_rw(phys_addr, buf, l, is_write);
+        if(ret < 0) return ret;
         len -= l;
         buf += l;
         addr += l;
