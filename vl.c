@@ -2010,9 +2010,6 @@ static void main_loop(void)
         }
         if (rr_end_replay_requested && rr_in_replay()) {
             //mz restore timers
-#warning Figure out how timers work in new QEMU
-            //init_timer_alarm();
-            // ru: add new version of init_timer_alarm()
             qemu_clock_run_all_timers();
             //mz FIXME this is used in the monitor for do_stop()??
             rr_do_end_replay(/*is_error=*/0);
