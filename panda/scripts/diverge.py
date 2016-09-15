@@ -152,6 +152,7 @@ gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
 gdb_run_both("continue", timeout=None)
 
 breakpoint("cpu_tb_exec")
+breakpoint("do_interrupt_x86_hardirq")
 
 def get_whens():
     result = gdb_run_both("when")
@@ -280,29 +281,56 @@ def sync(instr_low, instr_high, target):
             behind, instr_counts[behind], ahead, instr_counts[ahead]
         )
 
-        # If our ahead guy is too far ahead, gotta bring it back.
-        if direction == BACKWARD:
-            print "Rewinding {}".format(ahead)
-            condition("cpu_tb_exec", {
-                behind: "",
-                ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
-                      .format(instr_counts[behind])
-            })
-            if "cpu_loop_exec_tb" not in gdb_run(behind, "backtrace"):
-                gdb_run_both("reverse-continue", timeout=None)
-            while get_instr_count(ahead) == instr_counts[ahead]:
-                gdb_run(ahead, "reverse-continue", timeout=None)
-        elif direction == FORWARD:
-            print "Advancing {}".format(behind)
-            condition("cpu_tb_exec", {
-                ahead: "",
-                behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
-                      .format(instr_counts[ahead])
-            })
-            if "cpu_loop_exec_tb" not in gdb_run(ahead, "backtrace"):
-                gdb_run_both("continue", timeout=None)
-            while get_instr_count(behind) == instr_counts[behind]:
-                gdb_run(behind, "continue", timeout=None)
+        if instr_counts[ahead] - instr_counts[behind] >= 100000:
+            disable_all()
+            enable("do_interrupt_x86_hardirq")
+            if direction == BACKWARD:
+                print "Rewinding {} quickly".format(ahead)
+                condition("do_interrupt_x86_hardirq", {
+                    behind: "",
+                    ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
+                        .format(instr_counts[behind])
+                })
+                if "do_interrupt_x86_hardirq" not in gdb_run(behind, "backtrace"):
+                    gdb_run_both("reverse-continue", timeout=None)
+                while get_instr_count(ahead) == instr_counts[ahead]:
+                    gdb_run(ahead, "reverse-continue", timeout=None)
+            elif direction == FORWARD:
+                print "Advancing {} quickly".format(behind)
+                condition("do_interrupt_x86_hardirq", {
+                    ahead: "",
+                    behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
+                        .format(instr_counts[ahead])
+                })
+                if "do_interrupt_x86_hardirq" not in gdb_run(ahead, "backtrace"):
+                    gdb_run_both("continue", timeout=None)
+                while get_instr_count(behind) == instr_counts[behind]:
+                    gdb_run(behind, "continue", timeout=None)
+        else:
+            disable_all()
+            enable("cpu_tb_exec")
+            if direction == BACKWARD:
+                print "Rewinding {}".format(ahead)
+                condition("cpu_tb_exec", {
+                    behind: "",
+                    ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
+                        .format(instr_counts[behind])
+                })
+                if "cpu_loop_exec_tb" not in gdb_run(behind, "backtrace"):
+                    gdb_run_both("reverse-continue", timeout=None)
+                while get_instr_count(ahead) == instr_counts[ahead]:
+                    gdb_run(ahead, "reverse-continue", timeout=None)
+            elif direction == FORWARD:
+                print "Advancing {}".format(behind)
+                condition("cpu_tb_exec", {
+                    ahead: "",
+                    behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
+                        .format(instr_counts[ahead])
+                })
+                if "cpu_loop_exec_tb" not in gdb_run(ahead, "backtrace"):
+                    gdb_run_both("continue", timeout=None)
+                while get_instr_count(behind) == instr_counts[behind]:
+                    gdb_run(behind, "continue", timeout=None)
         else: assert False
         instr_counts = get_instr_counts()
 
