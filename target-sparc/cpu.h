@@ -1,5 +1,5 @@
-#ifndef CPU_SPARC_H
-#define CPU_SPARC_H
+#ifndef SPARC_CPU_H
+#define SPARC_CPU_H
 
 #include "qemu-common.h"
 #include "qemu/bswap.h"
@@ -540,9 +540,10 @@ void sparc_cpu_dump_state(CPUState *cpu, FILE *f,
 hwaddr sparc_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
 int sparc_cpu_gdb_read_register(CPUState *cpu, uint8_t *buf, int reg);
 int sparc_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
-void QEMU_NORETURN sparc_cpu_do_unaligned_access(CPUState *cpu,
-                                                 vaddr addr, int is_write,
-                                                 int is_user, uintptr_t retaddr);
+void QEMU_NORETURN sparc_cpu_do_unaligned_access(CPUState *cpu, vaddr addr,
+                                                 MMUAccessType access_type,
+                                                 int mmu_idx,
+                                                 uintptr_t retaddr);
 
 #ifndef NO_CPU_IO_DEFS
 /* cpu_init.c */
@@ -565,7 +566,6 @@ int sparc_cpu_memory_rw_debug(CPUState *cpu, vaddr addr,
 void gen_intermediate_code_init(CPUSPARCState *env);
 
 /* cpu-exec.c */
-int cpu_sparc_exec(CPUState *cpu);
 
 /* win_helper.c */
 target_ulong cpu_get_psr(CPUSPARCState *env1);
@@ -626,7 +626,6 @@ int cpu_sparc_signal_handler(int host_signum, void *pinfo, void *puc);
 #define cpu_init(cpu_model) CPU(cpu_sparc_init(cpu_model))
 #endif
 
-#define cpu_exec cpu_sparc_exec
 #define cpu_signal_handler cpu_sparc_signal_handler
 #define cpu_list sparc_cpu_list
 
@@ -720,34 +719,34 @@ void cpu_tick_set_limit(CPUTimer *timer, uint64_t limit);
 trap_state* cpu_tsptr(CPUSPARCState* env);
 #endif
 
-#define TB_FLAG_FPU_ENABLED (1 << 4)
-#define TB_FLAG_AM_ENABLED (1 << 5)
+#define TB_FLAG_MMU_MASK     7
+#define TB_FLAG_FPU_ENABLED  (1 << 4)
+#define TB_FLAG_AM_ENABLED   (1 << 5)
+#define TB_FLAG_ASI_SHIFT    24
 
 static inline void cpu_get_tb_cpu_state(CPUSPARCState *env, target_ulong *pc,
-                                        target_ulong *cs_base, uint32_t *flags)
+                                        target_ulong *cs_base, uint32_t *pflags)
 {
+    uint32_t flags;
     *pc = env->pc;
     *cs_base = env->npc;
+    flags = cpu_mmu_index(env, false);
 #ifdef TARGET_SPARC64
-    // AM . Combined FPU enable bits . PRIV . DMMU enabled . IMMU enabled
-    *flags = (env->pstate & PS_PRIV)               /* 2 */
-        | ((env->lsu & (DMMU_E | IMMU_E)) >> 2)    /* 1, 0 */
-        | ((env->tl & 0xff) << 8)
-        | (env->dmmu.mmu_primary_context << 16);   /* 16... */
     if (env->pstate & PS_AM) {
-        *flags |= TB_FLAG_AM_ENABLED;
+        flags |= TB_FLAG_AM_ENABLED;
     }
-    if ((env->def->features & CPU_FEATURE_FLOAT) && (env->pstate & PS_PEF)
+    if ((env->def->features & CPU_FEATURE_FLOAT)
+        && (env->pstate & PS_PEF)
         && (env->fprs & FPRS_FEF)) {
-        *flags |= TB_FLAG_FPU_ENABLED;
+        flags |= TB_FLAG_FPU_ENABLED;
     }
+    flags |= env->asi << TB_FLAG_ASI_SHIFT;
 #else
-    // FPU enable . Supervisor
-    *flags = env->psrs;
     if ((env->def->features & CPU_FEATURE_FLOAT) && env->psref) {
-        *flags |= TB_FLAG_FPU_ENABLED;
+        flags |= TB_FLAG_FPU_ENABLED;
     }
 #endif
+    *pflags = flags;
 }
 
 static inline bool tb_fpu_enabled(int tb_flags)

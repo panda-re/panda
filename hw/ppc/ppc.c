@@ -33,6 +33,7 @@
 #include "hw/timer/m48t59.h"
 #include "qemu/log.h"
 #include "qemu/error-report.h"
+#include "qapi/error.h"
 #include "hw/loader.h"
 #include "sysemu/kvm.h"
 #include "kvm_ppc.h"
@@ -699,9 +700,18 @@ static inline void cpu_ppc_decr_lower(PowerPCCPU *cpu)
 
 static inline void cpu_ppc_hdecr_excp(PowerPCCPU *cpu)
 {
+    CPUPPCState *env = &cpu->env;
+
     /* Raise it */
-    LOG_TB("raise decrementer exception\n");
-    ppc_set_irq(cpu, PPC_INTERRUPT_HDECR, 1);
+    LOG_TB("raise hv decrementer exception\n");
+
+    /* The architecture specifies that we don't deliver HDEC
+     * interrupts in a PM state. Not only they don't cause a
+     * wakeup but they also get effectively discarded.
+     */
+    if (!env->in_pm_state) {
+        ppc_set_irq(cpu, PPC_INTERRUPT_HDECR, 1);
+    }
 }
 
 static inline void cpu_ppc_hdecr_lower(PowerPCCPU *cpu)
@@ -928,9 +938,7 @@ clk_setup_cb cpu_ppc_tb_init (CPUPPCState *env, uint32_t freq)
     }
     /* Create new timer */
     tb_env->decr_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &cpu_ppc_decr_cb, cpu);
-    if (0) {
-        /* XXX: find a suitable condition to enable the hypervisor decrementer
-         */
+    if (env->has_hv_mode) {
         tb_env->hdecr_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &cpu_ppc_hdecr_cb,
                                                 cpu);
     } else {
@@ -1342,4 +1350,29 @@ PowerPCCPU *ppc_get_vcpu_by_dt_id(int cpu_dt_id)
     }
 
     return NULL;
+}
+
+void ppc_cpu_parse_features(const char *cpu_model)
+{
+    CPUClass *cc;
+    ObjectClass *oc;
+    const char *typename;
+    gchar **model_pieces;
+
+    model_pieces = g_strsplit(cpu_model, ",", 2);
+    if (!model_pieces[0]) {
+        error_report("Invalid/empty CPU model name");
+        exit(1);
+    }
+
+    oc = cpu_class_by_name(TYPE_POWERPC_CPU, model_pieces[0]);
+    if (oc == NULL) {
+        error_report("Unable to find CPU definition: %s", model_pieces[0]);
+        exit(1);
+    }
+
+    typename = object_class_get_name(oc);
+    cc = CPU_CLASS(oc);
+    cc->parse_features(typename, model_pieces[1], &error_fatal);
+    g_strfreev(model_pieces);
 }

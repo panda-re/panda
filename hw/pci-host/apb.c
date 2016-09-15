@@ -634,7 +634,7 @@ static void pci_apb_set_irq(void *opaque, int irq_num, int level)
     }
 }
 
-static int apb_pci_bridge_initfn(PCIDevice *dev)
+static void apb_pci_bridge_realize(PCIDevice *dev, Error **errp)
 {
     pci_bridge_initfn(dev, TYPE_PCI_BUS);
 
@@ -652,7 +652,6 @@ static int apb_pci_bridge_initfn(PCIDevice *dev)
     pci_set_word(dev->config + PCI_STATUS,
                  PCI_STATUS_FAST_BACK | PCI_STATUS_66MHZ |
                  PCI_STATUS_DEVSEL_MEDIUM);
-    return 0;
 }
 
 PCIBus *pci_apb_init(hwaddr special_base,
@@ -670,6 +669,13 @@ PCIBus *pci_apb_init(hwaddr special_base,
 
     /* Ultrasparc PBM main bus */
     dev = qdev_create(NULL, TYPE_APB);
+    d = APB_DEVICE(dev);
+    phb = PCI_HOST_BRIDGE(dev);
+    phb->bus = pci_register_bus(DEVICE(phb), "pci",
+                                pci_apb_set_irq, pci_pbm_map_irq, d,
+                                &d->pci_mmio,
+                                get_system_io(),
+                                0, 32, TYPE_PCI_BUS);
     qdev_init_nofail(dev);
     s = SYS_BUS_DEVICE(dev);
     /* apb_config */
@@ -678,17 +684,9 @@ PCIBus *pci_apb_init(hwaddr special_base,
     sysbus_mmio_map(s, 1, special_base + 0x1000000ULL);
     /* pci_ioport */
     sysbus_mmio_map(s, 2, special_base + 0x2000000ULL);
-    d = APB_DEVICE(dev);
 
     memory_region_init(&d->pci_mmio, OBJECT(s), "pci-mmio", 0x100000000ULL);
     memory_region_add_subregion(get_system_memory(), mem_base, &d->pci_mmio);
-
-    phb = PCI_HOST_BRIDGE(dev);
-    phb->bus = pci_register_bus(DEVICE(phb), "pci",
-                                pci_apb_set_irq, pci_pbm_map_irq, d,
-                                &d->pci_mmio,
-                                get_system_io(),
-                                0, 32, TYPE_PCI_BUS);
 
     *pbm_irqs = d->pbm_irqs;
     d->ivec_irqs = ivec_irqs;
@@ -844,7 +842,7 @@ static void pbm_pci_bridge_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     PCIDeviceClass *k = PCI_DEVICE_CLASS(klass);
 
-    k->init = apb_pci_bridge_initfn;
+    k->realize = apb_pci_bridge_realize;
     k->exit = pci_bridge_exitfn;
     k->vendor_id = PCI_VENDOR_ID_SUN;
     k->device_id = PCI_DEVICE_ID_SUN_SIMBA;

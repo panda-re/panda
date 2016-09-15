@@ -19,7 +19,6 @@
 #include "qemu/osdep.h"
 #include "qemu/cutils.h"
 #include "qemu/path.h"
-#include <sys/mman.h>
 #include <sys/syscall.h>
 #include <sys/param.h>
 #include <sys/sysctl.h>
@@ -316,12 +315,14 @@ abi_long do_freebsd_syscall(void *cpu_env, int num, abi_long arg1,
                             abi_long arg5, abi_long arg6, abi_long arg7,
                             abi_long arg8)
 {
+    CPUState *cpu = ENV_GET_CPU(cpu_env);
     abi_long ret;
     void *p;
 
 #ifdef DEBUG
     gemu_log("freebsd syscall %d\n", num);
 #endif
+    trace_guest_user_syscall(cpu, num, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
     if(do_strace)
         print_freebsd_syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
 
@@ -401,6 +402,7 @@ abi_long do_freebsd_syscall(void *cpu_env, int num, abi_long arg1,
 #endif
     if (do_strace)
         print_freebsd_syscall_ret(num, ret);
+    trace_guest_user_syscall_ret(cpu, num, ret);
     return ret;
  efault:
     ret = -TARGET_EFAULT;
@@ -411,12 +413,14 @@ abi_long do_netbsd_syscall(void *cpu_env, int num, abi_long arg1,
                            abi_long arg2, abi_long arg3, abi_long arg4,
                            abi_long arg5, abi_long arg6)
 {
+    CPUState *cpu = ENV_GET_CPU(cpu_env);
     abi_long ret;
     void *p;
 
 #ifdef DEBUG
     gemu_log("netbsd syscall %d\n", num);
 #endif
+    trace_guest_user_syscall(cpu, num, arg1, arg2, arg3, arg4, arg5, arg6, 0, 0);
     if(do_strace)
         print_netbsd_syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
 
@@ -473,6 +477,7 @@ abi_long do_netbsd_syscall(void *cpu_env, int num, abi_long arg1,
 #endif
     if (do_strace)
         print_netbsd_syscall_ret(num, ret);
+    trace_guest_user_syscall_ret(cpu, num, ret);
     return ret;
  efault:
     ret = -TARGET_EFAULT;
@@ -483,12 +488,14 @@ abi_long do_openbsd_syscall(void *cpu_env, int num, abi_long arg1,
                             abi_long arg2, abi_long arg3, abi_long arg4,
                             abi_long arg5, abi_long arg6)
 {
+    CPUState *cpu = ENV_GET_CPU(cpu_env);
     abi_long ret;
     void *p;
 
 #ifdef DEBUG
     gemu_log("openbsd syscall %d\n", num);
 #endif
+    trace_guest_user_syscall(cpu, num, arg1, arg2, arg3, arg4, arg5, arg6, 0, 0);
     if(do_strace)
         print_openbsd_syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
 
@@ -545,6 +552,7 @@ abi_long do_openbsd_syscall(void *cpu_env, int num, abi_long arg1,
 #endif
     if (do_strace)
         print_openbsd_syscall_ret(num, ret);
+    trace_guest_user_syscall_ret(cpu, num, ret);
     return ret;
  efault:
     ret = -TARGET_EFAULT;

@@ -39,7 +39,8 @@ void helper_store_dump_spr(CPUPPCState *env, uint32_t sprn)
 
 #ifdef TARGET_PPC64
 static void raise_fu_exception(CPUPPCState *env, uint32_t bit,
-                               uint32_t sprn, uint32_t cause)
+                               uint32_t sprn, uint32_t cause,
+                               uintptr_t raddr)
 {
     qemu_log("Facility SPR %d is unavailable (SPR FSCR:%d)\n", sprn, bit);
 
@@ -47,7 +48,7 @@ static void raise_fu_exception(CPUPPCState *env, uint32_t bit,
     cause &= FSCR_IC_MASK;
     env->spr[SPR_FSCR] |= (target_ulong)cause << FSCR_IC_POS;
 
-    helper_raise_exception_err(env, POWERPC_EXCP_FU, 0);
+    raise_exception_err_ra(env, POWERPC_EXCP_FU, 0, raddr);
 }
 #endif
 
@@ -59,7 +60,7 @@ void helper_fscr_facility_check(CPUPPCState *env, uint32_t bit,
         /* Facility is enabled, continue */
         return;
     }
-    raise_fu_exception(env, bit, sprn, cause);
+    raise_fu_exception(env, bit, sprn, cause, GETPC());
 #endif
 }
 
@@ -71,7 +72,7 @@ void helper_msr_facility_check(CPUPPCState *env, uint32_t bit,
         /* Facility is enabled, continue */
         return;
     }
-    raise_fu_exception(env, bit, sprn, cause);
+    raise_fu_exception(env, bit, sprn, cause, GETPC());
 #endif
 }
 
@@ -165,4 +166,45 @@ target_ulong helper_clcs(CPUPPCState *env, uint32_t arg)
 void ppc_store_msr(CPUPPCState *env, target_ulong value)
 {
     hreg_store_msr(env, value, 0);
+}
+
+/* This code is lifted from MacOnLinux. It is called whenever
+ * THRM1,2 or 3 is read an fixes up the values in such a way
+ * that will make MacOS not hang. These registers exist on some
+ * 75x and 74xx processors.
+ */
+void helper_fixup_thrm(CPUPPCState *env)
+{
+    target_ulong v, t;
+    int i;
+
+#define THRM1_TIN       (1 << 31)
+#define THRM1_TIV       (1 << 30)
+#define THRM1_THRES(x)  (((x) & 0x7f) << 23)
+#define THRM1_TID       (1 << 2)
+#define THRM1_TIE       (1 << 1)
+#define THRM1_V         (1 << 0)
+#define THRM3_E         (1 << 0)
+
+    if (!(env->spr[SPR_THRM3] & THRM3_E)) {
+        return;
+    }
+
+    /* Note: Thermal interrupts are unimplemented */
+    for (i = SPR_THRM1; i <= SPR_THRM2; i++) {
+        v = env->spr[i];
+        if (!(v & THRM1_V)) {
+            continue;
+        }
+        v |= THRM1_TIV;
+        v &= ~THRM1_TIN;
+        t = v & THRM1_THRES(127);
+        if ((v & THRM1_TID) && t < THRM1_THRES(24)) {
+            v |= THRM1_TIN;
+        }
+        if (!(v & THRM1_TID) && t > THRM1_THRES(24)) {
+            v |= THRM1_TIN;
+        }
+        env->spr[i] = v;
+    }
 }

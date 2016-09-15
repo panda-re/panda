@@ -367,7 +367,9 @@ struct AcpiMadtGenericDistributor {
     uint32_t gic_id;
     uint64_t base_address;
     uint32_t global_irq_base;
-    uint32_t reserved2;
+    /* ACPI 5.1 Errata 1228 Present GIC version in MADT table */
+    uint8_t version;
+    uint8_t reserved2[3];
 } QEMU_PACKED;
 
 typedef struct AcpiMadtGenericDistributor AcpiMadtGenericDistributor;
@@ -569,6 +571,18 @@ enum {
 /*
  * Sub-structures for DMAR
  */
+
+/* Device scope structure for DRHD. */
+struct AcpiDmarDeviceScope {
+    uint8_t entry_type;
+    uint8_t length;
+    uint16_t reserved;
+    uint8_t enumeration_id;
+    uint8_t bus;
+    uint16_t path[0];           /* list of dev:func pairs */
+} QEMU_PACKED;
+typedef struct AcpiDmarDeviceScope AcpiDmarDeviceScope;
+
 /* Type 0: Hardware Unit Definition */
 struct AcpiDmarHardwareUnit {
     uint16_t type;
@@ -577,6 +591,7 @@ struct AcpiDmarHardwareUnit {
     uint8_t reserved;
     uint16_t pci_segment;   /* The PCI Segment associated with this unit */
     uint64_t address;   /* Base address of remapping hardware register-set */
+    AcpiDmarDeviceScope scope[0];
 } QEMU_PACKED;
 typedef struct AcpiDmarHardwareUnit AcpiDmarHardwareUnit;
 

@@ -14,8 +14,11 @@
 
 #include "hw/arm/arm.h"
 #include "hw/intc/aspeed_vic.h"
+#include "hw/misc/aspeed_scu.h"
+#include "hw/misc/aspeed_sdmc.h"
 #include "hw/timer/aspeed_timer.h"
 #include "hw/i2c/aspeed_i2c.h"
+#include "hw/ssi/aspeed_smc.h"
 
 typedef struct AST2400State {
     /*< private >*/
@@ -27,6 +30,10 @@ typedef struct AST2400State {
     AspeedVICState vic;
     AspeedTimerCtrlState timerctrl;
     AspeedI2CState i2c;
+    AspeedSCUState scu;
+    AspeedSMCState smc;
+    AspeedSMCState spi;
+    AspeedSDMCState sdmc;
 } AST2400State;
 
 #define TYPE_AST2400 "ast2400"

@@ -80,6 +80,7 @@ typedef struct ParallelState {
     uint32_t last_read_offset; /* For debugging */
     /* Memory-mapped interface */
     int it_shift;
+    PortioList portio_list;
 } ParallelState;
 
 #define TYPE_ISA_PARALLEL "isa-parallel"
@@ -128,7 +129,9 @@ parallel_ioport_write_sw(void *opaque, uint32_t addr, uint32_t val)
             if (val & PARA_CTR_STROBE) {
                 s->status &= ~PARA_STS_BUSY;
                 if ((s->control & PARA_CTR_STROBE) == 0)
-                    qemu_chr_fe_write(s->chr, &s->dataw, 1);
+                    /* XXX this blocks entire thread. Rewrite to use
+                     * qemu_chr_fe_write and background I/O callbacks */
+                    qemu_chr_fe_write_all(s->chr, &s->dataw, 1);
             } else {
                 if (s->control & PARA_CTR_INTEN) {
                     s->irq_pending = 1;
@@ -532,7 +535,7 @@ static void parallel_isa_realizefn(DeviceState *dev, Error **errp)
         s->status = dummy;
     }
 
-    isa_register_portio_list(isadev, base,
+    isa_register_portio_list(isadev, &s->portio_list, base,
                              (s->hw_driver
                               ? &isa_parallel_portio_hw_list[0]
                               : &isa_parallel_portio_sw_list[0]),

@@ -24,8 +24,10 @@
 #include "disas/bfd.h"
 #include "exec/hwaddr.h"
 #include "exec/memattrs.h"
+#include "qemu/bitmap.h"
 #include "qemu/queue.h"
 #include "qemu/thread.h"
+#include "trace/generated-events.h"
 
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
                                      void *opaque);
@@ -59,6 +61,12 @@ typedef uint64_t vaddr;
 
 #define CPU_CLASS(class) OBJECT_CLASS_CHECK(CPUClass, (class), TYPE_CPU)
 #define CPU_GET_CLASS(obj) OBJECT_GET_CLASS(CPUClass, (obj), TYPE_CPU)
+
+typedef enum MMUAccessType {
+    MMU_DATA_LOAD  = 0,
+    MMU_DATA_STORE = 1,
+    MMU_INST_FETCH = 2
+} MMUAccessType;
 
 typedef struct CPUWatchpoint CPUWatchpoint;
 
@@ -134,7 +142,7 @@ typedef struct CPUClass {
     /*< public >*/
 
     ObjectClass *(*class_by_name)(const char *cpu_model);
-    void (*parse_features)(CPUState *cpu, char *str, Error **errp);
+    void (*parse_features)(const char *typename, char *str, Error **errp);
 
     void (*reset)(CPUState *cpu);
     int reset_dump_flags;
@@ -142,7 +150,8 @@ typedef struct CPUClass {
     void (*do_interrupt)(CPUState *cpu);
     CPUUnassignedAccess do_unassigned_access;
     void (*do_unaligned_access)(CPUState *cpu, vaddr addr,
-                                int is_write, int is_user, uintptr_t retaddr);
+                                MMUAccessType access_type,
+                                int mmu_idx, uintptr_t retaddr);
     bool (*virtio_is_big_endian)(CPUState *cpu);
     int (*memory_rw_debug)(CPUState *cpu, vaddr addr,
                            uint8_t *buf, int len, bool is_write);
@@ -273,6 +282,7 @@ struct qemu_work_item {
  * @kvm_fd: vCPU file descriptor for KVM.
  * @work_mutex: Lock to prevent multiple access to queued_work_*.
  * @queued_work_first: First asynchronous work pending.
+ * @trace_dstate: Dynamic tracing state of events for this vCPU (bitmask).
  *
  * State of one CPU core or thread.
  */
@@ -339,6 +349,9 @@ struct CPUState {
     bool kvm_vcpu_dirty;
     struct KVMState *kvm_state;
     struct kvm_run *kvm_run;
+
+    /* Used for events with 'vcpu' and *without* the 'disabled' properties */
+    DECLARE_BITMAP(trace_dstate, TRACE_VCPU_EVENT_COUNT);
 
     /* TODO Move common fields from CPUArchState here. */
     int cpu_index; /* used by alpha TCG */
@@ -718,12 +731,12 @@ static inline void cpu_unassigned_access(CPUState *cpu, hwaddr addr,
 }
 
 static inline void cpu_unaligned_access(CPUState *cpu, vaddr addr,
-                                        int is_write, int is_user,
-                                        uintptr_t retaddr)
+                                        MMUAccessType access_type,
+                                        int mmu_idx, uintptr_t retaddr)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
-    cc->do_unaligned_access(cpu, addr, is_write, is_user, retaddr);
+    cc->do_unaligned_access(cpu, addr, access_type, mmu_idx, retaddr);
 }
 #endif
 
@@ -877,7 +890,6 @@ extern const struct VMStateDescription vmstate_cpu_common;
     .offset = 0,                                                            \
 }
 
-
-
+#define UNASSIGNED_CPU_INDEX -1
 
 #endif

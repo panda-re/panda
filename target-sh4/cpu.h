@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef _CPU_SH4_H
-#define _CPU_SH4_H
+
+#ifndef SH4_CPU_H
+#define SH4_CPU_H
 
 #include "qemu-common.h"
 #include "cpu-qom.h"
@@ -221,7 +222,6 @@ int superh_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
 void sh4_translate_init(void);
 SuperHCPU *cpu_sh4_init(const char *cpu_model);
-int cpu_sh4_exec(CPUState *s);
 int cpu_sh4_signal_handler(int host_signum, void *pinfo,
                            void *puc);
 int superh_cpu_handle_mmu_fault(CPUState *cpu, vaddr address, int rw,
@@ -254,7 +254,6 @@ void cpu_load_tlb(CPUSH4State * env);
 
 #define cpu_init(cpu_model) CPU(cpu_sh4_init(cpu_model))
 
-#define cpu_exec cpu_sh4_exec
 #define cpu_signal_handler cpu_sh4_signal_handler
 #define cpu_list sh4_cpu_list
 
@@ -389,4 +388,4 @@ static inline void cpu_get_tb_cpu_state(CPUSH4State *env, target_ulong *pc,
             | (env->movcal_backup ? TB_FLAG_PENDING_MOVCA : 0); /* Bit 4 */
 }
 
-#endif				/* _CPU_SH4_H */
+#endif /* SH4_CPU_H */

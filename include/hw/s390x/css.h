@@ -17,12 +17,15 @@
 #include "hw/s390x/ioinst.h"
 
 /* Channel subsystem constants. */
+#define MAX_DEVNO 65535
 #define MAX_SCHID 65535
 #define MAX_SSID 3
-#define MAX_CSSID 254 /* 255 is reserved */
+#define MAX_CSSID 255
 #define MAX_CHPID 255
 
 #define MAX_CIWS 62
+
+#define VIRTUAL_CSSID 0xfe
 
 typedef struct CIW {
     uint8_t type;
@@ -151,5 +154,37 @@ int css_do_rsch(SubchDev *sch);
 int css_do_rchp(uint8_t cssid, uint8_t chpid);
 bool css_present(uint8_t cssid);
 #endif
+/*
+ * Identify a device within the channel subsystem.
+ * Note that this can be used to identify either the subchannel or
+ * the attached I/O device, as there's always one I/O device per
+ * subchannel.
+ */
+typedef struct CssDevId {
+    uint8_t cssid;
+    uint8_t ssid;
+    uint16_t devid;
+    bool valid;
+} CssDevId;
 
+extern PropertyInfo css_devid_propinfo;
+
+#define DEFINE_PROP_CSS_DEV_ID(_n, _s, _f) \
+    DEFINE_PROP(_n, _s, _f, css_devid_propinfo, CssDevId)
+
+/**
+ * Create a subchannel for the given bus id.
+ *
+ * If @p bus_id is valid, verify that it uses the virtual channel
+ * subsystem id and is not already in use, and find a free subchannel
+ * id for it. If @p bus_id is not valid, find a free subchannel id and
+ * device number across all subchannel sets. If either of the former
+ * actions succeed, allocate a subchannel structure, initialise it
+ * with the bus id, subchannel id and device number, register it with
+ * the CSS and return it. Otherwise return NULL.
+ *
+ * The caller becomes owner of the returned subchannel structure and
+ * is responsible for unregistering and freeing it.
+ */
+SubchDev *css_create_virtual_sch(CssDevId bus_id, Error **errp);
 #endif

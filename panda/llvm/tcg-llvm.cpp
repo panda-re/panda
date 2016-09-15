@@ -1322,7 +1322,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Generate code for each opc */
     const TCGArg *args;
     TCGOp *op;
-    for(int opc_index = s->gen_first_op_idx; opc_index >= 0;
+    for(int opc_index = s->gen_op_buf[0].next; opc_index >= 0;
             opc_index = op->next) {
         op = &s->gen_op_buf[opc_index];
         args = &s->gen_opparam_buf[op->args];

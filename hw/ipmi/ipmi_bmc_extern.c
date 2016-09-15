@@ -100,12 +100,16 @@ ipmb_checksum(const unsigned char *data, int size, unsigned char start)
 
 static void continue_send(IPMIBmcExtern *ibe)
 {
+    int ret;
     if (ibe->outlen == 0) {
         goto check_reset;
     }
  send:
-    ibe->outpos += qemu_chr_fe_write(ibe->chr, ibe->outbuf + ibe->outpos,
-                                     ibe->outlen - ibe->outpos);
+    ret = qemu_chr_fe_write(ibe->chr, ibe->outbuf + ibe->outpos,
+                            ibe->outlen - ibe->outpos);
+    if (ret > 0) {
+        ibe->outpos += ret;
+    }
     if (ibe->outpos < ibe->outlen) {
         /* Not fully transmitted, try again in a 10ms */
         timer_mod_ns(ibe->extern_timer,
@@ -487,6 +491,14 @@ static void ipmi_bmc_extern_init(Object *obj)
     vmstate_register(NULL, 0, &vmstate_ipmi_bmc_extern, ibe);
 }
 
+static void ipmi_bmc_extern_finalize(Object *obj)
+{
+    IPMIBmcExtern *ibe = IPMI_BMC_EXTERN(obj);
+
+    timer_del(ibe->extern_timer);
+    timer_free(ibe->extern_timer);
+}
+
 static Property ipmi_bmc_extern_properties[] = {
     DEFINE_PROP_CHR("chardev", IPMIBmcExtern, chr),
     DEFINE_PROP_END_OF_LIST(),
@@ -508,6 +520,7 @@ static const TypeInfo ipmi_bmc_extern_type = {
     .parent        = TYPE_IPMI_BMC,
     .instance_size = sizeof(IPMIBmcExtern),
     .instance_init = ipmi_bmc_extern_init,
+    .instance_finalize = ipmi_bmc_extern_finalize,
     .class_init    = ipmi_bmc_extern_class_init,
  };
 

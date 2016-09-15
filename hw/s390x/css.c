@@ -10,7 +10,9 @@
  */
 
 #include "qemu/osdep.h"
-#include <hw/qdev.h>
+#include "qapi/error.h"
+#include "qapi/visitor.h"
+#include "hw/qdev.h"
 #include "qemu/bitops.h"
 #include "exec/address-spaces.h"
 #include "cpu.h"
@@ -139,7 +141,8 @@ out_err:
 int css_create_css_image(uint8_t cssid, bool default_image)
 {
     trace_css_new_image(cssid, default_image ? "(default)" : "");
-    if (cssid > MAX_CSSID) {
+    /* 255 is reserved */
+    if (cssid == 255) {
         return -EINVAL;
     }
     if (channel_subsys.css[cssid]) {
@@ -192,12 +195,46 @@ out:
     return ret;
 }
 
-uint16_t css_build_subchannel_id(SubchDev *sch)
+static void css_clear_io_interrupt(uint16_t subchannel_id,
+                                   uint16_t subchannel_nr)
+{
+    Error *err = NULL;
+    static bool no_clear_irq;
+    S390FLICState *fs = s390_get_flic();
+    S390FLICStateClass *fsc = S390_FLIC_COMMON_GET_CLASS(fs);
+    int r;
+
+    if (unlikely(no_clear_irq)) {
+        return;
+    }
+    r = fsc->clear_io_irq(fs, subchannel_id, subchannel_nr);
+    switch (r) {
+    case 0:
+        break;
+    case -ENOSYS:
+        no_clear_irq = true;
+        /*
+        * Ignore unavailability, as the user can't do anything
+        * about it anyway.
+        */
+        break;
+    default:
+        error_setg_errno(&err, -r, "unexpected error condition");
+        error_propagate(&error_abort, err);
+    }
+}
+
+static inline uint16_t css_do_build_subchannel_id(uint8_t cssid, uint8_t ssid)
 {
     if (channel_subsys.max_cssid > 0) {
-        return (sch->cssid << 8) | (1 << 3) | (sch->ssid << 1) | 1;
+        return (cssid << 8) | (1 << 3) | (ssid << 1) | 1;
     }
-    return (sch->ssid << 1) | 1;
+    return (ssid << 1) | 1;
+}
+
+uint16_t css_build_subchannel_id(SubchDev *sch)
+{
+    return css_do_build_subchannel_id(sch->cssid, sch->ssid);
 }
 
 static void css_inject_io_interrupt(SubchDev *sch)
@@ -475,6 +512,7 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
     path = 0x80;
 
     if (!(s->ctrl & SCSW_ACTL_SUSP)) {
+        /* Start Function triggered via ssch, i.e. we have an ORB */
         s->cstat = 0;
         s->dstat = 0;
         /* Look at the orb and try to execute the channel program. */
@@ -488,9 +526,12 @@ static void sch_handle_start_func(SubchDev *sch, ORB *orb)
             return;
         }
         sch->ccw_fmt_1 = !!(orb->ctrl0 & ORB_CTRL0_MASK_FMT);
+        s->flags |= (sch->ccw_fmt_1) ? SCSW_FLAGS_MASK_FMT : 0;
         sch->ccw_no_data_cnt = 0;
         suspend_allowed = !!(orb->ctrl0 & ORB_CTRL0_MASK_SPND);
     } else {
+        /* Start Function resumed via rsch, i.e. we don't have an
+         * ORB */
         s->ctrl &= ~(SCSW_ACTL_SUSP | SCSW_ACTL_RESUME_PEND);
         /* The channel program had been suspended before. */
         suspend_allowed = true;
@@ -573,6 +614,7 @@ static void do_subchannel_work(SubchDev *sch, ORB *orb)
     } else if (s->ctrl & SCSW_FCTL_HALT_FUNC) {
         sch_handle_halt_func(sch);
     } else if (s->ctrl & SCSW_FCTL_START_FUNC) {
+        /* Triggered by both ssch and rsch. */
         sch_handle_start_func(sch, orb);
     } else {
         /* Cannot happen. */
@@ -1226,7 +1268,7 @@ bool css_schid_final(int m, uint8_t cssid, uint8_t ssid, uint16_t schid)
     uint8_t real_cssid;
 
     real_cssid = (!m && (cssid == 0)) ? channel_subsys.default_cssid : cssid;
-    if (real_cssid > MAX_CSSID || ssid > MAX_SSID ||
+    if (ssid > MAX_SSID ||
         !channel_subsys.css[real_cssid] ||
         !channel_subsys.css[real_cssid]->sch_set[ssid]) {
         return true;
@@ -1241,9 +1283,6 @@ static int css_add_virtual_chpid(uint8_t cssid, uint8_t chpid, uint8_t type)
     CssImage *css;
 
     trace_css_chpid_add(cssid, chpid, type);
-    if (cssid > MAX_CSSID) {
-        return -EINVAL;
-    }
     css = channel_subsys.css[cssid];
     if (!css) {
         return -EINVAL;
@@ -1302,6 +1341,116 @@ SubchDev *css_find_subch(uint8_t m, uint8_t cssid, uint8_t ssid, uint16_t schid)
     }
 
     return channel_subsys.css[real_cssid]->sch_set[ssid]->sch[schid];
+}
+
+/**
+ * Return free device number in subchannel set.
+ *
+ * Return index of the first free device number in the subchannel set
+ * identified by @p cssid and @p ssid, beginning the search at @p
+ * start and wrapping around at MAX_DEVNO. Return a value exceeding
+ * MAX_SCHID if there are no free device numbers in the subchannel
+ * set.
+ */
+static uint32_t css_find_free_devno(uint8_t cssid, uint8_t ssid,
+                                    uint16_t start)
+{
+    uint32_t round;
+
+    for (round = 0; round <= MAX_DEVNO; round++) {
+        uint16_t devno = (start + round) % MAX_DEVNO;
+
+        if (!css_devno_used(cssid, ssid, devno)) {
+            return devno;
+        }
+    }
+    return MAX_DEVNO + 1;
+}
+
+/**
+ * Return first free subchannel (id) in subchannel set.
+ *
+ * Return index of the first free subchannel in the subchannel set
+ * identified by @p cssid and @p ssid, if there is any. Return a value
+ * exceeding MAX_SCHID if there are no free subchannels in the
+ * subchannel set.
+ */
+static uint32_t css_find_free_subch(uint8_t cssid, uint8_t ssid)
+{
+    uint32_t schid;
+
+    for (schid = 0; schid <= MAX_SCHID; schid++) {
+        if (!css_find_subch(1, cssid, ssid, schid)) {
+            return schid;
+        }
+    }
+    return MAX_SCHID + 1;
+}
+
+/**
+ * Return first free subchannel (id) in subchannel set for a device number
+ *
+ * Verify the device number @p devno is not used yet in the subchannel
+ * set identified by @p cssid and @p ssid. Set @p schid to the index
+ * of the first free subchannel in the subchannel set, if there is
+ * any. Return true if everything succeeded and false otherwise.
+ */
+static bool css_find_free_subch_for_devno(uint8_t cssid, uint8_t ssid,
+                                          uint16_t devno, uint16_t *schid,
+                                          Error **errp)
+{
+    uint32_t free_schid;
+
+    assert(schid);
+    if (css_devno_used(cssid, ssid, devno)) {
+        error_setg(errp, "Device %x.%x.%04x already exists",
+                   cssid, ssid, devno);
+        return false;
+    }
+    free_schid = css_find_free_subch(cssid, ssid);
+    if (free_schid > MAX_SCHID) {
+        error_setg(errp, "No free subchannel found for %x.%x.%04x",
+                   cssid, ssid, devno);
+        return false;
+    }
+    *schid = free_schid;
+    return true;
+}
+
+/**
+ * Return first free subchannel (id) and device number
+ *
+ * Locate the first free subchannel and first free device number in
+ * any of the subchannel sets of the channel subsystem identified by
+ * @p cssid. Return false if no free subchannel / device number could
+ * be found. Otherwise set @p ssid, @p devno and @p schid to identify
+ * the available subchannel and device number and return true.
+ *
+ * May modify @p ssid, @p devno and / or @p schid even if no free
+ * subchannel / device number could be found.
+ */
+static bool css_find_free_subch_and_devno(uint8_t cssid, uint8_t *ssid,
+                                          uint16_t *devno, uint16_t *schid,
+                                          Error **errp)
+{
+    uint32_t free_schid, free_devno;
+
+    assert(ssid && devno && schid);
+    for (*ssid = 0; *ssid <= MAX_SSID; (*ssid)++) {
+        free_schid = css_find_free_subch(cssid, *ssid);
+        if (free_schid > MAX_SCHID) {
+            continue;
+        }
+        free_devno = css_find_free_devno(cssid, *ssid, free_schid);
+        if (free_devno > MAX_DEVNO) {
+            continue;
+        }
+        *schid = free_schid;
+        *devno = free_devno;
+        return true;
+    }
+    error_setg(errp, "Virtual channel subsystem is full!");
+    return false;
 }
 
 bool css_subch_visible(SubchDev *sch)
@@ -1429,6 +1578,8 @@ void css_generate_sch_crws(uint8_t cssid, uint8_t ssid, uint16_t schid,
         css_queue_crw(CRW_RSC_SUBCH, CRW_ERC_IPI, 0,
                       (guest_cssid << 8) | (ssid << 4));
     }
+    /* RW_ERC_IPI --> clear pending interrupts */
+    css_clear_io_interrupt(css_do_build_subchannel_id(cssid, ssid), schid);
 }
 
 void css_generate_chp_crws(uint8_t cssid, uint8_t chpid)
@@ -1643,4 +1794,117 @@ void css_reset(void)
     /* Reset maximum ids. */
     channel_subsys.max_cssid = 0;
     channel_subsys.max_ssid = 0;
+}
+
+static void get_css_devid(Object *obj, Visitor *v, const char *name,
+                          void *opaque, Error **errp)
+{
+    DeviceState *dev = DEVICE(obj);
+    Property *prop = opaque;
+    CssDevId *dev_id = qdev_get_prop_ptr(dev, prop);
+    char buffer[] = "xx.x.xxxx";
+    char *p = buffer;
+    int r;
+
+    if (dev_id->valid) {
+
+        r = snprintf(buffer, sizeof(buffer), "%02x.%1x.%04x", dev_id->cssid,
+                     dev_id->ssid, dev_id->devid);
+        assert(r == sizeof(buffer) - 1);
+
+        /* drop leading zero */
+        if (dev_id->cssid <= 0xf) {
+            p++;
+        }
+    } else {
+        snprintf(buffer, sizeof(buffer), "<unset>");
+    }
+
+    visit_type_str(v, name, &p, errp);
+}
+
+/*
+ * parse <cssid>.<ssid>.<devid> and assert valid range for cssid/ssid
+ */
+static void set_css_devid(Object *obj, Visitor *v, const char *name,
+                          void *opaque, Error **errp)
+{
+    DeviceState *dev = DEVICE(obj);
+    Property *prop = opaque;
+    CssDevId *dev_id = qdev_get_prop_ptr(dev, prop);
+    Error *local_err = NULL;
+    char *str;
+    int num, n1, n2;
+    unsigned int cssid, ssid, devid;
+
+    if (dev->realized) {
+        qdev_prop_set_after_realize(dev, name, errp);
+        return;
+    }
+
+    visit_type_str(v, name, &str, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
+
+    num = sscanf(str, "%2x.%1x%n.%4x%n", &cssid, &ssid, &n1, &devid, &n2);
+    if (num != 3 || (n2 - n1) != 5 || strlen(str) != n2) {
+        error_set_from_qdev_prop_error(errp, EINVAL, dev, prop, str);
+        goto out;
+    }
+    if ((cssid > MAX_CSSID) || (ssid > MAX_SSID)) {
+        error_setg(errp, "Invalid cssid or ssid: cssid %x, ssid %x",
+                   cssid, ssid);
+        goto out;
+    }
+
+    dev_id->cssid = cssid;
+    dev_id->ssid = ssid;
+    dev_id->devid = devid;
+    dev_id->valid = true;
+
+out:
+    g_free(str);
+}
+
+PropertyInfo css_devid_propinfo = {
+    .name = "str",
+    .description = "Identifier of an I/O device in the channel "
+                   "subsystem, example: fe.1.23ab",
+    .get = get_css_devid,
+    .set = set_css_devid,
+};
+
+SubchDev *css_create_virtual_sch(CssDevId bus_id, Error **errp)
+{
+    uint16_t schid = 0;
+    SubchDev *sch;
+
+    if (bus_id.valid) {
+        /* Enforce use of virtual cssid. */
+        if (bus_id.cssid != VIRTUAL_CSSID) {
+            error_setg(errp, "cssid %hhx not valid for virtual devices",
+                       bus_id.cssid);
+            return NULL;
+        }
+        if (!css_find_free_subch_for_devno(bus_id.cssid, bus_id.ssid,
+                                           bus_id.devid, &schid, errp)) {
+            return NULL;
+        }
+    } else {
+        bus_id.cssid = VIRTUAL_CSSID;
+        if (!css_find_free_subch_and_devno(bus_id.cssid, &bus_id.ssid,
+                                           &bus_id.devid, &schid, errp)) {
+            return NULL;
+        }
+    }
+
+    sch = g_malloc0(sizeof(*sch));
+    sch->cssid = bus_id.cssid;
+    sch->ssid = bus_id.ssid;
+    sch->devno = bus_id.devid;
+    sch->schid = schid;
+    css_subch_assign(sch->cssid, sch->ssid, schid, sch->devno, sch);
+    return sch;
 }

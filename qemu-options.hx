@@ -38,7 +38,6 @@ DEF("machine", HAS_ARG, QEMU_OPTION_machine, \
     "                kvm_shadow_mem=size of KVM shadow MMU in bytes\n"
     "                dump-guest-core=on|off include guest memory in a core dump (default=on)\n"
     "                mem-merge=on|off controls memory merge support (default: on)\n"
-    "                iommu=on|off controls emulated Intel IOMMU (VT-d) support (default=off)\n"
     "                igd-passthru=on|off controls IGD GFX passthrough support (default=off)\n"
     "                aes-key-wrap=on|off controls support for AES key wrapping (default=on)\n"
     "                dea-key-wrap=on|off controls support for DEA key wrapping (default=on)\n"
@@ -73,8 +72,6 @@ Include guest memory in a core dump. The default is on.
 Enables or disables memory merge support. This feature, when supported by
 the host, de-duplicates identical memory pages among VMs instances
 (enabled by default).
-@item iommu=on|off
-Enables or disables emulated Intel IOMMU (VT-d) support. The default is off.
 @item aes-key-wrap=on|off
 Enables or disables AES key wrapping support on s390-ccw hosts. This feature
 controls whether AES wrapping keys will be created to allow
@@ -306,7 +303,7 @@ STEXI
 @findex -k
 Use keyboard layout @var{language} (for example @code{fr} for
 French). This option is only needed where it is not easy to get raw PC
-keycodes (e.g. on Macs, with some X11 servers or with a VNC
+keycodes (e.g. on Macs, with some X11 servers or with a VNC or curses
 display). You don't normally need to use it on PC/Linux or PC/Windows
 hosts.
 
@@ -930,10 +927,25 @@ ETEXI
 
 DEF("display", HAS_ARG, QEMU_OPTION_display,
     "-display sdl[,frame=on|off][,alt_grab=on|off][,ctrl_grab=on|off]\n"
-    "            [,window_close=on|off]|curses|none|\n"
-    "            gtk[,grab_on_hover=on|off]|\n"
-    "            vnc=<display>[,<optargs>]\n"
-    "                select display type\n", QEMU_ARCH_ALL)
+    "            [,window_close=on|off][,gl=on|off]|curses|none|\n"
+    "-display gtk[,grab_on_hover=on|off][,gl=on|off]|\n"
+    "-display vnc=<display>[,<optargs>]\n"
+    "-display curses\n"
+    "-display none"
+    "                select display type\n"
+    "The default display is equivalent to\n"
+#if defined(CONFIG_GTK)
+            "\t\"-display gtk\"\n"
+#elif defined(CONFIG_SDL)
+            "\t\"-display sdl\"\n"
+#elif defined(CONFIG_COCOA)
+            "\t\"-display cocoa\"\n"
+#elif defined(CONFIG_VNC)
+            "\t\"-vnc localhost:0,to=99,id=default\"\n"
+#else
+            "\t\"-display none\"\n"
+#endif
+    , QEMU_ARCH_ALL)
 STEXI
 @item -display @var{type}
 @findex -display
@@ -970,24 +982,27 @@ DEF("nographic", 0, QEMU_OPTION_nographic,
 STEXI
 @item -nographic
 @findex -nographic
-Normally, QEMU uses SDL to display the VGA output. With this option,
-you can totally disable graphical output so that QEMU is a simple
-command line application. The emulated serial port is redirected on
-the console and muxed with the monitor (unless redirected elsewhere
-explicitly). Therefore, you can still use QEMU to debug a Linux kernel
-with a serial console.  Use @key{C-a h} for help on switching between
-the console and monitor.
+Normally, if QEMU is compiled with graphical window support, it displays
+output such as guest graphics, guest console, and the QEMU monitor in a
+window. With this option, you can totally disable graphical output so
+that QEMU is a simple command line application. The emulated serial port
+is redirected on the console and muxed with the monitor (unless
+redirected elsewhere explicitly). Therefore, you can still use QEMU to
+debug a Linux kernel with a serial console. Use @key{C-a h} for help on
+switching between the console and monitor.
 ETEXI
 
 DEF("curses", 0, QEMU_OPTION_curses,
-    "-curses         use a curses/ncurses interface instead of SDL\n",
+    "-curses         shorthand for -display curses\n",
     QEMU_ARCH_ALL)
 STEXI
 @item -curses
 @findex -curses
-Normally, QEMU uses SDL to display the VGA output.  With this option,
-QEMU can display the VGA output when in text mode using a
-curses/ncurses interface.  Nothing is displayed in graphical mode.
+Normally, if QEMU is compiled with graphical window support, it displays
+output such as guest graphics, guest console, and the QEMU monitor in a
+window. With this option, QEMU can display the VGA output when in text
+mode using a curses/ncurses interface. Nothing is displayed in graphical
+mode.
 ETEXI
 
 DEF("no-frame", 0, QEMU_OPTION_no_frame,
@@ -1030,7 +1045,7 @@ Disable SDL window close capability.
 ETEXI
 
 DEF("sdl", 0, QEMU_OPTION_sdl,
-    "-sdl            enable SDL\n", QEMU_ARCH_ALL)
+    "-sdl            shorthand for -display sdl\n", QEMU_ARCH_ALL)
 STEXI
 @item -sdl
 @findex -sdl
@@ -1133,7 +1148,7 @@ Configure wan image compression (lossy for slow links).
 Default is auto.
 
 @item streaming-video=[off|all|filter]
-Configure video stream detection.  Default is filter.
+Configure video stream detection.  Default is off.
 
 @item agent-mouse=[on|off]
 Enable/disable passing mouse events via vdagent.  Default is on.
@@ -1227,17 +1242,18 @@ Set the initial graphical resolution and depth (PPC, SPARC only).
 ETEXI
 
 DEF("vnc", HAS_ARG, QEMU_OPTION_vnc ,
-    "-vnc display    start a VNC server on display\n", QEMU_ARCH_ALL)
+    "-vnc <display>  shorthand for -display vnc=<display>\n", QEMU_ARCH_ALL)
 STEXI
 @item -vnc @var{display}[,@var{option}[,@var{option}[,...]]]
 @findex -vnc
-Normally, QEMU uses SDL to display the VGA output.  With this option,
-you can have QEMU listen on VNC display @var{display} and redirect the VGA
-display over the VNC session.  It is very useful to enable the usb
-tablet device when using this option (option @option{-usbdevice
-tablet}). When using the VNC display, you must use the @option{-k}
-parameter to set the keyboard layout if you are not using en-us. Valid
-syntax for the @var{display} is
+Normally, if QEMU is compiled with graphical window support, it displays
+output such as guest graphics, guest console, and the QEMU monitor in a
+window. With this option, you can have QEMU listen on VNC display
+@var{display} and redirect the VGA display over the VNC session. It is
+very useful to enable the usb tablet device when using this option
+(option @option{-usbdevice tablet}). When using the VNC display, you
+must use the @option{-k} parameter to set the keyboard layout if you are
+not using en-us. Valid syntax for the @var{display} is
 
 @table @option
 
@@ -1584,6 +1600,7 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
     "-netdev tap,id=str[,fd=h][,fds=x:y:...:z][,ifname=name][,script=file][,downscript=dfile]\n"
     "         [,helper=helper][,sndbuf=nbytes][,vnet_hdr=on|off][,vhost=on|off]\n"
     "         [,vhostfd=h][,vhostfds=x:y:...:z][,vhostforce=on|off][,queues=n]\n"
+    "         [,poll-us=n]\n"
     "                configure a host TAP network backend with ID 'str'\n"
     "                use network scripts 'file' (default=" DEFAULT_NETWORK_SCRIPT ")\n"
     "                to configure it and 'dfile' (default=" DEFAULT_NETWORK_DOWN_SCRIPT ")\n"
@@ -1603,6 +1620,8 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
     "                use 'vhostfd=h' to connect to an already opened vhost net device\n"
     "                use 'vhostfds=x:y:...:z to connect to multiple already opened vhost net devices\n"
     "                use 'queues=n' to specify the number of queues to be created for multiqueue TAP\n"
+    "                use 'poll-us=n' to speciy the maximum number of microseconds that could be\n"
+    "                spent on busy polling for vhost net\n"
     "-netdev bridge,id=str[,br=bridge][,helper=helper]\n"
     "                configure a host TAP network backend with ID 'str' that is\n"
     "                connected to a bridge (default=" DEFAULT_BRIDGE_INTERFACE ")\n"
@@ -2133,6 +2152,7 @@ The general form of a character device option is:
 ETEXI
 
 DEF("chardev", HAS_ARG, QEMU_OPTION_chardev,
+    "-chardev help\n"
     "-chardev null,id=id[,mux=on|off][,logfile=PATH][,logappend=on|off]\n"
     "-chardev socket,id=id[,host=host],port=port[,to=to][,ipv4][,ipv6][,nodelay][,reconnect=seconds]\n"
     "         [,server][,nowait][,telnet][,reconnect=seconds][,mux=on|off]\n"
@@ -2197,6 +2217,8 @@ Backend is one of:
 @option{spicevmc}.
 @option{spiceport}.
 The specific backend will determine the applicable options.
+
+Use "-chardev help" to print all available chardev backend types.
 
 All devices must have an id, which can be any string up to 127 characters long.
 It is used to uniquely identify this device in other command line directives.
@@ -3214,6 +3236,8 @@ STEXI
 @item -L  @var{path}
 @findex -L
 Set the directory for the BIOS, VGA BIOS and keymaps.
+
+To list all the data directories, use @code{-L help}.
 ETEXI
 
 DEF("bios", HAS_ARG, QEMU_OPTION_bios, \
@@ -3667,34 +3691,9 @@ DEF("trace", HAS_ARG, QEMU_OPTION_trace,
 STEXI
 HXCOMM This line is not accurate, as some sub-options are backend-specific but
 HXCOMM HX does not support conditional compilation of text.
-@item -trace [events=@var{file}][,file=@var{file}]
+@item -trace [[enable=]@var{pattern}][,events=@var{file}][,file=@var{file}]
 @findex -trace
-
-Specify tracing options.
-
-@table @option
-@item [enable=]@var{pattern}
-Immediately enable events matching @var{pattern}.
-The file must contain one event name (as listed in the @file{trace-events} file)
-per line; globbing patterns are accepted too.  This option is only
-available if QEMU has been compiled with the @var{simple}, @var{stderr}
-or @var{ftrace} tracing backend.  To specify multiple events or patterns,
-specify the @option{-trace} option multiple times.
-
-Use @code{-trace help} to print a list of names of trace points.
-
-@item events=@var{file}
-Immediately enable events listed in @var{file}.
-The file must contain one event name (as listed in the @file{trace-events} file)
-per line; globbing patterns are accepted too.  This option is only
-available if QEMU has been compiled with the @var{simple}, @var{stderr} or
-@var{ftrace} tracing backend.
-
-@item file=@var{file}
-Log output traces to @var{file}.
-This option is only available if QEMU has been compiled with
-the @var{simple} tracing backend.
-@end table
+@include qemu-option-trace.texi
 ETEXI
 
 HXCOMM Internal use

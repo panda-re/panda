@@ -104,7 +104,7 @@ int qcow2_refcount_init(BlockDriverState *bs)
             goto fail;
         }
         BLKDBG_EVENT(bs->file, BLKDBG_REFTABLE_LOAD);
-        ret = bdrv_pread(bs->file->bs, s->refcount_table_offset,
+        ret = bdrv_pread(bs->file, s->refcount_table_offset,
                          s->refcount_table, refcount_table_size2);
         if (ret < 0) {
             goto fail;
@@ -218,13 +218,10 @@ static int load_refcount_block(BlockDriverState *bs,
                                void **refcount_block)
 {
     BDRVQcow2State *s = bs->opaque;
-    int ret;
 
     BLKDBG_EVENT(bs->file, BLKDBG_REFBLOCK_LOAD);
-    ret = qcow2_cache_get(bs, s->refcount_block_cache, refcount_block_offset,
-        refcount_block);
-
-    return ret;
+    return qcow2_cache_get(bs, s->refcount_block_cache, refcount_block_offset,
+                           refcount_block);
 }
 
 /*
@@ -434,7 +431,7 @@ static int alloc_refcount_block(BlockDriverState *bs,
     if (refcount_table_index < s->refcount_table_size) {
         uint64_t data64 = cpu_to_be64(new_block);
         BLKDBG_EVENT(bs->file, BLKDBG_REFBLOCK_ALLOC_HOOKUP);
-        ret = bdrv_pwrite_sync(bs->file->bs,
+        ret = bdrv_pwrite_sync(bs->file,
             s->refcount_table_offset + refcount_table_index * sizeof(uint64_t),
             &data64, sizeof(data64));
         if (ret < 0) {
@@ -536,7 +533,7 @@ static int alloc_refcount_block(BlockDriverState *bs,
 
     /* Write refcount blocks to disk */
     BLKDBG_EVENT(bs->file, BLKDBG_REFBLOCK_ALLOC_WRITE_BLOCKS);
-    ret = bdrv_pwrite_sync(bs->file->bs, meta_offset, new_blocks,
+    ret = bdrv_pwrite_sync(bs->file, meta_offset, new_blocks,
         blocks_clusters * s->cluster_size);
     g_free(new_blocks);
     new_blocks = NULL;
@@ -550,7 +547,7 @@ static int alloc_refcount_block(BlockDriverState *bs,
     }
 
     BLKDBG_EVENT(bs->file, BLKDBG_REFBLOCK_ALLOC_WRITE_TABLE);
-    ret = bdrv_pwrite_sync(bs->file->bs, table_offset, new_table,
+    ret = bdrv_pwrite_sync(bs->file, table_offset, new_table,
         table_size * sizeof(uint64_t));
     if (ret < 0) {
         goto fail_table;
@@ -565,10 +562,10 @@ static int alloc_refcount_block(BlockDriverState *bs,
         uint64_t d64;
         uint32_t d32;
     } data;
-    cpu_to_be64w(&data.d64, table_offset);
-    cpu_to_be32w(&data.d32, table_clusters);
+    data.d64 = cpu_to_be64(table_offset);
+    data.d32 = cpu_to_be32(table_clusters);
     BLKDBG_EVENT(bs->file, BLKDBG_REFBLOCK_ALLOC_SWITCH_TABLE);
-    ret = bdrv_pwrite_sync(bs->file->bs,
+    ret = bdrv_pwrite_sync(bs->file,
                            offsetof(QCowHeader, refcount_table_offset),
                            &data, sizeof(data));
     if (ret < 0) {
@@ -618,9 +615,7 @@ void qcow2_process_discards(BlockDriverState *bs, int ret)
 
         /* Discard is optional, ignore the return value */
         if (ret >= 0) {
-            bdrv_discard(bs->file->bs,
-                         d->offset >> BDRV_SECTOR_BITS,
-                         d->bytes >> BDRV_SECTOR_BITS);
+            bdrv_pdiscard(bs->file->bs, d->offset, d->bytes);
         }
 
         g_free(d);
@@ -1073,7 +1068,7 @@ int qcow2_update_snapshot_refcount(BlockDriverState *bs,
         }
         l1_allocated = true;
 
-        ret = bdrv_pread(bs->file->bs, l1_table_offset, l1_table, l1_size2);
+        ret = bdrv_pread(bs->file, l1_table_offset, l1_table, l1_size2);
         if (ret < 0) {
             goto fail;
         }
@@ -1226,7 +1221,7 @@ fail:
             cpu_to_be64s(&l1_table[i]);
         }
 
-        ret = bdrv_pwrite_sync(bs->file->bs, l1_table_offset,
+        ret = bdrv_pwrite_sync(bs->file, l1_table_offset,
                                l1_table, l1_size2);
 
         for (i = 0; i < l1_size; i++) {
@@ -1385,7 +1380,7 @@ static int check_refcounts_l2(BlockDriverState *bs, BdrvCheckResult *res,
     l2_size = s->l2_size * sizeof(uint64_t);
     l2_table = g_malloc(l2_size);
 
-    ret = bdrv_pread(bs->file->bs, l2_offset, l2_table, l2_size);
+    ret = bdrv_pread(bs->file, l2_offset, l2_table, l2_size);
     if (ret < 0) {
         fprintf(stderr, "ERROR: I/O error in check_refcounts_l2\n");
         res->check_errors++;
@@ -1517,7 +1512,7 @@ static int check_refcounts_l1(BlockDriverState *bs,
             res->check_errors++;
             goto fail;
         }
-        ret = bdrv_pread(bs->file->bs, l1_table_offset, l1_table, l1_size2);
+        ret = bdrv_pread(bs->file, l1_table_offset, l1_table, l1_size2);
         if (ret < 0) {
             fprintf(stderr, "ERROR: I/O error in check_refcounts_l1\n");
             res->check_errors++;
@@ -1615,7 +1610,7 @@ static int check_oflag_copied(BlockDriverState *bs, BdrvCheckResult *res,
             }
         }
 
-        ret = bdrv_pread(bs->file->bs, l2_offset, l2_table,
+        ret = bdrv_pread(bs->file, l2_offset, l2_table,
                          s->l2_size * sizeof(uint64_t));
         if (ret < 0) {
             fprintf(stderr, "ERROR: Could not read L2 table: %s\n",
@@ -1667,7 +1662,7 @@ static int check_oflag_copied(BlockDriverState *bs, BdrvCheckResult *res,
                 goto fail;
             }
 
-            ret = bdrv_pwrite(bs->file->bs, l2_offset, l2_table,
+            ret = bdrv_pwrite(bs->file, l2_offset, l2_table,
                               s->cluster_size);
             if (ret < 0) {
                 fprintf(stderr, "ERROR: Could not write L2 table: %s\n",
@@ -2101,7 +2096,7 @@ write_refblocks:
         on_disk_refblock = (void *)((char *) *refcount_table +
                                     refblock_index * s->cluster_size);
 
-        ret = bdrv_write(bs->file->bs, refblock_offset / BDRV_SECTOR_SIZE,
+        ret = bdrv_write(bs->file, refblock_offset / BDRV_SECTOR_SIZE,
                          on_disk_refblock, s->cluster_sectors);
         if (ret < 0) {
             fprintf(stderr, "ERROR writing refblock: %s\n", strerror(-ret));
@@ -2150,7 +2145,7 @@ write_refblocks:
     }
 
     assert(reftable_size < INT_MAX / sizeof(uint64_t));
-    ret = bdrv_pwrite(bs->file->bs, reftable_offset, on_disk_reftable,
+    ret = bdrv_pwrite(bs->file, reftable_offset, on_disk_reftable,
                       reftable_size * sizeof(uint64_t));
     if (ret < 0) {
         fprintf(stderr, "ERROR writing reftable: %s\n", strerror(-ret));
@@ -2158,12 +2153,11 @@ write_refblocks:
     }
 
     /* Enter new reftable into the image header */
-    cpu_to_be64w(&reftable_offset_and_clusters.reftable_offset,
-                 reftable_offset);
-    cpu_to_be32w(&reftable_offset_and_clusters.reftable_clusters,
-                 size_to_clusters(s, reftable_size * sizeof(uint64_t)));
-    ret = bdrv_pwrite_sync(bs->file->bs, offsetof(QCowHeader,
-                                                  refcount_table_offset),
+    reftable_offset_and_clusters.reftable_offset = cpu_to_be64(reftable_offset);
+    reftable_offset_and_clusters.reftable_clusters =
+        cpu_to_be32(size_to_clusters(s, reftable_size * sizeof(uint64_t)));
+    ret = bdrv_pwrite_sync(bs->file,
+                           offsetof(QCowHeader, refcount_table_offset),
                            &reftable_offset_and_clusters,
                            sizeof(reftable_offset_and_clusters));
     if (ret < 0) {
@@ -2410,7 +2404,7 @@ int qcow2_check_metadata_overlap(BlockDriverState *bs, int ign, int64_t offset,
                 return -ENOMEM;
             }
 
-            ret = bdrv_pread(bs->file->bs, l1_ofs, l1, l1_sz2);
+            ret = bdrv_pread(bs->file, l1_ofs, l1, l1_sz2);
             if (ret < 0) {
                 g_free(l1);
                 return ret;
@@ -2563,7 +2557,7 @@ static int flush_refblock(BlockDriverState *bs, uint64_t **reftable,
             return ret;
         }
 
-        ret = bdrv_pwrite(bs->file->bs, offset, refblock, s->cluster_size);
+        ret = bdrv_pwrite(bs->file, offset, refblock, s->cluster_size);
         if (ret < 0) {
             error_setg_errno(errp, -ret, "Failed to write refblock");
             return ret;
@@ -2833,7 +2827,7 @@ int qcow2_change_refcount_order(BlockDriverState *bs, int refcount_order,
         cpu_to_be64s(&new_reftable[i]);
     }
 
-    ret = bdrv_pwrite(bs->file->bs, new_reftable_offset, new_reftable,
+    ret = bdrv_pwrite(bs->file, new_reftable_offset, new_reftable,
                       new_reftable_size * sizeof(uint64_t));
 
     for (i = 0; i < new_reftable_size; i++) {

@@ -727,7 +727,7 @@ static void write_bootloader(uint8_t *base, int64_t run_addr,
     stl_p(p++, 0x00000000);                                     /* nop */
     stl_p(p++, 0x0ff0021c);                                     /* jal 870 */
     stl_p(p++, 0x00000000);                                     /* nop */
-    stl_p(p++, 0x08000205);                                     /* j 814 */
+    stl_p(p++, 0x1000fff9);                                     /* b 814 */
     stl_p(p++, 0x00000000);                                     /* nop */
     stl_p(p++, 0x01a00009);                                     /* jalr t5 */
     stl_p(p++, 0x01602021);                                     /* move a0,t3 */
@@ -955,9 +955,7 @@ static void create_cps(MaltaState *s, const char *cpu_model,
 
     sysbus_mmio_map_overlap(SYS_BUS_DEVICE(s->cps), 0, 0, 1);
 
-    /* FIXME: When GIC is present then we should use GIC's IRQ 3.
-       Until then CPS exposes CPU's IRQs thus use the default IRQ 2. */
-    *i8259_irq = get_cps_irq(s->cps, 2);
+    *i8259_irq = get_cps_irq(s->cps, 3);
     *cbus_irq = NULL;
 }
 

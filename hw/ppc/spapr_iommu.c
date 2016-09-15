@@ -149,6 +149,23 @@ static void spapr_tce_table_pre_save(void *opaque)
                                tcet->bus_offset, tcet->page_shift);
 }
 
+static uint64_t spapr_tce_get_min_page_size(MemoryRegion *iommu)
+{
+    sPAPRTCETable *tcet = container_of(iommu, sPAPRTCETable, iommu);
+
+    return 1ULL << tcet->page_shift;
+}
+
+static void spapr_tce_notify_started(MemoryRegion *iommu)
+{
+    spapr_tce_set_need_vfio(container_of(iommu, sPAPRTCETable, iommu), true);
+}
+
+static void spapr_tce_notify_stopped(MemoryRegion *iommu)
+{
+    spapr_tce_set_need_vfio(container_of(iommu, sPAPRTCETable, iommu), false);
+}
+
 static int spapr_tce_table_post_load(void *opaque, int version_id)
 {
     sPAPRTCETable *tcet = SPAPR_TCE_TABLE(opaque);
@@ -228,6 +245,9 @@ static const VMStateDescription vmstate_spapr_tce_table = {
 
 static MemoryRegionIOMMUOps spapr_iommu_ops = {
     .translate = spapr_tce_translate_iommu,
+    .get_min_page_size = spapr_tce_get_min_page_size,
+    .notify_started = spapr_tce_notify_started,
+    .notify_stopped = spapr_tce_notify_stopped,
 };
 
 static int spapr_tce_table_realize(DeviceState *dev)
@@ -290,8 +310,8 @@ sPAPRTCETable *spapr_tce_new_table(DeviceState *owner, uint32_t liobn)
     char tmp[32];
 
     if (spapr_tce_find_by_liobn(liobn)) {
-        fprintf(stderr, "Attempted to create TCE table with duplicate"
-                " LIOBN 0x%x\n", liobn);
+        error_report("Attempted to create TCE table with duplicate"
+                " LIOBN 0x%x", liobn);
         return NULL;
     }
 
@@ -365,7 +385,9 @@ static void spapr_tce_reset(DeviceState *dev)
     sPAPRTCETable *tcet = SPAPR_TCE_TABLE(dev);
     size_t table_size = tcet->nb_table * sizeof(uint64_t);
 
-    memset(tcet->table, 0, table_size);
+    if (tcet->nb_table) {
+        memset(tcet->table, 0, table_size);
+    }
 }
 
 static target_ulong put_tce_emu(sPAPRTCETable *tcet, target_ulong ioba,

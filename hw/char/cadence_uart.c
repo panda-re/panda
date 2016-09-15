@@ -288,13 +288,19 @@ static gboolean cadence_uart_xmit(GIOChannel *chan, GIOCondition cond,
     }
 
     ret = qemu_chr_fe_write(s->chr, s->tx_fifo, s->tx_count);
-    s->tx_count -= ret;
-    memmove(s->tx_fifo, s->tx_fifo + ret, s->tx_count);
+
+    if (ret >= 0) {
+        s->tx_count -= ret;
+        memmove(s->tx_fifo, s->tx_fifo + ret, s->tx_count);
+    }
 
     if (s->tx_count) {
-        int r = qemu_chr_fe_add_watch(s->chr, G_IO_OUT|G_IO_HUP,
-                                      cadence_uart_xmit, s);
-        assert(r);
+        guint r = qemu_chr_fe_add_watch(s->chr, G_IO_OUT|G_IO_HUP,
+                                        cadence_uart_xmit, s);
+        if (!r) {
+            s->tx_count = 0;
+            return FALSE;
+        }
     }
 
     uart_update_status(s);

@@ -98,6 +98,7 @@ BlockDriverState *blk_bs(BlockBackend *blk);
 void blk_remove_bs(BlockBackend *blk);
 void blk_insert_bs(BlockBackend *blk, BlockDriverState *bs);
 bool bdrv_has_blk(BlockDriverState *bs);
+bool bdrv_is_root_node(BlockDriverState *bs);
 
 void blk_set_allow_write_beyond_eof(BlockBackend *blk, bool allow);
 void blk_iostatus_enable(BlockBackend *blk);
@@ -124,6 +125,7 @@ int blk_pwrite_zeroes(BlockBackend *blk, int64_t offset,
 BlockAIOCB *blk_aio_pwrite_zeroes(BlockBackend *blk, int64_t offset,
                                   int count, BdrvRequestFlags flags,
                                   BlockCompletionFunc *cb, void *opaque);
+int blk_make_zero(BlockBackend *blk, BdrvRequestFlags flags);
 int blk_pread(BlockBackend *blk, int64_t offset, void *buf, int count);
 int blk_pwrite(BlockBackend *blk, int64_t offset, const void *buf, int count,
                BdrvRequestFlags flags);
@@ -138,15 +140,14 @@ BlockAIOCB *blk_aio_pwritev(BlockBackend *blk, int64_t offset,
                             BlockCompletionFunc *cb, void *opaque);
 BlockAIOCB *blk_aio_flush(BlockBackend *blk,
                           BlockCompletionFunc *cb, void *opaque);
-BlockAIOCB *blk_aio_discard(BlockBackend *blk,
-                            int64_t sector_num, int nb_sectors,
-                            BlockCompletionFunc *cb, void *opaque);
+BlockAIOCB *blk_aio_pdiscard(BlockBackend *blk, int64_t offset, int count,
+                             BlockCompletionFunc *cb, void *opaque);
 void blk_aio_cancel(BlockAIOCB *acb);
 void blk_aio_cancel_async(BlockAIOCB *acb);
 int blk_ioctl(BlockBackend *blk, unsigned long int req, void *buf);
 BlockAIOCB *blk_aio_ioctl(BlockBackend *blk, unsigned long int req, void *buf,
                           BlockCompletionFunc *cb, void *opaque);
-int blk_co_discard(BlockBackend *blk, int64_t sector_num, int nb_sectors);
+int blk_co_pdiscard(BlockBackend *blk, int64_t offset, int count);
 int blk_co_flush(BlockBackend *blk);
 int blk_flush(BlockBackend *blk);
 int blk_flush_all(void);
@@ -170,7 +171,7 @@ bool blk_is_available(BlockBackend *blk);
 void blk_lock_medium(BlockBackend *blk, bool locked);
 void blk_eject(BlockBackend *blk, bool eject_flag);
 int blk_get_flags(BlockBackend *blk);
-int blk_get_max_transfer_length(BlockBackend *blk);
+uint32_t blk_get_max_transfer(BlockBackend *blk);
 int blk_get_max_iov(BlockBackend *blk);
 void blk_set_guest_block_size(BlockBackend *blk, int align);
 void *blk_try_blockalign(BlockBackend *blk, size_t size);
@@ -203,10 +204,10 @@ void *blk_aio_get(const AIOCBInfo *aiocb_info, BlockBackend *blk,
                   BlockCompletionFunc *cb, void *opaque);
 int coroutine_fn blk_co_pwrite_zeroes(BlockBackend *blk, int64_t offset,
                                       int count, BdrvRequestFlags flags);
-int blk_write_compressed(BlockBackend *blk, int64_t sector_num,
-                         const uint8_t *buf, int nb_sectors);
+int blk_pwrite_compressed(BlockBackend *blk, int64_t offset, const void *buf,
+                          int count);
 int blk_truncate(BlockBackend *blk, int64_t offset);
-int blk_discard(BlockBackend *blk, int64_t sector_num, int nb_sectors);
+int blk_pdiscard(BlockBackend *blk, int64_t offset, int count);
 int blk_save_vmstate(BlockBackend *blk, const uint8_t *buf,
                      int64_t pos, int size);
 int blk_load_vmstate(BlockBackend *blk, uint8_t *buf, int64_t pos, int size);

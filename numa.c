@@ -217,20 +217,20 @@ static int parse_numa(void *opaque, QemuOpts *opts, Error **errp)
     Error *err = NULL;
 
     {
-        OptsVisitor *ov = opts_visitor_new(opts);
-        visit_type_NumaOptions(opts_get_visitor(ov), NULL, &object, &err);
-        opts_visitor_cleanup(ov);
+        Visitor *v = opts_visitor_new(opts);
+        visit_type_NumaOptions(v, NULL, &object, &err);
+        visit_free(v);
     }
 
     if (err) {
-        goto error;
+        goto end;
     }
 
     switch (object->type) {
     case NUMA_OPTIONS_KIND_NODE:
         numa_node_parse(object->u.node.data, opts, &err);
         if (err) {
-            goto error;
+            goto end;
         }
         nb_numa_nodes++;
         break;
@@ -238,13 +238,14 @@ static int parse_numa(void *opaque, QemuOpts *opts, Error **errp)
         abort();
     }
 
-    return 0;
-
-error:
-    error_report_err(err);
+end:
     qapi_free_NumaOptions(object);
+    if (err) {
+        error_report_err(err);
+        return -1;
+    }
 
-    return -1;
+    return 0;
 }
 
 static char *enumerate_cpus(unsigned long *cpus, int max_cpus)
@@ -463,6 +464,7 @@ void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner,
             exit(1);
         }
 
+        host_memory_backend_set_mapped(backend, true);
         memory_region_add_subregion(mr, addr, seg);
         vmstate_register_ram_global(seg);
         addr += size;

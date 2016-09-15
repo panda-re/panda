@@ -34,11 +34,10 @@
 /****************************************************************************/
 
 #include "qemu/osdep.h"
-#include <sys/mman.h>
 
 #include "qemu.h"
 #include "flat.h"
-#include <target_flat.h>
+#include "target_flat.h"
 
 //#define DEBUG
 

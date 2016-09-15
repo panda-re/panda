@@ -1,6 +1,7 @@
 /* headers to use the BSD sockets */
-#ifndef QEMU_SOCKET_H
-#define QEMU_SOCKET_H
+
+#ifndef QEMU_SOCKETS_H
+#define QEMU_SOCKETS_H
 
 #ifdef _WIN32
 
@@ -32,25 +33,18 @@ int socket_set_fast_reuse(int fd);
 typedef void NonBlockingConnectHandler(int fd, Error *err, void *opaque);
 
 InetSocketAddress *inet_parse(const char *str, Error **errp);
-int inet_listen(const char *str, char *ostr, int olen,
-                int socktype, int port_offset, Error **errp);
 int inet_connect(const char *str, Error **errp);
-int inet_nonblocking_connect(const char *str,
-                             NonBlockingConnectHandler *callback,
-                             void *opaque, Error **errp);
 
 NetworkAddressFamily inet_netfamily(int family);
 
 int unix_listen(const char *path, char *ostr, int olen, Error **errp);
 int unix_connect(const char *path, Error **errp);
-int unix_nonblocking_connect(const char *str,
-                             NonBlockingConnectHandler *callback,
-                             void *opaque, Error **errp);
 
 SocketAddress *socket_parse(const char *str, Error **errp);
 int socket_connect(SocketAddress *addr, Error **errp,
                    NonBlockingConnectHandler *callback, void *opaque);
 int socket_listen(SocketAddress *addr, Error **errp);
+void socket_listen_cleanup(int fd, Error **errp);
 int socket_dgram(SocketAddress *remote, SocketAddress *local, Error **errp);
 
 /* Old, ipv4 only bits.  Don't use for new code. */
@@ -106,8 +100,19 @@ SocketAddress *socket_local_address(int fd, Error **errp);
  */
 SocketAddress *socket_remote_address(int fd, Error **errp);
 
+/**
+ * socket_address_to_string:
+ * @addr: the socket address struct
+ * @errp: pointer to uninitialized error object
+ *
+ * Get the string representation of the socket
+ * address. A pointer to the char array containing
+ * string format will be returned, the caller is
+ * required to release the returned value when no
+ * longer required with g_free.
+ *
+ * Returns: the socket address in string format, or NULL on error
+ */
+char *socket_address_to_string(struct SocketAddress *addr, Error **errp);
 
-void qapi_copy_SocketAddress(SocketAddress **p_dest,
-                             SocketAddress *src);
-
-#endif /* QEMU_SOCKET_H */
+#endif /* QEMU_SOCKETS_H */

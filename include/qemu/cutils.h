@@ -1,5 +1,5 @@
 #ifndef QEMU_CUTILS_H
-#define QEMU_CUTILS_H 1
+#define QEMU_CUTILS_H
 
 #include "qemu/fprintf-fn.h"
 
@@ -168,9 +168,8 @@ int64_t qemu_strtosz_suffix_unit(const char *nptr, char **end,
 /* used to print char* safely */
 #define STR_OR_NULL(str) ((str) ? (str) : "null")
 
-bool can_use_buffer_find_nonzero_offset(const void *buf, size_t len);
-size_t buffer_find_nonzero_offset(const void *buf, size_t len);
 bool buffer_is_zero(const void *buf, size_t len);
+bool test_buffer_is_zero_next_accel(void);
 
 /*
  * Implementation of ULEB128 (http://en.wikipedia.org/wiki/LEB128)

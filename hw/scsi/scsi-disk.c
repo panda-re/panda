@@ -599,8 +599,8 @@ static int scsi_disk_emulate_inquiry(SCSIRequest *req, uint8_t *outbuf)
             }
 
             l = strlen(s->serial);
-            if (l > 20) {
-                l = 20;
+            if (l > 36) {
+                l = 36;
             }
 
             DPRINTF("Inquiry EVPD[Serial number] "
@@ -1609,10 +1609,10 @@ static void scsi_unmap_complete_noio(UnmapCBData *data, int ret)
             goto done;
         }
 
-        r->req.aiocb = blk_aio_discard(s->qdev.conf.blk,
-                                       sector_num * (s->qdev.blocksize / 512),
-                                       nb_sectors * (s->qdev.blocksize / 512),
-                                       scsi_unmap_complete, data);
+        r->req.aiocb = blk_aio_pdiscard(s->qdev.conf.blk,
+                                        sector_num * s->qdev.blocksize,
+                                        nb_sectors * s->qdev.blocksize,
+                                        scsi_unmap_complete, data);
         data->count--;
         data->inbuf += 16;
         return;
@@ -2060,13 +2060,13 @@ static int32_t scsi_disk_emulate_command(SCSIRequest *req, uint8_t *buf)
         }
         break;
     case MODE_SELECT:
-        DPRINTF("Mode Select(6) (len %lu)\n", (long)r->req.cmd.xfer);
+        DPRINTF("Mode Select(6) (len %lu)\n", (unsigned long)r->req.cmd.xfer);
         break;
     case MODE_SELECT_10:
-        DPRINTF("Mode Select(10) (len %lu)\n", (long)r->req.cmd.xfer);
+        DPRINTF("Mode Select(10) (len %lu)\n", (unsigned long)r->req.cmd.xfer);
         break;
     case UNMAP:
-        DPRINTF("Unmap (len %lu)\n", (long)r->req.cmd.xfer);
+        DPRINTF("Unmap (len %lu)\n", (unsigned long)r->req.cmd.xfer);
         break;
     case VERIFY_10:
     case VERIFY_12:
@@ -2080,7 +2080,7 @@ static int32_t scsi_disk_emulate_command(SCSIRequest *req, uint8_t *buf)
     case WRITE_SAME_16:
         DPRINTF("WRITE SAME %d (len %lu)\n",
                 req->cmd.buf[0] == WRITE_SAME_10 ? 10 : 16,
-                (long)r->req.cmd.xfer);
+                (unsigned long)r->req.cmd.xfer);
         break;
     default:
         DPRINTF("Unknown SCSI command (%2.2x=%s)\n", buf[0],
@@ -2309,6 +2309,7 @@ static void scsi_realize(SCSIDevice *dev, Error **errp)
             return;
         }
     }
+    blkconf_apply_backend_options(&dev->conf);
 
     if (s->qdev.conf.discard_granularity == -1) {
         s->qdev.conf.discard_granularity =
@@ -2358,6 +2359,11 @@ static void scsi_hd_realize(SCSIDevice *dev, Error **errp)
 static void scsi_cd_realize(SCSIDevice *dev, Error **errp)
 {
     SCSIDiskState *s = DO_UPCAST(SCSIDiskState, qdev, dev);
+
+    if (!dev->conf.blk) {
+        dev->conf.blk = blk_new();
+    }
+
     s->qdev.blocksize = 2048;
     s->qdev.type = TYPE_ROM;
     s->features |= 1 << SCSI_DISK_F_REMOVABLE;
@@ -2848,6 +2854,7 @@ static const TypeInfo scsi_disk_base_info = {
 
 #define DEFINE_SCSI_DISK_PROPERTIES()                                \
     DEFINE_BLOCK_PROPERTIES(SCSIDiskState, qdev.conf),               \
+    DEFINE_BLOCK_ERROR_PROPERTIES(SCSIDiskState, qdev.conf),         \
     DEFINE_PROP_STRING("ver", SCSIDiskState, version),               \
     DEFINE_PROP_STRING("serial", SCSIDiskState, serial),             \
     DEFINE_PROP_STRING("vendor", SCSIDiskState, vendor),             \

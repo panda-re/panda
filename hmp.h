@@ -115,6 +115,7 @@ void set_link_completion(ReadLineState *rs, int nb_args, const char *str);
 void netdev_add_completion(ReadLineState *rs, int nb_args, const char *str);
 void netdev_del_completion(ReadLineState *rs, int nb_args, const char *str);
 void ringbuf_write_completion(ReadLineState *rs, int nb_args, const char *str);
+void info_trace_events_completion(ReadLineState *rs, int nb_args, const char *str);
 void trace_event_completion(ReadLineState *rs, int nb_args, const char *str);
 void watchdog_action_completion(ReadLineState *rs, int nb_args,
                                 const char *str);
@@ -132,6 +133,7 @@ void hmp_rocker_ports(Monitor *mon, const QDict *qdict);
 void hmp_rocker_of_dpa_flows(Monitor *mon, const QDict *qdict);
 void hmp_rocker_of_dpa_groups(Monitor *mon, const QDict *qdict);
 void hmp_info_dump(Monitor *mon, const QDict *qdict);
+void hmp_hotpluggable_cpus(Monitor *mon, const QDict *qdict);
 
 // PANDA Record/Replay HMP
 void hmp_begin_record(Monitor *mon, const QDict *qdict);

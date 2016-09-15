@@ -25,13 +25,17 @@
  */
 
 #include "qemu/osdep.h"
+#include <glib/gstdio.h>
 
 #include "qemu-common.h"
-#include "include/qemu/log.h"
+#include "qapi/error.h"
+#include "qemu/log.h"
 
 static void test_parse_range(void)
 {
-    qemu_set_dfilter_ranges("0x1000+0x100");
+    Error *err = NULL;
+
+    qemu_set_dfilter_ranges("0x1000+0x100", &error_abort);
 
     g_assert_false(qemu_log_in_addr_range(0xfff));
     g_assert(qemu_log_in_addr_range(0x1000));
@@ -39,102 +43,101 @@ static void test_parse_range(void)
     g_assert(qemu_log_in_addr_range(0x10ff));
     g_assert_false(qemu_log_in_addr_range(0x1100));
 
-    qemu_set_dfilter_ranges("0x1000-0x100");
+    qemu_set_dfilter_ranges("0x1000-0x100", &error_abort);
 
     g_assert_false(qemu_log_in_addr_range(0x1001));
     g_assert(qemu_log_in_addr_range(0x1000));
     g_assert(qemu_log_in_addr_range(0x0f01));
     g_assert_false(qemu_log_in_addr_range(0x0f00));
 
-    qemu_set_dfilter_ranges("0x1000..0x1100");
+    qemu_set_dfilter_ranges("0x1000..0x1100", &error_abort);
 
     g_assert_false(qemu_log_in_addr_range(0xfff));
     g_assert(qemu_log_in_addr_range(0x1000));
     g_assert(qemu_log_in_addr_range(0x1100));
     g_assert_false(qemu_log_in_addr_range(0x1101));
 
-    qemu_set_dfilter_ranges("0x1000..0x1000");
+    qemu_set_dfilter_ranges("0x1000..0x1000", &error_abort);
 
     g_assert_false(qemu_log_in_addr_range(0xfff));
     g_assert(qemu_log_in_addr_range(0x1000));
     g_assert_false(qemu_log_in_addr_range(0x1001));
 
-    qemu_set_dfilter_ranges("0x1000+0x100,0x2100-0x100,0x3000..0x3100");
+    qemu_set_dfilter_ranges("0x1000+0x100,0x2100-0x100,0x3000..0x3100",
+                            &error_abort);
     g_assert(qemu_log_in_addr_range(0x1050));
     g_assert(qemu_log_in_addr_range(0x2050));
     g_assert(qemu_log_in_addr_range(0x3050));
+
+    qemu_set_dfilter_ranges("0xffffffffffffffff-1", &error_abort);
+    g_assert(qemu_log_in_addr_range(UINT64_MAX));
+    g_assert_false(qemu_log_in_addr_range(UINT64_MAX - 1));
+
+    qemu_set_dfilter_ranges("0..0xffffffffffffffff", &err);
+    g_assert(qemu_log_in_addr_range(0));
+    g_assert(qemu_log_in_addr_range(UINT64_MAX));
+ 
+    qemu_set_dfilter_ranges("2..1", &err);
+    error_free_or_abort(&err);
+
+    qemu_set_dfilter_ranges("0x1000+onehundred", &err);
+    error_free_or_abort(&err);
+
+    qemu_set_dfilter_ranges("0x1000+0", &err);
+    error_free_or_abort(&err);
 }
 
-#ifdef CONFIG_HAS_GLIB_SUBPROCESS_TESTS
-static void test_parse_invalid_range_subprocess(void)
+static void set_log_path_tmp(char const *dir, char const *tpl, Error **errp)
 {
-    qemu_set_dfilter_ranges("0x1000+onehundred");
-}
-static void test_parse_invalid_range(void)
-{
-    g_test_trap_subprocess("/logging/parse_invalid_range/subprocess", 0, 0);
-    g_test_trap_assert_failed();
-    g_test_trap_assert_stdout("");
-    g_test_trap_assert_stderr("*Failed to parse range in: 0x1000+onehundred\n");
-}
-static void test_parse_zero_range_subprocess(void)
-{
-    qemu_set_dfilter_ranges("0x1000+0");
-}
-static void test_parse_zero_range(void)
-{
-    g_test_trap_subprocess("/logging/parse_zero_range/subprocess", 0, 0);
-    g_test_trap_assert_failed();
-    g_test_trap_assert_stdout("");
-    g_test_trap_assert_stderr("*Failed to parse range in: 0x1000+0\n");
+    gchar *file_path = g_build_filename(dir, tpl, NULL);
+
+    qemu_set_log_filename(file_path, errp);
+    g_free(file_path);
 }
 
-/* As the only real failure from a bad log filename path spec is
- * reporting to the user we have to use the g_test_trap_subprocess
- * mechanism and check no errors reported on stderr.
- */
-static void test_parse_path_subprocess(void)
+static void test_parse_path(gconstpointer data)
 {
-    /* All these should work without issue */
-    qemu_set_log_filename("/tmp/qemu.log");
-    qemu_set_log_filename("/tmp/qemu-%d.log");
-    qemu_set_log_filename("/tmp/qemu.log.%d");
+    gchar const *tmp_path = data;
+    Error *err = NULL;
+
+    set_log_path_tmp(tmp_path, "qemu.log", &error_abort);
+    set_log_path_tmp(tmp_path, "qemu-%d.log", &error_abort);
+    set_log_path_tmp(tmp_path, "qemu.log.%d", &error_abort);
+
+    set_log_path_tmp(tmp_path, "qemu-%d%d.log", &err);
+    error_free_or_abort(&err);
 }
-static void test_parse_path(void)
+
+/* Remove a directory and all its entries (non-recursive). */
+static void rmdir_full(gchar const *root)
 {
-    g_test_trap_subprocess ("/logging/parse_path/subprocess", 0, 0);
-    g_test_trap_assert_passed();
-    g_test_trap_assert_stdout("");
-    g_test_trap_assert_stderr("");
+    GDir *root_gdir = g_dir_open(root, 0, NULL);
+    gchar const *entry_name;
+
+    g_assert_nonnull(root_gdir);
+    while ((entry_name = g_dir_read_name(root_gdir)) != NULL) {
+        gchar *entry_path = g_build_filename(root, entry_name, NULL);
+        g_assert(g_remove(entry_path) == 0);
+        g_free(entry_path);
+    }
+    g_dir_close(root_gdir);
+    g_assert(g_rmdir(root) == 0);
 }
-static void test_parse_invalid_path_subprocess(void)
-{
-    qemu_set_log_filename("/tmp/qemu-%d%d.log");
-}
-static void test_parse_invalid_path(void)
-{
-    g_test_trap_subprocess ("/logging/parse_invalid_path/subprocess", 0, 0);
-    g_test_trap_assert_passed();
-    g_test_trap_assert_stdout("");
-    g_test_trap_assert_stderr("Bad logfile format: /tmp/qemu-%d%d.log\n");
-}
-#endif /* CONFIG_HAS_GLIB_SUBPROCESS_TESTS */
 
 int main(int argc, char **argv)
 {
+    gchar *tmp_path = g_dir_make_tmp("qemu-test-logging.XXXXXX", NULL);
+    int rc;
+
     g_test_init(&argc, &argv, NULL);
+    g_assert_nonnull(tmp_path);
 
     g_test_add_func("/logging/parse_range", test_parse_range);
-#ifdef CONFIG_HAS_GLIB_SUBPROCESS_TESTS
-    g_test_add_func("/logging/parse_invalid_range/subprocess", test_parse_invalid_range_subprocess);
-    g_test_add_func("/logging/parse_invalid_range", test_parse_invalid_range);
-    g_test_add_func("/logging/parse_zero_range/subprocess", test_parse_zero_range_subprocess);
-    g_test_add_func("/logging/parse_zero_range", test_parse_zero_range);
-    g_test_add_func("/subprocess/logging/parse_path", test_parse_path);
-    g_test_add_func("/logging/parse_path/subprocess", test_parse_path_subprocess);
-    g_test_add_func("/logging/parse_invalid_path", test_parse_invalid_path);
-    g_test_add_func("/logging/parse_invalid_path/subprocess", test_parse_invalid_path_subprocess);
-#endif
+    g_test_add_data_func("/logging/parse_path", tmp_path, test_parse_path);
 
-    return g_test_run();
+    rc = g_test_run();
+
+    rmdir_full(tmp_path);
+    g_free(tmp_path);
+    return rc;
 }

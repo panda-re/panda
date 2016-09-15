@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>
  */
+
 #ifndef QEMU_APIC_INTERNAL_H
 #define QEMU_APIC_INTERNAL_H
 
@@ -120,8 +121,6 @@
 #define VAPIC_ENABLE_BIT                0
 #define VAPIC_ENABLE_MASK               (1 << VAPIC_ENABLE_BIT)
 
-#define MAX_APICS 255
-
 typedef struct APICCommonState APICCommonState;
 
 #define TYPE_APIC_COMMON "apic-common"
@@ -137,6 +136,7 @@ typedef struct APICCommonClass
     DeviceClass parent_class;
 
     DeviceRealize realize;
+    DeviceUnrealize unrealize;
     void (*set_base)(APICCommonState *s, uint64_t val);
     void (*set_tpr)(APICCommonState *s, uint8_t val);
     uint8_t (*get_tpr)(APICCommonState *s);
@@ -175,7 +175,6 @@ struct APICCommonState {
     uint32_t initial_count;
     int64_t initial_count_load_time;
     int64_t next_time;
-    int idx;
     QEMUTimer *timer;
     int64_t timer_expiry;
     int sipi_vector;
@@ -184,6 +183,7 @@ struct APICCommonState {
     uint32_t vapic_control;
     DeviceState *vapic;
     hwaddr vapic_paddr; /* note: persistence via kvmvapic */
+    bool legacy_instance_id;
 };
 
 typedef struct VAPICState {
@@ -222,4 +222,4 @@ static inline int apic_get_bit(uint32_t *tab, int index)
     return !!(tab[i] & mask);
 }
 
-#endif /* !QEMU_APIC_INTERNAL_H */
+#endif /* QEMU_APIC_INTERNAL_H */

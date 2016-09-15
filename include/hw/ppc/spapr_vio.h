@@ -1,5 +1,6 @@
-#ifndef _HW_SPAPR_VIO_H
-#define _HW_SPAPR_VIO_H
+#ifndef HW_SPAPR_VIO_H
+#define HW_SPAPR_VIO_H
+
 /*
  * QEMU sPAPR VIO bus definitions
  *
@@ -90,7 +91,7 @@ static inline qemu_irq spapr_vio_qirq(VIOsPAPRDevice *dev)
 {
     sPAPRMachineState *spapr = SPAPR_MACHINE(qdev_get_machine());
 
-    return xics_get_qirq(spapr->icp, dev->irq);
+    return xics_get_qirq(spapr->xics, dev->irq);
 }
 
 static inline bool spapr_vio_dma_valid(VIOsPAPRDevice *dev, uint64_t taddr,
@@ -145,4 +146,4 @@ extern const VMStateDescription vmstate_spapr_vio;
 
 void spapr_vio_set_bypass(VIOsPAPRDevice *dev, bool bypass);
 
-#endif /* _HW_SPAPR_VIO_H */
+#endif /* HW_SPAPR_VIO_H */

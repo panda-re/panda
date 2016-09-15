@@ -17,8 +17,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(__HELPER_REGS_H__)
-#define __HELPER_REGS_H__
+#ifndef HELPER_REGS_H
+#define HELPER_REGS_H
 
 /* Swap temporary saved registers with GPRs */
 static inline void hreg_swap_gpr_tgpr(CPUPPCState *env)
@@ -41,17 +41,19 @@ static inline void hreg_swap_gpr_tgpr(CPUPPCState *env)
 
 static inline void hreg_compute_mem_idx(CPUPPCState *env)
 {
-    /* This is our encoding for server processors
+    /* This is our encoding for server processors. The architecture
+     * specifies that there is no such thing as userspace with
+     * translation off, however it appears that MacOS does it and
+     * some 32-bit CPUs support it. Weird...
      *
      *   0 = Guest User space virtual mode
      *   1 = Guest Kernel space virtual mode
-     *   2 = Guest Kernel space real mode
-     *   3 = HV User space virtual mode
-     *   4 = HV Kernel space virtual mode
-     *   5 = HV Kernel space real mode
-     *
-     * The combination PR=1 IR&DR=0 is invalid, we will treat
-     * it as IR=DR=1
+     *   2 = Guest User space real mode
+     *   3 = Guest Kernel space real mode
+     *   4 = HV User space virtual mode
+     *   5 = HV Kernel space virtual mode
+     *   6 = HV User space real mode
+     *   7 = HV Kernel space real mode
      *
      * For BookE, we need 8 MMU modes as follow:
      *
@@ -71,20 +73,11 @@ static inline void hreg_compute_mem_idx(CPUPPCState *env)
         env->immu_idx += msr_gs ? 4 : 0;
         env->dmmu_idx += msr_gs ? 4 : 0;
     } else {
-        /* First calucalte a base value independent of HV */
-        if (msr_pr != 0) {
-            /* User space, ignore IR and DR */
-            env->immu_idx = env->dmmu_idx = 0;
-        } else {
-            /* Kernel, setup a base I/D value */
-            env->immu_idx = msr_ir ? 1 : 2;
-            env->dmmu_idx = msr_dr ? 1 : 2;
-        }
-        /* Then offset it for HV */
-        if (msr_hv) {
-            env->immu_idx += 3;
-            env->dmmu_idx += 3;
-        }
+        env->immu_idx = env->dmmu_idx = msr_pr ? 0 : 1;
+        env->immu_idx += msr_ir ? 0 : 2;
+        env->dmmu_idx += msr_dr ? 0 : 2;
+        env->immu_idx += msr_hv ? 4 : 0;
+        env->dmmu_idx += msr_hv ? 4 : 0;
     }
 }
 
@@ -136,6 +129,15 @@ static inline int hreg_store_msr(CPUPPCState *env, target_ulong value,
         /* Change the exception prefix on PowerPC 601 */
         env->excp_prefix = ((value >> MSR_EP) & 1) * 0xFFF00000;
     }
+    /* If PR=1 then EE, IR and DR must be 1
+     *
+     * Note: We only enforce this on 64-bit processors. It appears that
+     * 32-bit implementations supports PR=1 and EE/DR/IR=0 and MacOS
+     * exploits it.
+     */
+    if ((env->insns_flags & PPC_64B) && ((value >> MSR_PR) & 1)) {
+        value |= (1 << MSR_EE) | (1 << MSR_DR) | (1 << MSR_IR);
+    }
 #endif
     env->msr = value;
     hreg_compute_hflags(env);
@@ -164,4 +166,4 @@ static inline void check_tlb_flush(CPUPPCState *env)
 static inline void check_tlb_flush(CPUPPCState *env) { }
 #endif
 
-#endif /* !defined(__HELPER_REGS_H__) */
+#endif /* HELPER_REGS_H */

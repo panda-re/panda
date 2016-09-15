@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef QCRYPTO_TLSCRED_H__
-#define QCRYPTO_TLSCRED_H__
+#ifndef QCRYPTO_TLSCREDS_H
+#define QCRYPTO_TLSCREDS_H
 
 #include "qom/object.h"
 
@@ -54,6 +54,7 @@ struct QCryptoTLSCreds {
     gnutls_dh_params_t dh_params;
 #endif
     bool verifyPeer;
+    char *priority;
 };
 
 
@@ -62,5 +63,4 @@ struct QCryptoTLSCredsClass {
 };
 
 
-#endif /* QCRYPTO_TLSCRED_H__ */
-
+#endif /* QCRYPTO_TLSCREDS_H */

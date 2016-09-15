@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef QCRYPTO_BLOCK_H__
-#define QCRYPTO_BLOCK_H__
+#ifndef QCRYPTO_BLOCK_H
+#define QCRYPTO_BLOCK_H
 
 #include "crypto/cipher.h"
 #include "crypto/ivgen.h"
@@ -138,6 +138,22 @@ QCryptoBlock *qcrypto_block_create(QCryptoBlockCreateOptions *options,
                                    void *opaque,
                                    Error **errp);
 
+
+/**
+ * qcrypto_block_get_info:
+ * @block: the block encryption object
+ * @errp: pointer to a NULL-initialized error object
+ *
+ * Get information about the configuration options for the
+ * block encryption object. This includes details such as
+ * the cipher algorithms, modes, and initialization vector
+ * generators.
+ *
+ * Returns: a block encryption info object, or NULL on error
+ */
+QCryptoBlockInfo *qcrypto_block_get_info(QCryptoBlock *block,
+                                         Error **errp);
+
 /**
  * @qcrypto_block_decrypt:
  * @block: the block encryption object
@@ -229,4 +245,4 @@ uint64_t qcrypto_block_get_payload_offset(QCryptoBlock *block);
  */
 void qcrypto_block_free(QCryptoBlock *block);
 
-#endif /* QCRYPTO_BLOCK_H__ */
+#endif /* QCRYPTO_BLOCK_H */

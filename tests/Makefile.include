@@ -22,6 +22,8 @@ check-unit-y += tests/check-qjson$(EXESUF)
 gcov-files-check-qjson-y = qobject/qjson.c
 check-unit-y += tests/test-qmp-output-visitor$(EXESUF)
 gcov-files-test-qmp-output-visitor-y = qapi/qmp-output-visitor.c
+check-unit-y += tests/test-clone-visitor$(EXESUF)
+gcov-files-test-clone-visitor-y = qapi/qapi-clone-visitor.c
 check-unit-y += tests/test-qmp-input-visitor$(EXESUF)
 gcov-files-test-qmp-input-visitor-y = qapi/qmp-input-visitor.c
 check-unit-y += tests/test-qmp-input-strict$(EXESUF)
@@ -50,6 +52,7 @@ gcov-files-test-thread-pool-y = thread-pool.c
 gcov-files-test-hbitmap-y = util/hbitmap.c
 check-unit-y += tests/test-hbitmap$(EXESUF)
 gcov-files-test-hbitmap-y = blockjob.c
+check-unit-y += tests/test-blockjob$(EXESUF)
 check-unit-y += tests/test-blockjob-txn$(EXESUF)
 check-unit-y += tests/test-x86-cpuid$(EXESUF)
 # all code tested by test-x86-cpuid is inside topology.h
@@ -86,7 +89,7 @@ check-unit-y += tests/test-qemu-opts$(EXESUF)
 gcov-files-test-qemu-opts-y = qom/test-qemu-opts.c
 check-unit-y += tests/test-write-threshold$(EXESUF)
 gcov-files-test-write-threshold-y = block/write-threshold.c
-check-unit-$(CONFIG_GNUTLS_HASH) += tests/test-crypto-hash$(EXESUF)
+check-unit-y += tests/test-crypto-hash$(EXESUF)
 check-unit-y += tests/test-crypto-cipher$(EXESUF)
 check-unit-y += tests/test-crypto-secret$(EXESUF)
 check-unit-$(CONFIG_GNUTLS) += tests/test-crypto-tlscredsx509$(EXESUF)
@@ -109,6 +112,9 @@ check-unit-y += tests/test-crypto-xts$(EXESUF)
 check-unit-y += tests/test-crypto-block$(EXESUF)
 gcov-files-test-logging-y = tests/test-logging.c
 check-unit-y += tests/test-logging$(EXESUF)
+check-unit-$(CONFIG_REPLICATION) += tests/test-replication$(EXESUF)
+check-unit-y += tests/test-bufferiszero$(EXESUF)
+gcov-files-check-bufferiszero-y = util/bufferiszero.c
 
 check-block-$(CONFIG_POSIX) += tests/qemu-iotests-quick.sh
 
@@ -192,6 +198,7 @@ check-qtest-i386-y += tests/hd-geo-test$(EXESUF)
 gcov-files-i386-y += hw/block/hd-geometry.c
 check-qtest-i386-y += tests/boot-order-test$(EXESUF)
 check-qtest-i386-y += tests/bios-tables-test$(EXESUF)
+check-qtest-i386-y += tests/boot-serial-test$(EXESUF)
 check-qtest-i386-y += tests/pxe-test$(EXESUF)
 check-qtest-i386-y += tests/rtc-test$(EXESUF)
 check-qtest-i386-y += tests/ipmi-kcs-test$(EXESUF)
@@ -234,32 +241,59 @@ endif
 check-qtest-i386-y += tests/test-netfilter$(EXESUF)
 check-qtest-i386-y += tests/test-filter-mirror$(EXESUF)
 check-qtest-i386-y += tests/test-filter-redirector$(EXESUF)
-check-qtest-x86_64-y = $(check-qtest-i386-y)
+check-qtest-i386-y += tests/postcopy-test$(EXESUF)
+check-qtest-x86_64-y += $(check-qtest-i386-y)
 gcov-files-i386-y += i386-softmmu/hw/timer/mc146818rtc.c
 gcov-files-x86_64-y = $(subst i386-softmmu/,x86_64-softmmu/,$(gcov-files-i386-y))
+
+check-qtest-alpha-y = tests/boot-serial-test$(EXESUF)
+
 check-qtest-mips-y = tests/endianness-test$(EXESUF)
+
 check-qtest-mips64-y = tests/endianness-test$(EXESUF)
+
 check-qtest-mips64el-y = tests/endianness-test$(EXESUF)
+
 check-qtest-ppc-y = tests/endianness-test$(EXESUF)
-check-qtest-ppc64-y = tests/endianness-test$(EXESUF)
+check-qtest-ppc-y += tests/boot-order-test$(EXESUF)
+check-qtest-ppc-y += tests/prom-env-test$(EXESUF)
+check-qtest-ppc-y += tests/drive_del-test$(EXESUF)
+check-qtest-ppc-y += tests/boot-serial-test$(EXESUF)
+
+check-qtest-ppc64-y = tests/spapr-phb-test$(EXESUF)
+gcov-files-ppc64-y = ppc64-softmmu/hw/ppc/spapr_pci.c
+check-qtest-ppc64-y += tests/endianness-test$(EXESUF)
+check-qtest-ppc64-y += tests/boot-order-test$(EXESUF)
+check-qtest-ppc64-y += tests/prom-env-test$(EXESUF)
+check-qtest-ppc64-y += tests/drive_del-test$(EXESUF)
+check-qtest-ppc64-y += tests/postcopy-test$(EXESUF)
+check-qtest-ppc64-y += tests/boot-serial-test$(EXESUF)
+
 check-qtest-sh4-y = tests/endianness-test$(EXESUF)
+
 check-qtest-sh4eb-y = tests/endianness-test$(EXESUF)
+
+check-qtest-sparc-y = tests/prom-env-test$(EXESUF)
+#check-qtest-sparc-y += tests/m48t59-test$(EXESUF)
+#gcov-files-sparc-y = hw/timer/m48t59.c
+
 check-qtest-sparc64-y = tests/endianness-test$(EXESUF)
-#check-qtest-sparc-y = tests/m48t59-test$(EXESUF)
 #check-qtest-sparc64-y += tests/m48t59-test$(EXESUF)
-gcov-files-sparc-y += hw/timer/m48t59.c
-gcov-files-sparc64-y += hw/timer/m48t59.c
+#gcov-files-sparc64-y += hw/timer/m48t59.c
+#Disabled for now, triggers a TCG bug on 32-bit hosts
+#check-qtest-sparc64-y += tests/prom-env-test$(EXESUF)
+
 check-qtest-arm-y = tests/tmp105-test$(EXESUF)
-check-qtest-arm-y = tests/ds1338-test$(EXESUF)
+check-qtest-arm-y += tests/ds1338-test$(EXESUF)
 gcov-files-arm-y += hw/misc/tmp105.c
 check-qtest-arm-y += tests/virtio-blk-test$(EXESUF)
 gcov-files-arm-y += arm-softmmu/hw/block/virtio-blk.c
-check-qtest-ppc-y += tests/boot-order-test$(EXESUF)
-check-qtest-ppc64-y += tests/boot-order-test$(EXESUF)
-check-qtest-ppc64-y += tests/spapr-phb-test$(EXESUF)
-gcov-files-ppc64-y += ppc64-softmmu/hw/ppc/spapr_pci.c
+
 check-qtest-microblazeel-y = $(check-qtest-microblaze-y)
+
 check-qtest-xtensaeb-y = $(check-qtest-xtensa-y)
+
+check-qtest-s390x-y = tests/boot-serial-test$(EXESUF)
 
 check-qtest-generic-y += tests/qom-test$(EXESUF)
 
@@ -276,6 +310,10 @@ qapi-schema += args-alternate.json
 qapi-schema += args-any.json
 qapi-schema += args-array-empty.json
 qapi-schema += args-array-unknown.json
+qapi-schema += args-bad-boxed.json
+qapi-schema += args-boxed-anon.json
+qapi-schema += args-boxed-empty.json
+qapi-schema += args-boxed-string.json
 qapi-schema += args-int.json
 qapi-schema += args-invalid.json
 qapi-schema += args-member-array-bad.json
@@ -309,6 +347,7 @@ qapi-schema += enum-wrong-data.json
 qapi-schema += escape-outside-string.json
 qapi-schema += escape-too-big.json
 qapi-schema += escape-too-short.json
+qapi-schema += event-boxed-empty.json
 qapi-schema += event-case.json
 qapi-schema += event-nest-struct.json
 qapi-schema += flat-union-array-branch.json
@@ -318,6 +357,7 @@ qapi-schema += flat-union-base-any.json
 qapi-schema += flat-union-base-union.json
 qapi-schema += flat-union-clash-member.json
 qapi-schema += flat-union-empty.json
+qapi-schema += flat-union-incomplete-branch.json
 qapi-schema += flat-union-inline.json
 qapi-schema += flat-union-int-branch.json
 qapi-schema += flat-union-invalid-branch-key.json
@@ -396,6 +436,7 @@ test-obj-y = tests/check-qint.o tests/check-qstring.o tests/check-qdict.o \
 	tests/check-qjson.o \
 	tests/test-coroutine.o tests/test-string-output-visitor.o \
 	tests/test-string-input-visitor.o tests/test-qmp-output-visitor.o \
+	tests/test-clone-visitor.o \
 	tests/test-qmp-input-visitor.o tests/test-qmp-input-strict.o \
 	tests/test-qmp-commands.o tests/test-visitor-serialization.o \
 	tests/test-x86-cpuid.o tests/test-mul64.o tests/test-int128.o \
@@ -431,6 +472,7 @@ tests/test-coroutine$(EXESUF): tests/test-coroutine.o $(test-block-obj-y)
 tests/test-aio$(EXESUF): tests/test-aio.o $(test-block-obj-y)
 tests/test-rfifolock$(EXESUF): tests/test-rfifolock.o $(test-util-obj-y)
 tests/test-throttle$(EXESUF): tests/test-throttle.o $(test-block-obj-y)
+tests/test-blockjob$(EXESUF): tests/test-blockjob.o $(test-block-obj-y) $(test-util-obj-y)
 tests/test-blockjob-txn$(EXESUF): tests/test-blockjob-txn.o $(test-block-obj-y) $(test-util-obj-y)
 tests/test-thread-pool$(EXESUF): tests/test-thread-pool.o $(test-block-obj-y)
 tests/test-iov$(EXESUF): tests/test-iov.o $(test-util-obj-y)
@@ -445,6 +487,7 @@ tests/test-qdist$(EXESUF): tests/test-qdist.o $(test-util-obj-y)
 tests/test-qht$(EXESUF): tests/test-qht.o $(test-util-obj-y)
 tests/test-qht-par$(EXESUF): tests/test-qht-par.o tests/qht-bench$(EXESUF) $(test-util-obj-y)
 tests/qht-bench$(EXESUF): tests/qht-bench.o $(test-util-obj-y)
+tests/test-bufferiszero$(EXESUF): tests/test-bufferiszero.o $(test-util-obj-y)
 
 tests/test-qdev-global-props$(EXESUF): tests/test-qdev-global-props.o \
 	hw/core/qdev.o hw/core/qdev-properties.o hw/core/hotplug.o\
@@ -462,6 +505,9 @@ tests/test-base64$(EXESUF): tests/test-base64.o \
 	libqemuutil.a libqemustub.a
 
 tests/test-logging$(EXESUF): tests/test-logging.o $(test-util-obj-y)
+
+tests/test-replication$(EXESUF): tests/test-replication.o $(test-util-obj-y) \
+	$(test-block-obj-y)
 
 tests/test-qapi-types.c tests/test-qapi-types.h :\
 $(SRC_PATH)/tests/qapi-schema/qapi-schema-test.json $(SRC_PATH)/scripts/qapi-types.py $(qapi-py)
@@ -493,6 +539,7 @@ tests/test-string-output-visitor$(EXESUF): tests/test-string-output-visitor.o $(
 tests/test-string-input-visitor$(EXESUF): tests/test-string-input-visitor.o $(test-qapi-obj-y)
 tests/test-qmp-event$(EXESUF): tests/test-qmp-event.o $(test-qapi-obj-y)
 tests/test-qmp-output-visitor$(EXESUF): tests/test-qmp-output-visitor.o $(test-qapi-obj-y)
+tests/test-clone-visitor$(EXESUF): tests/test-clone-visitor.o $(test-qapi-obj-y)
 tests/test-qmp-input-visitor$(EXESUF): tests/test-qmp-input-visitor.o $(test-qapi-obj-y)
 tests/test-qmp-input-strict$(EXESUF): tests/test-qmp-input-strict.o $(test-qapi-obj-y)
 tests/test-qmp-commands$(EXESUF): tests/test-qmp-commands.o tests/test-qmp-marshal.o $(test-qapi-obj-y)
@@ -549,6 +596,7 @@ tests/rtc-test$(EXESUF): tests/rtc-test.o
 tests/m48t59-test$(EXESUF): tests/m48t59-test.o
 tests/endianness-test$(EXESUF): tests/endianness-test.o
 tests/spapr-phb-test$(EXESUF): tests/spapr-phb-test.o $(libqos-obj-y)
+tests/prom-env-test$(EXESUF): tests/prom-env-test.o $(libqos-obj-y)
 tests/fdc-test$(EXESUF): tests/fdc-test.o
 tests/ide-test$(EXESUF): tests/ide-test.o $(libqos-pc-obj-y)
 tests/ahci-test$(EXESUF): tests/ahci-test.o $(libqos-pc-obj-y)
@@ -556,6 +604,7 @@ tests/ipmi-kcs-test$(EXESUF): tests/ipmi-kcs-test.o
 tests/ipmi-bt-test$(EXESUF): tests/ipmi-bt-test.o
 tests/hd-geo-test$(EXESUF): tests/hd-geo-test.o
 tests/boot-order-test$(EXESUF): tests/boot-order-test.o $(libqos-obj-y)
+tests/boot-serial-test$(EXESUF): tests/boot-serial-test.o $(libqos-obj-y)
 tests/bios-tables-test$(EXESUF): tests/bios-tables-test.o \
 	tests/boot-sector.o $(libqos-obj-y)
 tests/pxe-test$(EXESUF): tests/pxe-test.o tests/boot-sector.o $(libqos-obj-y)
@@ -599,7 +648,8 @@ tests/usb-hcd-uhci-test$(EXESUF): tests/usb-hcd-uhci-test.o $(libqos-usb-obj-y)
 tests/usb-hcd-ehci-test$(EXESUF): tests/usb-hcd-ehci-test.o $(libqos-usb-obj-y)
 tests/usb-hcd-xhci-test$(EXESUF): tests/usb-hcd-xhci-test.o $(libqos-usb-obj-y)
 tests/pc-cpu-test$(EXESUF): tests/pc-cpu-test.o
-tests/vhost-user-test$(EXESUF): tests/vhost-user-test.o qemu-char.o qemu-timer.o $(qtest-obj-y) $(test-io-obj-y)
+tests/postcopy-test$(EXESUF): tests/postcopy-test.o
+tests/vhost-user-test$(EXESUF): tests/vhost-user-test.o qemu-char.o qemu-timer.o $(qtest-obj-y) $(test-io-obj-y) $(libqos-virtio-obj-y)
 tests/qemu-iotests/socket_scm_helper$(EXESUF): tests/qemu-iotests/socket_scm_helper.o
 tests/test-qemu-opts$(EXESUF): tests/test-qemu-opts.o $(test-util-obj-y)
 tests/test-write-threshold$(EXESUF): tests/test-write-threshold.o $(test-block-obj-y)
@@ -608,6 +658,18 @@ tests/test-filter-mirror$(EXESUF): tests/test-filter-mirror.o $(qtest-obj-y)
 tests/test-filter-redirector$(EXESUF): tests/test-filter-redirector.o $(qtest-obj-y)
 tests/ivshmem-test$(EXESUF): tests/ivshmem-test.o contrib/ivshmem-server/ivshmem-server.o $(libqos-pc-obj-y)
 tests/vhost-user-bridge$(EXESUF): tests/vhost-user-bridge.o
+
+tests/migration/stress$(EXESUF): tests/migration/stress.o
+	$(call quiet-command, $(LINKPROG) -static -O3 $(PTHREAD_LIB) -o $@ $< ,"  LINK  $(TARGET_DIR)$@")
+
+INITRD_WORK_DIR=tests/migration/initrd
+
+tests/migration/initrd-stress.img: tests/migration/stress$(EXESUF)
+	mkdir -p $(INITRD_WORK_DIR)
+	cp $< $(INITRD_WORK_DIR)/init
+	(cd $(INITRD_WORK_DIR) && (find | cpio --quiet -o -H newc | gzip -9)) > $@
+	rm $(INITRD_WORK_DIR)/init
+	rmdir $(INITRD_WORK_DIR)
 
 ifeq ($(CONFIG_POSIX),y)
 LIBS += -lutil

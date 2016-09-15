@@ -25,10 +25,6 @@
 
 /* Needed early for CONFIG_BSD etc. */
 
-#if defined(CONFIG_MADVISE) || defined(CONFIG_POSIX_MADVISE)
-#include <sys/mman.h>
-#endif
-
 #ifdef CONFIG_SOLARIS
 #include <sys/statvfs.h>
 /* See MySQL bug #7156 (http://bugs.mysql.com/bug.php?id=7156) for
@@ -87,14 +83,7 @@ static int qemu_dup_flags(int fd, int flags)
     int serrno;
     int dup_flags;
 
-#ifdef F_DUPFD_CLOEXEC
-    ret = fcntl(fd, F_DUPFD_CLOEXEC, 0);
-#else
-    ret = dup(fd);
-    if (ret != -1) {
-        qemu_set_cloexec(ret);
-    }
-#endif
+    ret = qemu_dup(fd);
     if (ret == -1) {
         goto fail;
     }
@@ -131,6 +120,20 @@ fail:
     }
     errno = serrno;
     return -1;
+}
+
+int qemu_dup(int fd)
+{
+    int ret;
+#ifdef F_DUPFD_CLOEXEC
+    ret = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+#else
+    ret = dup(fd);
+    if (ret != -1) {
+        qemu_set_cloexec(ret);
+    }
+#endif
+    return ret;
 }
 
 static int qemu_parse_fdset(const char *param)

@@ -468,11 +468,11 @@ static int peer_attach(VirtIONet *n, int index)
         return 0;
     }
 
-    if (nc->peer->info->type == NET_CLIENT_OPTIONS_KIND_VHOST_USER) {
+    if (nc->peer->info->type == NET_CLIENT_DRIVER_VHOST_USER) {
         vhost_set_vring_enable(nc->peer, 1);
     }
 
-    if (nc->peer->info->type != NET_CLIENT_OPTIONS_KIND_TAP) {
+    if (nc->peer->info->type != NET_CLIENT_DRIVER_TAP) {
         return 0;
     }
 
@@ -487,11 +487,11 @@ static int peer_detach(VirtIONet *n, int index)
         return 0;
     }
 
-    if (nc->peer->info->type == NET_CLIENT_OPTIONS_KIND_VHOST_USER) {
+    if (nc->peer->info->type == NET_CLIENT_DRIVER_VHOST_USER) {
         vhost_set_vring_enable(nc->peer, 0);
     }
 
-    if (nc->peer->info->type !=  NET_CLIENT_OPTIONS_KIND_TAP) {
+    if (nc->peer->info->type !=  NET_CLIENT_DRIVER_TAP) {
         return 0;
     }
 
@@ -1051,7 +1051,7 @@ static int receive_filter(VirtIONet *n, const uint8_t *buf, int size)
     ptr += n->host_hdr_len;
 
     if (!memcmp(&ptr[12], vlan, sizeof(vlan))) {
-        int vid = be16_to_cpup((uint16_t *)(ptr + 14)) & 0xfff;
+        int vid = lduw_be_p(ptr + 14) & 0xfff;
         if (!(n->vlans[vid >> 5] & (1U << (vid & 0x1f))))
             return 0;
     }
@@ -1492,7 +1492,7 @@ static void virtio_net_set_multiqueue(VirtIONet *n, int multiqueue)
     virtio_net_set_queues(n);
 }
 
-static void virtio_net_save(QEMUFile *f, void *opaque)
+static void virtio_net_save(QEMUFile *f, void *opaque, size_t size)
 {
     VirtIONet *n = opaque;
     VirtIODevice *vdev = VIRTIO_DEVICE(n);
@@ -1538,37 +1538,12 @@ static void virtio_net_save_device(VirtIODevice *vdev, QEMUFile *f)
     }
 }
 
-static int virtio_net_load(QEMUFile *f, void *opaque, int version_id)
+static int virtio_net_load(QEMUFile *f, void *opaque, size_t size)
 {
     VirtIONet *n = opaque;
     VirtIODevice *vdev = VIRTIO_DEVICE(n);
-    int ret;
 
-    if (version_id < 2 || version_id > VIRTIO_NET_VM_VERSION)
-        return -EINVAL;
-
-    ret = virtio_load(vdev, f, version_id);
-    if (ret) {
-        return ret;
-    }
-
-    if (virtio_vdev_has_feature(vdev, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)) {
-        n->curr_guest_offloads = qemu_get_be64(f);
-    } else {
-        n->curr_guest_offloads = virtio_net_supported_guest_offloads(n);
-    }
-
-    if (peer_has_vnet_hdr(n)) {
-        virtio_net_apply_guest_offloads(n);
-    }
-
-    if (virtio_vdev_has_feature(vdev, VIRTIO_NET_F_GUEST_ANNOUNCE) &&
-        virtio_vdev_has_feature(vdev, VIRTIO_NET_F_CTRL_VQ)) {
-        n->announce_counter = SELF_ANNOUNCE_ROUNDS;
-        timer_mod(n->announce_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL));
-    }
-
-    return 0;
+    return virtio_load(vdev, f, VIRTIO_NET_VM_VERSION);
 }
 
 static int virtio_net_load_device(VirtIODevice *vdev, QEMUFile *f,
@@ -1584,68 +1559,49 @@ static int virtio_net_load_device(VirtIODevice *vdev, QEMUFile *f,
                                virtio_vdev_has_feature(vdev,
                                                        VIRTIO_F_VERSION_1));
 
-    if (version_id >= 3)
-        n->status = qemu_get_be16(f);
+    n->status = qemu_get_be16(f);
 
-    if (version_id >= 4) {
-        if (version_id < 8) {
-            n->promisc = qemu_get_be32(f);
-            n->allmulti = qemu_get_be32(f);
-        } else {
-            n->promisc = qemu_get_byte(f);
-            n->allmulti = qemu_get_byte(f);
+    n->promisc = qemu_get_byte(f);
+    n->allmulti = qemu_get_byte(f);
+
+    n->mac_table.in_use = qemu_get_be32(f);
+    /* MAC_TABLE_ENTRIES may be different from the saved image */
+    if (n->mac_table.in_use <= MAC_TABLE_ENTRIES) {
+        qemu_get_buffer(f, n->mac_table.macs,
+                        n->mac_table.in_use * ETH_ALEN);
+    } else {
+        int64_t i;
+
+        /* Overflow detected - can happen if source has a larger MAC table.
+         * We simply set overflow flag so there's no need to maintain the
+         * table of addresses, discard them all.
+         * Note: 64 bit math to avoid integer overflow.
+         */
+        for (i = 0; i < (int64_t)n->mac_table.in_use * ETH_ALEN; ++i) {
+            qemu_get_byte(f);
         }
-    }
-
-    if (version_id >= 5) {
-        n->mac_table.in_use = qemu_get_be32(f);
-        /* MAC_TABLE_ENTRIES may be different from the saved image */
-        if (n->mac_table.in_use <= MAC_TABLE_ENTRIES) {
-            qemu_get_buffer(f, n->mac_table.macs,
-                            n->mac_table.in_use * ETH_ALEN);
-        } else {
-            int64_t i;
-
-            /* Overflow detected - can happen if source has a larger MAC table.
-             * We simply set overflow flag so there's no need to maintain the
-             * table of addresses, discard them all.
-             * Note: 64 bit math to avoid integer overflow.
-             */
-            for (i = 0; i < (int64_t)n->mac_table.in_use * ETH_ALEN; ++i) {
-                qemu_get_byte(f);
-            }
-            n->mac_table.multi_overflow = n->mac_table.uni_overflow = 1;
-            n->mac_table.in_use = 0;
-        }
+        n->mac_table.multi_overflow = n->mac_table.uni_overflow = 1;
+        n->mac_table.in_use = 0;
     }
  
-    if (version_id >= 6)
-        qemu_get_buffer(f, (uint8_t *)n->vlans, MAX_VLAN >> 3);
+    qemu_get_buffer(f, (uint8_t *)n->vlans, MAX_VLAN >> 3);
 
-    if (version_id >= 7) {
-        if (qemu_get_be32(f) && !peer_has_vnet_hdr(n)) {
-            error_report("virtio-net: saved image requires vnet_hdr=on");
-            return -1;
-        }
+    if (qemu_get_be32(f) && !peer_has_vnet_hdr(n)) {
+        error_report("virtio-net: saved image requires vnet_hdr=on");
+        return -1;
     }
 
-    if (version_id >= 9) {
-        n->mac_table.multi_overflow = qemu_get_byte(f);
-        n->mac_table.uni_overflow = qemu_get_byte(f);
-    }
+    n->mac_table.multi_overflow = qemu_get_byte(f);
+    n->mac_table.uni_overflow = qemu_get_byte(f);
 
-    if (version_id >= 10) {
-        n->alluni = qemu_get_byte(f);
-        n->nomulti = qemu_get_byte(f);
-        n->nouni = qemu_get_byte(f);
-        n->nobcast = qemu_get_byte(f);
-    }
+    n->alluni = qemu_get_byte(f);
+    n->nomulti = qemu_get_byte(f);
+    n->nouni = qemu_get_byte(f);
+    n->nobcast = qemu_get_byte(f);
 
-    if (version_id >= 11) {
-        if (qemu_get_byte(f) && !peer_has_ufo(n)) {
-            error_report("virtio-net: saved image requires TUN_F_UFO support");
-            return -1;
-        }
+    if (qemu_get_byte(f) && !peer_has_ufo(n)) {
+        error_report("virtio-net: saved image requires TUN_F_UFO support");
+        return -1;
     }
 
     if (n->max_queues > 1) {
@@ -1665,6 +1621,16 @@ static int virtio_net_load_device(VirtIODevice *vdev, QEMUFile *f,
         }
     }
 
+    if (virtio_vdev_has_feature(vdev, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS)) {
+        n->curr_guest_offloads = qemu_get_be64(f);
+    } else {
+        n->curr_guest_offloads = virtio_net_supported_guest_offloads(n);
+    }
+
+    if (peer_has_vnet_hdr(n)) {
+        virtio_net_apply_guest_offloads(n);
+    }
+
     virtio_net_set_queues(n);
 
     /* Find the first multicast entry in the saved MAC filter */
@@ -1682,11 +1648,17 @@ static int virtio_net_load_device(VirtIODevice *vdev, QEMUFile *f,
         qemu_get_subqueue(n->nic, i)->link_down = link_down;
     }
 
+    if (virtio_vdev_has_feature(vdev, VIRTIO_NET_F_GUEST_ANNOUNCE) &&
+        virtio_vdev_has_feature(vdev, VIRTIO_NET_F_CTRL_VQ)) {
+        n->announce_counter = SELF_ANNOUNCE_ROUNDS;
+        timer_mod(n->announce_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL));
+    }
+
     return 0;
 }
 
 static NetClientInfo net_virtio_info = {
-    .type = NET_CLIENT_OPTIONS_KIND_NIC,
+    .type = NET_CLIENT_DRIVER_NIC,
     .size = sizeof(NICState),
     .can_receive = virtio_net_can_receive,
     .receive = virtio_net_receive,
@@ -1815,8 +1787,6 @@ static void virtio_net_device_realize(DeviceState *dev, Error **errp)
     nc->rxfilter_notify_enabled = 1;
 
     n->qdev = dev;
-    register_savevm(dev, "virtio-net", -1, VIRTIO_NET_VM_VERSION,
-                    virtio_net_save, virtio_net_load, n);
 }
 
 static void virtio_net_device_unrealize(DeviceState *dev, Error **errp)
@@ -1827,8 +1797,6 @@ static void virtio_net_device_unrealize(DeviceState *dev, Error **errp)
 
     /* This will stop vhost backend if appropriate. */
     virtio_net_set_status(vdev, 0);
-
-    unregister_savevm(dev, "virtio-net", n);
 
     g_free(n->netclient_name);
     n->netclient_name = NULL;
@@ -1863,6 +1831,9 @@ static void virtio_net_instance_init(Object *obj)
                                   "bootindex", "/ethernet-phy@0",
                                   DEVICE(n), NULL);
 }
+
+VMSTATE_VIRTIO_DEVICE(net, VIRTIO_NET_VM_VERSION, virtio_net_load,
+                      virtio_net_save);
 
 static Property virtio_net_properties[] = {
     DEFINE_PROP_BIT("csum", VirtIONet, host_features, VIRTIO_NET_F_CSUM, true),
@@ -1918,6 +1889,7 @@ static void virtio_net_class_init(ObjectClass *klass, void *data)
     VirtioDeviceClass *vdc = VIRTIO_DEVICE_CLASS(klass);
 
     dc->props = virtio_net_properties;
+    dc->vmsd = &vmstate_virtio_net;
     set_bit(DEVICE_CATEGORY_NETWORK, dc->categories);
     vdc->realize = virtio_net_device_realize;
     vdc->unrealize = virtio_net_device_unrealize;

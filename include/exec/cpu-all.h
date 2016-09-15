@@ -288,14 +288,22 @@ CPUArchState *cpu_copy(CPUArchState *env);
 #if !defined(CONFIG_USER_ONLY)
 
 /* Flags stored in the low bits of the TLB virtual address.  These are
-   defined so that fast path ram access is all zeros.  */
+ * defined so that fast path ram access is all zeros.
+ * The flags all must be between TARGET_PAGE_BITS and
+ * maximum address alignment bit.
+ */
 /* Zero if TLB entry is valid.  */
-#define TLB_INVALID_MASK   (1 << 3)
+#define TLB_INVALID_MASK    (1 << (TARGET_PAGE_BITS - 1))
 /* Set if TLB entry references a clean RAM page.  The iotlb entry will
    contain the page physical address.  */
-#define TLB_NOTDIRTY    (1 << 4)
+#define TLB_NOTDIRTY        (1 << (TARGET_PAGE_BITS - 2))
 /* Set if TLB entry is an IO callback.  */
-#define TLB_MMIO        (1 << 5)
+#define TLB_MMIO            (1 << (TARGET_PAGE_BITS - 3))
+
+/* Use this mask to check interception with an alignment mask
+ * in a TCG backend.
+ */
+#define TLB_FLAGS_MASK  (TLB_INVALID_MASK | TLB_NOTDIRTY | TLB_MMIO)
 
 void dump_exec_info(FILE *f, fprintf_function cpu_fprintf);
 void dump_opcount_info(FILE *f, fprintf_function cpu_fprintf);
@@ -303,6 +311,8 @@ void dump_opcount_info(FILE *f, fprintf_function cpu_fprintf);
 
 int cpu_memory_rw_debug(CPUState *cpu, target_ulong addr,
                         uint8_t *buf, int len, int is_write);
+
+int cpu_exec(CPUState *cpu);
 
 // needed by panda
 MemTxResult cpu_physical_memory_rw_ex(hwaddr addr, uint8_t *buf,

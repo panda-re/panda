@@ -105,12 +105,10 @@ static inline bool rtc_running(RTCState *s)
 
 static uint64_t get_guest_rtc_ns(RTCState *s)
 {
-    uint64_t guest_rtc;
     uint64_t guest_clock = qemu_clock_get_ns(rtc_clock);
 
-    guest_rtc = s->base_rtc * NANOSECONDS_PER_SECOND +
+    return s->base_rtc * NANOSECONDS_PER_SECOND +
         guest_clock - s->last_update + s->offset;
-    return guest_rtc;
 }
 
 #ifdef TARGET_I386
@@ -908,6 +906,8 @@ static void rtc_realizefn(DeviceState *dev, Error **errp)
 
     object_property_add_alias(qdev_get_machine(), "rtc-time",
                               OBJECT(s), "date", NULL);
+
+    qdev_init_gpio_out(dev, &s->irq, 1);
 }
 
 ISADevice *rtc_init(ISABus *bus, int base_year, qemu_irq intercept_irq)
@@ -922,9 +922,9 @@ ISADevice *rtc_init(ISABus *bus, int base_year, qemu_irq intercept_irq)
     qdev_prop_set_int32(dev, "base_year", base_year);
     qdev_init_nofail(dev);
     if (intercept_irq) {
-        s->irq = intercept_irq;
+        qdev_connect_gpio_out(dev, 0, intercept_irq);
     } else {
-        isa_init_irq(isadev, &s->irq, RTC_ISA_IRQ);
+        isa_connect_gpio_out(isadev, 0, RTC_ISA_IRQ);
     }
     QLIST_INSERT_HEAD(&rtc_devices, s, link);
 

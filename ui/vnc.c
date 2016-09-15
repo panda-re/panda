@@ -143,6 +143,11 @@ static void vnc_init_basic_info_from_server_addr(QIOChannelSocket *ioc,
 {
     SocketAddress *addr = NULL;
 
+    if (!ioc) {
+        error_setg(errp, "No listener socket available");
+        return;
+    }
+
     addr = qio_channel_socket_get_local_address(ioc, errp);
     if (!addr) {
         return;
@@ -219,7 +224,7 @@ static VncServerInfo *vnc_server_info_get(VncDisplay *vd)
     VncServerInfo *info;
     Error *err = NULL;
 
-    info = g_malloc(sizeof(*info));
+    info = g_malloc0(sizeof(*info));
     vnc_init_basic_info_from_server_addr(vd->lsock,
                                          qapi_VncServerInfo_base(info), &err);
     info->has_auth = true;
@@ -687,6 +692,8 @@ void *vnc_server_fb_ptr(VncDisplay *vd, int x, int y)
 
 static void vnc_update_server_surface(VncDisplay *vd)
 {
+    int width, height;
+
     qemu_pixman_image_unref(vd->server);
     vd->server = NULL;
 
@@ -694,10 +701,15 @@ static void vnc_update_server_surface(VncDisplay *vd)
         return;
     }
 
+    width = vnc_width(vd);
+    height = vnc_height(vd);
     vd->server = pixman_image_create_bits(VNC_SERVER_FB_FORMAT,
-                                          vnc_width(vd),
-                                          vnc_height(vd),
+                                          width, height,
                                           NULL, 0);
+
+    memset(vd->guest.dirty, 0x00, sizeof(vd->guest.dirty));
+    vnc_set_area_dirty(vd->guest.dirty, vd, 0, 0,
+                       width, height);
 }
 
 static void vnc_dpy_switch(DisplayChangeListener *dcl,
@@ -705,7 +717,6 @@ static void vnc_dpy_switch(DisplayChangeListener *dcl,
 {
     VncDisplay *vd = container_of(dcl, VncDisplay, dcl);
     VncState *vs;
-    int width, height;
 
     vnc_abort_display_jobs(vd);
     vd->ds = surface;
@@ -717,11 +728,6 @@ static void vnc_dpy_switch(DisplayChangeListener *dcl,
     qemu_pixman_image_unref(vd->guest.fb);
     vd->guest.fb = pixman_image_ref(surface->image);
     vd->guest.format = surface->format;
-    width = vnc_width(vd);
-    height = vnc_height(vd);
-    memset(vd->guest.dirty, 0x00, sizeof(vd->guest.dirty));
-    vnc_set_area_dirty(vd->guest.dirty, vd, 0, 0,
-                       width, height);
 
     QTAILQ_FOREACH(vs, &vd->clients, next) {
         vnc_colordepth(vs);
@@ -731,7 +737,8 @@ static void vnc_dpy_switch(DisplayChangeListener *dcl,
         }
         memset(vs->dirty, 0x00, sizeof(vs->dirty));
         vnc_set_area_dirty(vs->dirty, vd, 0, 0,
-                           width, height);
+                           vnc_width(vd),
+                           vnc_height(vd));
     }
 }
 
@@ -904,6 +911,10 @@ static void vnc_dpy_copy(DisplayChangeListener *dcl,
         }
     }
 
+    if (!vd->server) {
+        /* no client connected */
+        return;
+    }
     /* do bitblit op on the local surface too */
     pitch = vnc_server_fb_stride(vd);
     src_row = vnc_server_fb_ptr(vd, src_x, src_y);
@@ -1024,8 +1035,13 @@ static int find_and_clear_dirty_height(VncState *vs,
 
 static int vnc_update_client(VncState *vs, int has_dirty, bool sync)
 {
+    if (vs->disconnecting) {
+        vnc_disconnect_finish(vs);
+        return 0;
+    }
+
     vs->has_dirty += has_dirty;
-    if (vs->need_update && vs->ioc != NULL) {
+    if (vs->need_update && !vs->disconnecting) {
         VncDisplay *vd = vs->vd;
         VncJob *job;
         int y;
@@ -1436,8 +1452,9 @@ static void vnc_jobs_bh(void *opaque)
  * First function called whenever there is more data to be read from
  * the client socket. Will delegate actual work according to whether
  * SASL SSF layers are enabled (thus requiring decryption calls)
+ * Returns 0 on success, -1 if client disconnected
  */
-static void vnc_client_read(VncState *vs)
+static int vnc_client_read(VncState *vs)
 {
     ssize_t ret;
 
@@ -1450,8 +1467,9 @@ static void vnc_client_read(VncState *vs)
     if (!ret) {
         if (vs->disconnecting) {
             vnc_disconnect_finish(vs);
+            return -1;
         }
-        return;
+        return 0;
     }
 
     while (vs->read_handler && vs->input.offset >= vs->read_handler_expect) {
@@ -1461,7 +1479,7 @@ static void vnc_client_read(VncState *vs)
         ret = vs->read_handler(vs, vs->input.buffer, len);
         if (vs->disconnecting) {
             vnc_disconnect_finish(vs);
-            return;
+            return -1;
         }
 
         if (!ret) {
@@ -1470,6 +1488,7 @@ static void vnc_client_read(VncState *vs)
             vs->read_handler_expect = ret;
         }
     }
+    return 0;
 }
 
 gboolean vnc_client_io(QIOChannel *ioc G_GNUC_UNUSED,
@@ -1477,7 +1496,9 @@ gboolean vnc_client_io(QIOChannel *ioc G_GNUC_UNUSED,
 {
     VncState *vs = opaque;
     if (condition & G_IO_IN) {
-        vnc_client_read(vs);
+        if (vnc_client_read(vs) < 0) {
+            return TRUE;
+        }
     }
     if (condition & G_IO_OUT) {
         vnc_client_write(vs);
@@ -3135,6 +3156,9 @@ void vnc_display_init(const char *id)
     if (!vs->kbd_layout)
         exit(1);
 
+    vs->share_policy = VNC_SHARE_POLICY_ALLOW_EXCLUSIVE;
+    vs->connections_limit = 32;
+
     qemu_mutex_init(&vs->mutex);
     vnc_start_worker_thread();
 
@@ -3183,7 +3207,7 @@ int vnc_display_password(const char *id, const char *password)
     }
     if (vs->auth == VNC_AUTH_NONE) {
         error_printf_unless_qmp("If you want use passwords please enable "
-                                "password auth using '-vnc ${dpy},password'.");
+                                "password auth using '-vnc ${dpy},password'.\n");
         return -EINVAL;
     }
 
@@ -3205,29 +3229,24 @@ int vnc_display_pw_expire(const char *id, time_t expires)
     return 0;
 }
 
-char *vnc_display_local_addr(const char *id)
+static void vnc_display_print_local_addr(VncDisplay *vs)
 {
-    VncDisplay *vs = vnc_display_find(id);
     SocketAddress *addr;
-    char *ret;
     Error *err = NULL;
-
-    assert(vs);
 
     addr = qio_channel_socket_get_local_address(vs->lsock, &err);
     if (!addr) {
-        return NULL;
+        return;
     }
 
     if (addr->type != SOCKET_ADDRESS_KIND_INET) {
         qapi_free_SocketAddress(addr);
-        return NULL;
+        return;
     }
-    ret = g_strdup_printf("%s:%s", addr->u.inet.data->host,
-                          addr->u.inet.data->port);
+    error_printf_unless_qmp("VNC server running on %s:%s\n",
+                            addr->u.inet.data->host,
+                            addr->u.inet.data->port);
     qapi_free_SocketAddress(addr);
-
-    return ret;
 }
 
 static QemuOptsList qemu_vnc_opts = {
@@ -3513,6 +3532,7 @@ void vnc_display_open(const char *id, Error **errp)
     const char *vnc;
     char *h;
     const char *credid;
+    int show_vnc_port = 0;
     bool sasl = false;
 #ifdef CONFIG_VNC_SASL
     int saslErr;
@@ -3592,6 +3612,7 @@ void vnc_display_open(const char *id, Error **errp)
             if (to) {
                 inet->has_to = true;
                 inet->to = to + 5900;
+                show_vnc_port = 1;
             }
             inet->ipv4 = ipv4;
             inet->has_ipv4 = has_ipv4;
@@ -3834,6 +3855,10 @@ void vnc_display_open(const char *id, Error **errp)
                 QIO_CHANNEL(vs->lwebsock),
                 G_IO_IN, vnc_listen_io, vs, NULL);
         }
+    }
+
+    if (show_vnc_port) {
+        vnc_display_print_local_addr(vs);
     }
 
     qapi_free_SocketAddress(saddr);

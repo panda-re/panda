@@ -410,7 +410,7 @@ following example objects:
 === Commands ===
 
 Usage: { 'command': STRING, '*data': COMPLEX-TYPE-NAME-OR-DICT,
-         '*returns': TYPE-NAME,
+         '*returns': TYPE-NAME, '*boxed': true,
          '*gen': false, '*success-response': false }
 
 Commands are defined by using a dictionary containing several members,
@@ -461,6 +461,20 @@ which would validate this Client JSON Protocol transaction:
  => { "execute": "my-second-command" }
  <= { "return": [ { "value": "one" }, { } ] }
 
+The generator emits a prototype for the user's function implementing
+the command.  Normally, 'data' is a dictionary for an anonymous type,
+or names a struct type (possibly empty, but not a union), and its
+members are passed as separate arguments to this function.  If the
+command definition includes a key 'boxed' with the boolean value true,
+then 'data' is instead the name of any non-empty complex type
+(struct, union, or alternate), and a pointer to that QAPI type is
+passed as a single argument.
+
+The generator also emits a marshalling function that extracts
+arguments for the user's function out of an input QDict, calls the
+user's function, and if it succeeded, builds an output QObject from
+its return value.
+
 In rare cases, QAPI cannot express a type-safe representation of a
 corresponding Client JSON Protocol command.  You then have to suppress
 generation of a marshalling function by including a key 'gen' with
@@ -484,7 +498,8 @@ use of this member.
 
 === Events ===
 
-Usage: { 'event': STRING, '*data': COMPLEX-TYPE-NAME-OR-DICT }
+Usage: { 'event': STRING, '*data': COMPLEX-TYPE-NAME-OR-DICT,
+         '*boxed': true }
 
 Events are defined with the keyword 'event'.  It is not allowed to
 name an event 'MAX', since the generator also produces a C enumeration
@@ -504,6 +519,14 @@ Resulting in this JSON object:
 { "event": "EVENT_C",
   "data": { "b": "test string" },
   "timestamp": { "seconds": 1267020223, "microseconds": 435656 } }
+
+The generator emits a function to send the event.  Normally, 'data' is
+a dictionary for an anonymous type, or names a struct type (possibly
+empty, but not a union), and its members are passed as separate
+arguments to this function.  If the event definition includes a key
+'boxed' with the boolean value true, then 'data' is instead the name of
+any non-empty complex type (struct, union, or alternate), and a
+pointer to that QAPI type is passed as a single argument.
 
 
 == Client JSON Protocol introspection ==
@@ -802,32 +825,28 @@ Example:
 
     void qapi_free_UserDefOne(UserDefOne *obj)
     {
-        QapiDeallocVisitor *qdv;
         Visitor *v;
 
         if (!obj) {
             return;
         }
 
-        qdv = qapi_dealloc_visitor_new();
-        v = qapi_dealloc_get_visitor(qdv);
+        v = qapi_dealloc_visitor_new();
         visit_type_UserDefOne(v, NULL, &obj, NULL);
-        qapi_dealloc_visitor_cleanup(qdv);
+        visit_free(v);
     }
 
     void qapi_free_UserDefOneList(UserDefOneList *obj)
     {
-        QapiDeallocVisitor *qdv;
         Visitor *v;
 
         if (!obj) {
             return;
         }
 
-        qdv = qapi_dealloc_visitor_new();
-        v = qapi_dealloc_get_visitor(qdv);
+        v = qapi_dealloc_visitor_new();
         visit_type_UserDefOneList(v, NULL, &obj, NULL);
-        qapi_dealloc_visitor_cleanup(qdv);
+        visit_free(v);
     }
 
 === scripts/qapi-visit.py ===
@@ -904,7 +923,7 @@ Example:
         }
         visit_check_struct(v, &err);
     out_obj:
-        visit_end_struct(v);
+        visit_end_struct(v, (void **)obj);
         if (err && visit_is_input(v)) {
             qapi_free_UserDefOne(*obj);
             *obj = NULL;
@@ -932,7 +951,7 @@ Example:
             }
         }
 
-        visit_end_list(v);
+        visit_end_list(v, (void **)obj);
         if (err && visit_is_input(v)) {
             qapi_free_UserDefOneList(*obj);
             *obj = NULL;
@@ -984,36 +1003,28 @@ Example:
     static void qmp_marshal_output_UserDefOne(UserDefOne *ret_in, QObject **ret_out, Error **errp)
     {
         Error *err = NULL;
-        QmpOutputVisitor *qov = qmp_output_visitor_new();
-        QapiDeallocVisitor *qdv;
         Visitor *v;
 
-        v = qmp_output_get_visitor(qov);
+        v = qmp_output_visitor_new(ret_out);
         visit_type_UserDefOne(v, "unused", &ret_in, &err);
-        if (err) {
-            goto out;
+        if (!err) {
+            visit_complete(v, ret_out);
         }
-        *ret_out = qmp_output_get_qobject(qov);
-
-    out:
         error_propagate(errp, err);
-        qmp_output_visitor_cleanup(qov);
-        qdv = qapi_dealloc_visitor_new();
-        v = qapi_dealloc_get_visitor(qdv);
+        visit_free(v);
+        v = qapi_dealloc_visitor_new();
         visit_type_UserDefOne(v, "unused", &ret_in, NULL);
-        qapi_dealloc_visitor_cleanup(qdv);
+        visit_free(v);
     }
 
     static void qmp_marshal_my_command(QDict *args, QObject **ret, Error **errp)
     {
         Error *err = NULL;
         UserDefOne *retval;
-        QmpInputVisitor *qiv = qmp_input_visitor_new(QOBJECT(args), true);
-        QapiDeallocVisitor *qdv;
         Visitor *v;
         UserDefOneList *arg1 = NULL;
 
-        v = qmp_input_get_visitor(qiv);
+        v = qmp_input_visitor_new(QOBJECT(args), true);
         visit_start_struct(v, NULL, NULL, 0, &err);
         if (err) {
             goto out;
@@ -1022,7 +1033,7 @@ Example:
         if (!err) {
             visit_check_struct(v, &err);
         }
-        visit_end_struct(v);
+        visit_end_struct(v, NULL);
         if (err) {
             goto out;
         }
@@ -1036,13 +1047,12 @@ Example:
 
     out:
         error_propagate(errp, err);
-        qmp_input_visitor_cleanup(qiv);
-        qdv = qapi_dealloc_visitor_new();
-        v = qapi_dealloc_get_visitor(qdv);
+        visit_free(v);
+        v = qapi_dealloc_visitor_new();
         visit_start_struct(v, NULL, NULL, 0, NULL);
         visit_type_UserDefOneList(v, "arg1", &arg1, NULL);
-        visit_end_struct(v);
-        qapi_dealloc_visitor_cleanup(qdv);
+        visit_end_struct(v, NULL);
+        visit_free(v);
     }
 
     static void qmp_init_marshal(void)

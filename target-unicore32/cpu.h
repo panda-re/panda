@@ -8,8 +8,9 @@
  * published by the Free Software Foundation, or (at your option) any
  * later version. See the COPYING file in the top-level directory.
  */
-#ifndef QEMU_UNICORE32_CPU_H
-#define QEMU_UNICORE32_CPU_H
+
+#ifndef UNICORE32_CPU_H
+#define UNICORE32_CPU_H
 
 #define TARGET_LONG_BITS                32
 #define TARGET_PAGE_BITS                12
@@ -149,7 +150,6 @@ void cpu_asr_write(CPUUniCore32State *env1, target_ulong val, target_ulong mask)
 #define UC32_HWCAP_CMOV                 4 /* 1 << 2 */
 #define UC32_HWCAP_UCF64                8 /* 1 << 3 */
 
-#define cpu_exec                        uc32_cpu_exec
 #define cpu_signal_handler              uc32_cpu_signal_handler
 
 int uc32_cpu_signal_handler(int host_signum, void *pinfo, void *puc);
@@ -164,8 +164,6 @@ static inline int cpu_mmu_index(CPUUniCore32State *env, bool ifetch)
 }
 
 #include "exec/cpu-all.h"
-
-int uc32_cpu_exec(CPUState *s);
 
 UniCore32CPU *uc32_cpu_init(const char *cpu_model);
 
@@ -187,4 +185,4 @@ int uc32_cpu_handle_mmu_fault(CPUState *cpu, vaddr address, int rw,
 void uc32_translate_init(void);
 void switch_mode(CPUUniCore32State *, int);
 
-#endif /* QEMU_UNICORE32_CPU_H */
+#endif /* UNICORE32_CPU_H */

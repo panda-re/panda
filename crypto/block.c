@@ -59,7 +59,8 @@ QCryptoBlock *qcrypto_block_open(QCryptoBlockOpenOptions *options,
 
     if (options->format >= G_N_ELEMENTS(qcrypto_block_drivers) ||
         !qcrypto_block_drivers[options->format]) {
-        error_setg(errp, "Unsupported block driver %d", options->format);
+        error_setg(errp, "Unsupported block driver %s",
+                   QCryptoBlockFormat_lookup[options->format]);
         g_free(block);
         return NULL;
     }
@@ -88,7 +89,8 @@ QCryptoBlock *qcrypto_block_create(QCryptoBlockCreateOptions *options,
 
     if (options->format >= G_N_ELEMENTS(qcrypto_block_drivers) ||
         !qcrypto_block_drivers[options->format]) {
-        error_setg(errp, "Unsupported block driver %d", options->format);
+        error_setg(errp, "Unsupported block driver %s",
+                   QCryptoBlockFormat_lookup[options->format]);
         g_free(block);
         return NULL;
     }
@@ -102,6 +104,23 @@ QCryptoBlock *qcrypto_block_create(QCryptoBlockCreateOptions *options,
     }
 
     return block;
+}
+
+
+QCryptoBlockInfo *qcrypto_block_get_info(QCryptoBlock *block,
+                                         Error **errp)
+{
+    QCryptoBlockInfo *info = g_new0(QCryptoBlockInfo, 1);
+
+    info->format = block->format;
+
+    if (block->driver->get_info &&
+        block->driver->get_info(block, info, errp) < 0) {
+        g_free(info);
+        return NULL;
+    }
+
+    return info;
 }
 
 

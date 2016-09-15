@@ -9,7 +9,6 @@
  */
 
 #include "qemu/osdep.h"
-#include <sys/mman.h>
 
 #include "cpu.h"
 #include "hw/pci/pci.h"
@@ -191,6 +190,9 @@ static void xen_ram_init(PCMachineState *pcms,
     /* Handle the machine opt max-ram-below-4g.  It is basically doing
      * min(xen limit, user limit).
      */
+    if (!user_lowmem) {
+        user_lowmem = HVM_BELOW_4G_RAM_END; /* default */
+    }
     if (HVM_BELOW_4G_RAM_END <= user_lowmem) {
         user_lowmem = HVM_BELOW_4G_RAM_END;
     }
@@ -1201,11 +1203,7 @@ void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory)
         goto err;
     }
 
-    rc = xen_create_ioreq_server(xen_xc, xen_domid, &state->ioservid);
-    if (rc < 0) {
-        perror("xen: ioreq server create");
-        goto err;
-    }
+    xen_create_ioreq_server(xen_xc, xen_domid, &state->ioservid);
 
     state->exit.notify = xen_exit_notifier;
     qemu_add_exit_notifier(&state->exit);
@@ -1316,9 +1314,7 @@ void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory)
         error_report("xen backend core setup failed");
         goto err;
     }
-    xen_be_register("console", &xen_console_ops);
-    xen_be_register("vkbd", &xen_kbdmouse_ops);
-    xen_be_register("qdisk", &xen_blkdev_ops);
+    xen_be_register_common();
     xen_read_physmap(state);
     return;
 

@@ -3,8 +3,8 @@
  * Guillaume Subiron, Yann Bordenave, Serigne Modou Wagne.
  */
 
-#ifndef SLIRP_IP6_H_
-#define SLIRP_IP6_H_
+#ifndef SLIRP_IP6_H
+#define SLIRP_IP6_H
 
 #include "net/eth.h"
 
@@ -25,6 +25,12 @@
                         0x00, 0x00, 0x00, 0x00,\
                         0x00, 0x00, 0x00, 0x00,\
                         0x00, 0x00, 0x00, 0x02 } }
+
+#define ZERO_ADDR  { .s6_addr = \
+                        { 0x00, 0x00, 0x00, 0x00,\
+                        0x00, 0x00, 0x00, 0x00,\
+                        0x00, 0x00, 0x00, 0x00,\
+                        0x00, 0x00, 0x00, 0x00 } }
 
 static inline bool in6_equal(const struct in6_addr *a, const struct in6_addr *b)
 {
@@ -83,6 +89,9 @@ static inline bool in6_equal_mach(const struct in6_addr *a,
 
 #define in6_solicitednode_multicast(a)\
     (in6_equal_net(a, &(struct in6_addr)SOLICITED_NODE_PREFIX, 104))
+
+#define in6_zero(a)\
+    (in6_equal(a, &(struct in6_addr)ZERO_ADDR))
 
 /* Compute emulated host MAC address from its ipv6 address */
 static inline void in6_compute_ethaddr(struct in6_addr ip,

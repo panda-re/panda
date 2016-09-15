@@ -9,8 +9,9 @@
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
  */
-#ifndef QEMU_RAM_H
-#define QEMU_RAM_H
+
+#ifndef SYSEMU_HOSTMEM_H
+#define SYSEMU_HOSTMEM_H
 
 #include "sysemu/sysemu.h" /* for MAX_NODES */
 #include "qom/object.h"
@@ -53,7 +54,7 @@ struct HostMemoryBackend {
     /* protected */
     uint64_t size;
     bool merge, dump;
-    bool prealloc, force_prealloc;
+    bool prealloc, force_prealloc, is_mapped;
     DECLARE_BITMAP(host_nodes, MAX_NODES + 1);
     HostMemPolicy policy;
 
@@ -63,4 +64,6 @@ struct HostMemoryBackend {
 MemoryRegion *host_memory_backend_get_memory(HostMemoryBackend *backend,
                                              Error **errp);
 
+void host_memory_backend_set_mapped(HostMemoryBackend *backend, bool mapped);
+bool host_memory_backend_is_mapped(HostMemoryBackend *backend);
 #endif

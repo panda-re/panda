@@ -75,6 +75,7 @@ void qemu_add_exit_notifier(Notifier *notify);
 void qemu_remove_exit_notifier(Notifier *notify);
 
 void qemu_add_machine_init_done_notifier(Notifier *notify);
+void qemu_remove_machine_init_done_notifier(Notifier *notify);
 
 void hmp_savevm(Monitor *mon, const QDict *qdict);
 int load_vmstate(const char *name);
@@ -234,7 +235,6 @@ void qemu_boot_set(const char *boot_order, Error **errp);
 QemuOpts *qemu_get_machine_opts(void);
 
 bool defaults_enabled(void);
-bool usb_enabled(void);
 
 extern QemuOptsList qemu_legacy_drive_opts;
 extern QemuOptsList qemu_common_drive_opts;

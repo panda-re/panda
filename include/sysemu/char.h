@@ -70,11 +70,13 @@ struct CharDriverState {
     int (*get_msgfds)(struct CharDriverState *s, int* fds, int num);
     int (*set_msgfds)(struct CharDriverState *s, int *fds, int num);
     int (*chr_add_client)(struct CharDriverState *chr, int fd);
+    int (*chr_wait_connected)(struct CharDriverState *chr, Error **errp);
     IOEventHandler *chr_event;
     IOCanReadHandler *chr_can_read;
     IOReadHandler *chr_read;
     void *handler_opaque;
     void (*chr_close)(struct CharDriverState *chr);
+    void (*chr_disconnect)(struct CharDriverState *chr);
     void (*chr_accept_input)(struct CharDriverState *chr);
     void (*chr_set_echo)(struct CharDriverState *chr, bool echo);
     void (*chr_set_fe_open)(struct CharDriverState *chr, int fe_open);
@@ -143,6 +145,26 @@ void qemu_chr_parse_common(QemuOpts *opts, ChardevCommon *backend);
  */
 CharDriverState *qemu_chr_new(const char *label, const char *filename,
                               void (*init)(struct CharDriverState *s));
+/**
+ * @qemu_chr_disconnect:
+ *
+ * Close a fd accpeted by character backend.
+ */
+void qemu_chr_disconnect(CharDriverState *chr);
+
+/**
+ * @qemu_chr_cleanup:
+ *
+ * Delete all chardevs (when leaving qemu)
+ */
+void qemu_chr_cleanup(void);
+
+/**
+ * @qemu_chr_wait_connected:
+ *
+ * Wait for characted backend to be connected.
+ */
+int qemu_chr_wait_connected(CharDriverState *chr, Error **errp);
 
 /**
  * @qemu_chr_new_noreplay:
@@ -214,8 +236,20 @@ void qemu_chr_fe_event(CharDriverState *s, int event);
 void qemu_chr_fe_printf(CharDriverState *s, const char *fmt, ...)
     GCC_FMT_ATTR(2, 3);
 
-int qemu_chr_fe_add_watch(CharDriverState *s, GIOCondition cond,
-                          GIOFunc func, void *user_data);
+/**
+ * @qemu_chr_fe_add_watch:
+ *
+ * If the backend is connected, create and add a #GSource that fires
+ * when the given condition (typically G_IO_OUT|G_IO_HUP or G_IO_HUP)
+ * is active; return the #GSource's tag.  If it is disconnected,
+ * return 0.
+ *
+ * @cond the condition to poll for
+ * @func the function to call when the condition happens
+ * @user_data the opaque pointer to pass to @func
+ */
+guint qemu_chr_fe_add_watch(CharDriverState *s, GIOCondition cond,
+                            GIOFunc func, void *user_data);
 
 /**
  * @qemu_chr_fe_write:

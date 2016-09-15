@@ -20,6 +20,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/error-report.h"
 #include "qapi/error.h"
 #include "hw/hw.h"
 #include "qemu/log.h"
@@ -57,12 +58,9 @@ static char *spapr_vio_get_dev_name(DeviceState *qdev)
 {
     VIOsPAPRDevice *dev = VIO_SPAPR_DEVICE(qdev);
     VIOsPAPRDeviceClass *pc = VIO_SPAPR_DEVICE_GET_CLASS(dev);
-    char *name;
 
     /* Device tree style name device@reg */
-    name = g_strdup_printf("%s@%x", pc->dt_name, dev->reg);
-
-    return name;
+    return g_strdup_printf("%s@%x", pc->dt_name, dev->reg);
 }
 
 static void spapr_vio_bus_class_init(ObjectClass *klass, void *data)
@@ -279,7 +277,7 @@ int spapr_vio_send_crq(VIOsPAPRDevice *dev, uint8_t *crq)
     uint8_t byte;
 
     if (!dev->crq.qsize) {
-        fprintf(stderr, "spapr_vio_send_creq on uninitialized queue\n");
+        error_report("spapr_vio_send_creq on uninitialized queue");
         return -1;
     }
 
@@ -466,7 +464,7 @@ static void spapr_vio_busdev_realize(DeviceState *qdev, Error **errp)
         dev->qdev.id = id;
     }
 
-    dev->irq = xics_alloc(spapr->icp, 0, dev->irq, false, &local_err);
+    dev->irq = xics_spapr_alloc(spapr->xics, 0, dev->irq, false, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         return;

@@ -10,7 +10,6 @@
 
 #include "qemu/osdep.h"
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 
 #include <linux/kvm.h>
 
@@ -521,4 +520,10 @@ void kvm_arm_copy_hw_debug_data(struct kvm_guest_debug_arch *ptr)
 bool kvm_arm_hw_debug_active(CPUState *cs)
 {
     return false;
+}
+
+int kvm_arm_pmu_create(CPUState *cs, int irq)
+{
+    qemu_log_mask(LOG_UNIMP, "%s: not implemented\n", __func__);
+    return 0;
 }

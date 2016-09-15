@@ -37,6 +37,10 @@
 typedef struct BDRVBlkdebugState {
     int state;
     int new_state;
+    int align;
+
+    /* For blkdebug_refresh_filename() */
+    char *config_file;
 
     QLIST_HEAD(, BlkdebugRule) rules[BLKDBG__MAX];
     QSIMPLEQ_HEAD(, BlkdebugRule) active_rules;
@@ -350,7 +354,6 @@ static int blkdebug_open(BlockDriverState *bs, QDict *options, int flags,
     BDRVBlkdebugState *s = bs->opaque;
     QemuOpts *opts;
     Error *local_err = NULL;
-    const char *config;
     uint64_t align;
     int ret;
 
@@ -363,8 +366,8 @@ static int blkdebug_open(BlockDriverState *bs, QDict *options, int flags,
     }
 
     /* Read rules from config file or command line options */
-    config = qemu_opt_get(opts, "config");
-    ret = read_config(s, config, options, errp);
+    s->config_file = g_strdup(qemu_opt_get(opts, "config"));
+    ret = read_config(s, s->config_file, options, errp);
     if (ret) {
         goto out;
     }
@@ -382,10 +385,10 @@ static int blkdebug_open(BlockDriverState *bs, QDict *options, int flags,
     }
 
     /* Set request alignment */
-    align = qemu_opt_get_size(opts, "align", bs->request_alignment);
-    if (align > 0 && align < INT_MAX && !(align & (align - 1))) {
-        bs->request_alignment = align;
-    } else {
+    align = qemu_opt_get_size(opts, "align", 0);
+    if (align < INT_MAX && is_power_of_2(align)) {
+        s->align = align;
+    } else if (align) {
         error_setg(errp, "Invalid alignment");
         ret = -EINVAL;
         goto fail_unref;
@@ -397,6 +400,9 @@ static int blkdebug_open(BlockDriverState *bs, QDict *options, int flags,
 fail_unref:
     bdrv_unref_child(bs, bs->file);
 out:
+    if (ret < 0) {
+        g_free(s->config_file);
+    }
     qemu_opts_del(opts);
     return ret;
 }
@@ -456,7 +462,7 @@ static BlockAIOCB *blkdebug_aio_readv(BlockDriverState *bs,
         return inject_error(bs, cb, opaque, rule);
     }
 
-    return bdrv_aio_readv(bs->file->bs, sector_num, qiov, nb_sectors,
+    return bdrv_aio_readv(bs->file, sector_num, qiov, nb_sectors,
                           cb, opaque);
 }
 
@@ -479,7 +485,7 @@ static BlockAIOCB *blkdebug_aio_writev(BlockDriverState *bs,
         return inject_error(bs, cb, opaque, rule);
     }
 
-    return bdrv_aio_writev(bs->file->bs, sector_num, qiov, nb_sectors,
+    return bdrv_aio_writev(bs->file, sector_num, qiov, nb_sectors,
                            cb, opaque);
 }
 
@@ -514,6 +520,8 @@ static void blkdebug_close(BlockDriverState *bs)
             remove_rule(rule);
         }
     }
+
+    g_free(s->config_file);
 }
 
 static void suspend_request(BlockDriverState *bs, BlkdebugRule *rule)
@@ -620,7 +628,7 @@ static int blkdebug_debug_resume(BlockDriverState *bs, const char *tag)
 
     QLIST_FOREACH_SAFE(r, &s->suspended_reqs, next, next) {
         if (!strcmp(r->tag, tag)) {
-            qemu_coroutine_enter(r->co, NULL);
+            qemu_coroutine_enter(r->co);
             return 0;
         }
     }
@@ -646,7 +654,7 @@ static int blkdebug_debug_remove_breakpoint(BlockDriverState *bs,
     }
     QLIST_FOREACH_SAFE(r, &s->suspended_reqs, next, r_next) {
         if (!strcmp(r->tag, tag)) {
-            qemu_coroutine_enter(r->co, NULL);
+            qemu_coroutine_enter(r->co);
             ret = 0;
         }
     }
@@ -678,6 +686,7 @@ static int blkdebug_truncate(BlockDriverState *bs, int64_t offset)
 
 static void blkdebug_refresh_filename(BlockDriverState *bs, QDict *options)
 {
+    BDRVBlkdebugState *s = bs->opaque;
     QDict *opts;
     const QDictEntry *e;
     bool force_json = false;
@@ -699,8 +708,7 @@ static void blkdebug_refresh_filename(BlockDriverState *bs, QDict *options)
 
     if (!force_json && bs->file->bs->exact_filename[0]) {
         snprintf(bs->exact_filename, sizeof(bs->exact_filename),
-                 "blkdebug:%s:%s",
-                 qdict_get_try_str(options, "config") ?: "",
+                 "blkdebug:%s:%s", s->config_file ?: "",
                  bs->file->bs->exact_filename);
     }
 
@@ -718,6 +726,15 @@ static void blkdebug_refresh_filename(BlockDriverState *bs, QDict *options)
     }
 
     bs->full_open_options = opts;
+}
+
+static void blkdebug_refresh_limits(BlockDriverState *bs, Error **errp)
+{
+    BDRVBlkdebugState *s = bs->opaque;
+
+    if (s->align) {
+        bs->bl.request_alignment = s->align;
+    }
 }
 
 static int blkdebug_reopen_prepare(BDRVReopenState *reopen_state,
@@ -738,6 +755,7 @@ static BlockDriver bdrv_blkdebug = {
     .bdrv_getlength         = blkdebug_getlength,
     .bdrv_truncate          = blkdebug_truncate,
     .bdrv_refresh_filename  = blkdebug_refresh_filename,
+    .bdrv_refresh_limits    = blkdebug_refresh_limits,
 
     .bdrv_aio_readv         = blkdebug_aio_readv,
     .bdrv_aio_writev        = blkdebug_aio_writev,

@@ -31,13 +31,13 @@
 
 void qemu_co_queue_init(CoQueue *queue)
 {
-    QTAILQ_INIT(&queue->entries);
+    QSIMPLEQ_INIT(&queue->entries);
 }
 
 void coroutine_fn qemu_co_queue_wait(CoQueue *queue)
 {
     Coroutine *self = qemu_coroutine_self();
-    QTAILQ_INSERT_TAIL(&queue->entries, self, co_queue_next);
+    QSIMPLEQ_INSERT_TAIL(&queue->entries, self, co_queue_next);
     qemu_coroutine_yield();
     assert(qemu_in_coroutine());
 }
@@ -55,9 +55,9 @@ void qemu_co_queue_run_restart(Coroutine *co)
     Coroutine *next;
 
     trace_qemu_co_queue_run_restart(co);
-    while ((next = QTAILQ_FIRST(&co->co_queue_wakeup))) {
-        QTAILQ_REMOVE(&co->co_queue_wakeup, next, co_queue_next);
-        qemu_coroutine_enter(next, NULL);
+    while ((next = QSIMPLEQ_FIRST(&co->co_queue_wakeup))) {
+        QSIMPLEQ_REMOVE_HEAD(&co->co_queue_wakeup, co_queue_next);
+        qemu_coroutine_enter(next);
     }
 }
 
@@ -66,13 +66,13 @@ static bool qemu_co_queue_do_restart(CoQueue *queue, bool single)
     Coroutine *self = qemu_coroutine_self();
     Coroutine *next;
 
-    if (QTAILQ_EMPTY(&queue->entries)) {
+    if (QSIMPLEQ_EMPTY(&queue->entries)) {
         return false;
     }
 
-    while ((next = QTAILQ_FIRST(&queue->entries)) != NULL) {
-        QTAILQ_REMOVE(&queue->entries, next, co_queue_next);
-        QTAILQ_INSERT_TAIL(&self->co_queue_wakeup, next, co_queue_next);
+    while ((next = QSIMPLEQ_FIRST(&queue->entries)) != NULL) {
+        QSIMPLEQ_REMOVE_HEAD(&queue->entries, co_queue_next);
+        QSIMPLEQ_INSERT_TAIL(&self->co_queue_wakeup, next, co_queue_next);
         trace_qemu_co_queue_next(next);
         if (single) {
             break;
@@ -97,19 +97,19 @@ bool qemu_co_enter_next(CoQueue *queue)
 {
     Coroutine *next;
 
-    next = QTAILQ_FIRST(&queue->entries);
+    next = QSIMPLEQ_FIRST(&queue->entries);
     if (!next) {
         return false;
     }
 
-    QTAILQ_REMOVE(&queue->entries, next, co_queue_next);
-    qemu_coroutine_enter(next, NULL);
+    QSIMPLEQ_REMOVE_HEAD(&queue->entries, co_queue_next);
+    qemu_coroutine_enter(next);
     return true;
 }
 
 bool qemu_co_queue_empty(CoQueue *queue)
 {
-    return QTAILQ_FIRST(&queue->entries) == NULL;
+    return QSIMPLEQ_FIRST(&queue->entries) == NULL;
 }
 
 void qemu_co_mutex_init(CoMutex *mutex)
@@ -129,6 +129,8 @@ void coroutine_fn qemu_co_mutex_lock(CoMutex *mutex)
     }
 
     mutex->locked = true;
+    mutex->holder = self;
+    self->locks_held++;
 
     trace_qemu_co_mutex_lock_return(mutex, self);
 }
@@ -140,9 +142,12 @@ void coroutine_fn qemu_co_mutex_unlock(CoMutex *mutex)
     trace_qemu_co_mutex_unlock_entry(mutex, self);
 
     assert(mutex->locked == true);
+    assert(mutex->holder == self);
     assert(qemu_in_coroutine());
 
     mutex->locked = false;
+    mutex->holder = NULL;
+    self->locks_held--;
     qemu_co_queue_next(&mutex->queue);
 
     trace_qemu_co_mutex_unlock_return(mutex, self);
@@ -156,14 +161,19 @@ void qemu_co_rwlock_init(CoRwlock *lock)
 
 void qemu_co_rwlock_rdlock(CoRwlock *lock)
 {
+    Coroutine *self = qemu_coroutine_self();
+
     while (lock->writer) {
         qemu_co_queue_wait(&lock->queue);
     }
     lock->reader++;
+    self->locks_held++;
 }
 
 void qemu_co_rwlock_unlock(CoRwlock *lock)
 {
+    Coroutine *self = qemu_coroutine_self();
+
     assert(qemu_in_coroutine());
     if (lock->writer) {
         lock->writer = false;
@@ -176,12 +186,16 @@ void qemu_co_rwlock_unlock(CoRwlock *lock)
             qemu_co_queue_next(&lock->queue);
         }
     }
+    self->locks_held--;
 }
 
 void qemu_co_rwlock_wrlock(CoRwlock *lock)
 {
+    Coroutine *self = qemu_coroutine_self();
+
     while (lock->writer || lock->reader) {
         qemu_co_queue_wait(&lock->queue);
     }
     lock->writer = true;
+    self->locks_held++;
 }

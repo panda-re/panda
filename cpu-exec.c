@@ -291,7 +291,8 @@ static bool tb_cmp(const void *p, const void *d)
     if (tb->pc == desc->pc &&
         tb->page_addr[0] == desc->phys_page1 &&
         tb->cs_base == desc->cs_base &&
-        tb->flags == desc->flags) {
+        tb->flags == desc->flags &&
+        !atomic_read(&tb->invalid)) {
         /* check next page if needed */
         if (tb->page_addr[1] == -1) {
             return true;
@@ -309,7 +310,7 @@ static bool tb_cmp(const void *p, const void *d)
     return false;
 }
 
-static TranslationBlock *tb_find_physical(CPUState *cpu,
+static TranslationBlock *tb_htable_lookup(CPUState *cpu,
                                           target_ulong pc,
                                           target_ulong cs_base,
                                           uint32_t flags)
@@ -328,76 +329,52 @@ static TranslationBlock *tb_find_physical(CPUState *cpu,
     return qht_lookup(&tcg_ctx.tb_ctx.htable, tb_cmp, &desc, h);
 }
 
-static TranslationBlock *tb_find_slow(CPUState *cpu,
-                                      target_ulong pc,
-                                      target_ulong cs_base,
-                                      uint32_t flags)
-{
-    TranslationBlock *tb;
-
-    tb = tb_find_physical(cpu, pc, cs_base, flags);
-    if (tb) {
-        goto found;
-    }
-
-#ifdef CONFIG_USER_ONLY
-    /* mmap_lock is needed by tb_gen_code, and mmap_lock must be
-     * taken outside tb_lock.  Since we're momentarily dropping
-     * tb_lock, there's a chance that our desired tb has been
-     * translated.
-     */
-    tb_unlock();
-    mmap_lock();
-    tb_lock();
-    tb = tb_find_physical(cpu, pc, cs_base, flags);
-    if (tb) {
-        mmap_unlock();
-        goto found;
-    }
-#endif
-
-    panda_callbacks_before_block_translate(cpu, pc);
-
-    /* if no translated code available, then translate it now */
-    tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
-
-    panda_callbacks_after_block_translate(cpu, tb);
-
-#ifdef CONFIG_USER_ONLY
-    mmap_unlock();
-#endif
-
-found:
-    /* we add the TB in the virtual pc hash table */
-    cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)] = tb;
-    return tb;
-}
-
-static inline TranslationBlock *tb_find_fast(CPUState *cpu,
-                                             TranslationBlock **last_tb,
-                                             int tb_exit)
+static inline TranslationBlock *tb_find(CPUState *cpu,
+                                        TranslationBlock *last_tb,
+                                        int tb_exit)
 {
     CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     TranslationBlock *tb;
     target_ulong cs_base, pc;
     uint32_t flags;
+    bool have_tb_lock = false;
 
     /* we record a subset of the CPU state. It will
        always be the same before a given translated block
        is executed. */
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-    tb_lock();
-    tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
+    tb = atomic_rcu_read(&cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)]);
     if (unlikely(!tb || tb->pc != pc || tb->cs_base != cs_base ||
                  tb->flags != flags)) {
-        tb = tb_find_slow(cpu, pc, cs_base, flags);
-    }
-    if (cpu->tb_flushed) {
-        /* Ensure that no TB jump will be modified as the
-         * translation buffer has been flushed.
-         */
-        *last_tb = NULL;
-        cpu->tb_flushed = false;
+        tb = tb_htable_lookup(cpu, pc, cs_base, flags);
+        if (!tb) {
+
+            /* mmap_lock is needed by tb_gen_code, and mmap_lock must be
+             * taken outside tb_lock. As system emulation is currently
+             * single threaded the locks are NOPs.
+             */
+            mmap_lock();
+            tb_lock();
+            have_tb_lock = true;
+
+            /* There's a chance that our desired tb has been translated while
+             * taking the locks so we check again inside the lock.
+             */
+            tb = tb_htable_lookup(cpu, pc, cs_base, flags);
+            if (!tb) {
+                panda_callbacks_before_block_translate(cpu, pc);
+
+                /* if no translated code available, then translate it now */
+                tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
+
+                panda_callbacks_after_block_translate(cpu, tb);
+            }
+
+            mmap_unlock();
+        }
+
+        /* We add the TB in the virtual pc hash table for the fast lookup */
+        atomic_set(&cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)], tb);
     }
 #ifndef CONFIG_USER_ONLY
     /* We don't take care of direct jumps when address mapping changes in
@@ -405,20 +382,31 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
      * spanning two pages because the mapping for the second page can change.
      */
     if (tb->page_addr[1] != -1) {
-        *last_tb = NULL;
+        last_tb = NULL;
     }
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
     if (rr_mode != RR_REPLAY /* && panda_tb_chaining */) {
 #endif
-        if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
-            tb_add_jump(*last_tb, tb_exit, tb);
+    if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
+        if (!have_tb_lock) {
+            tb_lock();
+            have_tb_lock = true;
         }
+        /* Check if translation buffer has been flushed */
+        if (cpu->tb_flushed) {
+            cpu->tb_flushed = false;
+        } else if (!tb->invalid) {
+            tb_add_jump(last_tb, tb_exit, tb);
+        }
+    }
 #ifdef CONFIG_SOFTMMU
     }
 #endif
-    tb_unlock();
+    if (have_tb_lock) {
+        tb_unlock();
+    }
     return tb;
 }
 
@@ -497,8 +485,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
     } else if (replay_has_exception()
                && cpu->icount_decr.u16.low + cpu->icount_extra == 0) {
         /* try to cause an exception pending in the log */
-        TranslationBlock *last_tb = NULL; /* Avoid chaining TBs */
-        cpu_exec_nocache(cpu, 1, tb_find_fast(cpu, &last_tb, 0), true);
+        cpu_exec_nocache(cpu, 1, tb_find(cpu, NULL, 0), true);
         *ret = -1;
         return true;
 #endif
@@ -697,17 +684,16 @@ int cpu_exec(CPUState *cpu)
     init_delay_params(&sc, cpu);
 
     for(;;) {
-        TranslationBlock *tb, *last_tb;
-        int tb_exit = 0;
-
         /* prepare setjmp context for exception handling */
         if (sigsetjmp(cpu->jmp_env, 0) == 0) {
+            TranslationBlock *tb, *last_tb = NULL;
+            int tb_exit = 0;
+
             /* if an exception is pending, we execute it here */
             if (cpu_handle_exception(cpu, &ret)) {
                 break;
             }
-            last_tb = NULL; /* forget the last executed TB after exception */
-            cpu->tb_flushed = false; /* reset before first TB lookup */
+            atomic_mb_set(&cpu->tb_flushed, false); /* reset before first TB lookup */
             for (;;) {
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
@@ -716,7 +702,7 @@ int cpu_exec(CPUState *cpu)
                 }
                 cpu_handle_interrupt(cpu, &last_tb);
                 panda_before_find_fast();
-                tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                tb = tb_find(cpu, last_tb, tb_exit);
                 panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done);
                 if (qemu_loglevel_mask(CPU_LOG_RR)) {
                     RR_prog_point pp = rr_prog_point();
@@ -740,7 +726,7 @@ int cpu_exec(CPUState *cpu)
                         // record & replay for interrupt delivery
                         breakpoint_invalidate(cpu,tb->pc);
 //                        panda_invalidate_single_tb(cpu, tb->pc);
-                        tb = tb_find_fast(cpu, &last_tb, tb_exit);
+                        tb = tb_find(cpu, last_tb, tb_exit);
                     }
                 }
 #endif //CONFIG_SOFTMMU

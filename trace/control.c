@@ -1,7 +1,7 @@
 /*
  * Interface for configuring and controlling the state of tracing events.
  *
- * Copyright (C) 2011-2014 Lluís Vilanova <vilanova@ac.upc.edu>
+ * Copyright (C) 2011-2016 Lluís Vilanova <vilanova@ac.upc.edu>
  *
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
@@ -19,11 +19,42 @@
 #ifdef CONFIG_TRACE_LOG
 #include "qemu/log.h"
 #endif
+#ifdef CONFIG_TRACE_SYSLOG
+#include <syslog.h>
+#endif
+#include "qapi/error.h"
 #include "qemu/error-report.h"
+#include "qemu/config-file.h"
 #include "monitor/monitor.h"
 
 int trace_events_enabled_count;
-bool trace_events_dstate[TRACE_EVENT_COUNT];
+/*
+ * Interpretation depends on wether the event has the 'vcpu' property:
+ * - false: Boolean value indicating whether the event is active.
+ * - true : Integral counting the number of vCPUs that have this event enabled.
+ */
+uint16_t trace_events_dstate[TRACE_EVENT_COUNT];
+
+QemuOptsList qemu_trace_opts = {
+    .name = "trace",
+    .implied_opt_name = "enable",
+    .head = QTAILQ_HEAD_INITIALIZER(qemu_trace_opts.head),
+    .desc = {
+        {
+            .name = "enable",
+            .type = QEMU_OPT_STRING,
+        },
+        {
+            .name = "events",
+            .type = QEMU_OPT_STRING,
+        },{
+            .name = "file",
+            .type = QEMU_OPT_STRING,
+        },
+        { /* end of list */ }
+    },
+};
+
 
 TraceEvent *trace_event_name(const char *name)
 {
@@ -112,7 +143,7 @@ static void do_trace_enable_events(const char *line_buf)
         TraceEvent *ev = NULL;
         while ((ev = trace_event_pattern(line_ptr, ev)) != NULL) {
             if (trace_event_get_state_static(ev)) {
-                trace_event_set_state_dynamic(ev, enable);
+                trace_event_set_state_dynamic_init(ev, enable);
             }
         }
     } else {
@@ -124,7 +155,7 @@ static void do_trace_enable_events(const char *line_buf)
             error_report("WARNING: trace event '%s' is not traceable",
                          line_ptr);
         } else {
-            trace_event_set_state_dynamic(ev, enable);
+            trace_event_set_state_dynamic_init(ev, enable);
         }
     }
 }
@@ -141,7 +172,7 @@ void trace_enable_events(const char *line_buf)
     }
 }
 
-void trace_init_events(const char *fname)
+static void trace_init_events(const char *fname)
 {
     Location loc;
     FILE *fp;
@@ -187,7 +218,7 @@ void trace_init_file(const char *file)
      * only applies to the simple backend; use "-D" for the log backend.
      */
     if (file) {
-        qemu_set_log_filename(file);
+        qemu_set_log_filename(file, &error_fatal);
     }
 #else
     if (file) {
@@ -214,5 +245,46 @@ bool trace_init_backends(void)
     }
 #endif
 
+#ifdef CONFIG_TRACE_SYSLOG
+    openlog(NULL, LOG_PID, LOG_DAEMON);
+#endif
+
     return true;
+}
+
+char *trace_opt_parse(const char *optarg)
+{
+    char *trace_file;
+    QemuOpts *opts = qemu_opts_parse_noisily(qemu_find_opts("trace"),
+                                             optarg, true);
+    if (!opts) {
+        exit(1);
+    }
+    if (qemu_opt_get(opts, "enable")) {
+        trace_enable_events(qemu_opt_get(opts, "enable"));
+    }
+    trace_init_events(qemu_opt_get(opts, "events"));
+    trace_file = g_strdup(qemu_opt_get(opts, "file"));
+    qemu_opts_del(opts);
+
+    return trace_file;
+}
+
+void trace_init_vcpu_events(void)
+{
+    TraceEvent *ev = NULL;
+    while ((ev = trace_event_pattern("*", ev)) != NULL) {
+        if (trace_event_is_vcpu(ev) &&
+            trace_event_get_state_static(ev) &&
+            trace_event_get_state_dynamic(ev)) {
+            TraceEventID id = trace_event_get_id(ev);
+            /* check preconditions */
+            assert(trace_events_dstate[id] == 1);
+            /* disable early-init state ... */
+            trace_events_dstate[id] = 0;
+            trace_events_enabled_count--;
+            /* ... and properly re-enable */
+            trace_event_set_state_dynamic(ev, true);
+        }
+    }
 }

@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef QIO_CHANNEL_H__
-#define QIO_CHANNEL_H__
+#ifndef QIO_CHANNEL_H
+#define QIO_CHANNEL_H
 
 #include "qemu-common.h"
 #include "qom/object.h"
@@ -42,6 +42,7 @@ typedef enum QIOChannelFeature QIOChannelFeature;
 enum QIOChannelFeature {
     QIO_CHANNEL_FEATURE_FD_PASS  = (1 << 0),
     QIO_CHANNEL_FEATURE_SHUTDOWN = (1 << 1),
+    QIO_CHANNEL_FEATURE_LISTEN   = (1 << 2),
 };
 
 
@@ -501,4 +502,4 @@ void qio_channel_yield(QIOChannel *ioc,
 void qio_channel_wait(QIOChannel *ioc,
                       GIOCondition condition);
 
-#endif /* QIO_CHANNEL_H__ */
+#endif /* QIO_CHANNEL_H */

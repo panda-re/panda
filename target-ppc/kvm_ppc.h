@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef __KVM_PPC_H__
-#define __KVM_PPC_H__
+#ifndef KVM_PPC_H
+#define KVM_PPC_H
 
 #define TYPE_HOST_POWERPC_CPU "host-" TYPE_POWERPC_CPU
 
@@ -56,6 +56,7 @@ void kvmppc_hash64_write_pte(CPUPPCState *env, target_ulong pte_index,
 bool kvmppc_has_cap_fixup_hcalls(void);
 int kvmppc_enable_hwrng(void);
 int kvmppc_put_books_sregs(PowerPCCPU *cpu);
+PowerPCCPUClass *kvm_ppc_get_host_cpu_class(void);
 
 #else
 
@@ -252,6 +253,12 @@ static inline int kvmppc_put_books_sregs(PowerPCCPU *cpu)
 {
     abort();
 }
+
+static inline PowerPCCPUClass *kvm_ppc_get_host_cpu_class(void)
+{
+    return NULL;
+}
+
 #endif
 
 #ifndef CONFIG_KVM
@@ -309,4 +316,4 @@ static inline void kvmppc_icbi_range(PowerPCCPU *cpu, uint8_t *addr, int len)
 #define KVM_INTERRUPT_SET_LEVEL -3
 #endif
 
-#endif /* __KVM_PPC_H__ */
+#endif /* KVM_PPC_H */

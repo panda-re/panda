@@ -646,10 +646,12 @@ ETEXI
 
     {
         .name       = "trace-events",
-        .args_type  = "",
-        .params     = "",
-        .help       = "show available trace-events & their state",
+        .args_type  = "name:s?,vcpu:i?",
+        .params     = "[name] [vcpu]",
+        .help       = "show available trace-events & their state "
+                      "(name: event name pattern; vcpu: vCPU to query, default is any)",
         .mhandler.cmd = hmp_info_trace_events,
+        .command_completion = info_trace_events_completion,
     },
 
 STEXI
@@ -798,6 +800,20 @@ STEXI
 @item info dump
 @findex dump
 Display the latest dump status.
+ETEXI
+
+    {
+        .name       = "hotpluggable-cpus",
+        .args_type  = "",
+        .params     = "",
+        .help       = "Show information about hotpluggable CPUs",
+        .mhandler.cmd = hmp_hotpluggable_cpus,
+    },
+
+STEXI
+@item info hotpluggable-cpus
+@findex hotpluggable-cpus
+Show information about hotpluggable CPUs
 ETEXI
 
 STEXI

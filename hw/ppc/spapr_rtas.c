@@ -27,6 +27,7 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "qemu/log.h"
+#include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/char.h"
 #include "hw/qdev.h"
@@ -36,6 +37,7 @@
 
 #include "hw/ppc/spapr.h"
 #include "hw/ppc/spapr_vio.h"
+#include "hw/ppc/ppc.h"
 #include "qapi-event.h"
 #include "hw/boards.h"
 
@@ -164,6 +166,27 @@ static void rtas_query_cpu_stopped_state(PowerPCCPU *cpu_,
     rtas_st(rets, 0, RTAS_OUT_PARAM_ERROR);
 }
 
+/*
+ * Set the timebase offset of the CPU to that of first CPU.
+ * This helps hotplugged CPU to have the correct timebase offset.
+ */
+static void spapr_cpu_update_tb_offset(PowerPCCPU *cpu)
+{
+    PowerPCCPU *fcpu = POWERPC_CPU(first_cpu);
+
+    cpu->env.tb_env->tb_offset = fcpu->env.tb_env->tb_offset;
+}
+
+static void spapr_cpu_set_endianness(PowerPCCPU *cpu)
+{
+    PowerPCCPU *fcpu = POWERPC_CPU(first_cpu);
+    PowerPCCPUClass *pcc = POWERPC_CPU_GET_CLASS(fcpu);
+
+    if (!pcc->interrupts_big_endian(fcpu)) {
+        cpu->env.spr[SPR_LPCR] |= LPCR_ILE;
+    }
+}
+
 static void rtas_start_cpu(PowerPCCPU *cpu_, sPAPRMachineState *spapr,
                            uint32_t token, uint32_t nargs,
                            target_ulong args,
@@ -200,6 +223,8 @@ static void rtas_start_cpu(PowerPCCPU *cpu_, sPAPRMachineState *spapr,
         env->nip = start;
         env->gpr[3] = r3;
         cs->halted = 0;
+        spapr_cpu_set_endianness(cpu);
+        spapr_cpu_update_tb_offset(cpu);
 
         qemu_cpu_kick(cs);
 
@@ -692,7 +717,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
 
     ret = fdt_add_mem_rsv(fdt, rtas_addr, rtas_size);
     if (ret < 0) {
-        fprintf(stderr, "Couldn't add RTAS reserve entry: %s\n",
+        error_report("Couldn't add RTAS reserve entry: %s",
                 fdt_strerror(ret));
         return ret;
     }
@@ -700,7 +725,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
     ret = qemu_fdt_setprop_cell(fdt, "/rtas", "linux,rtas-base",
                                 rtas_addr);
     if (ret < 0) {
-        fprintf(stderr, "Couldn't add linux,rtas-base property: %s\n",
+        error_report("Couldn't add linux,rtas-base property: %s",
                 fdt_strerror(ret));
         return ret;
     }
@@ -708,7 +733,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
     ret = qemu_fdt_setprop_cell(fdt, "/rtas", "linux,rtas-entry",
                                 rtas_addr);
     if (ret < 0) {
-        fprintf(stderr, "Couldn't add linux,rtas-entry property: %s\n",
+        error_report("Couldn't add linux,rtas-entry property: %s",
                 fdt_strerror(ret));
         return ret;
     }
@@ -716,7 +741,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
     ret = qemu_fdt_setprop_cell(fdt, "/rtas", "rtas-size",
                                 rtas_size);
     if (ret < 0) {
-        fprintf(stderr, "Couldn't add rtas-size property: %s\n",
+        error_report("Couldn't add rtas-size property: %s",
                 fdt_strerror(ret));
         return ret;
     }
@@ -731,7 +756,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
         ret = qemu_fdt_setprop_cell(fdt, "/rtas", call->name,
                                     i + RTAS_TOKEN_BASE);
         if (ret < 0) {
-            fprintf(stderr, "Couldn't add rtas token for %s: %s\n",
+            error_report("Couldn't add rtas token for %s: %s",
                     call->name, fdt_strerror(ret));
             return ret;
         }
@@ -746,7 +771,7 @@ int spapr_rtas_device_tree_setup(void *fdt, hwaddr rtas_addr,
     ret = qemu_fdt_setprop(fdt, "/rtas", "ibm,lrdr-capacity", lrdr_capacity,
                      sizeof(lrdr_capacity));
     if (ret < 0) {
-        fprintf(stderr, "Couldn't add ibm,lrdr-capacity rtas property\n");
+        error_report("Couldn't add ibm,lrdr-capacity rtas property");
         return ret;
     }
 

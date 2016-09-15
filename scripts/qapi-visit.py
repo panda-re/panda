@@ -47,9 +47,11 @@ void visit_type_%(c_name)s_members(Visitor *v, %(c_name)s *obj, Error **errp)
     if base:
         ret += mcgen('''
     visit_type_%(c_type)s_members(v, (%(c_type)s *)obj, &err);
+    if (err) {
+        goto out;
+    }
 ''',
                      c_type=base.c_name())
-        ret += gen_err_check()
 
     for memb in members:
         if memb.optional:
@@ -60,10 +62,12 @@ void visit_type_%(c_name)s_members(Visitor *v, %(c_name)s *obj, Error **errp)
             push_indent()
         ret += mcgen('''
     visit_type_%(c_type)s(v, "%(name)s", &obj->%(c_name)s, &err);
+    if (err) {
+        goto out;
+    }
 ''',
                      c_type=memb.type.c_name(), name=memb.name,
                      c_name=c_name(memb.name))
-        ret += gen_err_check()
         if memb.optional:
             pop_indent()
             ret += mcgen('''
@@ -129,7 +133,7 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
         }
     }
 
-    visit_end_list(v);
+    visit_end_list(v, (void **)obj);
     if (err && visit_is_input(v)) {
         qapi_free_%(c_name)s(*obj);
         *obj = NULL;
@@ -172,6 +176,9 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
     if (err) {
         goto out;
     }
+    if (!*obj) {
+        goto out_obj;
+    }
     switch ((*obj)->type) {
 ''',
                  c_name=c_name(name), promote_int=promote_int)
@@ -191,7 +198,7 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
         if (!err) {
             visit_check_struct(v, &err);
         }
-        visit_end_struct(v);
+        visit_end_struct(v, NULL);
 ''',
                          c_type=var.type.c_name(),
                          c_name=c_name(var.name))
@@ -206,11 +213,14 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
 ''')
 
     ret += mcgen('''
+    case QTYPE_NONE:
+        abort();
     default:
         error_setg(&err, QERR_INVALID_PARAMETER_TYPE, name ? name : "null",
                    "%(name)s");
     }
-    visit_end_alternate(v);
+out_obj:
+    visit_end_alternate(v, (void **)obj);
     if (err && visit_is_input(v)) {
         qapi_free_%(c_name)s(*obj);
         *obj = NULL;
@@ -244,7 +254,7 @@ void visit_type_%(c_name)s(Visitor *v, const char *name, %(c_name)s **obj, Error
     }
     visit_check_struct(v, &err);
 out_obj:
-    visit_end_struct(v);
+    visit_end_struct(v, (void **)obj);
     if (err && visit_is_input(v)) {
         qapi_free_%(c_name)s(*obj);
         *obj = NULL;

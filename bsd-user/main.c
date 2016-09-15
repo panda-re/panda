@@ -17,10 +17,12 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "qemu/osdep.h"
+#include "qemu-version.h"
 #include <machine/trap.h>
-#include <sys/mman.h>
 
+#include "qapi/error.h"
 #include "qemu.h"
+#include "qemu/config-file.h"
 #include "qemu/path.h"
 #include "qemu/help_option.h"
 /* For tb_lock */
@@ -30,6 +32,8 @@
 #include "qemu/timer.h"
 #include "qemu/envlist.h"
 #include "exec/log.h"
+#include "trace/control.h"
+#include "glib-compat.h"
 
 int singlestep;
 unsigned long mmap_min_addr;
@@ -168,7 +172,7 @@ void cpu_loop(CPUX86State *env)
     //target_siginfo_t info;
 
     for(;;) {
-        trapnr = cpu_x86_exec(cs);
+        trapnr = cpu_exec(cs);
         switch(trapnr) {
         case 0x80:
             /* syscall from int $0x80 */
@@ -509,7 +513,7 @@ void cpu_loop(CPUSPARCState *env)
     //target_siginfo_t info;
 
     while (1) {
-        trapnr = cpu_sparc_exec(cs);
+        trapnr = cpu_exec(cs);
 
         switch (trapnr) {
 #ifndef TARGET_SPARC64
@@ -664,7 +668,8 @@ void cpu_loop(CPUSPARCState *env)
 
 static void usage(void)
 {
-    printf("qemu-" TARGET_NAME " version " QEMU_VERSION ", Copyright (c) 2003-2008 Fabrice Bellard\n"
+    printf("qemu-" TARGET_NAME " version " QEMU_VERSION QEMU_PKGVERSION
+           ", " QEMU_COPYRIGHT "\n"
            "usage: qemu-" TARGET_NAME " [options] program [arguments...]\n"
            "BSD CPU emulator (compiled for %s emulation)\n"
            "\n"
@@ -687,6 +692,8 @@ static void usage(void)
            "-p pagesize       set the host page size to 'pagesize'\n"
            "-singlestep       always run in singlestep mode\n"
            "-strace           log system calls\n"
+           "-trace            [[enable=]<pattern>][,events=<file>][,file=<file>]\n"
+           "                  specify tracing options\n"
            "\n"
            "Environment variables:\n"
            "QEMU_STRACE       Print system calls and arguments similar to the\n"
@@ -735,6 +742,7 @@ int main(int argc, char **argv)
     int gdbstub_port = 0;
     char **target_environ, **wrk;
     envlist_t *envlist = NULL;
+    char *trace_file = NULL;
     bsd_type = target_openbsd;
 
     if (argc <= 1)
@@ -754,8 +762,10 @@ int main(int argc, char **argv)
 
     cpu_model = NULL;
 
+    qemu_add_opts(&qemu_trace_opts);
+
     optind = 1;
-    for(;;) {
+    for (;;) {
         if (optind >= argc)
             break;
         r = argv[optind];
@@ -840,15 +850,17 @@ int main(int argc, char **argv)
             singlestep = 1;
         } else if (!strcmp(r, "strace")) {
             do_strace = 1;
-        } else
-        {
+        } else if (!strcmp(r, "trace")) {
+            g_free(trace_file);
+            trace_file = trace_opt_parse(optarg);
+        } else {
             usage();
         }
     }
 
     /* init debug */
     qemu_log_needs_buffers();
-    qemu_set_log_filename(log_file);
+    qemu_set_log_filename(log_file, &error_fatal);
     if (log_mask) {
         int mask;
 
@@ -864,6 +876,11 @@ int main(int argc, char **argv)
         usage();
     }
     filename = argv[optind];
+
+    if (!trace_init_backends()) {
+        exit(1);
+    }
+    trace_init_file(trace_file);
 
     /* Zero out regs */
     memset(regs, 0, sizeof(struct target_pt_regs));
@@ -1116,6 +1133,7 @@ int main(int argc, char **argv)
         gdbserver_start (gdbstub_port);
         gdb_handlesig(cpu, 0);
     }
+    trace_init_vcpu_events();
     cpu_loop(env);
     /* never exits */
     return 0;

@@ -69,7 +69,6 @@ typedef struct E1000EState {
     uint16_t subsys_ven_used;
     uint16_t subsys_used;
 
-    uint32_t intr_state;
     bool disable_vnet;
 
     E1000ECore core;
@@ -88,9 +87,6 @@ typedef struct E1000EState {
 
 #define E1000E_MSIX_TABLE   (0x0000)
 #define E1000E_MSIX_PBA     (0x2000)
-
-#define E1000E_USE_MSI     BIT(0)
-#define E1000E_USE_MSIX    BIT(1)
 
 static uint64_t
 e1000e_mmio_read(void *opaque, hwaddr addr, unsigned size)
@@ -226,7 +222,7 @@ e1000e_set_link_status(NetClientState *nc)
 }
 
 static NetClientInfo net_e1000e_info = {
-    .type = NET_CLIENT_OPTIONS_KIND_NIC,
+    .type = NET_CLIENT_DRIVER_NIC,
     .size = sizeof(NICState),
     .can_receive = e1000e_nc_can_receive,
     .receive = e1000e_nc_receive,
@@ -261,32 +257,6 @@ static void e1000e_core_realize(E1000EState *s)
 {
     s->core.owner = &s->parent_obj;
     s->core.owner_nic = s->nic;
-}
-
-static void
-e1000e_init_msi(E1000EState *s)
-{
-    int res;
-
-    res = msi_init(PCI_DEVICE(s),
-                   0xD0,   /* MSI capability offset              */
-                   1,      /* MAC MSI interrupts                 */
-                   true,   /* 64-bit message addresses supported */
-                   false); /* Per vector mask supported          */
-
-    if (res > 0) {
-        s->intr_state |= E1000E_USE_MSI;
-    } else {
-        trace_e1000e_msi_init_fail(res);
-    }
-}
-
-static void
-e1000e_cleanup_msi(E1000EState *s)
-{
-    if (s->intr_state & E1000E_USE_MSI) {
-        msi_uninit(PCI_DEVICE(s));
-    }
 }
 
 static void
@@ -329,8 +299,6 @@ e1000e_init_msix(E1000EState *s)
     } else {
         if (!e1000e_use_msix_vectors(s, E1000E_MSIX_VEC_NUM)) {
             msix_uninit(d, &s->msix, &s->msix);
-        } else {
-            s->intr_state |= E1000E_USE_MSIX;
         }
     }
 }
@@ -338,7 +306,7 @@ e1000e_init_msix(E1000EState *s)
 static void
 e1000e_cleanup_msix(E1000EState *s)
 {
-    if (s->intr_state & E1000E_USE_MSIX) {
+    if (msix_enabled(PCI_DEVICE(s))) {
         e1000e_unuse_msix_vectors(s, E1000E_MSIX_VEC_NUM);
         msix_uninit(PCI_DEVICE(s), &s->msix, &s->msix);
     }
@@ -444,6 +412,7 @@ static void e1000e_pci_realize(PCIDevice *pci_dev, Error **errp)
     static const uint16_t e1000e_dsn_offset =  0x140;
     E1000EState *s = E1000E(pci_dev);
     uint8_t *macaddr;
+    int ret;
 
     trace_e1000e_cb_pci_realize();
 
@@ -493,7 +462,10 @@ static void e1000e_pci_realize(PCIDevice *pci_dev, Error **errp)
         hw_error("Failed to initialize PCIe capability");
     }
 
-    e1000e_init_msi(s);
+    ret = msi_init(PCI_DEVICE(s), 0xD0, 1, true, false, NULL);
+    if (ret) {
+        trace_e1000e_msi_init_fail(ret);
+    }
 
     if (e1000e_add_pm_capability(pci_dev, e1000e_pmrb_offset,
                                   PCI_PM_CAP_DSI) < 0) {
@@ -532,7 +504,7 @@ static void e1000e_pci_uninit(PCIDevice *pci_dev)
     qemu_del_nic(s->nic);
 
     e1000e_cleanup_msix(s);
-    e1000e_cleanup_msi(s);
+    msi_uninit(pci_dev);
 }
 
 static void e1000e_qdev_reset(DeviceState *dev)
@@ -624,7 +596,6 @@ static const VMStateDescription e1000e_vmstate = {
         VMSTATE_MSIX(parent_obj, E1000EState),
 
         VMSTATE_UINT32(ioaddr, E1000EState),
-        VMSTATE_UINT32(intr_state, E1000EState),
         VMSTATE_UINT32(core.rxbuf_min_shift, E1000EState),
         VMSTATE_UINT8(core.rx_desc_len, E1000EState),
         VMSTATE_UINT32_ARRAY(core.rxbuf_sizes, E1000EState,
@@ -693,6 +664,7 @@ static void e1000e_class_init(ObjectClass *class, void *data)
     c->vendor_id = PCI_VENDOR_ID_INTEL;
     c->device_id = E1000_DEV_ID_82574L;
     c->revision = 0;
+    c->romfile = "efi-e1000e.rom";
     c->class_id = PCI_CLASS_NETWORK_ETHERNET;
     c->is_express = 1;
 

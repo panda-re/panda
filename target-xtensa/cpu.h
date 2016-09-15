@@ -25,8 +25,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CPU_XTENSA_H
-#define CPU_XTENSA_H
+#ifndef XTENSA_CPU_H
+#define XTENSA_CPU_H
 
 #define ALIGNED_ONLY
 #define TARGET_LONG_BITS 32
@@ -414,9 +414,9 @@ hwaddr xtensa_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
 int xtensa_cpu_gdb_read_register(CPUState *cpu, uint8_t *buf, int reg);
 int xtensa_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 void xtensa_cpu_do_unaligned_access(CPUState *cpu, vaddr addr,
-                                    int is_write, int is_user, uintptr_t retaddr);
+                                    MMUAccessType access_type,
+                                    int mmu_idx, uintptr_t retaddr);
 
-#define cpu_exec cpu_xtensa_exec
 #define cpu_signal_handler cpu_xtensa_signal_handler
 #define cpu_list xtensa_cpu_list
 
@@ -432,7 +432,6 @@ XtensaCPU *cpu_xtensa_init(const char *cpu_model);
 
 void xtensa_translate_init(void);
 void xtensa_breakpoint_handler(CPUState *cs);
-int cpu_xtensa_exec(CPUState *cpu);
 void xtensa_finalize_config(XtensaConfig *config);
 void xtensa_register_core(XtensaConfigList *node);
 void check_interrupts(CPUXtensaState *s);

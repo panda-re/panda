@@ -17,6 +17,7 @@
 #include "hw/compat.h"
 #include "hw/mem/pc-dimm.h"
 #include "hw/mem/nvdimm.h"
+#include "hw/acpi/acpi_dev_interface.h"
 
 #define HPET_INTCAP "hpet-intcap"
 
@@ -52,6 +53,7 @@ struct PCMachineState {
     ISADevice *rtc;
     PCIBus *bus;
     FWCfgState *fw_cfg;
+    qemu_irq *gsi;
 
     /* Configuration options: */
     uint64_t max_ram_below_4g;
@@ -71,7 +73,10 @@ struct PCMachineState {
     /* NUMA information: */
     uint64_t numa_nodes;
     uint64_t *node_mem;
-    uint64_t *node_cpu;
+
+    /* Address space used by IOAPIC device. All IOAPIC interrupts
+     * will be translated to MSI messages in the address space. */
+    AddressSpace *ioapic_as;
 };
 
 #define PC_MACHINE_ACPI_DEVICE_PROP "acpi-device"
@@ -136,6 +141,8 @@ struct PCMachineClass {
 
     /* TSC rate migration: */
     bool save_tsc_khz;
+    /* generate legacy CPU hotplug AML */
+    bool legacy_cpu_hotplug;
 };
 
 #define TYPE_PC_MACHINE "generic-pc-machine"
@@ -147,11 +154,6 @@ struct PCMachineClass {
     OBJECT_CLASS_CHECK(PCMachineClass, (klass), TYPE_PC_MACHINE)
 
 /* PC-style peripherals (also used by other machines).  */
-
-typedef struct PcPciInfo {
-    Range w32;
-    Range w64;
-} PcPciInfo;
 
 #define ACPI_PM_PROP_S3_DISABLED "disable_s3"
 #define ACPI_PM_PROP_S4_DISABLED "disable_s4"
@@ -199,11 +201,12 @@ typedef struct GSIState {
 void gsi_handler(void *opaque, int n, int level);
 
 /* vmport.c */
+#define TYPE_VMPORT "vmport"
 typedef uint32_t (VMPortReadFunc)(void *opaque, uint32_t address);
 
 static inline void vmport_init(ISABus *bus)
 {
-    isa_create_simple(bus, "vmport");
+    isa_create_simple(bus, TYPE_VMPORT);
 }
 
 void vmport_register(unsigned char command, VMPortReadFunc *func, void *opaque);
@@ -211,13 +214,14 @@ void vmmouse_get_data(uint32_t *data);
 void vmmouse_set_data(const uint32_t *data);
 
 /* pckbd.c */
+#define I8042_A20_LINE "a20"
 
 void i8042_init(qemu_irq kbd_irq, qemu_irq mouse_irq, uint32_t io_base);
 void i8042_mm_init(qemu_irq kbd_irq, qemu_irq mouse_irq,
                    MemoryRegion *region, ram_addr_t size,
                    hwaddr mask);
 void i8042_isa_mouse_fake_event(void *opaque);
-void i8042_setup_a20_line(ISADevice *dev, qemu_irq *a20_out);
+void i8042_setup_a20_line(ISADevice *dev, qemu_irq a20_out);
 
 /* pc.c */
 extern int fd_bootchk;
@@ -237,6 +241,8 @@ void pc_guest_info_init(PCMachineState *pcms);
 #define PCI_HOST_PROP_PCI_HOLE64_START "pci-hole64-start"
 #define PCI_HOST_PROP_PCI_HOLE64_END   "pci-hole64-end"
 #define PCI_HOST_PROP_PCI_HOLE64_SIZE  "pci-hole64-size"
+#define PCI_HOST_BELOW_4G_MEM_SIZE     "below-4g-mem-size"
+#define PCI_HOST_ABOVE_4G_MEM_SIZE     "above-4g-mem-size"
 #define DEFAULT_PCI_HOLE64_SIZE (~0x0ULL)
 
 
@@ -270,6 +276,8 @@ ISADevice *pc_find_fdc0(void);
 int cmos_get_fd_drive_type(FloppyDriveType fd0);
 
 #define FW_CFG_IO_BASE     0x510
+
+#define PORT92_A20_LINE "a20"
 
 /* acpi_piix.c */
 
@@ -345,6 +353,10 @@ void pc_system_firmware_init(MemoryRegion *rom_memory,
 /* pvpanic.c */
 uint16_t pvpanic_port(void);
 
+/* acpi-build.c */
+void pc_madt_cpu_entry(AcpiDeviceIf *adev, int uid,
+                       CPUArchIdList *apic_ids, GArray *entry);
+
 /* e820 types */
 #define E820_RAM        1
 #define E820_RESERVED   2
@@ -356,7 +368,46 @@ int e820_add_entry(uint64_t, uint64_t, uint32_t);
 int e820_get_num_entries(void);
 bool e820_get_entry(int, uint32_t, uint64_t *, uint64_t *);
 
+#define PC_COMPAT_2_8 \
+    {\
+        .driver   = TYPE_X86_CPU,\
+        .property = "l3-cache",\
+        .value    = "off",\
+    },
+
+
+#define PC_COMPAT_2_7 \
+    PC_COMPAT_2_8 \
+    HW_COMPAT_2_7
+
+#define PC_COMPAT_2_6 \
+    HW_COMPAT_2_6 \
+    {\
+        .driver   = "fw_cfg_io",\
+        .property = "dma_enabled",\
+        .value    = "off",\
+    },{\
+        .driver   = TYPE_X86_CPU,\
+        .property = "cpuid-0xb",\
+        .value    = "off",\
+    },{\
+        .driver   = "vmxnet3",\
+        .property = "romfile",\
+        .value    = "",\
+    },\
+    {\
+        .driver = TYPE_X86_CPU,\
+        .property = "fill-mtrr-mask",\
+        .value = "off",\
+    },\
+    {\
+        .driver   = "apic-common",\
+        .property = "legacy-instance-id",\
+        .value    = "on",\
+    },
+
 #define PC_COMPAT_2_5 \
+    PC_COMPAT_2_6 \
     HW_COMPAT_2_5
 
 /* Helper for setting model-id for CPU models that changed model-id
@@ -865,7 +916,6 @@ bool e820_get_entry(int, uint32_t, uint64_t *, uint64_t *);
     { \
         MachineClass *mc = MACHINE_CLASS(oc); \
         optsfn(mc); \
-        mc->name = namestr; \
         mc->init = initfn; \
     } \
     static const TypeInfo pc_machine_type_##suffix = { \

@@ -169,6 +169,7 @@ void s390x_translate_init(void)
     int i;
 
     cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
+    tcg_ctx.tcg_env = cpu_env;
     psw_addr = tcg_global_mem_new_i64(cpu_env,
                                       offsetof(CPUS390XState, psw.addr),
                                       "psw_addr");
@@ -3985,21 +3986,21 @@ static ExitStatus op_svc(DisasContext *s, DisasOps *o)
 
 static ExitStatus op_tceb(DisasContext *s, DisasOps *o)
 {
-    gen_helper_tceb(cc_op, o->in1, o->in2);
+    gen_helper_tceb(cc_op, cpu_env, o->in1, o->in2);
     set_cc_static(s);
     return NO_EXIT;
 }
 
 static ExitStatus op_tcdb(DisasContext *s, DisasOps *o)
 {
-    gen_helper_tcdb(cc_op, o->in1, o->in2);
+    gen_helper_tcdb(cc_op, cpu_env, o->in1, o->in2);
     set_cc_static(s);
     return NO_EXIT;
 }
 
 static ExitStatus op_tcxb(DisasContext *s, DisasOps *o)
 {
-    gen_helper_tcxb(cc_op, o->out, o->out2, o->in2);
+    gen_helper_tcxb(cc_op, cpu_env, o->out, o->out2, o->in2);
     set_cc_static(s);
     return NO_EXIT;
 }

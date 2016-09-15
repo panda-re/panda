@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef CPU_ARM_H
-#define CPU_ARM_H
 
+#ifndef ARM_CPU_H
+#define ARM_CPU_H
 
 #include "kvm-consts.h"
 
@@ -515,6 +515,13 @@ typedef struct CPUARMState {
 } CPUARMState;
 
 /**
+ * ARMELChangeHook:
+ * type of a function which can be registered via arm_register_el_change_hook()
+ * to get callbacks when the CPU changes its exception level or mode.
+ */
+typedef void ARMELChangeHook(ARMCPU *cpu, void *opaque);
+
+/**
  * ARMCPU:
  * @env: #CPUARMState
  *
@@ -572,6 +579,8 @@ struct ARMCPU {
     bool powered_off;
     /* CPU has security extension */
     bool has_el3;
+    /* CPU has PMU (Performance Monitor Unit) */
+    bool has_pmu;
 
     /* CPU has memory protection unit */
     bool has_mpu;
@@ -652,6 +661,9 @@ struct ARMCPU {
     /* DCZ blocksize, in log_2(words), ie low 4 bits of DCZID_EL0 */
     uint32_t dcz_blocksize;
     uint64_t rvbar;
+
+    ARMELChangeHook *el_change_hook;
+    void *el_change_hook_opaque;
 };
 
 static inline ARMCPU *arm_env_get_cpu(CPUARMState *env)
@@ -691,7 +703,6 @@ int aarch64_cpu_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 #endif
 
 ARMCPU *cpu_arm_init(const char *cpu_model);
-int cpu_arm_exec(CPUState *cpu);
 target_ulong do_arm_semihosting(CPUARMState *env);
 void aarch64_sync_32_to_64(CPUARMState *env);
 void aarch64_sync_64_to_32(CPUARMState *env);
@@ -1144,8 +1155,8 @@ static inline bool arm_is_secure_below_el3(CPUARMState *env)
     }
 }
 
-/* Return true if the processor is in secure state */
-static inline bool arm_is_secure(CPUARMState *env)
+/* Return true if the CPU is AArch64 EL3 or AArch32 Mon */
+static inline bool arm_is_el3_or_mon(CPUARMState *env)
 {
     if (arm_feature(env, ARM_FEATURE_EL3)) {
         if (is_a64(env) && extract32(env->pstate, 2, 2) == 3) {
@@ -1156,6 +1167,15 @@ static inline bool arm_is_secure(CPUARMState *env)
             /* CPU currently in AArch32 state and monitor mode */
             return true;
         }
+    }
+    return false;
+}
+
+/* Return true if the processor is in secure state */
+static inline bool arm_is_secure(CPUARMState *env)
+{
+    if (arm_is_el3_or_mon(env)) {
+        return true;
     }
     return arm_is_secure_below_el3(env);
 }
@@ -1870,7 +1890,6 @@ static inline bool arm_excp_unmasked(CPUState *cs, unsigned int excp_idx,
 
 #define cpu_init(cpu_model) CPU(cpu_arm_init(cpu_model))
 
-#define cpu_exec cpu_arm_exec
 #define cpu_signal_handler cpu_arm_signal_handler
 #define cpu_list arm_cpu_list
 
@@ -2374,5 +2393,29 @@ static inline AddressSpace *arm_addressspace(CPUState *cs, MemTxAttrs attrs)
     return cpu_get_address_space(cs, arm_asidx_from_attrs(cs, attrs));
 }
 #endif
+
+/**
+ * arm_register_el_change_hook:
+ * Register a hook function which will be called back whenever this
+ * CPU changes exception level or mode. The hook function will be
+ * passed a pointer to the ARMCPU and the opaque data pointer passed
+ * to this function when the hook was registered.
+ *
+ * Note that we currently only support registering a single hook function,
+ * and will assert if this function is called twice.
+ * This facility is intended for the use of the GICv3 emulation.
+ */
+void arm_register_el_change_hook(ARMCPU *cpu, ARMELChangeHook *hook,
+                                 void *opaque);
+
+/**
+ * arm_get_el_change_hook_opaque:
+ * Return the opaque data that will be used by the el_change_hook
+ * for this CPU.
+ */
+static inline void *arm_get_el_change_hook_opaque(ARMCPU *cpu)
+{
+    return cpu->el_change_hook_opaque;
+}
 
 #endif

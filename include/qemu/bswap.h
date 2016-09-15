@@ -80,6 +80,64 @@ static inline void bswap64s(uint64_t *s)
 #define be_bswaps(p, size) do { *p = glue(bswap, size)(*p); } while(0)
 #endif
 
+/**
+ * Endianness conversion functions between host cpu and specified endianness.
+ * (We list the complete set of prototypes produced by the macros below
+ * to assist people who search the headers to find their definitions.)
+ *
+ * uint16_t le16_to_cpu(uint16_t v);
+ * uint32_t le32_to_cpu(uint32_t v);
+ * uint64_t le64_to_cpu(uint64_t v);
+ * uint16_t be16_to_cpu(uint16_t v);
+ * uint32_t be32_to_cpu(uint32_t v);
+ * uint64_t be64_to_cpu(uint64_t v);
+ *
+ * Convert the value @v from the specified format to the native
+ * endianness of the host CPU by byteswapping if necessary, and
+ * return the converted value.
+ *
+ * uint16_t cpu_to_le16(uint16_t v);
+ * uint32_t cpu_to_le32(uint32_t v);
+ * uint64_t cpu_to_le64(uint64_t v);
+ * uint16_t cpu_to_be16(uint16_t v);
+ * uint32_t cpu_to_be32(uint32_t v);
+ * uint64_t cpu_to_be64(uint64_t v);
+ *
+ * Convert the value @v from the native endianness of the host CPU to
+ * the specified format by byteswapping if necessary, and return
+ * the converted value.
+ *
+ * void le16_to_cpus(uint16_t *v);
+ * void le32_to_cpus(uint32_t *v);
+ * void le64_to_cpus(uint64_t *v);
+ * void be16_to_cpus(uint16_t *v);
+ * void be32_to_cpus(uint32_t *v);
+ * void be64_to_cpus(uint64_t *v);
+ *
+ * Do an in-place conversion of the value pointed to by @v from the
+ * specified format to the native endianness of the host CPU.
+ *
+ * void cpu_to_le16s(uint16_t *v);
+ * void cpu_to_le32s(uint32_t *v);
+ * void cpu_to_le64s(uint64_t *v);
+ * void cpu_to_be16s(uint16_t *v);
+ * void cpu_to_be32s(uint32_t *v);
+ * void cpu_to_be64s(uint64_t *v);
+ *
+ * Do an in-place conversion of the value pointed to by @v from the
+ * native endianness of the host CPU to the specified format.
+ *
+ * Both X_to_cpu() and cpu_to_X() perform the same operation; you
+ * should use whichever one is better documenting of the function your
+ * code is performing.
+ *
+ * Do not use these functions for conversion of values which are in guest
+ * memory, since the data may not be sufficiently aligned for the host CPU's
+ * load and store instructions. Instead you should use the ld*_p() and
+ * st*_p() functions, which perform loads and stores of data of any
+ * required size and endianness and handle possible misalignment.
+ */
+
 #define CPU_CONVERT(endian, size, type)\
 static inline type endian ## size ## _to_cpu(type v)\
 {\
@@ -99,16 +157,6 @@ static inline void endian ## size ## _to_cpus(type *p)\
 static inline void cpu_to_ ## endian ## size ## s(type *p)\
 {\
     glue(endian, _bswaps)(p, size);\
-}\
-\
-static inline type endian ## size ## _to_cpup(const type *p)\
-{\
-    return glue(glue(endian, size), _to_cpu)(*p);\
-}\
-\
-static inline void cpu_to_ ## endian ## size ## w(type *p, type v)\
-{\
-    *p = glue(glue(cpu_to_, endian), size)(v);\
 }
 
 CPU_CONVERT(be, 16, uint16_t)
@@ -126,7 +174,7 @@ static inline uint32_t qemu_bswap_len(uint32_t value, int len)
 }
 
 /*
- * Same as cpu_to_le{16,23}, except that gcc will figure the result is
+ * Same as cpu_to_le{16,32}, except that gcc will figure the result is
  * a compile-time constant if you pass in a constant.  So this can be
  * used to initialize static variables.
  */

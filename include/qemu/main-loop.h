@@ -23,7 +23,7 @@
  */
 
 #ifndef QEMU_MAIN_LOOP_H
-#define QEMU_MAIN_LOOP_H 1
+#define QEMU_MAIN_LOOP_H
 
 #include "block/aio.h"
 
@@ -64,11 +64,11 @@ int qemu_init_main_loop(Error **errp);
  *
  *     void enter_co_bh(void *opaque) {
  *         QEMUCoroutine *co = opaque;
- *         qemu_coroutine_enter(co, NULL);
+ *         qemu_coroutine_enter(co);
  *     }
  *
  *     ...
- *     QEMUCoroutine *co = qemu_coroutine_create(coroutine_entry);
+ *     QEMUCoroutine *co = qemu_coroutine_create(coroutine_entry, NULL);
  *     QEMUBH *start_bh = qemu_bh_new(enter_co_bh, co);
  *     qemu_bh_schedule(start_bh);
  *     while (...) {

@@ -20,6 +20,8 @@
 #include "libqos/malloc-generic.h"
 #include "qemu/bswap.h"
 #include "hw/virtio/virtio-net.h"
+#include "standard-headers/linux/virtio_ids.h"
+#include "standard-headers/linux/virtio_ring.h"
 
 #define PCI_SLOT_HP             0x06
 #define PCI_SLOT                0x04
@@ -39,9 +41,9 @@ static QVirtioPCIDevice *virtio_net_pci_init(QPCIBus *bus, int slot)
 {
     QVirtioPCIDevice *dev;
 
-    dev = qvirtio_pci_device_find(bus, QVIRTIO_NET_DEVICE_ID);
+    dev = qvirtio_pci_device_find(bus, VIRTIO_ID_NET);
     g_assert(dev != NULL);
-    g_assert_cmphex(dev->vdev.device_type, ==, QVIRTIO_NET_DEVICE_ID);
+    g_assert_cmphex(dev->vdev.device_type, ==, VIRTIO_ID_NET);
 
     qvirtio_pci_device_enable(dev);
     qvirtio_reset(&qvirtio_pci, &dev->vdev);
@@ -69,8 +71,8 @@ static void driver_init(const QVirtioBus *bus, QVirtioDevice *dev)
 
     features = qvirtio_get_features(bus, dev);
     features = features & ~(QVIRTIO_F_BAD_FEATURE |
-                            QVIRTIO_F_RING_INDIRECT_DESC |
-                            QVIRTIO_F_RING_EVENT_IDX);
+                            (1u << VIRTIO_RING_F_INDIRECT_DESC) |
+                            (1u << VIRTIO_RING_F_EVENT_IDX));
     qvirtio_set_features(bus, dev, features);
 
     qvirtio_set_driver_ok(bus, dev);
@@ -147,6 +149,7 @@ static void rx_stop_cont_test(const QVirtioBus *bus, QVirtioDevice *dev,
     char test[] = "TEST";
     char buffer[64];
     int len = htonl(sizeof(test));
+    QDict *rsp;
     struct iovec iov[] = {
         {
             .iov_base = &len,
@@ -163,7 +166,8 @@ static void rx_stop_cont_test(const QVirtioBus *bus, QVirtioDevice *dev,
     free_head = qvirtqueue_add(vq, req_addr, 64, true, false);
     qvirtqueue_kick(bus, dev, vq, free_head);
 
-    qmp("{ 'execute' : 'stop'}");
+    rsp = qmp("{ 'execute' : 'stop'}");
+    QDECREF(rsp);
 
     ret = iov_send(socket, iov, 2, 0, sizeof(len) + sizeof(test));
     g_assert_cmpint(ret, ==, sizeof(test) + sizeof(len));
@@ -171,8 +175,10 @@ static void rx_stop_cont_test(const QVirtioBus *bus, QVirtioDevice *dev,
     /* We could check the status, but this command is more importantly to
      * ensure the packet data gets queued in QEMU, before we do 'cont'.
      */
-    qmp("{ 'execute' : 'query-status'}");
-    qmp("{ 'execute' : 'cont'}");
+    rsp = qmp("{ 'execute' : 'query-status'}");
+    QDECREF(rsp);
+    rsp = qmp("{ 'execute' : 'cont'}");
+    QDECREF(rsp);
 
     qvirtio_wait_queue_isr(bus, dev, vq, QVIRTIO_NET_TIMEOUT_US);
     memread(req_addr + VNET_HDR_SIZE, buffer, sizeof(test));
@@ -227,9 +233,11 @@ static void pci_basic(gconstpointer data)
 
     /* End test */
     close(sv[0]);
-    guest_free(alloc, tx->vq.desc);
+    qvirtqueue_cleanup(&qvirtio_pci, &tx->vq, alloc);
+    qvirtqueue_cleanup(&qvirtio_pci, &rx->vq, alloc);
     pc_alloc_uninit(alloc);
     qvirtio_pci_device_disable(dev);
+    g_free(dev->pdev);
     g_free(dev);
     qpci_free_pc(bus);
     test_end();
@@ -248,8 +256,6 @@ static void hotplug(void)
 
 int main(int argc, char **argv)
 {
-    int ret;
-
     g_test_init(&argc, &argv, NULL);
 #ifndef _WIN32
     qtest_add_data_func("/virtio/net/pci/basic", send_recv_test, pci_basic);
@@ -258,7 +264,5 @@ int main(int argc, char **argv)
 #endif
     qtest_add_func("/virtio/net/pci/hotplug", hotplug);
 
-    ret = g_test_run();
-
-    return ret;
+    return g_test_run();
 }

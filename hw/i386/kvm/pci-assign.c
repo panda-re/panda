@@ -20,9 +20,10 @@
  *  Copyright (C) 2008, Red Hat, Amit Shah (amit.shah@redhat.com)
  *  Copyright (C) 2008, IBM, Muli Ben-Yehuda (muli@il.ibm.com)
  */
+
 #include "qemu/osdep.h"
+#include <linux/kvm.h>
 #include "qapi/error.h"
-#include <sys/mman.h>
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
 #include "qemu/error-report.h"
@@ -33,11 +34,8 @@
 #include "sysemu/sysemu.h"
 #include "hw/pci/pci.h"
 #include "hw/pci/msi.h"
-#include "linux/kvm.h"
 #include "kvm_i386.h"
 #include "hw/pci/pci-assign.h"
-
-#define MSIX_PAGE_SIZE 0x1000
 
 /* From linux/ioport.h */
 #define IORESOURCE_IO       0x00000100  /* Resource type */
@@ -123,6 +121,7 @@ typedef struct AssignedDevice {
     int *msi_virq;
     MSIXTableEntry *msix_table;
     hwaddr msix_table_addr;
+    uint16_t msix_table_size;
     uint16_t msix_max;
     MemoryRegion mmio;
     char *configfd_name;
@@ -975,10 +974,9 @@ static void assigned_dev_update_msi(PCIDevice *pci_dev)
     }
 
     if (ctrl_byte & PCI_MSI_FLAGS_ENABLE) {
-        MSIMessage msg = msi_get_message(pci_dev, 0);
         int virq;
 
-        virq = kvm_irqchip_add_msi_route(kvm_state, msg, pci_dev);
+        virq = kvm_irqchip_add_msi_route(kvm_state, 0, pci_dev);
         if (virq < 0) {
             perror("assigned_dev_update_msi: kvm_irqchip_add_msi_route");
             return;
@@ -1017,6 +1015,7 @@ static void assigned_dev_update_msi_msg(PCIDevice *pci_dev)
 
     kvm_irqchip_update_msi_route(kvm_state, assigned_dev->msi_virq[0],
                                  msi_get_message(pci_dev, 0), pci_dev);
+    kvm_irqchip_commit_routes(kvm_state);
 }
 
 static bool assigned_dev_msix_masked(MSIXTableEntry *entry)
@@ -1043,7 +1042,6 @@ static int assigned_dev_update_msix_mmio(PCIDevice *pci_dev)
     uint16_t entries_nr = 0;
     int i, r = 0;
     MSIXTableEntry *entry = adev->msix_table;
-    MSIMessage msg;
 
     /* Get the usable entry number for allocating */
     for (i = 0; i < adev->msix_max; i++, entry++) {
@@ -1080,9 +1078,7 @@ static int assigned_dev_update_msix_mmio(PCIDevice *pci_dev)
             continue;
         }
 
-        msg.address = entry->addr_lo | ((uint64_t)entry->addr_hi << 32);
-        msg.data = entry->data;
-        r = kvm_irqchip_add_msi_route(kvm_state, msg, pci_dev);
+        r = kvm_irqchip_add_msi_route(kvm_state, i, pci_dev);
         if (r < 0) {
             return r;
         }
@@ -1311,6 +1307,7 @@ static int assigned_device_pci_cap_init(PCIDevice *pci_dev, Error **errp)
         bar_nr = msix_table_entry & PCI_MSIX_FLAGS_BIRMASK;
         msix_table_entry &= ~PCI_MSIX_FLAGS_BIRMASK;
         dev->msix_table_addr = pci_region[bar_nr].base_addr + msix_table_entry;
+        dev->msix_table_size = msix_max * sizeof(MSIXTableEntry);
         dev->msix_max = msix_max;
     }
 
@@ -1482,7 +1479,7 @@ static int assigned_device_pci_cap_init(PCIDevice *pci_dev, Error **errp)
          * error bits, leave the rest. */
         status = pci_get_long(pci_dev->config + pos + PCI_X_STATUS);
         status &= ~(PCI_X_STATUS_BUS | PCI_X_STATUS_DEVFN);
-        status |= pci_requester_id(pci_dev);
+        status |= pci_get_bdf(pci_dev);
         status &= ~(PCI_X_STATUS_SPL_DISC | PCI_X_STATUS_UNX_SPL |
                     PCI_X_STATUS_SPL_ERR);
         pci_set_long(pci_dev->config + pos + PCI_X_STATUS, status);
@@ -1606,6 +1603,7 @@ static void assigned_dev_msix_mmio_write(void *opaque, hwaddr addr,
                 if (ret) {
                     error_report("Error updating irq routing entry (%d)", ret);
                 }
+                kvm_irqchip_commit_routes(kvm_state);
             }
         }
     }
@@ -1634,7 +1632,7 @@ static void assigned_dev_msix_reset(AssignedDevice *dev)
         return;
     }
 
-    memset(dev->msix_table, 0, MSIX_PAGE_SIZE);
+    memset(dev->msix_table, 0, dev->msix_table_size);
 
     for (i = 0, entry = dev->msix_table; i < dev->msix_max; i++, entry++) {
         entry->ctrl = cpu_to_le32(0x1); /* Masked */
@@ -1643,8 +1641,8 @@ static void assigned_dev_msix_reset(AssignedDevice *dev)
 
 static void assigned_dev_register_msix_mmio(AssignedDevice *dev, Error **errp)
 {
-    dev->msix_table = mmap(NULL, MSIX_PAGE_SIZE, PROT_READ|PROT_WRITE,
-                           MAP_ANONYMOUS|MAP_PRIVATE, 0, 0);
+    dev->msix_table = mmap(NULL, dev->msix_table_size, PROT_READ | PROT_WRITE,
+                           MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
     if (dev->msix_table == MAP_FAILED) {
         error_setg_errno(errp, errno, "failed to allocate msix_table");
         dev->msix_table = NULL;
@@ -1654,7 +1652,7 @@ static void assigned_dev_register_msix_mmio(AssignedDevice *dev, Error **errp)
     assigned_dev_msix_reset(dev);
 
     memory_region_init_io(&dev->mmio, OBJECT(dev), &assigned_dev_msix_mmio_ops,
-                          dev, "assigned-dev-msix", MSIX_PAGE_SIZE);
+                          dev, "assigned-dev-msix", dev->msix_table_size);
 }
 
 static void assigned_dev_unregister_msix_mmio(AssignedDevice *dev)
@@ -1663,7 +1661,7 @@ static void assigned_dev_unregister_msix_mmio(AssignedDevice *dev)
         return;
     }
 
-    if (munmap(dev->msix_table, MSIX_PAGE_SIZE) == -1) {
+    if (munmap(dev->msix_table, dev->msix_table_size) == -1) {
         error_report("error unmapping msix_table! %s", strerror(errno));
     }
     dev->msix_table = NULL;
@@ -1892,8 +1890,4 @@ static void assigned_dev_load_option_rom(AssignedDevice *dev)
     pci_assign_dev_load_option_rom(&dev->dev, OBJECT(dev), &size,
                                    dev->host.domain, dev->host.bus,
                                    dev->host.slot, dev->host.function);
-
-    if (!size) {
-        error_report("pci-assign: Invalid ROM.");
-    }
 }
