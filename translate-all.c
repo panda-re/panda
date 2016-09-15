@@ -893,14 +893,15 @@ void tb_flush(CPUState *cpu)
         > tcg_ctx.code_gen_buffer_size) {
         cpu_abort(cpu, "Internal error: code buffer overflow\n");
     }
-    tcg_ctx.tb_ctx.nb_tbs = 0;
 
 #if defined(CONFIG_LLVM)
     int i2;
-    for(i2 = 0; i2 <tcg_ctx.tb_ctx. nb_tbs; ++i2){
+    for(i2 = 0; i2 < tcg_ctx.tb_ctx.nb_tbs; ++i2){
         tcg_llvm_tb_free(&tcg_ctx.tb_ctx.tbs[i2]);
     }
 #endif
+
+    tcg_ctx.tb_ctx.nb_tbs = 0;
 
     CPU_FOREACH(cpu) {
         memset(cpu->tb_jmp_cache, 0, sizeof(cpu->tb_jmp_cache));
