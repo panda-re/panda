@@ -214,8 +214,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
-#warning Need to dynamically verify that last_tb is actually next_tb.
-    panda_callbacks_after_block_exec(cpu, itb, ((TranslationBlock*)(((uintptr_t)last_tb) & ~3)));
+    panda_callbacks_after_block_exec(cpu, itb);
 
     tb_exit = ret & TB_EXIT_MASK;
     trace_exec_tb_exit(last_tb, tb_exit);

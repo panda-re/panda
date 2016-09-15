@@ -1218,7 +1218,6 @@ block, with the option to invalidate the TB
 
 * `CPUState *env`: the current CPU state
 * `TranslationBlock *tb`: the TB we just executed
-* `TranslationBlock *next_tb`: the TB we will execute next (may be `NULL`)
 
 **Return value**:
 
@@ -1226,7 +1225,7 @@ unused
 
 **Signature:**:
  
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+    int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
 
 ---
 
