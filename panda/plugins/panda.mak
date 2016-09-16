@@ -25,7 +25,8 @@ QEMU_CFLAGS+=$(GLIB_CFLAGS)
 QEMU_CXXFLAGS+=$(GLIB_CFLAGS)
 
 QEMU_INCLUDES+=-I$(BUILD_DIR)/$(TARGET_DIR) -I$(BUILD_DIR)
-QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(TARGET_PATH)
+QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(TARGET_PATH)
+QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR)
 
 # These should get generated automatically and include dependency information.
 -include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)
