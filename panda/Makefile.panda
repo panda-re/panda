@@ -60,10 +60,10 @@ GENERATED_HEADERS += $(PANDA_API_EXT)
 # This keeps make from thinking it's an "intermediate" file
 .PRECIOUS: $(PANDA_API_EXT)
 
-$(PANDA_API_EXT): $(PANDA_API_INT_REL)
+%_ext.h: %_int.h
 	$(call quiet-command,mkdir -p $(dir $@),)
 	$(call quiet-command,\
-		$(SRC_PATH)/panda/scripts/apigen.py $< $@,\
+		$(SRC_PATH)/panda/scripts/apigen.py $< $@ $(QEMU_INCLUDES),\
 		"  API   $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
 obj-y += panda/src/callbacks.o
