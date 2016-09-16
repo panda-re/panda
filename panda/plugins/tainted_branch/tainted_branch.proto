@@ -1,0 +1,17 @@
+
+
+message TaintedBranch {
+    required CallStack call_stack = 1;
+    repeated TaintQuery taint_query = 2;
+}
+    
+message TaintedBranchSummary {
+    required uint64 asid = 1;
+    required uint64 pc = 2;
+}
+
+
+optional TaintedBranch tainted_branch = 36;
+
+optional TaintedBranchSummary tainted_branch_summary = 72;
+    

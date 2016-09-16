@@ -5,6 +5,8 @@ include config-devices.mak
 include config-target.mak
 include $(SRC_PATH)/rules.mak
 
+$(call set-vpath, $(SRC_PATH):$(BUILD_DIR))
+
 PLUGIN_TARGET_DIR=panda/plugins
 PLUGIN_OBJ_DIR=panda/plugins/$(PLUGIN_NAME)
 
@@ -17,25 +19,20 @@ QEMU_CFLAGS+=-DNEED_CPU_H -fPIC
 QEMU_CXXFLAGS+=-DNEED_CPU_H -fPIC
 
 QEMU_CXXFLAGS+=-fpermissive -std=c++11
-ifdef TARGET_ARM
-QEMU_CXXFLAGS+=-Wno-error
-endif
 
 # These are all includes. I think.
 QEMU_CFLAGS+=$(GLIB_CFLAGS)
 QEMU_CXXFLAGS+=$(GLIB_CFLAGS)
 
 QEMU_INCLUDES+=-I$(BUILD_DIR)/$(TARGET_DIR) -I$(BUILD_DIR)
-QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I. -I$(TARGET_PATH)
-QEMU_INCLUDES+=-I$(SRC_PATH)/panda/include
+QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(TARGET_PATH)
 
-$(PLUGIN_OBJ_DIR)/%.o: $(PLUGIN_SRC_DIR)/%.c
-	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_DGFLAGS) $(CFLAGS) $($@-cflags) -c -o $@ $<,"  CC    $(TARGET_DIR)$@")
+# These should get generated automatically and include dependency information.
+-include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)
 
-$(PLUGIN_OBJ_DIR)/%.o: $(PLUGIN_SRC_DIR)/%.cc
-	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $($@-cflags) -c -o $@ $<,"  CXX   $(TARGET_DIR)$@")
-
-$(PLUGIN_OBJ_DIR)/%.o: $(PLUGIN_SRC_DIR)/%.cpp
-	$(call quiet-command,$(CXX) $(QEMU_INCLUDES) $(QEMU_CXXFLAGS) $(QEMU_DGFLAGS) $($@-cflags) -c -o $@ $<,"  CXX   $(TARGET_DIR)$@")
+# You can override this recipe by using the full name of the plugin in a
+# plugin Makefile. (e.g. $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so).
+$(PLUGIN_TARGET_DIR)/panda_%.so:
+	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUG  $(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so
