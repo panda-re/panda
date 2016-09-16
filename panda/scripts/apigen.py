@@ -145,12 +145,12 @@ def resolve_type(modifiers, name):
     else:
         return rtype, name
 
-def generate_api(interface_file, ext_file):
+def generate_api(interface_file, ext_file, extra_gcc_args):
     functions = []
     includes = []
 
-    # use preprocessor 
-    pf = subprocess.check_output( ("gcc -E " + interface_file).split())
+    # use preprocessor
+    pf = subprocess.check_output(['gcc', '-E', interface_file] + extra_gcc_args)
 
     # use pycparser to get arglists
     arglist = get_arglists(pf)
@@ -174,7 +174,7 @@ def generate_api(interface_file, ext_file):
         extAPI.write(code)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print >>sys.stderr, "usage: %s <interface_file.h> <external_api_file.h>" % sys.argv[0]
+    if len(sys.argv) < 3:
+        print >>sys.stderr, "usage: %s <interface_file.h> <external_api_file.h> extra gcc args" % sys.argv[0]
         sys.exit(1)
-    generate_api(sys.argv[1], sys.argv[2])
+    generate_api(sys.argv[1], sys.argv[2], sys.argv[3:])
