@@ -67,26 +67,23 @@ pproto = """
 syntax = "proto2";
 package panda;
 message LogEntry {
-required uint64 pc = 1;    
+required uint64 pc = 1;
 required uint64 instr = 2;
 """
 
 
 messages = []
 rests = []
-for plugin in open(sys.argv[2]): # "panda/plugins/config.panda"):
+for plugin in open(sys.argv[2]):
     p = plugin.strip()
-    proto_part_file = os.path.join(os.path.basename(sys.argv[2]), '%s/%s.proto') % (p, p)
+    proto_part_file = os.path.join(os.path.dirname(sys.argv[2]), '%s/%s.proto') % (p, p)
     if os.path.isfile(proto_part_file):
-        print proto_part_file
         proto_part = get_proto_text(proto_part_file)
         (m, r) = parse_proto_part(proto_part)
         messages.extend(m)
         rests.extend(r)
 
-
 f = open(pproto_filename, "w")
-
 
 f.write ("""
 syntax = "proto2";
@@ -97,12 +94,11 @@ package panda;
 for message in messages:
     f.write( message + "\n" )
 
-
 f.write("""
 
 message LogEntry {
 
-required uint64 pc = 1;    
+required uint64 pc = 1;
 required uint64 instr = 2;
 
 """)
