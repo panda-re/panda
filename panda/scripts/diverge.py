@@ -468,7 +468,7 @@ gdb_run_both({
     replay: "run {}".format(replay_event_low),
 }, timeout=None)
 disable_all()
-sync(0, max_converged_instr, record)
+sync(0, instr_count_max, record)
 
 disable_all()
 if len(diverged_ranges) > 4:
