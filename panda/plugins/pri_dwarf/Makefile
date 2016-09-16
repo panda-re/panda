@@ -4,8 +4,8 @@
 include $(SRC_PATH)/panda/plugins/panda.mak
 
 # If you need custom CFLAGS or LIBS, set them up here
-CFLAGS+=-lm
-# LIBS+=
+# CFLAGS+=
+LIBS+=-ldwarf -lelf
 
 # The main rule for your plugin. List all object-file dependencies.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
