@@ -1,22 +1,17 @@
 #define __STDC_FORMAT_MACROS
 
-#include "panda/panda_addr.h"
+#include "panda/rr/rr_log.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
 
 extern "C" {
 
+#include "panda/addr.h"
 
-#include "rr_log.h"
-#include "qemu-common.h"
-#include "cpu.h"
-#include "panda_plugin.h"
-#include "pandalog.h"
-#include "panda_common.h"
-
-#include "../pri/pri_types.h"
-#include "../pri/pri_ext.h"
-#include "../pri/pri.h"
-//#include "../dwarfp/dwarfp_ext.h"
-#include "panda_plugin_plugin.h"
+#include "pri/pri_types.h"
+#include "pri/pri_ext.h"
+#include "pri/pri.h"
 
     bool init_plugin(void *);
     void uninit_plugin(void *);
@@ -24,10 +19,10 @@ extern "C" {
     int get_loglevel() ;
     void set_loglevel(int new_loglevel);
 
-    //void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
+    //void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno);
 }
 struct args {
-    CPUState *env;
+    CPUState *cpu;
     const char *src_filename;
     uint64_t src_linenum;
 };
@@ -37,7 +32,8 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     //const char *var_ty = (const char *) var_ty_void;
     // restore args
     struct args *args = (struct args *) in_args;
-    CPUState *pfun_env = args->env;
+    CPUState *pfun_cpu = args->cpu;
+    CPUArchState *pfun_env = (CPUArchState*)pfun_cpu->env_ptr;
     //const char *src_filename = args->src_filename;
     //uint64_t src_linenum = args->src_linenum;
 
@@ -49,7 +45,7 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
             break;
         case LocMem:
             printf("VAR MEM: %s @ 0x%x", var_nm, loc);
-            panda_virtual_memory_rw(pfun_env, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
+            panda_virtual_memory_rw(pfun_cpu, loc, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
             printf("    => 0x%x\n", guest_dword);
             break;
         case LocConst:
@@ -60,22 +56,22 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
             break;
     }
 }
-void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    //struct args args = {env, file_Name, lno};
+void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    //struct args args = {cpu, file_Name, lno};
     //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    //pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
+    //pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *) &args);
 }
-void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    struct args args = {env, file_Name, lno};
+void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    struct args args = {cpu, file_Name, lno};
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
-    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *) &args);
 }
 
 
-int virt_mem_helper(CPUState *env, target_ulong pc, target_ulong addr, bool isRead) {
+int virt_mem_helper(CPUState *cpu, target_ulong pc, target_ulong addr, bool isRead) {
     SrcInfo info;
     // if NOT in source code, just return
-    int rc = pri_get_pc_source_info(env, pc, &info);
+    int rc = pri_get_pc_source_info(cpu, pc, &info);
     // We are not in dwarf info
     if (rc == -1){
         return 0;
@@ -85,9 +81,9 @@ int virt_mem_helper(CPUState *env, target_ulong pc, target_ulong addr, bool isRe
         return 0;
     }
     printf("==%s %ld==\n", info.filename, info.line_number);
-    struct args args = {env, NULL, 0};
-    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *) &args);
-    char *symbol_name = pri_get_vma_symbol(env, pc, addr);
+    struct args args = {cpu, NULL, 0};
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *) &args);
+    char *symbol_name = pri_get_vma_symbol(cpu, pc, addr);
     if (!symbol_name){
         // symbol was not found for particular addr
         if (isRead) {
@@ -109,13 +105,13 @@ int virt_mem_helper(CPUState *env, target_ulong pc, target_ulong addr, bool isRe
     return 0;
 }
 
-int virt_mem_read(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return virt_mem_helper(env, pc, addr, true);
+int virt_mem_read(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return virt_mem_helper(cpu, pc, addr, true);
 
 }
 
-int virt_mem_write(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
-    return virt_mem_helper(env, pc, addr, false);
+int virt_mem_write(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf) {
+    return virt_mem_helper(cpu, pc, addr, false);
 }
 #endif
 

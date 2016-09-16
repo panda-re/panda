@@ -5,21 +5,16 @@
 
 #include <algorithm>
 
+#include "panda/rr/rr_log.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
+
 extern "C" {
 
-#include "panda/panda_addr.h"
-#include "rr_log.h"
-#include "qemu-common.h"
-#include "cpu.h"
-#include "panda_plugin.h"
-#include "panda_plugin_plugin.h"
-#include "pandalog.h"
-#include "panda_common.h"
-
-#include "../pri/pri_types.h"
-#include "../pri/pri_ext.h"
-#include "../pri/pri.h"
-
+#include "pri/pri_types.h"
+#include "pri/pri_ext.h"
+#include "pri/pri.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -43,7 +38,7 @@ void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const
         pandalog_write_entry(&ple);
     }
     else {
-        printf ("pri_trace: instr=%" PRId64" pc=0x%" PRIx64" file=[%s] func=[%s] line=%" PRId64 "\n",
+        printf ("pri_trace: instr=%" PRIu64" pc=0x" TARGET_FMT_lx " file=[%s] func=[%s] line=%llu\n",
                 rr_get_guest_instr_count(), pc, file_Name, funct_name, lno);
     }
 }

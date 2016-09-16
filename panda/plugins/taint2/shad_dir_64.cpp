@@ -26,8 +26,10 @@ PANDAENDCOMMENT */
 
  */
 
-#include <stdint.h>
-#include "my_bool.h"
+#include <cstdint>
+#include <cstdlib>
+#include <cassert>
+
 #include "shad_dir_64.h"
 
 typedef const std::set<uint32_t> *LabelSetP;
@@ -371,18 +373,18 @@ void shad_dir_remove_64(SdDir64 *shad_dir, uint64_t addr) {
 }
 
 
-// Return TRUE if this addr has a labelset (possibly empty), FALSE otherwise
+// Return true if this addr has a labelset (possibly empty), false otherwise
 uint32_t shad_dir_mem_64(SdDir64 *shad_dir, uint64_t addr) {
   // 64-bit addrs
   SD_GET_LABELSET_64(
     addr,
-    return FALSE,
-    return FALSE,
-    return FALSE,
-    return FALSE,
-    return FALSE
+    return false,
+    return false,
+    return false,
+    return false,
+    return false
   )
-  return TRUE;
+  return true;
 }
 
 

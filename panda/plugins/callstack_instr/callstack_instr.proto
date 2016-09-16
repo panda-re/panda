@@ -4,8 +4,3 @@ message CallStack {
 }
 
 optional CallStack call_stack = 10;
-
-
-
-
-        

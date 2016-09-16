@@ -22,11 +22,11 @@ PANDAENDCOMMENT */
 #include "defines.h"
 #include "label_set.h"
 
+#include "panda/cheaders.h"
+
 class FastShad;
 
 extern "C" {
-#include "cpu.h"
-#include "qemu-log.h"
 
 extern bool track_taint_state;
 

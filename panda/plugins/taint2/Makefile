@@ -10,18 +10,15 @@ DBGFLAGS+= #-DTAINTDEBUG
 QEMU_CFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= $(DBGFLAGS)
 
-QEMU_CXXFLAGS+= -Wno-type-limits
+QEMU_CXXFLAGS+= -Wno-type-limits -Wno-cast-qual
 
 TAINT_OP_CFLAGS = -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
-TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits $(CLANG_CXXFLAGS)
+TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++
+TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS)
 
-# This will make things easier.
-$(PLUGIN_OBJ_DIR)/%.o: \
-	$(wildcard $(PLUGIN_SRC_DIR)/*.h) \
-	$(wildcard $(SRC_PATH)/panda/include/panda/*.h)
+TAINT_OP_FILTER = -g -Wold-style-declaration -std=c11 -fpermissive
+TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp
 
-# The main rule for your plugin. Please stick with the panda_ naming
-# convention.
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/shad_dir_32.o \
     $(PLUGIN_OBJ_DIR)/shad_dir_64.o \
@@ -32,15 +29,15 @@ $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/taint_processor.o \
     $(PLUGIN_OBJ_DIR)/taint2.o
 
-$(PLUGIN_OBJ_DIR)/llvm_%.bc: %.cpp $(wildcard *.h)
+%_llvm.bc: %.cpp $(wildcard *.h)
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,\
-		$(filter-out -g -Wold-style-declaration -std=c11,\
+		$(filter-out $(TAINT_OP_FILTER),\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) \
 			$(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
-			-emit-llvm -c -o $@ $<),"  LLVM    $@")
+			-emit-llvm -c -o $@ $<),"  LLVM  $(TARGET_DIR)$@")
 
-$(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/llvm_taint_ops.bc
-	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"  LLVM_LINK $@")
+$(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
+	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"  LLINK $(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc

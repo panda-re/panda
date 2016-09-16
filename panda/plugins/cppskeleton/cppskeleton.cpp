@@ -20,7 +20,7 @@ extern "C" {
 #include "config.h"
 #include "qemu-common.h"
 
-#include "panda_plugin.h"
+#include "panda/plugin.h"
 
 }
 

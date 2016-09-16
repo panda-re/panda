@@ -19,17 +19,13 @@ PANDAENDCOMMENT */
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "config.h"
-#include "qemu-common.h"
-#include "cpu.h"
+#include "panda/rr/rr_log.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
 
-#include "rr_log.h"
-#include "panda_plugin.h"
-#include "pandalog.h"
-#include "panda_common.h"
 #include "syscalls2/gen_syscalls_ext_typedefs.h"
 #include "syscalls2/syscalls_common.h"
-#include "panda_plugin_plugin.h"
 
 #include "wintrospection.h"
 #include "wintrospection_int_fns.h"
@@ -49,32 +45,33 @@ void uninit_plugin(void *);
 #define EPROC_PID_OFF      0x0b4
 #define EPROC_NAME_OFF     0x16c
 
-uint32_t get_pid(CPUState *env, uint32_t eproc) {
+uint32_t get_pid(CPUState *cpu, uint32_t eproc) {
     uint32_t pid;
-    panda_virtual_memory_rw(env, eproc+EPROC_PID_OFF, (uint8_t *)&pid, 4, false);
+    panda_virtual_memory_rw(cpu, eproc+EPROC_PID_OFF, (uint8_t *)&pid, 4, false);
     return pid;
 }
 
-void get_procname(CPUState *env, uint32_t eproc, char *name) {
-    panda_virtual_memory_rw(env, eproc+EPROC_NAME_OFF, (uint8_t *)name, 16, false);
+void get_procname(CPUState *cpu, uint32_t eproc, char *name) {
+    panda_virtual_memory_rw(cpu, eproc+EPROC_NAME_OFF, (uint8_t *)name, 16, false);
     name[16] = '\0';
 }
 
-uint32_t get_current_proc(CPUState *env) {
+uint32_t get_current_proc(CPUState *cpu) {
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     // Read the kernel-mode FS segment base
     uint32_t e1, e2;
     uint32_t fs_base, thread, proc;
 
     // Read out the two 32-bit ints that make up a segment descriptor
-    panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS, (uint8_t *)&e1, 4, false);
-    panda_virtual_memory_rw(env, env->gdt.base + KMODE_FS + 4, (uint8_t *)&e2, 4, false);
+    panda_virtual_memory_rw(cpu, env->gdt.base + KMODE_FS, (uint8_t *)&e1, 4, false);
+    panda_virtual_memory_rw(cpu, env->gdt.base + KMODE_FS + 4, (uint8_t *)&e2, 4, false);
 
     // Turn wacky segment into base
     fs_base = (e1 >> 16) | ((e2 & 0xff) << 16) | (e2 & 0xff000000);
 
     // Read KPCR->CurrentThread->Process
-    panda_virtual_memory_rw(env, fs_base+KPCR_CURTHREAD_OFF, (uint8_t *)&thread, 4, false);
-    panda_virtual_memory_rw(env, thread+KTHREAD_KPROC_OFF, (uint8_t *)&proc, 4, false);
+    panda_virtual_memory_rw(cpu, fs_base+KPCR_CURTHREAD_OFF, (uint8_t *)&thread, 4, false);
+    panda_virtual_memory_rw(cpu, thread+KTHREAD_KPROC_OFF, (uint8_t *)&proc, 4, false);
 
     return proc;
 }
@@ -146,16 +143,16 @@ typedef enum {
 } OBJ_TYPES;
 
 
-static uint32_t handle_table_code(CPUState *env, uint32_t table_vaddr) {
+static uint32_t handle_table_code(CPUState *cpu, uint32_t table_vaddr) {
     uint32_t tableCode;
     // HANDLE_TABLE.TableCode is offest 0
-    panda_virtual_memory_rw(env, table_vaddr, (uint8_t *)&tableCode, 4, false);
+    panda_virtual_memory_rw(cpu, table_vaddr, (uint8_t *)&tableCode, 4, false);
     return (tableCode & TABLE_MASK);
 }
 
 
-static uint32_t handle_table_L1_addr(CPUState *env, uint32_t table_vaddr, uint32_t entry_num) {
-    return handle_table_code(env, table_vaddr) + ADDR_SIZE * entry_num;
+static uint32_t handle_table_L1_addr(CPUState *cpu, uint32_t table_vaddr, uint32_t entry_num) {
+    return handle_table_code(cpu, table_vaddr) + ADDR_SIZE * entry_num;
 }
 
 
@@ -168,8 +165,8 @@ static uint32_t handle_table_L2_addr(uint32_t L1_table, uint32_t L2) {
 }
 
 
-static uint32_t handle_table_L1_entry(CPUState *env, uint32_t table_vaddr, uint32_t entry_num) {
-    return (handle_table_code(env, table_vaddr) +    
+static uint32_t handle_table_L1_entry(CPUState *cpu, uint32_t table_vaddr, uint32_t entry_num) {
+    return (handle_table_code(cpu, table_vaddr) +    
             HANDLE_TABLE_ENTRY_SIZE * entry_num);
 }
 
@@ -186,10 +183,10 @@ static uint32_t handle_table_L3_entry(uint32_t table_vaddr, uint32_t L2_table, u
 }
 
 // i.e. return pointer to the object represented by this handle
-uint32_t get_handle_table_entry(CPUState *env, uint32_t pHandleTable, uint32_t handle) {
+uint32_t get_handle_table_entry(CPUState *cpu, uint32_t pHandleTable, uint32_t handle) {
     uint32_t tableCode, tableLevels;
     // get tablecode
-    panda_virtual_memory_rw(env, pHandleTable, (uint8_t *)&tableCode, 4, false);
+    panda_virtual_memory_rw(cpu, pHandleTable, (uint8_t *)&tableCode, 4, false);
     //printf ("tableCode = 0x%x\n", tableCode);
     // extract levels
     tableLevels = tableCode & LEVEL_MASK;
@@ -198,33 +195,33 @@ uint32_t get_handle_table_entry(CPUState *env, uint32_t pHandleTable, uint32_t h
     if (tableLevels > 2) {
         return 0;
     }
-    uint32 pEntry=0;
+    uint32_t pEntry=0;
     if (tableLevels == 0) {
         uint32_t index = (handle & HANDLE_MASK1) >> HANDLE_SHIFT1;
-        pEntry = handle_table_L1_entry(env, pHandleTable, index);
+        pEntry = handle_table_L1_entry(cpu, pHandleTable, index);
     }
     if (tableLevels == 1) {
         uint32_t L1_index = (handle & HANDLE_MASK2) >> HANDLE_SHIFT2;
-        uint32_t L1_table_off = handle_table_L1_addr(env, pHandleTable, L1_index);
+        uint32_t L1_table_off = handle_table_L1_addr(cpu, pHandleTable, L1_index);
         uint32_t L1_table;
-        panda_virtual_memory_rw(env, L1_table_off, (uint8_t *) &L1_table, 4, false);
+        panda_virtual_memory_rw(cpu, L1_table_off, (uint8_t *) &L1_table, 4, false);
         uint32_t index = (handle & HANDLE_MASK1) >> HANDLE_SHIFT1;
         pEntry = handle_table_L2_entry(pHandleTable, L1_table, index);
     }
     if (tableLevels == 2) {
         uint32_t L1_index = (handle & HANDLE_MASK3) >> HANDLE_SHIFT3;
-        uint32_t L1_table_off = handle_table_L1_addr(env, pHandleTable, L1_index);
+        uint32_t L1_table_off = handle_table_L1_addr(cpu, pHandleTable, L1_index);
         uint32_t L1_table;
-        panda_virtual_memory_rw(env, L1_table_off, (uint8_t *) &L1_table, 4, false);
+        panda_virtual_memory_rw(cpu, L1_table_off, (uint8_t *) &L1_table, 4, false);
         uint32_t L2_index = (handle & HANDLE_MASK2) >> HANDLE_SHIFT2;
         uint32_t L2_table_off = handle_table_L2_addr(L1_table, L2_index);
         uint32_t L2_table;
-        panda_virtual_memory_rw(env, L2_table_off, (uint8_t *) &L2_table, 4, false);
+        panda_virtual_memory_rw(cpu, L2_table_off, (uint8_t *) &L2_table, 4, false);
         uint32_t index = (handle & HANDLE_MASK1) >> HANDLE_SHIFT1;
         pEntry = handle_table_L3_entry(pHandleTable, L2_table, index);
     }
     uint32_t pObjectHeader;
-    if ((panda_virtual_memory_rw(env, pEntry, (uint8_t *) &pObjectHeader, 4, false)) == -1) {
+    if ((panda_virtual_memory_rw(cpu, pEntry, (uint8_t *) &pObjectHeader, 4, false)) == -1) {
         return 0;
     }
     //  printf ("processHandle_to_pid pObjectHeader = 0x%x\n", pObjectHeader);
@@ -241,51 +238,51 @@ static void unicode_to_ascii(char *uni, char *ascii, int len) {
     }
 }
 
-char *read_unicode_string(CPUState *env, uint32_t pUstr) {
+char *read_unicode_string(CPUState *cpu, uint32_t pUstr) {
     uint16_t fileNameLen;
     uint32_t fileNamePtr;
     char *fileName = (char *)calloc(1, 260);
     char fileNameUnicode[260*2] = {};
 
-    panda_virtual_memory_rw(env, pUstr,
+    panda_virtual_memory_rw(cpu, pUstr,
             (uint8_t *) &fileNameLen, 2, false);
-    panda_virtual_memory_rw(env, pUstr+4,
+    panda_virtual_memory_rw(cpu, pUstr+4,
             (uint8_t *) &fileNamePtr, 4, false);
 
     if (fileNameLen > 259*2) {
         fileNameLen = 259*2;
     }
-    panda_virtual_memory_rw(env, fileNamePtr, (uint8_t *)fileNameUnicode, fileNameLen, false);
+    panda_virtual_memory_rw(cpu, fileNamePtr, (uint8_t *)fileNameUnicode, fileNameLen, false);
     unicode_to_ascii(fileNameUnicode, fileName, fileNameLen/2);
 
     return fileName;
 }
 
 
-char * get_objname(CPUState *env, uint32_t obj) {
+char * get_objname(CPUState *cpu, uint32_t obj) {
   uint32_t pObjectName;
 
-  panda_virtual_memory_rw(env, obj+OBJNAME_OFF,
+  panda_virtual_memory_rw(cpu, obj+OBJNAME_OFF,
               (uint8_t *) &pObjectName, 4, false);
-  return read_unicode_string(env, pObjectName);
+  return read_unicode_string(cpu, pObjectName);
 }
 
 #define FILE_OBJECT_NAME_OFF 0x30
-char *get_file_obj_name(CPUState *env, uint32_t fobj) {
-    return read_unicode_string(env, fobj+FILE_OBJECT_NAME_OFF);
+char *get_file_obj_name(CPUState *cpu, uint32_t fobj) {
+    return read_unicode_string(cpu, fobj+FILE_OBJECT_NAME_OFF);
 }
 
 
-HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t handle) {
+HandleObject *get_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle) {
     uint32_t pObjectTable;
-    if (-1 == panda_virtual_memory_rw(env, eproc+EPROC_OBJTABLE_OFF, (uint8_t *)&pObjectTable, 4, false)) {
+    if (-1 == panda_virtual_memory_rw(cpu, eproc+EPROC_OBJTABLE_OFF, (uint8_t *)&pObjectTable, 4, false)) {
         return NULL;
     }
-    uint32_t pObjHeader = get_handle_table_entry(env, pObjectTable, handle);
+    uint32_t pObjHeader = get_handle_table_entry(cpu, pObjectTable, handle);
     if (pObjHeader == 0) return NULL;
     uint32_t pObj = pObjHeader + 0x18;
     uint8_t objType = 0;
-    if (-1 == panda_virtual_memory_rw(env, pObjHeader+0xc, &objType, 1, false)) {
+    if (-1 == panda_virtual_memory_rw(cpu, pObjHeader+0xc, &objType, 1, false)) {
         return NULL;
     }
     HandleObject *ho = (HandleObject *) malloc(sizeof(HandleObject));
@@ -295,17 +292,17 @@ HandleObject *get_handle_object(CPUState *env, uint32_t eproc, uint32_t handle) 
 }
 
 /*
-HandleObject *get_handle_object_current(CPUState *env, uint32_t HandleVariable) {
-  uint32_t eproc = get_current_proc(env);
+HandleObject *get_handle_object_current(CPUState *cpu, uint32_t HandleVariable) {
+  uint32_t eproc = get_current_proc(cpu);
   uint32_t handle;
-  if (-1 == panda_virtual_memory_rw(env, HandleVariable, (uint8_t *)&handle, 4, false)) {
+  if (-1 == panda_virtual_memory_rw(cpu, HandleVariable, (uint8_t *)&handle, 4, false)) {
     return NULL;
   }
-  return get_handle_object(env, eproc, handle);
+  return get_handle_object(cpu, eproc, handle);
 }
 */
 
-char *get_handle_object_name(CPUState *env, HandleObject *ho) {
+char *get_handle_object_name(CPUState *cpu, HandleObject *ho) {
     if (ho == NULL){
         char *procName = (char *) calloc(8, 1);
         sprintf(procName, "unknown");
@@ -313,7 +310,7 @@ char *get_handle_object_name(CPUState *env, HandleObject *ho) {
     }
     switch (ho->objType) {
     case OBJ_TYPE_File:
-        return get_file_obj_name(env, ho->pObj);
+        return get_file_obj_name(cpu, ho->pObj);
     case OBJ_TYPE_Key: {
         char *fileName = (char *) calloc(100, 1);
         sprintf(fileName, "_CM_KEY_BODY@%08x", ho->pObj);
@@ -323,8 +320,8 @@ char *get_handle_object_name(CPUState *env, HandleObject *ho) {
     case OBJ_TYPE_Process: {
         char *procName = (char *) calloc(17, 1);
         //char procExeName[16] = {};
-        //uint32_t procPid = get_pid(env, ho->pObj);
-        get_procname(env, ho->pObj, procName);
+        //uint32_t procPid = get_pid(cpu, ho->pObj);
+        get_procname(cpu, ho->pObj, procName);
         //sprintf(procName, "[%d] %s", procPid, procExeName);
         return procName;
         break;
@@ -338,9 +335,9 @@ char *get_handle_object_name(CPUState *env, HandleObject *ho) {
 }
 
 
-char * get_handle_name(CPUState *env, uint32_t eproc, uint32_t handle) {
-    HandleObject *ho = get_handle_object(env, eproc, handle);
-    return get_handle_object_name(env, ho);
+char * get_handle_name(CPUState *cpu, uint32_t eproc, uint32_t handle) {
+    HandleObject *ho = get_handle_object(cpu, eproc, handle);
+    return get_handle_object_name(cpu, ho);
 }
 
 #endif

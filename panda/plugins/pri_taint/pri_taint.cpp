@@ -1,33 +1,31 @@
 #define __STDC_FORMAT_MACROS
 
-// taint
-#include "../taint2/label_set.h"
-#include "../taint2/taint2.h"
-#include "../common/prog_point.h"
-
 #include <algorithm>
+
+#include "panda/rr/rr_log.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
+
+// taint
+#include "taint2/label_set.h"
+#include "taint2/taint2.h"
+
+// needed for callstack logging
+#include "callstack_instr/prog_point.h"
 
 extern "C" {
 
-#include "panda/panda_addr.h"
-#include "rr_log.h"
-#include "qemu-common.h"
-#include "cpu.h"
-#include "panda_plugin.h"
-#include "panda_plugin_plugin.h"
-#include "pandalog.h"
-#include "panda_common.h"
+#include "panda/addr.h"
 
-#include "../pri/pri_types.h"
-#include "../pri/pri_ext.h"
-#include "../pri/pri.h"
+#include "pri/pri_types.h"
+#include "pri/pri_ext.h"
+#include "pri/pri.h"
 
+#include "callstack_instr/callstack_instr_ext.h"
 
 // taint
-#include "../taint2/taint2_ext.h"
-
-// needed for callstack logging
-#include "../callstack_instr/callstack_instr_ext.h"
+#include "taint2/taint2_ext.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -61,8 +59,8 @@ Addr make_maddr(uint64_t a) {
 #define LAVA_TAINT_QUERY_MAX_LEN 32
 // hypercall-initiated taint query of some src-level extent
 void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf_len) {
-    extern CPUState *cpu_single_env;
-    CPUState *env = cpu_single_env;
+    extern CPUState *cpu_single_cpu;
+    CPUState *cpu = cpu_single_cpu;
 
     //if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)){
     if  (pandalog && taint2_enabled() && (taint2_num_labels_applied() > 0)){
@@ -76,10 +74,10 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
         //        for (uint32_t offset=0; offset<phs.len; offset++) {
             uint32_t va = buf + offset;
             //uint32_t va = phs.buf + offset;
-            uint32_t pa =  panda_virt_to_phys(env, va);
+            uint32_t pa =  panda_virt_to_phys(cpu, va);
             if (is_strnlen) {
                 uint8_t c;
-                panda_virtual_memory_rw(env, pa, &c, 1, false);
+                panda_virtual_memory_rw(cpu, pa, &c, 1, false);
                 // null terminator
                 if (c==0) break;
             }
@@ -116,8 +114,8 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
             for (uint32_t i=0; i<n; i++) {
                 data[i] = 0;
                 uint8_t c;
-                panda_virtual_memory_rw(env, buf+i, &c, 1, false);
-                //panda_virtual_memory_rw(env, phs.buf+i, &c, 1, false);
+                panda_virtual_memory_rw(cpu, buf+i, &c, 1, false);
+                //panda_virtual_memory_rw(cpu, phs.buf+i, &c, 1, false);
                 data[i] = c;
             }
             tqh->n_data = n;
@@ -133,7 +131,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
             for (uint32_t offset=0; offset<len; offset++) {
                 uint32_t va = buf + offset;
                 //uint32_t va = phs.buf + offset;
-                uint32_t pa =  panda_virt_to_phys(env, va);
+                uint32_t pa =  panda_virt_to_phys(cpu, va);
                 if ((int) pa != -1) {
                     Addr a = make_maddr(pa);
                     if (taint2_query(a)) {
@@ -160,7 +158,7 @@ void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf
     }
 }
 struct args {
-    CPUState *env;
+    CPUState *cpu;
     const char *src_filename;
     uint64_t src_linenum;
 };
@@ -171,7 +169,8 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     // restore args
     const char *var_ty = (const char *) var_ty_void;
     struct args *args = (struct args *) in_args;
-    CPUState *pfun_env = args->env;
+    CPUState *pfun_cpu = args->cpu;
+    CPUArchState *pfun_env = (CPUArchState*)pfun_cpu->env_ptr;
     const char *src_filename = args->src_filename;
     uint64_t src_linenum = args->src_linenum;
 
@@ -186,11 +185,11 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
             guest_dword = pfun_env->regs[loc];
             if (num_derefs > 0) {
                 for (i = 0; i < num_derefs; i++) {
-                    int rc = panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
+                    int rc = panda_virtual_memory_rw(pfun_cpu, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0);
                     if (0 != rc)
                         break;
                 }
-                if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
+                if (0 != taint2_query_ram(panda_virt_to_phys(pfun_cpu, guest_dword)))  {
                     printf("VAR REG:   %s %s in Reg %d\n", var_ty, var_nm, loc);
                     printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
                     printf(" ==Location is tainted!==\n");
@@ -212,11 +211,11 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
         case LocMem:
             guest_dword = loc;
             for (i = 0; i < num_derefs; i++) {
-                if (0 != panda_virtual_memory_rw(pfun_env, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){
+                if (0 != panda_virtual_memory_rw(pfun_cpu, guest_dword, (uint8_t *)&guest_dword, sizeof(guest_dword), 0)){
                     break;
                 }
             }
-            if (0 != taint2_query_ram(panda_virt_to_phys(pfun_env, guest_dword)))  {
+            if (0 != taint2_query_ram(panda_virt_to_phys(pfun_cpu, guest_dword)))  {
                 printf("VAR MEM:   %s %s @ 0x%x\n", var_ty, var_nm, loc);
                 printf("    => 0x%x, derefs: %ld\n", guest_dword, i);
                 printf(" ==Location is tainted!==\n");
@@ -235,15 +234,15 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     }
 }
 
-void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    struct args args = {env, file_Name, lno};
+void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    struct args args = {cpu, file_Name, lno};
     printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
-    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
 }
-void on_fn_start(CPUState *env, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    struct args args = {env, file_Name, lno};
+void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
+    struct args args = {cpu, file_Name, lno};
     printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
-    pri_funct_livevar_iter(env, pc, (liveVarCB) pfun, (void *)&args);
+    pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
 }
 #endif
 /*

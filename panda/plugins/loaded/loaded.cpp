@@ -15,16 +15,16 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/panda_addr.h"
+#include "panda/addr.h"
 extern "C" {
 
 //#include "config.h"
-#include "rr_log.h"
+#include "panda/rr/rr_log.h"
 #include "qemu-common.h"
 #include "cpu.h"
-#include "panda_plugin.h"
+#include "panda/plugin.h"
 #include "loaded.h"
-#include "pandalog.h"
+#include "panda/plog.h"
 #include "panda_common.h"
 
 #include "../osi/osi_types.h"
@@ -34,7 +34,7 @@ extern "C" {
 #include "../osi_linux/osi_linux_ext.h"
 
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
-#include "panda_plugin_plugin.h"
+#include "panda/plugin_plugin.h"
 
 #include <stdio.h>
 #include <stdarg.h>

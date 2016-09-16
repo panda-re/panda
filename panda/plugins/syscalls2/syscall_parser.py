@@ -1,16 +1,16 @@
 
 # /* PANDABEGINCOMMENT
-# * 
+# *
 # * Authors:
 # *  Tim Leek               tleek@ll.mit.edu
 # *  Ryan Whelan            rwhelan@ll.mit.edu
 # *  Joshua Hodosh          josh.hodosh@ll.mit.edu
 # *  Michael Zhivich        mzhivich@ll.mit.edu
 # *  Brendan Dolan-Gavitt   brendandg@gatech.edu
-# * 
-# * This work is licensed under the terms of the GNU GPL, version 2. 
-# * See the COPYING file in the top-level directory. 
-# * 
+# *
+# * This work is licensed under the terms of the GNU GPL, version 2.
+# * See the COPYING file in the top-level directory.
+# *
 #PANDAENDCOMMENT */
 
 """
@@ -50,12 +50,12 @@ cb_names_return = defaultdict(set)
 # Common to every OS, so we put them here
 # A little goofy, but we use #if 1 as the keyname because it will
 # be pasted verbatim into the file later
-typedefs['#if 1'].add("typedef void (*on_unknown_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);")
-typedefs['#if 1'].add("typedef void (*on_all_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_unknown_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
 cb_names_enter['#if 1'].add("on_unknown_sys_enter")
 cb_names_enter['#if 1'].add("on_all_sys_enter")
-typedefs['#if 1'].add("typedef void (*on_unknown_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno);")
-typedefs['#if 1'].add("typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_unknown_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
+typedefs['#if 1'].add("typedef void (*on_all_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
 cb_names_return['#if 1'].add("on_unknown_sys_return")
 cb_names_return['#if 1'].add("on_all_sys_return")
 
@@ -69,16 +69,16 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
     print "os is [%s] arch is [%s]" % (OS, ARCH)
 
     if ARCH=="x86":
-        CALLNO="EAX"
-        SP = "ESP" 
-        GUARD = "#ifdef TARGET_I386" 
+        CALLNO="env->regs[R_EAX]"
+        SP = "env->regs[R_ESP]"
+        GUARD = "#ifdef TARGET_I386"
 
     if ARCH=="arm":
         CALLNO = "env->regs[7]"
         SP = "env->regs[13]"
         GUARD = "#ifdef TARGET_ARM"
 
-       
+
     osarch = "%s_%s" % (OS, ARCH)
     PROTOS = "%s_prototypes.txt" % osarch
     MODE=ARCH
@@ -93,22 +93,19 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
 
     types_64 = ["loff_t", 'u64']
     stypes_32 = ["int", "long", '__s32', 'LONG']
-    types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t', 
+    types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t',
                 'key_serial_t', 'mqd_t', 'clockid_t', 'aio_context_t', 'qid_t', 'old_sigset_t', 'union semun',
-                'ULONG', 'SIZE_T', 'HANDLE', 'PBOOLEAN', 'PHANDLE', 'PLARGE_INTEGER', 'PLONG', 'PSIZE_T', 
+                'ULONG', 'SIZE_T', 'HANDLE', 'PBOOLEAN', 'PHANDLE', 'PLARGE_INTEGER', 'PLONG', 'PSIZE_T',
                 'PUCHAR', 'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR', 'PUNICODE_STRING', 'PVOID', 'PWSTR']
     types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT']
     types_pointer = ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...']
 
     syscall_enter_switch = """
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
-extern "C" {
-#include "panda_plugin.h" 
-}
-
-#include "syscalls2.h" 
-#include "panda_common.h"
-#include "panda_plugin_plugin.h"
+#include "syscalls2.h"
+#include "syscalls_common.h"
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
@@ -116,33 +113,32 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_enter_switch_%s ( CPUState *env, target_ulong pc ) {  // osarch
+void syscall_enter_switch_%s ( CPUState *cpu, target_ulong pc ) {  // osarch
 %s                                          // GUARD
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     ReturnPoint rp;
     rp.ordinal = %s;                        // CALLNO
-    rp.proc_id = panda_current_asid(env);
-    rp.retaddr = calc_retaddr(env, pc);
+    rp.proc_id = panda_current_asid(cpu);
+    rp.retaddr = calc_retaddr(cpu, pc);
     switch( %s ) {                          // CALLNO
 """ % (osarch, GUARD, CALLNO, CALLNO)
 
 
     syscall_return_switch = """
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
-extern "C" {
-#include "panda_plugin.h" 
-}
-
-#include "syscalls2.h" 
-#include "panda_common.h"
-#include "panda_plugin_plugin.h"
+#include "syscalls2.h"
+#include "syscalls_common.h"
 
 extern "C" {
 #include "gen_syscalls_ext_typedefs.h"
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
+void syscall_return_switch_%s ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 %s                                          // GUARD
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch( ordinal ) {                          // CALLNO
 """ % (osarch, GUARD)
 
@@ -171,43 +167,43 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
     # given type.
     def get_pointer(argnum):
         return get_32(argnum) if ARCH in arch32 else get_64(argnum)
-        
+
     def get_32(argnum):
-        return "uint32_t arg%d = get_32(env, %d);\n" % (argnum, argnum)
+        return "uint32_t arg%d = get_32(cpu, %d);\n" % (argnum, argnum)
 
     def get_s32(argnum):
-        return "int32_t arg%d = get_s32(env, %d);\n" % (argnum, argnum)
+        return "int32_t arg%d = get_s32(cpu, %d);\n" % (argnum, argnum)
 
     def get_64(argnum):
-        return "uint64_t arg%d = get_64(env, %d);\n" % (argnum, argnum)
+        return "uint64_t arg%d = get_64(cpu, %d);\n" % (argnum, argnum)
 
     def get_return_pointer(argnum):
-        return "target_ulong arg%d = get_return_pointer(env, %d);\n" % (argnum, argnum)
-        
+        return "target_ulong arg%d = get_return_pointer(cpu, %d);\n" % (argnum, argnum)
+
     def get_return_32(argnum):
-        return "uint32_t arg%d = get_return_32(env, %d);\n" % (argnum, argnum)
+        return "uint32_t arg%d = get_return_32(cpu, %d);\n" % (argnum, argnum)
 
     def get_return_s32(argnum):
-        return "int32_t arg%d = get_return_s32(env, %d);\n" % (argnum, argnum)
+        return "int32_t arg%d = get_return_s32(cpu, %d);\n" % (argnum, argnum)
 
     def get_return_64(argnum):
-        return "uint64_t arg%d = get_return_64(env, %d);\n" % (argnum, argnum)
+        return "uint64_t arg%d = get_return_64(cpu, %d);\n" % (argnum, argnum)
 
     class Argument(object):
         def __init__(self):
             self._type = None
             self._name = None
             self.var  = None
-        
+
         @property
         def type(self):
             return self._type
-        
+
         @type.setter
         def type(self, newtype):
             assert(newtype in ARG_TYPE_C_TRANSLATIONS.keys())
             self._type = newtype
-        
+
         @property
         def name(self):
             return self._name
@@ -304,10 +300,14 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
                 argno+=1
 
             # each argument passed to C++ and C callbacks (the actual variable name or data)
-                
-            _c_args = ",".join(['env', 'pc'] + ["arg%d" % i for i in range(len(arg_types))])
+
+            _c_args = ",".join(['cpu', 'pc'] + ["arg%d" % i for i in range(len(arg_types))])
             # declaration info (type and name) for each arg passed to C++ and C callbacks
-            _c_args_types = ",".join(['CPUState* env', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + x.name for i, x in enumerate(arg_types)])
+            def fixname(name):
+                if name == "cpu": return "cpu_fixed"
+                else: return name
+
+            _c_args_types = ",".join(['CPUState* cpu', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + fixname(x.name) for x in arg_types])
             typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_enter", _c_args_types)
             typedefs[GUARD].add(typedef)
             typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_return", _c_args_types)
@@ -333,18 +333,18 @@ void syscall_return_switch_%s ( CPUState *env, target_ulong pc, target_ulong ord
             syscall_enter_switch += "}; break;"+'\n'
             syscall_return_switch += "PPP_RUN_CB(on_{0}_return, {1}) ; \n".format(callname, _c_args)
             syscall_return_switch += "}; break;"+'\n'
-           
+
         # The "all" and "unknown" callbacks
         syscall_enter_switch += "default:\n"
-        syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_enter, env, pc, %s);\n" % CALLNO
+        syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, %s);\n" % CALLNO
         syscall_enter_switch += "}"+'\n'
-        syscall_enter_switch += "PPP_RUN_CB(on_all_sys_enter, env, pc, %s);\n" % CALLNO
+        syscall_enter_switch += "PPP_RUN_CB(on_all_sys_enter, cpu, pc, %s);\n" % CALLNO
         syscall_enter_switch += "appendReturnPoint(rp);\n"
 
         syscall_return_switch += "default:\n"
-        syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, env, pc, %s);\n" % CALLNO
+        syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, cpu, pc, %s);\n" % CALLNO
         syscall_return_switch += "}"+'\n'
-        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, env, pc, %s);\n" % CALLNO
+        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, cpu, pc, %s);\n" % CALLNO
 
     syscall_return_switch += "#endif\n } \n"
     syscall_enter_switch += "#endif\n } \n"

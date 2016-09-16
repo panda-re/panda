@@ -2,6 +2,8 @@ extern "C" {
 #include <sys/mman.h>
 }
 
+#include <cassert>
+
 #include <map>
 #include <vector>
 #include <set>

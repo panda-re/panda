@@ -18,7 +18,7 @@ PANDAENDCOMMENT */
 #include "config.h"
 #include "qemu-common.h"
 
-#include "panda_plugin.h"
+#include "panda/plugin.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
