@@ -66,27 +66,27 @@ PPP_CB_BOILERPLATE(on_finished_process)
 // the fact that PPP doesn't support return values (since it assumes
 // that you will be running multiple callbacks at one site)
 
-OsiProcs *get_processes(CPUState *env) {
+OsiProcs *get_processes(CPUState *cpu) {
     OsiProcs *p = NULL;
-    PPP_RUN_CB(on_get_processes, env, &p);
+    PPP_RUN_CB(on_get_processes, cpu, &p);
     return p;
 }
 
-OsiProc *get_current_process(CPUState *env) {
+OsiProc *get_current_process(CPUState *cpu) {
     OsiProc *p = NULL;
-    PPP_RUN_CB(on_get_current_process, env, &p);
+    PPP_RUN_CB(on_get_current_process, cpu, &p);
     return p;
 }
 
-OsiModules *get_modules(CPUState *env) {
+OsiModules *get_modules(CPUState *cpu) {
     OsiModules *m = NULL;
-    PPP_RUN_CB(on_get_modules, env, &m);
+    PPP_RUN_CB(on_get_modules, cpu, &m);
     return m;
 }
 
-OsiModules *get_libraries(CPUState *env, OsiProc *p) {
+OsiModules *get_libraries(CPUState *cpu, OsiProc *p) {
     OsiModules *m = NULL;
-    PPP_RUN_CB(on_get_libraries, env, p, &m);
+    PPP_RUN_CB(on_get_libraries, cpu, p, &m);
     return m;
 }
 
@@ -104,7 +104,7 @@ void free_osimodules(OsiModules *ms) {
 
 
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
+int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     uint32_t i;
     OsiProcs *ps, *in, *out;
     ps = in = out = NULL;
@@ -113,13 +113,13 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
     assert(PPP_CHECK_CB(on_get_processes) != 0);
 
     /* update process state */
-    ps = get_processes(env);
+    ps = get_processes(cpu);
     procstate_update(ps, &in, &out);
 
     /* invoke callbacks for finished processes */
     if (out != NULL) {
         for (i=0; i<out->num; i++) {
-            PPP_RUN_CB(on_finished_process, env, &out->proc[i]);
+            PPP_RUN_CB(on_finished_process, cpu, &out->proc[i]);
         }
         free_osiprocs(out);
     }
@@ -127,7 +127,7 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for new processes */
     if (in != NULL) {
         for (i=0; i<in->num; i++) {
-            PPP_RUN_CB(on_new_process, env, &in->proc[i]);
+            PPP_RUN_CB(on_new_process, cpu, &in->proc[i]);
         }
         free_osiprocs(in);
     }

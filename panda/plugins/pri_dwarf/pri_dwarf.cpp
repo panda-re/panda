@@ -15,36 +15,36 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include "panda/panda_addr.h"
+#include <vector>
+#include <map>
+#include <set>
+#include <string>
+#include <algorithm>
+
 extern "C" {
 
-#include "config.h"
-#include "rr_log.h"
-#include "qemu-common.h"
-#include "panda_common.h"
-#include "cpu.h"
-#include "cpu.h"
+#include "panda/rr/rr_log.h"
+#include "panda/addr.h"
+#include "panda/plog.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
-#include "pandalog.h"
-#include "panda_plugin.h"
-#include "panda_plugin_plugin.h"
 #include "dwarf_util.h"
 #include "pri_dwarf.h"
 
-#include "../pri/pri_types.h"
-#include "../pri/pri_ext.h"
-#include "../pri/pri.h"
+#include "pri/pri_types.h"
+#include "pri/pri_ext.h"
+#include "pri/pri.h"
 
-#include "../osi/osi_types.h"
-#include "../osi/osi_ext.h"
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 
 // this provides the fd resolution magic
-#include "../osi_linux/osi_linux_ext.h"
+#include "osi_linux/osi_linux_ext.h"
 
-#include "../syscalls2/gen_syscalls_ext_typedefs.h"
+#include "syscalls2/gen_syscalls_ext_typedefs.h"
 
-
-#include "../loaded/loaded.h"
+#include "loaded/loaded.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -56,8 +56,6 @@ void on_all_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args
 void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
 void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
-
-
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -73,9 +71,10 @@ void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *a
 #include <libdwarf.h>
 
 }
-#include "../callstack_instr/callstack_instr.h"
-#include "../common/prog_point.h"
-#include "../callstack_instr/callstack_instr_ext.h"
+
+#include "callstack_instr/callstack_instr.h"
+#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr_ext.h"
 
 const char *guest_debug_path = NULL;
 const char *host_debug_path = NULL;
@@ -88,14 +87,9 @@ extern "C" {
 #include "pri_dwarf_int_fns.h"
 PPP_PROT_REG_CB(on_pri_dwarf_line_change);
 }
+
 PPP_CB_BOILERPLATE(on_pri_dwarf_line_change);
 
-
-#include <vector>
-#include <map>
-#include <set>
-#include <string>
-#include <algorithm>
 //#include <boost/algorithm/string/join.hpp>
 #define MAX_FILENAME 256
 Dwarf_Unsigned prev_line = 0, cur_line;

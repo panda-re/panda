@@ -1,16 +1,8 @@
 #ifndef __SYSCALLS_HPP
 #define __SYSCALLS_HPP
 
-#include "syscalls_common.h"
-
-extern "C" {
-
-#include "config.h"
-#include "qemu-common.h"
-#include "cpu.h"
-
-
-}
+typedef struct CPUState CPUState;
+typedef struct ReturnPoint ReturnPoint;
 
 void syscall_return_switch_linux_arm ( CPUState *env, target_ulong pc, target_ulong ordinal, ReturnPoint &rp);
 void syscall_return_switch_linux_x86 ( CPUState *env, target_ulong pc, target_ulong ordinal, ReturnPoint &rp);

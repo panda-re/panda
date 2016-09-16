@@ -16,17 +16,15 @@ PANDAENDCOMMENT */
  * taint system - we've mostly left in place hard drive taint, etc.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
-#include "panda_plugin_plugin.h"
-#include "panda_memlog.h"
-#include "guestarch.h"
+#include "panda/addr.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
-#include "max.h"
 #include "taint2.h"
-#include "network.h"
 #include "defines.h"
 #include "fast_shad.h"
 
@@ -110,10 +108,10 @@ Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity) {
         shad->llv = new FastShad("LLVM", MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE);
         shad->ret = new FastShad("Ret", MAXREGSIZE);
         // guest registers are generally the size of the guest architecture
-        shad->grv = new FastShad("Reg", NUMREGS * WORDSIZE);
+        shad->grv = new FastShad("Reg", NUMREGS * sizeof(target_ulong));
     } else {
         printf("taint2: Creating word-level taint processor\n");
-        shad->ram = new FastShad("RAM", ram_size / WORDSIZE);
+        shad->ram = new FastShad("RAM", ram_size / sizeof(target_ulong));
         shad->llv = new FastShad("LLVM", MAXFRAMESIZE * FUNCTIONFRAMES);
         shad->ret = new FastShad("Ret", 1);
         shad->grv = new FastShad("Reg", NUMREGS);
@@ -156,7 +154,7 @@ LabelSetP tp_labelset_get(Shad *shad, Addr *a) {
         case LADDR:
             return shad->llv->query(a->val.la*MAXREGSIZE + a->off);
         case GREG:
-            return shad->grv->query(a->val.gr * WORDSIZE + a->off);
+            return shad->grv->query(a->val.gr * sizeof(target_ulong) + a->off);
         case GSPEC:
             // SpecAddr enum is offset by the number of guest registers
             return shad->gsv->query(a->val.gs - NUMREGS + a->off);
@@ -188,7 +186,7 @@ TaintData tp_query_full(Shad *shad, Addr a) {
     case LADDR:
         return shad->llv->query_full(a.val.la*MAXREGSIZE + a.off);
     case GREG:
-        return shad->grv->query_full(a.val.gr * WORDSIZE + a.off);
+        return shad->grv->query_full(a.val.gr * sizeof(target_ulong) + a.off);
     case GSPEC:
         // SpecAddr enum is offset by the number of guest registers
         return shad->gsv->query_full(a.val.gs - NUMREGS + a.off);
@@ -317,7 +315,7 @@ void tp_delete(Shad *shad, Addr *a) {
             break;
         case MADDR:
             shad->ram->remove(a->val.ma+a->off,
-                    WORDSIZE - a->off);
+                    sizeof(target_ulong) - a->off);
             break;
         case IADDR:
             shad_dir_remove_64(shad->io, a->val.ia+a->off);
@@ -330,12 +328,12 @@ void tp_delete(Shad *shad, Addr *a) {
                     MAXREGSIZE - a->off);
             break;
         case GREG:
-            shad->grv->remove(a->val.gr * WORDSIZE + a->off,
-                    WORDSIZE - a->off);
+            shad->grv->remove(a->val.gr * sizeof(target_ulong) + a->off,
+                    sizeof(target_ulong) - a->off);
             break;
         case GSPEC:
             shad->gsv->remove(a->val.gs - NUMREGS + a->off,
-                    WORDSIZE - a->off);
+                    sizeof(target_ulong) - a->off);
             break;
         case RET:
             shad->ret->remove(a->off, MAXREGSIZE);
@@ -391,7 +389,7 @@ static void tp_labelset_put(Shad *shad, Addr *a, LabelSetP ls) {
             //labelset_spit(ls);
 #endif
             // need to call labelset_copy to increment ref count
-            shad->grv->label(a->val.gr * WORDSIZE + a->off, ls);
+            shad->grv->label(a->val.gr * sizeof(target_ulong) + a->off, ls);
             break;
         case GSPEC:
 #ifdef TAINTDEBUG
@@ -495,10 +493,10 @@ void fprintf_addr(Shad *shad, Addr *a, FILE *fp) {
     }
     break;
   case GREG:
-    fprintf_reg(a, fp);
+    fprintf(fp, "regs[%#lx][%#x]", a->val.gr, a->off);
     break;
   case GSPEC:
-    fprintf_spec(a, fp);
+    fprintf(fp, "gspec[%#lx][%#x]", a->val.gs, a->off);
     break;
   case UNK:
     if (a->flag == IRRELEVANT){

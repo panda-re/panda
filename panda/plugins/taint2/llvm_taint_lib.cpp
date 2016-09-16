@@ -29,13 +29,15 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Instruction.h>
 
-#include "tcg/tcg-llvm.h"
-#include "panda_plugin_plugin.h"
+#include "panda/rr/rr_log.h"
+#include "panda/addr.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/tcg-llvm.h"
 
 #include "fast_shad.h"
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"
-#include "guestarch.h"
 #include "taint2.h"
 
 extern "C" {
@@ -51,8 +53,8 @@ PPP_CB_BOILERPLATE(on_branch2);
 extern char *qemu_loc;
 
 // Helper methods for doing structure computations.
-#define cpu_off(member) (uint64_t)(&((CPUState *)0)->member)
-#define cpu_size(member) sizeof(((CPUState *)0)->member)
+#define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
+#define cpu_size(member) sizeof(((CPUArchState *)0)->member)
 #define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
 #define contains_offset(member) ((signed)cpu_off(member) <= (offset) && (unsigned)(offset) < cpu_endoff(member))
 
@@ -69,19 +71,19 @@ char PandaTaintFunctionPass::ID = 0;
 //X("PandaTaint", "Analyze each instruction in a function for taint operations");
 
 static inline ConstantInt *const_uint64(LLVMContext &C, uint64_t val) {
-    return ConstantInt::get(Type::getInt64Ty(C), val);
+    return ConstantInt::get(llvm::Type::getInt64Ty(C), val);
 }
 
 static inline ConstantInt *const_uint64_ptr(LLVMContext &C, void *ptr) {
-    return ConstantInt::get(Type::getInt64Ty(C), (uint64_t)ptr);
+    return ConstantInt::get(llvm::Type::getInt64Ty(C), (uint64_t)ptr);
 }
 
 static inline Constant *const_i64p(LLVMContext &C, void *ptr) {
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr),
-            Type::getInt64PtrTy(C));
+            llvm::Type::getInt64PtrTy(C));
 }
 
-static inline Constant *const_struct_ptr(LLVMContext &C, Type *ptrT, void *ptr) {
+static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void *ptr) {
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
@@ -144,11 +146,11 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    Type *shadT = M.getTypeByName("class.FastShad");
+    llvm::Type *shadT = M.getTypeByName("class.FastShad");
     assert(shadT);
-    Type *shadP = PointerType::getUnqual(shadT);
+    llvm::Type *shadP = PointerType::getUnqual(shadT);
 
-    Type *instrT = M.getTypeByName("class.llvm::Instruction");
+    llvm::Type *instrT = M.getTypeByName("class.llvm::Instruction");
     assert(instrT);
     PTV.instrT = PointerType::getUnqual(instrT);
 
@@ -160,9 +162,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     PTV.dataLayout = new DataLayout(&M);
 
-    Type *memlogT = M.getTypeByName("struct.taint2_memlog");
+    llvm::Type *memlogT = M.getTypeByName("struct.taint2_memlog");
     assert(memlogT);
-    Type *memlogP = PointerType::getUnqual(memlogT);
+    llvm::Type *memlogP = PointerType::getUnqual(memlogT);
 
     PTV.memlogPopF = M.getFunction("taint_memlog_pop");
     PTV.memlogConst = const_struct_ptr(ctx, memlogP, taint_memlog);
@@ -170,11 +172,11 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
     ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
-    vector<Type *> argTs{ shadP, Type::getInt64Ty(ctx) };
+    vector<llvm::Type *> argTs{ shadP, llvm::Type::getInt64Ty(ctx) };
     PTV.branchF = M.getFunction("taint_branch");
     if (!PTV.branchF) { // insert
         PTV.branchF = Function::Create(
-            FunctionType::get(Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
+            FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
             GlobalVariable::ExternalLinkage, "taint_branch", &M);
     }
     assert(PTV.branchF);
@@ -279,11 +281,11 @@ void PandaSlotTracker::processFunction() {
         }
         for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;
             ++I) {
-            if (I->getType() != Type::getVoidTy(TheFunction->getContext()) &&
+            if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext()) &&
                 !I->hasName()) {
                 CreateFunctionSlot(I);
             }
-            else if (I->getType() != Type::getVoidTy(TheFunction->getContext())
+            else if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())
                 && I->hasName()) {
                 I->setName("");
                 CreateFunctionSlot(I);
@@ -302,7 +304,7 @@ void PandaSlotTracker::processFunction() {
 }
 
 void PandaSlotTracker::CreateFunctionSlot(const Value *V) {
-    assert(V->getType() != Type::getVoidTy(TheFunction->getContext()) &&
+    assert(V->getType() != llvm::Type::getVoidTy(TheFunction->getContext()) &&
         (!V->hasName() || V->getName() == "entry") && "Doesn't need a slot!");
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
@@ -821,7 +823,7 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         uint64_t ptrAddr;
         if (addr.typ == GREG) {
             ptrConst = grvConst;
-            ptrAddr = addr.val.gr * WORDSIZE + addr.off;
+            ptrAddr = addr.val.gr * sizeof(target_ulong) + addr.off;
         } else {
             ptrConst = gsvConst;
             ptrAddr = addr.val.gs;
@@ -837,10 +839,10 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             insertTaintCopy(I, destConst, dest, srcConst, src, size);
         }
     } else if (isa<Constant>(val) && isStore) {
-        PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
+        PtrToIntInst *P2II = new PtrToIntInst(ptr, llvm::Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
-            const_uint64_ptr(ctx, cpu_single_env), P2II,
-            grvConst, gsvConst, const_uint64(ctx, size), const_uint64(ctx, WORDSIZE)
+            const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
+            grvConst, gsvConst, const_uint64(ctx, size), const_uint64(ctx, sizeof(target_ulong))
         };
         inlineCallAfter(I, hostDeleteF, args);
     } else if (isa<AllocaInst>(ptr) && isStore) {
@@ -850,12 +852,12 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
             insertTaintCopy(I, llvConst, ptr, llvConst, val, size);
         }
     } else {
-        PtrToIntInst *P2II = new PtrToIntInst(ptr, Type::getInt64Ty(ctx), "", &I);
+        PtrToIntInst *P2II = new PtrToIntInst(ptr, llvm::Type::getInt64Ty(ctx), "", &I);
         vector<Value *> args{
-            const_uint64_ptr(ctx, cpu_single_env), P2II,
+            const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
             llvConst, constSlot(ctx, val), grvConst, gsvConst,
-            const_uint64(ctx, size), const_uint64(ctx, WORDSIZE),
-            ConstantInt::get(Type::getInt1Ty(ctx), isStore)
+            const_uint64(ctx, size), const_uint64(ctx, sizeof(target_ulong)),
+            ConstantInt::get(llvm::Type::getInt1Ty(ctx), isStore)
         };
         inlineCallAfter(I, hostCopyF, args);
     }
@@ -976,12 +978,12 @@ void PandaTaintVisitor::visitMemCpyInst(MemTransferInst &I) {
     Value *dest = I.getDest();
     Value *src = I.getSource();
     Value *size = I.getLength();
-    PtrToIntInst *destP2II = new PtrToIntInst(dest, Type::getInt64Ty(ctx), "", &I);
-    PtrToIntInst *srcP2II = new PtrToIntInst(src, Type::getInt64Ty(ctx), "", &I);
+    PtrToIntInst *destP2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
+    PtrToIntInst *srcP2II = new PtrToIntInst(src, llvm::Type::getInt64Ty(ctx), "", &I);
     assert(destP2II && srcP2II);
     vector<Value *> args{
-        const_uint64_ptr(ctx, cpu_single_env), destP2II, srcP2II,
-        grvConst, gsvConst, size, const_uint64(ctx, WORDSIZE)
+        const_uint64_ptr(ctx, first_cpu->env_ptr), destP2II, srcP2II,
+        grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
     };
     inlineCallAfter(I, hostMemcpyF, args);
 }
@@ -997,12 +999,12 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     Value *size = I.getLength();
     assert(isa<Constant>(I.getValue()));
 
-    PtrToIntInst *P2II = new PtrToIntInst(dest, Type::getInt64Ty(ctx), "", &I);
+    PtrToIntInst *P2II = new PtrToIntInst(dest, llvm::Type::getInt64Ty(ctx), "", &I);
     assert(P2II);
 
     vector<Value *> args{
-        const_uint64_ptr(ctx, cpu_single_env), P2II,
-        grvConst, gsvConst, size, const_uint64(ctx, WORDSIZE)
+        const_uint64_ptr(ctx, first_cpu->env_ptr), P2II,
+        grvConst, gsvConst, size, const_uint64(ctx, sizeof(target_ulong))
     };
     inlineCallAfter(I, hostDeleteF, args);
 }
@@ -1013,7 +1015,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
     Value *calledV = I.getCalledValue();
     assert(calledV);
 
-    Type *valueType = calledV->getType();
+    llvm::Type *valueType = calledV->getType();
     FunctionType *callType;
     // If not a function type, it's a function pointer.
     if (!(callType = dyn_cast<FunctionType>(valueType))) {
@@ -1234,7 +1236,7 @@ void PandaTaintVisitor::portStoreHelper(Value *srcval, Value *dstval, int len) {
 
 void PandaTaintVisitor::visitSelectInst(SelectInst &I) {
     LLVMContext &ctx = I.getContext();
-    ZExtInst *ZEI = new ZExtInst(I.getCondition(), Type::getInt64Ty(ctx), "", &I);
+    ZExtInst *ZEI = new ZExtInst(I.getCondition(), llvm::Type::getInt64Ty(ctx), "", &I);
     assert(ZEI);
 
     vector<pair<Value *, Value *>> selections;

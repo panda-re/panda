@@ -49,8 +49,4 @@ typedef struct addr_struct {
   AddrFlag flag;  // indication that we might need to look up address from log
 } Addr;
 
-
-
-
-
 #endif

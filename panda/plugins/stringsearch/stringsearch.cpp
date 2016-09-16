@@ -14,22 +14,9 @@ PANDAENDCOMMENT */
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
- 
-extern "C" {
 
-#include "config.h"
-#include "qemu-common.h"
-#include "monitor.h"
-#include "cpu.h"
-#include "disas.h"
-
-#include "panda_plugin.h"
-#include "stringsearch.h"
-#include "rr_log.h"
-}
-
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <ctype.h>
 #include <math.h>
 #include <map>
@@ -37,13 +24,21 @@ extern "C" {
 #include <sstream>
 #include <string>
 
+#include "panda/plog.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+
+extern "C" {
+#include "stringsearch.h"
+
+#include "panda/rr/rr_log.h"
+}
+
 #include <iostream>
 using namespace std;
 
-#include "../common/prog_point.h"
-#include "pandalog.h"
-#include "../callstack_instr/callstack_instr_ext.h"
-#include "panda_plugin_plugin.h"
+#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr_ext.h"
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C

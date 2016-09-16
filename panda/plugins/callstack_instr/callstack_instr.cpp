@@ -1,54 +1,49 @@
 /* PANDABEGINCOMMENT
- * 
+ *
  * Authors:
  *  Tim Leek               tleek@ll.mit.edu
  *  Ryan Whelan            rwhelan@ll.mit.edu
  *  Joshua Hodosh          josh.hodosh@ll.mit.edu
  *  Michael Zhivich        mzhivich@ll.mit.edu
  *  Brendan Dolan-Gavitt   brendandg@gatech.edu
- * 
- * This work is licensed under the terms of the GNU GPL, version 2. 
- * See the COPYING file in the top-level directory. 
- * 
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2.
+ * See the COPYING file in the top-level directory.
+ *
 PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
-#include <distorm.h>
-namespace distorm {
-#include <mnemonics.h>
-}
-
-extern "C" {
-
-#include "config.h"
-#include "qemu-common.h"
-#include "cpu.h"
-
-#include "panda_plugin.h"
-#include "panda_plugin_plugin.h"
-#include "pandalog.h"
-
-#include "callstack_instr.h"
-
-bool translate_callback(CPUState *env, target_ulong pc);
-int exec_callback(CPUState *env, target_ulong pc);
-int before_block_exec(CPUState *env, TranslationBlock *tb);
-int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-int after_block_translate(CPUState *env, TranslationBlock *tb);
-
-bool init_plugin(void *);
-void uninit_plugin(void *);
-}
-
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include <map>
 #include <set>
 #include <vector>
 #include <algorithm>
 
-#include "../common/prog_point.h"
+#include <distorm.h>
+
+namespace distorm {
+#include <mnemonics.h>
+}
+
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
+
+#include "callstack_instr.h"
+#include "prog_point.h"
+
+extern "C" {
+bool translate_callback(CPUState* cpu, target_ulong pc);
+int exec_callback(CPUState* cpu, target_ulong pc);
+int before_block_exec(CPUState* cpu, TranslationBlock *tb);
+int after_block_exec(CPUState* cpu, TranslationBlock *tb);
+int after_block_translate(CPUState* cpu, TranslationBlock *tb);
+
+bool init_plugin(void *);
+void uninit_plugin(void *);
+}
 
 extern "C" {
 
@@ -103,7 +98,7 @@ std::map<stackid, std::vector<target_ulong>> function_stacks;
 std::map<target_ulong, instr_type> call_cache;
 int last_ret_size = 0;
 
-static inline bool in_kernelspace(CPUState *env) {
+static inline bool in_kernelspace(CPUArchState* env) {
 #if defined(TARGET_I386)
     return ((env->hflags & HF_CPL_MASK) == 0);
 #elif defined(TARGET_ARM)
@@ -113,32 +108,7 @@ static inline bool in_kernelspace(CPUState *env) {
 #endif
 }
 
-#ifdef TARGET_ARM
-// ARM: stolen from target-arm/helper.c
-static uint32_t arm_get_vaddr_table(CPUState *env, uint32_t address)
-{   
-    uint32_t table;
-
-    if (address & env->cp15.c2_mask)
-        table = env->cp15.c2_base1 & 0xffffc000;
-    else
-        table = env->cp15.c2_base0 & env->cp15.c2_base_mask;
-
-    return table;
-}
-#endif
-
-static inline target_ulong get_asid(CPUState *env, target_ulong addr) {
-#if defined(TARGET_I386)
-    return env->cr[3];
-#elif defined(TARGET_ARM)
-    return arm_get_vaddr_table(env, addr);
-#else
-    return 0;
-#endif
-}
-
-static inline target_ulong get_stack_pointer(CPUState *env) {
+static inline target_ulong get_stack_pointer(CPUArchState* env) {
 #if defined(TARGET_I386)
     return env->regs[R_ESP];
 #elif defined(TARGET_ARM)
@@ -148,15 +118,15 @@ static inline target_ulong get_stack_pointer(CPUState *env) {
 #endif
 }
 
-static stackid get_stackid(CPUState *env, target_ulong addr) {
+static stackid get_stackid(CPUArchState* env) {
 #ifdef USE_STACK_HEURISTIC
     target_ulong asid;
-    
+
     // Track all kernel-mode stacks together
     if (in_kernelspace(env))
         asid = 0;
     else
-        asid = get_asid(env, addr);
+        asid = panda_current_asid(ENV_GET_CPU(env));
 
     // Invalidate cached stack pointer on ASID change
     if (cached_asid == 0 || cached_asid != asid) {
@@ -195,13 +165,13 @@ static stackid get_stackid(CPUState *env, target_ulong addr) {
         }
     }
 #else
-    return get_asid(env, addr);
+    return panda_current_asid(ENV_GET_CPU(env));
 #endif
 }
 
-instr_type disas_block(CPUState* env, target_ulong pc, int size) {
+instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     unsigned char *buf = (unsigned char *) malloc(size);
-    int err = panda_virtual_memory_rw(env, pc, buf, size, 0);
+    int err = panda_virtual_memory_rw(ENV_GET_CPU(env), pc, buf, size, 0);
     if (err == -1) printf("Couldn't read TB memory!\n");
     instr_type res = INSTR_UNKNOWN;
 
@@ -255,7 +225,7 @@ instr_type disas_block(CPUState* env, target_ulong pc, int size) {
     // Pretend thumb mode doesn't exist for now
     // Pretend conditional execution doesn't exist for now
     // This is super half-assed right now
-    
+
     unsigned char *cur_instr;
     for (cur_instr = buf+size-4; cur_instr >= buf; cur_instr -= 4) {
         // Note: little-endian!
@@ -287,15 +257,17 @@ done:
     return res;
 }
 
-int after_block_translate(CPUState *env, TranslationBlock *tb) {
+int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
-    
+
     return 1;
 }
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
-    std::vector<stack_entry> &v = callstacks[get_stackid(env,tb->pc)];
-    std::vector<target_ulong> &w = function_stacks[get_stackid(env,tb->pc)];
+int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
+    std::vector<target_ulong> &w = function_stacks[get_stackid(env)];
     if (v.empty()) return 1;
 
     // Search up to 10 down
@@ -304,7 +276,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
             //printf("Matched at depth %d\n", v.size()-i);
             //v.erase(v.begin()+i, v.end());
 
-            PPP_RUN_CB(on_ret, env, w[i]);
+            PPP_RUN_CB(on_ret, cpu, w[i]);
             v.erase(v.begin()+i, v.end());
             w.erase(w.begin()+i, w.end());
 
@@ -315,21 +287,19 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 
-int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next) {
+int after_block_exec(CPUState* cpu, TranslationBlock *tb) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     instr_type tb_type = call_cache[tb->pc];
 
     if (tb_type == INSTR_CALL) {
         stack_entry se = {tb->pc+tb->size,tb_type};
-        callstacks[get_stackid(env,tb->pc)].push_back(se);
+        callstacks[get_stackid(env)].push_back(se);
 
         // Also track the function that gets called
-        target_ulong pc, cs_base;
-        int flags;
-        // This retrieves the pc in an architecture-neutral way
-        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
-        function_stacks[get_stackid(env,tb->pc)].push_back(pc);
+        target_ulong pc = cpu->panda_guest_pc;
+        function_stacks[get_stackid(env)].push_back(pc);
 
-        PPP_RUN_CB(on_call, env, pc);
+        PPP_RUN_CB(on_call, cpu, pc);
     }
     else if (tb_type == INSTR_RET) {
         //printf("Just executed a RET in TB " TARGET_FMT_lx "\n", tb->pc);
@@ -340,8 +310,9 @@ int after_block_exec(CPUState *env, TranslationBlock *tb, TranslationBlock *next
 }
 
 // Public interface implementation
-int get_callers(target_ulong callers[], int n, CPUState *env) {
-    std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
+int get_callers(target_ulong callers[], int n, CPUState* cpu) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
     auto rit = v.rbegin();
     int i = 0;
     for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
@@ -354,10 +325,10 @@ int get_callers(target_ulong callers[], int n, CPUState *env) {
 // writes an entry to the pandalog with callstack info (and instr count and pc)
 Panda__CallStack *pandalog_callstack_create() {
     assert (pandalog);
-    extern CPUState *cpu_single_env;
-    CPUState *env = cpu_single_env;
+    CPUState *cpu = first_cpu;
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     uint32_t n = 0;
-    std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
+    std::vector<stack_entry> &v = callstacks[get_stackid(env)];
     auto rit = v.rbegin();
     for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
         n ++;
@@ -366,7 +337,7 @@ Panda__CallStack *pandalog_callstack_create() {
     *cs = PANDA__CALL_STACK__INIT;
     cs->n_addr = n;
     cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
-    v = callstacks[get_stackid(env,env->panda_guest_pc)];
+    v = callstacks[get_stackid(env)];
     rit = v.rbegin();
     uint32_t i=0;
     for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
@@ -382,8 +353,9 @@ void pandalog_callstack_free(Panda__CallStack *cs) {
 }
 
 
-int get_functions(target_ulong functions[], int n, CPUState *env) {
-    std::vector<target_ulong> &v = function_stacks[get_stackid(env,env->panda_guest_pc)];
+int get_functions(target_ulong functions[], int n, CPUState* cpu) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
+    std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
     if (v.empty()) {
         return 0;
     }
@@ -395,11 +367,12 @@ int get_functions(target_ulong functions[], int n, CPUState *env) {
     return i;
 }
 
-void get_prog_point(CPUState *env, prog_point *p) {
+void get_prog_point(CPUState* cpu, prog_point *p) {
+    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     if (!p) return;
 
     // Get address space identifier
-    target_ulong asid = get_asid(env, env->panda_guest_pc);
+    target_ulong asid = panda_current_asid(ENV_GET_CPU(env));
     // Lump all kernel-mode CR3s together
 
     if(!in_kernelspace(env))
@@ -407,17 +380,17 @@ void get_prog_point(CPUState *env, prog_point *p) {
 
     // Try to get the caller
     int n_callers = 0;
-    n_callers = get_callers(&p->caller, 1, env);
+    n_callers = get_callers(&p->caller, 1, cpu);
 
     if (n_callers == 0) {
 #ifdef TARGET_I386
         // fall back to EBP on x86
         int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
-        panda_virtual_memory_rw(env, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
+        panda_virtual_memory_rw(cpu, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
 #endif
     }
 
-    p->pc = env->panda_guest_pc;
+    p->pc = cpu->panda_guest_pc;
 }
 
 
@@ -436,7 +409,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-    
+
     return true;
 }
 

@@ -1,19 +1,19 @@
-
 #ifndef __DWARF_UTIL_H
 #define __DWARF_UTIL_H
 
-#include<libdwarf.h>
-#include<panda_plugin.h>
-#include<dwarf.h>
-#include"../pri/pri_types.h"
+#include <libdwarf.h>
+#include <dwarf.h>
+
+#include "panda/plugin.h"
+#include "pri/pri_types.h"
 
 /*
-uint32_t guest_strncpy(CPUState *env, char *buf, size_t maxlen, target_ulong guest_addr) {
+uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
     unsigned i;
     for (i=0; i<maxlen; i++) {
         uint8_t c;
-        panda_virtual_memory_rw(env, guest_addr+i, &c, 1, 0);
+        panda_virtual_memory_rw(cpu, guest_addr+i, &c, 1, 0);
         buf[i] = c;
         if (c==0) {
             break;
@@ -86,78 +86,77 @@ union unaligned
 } __attribute__ ((packed));
 
 target_ulong
-read_guest_pointer (CPUState *env, target_ulong guest_addr) { 
+read_guest_pointer (CPUState *cpu, target_ulong guest_addr) {
     target_ulong out;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *)&out, sizeof(target_ulong), 0); 
-    return out; 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *)&out, sizeof(target_ulong), 0);
+    return out;
 }
 
 static inline int
-read_1u (CPUState *env, target_ulong guest_addr) { 
+read_1u (CPUState *cpu, target_ulong guest_addr) {
     unsigned char c;
-    panda_virtual_memory_rw(env, guest_addr, &c, 1, 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0);
     return c;
 }
 
 static inline int
-read_1s (CPUState *env, target_ulong guest_addr) { 
+read_1s (CPUState *cpu, target_ulong guest_addr) {
     unsigned char c;
-    panda_virtual_memory_rw(env, guest_addr, &c, 1, 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0);
     return c;
 }
 
 static inline int
-read_2u (CPUState *env, target_ulong guest_addr) { 
+read_2u (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.u2;
 }
 
 static inline int
-read_2s (CPUState *env, target_ulong guest_addr) { 
+read_2s (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.s2;
 }
 
 static inline unsigned int
-read_4u (CPUState *env, target_ulong guest_addr) { 
+read_4u (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.u4;
 }
 
 static inline int
-read_4s (CPUState *env, target_ulong guest_addr) { 
+read_4s (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.s4;
 }
 
 static inline unsigned long
-read_8u (CPUState *env, target_ulong guest_addr) { 
+read_8u (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.u8;
 }
 
 static inline unsigned long
-read_8s (CPUState *env, target_ulong guest_addr) { 
+read_8s (CPUState *cpu, target_ulong guest_addr) {
     union unaligned up;
-    panda_virtual_memory_rw(env, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
     return up.s8;
 }
 
 /* Get the value of register REG as saved in CONTEXT.  */
-
-    inline target_ulong
-getReg (CPUState *env, int index)
+inline target_ulong
+getReg (CPUState *cpu, int index)
 {
     /* This will segfault if the register hasn't been saved.  */
     /* not sure if we dereference register or simply get value  */
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     return env->regs[index];
 }
-
 
 void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
     Dwarf_Loc *loc;
@@ -713,13 +712,13 @@ void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
 /* Decode a DW_OP stack program.  Place top of stack in ret_loc.  Push INITIAL
    onto the stack to start.  Return the location type: memory address, register,
    or const value representing value of variable*/
-LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
+LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
         Dwarf_Half loc_cnt, target_ulong frame_ptr, target_ulong *ret_loc)
 {
     //printf("\n {");
     //process_dwarf_locs(loc_list, loc_cnt);
     //printf("} = \n");
-    target_ulong stack[64];	/* ??? Assume this is enough.  */
+    target_ulong stack[64];    /* ??? Assume this is enough.  */
     int stack_elt, loc_idx, i;
     unsigned int next_offset;
     bool inReg = false;
@@ -863,13 +862,13 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
             case DW_OP_reg29:
             case DW_OP_reg30:
             case DW_OP_reg31:
-                //result = getReg (env, op - DW_OP_reg0);
+                //result = getReg (cpu, op - DW_OP_reg0);
                 result = op - DW_OP_reg0;
                 inReg = true;
                 break;
             case DW_OP_regx:
                 reg = cur_loc->lr_number;
-                //result = getReg (env, reg);
+                //result = getReg (cpu, reg);
                 result = reg;
                 inReg = true;
                 break;
@@ -907,7 +906,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
             case DW_OP_breg30:
             case DW_OP_breg31:
                 offset = cur_loc->lr_number;
-                result = getReg (env, op - DW_OP_breg0) + offset;
+                result = getReg (cpu, op - DW_OP_breg0) + offset;
                 break;
             case DW_OP_fbreg:
                 offset = cur_loc->lr_number;
@@ -923,7 +922,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
             case DW_OP_bregx:
                 reg = cur_loc->lr_number;
                 offset = cur_loc->lr_number2;
-                result = getReg (env, reg) + offset;
+                result = getReg (cpu, reg) + offset;
                 break;
 
             case DW_OP_dup:
@@ -950,7 +949,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                     assert (1==0);
                 result = stack[stack_elt - 2];
                 break;
-           
+
             // variable doesn't have location
             // but dwarf information says it's VALUE
             // at this point in the program
@@ -1001,7 +1000,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                 {
                     case DW_OP_deref:
                         {
-                            result = read_guest_pointer (env, result);
+                            result = read_guest_pointer (cpu, result);
                         }
                         break;
                     case DW_OP_deref_size:
@@ -1009,23 +1008,23 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
                             switch (cur_loc->lr_number)
                             {
                                 case 1:
-                                    result = read_1u (env, result);
+                                    result = read_1u (cpu, result);
                                     break;
                                 case 2:
-                                    result = read_2u (env, result);
+                                    result = read_2u (cpu, result);
                                     break;
                                 case 4:
-                                    result = read_4u (env, result);
+                                    result = read_4u (cpu, result);
                                     break;
                                 case 8:
-                                    result = read_8u (env, result);
+                                    result = read_8u (cpu, result);
                                     break;
                                 default:
                                     assert (1==0);
                             }
                         }
                         break;
-            
+
                     case DW_OP_GNU_deref_type:
                     case DW_OP_deref_type:
                         printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
@@ -1170,7 +1169,7 @@ LocType execute_stack_op(CPUState *env, target_ulong pc, Dwarf_Loc *loc_list,
 
             default:
                 process_dwarf_locs(loc_list, loc_cnt);
-                return LocErr; 
+                return LocErr;
                 //assert (1==0);
         }
 
@@ -1185,7 +1184,7 @@ no_push:;
        at top of stack.  */
     if (--stack_elt < 0)
         assert (1==0);
-    
+
     *ret_loc = stack[stack_elt];
     if (inReg)
         return LocReg;

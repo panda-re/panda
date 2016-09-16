@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../../panda/panda_addr.h"
+#include "panda/addr.h"
 
 typedef void *LabelSetP;
 typedef void Panda__TaintQuery;

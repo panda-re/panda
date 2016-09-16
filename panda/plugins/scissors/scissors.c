@@ -8,13 +8,14 @@
 
 #include <stdio.h>
 
-#include "panda_plugin.h"
-#include "panda_common.h"
+#include "panda/plugin.h"
+#include "panda/rr/rr_log.h"
 
-#include "rr_log.h"
-#include "monitor.h"
-#include "sysemu.h"
-#include "qemu-timer.h"
+#include "migration/migration.h"
+#include "include/exec/address-spaces.h"
+#include "migration/qemu-file.h"
+#include "io/channel-file.h"
+#include "sysemu/sysemu.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -51,7 +52,7 @@ static void sassert(bool condition) {
 // Returns guest instr count (in old replay counting mode)
 static void write_entry(RR_log_entry *item) {
     // Code copied from rr_log.c.
-    
+
     // Copy entry.
     entry = *item;
     item = &entry;
@@ -115,30 +116,6 @@ static void write_entry(RR_log_entry *item) {
                         //free(args->variant.cpu_mem_unmap.buf);
                         break;
 
-                    case RR_CALL_CPU_REG_MEM_REGION:
-                        sassert(fwrite(&(args->variant.cpu_mem_reg_region_args), 
-                                    sizeof(args->variant.cpu_mem_reg_region_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_HD_TRANSFER:
-                        sassert(fwrite(&(args->variant.hd_transfer_args),
-                                    sizeof(args->variant.hd_transfer_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_NET_TRANSFER:
-                        sassert(fwrite(&(args->variant.net_transfer_args),
-                                    sizeof(args->variant.net_transfer_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_HANDLE_PACKET:
-                        sassert(fwrite(&(args->variant.handle_packet_args), 
-                                    sizeof(args->variant.handle_packet_args), 1, newlog) == 1);
-                        sassert(fwrite(args->variant.handle_packet_args.buf, 
-                                    args->variant.handle_packet_args.size, 1,
-                                    newlog) == 1 /*> 0*/);
-                        //free(args->variant.handle_packet_args.buf);
-                        break;
-
                     default:
                         //mz unimplemented
                         sassert(0);
@@ -168,7 +145,7 @@ static RR_prog_point copy_entry(void) {
             // replay is done - we've reached the end of file
             //mz we should never get here!
             sassert(0);
-        } 
+        }
         else {
             //mz some other kind of error
             //mz XXX something more graceful, perhaps?
@@ -255,48 +232,6 @@ static RR_prog_point copy_entry(void) {
                         //free(args->variant.cpu_mem_unmap.buf);
                         break;
 
-                    case RR_CALL_CPU_REG_MEM_REGION:
-                        sassert(fread(&(args->variant.cpu_mem_reg_region_args), 
-                                    sizeof(args->variant.cpu_mem_reg_region_args), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.cpu_mem_reg_region_args), 
-                                    sizeof(args->variant.cpu_mem_reg_region_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_HD_TRANSFER:
-                        sassert(fread(&(args->variant.hd_transfer_args),
-                                    sizeof(args->variant.hd_transfer_args), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.hd_transfer_args),
-                                    sizeof(args->variant.hd_transfer_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_NET_TRANSFER:
-                        sassert(fread(&(args->variant.net_transfer_args),
-                                    sizeof(args->variant.net_transfer_args), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.net_transfer_args),
-                                    sizeof(args->variant.net_transfer_args), 1, newlog) == 1);
-                        break;
-
-                    case RR_CALL_HANDLE_PACKET:
-                        sassert(fread(&(args->variant.handle_packet_args), 
-                                    sizeof(args->variant.handle_packet_args), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.handle_packet_args), 
-                                    sizeof(args->variant.handle_packet_args), 1, newlog) == 1);
-                        //mz XXX HACK
-                        args->old_buf_addr = (uint64_t) args->variant.handle_packet_args.buf;
-                        //mz buffer length in args->variant.cpu_mem_rw_args.len 
-                        //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.handle_packet_args.buf = 
-                            malloc(args->variant.handle_packet_args.size);
-                        //mz read the buffer 
-                        sassert(fread(args->variant.handle_packet_args.buf, 
-                                    args->variant.handle_packet_args.size, 1,
-                                    oldlog) == 1 /*> 0*/);
-                        sassert(fwrite(args->variant.handle_packet_args.buf, 
-                                    args->variant.handle_packet_args.size, 1,
-                                    newlog) == 1 /*> 0*/);
-                        //free(args->variant.handle_packet_args.buf);
-                        break;
-
                     default:
                         //mz unimplemented
                         sassert(0);
@@ -340,7 +275,7 @@ static void end_snip(void) {
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
-    if (!snipping && count+tb->num_guest_insns > start_count) {
+    if (!snipping && count+tb->icount > start_count) {
         sassert((oldlog = fopen(rr_nondet_log->name, "r")));
         sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1);
         printf("Original ending prog point: ");
@@ -348,7 +283,15 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
         actual_start_count = count;
         printf("Saving snapshot at instr count %lu...\n", count);
-        do_savevm_rr(get_monitor(), snp_name);
+
+        // Force running state
+        global_state_store_running();
+        printf("writing snapshot:\t%s\n", snp_name);
+        QIOChannelFile* ioc =
+            qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
+        QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+        qemu_savevm_state(snp, NULL);
+        qemu_fclose(snp);
 
         printf("Beginning cut-and-paste process at prog point:\n");
         rr_spit_prog_point(rr_prog_point());
@@ -368,7 +311,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         }
         while (prog_point.guest_instr_count < end_count && !feof(oldlog)) {
             prog_point = copy_entry();
-        } 
+        }
         if (!feof(oldlog)) { // prog_point is the first one AFTER what we want
             printf("Reached end of old nondet log.\n");
         } else {
@@ -395,7 +338,7 @@ bool init_plugin(void *self) {
     start_count = 0;
     end_count = UINT64_MAX;
     const char *name = "scissors";
-    
+
     panda_arg_list *args = panda_get_args("scissors");
     if (args != NULL) {
         name = panda_parse_string(args, "name", "scissors");

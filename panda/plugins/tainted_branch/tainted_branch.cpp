@@ -15,34 +15,28 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-#include <stdio.h>
-#include "../taint2/label_set.h"
-#include "../taint2/taint2.h"
-#include "panda/panda_addr.h"
+#include <cstdio>
+
+#include "panda/addr.h"
+
+#include "panda/rr/rr_log.h"
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+#include "panda/plog.h"
+
+#include "taint2/label_set.h"
+#include "taint2/taint2.h"
 
 extern "C" {
-#include "config.h"
-#include "qemu-common.h"
-#include "monitor.h"
-#include "cpu.h"
-
-#include "pandalog.h"
-
-#include "panda_plugin.h"
-#include "../taint2/taint2_ext.h"
-#include "rr_log.h"
-#include "panda_plugin_plugin.h"
-#include "panda_common.h"
-#include "guestarch.h"
+#include "taint2/taint2_ext.h"
 }
 
-
 // NB: callstack_instr_ext needs this, sadly
-#include "../common/prog_point.h"
-#include "../callstack_instr/callstack_instr_ext.h"
+#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr_ext.h"
 
 // this includes on_branch2_t
-#include "../taint2/taint2.h"
+#include "taint2/taint2.h"
 
 
 // These need to be extern "C" so that the ABI is compatible with

@@ -16,18 +16,15 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 #endif
 
-extern "C" {
-#include <stdio.h>
-#include <stdarg.h>
-#include <assert.h>
-
-#include "cpu.h"
-#include "qemu-log.h"
-}
+#include <cstdio>
+#include <cstdarg>
+#include <cassert>
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
+
+#include "panda/plugin.h"
 
 #include "fast_shad.h"
 #include "label_set.h"
@@ -284,8 +281,8 @@ void taint_select(
     tassert(false && "Couldn't find selected argument!!");
 }
 
-#define cpu_off(member) (uint64_t)(&((CPUState *)0)->member)
-#define cpu_size(member) sizeof(((CPUState *)0)->member)
+#define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
+#define cpu_size(member) sizeof(((CPUArchState *)0)->member)
 #define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
 #define cpu_contains(member, offset) \
     (cpu_off(member) <= (size_t)(offset) && \
@@ -294,7 +291,7 @@ void taint_select(
 static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
     if (cpu_contains(regs, offset)) {
         *dest = greg;
-        *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUState *)0)->regs[0]);
+        *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUArchState *)0)->regs[0]);
     } else {
         *dest= gspec;
         *addr= offset;
@@ -307,18 +304,14 @@ bool is_irrelevant(int64_t offset) {
         cpu_contains(fpregs, offset) ||
         cpu_contains(xmm_regs, offset) ||
         cpu_contains(xmm_t0, offset) ||
-        cpu_contains(mmx_t0, offset) ||
-        cpu_contains(ymmh_regs, offset);
+        cpu_contains(mmx_t0, offset);
     return !relevant;
 #else
-    bool irrelevant = offset < 0 || (size_t)offset >= sizeof(CPUState);
-    irrelevant |= offset == cpu_off(panda_guest_pc);
-    irrelevant |= offset == cpu_off(rr_guest_instr_count);
-    return irrelevant;
+    return offset < 0 || (size_t)offset >= sizeof(CPUArchState);
 #endif
 }
 
-// This should only be called on loads/stores from CPUState.
+// This should only be called on loads/stores from CPUArchState.
 void taint_host_copy(
         uint64_t env_ptr, uint64_t addr,
         FastShad *llv, uint64_t llv_offset,
@@ -363,8 +356,8 @@ void taint_host_memcpy(
         FastShad *greg, FastShad *gspec,
         uint64_t size, uint64_t labels_per_reg) {
     int64_t dest_offset = dest - env_ptr, src_offset = src - env_ptr;
-    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUState) || 
-            src_offset < 0 || (size_t)src_offset >= sizeof(CPUState)) {
+    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) || 
+            src_offset < 0 || (size_t)src_offset >= sizeof(CPUArchState)) {
         taint_log("hostmemcpy: irrelevant\n");
         return;
     }
@@ -396,7 +389,7 @@ void taint_host_delete(
         uint64_t size, uint64_t labels_per_reg) {
     int64_t offset = dest_addr - env_ptr;
 
-    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) {
+    if (offset < 0 || (size_t)offset >= sizeof(CPUArchState)) {
         taint_log("hostdel: irrelevant\n");
         return;
     }
