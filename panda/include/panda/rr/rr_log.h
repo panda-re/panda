@@ -7,7 +7,12 @@
    mode.
 */
 
+#ifndef __cplusplus
+#include "qemu/osdep.h"
 #include "cpu.h"
+#else
+#include "panda/cheaders.h"
+#endif
 #include "panda/rr/rr_log_all.h"
 
 // accessors
