@@ -50,7 +50,7 @@ PPP_CB_BOILERPLATE(on_branch2);
 
 }
 
-extern char *qemu_loc;
+extern char **gargv;
 
 // Helper methods for doing structure computations.
 #define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
@@ -96,10 +96,10 @@ static void taint_branch_run(FastShad *shad, uint64_t src) {
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
-    char *exe = strdup(qemu_loc);
+    char *exe = strdup(gargv[0]);
     std::string bitcode(dirname(exe));
     free(exe);
-    bitcode.append("/panda_plugins/panda_taint2_ops.bc");
+    bitcode.append("/panda/plugins/panda_taint2_ops.bc");
     std::cout << "taint2: Linking taint ops from " << bitcode << std::endl;
 
     LLVMContext &ctx = M.getContext();

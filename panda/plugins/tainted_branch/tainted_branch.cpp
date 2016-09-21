@@ -76,10 +76,9 @@ void tbranch_on_branch_taint2(Addr a) {
         }
         if (num_tainted > 0) {
             if (summary) {
-                extern CPUState *cpu_single_env;
-                CPUState *env = cpu_single_env;
-                target_ulong asid = panda_current_asid(env);
-                tainted_branch[asid].insert(panda_current_pc(env));
+                CPUState *cpu = first_cpu;
+                target_ulong asid = panda_current_asid(cpu);
+                tainted_branch[asid].insert(panda_current_pc(cpu));
             }
             else {
                 Panda__TaintedBranch *tb = (Panda__TaintedBranch *) malloc(sizeof(Panda__TaintedBranch));

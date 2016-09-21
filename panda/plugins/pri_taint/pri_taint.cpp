@@ -59,8 +59,7 @@ Addr make_maddr(uint64_t a) {
 #define LAVA_TAINT_QUERY_MAX_LEN 32
 // hypercall-initiated taint query of some src-level extent
 void lava_taint_query (Panda__SrcInfoPri *si, target_ulong buf, target_ulong buf_len) {
-    extern CPUState *cpu_single_cpu;
-    CPUState *cpu = cpu_single_cpu;
+    CPUState *cpu = first_cpu;
 
     //if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)){
     if  (pandalog && taint2_enabled() && (taint2_num_labels_applied() > 0)){
