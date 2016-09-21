@@ -40,8 +40,9 @@ void set_loglevel(int new_loglevel);
 static bool debug = true;
 
 const char *taint_filename = 0;
-bool positional_labels = true;
-bool no_taint = true;
+bool positional_labels;
+bool no_taint;
+bool enable_taint_on_open;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
@@ -99,8 +100,6 @@ char *last_open_filename;
 uint32_t last_open_asid;
 
 #ifdef TARGET_I386
-// This is our proxy for file position. Approximate because of fseek etc.
-uint64_t file_pos = 0;
 
 uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong guest_addr) {
     buf[0] = 0;
@@ -138,6 +137,11 @@ void open_enter(CPUState *cpu, target_ulong pc, std::string filename, int32_t fl
         saw_open = true;
         printf ("saw open of file we want to taint: [%s] insn %" PRId64 "\n", taint_filename, rr_get_guest_instr_count());
         the_asid = panda_current_asid(cpu);
+        if (enable_taint_on_open && !no_taint && !taint2_enabled()) {
+            uint64_t ins = rr_get_guest_instr_count();
+            taint2_enable_taint();
+            if (debug) printf ("file_taint: enabled taint2 @ ins  %" PRId64 "\n", ins);
+        }
     }
 }
 
@@ -152,23 +156,6 @@ void open_return(CPUState *cpu, uint32_t fd) {
     }
 
 }
-
-void seek_enter(CPUState *cpu, uint32_t fd, uint64_t abs_offset) {
-    if (the_fd == fd && the_asid == panda_current_asid(cpu)) {
-        file_pos = abs_offset;
-    }
-}
-
-void windows_seek_enter(CPUState *cpu,target_ulong pc,uint32_t FileHandle,uint32_t IoStatusBlock,uint32_t FileInformation,uint32_t Length,uint32_t FileInformationClass) {
-    uint64_t Position = 0;
-    if (FileInformationClass == 14) { // FilePositionInformation
-        panda_virtual_memory_rw(cpu, FileInformation, (uint8_t *) &Position, sizeof(Position), false);
-        if (debug) printf("DEBUG: NtSetInformationFile(fd = %u, offset = %" PRIu64 ")\n", FileHandle, Position);
-        seek_enter(cpu, FileHandle, Position);
-    }
-}
-
-
 
 // Assume 32-bit windows for this struct.
 // WARNING: THIS MAY NOT WORK ON 64-bit!
@@ -271,20 +258,26 @@ void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_c
 // typedef void (*on_NtReadFile_enter_t)(CPUState *cpu,target_ulong pc,uint32_t FileHandle,uint32_t Event,uint32_t UserApcRoutine,uint32_t UserApcContext,uint32_t IoStatusBlock,uint32_t Buffer,uint32_t BufferLength,uint32_t ByteOffset,uint32_t Key);
 
 void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle, uint32_t Event, uint32_t UserApcRoutine, uint32_t UserApcContext, uint32_t IoStatusBlock, uint32_t Buffer, uint32_t BufferLength, uint32_t ByteOffset, uint32_t Key) {
-    int64_t offset;
+    int64_t offset = -1;
     if (ByteOffset != 0) {
         // Byte offset into file is specified (pointer to LARGE_INTEGER). Read and interpret.
         panda_virtual_memory_rw(cpu, ByteOffset, (uint8_t *)&offset, sizeof(offset), 0);
         //printf("NtReadFile: %lu[%ld]\n", (unsigned long)FileHandle, offset);
-        if (offset >= 0 && offset < (1L << 48)) { // otherwise invalid.
-            file_pos = offset;
-        }
     } else {
         //printf("NtReadFile: %lu[]\n", (unsigned long)FileHandle);
     }
 
     char *filename = get_handle_name(cpu, get_current_proc(cpu), FileHandle);
-    read_enter(cpu, pc, filename, 0, Buffer, BufferLength);
+    if (ByteOffset && (offset >= 0 && offset < (1L << 48))) {
+        read_enter(cpu, pc, filename, offset, Buffer, BufferLength);
+    }
+    else {
+        offset = get_file_handle_pos(cpu, get_current_proc(cpu), FileHandle);
+        if (offset != -1)
+            read_enter(cpu, pc, filename, offset, Buffer, BufferLength);
+        else // last resort. just assume last_pos.
+            read_enter(cpu, pc, filename, last_pos, Buffer, BufferLength);
+    }
 }
 
 #define STATUS_SUCCESS 0
@@ -345,13 +338,10 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf
 
 #endif
 
-bool taint_is_enabled = false;
-
 int file_taint_enable(CPUState *cpu, target_ulong pc) {
-    if (!no_taint && !taint_is_enabled) {
+    if (!no_taint && !taint2_enabled()) {
         uint64_t ins = rr_get_guest_instr_count();
         if (ins > first_instr) {
-            taint_is_enabled = true;
             taint2_enable_taint();
             if (debug) printf (" enabled taint2 @ ins  %" PRId64 "\n", ins);
         }
@@ -420,11 +410,11 @@ bool init_plugin(void *self) {
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string(args, "filename", "abc123");
     positional_labels = panda_parse_bool(args, "pos");
-    // used to just find the names of files that get
     no_taint = panda_parse_bool(args, "notaint");
     end_label = panda_parse_ulong(args, "max_num_labels", 1000000);
     end_label = panda_parse_ulong(args, "end", end_label);
     start_label = panda_parse_ulong(args, "start", 0);
+    enable_taint_on_open = panda_parse_bool(args, "enable_taint_on_open");
     first_instr = panda_parse_uint64(args, "first_instr", 0);
 
     printf ("taint_filename = [%s]\n", taint_filename);
@@ -460,21 +450,21 @@ bool init_plugin(void *self) {
         PPP_REG_CB("syscalls2", on_NtCreateFile_return, windows_create_return);
         PPP_REG_CB("syscalls2", on_NtReadFile_enter, windows_read_enter);
         PPP_REG_CB("syscalls2", on_NtReadFile_return, windows_read_return);
-        PPP_REG_CB("syscalls2", on_NtSetInformationFile_enter, windows_seek_enter);
     }
 
     // this sets up the taint api fn ptrs so we have access
     if (!no_taint) {
-        printf ("foo\n");
+        if (debug) printf("file_taint: initializing taint2 plugin\n");
         panda_require("taint2");
         assert(init_taint2_api());
-        if (first_instr == 0) {
+        if (!enable_taint_on_open && first_instr == 0) {
+            if (debug) printf("file_taint: turning on taint at replay beginning\n");
             taint2_enable_taint();
         }
     }
 
     if (!no_taint && first_instr > 0) {
-        printf ("bar\n");
+        if (debug) printf ("file_taint: turning on taint at instruction %" PRId64 "\n", first_instr);
         // only need this callback if we are turning on taint late
         pcb.before_block_translate = file_taint_enable;
         panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);

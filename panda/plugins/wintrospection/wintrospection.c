@@ -30,11 +30,9 @@ PANDAENDCOMMENT */
 #include "wintrospection.h"
 #include "wintrospection_int_fns.h"
 
-
 char *get_keyname(uint32_t KeyHandle);
 bool init_plugin(void *);
 void uninit_plugin(void *);
-
 
 // this stuff only makes sense for win x86 32-bit
 #ifdef TARGET_I386
@@ -272,6 +270,14 @@ char *get_file_obj_name(CPUState *cpu, uint32_t fobj) {
     return read_unicode_string(cpu, fobj+FILE_OBJECT_NAME_OFF);
 }
 
+#define FILE_OBJECT_POS_OFF 0x38
+int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj) {
+    int64_t file_pos = -1;
+    if (-1 == panda_virtual_memory_rw(cpu, fobj+FILE_OBJECT_POS_OFF, (uint8_t *)&file_pos, 8, false))
+        return -1;
+    else
+        return file_pos;
+}
 
 HandleObject *get_handle_object(CPUState *cpu, uint32_t eproc, uint32_t handle) {
     uint32_t pObjectTable;
@@ -338,6 +344,16 @@ char *get_handle_object_name(CPUState *cpu, HandleObject *ho) {
 char * get_handle_name(CPUState *cpu, uint32_t eproc, uint32_t handle) {
     HandleObject *ho = get_handle_object(cpu, eproc, handle);
     return get_handle_object_name(cpu, ho);
+}
+
+int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) {
+    HandleObject *ho = get_handle_object(cpu, eproc, handle);
+    if (!ho) {
+        return -1;
+    }
+    else {
+        return get_file_obj_pos(cpu, ho->pObj);
+    }
 }
 
 #endif
