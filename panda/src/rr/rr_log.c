@@ -88,7 +88,7 @@ double rr_get_percentage(void)
 static inline uint8_t rr_log_is_empty(void)
 {
     if ((rr_nondet_log->type == REPLAY) &&
-        (rr_nondet_log->size - ftell(rr_nondet_log->fp) == 0)) {
+        (rr_nondet_log->size == rr_nondet_log->bytes_read)) {
         return 1;
     } else {
         return 0;
@@ -260,113 +260,93 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
 /* RECORD */
 /******************************************************************************************/
 
+static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
+    size_t result = fwrite(ptr, size, nmemb, rr_nondet_log->fp);
+    rr_assert(result == nmemb);
+    return result;
+}
+
 // mz write the current log item to file
 static inline void rr_write_item(void)
 {
-    RR_log_entry* item = &(rr_nondet_log->current_item);
+    RR_log_entry item = rr_nondet_log->current_item;
 
     // mz save the header
     rr_assert(rr_in_record());
     rr_assert(rr_nondet_log != NULL);
+
+#define RR_WRITE_ITEM(field) rr_fwrite(&(field), sizeof(field), 1)
     // mz this is more compact, as it doesn't include extra padding.
-    fwrite(&(item->header.prog_point), sizeof(RR_prog_point), 1,
-           rr_nondet_log->fp);
-    fwrite(&(item->header.kind), sizeof(item->header.kind), 1,
-           rr_nondet_log->fp);
-    fwrite(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1,
-           rr_nondet_log->fp);
+    RR_WRITE_ITEM(item.header.prog_point);
+    RR_WRITE_ITEM(item.header.kind);
+    RR_WRITE_ITEM(item.header.callsite_loc);
 
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
-    rr_nondet_log->last_prog_point = item->header.prog_point;
+    rr_nondet_log->last_prog_point = item.header.prog_point;
 
-    switch (item->header.kind) {
-    case RR_INPUT_1:
-        fwrite(&(item->variant.input_1), sizeof(item->variant.input_1), 1,
-               rr_nondet_log->fp);
-        break;
-    case RR_INPUT_2:
-        fwrite(&(item->variant.input_2), sizeof(item->variant.input_2), 1,
-               rr_nondet_log->fp);
-        break;
-    case RR_INPUT_4:
-        fwrite(&(item->variant.input_4), sizeof(item->variant.input_4), 1,
-               rr_nondet_log->fp);
-        break;
-    case RR_INPUT_8:
-        fwrite(&(item->variant.input_8), sizeof(item->variant.input_8), 1,
-               rr_nondet_log->fp);
-        break;
-    case RR_INTERRUPT_REQUEST:
-        fwrite(&(item->variant.interrupt_request),
-               sizeof(item->variant.interrupt_request), 1, rr_nondet_log->fp);
-        break;
-    case RR_EXIT_REQUEST:
-        fwrite(&(item->variant.exit_request),
-               sizeof(item->variant.exit_request), 1, rr_nondet_log->fp);
-        break;
-    case RR_SKIPPED_CALL: {
-        RR_skipped_call_args* args = &item->variant.call_args;
-        // mz write kind first!
-        fwrite(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp);
-        switch (args->kind) {
-        case RR_CALL_CPU_MEM_RW:
-            rr_assert(args->variant.cpu_mem_rw_args.buf != NULL ||
-                      args->variant.cpu_mem_rw_args.len == 0);
-            fwrite(&(args->variant.cpu_mem_rw_args),
-                   sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp);
-            // mz write the buffer
-            fwrite(args->variant.cpu_mem_rw_args.buf, 1,
-                   args->variant.cpu_mem_rw_args.len, rr_nondet_log->fp);
+    switch (item.header.kind) {
+        case RR_INPUT_1:
+            RR_WRITE_ITEM(item.variant.input_1);
             break;
-        case RR_CALL_CPU_MEM_UNMAP:
-            // bdg same deal as RR_CALL_CPU_MEM_RW
-            rr_assert(args->variant.cpu_mem_unmap.buf != NULL ||
-                      args->variant.cpu_mem_unmap.len == 0);
-            fwrite(&(args->variant.cpu_mem_unmap),
-                   sizeof(args->variant.cpu_mem_unmap), 1, rr_nondet_log->fp);
-            fwrite(args->variant.cpu_mem_unmap.buf, 1,
-                   args->variant.cpu_mem_unmap.len, rr_nondet_log->fp);
+        case RR_INPUT_2:
+            RR_WRITE_ITEM(item.variant.input_2);
             break;
-        case RR_CALL_MEM_REGION_CHANGE:
-            fwrite(&(args->variant.mem_region_change_args),
-                   sizeof(args->variant.mem_region_change_args), 1,
-                   rr_nondet_log->fp);
-            fwrite(args->variant.mem_region_change_args.name, 1,
-                   args->variant.mem_region_change_args.len, rr_nondet_log->fp);
+        case RR_INPUT_4:
+            RR_WRITE_ITEM(item.variant.input_4);
             break;
-        case RR_CALL_HD_TRANSFER:
-            fwrite(&(args->variant.hd_transfer_args),
-                   sizeof(args->variant.hd_transfer_args), 1,
-                   rr_nondet_log->fp);
+        case RR_INPUT_8:
+            RR_WRITE_ITEM(item.variant.input_8);
             break;
-        case RR_CALL_NET_TRANSFER:
-            fwrite(&(args->variant.net_transfer_args),
-                   sizeof(args->variant.net_transfer_args), 1,
-                   rr_nondet_log->fp);
+        case RR_INTERRUPT_REQUEST:
+            RR_WRITE_ITEM(item.variant.interrupt_request);
             break;
-        case RR_CALL_HANDLE_PACKET:
-            assert(args->variant.handle_packet_args.buf != NULL ||
-                   args->variant.handle_packet_args.size == 0);
-            fwrite(&(args->variant.handle_packet_args),
-                   sizeof(args->variant.handle_packet_args), 1,
-                   rr_nondet_log->fp);
-            // mz write the buffer
-            fwrite(args->variant.handle_packet_args.buf, 1,
-                   args->variant.handle_packet_args.size, rr_nondet_log->fp);
+        case RR_EXIT_REQUEST:
+            RR_WRITE_ITEM(item.variant.exit_request);
+            break;
+        case RR_SKIPPED_CALL: {
+            RR_skipped_call_args* args = &item.variant.call_args;
+            // mz write kind first!
+            RR_WRITE_ITEM(args->kind);
+            switch (args->kind) {
+                case RR_CALL_CPU_MEM_RW:
+                    RR_WRITE_ITEM(args->variant.cpu_mem_rw_args);
+                    rr_fwrite(args->variant.cpu_mem_rw_args.buf, 1,
+                            args->variant.cpu_mem_rw_args.len);
+                    break;
+                case RR_CALL_CPU_MEM_UNMAP:
+                    RR_WRITE_ITEM(args->variant.cpu_mem_unmap);
+                    rr_fwrite(args->variant.cpu_mem_unmap.buf, 1,
+                                args->variant.cpu_mem_unmap.len);
+                    break;
+                case RR_CALL_MEM_REGION_CHANGE:
+                    RR_WRITE_ITEM(args->variant.mem_region_change_args);
+                    rr_fwrite(args->variant.mem_region_change_args.name, 1,
+                            args->variant.mem_region_change_args.len);
+                    break;
+                case RR_CALL_HD_TRANSFER:
+                    RR_WRITE_ITEM(args->variant.hd_transfer_args);
+                    break;
+                case RR_CALL_NET_TRANSFER:
+                    RR_WRITE_ITEM(args->variant.net_transfer_args);
+                    break;
+                case RR_CALL_HANDLE_PACKET:
+                    RR_WRITE_ITEM(args->variant.handle_packet_args);
+                    rr_fwrite(args->variant.handle_packet_args.buf,
+                            args->variant.handle_packet_args.size, 1);
+                    break;
+                default:
+                    // mz unimplemented
+                    rr_assert(0 && "Unimplemented skipped call!");
+            }
+        } break;
+        case RR_LAST:
+        case RR_DEBUG:
+            // mz nothing to read
             break;
         default:
             // mz unimplemented
-            rr_assert(0);
-        }
-    } break;
-    case RR_LAST:
-    case RR_DEBUG:
-        // mz nothing to write
-        break;
-    default:
-        // mz unimplemented
-        rr_assert(0);
+            rr_assert(0 && "Unimplemented replay log entry!");
     }
     rr_nondet_log->item_number++;
 }
@@ -723,190 +703,127 @@ static inline RR_log_entry* alloc_new_entry(void)
     return new_entry;
 }
 
+static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
+    size_t result = fread(ptr, size, nmemb, rr_nondet_log->fp);
+    rr_nondet_log->bytes_read += nmemb * size;
+    rr_assert(result == nmemb);
+    return result;
+}
+
 // mz fill an entry
 static RR_log_entry* rr_read_item(void)
 {
-    RR_log_entry* item = alloc_new_entry();
+    RR_log_entry item;
+    item.next = NULL;
 
     // mz read header
     rr_assert(rr_in_replay());
     rr_assert(!rr_log_is_empty());
     rr_assert(rr_nondet_log->fp != NULL);
 
-    // mz XXX we assume that the log is not trucated - should probably fix this.
-    if (fread(&(item->header.prog_point), sizeof(RR_prog_point), 1,
-              rr_nondet_log->fp) != 1) {
-        // mz an error occurred
-        if (feof(rr_nondet_log->fp)) {
-            // replay is done - we've reached the end of file
-            // mz we should never get here!
-            rr_assert(0);
-        } else {
-            // mz some other kind of error
-            // mz XXX something more graceful, perhaps?
-            rr_assert(0);
-        }
-    }
-    // mz this is more compact, as it doesn't include extra padding.
-    rr_assert(fread(&(item->header.kind), sizeof(item->header.kind), 1,
-                    rr_nondet_log->fp) == 1);
-    rr_assert(fread(&(item->header.callsite_loc),
-                    sizeof(item->header.callsite_loc), 1,
-                    rr_nondet_log->fp) == 1);
+    item.header.file_pos = rr_nondet_log->bytes_read;
 
-    // mz let's do some counting
-    rr_number_of_log_entries[item->header.kind]++;
-    // mz add the header - present for all entries
-    rr_size_of_log_entries[item->header.kind] +=
-        sizeof(RR_prog_point) + sizeof(item->header.kind) +
-        sizeof(item->header.callsite_loc);
+#define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
+    // mz this is more compact, as it doesn't include extra padding.
+    RR_READ_ITEM(item.header.prog_point);
+    RR_READ_ITEM(item.header.kind);
+    RR_READ_ITEM(item.header.callsite_loc);
 
     // mz read the rest of the item
-    switch (item->header.kind) {
-    case RR_INPUT_1:
-        rr_assert(fread(&(item->variant.input_1), sizeof(item->variant.input_1),
-                        1, rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.input_1);
-        break;
-    case RR_INPUT_2:
-        rr_assert(fread(&(item->variant.input_2), sizeof(item->variant.input_2),
-                        1, rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.input_2);
-        break;
-    case RR_INPUT_4:
-        rr_assert(fread(&(item->variant.input_4), sizeof(item->variant.input_4),
-                        1, rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.input_4);
-        break;
-    case RR_INPUT_8:
-        rr_assert(fread(&(item->variant.input_8), sizeof(item->variant.input_8),
-                        1, rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.input_8);
-        break;
-    case RR_INTERRUPT_REQUEST:
-        rr_assert(fread(&(item->variant.interrupt_request),
-                        sizeof(item->variant.interrupt_request), 1,
-                        rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.interrupt_request);
-        break;
-    case RR_EXIT_REQUEST:
-        rr_assert(fread(&(item->variant.exit_request),
-                        sizeof(item->variant.exit_request), 1,
-                        rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] +=
-            sizeof(item->variant.exit_request);
-        break;
-    case RR_SKIPPED_CALL: {
-        RR_skipped_call_args* args = &item->variant.call_args;
-        // mz read kind first!
-        rr_assert(fread(&(args->kind), sizeof(args->kind), 1,
-                        rr_nondet_log->fp) == 1);
-        rr_size_of_log_entries[item->header.kind] += sizeof(args->kind);
-        switch (args->kind) {
-        case RR_CALL_CPU_MEM_RW:
-            rr_assert(fread(&(args->variant.cpu_mem_rw_args),
-                            sizeof(args->variant.cpu_mem_rw_args), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.cpu_mem_rw_args);
-            // mz buffer length in args->variant.cpu_mem_rw_args.len
-            // mz always allocate a new one. we free it when the item is added
-            // to the recycle list
-            args->variant.cpu_mem_rw_args.buf =
-                g_malloc(args->variant.cpu_mem_rw_args.len);
-            // mz read the buffer
-            rr_assert(fread(args->variant.cpu_mem_rw_args.buf, 1,
-                            args->variant.cpu_mem_rw_args.len,
-                            rr_nondet_log->fp) > 0);
-            rr_size_of_log_entries[item->header.kind] +=
-                args->variant.cpu_mem_rw_args.len;
+    switch (item.header.kind) {
+        case RR_INPUT_1:
+            RR_READ_ITEM(item.variant.input_1);
             break;
-        case RR_CALL_CPU_MEM_UNMAP:
-            rr_assert(fread(&(args->variant.cpu_mem_unmap),
-                            sizeof(args->variant.cpu_mem_unmap), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.cpu_mem_unmap);
-            args->variant.cpu_mem_unmap.buf =
-                g_malloc(args->variant.cpu_mem_unmap.len);
-            rr_assert(fread(args->variant.cpu_mem_unmap.buf, 1,
-                            args->variant.cpu_mem_unmap.len,
-                            rr_nondet_log->fp) > 0);
-            rr_size_of_log_entries[item->header.kind] +=
-                args->variant.cpu_mem_unmap.len;
+        case RR_INPUT_2:
+            RR_READ_ITEM(item.variant.input_2);
             break;
-        case RR_CALL_MEM_REGION_CHANGE:
-            rr_assert(fread(&(args->variant.mem_region_change_args),
-                            sizeof(args->variant.mem_region_change_args), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.mem_region_change_args);
-            args->variant.mem_region_change_args.name =
-                g_malloc0(args->variant.mem_region_change_args.len + 1);
-            rr_assert(fread(args->variant.mem_region_change_args.name, 1,
-                            args->variant.mem_region_change_args.len,
-                            rr_nondet_log->fp) > 0);
-            rr_size_of_log_entries[item->header.kind] +=
-                args->variant.mem_region_change_args.len;
+        case RR_INPUT_4:
+            RR_READ_ITEM(item.variant.input_4);
             break;
-        case RR_CALL_HD_TRANSFER:
-            rr_assert(fread(&(args->variant.hd_transfer_args),
-                            sizeof(args->variant.hd_transfer_args), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.hd_transfer_args);
+        case RR_INPUT_8:
+            RR_READ_ITEM(item.variant.input_8);
             break;
+        case RR_INTERRUPT_REQUEST:
+            RR_READ_ITEM(item.variant.interrupt_request);
+            break;
+        case RR_EXIT_REQUEST:
+            RR_READ_ITEM(item.variant.exit_request);
+            break;
+        case RR_SKIPPED_CALL: {
+            RR_skipped_call_args* args = &item.variant.call_args;
+            // mz read kind first!
+            RR_READ_ITEM(args->kind);
+            switch (args->kind) {
+                case RR_CALL_CPU_MEM_RW:
+                    RR_READ_ITEM(args->variant.cpu_mem_rw_args);
+                    // mz buffer length in args->variant.cpu_mem_rw_args.len
+                    // mz always allocate a new one. we free it when the item is added
+                    // to the recycle list
+                    args->variant.cpu_mem_rw_args.buf =
+                        g_malloc(args->variant.cpu_mem_rw_args.len);
+                    // mz read the buffer
+                    rr_fread(args->variant.cpu_mem_rw_args.buf, 1,
+                            args->variant.cpu_mem_rw_args.len);
+                    break;
+                case RR_CALL_CPU_MEM_UNMAP:
+                    RR_READ_ITEM(args->variant.cpu_mem_unmap);
+                    args->variant.cpu_mem_unmap.buf =
+                        g_malloc(args->variant.cpu_mem_unmap.len);
+                    rr_fread(args->variant.cpu_mem_unmap.buf, 1,
+                                args->variant.cpu_mem_unmap.len);
+                    break;
+                case RR_CALL_MEM_REGION_CHANGE:
+                    RR_READ_ITEM(args->variant.mem_region_change_args);
+                    args->variant.mem_region_change_args.name =
+                        g_malloc0(args->variant.mem_region_change_args.len + 1);
+                    rr_fread(args->variant.mem_region_change_args.name, 1,
+                            args->variant.mem_region_change_args.len);
+                    break;
+                case RR_CALL_HD_TRANSFER:
+                    RR_READ_ITEM(args->variant.hd_transfer_args);
+                    break;
 
-        case RR_CALL_NET_TRANSFER:
-            rr_assert(fread(&(args->variant.net_transfer_args),
-                            sizeof(args->variant.net_transfer_args), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.net_transfer_args);
-            break;
+                case RR_CALL_NET_TRANSFER:
+                    RR_READ_ITEM(args->variant.net_transfer_args);
+                    break;
 
-        case RR_CALL_HANDLE_PACKET:
-            rr_assert(fread(&(args->variant.handle_packet_args),
-                            sizeof(args->variant.handle_packet_args), 1,
-                            rr_nondet_log->fp) == 1);
-            rr_size_of_log_entries[item->header.kind] +=
-                sizeof(args->variant.handle_packet_args);
-            // mz XXX HACK
-            args->old_buf_addr = (uint64_t)args->variant.handle_packet_args.buf;
-            // mz buffer length in args->variant.cpu_mem_rw_args.len
-            // mz always allocate a new one. we free it when the item is added
-            // to the recycle list
-            args->variant.handle_packet_args.buf =
-                g_malloc(args->variant.handle_packet_args.size);
-            // mz read the buffer
-            assert(fread(args->variant.handle_packet_args.buf,
-                         args->variant.handle_packet_args.size, 1,
-                         rr_nondet_log->fp) == 1 /*> 0*/);
-            rr_size_of_log_entries[item->header.kind] +=
-                args->variant.handle_packet_args.size;
-            break;
+                case RR_CALL_HANDLE_PACKET:
+                    RR_READ_ITEM(args->variant.handle_packet_args);
+                    // mz XXX HACK
+                    args->old_buf_addr = (uint64_t)args->variant.handle_packet_args.buf;
+                    // mz buffer length in args->variant.cpu_mem_rw_args.len
+                    // mz always allocate a new one. we free it when the item is added
+                    // to the recycle list
+                    args->variant.handle_packet_args.buf =
+                        g_malloc(args->variant.handle_packet_args.size);
+                    // mz read the buffer
+                    rr_fread(args->variant.handle_packet_args.buf,
+                            args->variant.handle_packet_args.size, 1);
+                    break;
 
+                default:
+                    // mz unimplemented
+                    rr_assert(0 && "Unimplemented skipped call!");
+            }
+        } break;
+        case RR_LAST:
+        case RR_DEBUG:
+            // mz nothing to read
+            break;
         default:
             // mz unimplemented
-            rr_assert(0);
-        }
-    } break;
-    case RR_LAST:
-    case RR_DEBUG:
-        // mz nothing to read
-        break;
-    default:
-        // mz unimplemented
-        rr_assert(0);
+            rr_assert(0 && "Unimplemented replay log entry!");
     }
     rr_nondet_log->item_number++;
 
-    return item;
+    // mz let's do some counting
+    rr_size_of_log_entries[item.header.kind] +=
+        rr_nondet_log->bytes_read - item.header.file_pos;
+    rr_number_of_log_entries[item.header.kind]++;
+
+    RR_log_entry *result = alloc_new_entry();
+    *result = item;
+    return result;
 }
 
 #define RR_MAX_QUEUE_LEN 65536
@@ -1318,13 +1235,14 @@ void rr_create_replay_log(const char* filename)
     // mz fill in log size
     stat(rr_nondet_log->name, &statbuf);
     rr_nondet_log->size = statbuf.st_size;
+    rr_nondet_log->bytes_read = 0;
     if (rr_debug_whisper()) {
         qemu_log("opened %s for read.  len=%llu bytes.\n", rr_nondet_log->name,
                  rr_nondet_log->size);
     }
     // mz read the last program point from the log header.
-    rr_assert(fread(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1,
-                    rr_nondet_log->fp) == 1);
+    rr_assert(rr_fread(&(rr_nondet_log->last_prog_point),
+                sizeof(RR_prog_point), 1) == 1);
 }
 
 // close file and free associated memory

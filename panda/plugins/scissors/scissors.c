@@ -49,195 +49,112 @@ static void sassert(bool condition) {
     }
 }
 
-// Returns guest instr count (in old replay counting mode)
-static void write_entry(RR_log_entry *item) {
-    // Code copied from rr_log.c.
+static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) {
+    size_t result = fwrite(ptr, size, nmemb, f);
+    sassert(result == nmemb);
+    return result;
+}
 
-    // Copy entry.
-    entry = *item;
-    item = &entry;
+static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
+    size_t result = fread(ptr, size, nmemb, f);
+    rr_nondet_log->bytes_read += nmemb * size;
+    sassert(result == nmemb);
+    return result;
+}
 
-    if (item->header.prog_point.guest_instr_count > end_count) {
-        // We don't want to copy this one.
-        return;
-    }
-
-    //ph Fix up instruction count
-    item->header.prog_point.guest_instr_count -= actual_start_count;
-    sassert(fwrite(&(item->header.prog_point), sizeof(RR_prog_point), 1, newlog) == 1);
-
-    //mz this is more compact, as it doesn't include extra padding.
-    sassert(fwrite(&(item->header.kind), sizeof(item->header.kind), 1, newlog) == 1);
-    sassert(fwrite(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, newlog) == 1);
-
-    //mz read the rest of the item
-    switch (item->header.kind) {
-        case RR_INPUT_1:
-            sassert(fwrite(&(item->variant.input_1), sizeof(item->variant.input_1), 1, newlog) == 1);
-            break;
-        case RR_INPUT_2:
-            sassert(fwrite(&(item->variant.input_2), sizeof(item->variant.input_2), 1, newlog) == 1);
-            break;
-        case RR_INPUT_4:
-            sassert(fwrite(&(item->variant.input_4), sizeof(item->variant.input_4), 1, newlog) == 1);
-            break;
-        case RR_INPUT_8:
-            sassert(fwrite(&(item->variant.input_8), sizeof(item->variant.input_8), 1, newlog) == 1);
-            break;
-        case RR_INTERRUPT_REQUEST:
-            sassert(fwrite(&(item->variant.interrupt_request),
-                        sizeof(item->variant.interrupt_request), 1, newlog) == 1);
-            break;
-        case RR_EXIT_REQUEST:
-            sassert(fwrite(&(item->variant.exit_request),
-                        sizeof(item->variant.exit_request), 1, newlog) == 1);
-            break;
-        case RR_SKIPPED_CALL:
-            {
-                RR_skipped_call_args *args = &item->variant.call_args;
-                //mz read kind first!
-                sassert(fwrite(&(args->kind), sizeof(args->kind), 1, newlog) == 1);
-                switch(args->kind) {
-                    case RR_CALL_CPU_MEM_RW:
-                        sassert(fwrite(&(args->variant.cpu_mem_rw_args),
-                                    sizeof(args->variant.cpu_mem_rw_args), 1, newlog) == 1);
-                        //mz buffer length in args->variant.cpu_mem_rw_args.len
-                        //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
-                        //mz read the buffer
-                        sassert(fwrite(args->variant.cpu_mem_rw_args.buf, 1,
-                                    args->variant.cpu_mem_rw_args.len, newlog) > 0);
-                        break;
-                    case RR_CALL_CPU_MEM_UNMAP:
-                        sassert(fwrite(&(args->variant.cpu_mem_unmap),
-                                    sizeof(args->variant.cpu_mem_unmap), 1, newlog) == 1);
-                        sassert(fwrite(args->variant.cpu_mem_unmap.buf, 1,
-                                    args->variant.cpu_mem_unmap.len, newlog) > 0);
-                        //free(args->variant.cpu_mem_unmap.buf);
-                        break;
-
-                    default:
-                        //mz unimplemented
-                        sassert(0);
-                }
-            }
-            break;
-        case RR_LAST:
-        case RR_DEBUG:
-            //mz nothing to read
-            break;
-        default:
-            //mz unimplemented
-            sassert(0);
-    }
+static inline void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog, FILE *newlog) {
+    rr_fread(ptr, size, nmemb, oldlog);
+    rr_fwrite(ptr, size, nmemb, newlog);
 }
 
 // Returns guest instr count (in old replay counting mode)
 static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
     // Copy entry.
-    RR_log_entry *item = &entry;
+    RR_log_entry item;
 
-    //mz XXX we assume that the log is not trucated - should probably fix this.
-    if (fread(&(item->header.prog_point), sizeof(RR_prog_point), 1, oldlog) != 1) {
-        //mz an error occurred
-        if (feof(oldlog)) {
-            // replay is done - we've reached the end of file
-            //mz we should never get here!
-            sassert(0);
-        }
-        else {
-            //mz some other kind of error
-            //mz XXX something more graceful, perhaps?
-            sassert(0);
-        }
-    }
-    if (item->header.prog_point.guest_instr_count > end_count) {
+    rr_fread(&item.header.prog_point, sizeof(item.header.prog_point), 1, oldlog);
+    if (item.header.prog_point.guest_instr_count > end_count) {
         // We don't want to copy this one.
-        return item->header.prog_point;
+        return item.header.prog_point;
     }
 
     //ph Fix up instruction count
-    RR_prog_point original_prog_point = item->header.prog_point;
-    item->header.prog_point.guest_instr_count -= actual_start_count;
-    sassert(fwrite(&(item->header.prog_point), sizeof(RR_prog_point), 1, newlog) == 1);
+    RR_prog_point original_prog_point = item.header.prog_point;
+    item.header.prog_point.guest_instr_count -= actual_start_count;
+    rr_fwrite(&item.header.prog_point, sizeof(item.header.prog_point), 1, newlog);
 
     //mz this is more compact, as it doesn't include extra padding.
-    sassert(fread(&(item->header.kind), sizeof(item->header.kind), 1, oldlog) == 1);
-    sassert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, oldlog) == 1);
-    sassert(fwrite(&(item->header.kind), sizeof(item->header.kind), 1, newlog) == 1);
-    sassert(fwrite(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, newlog) == 1);
+#define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
+    RR_COPY_ITEM(item.header.kind);
+    RR_COPY_ITEM(item.header.callsite_loc);
 
     //mz read the rest of the item
-    switch (item->header.kind) {
+    switch (item.header.kind) {
         case RR_INPUT_1:
-            sassert(fread(&(item->variant.input_1), sizeof(item->variant.input_1), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.input_1), sizeof(item->variant.input_1), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.input_1);
             break;
         case RR_INPUT_2:
-            sassert(fread(&(item->variant.input_2), sizeof(item->variant.input_2), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.input_2), sizeof(item->variant.input_2), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.input_2);
             break;
         case RR_INPUT_4:
-            sassert(fread(&(item->variant.input_4), sizeof(item->variant.input_4), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.input_4), sizeof(item->variant.input_4), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.input_4);
             break;
         case RR_INPUT_8:
-            sassert(fread(&(item->variant.input_8), sizeof(item->variant.input_8), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.input_8), sizeof(item->variant.input_8), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            sassert(fread(&(item->variant.interrupt_request),
-                        sizeof(item->variant.interrupt_request), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.interrupt_request),
-                        sizeof(item->variant.interrupt_request), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.interrupt_request);
             break;
         case RR_EXIT_REQUEST:
-            sassert(fread(&(item->variant.exit_request),
-                        sizeof(item->variant.exit_request), 1, oldlog) == 1);
-            sassert(fwrite(&(item->variant.exit_request),
-                        sizeof(item->variant.exit_request), 1, newlog) == 1);
+            RR_COPY_ITEM(item.variant.exit_request);
             break;
-        case RR_SKIPPED_CALL:
-            {
-                RR_skipped_call_args *args = &item->variant.call_args;
-                //mz read kind first!
-                sassert(fread(&(args->kind), sizeof(args->kind), 1, oldlog) == 1);
-                sassert(fwrite(&(args->kind), sizeof(args->kind), 1, newlog) == 1);
-                switch(args->kind) {
-                    case RR_CALL_CPU_MEM_RW:
-                        sassert(fread(&(args->variant.cpu_mem_rw_args),
-                                    sizeof(args->variant.cpu_mem_rw_args), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.cpu_mem_rw_args),
-                                    sizeof(args->variant.cpu_mem_rw_args), 1, newlog) == 1);
-                        //mz buffer length in args->variant.cpu_mem_rw_args.len
-                        //mz always allocate a new one. we free it when the item is added to the recycle list
-                        args->variant.cpu_mem_rw_args.buf = g_malloc(args->variant.cpu_mem_rw_args.len);
-                        //mz read the buffer
-                        sassert(fread(args->variant.cpu_mem_rw_args.buf, 1,
-                                    args->variant.cpu_mem_rw_args.len, oldlog) > 0);
-                        sassert(fwrite(args->variant.cpu_mem_rw_args.buf, 1,
-                                    args->variant.cpu_mem_rw_args.len, newlog) > 0);
-                        break;
-                    case RR_CALL_CPU_MEM_UNMAP:
-                        sassert(fread(&(args->variant.cpu_mem_unmap),
-                                    sizeof(args->variant.cpu_mem_unmap), 1, oldlog) == 1);
-                        sassert(fwrite(&(args->variant.cpu_mem_unmap),
-                                    sizeof(args->variant.cpu_mem_unmap), 1, newlog) == 1);
-                        args->variant.cpu_mem_unmap.buf = malloc(args->variant.cpu_mem_unmap.len);
-                        sassert(fread(args->variant.cpu_mem_unmap.buf, 1,
-                                    args->variant.cpu_mem_unmap.len, oldlog) > 0);
-                        sassert(fwrite(args->variant.cpu_mem_unmap.buf, 1,
-                                    args->variant.cpu_mem_unmap.len, newlog) > 0);
-                        //free(args->variant.cpu_mem_unmap.buf);
-                        break;
-
-                    default:
-                        //mz unimplemented
-                        sassert(0);
-                }
+        case RR_SKIPPED_CALL: {
+            RR_skipped_call_args *args = &item.variant.call_args;
+            //mz read kind first!
+            RR_COPY_ITEM(args->kind);
+            switch(args->kind) {
+                case RR_CALL_CPU_MEM_RW:
+                    RR_COPY_ITEM(args->variant.cpu_mem_rw_args);
+                    args->variant.cpu_mem_rw_args.buf =
+                        g_malloc(args->variant.cpu_mem_rw_args.len);
+                    rr_fcopy(args->variant.cpu_mem_rw_args.buf, 1,
+                            args->variant.cpu_mem_rw_args.len,
+                            oldlog, newlog);
+                case RR_CALL_CPU_MEM_UNMAP:
+                    RR_COPY_ITEM(args->variant.cpu_mem_unmap);
+                    args->variant.cpu_mem_unmap.buf =
+                        g_malloc(args->variant.cpu_mem_unmap.len);
+                    rr_fcopy(args->variant.cpu_mem_unmap.buf, 1,
+                                args->variant.cpu_mem_unmap.len,
+                                oldlog, newlog);
+                case RR_CALL_MEM_REGION_CHANGE:
+                    RR_COPY_ITEM(args->variant.mem_region_change_args);
+                    args->variant.mem_region_change_args.name =
+                        g_malloc0(args->variant.mem_region_change_args.len + 1);
+                    rr_fcopy(args->variant.mem_region_change_args.name, 1,
+                            args->variant.mem_region_change_args.len,
+                            oldlog, newlog);
+                    break;
+                case RR_CALL_HD_TRANSFER:
+                    RR_COPY_ITEM(args->variant.hd_transfer_args);
+                    break;
+                case RR_CALL_NET_TRANSFER:
+                    RR_COPY_ITEM(args->variant.net_transfer_args);
+                    break;
+                case RR_CALL_HANDLE_PACKET:
+                    RR_COPY_ITEM(args->variant.handle_packet_args);
+                    args->variant.handle_packet_args.buf =
+                        g_malloc(args->variant.handle_packet_args.size);
+                    rr_fcopy(args->variant.handle_packet_args.buf,
+                            args->variant.handle_packet_args.size, 1,
+                            oldlog, newlog);
+                    break;
+                default:
+                    //mz unimplemented
+                    sassert(0);
             }
-            break;
+        } break;
         case RR_LAST:
         case RR_DEBUG:
             //mz nothing to read
@@ -261,7 +178,6 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
-    end.prog_point.guest_instr_count -= actual_start_count;
     sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
     sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
@@ -304,11 +220,11 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
         fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
 
+        // If there are items in the queue, then start copying the log
+        // from there
         RR_log_entry *item = rr_get_queue_head();
-        while (item != NULL && item->header.prog_point.guest_instr_count < end_count) {
-            write_entry(item);
-            item = item->next;
-        }
+        if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
+
         while (prog_point.guest_instr_count < end_count && !feof(oldlog)) {
             prog_point = copy_entry();
         }
