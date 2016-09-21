@@ -117,7 +117,7 @@ Shad *tp_init(TaintLabelMode mode, TaintGranularity granularity) {
         shad->grv = new FastShad("Reg", NUMREGS);
     }
 
-    shad->gsv = new FastShad("CPUState", sizeof(CPUState));
+    shad->gsv = new FastShad("CPUArchState", sizeof(CPUArchState));
 
     return shad;
 }

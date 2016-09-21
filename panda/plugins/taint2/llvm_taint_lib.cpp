@@ -789,7 +789,7 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         return false;
     }
 
-    if (offset < 0 || (size_t)offset >= sizeof(CPUState)) return false;
+    if (offset < 0 || (size_t)offset >= sizeof(CPUArchState)) return false;
     if (is_irrelevant(offset)) {
         addrOut.flag = IRRELEVANT;
         return true;
