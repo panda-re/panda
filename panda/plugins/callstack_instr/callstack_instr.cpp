@@ -29,12 +29,15 @@ namespace distorm {
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 
 #include "callstack_instr.h"
 #include "prog_point.h"
 
 extern "C" {
+#include "panda/plog.h"
+
+#include "callstack_instr_int_fns.h"
+
 bool translate_callback(CPUState* cpu, target_ulong pc);
 int exec_callback(CPUState* cpu, target_ulong pc);
 int before_block_exec(CPUState* cpu, TranslationBlock *tb);
@@ -43,11 +46,6 @@ int after_block_translate(CPUState* cpu, TranslationBlock *tb);
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
-}
-
-extern "C" {
-
-#include "callstack_instr_int_fns.h"
 
 PPP_PROT_REG_CB(on_call);
 PPP_PROT_REG_CB(on_ret);

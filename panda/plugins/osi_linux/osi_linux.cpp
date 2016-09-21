@@ -14,9 +14,8 @@
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
-#include "../osi/osi_types.h"
-#include "../osi/os_intro.h"
-#include "osi_linux_int_fns.h"
+#include "osi/osi_types.h"
+#include "osi/os_intro.h"
 
 #include <glib.h>
 #include <stdio.h>
@@ -33,6 +32,8 @@
 extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
+
+#include "osi_linux_int_fns.h"
 }
 
 void on_get_current_process(CPUState *env, OsiProc **out_p);

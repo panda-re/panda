@@ -24,7 +24,6 @@ PANDAENDCOMMENT */
 #include <sstream>
 #include <string>
 
-#include "panda/plog.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -32,6 +31,7 @@ extern "C" {
 #include "stringsearch.h"
 
 #include "panda/rr/rr_log.h"
+#include "panda/plog.h"
 }
 
 #include <iostream>

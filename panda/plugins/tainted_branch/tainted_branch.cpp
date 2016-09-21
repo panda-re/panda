@@ -19,15 +19,16 @@ PANDAENDCOMMENT */
 
 #include "panda/addr.h"
 
-#include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 
 #include "taint2/label_set.h"
 #include "taint2/taint2.h"
 
 extern "C" {
+#include "panda/rr/rr_log.h"
+#include "panda/plog.h"
+
 #include "taint2/taint2_ext.h"
 }
 

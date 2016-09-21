@@ -43,20 +43,19 @@
 #include <algorithm>
 #include <cmath>
 
+#include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
+
 extern "C" {
 
-#include "panda/plugin.h"
-#include "panda/common.h"
 #include "panda/plog.h"
-
 #include "panda/rr/rr_log.h"
-#include "panda/rr/rr_log_all.h"  
-#include "../osi/osi_types.h"
-#include "../osi/osi_ext.h"
+
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 
 #include "asidstory.h"
 
-#include "panda/plugin_plugin.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
