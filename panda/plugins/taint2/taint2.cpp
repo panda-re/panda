@@ -27,10 +27,8 @@
 #undef NDEBUG
 #endif
 
-#include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 #include "panda/tcg-llvm.h"
 
 #include <llvm/PassManager.h>
@@ -57,7 +55,9 @@ extern "C" {
 
 #include <sys/time.h>
 
+#include "panda/rr/rr_log.h"
 #include "panda/addr.h"
+#include "panda/plog.h"
 
 #include "callstack_instr/prog_point.h"
 #include "callstack_instr/callstack_instr_ext.h"

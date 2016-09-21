@@ -18,15 +18,15 @@ PANDAENDCOMMENT */
 #include <cstdio>
 #include <map>
 
-#include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 
 #include "loaded.h"
 
 extern "C" {
+#include "panda/rr/rr_log.h"
 #include "panda/addr.h"
+#include "panda/plog.h"
 
 #include "osi/osi_types.h"
 #include "osi/osi_ext.h"

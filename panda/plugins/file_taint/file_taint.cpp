@@ -3,16 +3,16 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <cassert>
 
 #include "taint2/taint2.h"
 
-extern "C" {
-
-#include <assert.h>
-
-#include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
+
+extern "C" {
+
+#include "panda/rr/rr_log.h"
 #include "panda/plog.h"
 #include "panda/addr.h"
 

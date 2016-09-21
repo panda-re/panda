@@ -2,10 +2,8 @@
 
 #include <algorithm>
 
-#include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
 
 // taint
 #include "taint2/label_set.h"
@@ -16,7 +14,9 @@
 
 extern "C" {
 
+#include "panda/rr/rr_log.h"
 #include "panda/addr.h"
+#include "panda/plog.h"
 
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"

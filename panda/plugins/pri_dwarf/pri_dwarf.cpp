@@ -21,6 +21,12 @@ PANDAENDCOMMENT */
 #include <string>
 #include <algorithm>
 
+#include <cstdio>
+#include <cstdarg>
+#include <cstdlib>
+#include <cstring>
+#include <cerrno>
+
 extern "C" {
 
 #include "panda/rr/rr_log.h"
@@ -57,16 +63,10 @@ void on_funct_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *ar
 
 void on_global_livevar_iter(CPUState *env, target_ulong pc, liveVarCB f, void *args);
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <dwarf.h>
 #include <libdwarf.h>
 
