@@ -15,7 +15,13 @@ $(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelin
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,$(CC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) -c -o $@ $^,"  UTLCC $(TARGET_DIR)$@")
 
+# We could implement a better search strategy here. Oh well!
+$(PLUGIN_OBJ_DIR)/kernelinfo.conf: $(PLUGIN_SRC_DIR)/kernelinfo.conf
+	$(call quiet-command,cp $< $@,"  CP    $(TARGET_DIR)$@")
+
 # The main rule for your plugin. List all object-file dependencies.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
 	$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o \
 	$(PLUGIN_OBJ_FILES)
+
+all: $(PLUGIN_OBJ_DIR)/kernelinfo.conf
