@@ -1,11 +1,12 @@
-#ifndef __DWARF_UTIL_H
-#define __DWARF_UTIL_H
+
+#ifndef __PRI_DWARF_UTIL_H
+#define __PRI_DWARF_UTIL_H
 
 #include <libdwarf.h>
+#include <panda/plugin.h>
 #include <dwarf.h>
-
-#include "panda/plugin.h"
 #include "pri/pri_types.h"
+
 
 /*
 uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong guest_addr) {
@@ -25,7 +26,7 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
 */
 
 // util functions to read DW_OP char array
-    const unsigned char *
+const unsigned char *
 read_uleb128 (const unsigned char *p, target_ulong *val)
 {
     unsigned int shift = 0;
@@ -86,70 +87,71 @@ union unaligned
 } __attribute__ ((packed));
 
 target_ulong
-read_guest_pointer (CPUState *cpu, target_ulong guest_addr) {
+read_guest_pointer (CPUState *cpu, target_ulong guest_addr) { 
     target_ulong out;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *)&out, sizeof(target_ulong), 0);
-    return out;
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *)&out, sizeof(target_ulong), 0); 
+    return out; 
 }
 
 static inline int
-read_1u (CPUState *cpu, target_ulong guest_addr) {
+read_1u (CPUState *cpu, target_ulong guest_addr) { 
     unsigned char c;
-    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0);
+    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0); 
     return c;
 }
 
 static inline int
-read_1s (CPUState *cpu, target_ulong guest_addr) {
+read_1s (CPUState *cpu, target_ulong guest_addr) { 
     unsigned char c;
-    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0);
+    panda_virtual_memory_rw(cpu, guest_addr, &c, 1, 0); 
     return c;
 }
 
 static inline int
-read_2u (CPUState *cpu, target_ulong guest_addr) {
+read_2u (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.u2;
 }
 
 static inline int
-read_2s (CPUState *cpu, target_ulong guest_addr) {
+read_2s (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.s2;
 }
 
 static inline unsigned int
-read_4u (CPUState *cpu, target_ulong guest_addr) {
+read_4u (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.u4;
 }
 
 static inline int
-read_4s (CPUState *cpu, target_ulong guest_addr) {
+read_4s (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.s4;
 }
 
 static inline unsigned long
-read_8u (CPUState *cpu, target_ulong guest_addr) {
+read_8u (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.u8;
 }
 
 static inline unsigned long
-read_8s (CPUState *cpu, target_ulong guest_addr) {
+read_8s (CPUState *cpu, target_ulong guest_addr) { 
     union unaligned up;
-    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0);
+    panda_virtual_memory_rw(cpu, guest_addr, (uint8_t *) &up, sizeof(up), 0); 
     return up.s8;
 }
 
 /* Get the value of register REG as saved in CONTEXT.  */
-inline target_ulong
+
+    inline target_ulong
 getReg (CPUState *cpu, int index)
 {
     /* This will segfault if the register hasn't been saved.  */
@@ -157,6 +159,7 @@ getReg (CPUState *cpu, int index)
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     return env->regs[index];
 }
+
 
 void process_dwarf_locs(Dwarf_Loc *locs, Dwarf_Signed loccnt){
     Dwarf_Loc *loc;
@@ -718,7 +721,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
     //printf("\n {");
     //process_dwarf_locs(loc_list, loc_cnt);
     //printf("} = \n");
-    target_ulong stack[64];    /* ??? Assume this is enough.  */
+    target_ulong stack[64];	/* ??? Assume this is enough.  */
     int stack_elt, loc_idx, i;
     unsigned int next_offset;
     bool inReg = false;
@@ -949,7 +952,7 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
                     assert (1==0);
                 result = stack[stack_elt - 2];
                 break;
-
+           
             // variable doesn't have location
             // but dwarf information says it's VALUE
             // at this point in the program
@@ -973,15 +976,18 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
                     stack[stack_elt - 3] = t1;
                     goto no_push;
                 }
+            case DW_OP_GNU_entry_value:
+                //printf(" DW_OP_entry_value: Must figure out stack unwinding. Not implemented. Returning LocErr\n");
+                return LocErr;
             // takes an argument (which is offset into debugging information for a die entry that is a base type
             // converts arg on top of stack to said base type
             case DW_OP_GNU_convert:
             case DW_OP_convert:
-                printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning 0\n");
+                //printf(" DW_OP_[GNU]_convert: Top of stack must be cast to different type.  Not implemented. Returning LocErr\n");
                 return LocErr;
             case DW_OP_piece:
             case DW_OP_bit_piece:
-                printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning 0\n");
+                //printf(" DW_OP_[bit]_piece: Variable is split among multiple locations/registers. Not implemented. Returning LocErr\n");
                 return LocErr;
             case DW_OP_deref_type:
             case DW_OP_GNU_deref_type:
@@ -1024,10 +1030,10 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
                             }
                         }
                         break;
-
+            
                     case DW_OP_GNU_deref_type:
                     case DW_OP_deref_type:
-                        printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
+                        //printf(" DW_OP_[GNU]_deref_type: need to dereference an address with a particular type\n");
                         return LocErr;
 
                     case DW_OP_abs:
@@ -1138,13 +1144,14 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
             case DW_OP_skip:
                 offset = cur_loc->lr_offset;
                 stmp = cur_loc->lr_number;
-                next_offset = offset + 2 + stmp;
+                next_offset = offset + 1 + 2 + stmp;
                 for (i = 0; i < loc_cnt; i++){
                     if (loc_list[i].lr_offset == next_offset){
                         loc_idx = i;
                         goto no_push;
                     }
                 }
+                //return LocErr;
                 assert (1==0);
 
             case DW_OP_bra:
@@ -1152,15 +1159,16 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
                     assert (1==0);
                 offset = cur_loc->lr_offset;
                 stmp = cur_loc->lr_number;
-                next_offset = offset + 2 + stmp;
+                next_offset = offset + 1 + 2 + stmp;
                 if (stack[stack_elt] != 0){
                     for (i = 0; i < loc_cnt; i++){
                         if (loc_list[i].lr_offset == next_offset){
                             loc_idx = i;
                             goto no_push;
                         }
-                        assert (1==0);
                     }
+                    //return LocErr;
+                    assert (1==0);
                 }
                 goto no_push;
 
@@ -1168,8 +1176,8 @@ LocType execute_stack_op(CPUState *cpu, target_ulong pc, Dwarf_Loc *loc_list,
                 goto no_push;
 
             default:
-                process_dwarf_locs(loc_list, loc_cnt);
-                return LocErr;
+                //process_dwarf_locs(loc_list, loc_cnt);
+                return LocErr; 
                 //assert (1==0);
         }
 
@@ -1184,7 +1192,7 @@ no_push:;
        at top of stack.  */
     if (--stack_elt < 0)
         assert (1==0);
-
+    
     *ret_loc = stack[stack_elt];
     if (inReg)
         return LocReg;

@@ -648,6 +648,11 @@ void i386_hypercall_callback(CPUState *cpu){
                     // it's an attack point sighting
                     lava_attack_point(phs);
                 }
+                else if (phs.action == 13) {
+                    // it's a pri taint query point
+                    // do nothing and let pri_taint with hypercall
+                    // option handle it
+                }
                 else {
                     printf("Unknown hypercall action %d\n", phs.action);
                 }
@@ -1020,7 +1025,14 @@ bool init_plugin(void *self) {
     */
 
     panda_arg_list *args = panda_get_args("taint2");
+
     tainted_pointer = !panda_parse_bool(args, "no_tp");
+    if (tainted_pointer) {
+        printf("taint2: Propagating taint through pointer dereference ENABLED.\n");
+    } else {
+        printf("taint2: Propagating taint through pointer dereference DISABLED.\n");
+    }
+
     inline_taint = panda_parse_bool(args, "inline");
     if (inline_taint) {
         printf("taint2: Inlining taint ops by default.\n");

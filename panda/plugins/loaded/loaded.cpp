@@ -52,6 +52,8 @@ PPP_PROT_REG_CB(on_library_load);
 // This creates the global for this call back fn (on_library_load)
 PPP_CB_BOILERPLATE(on_library_load)
 
+bool debug = false;
+
 #define MAX_FILENAME 256
 std::map <target_ulong, OsiProc> running_procs;
 
@@ -97,9 +99,12 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
     // if a filename exists and permission is executable
     // TODO: fix this magic constant of 0x04 for PROT_EXEC
     if (filename != NULL && ((prot & 0x04) == 0x04)) {
-        printf ("linux_mmap_pgoff(fd=%d filename=[%s] len=%d prot=%x "
-                "flags=%x pgoff=%d)=" TARGET_FMT_lx "\n",
-                (int) fd, filename, len, prot, flags, pgoff, env->regs[R_EAX]);
+        if (debug) {
+            printf ("linux_mmap_pgoff(fd=%d filename=[%s] "
+                    "len=%d prot=%x flags=%x "
+                    "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
+                    filename, len, prot, flags, pgoff, env->regs[R_EAX]);
+        }
         PPP_RUN_CB(on_library_load, cpu, pc, filename, env->regs[R_EAX])
     }
 }
