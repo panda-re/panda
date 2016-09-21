@@ -89,6 +89,7 @@ static inline void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
 // mz NOTE: make sure RR_log_entry_kind has at most 255 members
 typedef struct {
     RR_prog_point prog_point;
+    uint64_t file_pos;
     uint8_t kind;
     uint8_t callsite_loc; // mz This is used for another sanity check
 } RR_header;
@@ -97,7 +98,6 @@ typedef struct {
 typedef struct {
     uint8_t kind;
     union {
-        
         RR_mem_region_change_args mem_region_change_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;
         RR_cpu_mem_unmap cpu_mem_unmap;
