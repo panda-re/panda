@@ -2,6 +2,7 @@ asidstory
 callstack_instr
 dead_data
 file_taint
+loaded
 osi
 osi_linux
 pri
