@@ -345,12 +345,11 @@ void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf
 
 #endif
 
-extern uint64_t replay_get_guest_instr_count(void);
 bool taint_is_enabled = false;
 
 int file_taint_enable(CPUState *cpu, target_ulong pc) {
     if (!no_taint && !taint_is_enabled) {
-        uint64_t ins = replay_get_guest_instr_count();
+        uint64_t ins = rr_get_guest_instr_count();
         if (ins > first_instr) {
             taint_is_enabled = true;
             taint2_enable_taint();
