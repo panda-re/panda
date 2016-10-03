@@ -69,13 +69,18 @@ Communications Security (CCS), Berlin, Germany, November 2013.
 Information Flow Tracking. 22nd International Conference on Compiler
 Construction (CC), Rome, Italy, March 2013.
 
-* [3] B. Dolan-Gavitt, J. Hodosh, P. Hulin, T. Leek, R. Whelan.  
+* [3] B. Dolan-Gavitt, J. Hodosh, P. Hulin, T. Leek, R. Whelan.
 Repeatable Reverse Engineering with PANDA. 5th Program Protection and Reverse
 Engineering Workshop, Los Angeles, California, December 2015.
 
 * [4] M. Stamatogiannakis, P. Groth, H. Bos. Decoupling Provenance
 Capture and Analysis from Execution. 7th USENIX Workshop on the Theory
 and Practice of Provenance, Edinburgh, Scotland, July 2015.
+
+* [5] B. Dolan-Gavitt, P. Hulin, T. Leek, E. Kirda, A. Mambretti,
+W. Robertson, F. Ulrich, R. Whelan. LAVA: Large-scale Automated Vulnerability
+Addition. 37th IEEE Symposium on Security and Privacy, San Jose,
+California, May 2016.
 
 ## License
 
