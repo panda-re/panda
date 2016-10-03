@@ -54,6 +54,9 @@ const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
 bool debug = false;
 
+bool log_untainted = false;
+
+
 Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
     Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
     *si = PANDA__SRC_INFO_PRI__INIT;
@@ -144,7 +147,7 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
             if (is_strnlen && (offset == LAVA_TAINT_QUERY_MAX_LEN)) break;
         }
         uint32_t len = offset;
-        if (num_tainted) {
+        if (num_tainted || log_untainted) {
             // ok at least one byte in the extent is tainted
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryPri *tqh = (Panda__TaintQueryPri *) malloc (sizeof (Panda__TaintQueryPri));
@@ -180,25 +183,33 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
             Panda__CallStack *cs = pandalog_callstack_create();
             tqh->call_stack = cs;
             // 4. iterate over the bytes in the extent and pandalog detailed info about taint
-            std::vector<Panda__TaintQuery *> tq;
-            for (uint32_t offset=0; offset<len; offset++) {
-                uint32_t va = buf + offset;
-                //uint32_t va = phs.buf + offset;
-                uint32_t pa = loc_t == LocMem ? panda_virt_to_phys(env, va) : 0;
-                if ((int) pa != -1) {
-                    Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);
-                    if (taint2_query(a)) {
-                        tq.push_back(taint2_query_pandalog(a, offset));
+            // if there is at least one tainted byte
+            if (num_tainted) {
+                std::vector<Panda__TaintQuery *> tq;
+                for (uint32_t offset=0; offset<len; offset++) {
+                    uint32_t va = buf + offset;
+                    //uint32_t va = phs.buf + offset;
+                    uint32_t pa = loc_t == LocMem ? panda_virt_to_phys(env, va) : 0;
+                    if ((int) pa != -1) {
+                        Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);
+                        if (taint2_query(a)) {
+                            tq.push_back(taint2_query_pandalog(a, offset));
+                        }
                     }
                 }
-            }
-            if (debug)
-                printf("num taint queries: %lu\n", tq.size());
-            tqh->n_taint_query = tq.size();
-            tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
-            for (uint32_t i=0; i<tqh->n_taint_query; i++) {
-                tqh->taint_query[i] = tq[i];
-            }
+                if (debug)
+                    printf("num taint queries: %lu\n", tq.size());
+                tqh->n_taint_query = tq.size();
+                tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
+                for (uint32_t i=0; i<tqh->n_taint_query; i++) {
+                    tqh->taint_query[i] = tq[i];
+                }
+            } 
+            else {
+                // otherwise, set taint_query list to null
+                tqh->n_taint_query = 0;
+                tqh->taint_query = NULL;
+            }            
             Panda__LogEntry ple;
             ple = PANDA__LOG_ENTRY__INIT;
             ple.taint_query_pri = tqh;
@@ -358,6 +369,8 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("pri_taint");
     hypercall_taint = panda_parse_bool(args, "hypercall");
     linechange_taint = panda_parse_bool(args, "linechange");
+    log_untainted = panda_parse_bool(args, "log_untainted");
+
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
         linechange_taint = true;
