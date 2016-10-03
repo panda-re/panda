@@ -84,6 +84,11 @@ There are a number of command line arguments available to the taint plugin:
    whether or not data is tainted.  Byte mode gives each new byte its own label
    for precise tracking.
 
+* `log_untainted` (default: off)
+
+    Log queried extents even if they do not contain any tainted bytes. Used
+    for detecting fake DUAs and injecting fake bugs.
+
 The default invocation of of the taint plugin on a replay is:
 `<architecture>/qemu-system-<arch> -replay <replay_name> -panda taint`.
 

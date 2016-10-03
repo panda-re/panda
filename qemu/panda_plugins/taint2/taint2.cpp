@@ -168,6 +168,7 @@ static taint2_memlog taint_memlog;
 
 // Configuration
 bool tainted_pointer = true;
+bool log_untainted_extents = false;
 static TaintGranularity granularity;
 static TaintLabelMode mode;
 bool optimize_llvm = true;
@@ -513,7 +514,7 @@ void lava_taint_query (PandaHypercallStruct phs) {
             if (is_strnlen && (offset == LAVA_TAINT_QUERY_MAX_LEN)) break;
         }
         uint32_t len = offset;
-        if (num_tainted) {
+        if (num_tainted || log_untainted_extents) {
             // ok at least one byte in the extent is tainted
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
@@ -543,21 +544,29 @@ void lava_taint_query (PandaHypercallStruct phs) {
             Panda__CallStack *cs = pandalog_callstack_create();
             tqh->call_stack = cs;
             // 4. iterate over the bytes in the extent and pandalog detailed info about taint
-            std::vector<Panda__TaintQuery *> tq;
-            for (uint32_t offset=0; offset<len; offset++) {
-                uint32_t va = phs.buf + offset;
-                uint32_t pa =  panda_virt_to_phys(env, va);
-                if ((int) pa != -1) {                         
-                    Addr a = make_maddr(pa);
-                    if (taint2_query(a)) {
-                        tq.push_back(__taint2_query_pandalog(a, offset));
+            //    if there is at least one tainted byte
+            if (num_tainted){
+                std::vector<Panda__TaintQuery *> tq;
+                for (uint32_t offset=0; offset<len; offset++) {
+                    uint32_t va = phs.buf + offset;
+                    uint32_t pa =  panda_virt_to_phys(env, va);
+                    if ((int) pa != -1) {                         
+                        Addr a = make_maddr(pa);
+                        if (taint2_query(a)) {
+                            tq.push_back(__taint2_query_pandalog(a, offset));
+                        }
                     }
                 }
+                tqh->n_taint_query = tq.size();
+                tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
+                for (uint32_t i=0; i<tqh->n_taint_query; i++) {
+                    tqh->taint_query[i] = tq[i];
+                }
             }
-            tqh->n_taint_query = tq.size();
-            tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
-            for (uint32_t i=0; i<tqh->n_taint_query; i++) {
-                tqh->taint_query[i] = tq[i];
+            else {
+                // otherwise, set the taint_query list to NULL
+                tqh->n_taint_query = 0;
+                tqh->taint_query = NULL;
             }
             Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
             ple.taint_query_hypercall = tqh;
@@ -1049,7 +1058,7 @@ bool init_plugin(void *self) {
     } else {
         printf("taint2: Propagating taint through pointer dereference DISABLED.\n");
     }
-
+    log_untainted_extents = panda_parse_bool(args, "log_untainted");
     inline_taint = panda_parse_bool(args, "inline");
     if (inline_taint) {
         printf("taint2: Inlining taint ops by default.\n");
