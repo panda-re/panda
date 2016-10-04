@@ -506,12 +506,12 @@ int main_loop_wait(int nonblocking)
                                       timerlistgroup_deadline_ns(
                                           &main_loop_tlg));
 
-    ret = os_host_main_loop_wait(timeout_ns);
-
     if (rr_in_record()) {
         rr_record_in_main_loop_wait = 1;
         rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
     }
+
+    ret = os_host_main_loop_wait(timeout_ns);
 
 #ifdef CONFIG_SLIRP
     slirp_pollfds_poll(gpollfds, (ret < 0));
