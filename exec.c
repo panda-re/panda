@@ -3511,11 +3511,21 @@ static inline void address_space_stl_internal(AddressSpace *as,
             val = bswap32(val);
         }
 #endif
+        /* Because is_direct is false, these are accesses to an area other
+         * than RAM. That means we want to throw it away on replay. All paths
+         * to this function from guest code don't request a result, so we don't
+         * have to record the result of the memory_region_dispatch_write. The
+         * paths from device code shouldn't happen during replay - let's assert
+         * that.
+         */
+        if (rr_in_replay() && as == &address_space_memory) assert(false);
+
         RR_DO_RECORD_OR_REPLAY(
-            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
-            /*record*/   rr_input_4(&r); rr_input_4(&val),
-            /*replay*/   rr_input_4(&r); rr_input_4(&val),
-            /*location*/ RR_CALLSITE_STL_INTERNAL);
+        /*action=*/
+        r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
+        /*record=*/RR_NO_ACTION,
+        /*replay=*/RR_NO_ACTION,
+        /*location=*/RR_CALLSITE_STL_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3529,6 +3539,9 @@ static inline void address_space_stl_internal(AddressSpace *as,
         default:
             stl_p(ptr, val);
             break;
+        }
+        if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+            rr_device_mem_rw_call_record(addr1, ptr, l, /*is_write*/1);
         }
         invalidate_and_set_dirty(mr, addr1, 4);
         r = MEMTX_OK;
@@ -3624,11 +3637,13 @@ static inline void address_space_stw_internal(AddressSpace *as,
             val = bswap16(val);
         }
 #endif
+        /* See comment in address_space_stl_internal. */
         RR_DO_RECORD_OR_REPLAY(
-            /*action*/   r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
-            /*record*/   rr_input_4(&r); rr_input_4(&val),
-            /*replay*/   rr_input_4(&r); rr_input_4(&val),
-            /*location*/ RR_CALLSITE_STW_INTERNAL);
+        /*action=*/
+        r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
+        /*record=*/RR_NO_ACTION,
+        /*replay=*/RR_NO_ACTION,
+        /*location=*/RR_CALLSITE_STW_INTERNAL);
     } else {
         /* RAM case */
         ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3642,6 +3657,9 @@ static inline void address_space_stw_internal(AddressSpace *as,
         default:
             stw_p(ptr, val);
             break;
+        }
+        if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+            rr_device_mem_rw_call_record(addr1, ptr, l, /*is_write*/1);
         }
         invalidate_and_set_dirty(mr, addr1, 2);
         r = MEMTX_OK;
