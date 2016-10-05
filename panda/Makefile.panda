@@ -97,7 +97,9 @@ ifdef CONFIG_LLVM
 # LLVM library
 
 obj-y += panda/llvm/tcg-llvm.o
+obj-y += panda/llvm/helper_runtime.o
 panda/llvm/tcg-llvm.o-cflags := $(LLVM_CXXFLAGS) -Wno-cast-qual
+panda/llvm/helper_runtime.o-cflags := $(LLVM_CXXFLAGS) -Wno-cast-qual
 
 # regular bitcode
 llvm-y =
@@ -126,11 +128,11 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target-arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
 
-CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp
-QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS))
+CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3
+QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2
 %.bc2: %.c $(GENERATED_HEADERS)
 	$(call quiet-command,\
-		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) $(CFLAGS) -c -emit-llvm -o $@ $<,\
+		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) -c -emit-llvm -o $@ $<,\
 		"  CLANG $(TARGET_DIR)$@")
 
 llvm-helpers.bc1: $(llvm-y)
@@ -153,5 +155,10 @@ llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 
 # add this to the all target
 all: $(llvmmorph-y)
+
+clean: clean-llvm
+
+clean-llvm:
+	rm -f $(llvm-y) $(llvmmorph-y)
 
 endif # CONFIG_LLVM

@@ -82,11 +82,13 @@ private:
     Shad *shad; // no ownership. weak ptr.
     taint2_memlog *taint_memlog; // same.
 
-    Constant *constSlot(LLVMContext &ctx, Value *value);
-    Constant *constWeakSlot(LLVMContext &ctx, Value *value);
-    Constant *constInstr(LLVMContext &ctx, Instruction *I);
+    Constant *constSlot(Value *value);
+    Constant *constWeakSlot(Value *value);
+    Constant *constInstr(Instruction *I);
+    Constant *constNull(LLVMContext &C);
     int intValue(Value *value);
-    unsigned getValueSize(Value *V);
+    unsigned getValueSize(const Value *V);
+    ConstantInt *valueSizeValue(const Value *V);
     bool getAddr(Value *addrVal, Addr& addrOut);
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
@@ -95,15 +97,15 @@ private:
     void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
     void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
     CallInst *insertLogPop(Instruction &after);
-    void insertTaintMove(Instruction &I,
-            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
-            uint64_t size);
     void insertTaintCopy(Instruction &I,
             Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
             uint64_t size);
     void insertTaintBulk(Instruction &I,
             Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
             uint64_t size, Function *func);
+    void insertTaintCopyOrDelete(Instruction &I,
+            Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
+            uint64_t size);
     void insertTaintPointer(Instruction &I, Value *ptr, Value *val, bool is_store);
     void insertTaintMix(Instruction &I, Value *src);
     void insertTaintMix(Instruction &I, Value *dest, Value *src);
@@ -174,6 +176,8 @@ public:
     void visitSelectInst(SelectInst &I);
     void visitExtractValueInst(ExtractValueInst &I);
     void visitInsertValueInst(InsertValueInst &I);
+    void visitInsertElementInst(InsertElementInst &I);
+    void visitShuffleVectorInst(ShuffleVectorInst &I);
 
     void visitReturnInst(ReturnInst &I);
     void visitBinaryOperator(BinaryOperator &I);

@@ -331,7 +331,7 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
  */
 TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
 {
-    if (m_functionPassManager){
+    if (m_functionPassManager) {
         delete m_functionPassManager;
         m_functionPassManager = NULL;
     }
@@ -343,12 +343,12 @@ TCGLLVMContextPrivate::~TCGLLVMContextPrivate()
         m_executionEngine = NULL;
     }
 
-    if (llvm_is_multithreaded()){
+    if (llvm_is_multithreaded()) {
         llvm_stop_multithreaded();
     }
 }
 
-void TCGLLVMContextPrivate::initMemoryHelpers(){
+void TCGLLVMContextPrivate::initMemoryHelpers() {
     qemu_ld_helpers[MO_UB] = (void *)helper_ret_ldub_mmu_panda;
     qemu_ld_helpers[MO_LEUW] = (void *)helper_le_lduw_mmu_panda;
     qemu_ld_helpers[MO_LEUL] = (void *)helper_le_ldul_mmu_panda;
@@ -394,7 +394,7 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
      * Generated code will probably not be touching the TCG stack frame, so this
      * should be ok.
      */
-    if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))){
+    if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))) {
         globalsIdx = 0;
     }
     else {
@@ -589,7 +589,7 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
     else
         assert(bb->getParent() == 0);
 
-    if(!m_builder.GetInsertBlock()->getTerminator()){
+    if(!m_builder.GetInsertBlock()->getTerminator()) {
         m_builder.CreateBr(bb);
     }
 
@@ -609,11 +609,11 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
  * rwhelan: This is needed since the memory access helpers now need a handle to
  * env
  */
-inline Value* TCGLLVMContextPrivate::getEnv(){
+inline Value* TCGLLVMContextPrivate::getEnv() {
     TCGContext *s = m_tcgContext;
-    for(int i = 0; i<s->nb_globals; i++){
+    for(int i = 0; i<s->nb_globals; i++) {
         TCGTemp &temp = s->temps[i];
-        if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))){
+        if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))) {
             return getValue(i);
         }
     }
@@ -657,7 +657,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         argTypes.push_back(argValues[i]->getType());
 
     FunctionType* helperFunctionTy;
-    if (ld){
+    if (ld) {
         helperFunctionTy = FunctionType::get(intType(bits),
             argTypes, false);
     } else {
@@ -1322,7 +1322,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Generate code for each opc */
     const TCGArg *args;
     TCGOp *op;
-    for(int opc_index = s->gen_op_buf[0].next; opc_index >= 0;
+    for(int opc_index = s->gen_op_buf[0].next; opc_index != 0;
             opc_index = op->next) {
         op = &s->gen_op_buf[opc_index];
         args = &s->gen_opparam_buf[op->args];
@@ -1440,18 +1440,15 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-void TCGLLVMContext::writeModule(const char *path){
+void TCGLLVMContext::writeModule(const char *path) {
     std::string Error;
-    raw_ostream *outfile;
-    outfile = new raw_fd_ostream(path, Error,
-        raw_fd_ostream::F_Binary);
+    raw_fd_ostream outfile(path, Error, raw_fd_ostream::F_Binary);
     std::string err;
-    if (verifyModule(*getModule(), llvm::PrintMessageAction, &err)){
+    if (verifyModule(*getModule(), llvm::PrintMessageAction, &err)) {
         printf("%s\n", err.c_str());
         exit(1);
     }
-    WriteBitcodeToFile(getModule(), *outfile);
-    delete outfile;
+    WriteBitcodeToFile(getModule(), outfile);
 }
 
 /*****************************/
@@ -1466,8 +1463,8 @@ TCGLLVMContext* tcg_llvm_initialize()
     return new TCGLLVMContext;
 }
 
-void tcg_llvm_destroy(){
-    if (tcg_llvm_ctx){
+void tcg_llvm_destroy() {
+    if (tcg_llvm_ctx) {
         delete tcg_llvm_ctx;
         tcg_llvm_ctx = NULL;
     }
@@ -1496,13 +1493,11 @@ void tcg_llvm_tb_free(TranslationBlock *tb)
 
 const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 {
-    static char buf[500];
-    if(tb->llvm_function) {
-        strncpy(buf, tb->llvm_function->getName().str().c_str(), sizeof(buf));
+    if (tb->llvm_function) {
+        return tb->llvm_function->getName().str().c_str();
     } else {
-        buf[0] = 0;
+        return "";
     }
-    return buf;
 }
 
 uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
@@ -1513,7 +1508,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
     return next_tb;
 }
 
-void tcg_llvm_write_module(TCGLLVMContext *l, const char *path){
+void tcg_llvm_write_module(TCGLLVMContext *l, const char *path) {
     l->writeModule(path);
 }
 

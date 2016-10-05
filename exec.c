@@ -3493,7 +3493,7 @@ static inline void address_space_stl_internal(AddressSpace *as,
     MemoryRegion *mr;
     hwaddr l = 4;
     hwaddr addr1;
-    MemTxResult r;
+    MemTxResult r = MEMTX_OK;
     bool release_lock = false;
 
     rcu_read_lock();
@@ -3620,7 +3620,7 @@ static inline void address_space_stw_internal(AddressSpace *as,
     MemoryRegion *mr;
     hwaddr l = 2;
     hwaddr addr1;
-    MemTxResult r;
+    MemTxResult r = MEMTX_OK;
     bool release_lock = false;
 
     rcu_read_lock();

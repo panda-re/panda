@@ -37,16 +37,14 @@
 #ifndef TCG_LLVM_H
 #define TCG_LLVM_H
 
-#include <inttypes.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 // Definition from QEMU 1.0.1
 #define TCG_MAX_LABELS 512
-
-//#include "tcg.h"
 
 /*****************************/
 /* Functions for QEMU c code */

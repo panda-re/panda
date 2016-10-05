@@ -37,7 +37,7 @@ void set_loglevel(int new_loglevel);
 
 }
 
-static bool debug = true;
+static bool debug = false;
 
 const char *taint_filename = 0;
 bool positional_labels;
