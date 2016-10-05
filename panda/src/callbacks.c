@@ -29,6 +29,7 @@ PANDAENDCOMMENT */
 //#include "panda/panda_helper_call_morph.h"
 #include "tcg.h"
 #include "panda/tcg-llvm.h"
+#include "panda/helper_runtime.h"
 #endif
 
 #include <dlfcn.h>
@@ -372,11 +373,11 @@ void panda_disable_llvm(void){
 }
 
 void panda_enable_llvm_helpers(void){
-    //init_llvm_helpers();
+    init_llvm_helpers();
 }
 
 void panda_disable_llvm_helpers(void){
-    //uninit_llvm_helpers();
+    uninit_llvm_helpers();
 }
 
 #endif
