@@ -1031,6 +1031,10 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     inlineCallAfter(I, hostDeleteF, args);
 }
 
+static const std::set<std::string> mathFuncs{
+    "sin", "cos", "tan", "log", "__isinf", "__isnan",
+    "rint", "floor", "abs", "fabs", "ceil", "exp2"
+};
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     LLVMContext &ctx = I.getContext();
     Function *calledF = I.getCalledFunction();
@@ -1082,7 +1086,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         std::regex inoutRegex("helper_(in|out)[bwlq]");
         if (calledF->getName().startswith("taint")) {
             return;
-        } else if (!calledName.compare("cpu_loop_exit")) {
+        } else if (calledName == "cpu_loop_exit") {
             return;
         } else if (std::regex_match(calledName, ldRegex)) {
             Value *ptr = I.getArgOperand(0);
@@ -1103,21 +1107,10 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
             return;
-        } else if (!calledName.compare("sin")
-                || !calledName.compare("cos")
-                || !calledName.compare("tan")
-                || !calledName.compare("log")
-                || !calledName.compare("__isinf")
-                || !calledName.compare("__isnan")
-                || !calledName.compare("rint")
-                || !calledName.compare("floor")
-                || !calledName.compare("abs")
-                || !calledName.compare("ceil")
-                || !calledName.compare("exp2")) {
+        } else if (mathFuncs.count(calledName) > 0) {
             insertTaintMix(I, I.getArgOperand(0));
             return;
-        } else if (!calledName.compare("ldexp")
-                || !calledName.compare("atan2")) {
+        } else if (calledName == "ldexp" || calledName == "atan2") {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
         } else if (std::regex_match(calledName, inoutRegex)) {
