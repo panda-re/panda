@@ -147,13 +147,9 @@ void init_llvm_helpers() {
         exit(1);
     }
 
-    // Tell the JIT where env is
-    //llvm::GlobalValue *gv = mod->getNamedValue("env");
-    //ee->updateGlobalMapping(gv, get_env());
-
-    std::stringstream mod_file;
+    /*std::stringstream mod_file;
     mod_file << "/tmp/llvm-mod-" << getpid() << ".bc";
-    tcg_llvm_ctx->writeModule(mod_file.str().c_str());
+    tcg_llvm_ctx->writeModule(mod_file.str().c_str());*/
 
     // Create call morph pass and add to function pass manager
     llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
