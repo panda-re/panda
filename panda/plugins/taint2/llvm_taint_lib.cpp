@@ -1031,10 +1031,11 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     inlineCallAfter(I, hostDeleteF, args);
 }
 
-static const std::set<std::string> mathFuncs{
-    "sin", "cos", "tan", "log", "__isinf", "__isnan",
-    "rint", "floor", "abs", "fabs", "ceil", "exp2"
-};
+static const std::regex mathRegex(
+    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2");
+static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?");
+static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?");
+static const std::regex inoutRegex("helper_(in|out)[bwlq]");
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     LLVMContext &ctx = I.getContext();
     Function *calledF = I.getCalledFunction();
@@ -1081,9 +1082,6 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         }
 
         assert(!calledF->isIntrinsic());
-        std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?");
-        std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?");
-        std::regex inoutRegex("helper_(in|out)[bwlq]");
         if (calledF->getName().startswith("taint")) {
             return;
         } else if (calledName == "cpu_loop_exit") {
@@ -1107,7 +1105,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
             return;
-        } else if (mathFuncs.count(calledName) > 0) {
+        } else if (std::regex_match(calledName, mathRegex)) {
             insertTaintMix(I, I.getArgOperand(0));
             return;
         } else if (calledName == "ldexp" || calledName == "atan2") {
