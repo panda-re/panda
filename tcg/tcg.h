@@ -630,6 +630,7 @@ struct TCGContext {
     intptr_t frame_start;
     intptr_t frame_end;
     TCGTemp *frame_temp;
+    TCGTemp *rr_instr_count_temp;
 
     tcg_insn_unit *code_ptr;
 

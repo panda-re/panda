@@ -113,7 +113,10 @@ extern const char **gargv;
  * Start the process of including the execution of QEMU helper functions in the
  * LLVM JIT.
  */
+static bool helpers_initialized = false;
 void init_llvm_helpers() {
+    if (helpers_initialized) return;
+
     assert(tcg_llvm_ctx);
     //llvm::ExecutionEngine *ee = tcg_llvm_ctx->getExecutionEngine();
     //assert(ee);
@@ -154,6 +157,7 @@ void init_llvm_helpers() {
     // Create call morph pass and add to function pass manager
     llvm::FunctionPass *fp = new llvm::PandaCallMorphFunctionPass();
     fpm->add(fp);
+    helpers_initialized = true;
 }
 
 /*
@@ -176,5 +180,6 @@ void uninit_llvm_helpers() {
     } else {
         pr->unregisterPass(*pi);
     }
+    helpers_initialized = false;
 }
 

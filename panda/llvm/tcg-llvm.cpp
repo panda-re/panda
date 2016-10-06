@@ -290,8 +290,7 @@ public:
     }
     size_t GetDefaultDataSlabSize() {
         return m_base->GetDefaultDataSlabSize();
-    }
-    size_t GetDefaultStubSlabSize() {
+    } size_t GetDefaultStubSlabSize() {
         return m_base->GetDefaultStubSlabSize();
     }
     unsigned GetNumCodeSlabs() { return m_base->GetNumCodeSlabs(); }
@@ -948,8 +947,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 #define __LD_OP(opc_name, memBits, regBits, signE)                  \
     case opc_name:  {                                               \
         TCGTemp &temp = m_tcgContext->temps[args[0]];               \
-        TCGTemp &loc = m_tcgContext->temps[args[1]];                \
-        assert(!loc.name || !strcmp(loc.name, "env"));              \
+        assert(getValue(args[0])->getType() == intType(regBits));   \
+        assert(!m_tcgContext->temps[args[1]].name                   \
+                || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         v = getEnvOffsetPtr(args[2], temp);                         \
         v = m_builder.CreateLoad(v);                                \
         setValue(args[0], m_builder.Create ## signE ## Ext(         \
@@ -960,8 +960,8 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     case opc_name:  {                                               \
         TCGTemp &temp = m_tcgContext->temps[args[0]];               \
         assert(getValue(args[0])->getType() == intType(regBits));   \
-        TCGTemp &loc = m_tcgContext->temps[args[1]];                \
-        assert(!loc.name || !strcmp(loc.name, "env"));              \
+        assert(!m_tcgContext->temps[args[1]].name                   \
+                || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         Value* valueToStore = getValue(args[0]);                    \
         Value* storePtr = getEnvOffsetPtr(args[2], temp);           \
         m_builder.CreateStore(m_builder.CreateTrunc(                \
@@ -1342,10 +1342,25 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Init int for adding offsets to env */
     m_envInt = m_builder.CreatePtrToInt(m_tbFunction->arg_begin(), wordType());
 
-    /* Setup tcg_llvm_runtime.last_pc stores */
+    /* Setup panda_guest_pc and last_pc stores */
+    Constant *GuestPCPtrInt = constInt(sizeof(uintptr_t) * 8,
+            (uintptr_t)&first_cpu->panda_guest_pc);
+    Value *GuestPCPtr = m_builder.CreateIntToPtr(GuestPCPtrInt, intPtrType(64), "guestpc");
     Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
-                (uintptr_t)&tcg_llvm_runtime.last_pc);
-    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, wordPtrType());
+            (uintptr_t)&tcg_llvm_runtime.last_pc);
+    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, intPtrType(64), "lastpc");
+
+    /* Setup rr_guest_instr_count stores */
+    Constant *InstrCountPtrInt = constInt(sizeof(uintptr_t) * 8,
+            (uintptr_t)&first_cpu->rr_guest_instr_count);
+    Value *InstrCountPtr = m_builder.CreateIntToPtr(
+            InstrCountPtrInt, intPtrType(64), "rrgicp");
+    Instruction *InstrCount = m_builder.CreateLoad(InstrCountPtr, true, "rrgic");
+    Value *One64 = constInt(64, 1);
+
+    LLVMContext &C = m_context;
+    MDNode *PCUpdateMD = MDNode::get(C, MDString::get(C, "pcupdate"));
+    MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
 
     /* Generate code for each opc */
     const TCGArg *args;
@@ -1358,13 +1373,19 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
-            Constant *Val = ConstantInt::get(wordType(), args[0]);
-            llvm::Instruction *i = m_builder.CreateStore(Val, LastPCPtr, true);
+            Constant *PC = ConstantInt::get(intType(64), args[0]);
+            Instruction *LastPCSt = m_builder.CreateStore(PC, LastPCPtr, true);
+            Instruction *GuestPCSt = m_builder.CreateStore(PC, GuestPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
-            LLVMContext& C = i->getContext();
-            MDNode* N = MDNode::get(C, MDString::get(C, "pcupdate"));
-            i->setMetadata("pcupdate.md", N);
+            LastPCSt->setMetadata("host", PCUpdateMD);
+            GuestPCSt->setMetadata("host", PCUpdateMD);
+
+            InstrCount = dyn_cast<Instruction>(
+                    m_builder.CreateAdd(InstrCount, One64, "rrgic"));
+            assert(InstrCount);
+            m_builder.CreateStore(InstrCount, InstrCountPtr, true);
+            InstrCount->setMetadata("host", RRUpdateMD);
         }
 
         args += generateOperation(opc, op, args);
