@@ -57,9 +57,11 @@
 
 #include <iostream>
 #include <sstream>
+#include <map>
 
 #include "panda/cheaders.h"
 #include "panda/tcg-llvm.h"
+#include "panda/helper_runtime.h"
 
 #if defined(CONFIG_SOFTMMU)
 
@@ -115,11 +117,17 @@ struct TCGLLVMContextPrivate {
     /* Pointers to in-memory versions of globals or local temps */
     Value* m_memValuesPtr[TCG_MAX_TEMPS];
 
+    std::map<int64_t, Value *> m_envOffsetValues;
+    Value *m_envInt;
+
     /* For reg-based globals, store argument number,
      * for mem-based globals, store base value index */
     int m_globalsIdx[TCG_MAX_TEMPS];
 
     BasicBlock* m_labels[TCG_MAX_LABELS];
+
+    StructType *m_CPUArchStateType;
+    std::string m_CPUArchStateName;
 
 public:
     TCGLLVMContextPrivate();
@@ -149,12 +157,15 @@ public:
 
     void adjustTypeSize(unsigned target, Value **v1) {
         Value *va = *v1;
-        if (target == 32) {
-            if (va->getType() == intType(64)) {
-                *v1 = m_builder.CreateTrunc(va, intType(target));
-            } else if (va->getType() != intType(32)) {
-                assert(false);
-            }
+        if (va->getType() == intType(target)) {
+            return;
+        } else if (va == m_tbFunction->arg_begin()
+                && target == sizeof(uintptr_t) * 8) {
+            *v1 = m_envInt;
+        } else if (target == 32 && va->getType() == intType(64)) {
+            *v1 = m_builder.CreateTrunc(va, intType(target));
+        } else {
+            assert(false);
         }
     }
 
@@ -178,6 +189,7 @@ public:
     void delValue(int idx);
 
     Value* getPtrForValue(int idx);
+    Value* getEnvOffsetPtr(int64_t offset, TCGTemp &temp);
     void delPtrForValue(int idx);
     void initGlobalsAndLocalTemps();
     unsigned getValueBits(int idx);
@@ -322,6 +334,13 @@ TCGLLVMContextPrivate::TCGLLVMContextPrivate()
             new DataLayout(*m_executionEngine->getDataLayout()));
 
     m_functionPassManager->doInitialization();
+
+#define XSTR(x) STR(x)
+#define STR(x) #x
+    m_CPUArchStateName = XSTR(CPUArchState);
+    m_CPUArchStateName[6] = '.'; // Replace space with dot.
+#undef STR
+#undef XSTR
 }
 
 /* rwhelan: to restart LLVM again, there is either a bug with the
@@ -384,9 +403,8 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
     //printf("getptrforvalue: %d\n", idx);
     TCGContext *s = m_tcgContext;
     TCGTemp &temp = s->temps[idx];
-    int globalsIdx;
 
-    assert(idx < s->nb_globals || s->temps[idx].temp_local);
+    assert(idx < s->nb_globals || temp.temp_local);
 
     /* rwhelan: hack to deal with the fact that this code is written assuming
      * 'env' was the 0th index in the array.  This is no longer true, as the
@@ -394,57 +412,59 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
      * Generated code will probably not be touching the TCG stack frame, so this
      * should be ok.
      */
-    if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))) {
-        globalsIdx = 0;
-    }
-    else {
-        globalsIdx = m_globalsIdx[idx];
+    if (temp.name && !strncmp(temp.name, "env", 3)) {
+        return m_tbFunction->arg_begin();
     }
 
     if(m_memValuesPtr[idx] == NULL) {
         assert(idx < s->nb_globals);
 
         if(temp.fixed_reg) {
-            Value *v = m_builder.CreateConstGEP1_32(
-                    m_tbFunction->arg_begin(), globalsIdx);
-            m_memValuesPtr[idx] = m_builder.CreatePointerCast(
-                    v, tcgPtrType(temp.type)
-                    , StringRef(temp.name) + "_ptr"
-                    );
-
+            assert(false);
         } else {
-            Value *v = getValue(m_globalsIdx[idx]);
-            assert(v->getType() == wordType());
-
-            v = m_builder.CreateAdd(v, ConstantInt::get(
-                            wordType(), temp.mem_offset));
-            m_memValuesPtr[idx] =
-                m_builder.CreateIntToPtr(v, tcgPtrType(temp.type)
-                        , StringRef(temp.name) + "_ptr"
-                        );
+            Value *v = m_builder.CreateAdd(m_envInt, ConstantInt::get(
+                        wordType(), temp.mem_offset));
+            m_memValuesPtr[idx] = m_builder.CreateIntToPtr(
+                    v, tcgPtrType(temp.type),
+                    StringRef(temp.name) + "_ptr");
         }
     }
 
     return m_memValuesPtr[idx];
 }
 
-inline void TCGLLVMContextPrivate::delValue(int idx)
-{
-    Value *V = m_values[idx];
+Value* TCGLLVMContextPrivate::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
+    auto it = m_envOffsetValues.find(offset);
+    llvm::Type *tempType = tcgPtrType(temp.type);
+    if (it == m_envOffsetValues.end() || tempType != it->second->getType()) {
+        Value *v;
+        v = m_builder.CreateAdd(m_envInt, ConstantInt::get(wordType(), offset));
+        v = m_builder.CreateIntToPtr(
+                v, tcgPtrType(temp.type),
+                temp.name ? StringRef(temp.name) + "_ptr": "");
+        m_envOffsetValues[offset] = v;
+        return v;
+    } else {
+        return it->second;
+    }
+}
+
+static inline void freeValue(Value *V) {
     if(V && V->use_empty() && !isa<Constant>(V)) {
         if(!isa<Instruction>(V) || !cast<Instruction>(V)->getParent())
             delete V;
     }
+}
+
+inline void TCGLLVMContextPrivate::delValue(int idx)
+{
+    freeValue(m_values[idx]);
     m_values[idx] = NULL;
 }
 
 inline void TCGLLVMContextPrivate::delPtrForValue(int idx)
 {
-    if(m_memValuesPtr[idx] && m_memValuesPtr[idx]->use_empty()) {
-        if(!isa<Instruction>(m_memValuesPtr[idx]) ||
-                !cast<Instruction>(m_memValuesPtr[idx])->getParent())
-            delete m_memValuesPtr[idx];
-    }
+    freeValue(m_memValuesPtr[idx]);
     m_memValuesPtr[idx] = NULL;
 }
 
@@ -460,11 +480,14 @@ unsigned TCGLLVMContextPrivate::getValueBits(int idx)
 
 Value* TCGLLVMContextPrivate::getValue(int idx)
 {
-
+    TCGTemp &temp = m_tcgContext->temps[idx];
+    if (temp.name && !strncmp(temp.name, "env", 3)) {
+        return m_tbFunction->arg_begin();
+    }
     if(m_values[idx] == NULL) {
         if(idx < m_tcgContext->nb_globals) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx)
-                    , StringRef(m_tcgContext->temps[idx].name) + "_v"
+                    , StringRef(temp.name) + "_v"
                     );
         } else if(m_tcgContext->temps[idx].temp_local) {
             m_values[idx] = m_builder.CreateLoad(getPtrForValue(idx));
@@ -610,15 +633,7 @@ void TCGLLVMContextPrivate::startNewBasicBlock(BasicBlock *bb)
  * env
  */
 inline Value* TCGLLVMContextPrivate::getEnv() {
-    TCGContext *s = m_tcgContext;
-    for(int i = 0; i<s->nb_globals; i++) {
-        TCGTemp &temp = s->temps[i];
-        if ((temp.name != NULL) && (!strncmp(temp.name, "env", 3))) {
-            return getValue(i);
-        }
-    }
-    assert(0 && "Error finding env in TCG globals");
-    return NULL;
+    return m_tbFunction->arg_begin();
 }
 
 /*
@@ -931,28 +946,26 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
     /* load/store */
 #define __LD_OP(opc_name, memBits, regBits, signE)                  \
-    case opc_name:                                                  \
-        assert(getValue(args[1])->getType() == wordType());         \
-        v = m_builder.CreateAdd(getValue(args[1]),                  \
-                    ConstantInt::get(wordType(), args[2]));         \
-        v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
+    case opc_name:  {                                               \
+        TCGTemp &temp = m_tcgContext->temps[args[0]];               \
+        TCGTemp &loc = m_tcgContext->temps[args[1]];                \
+        assert(!loc.name || !strcmp(loc.name, "env"));              \
+        v = getEnvOffsetPtr(args[2], temp);                         \
         v = m_builder.CreateLoad(v);                                \
         setValue(args[0], m_builder.Create ## signE ## Ext(         \
                     v, intType(regBits)));                          \
-        break;
+    } break;
 
 #define __ST_OP(opc_name, memBits, regBits)                         \
-    case opc_name:  {                                                 \
+    case opc_name:  {                                               \
+        TCGTemp &temp = m_tcgContext->temps[args[0]];               \
         assert(getValue(args[0])->getType() == intType(regBits));   \
-        assert(getValue(args[1])->getType() == wordType());         \
+        TCGTemp &loc = m_tcgContext->temps[args[1]];                \
+        assert(!loc.name || !strcmp(loc.name, "env"));              \
         Value* valueToStore = getValue(args[0]);                    \
-                                                                    \
-                                                                    \
-        v = m_builder.CreateAdd(getValue(args[1]),                  \
-                    ConstantInt::get(wordType(), args[2]));         \
-        v = m_builder.CreateIntToPtr(v, intPtrType(memBits));       \
+        Value* storePtr = getEnvOffsetPtr(args[2], temp);           \
         m_builder.CreateStore(m_builder.CreateTrunc(                \
-                valueToStore, intType(memBits)), v);           \
+                valueToStore, intType(memBits)), storePtr);         \
     } break;
 
     __LD_OP(INDEX_op_ld8u_i32,   8, 32, Z)
@@ -1305,9 +1318,16 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         m_tbFunction->eraseFromParent();
     */
 
-    FunctionType *tbFunctionType = FunctionType::get(
-            wordType(),
-            std::vector<llvm::Type*>(1, intPtrType(64)), false);
+    if (m_CPUArchStateType == nullptr) {
+        init_llvm_helpers();
+        m_CPUArchStateType = m_module->getTypeByName(m_CPUArchStateName);
+    }
+    assert(m_CPUArchStateType);
+
+    llvm::Type *pCPUArchStateType =
+        PointerType::getUnqual(m_CPUArchStateType);
+    FunctionType *tbFunctionType = FunctionType::get(wordType(),
+            std::vector<llvm::Type*>{pCPUArchStateType}, false);
     m_tbFunction = Function::Create(tbFunctionType,
             Function::PrivateLinkage, fName.str(), m_module);
     BasicBlock *basicBlock = BasicBlock::Create(m_context,
@@ -1318,6 +1338,14 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
     /* Prepare globals and temps information */
     initGlobalsAndLocalTemps();
+
+    /* Init int for adding offsets to env */
+    m_envInt = m_builder.CreatePtrToInt(m_tbFunction->arg_begin(), wordType());
+
+    /* Setup tcg_llvm_runtime.last_pc stores */
+    Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
+                (uintptr_t)&tcg_llvm_runtime.last_pc);
+    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, wordPtrType());
 
     /* Generate code for each opc */
     const TCGArg *args;
@@ -1330,11 +1358,8 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
-            Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
-                        (uintptr_t)&tcg_llvm_runtime.last_pc);
-            Value *Ptr = m_builder.CreateIntToPtr(LastPCPtrInt, wordPtrType());
             Constant *Val = ConstantInt::get(wordType(), args[0]);
-            llvm::Instruction *i = m_builder.CreateStore(Val, Ptr, true);
+            llvm::Instruction *i = m_builder.CreateStore(Val, LastPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
             LLVMContext& C = i->getContext();
@@ -1359,6 +1384,11 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
     for(int i=0; i<TCG_MAX_LABELS; ++i)
         delLabel(i);
+
+    for (auto &it : m_envOffsetValues) {
+        freeValue(it.second);
+    }
+    m_envOffsetValues.clear();
 
     // run all specified function passes
     m_functionPassManager->run(*m_tbFunction);
@@ -1504,7 +1534,7 @@ uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
 {
     tcg_llvm_runtime.last_tb = tb;
     uintptr_t next_tb;
-    next_tb = ((uintptr_t (*)(void*)) tb->llvm_tc_ptr)(&env);
+    next_tb = ((uintptr_t (*)(void*)) tb->llvm_tc_ptr)(env);
     return next_tb;
 }
 
