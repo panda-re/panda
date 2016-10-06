@@ -284,15 +284,16 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
     panda_callbacks_cpu_restore_state(cpu->env_ptr, tb);
 
 #if defined(CONFIG_LLVM)
+    target_ulong guest_pc = cpu->panda_guest_pc;
     if (execute_llvm) {
-        assert(tcg_llvm_runtime.last_pc >= tb->pc);
-        assert(tcg_llvm_runtime.last_pc < tb->pc + tb->size);
+        assert(guest_pc >= tb->pc);
+        assert(guest_pc < tb->pc + tb->size);
         for (i = 0; i < num_insns; ++i) {
             for (j = 0; j < TARGET_INSN_START_WORDS; ++j) {
                 data[j] += decode_sleb128(&p);
             }
             decode_sleb128(&p); // throw away value
-            if (data[0] >= tcg_llvm_runtime.last_pc) {
+            if (data[0] >= guest_pc) {
                 goto found;
             }
         }

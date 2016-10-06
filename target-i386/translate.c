@@ -8330,7 +8330,8 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 
 #ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
-        if (rr_mode != RR_OFF) {
+        // In LLVM mode we generate this more efficiently.
+        if (rr_mode != RR_OFF && !generate_llvm) {
             gen_op_update_panda_pc(pc_ptr);
             gen_op_update_rr_icount();
         }

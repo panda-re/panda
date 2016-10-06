@@ -760,22 +760,11 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
 // Do nothing.
 void PandaTaintVisitor::visitAllocaInst(AllocaInst &I) {}
 
-bool PandaTaintVisitor::isEnvPtr(Value *loadVal) {
-    Instruction *EnvI;
-    if ((EnvI = dyn_cast<GetElementPtrInst>(loadVal)) == NULL &&
-            (EnvI = dyn_cast<BitCastInst>(loadVal)) == NULL) {
-        return false;
-    }
-    return PST->getLocalSlot(EnvI->getOperand(0)) == 0;
-}
-
 bool PandaTaintVisitor::isCPUStateAdd(BinaryOperator *AI) {
     assert(AI->getOpcode() == Instruction::Add);
-
-    LoadInst *LI;
-    if ((LI = dyn_cast<LoadInst>(AI->getOperand(0))) == NULL) return false;
-    if (!isEnvPtr(LI->getOperand(0))) return false;
-    return true;
+    PtrToIntInst *P2II = dyn_cast<PtrToIntInst>(AI->getOperand(0));
+    if (P2II == NULL) return false;
+    return PST->getLocalSlot(P2II->getOperand(0)) == 0;
 }
 
 // Find address and constant given a load/store (i.e. host vmem) address.
@@ -788,6 +777,13 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
     GetElementPtrInst *GEPI;
     addrOut.flag = (AddrFlag)0;
     int offset = -1;
+
+    Instruction *I = dyn_cast<Instruction>(addrVal);
+    if (I && I->getMetadata("host")) {
+        addrOut.flag = IRRELEVANT;
+        return true;
+    }
+
     // Structure produced by code gen should always be inttoptr(add(env_v, off)).
     // Helper functions are GEP's.
     if ((I2PI = dyn_cast<IntToPtrInst>(addrVal)) != NULL) {
@@ -800,9 +796,6 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         if (!isCPUStateAdd(AI)) return false;
 
         offset = intValue(AI->getOperand(1));
-    } else if (isEnvPtr(addrVal)) {
-        addrOut.flag = IRRELEVANT;
-        return true;
     } else if ((GEPI = dyn_cast<GetElementPtrInst>(addrVal)) != NULL) {
         // unsupported as of yet.
         // this happens in helper functions.
@@ -886,6 +879,10 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
 }
 
 void PandaTaintVisitor::visitLoadInst(LoadInst &I) {
+    if (I.getMetadata("host")) {
+        return;
+    }
+
     insertStateOp(I);
 }
 
@@ -896,13 +893,7 @@ void PandaTaintVisitor::visitLoadInst(LoadInst &I) {
  * store.
  */
 void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
-    // look for magic taint pc update info
-    MDNode *md = I.getMetadata("pcupdate.md");
-    if (md != NULL) {
-        // found store instruction that contains PC.
-    }
-
-    if (I.isVolatile()) {
+    if (I.getMetadata("host")) {
         return;
     }
 
