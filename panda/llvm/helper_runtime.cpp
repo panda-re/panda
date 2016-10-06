@@ -62,12 +62,12 @@ bool PandaCallMorphFunctionPass::runOnFunction(Function &F) {
  *** PandaHelperCallVisitor
  ***/
 
+const static std::regex mmu_regex("helper_(ret|be|le)_(ld|st)[us]?[bwlq]_mmu(_panda)?");
+const static std::regex inout_regex("helper_(in|out)[bwlq]");
 void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
     Function *f = I.getCalledFunction();
     assert(f);
 
-    std::regex mmu_regex("helper_(ret|be|le)_(ld|st)[us]?[bwlq]_mmu(_panda)?");
-    std::regex inout_regex("helper_(in|out)[bwlq]");
     std::string name = f->getName();
     if (f->isIntrinsic() || !f->hasName()
             || std::regex_match(name, mmu_regex)
