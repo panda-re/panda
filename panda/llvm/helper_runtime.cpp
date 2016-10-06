@@ -22,7 +22,8 @@ PANDAENDCOMMENT */
 #include <cstdio>
 #include <system_error>
 #include <sstream>
-#include <regex>
+#include <set>
+#include <string>
 
 extern "C" {
 #include <libgen.h>
@@ -62,16 +63,32 @@ bool PandaCallMorphFunctionPass::runOnFunction(Function &F) {
  *** PandaHelperCallVisitor
  ***/
 
-const static std::regex mmu_regex("helper_(ret|be|le)_(ld|st)[us]?[bwlq]_mmu(_panda)?");
-const static std::regex inout_regex("helper_(in|out)[bwlq]");
+const static std::set<std::string> ignore_funcs{
+    "helper_le_ldq_mmu_panda", "helper_le_ldul_mmu_panda", "helper_le_lduw_mmu_panda",
+    "helper_le_ldub_mmu_panda", "helper_le_ldsl_mmu_panda", "helper_le_ldsw_mmu_panda",
+    "helper_le_ldsb_mmu_panda",
+    "helper_le_stq_mmu_panda", "helper_le_stl_mmu_panda", "helper_le_stw_mmu_panda",
+    "helper_le_stb_mmu_panda",
+    "helper_be_ldq_mmu_panda", "helper_be_ldul_mmu_panda", "helper_be_lduw_mmu_panda",
+    "helper_be_ldub_mmu_panda", "helper_be_ldsl_mmu_panda", "helper_be_ldsw_mmu_panda",
+    "helper_be_ldsb_mmu_panda",
+    "helper_be_stq_mmu_panda", "helper_be_stl_mmu_panda", "helper_be_stw_mmu_panda",
+    "helper_be_stb_mmu_panda",
+    "helper_ret_ldq_mmu_panda", "helper_ret_ldul_mmu_panda", "helper_ret_lduw_mmu_panda",
+    "helper_ret_ldub_mmu_panda", "helper_ret_ldsl_mmu_panda", "helper_ret_ldsw_mmu_panda",
+    "helper_ret_ldsb_mmu_panda",
+    "helper_ret_stq_mmu_panda", "helper_ret_stl_mmu_panda", "helper_ret_stw_mmu_panda",
+    "helper_ret_stb_mmu_panda",
+    "helper_inb", "helper_inw", "helper_inl", "helper_inq",
+    "helper_outb", "helper_outw", "helper_outl", "helper_outq"
+};
 void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
     Function *f = I.getCalledFunction();
     assert(f);
 
     std::string name = f->getName();
     if (f->isIntrinsic() || !f->hasName()
-            || std::regex_match(name, mmu_regex)
-            || std::regex_match(name, inout_regex)) {
+            || ignore_funcs.count(name) > 0) {
         return; // Ignore intrinsics, declarations, memory, and I/O  functions
     }
 
