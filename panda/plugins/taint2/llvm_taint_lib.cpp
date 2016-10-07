@@ -269,44 +269,19 @@ void PandaSlotTracker::processFunction() {
     }
     // Add all of the basic blocks and instructions with no names.
     for (Function::iterator BB = TheFunction->begin(),
-        E = TheFunction->end(); BB != E; ++BB) {
-        if (!BB->hasName()) {
-            CreateFunctionSlot(BB);
-        }
-        else {
-            // the naming of the 'entry' BB happens by default, so leave it
-            /*if (strcmp(BB->getName().str().c_str(), "entry")) {
-                BB->setName("");
-            }*/
-            CreateFunctionSlot(BB);
-        }
+            E = TheFunction->end(); BB != E; ++BB) {
+        CreateFunctionSlot(BB);
         for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;
             ++I) {
-            if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())) {/* &&
-                !I->hasName()) {*/
+            if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())) {
                 CreateFunctionSlot(I);
             }
-            /*else if (I->getType() != llvm::Type::getVoidTy(TheFunction->getContext())
-                && I->hasName()) {
-                I->setName("");
-                CreateFunctionSlot(I);
-            }*/
-
-            // We currently are assuming no metadata, but we will need this if
-            // we start using metadata
-            /*for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
-                if (MDNode *N = dyn_cast_or_null<MDNode>(I->getOperand(i))) {
-                    CreateMetadataSlot(N);
-                }
-            }*/
         }
     }
     FunctionProcessed = true;
 }
 
 void PandaSlotTracker::CreateFunctionSlot(const Value *V) {
-    assert(V->getType() != llvm::Type::getVoidTy(TheFunction->getContext()) &&
-        (!V->hasName() || V->getName() == "entry") && "Doesn't need a slot!");
     unsigned DestSlot = fNext++;
     fMap[V] = DestSlot;
 }
