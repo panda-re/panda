@@ -1338,8 +1338,15 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     /* Prepare globals and temps information */
     initGlobalsAndLocalTemps();
 
+    LLVMContext &C = m_context;
+    MDNode *PCUpdateMD = MDNode::get(C, MDString::get(C, "pcupdate"));
+    MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
+    MDNode *RuntimeMD = MDNode::get(C, MDString::get(C, "runtime"));
+
     /* Init int for adding offsets to env */
     m_envInt = m_builder.CreatePtrToInt(m_tbFunction->arg_begin(), wordType());
+    Instruction *EnvI2PI = dyn_cast<Instruction>(m_envInt);
+    if (EnvI2PI) EnvI2PI->setMetadata("host", RuntimeMD);
 
     /* Setup panda_guest_pc and last_pc stores */
     Constant *GuestPCPtrInt = constInt(sizeof(uintptr_t) * 8,
@@ -1355,11 +1362,8 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     Value *InstrCountPtr = m_builder.CreateIntToPtr(
             InstrCountPtrInt, intPtrType(64), "rrgicp");
     Instruction *InstrCount = m_builder.CreateLoad(InstrCountPtr, true, "rrgic");
+    InstrCount->setMetadata("host", RRUpdateMD);
     Value *One64 = constInt(64, 1);
-
-    LLVMContext &C = m_context;
-    MDNode *PCUpdateMD = MDNode::get(C, MDString::get(C, "pcupdate"));
-    MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
 
     /* Generate code for each opc */
     const TCGArg *args;
@@ -1383,8 +1387,9 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
             InstrCount = dyn_cast<Instruction>(
                     m_builder.CreateAdd(InstrCount, One64, "rrgic"));
             assert(InstrCount);
-            m_builder.CreateStore(InstrCount, InstrCountPtr, true);
+            Instruction *RRSt = m_builder.CreateStore(InstrCount, InstrCountPtr, true);
             InstrCount->setMetadata("host", RRUpdateMD);
+            RRSt->setMetadata("host", RRUpdateMD);
         }
 
         args += generateOperation(opc, op, args);
