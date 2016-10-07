@@ -90,9 +90,9 @@ private:
     unsigned getValueSize(const Value *V);
     ConstantInt *valueSizeValue(const Value *V);
     bool getAddr(Value *addrVal, Addr& addrOut);
+    bool isEnvPtr(Value *V);
     bool isCPUStateAdd(BinaryOperator *AI);
     bool isIrrelevantAdd(BinaryOperator *AI);
-    bool isEnvPtr(Value *loadVal);
     void inlineCall(CallInst *CI);
     void inlineCallAfter(Instruction &I, Function *F, vector<Value *> &args);
     void inlineCallBefore(Instruction &I, Function *F, vector<Value *> &args);
