@@ -245,17 +245,17 @@ void __taint2_enable_taint(void) {
     llvm::Module *mod = tcg_llvm_ctx->getModule();
     FPM = tcg_llvm_ctx->getFunctionPassManager();
 
-    // Add the taint analysis pass to our taint pass manager
-    PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
-    FPM->add(PTFP);
-
     if (optimize_llvm) {
-        printf("taint2: Adding default optimizations (-O1).\n");
+        printf("taint2: Adding default optimizations (-O2).\n");
         llvm::PassManagerBuilder Builder;
-        Builder.OptLevel = 1;
+        Builder.OptLevel = 2;
         Builder.SizeLevel = 0;
         Builder.populateFunctionPassManager(*FPM);
     }
+
+    // Add the taint analysis pass to our taint pass manager
+    PTFP = new llvm::PandaTaintFunctionPass(shadow, &taint_memlog);
+    FPM->add(PTFP);
 
     FPM->doInitialization();
 
