@@ -947,7 +947,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 #define __LD_OP(opc_name, memBits, regBits, signE)                  \
     case opc_name:  {                                               \
         TCGTemp &temp = m_tcgContext->temps[args[0]];               \
-        assert(getValue(args[0])->getType() == intType(regBits));   \
         assert(!m_tcgContext->temps[args[1]].name                   \
                 || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
         v = getEnvOffsetPtr(args[2], temp);                         \
