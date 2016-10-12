@@ -2,9 +2,6 @@
 
 PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 
-# Include the PANDA Makefile rules
-include $(SRC_PATH)/panda/plugins/panda.mak
-
 # Influential plugin-specific flags.
 # Include threads when listing all processes.
 #QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS
