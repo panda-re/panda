@@ -10,7 +10,6 @@ $(call set-vpath, $(SRC_PATH):$(BUILD_DIR))
 PLUGIN_TARGET_DIR=panda/plugins
 PLUGIN_OBJ_DIR=panda/plugins/$(PLUGIN_NAME)
 
-PLUGIN_SRC_ROOT=$(SRC_PATH)/panda/plugins
 PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
 TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
@@ -24,9 +23,8 @@ QEMU_CXXFLAGS+=-fpermissive -std=c++11
 QEMU_CFLAGS+=$(GLIB_CFLAGS)
 QEMU_CXXFLAGS+=$(GLIB_CFLAGS)
 
-QEMU_INCLUDES+=-I$(BUILD_DIR)/$(TARGET_DIR) -I$(BUILD_DIR)
 QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(TARGET_PATH)
-QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR)
+QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I. -I..
 
 # These should get generated automatically and include dependency information.
 -include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)
