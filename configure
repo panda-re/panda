@@ -795,6 +795,8 @@ for opt do
   ;;
   --target-list=*) target_list="$optarg"
   ;;
+  --extra-plugins-path=*) extra_plugins_path="$optarg"
+  ;;
   --enable-trace-backends=*) trace_backends="$optarg"
   ;;
   # XXX: backwards compatibility
@@ -4908,6 +4910,7 @@ echo "local state directory   queried at runtime"
 echo "Windows SDK       $win_sdk"
 fi
 echo "Source path       $source_path"
+echo "Extra plugins path $extra_plugins_path"
 echo "C compiler        $cc"
 echo "Host C compiler   $host_cc"
 echo "C++ compiler      $cxx"
@@ -5189,6 +5192,9 @@ qemu_version=$(head $source_path/VERSION)
 echo "VERSION=$qemu_version" >>$config_host_mak
 echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
+if [ ! -z "$extra_plugins_path" ]; then
+  echo "EXTRA_PLUGINS_PATH=$extra_plugins_path" >> $config_host_mak
+fi
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
 if [ "$docs" = "yes" ] ; then
   echo "BUILD_DOCS=yes" >> $config_host_mak

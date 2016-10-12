@@ -4,7 +4,7 @@ PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda
 
 # ditto for extra plugins
 ifdef EXTRA_PLUGINS_PATH
-	EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/config.panda | grep -v "^\#" | xargs)
+	EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
 	EXTRA_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-plugin-%, $(EXTRA_PANDA_PLUGINS))
 endif
 
@@ -31,8 +31,8 @@ extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f "$(SRC_PATH)/panda/plugins/panda.mak" \
-		-f "$(EXTRA_PLUGINS_PATH)/$*/Makefile" \
-		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)" \
+		-f "$(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile" \
+		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
 all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
