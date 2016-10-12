@@ -15,14 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
-extern "C" {
-
-#include "config.h"
-#include "qemu-common.h"
-
 #include "panda/plugin.h"
-
-}
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
