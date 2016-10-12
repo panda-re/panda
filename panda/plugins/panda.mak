@@ -5,7 +5,11 @@ include config-devices.mak
 include config-target.mak
 include $(SRC_PATH)/rules.mak
 
+ifdef EXTRA_PLUGINS_PATH
+$(call set-vpath, $(SRC_PATH):$(EXTRA_PLUGINS_PATH):$(BUILD_DIR))
+else
 $(call set-vpath, $(SRC_PATH):$(BUILD_DIR))
+endif
 
 PLUGIN_TARGET_DIR=panda/plugins
 PLUGIN_OBJ_DIR=panda/plugins/$(PLUGIN_NAME)
@@ -23,8 +27,8 @@ QEMU_CXXFLAGS+=-fpermissive -std=c++11
 QEMU_CFLAGS+=$(GLIB_CFLAGS)
 QEMU_CXXFLAGS+=$(GLIB_CFLAGS)
 
-QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(TARGET_PATH)
-QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I. -I..
+QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(SRC_PATH)/panda/plugins
+QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I.. -I$(TARGET_PATH)
 
 # These should get generated automatically and include dependency information.
 -include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)
