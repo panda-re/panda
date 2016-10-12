@@ -1,8 +1,5 @@
 # Don't forget to add your plugin to config.panda!
 
-# Include the PANDA Makefile rules
-include $(SRC_PATH)/panda/plugins/panda.mak
-
 # The main rule for your plugin. List all object-file dependencies.
 O_FILES=$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o
 

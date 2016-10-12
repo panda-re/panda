@@ -1,6 +1,3 @@
-# Include the PANDA Makefile rules
-include $(SRC_PATH)/panda/plugins/panda.mak
-
 # Include files and lib from LLVM
 QEMU_CXXFLAGS+= $(LLVM_CXXFLAGS)
 
