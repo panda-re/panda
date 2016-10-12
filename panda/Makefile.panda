@@ -27,15 +27,17 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(SRC_PATH)/panda/plugins/$*/Makefile \
-		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/plugins" \
+		V="$(V)" PLUGIN_NAME="$*" all,)
 
 extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(EXTRA_PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f $(EXTRA_PLUGINS_PATH)/panda/plugins/$*/Makefile \
-		V="$(V)" PLUGIN_NAME="$*" TARGET_DIR="$(TARGET_DIR)" all,)
+		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)" \
+		V="$(V)" PLUGIN_NAME="$*" all,)
 
-all: $(PLUGIN_SUBDIR_RULES)
+all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
 
 PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
 
@@ -90,6 +92,7 @@ clean: clean-panda
 clean-panda:
 	@if [ -d "panda/plugins" ]; then\
 		find panda/plugins -depth -mindepth 1 -delete;\
+		rm -f panda/panda_*.so;\
 	fi
 
 ifdef CONFIG_LLVM
