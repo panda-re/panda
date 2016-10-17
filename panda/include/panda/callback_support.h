@@ -15,13 +15,13 @@ bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool p
 bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc);
 // softmmu_template.h
 void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc, target_ulong addr,
-                                     uint32_t data_size);
+                                     uint32_t data_size, void *ram_ptr);
 void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc, target_ulong addr,
-                                    uint32_t data_size, uint64_t result);
+                                    uint32_t data_size, uint64_t result, void *ram_ptr);
 void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
-                                      uint32_t data_size, uint64_t result);
+                                      uint32_t data_size, uint64_t result, void *ram_ptr);
 void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc, target_ulong addr,
-                                     uint32_t data_size, uint64_t val);
+                                     uint32_t data_size, uint64_t val, void *ram_ptr);
 // target-i386/misc_helper.c
 void panda_callbacks_cpuid(CPUState *env);
 // translate-all.c
