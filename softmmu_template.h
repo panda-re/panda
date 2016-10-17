@@ -530,7 +530,15 @@ void probe_write(CPUArchState *env, target_ulong addr, int mmu_idx,
 WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
+    unsigned mmu_idx = get_mmuidx(oi);
+    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_read;
     CPUState *cpu = ENV_GET_CPU(env);
+    uintptr_t haddr = 0;
+
+    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
+        haddr = addr + env->tlb_table[mmu_idx][index].addend;
+    }
 
     /*
      * rwhelan: Hack to deal with the fact that we don't have the retaddr
@@ -541,9 +549,9 @@ WORD_TYPE glue(helper_le_ld_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
     WORD_TYPE ret = helper_le_ld_name(env, addr, oi, retaddr);
-    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret);
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
 }
 
@@ -551,7 +559,15 @@ void glue(helper_le_st_name, _panda)(CPUArchState *env, target_ulong addr,
                                      DATA_TYPE val, TCGMemOpIdx oi,
                                      uintptr_t retaddr)
 {
+    unsigned mmu_idx = get_mmuidx(oi);
+    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     CPUState *cpu = ENV_GET_CPU(env);
+    uintptr_t haddr = 0;
+
+    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
+        haddr = addr + env->tlb_table[mmu_idx][index].addend;
+    }
 
     /*
      * rwhelan: Hack to deal with the fact that we don't have the retaddr
@@ -562,16 +578,24 @@ void glue(helper_le_st_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
     helper_le_st_name(env, addr, val, oi, retaddr);
-    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 
 #if DATA_SIZE > 1
 WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
                                           TCGMemOpIdx oi, uintptr_t retaddr)
 {
+    unsigned mmu_idx = get_mmuidx(oi);
+    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_read;
     CPUState *cpu = ENV_GET_CPU(env);
+    uintptr_t haddr = 0;
+
+    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
+        haddr = addr + env->tlb_table[mmu_idx][index].addend;
+    }
 
     /*
      * rwhelan: Hack to deal with the fact that we don't have the retaddr
@@ -582,9 +606,9 @@ WORD_TYPE glue(helper_be_ld_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE);
+    panda_callbacks_before_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (void *)haddr);
     WORD_TYPE ret = helper_be_ld_name(env, addr, oi, retaddr);
-    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret);
+    panda_callbacks_after_mem_read(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)ret, (void *)haddr);
     return ret;
 }
 
@@ -592,7 +616,15 @@ void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
                                      DATA_TYPE val, TCGMemOpIdx oi,
                                      uintptr_t retaddr)
 {
+    unsigned mmu_idx = get_mmuidx(oi);
+    int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     CPUState *cpu = ENV_GET_CPU(env);
+    uintptr_t haddr = 0;
+
+    if ((addr & TARGET_PAGE_MASK) == tlb_addr) { // hit!
+        haddr = addr + env->tlb_table[mmu_idx][index].addend;
+    }
 
     /*
      * rwhelan: Hack to deal with the fact that we don't have the retaddr
@@ -603,9 +635,9 @@ void glue(helper_be_st_name, _panda)(CPUArchState *env, target_ulong addr,
         retaddr = GETPC();
     }
 
-    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
+    panda_callbacks_before_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
     helper_be_st_name(env, addr, val, oi, retaddr);
-    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val);
+    panda_callbacks_after_mem_write(cpu, cpu->panda_guest_pc, addr, DATA_SIZE, (uint64_t)val, (void *)haddr);
 }
 #endif /* DATA_SIZE > 1 */
 
