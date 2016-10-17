@@ -301,6 +301,7 @@ static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64
 bool is_irrelevant(int64_t offset) {
 #ifdef TARGET_I386
     bool relevant = cpu_contains(regs, offset) ||
+        cpu_contains(eip, offset) ||
         cpu_contains(fpregs, offset) ||
         cpu_contains(xmm_regs, offset) ||
         cpu_contains(xmm_t0, offset) ||
