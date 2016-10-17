@@ -181,7 +181,12 @@ static inline TCGv_i32 load_reg(DisasContext *s, int reg)
 static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
 {
     if (reg == 15) {
-        tcg_gen_andi_i32(var, var, ~1);
+        /* In Thumb mode, we must ignore bit 0.
+         * In ARM mode, for ARMv4 and ARMv5, it is UNPREDICTABLE if bits [1:0]
+         * are not 0b00, but for ARMv6 and above, we must ignore bits [1:0].
+         * We choose to ignore [1:0] in ARM mode for all architecture versions.
+         */
+        tcg_gen_andi_i32(var, var, s->thumb ? ~1 : ~3);
         s->is_jmp = DISAS_JUMP;
     }
     tcg_gen_mov_i32(cpu_R[reg], var);
@@ -8084,7 +8089,7 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
             case 4: /* dsb */
             case 5: /* dmb */
                 ARCH(7);
-                /* We don't emulate caches so these are a no-op.  */
+                tcg_gen_mb(TCG_MO_ALL | TCG_BAR_SC);
                 return;
             case 6: /* isb */
                 /* We need to break the TB after this insn to execute
@@ -10433,7 +10438,7 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                             break;
                         case 4: /* dsb */
                         case 5: /* dmb */
-                            /* These execute as NOPs.  */
+                            tcg_gen_mb(TCG_MO_ALL | TCG_BAR_SC);
                             break;
                         case 6: /* isb */
                             /* We need to break the TB after this insn

@@ -128,7 +128,7 @@ enum {
     __csrhci_pins,
 };
 qemu_irq *csrhci_pins_get(CharDriverState *chr);
-CharDriverState *uart_hci_init(qemu_irq wakeup);
+CharDriverState *uart_hci_init(void);
 
 /* bt-l2cap.c */
 struct bt_l2cap_device_s;
@@ -174,8 +174,6 @@ enum bt_l2cap_psm_predef {
 void bt_l2cap_sdp_init(struct bt_l2cap_device_s *dev);
 
 /* bt-hid.c */
-struct bt_device_s *bt_mouse_init(struct bt_scatternet_s *net);
-struct bt_device_s *bt_tablet_init(struct bt_scatternet_s *net);
 struct bt_device_s *bt_keyboard_init(struct bt_scatternet_s *net);
 
 /* Link Management Protocol layer defines */

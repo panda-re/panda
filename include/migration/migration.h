@@ -129,7 +129,6 @@ struct MigrationSrcPageRequest {
 
 struct MigrationState
 {
-    int64_t bandwidth_limit;
     size_t bytes_xfer;
     size_t xfer_limit;
     QemuThread thread;
@@ -228,8 +227,6 @@ void rdma_start_incoming_migration(const char *host_port, Error **errp);
 void migrate_fd_error(MigrationState *s, const Error *error);
 
 void migrate_fd_connect(MigrationState *s);
-
-int migrate_fd_close(MigrationState *s);
 
 void add_migration_state_change_notifier(Notifier *notify);
 void remove_migration_state_change_notifier(Notifier *notify);

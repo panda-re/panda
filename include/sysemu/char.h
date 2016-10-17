@@ -9,6 +9,7 @@
 #include "qapi/qmp/qobject.h"
 #include "qapi/qmp/qstring.h"
 #include "qemu/main-loop.h"
+#include "qemu/bitmap.h"
 
 /* character device */
 
@@ -58,6 +59,20 @@ struct ParallelIOArg {
 
 typedef void IOEventHandler(void *opaque, int event);
 
+typedef enum {
+    /* Whether the chardev peer is able to close and
+     * reopen the data channel, thus requiring support
+     * for qemu_chr_wait_connected() to wait for a
+     * valid connection */
+    QEMU_CHAR_FEATURE_RECONNECTABLE,
+    /* Whether it is possible to send/recv file descriptors
+     * over the data channel */
+    QEMU_CHAR_FEATURE_FD_PASS,
+
+    QEMU_CHAR_FEATURE_LAST,
+} CharDriverFeature;
+
+
 struct CharDriverState {
     QemuMutex chr_write_lock;
     void (*init)(struct CharDriverState *s);
@@ -65,7 +80,8 @@ struct CharDriverState {
     int (*chr_sync_read)(struct CharDriverState *s,
                          const uint8_t *buf, int len);
     GSource *(*chr_add_watch)(struct CharDriverState *s, GIOCondition cond);
-    void (*chr_update_read_handler)(struct CharDriverState *s);
+    void (*chr_update_read_handler)(struct CharDriverState *s,
+                                    GMainContext *context);
     int (*chr_ioctl)(struct CharDriverState *s, int cmd, void *arg);
     int (*get_msgfds)(struct CharDriverState *s, int* fds, int num);
     int (*set_msgfds)(struct CharDriverState *s, int *fds, int num);
@@ -92,8 +108,8 @@ struct CharDriverState {
     int avail_connections;
     int is_mux;
     guint fd_in_tag;
-    QemuOpts *opts;
     bool replay;
+    DECLARE_BITMAP(features, QEMU_CHAR_FEATURE_LAST);
     QTAILQ_ENTRY(CharDriverState) next;
 };
 
@@ -422,12 +438,24 @@ void qemu_chr_add_handlers(CharDriverState *s,
                            IOEventHandler *fd_event,
                            void *opaque);
 
+/* This API can make handler run in the context what you pass to. */
+void qemu_chr_add_handlers_full(CharDriverState *s,
+                                IOCanReadHandler *fd_can_read,
+                                IOReadHandler *fd_read,
+                                IOEventHandler *fd_event,
+                                void *opaque,
+                                GMainContext *context);
+
 void qemu_chr_be_generic_open(CharDriverState *s);
 void qemu_chr_accept_input(CharDriverState *s);
 int qemu_chr_add_client(CharDriverState *s, int fd);
 CharDriverState *qemu_chr_find(const char *name);
 bool chr_is_ringbuf(const CharDriverState *chr);
 
+bool qemu_chr_has_feature(CharDriverState *chr,
+                          CharDriverFeature feature);
+void qemu_chr_set_feature(CharDriverState *chr,
+                          CharDriverFeature feature);
 QemuOpts *qemu_chr_parse_compat(const char *label, const char *filename);
 
 void register_char_driver(const char *name, ChardevBackendKind kind,

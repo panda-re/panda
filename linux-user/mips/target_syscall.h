@@ -221,6 +221,8 @@ struct target_pt_regs {
 #undef TARGET_ENOTRECOVERABLE
 #define TARGET_ENOTRECOVERABLE 166     /* State not recoverable */
 
+#undef TARGET_EDQUOT
+#define TARGET_EDQUOT          1133    /* Quota exceeded */
 
 #define UNAME_MACHINE "mips"
 #define UNAME_MINIMUM_RELEASE "2.6.32"
@@ -229,5 +231,12 @@ struct target_pt_regs {
 #define TARGET_MINSIGSTKSZ 2048
 #define TARGET_MLOCKALL_MCL_CURRENT 1
 #define TARGET_MLOCKALL_MCL_FUTURE  2
+
+#define TARGET_FORCE_SHMLBA
+
+static inline abi_ulong target_shmlba(CPUMIPSState *env)
+{
+    return 0x40000;
+}
 
 #endif /* MIPS_TARGET_SYSCALL_H */

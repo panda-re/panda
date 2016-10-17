@@ -42,17 +42,17 @@ PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
 plog.proto: $(PROTO_FILES)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/pp.py $@ $(SRC_PATH)/panda/plugins/config.panda,\
-		"  PROTO $@")
+		"PROTO   $@")
 
 %.pb-c.h %.pb-c.c: %.proto
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
-		"  PROTO plog.pb-c.h plog.pb-c.c")
+		"PROTO   plog.pb-c.h plog.pb-c.c")
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
 		protoc --proto_path=. --python_out=. $<,\
-		"  PROTO plog_pb2.py")
+		"PROTO   plog_pb2.py")
 
 GENERATED_HEADERS += plog.pb-c.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
@@ -64,7 +64,7 @@ GENERATED_HEADERS += $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p $(dir $@),)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@ $(QEMU_INCLUDES),\
-		"  API   $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
+		"API     $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
@@ -134,10 +134,10 @@ QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2
 %.bc2: %.c $(GENERATED_HEADERS)
 	$(call quiet-command,\
 		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) -c -emit-llvm -o $@ $<,\
-		"  CLANG $(TARGET_DIR)$@")
+		"CLANG   $(TARGET_DIR)$@")
 
 llvm-helpers.bc1: $(llvm-y)
-	$(call quiet-command,$(LLVM_LINK) -o $@ $^,"  LLVM  $(TARGET_DIR)$@")
+	$(call quiet-command,$(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
 # Make explicit the fact that we need the tool present to do the morphing
 
@@ -152,7 +152,7 @@ panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 	$(call quiet-command,\
 		panda/tools/helper_call_modifier -i $< -o $@,\
-		"  LLMOD $(TARGET_DIR)$@")
+		"LLMORPH $(TARGET_DIR)$@")
 
 # add this to the all target
 all: $(llvmmorph-y)

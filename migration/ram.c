@@ -626,7 +626,7 @@ static void migration_bitmap_sync(void)
     }
 
     trace_migration_bitmap_sync_start();
-    address_space_sync_dirty_bitmap(&address_space_memory);
+    memory_global_dirty_log_sync();
 
     qemu_mutex_lock(&migration_bitmap_mutex);
     rcu_read_lock();
@@ -771,7 +771,9 @@ static int ram_save_page(QEMUFile *f, PageSearchStatus *pss,
              * page would be stale
              */
             xbzrle_cache_zero_page(current_addr);
-        } else if (!ram_bulk_stage && migrate_use_xbzrle()) {
+        } else if (!ram_bulk_stage &&
+                   !migration_in_postcopy(migrate_get_current()) &&
+                   migrate_use_xbzrle()) {
             pages = save_xbzrle_page(f, &p, current_addr, block,
                                      offset, last_stage, bytes_transferred);
             if (!last_stage) {

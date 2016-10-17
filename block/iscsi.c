@@ -36,7 +36,7 @@
 #include "block/block_int.h"
 #include "block/scsi.h"
 #include "qemu/iov.h"
-#include "sysemu/sysemu.h"
+#include "qemu/uuid.h"
 #include "qmp-commands.h"
 #include "qapi/qmp/qstring.h"
 #include "crypto/secret.h"
@@ -95,7 +95,6 @@ typedef struct IscsiTask {
     int do_retry;
     struct scsi_task *task;
     Coroutine *co;
-    QEMUBH *bh;
     IscsiLun *iscsilun;
     QEMUTimer retry_timer;
     int err_code;
@@ -167,7 +166,6 @@ static void iscsi_co_generic_bh_cb(void *opaque)
 {
     struct IscsiTask *iTask = opaque;
     iTask->complete = 1;
-    qemu_bh_delete(iTask->bh);
     qemu_coroutine_enter(iTask->co);
 }
 
@@ -299,9 +297,8 @@ iscsi_co_generic_cb(struct iscsi_context *iscsi, int status,
 
 out:
     if (iTask->co) {
-        iTask->bh = aio_bh_new(iTask->iscsilun->aio_context,
-                               iscsi_co_generic_bh_cb, iTask);
-        qemu_bh_schedule(iTask->bh);
+        aio_bh_schedule_oneshot(iTask->iscsilun->aio_context,
+                                 iscsi_co_generic_bh_cb, iTask);
     } else {
         iTask->complete = 1;
     }
@@ -1813,19 +1810,22 @@ static void iscsi_refresh_limits(BlockDriverState *bs, Error **errp)
 
     IscsiLun *iscsilun = bs->opaque;
     uint64_t max_xfer_len = iscsilun->use_16_for_rw ? 0xffffffff : 0xffff;
+    unsigned int block_size = MAX(BDRV_SECTOR_SIZE, iscsilun->block_size);
 
-    bs->bl.request_alignment = iscsilun->block_size;
+    assert(iscsilun->block_size >= BDRV_SECTOR_SIZE || bs->sg);
+
+    bs->bl.request_alignment = block_size;
 
     if (iscsilun->bl.max_xfer_len) {
         max_xfer_len = MIN(max_xfer_len, iscsilun->bl.max_xfer_len);
     }
 
-    if (max_xfer_len * iscsilun->block_size < INT_MAX) {
+    if (max_xfer_len * block_size < INT_MAX) {
         bs->bl.max_transfer = max_xfer_len * iscsilun->block_size;
     }
 
     if (iscsilun->lbp.lbpu) {
-        if (iscsilun->bl.max_unmap < 0xffffffff / iscsilun->block_size) {
+        if (iscsilun->bl.max_unmap < 0xffffffff / block_size) {
             bs->bl.max_pdiscard =
                 iscsilun->bl.max_unmap * iscsilun->block_size;
         }
@@ -1835,7 +1835,7 @@ static void iscsi_refresh_limits(BlockDriverState *bs, Error **errp)
         bs->bl.pdiscard_alignment = iscsilun->block_size;
     }
 
-    if (iscsilun->bl.max_ws_len < 0xffffffff / iscsilun->block_size) {
+    if (iscsilun->bl.max_ws_len < 0xffffffff / block_size) {
         bs->bl.max_pwrite_zeroes =
             iscsilun->bl.max_ws_len * iscsilun->block_size;
     }
@@ -1846,7 +1846,7 @@ static void iscsi_refresh_limits(BlockDriverState *bs, Error **errp)
         bs->bl.pwrite_zeroes_alignment = iscsilun->block_size;
     }
     if (iscsilun->bl.opt_xfer_len &&
-        iscsilun->bl.opt_xfer_len < INT_MAX / iscsilun->block_size) {
+        iscsilun->bl.opt_xfer_len < INT_MAX / block_size) {
         bs->bl.opt_transfer = pow2floor(iscsilun->bl.opt_xfer_len *
                                         iscsilun->block_size);
     }
@@ -2010,45 +2010,9 @@ static BlockDriver bdrv_iscsi = {
     .bdrv_attach_aio_context = iscsi_attach_aio_context,
 };
 
-static QemuOptsList qemu_iscsi_opts = {
-    .name = "iscsi",
-    .head = QTAILQ_HEAD_INITIALIZER(qemu_iscsi_opts.head),
-    .desc = {
-        {
-            .name = "user",
-            .type = QEMU_OPT_STRING,
-            .help = "username for CHAP authentication to target",
-        },{
-            .name = "password",
-            .type = QEMU_OPT_STRING,
-            .help = "password for CHAP authentication to target",
-        },{
-            .name = "password-secret",
-            .type = QEMU_OPT_STRING,
-            .help = "ID of the secret providing password for CHAP "
-                    "authentication to target",
-        },{
-            .name = "header-digest",
-            .type = QEMU_OPT_STRING,
-            .help = "HeaderDigest setting. "
-                    "{CRC32C|CRC32C-NONE|NONE-CRC32C|NONE}",
-        },{
-            .name = "initiator-name",
-            .type = QEMU_OPT_STRING,
-            .help = "Initiator iqn name to use when connecting",
-        },{
-            .name = "timeout",
-            .type = QEMU_OPT_NUMBER,
-            .help = "Request timeout in seconds (default 0 = no timeout)",
-        },
-        { /* end of list */ }
-    },
-};
-
 static void iscsi_block_init(void)
 {
     bdrv_register(&bdrv_iscsi);
-    qemu_add_opts(&qemu_iscsi_opts);
 }
 
 block_init(iscsi_block_init);

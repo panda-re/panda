@@ -154,6 +154,14 @@ int cpu_m68k_signal_handler(int host_signum, void *pinfo,
                            void *puc);
 void cpu_m68k_flush_flags(CPUM68KState *, int);
 
+
+/* Instead of computing the condition codes after each m68k instruction,
+ * QEMU just stores one operand (called CC_SRC), the result
+ * (called CC_DEST) and the type of operation (called CC_OP). When the
+ * condition codes are needed, the condition codes can be calculated
+ * using this information. Condition codes are not generated if they
+ * are only needed for conditional branches.
+ */
 enum {
     CC_OP_DYNAMIC, /* Use env->cc_op  */
     CC_OP_FLAGS, /* CC_DEST = CVZN, CC_SRC = unused */
@@ -196,7 +204,6 @@ enum {
 #define MACSR_EV    0x001
 
 void m68k_set_irq_level(M68kCPU *cpu, int level, uint8_t vector);
-void m68k_set_macsr(CPUM68KState *env, uint32_t val);
 void m68k_switch_sp(CPUM68KState *env);
 
 #define M68K_FPCR_PREC (1 << 6)

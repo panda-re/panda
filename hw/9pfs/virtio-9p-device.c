@@ -41,6 +41,7 @@ static void handle_9p_output(VirtIODevice *vdev, VirtQueue *vq)
     V9fsState *s = &v->state;
     V9fsPDU *pdu;
     ssize_t len;
+    VirtQueueElement *elem;
 
     while ((pdu = pdu_alloc(s))) {
         struct {
@@ -48,21 +49,28 @@ static void handle_9p_output(VirtIODevice *vdev, VirtQueue *vq)
             uint8_t id;
             uint16_t tag_le;
         } QEMU_PACKED out;
-        VirtQueueElement *elem;
 
         elem = virtqueue_pop(vq, sizeof(VirtQueueElement));
         if (!elem) {
-            pdu_free(pdu);
-            break;
+            goto out_free_pdu;
         }
 
-        BUG_ON(elem->out_num == 0 || elem->in_num == 0);
-        QEMU_BUILD_BUG_ON(sizeof out != 7);
+        if (elem->in_num == 0) {
+            virtio_error(vdev,
+                         "The guest sent a VirtFS request without space for "
+                         "the reply");
+            goto out_free_req;
+        }
+        QEMU_BUILD_BUG_ON(sizeof(out) != 7);
 
         v->elems[pdu->idx] = elem;
         len = iov_to_buf(elem->out_sg, elem->out_num, 0,
-                         &out, sizeof out);
-        BUG_ON(len != sizeof out);
+                         &out, sizeof(out));
+        if (len != sizeof(out)) {
+            virtio_error(vdev, "The guest sent a malformed VirtFS request: "
+                         "header size is %zd, should be 7", len);
+            goto out_free_req;
+        }
 
         pdu->size = le32_to_cpu(out.size_le);
 
@@ -72,6 +80,14 @@ static void handle_9p_output(VirtIODevice *vdev, VirtQueue *vq)
         qemu_co_queue_init(&pdu->complete);
         pdu_submit(pdu);
     }
+
+    return;
+
+out_free_req:
+    virtqueue_detach_element(vq, elem, 0);
+    g_free(elem);
+out_free_pdu:
+    pdu_free(pdu);
 }
 
 static uint64_t virtio_9p_get_features(VirtIODevice *vdev, uint64_t features,
@@ -95,11 +111,6 @@ static void virtio_9p_get_config(VirtIODevice *vdev, uint8_t *config)
     memcpy(cfg->tag, s->tag, len);
     memcpy(config, cfg, v->config_size);
     g_free(cfg);
-}
-
-static int virtio_9p_load(QEMUFile *f, void *opaque, size_t size)
-{
-    return virtio_load(VIRTIO_DEVICE(opaque), f, 1);
 }
 
 static void virtio_9p_device_realize(DeviceState *dev, Error **errp)
@@ -128,6 +139,13 @@ static void virtio_9p_device_unrealize(DeviceState *dev, Error **errp)
 
     virtio_cleanup(vdev);
     v9fs_device_unrealize_common(s, errp);
+}
+
+static void virtio_9p_reset(VirtIODevice *vdev)
+{
+    V9fsVirtioState *v = (V9fsVirtioState *)vdev;
+
+    v9fs_reset(&v->state);
 }
 
 ssize_t virtio_pdu_vmarshal(V9fsPDU *pdu, size_t offset,
@@ -168,7 +186,15 @@ void virtio_init_iov_from_pdu(V9fsPDU *pdu, struct iovec **piov,
 
 /* virtio-9p device */
 
-VMSTATE_VIRTIO_DEVICE(9p, 1, virtio_9p_load, virtio_vmstate_save);
+static const VMStateDescription vmstate_virtio_9p = {
+    .name = "virtio-9p",
+    .minimum_version_id = 1,
+    .version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_VIRTIO_DEVICE,
+        VMSTATE_END_OF_LIST()
+    },
+};
 
 static Property virtio_9p_properties[] = {
     DEFINE_PROP_STRING("mount_tag", V9fsVirtioState, state.fsconf.tag),
@@ -188,6 +214,7 @@ static void virtio_9p_class_init(ObjectClass *klass, void *data)
     vdc->unrealize = virtio_9p_device_unrealize;
     vdc->get_features = virtio_9p_get_features;
     vdc->get_config = virtio_9p_get_config;
+    vdc->reset = virtio_9p_reset;
 }
 
 static const TypeInfo virtio_device_info = {

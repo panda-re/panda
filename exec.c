@@ -259,7 +259,7 @@ static void phys_page_set(AddressSpaceDispatch *d,
 /* Compact a non leaf page entry. Simply detect that the entry has a single child,
  * and update our entry so we can skip it and go directly to the destination.
  */
-static void phys_page_compact(PhysPageEntry *lp, Node *nodes, unsigned long *compacted)
+static void phys_page_compact(PhysPageEntry *lp, Node *nodes)
 {
     unsigned valid_ptr = P_L2_SIZE;
     int valid = 0;
@@ -279,7 +279,7 @@ static void phys_page_compact(PhysPageEntry *lp, Node *nodes, unsigned long *com
         valid_ptr = i;
         valid++;
         if (p[i].skip) {
-            phys_page_compact(&p[i], nodes, compacted);
+            phys_page_compact(&p[i], nodes);
         }
     }
 
@@ -311,10 +311,8 @@ static void phys_page_compact(PhysPageEntry *lp, Node *nodes, unsigned long *com
 
 static void phys_page_compact_all(AddressSpaceDispatch *d, int nodes_nb)
 {
-    DECLARE_BITMAP(compacted, nodes_nb);
-
     if (d->phys_map.skip) {
-        phys_page_compact(&d->phys_map, d->map.nodes, compacted);
+        phys_page_compact(&d->phys_map, d->map.nodes);
     }
 }
 
@@ -628,36 +626,11 @@ AddressSpace *cpu_get_address_space(CPUState *cpu, int asidx)
 }
 #endif
 
-static bool cpu_index_auto_assigned;
-
-static int cpu_get_free_index(void)
-{
-    CPUState *some_cpu;
-    int cpu_index = 0;
-
-    cpu_index_auto_assigned = true;
-    CPU_FOREACH(some_cpu) {
-        cpu_index++;
-    }
-    return cpu_index;
-}
-
 void cpu_exec_exit(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
-    cpu_list_lock();
-    if (!QTAILQ_IN_USE(cpu, node)) {
-        /* there is nothing to undo since cpu_exec_init() hasn't been called */
-        cpu_list_unlock();
-        return;
-    }
-
-    assert(!(cpu_index_auto_assigned && cpu != QTAILQ_LAST(&cpus, CPUTailQ)));
-
-    QTAILQ_REMOVE(&cpus, cpu, node);
-    cpu->cpu_index = UNASSIGNED_CPU_INDEX;
-    cpu_list_unlock();
+    cpu_list_remove(cpu);
 
     if (cc->vmsd != NULL) {
         vmstate_unregister(NULL, cc->vmsd, cpu);
@@ -693,15 +666,7 @@ void cpu_exec_init(CPUState *cpu, Error **errp)
     object_ref(OBJECT(cpu->memory));
 #endif
 
-    cpu_list_lock();
-    if (cpu->cpu_index == UNASSIGNED_CPU_INDEX) {
-        cpu->cpu_index = cpu_get_free_index();
-        assert(cpu->cpu_index != UNASSIGNED_CPU_INDEX);
-    } else {
-        assert(!cpu_index_auto_assigned);
-    }
-    QTAILQ_INSERT_TAIL(&cpus, cpu, node);
-    cpu_list_unlock();
+    cpu_list_add(cpu);
 
 #ifndef CONFIG_USER_ONLY
     if (qdev_get_vmsd(DEVICE(cpu)) == NULL) {
@@ -1266,7 +1231,6 @@ static void *file_ram_alloc(RAMBlock *block,
     char *c;
     void *area = MAP_FAILED;
     int fd = -1;
-    int64_t page_size;
 
     if (kvm_enabled() && !kvm_has_sync_mmu()) {
         error_setg(errp,
@@ -1321,17 +1285,17 @@ static void *file_ram_alloc(RAMBlock *block,
          */
     }
 
-    page_size = qemu_fd_getpagesize(fd);
-    block->mr->align = MAX(page_size, QEMU_VMALLOC_ALIGN);
+    block->page_size = qemu_fd_getpagesize(fd);
+    block->mr->align = MAX(block->page_size, QEMU_VMALLOC_ALIGN);
 
-    if (memory < page_size) {
+    if (memory < block->page_size) {
         error_setg(errp, "memory size 0x" RAM_ADDR_FMT " must be equal to "
-                   "or larger than page size 0x%" PRIx64,
-                   memory, page_size);
+                   "or larger than page size 0x%zx",
+                   memory, block->page_size);
         goto error;
     }
 
-    memory = ROUND_UP(memory, page_size);
+    memory = ROUND_UP(memory, block->page_size);
 
     /*
      * ftruncate is not supported by hugetlbfs in older
@@ -1484,6 +1448,11 @@ void qemu_ram_unset_idstr(RAMBlock *block)
     if (block) {
         memset(block->idstr, 0, sizeof(block->idstr));
     }
+}
+
+size_t qemu_ram_pagesize(RAMBlock *rb)
+{
+    return rb->page_size;
 }
 
 static int memory_try_enable_merging(void *addr, size_t len)
@@ -1725,6 +1694,7 @@ RAMBlock *qemu_ram_alloc_internal(ram_addr_t size, ram_addr_t max_size,
     new_block->max_length = max_size;
     assert(max_size >= size);
     new_block->fd = -1;
+    new_block->page_size = getpagesize();
     new_block->host = host;
     if (host) {
         new_block->flags |= RAM_PREALLOC;
