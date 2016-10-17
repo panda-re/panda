@@ -21,7 +21,7 @@
 #include "elf.h"
 #include "exec/address-spaces.h"
 
-#define SYS_FREQ 66000000
+#define SYS_FREQ 166666666
 
 #define PCSR_EN         0x0001
 #define PCSR_RLD        0x0002
@@ -183,7 +183,7 @@ static void mcf5208_sys_init(MemoryRegion *address_space, qemu_irq *pic)
     for (i = 0; i < 2; i++) {
         s = (m5208_timer_state *)g_malloc0(sizeof(m5208_timer_state));
         bh = qemu_bh_new(m5208_timer_trigger, s);
-        s->timer = ptimer_init(bh);
+        s->timer = ptimer_init(bh, PTIMER_POLICY_DEFAULT);
         memory_region_init_io(&s->iomem, NULL, &m5208_timer_ops, s,
                               "m5208-timer", 0x00004000);
         memory_region_add_subregion(address_space, 0xfc080000 + 0x4000 * i,

@@ -83,7 +83,7 @@ static void commit_complete(BlockJob *job, void *opaque)
     BlockDriverState *active = s->active;
     BlockDriverState *top = blk_bs(s->top);
     BlockDriverState *base = blk_bs(s->base);
-    BlockDriverState *overlay_bs;
+    BlockDriverState *overlay_bs = bdrv_find_overlay(active, top);
     int ret = data->ret;
 
     if (!block_job_is_cancelled(&s->common) && ret == 0) {
@@ -97,7 +97,6 @@ static void commit_complete(BlockJob *job, void *opaque)
     if (s->base_flags != bdrv_get_flags(base)) {
         bdrv_reopen(base, s->base_flags, NULL);
     }
-    overlay_bs = bdrv_find_overlay(active, top);
     if (overlay_bs && s->orig_overlay_flags != bdrv_get_flags(overlay_bs)) {
         bdrv_reopen(overlay_bs, s->orig_overlay_flags, NULL);
     }
@@ -243,13 +242,13 @@ void commit_start(const char *job_id, BlockDriverState *bs,
     orig_overlay_flags = bdrv_get_flags(overlay_bs);
 
     /* convert base & overlay_bs to r/w, if necessary */
-    if (!(orig_overlay_flags & BDRV_O_RDWR)) {
-        reopen_queue = bdrv_reopen_queue(reopen_queue, overlay_bs, NULL,
-                                         orig_overlay_flags | BDRV_O_RDWR);
-    }
     if (!(orig_base_flags & BDRV_O_RDWR)) {
         reopen_queue = bdrv_reopen_queue(reopen_queue, base, NULL,
                                          orig_base_flags | BDRV_O_RDWR);
+    }
+    if (!(orig_overlay_flags & BDRV_O_RDWR)) {
+        reopen_queue = bdrv_reopen_queue(reopen_queue, overlay_bs, NULL,
+                                         orig_overlay_flags | BDRV_O_RDWR);
     }
     if (reopen_queue) {
         bdrv_reopen_multiple(reopen_queue, &local_err);

@@ -39,6 +39,11 @@ struct sPAPRMachineClass {
     /*< public >*/
     bool dr_lmb_enabled;       /* enable dynamic-reconfig/hotplug of LMBs */
     bool use_ohci_by_default;  /* use USB-OHCI instead of XHCI */
+    const char *tcg_default_cpu; /* which (TCG) CPU to simulate by default */
+    void (*phb_placement)(sPAPRMachineState *spapr, uint32_t index,
+                          uint64_t *buid, hwaddr *pio, 
+                          hwaddr *mmio32, hwaddr *mmio64,
+                          unsigned n_dma, uint32_t *liobns, Error **errp);
 };
 
 /**
@@ -367,9 +372,6 @@ typedef target_ulong (*spapr_hcall_fn)(PowerPCCPU *cpu, sPAPRMachineState *sm,
 void spapr_register_hypercall(target_ulong opcode, spapr_hcall_fn fn);
 target_ulong spapr_hypercall(PowerPCCPU *cpu, target_ulong opcode,
                              target_ulong *args);
-
-int spapr_allocate_irq(int hint, bool lsi);
-int spapr_allocate_irq_block(int num, bool lsi, bool msi);
 
 /* ibm,set-eeh-option */
 #define RTAS_EEH_DISABLE                 0

@@ -15,6 +15,7 @@
 #include "hw/i386/apic_internal.h"
 #include "hw/pci/msi.h"
 #include "sysemu/kvm.h"
+#include "target-i386/kvm_i386.h"
 
 static inline void kvm_apic_set_reg(struct kvm_lapic_state *kapic,
                                     int reg_id, uint32_t val)
@@ -124,12 +125,13 @@ static void kvm_apic_vapic_base_update(APICCommonState *s)
     }
 }
 
-static void kvm_apic_put(void *data)
+static void kvm_apic_put(CPUState *cs, void *data)
 {
     APICCommonState *s = data;
     struct kvm_lapic_state kapic;
     int ret;
 
+    kvm_put_apicbase(s->cpu, s->apicbase);
     kvm_put_apic_state(s, &kapic);
 
     ret = kvm_vcpu_ioctl(CPU(s->cpu), KVM_SET_LAPIC, &kapic);
@@ -141,14 +143,12 @@ static void kvm_apic_put(void *data)
 
 static void kvm_apic_post_load(APICCommonState *s)
 {
-    fprintf(stderr, "%s: Yeh\n", __func__);
     run_on_cpu(CPU(s->cpu), kvm_apic_put, s);
 }
 
-static void do_inject_external_nmi(void *data)
+static void do_inject_external_nmi(CPUState *cpu, void *data)
 {
     APICCommonState *s = data;
-    CPUState *cpu = CPU(s->cpu);
     uint32_t lvt;
     int ret;
 

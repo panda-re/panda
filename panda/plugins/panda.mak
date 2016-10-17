@@ -36,6 +36,6 @@ QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I.. -I$(TARGET_PATH)
 # You can override this recipe by using the full name of the plugin in a
 # plugin Makefile. (e.g. $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so).
 $(PLUGIN_TARGET_DIR)/panda_%.so:
-	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"  PLUG  $(TARGET_DIR)$@")
+	$(call quiet-command,$(CXX) $(QEMU_CFLAGS) $(LDFLAGS_SHARED) -o $@ $^ $(LIBS),"PLUGIN  $(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so

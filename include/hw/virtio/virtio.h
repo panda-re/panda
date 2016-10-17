@@ -87,6 +87,7 @@ struct VirtIODevice
     VirtQueue *vq;
     uint16_t device_id;
     bool vm_running;
+    bool broken; /* device in invalid state, needs reset */
     VMChangeStateEntry *vmstate;
     char *bus_name;
     uint8_t device_endian;
@@ -135,6 +136,8 @@ void virtio_init(VirtIODevice *vdev, const char *name,
                          uint16_t device_id, size_t config_size);
 void virtio_cleanup(VirtIODevice *vdev);
 
+void virtio_error(VirtIODevice *vdev, const char *fmt, ...) GCC_FMT_ATTR(2, 3);
+
 /* Set the child bus name. */
 void virtio_device_set_child_bus_name(VirtIODevice *vdev, char *bus_name);
 
@@ -152,6 +155,8 @@ void *virtqueue_alloc_element(size_t sz, unsigned out_num, unsigned in_num);
 void virtqueue_push(VirtQueue *vq, const VirtQueueElement *elem,
                     unsigned int len);
 void virtqueue_flush(VirtQueue *vq, unsigned int count);
+void virtqueue_detach_element(VirtQueue *vq, const VirtQueueElement *elem,
+                              unsigned int len);
 void virtqueue_discard(VirtQueue *vq, const VirtQueueElement *elem,
                        unsigned int len);
 bool virtqueue_rewind(VirtQueue *vq, unsigned int num);
@@ -172,25 +177,14 @@ bool virtio_should_notify(VirtIODevice *vdev, VirtQueue *vq);
 void virtio_notify(VirtIODevice *vdev, VirtQueue *vq);
 
 void virtio_save(VirtIODevice *vdev, QEMUFile *f);
-void virtio_vmstate_save(QEMUFile *f, void *opaque, size_t size);
 
-#define VMSTATE_VIRTIO_DEVICE(devname, v, getf, putf) \
-    static const VMStateDescription vmstate_virtio_ ## devname = { \
-        .name = "virtio-" #devname ,          \
-        .minimum_version_id = v,              \
-        .version_id = v,                      \
-        .fields = (VMStateField[]) {          \
-            {                                 \
-                .name = "virtio",             \
-                .info = &(const VMStateInfo) {\
-                        .name = "virtio",     \
-                        .get = getf,          \
-                        .put = putf,          \
-                    },                        \
-                .flags = VMS_SINGLE,          \
-            },                                \
-            VMSTATE_END_OF_LIST()             \
-        }                                     \
+extern const VMStateInfo virtio_vmstate_info;
+
+#define VMSTATE_VIRTIO_DEVICE \
+    {                                         \
+        .name = "virtio",                     \
+        .info = &virtio_vmstate_info,         \
+        .flags = VMS_SINGLE,                  \
     }
 
 int virtio_load(VirtIODevice *vdev, QEMUFile *f, int version_id);

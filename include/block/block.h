@@ -107,6 +107,8 @@ typedef struct HDGeometry {
 #define BDRV_OPT_CACHE_WB       "cache.writeback"
 #define BDRV_OPT_CACHE_DIRECT   "cache.direct"
 #define BDRV_OPT_CACHE_NO_FLUSH "cache.no-flush"
+#define BDRV_OPT_READ_ONLY      "read-only"
+#define BDRV_OPT_DISCARD        "discard"
 
 
 #define BDRV_SECTOR_BITS   9
@@ -184,11 +186,6 @@ typedef enum BlockOpType {
     BLOCK_OP_TYPE_REPLACE,
     BLOCK_OP_TYPE_MAX,
 } BlockOpType;
-
-void bdrv_info_print(Monitor *mon, const QObject *data);
-void bdrv_info(Monitor *mon, QObject **ret_data);
-void bdrv_stats_print(Monitor *mon, const QObject *data);
-void bdrv_info_stats(Monitor *mon, QObject **ret_data);
 
 /* disk I/O throttling */
 void bdrv_init(void);
@@ -337,6 +334,7 @@ int bdrv_inactivate_all(void);
 /* Ensure contents are flushed to disk.  */
 int bdrv_flush(BlockDriverState *bs);
 int coroutine_fn bdrv_co_flush(BlockDriverState *bs);
+int bdrv_flush_all(void);
 void bdrv_close_all(void);
 void bdrv_drain(BlockDriverState *bs);
 void coroutine_fn bdrv_co_drain(BlockDriverState *bs);
@@ -393,7 +391,6 @@ bool bdrv_is_encrypted(BlockDriverState *bs);
 bool bdrv_key_required(BlockDriverState *bs);
 int bdrv_set_key(BlockDriverState *bs, const char *key);
 void bdrv_add_key(BlockDriverState *bs, const char *key, Error **errp);
-int bdrv_query_missing_keys(void);
 void bdrv_iterate_format(void (*it)(void *opaque, const char *name),
                          void *opaque);
 const char *bdrv_get_node_name(const BlockDriverState *bs);
@@ -420,7 +417,6 @@ void bdrv_get_full_backing_filename_from_filename(const char *backed,
                                                   const char *backing,
                                                   char *dest, size_t sz,
                                                   Error **errp);
-int bdrv_is_snapshot(BlockDriverState *bs);
 
 int path_has_protocol(const char *path);
 int path_is_absolute(const char *path);

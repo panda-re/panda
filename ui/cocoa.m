@@ -814,7 +814,6 @@ QemuCocoaView *cocoaView;
 - (void)doToggleFullScreen:(id)sender;
 - (void)toggleFullScreen:(id)sender;
 - (void)showQEMUDoc:(id)sender;
-- (void)showQEMUTec:(id)sender;
 - (void)zoomToFit:(id) sender;
 - (void)displayConsole:(id)sender;
 - (void)pauseQEMU:(id)sender;
@@ -998,13 +997,6 @@ QemuCocoaView *cocoaView;
     [self openDocumentation: @"qemu-doc.html"];
 }
 
-- (void)showQEMUTec:(id)sender
-{
-    COCOA_DEBUG("QemuCocoaAppController: showQEMUTec\n");
-
-    [self openDocumentation: @"qemu-tech.html"];
-}
-
 /* Stretches video to fit host monitor size */
 - (void)zoomToFit:(id) sender
 {
@@ -1085,7 +1077,8 @@ QemuCocoaView *cocoaView;
     }
 
     Error *err = NULL;
-    qmp_eject([drive cStringUsingEncoding: NSASCIIStringEncoding], false, false, &err);
+    qmp_eject(true, [drive cStringUsingEncoding: NSASCIIStringEncoding],
+              false, NULL, false, false, &err);
     handleAnyDeviceErrors(err);
 }
 
@@ -1118,8 +1111,10 @@ QemuCocoaView *cocoaView;
         }
 
         Error *err = NULL;
-        qmp_blockdev_change_medium([drive cStringUsingEncoding:
+        qmp_blockdev_change_medium(true,
+                                   [drive cStringUsingEncoding:
                                           NSASCIIStringEncoding],
+                                   false, NULL,
                                    [file cStringUsingEncoding:
                                          NSASCIIStringEncoding],
                                    true, "raw",
@@ -1332,7 +1327,6 @@ int main (int argc, const char * argv[]) {
     // Help menu
     menu = [[NSMenu alloc] initWithTitle:@"Help"];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"QEMU Documentation" action:@selector(showQEMUDoc:) keyEquivalent:@"?"] autorelease]]; // QEMU Help
-    [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"QEMU Technology" action:@selector(showQEMUTec:) keyEquivalent:@""] autorelease]]; // QEMU Help
     menuItem = [[[NSMenuItem alloc] initWithTitle:@"Window" action:nil keyEquivalent:@""] autorelease];
     [menuItem setSubmenu:menu];
     [[NSApp mainMenu] addItem:menuItem];

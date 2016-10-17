@@ -18,7 +18,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the version of QEMU",
-        .mhandler.cmd = hmp_info_version,
+        .cmd        = hmp_info_version,
     },
 
 STEXI
@@ -32,7 +32,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the network state",
-        .mhandler.cmd = hmp_info_network,
+        .cmd        = hmp_info_network,
     },
 
 STEXI
@@ -46,7 +46,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the character devices",
-        .mhandler.cmd = hmp_info_chardev,
+        .cmd        = hmp_info_chardev,
     },
 
 STEXI
@@ -61,7 +61,7 @@ ETEXI
         .params     = "[-n] [-v] [device]",
         .help       = "show info of one block device or all block devices "
                       "(-n: show named nodes; -v: show details)",
-        .mhandler.cmd = hmp_info_block,
+        .cmd        = hmp_info_block,
     },
 
 STEXI
@@ -75,7 +75,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show block device statistics",
-        .mhandler.cmd = hmp_info_blockstats,
+        .cmd        = hmp_info_blockstats,
     },
 
 STEXI
@@ -89,7 +89,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show progress of ongoing block device operations",
-        .mhandler.cmd = hmp_info_block_jobs,
+        .cmd        = hmp_info_block_jobs,
     },
 
 STEXI
@@ -103,7 +103,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the cpu registers",
-        .mhandler.cmd = hmp_info_registers,
+        .cmd        = hmp_info_registers,
     },
 
 STEXI
@@ -118,7 +118,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show local apic state",
-        .mhandler.cmd = hmp_info_local_apic,
+        .cmd        = hmp_info_local_apic,
     },
 #endif
 
@@ -134,7 +134,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show io apic state",
-        .mhandler.cmd = hmp_info_io_apic,
+        .cmd        = hmp_info_io_apic,
     },
 #endif
 
@@ -149,7 +149,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show infos for each CPU",
-        .mhandler.cmd = hmp_info_cpus,
+        .cmd        = hmp_info_cpus,
     },
 
 STEXI
@@ -163,7 +163,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the command line history",
-        .mhandler.cmd = hmp_info_history,
+        .cmd        = hmp_info_history,
     },
 
 STEXI
@@ -172,20 +172,12 @@ STEXI
 Show the command line history.
 ETEXI
 
-#if defined(TARGET_I386) || defined(TARGET_PPC) || defined(TARGET_MIPS) || \
-    defined(TARGET_LM32) || (defined(TARGET_SPARC) && !defined(TARGET_SPARC64))
     {
         .name       = "irq",
         .args_type  = "",
         .params     = "",
         .help       = "show the interrupts statistics (if available)",
-#ifdef TARGET_SPARC
-        .mhandler.cmd = sun4m_hmp_info_irq,
-#elif defined(TARGET_LM32)
-        .mhandler.cmd = lm32_hmp_info_irq,
-#else
-        .mhandler.cmd = hmp_info_irq,
-#endif
+        .cmd        = hmp_info_irq,
     },
 
 STEXI
@@ -198,16 +190,9 @@ ETEXI
         .name       = "pic",
         .args_type  = "",
         .params     = "",
-        .help       = "show i8259 (PIC) state",
-#ifdef TARGET_SPARC
-        .mhandler.cmd = sun4m_hmp_info_pic,
-#elif defined(TARGET_LM32)
-        .mhandler.cmd = lm32_hmp_info_pic,
-#else
-        .mhandler.cmd = hmp_info_pic,
-#endif
+        .help       = "show PIC state",
+        .cmd        = hmp_info_pic,
     },
-#endif
 
 STEXI
 @item info pic
@@ -220,7 +205,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show PCI info",
-        .mhandler.cmd = hmp_info_pci,
+        .cmd        = hmp_info_pci,
     },
 
 STEXI
@@ -236,7 +221,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show virtual to physical memory mappings",
-        .mhandler.cmd = hmp_info_tlb,
+        .cmd        = hmp_info_tlb,
     },
 #endif
 
@@ -252,7 +237,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the active virtual memory mappings",
-        .mhandler.cmd = hmp_info_mem,
+        .cmd        = hmp_info_mem,
     },
 #endif
 
@@ -267,7 +252,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show memory tree",
-        .mhandler.cmd = hmp_info_mtree,
+        .cmd        = hmp_info_mtree,
     },
 
 STEXI
@@ -281,7 +266,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show dynamic compiler info",
-        .mhandler.cmd = hmp_info_jit,
+        .cmd        = hmp_info_jit,
     },
 
 STEXI
@@ -295,7 +280,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show dynamic compiler opcode counters",
-        .mhandler.cmd = hmp_info_opcount,
+        .cmd        = hmp_info_opcount,
     },
 
 STEXI
@@ -309,7 +294,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show KVM information",
-        .mhandler.cmd = hmp_info_kvm,
+        .cmd        = hmp_info_kvm,
     },
 
 STEXI
@@ -323,7 +308,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show NUMA information",
-        .mhandler.cmd = hmp_info_numa,
+        .cmd        = hmp_info_numa,
     },
 
 STEXI
@@ -337,7 +322,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show guest USB devices",
-        .mhandler.cmd = hmp_info_usb,
+        .cmd        = hmp_info_usb,
     },
 
 STEXI
@@ -351,7 +336,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show host USB devices",
-        .mhandler.cmd = hmp_info_usbhost,
+        .cmd        = hmp_info_usbhost,
     },
 
 STEXI
@@ -365,7 +350,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show profiling information",
-        .mhandler.cmd = hmp_info_profile,
+        .cmd        = hmp_info_profile,
     },
 
 STEXI
@@ -379,7 +364,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show capture information",
-        .mhandler.cmd = hmp_info_capture,
+        .cmd        = hmp_info_capture,
     },
 
 STEXI
@@ -393,7 +378,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the currently saved VM snapshots",
-        .mhandler.cmd = hmp_info_snapshots,
+        .cmd        = hmp_info_snapshots,
     },
 
 STEXI
@@ -407,7 +392,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the current VM status (running|paused)",
-        .mhandler.cmd = hmp_info_status,
+        .cmd        = hmp_info_status,
     },
 
 STEXI
@@ -421,7 +406,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show which guest mouse is receiving events",
-        .mhandler.cmd = hmp_info_mice,
+        .cmd        = hmp_info_mice,
     },
 
 STEXI
@@ -435,7 +420,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the vnc server status",
-        .mhandler.cmd = hmp_info_vnc,
+        .cmd        = hmp_info_vnc,
     },
 
 STEXI
@@ -450,7 +435,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the spice server status",
-        .mhandler.cmd = hmp_info_spice,
+        .cmd        = hmp_info_spice,
     },
 #endif
 
@@ -465,7 +450,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the current VM name",
-        .mhandler.cmd = hmp_info_name,
+        .cmd        = hmp_info_name,
     },
 
 STEXI
@@ -479,7 +464,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the current VM UUID",
-        .mhandler.cmd = hmp_info_uuid,
+        .cmd        = hmp_info_uuid,
     },
 
 STEXI
@@ -493,7 +478,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show CPU statistics",
-        .mhandler.cmd = hmp_info_cpustats,
+        .cmd        = hmp_info_cpustats,
     },
 
 STEXI
@@ -508,7 +493,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show user network stack connection states",
-        .mhandler.cmd = hmp_info_usernet,
+        .cmd        = hmp_info_usernet,
     },
 #endif
 
@@ -523,7 +508,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show migration status",
-        .mhandler.cmd = hmp_info_migrate,
+        .cmd        = hmp_info_migrate,
     },
 
 STEXI
@@ -537,7 +522,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show current migration capabilities",
-        .mhandler.cmd = hmp_info_migrate_capabilities,
+        .cmd        = hmp_info_migrate_capabilities,
     },
 
 STEXI
@@ -551,7 +536,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show current migration parameters",
-        .mhandler.cmd = hmp_info_migrate_parameters,
+        .cmd        = hmp_info_migrate_parameters,
     },
 
 STEXI
@@ -565,7 +550,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show current migration xbzrle cache size",
-        .mhandler.cmd = hmp_info_migrate_cache_size,
+        .cmd        = hmp_info_migrate_cache_size,
     },
 
 STEXI
@@ -579,7 +564,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show balloon information",
-        .mhandler.cmd = hmp_info_balloon,
+        .cmd        = hmp_info_balloon,
     },
 
 STEXI
@@ -593,7 +578,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show device tree",
-        .mhandler.cmd = hmp_info_qtree,
+        .cmd        = hmp_info_qtree,
     },
 
 STEXI
@@ -607,7 +592,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show qdev device model list",
-        .mhandler.cmd = hmp_info_qdm,
+        .cmd        = hmp_info_qdm,
     },
 
 STEXI
@@ -621,7 +606,7 @@ ETEXI
         .args_type  = "path:s?",
         .params     = "[path]",
         .help       = "show QOM composition tree",
-        .mhandler.cmd = hmp_info_qom_tree,
+        .cmd        = hmp_info_qom_tree,
     },
 
 STEXI
@@ -635,7 +620,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show roms",
-        .mhandler.cmd = hmp_info_roms,
+        .cmd        = hmp_info_roms,
     },
 
 STEXI
@@ -650,7 +635,7 @@ ETEXI
         .params     = "[name] [vcpu]",
         .help       = "show available trace-events & their state "
                       "(name: event name pattern; vcpu: vCPU to query, default is any)",
-        .mhandler.cmd = hmp_info_trace_events,
+        .cmd = hmp_info_trace_events,
         .command_completion = info_trace_events_completion,
     },
 
@@ -665,7 +650,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show the TPM device",
-        .mhandler.cmd = hmp_info_tpm,
+        .cmd        = hmp_info_tpm,
     },
 
 STEXI
@@ -679,7 +664,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show memory backends",
-        .mhandler.cmd = hmp_info_memdev,
+        .cmd        = hmp_info_memdev,
     },
 
 STEXI
@@ -693,7 +678,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show memory devices",
-        .mhandler.cmd = hmp_info_memory_devices,
+        .cmd        = hmp_info_memory_devices,
     },
 
 STEXI
@@ -707,7 +692,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "show iothreads",
-        .mhandler.cmd = hmp_info_iothreads,
+        .cmd        = hmp_info_iothreads,
     },
 
 STEXI
@@ -721,7 +706,7 @@ ETEXI
         .args_type  = "name:s",
         .params     = "name",
         .help       = "Show rocker switch",
-        .mhandler.cmd = hmp_rocker,
+        .cmd        = hmp_rocker,
     },
 
 STEXI
@@ -735,7 +720,7 @@ ETEXI
         .args_type  = "name:s",
         .params     = "name",
         .help       = "Show rocker ports",
-        .mhandler.cmd = hmp_rocker_ports,
+        .cmd        = hmp_rocker_ports,
     },
 
 STEXI
@@ -749,7 +734,7 @@ ETEXI
         .args_type  = "name:s,tbl_id:i?",
         .params     = "name [tbl_id]",
         .help       = "Show rocker OF-DPA flow tables",
-        .mhandler.cmd = hmp_rocker_of_dpa_flows,
+        .cmd        = hmp_rocker_of_dpa_flows,
     },
 
 STEXI
@@ -763,7 +748,7 @@ ETEXI
         .args_type  = "name:s,type:i?",
         .params     = "name [type]",
         .help       = "Show rocker OF-DPA groups",
-        .mhandler.cmd = hmp_rocker_of_dpa_groups,
+        .cmd        = hmp_rocker_of_dpa_groups,
     },
 
 STEXI
@@ -778,7 +763,7 @@ ETEXI
         .args_type  = "addr:l",
         .params     = "address",
         .help       = "Display the value of a storage key",
-        .mhandler.cmd = hmp_info_skeys,
+        .cmd        = hmp_info_skeys,
     },
 #endif
 
@@ -793,7 +778,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "Display the latest dump status",
-        .mhandler.cmd = hmp_info_dump,
+        .cmd        = hmp_info_dump,
     },
 
 STEXI
@@ -807,7 +792,7 @@ ETEXI
         .args_type  = "",
         .params     = "",
         .help       = "Show information about hotpluggable CPUs",
-        .mhandler.cmd = hmp_hotpluggable_cpus,
+        .cmd        = hmp_hotpluggable_cpus,
     },
 
 STEXI

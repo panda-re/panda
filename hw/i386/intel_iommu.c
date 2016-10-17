@@ -27,6 +27,7 @@
 #include "hw/pci/pci.h"
 #include "hw/pci/pci_bus.h"
 #include "hw/i386/pc.h"
+#include "hw/i386/apic-msidef.h"
 #include "hw/boards.h"
 #include "hw/i386/x86-iommu.h"
 #include "hw/pci-host/q35.h"
@@ -1974,14 +1975,20 @@ static IOMMUTLBEntry vtd_iommu_translate(MemoryRegion *iommu, hwaddr addr,
     return ret;
 }
 
-static void vtd_iommu_notify_started(MemoryRegion *iommu)
+static void vtd_iommu_notify_flag_changed(MemoryRegion *iommu,
+                                          IOMMUNotifierFlag old,
+                                          IOMMUNotifierFlag new)
 {
     VTDAddressSpace *vtd_as = container_of(iommu, VTDAddressSpace, iommu);
 
-    hw_error("Device at bus %s addr %02x.%d requires iommu notifier which "
-             "is currently not supported by intel-iommu emulation",
-             vtd_as->bus->qbus.name, PCI_SLOT(vtd_as->devfn),
-             PCI_FUNC(vtd_as->devfn));
+    if (new & IOMMU_NOTIFIER_MAP) {
+        error_report("Device at bus %s addr %02x.%d requires iommu "
+                     "notifier which is currently not supported by "
+                     "intel-iommu emulation",
+                     vtd_as->bus->qbus.name, PCI_SLOT(vtd_as->devfn),
+                     PCI_FUNC(vtd_as->devfn));
+        exit(1);
+    }
 }
 
 static const VMStateDescription vtd_vmstate = {
@@ -2203,6 +2210,8 @@ static int vtd_interrupt_remap_msi(IntelIOMMUState *iommu,
         }
     } else {
         uint8_t vector = origin->data & 0xff;
+        uint8_t trigger_mode = (origin->data >> MSI_DATA_TRIGGER_SHIFT) & 0x1;
+
         VTD_DPRINTF(IR, "received IOAPIC interrupt");
         /* IOAPIC entry vector should be aligned with IRTE vector
          * (see vt-d spec 5.1.5.1). */
@@ -2211,6 +2220,15 @@ static int vtd_interrupt_remap_msi(IntelIOMMUState *iommu,
                         "entry: %d, IRTE: %d, index: %d",
                         vector, irq.vector, index);
         }
+
+        /* The Trigger Mode field must match the Trigger Mode in the IRTE.
+         * (see vt-d spec 5.1.5.1). */
+        if (trigger_mode != irq.trigger_mode) {
+            VTD_DPRINTF(GENERAL, "IOAPIC trigger mode inconsistent: "
+                        "entry: %u, IRTE: %u, index: %d",
+                        trigger_mode, irq.trigger_mode, index);
+        }
+
     }
 
     /*
@@ -2348,7 +2366,7 @@ static void vtd_init(IntelIOMMUState *s)
     memset(s->womask, 0, DMAR_REG_SIZE);
 
     s->iommu_ops.translate = vtd_iommu_translate;
-    s->iommu_ops.notify_started = vtd_iommu_notify_started;
+    s->iommu_ops.notify_flag_changed = vtd_iommu_notify_flag_changed;
     s->root = 0;
     s->root_extended = false;
     s->dmar_enabled = false;
@@ -2453,6 +2471,7 @@ static void vtd_realize(DeviceState *dev, Error **errp)
     X86IOMMUState *x86_iommu = X86_IOMMU_DEVICE(dev);
 
     VTD_DPRINTF(GENERAL, "");
+    x86_iommu->type = TYPE_INTEL;
     memset(s->vtd_as_by_bus_num, 0, sizeof(s->vtd_as_by_bus_num));
     memory_region_init_io(&s->csrmem, OBJECT(s), &vtd_mem_ops, s,
                           "intel_iommu", DMAR_REG_SIZE);

@@ -32,9 +32,9 @@ $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
 		$(filter-out $(TAINT_OP_FILTER),\
 			$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_CFLAGS) $(QEMU_CXXFLAGS) \
 			$(QEMU_DGFLAGS) $(CXXFLAGS) $(TAINT_OP_CFLAGS) \
-			-emit-llvm -c -o $@ $<),"  LLVM  $(TARGET_DIR)$@")
+			-emit-llvm -c -o $@ $<),"CLANG   $(TARGET_DIR)$@")
 
 $(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc: $(PLUGIN_OBJ_DIR)/taint_ops_llvm.bc
-	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"  LLINK $(TARGET_DIR)$@")
+	$(call quiet-command, $(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
 all: $(PLUGIN_TARGET_DIR)/panda_taint2_ops.bc

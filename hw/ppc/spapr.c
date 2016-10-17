@@ -332,12 +332,7 @@ static void *spapr_create_fdt_skel(hwaddr initrd_base,
         g_free(buf);
     }
 
-    buf = g_strdup_printf(UUID_FMT, qemu_uuid[0], qemu_uuid[1],
-                          qemu_uuid[2], qemu_uuid[3], qemu_uuid[4],
-                          qemu_uuid[5], qemu_uuid[6], qemu_uuid[7],
-                          qemu_uuid[8], qemu_uuid[9], qemu_uuid[10],
-                          qemu_uuid[11], qemu_uuid[12], qemu_uuid[13],
-                          qemu_uuid[14], qemu_uuid[15]);
+    buf = qemu_uuid_unparse_strdup(&qemu_uuid);
 
     _FDT((fdt_property_string(fdt, "vm,uuid", buf)));
     if (qemu_uuid_set) {
@@ -551,6 +546,51 @@ static int spapr_populate_memory(sPAPRMachineState *spapr, void *fdt)
     return 0;
 }
 
+/* Populate the "ibm,pa-features" property */
+static void spapr_populate_pa_features(CPUPPCState *env, void *fdt, int offset)
+{
+    uint8_t pa_features_206[] = { 6, 0,
+        0xf6, 0x1f, 0xc7, 0x00, 0x80, 0xc0 };
+    uint8_t pa_features_207[] = { 24, 0,
+        0xf6, 0x1f, 0xc7, 0xc0, 0x80, 0xf0,
+        0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x80, 0x00,
+        0x80, 0x00, 0x80, 0x00, 0x00, 0x00 };
+    uint8_t *pa_features;
+    size_t pa_size;
+
+    switch (env->mmu_model) {
+    case POWERPC_MMU_2_06:
+    case POWERPC_MMU_2_06a:
+        pa_features = pa_features_206;
+        pa_size = sizeof(pa_features_206);
+        break;
+    case POWERPC_MMU_2_07:
+    case POWERPC_MMU_2_07a:
+        pa_features = pa_features_207;
+        pa_size = sizeof(pa_features_207);
+        break;
+    default:
+        return;
+    }
+
+    if (env->ci_large_pages) {
+        /*
+         * Note: we keep CI large pages off by default because a 64K capable
+         * guest provisioned with large pages might otherwise try to map a qemu
+         * framebuffer (or other kind of memory mapped PCI BAR) using 64K pages
+         * even if that qemu runs on a 4k host.
+         * We dd this bit back here if we are confident this is not an issue
+         */
+        pa_features[3] |= 0x20;
+    }
+    if (kvmppc_has_cap_htm() && pa_size > 24) {
+        pa_features[24] |= 0x80;    /* Transactional memory support */
+    }
+
+    _FDT((fdt_setprop(fdt, offset, "ibm,pa-features", pa_features, pa_size)));
+}
+
 static void spapr_populate_cpu_dt(CPUState *cs, void *fdt, int offset,
                                   sPAPRMachineState *spapr)
 {
@@ -577,24 +617,6 @@ static void spapr_populate_cpu_dt(CPUState *cs, void *fdt, int offset,
         drc_index = drck->get_index(drc);
         _FDT((fdt_setprop_cell(fdt, offset, "ibm,my-drc-index", drc_index)));
     }
-
-    /* Note: we keep CI large pages off for now because a 64K capable guest
-     * provisioned with large pages might otherwise try to map a qemu
-     * framebuffer (or other kind of memory mapped PCI BAR) using 64K pages
-     * even if that qemu runs on a 4k host.
-     *
-     * We can later add this bit back when we are confident this is not
-     * an issue (!HV KVM or 64K host)
-     */
-    uint8_t pa_features_206[] = { 6, 0,
-        0xf6, 0x1f, 0xc7, 0x00, 0x80, 0xc0 };
-    uint8_t pa_features_207[] = { 24, 0,
-        0xf6, 0x1f, 0xc7, 0xc0, 0x80, 0xf0,
-        0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x80, 0x00,
-        0x80, 0x00, 0x80, 0x00, 0x80, 0x00 };
-    uint8_t *pa_features;
-    size_t pa_size;
 
     _FDT((fdt_setprop_cell(fdt, offset, "reg", index)));
     _FDT((fdt_setprop_string(fdt, offset, "device_type", "cpu")));
@@ -662,18 +684,7 @@ static void spapr_populate_cpu_dt(CPUState *cs, void *fdt, int offset,
                           page_sizes_prop, page_sizes_prop_size)));
     }
 
-    /* Do the ibm,pa-features property, adjust it for ci-large-pages */
-    if (env->mmu_model == POWERPC_MMU_2_06) {
-        pa_features = pa_features_206;
-        pa_size = sizeof(pa_features_206);
-    } else /* env->mmu_model == POWERPC_MMU_2_07 */ {
-        pa_features = pa_features_207;
-        pa_size = sizeof(pa_features_207);
-    }
-    if (env->ci_large_pages) {
-        pa_features[3] |= 0x20;
-    }
-    _FDT((fdt_setprop(fdt, offset, "ibm,pa-features", pa_features, pa_size)));
+    spapr_populate_pa_features(env, fdt, offset);
 
     _FDT((fdt_setprop_cell(fdt, offset, "ibm,chip-id",
                            cs->cpu_index / vcpus_per_socket)));
@@ -1115,7 +1126,7 @@ static void spapr_reallocate_hpt(sPAPRMachineState *spapr, int shift,
     }
 }
 
-static int find_unknown_sysbus_device(SysBusDevice *sbdev, void *opaque)
+static void find_unknown_sysbus_device(SysBusDevice *sbdev, void *opaque)
 {
     bool matched = false;
 
@@ -1128,8 +1139,6 @@ static int find_unknown_sysbus_device(SysBusDevice *sbdev, void *opaque)
                      qdev_fw_name(DEVICE(sbdev)));
         exit(1);
     }
-
-    return 0;
 }
 
 static void ppc_spapr_reset(void)
@@ -1766,7 +1775,7 @@ static void ppc_spapr_init(MachineState *machine)
 
     /* init CPUs */
     if (machine->cpu_model == NULL) {
-        machine->cpu_model = kvm_enabled() ? "host" : "POWER7";
+        machine->cpu_model = kvm_enabled() ? "host" : smc->tcg_default_cpu;
     }
 
     ppc_cpu_parse_features(machine->cpu_model);
@@ -1814,6 +1823,9 @@ static void ppc_spapr_init(MachineState *machine)
         /* Enable H_LOGICAL_CI_* so SLOF can talk to in-kernel devices */
         kvmppc_enable_logical_ci_hcalls();
         kvmppc_enable_set_mode_hcall();
+
+        /* H_CLEAR_MOD/_REF are mandatory in PAPR, but off by default */
+        kvmppc_enable_clear_ref_mod_hcalls();
     }
 
     /* allocate RAM */
@@ -2136,10 +2148,8 @@ static void spapr_machine_finalizefn(Object *obj)
     g_free(spapr->kvm_type);
 }
 
-static void ppc_cpu_do_nmi_on_cpu(void *arg)
+static void ppc_cpu_do_nmi_on_cpu(CPUState *cs, void *arg)
 {
-    CPUState *cs = arg;
-
     cpu_synchronize_state(cs);
     ppc_cpu_do_system_reset(cs);
 }
@@ -2149,7 +2159,7 @@ static void spapr_nmi(NMIState *n, int cpu_index, Error **errp)
     CPUState *cs;
 
     CPU_FOREACH(cs) {
-        async_run_on_cpu(cs, ppc_cpu_do_nmi_on_cpu, cs);
+        async_run_on_cpu(cs, ppc_cpu_do_nmi_on_cpu, NULL);
     }
 }
 
@@ -2312,8 +2322,8 @@ static void spapr_machine_device_pre_plug(HotplugHandler *hotplug_dev,
     }
 }
 
-static HotplugHandler *spapr_get_hotpug_handler(MachineState *machine,
-                                             DeviceState *dev)
+static HotplugHandler *spapr_get_hotplug_handler(MachineState *machine,
+                                                 DeviceState *dev)
 {
     if (object_dynamic_cast(OBJECT(dev), TYPE_PC_DIMM) ||
         object_dynamic_cast(OBJECT(dev), TYPE_SPAPR_CPU_CORE)) {
@@ -2360,6 +2370,56 @@ static HotpluggableCPUList *spapr_query_hotpluggable_cpus(MachineState *machine)
     return head;
 }
 
+static void spapr_phb_placement(sPAPRMachineState *spapr, uint32_t index,
+                                uint64_t *buid, hwaddr *pio,
+                                hwaddr *mmio32, hwaddr *mmio64,
+                                unsigned n_dma, uint32_t *liobns, Error **errp)
+{
+    /*
+     * New-style PHB window placement.
+     *
+     * Goals: Gives large (1TiB), naturally aligned 64-bit MMIO window
+     * for each PHB, in addition to 2GiB 32-bit MMIO and 64kiB PIO
+     * windows.
+     *
+     * Some guest kernels can't work with MMIO windows above 1<<46
+     * (64TiB), so we place up to 31 PHBs in the area 32TiB..64TiB
+     *
+     * 32TiB..(33TiB+1984kiB) contains the 64kiB PIO windows for each
+     * PHB stacked together.  (32TiB+2GiB)..(32TiB+64GiB) contains the
+     * 2GiB 32-bit MMIO windows for each PHB.  Then 33..64TiB has the
+     * 1TiB 64-bit MMIO windows for each PHB.
+     */
+    const uint64_t base_buid = 0x800000020000000ULL;
+    const int max_phbs =
+        (SPAPR_PCI_LIMIT - SPAPR_PCI_BASE) / SPAPR_PCI_MEM64_WIN_SIZE - 1;
+    int i;
+
+    /* Sanity check natural alignments */
+    QEMU_BUILD_BUG_ON((SPAPR_PCI_BASE % SPAPR_PCI_MEM64_WIN_SIZE) != 0);
+    QEMU_BUILD_BUG_ON((SPAPR_PCI_LIMIT % SPAPR_PCI_MEM64_WIN_SIZE) != 0);
+    QEMU_BUILD_BUG_ON((SPAPR_PCI_MEM64_WIN_SIZE % SPAPR_PCI_MEM32_WIN_SIZE) != 0);
+    QEMU_BUILD_BUG_ON((SPAPR_PCI_MEM32_WIN_SIZE % SPAPR_PCI_IO_WIN_SIZE) != 0);
+    /* Sanity check bounds */
+    QEMU_BUILD_BUG_ON((max_phbs * SPAPR_PCI_IO_WIN_SIZE) > SPAPR_PCI_MEM32_WIN_SIZE);
+    QEMU_BUILD_BUG_ON((max_phbs * SPAPR_PCI_MEM32_WIN_SIZE) > SPAPR_PCI_MEM64_WIN_SIZE);
+
+    if (index >= max_phbs) {
+        error_setg(errp, "\"index\" for PAPR PHB is too large (max %u)",
+                   max_phbs - 1);
+        return;
+    }
+
+    *buid = base_buid + index;
+    for (i = 0; i < n_dma; ++i) {
+        liobns[i] = SPAPR_PCI_LIOBN(index, i);
+    }
+
+    *pio = SPAPR_PCI_BASE + index * SPAPR_PCI_IO_WIN_SIZE;
+    *mmio32 = SPAPR_PCI_BASE + (index + 1) * SPAPR_PCI_MEM32_WIN_SIZE;
+    *mmio64 = SPAPR_PCI_BASE + (index + 1) * SPAPR_PCI_MEM64_WIN_SIZE;
+}
+
 static void spapr_machine_class_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -2385,16 +2445,18 @@ static void spapr_machine_class_init(ObjectClass *oc, void *data)
     mc->kvm_type = spapr_kvm_type;
     mc->has_dynamic_sysbus = true;
     mc->pci_allow_0_address = true;
-    mc->get_hotplug_handler = spapr_get_hotpug_handler;
+    mc->get_hotplug_handler = spapr_get_hotplug_handler;
     hc->pre_plug = spapr_machine_device_pre_plug;
     hc->plug = spapr_machine_device_plug;
     hc->unplug = spapr_machine_device_unplug;
     mc->cpu_index_to_socket_id = spapr_cpu_index_to_socket_id;
 
     smc->dr_lmb_enabled = true;
+    smc->tcg_default_cpu = "POWER8";
     mc->query_hotpluggable_cpus = spapr_query_hotpluggable_cpus;
     fwc->get_dev_path = spapr_get_fw_dev_path;
     nc->nmi_monitor_handler = spapr_nmi;
+    smc->phb_placement = spapr_phb_placement;
 }
 
 static const TypeInfo spapr_machine_info = {
@@ -2443,18 +2505,100 @@ static const TypeInfo spapr_machine_info = {
     type_init(spapr_machine_register_##suffix)
 
 /*
- * pseries-2.7
+ * pseries-2.8
  */
-static void spapr_machine_2_7_instance_options(MachineState *machine)
+static void spapr_machine_2_8_instance_options(MachineState *machine)
 {
 }
 
-static void spapr_machine_2_7_class_options(MachineClass *mc)
+static void spapr_machine_2_8_class_options(MachineClass *mc)
 {
     /* Defaults for the latest behaviour inherited from the base class */
 }
 
-DEFINE_SPAPR_MACHINE(2_7, "2.7", true);
+DEFINE_SPAPR_MACHINE(2_8, "2.8", true);
+
+/*
+ * pseries-2.7
+ */
+#define SPAPR_COMPAT_2_7                            \
+    HW_COMPAT_2_7                                   \
+    {                                               \
+        .driver   = TYPE_SPAPR_PCI_HOST_BRIDGE,     \
+        .property = "mem_win_size",                 \
+        .value    = stringify(SPAPR_PCI_2_7_MMIO_WIN_SIZE),\
+    },                                              \
+    {                                               \
+        .driver   = TYPE_SPAPR_PCI_HOST_BRIDGE,     \
+        .property = "mem64_win_size",               \
+        .value    = "0",                            \
+    },
+
+static void phb_placement_2_7(sPAPRMachineState *spapr, uint32_t index,
+                              uint64_t *buid, hwaddr *pio,
+                              hwaddr *mmio32, hwaddr *mmio64,
+                              unsigned n_dma, uint32_t *liobns, Error **errp)
+{
+    /* Legacy PHB placement for pseries-2.7 and earlier machine types */
+    const uint64_t base_buid = 0x800000020000000ULL;
+    const hwaddr phb_spacing = 0x1000000000ULL; /* 64 GiB */
+    const hwaddr mmio_offset = 0xa0000000; /* 2 GiB + 512 MiB */
+    const hwaddr pio_offset = 0x80000000; /* 2 GiB */
+    const uint32_t max_index = 255;
+    const hwaddr phb0_alignment = 0x10000000000ULL; /* 1 TiB */
+
+    uint64_t ram_top = MACHINE(spapr)->ram_size;
+    hwaddr phb0_base, phb_base;
+    int i;
+
+    /* Do we have hotpluggable memory? */
+    if (MACHINE(spapr)->maxram_size > ram_top) {
+        /* Can't just use maxram_size, because there may be an
+         * alignment gap between normal and hotpluggable memory
+         * regions */
+        ram_top = spapr->hotplug_memory.base +
+            memory_region_size(&spapr->hotplug_memory.mr);
+    }
+
+    phb0_base = QEMU_ALIGN_UP(ram_top, phb0_alignment);
+
+    if (index > max_index) {
+        error_setg(errp, "\"index\" for PAPR PHB is too large (max %u)",
+                   max_index);
+        return;
+    }
+
+    *buid = base_buid + index;
+    for (i = 0; i < n_dma; ++i) {
+        liobns[i] = SPAPR_PCI_LIOBN(index, i);
+    }
+
+    phb_base = phb0_base + index * phb_spacing;
+    *pio = phb_base + pio_offset;
+    *mmio32 = phb_base + mmio_offset;
+    /*
+     * We don't set the 64-bit MMIO window, relying on the PHB's
+     * fallback behaviour of automatically splitting a large "32-bit"
+     * window into contiguous 32-bit and 64-bit windows
+     */
+}
+
+static void spapr_machine_2_7_instance_options(MachineState *machine)
+{
+    spapr_machine_2_8_instance_options(machine);
+}
+
+static void spapr_machine_2_7_class_options(MachineClass *mc)
+{
+    sPAPRMachineClass *smc = SPAPR_MACHINE_CLASS(mc);
+
+    spapr_machine_2_8_class_options(mc);
+    smc->tcg_default_cpu = "POWER7";
+    SET_MACHINE_COMPAT(mc, SPAPR_COMPAT_2_7);
+    smc->phb_placement = phb_placement_2_7;
+}
+
+DEFINE_SPAPR_MACHINE(2_7, "2.7", false);
 
 /*
  * pseries-2.6
@@ -2469,6 +2613,7 @@ DEFINE_SPAPR_MACHINE(2_7, "2.7", true);
 
 static void spapr_machine_2_6_instance_options(MachineState *machine)
 {
+    spapr_machine_2_7_instance_options(machine);
 }
 
 static void spapr_machine_2_6_class_options(MachineClass *mc)
@@ -2493,6 +2638,7 @@ DEFINE_SPAPR_MACHINE(2_6, "2.6", false);
 
 static void spapr_machine_2_5_instance_options(MachineState *machine)
 {
+    spapr_machine_2_6_instance_options(machine);
 }
 
 static void spapr_machine_2_5_class_options(MachineClass *mc)

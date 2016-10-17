@@ -562,15 +562,6 @@ extern BlockDriver bdrv_file;
 extern BlockDriver bdrv_raw;
 extern BlockDriver bdrv_qcow2;
 
-/**
- * bdrv_setup_io_funcs:
- *
- * Prepare a #BlockDriver for I/O request processing by populating
- * unimplemented coroutine and AIO interfaces with generic wrapper functions
- * that fall back to implemented interfaces.
- */
-void bdrv_setup_io_funcs(BlockDriver *bdrv);
-
 int coroutine_fn bdrv_co_preadv(BdrvChild *child,
     int64_t offset, unsigned int bytes, QEMUIOVector *qiov,
     BdrvRequestFlags flags);
@@ -731,7 +722,7 @@ void commit_active_start(const char *job_id, BlockDriverState *bs,
  * @errp: Error object.
  *
  * Start a mirroring operation on @bs.  Clusters that are allocated
- * in @bs will be written to @bs until the job is cancelled or
+ * in @bs will be written to @target until the job is cancelled or
  * manually completed.  At the end of a successful mirroring job,
  * @bs will be switched to read from @target.
  */
