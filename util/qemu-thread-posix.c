@@ -160,6 +160,42 @@ void qemu_sem_init(QemuSemaphore *sem, int init)
 #endif
 }
 
+void qemu_avatar_sem_open(QemuAvatarSemaphore *sem, const char *name)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    sem_t *rc = sem_open(name, O_CREAT, O_RDWR, 1);
+
+    if(rc == SEM_FAILED) {
+        error_exit(errno, __func__);
+    }
+
+    sem->sem = rc;
+#endif
+}
+
+void qemu_avatar_sem_wait(QemuAvatarSemaphore *sem)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = sem_wait(sem->sem);
+    if (rc < 0) {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
+void qemu_avatar_sem_post(QemuAvatarSemaphore *sem)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = sem_post(sem->sem);
+    if (rc < 0) {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
 void qemu_sem_destroy(QemuSemaphore *sem)
 {
     int rc;

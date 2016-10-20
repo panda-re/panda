@@ -39,4 +39,14 @@ struct QemuEvent {
 struct QemuThread {
     pthread_t thread;
 };
+
+//Avatar-specific
+typedef struct {
+    sem_t *sem;
+} QemuAvatarSemaphore;
+
+void qemu_avatar_sem_wait(QemuAvatarSemaphore *sem);
+void qemu_avatar_sem_post(QemuAvatarSemaphore *sem);
+void qemu_avatar_sem_open(QemuAvatarSemaphore *sem, const char *name);
+
 #endif
