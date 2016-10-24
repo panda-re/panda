@@ -367,7 +367,6 @@ extern CPUState *env;
 void panda_disable_llvm(void){
     execute_llvm = 0;
     generate_llvm = 0;
-    tb_flush(first_cpu);
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }
