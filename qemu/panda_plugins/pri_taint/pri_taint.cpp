@@ -148,7 +148,8 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
         }
         uint32_t len = offset;
         if (num_tainted || log_untainted) {
-            // ok at least one byte in the extent is tainted
+            // ok at least one byte in the extent is tainted 
+            // or we are logging untainted extents for fake bug injection
             // 1. write the pandalog entry that tells us something was tainted on this extent
             Panda__TaintQueryPri *tqh = (Panda__TaintQueryPri *) malloc (sizeof (Panda__TaintQueryPri));
             *tqh = PANDA__TAINT_QUERY_PRI__INIT;
@@ -370,6 +371,8 @@ bool init_plugin(void *self) {
     hypercall_taint = panda_parse_bool(args, "hypercall");
     linechange_taint = panda_parse_bool(args, "linechange");
     log_untainted = panda_parse_bool(args, "log_untainted");
+
+    if (log_untainted) printf ("we are logging queries that are untainted\n");
 
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
