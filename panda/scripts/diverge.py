@@ -152,7 +152,7 @@ gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
 gdb_run_both("continue", timeout=None)
 
 breakpoint("cpu_tb_exec")
-breakpoint("do_interrupt_x86_hardirq")
+breakpoint("debug_counter")
 
 def get_whens():
     result = gdb_run_both("when")
@@ -172,13 +172,26 @@ def get_instr_counts(procs=[record, replay]):
 def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
+gdb_run_both("set $ptr = memory_region_find(" + \
+             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+
+ram_size = get_value([record], "ram_size")[record]
+
+def get_crc32s(low, size, procs=[record, replay]):
+    step = 1 << 31 if size > (1 << 31) else size
+    crc32s = { proc: 0 for proc in procs }
+    for start in range(low, low + size, step):
+        step_crc32s = get_value(procs,
+                     "(uint32_t)crc32(0, $ptr + {}, {})".format(
+                         hex(start), hex(step))
+        for proc in step_crc32s:
+            crc32s[proc] ^= step_crc32s[proc]
+    return crc32s
+
 def get_checksums(procs=[record, replay]):
     # NB: Only run when you are at a breakpoint in CPU thread!
     gdb_run_both("info threads")
-    result = gdb_run_both("print rr_checksum_memory()")
-    for proc, result_str in result.items():
-        assert "Need to be in VCPU" not in result_str
-    return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+    return get_crc32s(0, ram_size, procs)
 
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
@@ -281,28 +294,28 @@ def sync(instr_low, instr_high, target):
             behind, instr_counts[behind], ahead, instr_counts[ahead]
         )
 
-        if instr_counts[ahead] - instr_counts[behind] >= 100000:
+        if instr_counts[ahead] - instr_counts[behind] >= 0x20000:
             disable_all()
-            enable("do_interrupt_x86_hardirq")
+            enable("debug_counter")
             if direction == BACKWARD:
                 print "Rewinding {} quickly".format(ahead)
-                condition("do_interrupt_x86_hardirq", {
+                condition("debug_counter", {
                     behind: "",
                     ahead: "cpus->tqh_first->rr_guest_instr_count <= {}"
                         .format(instr_counts[behind])
                 })
-                if "do_interrupt_x86_hardirq" not in gdb_run(behind, "backtrace"):
+                if "debug_counter" not in gdb_run(behind, "backtrace"):
                     gdb_run_both("reverse-continue", timeout=None)
                 while get_instr_count(ahead) == instr_counts[ahead]:
                     gdb_run(ahead, "reverse-continue", timeout=None)
             elif direction == FORWARD:
                 print "Advancing {} quickly".format(behind)
-                condition("do_interrupt_x86_hardirq", {
+                condition("debug_counter", {
                     ahead: "",
                     behind: "cpus->tqh_first->rr_guest_instr_count >= {}"
                         .format(instr_counts[ahead])
                 })
-                if "do_interrupt_x86_hardirq" not in gdb_run(ahead, "backtrace"):
+                if "debug_counter" not in gdb_run(ahead, "backtrace"):
                     gdb_run_both("continue", timeout=None)
                 while get_instr_count(behind) == instr_counts[behind]:
                     gdb_run(behind, "continue", timeout=None)
@@ -331,7 +344,7 @@ def sync(instr_low, instr_high, target):
                     gdb_run_both("continue", timeout=None)
                 while get_instr_count(behind) == instr_counts[behind]:
                     gdb_run(behind, "continue", timeout=None)
-        else: assert False
+            else: assert False
         instr_counts = get_instr_counts()
 
     return instr_counts[record]
@@ -417,16 +430,6 @@ gdb_run_both({
 }, timeout=None)
 disable_all()
 sync(0, instr_count_max, record)
-
-ram_size = get_value([record], "ram_size")[record]
-
-def get_crc32s(low, size):
-    return get_value([record, replay],
-                     "(uint32_t)crc32(0, $ptr + {}, {})".format(
-                         hex(low), hex(size)))
-
-gdb_run_both("set $ptr = memory_region_find(" + \
-             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
 
 search_queue = [(0, ram_size)]
 divergences = []

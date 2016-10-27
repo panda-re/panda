@@ -635,7 +635,20 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
     }
 }
 
-
+#ifdef CONFIG_DEBUG_TCG
+static uint64_t counter_128k = 0;
+static void debug_counter(void) {
+    counter_128k++;
+}
+#endif
+inline static void debug_checkpoint(void) {
+#ifdef CONFIG_DEBUG_TCG
+    if (rr_mode != RR_OFF
+            && rr_get_guest_instr_count() >> 17 > counter_128k) {
+        debug_counter();
+    }
+#endif
+}
 
 /* main execution loop */
 
@@ -689,6 +702,7 @@ int cpu_exec(CPUState *cpu)
             }
 
             for(;;) {
+                debug_checkpoint();
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
