@@ -1815,7 +1815,7 @@ void on_call(CPUState *cpu, target_ulong pc) {
     }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
     dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, true);
-    pri_runcb_on_fn_start(cpu, pc, file_name, funct_name.c_str(), cur_line);
+    pri_runcb_on_fn_start(cpu, pc, file_name, funct_name.c_str());
 
     /*
     if (funcaddrs.find(pc) != funcaddrs.end()){
@@ -1857,6 +1857,7 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     cur_line = it->line_number;
     //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_func);
     dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, false);
+    pri_runcb_on_fn_return(cpu, pc_func, file_name, funct_name.c_str());
 }
 
 void __livevar_iter(CPUState *cpu,

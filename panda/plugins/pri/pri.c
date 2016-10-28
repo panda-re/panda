@@ -40,6 +40,8 @@ PPP_PROT_REG_CB(on_after_line_change)
 PPP_CB_BOILERPLATE(on_after_line_change)
 PPP_PROT_REG_CB(on_fn_start)
 PPP_CB_BOILERPLATE(on_fn_start)
+PPP_PROT_REG_CB(on_fn_return)
+PPP_CB_BOILERPLATE(on_fn_return)
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
@@ -75,9 +77,13 @@ void pri_runcb_on_before_line_change(CPUState *cpu, target_ulong pc, const char 
 void pri_runcb_on_after_line_change(CPUState *cpu, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
     PPP_RUN_CB(on_after_line_change, cpu, pc, file_name, funct_name, lno);
 }
-void pri_runcb_on_fn_start(CPUState *cpu, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno){
-    PPP_RUN_CB(on_fn_start, cpu, pc, file_name, funct_name, lno);
+void pri_runcb_on_fn_start(CPUState *cpu, target_ulong pc, const char *file_name, const char *funct_name){
+    PPP_RUN_CB(on_fn_start, cpu, pc, file_name, funct_name);
 }
+void pri_runcb_on_fn_return(CPUState *cpu, target_ulong pc, const char *file_name, const char *funct_name){
+    PPP_RUN_CB(on_fn_return, cpu, pc, file_name, funct_name);
+}
+
 
 bool init_plugin(void *self) {
     return true;
