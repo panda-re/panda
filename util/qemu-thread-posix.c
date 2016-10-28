@@ -160,42 +160,6 @@ void qemu_sem_init(QemuSemaphore *sem, int init)
 #endif
 }
 
-void qemu_avatar_sem_open(QemuAvatarSemaphore *sem, const char *name)
-{
-#if defined(__APPLE__) || defined(__NetBSD__)
-#else
-    sem_t *rc = sem_open(name, O_CREAT, O_RDWR, 1);
-
-    if(rc == SEM_FAILED) {
-        error_exit(errno, __func__);
-    }
-
-    sem->sem = rc;
-#endif
-}
-
-void qemu_avatar_sem_wait(QemuAvatarSemaphore *sem)
-{
-#if defined(__APPLE__) || defined(__NetBSD__)
-#else
-    int rc = sem_wait(sem->sem);
-    if (rc < 0) {
-        error_exit(errno, __func__);
-    }
-#endif
-}
-
-void qemu_avatar_sem_post(QemuAvatarSemaphore *sem)
-{
-#if defined(__APPLE__) || defined(__NetBSD__)
-#else
-    int rc = sem_post(sem->sem);
-    if (rc < 0) {
-        error_exit(errno, __func__);
-    }
-#endif
-}
-
 void qemu_sem_destroy(QemuSemaphore *sem)
 {
     int rc;
@@ -543,3 +507,97 @@ void *qemu_thread_join(QemuThread *thread)
     }
     return ret;
 }
+
+//Avatar-specific
+void qemu_avatar_sem_open(QemuAvatarSemaphore *sem, const char *name)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    sem_t *rc = sem_open(name, O_CREAT, O_RDWR, 1);
+
+    if(rc == SEM_FAILED) {
+        error_exit(errno, __func__);
+    }
+
+    sem->sem = rc;
+#endif
+}
+
+void qemu_avatar_sem_wait(QemuAvatarSemaphore *sem)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = sem_wait(sem->sem);
+    if (rc < 0) {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
+void qemu_avatar_sem_post(QemuAvatarSemaphore *sem)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = sem_post(sem->sem);
+    if (rc < 0) {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
+void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    mqd_t m = mq_open(name, O_CREAT | O_RDONLY);
+
+    if(m == -1)
+    {
+        error_exit(errno, __func__);
+    }
+
+    mq->mq = m;
+#endif
+}
+
+void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    mqd_t m = mq_open(name, O_CREAT | O_WRONLY);
+ 
+    if(m == -1)
+    {
+        error_exit(errno, __func__);
+    }
+
+    mq->mq = m;
+#endif
+}
+
+void qemu_avatar_mq_send(QemuAvatarMessageQueue *mq, void *msg, size_t len)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = mq_send(mq->mq, msg, len, 0);
+
+    if (rc < 0)
+    {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
+void qemu_avatar_mq_receive(QemuAvatarMessageQueue *mq, void *buffer, size_t len)
+{
+#if defined(__APPLE__) || defined(__NetBSD__)
+#else
+    int rc = mq_receive(mq->mq, buffer, len, NULL);
+
+    if (rc < 0) 
+    {
+        error_exit(errno, __func__);
+    }
+#endif
+}
+
