@@ -10,5 +10,7 @@ typedef void (*on_funct_livevar_iter_t)(CPUState *a, target_ulong pc, liveVarCB 
 
 typedef void (*on_before_line_change_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
 typedef void (*on_after_line_change_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
-typedef void (*on_fn_start_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name, unsigned long long lno);
+typedef void (*on_fn_start_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name);
+typedef void (*on_fn_return_t)(CPUState *env, target_ulong pc, const char *file_name, const char *funct_name);
+
 #endif 
