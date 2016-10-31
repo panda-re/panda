@@ -1,6 +1,9 @@
 # determine list of plugins
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
 PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
+ifdef CONFIG_LLVM
+	PANDA_PLUGINS+=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.llvm.panda | grep -v "^\#" | xargs)
+endif
 
 # ditto for extra plugins
 ifdef EXTRA_PLUGINS_PATH
