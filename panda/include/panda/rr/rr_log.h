@@ -171,8 +171,6 @@ static inline RR_prog_point rr_prog_point(void) {
     return ret;
 }
 
-// TODO Remove
-extern int panda_current_interrupt_request;
 static inline uint64_t rr_num_instr_before_next_interrupt(void) {
     if (!rr_queue_tail) {
         return -1;
