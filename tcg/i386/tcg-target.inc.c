@@ -1183,7 +1183,7 @@ static void * const qemu_ld_helpers_panda[16] = {
     [MO_BEQ]  = helper_be_ldq_mmu_panda,
 };
 #define qemu_ld_helpers \
-    (panda_use_memcb ? qemu_ld_helpers_normal : qemu_ld_helpers_panda)
+    (panda_use_memcb ? qemu_ld_helpers_panda : qemu_ld_helpers_normal)
 
 /* helper signature: helper_ret_st_mmu(CPUState *env, target_ulong addr,
  *                                     uintxx_t val, int mmu_idx, uintptr_t ra)
@@ -1208,7 +1208,7 @@ static void * const qemu_st_helpers_panda[16] = {
     [MO_BEQ]  = helper_be_stq_mmu_panda,
 };
 #define qemu_st_helpers \
-    (panda_use_memcb ? qemu_st_helpers_normal : qemu_st_helpers_panda)
+    (panda_use_memcb ? qemu_st_helpers_panda : qemu_st_helpers_normal)
 
 /* Perform the TLB load and compare.
 
