@@ -32,6 +32,7 @@ typedef struct {
     uint64_t size;
     char *name;
     uint32_t len;
+    RR_mem_type mtype;
     bool added;
 } RR_mem_region_change_args;
 
@@ -54,7 +55,7 @@ void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
                                const uint8_t* buf, int len, int is_write);
 void rr_record_memory_region_change(RR_callsite_id call_site,
                                      hwaddr start_addr, uint64_t size,
-                                     const char *name, bool added);
+                                     const char *name, RR_mem_type mtype, bool added);
 void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
                              uint8_t* buf, hwaddr len, int is_write);
 
@@ -76,11 +77,11 @@ static inline void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
 
 // mz XXX addr should be hwaddr
 static inline void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
-                                          const char *name, bool added)
+                                          const char *name, RR_mem_type mtype, bool added)
 {
     rr_record_memory_region_change(
         (RR_callsite_id)rr_skipped_callsite_location, start_addr, size,
-        name, added);
+        name, mtype, added);
 }
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default

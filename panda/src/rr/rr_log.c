@@ -429,14 +429,19 @@ void rr_record_input_8(RR_callsite_id call_site, uint64_t data)
     rr_write_item();
 }
 
-// mz record interrupt request value to file (but only if non-zero)
+int panda_current_interrupt_request = 0;
+/**
+ * Save every time cpu->interrupt_request is different than the last time
+ * we observed it (panda_current_interrupt_request. In replay, we use these
+ * state transitions to always provide the correct value of
+ * cpu->interrupt_request without having to record the value every time it is
+ * checked
+ */
 void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request)
 {
-    // mz we only record interrupt_requests if the value is non-zero
-    if (interrupt_request != 0) {
+    if (panda_current_interrupt_request != interrupt_request) {
         RR_log_entry* item = &(rr_nondet_log->current_item);
-        // mz just in case
         memset(item, 0, sizeof(RR_log_entry));
 
         item->header.kind = RR_INTERRUPT_REQUEST;
@@ -444,7 +449,7 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
         item->header.prog_point = rr_prog_point();
 
         item->variant.interrupt_request = interrupt_request;
-
+        panda_current_interrupt_request = interrupt_request;
         rr_write_item();
     }
 }
@@ -533,7 +538,7 @@ void rr_tracked_mem_regions_record(void) {
 // bdg Record a change in the I/O memory map
 void rr_record_memory_region_change(RR_callsite_id call_site,
                                      hwaddr start_addr, uint64_t size,
-                                     const char *name, bool added)
+                                     const char *name, RR_mem_type mtype, bool added)
 {
     RR_log_entry* item = &(rr_nondet_log->current_item);
     // mz just in case
@@ -549,6 +554,7 @@ void rr_record_memory_region_change(RR_callsite_id call_site,
     item->variant.call_args.variant.mem_region_change_args.size = size;
     item->variant.call_args.variant.mem_region_change_args.name = (char *)name;
     item->variant.call_args.variant.mem_region_change_args.len = strlen(name);
+    item->variant.call_args.variant.mem_region_change_args.mtype = mtype;
     item->variant.call_args.variant.mem_region_change_args.added = added;
 
     rr_write_item();
@@ -1052,27 +1058,24 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data)
     add_to_recycle_list(current_item);
 }
 
-// mz replay interrupt_request value.  if there's nothing in the log, the value
-// mz was 0 during record.
+/**
+ * Update the panda_currrent_interrupt_request state machine, if necessary,
+ * and use it to return the correct value for cpu->interrupt_requested
+ */
 void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  uint32_t* interrupt_request)
 {
     RR_log_entry* current_item =
         get_next_entry(RR_INTERRUPT_REQUEST, call_site, true);
-    if (current_item == NULL) {
-        // mz we're trying to replay too early or we have the wrong kind of
-        // rr_nondet_log
-        // entry.  this is NOT cause for failure as we do not record
-        // interrupt_request values of 0 in the log (too many of them).
-        *interrupt_request = 0;
-    } else {
-        *interrupt_request = current_item->variant.interrupt_request;
+    if (current_item != NULL) {
+        panda_current_interrupt_request = current_item->variant.interrupt_request;
         // mz we've used the item
         add_to_recycle_list(current_item);
         // mz before we can return, we need to fill the queue with information
         // up to the next interrupt value!
         rr_fill_queue();
     }
+    *interrupt_request = panda_current_interrupt_request;
 }
 
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
@@ -1098,9 +1101,14 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
     }
 }
 
-static void rr_create_memory_region(hwaddr start, uint64_t size, char *name) {
+static void rr_create_memory_region(hwaddr start, uint64_t size, RR_mem_type mtype, char *name) {
     MemoryRegion *mr = g_new0(MemoryRegion, 1);
-    memory_region_init_io(mr, NULL, NULL, NULL, name, size);
+    if (mtype == RR_MEM_RAM) {
+        Error *err = 0;
+        memory_region_init_ram(mr, NULL, name, size, &err);
+    } else if (mtype == RR_MEM_IO) {
+        memory_region_init_io(mr, NULL, NULL, NULL, name, size);
+    }
     memory_region_add_subregion_overlap(get_system_memory(),
             start, mr, 1);
 }
@@ -1145,6 +1153,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                     rr_create_memory_region(
                             args.variant.mem_region_change_args.start_addr,
                             args.variant.mem_region_change_args.size,
+                            args.variant.mem_region_change_args.mtype,
                             args.variant.mem_region_change_args.name);
                 }
                 // Delete a mapping

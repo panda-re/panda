@@ -1,11 +1,17 @@
 # determine list of plugins
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
 PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
+ifdef CONFIG_LLVM
+	PANDA_PLUGINS+=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.llvm.panda | grep -v "^\#" | xargs)
+endif
+
+ALL_PLUGIN_SUBDIRS=$(addprefix $(SRC_PATH)/panda/plugins/,$(PANDA_PLUGINS))
 
 # ditto for extra plugins
 ifdef EXTRA_PLUGINS_PATH
 	EXTRA_PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
 	EXTRA_PLUGIN_SUBDIR_RULES=$(patsubst %,extra-plugin-%, $(EXTRA_PANDA_PLUGINS))
+	ALL_PLUGIN_SUBDIRS+=$(addprefix $(EXTRA_PLUGINS_PATH)/panda/plugins/,$(EXTRA_PANDA_PLUGINS))
 endif
 
 ifdef CONFIG_SOFTMMU
@@ -15,9 +21,10 @@ endif
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
-PANDA_API_INT=$(wildcard $(SRC_PATH)/panda/plugins/*/*_int.h)
-PANDA_API_INT_REL=$(subst $(SRC_PATH)/,,$(PANDA_API_INT))
-PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT_REL))
+PANDA_API_INT_POSSIBLE=$(foreach plugin,$(PANDA_PLUGINS),panda/plugins/$(plugin)/$(plugin)_int.h)
+PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
+			  $(if $(wildcard $(SRC_PATH)/$(header)),$(header),))
+PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
 plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
@@ -37,7 +44,7 @@ extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 
 all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
 
-PROTO_FILES := $(shell find $(SRC_PATH)/panda/plugins -name *.proto)
+PROTO_FILES := $(shell find $(ALL_PLUGIN_SUBDIRS) -name *.proto)
 
 plog.proto: $(PROTO_FILES)
 	$(call quiet-command,\
