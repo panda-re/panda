@@ -1,6 +1,5 @@
 
 
-
 #define __STDC_FORMAT_MACROS
 
 #include <algorithm>
@@ -25,6 +24,8 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t cb);
+
 }
 
 using namespace std;
@@ -37,7 +38,7 @@ struct LibFICbEntry {
     string fnname;
     bool isenter;
     uint32_t numargs;
-    libfi_cb_t *callback;    
+    libfi_cb_t callback;    
 };
 
 std::vector<LibFICbEntry> libficbes;
@@ -53,16 +54,24 @@ uint32_t word_size = 0;
 // program args
 uint64_t *arg=NULL;
 
+static inline void set_word_size() {
+    if (word_size == 0) {
+        word_size = (((CPUX86State *)first_cpu)->hflags & HF_LMA_MASK) ? 64 : 32;
+    }
+}
+
 // stolen from phulin's useafter plugin
 // Assumes target+host have same endianness.
 static inline target_ulong get_word(CPUState *env, target_ulong addr) {
     target_ulong result = 0;
+    set_word_size();
     panda_virtual_memory_rw(env, addr, (uint8_t *)&result, word_size, 0);
     return result;
 }
 
 // Returns [esp + word_size*offset_number]
 static inline target_ulong get_stack(CPUState *env, int offset_number) {
+    set_word_size();
     return get_word(env, ESP + word_size * offset_number);
 }
 
@@ -96,9 +105,18 @@ void fn_return(CPUState *env, target_ulong pc, const char *file_name,
     }   
 }
 
-void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t *cb) {
+void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t cb) {
     LibFICbEntry cbe = {string(libname), string(fnname), (isenter == 1), numargs, cb};
-    libficbes.push_back(cbe);    
+    libficbes.push_back(cbe);
+/*
+    LibFICbEntry *cbe = (LibFICbEntry *) malloc(sizeof(LibFICbEntry));
+    cbe->libname = string(libname);
+    cbe->fnname = string(fnname);
+    cbe->isenter = (isenter == 1);
+    cbe->numargs = numargs;
+    cbe->callback = cb;
+    libficbes.push_back(*cbe);    
+*/
 }
 #endif 
 
@@ -107,7 +125,6 @@ bool init_plugin(void *self) {
     panda_require("pri");
     PPP_REG_CB("pri", on_fn_start, fn_start);
     PPP_REG_CB("pri", on_fn_return, fn_return);
-    word_size = (((CPUX86State *)first_cpu)->hflags & HF_LMA_MASK) ? 64 : 32;
     arg = (uint64_t *) malloc (sizeof(uint64_t) * MAX_ARGS);
 #endif
     return true;

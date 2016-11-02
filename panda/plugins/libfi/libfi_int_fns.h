@@ -5,6 +5,6 @@
 // libname really is name of source file with that fn in it.
 // numargs is how many args we should grab from stack when we enter that fn.
 // cb is the callback itself
-void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t *cb);
+void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t cb);
 
 #endif
