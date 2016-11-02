@@ -33,36 +33,37 @@ static char snp_name[128];
 static FILE *oldlog = NULL;
 static FILE *newlog = NULL;
 
-static RR_log_entry entry;
+//static RR_log_entry entry;
 static RR_prog_point orig_last_prog_point = {0, 0, 0};
 
 static bool snipping = false;
 static bool done = false;
 
 static RR_prog_point copy_entry(void);
-static void sassert(bool condition);
+static void sassert(bool condition, int which);
 
-static void sassert(bool condition) {
+static void sassert(bool condition, int which) {
     if (!condition) {
-        printf("Assertion failure @ count %lu!\n", entry.header.prog_point.guest_instr_count);
         rr_do_end_replay(true);
     }
 }
 
-static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) {
+#define INLINEIT inline
+
+static INLINEIT size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t result = fwrite(ptr, size, nmemb, f);
-    sassert(result == nmemb);
+    sassert(result == nmemb, 1);
     return result;
 }
 
-static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
+static INLINEIT size_t rr_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t result = fread(ptr, size, nmemb, f);
     rr_nondet_log->bytes_read += nmemb * size;
-    sassert(result == nmemb);
+    sassert(result == nmemb, 2);
     return result;
 }
 
-static inline void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog, FILE *newlog) {
+static INLINEIT void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog, FILE *newlog) {
     rr_fread(ptr, size, nmemb, oldlog);
     rr_fwrite(ptr, size, nmemb, newlog);
 }
@@ -121,6 +122,7 @@ static RR_prog_point copy_entry(void) {
                     rr_fcopy(args->variant.cpu_mem_rw_args.buf, 1,
                             args->variant.cpu_mem_rw_args.len,
                             oldlog, newlog);
+                    break;
                 case RR_CALL_CPU_MEM_UNMAP:
                     RR_COPY_ITEM(args->variant.cpu_mem_unmap);
                     args->variant.cpu_mem_unmap.buf =
@@ -128,6 +130,7 @@ static RR_prog_point copy_entry(void) {
                     rr_fcopy(args->variant.cpu_mem_unmap.buf, 1,
                                 args->variant.cpu_mem_unmap.len,
                                 oldlog, newlog);
+                    break;
                 case RR_CALL_MEM_REGION_CHANGE:
                     RR_COPY_ITEM(args->variant.mem_region_change_args);
                     args->variant.mem_region_change_args.name =
@@ -152,7 +155,7 @@ static RR_prog_point copy_entry(void) {
                     break;
                 default:
                     //mz unimplemented
-                    sassert(0);
+                    sassert(0, 3);
             }
         } break;
         case RR_LAST:
@@ -162,7 +165,7 @@ static RR_prog_point copy_entry(void) {
             break;
         default:
             //mz unimplemented
-            sassert(0);
+            sassert(0, 4);
     }
 
     return original_prog_point;
@@ -178,9 +181,9 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
-    sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1);
-    sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1);
-    sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1);
+    sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1, 5);
+    sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1, 6);
+    sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1, 7);
 
     rewind(newlog);
     fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
@@ -192,8 +195,8 @@ static void end_snip(void) {
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
-        sassert((oldlog = fopen(rr_nondet_log->name, "r")));
-        sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1);
+        sassert((oldlog = fopen(rr_nondet_log->name, "r")), 8);
+        sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1, 9);
         printf("Original ending prog point: ");
         rr_spit_prog_point(orig_last_prog_point);
 
@@ -213,7 +216,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         rr_spit_prog_point(rr_prog_point());
         printf("Writing entries to %s...\n", nondet_name);
         newlog = fopen(nondet_name, "w");
-        sassert(newlog);
+        sassert(newlog, 10);
         // We'll fix this up later.
         RR_prog_point prog_point = {0, 0, 0};
         fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
