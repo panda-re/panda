@@ -35,7 +35,9 @@ Name: **on_get_pc_source_info**
 
 Signature: `typedef void (*on_get_pc_source_info_t)(CPUState *a, target_ulong pc, SrcInfo *info, int *rc)`
 
-Description: get source info for a pc at current execution return -1 if pc is in external libraries that do not have symbol information
+Description: get source info for a pc at current execution return -1 if pc is in
+external libraries that do not have symbol information.  Return 1 if pc is in
+the plt for an external function.
 
 Name: **on_get_vma_symbol**
 
