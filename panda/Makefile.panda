@@ -44,12 +44,16 @@ extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 
 all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
 
-PROTO_FILES := $(shell find $(ALL_PLUGIN_SUBDIRS) -name *.proto)
+PROTO_FILES=$(wildcard $(addsuffix /*.proto,$(ALL_PLUGIN_SUBDIRS)))
 
-plog.proto: $(PROTO_FILES)
+PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda $(SRC_PATH)/panda/plugins/config.llvm.panda
+
+
+plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
+	$(info $$PROTO_FILES is [${PROTO_FILES}])
 	$(call quiet-command,\
-		$(SRC_PATH)/panda/scripts/pp.py $@ $(SRC_PATH)/panda/plugins/config.panda,\
-		"PROTO   $@")
+		$(SRC_PATH)/panda/scripts/pp.py $@ $(PANDA_CONFIG_FILES),\
+		"PROTO   $(TARGET_DIR)$@")
 
 %.pb-c.h %.pb-c.c: %.proto
 	$(call quiet-command,\
