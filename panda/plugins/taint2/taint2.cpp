@@ -653,6 +653,9 @@ void i386_hypercall_callback(CPUState *cpu){
                     // do nothing and let pri_taint with hypercall
                     // option handle it
                 }
+                else if (phs.action == 14) {
+                    // reserved for taint-exploitability
+                }
                 else {
                     printf("Unknown hypercall action %d\n", phs.action);
                 }
