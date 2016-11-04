@@ -46,7 +46,10 @@ all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
 
 PROTO_FILES=$(wildcard $(addsuffix /*.proto,$(ALL_PLUGIN_SUBDIRS)))
 
-PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda $(SRC_PATH)/panda/plugins/config.llvm.panda
+#PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda $(SRC_PATH)/panda/plugins/config.llvm.panda
+PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
+				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
+				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
 
 plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)

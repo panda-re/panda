@@ -3,6 +3,7 @@
 import sys
 import re
 import os.path
+debug = False
 
 pproto_filename = sys.argv[1]
 
@@ -75,17 +76,35 @@ required uint64 instr = 2;
 messages = []
 rests = []
 
-lines = open(sys.argv[2]).readlines() + open(sys.argv[3]).readlines() 
+if debug:
+    print "PP: {} {}".format(sys.argv[2], sys.argv[3])
 
+lines = open(sys.argv[2]).readlines() + open(sys.argv[3]).readlines()
+plugin_dir = os.path.dirname(sys.argv[2])
 for plugin in lines:
     p = plugin.strip()
     if (p[0] == '#'): continue
-    proto_part_file = os.path.join(os.path.dirname(sys.argv[2]), '%s/%s.proto') % (p, p)
+    proto_part_file = os.path.join(plugin_dir, '%s/%s.proto') % (p, p)
     if os.path.isfile(proto_part_file):
         proto_part = get_proto_text(proto_part_file)
         (m, r) = parse_proto_part(proto_part)
         messages.extend(m)
         rests.extend(r)
+
+if len(sys.argv) > 4:
+    if debug:
+        print "PP: processing extra plugins at {}".format(sys.argv[4])
+    extra_plugin_config = sys.argv[4]
+    extra_plugin_dir = os.path.dirname(extra_plugin_config)
+    for plugin in open(extra_plugin_config):
+        p = plugin.strip()
+        if (p[0] == '#'): continue
+        proto_part_file = os.path.join(extra_plugin_dir, '%s/%s.proto') % (p, p)
+        if os.path.isfile(proto_part_file):
+            proto_part = get_proto_text(proto_part_file)
+            (m, r) = parse_proto_part(proto_part)
+            messages.extend(m)
+            rests.extend(r)
 
 f = open(pproto_filename, "w")
 
