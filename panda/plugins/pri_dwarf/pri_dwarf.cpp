@@ -1804,6 +1804,11 @@ void on_call(CPUState *cpu, target_ulong pc) {
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
     if (pc < it->lowpc || it == line_range_list.end()){
         /* printf("RET: Could not find line info for 0x%x\n", pc); */
+        auto it_dyn = addr_to_dynl_function.find(pc);
+        if (it_dyn != addr_to_dynl_function.end()){
+            //printf("In a a plt function\n");
+            pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
+        }
         return;
     }
     cur_function = it->function_addr;
