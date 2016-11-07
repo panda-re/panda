@@ -1854,7 +1854,12 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     //printf(" on_ret address: %x\n", func);
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_func, CompareRangeAndPC());
     if (pc_func < it->lowpc || it == line_range_list.end()){
-        /* printf("RET: Could not find line info for 0x%x\n", pc_func); */
+        auto it_dyn = addr_to_dynl_function.find(pc_func);
+        if (it_dyn != addr_to_dynl_function.end()){
+            pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
+        }
+        if (debug)
+            printf("RET: Could not find line info for 0x%x\n", pc_func);
         return;
     }
     cur_function = it->function_addr;
