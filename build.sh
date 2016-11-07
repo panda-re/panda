@@ -32,6 +32,6 @@ fi
     --prefix="$(pwd)/install" \
     --extra-cflags="-Wno-error=cpp" \
     $LLVM_BIT \
-    $*
+    "$@"
 
 make -j ${PANDA_NPROC:-$(nproc)}
