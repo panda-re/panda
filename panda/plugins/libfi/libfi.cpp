@@ -77,6 +77,7 @@ static inline target_ulong get_stack(CPUState *env, int offset_number) {
 
 void fn_start(CPUState *env, target_ulong pc, const char *file_name, 
               const char *funct_name) {
+    printf ("fn start %s\n", funct_name);
     // grab args for this fn if this guy has either enter or exit cb
     for (LibFICbEntry &cbe : libficbes) {
         if (cbe.fnname == funct_name) {
@@ -97,6 +98,7 @@ void fn_start(CPUState *env, target_ulong pc, const char *file_name,
 
 void fn_return(CPUState *env, target_ulong pc, const char *file_name, 
                const char *funct_name) {
+    printf ("fn end %s\n", funct_name);
     for (LibFICbEntry &cbe : libficbes) {
         if (!cbe.isenter && cbe.fnname == funct_name) {
             // args populated by fn_start i hope
@@ -108,6 +110,7 @@ void fn_return(CPUState *env, target_ulong pc, const char *file_name,
 void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t cb) {
     LibFICbEntry cbe = {string(libname), string(fnname), (isenter == 1), numargs, cb};
     libficbes.push_back(cbe);
+    printf ("addign callback %s %s %d \n", libname, fnname, isenter);
 /*
     LibFICbEntry *cbe = (LibFICbEntry *) malloc(sizeof(LibFICbEntry));
     cbe->libname = string(libname);
@@ -122,6 +125,7 @@ void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numar
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    printf ("Initializing plugin libfi\n");
     panda_require("pri");
     PPP_REG_CB("pri", on_fn_start, fn_start);
     PPP_REG_CB("pri", on_fn_return, fn_return);
