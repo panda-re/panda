@@ -18,6 +18,11 @@ ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
 endif
 
+ifdef CONFIG_SOFTMMU
+#PLOG_READER_PROG=plog_reader_$(TARGET_NAME)$(EXESUF)
+PLOG_READER_PROG=plog_reader
+endif
+
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
@@ -97,7 +102,31 @@ panda/src/rr/rr_print.o: \
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+# this rule builds plog with -D PLOG_READER
+# which gets rid of the rr_log dependencies which we don't want to have for
+# plog_reader
+panda/src/plog_norr.o: $(SRC_PATH)/panda/include/panda/plog.h plog.pb-c.h plog.pb-c.c
+	gcc -c $(SRC_PATH)/panda/src/plog.c -o panda/src/plog_norr.o -I . -D PLOG_READER  -g -O0
+
+panda/src/plog_reader.o: $(SRC_PATH)/panda/src/plog_reader.cpp
+	g++ -c $(SRC_PATH)/panda/src/plog_reader.cpp -o panda/src/plog_reader.o -g -O0 -I $(SRC_PATH)/panda/include -I .
+
+panda/src/plog_print.o : $(SRC_PATH)/panda/src/plog_print.c $(SRC_PATH)/panda/include/panda/plog_print.h
+	gcc -c $(SRC_PATH)/panda/src/plog_print.c -o panda/src/plog_print.o -g -O0 -I .
+
+$(PLOG_READER_PROG): panda/src/plog_norr.o \
+	panda/src/plog_print.o \
+	panda/src/plog_reader.o \
+	plog.pb-c.o
+	$(call quiet-command,\
+		gcc -o plog_reader \
+		panda/src/plog_norr.o plog.pb-c.o panda/src/plog_print.o \
+		panda/src/plog_reader.o \
+		-L/usr/local/lib -lprotobuf-c -g -O0 \
+		-I $(SRC_PATH)/panda/include -I . \
+		-lz, "PLOG_READER   $(TARGET_DIR)$@")
+
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py $(PLOG_READER_PROG)
 
 clean: clean-panda
 

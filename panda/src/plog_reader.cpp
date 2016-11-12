@@ -12,16 +12,25 @@
 
 #define __STDC_FORMAT_MACROS
 
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include "pandalog.h"
-#include "pandalog_print.h"
+extern "C" {
+
+    #include <inttypes.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <stdint.h>
+    //#include "../include/panda/plog.h"
+    //#include "../include/panda/plog_print.h"
+    #include "panda/plog.h"
+    #include "panda/plog_print.h"
+}
 //#include <map>
 //#include <string>
 
 int main (int argc, char **argv) {
+    if (argc < 2) {
+         printf("USAGE: %s <plog>\n", argv[0]);
+         exit(1);
+    }
     pandalog_open((const char *) argv[1], (const char*) "r");
     Panda__LogEntry *ple;
     while (1) {
@@ -32,7 +41,12 @@ int main (int argc, char **argv) {
         if (ple == NULL) {
 	    break;
         }
-//        pprint_ple(ple);
-        panda__log_entry__free_unpacked(ple, NULL);
+        pprint_ple(ple);
+#warning Figure out how to properly free ple
+        // for some reason this leads to some sort of double-free
+        // but i'm leaving in here to investigate further
+        // so we don't have leaky plog_readers
+        //panda__log_entry__free_unpacked(ple, NULL);
     }
+    pandalog_close();
 }

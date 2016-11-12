@@ -51,7 +51,7 @@
 
 */
 
-#ifndef PANDALOG_READER
+#ifndef PLOG_READER
 
 #include "qemu/osdep.h"
 #include "cpu.h"
@@ -133,7 +133,7 @@ void pandalog_create(uint32_t chunk_size) {
  So it won't compile with reader which is divorced from PANDA 
 */
 
-#ifndef PANDALOG_READER
+#ifndef PLOG_READER
 
 // add dir entry for this chunk
 void add_dir_entry(uint32_t chunk) {
@@ -394,7 +394,7 @@ void pandalog_open_read_bwd(const char *path) {
 
 void pandalog_open(const char *path, const char *mode) {
     if (0==strcmp(mode, "w")) {
-#ifndef PANDALOG_READER   
+#ifndef PLOG_READER   
         pandalog_open_write((const char *) path, (uint32_t) PL_CHUNKSIZE);
 #endif
     }
@@ -405,7 +405,7 @@ void pandalog_open(const char *path, const char *mode) {
 
 int  pandalog_close(void) {
     if (thePandalog->mode == PL_MODE_WRITE) {
-#ifndef PANDALOG_READER
+#ifndef PLOG_READER
         pandalog_close_write();
 #endif
     }

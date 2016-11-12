@@ -118,3 +118,6 @@ docker-src.*
 *~
 *.plist
 .gdb_history
+*plog.pb-c.c
+*plog.pb-c.h
+plog.proto
