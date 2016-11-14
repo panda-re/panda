@@ -18,6 +18,11 @@ ifdef CONFIG_SOFTMMU
 RR_PRINT_PROG=rr_print_$(TARGET_NAME)$(EXESUF)
 endif
 
+ifdef CONFIG_SOFTMMU
+#PLOG_READER_PROG=plog_reader_$(TARGET_NAME)$(EXESUF)
+PLOG_READER_PROG=plog_reader
+endif
+
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
@@ -61,12 +66,12 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 %.pb-c.h %.pb-c.c: %.proto
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
-		"PROTO   plog.pb-c.h plog.pb-c.c")
+		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c")
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
 		protoc --proto_path=. --python_out=. $<,\
-		"PROTO   plog_pb2.py")
+		"PROTO   $(TARGET_DIR)$@")
 
 GENERATED_HEADERS += plog.pb-c.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
@@ -90,14 +95,16 @@ obj-y += panda/src/rr/rr_log.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
 
-panda/src/rr/rr_print.o: \
-	$(SRC_PATH)/panda/include/panda/rr/rr_log.h \
-	$(SRC_PATH)/panda/include/panda/rr/rr_log_all.h
-
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+$(PLOG_READER_PROG): panda/src/plog_no_rr.o \
+	panda/src/plog_reader.o \
+	panda/src/plog_print.o \
+	plog.pb-c.o
+	$(call LINK,$^)
+
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py $(PLOG_READER_PROG)
 
 clean: clean-panda
 
