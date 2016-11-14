@@ -66,12 +66,12 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 %.pb-c.h %.pb-c.c: %.proto
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
-		"PROTO   plog.pb-c.h plog.pb-c.c")
+		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c")
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
 		protoc --proto_path=. --python_out=. $<,\
-		"PROTO   plog_pb2.py")
+		"PROTO   $(TARGET_DIR)$@")
 
 GENERATED_HEADERS += plog.pb-c.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
@@ -95,36 +95,14 @@ obj-y += panda/src/rr/rr_log.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
 
-panda/src/rr/rr_print.o: \
-	$(SRC_PATH)/panda/include/panda/rr/rr_log.h \
-	$(SRC_PATH)/panda/include/panda/rr/rr_log_all.h
-
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-# this rule builds plog with -D PLOG_READER
-# which gets rid of the rr_log dependencies which we don't want to have for
-# plog_reader
-panda/src/plog_norr.o: $(SRC_PATH)/panda/include/panda/plog.h plog.pb-c.h plog.pb-c.c
-	gcc -c $(SRC_PATH)/panda/src/plog.c -o panda/src/plog_norr.o -I . -D PLOG_READER  -g -O0
-
-panda/src/plog_reader.o: $(SRC_PATH)/panda/src/plog_reader.cpp
-	g++ -c $(SRC_PATH)/panda/src/plog_reader.cpp -o panda/src/plog_reader.o -g -O0 -I $(SRC_PATH)/panda/include -I .
-
-panda/src/plog_print.o : $(SRC_PATH)/panda/src/plog_print.c $(SRC_PATH)/panda/include/panda/plog_print.h
-	gcc -c $(SRC_PATH)/panda/src/plog_print.c -o panda/src/plog_print.o -g -O0 -I .
-
 $(PLOG_READER_PROG): panda/src/plog_norr.o \
-	panda/src/plog_print.o \
 	panda/src/plog_reader.o \
+	panda/src/plog_print.o \
 	plog.pb-c.o
-	$(call quiet-command,\
-		gcc -o plog_reader \
-		panda/src/plog_norr.o plog.pb-c.o panda/src/plog_print.o \
-		panda/src/plog_reader.o \
-		-L/usr/local/lib -lprotobuf-c -g -O0 \
-		-I $(SRC_PATH)/panda/include -I . \
-		-lz, "PLOG_READER   $(TARGET_DIR)$@")
+	$(call LINK,$^)
 
 PROGS+=$(RR_PRINT_PROG) plog_pb2.py $(PLOG_READER_PROG)
 
