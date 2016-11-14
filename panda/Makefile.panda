@@ -98,7 +98,7 @@ obj-y += panda/src/rr/rr_log.o
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-$(PLOG_READER_PROG): panda/src/plog_norr.o \
+$(PLOG_READER_PROG): panda/src/plog_no_rr.o \
 	panda/src/plog_reader.o \
 	panda/src/plog_print.o \
 	plog.pb-c.o
