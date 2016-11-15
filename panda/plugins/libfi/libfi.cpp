@@ -74,7 +74,7 @@ static inline uint32_t get_word(CPUState *env, target_ulong addr) {
 
 
 static inline uint32_t get_stack(CPUState *env, int offset_number) {
-    return get_word(env, ESP + 4 * offset_number);
+    return get_word(env, ESP + word_size*offset_number);
 }
 
 
@@ -118,9 +118,12 @@ void fn_start(CPUState *env, target_ulong pc, const char *file_name,
     }   
 }
 
+#define EAX ((CPUArchState*)env->env_ptr)->regs[R_EAX]
+//#define EAX ((CPUX86State *)((CPUState *)env->env_ptr))->regs[R_EAX]
+
 void fn_return(CPUState *env, target_ulong pc, const char *file_name, 
                const char *funct_name) {
-    printf ("fn end %s\n", funct_name);
+    printf ("fn end %s EAX=%x\n", funct_name, EAX);
     for (LibFICbEntry &cbe : libficbes) {
         if (!cbe.isenter && cbe.fnname == funct_name) {
             // args populated by fn_start i hope
