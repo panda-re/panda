@@ -304,6 +304,7 @@ static bool elf_check_ehdr(struct elfhdr *ehdr)
 }
 
 uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong actual_base_address) {
+    printf ("elf_get_baseaddr %s %s\n", fname, basename);
     // XXX: note: byte swapping omitted
     // XXX: 64-bit support omitted. Mess with ELFCLASS
     struct elfhdr ehdr;
@@ -1610,6 +1611,7 @@ bool correct_asid(CPUState *cpu) {
 }
 
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
+    printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid(cpu)) return;
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
