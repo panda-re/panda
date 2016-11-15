@@ -27,6 +27,7 @@ extern "C" {
 #include "panda_plugin.h"
 #include "panda_plugin_plugin.h"
 #include "pandalog.h"
+#include "rr_log.h"
 
 #include "callstack_instr.h"
 
@@ -289,7 +290,6 @@ done:
 
 int after_block_translate(CPUState *env, TranslationBlock *tb) {
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
-    
     return 1;
 }
 
@@ -358,18 +358,14 @@ Panda__CallStack *pandalog_callstack_create() {
     CPUState *env = cpu_single_env;
     uint32_t n = 0;
     std::vector<stack_entry> &v = callstacks[get_stackid(env,env->panda_guest_pc)];
-    auto rit = v.rbegin();
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
-        n ++;
-    }
+    n = std::min(v.size(), (size_t)16);
     Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
     *cs = PANDA__CALL_STACK__INIT;
     cs->n_addr = n;
     cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
     v = callstacks[get_stackid(env,env->panda_guest_pc)];
-    rit = v.rbegin();
-    uint32_t i=0;
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
+    auto rit = v.rbegin();
+    for (size_t i = 0; i < n && rit != v.rend(); i++, rit++) {
         cs->addr[i] = rit->pc;
     }
     return cs;
