@@ -4203,9 +4203,14 @@ int main(int argc, char **argv, char **envp)
                             }
                         }
 
-                        char *plugin_path = panda_plugin_path((const char *) plugin_start);
-                        panda_plugin_files[nb_panda_plugins++] = plugin_path;
-                        printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                        if (0 == strcmp("general", plugin_start)) {
+                            // not really a plugin -- just used to collect general panda args
+                        }
+                        else {                        
+                            char *plugin_path = panda_plugin_path((const char *) plugin_start);
+                            panda_plugin_files[nb_panda_plugins++] = plugin_path;
+                            printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                        }
 
                         plugin_start = plugin_end + 1;
                     }
