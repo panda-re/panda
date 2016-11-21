@@ -515,7 +515,12 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
 
     cpu->mem_io_vaddr = addr;
-    memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs);
+    RR_DO_RECORD_OR_REPLAY(
+        /* action= */
+        memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
+        /* record= */ rr_input_8(&val),
+        /* replay= */ rr_input_8(&val),
+        /* location= */ RR_CALLSITE_IO_READ_ALL);
     return val;
 }
 
@@ -534,7 +539,16 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
 
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
-    memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
+    if (mr != &io_mem_rom && mr != &io_mem_notdirty) {
+        RR_DO_RECORD_OR_REPLAY(
+            /* action= */
+            memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs),
+            /* record= */ RR_NO_ACTION,
+            /* replay= */ RR_NO_ACTION,
+            /* location= */ RR_CALLSITE_IO_WRITE_ALL);
+    } else {
+        memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
+    }
 }
 
 /* Return true if ADDR is present in the victim tlb, and has been copied
