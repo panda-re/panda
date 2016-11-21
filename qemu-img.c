@@ -25,7 +25,7 @@
 #include "qemu-version.h"
 #include "qapi/error.h"
 #include "qapi-visit.h"
-#include "qapi/qmp-output-visitor.h"
+#include "qapi/qobject-output-visitor.h"
 #include "qapi/qmp/qerror.h"
 #include "qapi/qmp/qjson.h"
 #include "qemu/cutils.h"
@@ -44,7 +44,7 @@
 #include <getopt.h>
 
 #define QEMU_IMG_VERSION "qemu-img version " QEMU_VERSION QEMU_PKGVERSION \
-                          ", " QEMU_COPYRIGHT "\n"
+                          "\n" QEMU_COPYRIGHT "\n"
 
 typedef struct img_cmd_t {
     const char *name;
@@ -500,7 +500,7 @@ static void dump_json_image_check(ImageCheck *check, bool quiet)
 {
     QString *str;
     QObject *obj;
-    Visitor *v = qmp_output_visitor_new(&obj);
+    Visitor *v = qobject_output_visitor_new(&obj);
 
     visit_type_ImageCheck(v, NULL, &check, &error_abort);
     visit_complete(v, &obj);
@@ -795,6 +795,7 @@ static void run_block_job(BlockJob *job, Error **errp)
 {
     AioContext *aio_context = blk_get_aio_context(job->blk);
 
+    aio_context_acquire(aio_context);
     do {
         aio_poll(aio_context, true);
         qemu_progress_print(job->len ?
@@ -802,6 +803,7 @@ static void run_block_job(BlockJob *job, Error **errp)
     } while (!job->ready);
 
     block_job_complete_sync(job, errp);
+    aio_context_release(aio_context);
 
     /* A block job may finish instantaneously without publishing any progress,
      * so just signal completion here */
@@ -819,6 +821,7 @@ static int img_commit(int argc, char **argv)
     Error *local_err = NULL;
     CommonBlockJobCBInfo cbi;
     bool image_opts = false;
+    AioContext *aio_context;
 
     fmt = NULL;
     cache = BDRV_DEFAULT_CACHE;
@@ -928,8 +931,12 @@ static int img_commit(int argc, char **argv)
         .bs   = bs,
     };
 
-    commit_active_start("commit", bs, base_bs, 0, BLOCKDEV_ON_ERROR_REPORT,
-                        common_block_job_cb, &cbi, &local_err, false);
+    aio_context = bdrv_get_aio_context(bs);
+    aio_context_acquire(aio_context);
+    commit_active_start("commit", bs, base_bs, BLOCK_JOB_DEFAULT, 0,
+                        BLOCKDEV_ON_ERROR_REPORT, common_block_job_cb, &cbi,
+                        &local_err, false);
+    aio_context_release(aio_context);
     if (local_err) {
         goto done;
     }
@@ -2193,7 +2200,7 @@ static void dump_json_image_info_list(ImageInfoList *list)
 {
     QString *str;
     QObject *obj;
-    Visitor *v = qmp_output_visitor_new(&obj);
+    Visitor *v = qobject_output_visitor_new(&obj);
 
     visit_type_ImageInfoList(v, NULL, &list, &error_abort);
     visit_complete(v, &obj);
@@ -2209,7 +2216,7 @@ static void dump_json_image_info(ImageInfo *info)
 {
     QString *str;
     QObject *obj;
-    Visitor *v = qmp_output_visitor_new(&obj);
+    Visitor *v = qobject_output_visitor_new(&obj);
 
     visit_type_ImageInfo(v, NULL, &info, &error_abort);
     visit_complete(v, &obj);
@@ -2956,6 +2963,7 @@ static int img_rebase(int argc, char **argv)
             error_reportf_err(local_err,
                               "Could not open old backing file '%s': ",
                               backing_name);
+            ret = -1;
             goto out;
         }
 
@@ -2973,6 +2981,7 @@ static int img_rebase(int argc, char **argv)
                 error_reportf_err(local_err,
                                   "Could not open new backing file '%s': ",
                                   out_baseimg);
+                ret = -1;
                 goto out;
             }
         }

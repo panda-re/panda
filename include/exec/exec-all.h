@@ -73,9 +73,9 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
                               uint32_t flags,
                               int cflags);
 
-void cpu_exec_init(CPUState *cpu, Error **errp);
 void QEMU_NORETURN cpu_loop_exit(CPUState *cpu);
 void QEMU_NORETURN cpu_loop_exit_restore(CPUState *cpu, uintptr_t pc);
+void QEMU_NORETURN cpu_loop_exit_atomic(CPUState *cpu, uintptr_t pc);
 
 #if !defined(CONFIG_USER_ONLY)
 void cpu_reloading_memory_map(void);
@@ -357,6 +357,7 @@ static inline void tb_set_jmp_target(TranslationBlock *tb,
 
 #endif
 
+/* Called with tb_lock held.  */
 static inline void tb_add_jump(TranslationBlock *tb, int n,
                                TranslationBlock *tb_next)
 {
@@ -413,6 +414,7 @@ void tlb_fill(CPUState *cpu, target_ulong addr, MMUAccessType access_type,
 #if defined(CONFIG_USER_ONLY)
 void mmap_lock(void);
 void mmap_unlock(void);
+bool have_mmap_lock(void);
 
 static inline tb_page_addr_t get_page_addr_code(CPUArchState *env1, target_ulong addr)
 {

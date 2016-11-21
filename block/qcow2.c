@@ -959,7 +959,8 @@ static int qcow2_open(BlockDriverState *bs, QDict *options, int flags,
         ret = -EINVAL;
         goto fail;
     }
-    if (!qcrypto_cipher_supports(QCRYPTO_CIPHER_ALG_AES_128)) {
+    if (!qcrypto_cipher_supports(QCRYPTO_CIPHER_ALG_AES_128,
+                                 QCRYPTO_CIPHER_MODE_CBC)) {
         error_setg(errp, "AES cipher not available");
         ret = -EINVAL;
         goto fail;
@@ -1154,6 +1155,7 @@ static int qcow2_open(BlockDriverState *bs, QDict *options, int flags,
 
     /* Initialise locks */
     qemu_co_mutex_init(&s->lock);
+    bs->supported_zero_flags = BDRV_REQ_MAY_UNMAP;
 
     /* Repair image if dirty */
     if (!(flags & (BDRV_O_CHECK | BDRV_O_INACTIVE)) && !bs->read_only &&
@@ -2476,7 +2478,7 @@ static coroutine_fn int qcow2_co_pwrite_zeroes(BlockDriverState *bs,
     trace_qcow2_pwrite_zeroes(qemu_coroutine_self(), offset, count);
 
     /* Whatever is left can use real zero clusters */
-    ret = qcow2_zero_clusters(bs, offset, count >> BDRV_SECTOR_BITS);
+    ret = qcow2_zero_clusters(bs, offset, count >> BDRV_SECTOR_BITS, flags);
     qemu_co_mutex_unlock(&s->lock);
 
     return ret;

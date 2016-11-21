@@ -1,6 +1,11 @@
 /*
  * Device model for Cadence UART
  *
+ * Reference: Xilinx Zynq 7000 reference manual
+ *   - http://www.xilinx.com/support/documentation/user_guides/ug585-Zynq-7000-TRM.pdf
+ *   - Chapter 19 UART Controller
+ *   - Appendix B for Register details
+ *
  * Copyright (c) 2010 Xilinx Inc.
  * Copyright (c) 2012 Peter A.G. Crosthwaite (peter.crosthwaite@petalogix.com)
  * Copyright (c) 2012 PetaLogix Pty Ltd.
@@ -142,9 +147,7 @@ static void uart_rx_reset(CadenceUARTState *s)
 {
     s->rx_wpos = 0;
     s->rx_count = 0;
-    if (s->chr) {
-        qemu_chr_accept_input(s->chr);
-    }
+    qemu_chr_fe_accept_input(&s->chr);
 }
 
 static void uart_tx_reset(CadenceUARTState *s)
@@ -156,10 +159,8 @@ static void uart_send_breaks(CadenceUARTState *s)
 {
     int break_enabled = 1;
 
-    if (s->chr) {
-        qemu_chr_fe_ioctl(s->chr, CHR_IOCTL_SERIAL_SET_BREAK,
-                                   &break_enabled);
-    }
+    qemu_chr_fe_ioctl(&s->chr, CHR_IOCTL_SERIAL_SET_BREAK,
+                      &break_enabled);
 }
 
 static void uart_parameters_setup(CadenceUARTState *s)
@@ -210,9 +211,7 @@ static void uart_parameters_setup(CadenceUARTState *s)
 
     packet_size += ssp.data_bits + ssp.stop_bits;
     s->char_tx_time = (NANOSECONDS_PER_SECOND / ssp.speed) * packet_size;
-    if (s->chr) {
-        qemu_chr_fe_ioctl(s->chr, CHR_IOCTL_SERIAL_SET_PARAMS, &ssp);
-    }
+    qemu_chr_fe_ioctl(&s->chr, CHR_IOCTL_SERIAL_SET_PARAMS, &ssp);
 }
 
 static int uart_can_receive(void *opaque)
@@ -278,7 +277,7 @@ static gboolean cadence_uart_xmit(GIOChannel *chan, GIOCondition cond,
     int ret;
 
     /* instant drain the fifo when there's no back-end */
-    if (!s->chr) {
+    if (!qemu_chr_fe_get_driver(&s->chr)) {
         s->tx_count = 0;
         return FALSE;
     }
@@ -287,7 +286,7 @@ static gboolean cadence_uart_xmit(GIOChannel *chan, GIOCondition cond,
         return FALSE;
     }
 
-    ret = qemu_chr_fe_write(s->chr, s->tx_fifo, s->tx_count);
+    ret = qemu_chr_fe_write(&s->chr, s->tx_fifo, s->tx_count);
 
     if (ret >= 0) {
         s->tx_count -= ret;
@@ -295,7 +294,7 @@ static gboolean cadence_uart_xmit(GIOChannel *chan, GIOCondition cond,
     }
 
     if (s->tx_count) {
-        guint r = qemu_chr_fe_add_watch(s->chr, G_IO_OUT|G_IO_HUP,
+        guint r = qemu_chr_fe_add_watch(&s->chr, G_IO_OUT | G_IO_HUP,
                                         cadence_uart_xmit, s);
         if (!r) {
             s->tx_count = 0;
@@ -368,9 +367,7 @@ static void uart_read_rx_fifo(CadenceUARTState *s, uint32_t *c)
         *c = s->rx_fifo[rx_rpos];
         s->rx_count--;
 
-        if (s->chr) {
-            qemu_chr_accept_input(s->chr);
-        }
+        qemu_chr_fe_accept_input(&s->chr);
     } else {
         *c = 0;
     }
@@ -408,6 +405,16 @@ static void uart_write(void *opaque, hwaddr offset,
         case LOCAL_LOOPBACK:
             uart_write_rx_fifo(opaque, (uint8_t *) &value, 1);
             break;
+        }
+        break;
+    case R_BRGR: /* Baud rate generator */
+        if (value >= 0x01) {
+            s->r[offset] = value & 0xFFFF;
+        }
+        break;
+    case R_BDIV:    /* Baud rate divider */
+        if (value >= 0x04) {
+            s->r[offset] = value & 0xFF;
         }
         break;
     default:
@@ -458,7 +465,8 @@ static void cadence_uart_reset(DeviceState *dev)
     s->r[R_IMR] = 0;
     s->r[R_CISR] = 0;
     s->r[R_RTRIG] = 0x00000020;
-    s->r[R_BRGR] = 0x0000000F;
+    s->r[R_BRGR] = 0x0000028B;
+    s->r[R_BDIV] = 0x0000000F;
     s->r[R_TTRIG] = 0x00000020;
 
     uart_rx_reset(s);
@@ -474,10 +482,8 @@ static void cadence_uart_realize(DeviceState *dev, Error **errp)
     s->fifo_trigger_handle = timer_new_ns(QEMU_CLOCK_VIRTUAL,
                                           fifo_trigger_update, s);
 
-    if (s->chr) {
-        qemu_chr_add_handlers(s->chr, uart_can_receive, uart_receive,
-                              uart_event, s);
-    }
+    qemu_chr_fe_set_handlers(&s->chr, uart_can_receive, uart_receive,
+                             uart_event, s, NULL, true);
 }
 
 static void cadence_uart_init(Object *obj)

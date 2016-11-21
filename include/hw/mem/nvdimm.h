@@ -98,12 +98,28 @@ typedef struct NVDIMMClass NVDIMMClass;
 #define NVDIMM_ACPI_IO_BASE     0x0a18
 #define NVDIMM_ACPI_IO_LEN      4
 
+/*
+ * NvdimmFitBuffer:
+ * @fit: FIT structures for present NVDIMMs. It is updated when
+ *   the NVDIMM device is plugged or unplugged.
+ * @dirty: It allows OSPM to detect change and restart read in
+ *   progress if there is any.
+ */
+struct NvdimmFitBuffer {
+    GArray *fit;
+    bool dirty;
+};
+typedef struct NvdimmFitBuffer NvdimmFitBuffer;
+
 struct AcpiNVDIMMState {
     /* detect if NVDIMM support is enabled. */
     bool is_enabled;
 
     /* the data of the fw_cfg file NVDIMM_DSM_MEM_FILE. */
     GArray *dsm_mem;
+
+    NvdimmFitBuffer fit_buf;
+
     /* the IO region used by OSPM to transfer control to QEMU. */
     MemoryRegion io_mr;
 };
@@ -112,5 +128,8 @@ typedef struct AcpiNVDIMMState AcpiNVDIMMState;
 void nvdimm_init_acpi_state(AcpiNVDIMMState *state, MemoryRegion *io,
                             FWCfgState *fw_cfg, Object *owner);
 void nvdimm_build_acpi(GArray *table_offsets, GArray *table_data,
-                       BIOSLinker *linker, GArray *dsm_dma_arrea);
+                       BIOSLinker *linker, AcpiNVDIMMState *state,
+                       uint32_t ram_slots);
+void nvdimm_plug(AcpiNVDIMMState *state);
+void nvdimm_acpi_plug_cb(HotplugHandler *hotplug_dev, DeviceState *dev);
 #endif

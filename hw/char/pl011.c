@@ -11,6 +11,7 @@
 #include "hw/sysbus.h"
 #include "sysemu/char.h"
 #include "qemu/log.h"
+#include "trace.h"
 
 #define TYPE_PL011 "pl011"
 #define PL011(obj) OBJECT_CHECK(PL011State, (obj), TYPE_PL011)
@@ -35,7 +36,7 @@ typedef struct PL011State {
     int read_pos;
     int read_count;
     int read_trigger;
-    CharDriverState *chr;
+    CharBackend chr;
     qemu_irq irq;
     const unsigned char *id;
 } PL011State;
@@ -58,6 +59,7 @@ static void pl011_update(PL011State *s)
     uint32_t flags;
 
     flags = s->int_level & s->int_enabled;
+    trace_pl011_irq_state(flags != 0);
     qemu_set_irq(s->irq, flags != 0);
 }
 
@@ -66,10 +68,8 @@ static uint64_t pl011_read(void *opaque, hwaddr offset,
 {
     PL011State *s = (PL011State *)opaque;
     uint32_t c;
+    uint64_t r;
 
-    if (offset >= 0xfe0 && offset < 0x1000) {
-        return s->id[(offset - 0xfe0) >> 2];
-    }
     switch (offset >> 2) {
     case 0: /* UARTDR */
         s->flags &= ~PL011_FLAG_RXFF;
@@ -84,41 +84,60 @@ static uint64_t pl011_read(void *opaque, hwaddr offset,
         }
         if (s->read_count == s->read_trigger - 1)
             s->int_level &= ~ PL011_INT_RX;
+        trace_pl011_read_fifo(s->read_count);
         s->rsr = c >> 8;
         pl011_update(s);
-        if (s->chr) {
-            qemu_chr_accept_input(s->chr);
-        }
-        return c;
+        qemu_chr_fe_accept_input(&s->chr);
+        r = c;
+        break;
     case 1: /* UARTRSR */
-        return s->rsr;
+        r = s->rsr;
+        break;
     case 6: /* UARTFR */
-        return s->flags;
+        r = s->flags;
+        break;
     case 8: /* UARTILPR */
-        return s->ilpr;
+        r = s->ilpr;
+        break;
     case 9: /* UARTIBRD */
-        return s->ibrd;
+        r = s->ibrd;
+        break;
     case 10: /* UARTFBRD */
-        return s->fbrd;
+        r = s->fbrd;
+        break;
     case 11: /* UARTLCR_H */
-        return s->lcr;
+        r = s->lcr;
+        break;
     case 12: /* UARTCR */
-        return s->cr;
+        r = s->cr;
+        break;
     case 13: /* UARTIFLS */
-        return s->ifl;
+        r = s->ifl;
+        break;
     case 14: /* UARTIMSC */
-        return s->int_enabled;
+        r = s->int_enabled;
+        break;
     case 15: /* UARTRIS */
-        return s->int_level;
+        r = s->int_level;
+        break;
     case 16: /* UARTMIS */
-        return s->int_level & s->int_enabled;
+        r = s->int_level & s->int_enabled;
+        break;
     case 18: /* UARTDMACR */
-        return s->dmacr;
+        r = s->dmacr;
+        break;
+    case 0x3f8 ... 0x400:
+        r = s->id[(offset - 0xfe0) >> 2];
+        break;
     default:
         qemu_log_mask(LOG_GUEST_ERROR,
                       "pl011_read: Bad offset %x\n", (int)offset);
-        return 0;
+        r = 0;
+        break;
     }
+
+    trace_pl011_read(offset, r);
+    return r;
 }
 
 static void pl011_set_read_trigger(PL011State *s)
@@ -141,14 +160,15 @@ static void pl011_write(void *opaque, hwaddr offset,
     PL011State *s = (PL011State *)opaque;
     unsigned char ch;
 
+    trace_pl011_write(offset, value);
+
     switch (offset >> 2) {
     case 0: /* UARTDR */
         /* ??? Check if transmitter is enabled.  */
         ch = value;
-        if (s->chr)
-            /* XXX this blocks entire thread. Rewrite to use
-             * qemu_chr_fe_write and background I/O callbacks */
-            qemu_chr_fe_write_all(s->chr, &ch, 1);
+        /* XXX this blocks entire thread. Rewrite to use
+         * qemu_chr_fe_write and background I/O callbacks */
+        qemu_chr_fe_write_all(&s->chr, &ch, 1);
         s->int_level |= PL011_INT_TX;
         pl011_update(s);
         break;
@@ -207,11 +227,15 @@ static void pl011_write(void *opaque, hwaddr offset,
 static int pl011_can_receive(void *opaque)
 {
     PL011State *s = (PL011State *)opaque;
+    int r;
 
-    if (s->lcr & 0x10)
-        return s->read_count < 16;
-    else
-        return s->read_count < 1;
+    if (s->lcr & 0x10) {
+        r = s->read_count < 16;
+    } else {
+        r = s->read_count < 1;
+    }
+    trace_pl011_can_receive(s->lcr, s->read_count, r);
+    return r;
 }
 
 static void pl011_put_fifo(void *opaque, uint32_t value)
@@ -225,7 +249,9 @@ static void pl011_put_fifo(void *opaque, uint32_t value)
     s->read_fifo[slot] = value;
     s->read_count++;
     s->flags &= ~PL011_FLAG_RXFE;
+    trace_pl011_put_fifo(value, s->read_count);
     if (!(s->lcr & 0x10) || s->read_count == 16) {
+        trace_pl011_put_fifo_full();
         s->flags |= PL011_FLAG_RXFF;
     }
     if (s->read_count == s->read_trigger) {
@@ -302,10 +328,8 @@ static void pl011_realize(DeviceState *dev, Error **errp)
 {
     PL011State *s = PL011(dev);
 
-    if (s->chr) {
-        qemu_chr_add_handlers(s->chr, pl011_can_receive, pl011_receive,
-                              pl011_event, s);
-    }
+    qemu_chr_fe_set_handlers(&s->chr, pl011_can_receive, pl011_receive,
+                             pl011_event, s, NULL, true);
 }
 
 static void pl011_class_init(ObjectClass *oc, void *data)

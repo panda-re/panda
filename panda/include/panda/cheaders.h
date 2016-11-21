@@ -8,9 +8,11 @@
 #pragma push_macro("new")
 #pragma push_macro("typename")
 #pragma push_macro("typeof")
+#pragma push_macro("export")
 #define new pandanew
 #define typename
 #define typeof(x) std::remove_const<std::remove_reference<decltype(x)>::type>::type
+#define export pandaexport
 
 extern "C" {
 #endif
@@ -32,6 +34,7 @@ extern "C" {
 #pragma pop_macro("new")
 #pragma pop_macro("typename")
 #pragma pop_macro("typeof")
+#pragma pop_macro("export")
 #endif
 
 #endif

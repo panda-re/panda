@@ -114,6 +114,16 @@ QDict *qtest_qmp_receive(QTestState *s);
 void qtest_qmp_eventwait(QTestState *s, const char *event);
 
 /**
+ * qtest_qmp_eventwait_ref:
+ * @s: #QTestState instance to operate on.
+ * @s: #event event to wait for.
+ *
+ * Continuosly polls for QMP responses until it receives the desired event.
+ * Returns a copy of the event for further investigation.
+ */
+QDict *qtest_qmp_eventwait_ref(QTestState *s, const char *event);
+
+/**
  * qtest_hmpv:
  * @s: #QTestState instance to operate on.
  * @fmt...: HMP command to send to QEMU
@@ -559,6 +569,18 @@ static inline void qmp_eventwait(const char *event)
 }
 
 /**
+ * qmp_eventwait_ref:
+ * @s: #event event to wait for.
+ *
+ * Continuosly polls for QMP responses until it receives the desired event.
+ * Returns a copy of the event for further investigation.
+ */
+static inline QDict *qmp_eventwait_ref(const char *event)
+{
+    return qtest_qmp_eventwait_ref(global_qtest, event);
+}
+
+/**
  * hmp:
  * @fmt...: HMP command to send to QEMU
  *
@@ -879,16 +901,6 @@ static inline int64_t clock_step(int64_t step)
 static inline int64_t clock_set(int64_t val)
 {
     return qtest_clock_set(global_qtest, val);
-}
-
-/**
- * target_big_endian:
- *
- * Returns: True if the architecture under test has a big endian configuration.
- */
-static inline bool target_big_endian(void)
-{
-    return qtest_big_endian(global_qtest);
 }
 
 QDict *qmp_fd_receive(int fd);

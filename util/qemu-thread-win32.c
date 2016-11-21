@@ -79,6 +79,31 @@ void qemu_mutex_unlock(QemuMutex *mutex)
     LeaveCriticalSection(&mutex->lock);
 }
 
+void qemu_rec_mutex_init(QemuRecMutex *mutex)
+{
+    InitializeCriticalSection(&mutex->lock);
+}
+
+void qemu_rec_mutex_destroy(QemuRecMutex *mutex)
+{
+    DeleteCriticalSection(&mutex->lock);
+}
+
+void qemu_rec_mutex_lock(QemuRecMutex *mutex)
+{
+    EnterCriticalSection(&mutex->lock);
+}
+
+int qemu_rec_mutex_trylock(QemuRecMutex *mutex)
+{
+    return !TryEnterCriticalSection(&mutex->lock);
+}
+
+void qemu_rec_mutex_unlock(QemuRecMutex *mutex)
+{
+    LeaveCriticalSection(&mutex->lock);
+}
+
 void qemu_cond_init(QemuCond *cond)
 {
     memset(cond, 0, sizeof(*cond));
@@ -274,7 +299,11 @@ void qemu_event_destroy(QemuEvent *ev)
 
 void qemu_event_set(QemuEvent *ev)
 {
-    if (atomic_mb_read(&ev->value) != EV_SET) {
+    /* qemu_event_set has release semantics, but because it *loads*
+     * ev->value we need a full memory barrier here.
+     */
+    smp_mb();
+    if (atomic_read(&ev->value) != EV_SET) {
         if (atomic_xchg(&ev->value, EV_SET) == EV_BUSY) {
             /* There were waiters, wake them up.  */
             SetEvent(ev->event);
@@ -284,7 +313,11 @@ void qemu_event_set(QemuEvent *ev)
 
 void qemu_event_reset(QemuEvent *ev)
 {
-    if (atomic_mb_read(&ev->value) == EV_SET) {
+    unsigned value;
+
+    value = atomic_read(&ev->value);
+    smp_mb_acquire();
+    if (value == EV_SET) {
         /* If there was a concurrent reset (or even reset+wait),
          * do nothing.  Otherwise change EV_SET->EV_FREE.
          */
@@ -296,7 +329,8 @@ void qemu_event_wait(QemuEvent *ev)
 {
     unsigned value;
 
-    value = atomic_mb_read(&ev->value);
+    value = atomic_read(&ev->value);
+    smp_mb_acquire();
     if (value != EV_SET) {
         if (value == EV_FREE) {
             /* qemu_event_set is not yet going to call SetEvent, but we are

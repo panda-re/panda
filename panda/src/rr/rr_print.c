@@ -21,8 +21,6 @@ volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
-volatile sig_atomic_t rr_use_live_exit_request = 0;
-
 //mz the log of non-deterministic events
 RR_log *rr_nondet_log = NULL;
 

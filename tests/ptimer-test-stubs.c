@@ -1,7 +1,7 @@
 /*
  * Stubs for the ptimer-test
  *
- * Author: Dmitry Osipenko <digetx@gmail.com>
+ * Copyright (c) 2016 Dmitry Osipenko <digetx@gmail.com>
  *
  * This work is licensed under the terms of the GNU GPL, version 2 or later.
  * See the COPYING file in the top-level directory.
@@ -11,8 +11,15 @@
 #include "qemu/osdep.h"
 #include "qemu/main-loop.h"
 #include "sysemu/replay.h"
+#include "migration/vmstate.h"
 
 #include "ptimer-test.h"
+
+const VMStateInfo vmstate_info_uint8;
+const VMStateInfo vmstate_info_uint32;
+const VMStateInfo vmstate_info_uint64;
+const VMStateInfo vmstate_info_int64;
+const VMStateInfo vmstate_info_timer;
 
 struct QEMUBH {
     QEMUBHFunc *cb;

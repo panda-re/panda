@@ -14,7 +14,7 @@ TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++
 TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS)
 
 TAINT_OP_FILTER = -g -Wold-style-declaration -std=c11 -fpermissive
-TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp
+TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp -mcx16
 
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/shad_dir_32.o \

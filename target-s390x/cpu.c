@@ -164,7 +164,7 @@ static void s390_cpu_machine_reset_cb(void *opaque)
 {
     S390CPU *cpu = opaque;
 
-    run_on_cpu(CPU(cpu), s390_do_cpu_full_reset, NULL);
+    run_on_cpu(CPU(cpu), s390_do_cpu_full_reset, RUN_ON_CPU_NULL);
 }
 #endif
 
@@ -207,7 +207,7 @@ static void s390_cpu_realizefn(DeviceState *dev, Error **errp)
         goto out;
     }
 
-    cpu_exec_init(cs, &err);
+    cpu_exec_realizefn(cs, &err);
     if (err != NULL) {
         goto out;
     }
@@ -220,7 +220,7 @@ static void s390_cpu_realizefn(DeviceState *dev, Error **errp)
     s390_cpu_gdb_init(cs);
     qemu_init_vcpu(cs);
 #if !defined(CONFIG_USER_ONLY)
-    run_on_cpu(cs, s390_do_cpu_full_reset, NULL);
+    run_on_cpu(cs, s390_do_cpu_full_reset, RUN_ON_CPU_NULL);
 #else
     cpu_reset(cs);
 #endif
@@ -440,12 +440,6 @@ static void s390_cpu_class_init(ObjectClass *oc, void *data)
     cc->gdb_core_xml_file = "s390x-core64.xml";
     cc->gdb_arch_name = s390_gdb_arch_name;
 
-    /*
-     * Reason: s390_cpu_realizefn() calls cpu_exec_init(), which saves
-     * the object in cpus -> dangling pointer after final
-     * object_unref().
-     */
-    dc->cannot_destroy_with_object_finalize_yet = true;
     s390_cpu_model_class_register_props(oc);
 }
 
