@@ -79,6 +79,7 @@ void on_global_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 
 const char *guest_debug_path = NULL;
 const char *host_debug_path = NULL;
+const char *host_mount_path = NULL;
 const char *proc_to_monitor = NULL;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
@@ -303,6 +304,7 @@ static bool elf_check_ehdr(struct elfhdr *ehdr)
 }
 
 uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong actual_base_address) {
+    printf ("elf_get_baseaddr %s %s\n", fname, basename);
     // XXX: note: byte swapping omitted
     // XXX: 64-bit support omitted. Mess with ELFCLASS
     struct elfhdr ehdr;
@@ -1609,12 +1611,20 @@ bool correct_asid(CPUState *cpu) {
 }
 
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
+    printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid(cpu)) return;
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
     std::string lib = std::string(guest_lib_name);
     std::size_t found = lib.find(guest_debug_path);
     if (found == std::string::npos){
+        char *lib_name = strdup((host_mount_path + lib).c_str());
+        printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
+        if (access(lib_name, F_OK) == -1) {
+            fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
+            return;
+        }
+        elf_get_baseaddr(lib_name, basename(lib_name), base_addr);
         return;
     }
     //lib.replace(found, found+strlen(guest_debug_path), host_debug_path);
@@ -2214,6 +2224,7 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("pri_dwarf");
     guest_debug_path = panda_parse_string(args, "g_debugpath", "dbg");
     host_debug_path = panda_parse_string(args, "h_debugpath", "dbg");
+    host_mount_path = panda_parse_string(args, "host_mount_path", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
     // panda plugin plugin includes
     panda_require("callstack_instr");
