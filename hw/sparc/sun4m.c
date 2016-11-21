@@ -35,10 +35,11 @@
 #include "sysemu/sysemu.h"
 #include "net/net.h"
 #include "hw/boards.h"
-#include "hw/nvram/openbios_firmware_abi.h"
 #include "hw/scsi/esp.h"
 #include "hw/i386/pc.h"
 #include "hw/isa/isa.h"
+#include "hw/nvram/sun_nvram.h"
+#include "hw/nvram/chrp_nvram.h"
 #include "hw/nvram/fw_cfg.h"
 #include "hw/char/escc.h"
 #include "hw/empty_slot.h"
@@ -117,39 +118,17 @@ static void nvram_init(Nvram *nvram, uint8_t *macaddr,
                        int nvram_machine_id, const char *arch)
 {
     unsigned int i;
-    uint32_t start, end;
+    int sysp_end;
     uint8_t image[0x1ff0];
-    struct OpenBIOS_nvpart_v1 *part_header;
     NvramClass *k = NVRAM_GET_CLASS(nvram);
 
     memset(image, '\0', sizeof(image));
 
-    start = 0;
+    /* OpenBIOS nvram variables partition */
+    sysp_end = chrp_nvram_create_system_partition(image, 0);
 
-    // OpenBIOS nvram variables
-    // Variable partition
-    part_header = (struct OpenBIOS_nvpart_v1 *)&image[start];
-    part_header->signature = OPENBIOS_PART_SYSTEM;
-    pstrcpy(part_header->name, sizeof(part_header->name), "system");
-
-    end = start + sizeof(struct OpenBIOS_nvpart_v1);
-    for (i = 0; i < nb_prom_envs; i++)
-        end = OpenBIOS_set_var(image, end, prom_envs[i]);
-
-    // End marker
-    image[end++] = '\0';
-
-    end = start + ((end - start + 15) & ~15);
-    OpenBIOS_finish_partition(part_header, end - start);
-
-    // free partition
-    start = end;
-    part_header = (struct OpenBIOS_nvpart_v1 *)&image[start];
-    part_header->signature = OPENBIOS_PART_FREE;
-    pstrcpy(part_header->name, sizeof(part_header->name), "free");
-
-    end = 0x1fd0;
-    OpenBIOS_finish_partition(part_header, end - start);
+    /* Free space partition */
+    chrp_nvram_create_free_partition(&image[sysp_end], 0x1fd0 - sysp_end);
 
     Sun_init_header((struct Sun_nvram *)&image[0x1fd8], macaddr,
                     nvram_machine_id);
@@ -1054,6 +1033,7 @@ static void sun4m_hw_init(const struct sun4m_hwdef *hwdef,
                  hwdef->ecc_version);
 
     fw_cfg = fw_cfg_init_mem(CFG_ADDR, CFG_ADDR + 2);
+    fw_cfg_add_i16(fw_cfg, FW_CFG_NB_CPUS, (uint16_t)smp_cpus);
     fw_cfg_add_i16(fw_cfg, FW_CFG_MAX_CPUS, (uint16_t)max_cpus);
     fw_cfg_add_i64(fw_cfg, FW_CFG_RAM_SIZE, (uint64_t)ram_size);
     fw_cfg_add_i16(fw_cfg, FW_CFG_MACHINE_ID, hwdef->machine_id);

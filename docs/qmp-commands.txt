@@ -554,6 +554,16 @@ Example:
 -> { "execute": "migrate_set_downtime", "arguments": { "value": 0.1 } }
 <- { "return": {} }
 
+x-colo-lost-heartbeat
+--------------------
+
+Tell COLO that heartbeat is lost, a failover or takeover is needed.
+
+Example:
+
+-> { "execute": "x-colo-lost-heartbeat" }
+<- { "return": {} }
+
 client_migrate_info
 -------------------
 
@@ -740,8 +750,11 @@ Arguments:
 - "job-id": Identifier for the newly-created block job. If omitted,
             the device name will be used. (json-string, optional)
 - "device": The device name or node-name of a root node (json-string)
-- "base": The file name of the backing image above which copying starts
-          (json-string, optional)
+- "base": The file name of the backing image above which copying starts.
+          It cannot be set if 'base-node' is also set (json-string, optional)
+- "base-node": the node name of the backing image above which copying starts.
+               It cannot be set if 'base' is also set.
+               (json-string, optional) (Since 2.8)
 - "backing-file": The backing file string to write into the active layer. This
                   filename is not validated.
 
@@ -1090,11 +1103,11 @@ Arguments:
 Example:
 
 -> { "execute": "blockdev-add",
-                "arguments": { "options": { "driver": "qcow2",
-                                            "node-name": "node1534",
-                                            "file": { "driver": "file",
-                                                      "filename": "hd1.qcow2" },
-                                            "backing": "" } } }
+                "arguments": { "driver": "qcow2",
+                               "node-name": "node1534",
+                               "file": { "driver": "file",
+                                         "filename": "hd1.qcow2" },
+                               "backing": "" } }
 
 <- { "return": {} }
 
@@ -1790,7 +1803,7 @@ Each json-object contain the following:
                                 "file", "file", "ftp", "ftps", "host_cdrom",
                                 "host_device", "http", "https",
                                 "nbd", "parallels", "qcow", "qcow2", "raw",
-                                "tftp", "vdi", "vmdk", "vpc", "vvfat"
+                                "vdi", "vmdk", "vpc", "vvfat"
          - "backing_file": backing file name (json-string, optional)
          - "backing_file_depth": number of files in the backing file chain (json-int)
          - "encrypted": true if encrypted, false otherwise (json-bool)
@@ -2861,6 +2874,7 @@ Enable/Disable migration capabilities
 - "compress": use multiple compression threads to accelerate live migration
 - "events": generate events for each migration state change
 - "postcopy-ram": postcopy mode for live migration
+- "x-colo": COarse-Grain LOck Stepping (COLO) for Non-stop Service
 
 Arguments:
 
@@ -2882,6 +2896,7 @@ Query current migration capabilities
          - "compress": Multiple compression threads state (json-bool)
          - "events": Migration state change event state (json-bool)
          - "postcopy-ram": postcopy ram state (json-bool)
+         - "x-colo": COarse-Grain LOck Stepping for Non-stop Service (json-bool)
 
 Arguments:
 
@@ -2895,7 +2910,8 @@ Example:
      {"state": false, "capability": "zero-blocks"},
      {"state": false, "capability": "compress"},
      {"state": true, "capability": "events"},
-     {"state": false, "capability": "postcopy-ram"}
+     {"state": false, "capability": "postcopy-ram"},
+     {"state": false, "capability": "x-colo"}
    ]}
 
 migrate-set-parameters
@@ -2913,6 +2929,8 @@ Set migration parameters
 - "max-bandwidth": set maximum speed for migrations (in bytes/sec) (json-int)
 - "downtime-limit": set maximum tolerated downtime (in milliseconds) for
                     migrations (json-int)
+- "x-checkpoint-delay": set the delay time for periodic checkpoint (json-int)
+
 Arguments:
 
 Example:
@@ -3130,41 +3148,37 @@ This command is still a work in progress.  It doesn't support all
 block drivers among other things.  Stay away from it unless you want
 to help with its development.
 
-Arguments:
-
-- "options": block driver options
+For the arguments, see the QAPI schema documentation of BlockdevOptions.
 
 Example (1):
 
 -> { "execute": "blockdev-add",
-    "arguments": { "options" : { "driver": "qcow2",
-                                 "file": { "driver": "file",
-                                           "filename": "test.qcow2" } } } }
+    "arguments": { "driver": "qcow2",
+                   "file": { "driver": "file",
+                             "filename": "test.qcow2" } } }
 <- { "return": {} }
 
 Example (2):
 
 -> { "execute": "blockdev-add",
      "arguments": {
-         "options": {
-           "driver": "qcow2",
-           "node-name": "my_disk",
-           "discard": "unmap",
-           "cache": {
-               "direct": true,
-               "writeback": true
-           },
-           "file": {
-               "driver": "file",
-               "filename": "/tmp/test.qcow2"
-           },
-           "backing": {
-               "driver": "raw",
-               "file": {
-                   "driver": "file",
-                   "filename": "/dev/fdset/4"
-               }
-           }
+         "driver": "qcow2",
+         "node-name": "my_disk",
+         "discard": "unmap",
+         "cache": {
+             "direct": true,
+             "writeback": true
+         },
+         "file": {
+             "driver": "file",
+             "filename": "/tmp/test.qcow2"
+         },
+         "backing": {
+             "driver": "raw",
+             "file": {
+                 "driver": "file",
+                 "filename": "/dev/fdset/4"
+             }
          }
        }
      }
@@ -3191,13 +3205,11 @@ Example:
 
 -> { "execute": "blockdev-add",
      "arguments": {
-         "options": {
-             "driver": "qcow2",
-             "node-name": "node0",
-             "file": {
-                 "driver": "file",
-                 "filename": "test.qcow2"
-             }
+         "driver": "qcow2",
+         "node-name": "node0",
+         "file": {
+             "driver": "file",
+             "filename": "test.qcow2"
          }
      }
    }
@@ -3342,10 +3354,10 @@ Arguments:
 Example:
 
 -> { "execute": "blockdev-add",
-     "arguments": { "options": { "node-name": "node0",
-                                 "driver": "raw",
-                                 "file": { "driver": "file",
-                                           "filename": "fedora.iso" } } } }
+     "arguments": { { "node-name": "node0",
+                      "driver": "raw",
+                      "file": { "driver": "file",
+                                "filename": "fedora.iso" } } }
 
 <- { "return": {} }
 
@@ -3383,10 +3395,10 @@ Example:
 
 Add a new node to a quorum
 -> { "execute": "blockdev-add",
-     "arguments": { "options": { "driver": "raw",
-                                 "node-name": "new_node",
-                                 "file": { "driver": "file",
-                                           "filename": "test.raw" } } } }
+     "arguments": { "driver": "raw",
+                    "node-name": "new_node",
+                    "file": { "driver": "file",
+                              "filename": "test.raw" } } }
 <- { "return": {} }
 -> { "execute": "x-blockdev-change",
      "arguments": { "parent": "disk1",

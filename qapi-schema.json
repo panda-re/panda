@@ -175,12 +175,16 @@
 # @watchdog: the watchdog action is configured to pause and has been triggered
 #
 # @guest-panicked: guest has been panicked as a result of guest OS panic
+#
+# @colo: guest is paused to save/restore VM state under colo checkpoint,
+#        VM can not get into this state unless colo capability is enabled
+#        for migration. (since 2.8)
 ##
 { 'enum': 'RunState',
   'data': [ 'debug', 'inmigrate', 'internal-error', 'io-error', 'paused',
             'postmigrate', 'prelaunch', 'finish-migrate', 'restore-vm',
             'running', 'save-vm', 'shutdown', 'suspended', 'watchdog',
-            'guest-panicked' ] }
+            'guest-panicked', 'colo' ] }
 
 ##
 # @StatusInfo:
@@ -459,12 +463,15 @@
 #
 # @failed: some error occurred during migration process.
 #
+# @colo: VM is in the process of fault tolerance, VM can not get into this
+#        state unless colo capability is enabled for migration. (since 2.8)
+#
 # Since: 2.3
 #
 ##
 { 'enum': 'MigrationStatus',
   'data': [ 'none', 'setup', 'cancelling', 'cancelled',
-            'active', 'postcopy-active', 'completed', 'failed' ] }
+            'active', 'postcopy-active', 'completed', 'failed', 'colo' ] }
 
 ##
 # @MigrationInfo
@@ -574,11 +581,16 @@
 #          been migrated, pulling the remaining pages along as needed. NOTE: If
 #          the migration fails during postcopy the VM will fail.  (since 2.6)
 #
+# @x-colo: If enabled, migration will never end, and the state of the VM on the
+#        primary side will be migrated continuously to the VM on secondary
+#        side, this process is called COarse-Grain LOck Stepping (COLO) for
+#        Non-stop Service. (since 2.8)
+#
 # Since: 1.2
 ##
 { 'enum': 'MigrationCapability',
   'data': ['xbzrle', 'rdma-pin-all', 'auto-converge', 'zero-blocks',
-           'compress', 'events', 'postcopy-ram'] }
+           'compress', 'events', 'postcopy-ram', 'x-colo'] }
 
 ##
 # @MigrationCapabilityStatus
@@ -664,18 +676,23 @@
 # @downtime-limit: set maximum tolerated downtime for migration. maximum
 #                  downtime in milliseconds (Since 2.8)
 #
+# @x-checkpoint-delay: The delay time (in ms) between two COLO checkpoints in
+#          periodic mode. (Since 2.8)
+#
 # Since: 2.4
 ##
 { 'enum': 'MigrationParameter',
   'data': ['compress-level', 'compress-threads', 'decompress-threads',
            'cpu-throttle-initial', 'cpu-throttle-increment',
            'tls-creds', 'tls-hostname', 'max-bandwidth',
-           'downtime-limit'] }
+           'downtime-limit', 'x-checkpoint-delay' ] }
 
 #
 # @migrate-set-parameters
 #
 # Set various migration parameters.  See MigrationParameters for details.
+#
+# @x-checkpoint-delay: the delay time between two checkpoints. (Since 2.8)
 #
 # Since: 2.4
 ##
@@ -725,6 +742,8 @@
 # @downtime-limit: set maximum tolerated downtime for migration. maximum
 #                  downtime in milliseconds (Since 2.8)
 #
+# @x-checkpoint-delay: the delay time between two COLO checkpoints. (Since 2.8)
+#
 # Since: 2.4
 ##
 { 'struct': 'MigrationParameters',
@@ -736,7 +755,9 @@
             '*tls-creds': 'str',
             '*tls-hostname': 'str',
             '*max-bandwidth': 'int',
-            '*downtime-limit': 'int'} }
+            '*downtime-limit': 'int',
+            '*x-checkpoint-delay': 'int'} }
+
 ##
 # @query-migrate-parameters
 #
@@ -777,6 +798,78 @@
 #
 # Since: 2.5
 { 'command': 'migrate-start-postcopy' }
+
+##
+# @COLOMessage
+#
+# The message transmission between Primary side and Secondary side.
+#
+# @checkpoint-ready: Secondary VM (SVM) is ready for checkpointing
+#
+# @checkpoint-request: Primary VM (PVM) tells SVM to prepare for checkpointing
+#
+# @checkpoint-reply: SVM gets PVM's checkpoint request
+#
+# @vmstate-send: VM's state will be sent by PVM.
+#
+# @vmstate-size: The total size of VMstate.
+#
+# @vmstate-received: VM's state has been received by SVM.
+#
+# @vmstate-loaded: VM's state has been loaded by SVM.
+#
+# Since: 2.8
+##
+{ 'enum': 'COLOMessage',
+  'data': [ 'checkpoint-ready', 'checkpoint-request', 'checkpoint-reply',
+            'vmstate-send', 'vmstate-size', 'vmstate-received',
+            'vmstate-loaded' ] }
+
+##
+# @COLOMode
+#
+# The colo mode
+#
+# @unknown: unknown mode
+#
+# @primary: master side
+#
+# @secondary: slave side
+#
+# Since: 2.8
+##
+{ 'enum': 'COLOMode',
+  'data': [ 'unknown', 'primary', 'secondary'] }
+
+##
+# @FailoverStatus
+#
+# An enumeration of COLO failover status
+#
+# @none: no failover has ever happened
+#
+# @require: got failover requirement but not handled
+#
+# @active: in the process of doing failover
+#
+# @completed: finish the process of failover
+#
+# Since: 2.8
+##
+{ 'enum': 'FailoverStatus',
+  'data': [ 'none', 'require', 'active', 'completed'] }
+
+##
+# @x-colo-lost-heartbeat
+#
+# Tell qemu that heartbeat is lost, request it to do takeover procedures.
+# If this command is sent to the PVM, the Primary side will exit COLO mode.
+# If sent to the Secondary, the Secondary side will run failover work,
+# then takes over server operation to become the service VM.
+#
+# Since: 2.8
+##
+{ 'command': 'x-colo-lost-heartbeat' }
 
 ##
 # @MouseInfo:
@@ -972,12 +1065,14 @@
 #
 # @unix: unix socket
 #
+# @vsock: vsock family (since 2.8)
+#
 # @unknown: otherwise
 #
 # Since: 2.1
 ##
 { 'enum': 'NetworkAddressFamily',
-  'data': [ 'ipv4', 'ipv6', 'unix', 'unknown' ] }
+  'data': [ 'ipv4', 'ipv6', 'unix', 'vsock', 'unknown' ] }
 
 ##
 # @VncBasicInfo
@@ -3004,6 +3099,24 @@
     'path': 'str' } }
 
 ##
+# @VsockSocketAddress
+#
+# Captures a socket address in the vsock namespace.
+#
+# @cid: unique host identifier
+# @port: port
+#
+# Note that string types are used to allow for possible future hostname or
+# service resolution support.
+#
+# Since 2.8
+##
+{ 'struct': 'VsockSocketAddress',
+  'data': {
+    'cid': 'str',
+    'port': 'str' } }
+
+##
 # @SocketAddress
 #
 # Captures the address of a socket, which could also be a named file descriptor
@@ -3014,6 +3127,7 @@
   'data': {
     'inet': 'InetSocketAddress',
     'unix': 'UnixSocketAddress',
+    'vsock': 'VsockSocketAddress',
     'fd': 'String' } }
 
 ##
@@ -3101,10 +3215,31 @@
 #          QEMU version, machine type, machine options and accelerator options.
 #          A static model is always migration-safe. (since 2.8)
 #
+# @unavailable-features: #optional List of properties that prevent
+#                        the CPU model from running in the current
+#                        host. (since 2.8)
+#
+# @unavailable-features is a list of QOM property names that
+# represent CPU model attributes that prevent the CPU from running.
+# If the QOM property is read-only, that means there's no known
+# way to make the CPU model run in the current host. Implementations
+# that choose not to provide specific information return the
+# property name "type".
+# If the property is read-write, it means that it MAY be possible
+# to run the CPU model in the current host if that property is
+# changed. Management software can use it as hints to suggest or
+# choose an alternative for the user, or just to generate meaningful
+# error messages explaining why the CPU model can't be used.
+# If @unavailable-features is an empty list, the CPU model is
+# runnable using the current host and machine-type.
+# If @unavailable-features is not present, runnability
+# information for the CPU is not available.
+#
 # Since: 1.2.0
 ##
 { 'struct': 'CpuDefinitionInfo',
-  'data': { 'name': 'str', '*migration-safe': 'bool', 'static': 'bool' } }
+  'data': { 'name': 'str', '*migration-safe': 'bool', 'static': 'bool',
+            '*unavailable-features': [ 'str' ] } }
 
 ##
 # @query-cpu-definitions:
@@ -4488,10 +4623,10 @@
 #
 # @pause: system pauses
 #
-# Since: 2.1
+# Since: 2.1 (poweroff since 2.8)
 ##
 { 'enum': 'GuestPanicAction',
-  'data': [ 'pause' ] }
+  'data': [ 'pause', 'poweroff' ] }
 
 ##
 # @rtc-reset-reinjection

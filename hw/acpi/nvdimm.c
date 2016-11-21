@@ -33,35 +33,30 @@
 #include "hw/nvram/fw_cfg.h"
 #include "hw/mem/nvdimm.h"
 
-static int nvdimm_plugged_device_list(Object *obj, void *opaque)
+static int nvdimm_device_list(Object *obj, void *opaque)
 {
     GSList **list = opaque;
 
     if (object_dynamic_cast(obj, TYPE_NVDIMM)) {
-        DeviceState *dev = DEVICE(obj);
-
-        if (dev->realized) { /* only realized NVDIMMs matter */
-            *list = g_slist_append(*list, DEVICE(obj));
-        }
+        *list = g_slist_append(*list, DEVICE(obj));
     }
 
-    object_child_foreach(obj, nvdimm_plugged_device_list, opaque);
+    object_child_foreach(obj, nvdimm_device_list, opaque);
     return 0;
 }
 
 /*
- * inquire plugged NVDIMM devices and link them into the list which is
+ * inquire NVDIMM devices and link them into the list which is
  * returned to the caller.
  *
  * Note: it is the caller's responsibility to free the list to avoid
  * memory leak.
  */
-static GSList *nvdimm_get_plugged_device_list(void)
+static GSList *nvdimm_get_device_list(void)
 {
     GSList *list = NULL;
 
-    object_child_foreach(qdev_get_machine(), nvdimm_plugged_device_list,
-                         &list);
+    object_child_foreach(qdev_get_machine(), nvdimm_device_list, &list);
     return list;
 }
 
@@ -219,7 +214,7 @@ static uint32_t nvdimm_slot_to_dcr_index(int slot)
 static NVDIMMDevice *nvdimm_get_device_by_handle(uint32_t handle)
 {
     NVDIMMDevice *nvdimm = NULL;
-    GSList *list, *device_list = nvdimm_get_plugged_device_list();
+    GSList *list, *device_list = nvdimm_get_device_list();
 
     for (list = device_list; list; list = list->next) {
         NVDIMMDevice *nvd = list->data;
@@ -289,8 +284,6 @@ static void
 nvdimm_build_structure_memdev(GArray *structures, DeviceState *dev)
 {
     NvdimmNfitMemDev *nfit_memdev;
-    uint64_t addr = object_property_get_int(OBJECT(dev), PC_DIMM_ADDR_PROP,
-                                            NULL);
     uint64_t size = object_property_get_int(OBJECT(dev), PC_DIMM_SIZE_PROP,
                                             NULL);
     int slot = object_property_get_int(OBJECT(dev), PC_DIMM_SLOT_PROP,
@@ -314,7 +307,8 @@ nvdimm_build_structure_memdev(GArray *structures, DeviceState *dev)
 
     /* The memory region on the device. */
     nfit_memdev->region_len = cpu_to_le64(size);
-    nfit_memdev->region_dpa = cpu_to_le64(addr);
+    /* The device address starts from 0. */
+    nfit_memdev->region_dpa = cpu_to_le64(0);
 
     /* Only one interleave for PMEM. */
     nfit_memdev->interleave_ways = cpu_to_le16(1);
@@ -349,8 +343,9 @@ static void nvdimm_build_structure_dcr(GArray *structures, DeviceState *dev)
                                          (DSM) in DSM Spec Rev1.*/);
 }
 
-static GArray *nvdimm_build_device_structure(GSList *device_list)
+static GArray *nvdimm_build_device_structure(void)
 {
+    GSList *device_list = nvdimm_get_device_list();
     GArray *structures = g_array_new(false, true /* clear */, 1);
 
     for (; device_list; device_list = device_list->next) {
@@ -368,14 +363,32 @@ static GArray *nvdimm_build_device_structure(GSList *device_list)
         /* build NVDIMM Control Region Structure. */
         nvdimm_build_structure_dcr(structures, dev);
     }
+    g_slist_free(device_list);
 
     return structures;
 }
 
-static void nvdimm_build_nfit(GSList *device_list, GArray *table_offsets,
+static void nvdimm_init_fit_buffer(NvdimmFitBuffer *fit_buf)
+{
+    fit_buf->fit = g_array_new(false, true /* clear */, 1);
+}
+
+static void nvdimm_build_fit_buffer(NvdimmFitBuffer *fit_buf)
+{
+    g_array_free(fit_buf->fit, true);
+    fit_buf->fit = nvdimm_build_device_structure();
+    fit_buf->dirty = true;
+}
+
+void nvdimm_plug(AcpiNVDIMMState *state)
+{
+    nvdimm_build_fit_buffer(&state->fit_buf);
+}
+
+static void nvdimm_build_nfit(AcpiNVDIMMState *state, GArray *table_offsets,
                               GArray *table_data, BIOSLinker *linker)
 {
-    GArray *structures = nvdimm_build_device_structure(device_list);
+    NvdimmFitBuffer *fit_buf = &state->fit_buf;
     unsigned int header;
 
     acpi_add_table(table_offsets, table_data);
@@ -384,13 +397,14 @@ static void nvdimm_build_nfit(GSList *device_list, GArray *table_offsets,
     header = table_data->len;
     acpi_data_push(table_data, sizeof(NvdimmNfitHeader));
     /* NVDIMM device structures. */
-    g_array_append_vals(table_data, structures->data, structures->len);
+    g_array_append_vals(table_data, fit_buf->fit->data, fit_buf->fit->len);
 
     build_header(linker, table_data,
                  (void *)(table_data->data + header), "NFIT",
-                 sizeof(NvdimmNfitHeader) + structures->len, 1, NULL, NULL);
-    g_array_free(structures, true);
+                 sizeof(NvdimmNfitHeader) + fit_buf->fit->len, 1, NULL, NULL);
 }
+
+#define NVDIMM_DSM_MEMORY_SIZE      4096
 
 struct NvdimmDsmIn {
     uint32_t handle;
@@ -402,7 +416,7 @@ struct NvdimmDsmIn {
     };
 } QEMU_PACKED;
 typedef struct NvdimmDsmIn NvdimmDsmIn;
-QEMU_BUILD_BUG_ON(sizeof(NvdimmDsmIn) != 4096);
+QEMU_BUILD_BUG_ON(sizeof(NvdimmDsmIn) != NVDIMM_DSM_MEMORY_SIZE);
 
 struct NvdimmDsmOut {
     /* the size of buffer filled by QEMU. */
@@ -410,7 +424,7 @@ struct NvdimmDsmOut {
     uint8_t data[4092];
 } QEMU_PACKED;
 typedef struct NvdimmDsmOut NvdimmDsmOut;
-QEMU_BUILD_BUG_ON(sizeof(NvdimmDsmOut) != 4096);
+QEMU_BUILD_BUG_ON(sizeof(NvdimmDsmOut) != NVDIMM_DSM_MEMORY_SIZE);
 
 struct NvdimmDsmFunc0Out {
     /* the size of buffer filled by QEMU. */
@@ -438,7 +452,7 @@ struct NvdimmFuncGetLabelSizeOut {
     uint32_t max_xfer;
 } QEMU_PACKED;
 typedef struct NvdimmFuncGetLabelSizeOut NvdimmFuncGetLabelSizeOut;
-QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncGetLabelSizeOut) > 4096);
+QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncGetLabelSizeOut) > NVDIMM_DSM_MEMORY_SIZE);
 
 struct NvdimmFuncGetLabelDataIn {
     uint32_t offset; /* the offset in the namespace label data area. */
@@ -446,7 +460,7 @@ struct NvdimmFuncGetLabelDataIn {
 } QEMU_PACKED;
 typedef struct NvdimmFuncGetLabelDataIn NvdimmFuncGetLabelDataIn;
 QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncGetLabelDataIn) +
-                  offsetof(NvdimmDsmIn, arg3) > 4096);
+                  offsetof(NvdimmDsmIn, arg3) > NVDIMM_DSM_MEMORY_SIZE);
 
 struct NvdimmFuncGetLabelDataOut {
     /* the size of buffer filled by QEMU. */
@@ -455,7 +469,7 @@ struct NvdimmFuncGetLabelDataOut {
     uint8_t out_buf[0]; /* the data got via Get Namesapce Label function. */
 } QEMU_PACKED;
 typedef struct NvdimmFuncGetLabelDataOut NvdimmFuncGetLabelDataOut;
-QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncGetLabelDataOut) > 4096);
+QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncGetLabelDataOut) > NVDIMM_DSM_MEMORY_SIZE);
 
 struct NvdimmFuncSetLabelDataIn {
     uint32_t offset; /* the offset in the namespace label data area. */
@@ -464,7 +478,23 @@ struct NvdimmFuncSetLabelDataIn {
 } QEMU_PACKED;
 typedef struct NvdimmFuncSetLabelDataIn NvdimmFuncSetLabelDataIn;
 QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncSetLabelDataIn) +
-                  offsetof(NvdimmDsmIn, arg3) > 4096);
+                  offsetof(NvdimmDsmIn, arg3) > NVDIMM_DSM_MEMORY_SIZE);
+
+struct NvdimmFuncReadFITIn {
+    uint32_t offset; /* the offset into FIT buffer. */
+} QEMU_PACKED;
+typedef struct NvdimmFuncReadFITIn NvdimmFuncReadFITIn;
+QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncReadFITIn) +
+                  offsetof(NvdimmDsmIn, arg3) > NVDIMM_DSM_MEMORY_SIZE);
+
+struct NvdimmFuncReadFITOut {
+    /* the size of buffer filled by QEMU. */
+    uint32_t len;
+    uint32_t func_ret_status; /* return status code. */
+    uint8_t fit[0]; /* the FIT data. */
+} QEMU_PACKED;
+typedef struct NvdimmFuncReadFITOut NvdimmFuncReadFITOut;
+QEMU_BUILD_BUG_ON(sizeof(NvdimmFuncReadFITOut) > NVDIMM_DSM_MEMORY_SIZE);
 
 static void
 nvdimm_dsm_function0(uint32_t supported_func, hwaddr dsm_mem_addr)
@@ -486,6 +516,79 @@ nvdimm_dsm_no_payload(uint32_t func_ret_status, hwaddr dsm_mem_addr)
     cpu_physical_memory_write(dsm_mem_addr, &out, sizeof(out));
 }
 
+#define NVDIMM_DSM_RET_STATUS_SUCCESS        0 /* Success */
+#define NVDIMM_DSM_RET_STATUS_UNSUPPORT      1 /* Not Supported */
+#define NVDIMM_DSM_RET_STATUS_NOMEMDEV       2 /* Non-Existing Memory Device */
+#define NVDIMM_DSM_RET_STATUS_INVALID        3 /* Invalid Input Parameters */
+#define NVDIMM_DSM_RET_STATUS_FIT_CHANGED    0x100 /* FIT Changed */
+
+#define NVDIMM_QEMU_RSVD_HANDLE_ROOT         0x10000
+
+/* Read FIT data, defined in docs/specs/acpi_nvdimm.txt. */
+static void nvdimm_dsm_func_read_fit(AcpiNVDIMMState *state, NvdimmDsmIn *in,
+                                     hwaddr dsm_mem_addr)
+{
+    NvdimmFitBuffer *fit_buf = &state->fit_buf;
+    NvdimmFuncReadFITIn *read_fit;
+    NvdimmFuncReadFITOut *read_fit_out;
+    GArray *fit;
+    uint32_t read_len = 0, func_ret_status;
+    int size;
+
+    read_fit = (NvdimmFuncReadFITIn *)in->arg3;
+    le32_to_cpus(&read_fit->offset);
+
+    fit = fit_buf->fit;
+
+    nvdimm_debug("Read FIT: offset %#x FIT size %#x Dirty %s.\n",
+                 read_fit->offset, fit->len, fit_buf->dirty ? "Yes" : "No");
+
+    if (read_fit->offset > fit->len) {
+        func_ret_status = NVDIMM_DSM_RET_STATUS_INVALID;
+        goto exit;
+    }
+
+    /* It is the first time to read FIT. */
+    if (!read_fit->offset) {
+        fit_buf->dirty = false;
+    } else if (fit_buf->dirty) { /* FIT has been changed during RFIT. */
+        func_ret_status = NVDIMM_DSM_RET_STATUS_FIT_CHANGED;
+        goto exit;
+    }
+
+    func_ret_status = NVDIMM_DSM_RET_STATUS_SUCCESS;
+    read_len = MIN(fit->len - read_fit->offset,
+                   NVDIMM_DSM_MEMORY_SIZE - sizeof(NvdimmFuncReadFITOut));
+
+exit:
+    size = sizeof(NvdimmFuncReadFITOut) + read_len;
+    read_fit_out = g_malloc(size);
+
+    read_fit_out->len = cpu_to_le32(size);
+    read_fit_out->func_ret_status = cpu_to_le32(func_ret_status);
+    memcpy(read_fit_out->fit, fit->data + read_fit->offset, read_len);
+
+    cpu_physical_memory_write(dsm_mem_addr, read_fit_out, size);
+
+    g_free(read_fit_out);
+}
+
+static void
+nvdimm_dsm_handle_reserved_root_method(AcpiNVDIMMState *state,
+                                       NvdimmDsmIn *in, hwaddr dsm_mem_addr)
+{
+    switch (in->function) {
+    case 0x0:
+        nvdimm_dsm_function0(0x1 | 1 << 1 /* Read FIT */, dsm_mem_addr);
+        return;
+    case 0x1 /* Read FIT */:
+        nvdimm_dsm_func_read_fit(state, in, dsm_mem_addr);
+        return;
+    }
+
+    nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_UNSUPPORT, dsm_mem_addr);
+}
+
 static void nvdimm_dsm_root(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
 {
     /*
@@ -499,7 +602,7 @@ static void nvdimm_dsm_root(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
     }
 
     /* No function except function 0 is supported yet. */
-    nvdimm_dsm_no_payload(1 /* Not Supported */, dsm_mem_addr);
+    nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_UNSUPPORT, dsm_mem_addr);
 }
 
 /*
@@ -509,7 +612,9 @@ static void nvdimm_dsm_root(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
  */
 static uint32_t nvdimm_get_max_xfer_label_size(void)
 {
-    uint32_t max_get_size, max_set_size, dsm_memory_size = 4096;
+    uint32_t max_get_size, max_set_size, dsm_memory_size;
+
+    dsm_memory_size = NVDIMM_DSM_MEMORY_SIZE;
 
     /*
      * the max data ACPI can read one time which is transferred by
@@ -545,7 +650,7 @@ static void nvdimm_dsm_label_size(NVDIMMDevice *nvdimm, hwaddr dsm_mem_addr)
 
     nvdimm_debug("label_size %#x, max_xfer %#x.\n", label_size, mxfer);
 
-    label_size_out.func_ret_status = cpu_to_le32(0 /* Success */);
+    label_size_out.func_ret_status = cpu_to_le32(NVDIMM_DSM_RET_STATUS_SUCCESS);
     label_size_out.label_size = cpu_to_le32(label_size);
     label_size_out.max_xfer = cpu_to_le32(mxfer);
 
@@ -556,7 +661,7 @@ static void nvdimm_dsm_label_size(NVDIMMDevice *nvdimm, hwaddr dsm_mem_addr)
 static uint32_t nvdimm_rw_label_data_check(NVDIMMDevice *nvdimm,
                                            uint32_t offset, uint32_t length)
 {
-    uint32_t ret = 3 /* Invalid Input Parameters */;
+    uint32_t ret = NVDIMM_DSM_RET_STATUS_INVALID;
 
     if (offset + length < offset) {
         nvdimm_debug("offset %#x + length %#x is overflow.\n", offset,
@@ -576,7 +681,7 @@ static uint32_t nvdimm_rw_label_data_check(NVDIMMDevice *nvdimm,
         return ret;
     }
 
-    return 0 /* Success */;
+    return NVDIMM_DSM_RET_STATUS_SUCCESS;
 }
 
 /*
@@ -600,17 +705,18 @@ static void nvdimm_dsm_get_label_data(NVDIMMDevice *nvdimm, NvdimmDsmIn *in,
 
     status = nvdimm_rw_label_data_check(nvdimm, get_label_data->offset,
                                         get_label_data->length);
-    if (status != 0 /* Success */) {
+    if (status != NVDIMM_DSM_RET_STATUS_SUCCESS) {
         nvdimm_dsm_no_payload(status, dsm_mem_addr);
         return;
     }
 
     size = sizeof(*get_label_data_out) + get_label_data->length;
-    assert(size <= 4096);
+    assert(size <= NVDIMM_DSM_MEMORY_SIZE);
     get_label_data_out = g_malloc(size);
 
     get_label_data_out->len = cpu_to_le32(size);
-    get_label_data_out->func_ret_status = cpu_to_le32(0 /* Success */);
+    get_label_data_out->func_ret_status =
+                            cpu_to_le32(NVDIMM_DSM_RET_STATUS_SUCCESS);
     nvc->read_label_data(nvdimm, get_label_data_out->out_buf,
                          get_label_data->length, get_label_data->offset);
 
@@ -638,17 +744,17 @@ static void nvdimm_dsm_set_label_data(NVDIMMDevice *nvdimm, NvdimmDsmIn *in,
 
     status = nvdimm_rw_label_data_check(nvdimm, set_label_data->offset,
                                         set_label_data->length);
-    if (status != 0 /* Success */) {
+    if (status != NVDIMM_DSM_RET_STATUS_SUCCESS) {
         nvdimm_dsm_no_payload(status, dsm_mem_addr);
         return;
     }
 
-    assert(sizeof(*in) + sizeof(*set_label_data) + set_label_data->length <=
-           4096);
+    assert(offsetof(NvdimmDsmIn, arg3) + sizeof(*set_label_data) +
+                    set_label_data->length <= NVDIMM_DSM_MEMORY_SIZE);
 
     nvc->write_label_data(nvdimm, set_label_data->in_buf,
                           set_label_data->length, set_label_data->offset);
-    nvdimm_dsm_no_payload(0 /* Success */, dsm_mem_addr);
+    nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_SUCCESS, dsm_mem_addr);
 }
 
 static void nvdimm_dsm_device(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
@@ -672,7 +778,7 @@ static void nvdimm_dsm_device(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
     }
 
     if (!nvdimm) {
-        nvdimm_dsm_no_payload(2 /* Non-Existing Memory Device */,
+        nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_NOMEMDEV,
                               dsm_mem_addr);
         return;
     }
@@ -699,7 +805,7 @@ static void nvdimm_dsm_device(NvdimmDsmIn *in, hwaddr dsm_mem_addr)
         break;
     }
 
-    nvdimm_dsm_no_payload(1 /* Not Supported */, dsm_mem_addr);
+    nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_UNSUPPORT, dsm_mem_addr);
 }
 
 static uint64_t
@@ -712,6 +818,7 @@ nvdimm_dsm_read(void *opaque, hwaddr addr, unsigned size)
 static void
 nvdimm_dsm_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
 {
+    AcpiNVDIMMState *state = opaque;
     NvdimmDsmIn *in;
     hwaddr dsm_mem_addr = val;
 
@@ -735,7 +842,12 @@ nvdimm_dsm_write(void *opaque, hwaddr addr, uint64_t val, unsigned size)
     if (in->revision != 0x1 /* Currently we only support DSM Spec Rev1. */) {
         nvdimm_debug("Revision %#x is not supported, expect %#x.\n",
                      in->revision, 0x1);
-        nvdimm_dsm_no_payload(1 /* Not Supported */, dsm_mem_addr);
+        nvdimm_dsm_no_payload(NVDIMM_DSM_RET_STATUS_UNSUPPORT, dsm_mem_addr);
+        goto exit;
+    }
+
+    if (in->handle == NVDIMM_QEMU_RSVD_HANDLE_ROOT) {
+        nvdimm_dsm_handle_reserved_root_method(state, in, dsm_mem_addr);
         goto exit;
     }
 
@@ -761,6 +873,13 @@ static const MemoryRegionOps nvdimm_dsm_ops = {
     },
 };
 
+void nvdimm_acpi_plug_cb(HotplugHandler *hotplug_dev, DeviceState *dev)
+{
+    if (dev->hotplugged) {
+        acpi_send_event(DEVICE(hotplug_dev), ACPI_NVDIMM_HOTPLUG_STATUS);
+    }
+}
+
 void nvdimm_init_acpi_state(AcpiNVDIMMState *state, MemoryRegion *io,
                             FWCfgState *fw_cfg, Object *owner)
 {
@@ -772,23 +891,105 @@ void nvdimm_init_acpi_state(AcpiNVDIMMState *state, MemoryRegion *io,
     acpi_data_push(state->dsm_mem, sizeof(NvdimmDsmIn));
     fw_cfg_add_file(fw_cfg, NVDIMM_DSM_MEM_FILE, state->dsm_mem->data,
                     state->dsm_mem->len);
+
+    nvdimm_init_fit_buffer(&state->fit_buf);
 }
 
-#define NVDIMM_COMMON_DSM      "NCAL"
-#define NVDIMM_ACPI_MEM_ADDR   "MEMA"
+#define NVDIMM_COMMON_DSM       "NCAL"
+#define NVDIMM_ACPI_MEM_ADDR    "MEMA"
+
+#define NVDIMM_DSM_MEMORY       "NRAM"
+#define NVDIMM_DSM_IOPORT       "NPIO"
+
+#define NVDIMM_DSM_NOTIFY       "NTFI"
+#define NVDIMM_DSM_HANDLE       "HDLE"
+#define NVDIMM_DSM_REVISION     "REVS"
+#define NVDIMM_DSM_FUNCTION     "FUNC"
+#define NVDIMM_DSM_ARG3         "FARG"
+
+#define NVDIMM_DSM_OUT_BUF_SIZE "RLEN"
+#define NVDIMM_DSM_OUT_BUF      "ODAT"
+
+#define NVDIMM_DSM_RFIT_STATUS  "RSTA"
+
+#define NVDIMM_QEMU_RSVD_UUID   "648B9CF2-CDA1-4312-8AD9-49C4AF32BD62"
 
 static void nvdimm_build_common_dsm(Aml *dev)
 {
-    Aml *method, *ifctx, *function, *handle, *uuid, *dsm_mem, *result_size;
+    Aml *method, *ifctx, *function, *handle, *uuid, *dsm_mem, *elsectx2;
     Aml *elsectx, *unsupport, *unpatched, *expected_uuid, *uuid_invalid;
-    Aml *pckg, *pckg_index, *pckg_buf;
+    Aml *pckg, *pckg_index, *pckg_buf, *field, *dsm_out_buf, *dsm_out_buf_size;
     uint8_t byte_list[1];
 
     method = aml_method(NVDIMM_COMMON_DSM, 5, AML_SERIALIZED);
     uuid = aml_arg(0);
     function = aml_arg(2);
     handle = aml_arg(4);
-    dsm_mem = aml_name(NVDIMM_ACPI_MEM_ADDR);
+    dsm_mem = aml_local(6);
+    dsm_out_buf = aml_local(7);
+
+    aml_append(method, aml_store(aml_name(NVDIMM_ACPI_MEM_ADDR), dsm_mem));
+
+    /* map DSM memory and IO into ACPI namespace. */
+    aml_append(method, aml_operation_region(NVDIMM_DSM_IOPORT, AML_SYSTEM_IO,
+               aml_int(NVDIMM_ACPI_IO_BASE), NVDIMM_ACPI_IO_LEN));
+    aml_append(method, aml_operation_region(NVDIMM_DSM_MEMORY,
+               AML_SYSTEM_MEMORY, dsm_mem, sizeof(NvdimmDsmIn)));
+
+    /*
+     * DSM notifier:
+     * NVDIMM_DSM_NOTIFY: write the address of DSM memory and notify QEMU to
+     *                    emulate the access.
+     *
+     * It is the IO port so that accessing them will cause VM-exit, the
+     * control will be transferred to QEMU.
+     */
+    field = aml_field(NVDIMM_DSM_IOPORT, AML_DWORD_ACC, AML_NOLOCK,
+                      AML_PRESERVE);
+    aml_append(field, aml_named_field(NVDIMM_DSM_NOTIFY,
+               sizeof(uint32_t) * BITS_PER_BYTE));
+    aml_append(method, field);
+
+    /*
+     * DSM input:
+     * NVDIMM_DSM_HANDLE: store device's handle, it's zero if the _DSM call
+     *                    happens on NVDIMM Root Device.
+     * NVDIMM_DSM_REVISION: store the Arg1 of _DSM call.
+     * NVDIMM_DSM_FUNCTION: store the Arg2 of _DSM call.
+     * NVDIMM_DSM_ARG3: store the Arg3 of _DSM call which is a Package
+     *                  containing function-specific arguments.
+     *
+     * They are RAM mapping on host so that these accesses never cause
+     * VM-EXIT.
+     */
+    field = aml_field(NVDIMM_DSM_MEMORY, AML_DWORD_ACC, AML_NOLOCK,
+                      AML_PRESERVE);
+    aml_append(field, aml_named_field(NVDIMM_DSM_HANDLE,
+               sizeof(typeof_field(NvdimmDsmIn, handle)) * BITS_PER_BYTE));
+    aml_append(field, aml_named_field(NVDIMM_DSM_REVISION,
+               sizeof(typeof_field(NvdimmDsmIn, revision)) * BITS_PER_BYTE));
+    aml_append(field, aml_named_field(NVDIMM_DSM_FUNCTION,
+               sizeof(typeof_field(NvdimmDsmIn, function)) * BITS_PER_BYTE));
+    aml_append(field, aml_named_field(NVDIMM_DSM_ARG3,
+         (sizeof(NvdimmDsmIn) - offsetof(NvdimmDsmIn, arg3)) * BITS_PER_BYTE));
+    aml_append(method, field);
+
+    /*
+     * DSM output:
+     * NVDIMM_DSM_OUT_BUF_SIZE: the size of the buffer filled by QEMU.
+     * NVDIMM_DSM_OUT_BUF: the buffer QEMU uses to store the result.
+     *
+     * Since the page is reused by both input and out, the input data
+     * will be lost after storing new result into ODAT so we should fetch
+     * all the input data before writing the result.
+     */
+    field = aml_field(NVDIMM_DSM_MEMORY, AML_DWORD_ACC, AML_NOLOCK,
+                      AML_PRESERVE);
+    aml_append(field, aml_named_field(NVDIMM_DSM_OUT_BUF_SIZE,
+               sizeof(typeof_field(NvdimmDsmOut, len)) * BITS_PER_BYTE));
+    aml_append(field, aml_named_field(NVDIMM_DSM_OUT_BUF,
+       (sizeof(NvdimmDsmOut) - offsetof(NvdimmDsmOut, data)) * BITS_PER_BYTE));
+    aml_append(method, field);
 
     /*
      * do not support any method if DSM memory address has not been
@@ -804,9 +1005,15 @@ static void nvdimm_build_common_dsm(Aml *dev)
                /* UUID for NVDIMM Root Device */, expected_uuid));
     aml_append(method, ifctx);
     elsectx = aml_else();
-    aml_append(elsectx, aml_store(
+    ifctx = aml_if(aml_equal(handle, aml_int(NVDIMM_QEMU_RSVD_HANDLE_ROOT)));
+    aml_append(ifctx, aml_store(aml_touuid(NVDIMM_QEMU_RSVD_UUID
+               /* UUID for QEMU internal use */), expected_uuid));
+    aml_append(elsectx, ifctx);
+    elsectx2 = aml_else();
+    aml_append(elsectx2, aml_store(
                aml_touuid("4309AC30-0D11-11E4-9191-0800200C9A66")
                /* UUID for NVDIMM Devices */, expected_uuid));
+    aml_append(elsectx, elsectx2);
     aml_append(method, elsectx);
 
     uuid_invalid = aml_lnot(aml_equal(uuid, expected_uuid));
@@ -823,7 +1030,7 @@ static void nvdimm_build_common_dsm(Aml *dev)
     aml_append(unsupport, ifctx);
 
     /* No function is supported yet. */
-    byte_list[0] = 1 /* Not Supported */;
+    byte_list[0] = NVDIMM_DSM_RET_STATUS_UNSUPPORT;
     aml_append(unsupport, aml_return(aml_buffer(1, byte_list)));
     aml_append(method, unsupport);
 
@@ -832,9 +1039,9 @@ static void nvdimm_build_common_dsm(Aml *dev)
      * it reserves 0 for root device and is the handle for NVDIMM devices.
      * See the comments in nvdimm_slot_to_handle().
      */
-    aml_append(method, aml_store(handle, aml_name("HDLE")));
-    aml_append(method, aml_store(aml_arg(1), aml_name("REVS")));
-    aml_append(method, aml_store(aml_arg(2), aml_name("FUNC")));
+    aml_append(method, aml_store(handle, aml_name(NVDIMM_DSM_HANDLE)));
+    aml_append(method, aml_store(aml_arg(1), aml_name(NVDIMM_DSM_REVISION)));
+    aml_append(method, aml_store(aml_arg(2), aml_name(NVDIMM_DSM_FUNCTION)));
 
     /*
      * The fourth parameter (Arg3) of _DSM is a package which contains
@@ -852,24 +1059,26 @@ static void nvdimm_build_common_dsm(Aml *dev)
     pckg_buf = aml_local(3);
     aml_append(ifctx, aml_store(aml_index(pckg, aml_int(0)), pckg_index));
     aml_append(ifctx, aml_store(aml_derefof(pckg_index), pckg_buf));
-    aml_append(ifctx, aml_store(pckg_buf, aml_name("ARG3")));
+    aml_append(ifctx, aml_store(pckg_buf, aml_name(NVDIMM_DSM_ARG3)));
     aml_append(method, ifctx);
 
     /*
      * tell QEMU about the real address of DSM memory, then QEMU
      * gets the control and fills the result in DSM memory.
      */
-    aml_append(method, aml_store(dsm_mem, aml_name("NTFI")));
+    aml_append(method, aml_store(dsm_mem, aml_name(NVDIMM_DSM_NOTIFY)));
 
-    result_size = aml_local(1);
-    aml_append(method, aml_store(aml_name("RLEN"), result_size));
-    aml_append(method, aml_store(aml_shiftleft(result_size, aml_int(3)),
-                                 result_size));
-    aml_append(method, aml_create_field(aml_name("ODAT"), aml_int(0),
-                                        result_size, "OBUF"));
+    dsm_out_buf_size = aml_local(1);
+    /* RLEN is not included in the payload returned to guest. */
+    aml_append(method, aml_subtract(aml_name(NVDIMM_DSM_OUT_BUF_SIZE),
+               aml_int(4), dsm_out_buf_size));
+    aml_append(method, aml_store(aml_shiftleft(dsm_out_buf_size, aml_int(3)),
+                                 dsm_out_buf_size));
+    aml_append(method, aml_create_field(aml_name(NVDIMM_DSM_OUT_BUF),
+               aml_int(0), dsm_out_buf_size, "OBUF"));
     aml_append(method, aml_concatenate(aml_buffer(0, NULL), aml_name("OBUF"),
-                                       aml_arg(6)));
-    aml_append(method, aml_return(aml_arg(6)));
+                                       dsm_out_buf));
+    aml_append(method, aml_return(dsm_out_buf));
     aml_append(dev, method);
 }
 
@@ -884,12 +1093,107 @@ static void nvdimm_build_device_dsm(Aml *dev, uint32_t handle)
     aml_append(dev, method);
 }
 
-static void nvdimm_build_nvdimm_devices(GSList *device_list, Aml *root_dev)
+static void nvdimm_build_fit(Aml *dev)
 {
-    for (; device_list; device_list = device_list->next) {
-        DeviceState *dev = device_list->data;
-        int slot = object_property_get_int(OBJECT(dev), PC_DIMM_SLOT_PROP,
-                                           NULL);
+    Aml *method, *pkg, *buf, *buf_size, *offset, *call_result;
+    Aml *whilectx, *ifcond, *ifctx, *elsectx, *fit;
+
+    buf = aml_local(0);
+    buf_size = aml_local(1);
+    fit = aml_local(2);
+
+    aml_append(dev, aml_name_decl(NVDIMM_DSM_RFIT_STATUS, aml_int(0)));
+
+    /* build helper function, RFIT. */
+    method = aml_method("RFIT", 1, AML_SERIALIZED);
+    aml_append(method, aml_name_decl("OFST", aml_int(0)));
+
+    /* prepare input package. */
+    pkg = aml_package(1);
+    aml_append(method, aml_store(aml_arg(0), aml_name("OFST")));
+    aml_append(pkg, aml_name("OFST"));
+
+    /* call Read_FIT function. */
+    call_result = aml_call5(NVDIMM_COMMON_DSM,
+                            aml_touuid(NVDIMM_QEMU_RSVD_UUID),
+                            aml_int(1) /* Revision 1 */,
+                            aml_int(0x1) /* Read FIT */,
+                            pkg, aml_int(NVDIMM_QEMU_RSVD_HANDLE_ROOT));
+    aml_append(method, aml_store(call_result, buf));
+
+    /* handle _DSM result. */
+    aml_append(method, aml_create_dword_field(buf,
+               aml_int(0) /* offset at byte 0 */, "STAU"));
+
+    aml_append(method, aml_store(aml_name("STAU"),
+                                 aml_name(NVDIMM_DSM_RFIT_STATUS)));
+
+     /* if something is wrong during _DSM. */
+    ifcond = aml_equal(aml_int(NVDIMM_DSM_RET_STATUS_SUCCESS),
+                       aml_name("STAU"));
+    ifctx = aml_if(aml_lnot(ifcond));
+    aml_append(ifctx, aml_return(aml_buffer(0, NULL)));
+    aml_append(method, ifctx);
+
+    aml_append(method, aml_store(aml_sizeof(buf), buf_size));
+    aml_append(method, aml_subtract(buf_size,
+                                    aml_int(4) /* the size of "STAU" */,
+                                    buf_size));
+
+    /* if we read the end of fit. */
+    ifctx = aml_if(aml_equal(buf_size, aml_int(0)));
+    aml_append(ifctx, aml_return(aml_buffer(0, NULL)));
+    aml_append(method, ifctx);
+
+    aml_append(method, aml_create_field(buf,
+                            aml_int(4 * BITS_PER_BYTE), /* offset at byte 4.*/
+                            aml_shiftleft(buf_size, aml_int(3)), "BUFF"));
+    aml_append(method, aml_return(aml_name("BUFF")));
+    aml_append(dev, method);
+
+    /* build _FIT. */
+    method = aml_method("_FIT", 0, AML_SERIALIZED);
+    offset = aml_local(3);
+
+    aml_append(method, aml_store(aml_buffer(0, NULL), fit));
+    aml_append(method, aml_store(aml_int(0), offset));
+
+    whilectx = aml_while(aml_int(1));
+    aml_append(whilectx, aml_store(aml_call1("RFIT", offset), buf));
+    aml_append(whilectx, aml_store(aml_sizeof(buf), buf_size));
+
+    /*
+     * if fit buffer was changed during RFIT, read from the beginning
+     * again.
+     */
+    ifctx = aml_if(aml_equal(aml_name(NVDIMM_DSM_RFIT_STATUS),
+                             aml_int(NVDIMM_DSM_RET_STATUS_FIT_CHANGED)));
+    aml_append(ifctx, aml_store(aml_buffer(0, NULL), fit));
+    aml_append(ifctx, aml_store(aml_int(0), offset));
+    aml_append(whilectx, ifctx);
+
+    elsectx = aml_else();
+
+    /* finish fit read if no data is read out. */
+    ifctx = aml_if(aml_equal(buf_size, aml_int(0)));
+    aml_append(ifctx, aml_return(fit));
+    aml_append(elsectx, ifctx);
+
+    /* update the offset. */
+    aml_append(elsectx, aml_add(offset, buf_size, offset));
+    /* append the data we read out to the fit buffer. */
+    aml_append(elsectx, aml_concatenate(fit, buf, fit));
+    aml_append(whilectx, elsectx);
+    aml_append(method, whilectx);
+
+    aml_append(dev, method);
+}
+
+static void nvdimm_build_nvdimm_devices(Aml *root_dev, uint32_t ram_slots)
+{
+    uint32_t slot;
+
+    for (slot = 0; slot < ram_slots; slot++) {
         uint32_t handle = nvdimm_slot_to_handle(slot);
         Aml *nvdimm_dev;
 
@@ -910,11 +1214,11 @@ static void nvdimm_build_nvdimm_devices(GSList *device_list, Aml *root_dev)
     }
 }
 
-static void nvdimm_build_ssdt(GSList *device_list, GArray *table_offsets,
-                              GArray *table_data, BIOSLinker *linker,
-                              GArray *dsm_dma_arrea)
+static void nvdimm_build_ssdt(GArray *table_offsets, GArray *table_data,
+                              BIOSLinker *linker, GArray *dsm_dma_arrea,
+                              uint32_t ram_slots)
 {
-    Aml *ssdt, *sb_scope, *dev, *field;
+    Aml *ssdt, *sb_scope, *dev;
     int mem_addr_offset, nvdimm_ssdt;
 
     acpi_add_table(table_offsets, table_data);
@@ -939,69 +1243,13 @@ static void nvdimm_build_ssdt(GSList *device_list, GArray *table_offsets,
      */
     aml_append(dev, aml_name_decl("_HID", aml_string("ACPI0012")));
 
-    /* map DSM memory and IO into ACPI namespace. */
-    aml_append(dev, aml_operation_region("NPIO", AML_SYSTEM_IO,
-               aml_int(NVDIMM_ACPI_IO_BASE), NVDIMM_ACPI_IO_LEN));
-    aml_append(dev, aml_operation_region("NRAM", AML_SYSTEM_MEMORY,
-               aml_name(NVDIMM_ACPI_MEM_ADDR), sizeof(NvdimmDsmIn)));
-
-    /*
-     * DSM notifier:
-     * NTFI: write the address of DSM memory and notify QEMU to emulate
-     *       the access.
-     *
-     * It is the IO port so that accessing them will cause VM-exit, the
-     * control will be transferred to QEMU.
-     */
-    field = aml_field("NPIO", AML_DWORD_ACC, AML_NOLOCK, AML_PRESERVE);
-    aml_append(field, aml_named_field("NTFI",
-               sizeof(uint32_t) * BITS_PER_BYTE));
-    aml_append(dev, field);
-
-    /*
-     * DSM input:
-     * HDLE: store device's handle, it's zero if the _DSM call happens
-     *       on NVDIMM Root Device.
-     * REVS: store the Arg1 of _DSM call.
-     * FUNC: store the Arg2 of _DSM call.
-     * ARG3: store the Arg3 of _DSM call.
-     *
-     * They are RAM mapping on host so that these accesses never cause
-     * VM-EXIT.
-     */
-    field = aml_field("NRAM", AML_DWORD_ACC, AML_NOLOCK, AML_PRESERVE);
-    aml_append(field, aml_named_field("HDLE",
-               sizeof(typeof_field(NvdimmDsmIn, handle)) * BITS_PER_BYTE));
-    aml_append(field, aml_named_field("REVS",
-               sizeof(typeof_field(NvdimmDsmIn, revision)) * BITS_PER_BYTE));
-    aml_append(field, aml_named_field("FUNC",
-               sizeof(typeof_field(NvdimmDsmIn, function)) * BITS_PER_BYTE));
-    aml_append(field, aml_named_field("ARG3",
-               (sizeof(NvdimmDsmIn) - offsetof(NvdimmDsmIn, arg3)) * BITS_PER_BYTE));
-    aml_append(dev, field);
-
-    /*
-     * DSM output:
-     * RLEN: the size of the buffer filled by QEMU.
-     * ODAT: the buffer QEMU uses to store the result.
-     *
-     * Since the page is reused by both input and out, the input data
-     * will be lost after storing new result into ODAT so we should fetch
-     * all the input data before writing the result.
-     */
-    field = aml_field("NRAM", AML_DWORD_ACC, AML_NOLOCK, AML_PRESERVE);
-    aml_append(field, aml_named_field("RLEN",
-               sizeof(typeof_field(NvdimmDsmOut, len)) * BITS_PER_BYTE));
-    aml_append(field, aml_named_field("ODAT",
-               (sizeof(NvdimmDsmOut) - offsetof(NvdimmDsmOut, data)) * BITS_PER_BYTE));
-    aml_append(dev, field);
-
     nvdimm_build_common_dsm(dev);
 
     /* 0 is reserved for root device. */
     nvdimm_build_device_dsm(dev, 0);
+    nvdimm_build_fit(dev);
 
-    nvdimm_build_nvdimm_devices(device_list, dev);
+    nvdimm_build_nvdimm_devices(dev, ram_slots);
 
     aml_append(sb_scope, dev);
     aml_append(ssdt, sb_scope);
@@ -1026,17 +1274,25 @@ static void nvdimm_build_ssdt(GSList *device_list, GArray *table_offsets,
 }
 
 void nvdimm_build_acpi(GArray *table_offsets, GArray *table_data,
-                       BIOSLinker *linker, GArray *dsm_dma_arrea)
+                       BIOSLinker *linker, AcpiNVDIMMState *state,
+                       uint32_t ram_slots)
 {
     GSList *device_list;
 
+    /* no nvdimm device can be plugged. */
+    if (!ram_slots) {
+        return;
+    }
+
+    nvdimm_build_ssdt(table_offsets, table_data, linker, state->dsm_mem,
+                      ram_slots);
+
+    device_list = nvdimm_get_device_list();
     /* no NVDIMM device is plugged. */
-    device_list = nvdimm_get_plugged_device_list();
     if (!device_list) {
         return;
     }
-    nvdimm_build_nfit(device_list, table_offsets, table_data, linker);
-    nvdimm_build_ssdt(device_list, table_offsets, table_data, linker,
-                      dsm_dma_arrea);
+
+    nvdimm_build_nfit(state, table_offsets, table_data, linker);
     g_slist_free(device_list);
 }

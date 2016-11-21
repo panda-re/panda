@@ -150,7 +150,7 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target-arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
 
-CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3
+CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2
 %.bc2: %.c $(GENERATED_HEADERS)
 	$(call quiet-command,\

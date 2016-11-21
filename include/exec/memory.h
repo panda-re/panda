@@ -210,7 +210,7 @@ struct MemoryRegion {
     void (*destructor)(MemoryRegion *mr);
     uint64_t align;
     bool terminates;
-    bool skip_dump;
+    bool ram_device;
     bool enabled;
     bool warning_printed; /* For reservations */
     uint8_t vga_logging_count;
@@ -256,8 +256,9 @@ struct MemoryListener {
                                hwaddr addr, hwaddr len);
     /* Lower = earlier (during add), later (during del) */
     unsigned priority;
-    AddressSpace *address_space_filter;
+    AddressSpace *address_space;
     QTAILQ_ENTRY(MemoryListener) link;
+    QTAILQ_ENTRY(MemoryListener) link_as;
 };
 
 /**
@@ -279,7 +280,7 @@ struct AddressSpace {
     struct AddressSpaceDispatch *dispatch;
     struct AddressSpaceDispatch *next_dispatch;
     MemoryListener dispatch_listener;
-
+    QTAILQ_HEAD(memory_listeners_as, MemoryListener) listeners;
     QTAILQ_ENTRY(AddressSpace) address_spaces_link;
 };
 
@@ -449,6 +450,30 @@ void memory_region_init_ram_ptr(MemoryRegion *mr,
                                 void *ptr);
 
 /**
+ * memory_region_init_ram_device_ptr:  Initialize RAM device memory region from
+ *                                     a user-provided pointer.
+ *
+ * A RAM device represents a mapping to a physical device, such as to a PCI
+ * MMIO BAR of an vfio-pci assigned device.  The memory region may be mapped
+ * into the VM address space and access to the region will modify memory
+ * directly.  However, the memory region should not be included in a memory
+ * dump (device may not be enabled/mapped at the time of the dump), and
+ * operations incompatible with manipulating MMIO should be avoided.  Replaces
+ * skip_dump flag.
+ *
+ * @mr: the #MemoryRegion to be initialized.
+ * @owner: the object that tracks the region's reference count
+ * @name: the name of the region.
+ * @size: size of the region.
+ * @ptr: memory to be mapped; must contain at least @size bytes.
+ */
+void memory_region_init_ram_device_ptr(MemoryRegion *mr,
+                                       struct Object *owner,
+                                       const char *name,
+                                       uint64_t size,
+                                       void *ptr);
+
+/**
  * memory_region_init_alias: Initialize a memory region that aliases all or a
  *                           part of another memory region.
  *
@@ -574,22 +599,13 @@ static inline bool memory_region_is_ram(MemoryRegion *mr)
 }
 
 /**
- * memory_region_is_skip_dump: check whether a memory region should not be
- *                             dumped
+ * memory_region_is_ram_device: check whether a memory region is a ram device
  *
- * Returns %true is a memory region should not be dumped(e.g. VFIO BAR MMAP).
- *
- * @mr: the memory region being queried
- */
-bool memory_region_is_skip_dump(MemoryRegion *mr);
-
-/**
- * memory_region_set_skip_dump: Set skip_dump flag, dump will ignore this memory
- *                              region
+ * Returns %true is a memory region is a device backed ram region
  *
  * @mr: the memory region being queried
  */
-void memory_region_set_skip_dump(MemoryRegion *mr);
+bool memory_region_is_ram_device(MemoryRegion *mr);
 
 /**
  * memory_region_is_romd: check whether a memory region is in ROMD mode
@@ -1465,9 +1481,11 @@ void *qemu_map_ram_ptr(RAMBlock *ram_block, ram_addr_t addr);
 static inline bool memory_access_is_direct(MemoryRegion *mr, bool is_write)
 {
     if (is_write) {
-        return memory_region_is_ram(mr) && !mr->readonly;
+        return memory_region_is_ram(mr) &&
+               !mr->readonly && !memory_region_is_ram_device(mr);
     } else {
-        return memory_region_is_ram(mr) || memory_region_is_romd(mr);
+        return (memory_region_is_ram(mr) && !memory_region_is_ram_device(mr)) ||
+               memory_region_is_romd(mr);
     }
 }
 

@@ -20,6 +20,7 @@
 
 #include "qemu/osdep.h"
 #include "cpu.h"
+#include "internal.h"
 #include "disas/disas.h"
 #include "exec/exec-all.h"
 #include "tcg-op.h"
@@ -322,7 +323,7 @@ static void gen_debug_exception(DisasContext *ctx)
      */
     if ((ctx->exception != POWERPC_EXCP_BRANCH) &&
         (ctx->exception != POWERPC_EXCP_SYNC)) {
-        gen_update_nip(ctx, ctx->nip - 4);
+        gen_update_nip(ctx, ctx->nip);
     }
     t0 = tcg_const_i32(EXCP_DEBUG);
     gen_helper_raise_exception(cpu_env, t0);
@@ -375,6 +376,9 @@ GEN_OPCODE2(name, onam, opc1, opc2, opc3, inval, type, type2)
 
 #define GEN_HANDLER_E_2(name, opc1, opc2, opc3, opc4, inval, type, type2)     \
 GEN_OPCODE3(name, opc1, opc2, opc3, opc4, inval, type, type2)
+
+#define GEN_HANDLER2_E_2(name, onam, opc1, opc2, opc3, opc4, inval, typ, typ2) \
+GEN_OPCODE4(name, onam, opc1, opc2, opc3, opc4, inval, typ, typ2)
 
 typedef struct opcode_t {
     unsigned char opc1, opc2, opc3, opc4;
@@ -558,34 +562,6 @@ EXTRACT_HELPER(DCM, 10, 6)
 /* DFP Z23-form */
 EXTRACT_HELPER(RMC, 9, 2)
 
-/* Create a mask between <start> and <end> bits */
-static inline target_ulong MASK(uint32_t start, uint32_t end)
-{
-    target_ulong ret;
-
-#if defined(TARGET_PPC64)
-    if (likely(start == 0)) {
-        ret = UINT64_MAX << (63 - end);
-    } else if (likely(end == 63)) {
-        ret = UINT64_MAX >> start;
-    }
-#else
-    if (likely(start == 0)) {
-        ret = UINT32_MAX << (31  - end);
-    } else if (likely(end == 31)) {
-        ret = UINT32_MAX >> start;
-    }
-#endif
-    else {
-        ret = (((target_ulong)(-1ULL)) >> (start)) ^
-            (((target_ulong)(-1ULL) >> (end)) >> 1);
-        if (unlikely(start > end))
-            return ~ret;
-    }
-
-    return ret;
-}
-
 EXTRACT_HELPER_SPLIT(xT, 0, 1, 21, 5);
 EXTRACT_HELPER_SPLIT(xS, 0, 1, 21, 5);
 EXTRACT_HELPER_SPLIT(xA, 2, 1, 16, 5);
@@ -662,6 +638,21 @@ EXTRACT_HELPER(IMM8, 11, 8);
     },                                                                        \
     .oname = stringify(name),                                                 \
 }
+#define GEN_OPCODE4(name, onam, op1, op2, op3, op4, invl, _typ, _typ2)        \
+{                                                                             \
+    .opc1 = op1,                                                              \
+    .opc2 = op2,                                                              \
+    .opc3 = op3,                                                              \
+    .opc4 = op4,                                                              \
+    .handler = {                                                              \
+        .inval1  = invl,                                                      \
+        .type = _typ,                                                         \
+        .type2 = _typ2,                                                       \
+        .handler = &gen_##name,                                               \
+        .oname = onam,                                                        \
+    },                                                                        \
+    .oname = onam,                                                            \
+}
 #else
 #define GEN_OPCODE(name, op1, op2, op3, invl, _typ, _typ2)                    \
 {                                                                             \
@@ -719,6 +710,20 @@ EXTRACT_HELPER(IMM8, 11, 8);
         .handler = &gen_##name,                                               \
     },                                                                        \
     .oname = stringify(name),                                                 \
+}
+#define GEN_OPCODE4(name, onam, op1, op2, op3, op4, invl, _typ, _typ2)        \
+{                                                                             \
+    .opc1 = op1,                                                              \
+    .opc2 = op2,                                                              \
+    .opc3 = op3,                                                              \
+    .opc4 = op4,                                                              \
+    .handler = {                                                              \
+        .inval1  = invl,                                                      \
+        .type = _typ,                                                         \
+        .type2 = _typ2,                                                       \
+        .handler = &gen_##name,                                               \
+    },                                                                        \
+    .oname = onam,                                                            \
 }
 #endif
 
@@ -7179,9 +7184,11 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         int flags;
         flags = env->bfd_mach;
         flags |= ctx.le_mode << 16;
+        qemu_log_lock();
         qemu_log("IN: %s\n", lookup_symbol(pc_start));
         log_target_disas(cs, pc_start, ctx.nip - pc_start, flags);
         qemu_log("\n");
+        qemu_log_unlock();
     }
 #endif
 }

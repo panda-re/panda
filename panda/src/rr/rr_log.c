@@ -65,8 +65,6 @@ volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 
-volatile sig_atomic_t rr_use_live_exit_request = 0;
-
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
@@ -1673,7 +1671,7 @@ uint32_t rr_checksum_memory(void) {
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
     uint32_t crc = crc32(0, Z_NULL, 0);
-    crc = crc32(crc, ptr, ram->size.lo);
+    crc = crc32(crc, ptr, int128_get64(ram->size));
     rcu_read_unlock();
 
     return crc;

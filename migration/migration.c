@@ -36,6 +36,7 @@
 #include "exec/address-spaces.h"
 #include "io/channel-buffer.h"
 #include "io/channel-tls.h"
+#include "migration/colo.h"
 
 #define MAX_THROTTLE  (32 << 20)      /* Migration transfer speed throttling */
 
@@ -61,6 +62,11 @@
 
 /* Migration XBZRLE default cache size */
 #define DEFAULT_MIGRATE_CACHE_SIZE (64 * 1024 * 1024)
+
+/* The delay time (in ms) between two COLO checkpoints
+ * Note: Please change this default value to 10000 when we support hybrid mode.
+ */
+#define DEFAULT_MIGRATE_X_CHECKPOINT_DELAY 200
 
 static NotifierList migration_state_notifiers =
     NOTIFIER_LIST_INITIALIZER(migration_state_notifiers);
@@ -94,6 +100,7 @@ MigrationState *migrate_get_current(void)
             .cpu_throttle_increment = DEFAULT_MIGRATE_CPU_THROTTLE_INCREMENT,
             .max_bandwidth = MAX_THROTTLE,
             .downtime_limit = DEFAULT_MIGRATE_SET_DOWNTIME,
+            .x_checkpoint_delay = DEFAULT_MIGRATE_X_CHECKPOINT_DELAY,
         },
     };
 
@@ -406,6 +413,18 @@ static void process_incoming_migration_co(void *opaque)
         /* Else if something went wrong then just fall out of the normal exit */
     }
 
+    /* we get COLO info, and know if we are in COLO mode */
+    if (!ret && migration_incoming_enable_colo()) {
+        mis->migration_incoming_co = qemu_coroutine_self();
+        qemu_thread_create(&mis->colo_incoming_thread, "COLO incoming",
+             colo_process_incoming_thread, mis, QEMU_THREAD_JOINABLE);
+        mis->have_colo_incoming_thread = true;
+        qemu_coroutine_yield();
+
+        /* Wait checkpoint incoming thread exit before free resource */
+        qemu_thread_join(&mis->colo_incoming_thread);
+    }
+
     qemu_fclose(f);
     free_xbzrle_decoded_buf();
 
@@ -531,6 +550,9 @@ MigrationCapabilityStatusList *qmp_query_migrate_capabilities(Error **errp)
 
     caps = NULL; /* silence compiler warning */
     for (i = 0; i < MIGRATION_CAPABILITY__MAX; i++) {
+        if (i == MIGRATION_CAPABILITY_X_COLO && !colo_supported()) {
+            continue;
+        }
         if (head == NULL) {
             head = g_malloc0(sizeof(*caps));
             caps = head;
@@ -571,6 +593,8 @@ MigrationParameters *qmp_query_migrate_parameters(Error **errp)
     params->max_bandwidth = s->parameters.max_bandwidth;
     params->has_downtime_limit = true;
     params->downtime_limit = s->parameters.downtime_limit;
+    params->has_x_checkpoint_delay = true;
+    params->x_checkpoint_delay = s->parameters.x_checkpoint_delay;
 
     return params;
 }
@@ -691,6 +715,10 @@ MigrationInfo *qmp_query_migrate(Error **errp)
 
         get_xbzrle_cache_stats(info);
         break;
+    case MIGRATION_STATUS_COLO:
+        info->has_status = true;
+        /* TODO: display COLO specific information (checkpoint info etc.) */
+        break;
     case MIGRATION_STATUS_COMPLETED:
         get_xbzrle_cache_stats(info);
 
@@ -733,6 +761,14 @@ void qmp_migrate_set_capabilities(MigrationCapabilityStatusList *params,
     }
 
     for (cap = params; cap; cap = cap->next) {
+        if (cap->value->capability == MIGRATION_CAPABILITY_X_COLO) {
+            if (!colo_supported()) {
+                error_setg(errp, "COLO is not currently supported, please"
+                             " configure with --enable-colo option in order to"
+                             " support COLO feature");
+                continue;
+            }
+        }
         s->enabled_capabilities[cap->value->capability] = cap->value->state;
     }
 
@@ -817,6 +853,11 @@ void qmp_migrate_set_parameters(MigrationParameters *params, Error **errp)
                    "an integer in the range of 0 to 2000000 milliseconds");
         return;
     }
+    if (params->has_x_checkpoint_delay && (params->x_checkpoint_delay < 0)) {
+        error_setg(errp, QERR_INVALID_PARAMETER_VALUE,
+                    "x_checkpoint_delay",
+                    "is invalid, it should be positive");
+    }
 
     if (params->has_compress_level) {
         s->parameters.compress_level = params->compress_level;
@@ -850,6 +891,10 @@ void qmp_migrate_set_parameters(MigrationParameters *params, Error **errp)
     }
     if (params->has_downtime_limit) {
         s->parameters.downtime_limit = params->downtime_limit;
+    }
+
+    if (params->has_x_checkpoint_delay) {
+        s->parameters.x_checkpoint_delay = params->x_checkpoint_delay;
     }
 }
 
@@ -922,7 +967,7 @@ static void migrate_fd_cleanup(void *opaque)
 
 void migrate_fd_error(MigrationState *s, const Error *error)
 {
-    trace_migrate_fd_error(error ? error_get_pretty(error) : "");
+    trace_migrate_fd_error(error_get_pretty(error));
     assert(s->to_dst_file == NULL);
     migrate_set_state(&s->state, MIGRATION_STATUS_SETUP,
                       MIGRATION_STATUS_FAILED);
@@ -1101,7 +1146,8 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
     params.shared = has_inc && inc;
 
     if (migration_is_setup_or_active(s->state) ||
-        s->state == MIGRATION_STATUS_CANCELLING) {
+        s->state == MIGRATION_STATUS_CANCELLING ||
+        s->state == MIGRATION_STATUS_COLO) {
         error_setg(errp, QERR_MIGRATION_ACTIVE);
         return;
     }
@@ -1567,6 +1613,7 @@ static int postcopy_start(MigrationState *ms, bool *old_vm_running)
      * to do this we use a qemu_buf to hold the whole of the device state.
      */
     bioc = qio_channel_buffer_new(4096);
+    qio_channel_set_name(QIO_CHANNEL(bioc), "migration-postcopy-buffer");
     fb = qemu_fopen_channel_output(QIO_CHANNEL(bioc));
     object_unref(OBJECT(bioc));
 
@@ -1648,7 +1695,11 @@ static void migration_completion(MigrationState *s, int current_active_state,
 
         if (!ret) {
             ret = vm_stop_force_state(RUN_STATE_FINISH_MIGRATE);
-            if (ret >= 0) {
+            /*
+             * Don't mark the image with BDRV_O_INACTIVE flag if
+             * we will go into COLO stage later.
+             */
+            if (ret >= 0 && !migrate_colo_enabled()) {
                 ret = bdrv_inactivate_all();
             }
             if (ret >= 0) {
@@ -1690,8 +1741,11 @@ static void migration_completion(MigrationState *s, int current_active_state,
         goto fail_invalidate;
     }
 
-    migrate_set_state(&s->state, current_active_state,
-                      MIGRATION_STATUS_COMPLETED);
+    if (!migrate_colo_enabled()) {
+        migrate_set_state(&s->state, current_active_state,
+                          MIGRATION_STATUS_COMPLETED);
+    }
+
     return;
 
 fail_invalidate:
@@ -1712,6 +1766,12 @@ fail:
                       MIGRATION_STATUS_FAILED);
 }
 
+bool migrate_colo_enabled(void)
+{
+    MigrationState *s = migrate_get_current();
+    return s->enabled_capabilities[MIGRATION_CAPABILITY_X_COLO];
+}
+
 /*
  * Master migration thread on the source VM.
  * It drives the migration and pumps the data down the outgoing channel.
@@ -1730,6 +1790,7 @@ static void *migration_thread(void *opaque)
     bool entered_postcopy = false;
     /* The active state we expect to be in; ACTIVE or POSTCOPY_ACTIVE */
     enum MigrationStatus current_active_state = MIGRATION_STATUS_ACTIVE;
+    bool enable_colo = migrate_colo_enabled();
 
     rcu_register_thread();
 
@@ -1838,7 +1899,13 @@ static void *migration_thread(void *opaque)
     end_time = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
 
     qemu_mutex_lock_iothread();
-    qemu_savevm_state_cleanup();
+    /*
+     * The resource has been allocated by migration will be reused in COLO
+     * process, so don't release them.
+     */
+    if (!enable_colo) {
+        qemu_savevm_state_cleanup();
+    }
     if (s->state == MIGRATION_STATUS_COMPLETED) {
         uint64_t transferred_bytes = qemu_ftell(s->to_dst_file);
         s->total_time = end_time - s->total_time;
@@ -1851,6 +1918,15 @@ static void *migration_thread(void *opaque)
         }
         runstate_set(RUN_STATE_POSTMIGRATE);
     } else {
+        if (s->state == MIGRATION_STATUS_ACTIVE && enable_colo) {
+            migrate_start_colo_process(s);
+            qemu_savevm_state_cleanup();
+            /*
+            * Fixme: we will run VM in COLO no matter its old running state.
+            * After exited COLO, we will keep running.
+            */
+            old_vm_running = true;
+        }
         if (old_vm_running && !entered_postcopy) {
             vm_start();
         } else {

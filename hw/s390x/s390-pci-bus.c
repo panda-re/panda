@@ -463,7 +463,6 @@ static void s390_msi_ctrl_write(void *opaque, hwaddr addr, uint64_t data,
                                 unsigned int size)
 {
     S390PCIBusDevice *pbdev = opaque;
-    uint32_t io_int_word;
     uint32_t idx = data >> ZPCI_MSI_VEC_BITS;
     uint32_t vec = data & ZPCI_MSI_VEC_MASK;
     uint64_t ind_bit;
@@ -489,8 +488,7 @@ static void s390_msi_ctrl_write(void *opaque, hwaddr addr, uint64_t data,
                    0x80 >> ((ind_bit + vec) % 8));
     if (!set_ind_atomic(pbdev->routes.adapter.summary_addr + sum_bit / 8,
                                        0x80 >> (sum_bit % 8))) {
-        io_int_word = (pbdev->isc << 27) | IO_INT_WORD_AI;
-        s390_io_interrupt(0, 0, 0, io_int_word);
+        css_adapter_interrupt(pbdev->isc);
     }
 }
 
@@ -809,17 +807,11 @@ static uint32_t s390_pci_generate_fid(Error **errp)
 {
     uint32_t fid = 0;
 
-    while (fid <= ZPCI_MAX_FID) {
+    do {
         if (!s390_pci_find_dev_by_fid(fid)) {
             return fid;
         }
-
-        if (fid == ZPCI_MAX_FID) {
-            break;
-        }
-
-        fid++;
-    }
+    } while (fid++ != ZPCI_MAX_FID);
 
     error_setg(errp, "no free fid could be found");
     return 0;

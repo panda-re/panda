@@ -421,7 +421,7 @@ qemu-icon.bmp qemu_logo_no_text.svg \
 bamboo.dtb petalogix-s3adsp1800.dtb petalogix-ml605.dtb \
 multiboot.bin linuxboot.bin linuxboot_dma.bin kvmvapic.bin \
 s390-ccw.img \
-spapr-rtas.bin slof.bin \
+spapr-rtas.bin slof.bin skiboot.lid \
 palcode-clipper \
 u-boot.e500
 else
@@ -695,7 +695,7 @@ help:
 	@echo  ''
 ifdef CONFIG_WIN32
 	@echo  'Windows targets:'
-	@echo  '  installer       - Build NSIS-based installer for qemu-ga'
+	@echo  '  installer       - Build NSIS-based installer for QEMU'
 ifdef QEMU_GA_MSI_ENABLED
 	@echo  '  msi             - Build MSI-based installer for qemu-ga'
 endif

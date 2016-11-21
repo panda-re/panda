@@ -31,6 +31,7 @@
 #define EXCP_DEBUG      0x10002 /* cpu stopped after a breakpoint or singlestep */
 #define EXCP_HALTED     0x10003 /* cpu is halted (waiting for external event) */
 #define EXCP_YIELD      0x10004 /* cpu wants to yield timeslice to another */
+#define EXCP_ATOMIC     0x10005 /* stop-the-world and emulate atomic */
 
 /* some important defines:
  *
@@ -188,6 +189,15 @@ void address_space_stq(AddressSpace *as, hwaddr addr, uint64_t val,
 #endif
 
 /* page related stuff */
+
+#ifdef TARGET_PAGE_BITS_VARY
+extern bool target_page_bits_decided;
+extern int target_page_bits;
+#define TARGET_PAGE_BITS ({ assert(target_page_bits_decided); \
+                            target_page_bits; })
+#else
+#define TARGET_PAGE_BITS_MIN TARGET_PAGE_BITS
+#endif
 
 #define TARGET_PAGE_SIZE (1 << TARGET_PAGE_BITS)
 #define TARGET_PAGE_MASK ~(TARGET_PAGE_SIZE - 1)
