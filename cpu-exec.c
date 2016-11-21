@@ -195,6 +195,9 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
 
+    panda_callbacks_before_block_exec(cpu, itb);
+
+
 #if defined(CONFIG_LLVM)
     if (execute_llvm){
         assert(itb->llvm_tc_ptr);
@@ -210,7 +213,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
-    panda_callbacks_before_block_exec(cpu, itb);
 
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
