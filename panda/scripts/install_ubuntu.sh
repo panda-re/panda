@@ -105,4 +105,4 @@ mkdir build
 cd build
 ../build.sh
 
-progress "PANDA is built and ready to use in panda-build/[arch]-softmmu/qemu-system-[arch]."
+progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/qemu-system-[arch]."
