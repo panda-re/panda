@@ -439,7 +439,6 @@ CallInst *PandaTaintVisitor::insertLogPop(Instruction &after) {
 void PandaTaintVisitor::insertTaintCopy(Instruction &I,
         Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
         uint64_t size) {
-    LLVMContext &ctx = I.getContext();
     // If these are llvm regs we have to interpret them as slots.
     if (shad_dest == llvConst && !isa<Constant>(dest))
         dest = constSlot(dest);
@@ -994,7 +993,6 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
 }
 
 void PandaTaintVisitor::visitPHINode(PHINode &I) {
-    LLVMContext &ctx = I.getContext();
     LoadInst *LI = new LoadInst(prevBbConst);
     assert(LI != NULL);
     assert(I.getParent()->getFirstNonPHI() != NULL);
