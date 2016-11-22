@@ -22,10 +22,10 @@ set -e
 progress "Installing qemu dependencies..."
 sudo apt-get update
 sudo apt-get -y install build-essential
+sudo apt-get -y build-dep qemu
 progress "Installing PANDA dependencies..."
-sudo apt-get -y install nasm libssl-dev libpcap-dev subversion curl autoconf libtool \
-  python-pip git protobuf-compiler protobuf-c-compiler libprotobuf-c0-dev libprotoc-dev \
-  libglib2.0-dev libelf-dev libwiretap-dev libwsutil-dev
+sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+  libprotobuf-c0-dev libprotoc-dev libelf-dev
 
 pushd /tmp
 
@@ -35,7 +35,7 @@ then
   progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
 fi
 
-if [ ! ( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" ) ]
+if [ ! \( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" \) ]
 then
   sudo apt-get -y install unzip
   curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
@@ -52,7 +52,7 @@ else
   progress "Skipping distorm..."
 fi
 
-if [ ! ( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" ) ]
+if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
 then
   git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
   pushd libdwarf-code
