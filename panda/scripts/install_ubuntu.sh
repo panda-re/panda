@@ -96,11 +96,13 @@ if [ ! -e "build.sh" ]
 then
   progress "Cloning PANDA into $cwd ..."
   git clone https://github.com/panda-re/panda.git
-  cd qemu
+  cd panda
 else
   progress "Already in PANDA directory."
 fi
 progress "Building PANDA..."
-./build.sh
+mkdir build
+cd build
+../build.sh
 
-progress "PANDA is built and ready to use in panda/qemu/[arch]-softmmu/qemu-system-[arch]."
+progress "PANDA is built and ready to use in panda-build/[arch]-softmmu/qemu-system-[arch]."
