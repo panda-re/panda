@@ -1044,10 +1044,13 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
 }
 
 static const std::regex mathRegex(
-    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2");
-static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?");
-static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?");
-static const std::regex inoutRegex("helper_(in|out)[bwlq]");
+    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2",
+    std::regex::egrep);
+static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?",
+        std::regex::egrep);
+static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?",
+        std::regex::egrep);
+static const std::regex inoutRegex("helper_(in|out)[bwlq]", std::regex::egrep);
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     LLVMContext &ctx = I.getContext();
     Function *calledF = I.getCalledFunction();
