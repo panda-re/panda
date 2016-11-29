@@ -162,9 +162,11 @@ int qemu_init_main_loop(Error **errp)
     qemu_notify_bh = qemu_bh_new(notify_event_cb, NULL);
     gpollfds = g_array_new(FALSE, FALSE, sizeof(GPollFD));
     src = aio_get_g_source(qemu_aio_context);
+    g_source_set_name(src, "aio-context");
     g_source_attach(src, NULL);
     g_source_unref(src);
     src = iohandler_get_g_source();
+    g_source_set_name(src, "io-handler");
     g_source_attach(src, NULL);
     g_source_unref(src);
     return 0;
@@ -234,7 +236,7 @@ static int os_host_main_loop_wait(int64_t timeout)
     if (!timeout && (spin_counter > MAX_MAIN_LOOP_SPIN)) {
         static bool notified;
 
-        if (!notified && !qtest_driver()) {
+        if (!notified && !qtest_enabled() && !qtest_driver()) {
             fprintf(stderr,
                     "main-loop: WARNING: I/O thread spun for %d iterations\n",
                     MAX_MAIN_LOOP_SPIN);

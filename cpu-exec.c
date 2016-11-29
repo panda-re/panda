@@ -173,23 +173,20 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     uint8_t *tb_ptr = itb->tc_ptr;
 
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
-                           "Trace %p [" TARGET_FMT_lx "] %s\n",
-                           itb->tc_ptr, itb->pc, lookup_symbol(itb->pc));
+                           "Trace %p [%d: " TARGET_FMT_lx "] %s\n",
+                           itb->tc_ptr, cpu->cpu_index, itb->pc,
+                           lookup_symbol(itb->pc));
 
 #if defined(DEBUG_DISAS)
     if (qemu_loglevel_mask(CPU_LOG_TB_CPU)
         && qemu_log_in_addr_range(itb->pc)) {
+        qemu_log_lock();
 #if defined(TARGET_I386)
         log_cpu_state(cpu, CPU_DUMP_CCOP);
-#elif defined(TARGET_M68K)
-        /* ??? Should not modify env state for dumping.  */
-        cpu_m68k_flush_flags(env, env->cc_op);
-        env->cc_op = CC_OP_FLAGS;
-        env->sr = (env->sr & 0xffe0) | env->cc_dest | (env->cc_x << 4);
-        log_cpu_state(cpu, 0);
 #else
         log_cpu_state(cpu, 0);
 #endif
+        qemu_log_unlock();
     }
 #endif /* DEBUG_DISAS */
 
@@ -262,17 +259,53 @@ static void cpu_exec_nocache(CPUState *cpu, int max_cycles,
     if (max_cycles > CF_COUNT_MASK)
         max_cycles = CF_COUNT_MASK;
 
+    tb_lock();
     tb = tb_gen_code(cpu, orig_tb->pc, orig_tb->cs_base, orig_tb->flags,
                      max_cycles | CF_NOCACHE
                          | (ignore_icount ? CF_IGNORE_ICOUNT : 0));
     tb->orig_tb = orig_tb;
+    tb_unlock();
+
     /* execute the generated code */
     trace_exec_tb_nocache(tb, tb->pc);
+    cpu_tb_exec(cpu, tb);
+
+    tb_lock();
+    tb_phys_invalidate(tb, -1);
+    tb_free(tb);
+    tb_unlock();
+}
+#endif
+
+static void cpu_exec_step(CPUState *cpu)
+{
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+    TranslationBlock *tb;
+    target_ulong cs_base, pc;
+    uint32_t flags;
+
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    tb = tb_gen_code(cpu, pc, cs_base, flags,
+                     1 | CF_NOCACHE | CF_IGNORE_ICOUNT);
+    tb->orig_tb = NULL;
+    /* execute the generated code */
+    trace_exec_tb_nocache(tb, pc);
     cpu_tb_exec(cpu, tb);
     tb_phys_invalidate(tb, -1);
     tb_free(tb);
 }
-#endif
+
+void cpu_exec_step_atomic(CPUState *cpu)
+{
+    start_exclusive();
+
+    /* Since we got here, we know that parallel_cpus must be true.  */
+    parallel_cpus = false;
+    cpu_exec_step(cpu);
+    parallel_cpus = true;
+
+    end_exclusive();
+}
 
 struct tb_desc {
     target_ulong pc;

@@ -258,8 +258,10 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     req->has_sg = true;
     dma_acct_start(n->conf.blk, &req->acct, &req->qsg, acct);
     req->aiocb = is_write ?
-        dma_blk_write(n->conf.blk, &req->qsg, data_offset, nvme_rw_cb, req) :
-        dma_blk_read(n->conf.blk, &req->qsg, data_offset, nvme_rw_cb, req);
+        dma_blk_write(n->conf.blk, &req->qsg, data_offset, BDRV_SECTOR_SIZE,
+                      nvme_rw_cb, req) :
+        dma_blk_read(n->conf.blk, &req->qsg, data_offset, BDRV_SECTOR_SIZE,
+                     nvme_rw_cb, req);
 
     return NVME_NO_COMPLETE;
 }
@@ -373,7 +375,7 @@ static uint16_t nvme_create_sq(NvmeCtrl *n, NvmeCmd *cmd)
     if (!cqid || nvme_check_cqid(n, cqid)) {
         return NVME_INVALID_CQID | NVME_DNR;
     }
-    if (!sqid || (sqid && !nvme_check_sqid(n, sqid))) {
+    if (!sqid || !nvme_check_sqid(n, sqid)) {
         return NVME_INVALID_QID | NVME_DNR;
     }
     if (!qsize || qsize > NVME_CAP_MQES(n->bar.cap)) {
@@ -447,7 +449,7 @@ static uint16_t nvme_create_cq(NvmeCtrl *n, NvmeCmd *cmd)
     uint16_t qflags = le16_to_cpu(c->cq_flags);
     uint64_t prp1 = le64_to_cpu(c->prp1);
 
-    if (!cqid || (cqid && !nvme_check_cqid(n, cqid))) {
+    if (!cqid || !nvme_check_cqid(n, cqid)) {
         return NVME_INVALID_CQID | NVME_DNR;
     }
     if (!qsize || qsize > NVME_CAP_MQES(n->bar.cap)) {

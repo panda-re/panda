@@ -94,7 +94,7 @@
 #define GDK_IS_WIN32_DISPLAY(dpy) (dpy == dpy)
 #endif
 
-#ifndef GDK_KEY_0
+#if !GTK_CHECK_VERSION(2, 22, 0)
 #define GDK_KEY_0 GDK_0
 #define GDK_KEY_1 GDK_1
 #define GDK_KEY_2 GDK_2
@@ -104,6 +104,7 @@
 #define GDK_KEY_plus GDK_plus
 #define GDK_KEY_minus GDK_minus
 #define GDK_KEY_Pause GDK_Pause
+#define GDK_KEY_Delete GDK_Delete
 #endif
 
 /* Some older mingw versions lack this constant or have
@@ -912,8 +913,27 @@ static gboolean gd_motion_event(GtkWidget *widget, GdkEventMotion *motion,
 
     if (!qemu_input_is_absolute() && s->ptr_owner == vc) {
         GdkScreen *screen = gtk_widget_get_screen(vc->gfx.drawing_area);
+        int screen_width, screen_height;
+
         int x = (int)motion->x_root;
         int y = (int)motion->y_root;
+
+#if GTK_CHECK_VERSION(3, 22, 0)
+        {
+            GdkDisplay *dpy = gtk_widget_get_display(widget);
+            GdkWindow *win = gtk_widget_get_window(widget);
+            GdkMonitor *monitor = gdk_display_get_monitor_at_window(dpy, win);
+            GdkRectangle geometry;
+            gdk_monitor_get_geometry(monitor, &geometry);
+            screen_width = geometry.width;
+            screen_height = geometry.height;
+        }
+#else
+        {
+            screen_width = gdk_screen_get_width(screen);
+            screen_height = gdk_screen_get_height(screen);
+        }
+#endif
 
         /* In relative mode check to see if client pointer hit
          * one of the screen edges, and if so move it back by
@@ -928,10 +948,10 @@ static gboolean gd_motion_event(GtkWidget *widget, GdkEventMotion *motion,
         if (y == 0) {
             y += 200;
         }
-        if (x == (gdk_screen_get_width(screen) - 1)) {
+        if (x == (screen_width - 1)) {
             x -= 200;
         }
-        if (y == (gdk_screen_get_height(screen) - 1)) {
+        if (y == (screen_height - 1)) {
             y -= 200;
         }
 
@@ -1051,7 +1071,9 @@ static gboolean gd_text_key_down(GtkWidget *widget,
     VirtualConsole *vc = opaque;
     QemuConsole *con = vc->gfx.dcl.con;
 
-    if (key->length) {
+    if (key->keyval == GDK_KEY_Delete) {
+        kbd_put_qcode_console(con, Q_KEY_CODE_DELETE);
+    } else if (key->length) {
         kbd_put_string_console(con, key->string, key->length);
     } else {
         int num = gd_map_keycode(vc->s, gtk_widget_get_display(widget),
@@ -1685,9 +1707,6 @@ static CharDriverState *gd_vc_handler(ChardevVC *vc, Error **errp)
     /* Temporary, until gd_vc_vte_init runs.  */
     chr->opaque = g_new0(VirtualConsole, 1);
 
-    /* defer OPENED events until our vc is fully initialized */
-    chr->explicit_be_open = true;
-
     vcs[nb_vcs++] = chr;
 
     return chr;
@@ -1789,9 +1808,6 @@ static GSList *gd_vc_vte_init(GtkDisplayState *s, VirtualConsole *vc,
                              gtk_label_new(vc->label));
 
     qemu_chr_be_generic_open(vc->vte.chr);
-    if (vc->vte.chr->init) {
-        vc->vte.chr->init(vc->vte.chr);
-    }
 
     return group;
 }

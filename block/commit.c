@@ -15,7 +15,7 @@
 #include "qemu/osdep.h"
 #include "trace.h"
 #include "block/block_int.h"
-#include "block/blockjob.h"
+#include "block/blockjob_int.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qerror.h"
 #include "qemu/ratelimit.h"
@@ -205,17 +205,19 @@ static const BlockJobDriver commit_job_driver = {
     .instance_size = sizeof(CommitBlockJob),
     .job_type      = BLOCK_JOB_TYPE_COMMIT,
     .set_speed     = commit_set_speed,
+    .start         = commit_run,
 };
 
 void commit_start(const char *job_id, BlockDriverState *bs,
                   BlockDriverState *base, BlockDriverState *top, int64_t speed,
-                  BlockdevOnError on_error, BlockCompletionFunc *cb,
-                  void *opaque, const char *backing_file_str, Error **errp)
+                  BlockdevOnError on_error, const char *backing_file_str,
+                  Error **errp)
 {
     CommitBlockJob *s;
     BlockReopenQueue *reopen_queue = NULL;
     int orig_overlay_flags;
     int orig_base_flags;
+    BlockDriverState *iter;
     BlockDriverState *overlay_bs;
     Error *local_err = NULL;
 
@@ -233,7 +235,7 @@ void commit_start(const char *job_id, BlockDriverState *bs,
     }
 
     s = block_job_create(job_id, &commit_job_driver, bs, speed,
-                         cb, opaque, errp);
+                         BLOCK_JOB_DEFAULT, NULL, NULL, errp);
     if (!s) {
         return;
     }
@@ -251,7 +253,7 @@ void commit_start(const char *job_id, BlockDriverState *bs,
                                          orig_overlay_flags | BDRV_O_RDWR);
     }
     if (reopen_queue) {
-        bdrv_reopen_multiple(reopen_queue, &local_err);
+        bdrv_reopen_multiple(bdrv_get_aio_context(bs), reopen_queue, &local_err);
         if (local_err != NULL) {
             error_propagate(errp, local_err);
             block_job_unref(&s->common);
@@ -259,6 +261,19 @@ void commit_start(const char *job_id, BlockDriverState *bs,
         }
     }
 
+
+    /* Block all nodes between top and base, because they will
+     * disappear from the chain after this operation. */
+    assert(bdrv_chain_contains(top, base));
+    for (iter = top; iter != backing_bs(base); iter = backing_bs(iter)) {
+        block_job_add_bdrv(&s->common, iter);
+    }
+    /* overlay_bs must be blocked because it needs to be modified to
+     * update the backing image string, but if it's the root node then
+     * don't block it again */
+    if (bs != overlay_bs) {
+        block_job_add_bdrv(&s->common, overlay_bs);
+    }
 
     s->base = blk_new();
     blk_insert_bs(s->base, base);
@@ -274,10 +289,9 @@ void commit_start(const char *job_id, BlockDriverState *bs,
     s->backing_file_str = g_strdup(backing_file_str);
 
     s->on_error = on_error;
-    s->common.co = qemu_coroutine_create(commit_run, s);
 
-    trace_commit_start(bs, base, top, s, s->common.co, opaque);
-    qemu_coroutine_enter(s->common.co);
+    trace_commit_start(bs, base, top, s);
+    block_job_start(&s->common);
 }
 
 

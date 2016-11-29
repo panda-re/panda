@@ -318,6 +318,10 @@ void hmp_info_migrate_parameters(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, " %s: %" PRId64 " milliseconds",
             MigrationParameter_lookup[MIGRATION_PARAMETER_DOWNTIME_LIMIT],
             params->downtime_limit);
+        assert(params->has_x_checkpoint_delay);
+        monitor_printf(mon, " %s: %" PRId64,
+            MigrationParameter_lookup[MIGRATION_PARAMETER_X_CHECKPOINT_DELAY],
+            params->x_checkpoint_delay);
         monitor_printf(mon, "\n");
     }
 
@@ -1386,6 +1390,10 @@ void hmp_migrate_set_parameter(Monitor *mon, const QDict *qdict)
                 p.has_downtime_limit = true;
                 use_int_value = true;
                 break;
+            case MIGRATION_PARAMETER_X_CHECKPOINT_DELAY:
+                p.has_x_checkpoint_delay = true;
+                use_int_value = true;
+                break;
             }
 
             if (use_int_value) {
@@ -1402,6 +1410,7 @@ void hmp_migrate_set_parameter(Monitor *mon, const QDict *qdict)
                 p.cpu_throttle_initial = valueint;
                 p.cpu_throttle_increment = valueint;
                 p.downtime_limit = valueint;
+                p.x_checkpoint_delay = valueint;
             }
 
             qmp_migrate_set_parameters(&p, &err);
@@ -1440,6 +1449,14 @@ void hmp_migrate_start_postcopy(Monitor *mon, const QDict *qdict)
 {
     Error *err = NULL;
     qmp_migrate_start_postcopy(&err);
+    hmp_handle_error(mon, &err);
+}
+
+void hmp_x_colo_lost_heartbeat(Monitor *mon, const QDict *qdict)
+{
+    Error *err = NULL;
+
+    qmp_x_colo_lost_heartbeat(&err);
     hmp_handle_error(mon, &err);
 }
 
@@ -1554,8 +1571,8 @@ void hmp_block_stream(Monitor *mon, const QDict *qdict)
     const char *base = qdict_get_try_str(qdict, "base");
     int64_t speed = qdict_get_try_int(qdict, "speed", 0);
 
-    qmp_block_stream(false, NULL, device, base != NULL, base, false, NULL,
-                     qdict_haskey(qdict, "speed"), speed,
+    qmp_block_stream(true, device, device, base != NULL, base, false, NULL,
+                     false, NULL, qdict_haskey(qdict, "speed"), speed,
                      true, BLOCKDEV_ON_ERROR_REPORT, &error);
 
     hmp_handle_error(mon, &error);
@@ -2002,7 +2019,7 @@ void hmp_chardev_add(Monitor *mon, const QDict *qdict)
     if (opts == NULL) {
         error_setg(&err, "Parsing chardev args failed");
     } else {
-        qemu_chr_new_from_opts(opts, NULL, &err);
+        qemu_chr_new_from_opts(opts, &err);
         qemu_opts_del(opts);
     }
     hmp_handle_error(mon, &err);

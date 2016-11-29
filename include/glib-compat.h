@@ -304,4 +304,28 @@ static inline void g_slist_free_full(GSList *list, GDestroyNotify free_func)
 }
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 26, 0)
+static inline void g_source_set_name(GSource *source, const char *name)
+{
+    /* This is just a debugging aid, so leaving it a no-op */
+}
+static inline void g_source_set_name_by_id(guint tag, const char *name)
+{
+    /* This is just a debugging aid, so leaving it a no-op */
+}
+#endif
+
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+/* Always fail.  This will not include error_report output in the test log,
+ * sending it instead to stderr.
+ */
+#define g_test_initialized() (0)
+#endif
+#if !GLIB_CHECK_VERSION(2, 38, 0)
+#ifdef CONFIG_HAS_GLIB_SUBPROCESS_TESTS
+#error schizophrenic detection of glib subprocess testing
+#endif
+#define g_test_subprocess() (0)
+#endif
+
 #endif

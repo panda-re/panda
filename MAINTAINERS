@@ -63,6 +63,17 @@ W: http://wiki.qemu.org/SecurityProcess
 M: Michael S. Tsirkin <mst@redhat.com>
 L: secalert@redhat.com
 
+Trivial patches
+---------------
+Trivial patches
+M: Michael Tokarev <mjt@tls.msk.ru>
+M: Laurent Vivier <laurent@vivier.eu>
+S: Maintained
+L: qemu-trivial@nongnu.org
+K: ^Subject:.*(?i)trivial
+T: git git://git.corpit.ru/qemu.git trivial-patches
+T: git git://github.com/vivier/qemu.git trivial-patches
+
 Guest CPU cores (TCG):
 ----------------------
 Overall
@@ -107,6 +118,7 @@ S: Maintained
 F: target-arm/
 F: hw/arm/
 F: hw/cpu/a*mpcore.c
+F: include/hw/cpu/a*mpcore.h
 F: disas/arm.c
 F: disas/arm-a64.cc
 F: disas/libvixl/
@@ -133,9 +145,10 @@ F: include/hw/lm32/
 F: tests/tcg/lm32/
 
 M68K
-S: Orphan
+M: Laurent Vivier <laurent@vivier.eu>
+S: Maintained
 F: target-m68k/
-F: hw/m68k/
+F: disas/m68k.c
 
 MicroBlaze
 M: Edgar E. Iglesias <edgar.iglesias@gmail.com>
@@ -408,6 +421,7 @@ M: Peter Chubb <peter.chubb@nicta.com.au>
 L: qemu-arm@nongnu.org
 S: Odd fixes
 F: hw/*/imx*
+F: include/hw/*/imx*
 F: hw/arm/kzm.c
 F: include/hw/arm/fsl-imx31.h
 
@@ -416,6 +430,7 @@ M: Peter Maydell <peter.maydell@linaro.org>
 L: qemu-arm@nongnu.org
 S: Maintained
 F: hw/arm/integratorcp.c
+F: hw/misc/arm_integrator_debug.c
 
 Musicpal
 M: Jan Kiszka <jan.kiszka@web.de>
@@ -440,6 +455,7 @@ M: Peter Maydell <peter.maydell@linaro.org>
 L: qemu-arm@nongnu.org
 S: Maintained
 F: hw/arm/realview*
+F: hw/cpu/realview_mpcore.c
 F: hw/intc/realview_gic.c
 F: include/hw/intc/realview_gic.h
 
@@ -452,6 +468,7 @@ F: hw/arm/spitz.c
 F: hw/arm/tosa.c
 F: hw/arm/z2.c
 F: hw/*/pxa2xx*
+F: hw/misc/mst_fpga.c
 F: include/hw/arm/pxa.h
 
 Stellaris
@@ -473,7 +490,8 @@ L: qemu-arm@nongnu.org
 S: Maintained
 F: hw/*/xilinx_*
 F: hw/*/cadence_*
-F: hw/misc/zynq_slcr.c
+F: hw/misc/zynq*
+F: include/hw/misc/zynq*
 X: hw/ssi/xilinx_*
 
 Xilinx ZynqMP
@@ -532,6 +550,7 @@ M68K Machines
 an5206
 S: Orphan
 F: hw/m68k/an5206.c
+F: hw/m68k/mcf5206.c
 
 dummy_m68k
 S: Orphan
@@ -540,6 +559,9 @@ F: hw/m68k/dummy_m68k.c
 mcf5208
 S: Orphan
 F: hw/m68k/mcf5208.c
+F: hw/m68k/mcf_intc.c
+F: hw/char/mcf_uart.c
+F: hw/net/mcf_fec.c
 
 MicroBlaze Machines
 -------------------
@@ -656,6 +678,7 @@ F: include/hw/*/xics*
 F: pc-bios/spapr-rtas/*
 F: pc-bios/spapr-rtas.bin
 F: pc-bios/slof.bin
+F: pc-bios/skiboot.lid
 F: docs/specs/ppc-spapr-hcalls.txt
 F: docs/specs/ppc-spapr-hotplug.txt
 F: tests/spapr*
@@ -691,6 +714,8 @@ S: Maintained
 F: hw/sparc/sun4m.c
 F: hw/dma/sparc32_dma.c
 F: hw/dma/sun4m_iommu.c
+F: hw/misc/eccmemctl.c
+F: hw/misc/slavio_misc.c
 F: include/hw/sparc/sparc32_dma.h
 F: include/hw/sparc/sun4m.h
 F: pc-bios/openbios-sparc32
@@ -1003,6 +1028,13 @@ F: include/sysemu/rng*.h
 F: backends/rng*.c
 F: tests/virtio-rng-test.c
 
+virtio-crypto
+M: Gonglei <arei.gonglei@huawei.com>
+S: Supported
+F: hw/virtio/virtio-crypto.c
+F: hw/virtio/virtio-crypto-pci.c
+F: include/hw/virtio/virtio-crypto.h
+
 nvme
 M: Keith Busch <keith.busch@intel.com>
 L: qemu-block@nongnu.org
@@ -1061,6 +1093,13 @@ S: Maintained
 F: hw/core/generic-loader.c
 F: include/hw/core/generic-loader.h
 
+CHRP NVRAM
+M: Thomas Huth <thuth@redhat.com>
+S: Maintained
+F: hw/nvram/chrp_nvram.c
+F: include/hw/nvram/chrp_nvram.h
+F: tests/prom-env-test.c
+
 Subsystems
 ----------
 Audio
@@ -1118,6 +1157,20 @@ F: blockdev.c
 F: block/qapi.c
 F: qapi/block*.json
 T: git git://repo.or.cz/qemu/armbru.git block-next
+
+Dirty Bitmaps
+M: Fam Zheng <famz@redhat.com>
+M: John Snow <jsnow@redhat.com>
+L: qemu-block@nongnu.org
+S: Supported
+F: util/hbitmap.c
+F: block/dirty-bitmap.c
+F: include/qemu/hbitmap.h
+F: include/block/dirty-bitmap.h
+F: tests/test-hbitmap.c
+F: docs/bitmaps.md
+T: git git://github.com/famz/qemu.git bitmaps
+T: git git://github.com/jnsnow/qemu.git bitmaps
 
 Character device backends
 M: Paolo Bonzini <pbonzini@redhat.com>
@@ -1247,6 +1300,12 @@ M: Igor Mammedov <imammedo@redhat.com>
 S: Maintained
 F: backends/hostmem*.c
 F: include/sysemu/hostmem.h
+
+Cryptodev Backends
+M: Gonglei <arei.gonglei@huawei.com>
+S: Maintained
+F: include/sysemu/cryptodev*.h
+F: backends/cryptodev*.c
 
 QAPI
 M: Markus Armbruster <armbru@redhat.com>
@@ -1413,6 +1472,14 @@ F: util/uuid.c
 F: include/qemu/uuid.h
 F: tests/test-uuid.c
 
+COLO Framework
+M: zhanghailiang <zhang.zhanghailiang@huawei.com>
+S: Maintained
+F: migration/colo*
+F: include/migration/colo.h
+F: include/migration/failover.h
+F: docs/COLO-FT.txt
+
 COLO Proxy
 M: Zhang Chen <zhangchen.fnst@cn.fujitsu.com>
 M: Li Zhijian <lizhijian@cn.fujitsu.com>
@@ -1483,8 +1550,8 @@ F: tcg/mips/
 F: disas/mips.c
 
 PPC
-M: Vassili Karpov (malc) <av1474@comtv.ru>
-S: Maintained
+M: Richard Henderson <rth@twiddle.net>
+S: Odd Fixes
 F: tcg/ppc/
 F: disas/ppc.c
 
@@ -1506,28 +1573,6 @@ S: Maintained
 F: tcg/tci/
 F: tci.c
 F: disas/tci.c
-
-Stable branches
----------------
-Stable 1.0
-L: qemu-stable@nongnu.org
-T: git git://git.qemu-project.org/qemu-stable-1.0.git
-S: Orphan
-
-Stable 0.15
-L: qemu-stable@nongnu.org
-T: git git://git.qemu-project.org/qemu-stable-0.15.git
-S: Orphan
-
-Stable 0.14
-L: qemu-stable@nongnu.org
-T: git git://git.qemu-project.org/qemu-stable-0.14.git
-S: Orphan
-
-Stable 0.10
-L: qemu-stable@nongnu.org
-T: git git://git.qemu-project.org/qemu-stable-0.10.git
-S: Orphan
 
 Block drivers
 -------------

@@ -354,6 +354,9 @@ void cpu_loop(CPUX86State *env)
                   }
             }
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             pc = env->segs[R_CS].base + env->eip;
             EXCP_DUMP(env, "qemu: 0x%08lx: unhandled CPU exception 0x%x - aborting\n",
@@ -550,94 +553,6 @@ do_kernel_trap(CPUARMState *env)
     return 0;
 }
 
-/* Store exclusive handling for AArch32 */
-static int do_strex(CPUARMState *env)
-{
-    uint64_t val;
-    int size;
-    int rc = 1;
-    int segv = 0;
-    uint32_t addr;
-    start_exclusive();
-    if (env->exclusive_addr != env->exclusive_test) {
-        goto fail;
-    }
-    /* We know we're always AArch32 so the address is in uint32_t range
-     * unless it was the -1 exclusive-monitor-lost value (which won't
-     * match exclusive_test above).
-     */
-    assert(extract64(env->exclusive_addr, 32, 32) == 0);
-    addr = env->exclusive_addr;
-    size = env->exclusive_info & 0xf;
-    switch (size) {
-    case 0:
-        segv = get_user_u8(val, addr);
-        break;
-    case 1:
-        segv = get_user_data_u16(val, addr, env);
-        break;
-    case 2:
-    case 3:
-        segv = get_user_data_u32(val, addr, env);
-        break;
-    default:
-        abort();
-    }
-    if (segv) {
-        env->exception.vaddress = addr;
-        goto done;
-    }
-    if (size == 3) {
-        uint32_t valhi;
-        segv = get_user_data_u32(valhi, addr + 4, env);
-        if (segv) {
-            env->exception.vaddress = addr + 4;
-            goto done;
-        }
-        if (arm_cpu_bswap_data(env)) {
-            val = deposit64((uint64_t)valhi, 32, 32, val);
-        } else {
-            val = deposit64(val, 32, 32, valhi);
-        }
-    }
-    if (val != env->exclusive_val) {
-        goto fail;
-    }
-
-    val = env->regs[(env->exclusive_info >> 8) & 0xf];
-    switch (size) {
-    case 0:
-        segv = put_user_u8(val, addr);
-        break;
-    case 1:
-        segv = put_user_data_u16(val, addr, env);
-        break;
-    case 2:
-    case 3:
-        segv = put_user_data_u32(val, addr, env);
-        break;
-    }
-    if (segv) {
-        env->exception.vaddress = addr;
-        goto done;
-    }
-    if (size == 3) {
-        val = env->regs[(env->exclusive_info >> 12) & 0xf];
-        segv = put_user_data_u32(val, addr + 4, env);
-        if (segv) {
-            env->exception.vaddress = addr + 4;
-            goto done;
-        }
-    }
-    rc = 0;
-fail:
-    env->regs[15] += 4;
-    env->regs[(env->exclusive_info >> 4) & 0xf] = rc;
-done:
-    end_exclusive();
-    return segv;
-}
-
 void cpu_loop(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
@@ -806,14 +721,12 @@ void cpu_loop(CPUARMState *env)
                 }
             }
             break;
+        case EXCP_SEMIHOST:
+            env->regs[0] = do_arm_semihosting(env);
+            break;
         case EXCP_INTERRUPT:
             /* just indicate that signals should be handled asap */
             break;
-        case EXCP_STREX:
-            if (!do_strex(env)) {
-                break;
-            }
-            /* fall through for segv */
         case EXCP_PREFETCH_ABORT:
         case EXCP_DATA_ABORT:
             addr = env->exception.vaddress;
@@ -848,6 +761,9 @@ void cpu_loop(CPUARMState *env)
         case EXCP_YIELD:
             /* nothing to do here for user-mode, just resume guest code */
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
         error:
             EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
@@ -858,124 +774,6 @@ void cpu_loop(CPUARMState *env)
 }
 
 #else
-
-/*
- * Handle AArch64 store-release exclusive
- *
- * rs = gets the status result of store exclusive
- * rt = is the register that is stored
- * rt2 = is the second register store (in STP)
- *
- */
-static int do_strex_a64(CPUARMState *env)
-{
-    uint64_t val;
-    int size;
-    bool is_pair;
-    int rc = 1;
-    int segv = 0;
-    uint64_t addr;
-    int rs, rt, rt2;
-
-    start_exclusive();
-    /* size | is_pair << 2 | (rs << 4) | (rt << 9) | (rt2 << 14)); */
-    size = extract32(env->exclusive_info, 0, 2);
-    is_pair = extract32(env->exclusive_info, 2, 1);
-    rs = extract32(env->exclusive_info, 4, 5);
-    rt = extract32(env->exclusive_info, 9, 5);
-    rt2 = extract32(env->exclusive_info, 14, 5);
-
-    addr = env->exclusive_addr;
-
-    if (addr != env->exclusive_test) {
-        goto finish;
-    }
-
-    switch (size) {
-    case 0:
-        segv = get_user_u8(val, addr);
-        break;
-    case 1:
-        segv = get_user_u16(val, addr);
-        break;
-    case 2:
-        segv = get_user_u32(val, addr);
-        break;
-    case 3:
-        segv = get_user_u64(val, addr);
-        break;
-    default:
-        abort();
-    }
-    if (segv) {
-        env->exception.vaddress = addr;
-        goto error;
-    }
-    if (val != env->exclusive_val) {
-        goto finish;
-    }
-    if (is_pair) {
-        if (size == 2) {
-            segv = get_user_u32(val, addr + 4);
-        } else {
-            segv = get_user_u64(val, addr + 8);
-        }
-        if (segv) {
-            env->exception.vaddress = addr + (size == 2 ? 4 : 8);
-            goto error;
-        }
-        if (val != env->exclusive_high) {
-            goto finish;
-        }
-    }
-    /* handle the zero register */
-    val = rt == 31 ? 0 : env->xregs[rt];
-    switch (size) {
-    case 0:
-        segv = put_user_u8(val, addr);
-        break;
-    case 1:
-        segv = put_user_u16(val, addr);
-        break;
-    case 2:
-        segv = put_user_u32(val, addr);
-        break;
-    case 3:
-        segv = put_user_u64(val, addr);
-        break;
-    }
-    if (segv) {
-        goto error;
-    }
-    if (is_pair) {
-        /* handle the zero register */
-        val = rt2 == 31 ? 0 : env->xregs[rt2];
-        if (size == 2) {
-            segv = put_user_u32(val, addr + 4);
-        } else {
-            segv = put_user_u64(val, addr + 8);
-        }
-        if (segv) {
-            env->exception.vaddress = addr + (size == 2 ? 4 : 8);
-            goto error;
-        }
-    }
-    rc = 0;
-finish:
-    env->pc += 4;
-    /* rs == 31 encodes a write to the ZR, thus throwing away
-     * the status return. This is rather silly but valid.
-     */
-    if (rs < 31) {
-        env->xregs[rs] = rc;
-    }
-error:
-    /* instruction faulted, PC does not advance */
-    /* either way a strex releases any exclusive lock we have */
-    env->exclusive_addr = -1;
-    end_exclusive();
-    return segv;
-}
 
 /* AArch64 main loop */
 void cpu_loop(CPUARMState *env)
@@ -1018,11 +816,6 @@ void cpu_loop(CPUARMState *env)
             info._sifields._sigfault._addr = env->pc;
             queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             break;
-        case EXCP_STREX:
-            if (!do_strex_a64(env)) {
-                break;
-            }
-            /* fall through for segv */
         case EXCP_PREFETCH_ABORT:
         case EXCP_DATA_ABORT:
             info.si_signo = TARGET_SIGSEGV;
@@ -1048,6 +841,9 @@ void cpu_loop(CPUARMState *env)
         case EXCP_YIELD:
             /* nothing to do here for user-mode, just resume guest code */
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
             abort();
@@ -1055,8 +851,6 @@ void cpu_loop(CPUARMState *env)
         process_pending_signals(env);
         /* Exception return on AArch64 always clears the exclusive monitor,
          * so any return to running guest code implies this.
-         * A strex (successful or otherwise) also clears the monitor, so
-         * we don't need to specialcase EXCP_STREX.
          */
         env->exclusive_addr = -1;
     }
@@ -1138,6 +932,9 @@ void cpu_loop(CPUUniCore32State *env)
                     queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
                 }
             }
+            break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
             break;
         default:
             goto error;
@@ -1411,6 +1208,9 @@ void cpu_loop (CPUSPARCState *env)
                     queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
                   }
             }
+            break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
             break;
         default:
             printf ("Unhandled trap: 0x%x\n", trapnr);
@@ -1951,6 +1751,9 @@ void cpu_loop(CPUPPCState *env)
         case EXCP_INTERRUPT:
             /* just indicate that signals should be handled asap */
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             cpu_abort(cs, "Unknown exception 0x%x. Aborting\n", trapnr);
             break;
@@ -2295,8 +2098,8 @@ static const uint8_t mips_syscall_args[] = {
         MIPS_SYS(sys_dup3, 3)
         MIPS_SYS(sys_pipe2, 2)
         MIPS_SYS(sys_inotify_init1, 1)
-        MIPS_SYS(sys_preadv, 6)         /* 4330 */
-        MIPS_SYS(sys_pwritev, 6)
+        MIPS_SYS(sys_preadv, 5)         /* 4330 */
+        MIPS_SYS(sys_pwritev, 5)
         MIPS_SYS(sys_rt_tgsigqueueinfo, 4)
         MIPS_SYS(sys_perf_event_open, 5)
         MIPS_SYS(sys_accept4, 4)
@@ -2308,6 +2111,26 @@ static const uint8_t mips_syscall_args[] = {
         MIPS_SYS(sys_open_by_handle_at, 3) /* 4340 */
         MIPS_SYS(sys_clock_adjtime, 2)
         MIPS_SYS(sys_syncfs, 1)
+        MIPS_SYS(sys_sendmmsg, 4)
+        MIPS_SYS(sys_setns, 2)
+        MIPS_SYS(sys_process_vm_readv, 6) /* 345 */
+        MIPS_SYS(sys_process_vm_writev, 6)
+        MIPS_SYS(sys_kcmp, 5)
+        MIPS_SYS(sys_finit_module, 3)
+        MIPS_SYS(sys_sched_setattr, 2)
+        MIPS_SYS(sys_sched_getattr, 3)  /* 350 */
+        MIPS_SYS(sys_renameat2, 5)
+        MIPS_SYS(sys_seccomp, 3)
+        MIPS_SYS(sys_getrandom, 3)
+        MIPS_SYS(sys_memfd_create, 2)
+        MIPS_SYS(sys_bpf, 3)            /* 355 */
+        MIPS_SYS(sys_execveat, 5)
+        MIPS_SYS(sys_userfaultfd, 1)
+        MIPS_SYS(sys_membarrier, 2)
+        MIPS_SYS(sys_mlock2, 3)
+        MIPS_SYS(sys_copy_file_range, 6) /* 360 */
+        MIPS_SYS(sys_preadv2, 6)
+        MIPS_SYS(sys_pwritev2, 6)
 };
 #  undef MIPS_SYS
 # endif /* O32 */
@@ -2626,6 +2449,9 @@ done_syscall:
                 }
             }
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
 error:
             EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
@@ -2713,6 +2539,9 @@ void cpu_loop(CPUOpenRISCState *env)
         case EXCP_NR:
             qemu_log_mask(CPU_LOG_INT, "\nNR\n");
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             EXCP_DUMP(env, "\nqemu: unhandled CPU exception %#x - aborting\n",
                      trapnr);
@@ -2789,6 +2618,9 @@ void cpu_loop(CPUSH4State *env)
             queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
 	    break;
 
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             printf ("Unhandled trap: 0x%x\n", trapnr);
             cpu_dump_state(cs, stderr, fprintf, 0);
@@ -2855,6 +2687,9 @@ void cpu_loop(CPUCRISState *env)
                     queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
                   }
             }
+            break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
             break;
         default:
             printf ("Unhandled trap: 0x%x\n", trapnr);
@@ -2972,6 +2807,9 @@ void cpu_loop(CPUMBState *env)
                   }
             }
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             printf ("Unhandled trap: 0x%x\n", trapnr);
             cpu_dump_state(cs, stderr, fprintf, 0);
@@ -3075,6 +2913,9 @@ void cpu_loop(CPUM68KState *env)
                   }
             }
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             EXCP_DUMP(env, "qemu: unhandled CPU exception 0x%x - aborting\n", trapnr);
             abort();
@@ -3085,51 +2926,6 @@ void cpu_loop(CPUM68KState *env)
 #endif /* TARGET_M68K */
 
 #ifdef TARGET_ALPHA
-static void do_store_exclusive(CPUAlphaState *env, int reg, int quad)
-{
-    target_ulong addr, val, tmp;
-    target_siginfo_t info;
-    int ret = 0;
-
-    addr = env->lock_addr;
-    tmp = env->lock_st_addr;
-    env->lock_addr = -1;
-    env->lock_st_addr = 0;
-
-    start_exclusive();
-    mmap_lock();
-
-    if (addr == tmp) {
-        if (quad ? get_user_s64(val, addr) : get_user_s32(val, addr)) {
-            goto do_sigsegv;
-        }
-
-        if (val == env->lock_value) {
-            tmp = env->ir[reg];
-            if (quad ? put_user_u64(tmp, addr) : put_user_u32(tmp, addr)) {
-                goto do_sigsegv;
-            }
-            ret = 1;
-        }
-    }
-    env->ir[reg] = ret;
-    env->pc += 4;
-
-    mmap_unlock();
-    end_exclusive();
-    return;
-
- do_sigsegv:
-    mmap_unlock();
-    end_exclusive();
-
-    info.si_signo = TARGET_SIGSEGV;
-    info.si_errno = 0;
-    info.si_code = TARGET_SEGV_MAPERR;
-    info._sifields._sigfault._addr = addr;
-    queue_signal(env, TARGET_SIGSEGV, QEMU_SI_FAULT, &info);
-}
-
 void cpu_loop(CPUAlphaState *env)
 {
     CPUState *cs = CPU(alpha_env_get_cpu(env));
@@ -3304,12 +3100,11 @@ void cpu_loop(CPUAlphaState *env)
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             }
             break;
-        case EXCP_STL_C:
-        case EXCP_STQ_C:
-            do_store_exclusive(env, env->error_code, trapnr - EXCP_STL_C);
-            break;
         case EXCP_INTERRUPT:
             /* Just indicate that signals should be handled asap.  */
+            break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
             break;
         default:
             printf ("Unhandled trap: 0x%x\n", trapnr);
@@ -3440,6 +3235,9 @@ void cpu_loop(CPUS390XState *env)
             queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             break;
 
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             fprintf(stderr, "Unhandled trap: 0x%x\n", trapnr);
             cpu_dump_state(cs, stderr, fprintf, 0);
@@ -3694,6 +3492,9 @@ void cpu_loop(CPUTLGState *env)
         case TILEGX_EXCP_REG_UDN_ACCESS:
             gen_sigill_reg(env);
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             fprintf(stderr, "trapnr is %d[0x%x].\n", trapnr, trapnr);
             g_assert_not_reached();
@@ -3936,7 +3737,7 @@ static void handle_arg_strace(const char *arg)
 static void handle_arg_version(const char *arg)
 {
     printf("qemu-" TARGET_NAME " version " QEMU_VERSION QEMU_PKGVERSION
-           ", " QEMU_COPYRIGHT "\n");
+           "\n" QEMU_COPYRIGHT "\n");
     exit(EXIT_SUCCESS);
 }
 

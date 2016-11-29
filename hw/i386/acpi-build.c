@@ -53,7 +53,6 @@
 #include "hw/pci/pci_bus.h"
 #include "hw/pci-host/q35.h"
 #include "hw/i386/x86-iommu.h"
-#include "hw/timer/hpet.h"
 
 #include "hw/acpi/aml-build.h"
 
@@ -340,24 +339,38 @@ build_fadt(GArray *table_data, BIOSLinker *linker, AcpiPmInfo *pm,
 void pc_madt_cpu_entry(AcpiDeviceIf *adev, int uid,
                        CPUArchIdList *apic_ids, GArray *entry)
 {
-    int apic_id;
-    AcpiMadtProcessorApic *apic = acpi_data_push(entry, sizeof *apic);
+    uint32_t apic_id = apic_ids->cpus[uid].arch_id;
 
-    apic_id = apic_ids->cpus[uid].arch_id;
-    apic->type = ACPI_APIC_PROCESSOR;
-    apic->length = sizeof(*apic);
-    apic->processor_id = uid;
-    apic->local_apic_id = apic_id;
-    if (apic_ids->cpus[uid].cpu != NULL) {
-        apic->flags = cpu_to_le32(1);
+    /* ACPI spec says that LAPIC entry for non present
+     * CPU may be omitted from MADT or it must be marked
+     * as disabled. However omitting non present CPU from
+     * MADT breaks hotplug on linux. So possible CPUs
+     * should be put in MADT but kept disabled.
+     */
+    if (apic_id < 255) {
+        AcpiMadtProcessorApic *apic = acpi_data_push(entry, sizeof *apic);
+
+        apic->type = ACPI_APIC_PROCESSOR;
+        apic->length = sizeof(*apic);
+        apic->processor_id = uid;
+        apic->local_apic_id = apic_id;
+        if (apic_ids->cpus[uid].cpu != NULL) {
+            apic->flags = cpu_to_le32(1);
+        } else {
+            apic->flags = cpu_to_le32(0);
+        }
     } else {
-        /* ACPI spec says that LAPIC entry for non present
-         * CPU may be omitted from MADT or it must be marked
-         * as disabled. However omitting non present CPU from
-         * MADT breaks hotplug on linux. So possible CPUs
-         * should be put in MADT but kept disabled.
-         */
-        apic->flags = cpu_to_le32(0);
+        AcpiMadtProcessorX2Apic *apic = acpi_data_push(entry, sizeof *apic);
+
+        apic->type = ACPI_APIC_LOCAL_X2APIC;
+        apic->length = sizeof(*apic);
+        apic->uid = cpu_to_le32(uid);
+        apic->x2apic_id = cpu_to_le32(apic_id);
+        if (apic_ids->cpus[uid].cpu != NULL) {
+            apic->flags = cpu_to_le32(1);
+        } else {
+            apic->flags = cpu_to_le32(0);
+        }
     }
 }
 
@@ -369,11 +382,11 @@ build_madt(GArray *table_data, BIOSLinker *linker, PCMachineState *pcms)
     int madt_start = table_data->len;
     AcpiDeviceIfClass *adevc = ACPI_DEVICE_IF_GET_CLASS(pcms->acpi_dev);
     AcpiDeviceIf *adev = ACPI_DEVICE_IF(pcms->acpi_dev);
+    bool x2apic_mode = false;
 
     AcpiMultipleApicTable *madt;
     AcpiMadtIoApic *io_apic;
     AcpiMadtIntsrcovr *intsrcovr;
-    AcpiMadtLocalNmi *local_nmi;
     int i;
 
     madt = acpi_data_push(table_data, sizeof *madt);
@@ -382,6 +395,9 @@ build_madt(GArray *table_data, BIOSLinker *linker, PCMachineState *pcms)
 
     for (i = 0; i < apic_ids->len; i++) {
         adevc->madt_cpu(adev, i, apic_ids, table_data);
+        if (apic_ids->cpus[i].arch_id > 254) {
+            x2apic_mode = true;
+        }
     }
     g_free(apic_ids);
 
@@ -414,12 +430,25 @@ build_madt(GArray *table_data, BIOSLinker *linker, PCMachineState *pcms)
         intsrcovr->flags  = cpu_to_le16(0xd); /* active high, level triggered */
     }
 
-    local_nmi = acpi_data_push(table_data, sizeof *local_nmi);
-    local_nmi->type         = ACPI_APIC_LOCAL_NMI;
-    local_nmi->length       = sizeof(*local_nmi);
-    local_nmi->processor_id = 0xff; /* all processors */
-    local_nmi->flags        = cpu_to_le16(0);
-    local_nmi->lint         = 1; /* ACPI_LINT1 */
+    if (x2apic_mode) {
+        AcpiMadtLocalX2ApicNmi *local_nmi;
+
+        local_nmi = acpi_data_push(table_data, sizeof *local_nmi);
+        local_nmi->type   = ACPI_APIC_LOCAL_X2APIC_NMI;
+        local_nmi->length = sizeof(*local_nmi);
+        local_nmi->uid    = 0xFFFFFFFF; /* all processors */
+        local_nmi->flags  = cpu_to_le16(0);
+        local_nmi->lint   = 1; /* ACPI_LINT1 */
+    } else {
+        AcpiMadtLocalNmi *local_nmi;
+
+        local_nmi = acpi_data_push(table_data, sizeof *local_nmi);
+        local_nmi->type         = ACPI_APIC_LOCAL_NMI;
+        local_nmi->length       = sizeof(*local_nmi);
+        local_nmi->processor_id = 0xff; /* all processors */
+        local_nmi->flags        = cpu_to_le16(0);
+        local_nmi->lint         = 1; /* ACPI_LINT1 */
+    }
 
     build_header(linker, table_data,
                  (void *)(table_data->data + madt_start), "APIC",
@@ -2039,6 +2068,13 @@ build_dsdt(GArray *table_data, BIOSLinker *linker,
         method = aml_method("_E03", 0, AML_NOTSERIALIZED);
         aml_append(method, aml_call0(MEMORY_HOTPLUG_HANDLER_PATH));
         aml_append(scope, method);
+
+        if (pcms->acpi_nvdimm_state.is_enabled) {
+            method = aml_method("_E04", 0, AML_NOTSERIALIZED);
+            aml_append(method, aml_notify(aml_name("\\_SB.NVDR"),
+                                          aml_int(0x80)));
+            aml_append(scope, method);
+        }
     }
     aml_append(dsdt, scope);
 
@@ -2391,7 +2427,6 @@ static void
 build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
 {
     AcpiSystemResourceAffinityTable *srat;
-    AcpiSratProcessorAffinity *core;
     AcpiSratMemoryAffinity *numamem;
 
     int i;
@@ -2411,18 +2446,33 @@ build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
 
     for (i = 0; i < apic_ids->len; i++) {
         int j = numa_get_node_for_cpu(i);
-        int apic_id = apic_ids->cpus[i].arch_id;
+        uint32_t apic_id = apic_ids->cpus[i].arch_id;
 
-        core = acpi_data_push(table_data, sizeof *core);
-        core->type = ACPI_SRAT_PROCESSOR_APIC;
-        core->length = sizeof(*core);
-        core->local_apic_id = apic_id;
-        if (j < nb_numa_nodes) {
+        if (apic_id < 255) {
+            AcpiSratProcessorAffinity *core;
+
+            core = acpi_data_push(table_data, sizeof *core);
+            core->type = ACPI_SRAT_PROCESSOR_APIC;
+            core->length = sizeof(*core);
+            core->local_apic_id = apic_id;
+            if (j < nb_numa_nodes) {
                 core->proximity_lo = j;
+            }
+            memset(core->proximity_hi, 0, 3);
+            core->local_sapic_eid = 0;
+            core->flags = cpu_to_le32(1);
+        } else {
+            AcpiSratProcessorX2ApicAffinity *core;
+
+            core = acpi_data_push(table_data, sizeof *core);
+            core->type = ACPI_SRAT_PROCESSOR_x2APIC;
+            core->length = sizeof(*core);
+            core->x2apic_id = cpu_to_le32(apic_id);
+            if (j < nb_numa_nodes) {
+                core->proximity_domain = cpu_to_le32(j);
+            }
+            core->flags = cpu_to_le32(1);
         }
-        memset(core->proximity_hi, 0, 3);
-        core->local_sapic_eid = 0;
-        core->flags = cpu_to_le32(1);
     }
 
 
@@ -2555,7 +2605,8 @@ build_dmar_q35(GArray *table_data, BIOSLinker *linker)
     scope->length = ioapic_scope_size;
     scope->enumeration_id = ACPI_BUILD_IOAPIC_ID;
     scope->bus = Q35_PSEUDO_BUS_PLATFORM;
-    scope->path[0] = cpu_to_le16(Q35_PSEUDO_DEVFN_IOAPIC);
+    scope->path[0].device = PCI_SLOT(Q35_PSEUDO_DEVFN_IOAPIC);
+    scope->path[0].function = PCI_FUNC(Q35_PSEUDO_DEVFN_IOAPIC);
 
     build_header(linker, table_data, (void *)(table_data->data + dmar_start),
                  "DMAR", table_data->len - dmar_start, 1, NULL, NULL);
@@ -2767,7 +2818,7 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
     }
     if (pcms->acpi_nvdimm_state.is_enabled) {
         nvdimm_build_acpi(table_offsets, tables_blob, tables->linker,
-                          pcms->acpi_nvdimm_state.dsm_mem);
+                          &pcms->acpi_nvdimm_state, machine->ram_slots);
     }
 
     /* Add tables supplied by user (if any) */
@@ -2809,7 +2860,7 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
          */
         int legacy_aml_len =
             pcmc->legacy_acpi_table_size +
-            ACPI_BUILD_LEGACY_CPU_AML_SIZE * max_cpus;
+            ACPI_BUILD_LEGACY_CPU_AML_SIZE * pcms->apic_id_limit;
         int legacy_table_size =
             ROUND_UP(tables_blob->len - aml_len + legacy_aml_len,
                      ACPI_BUILD_ALIGN_SIZE);
@@ -2910,7 +2961,7 @@ void acpi_setup(void)
         return;
     }
 
-    if (!pcmc->has_acpi_build) {
+    if (!pcms->acpi_build_enabled) {
         ACPI_BUILD_DPRINTF("ACPI build disabled. Bailing out.\n");
         return;
     }
