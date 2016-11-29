@@ -30,7 +30,6 @@ fi
 "$(dirname $0)/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
     --prefix="$(pwd)/install" \
-    --extra-cflags="-Wno-error=cpp" \
     $LLVM_BIT \
     "$@"
 

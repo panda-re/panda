@@ -439,7 +439,6 @@ CallInst *PandaTaintVisitor::insertLogPop(Instruction &after) {
 void PandaTaintVisitor::insertTaintCopy(Instruction &I,
         Constant *shad_dest, Value *dest, Constant *shad_src, Value *src,
         uint64_t size) {
-    LLVMContext &ctx = I.getContext();
     // If these are llvm regs we have to interpret them as slots.
     if (shad_dest == llvConst && !isa<Constant>(dest))
         dest = constSlot(dest);
@@ -994,7 +993,6 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
 }
 
 void PandaTaintVisitor::visitPHINode(PHINode &I) {
-    LLVMContext &ctx = I.getContext();
     LoadInst *LI = new LoadInst(prevBbConst);
     assert(LI != NULL);
     assert(I.getParent()->getFirstNonPHI() != NULL);
@@ -1046,10 +1044,13 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
 }
 
 static const std::regex mathRegex(
-    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2");
-static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?");
-static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?");
-static const std::regex inoutRegex("helper_(in|out)[bwlq]");
+    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2",
+    std::regex::egrep);
+static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?",
+        std::regex::egrep);
+static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?",
+        std::regex::egrep);
+static const std::regex inoutRegex("helper_(in|out)[bwlq]", std::regex::egrep);
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     LLVMContext &ctx = I.getContext();
     Function *calledF = I.getCalledFunction();
