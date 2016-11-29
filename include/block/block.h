@@ -7,16 +7,15 @@
 #include "qemu/coroutine.h"
 #include "block/accounting.h"
 #include "block/dirty-bitmap.h"
+#include "block/blockjob.h"
 #include "qapi/qmp/qobject.h"
 #include "qapi-types.h"
 #include "qemu/hbitmap.h"
 
 /* block.c */
 typedef struct BlockDriver BlockDriver;
-typedef struct BlockJob BlockJob;
 typedef struct BdrvChild BdrvChild;
 typedef struct BdrvChildRole BdrvChildRole;
-typedef struct BlockJobTxn BlockJobTxn;
 
 typedef struct BlockDriverInfo {
     /* in bytes, 0 if irrelevant */
@@ -218,7 +217,7 @@ BlockDriverState *bdrv_open(const char *filename, const char *reference,
 BlockReopenQueue *bdrv_reopen_queue(BlockReopenQueue *bs_queue,
                                     BlockDriverState *bs,
                                     QDict *options, int flags);
-int bdrv_reopen_multiple(BlockReopenQueue *bs_queue, Error **errp);
+int bdrv_reopen_multiple(AioContext *ctx, BlockReopenQueue *bs_queue, Error **errp);
 int bdrv_reopen(BlockDriverState *bs, int bdrv_flags, Error **errp);
 int bdrv_reopen_prepare(BDRVReopenState *reopen_state,
                         BlockReopenQueue *queue, Error **errp);
@@ -314,17 +313,11 @@ BlockAIOCB *bdrv_aio_writev(BdrvChild *child, int64_t sector_num,
                             BlockCompletionFunc *cb, void *opaque);
 BlockAIOCB *bdrv_aio_flush(BlockDriverState *bs,
                            BlockCompletionFunc *cb, void *opaque);
-BlockAIOCB *bdrv_aio_pdiscard(BlockDriverState *bs,
-                              int64_t offset, int count,
-                              BlockCompletionFunc *cb, void *opaque);
 void bdrv_aio_cancel(BlockAIOCB *acb);
 void bdrv_aio_cancel_async(BlockAIOCB *acb);
 
 /* sg packet commands */
-int bdrv_ioctl(BlockDriverState *bs, unsigned long int req, void *buf);
-BlockAIOCB *bdrv_aio_ioctl(BlockDriverState *bs,
-        unsigned long int req, void *buf,
-        BlockCompletionFunc *cb, void *opaque);
+int bdrv_co_ioctl(BlockDriverState *bs, int req, void *buf);
 
 /* Invalidate any cached metadata used by image formats */
 void bdrv_invalidate_cache(BlockDriverState *bs, Error **errp);
@@ -338,7 +331,38 @@ int bdrv_flush_all(void);
 void bdrv_close_all(void);
 void bdrv_drain(BlockDriverState *bs);
 void coroutine_fn bdrv_co_drain(BlockDriverState *bs);
+void bdrv_drain_all_begin(void);
+void bdrv_drain_all_end(void);
 void bdrv_drain_all(void);
+
+#define BDRV_POLL_WHILE(bs, cond) ({                       \
+    bool waited_ = false;                                  \
+    BlockDriverState *bs_ = (bs);                          \
+    AioContext *ctx_ = bdrv_get_aio_context(bs_);          \
+    if (aio_context_in_iothread(ctx_)) {                   \
+        while ((cond)) {                                   \
+            aio_poll(ctx_, true);                          \
+            waited_ = true;                                \
+        }                                                  \
+    } else {                                               \
+        assert(qemu_get_current_aio_context() ==           \
+               qemu_get_aio_context());                    \
+        /* Ask bdrv_dec_in_flight to wake up the main      \
+         * QEMU AioContext.  Extra I/O threads never take  \
+         * other I/O threads' AioContexts (see for example \
+         * block_job_defer_to_main_loop for how to do it). \
+         */                                                \
+        assert(!bs_->wakeup);                              \
+        bs_->wakeup = true;                                \
+        while ((cond)) {                                   \
+            aio_context_release(ctx_);                     \
+            aio_poll(qemu_get_aio_context(), true);        \
+            aio_context_acquire(ctx_);                     \
+            waited_ = true;                                \
+        }                                                  \
+        bs_->wakeup = false;                               \
+    }                                                      \
+    waited_; })
 
 int bdrv_pdiscard(BlockDriverState *bs, int64_t offset, int count);
 int bdrv_co_pdiscard(BlockDriverState *bs, int64_t offset, int count);

@@ -172,7 +172,7 @@ DEF("set", HAS_ARG, QEMU_OPTION_set,
 STEXI
 @item -set @var{group}.@var{id}.@var{arg}=@var{value}
 @findex -set
-Set parameter @var{arg} for item @var{id} of type @var{group}\n"
+Set parameter @var{arg} for item @var{id} of type @var{group}
 ETEXI
 
 DEF("global", HAS_ARG, QEMU_OPTION_global,
@@ -2239,7 +2239,7 @@ two serial ports and the QEMU monitor:
 
 @example
 -chardev stdio,mux=on,id=char0 \
--mon chardev=char0,mode=readline,default \
+-mon chardev=char0,mode=readline \
 -serial chardev:char0 \
 -serial chardev:char0
 @end example
@@ -2250,7 +2250,7 @@ multiplexed between the QEMU monitor and a parallel port:
 
 @example
 -chardev stdio,mux=on,id=char0 \
--mon chardev=char0,mode=readline,default \
+-mon chardev=char0,mode=readline \
 -parallel chardev:char0 \
 -chardev tcp,...,mux=on,id=char1 \
 -serial chardev:char1 \
@@ -2606,8 +2606,8 @@ qemu-system-x86_64 --drive file=gluster://192.0.2.1/testvol/a.img
 
 See also @url{http://www.gluster.org}.
 
-@item HTTP/HTTPS/FTP/FTPS/TFTP
-QEMU supports read-only access to files accessed over http(s), ftp(s) and tftp.
+@item HTTP/HTTPS/FTP/FTPS
+QEMU supports read-only access to files accessed over http(s) and ftp(s).
 
 Syntax using a single filename:
 @example
@@ -2617,7 +2617,7 @@ Syntax using a single filename:
 where:
 @table @option
 @item protocol
-'http', 'https', 'ftp', 'ftps', or 'tftp'.
+'http', 'https', 'ftp', or 'ftps'.
 
 @item username
 Optional username for authentication to the remote server.
@@ -3112,9 +3112,9 @@ Like -qmp but uses pretty JSON formatting.
 ETEXI
 
 DEF("mon", HAS_ARG, QEMU_OPTION_mon, \
-    "-mon [chardev=]name[,mode=readline|control][,default]\n", QEMU_ARCH_ALL)
+    "-mon [chardev=]name[,mode=readline|control]\n", QEMU_ARCH_ALL)
 STEXI
-@item -mon [chardev=]name[,mode=readline|control][,default]
+@item -mon [chardev=]name[,mode=readline|control]
 @findex -mon
 Setup monitor on chardev @var{name}.
 ETEXI
@@ -3902,7 +3902,7 @@ colo secondary:
 -object filter-redirector,id=f2,netdev=hn0,queue=rx,outdev=red1
 -object filter-rewriter,id=rew0,netdev=hn0,queue=all
 
-@item -object filter-dump,id=@var{id},netdev=@var{dev},file=@var{filename}][,maxlen=@var{len}]
+@item -object filter-dump,id=@var{id},netdev=@var{dev}[,file=@var{filename}][,maxlen=@var{len}]
 
 Dump the network traffic on netdev @var{dev} to the file specified by
 @var{filename}. At most @var{len} bytes (64k by default) per packet are stored.
@@ -3947,6 +3947,24 @@ secondary:
 
 If you want to know the detail of above command line, you can read
 the colo-compare git log.
+
+@item -object cryptodev-backend-builtin,id=@var{id}[,queues=@var{queues}]
+
+Creates a cryptodev backend which executes crypto opreation from
+the QEMU cipher APIS. The @var{id} parameter is
+a unique ID that will be used to reference this cryptodev backend from
+the @option{virtio-crypto} device. The @var{queues} parameter is optional,
+which specify the queue number of cryptodev backend, the default of
+@var{queues} is 1.
+
+@example
+
+ # qemu-system-x86_64 \
+   [...] \
+       -object cryptodev-backend-builtin,id=cryptodev0 \
+       -device virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0 \
+   [...]
+@end example
 
 @item -object secret,id=@var{id},data=@var{string},format=@var{raw|base64}[,keyid=@var{secretid},iv=@var{string}]
 @item -object secret,id=@var{id},file=@var{filename},format=@var{raw|base64}[,keyid=@var{secretid},iv=@var{string}]

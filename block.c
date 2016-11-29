@@ -1428,8 +1428,10 @@ void bdrv_set_backing_hd(BlockDriverState *bs, BlockDriverState *backing_hd)
             backing_hd->drv ? backing_hd->drv->format_name : "");
 
     bdrv_op_block_all(backing_hd, bs->backing_blocker);
-    /* Otherwise we won't be able to commit due to check in bdrv_commit */
+    /* Otherwise we won't be able to commit or stream */
     bdrv_op_unblock(backing_hd, BLOCK_OP_TYPE_COMMIT_TARGET,
+                    bs->backing_blocker);
+    bdrv_op_unblock(backing_hd, BLOCK_OP_TYPE_STREAM,
                     bs->backing_blocker);
     /*
      * We do backup in 3 ways:
@@ -2082,7 +2084,7 @@ BlockReopenQueue *bdrv_reopen_queue(BlockReopenQueue *bs_queue,
  * to all devices.
  *
  */
-int bdrv_reopen_multiple(BlockReopenQueue *bs_queue, Error **errp)
+int bdrv_reopen_multiple(AioContext *ctx, BlockReopenQueue *bs_queue, Error **errp)
 {
     int ret = -1;
     BlockReopenQueueEntry *bs_entry, *next;
@@ -2090,7 +2092,9 @@ int bdrv_reopen_multiple(BlockReopenQueue *bs_queue, Error **errp)
 
     assert(bs_queue != NULL);
 
-    bdrv_drain_all();
+    aio_context_release(ctx);
+    bdrv_drain_all_begin();
+    aio_context_acquire(ctx);
 
     QSIMPLEQ_FOREACH(bs_entry, bs_queue, entry) {
         if (bdrv_reopen_prepare(&bs_entry->state, bs_queue, &local_err)) {
@@ -2120,6 +2124,9 @@ cleanup:
         g_free(bs_entry);
     }
     g_free(bs_queue);
+
+    bdrv_drain_all_end();
+
     return ret;
 }
 
@@ -2131,7 +2138,7 @@ int bdrv_reopen(BlockDriverState *bs, int bdrv_flags, Error **errp)
     Error *local_err = NULL;
     BlockReopenQueue *queue = bdrv_reopen_queue(NULL, bs, NULL, bdrv_flags);
 
-    ret = bdrv_reopen_multiple(queue, &local_err);
+    ret = bdrv_reopen_multiple(bdrv_get_aio_context(bs), queue, &local_err);
     if (local_err != NULL) {
         error_propagate(errp, local_err);
     }
@@ -2789,7 +2796,7 @@ const char *bdrv_get_format_name(BlockDriverState *bs)
 
 static int qsort_strcmp(const void *a, const void *b)
 {
-    return strcmp(a, b);
+    return strcmp(*(char *const *)a, *(char *const *)b);
 }
 
 void bdrv_iterate_format(void (*it)(void *opaque, const char *name),
@@ -2811,6 +2818,24 @@ void bdrv_iterate_format(void (*it)(void *opaque, const char *name),
             if (!found) {
                 formats = g_renew(const char *, formats, count + 1);
                 formats[count++] = drv->format_name;
+            }
+        }
+    }
+
+    for (i = 0; i < (int)ARRAY_SIZE(block_driver_modules); i++) {
+        const char *format_name = block_driver_modules[i].format_name;
+
+        if (format_name) {
+            bool found = false;
+            int j = count;
+
+            while (formats && j && !found) {
+                found = !strcmp(formats[--j], format_name);
+            }
+
+            if (!found) {
+                formats = g_renew(const char *, formats, count + 1);
+                formats[count++] = format_name;
             }
         }
     }

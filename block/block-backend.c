@@ -799,20 +799,25 @@ int coroutine_fn blk_co_preadv(BlockBackend *blk, int64_t offset,
                                BdrvRequestFlags flags)
 {
     int ret;
+    BlockDriverState *bs = blk_bs(blk);
 
-    trace_blk_co_preadv(blk, blk_bs(blk), offset, bytes, flags);
+    trace_blk_co_preadv(blk, bs, offset, bytes, flags);
 
     ret = blk_check_byte_request(blk, offset, bytes);
     if (ret < 0) {
         return ret;
     }
 
+    bdrv_inc_in_flight(bs);
+
     /* throttling disk I/O */
     if (blk->public.throttle_state) {
         throttle_group_co_io_limits_intercept(blk, bytes, false);
     }
 
-    return bdrv_co_preadv(blk->root, offset, bytes, qiov, flags);
+    ret = bdrv_co_preadv(blk->root, offset, bytes, qiov, flags);
+    bdrv_dec_in_flight(bs);
+    return ret;
 }
 
 int coroutine_fn blk_co_pwritev(BlockBackend *blk, int64_t offset,
@@ -820,13 +825,16 @@ int coroutine_fn blk_co_pwritev(BlockBackend *blk, int64_t offset,
                                 BdrvRequestFlags flags)
 {
     int ret;
+    BlockDriverState *bs = blk_bs(blk);
 
-    trace_blk_co_pwritev(blk, blk_bs(blk), offset, bytes, flags);
+    trace_blk_co_pwritev(blk, bs, offset, bytes, flags);
 
     ret = blk_check_byte_request(blk, offset, bytes);
     if (ret < 0) {
         return ret;
     }
+
+    bdrv_inc_in_flight(bs);
 
     /* throttling disk I/O */
     if (blk->public.throttle_state) {
@@ -837,7 +845,9 @@ int coroutine_fn blk_co_pwritev(BlockBackend *blk, int64_t offset,
         flags |= BDRV_REQ_FUA;
     }
 
-    return bdrv_co_pwritev(blk->root, offset, bytes, qiov, flags);
+    ret = bdrv_co_pwritev(blk->root, offset, bytes, qiov, flags);
+    bdrv_dec_in_flight(bs);
+    return ret;
 }
 
 typedef struct BlkRwCo {
@@ -868,7 +878,6 @@ static int blk_prw(BlockBackend *blk, int64_t offset, uint8_t *buf,
                    int64_t bytes, CoroutineEntry co_entry,
                    BdrvRequestFlags flags)
 {
-    AioContext *aio_context;
     QEMUIOVector qiov;
     struct iovec iov;
     Coroutine *co;
@@ -890,11 +899,7 @@ static int blk_prw(BlockBackend *blk, int64_t offset, uint8_t *buf,
 
     co = qemu_coroutine_create(co_entry, &rwco);
     qemu_coroutine_enter(co);
-
-    aio_context = blk_get_aio_context(blk);
-    while (rwco.ret == NOT_DONE) {
-        aio_poll(aio_context, true);
-    }
+    BDRV_POLL_WHILE(blk_bs(blk), rwco.ret == NOT_DONE);
 
     return rwco.ret;
 }
@@ -930,6 +935,8 @@ int blk_make_zero(BlockBackend *blk, BdrvRequestFlags flags)
 static void error_callback_bh(void *opaque)
 {
     struct BlockBackendAIOCB *acb = opaque;
+
+    bdrv_dec_in_flight(acb->common.bs);
     acb->common.cb(acb->common.opaque, acb->ret);
     qemu_aio_unref(acb);
 }
@@ -940,6 +947,7 @@ BlockAIOCB *blk_abort_aio_request(BlockBackend *blk,
 {
     struct BlockBackendAIOCB *acb;
 
+    bdrv_inc_in_flight(blk_bs(blk));
     acb = blk_aio_get(&block_backend_aiocb_info, blk, cb, opaque);
     acb->blk = blk;
     acb->ret = ret;
@@ -962,6 +970,7 @@ static const AIOCBInfo blk_aio_em_aiocb_info = {
 static void blk_aio_complete(BlkAioEmAIOCB *acb)
 {
     if (acb->has_returned) {
+        bdrv_dec_in_flight(acb->common.bs);
         acb->common.cb(acb->common.opaque, acb->rwco.ret);
         qemu_aio_unref(acb);
     }
@@ -983,6 +992,7 @@ static BlockAIOCB *blk_aio_prwv(BlockBackend *blk, int64_t offset, int bytes,
     BlkAioEmAIOCB *acb;
     Coroutine *co;
 
+    bdrv_inc_in_flight(blk_bs(blk));
     acb = blk_aio_get(&blk_aio_em_aiocb_info, blk, cb, opaque);
     acb->rwco = (BlkRwCo) {
         .blk    = blk,
@@ -1099,26 +1109,36 @@ BlockAIOCB *blk_aio_pwritev(BlockBackend *blk, int64_t offset,
                         blk_aio_write_entry, flags, cb, opaque);
 }
 
+static void blk_aio_flush_entry(void *opaque)
+{
+    BlkAioEmAIOCB *acb = opaque;
+    BlkRwCo *rwco = &acb->rwco;
+
+    rwco->ret = blk_co_flush(rwco->blk);
+    blk_aio_complete(acb);
+}
+
 BlockAIOCB *blk_aio_flush(BlockBackend *blk,
                           BlockCompletionFunc *cb, void *opaque)
 {
-    if (!blk_is_available(blk)) {
-        return blk_abort_aio_request(blk, cb, opaque, -ENOMEDIUM);
-    }
+    return blk_aio_prwv(blk, 0, 0, NULL, blk_aio_flush_entry, 0, cb, opaque);
+}
 
-    return bdrv_aio_flush(blk_bs(blk), cb, opaque);
+static void blk_aio_pdiscard_entry(void *opaque)
+{
+    BlkAioEmAIOCB *acb = opaque;
+    BlkRwCo *rwco = &acb->rwco;
+
+    rwco->ret = blk_co_pdiscard(rwco->blk, rwco->offset, acb->bytes);
+    blk_aio_complete(acb);
 }
 
 BlockAIOCB *blk_aio_pdiscard(BlockBackend *blk,
                              int64_t offset, int count,
                              BlockCompletionFunc *cb, void *opaque)
 {
-    int ret = blk_check_byte_request(blk, offset, count);
-    if (ret < 0) {
-        return blk_abort_aio_request(blk, cb, opaque, ret);
-    }
-
-    return bdrv_aio_pdiscard(blk_bs(blk), offset, count, cb, opaque);
+    return blk_aio_prwv(blk, offset, count, NULL, blk_aio_pdiscard_entry, 0,
+                        cb, opaque);
 }
 
 void blk_aio_cancel(BlockAIOCB *acb)
@@ -1131,23 +1151,50 @@ void blk_aio_cancel_async(BlockAIOCB *acb)
     bdrv_aio_cancel_async(acb);
 }
 
-int blk_ioctl(BlockBackend *blk, unsigned long int req, void *buf)
+int blk_co_ioctl(BlockBackend *blk, unsigned long int req, void *buf)
 {
     if (!blk_is_available(blk)) {
         return -ENOMEDIUM;
     }
 
-    return bdrv_ioctl(blk_bs(blk), req, buf);
+    return bdrv_co_ioctl(blk_bs(blk), req, buf);
+}
+
+static void blk_ioctl_entry(void *opaque)
+{
+    BlkRwCo *rwco = opaque;
+    rwco->ret = blk_co_ioctl(rwco->blk, rwco->offset,
+                             rwco->qiov->iov[0].iov_base);
+}
+
+int blk_ioctl(BlockBackend *blk, unsigned long int req, void *buf)
+{
+    return blk_prw(blk, req, buf, 0, blk_ioctl_entry, 0);
+}
+
+static void blk_aio_ioctl_entry(void *opaque)
+{
+    BlkAioEmAIOCB *acb = opaque;
+    BlkRwCo *rwco = &acb->rwco;
+
+    rwco->ret = blk_co_ioctl(rwco->blk, rwco->offset,
+                             rwco->qiov->iov[0].iov_base);
+    blk_aio_complete(acb);
 }
 
 BlockAIOCB *blk_aio_ioctl(BlockBackend *blk, unsigned long int req, void *buf,
                           BlockCompletionFunc *cb, void *opaque)
 {
-    if (!blk_is_available(blk)) {
-        return blk_abort_aio_request(blk, cb, opaque, -ENOMEDIUM);
-    }
+    QEMUIOVector qiov;
+    struct iovec iov;
 
-    return bdrv_aio_ioctl(blk_bs(blk), req, buf, cb, opaque);
+    iov = (struct iovec) {
+        .iov_base = buf,
+        .iov_len = 0,
+    };
+    qemu_iovec_init_external(&qiov, &iov, 1);
+
+    return blk_aio_prwv(blk, req, 0, &qiov, blk_aio_ioctl_entry, 0, cb, opaque);
 }
 
 int blk_co_pdiscard(BlockBackend *blk, int64_t offset, int count)
@@ -1169,13 +1216,15 @@ int blk_co_flush(BlockBackend *blk)
     return bdrv_co_flush(blk_bs(blk));
 }
 
+static void blk_flush_entry(void *opaque)
+{
+    BlkRwCo *rwco = opaque;
+    rwco->ret = blk_co_flush(rwco->blk);
+}
+
 int blk_flush(BlockBackend *blk)
 {
-    if (!blk_is_available(blk)) {
-        return -ENOMEDIUM;
-    }
-
-    return bdrv_flush(blk_bs(blk));
+    return blk_prw(blk, 0, NULL, 0, blk_flush_entry, 0);
 }
 
 void blk_drain(BlockBackend *blk)
@@ -1344,13 +1393,14 @@ void blk_eject(BlockBackend *blk, bool eject_flag)
 
     if (bs) {
         bdrv_eject(bs, eject_flag);
-
-        id = blk_get_attached_dev_id(blk);
-        qapi_event_send_device_tray_moved(blk_name(blk), id,
-                                          eject_flag, &error_abort);
-        g_free(id);
-
     }
+
+    /* Whether or not we ejected on the backend,
+     * the frontend experienced a tray event. */
+    id = blk_get_attached_dev_id(blk);
+    qapi_event_send_device_tray_moved(blk_name(blk), id,
+                                      eject_flag, &error_abort);
+    g_free(id);
 }
 
 int blk_get_flags(BlockBackend *blk)
@@ -1555,14 +1605,15 @@ int blk_truncate(BlockBackend *blk, int64_t offset)
     return bdrv_truncate(blk_bs(blk), offset);
 }
 
+static void blk_pdiscard_entry(void *opaque)
+{
+    BlkRwCo *rwco = opaque;
+    rwco->ret = blk_co_pdiscard(rwco->blk, rwco->offset, rwco->qiov->size);
+}
+
 int blk_pdiscard(BlockBackend *blk, int64_t offset, int count)
 {
-    int ret = blk_check_byte_request(blk, offset, count);
-    if (ret < 0) {
-        return ret;
-    }
-
-    return bdrv_pdiscard(blk_bs(blk), offset, count);
+    return blk_prw(blk, offset, NULL, count, blk_pdiscard_entry, 0);
 }
 
 int blk_save_vmstate(BlockBackend *blk, const uint8_t *buf,

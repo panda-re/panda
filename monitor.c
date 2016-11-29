@@ -59,7 +59,6 @@
 #include "qapi/qmp/json-streamer.h"
 #include "qapi/qmp/json-parser.h"
 #include "qom/object_interfaces.h"
-#include "cpu.h"
 #include "trace.h"
 #include "trace/control.h"
 #include "monitor/hmp-target.h"
@@ -76,7 +75,6 @@
 #include "qapi/qmp-event.h"
 #include "qapi-event.h"
 #include "qmp-introspect.h"
-#include "sysemu/block-backend.h"
 #include "sysemu/qtest.h"
 #include "qemu/cutils.h"
 #include "qapi/qmp/dispatch.h"
@@ -186,7 +184,7 @@ typedef struct {
 } MonitorQAPIEventConf;
 
 struct Monitor {
-    CharDriverState *chr;
+    CharBackend chr;
     int reset_seen;
     int flags;
     int suspend_cnt;
@@ -297,7 +295,7 @@ static void monitor_flush_locked(Monitor *mon)
     len = qstring_get_length(mon->outbuf);
 
     if (len && !mon->mux_out) {
-        rc = qemu_chr_fe_write(mon->chr, (const uint8_t *) buf, len);
+        rc = qemu_chr_fe_write(&mon->chr, (const uint8_t *) buf, len);
         if ((rc < 0 && errno != EAGAIN) || (rc == len)) {
             /* all flushed or error */
             QDECREF(mon->outbuf);
@@ -311,8 +309,9 @@ static void monitor_flush_locked(Monitor *mon)
             mon->outbuf = tmp;
         }
         if (mon->out_watch == 0) {
-            mon->out_watch = qemu_chr_fe_add_watch(mon->chr, G_IO_OUT|G_IO_HUP,
-                                                   monitor_unblocked, mon);
+            mon->out_watch =
+                qemu_chr_fe_add_watch(&mon->chr, G_IO_OUT | G_IO_HUP,
+                                      monitor_unblocked, mon);
         }
     }
 }
@@ -581,9 +580,7 @@ static void monitor_data_init(Monitor *mon)
 
 static void monitor_data_destroy(Monitor *mon)
 {
-    if (mon->chr) {
-        qemu_chr_add_handlers(mon->chr, NULL, NULL, NULL, NULL);
-    }
+    qemu_chr_fe_deinit(&mon->chr);
     if (monitor_is_qmp(mon)) {
         json_message_parser_destroy(&mon->qmp.parser);
     }
@@ -951,7 +948,7 @@ EventInfoList *qmp_query_events(Error **errp)
  * directly into QObject instead of first parsing it with
  * visit_type_SchemaInfoList() into a SchemaInfoList, then marshal it
  * to QObject with generated output marshallers, every time.  Instead,
- * we do it in test-qmp-input-visitor.c, just to make sure
+ * we do it in test-qobject-input-visitor.c, just to make sure
  * qapi-introspect.py's output actually conforms to the schema.
  */
 static void qmp_query_qmp_schema(QDict *qdict, QObject **ret_data,
@@ -1745,7 +1742,7 @@ void qmp_getfd(const char *fdname, Error **errp)
     mon_fd_t *monfd;
     int fd;
 
-    fd = qemu_chr_fe_get_msgfd(cur_mon->chr);
+    fd = qemu_chr_fe_get_msgfd(&cur_mon->chr);
     if (fd == -1) {
         error_setg(errp, QERR_FD_NOT_SUPPLIED);
         return;
@@ -1870,7 +1867,7 @@ AddfdInfo *qmp_add_fd(bool has_fdset_id, int64_t fdset_id, bool has_opaque,
     Monitor *mon = cur_mon;
     AddfdInfo *fdinfo;
 
-    fd = qemu_chr_fe_get_msgfd(mon->chr);
+    fd = qemu_chr_fe_get_msgfd(&mon->chr);
     if (fd == -1) {
         error_setg(errp, QERR_FD_NOT_SUPPLIED);
         goto error;
@@ -3958,6 +3955,27 @@ static void monitor_readline_flush(void *opaque)
     monitor_flush(opaque);
 }
 
+/*
+ * Print to current monitor if we have one, else to stderr.
+ * TODO should return int, so callers can calculate width, but that
+ * requires surgery to monitor_vprintf().  Left for another day.
+ */
+void error_vprintf(const char *fmt, va_list ap)
+{
+    if (cur_mon && !monitor_cur_is_qmp()) {
+        monitor_vprintf(cur_mon, fmt, ap);
+    } else {
+        vfprintf(stderr, fmt, ap);
+    }
+}
+
+void error_vprintf_unless_qmp(const char *fmt, va_list ap)
+{
+    if (cur_mon && !monitor_cur_is_qmp()) {
+        monitor_vprintf(cur_mon, fmt, ap);
+    }
+}
+
 static void __attribute__((constructor)) monitor_lock_init(void)
 {
     qemu_mutex_init(&monitor_lock);
@@ -3977,7 +3995,7 @@ void monitor_init(CharDriverState *chr, int flags)
     mon = g_malloc(sizeof(*mon));
     monitor_data_init(mon);
 
-    mon->chr = chr;
+    qemu_chr_fe_init(&mon->chr, chr, &error_abort);
     mon->flags = flags;
     if (flags & MONITOR_USE_READLINE) {
         mon->rs = readline_init(monitor_readline_printf,
@@ -3988,13 +4006,13 @@ void monitor_init(CharDriverState *chr, int flags)
     }
 
     if (monitor_is_qmp(mon)) {
-        qemu_chr_add_handlers(chr, monitor_can_read, monitor_qmp_read,
-                              monitor_qmp_event, mon);
-        qemu_chr_fe_set_echo(chr, true);
+        qemu_chr_fe_set_handlers(&mon->chr, monitor_can_read, monitor_qmp_read,
+                                 monitor_qmp_event, mon, NULL, true);
+        qemu_chr_fe_set_echo(&mon->chr, true);
         json_message_parser_init(&mon->qmp.parser, handle_qmp_command);
     } else {
-        qemu_chr_add_handlers(chr, monitor_can_read, monitor_read,
-                              monitor_event, mon);
+        qemu_chr_fe_set_handlers(&mon->chr, monitor_can_read, monitor_read,
+                                 monitor_event, mon, NULL, true);
     }
 
     qemu_mutex_lock(&monitor_lock);
@@ -4095,7 +4113,7 @@ QemuOptsList qemu_mon_opts = {
             .name = "chardev",
             .type = QEMU_OPT_STRING,
         },{
-            .name = "default",
+            .name = "default",  /* deprecated */
             .type = QEMU_OPT_BOOL,
         },{
             .name = "pretty",

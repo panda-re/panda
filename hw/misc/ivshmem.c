@@ -88,7 +88,7 @@ typedef struct IVShmemState {
 
     /* exactly one of these two may be set */
     HostMemoryBackend *hostmem; /* with interrupts */
-    CharDriverState *server_chr; /* without interrupts */
+    CharBackend server_chr; /* without interrupts */
 
     /* registers */
     uint32_t intrmask;
@@ -627,7 +627,7 @@ static void ivshmem_read(void *opaque, const uint8_t *buf, int size)
     msg = le64_to_cpu(s->msg_buf);
     s->msg_buffered_bytes = 0;
 
-    fd = qemu_chr_fe_get_msgfd(s->server_chr);
+    fd = qemu_chr_fe_get_msgfd(&s->server_chr);
 
     process_msg(s, msg, fd, &err);
     if (err) {
@@ -642,8 +642,8 @@ static int64_t ivshmem_recv_msg(IVShmemState *s, int *pfd, Error **errp)
 
     n = 0;
     do {
-        ret = qemu_chr_fe_read_all(s->server_chr, (uint8_t *)&msg + n,
-                                 sizeof(msg) - n);
+        ret = qemu_chr_fe_read_all(&s->server_chr, (uint8_t *)&msg + n,
+                                   sizeof(msg) - n);
         if (ret < 0 && ret != -EINTR) {
             error_setg_errno(errp, -ret, "read from server failed");
             return INT64_MIN;
@@ -651,7 +651,7 @@ static int64_t ivshmem_recv_msg(IVShmemState *s, int *pfd, Error **errp)
         n += ret;
     } while (n < sizeof(msg));
 
-    *pfd = qemu_chr_fe_get_msgfd(s->server_chr);
+    *pfd = qemu_chr_fe_get_msgfd(&s->server_chr);
     return msg;
 }
 
@@ -858,7 +858,7 @@ static void ivshmem_common_realize(PCIDevice *dev, Error **errp)
     pci_register_bar(dev, 0, PCI_BASE_ADDRESS_SPACE_MEMORY,
                      &s->ivshmem_mmio);
 
-    if (!s->not_legacy_32bit) {
+    if (s->not_legacy_32bit) {
         attr |= PCI_BASE_ADDRESS_MEM_TYPE_64;
     }
 
@@ -868,10 +868,11 @@ static void ivshmem_common_realize(PCIDevice *dev, Error **errp)
         s->ivshmem_bar2 = host_memory_backend_get_memory(s->hostmem,
                                                          &error_abort);
     } else {
-        assert(s->server_chr);
+        CharDriverState *chr = qemu_chr_fe_get_driver(&s->server_chr);
+        assert(chr);
 
         IVSHMEM_DPRINTF("using shared memory server (socket = %s)\n",
-                        s->server_chr->filename);
+                        chr->filename);
 
         /* we allocate enough space for 16 peers and grow as needed */
         resize_peers(s, 16);
@@ -893,8 +894,8 @@ static void ivshmem_common_realize(PCIDevice *dev, Error **errp)
             return;
         }
 
-        qemu_chr_add_handlers(s->server_chr, ivshmem_can_receive,
-                              ivshmem_read, NULL, s);
+        qemu_chr_fe_set_handlers(&s->server_chr, ivshmem_can_receive,
+                                 ivshmem_read, NULL, s, NULL, true);
 
         if (ivshmem_setup_interrupts(s) < 0) {
             error_setg(errp, "failed to initialize interrupts");
@@ -1044,6 +1045,7 @@ static void ivshmem_plain_init(Object *obj)
                              ivshmem_check_memdev_is_busy,
                              OBJ_PROP_LINK_UNREF_ON_RELEASE,
                              &error_abort);
+    s->not_legacy_32bit = 1;
 }
 
 static void ivshmem_plain_realize(PCIDevice *dev, Error **errp)
@@ -1115,13 +1117,14 @@ static void ivshmem_doorbell_init(Object *obj)
 
     s->features |= (1 << IVSHMEM_MSI);
     s->legacy_size = SIZE_MAX;  /* whatever the server sends */
+    s->not_legacy_32bit = 1;
 }
 
 static void ivshmem_doorbell_realize(PCIDevice *dev, Error **errp)
 {
     IVShmemState *s = IVSHMEM_COMMON(dev);
 
-    if (!s->server_chr) {
+    if (!qemu_chr_fe_get_driver(&s->server_chr)) {
         error_setg(errp, "You must specify a 'chardev'");
         return;
     }
@@ -1250,7 +1253,7 @@ static void ivshmem_realize(PCIDevice *dev, Error **errp)
                      " or ivshmem-doorbell instead");
     }
 
-    if (!!s->server_chr + !!s->shmobj != 1) {
+    if (!!qemu_chr_fe_get_driver(&s->server_chr) + !!s->shmobj != 1) {
         error_setg(errp, "You must specify either 'shm' or 'chardev'");
         return;
     }

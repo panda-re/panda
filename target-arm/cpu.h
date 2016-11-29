@@ -46,13 +46,12 @@
 #define EXCP_BKPT            7
 #define EXCP_EXCEPTION_EXIT  8   /* Return from v7M exception.  */
 #define EXCP_KERNEL_TRAP     9   /* Jumped to kernel code page.  */
-#define EXCP_STREX          10
 #define EXCP_HVC            11   /* HyperVisor Call */
 #define EXCP_HYP_TRAP       12
 #define EXCP_SMC            13   /* Secure Monitor Call */
 #define EXCP_VIRQ           14
 #define EXCP_VFIQ           15
-#define EXCP_SEMIHOST       16   /* semihosting call (A64 only) */
+#define EXCP_SEMIHOST       16   /* semihosting call */
 
 #define ARMV7M_EXCP_RESET   1
 #define ARMV7M_EXCP_NMI     2
@@ -475,10 +474,6 @@ typedef struct CPUARMState {
     uint64_t exclusive_addr;
     uint64_t exclusive_val;
     uint64_t exclusive_high;
-#if defined(CONFIG_USER_ONLY)
-    uint64_t exclusive_test;
-    uint32_t exclusive_info;
-#endif
 
     /* iwMMXt coprocessor state.  */
     struct {
@@ -1129,6 +1124,7 @@ enum arm_features {
     ARM_FEATURE_V8_SHA256, /* implements SHA256 part of v8 Crypto Extensions */
     ARM_FEATURE_V8_PMULL, /* implements PMULL part of v8 Crypto Extensions */
     ARM_FEATURE_THUMB_DSP, /* DSP insns supported in the Thumb encodings */
+    ARM_FEATURE_PMU, /* has PMU support */
 };
 
 static inline int arm_feature(CPUARMState *env, int feature)
@@ -1766,10 +1762,11 @@ bool write_cpustate_to_list(ARMCPU *cpu);
 #if defined(CONFIG_USER_ONLY)
 #define TARGET_PAGE_BITS 12
 #else
-/* The ARM MMU allows 1k pages.  */
-/* ??? Linux doesn't actually use these, and they're deprecated in recent
-   architecture revisions.  Maybe a configure option to disable them.  */
-#define TARGET_PAGE_BITS 10
+/* ARMv7 and later CPUs have 4K pages minimum, but ARMv5 and v6
+ * have to support 1K tiny pages.
+ */
+#define TARGET_PAGE_BITS_VARY
+#define TARGET_PAGE_BITS_MIN 10
 #endif
 
 #if defined(TARGET_AARCH64)
@@ -2191,7 +2188,11 @@ static inline bool arm_cpu_data_is_big_endian(CPUARMState *env)
 #define ARM_TBFLAG_BE_DATA_SHIFT    20
 #define ARM_TBFLAG_BE_DATA_MASK     (1 << ARM_TBFLAG_BE_DATA_SHIFT)
 
-/* Bit usage when in AArch64 state: currently we have no A64 specific bits */
+/* Bit usage when in AArch64 state */
+#define ARM_TBFLAG_TBI0_SHIFT 0        /* TBI0 for EL0/1 or TBI for EL2/3 */
+#define ARM_TBFLAG_TBI0_MASK (0x1ull << ARM_TBFLAG_TBI0_SHIFT)
+#define ARM_TBFLAG_TBI1_SHIFT 1        /* TBI1 for EL0/1  */
+#define ARM_TBFLAG_TBI1_MASK (0x1ull << ARM_TBFLAG_TBI1_SHIFT)
 
 /* some convenience accessor macros */
 #define ARM_TBFLAG_AARCH64_STATE(F) \
@@ -2222,6 +2223,10 @@ static inline bool arm_cpu_data_is_big_endian(CPUARMState *env)
     (((F) & ARM_TBFLAG_NS_MASK) >> ARM_TBFLAG_NS_SHIFT)
 #define ARM_TBFLAG_BE_DATA(F) \
     (((F) & ARM_TBFLAG_BE_DATA_MASK) >> ARM_TBFLAG_BE_DATA_SHIFT)
+#define ARM_TBFLAG_TBI0(F) \
+    (((F) & ARM_TBFLAG_TBI0_MASK) >> ARM_TBFLAG_TBI0_SHIFT)
+#define ARM_TBFLAG_TBI1(F) \
+    (((F) & ARM_TBFLAG_TBI1_MASK) >> ARM_TBFLAG_TBI1_SHIFT)
 
 static inline bool bswap_code(bool sctlr_b)
 {
@@ -2319,12 +2324,51 @@ static inline bool arm_cpu_bswap_data(CPUARMState *env)
 }
 #endif
 
+#ifndef CONFIG_USER_ONLY
+/**
+ * arm_regime_tbi0:
+ * @env: CPUARMState
+ * @mmu_idx: MMU index indicating required translation regime
+ *
+ * Extracts the TBI0 value from the appropriate TCR for the current EL
+ *
+ * Returns: the TBI0 value.
+ */
+uint32_t arm_regime_tbi0(CPUARMState *env, ARMMMUIdx mmu_idx);
+
+/**
+ * arm_regime_tbi1:
+ * @env: CPUARMState
+ * @mmu_idx: MMU index indicating required translation regime
+ *
+ * Extracts the TBI1 value from the appropriate TCR for the current EL
+ *
+ * Returns: the TBI1 value.
+ */
+uint32_t arm_regime_tbi1(CPUARMState *env, ARMMMUIdx mmu_idx);
+#else
+/* We can't handle tagged addresses properly in user-only mode */
+static inline uint32_t arm_regime_tbi0(CPUARMState *env, ARMMMUIdx mmu_idx)
+{
+    return 0;
+}
+
+static inline uint32_t arm_regime_tbi1(CPUARMState *env, ARMMMUIdx mmu_idx)
+{
+    return 0;
+}
+#endif
+
 static inline void cpu_get_tb_cpu_state(CPUARMState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
+    ARMMMUIdx mmu_idx = (ARMMMUIdx)cpu_mmu_index(env, false);
     if (is_a64(env)) {
         *pc = env->pc;
         *flags = ARM_TBFLAG_AARCH64_STATE_MASK;
+        /* Get control bits for tagged addresses */
+        *flags |= (arm_regime_tbi0(env, mmu_idx) << ARM_TBFLAG_TBI0_SHIFT);
+        *flags |= (arm_regime_tbi1(env, mmu_idx) << ARM_TBFLAG_TBI1_SHIFT);
     } else {
         *pc = env->regs[15];
         *flags = (env->thumb << ARM_TBFLAG_THUMB_SHIFT)
@@ -2343,7 +2387,8 @@ static inline void cpu_get_tb_cpu_state(CPUARMState *env, target_ulong *pc,
                    << ARM_TBFLAG_XSCALE_CPAR_SHIFT);
     }
 
-    *flags |= (cpu_mmu_index(env, false) << ARM_TBFLAG_MMUIDX_SHIFT);
+    *flags |= (mmu_idx << ARM_TBFLAG_MMUIDX_SHIFT);
+
     /* The SS_ACTIVE and PSTATE_SS bits correspond to the state machine
      * states defined in the ARM ARM for software singlestep:
      *  SS_ACTIVE   PSTATE.SS   State

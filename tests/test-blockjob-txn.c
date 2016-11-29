@@ -13,7 +13,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/main-loop.h"
-#include "block/blockjob.h"
+#include "block/blockjob_int.h"
 #include "sysemu/block-backend.h"
 
 typedef struct {
@@ -23,10 +23,6 @@ typedef struct {
     int rc;
     int *result;
 } TestBlockJob;
-
-static const BlockJobDriver test_block_job_driver = {
-    .instance_size = sizeof(TestBlockJob),
-};
 
 static void test_block_job_complete(BlockJob *job, void *opaque)
 {
@@ -77,6 +73,11 @@ static void test_block_job_cb(void *opaque, int ret)
     g_free(data);
 }
 
+static const BlockJobDriver test_block_job_driver = {
+    .instance_size = sizeof(TestBlockJob),
+    .start = test_block_job_run,
+};
+
 /* Create a block job that completes with a given return code after a given
  * number of event loop iterations.  The return code is stored in the given
  * result pointer.
@@ -98,15 +99,15 @@ static BlockJob *test_block_job_start(unsigned int iterations,
     bs = bdrv_new();
     snprintf(job_id, sizeof(job_id), "job%u", counter++);
     s = block_job_create(job_id, &test_block_job_driver, bs, 0,
-                         test_block_job_cb, data, &error_abort);
+                         BLOCK_JOB_DEFAULT, test_block_job_cb,
+                         data, &error_abort);
     s->iterations = iterations;
     s->use_timer = use_timer;
     s->rc = rc;
     s->result = result;
-    s->common.co = qemu_coroutine_create(test_block_job_run, s);
     data->job = s;
     data->result = result;
-    qemu_coroutine_enter(s->common.co);
+    block_job_start(&s->common);
     return &s->common;
 }
 

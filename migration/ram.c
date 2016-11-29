@@ -43,6 +43,7 @@
 #include "trace.h"
 #include "exec/ram_addr.h"
 #include "qemu/rcu_queue.h"
+#include "migration/colo.h"
 
 #ifdef DEBUG_MIGRATION_RAM
 #define DPRINTF(fmt, ...) \
@@ -69,7 +70,7 @@ static uint64_t bitmap_sync_count;
 /* 0x80 is reserved in migration.h start with 0x100 next */
 #define RAM_SAVE_FLAG_COMPRESS_PAGE    0x100
 
-static const uint8_t ZERO_TARGET_PAGE[TARGET_PAGE_SIZE];
+static uint8_t *ZERO_TARGET_PAGE;
 
 static inline bool is_zero_range(uint8_t *p, uint64_t size)
 {
@@ -1431,6 +1432,7 @@ static void ram_migration_cleanup(void *opaque)
         cache_fini(XBZRLE.cache);
         g_free(XBZRLE.encoded_buf);
         g_free(XBZRLE.current_buf);
+        g_free(ZERO_TARGET_PAGE);
         XBZRLE.cache = NULL;
         XBZRLE.encoded_buf = NULL;
         XBZRLE.current_buf = NULL;
@@ -1870,16 +1872,8 @@ err:
     return ret;
 }
 
-
-/* Each of ram_save_setup, ram_save_iterate and ram_save_complete has
- * long-running RCU critical section.  When rcu-reclaims in the code
- * start to become numerous it will be necessary to reduce the
- * granularity of these critical sections.
- */
-
-static int ram_save_setup(QEMUFile *f, void *opaque)
+static int ram_save_init_globals(void)
 {
-    RAMBlock *block;
     int64_t ram_bitmap_pages; /* Size of bitmap in pages, including gaps */
 
     dirty_rate_high_cnt = 0;
@@ -1889,6 +1883,7 @@ static int ram_save_setup(QEMUFile *f, void *opaque)
 
     if (migrate_use_xbzrle()) {
         XBZRLE_cache_lock();
+        ZERO_TARGET_PAGE = g_malloc0(TARGET_PAGE_SIZE);
         XBZRLE.cache = cache_init(migrate_xbzrle_cache_size() /
                                   TARGET_PAGE_SIZE,
                                   TARGET_PAGE_SIZE);
@@ -1945,6 +1940,29 @@ static int ram_save_setup(QEMUFile *f, void *opaque)
     migration_bitmap_sync();
     qemu_mutex_unlock_ramlist();
     qemu_mutex_unlock_iothread();
+    rcu_read_unlock();
+
+    return 0;
+}
+
+/* Each of ram_save_setup, ram_save_iterate and ram_save_complete has
+ * long-running RCU critical section.  When rcu-reclaims in the code
+ * start to become numerous it will be necessary to reduce the
+ * granularity of these critical sections.
+ */
+
+static int ram_save_setup(QEMUFile *f, void *opaque)
+{
+    RAMBlock *block;
+
+    /* migration has already setup the bitmap, reuse it. */
+    if (!migration_in_colo_state()) {
+        if (ram_save_init_globals() < 0) {
+            return -1;
+         }
+    }
+
+    rcu_read_lock();
 
     qemu_put_be64(f, ram_bytes_total() | RAM_SAVE_FLAG_MEM_SIZE);
 
@@ -1969,7 +1987,7 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     int ret;
     int i;
     int64_t t0;
-    int pages_sent = 0;
+    int done = 0;
 
     rcu_read_lock();
     if (ram_list.version != last_version) {
@@ -1989,9 +2007,9 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         pages = ram_find_and_save_block(f, false, &bytes_transferred);
         /* no more pages to sent */
         if (pages == 0) {
+            done = 1;
             break;
         }
-        pages_sent += pages;
         acct_info.iterations++;
 
         /* we want to check in the 1st loop, just in case it was the 1st time
@@ -2026,7 +2044,7 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         return ret;
     }
 
-    return pages_sent;
+    return done;
 }
 
 /* Called with iothread lock */
@@ -2046,7 +2064,8 @@ static int ram_save_complete(QEMUFile *f, void *opaque)
     while (true) {
         int pages;
 
-        pages = ram_find_and_save_block(f, true, &bytes_transferred);
+        pages = ram_find_and_save_block(f, !migration_in_colo_state(),
+                                        &bytes_transferred);
         /* no more blocks to sent */
         if (pages == 0) {
             break;

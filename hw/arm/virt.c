@@ -84,6 +84,8 @@ typedef struct {
     MachineClass parent;
     VirtBoardInfo *daughterboard;
     bool disallow_affinity_adjustment;
+    bool no_its;
+    bool no_pmu;
 } VirtMachineClass;
 
 typedef struct {
@@ -489,7 +491,7 @@ static void fdt_add_pmu_nodes(const VirtBoardInfo *vbi, int gictype)
 
     CPU_FOREACH(cpu) {
         armcpu = ARM_CPU(cpu);
-        if (!armcpu->has_pmu ||
+        if (!arm_feature(&armcpu->env, ARM_FEATURE_PMU) ||
             !kvm_arm_pmu_create(cpu, PPI(VIRTUAL_PMU_IRQ))) {
             return;
         }
@@ -551,7 +553,8 @@ static void create_v2m(VirtBoardInfo *vbi, qemu_irq *pic)
     fdt_add_v2m_gic_node(vbi);
 }
 
-static void create_gic(VirtBoardInfo *vbi, qemu_irq *pic, int type, bool secure)
+static void create_gic(VirtBoardInfo *vbi, qemu_irq *pic, int type,
+                       bool secure, bool no_its)
 {
     /* We create a standalone GIC */
     DeviceState *gicdev;
@@ -615,9 +618,9 @@ static void create_gic(VirtBoardInfo *vbi, qemu_irq *pic, int type, bool secure)
 
     fdt_add_gic_node(vbi, type);
 
-    if (type == 3) {
+    if (type == 3 && !no_its) {
         create_its(vbi, gicdev);
-    } else {
+    } else if (type == 2) {
         create_v2m(vbi, pic);
     }
 }
@@ -926,9 +929,11 @@ static void create_fw_cfg(const VirtBoardInfo *vbi, AddressSpace *as)
 {
     hwaddr base = vbi->memmap[VIRT_FW_CFG].base;
     hwaddr size = vbi->memmap[VIRT_FW_CFG].size;
+    FWCfgState *fw_cfg;
     char *nodename;
 
-    fw_cfg_init_mem_wide(base + 8, base, 8, base + 16, as);
+    fw_cfg = fw_cfg_init_mem_wide(base + 8, base, 8, base + 16, as);
+    fw_cfg_add_i16(fw_cfg, FW_CFG_NB_CPUS, (uint16_t)smp_cpus);
 
     nodename = g_strdup_printf("/fw-cfg@%" PRIx64, base);
     qemu_fdt_add_subnode(vbi->fdt, nodename);
@@ -1351,6 +1356,10 @@ static void machvirt_init(MachineState *machine)
             }
         }
 
+        if (vmc->no_pmu && object_property_find(cpuobj, "pmu", NULL)) {
+            object_property_set_bool(cpuobj, false, "pmu", NULL);
+        }
+
         if (object_property_find(cpuobj, "reset-cbar", NULL)) {
             object_property_set_int(cpuobj, vbi->memmap[VIRT_CPUPERIPHS].base,
                                     "reset-cbar", &error_abort);
@@ -1375,7 +1384,7 @@ static void machvirt_init(MachineState *machine)
 
     create_flash(vbi, sysmem, secure_sysmem ? secure_sysmem : sysmem);
 
-    create_gic(vbi, pic, gic_version, vms->secure);
+    create_gic(vbi, pic, gic_version, vms->secure, vmc->no_its);
 
     fdt_add_pmu_nodes(vbi, gic_version);
 
@@ -1407,6 +1416,7 @@ static void machvirt_init(MachineState *machine)
     guest_info->irqmap = vbi->irqmap;
     guest_info->use_highmem = vms->highmem;
     guest_info->gic_version = gic_version;
+    guest_info->no_its = vmc->no_its;
     guest_info_state->machine_done.notify = virt_guest_info_machine_done;
     qemu_add_machine_init_done_notifier(&guest_info_state->machine_done);
 
@@ -1491,11 +1501,13 @@ static void virt_machine_class_init(ObjectClass *oc, void *data)
      * it later in machvirt_init, where we have more information about the
      * configuration of the particular instance.
      */
-    mc->max_cpus = MAX_CPUMASK_BITS;
+    mc->max_cpus = 255;
     mc->has_dynamic_sysbus = true;
     mc->block_default_type = IF_VIRTIO;
     mc->no_cdrom = 1;
     mc->pci_allow_0_address = true;
+    /* We know we will never create a pre-ARMv7 CPU which needs 1K pages */
+    mc->minimum_page_bits = 12;
 }
 
 static const TypeInfo virt_machine_info = {
@@ -1561,8 +1573,14 @@ static void virt_2_7_instance_init(Object *obj)
 
 static void virt_machine_2_7_options(MachineClass *mc)
 {
+    VirtMachineClass *vmc = VIRT_MACHINE_CLASS(OBJECT_CLASS(mc));
+
     virt_machine_2_8_options(mc);
     SET_MACHINE_COMPAT(mc, VIRT_COMPAT_2_7);
+    /* ITS was introduced with 2.8 */
+    vmc->no_its = true;
+    /* Stick with 1K pages for migration compatibility */
+    mc->minimum_page_bits = 0;
 }
 DEFINE_VIRT_MACHINE(2, 7)
 
@@ -1581,5 +1599,7 @@ static void virt_machine_2_6_options(MachineClass *mc)
     virt_machine_2_7_options(mc);
     SET_MACHINE_COMPAT(mc, VIRT_COMPAT_2_6);
     vmc->disallow_affinity_adjustment = true;
+    /* Disable PMU for 2.6 as PMU support was first introduced in 2.7 */
+    vmc->no_pmu = true;
 }
 DEFINE_VIRT_MACHINE(2, 6)

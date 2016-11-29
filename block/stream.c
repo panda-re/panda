@@ -14,7 +14,7 @@
 #include "qemu/osdep.h"
 #include "trace.h"
 #include "block/block_int.h"
-#include "block/blockjob.h"
+#include "block/blockjob_int.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qerror.h"
 #include "qemu/ratelimit.h"
@@ -37,6 +37,7 @@ typedef struct StreamBlockJob {
     BlockDriverState *base;
     BlockdevOnError on_error;
     char *backing_file_str;
+    int bs_flags;
 } StreamBlockJob;
 
 static int coroutine_fn stream_populate(BlockBackend *blk,
@@ -79,6 +80,11 @@ static void stream_complete(BlockJob *job, void *opaque)
         }
         data->ret = bdrv_change_backing_file(bs, base_id, base_fmt);
         bdrv_set_backing_hd(bs, base);
+    }
+
+    /* Reopen the image back in read-only mode if necessary */
+    if (s->bs_flags != bdrv_get_flags(bs)) {
+        bdrv_reopen(bs, s->bs_flags, NULL);
     }
 
     g_free(s->backing_file_str);
@@ -212,26 +218,43 @@ static const BlockJobDriver stream_job_driver = {
     .instance_size = sizeof(StreamBlockJob),
     .job_type      = BLOCK_JOB_TYPE_STREAM,
     .set_speed     = stream_set_speed,
+    .start         = stream_run,
 };
 
 void stream_start(const char *job_id, BlockDriverState *bs,
                   BlockDriverState *base, const char *backing_file_str,
-                  int64_t speed, BlockdevOnError on_error,
-                  BlockCompletionFunc *cb, void *opaque, Error **errp)
+                  int64_t speed, BlockdevOnError on_error, Error **errp)
 {
     StreamBlockJob *s;
+    BlockDriverState *iter;
+    int orig_bs_flags;
 
     s = block_job_create(job_id, &stream_job_driver, bs, speed,
-                         cb, opaque, errp);
+                         BLOCK_JOB_DEFAULT, NULL, NULL, errp);
     if (!s) {
         return;
     }
 
+    /* Make sure that the image is opened in read-write mode */
+    orig_bs_flags = bdrv_get_flags(bs);
+    if (!(orig_bs_flags & BDRV_O_RDWR)) {
+        if (bdrv_reopen(bs, orig_bs_flags | BDRV_O_RDWR, errp) != 0) {
+            block_job_unref(&s->common);
+            return;
+        }
+    }
+
+    /* Block all intermediate nodes between bs and base, because they
+     * will disappear from the chain after this operation */
+    for (iter = backing_bs(bs); iter && iter != base; iter = backing_bs(iter)) {
+        block_job_add_bdrv(&s->common, iter);
+    }
+
     s->base = base;
     s->backing_file_str = g_strdup(backing_file_str);
+    s->bs_flags = orig_bs_flags;
 
     s->on_error = on_error;
-    s->common.co = qemu_coroutine_create(stream_run, s);
-    trace_stream_start(bs, base, s, s->common.co, opaque);
-    qemu_coroutine_enter(s->common.co);
+    trace_stream_start(bs, base, s);
+    block_job_start(&s->common);
 }

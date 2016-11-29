@@ -22,6 +22,8 @@ typedef struct DisasContext {
     int user;
 #endif
     ARMMMUIdx mmu_idx; /* MMU index to use for normal loads/stores */
+    bool tbi0;         /* TBI0 for EL0/1 or TBI for EL2/3 */
+    bool tbi1;         /* TBI1 for EL0/1, not used for EL2/3 */
     bool ns;        /* Use non-secure CPREG bank on access */
     int fp_excp_el; /* FP exception EL or 0 if enabled */
     /* Flag indicating that exceptions from secure mode are routed to EL3. */
@@ -77,10 +79,6 @@ extern TCGv_env cpu_env;
 extern TCGv_i32 cpu_NF, cpu_ZF, cpu_CF, cpu_VF;
 extern TCGv_i64 cpu_exclusive_addr;
 extern TCGv_i64 cpu_exclusive_val;
-#ifdef CONFIG_USER_ONLY
-extern TCGv_i64 cpu_exclusive_test;
-extern TCGv_i32 cpu_exclusive_info;
-#endif
 
 static inline int arm_dc_feature(DisasContext *dc, int feature)
 {

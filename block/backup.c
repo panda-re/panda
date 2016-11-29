@@ -16,7 +16,7 @@
 #include "trace.h"
 #include "block/block.h"
 #include "block/block_int.h"
-#include "block/blockjob.h"
+#include "block/blockjob_int.h"
 #include "block/block_backup.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qerror.h"
@@ -242,6 +242,14 @@ static void backup_abort(BlockJob *job)
     }
 }
 
+static void backup_clean(BlockJob *job)
+{
+    BackupBlockJob *s = container_of(job, BackupBlockJob, common);
+    assert(s->target);
+    blk_unref(s->target);
+    s->target = NULL;
+}
+
 static void backup_attached_aio_context(BlockJob *job, AioContext *aio_context)
 {
     BackupBlockJob *s = container_of(job, BackupBlockJob, common);
@@ -300,14 +308,20 @@ void backup_cow_request_end(CowRequest *req)
     cow_request_end(req);
 }
 
-static const BlockJobDriver backup_job_driver = {
-    .instance_size          = sizeof(BackupBlockJob),
-    .job_type               = BLOCK_JOB_TYPE_BACKUP,
-    .set_speed              = backup_set_speed,
-    .commit                 = backup_commit,
-    .abort                  = backup_abort,
-    .attached_aio_context   = backup_attached_aio_context,
-};
+static void backup_drain(BlockJob *job)
+{
+    BackupBlockJob *s = container_of(job, BackupBlockJob, common);
+
+    /* Need to keep a reference in case blk_drain triggers execution
+     * of backup_complete...
+     */
+    if (s->target) {
+        BlockBackend *target = s->target;
+        blk_ref(target);
+        blk_drain(target);
+        blk_unref(target);
+    }
+}
 
 static BlockErrorAction backup_error_action(BackupBlockJob *job,
                                             bool read, int error)
@@ -327,10 +341,7 @@ typedef struct {
 
 static void backup_complete(BlockJob *job, void *opaque)
 {
-    BackupBlockJob *s = container_of(job, BackupBlockJob, common);
     BackupCompleteData *data = opaque;
-
-    blk_unref(s->target);
 
     block_job_completed(job, data->ret);
     g_free(data);
@@ -372,14 +383,14 @@ static int coroutine_fn backup_run_incremental(BackupBlockJob *job)
     int64_t end;
     int64_t last_cluster = -1;
     int64_t sectors_per_cluster = cluster_size_sectors(job);
-    HBitmapIter hbi;
+    BdrvDirtyBitmapIter *dbi;
 
     granularity = bdrv_dirty_bitmap_granularity(job->sync_bitmap);
     clusters_per_iter = MAX((granularity / job->cluster_size), 1);
-    bdrv_dirty_iter_init(job->sync_bitmap, &hbi);
+    dbi = bdrv_dirty_iter_new(job->sync_bitmap, 0);
 
     /* Find the next dirty sector(s) */
-    while ((sector = hbitmap_iter_next(&hbi)) != -1) {
+    while ((sector = bdrv_dirty_iter_next(dbi)) != -1) {
         cluster = sector / sectors_per_cluster;
 
         /* Fake progress updates for any clusters we skipped */
@@ -391,7 +402,7 @@ static int coroutine_fn backup_run_incremental(BackupBlockJob *job)
         for (end = cluster + clusters_per_iter; cluster < end; cluster++) {
             do {
                 if (yield_and_check(job)) {
-                    return ret;
+                    goto out;
                 }
                 ret = backup_do_cow(job, cluster * sectors_per_cluster,
                                     sectors_per_cluster, &error_is_read,
@@ -399,7 +410,7 @@ static int coroutine_fn backup_run_incremental(BackupBlockJob *job)
                 if ((ret < 0) &&
                     backup_error_action(job, error_is_read, -ret) ==
                     BLOCK_ERROR_ACTION_REPORT) {
-                    return ret;
+                    goto out;
                 }
             } while (ret < 0);
         }
@@ -407,7 +418,7 @@ static int coroutine_fn backup_run_incremental(BackupBlockJob *job)
         /* If the bitmap granularity is smaller than the backup granularity,
          * we need to advance the iterator pointer to the next cluster. */
         if (granularity < job->cluster_size) {
-            bdrv_set_dirty_iter(&hbi, cluster * sectors_per_cluster);
+            bdrv_set_dirty_iter(dbi, cluster * sectors_per_cluster);
         }
 
         last_cluster = cluster - 1;
@@ -419,6 +430,8 @@ static int coroutine_fn backup_run_incremental(BackupBlockJob *job)
         job->common.offset += ((end - last_cluster - 1) * job->cluster_size);
     }
 
+out:
+    bdrv_dirty_iter_free(dbi);
     return ret;
 }
 
@@ -427,7 +440,6 @@ static void coroutine_fn backup_run(void *opaque)
     BackupBlockJob *job = opaque;
     BackupCompleteData *data;
     BlockDriverState *bs = blk_bs(job->common.blk);
-    BlockBackend *target = job->target;
     int64_t start, end;
     int64_t sectors_per_cluster = cluster_size_sectors(job);
     int ret = 0;
@@ -514,19 +526,30 @@ static void coroutine_fn backup_run(void *opaque)
     qemu_co_rwlock_unlock(&job->flush_rwlock);
     g_free(job->done_bitmap);
 
-    bdrv_op_unblock_all(blk_bs(target), job->common.blocker);
-
     data = g_malloc(sizeof(*data));
     data->ret = ret;
     block_job_defer_to_main_loop(&job->common, backup_complete, data);
 }
 
-void backup_start(const char *job_id, BlockDriverState *bs,
+static const BlockJobDriver backup_job_driver = {
+    .instance_size          = sizeof(BackupBlockJob),
+    .job_type               = BLOCK_JOB_TYPE_BACKUP,
+    .start                  = backup_run,
+    .set_speed              = backup_set_speed,
+    .commit                 = backup_commit,
+    .abort                  = backup_abort,
+    .clean                  = backup_clean,
+    .attached_aio_context   = backup_attached_aio_context,
+    .drain                  = backup_drain,
+};
+
+BlockJob *backup_job_create(const char *job_id, BlockDriverState *bs,
                   BlockDriverState *target, int64_t speed,
                   MirrorSyncMode sync_mode, BdrvDirtyBitmap *sync_bitmap,
                   bool compress,
                   BlockdevOnError on_source_error,
                   BlockdevOnError on_target_error,
+                  int creation_flags,
                   BlockCompletionFunc *cb, void *opaque,
                   BlockJobTxn *txn, Error **errp)
 {
@@ -540,52 +563,52 @@ void backup_start(const char *job_id, BlockDriverState *bs,
 
     if (bs == target) {
         error_setg(errp, "Source and target cannot be the same");
-        return;
+        return NULL;
     }
 
     if (!bdrv_is_inserted(bs)) {
         error_setg(errp, "Device is not inserted: %s",
                    bdrv_get_device_name(bs));
-        return;
+        return NULL;
     }
 
     if (!bdrv_is_inserted(target)) {
         error_setg(errp, "Device is not inserted: %s",
                    bdrv_get_device_name(target));
-        return;
+        return NULL;
     }
 
     if (compress && target->drv->bdrv_co_pwritev_compressed == NULL) {
         error_setg(errp, "Compression is not supported for this drive %s",
                    bdrv_get_device_name(target));
-        return;
+        return NULL;
     }
 
     if (bdrv_op_is_blocked(bs, BLOCK_OP_TYPE_BACKUP_SOURCE, errp)) {
-        return;
+        return NULL;
     }
 
     if (bdrv_op_is_blocked(target, BLOCK_OP_TYPE_BACKUP_TARGET, errp)) {
-        return;
+        return NULL;
     }
 
     if (sync_mode == MIRROR_SYNC_MODE_INCREMENTAL) {
         if (!sync_bitmap) {
             error_setg(errp, "must provide a valid bitmap name for "
                              "\"incremental\" sync mode");
-            return;
+            return NULL;
         }
 
         /* Create a new bitmap, and freeze/disable this one. */
         if (bdrv_dirty_bitmap_create_successor(bs, sync_bitmap, errp) < 0) {
-            return;
+            return NULL;
         }
     } else if (sync_bitmap) {
         error_setg(errp,
                    "a sync_bitmap was provided to backup_run, "
                    "but received an incompatible sync_mode (%s)",
                    MirrorSyncMode_lookup[sync_mode]);
-        return;
+        return NULL;
     }
 
     len = bdrv_getlength(bs);
@@ -596,7 +619,7 @@ void backup_start(const char *job_id, BlockDriverState *bs,
     }
 
     job = block_job_create(job_id, &backup_job_driver, bs, speed,
-                           cb, opaque, errp);
+                           creation_flags, cb, opaque, errp);
     if (!job) {
         goto error;
     }
@@ -629,19 +652,20 @@ void backup_start(const char *job_id, BlockDriverState *bs,
         job->cluster_size = MAX(BACKUP_CLUSTER_SIZE_DEFAULT, bdi.cluster_size);
     }
 
-    bdrv_op_block_all(target, job->common.blocker);
+    block_job_add_bdrv(&job->common, target);
     job->common.len = len;
-    job->common.co = qemu_coroutine_create(backup_run, job);
     block_job_txn_add_job(txn, &job->common);
-    qemu_coroutine_enter(job->common.co);
-    return;
+
+    return &job->common;
 
  error:
     if (sync_bitmap) {
         bdrv_reclaim_dirty_bitmap(bs, sync_bitmap, NULL);
     }
     if (job) {
-        blk_unref(job->target);
+        backup_clean(&job->common);
         block_job_unref(&job->common);
     }
+
+    return NULL;
 }

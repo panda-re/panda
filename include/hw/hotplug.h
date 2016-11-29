@@ -83,7 +83,6 @@ void hotplug_handler_pre_plug(HotplugHandler *plug_handler,
                               DeviceState *plugged_dev,
                               Error **errp);
 
-
 /**
  * hotplug_handler_unplug_request:
  *

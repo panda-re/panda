@@ -73,7 +73,7 @@ static void virtio_pci_notify(DeviceState *d, uint16_t vector)
         msix_notify(&proxy->pci_dev, vector);
     else {
         VirtIODevice *vdev = virtio_bus_get_device(&proxy->bus);
-        pci_set_irq(&proxy->pci_dev, vdev->isr & 1);
+        pci_set_irq(&proxy->pci_dev, atomic_read(&vdev->isr) & 1);
     }
 }
 
@@ -262,34 +262,11 @@ static int virtio_pci_load_queue(DeviceState *d, int n, QEMUFile *f)
     return 0;
 }
 
-static bool virtio_pci_ioeventfd_started(DeviceState *d)
+static bool virtio_pci_ioeventfd_enabled(DeviceState *d)
 {
     VirtIOPCIProxy *proxy = to_virtio_pci_proxy(d);
 
-    return proxy->ioeventfd_started;
-}
-
-static void virtio_pci_ioeventfd_set_started(DeviceState *d, bool started,
-                                             bool err)
-{
-    VirtIOPCIProxy *proxy = to_virtio_pci_proxy(d);
-
-    proxy->ioeventfd_started = started;
-}
-
-static bool virtio_pci_ioeventfd_disabled(DeviceState *d)
-{
-    VirtIOPCIProxy *proxy = to_virtio_pci_proxy(d);
-
-    return proxy->ioeventfd_disabled ||
-        !(proxy->flags & VIRTIO_PCI_FLAG_USE_IOEVENTFD);
-}
-
-static void virtio_pci_ioeventfd_set_disabled(DeviceState *d, bool disabled)
-{
-    VirtIOPCIProxy *proxy = to_virtio_pci_proxy(d);
-
-    proxy->ioeventfd_disabled = disabled;
+    return (proxy->flags & VIRTIO_PCI_FLAG_USE_IOEVENTFD) != 0;
 }
 
 #define QEMU_VIRTIO_PCI_QUEUE_MEM_MULT 0x1000
@@ -472,8 +449,7 @@ static uint32_t virtio_ioport_read(VirtIOPCIProxy *proxy, uint32_t addr)
         break;
     case VIRTIO_PCI_ISR:
         /* reading from the ISR also clears it. */
-        ret = vdev->isr;
-        vdev->isr = 0;
+        ret = atomic_xchg(&vdev->isr, 0);
         pci_irq_deassert(&proxy->pci_dev);
         break;
     case VIRTIO_MSI_CONFIG_VECTOR:
@@ -1198,7 +1174,9 @@ static uint64_t virtio_pci_common_read(void *opaque, hwaddr addr,
         break;
     case VIRTIO_PCI_COMMON_DF:
         if (proxy->dfselect <= 1) {
-            val = (vdev->host_features & ~VIRTIO_LEGACY_FEATURES) >>
+            VirtioDeviceClass *vdc = VIRTIO_DEVICE_GET_CLASS(vdev);
+
+            val = (vdev->host_features & ~vdc->legacy_features) >>
                 (32 * proxy->dfselect);
         }
         break;
@@ -1400,9 +1378,7 @@ static uint64_t virtio_pci_isr_read(void *opaque, hwaddr addr,
 {
     VirtIOPCIProxy *proxy = opaque;
     VirtIODevice *vdev = virtio_bus_get_device(&proxy->bus);
-    uint64_t val = vdev->isr;
-
-    vdev->isr = 0;
+    uint64_t val = atomic_xchg(&vdev->isr, 0);
     pci_irq_deassert(&proxy->pci_dev);
 
     return val;
@@ -1719,10 +1695,6 @@ static void virtio_pci_device_plugged(DeviceState *d, Error **errp)
         pci_register_bar(&proxy->pci_dev, proxy->legacy_io_bar_idx,
                          PCI_BASE_ADDRESS_SPACE_IO, &proxy->bar);
     }
-
-    if (!kvm_has_many_ioeventfds()) {
-        proxy->flags &= ~VIRTIO_PCI_FLAG_USE_IOEVENTFD;
-    }
 }
 
 static void virtio_pci_device_unplugged(DeviceState *d)
@@ -1750,6 +1722,10 @@ static void virtio_pci_realize(PCIDevice *pci_dev, Error **errp)
     VirtioPCIClass *k = VIRTIO_PCI_GET_CLASS(pci_dev);
     bool pcie_port = pci_bus_is_express(pci_dev->bus) &&
                      !pci_bus_is_root(pci_dev->bus);
+
+    if (!kvm_has_many_ioeventfds()) {
+        proxy->flags &= ~VIRTIO_PCI_FLAG_USE_IOEVENTFD;
+    }
 
     /*
      * virtio pci bar layout used by default.
@@ -2539,10 +2515,7 @@ static void virtio_pci_bus_class_init(ObjectClass *klass, void *data)
     k->device_plugged = virtio_pci_device_plugged;
     k->device_unplugged = virtio_pci_device_unplugged;
     k->query_nvectors = virtio_pci_query_nvectors;
-    k->ioeventfd_started = virtio_pci_ioeventfd_started;
-    k->ioeventfd_set_started = virtio_pci_ioeventfd_set_started;
-    k->ioeventfd_disabled = virtio_pci_ioeventfd_disabled;
-    k->ioeventfd_set_disabled = virtio_pci_ioeventfd_set_disabled;
+    k->ioeventfd_enabled = virtio_pci_ioeventfd_enabled;
     k->ioeventfd_assign = virtio_pci_ioeventfd_assign;
 }
 
