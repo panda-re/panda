@@ -21,54 +21,56 @@ set -e
 
 progress "Installing qemu dependencies..."
 sudo apt-get update
-sudo apt-get -y install build-essential
 sudo apt-get -y build-dep qemu
+
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev libelf-dev
 
 pushd /tmp
 
-progress "Trying to install LLVM 3.3..."
-if ! sudo apt-get -y install libc++-dev llvm-3.3-dev clang-3.3
+if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04)'
 then
-  progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
-fi
-
-if [ ! \( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" \) ]
-then
-  sudo apt-get -y install unzip
-  curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
-  unzip distorm3.3-package.zip
-  pushd distorm3/make/linux
-  make -j$(nproc)
-  progress "Installing distorm..."
-  sudo make install
-  popd
-  pushd distorm3/include
-  sudo cp * /usr/local/include
-  popd
+  sudo apt-get -y install software-properties-common
+  sudo add-apt-repository -y ppa:phulin/panda
+  sudo apt-get update
+  sudo apt-get -y install libdistorm3-dev libdwarf-dev python-pycparser
 else
-  progress "Skipping distorm..."
-fi
+  if [ ! \( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" \) ]
+  then
+    sudo apt-get -y install unzip
+    curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
+    unzip distorm3.3-package.zip
+    pushd distorm3/make/linux
+    make -j$(nproc)
+    progress "Installing distorm..."
+    sudo make install
+    popd
+    pushd distorm3/include
+    sudo cp * /usr/local/include
+    popd
+  else
+    progress "Skipping distorm..."
+  fi
 
-if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
-then
-  git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
-  pushd libdwarf-code
-  progress "Installing libdwarf..."
-  ./configure --enable-shared
-  make -j$(nproc)
-  sudo cp libdwarf/libdwarf.h /usr/local/include
-  sudo cp libdwarf/dwarf.h /usr/local/include
-  sudo cp libdwarf/libdwarf.so /usr/local/lib/
-  popd
-else
-  progress "Skipping libdwarf..."
-fi
-if python -c 'import pycparser' 2>/dev/null
-then
-  if python <<EOF
+  if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
+  then
+    git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
+    pushd libdwarf-code
+    progress "Installing libdwarf..."
+    ./configure --enable-shared
+    make -j$(nproc)
+    sudo cp libdwarf/libdwarf.h /usr/local/include
+    sudo cp libdwarf/dwarf.h /usr/local/include
+    sudo cp libdwarf/libdwarf.so /usr/local/lib/
+    popd
+  else
+    progress "Skipping libdwarf..."
+  fi
+
+  if python -c 'import pycparser' 2>/dev/null
+  then
+    if python <<EOF
 import sys
 import pycparser
 version = [int(x) for x in pycparser.__version__.split(".")]
@@ -79,15 +81,22 @@ else:
   print "pycparser version good."
   sys.exit(0)
 EOF
-  then
-    progress "Skipping pycparser..."
+    then
+      progress "Skipping pycparser..."
+    else
+      progress "Your pycparser is too old. Please upgrade using your method of choice."
+      exit 1
+    fi
   else
-    progress "Your pycparser is too old. Please upgrade using your method of choice."
-    exit 1
+    progress "Installing pycparser..."
+    sudo -H pip install pycparser
   fi
-else
-  progress "Installing pycparser..."
-  sudo -H pip install pycparser
+fi
+
+progress "Trying to install LLVM 3.3..."
+if ! sudo apt-get -y install llvm-3.3-dev clang-3.3
+then
+  progress "Couldn't find OS package for LLVM 3.3. Proceeding without..."
 fi
 
 popd
