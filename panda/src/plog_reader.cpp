@@ -42,7 +42,7 @@ int main (int argc, char **argv) {
 	    break;
         }
         pprint_ple(ple);
-#warning Figure out how to properly free ple
+        /* Figure out how to properly free ple */
         // for some reason this leads to some sort of double-free
         // but i'm leaving in here to investigate further
         // so we don't have leaky plog_readers

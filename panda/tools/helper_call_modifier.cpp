@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
 
         Module *m = f->getParent();
         assert(m);
-        std::regex mmu_regex("helper_[bl]e_(ld|st)[us]?[bwlq]_mmu(_panda)?");
+        std::regex mmu_regex("helper_[bl]e_(ld|st)[us]?[bwlq]_mmu(_panda)?",
+                std::regex::egrep);
         if (!f->isDeclaration()) { // internal functions only
             std::string fname = f->getName();
             if (std::regex_match(fname, mmu_regex)) {
