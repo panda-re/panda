@@ -15,6 +15,7 @@ PANDAENDCOMMENT */
 // the PRIx64 macro
 #define __STDC_FORMAT_MACROS
 
+#include <iostream>
 #include <vector>
 #include <map>
 #include <set>
@@ -1610,6 +1611,10 @@ bool correct_asid(CPUState *cpu) {
     return true;
 }
 
+bool looking_for_libc=false;
+const char *libc_host_path=NULL;
+std::string libc_name;
+
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
     if (!correct_asid(cpu)) return;
@@ -1622,6 +1627,16 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
         printf("access(%s, F_OK): %x\n", lib_name, access(lib_name, F_OK));
         if (access(lib_name, F_OK) == -1) {
             fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", lib_name);
+            return;
+        }
+        if (looking_for_libc && 
+            lib.find(libc_name) != std::string::npos) {
+//        if (lib.find("libc-2.13") != std::string::npos)  {
+            lib_name = strdup(libc_host_path);
+//            lib_name = strdup("/mnt/lava-32-qcow/usr/lib/debug/lib/i386-linux-gnu/i686/cmov/libc-2.13.so");
+            printf ("actually loading lib_name = %s\n", lib_name);
+            bool needs_reloc = true; // elf_base != base_addr;
+            read_debug_info(lib_name, basename(lib_name), base_addr, needs_reloc);
             return;
         }
         elf_get_baseaddr(lib_name, basename(lib_name), base_addr);
@@ -2226,6 +2241,12 @@ bool init_plugin(void *self) {
     host_debug_path = panda_parse_string(args, "h_debugpath", "dbg");
     host_mount_path = panda_parse_string(args, "host_mount_path", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
+    libc_host_path = panda_parse_string(args, "host_libc_path", "None");
+    if (0 != strcmp(libc_host_path, "None")) {
+        looking_for_libc=true;
+        libc_name = std::string(strstr(libc_host_path, "libc"));
+        std::cout << "looking for libc. libc_name=[" << libc_name << "]\n";
+    }
     // panda plugin plugin includes
     panda_require("callstack_instr");
     panda_require("osi");
