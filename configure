@@ -3236,6 +3236,22 @@ if test "$llvm" != "no" ; then
 fi
 
 ##########################################
+# pycparser probe
+
+if ! python <<EOF
+import sys
+import pycparser
+version = [int(x) for x in pycparser.__version__.split(".")]
+if version[0] < 2 or (version[0] == 2 and version[1] < 10):
+  sys.exit(1)
+else:
+  sys.exit(0)
+EOF
+then
+  feature_not_found "pycparser (required for PANDA plugin APIs)"
+fi
+
+##########################################
 # libcap probe
 
 if test "$cap" != "no" ; then
