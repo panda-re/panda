@@ -33,4 +33,4 @@ fi
     $LLVM_BIT \
     "$@"
 
-make -j ${PANDA_NPROC:-$(nproc)}
+make -j ${PANDA_NPROC:-$(nproc || sysctl -n hw.ncpu)}
