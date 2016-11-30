@@ -19,13 +19,9 @@ PANDAENDCOMMENT */
 #include <map>
 #include <vector>
 
-extern "C" {
 #include "panda/rr/rr_log.h"
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
-#include "panda/plog.h"
-#include "panda/addr.h"
-}
 
 #include "callstack_instr/prog_point.h"
 
@@ -35,6 +31,9 @@ extern "C" {
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
+
+#include "panda/plog.h"
+#include "panda/addr.h"
 
 #include "taint2/taint2_ext.h"
 
@@ -118,14 +117,9 @@ void dd_spit(){
     }
 }
 
-
-
-
-
 // only compute dead data based on first N tainted branches a label
 // involved in.  N is MAX_INSTR_PER_EL
 #define MAX_INSTR_PER_EL 100000
-
 
 uint64_t current_instr;
 uint64_t total_instr;
@@ -137,12 +131,8 @@ int dd_each_label(uint32_t el, void *stuff1) {
     return 0;
 }
 
-
-
-
 uint64_t *callers64=NULL;
 uint32_t num_callers = 0;
-
 
 void dead_data_on_branch(Addr a) {
     assert (a.typ == LADDR);
@@ -157,9 +147,7 @@ void dead_data_on_branch(Addr a) {
     }
 }
 
-
 bool first_enable_taint = true;
-
 
 int dead_data_after_block_exec(CPUState *cpu, TranslationBlock *tb) {
     if ((taint2_enabled()) && (first_enable_taint)) {
@@ -170,7 +158,6 @@ int dead_data_after_block_exec(CPUState *cpu, TranslationBlock *tb) {
     }
     return 0;
 }
-
 
 #endif
 
