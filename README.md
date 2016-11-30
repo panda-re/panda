@@ -39,7 +39,7 @@ sudo apt-get update
 sudo apt-get build-dep qemu
 sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev libelf-dev \
-  libdistorm3-dev libdwarf-dev python-pycparser
+  libdistorm3-dev libdwarf-dev python-pycparser llvm-3.3
 git clone https://github.com/panda-re/panda
 cd panda && ./build.sh
 ```
