@@ -21,11 +21,12 @@ PANDAENDCOMMENT */
 #include <vector>
 #include <algorithm>
 
-#include <distorm.h>
-
-namespace distorm {
-#include <mnemonics.h>
-}
+#include <capstone/capstone.h>
+#if defined(TARGET_I386)
+#include <capstone/x86.h>
+#elif defined(TARGET_ARM)
+#include <capstone/arm.h>
+#endif
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
@@ -73,6 +74,9 @@ struct stack_entry {
 };
 
 #define MAX_STACK_DIFF 5000
+
+csh cs_handle_32;
+csh cs_handle_64;
 
 // Track the different stacks we have seen to handle multiple threads
 // within a single process.
@@ -174,83 +178,34 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     instr_type res = INSTR_UNKNOWN;
 
 #if defined(TARGET_I386)
-    _DInst dec[256];
-    unsigned int dec_count = 0;
-    _DecodeType dt = (env->hflags & HF_LMA_MASK) ? Decode64Bits : Decode32Bits;
-
-    _CodeInfo ci;
-    ci.code = buf;
-    ci.codeLen = size;
-    ci.codeOffset = pc;
-    ci.dt = dt;
-    ci.features = DF_NONE;
-
-    distorm_decompose(&ci, dec, 256, &dec_count);
-    for (int i = dec_count - 1; i >= 0; i--) {
-        if (dec[i].flags == FLAG_NOT_DECODABLE) {
-            continue;
-        }
-
-        if (META_GET_FC(dec[i].meta) == FC_CALL) {
-            res = INSTR_CALL;
-            goto done;
-        }
-        else if (META_GET_FC(dec[i].meta) == FC_RET) {
-            // Ignore IRETs
-            if (dec[i].opcode == distorm::I_IRET) {
-                res = INSTR_UNKNOWN;
-            }
-            else {
-                // For debugging only
-                if (dec[i].ops[0].type == O_IMM)
-                    last_ret_size = dec[i].imm.sdword;
-                else
-                    last_ret_size = 0;
-                res = INSTR_RET;
-            }
-            goto done;
-        }
-        else if (META_GET_FC(dec[i].meta) == FC_SYS) {
-            res = INSTR_UNKNOWN;
-            goto done;
-        }
-        else {
-            res = INSTR_UNKNOWN;
-            goto done;
-        }
-    }
+    csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
 #elif defined(TARGET_ARM)
-    // Pretend thumb mode doesn't exist for now
-    // Pretend conditional execution doesn't exist for now
-    // This is super half-assed right now
-
-    unsigned char *cur_instr;
-    for (cur_instr = buf+size-4; cur_instr >= buf; cur_instr -= 4) {
-        // Note: little-endian!
-        if (cur_instr[3] == 0xe1 &&
-            cur_instr[2] == 0x2f &&
-            cur_instr[1] == 0xff &&
-            cur_instr[0] == 0x1e) { // bx lr
-            res = INSTR_RET;
-            goto done;
-        }
-        else if ((cur_instr[3] & 0x0f) == 0x0b) {// bl
-            res = INSTR_CALL;
-            goto done;
-        }
-        else if (cur_instr[3] == 0xe1 &&
-                 cur_instr[2] == 0xa0 &&
-                 cur_instr[1] == 0xe0 &&
-                 cur_instr[0] == 0x0f) { // mov lr, pc
-            res = INSTR_CALL;
-            goto done;
-        }
-        else
-            continue;
-    }
+    csh handle = cs_handle_32;
 #endif
 
+    cs_insn *insn;
+    cs_insn *end;
+    size_t count = cs_disasm(handle, buf, size, pc, 0, &insn);
+    if (count <= 0) goto done2;
+
+    for (end = insn + count; end >= insn; end--) {
+        if (!cs_insn_group(handle, end, CS_GRP_INVALID)) {
+            break;
+        }
+    }
+    if (end < insn) goto done;
+
+    if (cs_insn_group(handle, end, CS_GRP_CALL)) {
+        res = INSTR_CALL;
+    } else if (cs_insn_group(handle, end, CS_GRP_RET)) {
+        res = INSTR_RET;
+    } else {
+        res = INSTR_UNKNOWN;
+    }
+
 done:
+    cs_free(insn, count);
+done2:
     free(buf);
     return res;
 }
@@ -397,6 +352,16 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 
 
 bool init_plugin(void *self) {
+#if defined(TARGET_I386)
+    if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+#if defined(TARGET_X86_64)
+    if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
+#endif
+#elif defined(TARGET_ARM)
+    if (cs_open(CS_ARCH_ARM, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+#endif
+        return false;
+
     printf("Initializing plugin callstack_instr\n");
 
     panda_cb pcb;
