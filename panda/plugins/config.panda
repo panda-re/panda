@@ -1,12 +1,12 @@
 asidstory
 callstack_instr
-libfi
+#libfi
 loaded
 osi
 osi_linux
-pri
-pri_dwarf
-pri_simple
+#pri
+#pri_dwarf
+#pri_simple
 scissors
 stringsearch
 syscalls2

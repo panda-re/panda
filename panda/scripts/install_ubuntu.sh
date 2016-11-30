@@ -29,12 +29,15 @@ sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
 
 pushd /tmp
 
+EXTRA_CFLAGS=
+
 if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04)'
 then
   sudo apt-get -y install software-properties-common
   sudo add-apt-repository -y ppa:phulin/panda
   sudo apt-get update
   sudo apt-get -y install libdistorm3-dev libdwarf-dev python-pycparser
+  EXTRA_CFLAGS="$EXTRA_CFLAGS -I/usr/lib/include/distorm3 -I/usr/include/libdwarf"
 else
   if [ ! \( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" \) ]
   then
@@ -112,6 +115,6 @@ fi
 progress "Building PANDA..."
 mkdir build
 cd build
-../build.sh
+../build.sh --extra-cflags="$EXTRA_CFLAGS"
 
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/qemu-system-[arch]."
