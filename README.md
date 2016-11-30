@@ -36,6 +36,7 @@ the following commands to install all dependencies on 14.04 or 16.04:
 ```
 sudo add-apt-repository ppa:phulin/panda
 sudo apt-get update
+sudo apt-get build-dep qemu
 sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev libelf-dev \
   libdistorm3-dev libdwarf-dev python-pycparser
