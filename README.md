@@ -39,10 +39,10 @@ sudo apt-get update
 sudo apt-get build-dep qemu
 sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
   libprotobuf-c0-dev libprotoc-dev libelf-dev \
-  libdistorm3-dev libdwarf-dev python-pycparser llvm-3.3 clang-3.3 libc++-dev
+  libcapstone-dev libdwarf-dev python-pycparser llvm-3.3 clang-3.3 libc++-dev
 git clone https://github.com/panda-re/panda
 mkdir -p build-panda && cd build-panda
-../panda/build.sh --extra-cflags="-I/usr/lib/include/distorm3 -I/usr/include/libdwarf"
+../panda/build.sh --extra-cflags="-I/usr/include/libdwarf"
 ```
 
 We don't currently support building on Mac/BSD, although it shouldn't be

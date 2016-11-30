@@ -36,26 +36,9 @@ then
   sudo apt-get -y install software-properties-common
   sudo add-apt-repository -y ppa:phulin/panda
   sudo apt-get update
-  sudo apt-get -y install libdistorm3-dev libdwarf-dev python-pycparser
-  EXTRA_CFLAGS="$EXTRA_CFLAGS -I/usr/lib/include/distorm3 -I/usr/include/libdwarf"
+  sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
+  EXTRA_CFLAGS="$EXTRA_CFLAGS -I/usr/include/libdwarf"
 else
-  if [ ! \( -e "/usr/local/lib/libdistorm3.so" -o -e "/usr/lib/libdistorm3.so" \) ]
-  then
-    sudo apt-get -y install unzip
-    curl -O http://ragestorm.net/distorm/distorm3.3-package.zip
-    unzip distorm3.3-package.zip
-    pushd distorm3/make/linux
-    make -j$(nproc)
-    progress "Installing distorm..."
-    sudo make install
-    popd
-    pushd distorm3/include
-    sudo cp * /usr/local/include
-    popd
-  else
-    progress "Skipping distorm..."
-  fi
-
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
   then
     git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
