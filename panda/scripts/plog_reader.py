@@ -6,10 +6,10 @@ from google.protobuf.json_format import MessageToJson
 
 f = open(sys.argv[1])
 
-version, _, dir_pos, _, chunk_size = struct.unpack('<LLQLL', f.read(24))
+version, _, dir_pos, _, chunk_size = struct.unpack('<IIQII', f.read(24))
 
 f.seek(dir_pos)
-num_chunks = struct.unpack('<L', f.read(4))[0]
+num_chunks = struct.unpack('<I', f.read(4))[0]
 #print num_chunks
 
 entries = []
@@ -28,7 +28,7 @@ for entry, next_entry in zip(entries, entries[1:]):
     #print len(data)
     i = 0
     while i < len(data):
-        entry_size = struct.unpack('<L', data[i:i+4])[0]
+        entry_size = struct.unpack('<I', data[i:i+4])[0]
         i += 4
         entry_data = data[i:i+entry_size]
         message = plog_pb2.LogEntry()
