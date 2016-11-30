@@ -2751,7 +2751,7 @@ void tcg_dump_info(FILE *f, fprintf_function cpu_fprintf)
 }
 #endif
 
-#ifdef ELF_HOST_MACHINE
+#if defined(ELF_HOST_MACHINE) && !defined(CONFIG_LLVM)
 /* In order to use this feature, the backend needs to do three things:
 
    (1) Define ELF_HOST_MACHINE to indicate both what value to
@@ -2766,8 +2766,6 @@ void tcg_dump_info(FILE *f, fprintf_function cpu_fprintf)
 
 /* Begin GDB interface.  THE FOLLOWING MUST MATCH GDB DOCS.  */
 
-// LLVM also presents a GDB JIT interface which causes linking issues
-#ifndef CONFIG_LLVM
 typedef enum {
     JIT_NOACTION = 0,
     JIT_REGISTER_FN,
@@ -3023,5 +3021,4 @@ static void tcg_register_jit_int(void *buf, size_t size,
 void tcg_register_jit(void *buf, size_t buf_size)
 {
 }
-#endif // CONFIG_LLVM
 #endif /* ELF_HOST_MACHINE  */
