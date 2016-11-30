@@ -1,5 +1,5 @@
 /*
-  The Pandalog has three sections. 
+  The Pandalog has three sections.
 
 
   Section 1: The header
@@ -32,15 +32,15 @@
   next ends is via the DIRECTORY.
 
 
-  Section 3: The directory 
+  Section 3: The directory
   ------------------------
   Byte dir_pos .. end of file
 
   The directory goes here.  It contains a map which one can use to
   locate the compressed chunk corresponding to a particular
-  instruction in the CHUNKS section of the pandalog file. 
+  instruction in the CHUNKS section of the pandalog file.
 
-  uint32_t num_chunks               How many chunks are in CHUNKS sec 
+  uint32_t num_chunks               How many chunks are in CHUNKS sec
   uint64_t start_instr_chunk_0      First instruction in chunk 0
   uint64_t start_pos_chunk_0        File position of beginning of chunk 0
   uint64_t start_instr_chunk_1      ... for chunk 1
@@ -100,7 +100,7 @@ uint32_t find_chunk(uint64_t instr, uint32_t i1, uint32_t i2);
 void unmarshall_chunk(uint32_t c);
 uint32_t find_ind(uint64_t instr, uint32_t i1, uint32_t i2);
 
- 
+
 void pandalog_create(uint32_t chunk_size) {
     assert (thePandalog == NULL);
     thePandalog = (Pandalog *) malloc(sizeof(Pandalog));
@@ -130,7 +130,7 @@ void pandalog_create(uint32_t chunk_size) {
 
 /*
  this code is all about writing a pandalog which needs PANDA things.
- So it won't compile with reader which is divorced from PANDA 
+ So it won't compile with reader which is divorced from PANDA
 */
 
 #ifndef PLOG_READER
@@ -141,7 +141,7 @@ void add_dir_entry(uint32_t chunk) {
         uint32_t new_size = thePandalog->dir.max_chunks * 2;
         thePandalog->dir.instr = (uint64_t *) realloc(thePandalog->dir.instr, sizeof(uint64_t) * new_size);
         thePandalog->dir.pos = (uint64_t *) realloc(thePandalog->dir.pos, sizeof(uint64_t) * new_size);
-        thePandalog->dir.num_entries = (uint64_t *) 
+        thePandalog->dir.num_entries = (uint64_t *)
             realloc(thePandalog->dir.num_entries, sizeof(uint64_t) * new_size);
         thePandalog->dir.max_chunks = new_size;
     }
@@ -178,7 +178,7 @@ void write_current_chunk(void) {
     assert(ccs > 0);
     assert(cs >= ccs);
     printf ("writing chunk %d of pandalog %d / %d = %.2f compression\n",
-            (int) thePandalog->chunk_num, (int) cs, (int) ccs, ((float) cs) / ((float) ccs)); 
+            (int) thePandalog->chunk_num, (int) cs, (int) ccs, ((float) cs) / ((float) ccs));
     fwrite(thePandalog->chunk.zbuf, 1, ccs, thePandalog->file);
     add_dir_entry(thePandalog->chunk_num);
     // reset start instr / pos
@@ -195,7 +195,7 @@ void write_header(PlHeader *plh) {
     assert (thePandalog->file != NULL);
     // rewind to start of logfile and write header
     fseek(thePandalog->file, 0, SEEK_SET);
-    fwrite(plh, sizeof(*plh), 1, thePandalog->file); 
+    fwrite(plh, sizeof(*plh), 1, thePandalog->file);
 }
 
 // write the directory and header
@@ -210,10 +210,10 @@ void write_dir(void) {
     PlHeader plh;
     plh.version = PL_CURRENT_VERSION;
     // file position of directory info
-    plh.dir_pos = ftell(thePandalog->file);        
+    plh.dir_pos = ftell(thePandalog->file);
     plh.chunk_size = thePandalog->chunk.size;
     printf ("header: version=%d  dir_pos=%" PRIx64 " chunk_size=%d\n",
-            plh.version, plh.dir_pos, plh.chunk_size);   
+            plh.version, plh.dir_pos, plh.chunk_size);
     // now go ahead and write dir where we are in logfile
     fwrite(&(num_chunks), sizeof(num_chunks), 1, thePandalog->file);
     uint32_t i;
@@ -240,8 +240,8 @@ void pandalog_open_write(const char *path, uint32_t chunk_size) {
     // NB: dir will grow later if we need more than 128 chunks
     thePandalog->dir.max_chunks = 128;
     thePandalog->dir.instr = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);
-    thePandalog->dir.pos = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);       
-    thePandalog->dir.num_entries = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);       
+    thePandalog->dir.pos = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);
+    thePandalog->dir.num_entries = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);
     thePandalog->chunk_num = 0;
     printf ("max_chunks = %d\n", thePandalog->dir.max_chunks);
 }
@@ -251,12 +251,12 @@ extern int panda_in_main_loop;
 uint64_t instr_last_entry = -1;
 
 void pandalog_write_entry(Panda__LogEntry *entry) {
-    // fill in required fields. 
+    // fill in required fields.
     if (panda_in_main_loop) {
         entry->pc = panda_current_pc(first_cpu);
         entry->instr = rr_get_guest_instr_count ();
     }
-    else {        
+    else {
         entry->pc = -1;
         entry->instr = -1;
     }
@@ -265,20 +265,20 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
     // but dont do so if it would spread log entries for same instruction between chunks
     // invariant: all log entries for an instruction belong in a single chunk
     if ((instr_last_entry != -1)  // first entry written
-        && (instr_last_entry != entry->instr) 
+        && (instr_last_entry != entry->instr)
         && (thePandalog->chunk.buf_p + n >= thePandalog->chunk.buf + thePandalog->chunk.size)) {
         // entry  won't fit in current chunk
         // and new entry is a different instr from last entry written
         write_current_chunk();
     }
-    
+
     // sanity check.  If this fails, that means a large number of pandalog entries
-    // for same instr went off the end of a chunk, which was already allocated bigger than needed.  
+    // for same instr went off the end of a chunk, which was already allocated bigger than needed.
     // possible.  but I'd rather assert its not and understand why before adding auto realloc here.
     // TRL 2016-05-10: Ok here's a time when this legit happens.  When you pandalog in uninit_plugin
-    // this can be a lot of entries for the same instr (the very last one in the trace).  
-    // So no more assert.  
-    if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n 
+    // this can be a lot of entries for the same instr (the very last one in the trace).
+    // So no more assert.
+    if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n
         >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
         uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
         uint32_t new_size = offset * 2;
@@ -286,7 +286,7 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
         thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
         thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
         assert (thePandalog->chunk.buf != NULL);
-    }                                                          
+    }
     // now write the entry itself to the buffer.  size then entry itself
     *((uint32_t *) thePandalog->chunk.buf_p) = n;
     thePandalog->chunk.buf_p += sizeof(uint32_t);
@@ -300,7 +300,7 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 
 int pandalog_close_write(void) {
     // finish current chunk then write directory info and header
-    write_current_chunk();        
+    write_current_chunk();
     // Not a mistake!
     // this will add one more dir entry for last instr and file pos
     add_dir_entry(thePandalog->chunk_num);
@@ -308,7 +308,7 @@ int pandalog_close_write(void) {
     return 0;
 }
 
-#endif 
+#endif
 
 uint8_t in_read_mode(void) {
     if (thePandalog->mode == PL_MODE_READ_FWD
@@ -323,7 +323,7 @@ PlHeader *read_header(void) {
     // header is at start of logfile
     fseek(thePandalog->file, 0, SEEK_SET);
     PlHeader *plh = (PlHeader *) malloc(sizeof(PlHeader));
-    int n = fread(plh, 1, sizeof(*plh), thePandalog->file); 
+    int n = fread(plh, 1, sizeof(*plh), thePandalog->file);
     assert (n == sizeof(*plh));
     return plh;
 }
@@ -355,14 +355,14 @@ void read_dir(void) {
     for (i=0; i<nc; i++) {
         int n = fread(&(dir->instr[i]), 1, sizeof(dir->instr[i]), thePandalog->file);
         assert (n == sizeof(dir->instr[i]));
-        n = fread(&(dir->pos[i]), 1, sizeof(dir->pos[i]), thePandalog->file);        
+        n = fread(&(dir->pos[i]), 1, sizeof(dir->pos[i]), thePandalog->file);
         assert (n == sizeof(dir->pos[i]));
         n = fread(&(dir->num_entries[i]), 1, sizeof(dir->num_entries[i]), thePandalog->file);
         assert (n == sizeof(dir->num_entries[i]));
     }
     // a little hack so unmarshall_chunk will work
     dir->pos[nc] = plh->dir_pos;
-}    
+}
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {
     // NB: 0 chunk size for now -- read_dir will figure this out
@@ -372,8 +372,8 @@ void pandalog_open_read(const char *path, uint32_t pl_mode) {
     thePandalog->filename = strdup(path);
     thePandalog->file = fopen(path, "r");
     // read directory (and header)
-    read_dir();    
-    thePandalog->chunk_num = 0;   
+    read_dir();
+    thePandalog->chunk_num = 0;
     if (pl_mode == PL_MODE_READ_FWD) {
         // seek to first chunk and unmarshall it
         pandalog_seek(0);
@@ -394,7 +394,7 @@ void pandalog_open_read_bwd(const char *path) {
 
 void pandalog_open(const char *path, const char *mode) {
     if (0==strcmp(mode, "w")) {
-#ifndef PLOG_READER   
+#ifndef PLOG_READER
         pandalog_open_write((const char *) path, (uint32_t) PL_CHUNKSIZE);
 #endif
     }
@@ -413,12 +413,12 @@ int  pandalog_close(void) {
     return 0;
 }
 
-static void __pandalog_free_entry(Panda__LogEntry *entry) {    
+static void __pandalog_free_entry(Panda__LogEntry *entry) {
     panda__log_entry__free_unpacked(entry, NULL);
 }
 
 uint8_t unmarshall_chunk_first_time = 1;
-    
+
 // uncompress this chunk, ready for use
 void unmarshall_chunk(uint32_t c) {
     printf ("unmarshalling chunk %d\n", c);
@@ -444,24 +444,24 @@ void unmarshall_chunk(uint32_t c) {
                 assert (chunk->size < UINT32_MAX/2);
                 chunk->size *= 2;
                 printf ("grew chunk buffer to %d\n", chunk->size);
-                chunk->buf = (unsigned char *) 
+                chunk->buf = (unsigned char *)
                     realloc(chunk->buf,chunk->size);
                 chunk->buf_p = chunk->buf;
                 cs = chunk->size;
             }
         }
-    }                                
+    }
     printf ("ret =%d\n", ret);
     assert (ret == Z_OK);
     thePandalog->chunk_num = c;
     // realloc current chunk arrays if necessary
     if (chunk->max_num_entries < thePandalog->dir.num_entries[c]) {
         chunk->max_num_entries = thePandalog->dir.num_entries[c];
-        chunk->entry = 
-            (Panda__LogEntry **) 
-            realloc(chunk->entry, 
+        chunk->entry =
+            (Panda__LogEntry **)
+            realloc(chunk->entry,
                     sizeof(Panda__LogEntry *) * chunk->max_num_entries);
-    }      
+    }
     chunk->num_entries = thePandalog->dir.num_entries[c];
     // unpack pandalog entries out of uncompressed buffer into array of pl entries
     unsigned char *p = chunk->buf;
@@ -478,7 +478,7 @@ void unmarshall_chunk(uint32_t c) {
         p += n;
         chunk->entry[i] = ple;
     }
-    chunk->ind_entry = 0;  // a guess 
+    chunk->ind_entry = 0;  // a guess
     unmarshall_chunk_first_time = 0;
 }
 
@@ -490,9 +490,9 @@ Panda__LogEntry *pandalog_read_entry(void) {
     uint32_t new_chunk_num;
     if (thePandalog->mode == PL_MODE_READ_FWD) {
         if (plc->ind_entry == plc->num_entries-1) {
-            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) done = 1;                
+            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) done = 1;
             else {
-                new_chunk_num = thePandalog->chunk_num + 1;            
+                new_chunk_num = thePandalog->chunk_num + 1;
                 new_chunk = 1;
             }
         }
@@ -514,12 +514,12 @@ Panda__LogEntry *pandalog_read_entry(void) {
     }
     if (new_chunk) {
         thePandalog->chunk_num = new_chunk_num;
-        unmarshall_chunk(new_chunk_num);        
+        unmarshall_chunk(new_chunk_num);
         // can't use plc anymore
         plc = &(thePandalog->chunk);
-        if (thePandalog->mode == PL_MODE_READ_FWD) 
+        if (thePandalog->mode == PL_MODE_READ_FWD)
             plc->ind_entry = 0;
-        else 
+        else
             plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
     }
     return plc->entry[plc->ind_entry];
@@ -530,7 +530,7 @@ uint32_t find_chunk(uint64_t instr, uint32_t c1, uint32_t c2) {
     assert (c1 <= c2);
     if (c1 == c2) return c1;
     uint32_t mid = (c1 + c2) / 2;
-    // if we ask for instr that is before every instr in log or after every one, 
+    // if we ask for instr that is before every instr in log or after every one,
     // return first / last chunk
     if (instr < thePandalog->dir.instr[c1]) return c1;
     if (instr > thePandalog->dir.instr[c2]) return c2;
@@ -542,7 +542,7 @@ uint32_t find_chunk(uint64_t instr, uint32_t c1, uint32_t c2) {
 }
 
 
-void pandalog_free_entry(Panda__LogEntry *entry) {    
+void pandalog_free_entry(Panda__LogEntry *entry) {
     // ok no, you aren't allowed to do this from outside anymore
     // the chunk owns that data and frees it when it wants
 }
@@ -591,6 +591,6 @@ void pandalog_seek(uint64_t instr) {
     }
     thePandalog->chunk.ind_entry = ind;
 }
-                                                               
+
 
 
