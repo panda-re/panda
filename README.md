@@ -30,6 +30,18 @@ other distros.
 Note that if you want to use our LLVM features (mainly the dynamic taint
 system), you will need to install LLVM 3.3 from OS packages or compiled from
 source. On Ubuntu 14.04 this will happen automatically via `install_ubuntu.sh`.
+Alternatively, we have created an Ubuntu PPA at `ppa:phulin/panda`. You can use
+the following commands to install all dependencies on 14.04 or 16.04:
+
+```
+sudo add-apt-repository ppa:phulin/panda
+sudo apt-get update
+sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
+  libprotobuf-c0-dev libprotoc-dev libelf-dev \
+  libdistorm3-dev libdwarf-dev python-pycparser
+git clone https://github.com/panda-re/panda
+cd panda && ./build.sh
+```
 
 We don't currently support building on Mac/BSD, although it shouldn't be
 impossible with a few patches. We do rely on a few Linux-specific APIs.
