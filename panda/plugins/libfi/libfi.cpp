@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 #include <iostream>
+#include <vector>
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
