@@ -134,11 +134,11 @@ int dd_each_label(uint32_t el, void *stuff1) {
 uint64_t *callers64=NULL;
 uint32_t num_callers = 0;
 
-void dead_data_on_branch(Addr a) {
+void dead_data_on_branch(Addr a, uint64_t size) {
     assert (a.typ == LADDR);
     LAddr reg_num = a.val.la;
     current_instr = rr_get_guest_instr_count();
-    for (uint32_t offset=0; offset<8; offset++) {
+    for (uint32_t offset=0; offset<size; offset++) {
         if (taint2_query_llvm(reg_num, offset)) {
             // this offset of reg is tainted.
             // iterate over labels in set & update dead data

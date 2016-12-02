@@ -62,14 +62,14 @@ bool summary = false;
 std::map<uint64_t,std::set<uint64_t>> tainted_branch;
 
 
-void tbranch_on_branch_taint2(Addr a) {
+void tbranch_on_branch_taint2(Addr a, uint64_t size) {
     if (pandalog) {
         // a is an llvm reg
         assert (a.typ == LADDR);
         // count number of tainted bytes on this reg
         // NB: assuming 8 bytes
         uint32_t num_tainted = 0;
-        for (uint32_t o=0; o<8; o++) {
+        for (uint32_t o=0; o<size; o++) {
             Addr ao =a;
             ao.off = o;
             num_tainted += (taint2_query(ao) != 0);
@@ -87,7 +87,7 @@ void tbranch_on_branch_taint2(Addr a) {
                 tb->n_taint_query = num_tainted;
                 tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
                 uint32_t i=0;
-                for (uint32_t o=0; o<8; o++) {
+                for (uint32_t o=0; o<size; o++) {
                     Addr ao = a;
                     ao.off = o;
                     if (taint2_query(ao)) {
