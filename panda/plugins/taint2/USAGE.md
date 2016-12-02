@@ -40,7 +40,7 @@ APIs and Callbacks
 
 Name: **on_branch2**
 
-Signature: `typedef void (*on_branch2_t) (Addr)`
+Signature: `typedef void (*on_branch2_t) (Addr addr, uint64_t size)`
 
 Description: Called when a branch that depends on tainted data is encountered. The `Addr` parameter (a union of the various types of memory that can be tracked by the taint system) provides the address of the data that the tainted branch depends on.
 

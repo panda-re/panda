@@ -88,10 +88,10 @@ static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
-static void taint_branch_run(FastShad *shad, uint64_t src) {
+static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
-    PPP_RUN_CB(on_branch2, a);
+    PPP_RUN_CB(on_branch2, a, size);
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
@@ -173,7 +173,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
     ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
-    vector<llvm::Type *> argTs{ shadP, llvm::Type::getInt64Ty(ctx) };
+    vector<llvm::Type *> argTs{
+        shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
+    };
     PTV.branchF = M.getFunction("taint_branch");
     if (!PTV.branchF) { // insert
         PTV.branchF = Function::Create(
@@ -609,6 +611,7 @@ void PandaTaintVisitor::insertTaintDelete(Instruction &I,
 
 void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     if (isa<Constant>(cond)) return;
+    LLVMContext &ctx = I.getContext();
 
     // First block is just checking exit request. don't instrument!
     BasicBlock *BB = I.getParent();
@@ -618,7 +621,7 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     if (BB == &F->front() && F->getName().startswith("tcg-llvm-tb")) return;
 
     vector<Value *> args{
-        llvConst, constSlot(cond)
+        llvConst, constSlot(cond), const_uint64(ctx, getValueSize(cond))
     };
     inlineCallBefore(I, branchF, args);
 }
