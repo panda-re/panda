@@ -54,16 +54,14 @@
 #ifndef PLOG_READER
 
 #include "qemu/osdep.h"
-#include "cpu.h"
 
-
-#include "../include/panda/common.h"
+#include "panda/common.h"
 #include "panda/rr/rr_log.h"
 #endif
 
 #include <string.h>
 #include <math.h>
-#include "../include/panda/plog.h"
+#include "panda/plog.h"
 
 #include <zlib.h>
 #include <stdlib.h>
