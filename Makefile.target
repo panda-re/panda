@@ -202,7 +202,7 @@ $(QEMU_PROG_BUILD): config-devices.mak
 $(QEMU_PROG_BUILD): $(all-obj-y) ../libqemuutil.a ../libqemustub.a
 	$(call LINK, $(filter-out %.mak, $^))
 ifdef CONFIG_DARWIN
-	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/qemu.rsrc -o $@,"REZ","$(TARGET_DIR)$@")
+	$(call quiet-command,Rez -append $(SRC_PATH)/pc-bios/panda.rsrc -o $@,"REZ","$(TARGET_DIR)$@")
 	$(call quiet-command,SetFile -a C $@,"SETFILE","$(TARGET_DIR)$@")
 endif
 
