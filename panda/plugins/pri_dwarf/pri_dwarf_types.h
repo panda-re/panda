@@ -1,5 +1,5 @@
 
-#include <libdwarf.h>
+#include <libdwarf/libdwarf.h>
 
 typedef void (*dwarfTypeCB)(target_ulong buf, LocType loc_t, target_ulong buf_len, const char *astnodename);
 

@@ -124,8 +124,9 @@ cd dwarf-20160507
 progress "Installing libdwarf..."
 ./configure --enable-shared
 make
-sudo cp libdwarf/libdwarf.h /usr/local/include
-sudo cp libdwarf/dwarf.h /usr/local/include
+sudo mkdir -p /usr/local/include/libdwarf
+sudo cp libdwarf/libdwarf.h /usr/local/include/libdwarf
+sudo cp libdwarf/dwarf.h /usr/local/include/libdwarf
 sudo cp libdwarf/libdwarf.so /usr/local/lib/
 cd ../
 ```

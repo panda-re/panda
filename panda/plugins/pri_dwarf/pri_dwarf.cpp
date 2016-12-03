@@ -69,8 +69,8 @@ void on_global_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <dwarf.h>
-#include <libdwarf.h>
+#include <libdwarf/dwarf.h>
+#include <libdwarf/libdwarf.h>
 
 }
 
