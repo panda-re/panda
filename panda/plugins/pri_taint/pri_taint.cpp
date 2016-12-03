@@ -1,6 +1,7 @@
 #define __STDC_FORMAT_MACROS
 
 #include <algorithm>
+#include <vector>
 
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
