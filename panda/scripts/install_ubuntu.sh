@@ -29,15 +29,12 @@ sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
 
 pushd /tmp
 
-EXTRA_CFLAGS=
-
 if lsb_release -d | grep -E 'Ubuntu (14\.04|16\.04)'
 then
   sudo apt-get -y install software-properties-common
   sudo add-apt-repository -y ppa:phulin/panda
   sudo apt-get update
   sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
-  EXTRA_CFLAGS="$EXTRA_CFLAGS -I/usr/include/libdwarf"
 else
   if [ ! \( -e "/usr/local/lib/libdwarf.so" -o -e "/usr/lib/libdwarf.so" \) ]
   then
@@ -46,8 +43,9 @@ else
     progress "Installing libdwarf..."
     ./configure --enable-shared
     make -j$(nproc)
-    sudo cp libdwarf/libdwarf.h /usr/local/include
-    sudo cp libdwarf/dwarf.h /usr/local/include
+    sudo mkdir -p /usr/local/include/libdwarf
+    sudo cp libdwarf/libdwarf.h /usr/local/include/libdwarf/
+    sudo cp libdwarf/dwarf.h /usr/local/include/libdwarf/
     sudo cp libdwarf/libdwarf.so /usr/local/lib/
     popd
   else
@@ -98,6 +96,6 @@ fi
 progress "Building PANDA..."
 mkdir build
 cd build
-../build.sh --extra-cflags="$EXTRA_CFLAGS"
+../build.sh
 
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/qemu-system-[arch]."
