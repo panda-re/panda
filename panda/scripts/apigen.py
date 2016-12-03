@@ -150,7 +150,7 @@ def generate_api(interface_file, ext_file, extra_gcc_args):
     includes = []
 
     # use preprocessor
-    pf = subprocess.check_output(['gcc', '-E', interface_file] + extra_gcc_args)
+    pf = subprocess.check_output(['gcc', '-E', interface_file] + extra_gcc_args).decode()
 
     # use pycparser to get arglists
     arglist = get_arglists(pf)
@@ -175,6 +175,6 @@ def generate_api(interface_file, ext_file, extra_gcc_args):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print >>sys.stderr, "usage: %s <interface_file.h> <external_api_file.h> extra gcc args" % sys.argv[0]
+        sys.stderr.write("usage: %s <interface_file.h> <external_api_file.h> extra gcc args" % sys.argv[0])
         sys.exit(1)
     generate_api(sys.argv[1], sys.argv[2], sys.argv[3:])
