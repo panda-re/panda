@@ -32,6 +32,11 @@ PANDAENDCOMMENT */
 
 typedef const std::set<uint32_t> *LabelSetP;
 
+// Hack: no MMAP_HUGETLB on darwin
+#ifdef CONFIG_DARWIN
+#define MAP_HUGETLB 0
+#endif
+
 FastShad::FastShad(std::string name, uint64_t labelsets) : _name(name) {
     uint64_t bytes = sizeof(TaintData) * labelsets;
 
