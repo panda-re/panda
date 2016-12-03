@@ -20,7 +20,7 @@ progress "Installing homebrew..."
 
 progress "Installing qemu dependencies..."
 brew install $(brew deps qemu)
-brew install dtc
+brew install dtc pkg-config
 
 progress "Installing PANDA dependencies..."
 brew install moyix/homebrew-libdwarf/libdwarf
