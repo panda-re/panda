@@ -77,7 +77,7 @@ messages = []
 rests = []
 
 if debug:
-    print "PP: {} {}".format(sys.argv[2], sys.argv[3])
+    print("PP: {} {}".format(sys.argv[2], sys.argv[3]))
 
 lines = open(sys.argv[2]).readlines() + open(sys.argv[3]).readlines()
 plugin_dir = os.path.dirname(sys.argv[2])
@@ -93,7 +93,7 @@ for plugin in lines:
 
 if len(sys.argv) > 4:
     if debug:
-        print "PP: processing extra plugins at {}".format(sys.argv[4])
+        print("PP: processing extra plugins at {}".format(sys.argv[4]))
     extra_plugin_config = sys.argv[4]
     extra_plugin_dir = os.path.dirname(extra_plugin_config)
     for plugin in open(extra_plugin_config):
