@@ -2,9 +2,9 @@
 #ifndef __PRI_DWARF_UTIL_H
 #define __PRI_DWARF_UTIL_H
 
-#include <libdwarf.h>
+#include <libdwarf/libdwarf.h>
 #include <panda/plugin.h>
-#include <dwarf.h>
+#include <libdwarf/dwarf.h>
 #include "pri/pri_types.h"
 
 
