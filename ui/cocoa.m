@@ -34,6 +34,7 @@
 #include "qmp-commands.h"
 #include "sysemu/blockdev.h"
 #include "qemu-version.h"
+#include "panda/rr/rr_log_all.h"
 #include <Carbon/Carbon.h>
 
 #ifndef MAC_OS_X_VERSION_10_5
@@ -244,6 +245,7 @@ static void handleAnyDeviceErrors(Error * err)
     BOOL isFullscreen;
     BOOL isAbsoluteEnabled;
     BOOL isMouseDeassociated;
+    @public BOOL isRecording;
 }
 - (void) switchSurface:(DisplaySurface *)surface;
 - (void) grabMouse;
@@ -455,8 +457,7 @@ QemuCocoaView *cocoaView;
         [[fullScreenWindow contentView] setFrame:[[NSScreen mainScreen] frame]];
         [normalWindow setFrame:NSMakeRect([normalWindow frame].origin.x, [normalWindow frame].origin.y - h + oldh, w, h + [normalWindow frame].size.height - oldh) display:NO animate:NO];
     } else {
-        if (qemu_name)
-            [normalWindow setTitle:[NSString stringWithFormat:@"QEMU %s", qemu_name]];
+        [self setQEMUTitle];
         [normalWindow setFrame:NSMakeRect([normalWindow frame].origin.x, [normalWindow frame].origin.y - h + oldh, w, h + [normalWindow frame].size.height - oldh) display:YES animate:NO];
     }
 
@@ -734,40 +735,41 @@ QemuCocoaView *cocoaView;
     }
 }
 
+- (void) setQEMUTitle
+{
+    if (!isFullscreen) {
+        [normalWindow setTitle:[NSString stringWithFormat:@"PANDA QEMU%s%s%s%s",
+            qemu_name ? " " : "",
+            qemu_name ? qemu_name : "",
+            isMouseGrabbed ? " - (Press ctrl + alt to release Mouse) " : "",
+            isRecording ? " (recording)" : ""]];
+    }
+}
+
 - (void) grabMouse
 {
     COCOA_DEBUG("QemuCocoaView: grabMouse\n");
 
-    if (!isFullscreen) {
-        if (qemu_name)
-            [normalWindow setTitle:[NSString stringWithFormat:@"QEMU %s - (Press ctrl + alt to release Mouse)", qemu_name]];
-        else
-            [normalWindow setTitle:@"QEMU - (Press ctrl + alt to release Mouse)"];
-    }
     [self hideCursor];
     if (!isAbsoluteEnabled) {
         isMouseDeassociated = TRUE;
         CGAssociateMouseAndMouseCursorPosition(FALSE);
     }
     isMouseGrabbed = TRUE; // while isMouseGrabbed = TRUE, QemuCocoaApp sends all events to [cocoaView handleEvent:]
+    [self setQEMUTitle];
 }
 
 - (void) ungrabMouse
 {
     COCOA_DEBUG("QemuCocoaView: ungrabMouse\n");
 
-    if (!isFullscreen) {
-        if (qemu_name)
-            [normalWindow setTitle:[NSString stringWithFormat:@"QEMU %s", qemu_name]];
-        else
-            [normalWindow setTitle:@"QEMU"];
-    }
     [self unhideCursor];
     if (isMouseDeassociated) {
         CGAssociateMouseAndMouseCursorPosition(TRUE);
         isMouseDeassociated = FALSE;
     }
     isMouseGrabbed = FALSE;
+    [self setQEMUTitle];
 }
 
 - (void) setAbsoluteEnabled:(BOOL)tIsAbsoluteEnabled {isAbsoluteEnabled = tIsAbsoluteEnabled;}
@@ -828,6 +830,8 @@ QemuCocoaView *cocoaView;
 - (void)openDocumentation:(NSString *)filename;
 - (IBAction) do_about_menu_item: (id) sender;
 - (void)make_about_window;
+- (void)beginRecord:(id)sender;
+- (void)endRecord:(id)sender;
 @end
 
 @implementation QemuCocoaAppController
@@ -854,7 +858,7 @@ QemuCocoaView *cocoaView;
             exit(1);
         }
         [normalWindow setAcceptsMouseMovedEvents:YES];
-        [normalWindow setTitle:@"QEMU"];
+        [normalWindow setTitle:@"PANDA QEMU"];
         [normalWindow setContentView:cocoaView];
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_10)
         [normalWindow useOptimizedDrawing:YES];
@@ -1063,6 +1067,42 @@ QemuCocoaView *cocoaView;
     qmp_system_powerdown(NULL);
 }
 
+/* Begins a PANDA recording */
+- (void)beginRecord:(id)sender
+{
+    /* Display the file open dialog */
+    NSSavePanel * savePanel;
+    savePanel = [NSSavePanel savePanel];
+    [savePanel setCanCreateDirectories: YES];
+    [savePanel setTitle: @"Create Recording"];
+    if([savePanel runModal] == NSFileHandlingPanelOKButton) {
+        NSString * file = [[savePanel URL] path];
+        if(file == nil) {
+            NSBeep();
+            QEMU_Alert(@"Failed to convert URL to file path!");
+            return;
+        }
+
+        Error *err = NULL;
+        qmp_begin_record([file cStringUsingEncoding: NSASCIIStringEncoding], &err);
+        [sender setEnabled: NO];
+        [[[sender menu] itemWithTitle: @"End Record"] setEnabled: YES];
+        cocoaView->isRecording = YES;
+        [cocoaView setQEMUTitle];
+    }
+}
+
+/* Begins a PANDA replay */
+- (void)endRecord:(id)sender
+{
+    Error *err = NULL;
+    qmp_end_record(&err);
+    [sender setEnabled: NO];
+    [[[sender menu] itemWithTitle: @"Begin Record"] setEnabled: YES];
+    cocoaView->isRecording = NO;
+    [cocoaView setQEMUTitle];
+}
+
 /* Ejects the media.
  * Uses sender's tag to figure out the device to eject.
  */
@@ -1258,6 +1298,7 @@ int main (int argc, const char * argv[]) {
                 !strcmp(opt, "-version") ||
                 !strcmp(opt, "-curses") ||
                 !strcmp(opt, "-display") ||
+                !strcmp(opt, "-replay") ||
                 !strcmp(opt, "-qtest")) {
                 return qemu_main(gArgc, gArgv, *_NSGetEnviron());
             }
@@ -1304,6 +1345,22 @@ int main (int argc, const char * argv[]) {
     [menu addItem: [NSMenuItem separatorItem]];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle: @"Reset" action: @selector(restartQEMU:) keyEquivalent: @""] autorelease]];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle: @"Power Down" action: @selector(powerDownQEMU:) keyEquivalent: @""] autorelease]];
+    [menu addItem: [NSMenuItem separatorItem]];
+    menuItem = [[[NSMenuItem alloc]
+            initWithTitle: @"Begin Record"
+            action: @selector(beginRecord:)
+            keyEquivalent: @"r"]
+        autorelease];
+    [menu addItem: menuItem];
+    [menuItem setKeyEquivalentModifierMask: NSCommandKeyMask];
+    menuItem = [[[NSMenuItem alloc]
+            initWithTitle: @"End Record"
+            action: @selector(endRecord:)
+            keyEquivalent: @"r"]
+        autorelease];
+    [menu addItem: menuItem];
+    [menuItem setKeyEquivalentModifierMask: NSShiftKeyMask | NSCommandKeyMask];
+    [menuItem setEnabled: NO];
     menuItem = [[[NSMenuItem alloc] initWithTitle: @"Machine" action:nil keyEquivalent:@""] autorelease];
     [menuItem setSubmenu:menu];
     [[NSApp mainMenu] addItem:menuItem];
