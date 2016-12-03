@@ -79,7 +79,7 @@ GENERATED_HEADERS += $(PANDA_API_EXT)
 %_ext.h: %_int.h
 	$(call quiet-command,mkdir -p $(dir $@),)
 	$(call quiet-command,\
-		$(SRC_PATH)/panda/scripts/apigen.py $< $@ $(QEMU_INCLUDES),\
+		$(SRC_PATH)/panda/scripts/apigen.py $< $@ -I$(SRC_PATH)/panda/include/fake_libc_include $(QEMU_INCLUDES),\
 		"API     $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
 obj-y += panda/src/callbacks.o
