@@ -194,6 +194,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     panda_callbacks_before_block_exec(cpu, itb);
 
+    // NB: This is where we did this in panda1
+    panda_bb_invalidate_done = false;
 
 #if defined(CONFIG_LLVM)
     if (execute_llvm){
@@ -207,9 +209,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #else
     ret = tcg_qemu_tb_exec(env, tb_ptr);
 #endif // CONFIG_LLVM
-
-    // NB: This is where we did this in panda1
-    panda_bb_invalidate_done = false;
 
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
@@ -740,6 +739,7 @@ int cpu_exec(CPUState *cpu)
             }
 
             for(;;) {
+                bool panda_invalidate_tb = false;
                 debug_checkpoint();
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
@@ -749,7 +749,7 @@ int cpu_exec(CPUState *cpu)
                 cpu_handle_interrupt(cpu, &last_tb);
                 panda_before_find_fast();
                 tb = tb_find(cpu, last_tb, tb_exit);
-                panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done);
+                panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
                 if (qemu_loglevel_mask(CPU_LOG_RR)) {
                     RR_prog_point pp = rr_prog_point();
                     qemu_log_mask(CPU_LOG_RR,
@@ -762,18 +762,14 @@ int cpu_exec(CPUState *cpu)
                 }
 
 #ifdef CONFIG_SOFTMMU
-                if (rr_mode == RR_REPLAY) {
-                    bool panda_invalidate_tb = false;
-                    uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                    if ( panda_invalidate_tb
-                         || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
-                             tb->icount > until_interrupt)) {
-                        // retranslate so that basic block boundary matches
-                        // record & replay for interrupt delivery
-                        breakpoint_invalidate(cpu,tb->pc);
-//                        panda_invalidate_single_tb(cpu, tb->pc);
-                        tb = tb_find(cpu, last_tb, tb_exit);
-                    }
+                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+                if ( panda_invalidate_tb
+                     || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
+                         tb->icount > until_interrupt)) {
+                    // retranslate so that basic block boundary matches
+                    // record & replay for interrupt delivery
+                    breakpoint_invalidate(cpu,tb->pc);
+                    tb = tb_find(cpu, last_tb, tb_exit);
                 }
 #endif //CONFIG_SOFTMMU
                 // Check for termination in replay
