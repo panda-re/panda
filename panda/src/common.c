@@ -223,10 +223,6 @@ int panda_virtual_memory_rw(CPUState *env, target_ulong addr,
     hwaddr phys_addr;
     target_ulong page;
 
-    /* Yes, this func should be called something else.
-     * If you really want to write to memory, remove this assert.
-     */
-    assert (!is_write);
     while (len > 0) {
         page = addr & TARGET_PAGE_MASK;
         phys_addr = cpu_get_phys_page_debug(env, page);
