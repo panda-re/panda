@@ -85,13 +85,12 @@ void panda_before_find_fast(void) {
 }
 
 
-bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool bb_invalidate_done) {
+bool panda_callbacks_after_find_fast(CPUState *cpu, TranslationBlock *tb, bool bb_invalidate_done, bool *invalidate) {
     panda_cb_list *plist;
-    bool panda_invalidate_tb = false;
-    if (unlikely(!bb_invalidate_done)) {
+    if (!bb_invalidate_done) {
         for(plist = panda_cbs[PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT];
             plist != NULL; plist = panda_cb_list_next(plist)) {
-            panda_invalidate_tb |=
+            *invalidate |=
                 plist->entry.before_block_exec_invalidate_opt(cpu, tb);
         }
         return true;
