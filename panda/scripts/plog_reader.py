@@ -7,15 +7,24 @@ from google.protobuf.json_format import MessageToJson
 f = open(sys.argv[1])
 
 version, _, dir_pos, _, chunk_size = struct.unpack('<IIQII', f.read(24))
+#print version, dir_pos, chunk_size
 
 f.seek(dir_pos)
 num_chunks = struct.unpack('<I', f.read(4))[0]
 #print num_chunks
 
+if num_chunks == 0:
+    sys.exit(0)
+
 entries = []
 for i in range(num_chunks):
     buf = f.read(24)
     entries.append(struct.unpack('<QQQ', buf))
+
+if entries[-1][1] != dir_pos:
+    entries.append((0, dir_pos, 0))
+
+#print entries
 
 for entry, next_entry in zip(entries, entries[1:]):
     start_instr, start_pos, num_entries = entry
