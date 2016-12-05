@@ -25,7 +25,7 @@ sudo apt-get -y build-dep qemu
 
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev libelf-dev
+  libprotobuf-c0-dev libprotoc-dev libelf-dev libc++-dev
 
 pushd /tmp
 
