@@ -54,6 +54,8 @@ uint32_t start_label = 0;
 
 uint64_t first_instr = 0;
 
+bool taint_stdin = false;
+
 std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
 std::map <target_ulong, OsiProc> running_procs;
@@ -311,6 +313,7 @@ void windows_create_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle, 
 }
 
 
+char stdin_filename[] = "stdin";
 
 void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
     target_ulong asid = panda_current_asid(cpu);
@@ -318,16 +321,23 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf,
         if (debug) printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
         return;
     }
-    OsiProc& proc = running_procs[asid];
-    char *filename = osi_linux_fd_to_filename(cpu, &proc, fd);
-    uint64_t pos = osi_linux_fd_to_pos(cpu, &proc, fd);
-    if (filename==NULL) {
-        if (debug)
-            printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
-                    (unsigned int) asid, (int) proc.pid, proc.name, (int) fd);
-        return;
+    char *filename;
+    uint64_t pos = 0;
+    if (taint_stdin) {
+        filename = stdin_filename;
     }
-    if (debug) printf ("linux_read_enter for asid==0x%x fd=%d filename=[%s] count=%d pos=%u\n", (unsigned int) asid, (int) fd, filename, count, (unsigned int) pos);
+    else {
+        OsiProc& proc = running_procs[asid];
+        filename = osi_linux_fd_to_filename(cpu, &proc, fd);
+        pos = osi_linux_fd_to_pos(cpu, &proc, fd);
+        if (filename==NULL) {
+            if (debug)
+                printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
+                        (unsigned int) asid, (int) proc.pid, proc.name, (int) fd);
+            return;
+        }
+        if (debug) printf ("linux_read_enter for asid==0x%x fd=%d filename=[%s] count=%d pos=%u\n", (unsigned int) asid, (int) fd, filename, count, (unsigned int) pos);
+    }
     read_enter(cpu, pc, filename, pos, buf, count);
 }
 
@@ -423,6 +433,7 @@ bool init_plugin(void *self) {
     printf ("end_label = %d\n", end_label);
     printf ("first_instr = %" PRId64 " \n", first_instr);
 
+
     // you must use '-os os_name' cmdline arg!
     assert (!(panda_os_type == OST_UNKNOWN));
 
@@ -430,12 +441,18 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
     panda_require("syscalls2");
 
+    if (0 == strcmp(taint_filename, "stdin")) {
+        printf("tainting stdin\n");
+        taint_stdin = true;
+        assert (panda_os_type == OST_LINUX);
+    }
 
     if (panda_os_type == OST_LINUX) {
         panda_require("osi_linux");
         assert(init_osi_linux_api());
 
-        PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
+        if (!taint_stdin) 
+            PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
     }
