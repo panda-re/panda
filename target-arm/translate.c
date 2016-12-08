@@ -38,6 +38,10 @@
 
 #include "panda/callback_support.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 #define ENABLE_ARCH_4T    arm_dc_feature(s, ARM_FEATURE_V4T)
 #define ENABLE_ARCH_5     arm_dc_feature(s, ARM_FEATURE_V5)
 /* currently all emulated v5 cores are also v5TE, so don't bother */
@@ -11683,6 +11687,13 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    if (rr_mode == RR_REPLAY) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
     gen_tb_start(tb);
 
     tcg_clear_temp_count();
@@ -11780,6 +11791,15 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
         if (num_insns == max_insns && (tb->cflags & CF_LAST_IO)) {
             gen_io_start();
         }
+
+#ifdef CONFIG_SOFTMMU
+        //mz let's count this instruction
+        // In LLVM mode we generate this more efficiently.
+        if (rr_mode != RR_OFF && !generate_llvm) {
+            gen_op_update_panda_pc(dc->pc);
+            gen_op_update_rr_icount();
+        }
+#endif
 
         if (dc->ss_active && !dc->pstate_ss) {
             /* Singlestep state is Active-pending.
