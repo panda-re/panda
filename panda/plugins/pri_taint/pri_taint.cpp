@@ -84,7 +84,7 @@ Addr make_greg(uint64_t r, uint16_t off) {
 }
 
 // max length of strnlen or taint query
-#define LAVA_TAINT_QUERY_MAX_LEN 32
+#define LAVA_TAINT_QUERY_MAX_LEN 64
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, const char *astnodename) {
     // can't do a taint query if it is not a valid register (loc) or if
@@ -118,7 +118,7 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
                 uint8_t c;
                 panda_virtual_memory_rw(cpu, pa, &c, 1, false);
                 // null terminator
-                if (c==0) break;
+                if (c==0 && offset >= 32) break;
             }
             if ((int) pa != -1) {
                 Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);

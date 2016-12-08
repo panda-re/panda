@@ -1904,10 +1904,6 @@ void __livevar_iter(CPUState *cpu,
         target_ulong fp){
     //printf("size of vars: %ld\n", vars.size());
     for (auto it : vars){
-        // skip 40% of variables
-        if (rand() % 100 < 40){
-            return;
-        }
         void *var_type    = it.var_type;
         std::string var_name    = it.var_name;
         Dwarf_Locdesc **locdesc = it.locations;
