@@ -315,21 +315,24 @@ void windows_create_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle, 
 
 char stdin_filename[] = "stdin";
 
-void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
+void linux_pread_enter(CPUState *cpu, target_ulong pc,
+        uint32_t fd, uint32_t buf, uint32_t count, uint64_t pos) {
     target_ulong asid = panda_current_asid(cpu);
     if (running_procs.count(asid) == 0) {
         if (debug) printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
         return;
     }
     char *filename;
-    uint64_t pos = 0;
     if (taint_stdin) {
         filename = stdin_filename;
+        pos = 0;
     }
     else {
         OsiProc& proc = running_procs[asid];
         filename = osi_linux_fd_to_filename(cpu, &proc, fd);
-        pos = osi_linux_fd_to_pos(cpu, &proc, fd);
+        if (pos == (uint64_t)-1) {
+            pos = osi_linux_fd_to_pos(cpu, &proc, fd);
+        }
         if (filename==NULL) {
             if (debug)
                 printf ("linux_read_enter for asid=0x%x pid=%d cmd=[%s] fd=%d -- that asid is known but resolving fd failed.  discarding\n",
@@ -341,9 +344,21 @@ void linux_read_enter(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf,
     read_enter(cpu, pc, filename, pos, buf, count);
 }
 
-void linux_read_return(CPUState *cpu, target_ulong pc, uint32_t fd, uint32_t buf, uint32_t count) {
+void linux_pread_return(CPUState *cpu, target_ulong pc,
+        uint32_t fd, uint32_t buf, uint32_t count, uint64_t pos) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     read_return(cpu, pc, buf, env->regs[R_EAX]);
+}
+
+void linux_read_return(CPUState *cpu, target_ulong pc,
+        uint32_t fd, uint32_t buf, uint32_t count) {
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    read_return(cpu, pc, buf, env->regs[R_EAX]);
+}
+
+void linux_read_enter(CPUState *cpu, target_ulong pc,
+        uint32_t fd, uint32_t buf, uint32_t count) {
+    linux_pread_enter(cpu, pc, fd, buf, count, -1);
 }
 
 #endif
@@ -455,6 +470,8 @@ bool init_plugin(void *self) {
             PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
+        PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter);
+        PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return);
     }
 
     if (panda_os_type == OST_WINDOWS) {
