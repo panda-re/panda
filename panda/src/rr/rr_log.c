@@ -1306,7 +1306,11 @@ void replay_progress(void)
                    name, rr_get_guest_instr_count(),
                    ((rr_get_guest_instr_count() * 100.0) /
                     rr_nondet_log->last_prog_point.guest_instr_count),
-                   secs, rusage.ru_maxrss / 1024.0 / 1024.0);
+                   secs, rusage.ru_maxrss / 1024.0 / 1024.0
+#ifdef __APPLE__
+                   / 1024.0
+#endif
+                   );
             free(dup_name);
         }
     }
