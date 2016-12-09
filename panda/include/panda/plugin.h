@@ -37,12 +37,6 @@ typedef enum panda_cb_type {
     PANDA_CB_INSN_TRANSLATE,    // Before an insn is translated
     PANDA_CB_INSN_EXEC,         // Before an insn is executed
 
-    // deprecated
-    PANDA_CB_VIRT_MEM_READ,     // After each memory read (virtual addr.)
-    PANDA_CB_VIRT_MEM_WRITE,    // Before each memory write (virtual addr.)
-    PANDA_CB_PHYS_MEM_READ,     // After each memory read (physical addr.)
-    PANDA_CB_PHYS_MEM_WRITE,    // Before each memory write (physical addr.)
-
     PANDA_CB_VIRT_MEM_BEFORE_READ,
     PANDA_CB_VIRT_MEM_BEFORE_WRITE,
     PANDA_CB_PHYS_MEM_BEFORE_READ,
@@ -252,79 +246,6 @@ typedef union panda_cb {
 
     */
     int (*monitor)(Monitor *mon, const char *cmd);
-
-    /* Callback ID: PANDA_CB_VIRT_MEM_READ
-
-       virt_mem_read: called after memory is read
-
-       Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (virtual) address being read
-        target_ulong size: the size of the read
-        void *buf: pointer to the data that was read
-
-       Return value:
-        unused
-
-    */
-    int (*virt_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
-/* Callback ID: PANDA_CB_VIRT_MEM_WRITE
-
-       virt_mem_write: called before memory is written
-
-       Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (virtual) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that is to be written
-
-       Return value:
-        unused
-
-    */
-    int (*virt_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
-    /* Callback ID: PANDA_CB_PHYS_MEM_READ
-
-       phys_mem_read: called after memory is read
-
-       Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the read
-        target_ulong addr: the (physical) address being read
-        target_ulong size: the size of the read
-        void *buf: pointer to the data that was read
-
-       Return value:
-        unused
-
-    */
-    int (*phys_mem_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
-/* Callback ID: PANDA_CB_PHYS_MEM_WRITE
-
-       phys_mem_write: called before memory is written
-
-       Arguments:
-        CPUState *env: the current CPU state
-        target_ulong pc: the guest PC doing the write
-        target_ulong addr: the (physical) address being written
-        target_ulong size: the size of the write
-        void *buf: pointer to the data that is to be written
-
-       Return value:
-        unused
-
-    */
-    int (*phys_mem_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
-
-
-    // New versions.
-
 
     /* Callback ID: PANDA_CB_VIRT_MEM_BEFORE_READ
 

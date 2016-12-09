@@ -133,10 +133,10 @@ bool init_plugin(void *self) {
     //PPP_REG_CB("pri", on_fn_start, on_fn_start);
     {
         panda_cb pcb;
-        pcb.virt_mem_write = virt_mem_write;
-        panda_register_callback(self,PANDA_CB_VIRT_MEM_WRITE,pcb);
-        pcb.virt_mem_read = virt_mem_read;
-        panda_register_callback(self,PANDA_CB_VIRT_MEM_READ,pcb);
+        pcb.virt_mem_before_write = virt_mem_write;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_BEFORE_WRITE,pcb);
+        pcb.virt_mem_after_read = virt_mem_read;
+        panda_register_callback(self,PANDA_CB_VIRT_MEM_AFTER_READ,pcb);
     }
 #endif
     return true;
