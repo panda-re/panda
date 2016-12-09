@@ -188,7 +188,7 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
     size_t count = cs_disasm(handle, buf, size, pc, 0, &insn);
     if (count <= 0) goto done2;
 
-    for (end = insn + count; end >= insn; end--) {
+    for (end = insn + count - 1; end >= insn; end--) {
         if (!cs_insn_group(handle, end, CS_GRP_INVALID)) {
             break;
         }
@@ -344,6 +344,10 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
         int word_size = (env->hflags & HF_LMA_MASK) ? 8 : 4;
         panda_virtual_memory_rw(cpu, env->regs[R_EBP]+word_size, (uint8_t *)&p->caller, word_size, 0);
 #endif
+#ifdef TARGET_ARM
+        p->caller = env->regs[14]; // LR
+#endif
+
     }
 
     p->pc = cpu->panda_guest_pc;
@@ -361,6 +365,12 @@ bool init_plugin(void *self) {
     if (cs_open(CS_ARCH_ARM, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
 #endif
         return false;
+
+    // Need details in capstone to have instruction groupings
+    cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);
+#if defined(TARGET_X86_64)
+    cs_option(cs_handle_64, CS_OPT_DETAIL, CS_OPT_ON);
+#endif
 
     printf("Initializing plugin callstack_instr\n");
 
