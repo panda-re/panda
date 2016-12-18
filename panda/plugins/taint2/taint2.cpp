@@ -394,6 +394,8 @@ Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
         si->has_insertionpoint = 1;
         si->insertionpoint = phs.insertion_point;
     }
+    si->has_ast_loc_id = 1;
+    si->ast_loc_id = phs.src_filename;
 #endif
     return si;
 }

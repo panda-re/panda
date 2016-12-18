@@ -49,15 +49,19 @@ bool hypercall_taint = true;
 Panda__SrcInfoPri *si = NULL;
 const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
+unsigned global_ast_loc_id;
 bool debug = false;
 
-Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name) {
+Panda__SrcInfoPri *pandalog_src_info_pri_create(const char *src_filename, uint64_t src_linenum, const char *src_ast_node_name, unsigned ast_loc_id) {
     Panda__SrcInfoPri *si = (Panda__SrcInfoPri *) malloc(sizeof(Panda__SrcInfoPri));
     *si = PANDA__SRC_INFO_PRI__INIT;
 
     si->filename = (char *) src_filename;
     si->astnodename = (char *) src_ast_node_name;
     si->linenum = src_linenum;
+
+    si->has_ast_loc_id = 1;
+    si->ast_loc_id = ast_loc_id;
 
     si->has_insertionpoint = 1;
     // insert before
@@ -172,7 +176,7 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
             tqh->data = data;
             // 2. write out src-level info
             // si is global variable that is updated whenever location in source changes
-            tqh->src_info=pandalog_src_info_pri_create(global_src_filename,global_src_linenum, astnodename);
+            tqh->src_info=pandalog_src_info_pri_create(global_src_filename,global_src_linenum, astnodename, global_ast_loc_id);
             // 3. write out callstack info
             Panda__CallStack *cs = pandalog_callstack_create();
             tqh->call_stack = cs;
@@ -216,6 +220,7 @@ struct args {
     CPUState *cpu;
     const char *src_filename;
     uint64_t src_linenum;
+    unsigned ast_loc_id;
 };
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
@@ -239,6 +244,7 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
     //lava_query in order to create src_info panda log message
     global_src_filename = args->src_filename;
     global_src_linenum = args->src_linenum;
+    global_ast_loc_id = args->ast_loc_id;
     //target_ulong guest_dword;
     //std::string ty_string = std::string(var_ty);
     //size_t num_derefs = std::count(ty_string.begin(), ty_string.end(), '*');
@@ -268,14 +274,14 @@ void pfun(void *var_ty_void, const char *var_nm, LocType loc_t, target_ulong loc
 
 void on_line_change(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
     if (taint2_enabled()){
-        struct args args = {cpu, file_Name, lno};
+        struct args args = {cpu, file_Name, lno, 0};
         //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_Name, funct_name,lno,pc);
         pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
         //pri_all_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
     }
 }
 void on_fn_start(CPUState *cpu, target_ulong pc, const char *file_Name, const char *funct_name, unsigned long long lno){
-    struct args args = {cpu, file_Name, lno};
+    struct args args = {cpu, file_Name, lno, 0};
     if (debug)
         printf("fn-start: %s() [%s], ln: %4lld, pc @ 0x%x\n",funct_name,file_Name,lno,pc);
     pri_funct_livevar_iter(cpu, pc, (liveVarCB) pfun, (void *)&args);
@@ -303,7 +309,7 @@ void i386_hypercall_callback(CPUState *cpu){
                     SrcInfo info;
                     int rc = pri_get_pc_source_info(cpu, pc, &info);
                     if (!rc) {
-                        struct args args = {cpu, info.filename, info.line_number};
+                        struct args args = {cpu, info.filename, info.line_number, phs.src_filename};
                         if (debug) {
                             printf("panda hypercall: [%s], "
                                    "ln: %4ld, pc @ 0x" TARGET_FMT_lx "\n",
