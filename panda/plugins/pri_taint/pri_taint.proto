@@ -14,7 +14,8 @@ message SrcInfoPri {
     required uint32 linenum = 2;
     required string astnodename = 3;
     optional uint32 insertionpoint = 4;
-}     
+    optional uint32 ast_loc_id = 5;
+}
 
 // results of taint query on a single byte
 // ptr should corresponds to a ptr from TaintQueryUniqueLabelSet message
