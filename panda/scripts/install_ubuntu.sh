@@ -87,7 +87,7 @@ popd
 
 if [ ! -e "build.sh" ]
 then
-  progress "Cloning PANDA into $cwd ..."
+  progress "Cloning PANDA into $(pwd) ..."
   git clone https://github.com/panda-re/panda.git
   cd panda
 else
@@ -96,6 +96,6 @@ fi
 progress "Building PANDA..."
 mkdir build
 cd build
-../build.sh
+../build.sh "$@"
 
 progress "PANDA is built and ready to use in panda/build/[arch]-softmmu/qemu-system-[arch]."
