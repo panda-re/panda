@@ -85,6 +85,7 @@ void tp_label(Shad *shad, Addr *a, uint32_t l);
 
 
 void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l);
+void tp_label_reg(Shad *shad, int reg_num, int offset, uint32_t l);
 
 LabelSetP tp_query(Shad *shad, Addr a);
 LabelSetP tp_query_ram(Shad *shad, uint64_t pa) ;
@@ -102,6 +103,7 @@ uint64_t tp_query_cb_mask(Shad *shad, Addr a, uint8_t size);
 uint32_t ls_card(LabelSetP ls);
 
 void tp_delete_ram(Shad *shad, uint64_t pa) ;
+void tp_delete_reg(Shad *shad, int reg_num, int offset);
 
 void tp_ls_a_iter(Shad *shad, Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
