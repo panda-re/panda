@@ -103,7 +103,8 @@ target_ulong panda_current_asid(CPUState *cpu) {
   return table;
   /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
 #elif defined(TARGET_PPC)
-
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  return env->sr[0];
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;
