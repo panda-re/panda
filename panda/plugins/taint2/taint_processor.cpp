@@ -463,8 +463,18 @@ void tp_label_ram(Shad *shad, uint64_t pa, uint32_t l) {
     tp_label(shad, &a, l);
 }
 
+void tp_label_reg(Shad *shad, int reg_num, int offset, uint32_t l) {
+    Addr a = make_greg(reg_num, offset);
+    tp_label(shad, &a, l);
+}
+
 void tp_delete_ram(Shad *shad, uint64_t pa) {
     Addr a = make_maddr(pa);
+    tp_delete(shad, &a);
+}
+
+void tp_delete_reg(Shad *shad, int reg_num, int offset) {
+    Addr a = make_greg(reg_num, offset);
     tp_delete(shad, &a);
 }
 
