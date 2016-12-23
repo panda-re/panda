@@ -181,9 +181,13 @@ uint32_t get_32_linux_x86 (CPUState *cpu, uint32_t argnum) {
     return (uint32_t) get_linux_x86_argnum(cpu, argnum);
 }
 uint32_t get_32_linux_arm (CPUState *cpu, uint32_t argnum) {
+#ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     assert (argnum < 7);
     return (uint32_t) env->regs[argnum];
+#else
+    return 0;
+#endif
 }
 uint32_t get_32_windows_x86 (CPUState *cpu, uint32_t argnum) {
     return (uint32_t) get_win_syscall_arg(cpu, argnum);
@@ -195,9 +199,13 @@ uint64_t get_64_linux_x86(CPUState *cpu, uint32_t argnum) {
 }
 
 uint64_t get_64_linux_arm(CPUState *cpu, uint32_t argnum) {
+#ifdef TARGET_ARM
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     assert (argnum < 7);
     return (((uint64_t) env->regs[argnum]) << 32) | (env->regs[argnum+1]);
+#else
+    return 0;
+#endif
 }
 
 uint64_t get_64_windows_x86(CPUState *cpu, uint32_t argnum) {
@@ -563,7 +571,7 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 #else
 
-    fwrite(stderr,"The syscalls plugin is not currently supported on this platform.\n");
+    fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
 #endif
     return true;
