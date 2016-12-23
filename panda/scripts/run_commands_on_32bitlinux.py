@@ -126,7 +126,7 @@ print "jsonfile: [%s]" % jsonfile
 
 rcog = this_script_dir + '/' + "run_commands_on_guest.py"
 
-cmd = "/usr/bin/python " + rcog + " " + jsonfile
+cmd = "python " + rcog + " " + jsonfile
 
 print "cmd = [%s]" % cmd
 
