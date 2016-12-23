@@ -26,6 +26,8 @@ PANDAENDCOMMENT */
 #include <capstone/x86.h>
 #elif defined(TARGET_ARM)
 #include <capstone/arm.h>
+#elif defined(TARGET_PPC)
+#include <capstone/ppc.h>
 #endif
 
 #include "panda/plugin.h"
@@ -179,7 +181,7 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
 
 #if defined(TARGET_I386)
     csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
-#elif defined(TARGET_ARM)
+#elif defined(TARGET_ARM) || defined(TARGET_PPC)
     csh handle = cs_handle_32;
 #endif
 
@@ -363,6 +365,8 @@ bool init_plugin(void *self) {
 #endif
 #elif defined(TARGET_ARM)
     if (cs_open(CS_ARCH_ARM, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+#elif defined(TARGET_PPC)
+    if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
 #endif
         return false;
 
