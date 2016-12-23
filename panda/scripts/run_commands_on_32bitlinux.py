@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """run_commands_on_32bitlinux.py binary [args]
 
@@ -34,6 +34,12 @@ import sys
 import json
 import subprocess as sp
 import shutil
+
+home_dir = os.getenv("HOME")
+dot_dir = home_dir + "/.panda"
+
+if not (os.path.exists(dot_dir)):
+    os.mkdir(dot_dir)
 
 this_script = os.path.abspath(__file__)
 (this_script_dir, foo) = os.path.split(this_script)
@@ -74,12 +80,12 @@ os.mkdir(install_dir)
 
 # get qcow if necessary
 
-qcow = os.getcwd() + "/wheezy_panda2.qcow2"
+qcow = dot_dir + "/wheezy_panda2.qcow2"
 proj["qcow"] = qcow
 
 if not (os.path.isfile(qcow)):
-    print "\nYou need a qcow.  Downloading from moyix. Thanks moyix!\n"
-    sp.check_call(["/usr/bin/wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2"])
+    print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
+    sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
 
 
 proj["snapshot"] = "root"
