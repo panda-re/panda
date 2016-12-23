@@ -1,4 +1,34 @@
 #!/usr/bin/python
+
+"""run_commands_on_32bitlinux.py binary [args]
+
+So you want to try panda but dont have any recordings.  Poor you.  
+This script allows you to run commands on a 32-bit linux guest.  
+
+1st arg is binary which should be a 32-bit ELF.
+Remaining arguments are the args that binary needs.
+
+For example, 
+
+run_commands_on_32bitlinux.py foo2 
+
+will run the binary foo2 (which needs to be in the cwd) under a panda
+32-bit wheezy machine and create a recording.  The recording files will be in
+
+./rcp-panda/foo2-recording*
+
+You can replay with
+
+$PANDA_DIR/build/i386-softmmu/qemu-system-i386 -replay ./rcp-panda/ps-recording
+
+Assuming PANDA_DIR is path to your panda directory and you built under
+the build dir.
+
+"""
+
+
+
+
 import os
 import sys
 import json
@@ -74,7 +104,7 @@ print "new_args = " + (str(new_args))
 proj["install_dir"] = install_dir
 proj["library_path"] = ""
 proj["directory"] = rcp_dir
-proj["name"] = "not_important"
+proj["name"] = exename
 proj["recording_name"] = rcp_dir + "/" + exename + "-recording"
 proj["command"] = "{install_dir}/" + exename + " " + (" ".join(new_args))
 proj["input"] = "/bin/ls"
