@@ -70,11 +70,12 @@ extern int loglevel;
 void taint2_enable_taint(void);
 int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
+void taint2_label_reg(int reg_num, int offset, uint32_t l) ;
 void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length);
 void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
     uint32_t length, long label);
 void taint2_delete_ram(uint64_t pa);
-
+void taint2_delete_reg(int reg_num, int offset);
 
 Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
@@ -716,6 +717,10 @@ void __taint2_label_ram(uint64_t pa, uint32_t l) {
     tp_label_ram(shadow, pa, l);
 }
 
+void __taint2_label_reg(int reg_num, int offset, uint32_t l) {
+    tp_label_reg(shadow, reg_num, offset, l);
+}
+
 uint32_t taint_pos_count = 0;
 
 void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
@@ -826,6 +831,10 @@ void __taint2_delete_ram(uint64_t pa) {
     tp_delete_ram(shadow, pa);
 }
 
+void __taint2_delete_reg(int reg_num, int offset) {
+    tp_delete_reg(shadow, reg_num, offset);
+}
+
 void __taint2_labelset_spit(LabelSetP ls) {
     std::set<uint32_t> rendered(label_set_render_set(ls));
     for (uint32_t l : rendered) {
@@ -877,6 +886,9 @@ void taint2_label_ram(uint64_t pa, uint32_t l) {
     __taint2_label_ram(pa, l);
 }
 
+void taint2_label_reg(int reg_num, int offset, uint32_t l) {
+    __taint2_label_reg(reg_num, offset, l);
+}
 
 Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset) {
     return __taint2_query_pandalog(addr, offset);
@@ -919,6 +931,10 @@ uint64_t taint2_query_cb_mask(Addr a, uint8_t size) {
 
 void taint2_delete_ram(uint64_t pa) {
   __taint2_delete_ram(pa);
+}
+
+void taint2_delete_reg(int reg_num, int offset) {
+  __taint2_delete_reg(reg_num, offset);
 }
 
 uint32_t taint2_query_reg(int reg_num, int offset) {

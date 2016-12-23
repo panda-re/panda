@@ -19,6 +19,9 @@ int taint2_enabled(void);
 // label this phys addr in memory with label l
 void taint2_label_ram(uint64_t pa, uint32_t l);
 
+// label this reg with label l
+void taint2_label_reg(int reg_num, int offset, uint32_t l);
+
 // query fns return 0 if untainted, else cardinality of taint set
 uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
@@ -37,6 +40,9 @@ uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
 // delete taint from this phys addr
 void taint2_delete_ram(uint64_t pa) ;
+
+// delete taint from this register
+void taint2_delete_reg(int reg_num, int offset);
 
 // spit labelset.
 void taint2_labelset_spit(LabelSetP ls) ; 
