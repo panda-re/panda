@@ -65,7 +65,9 @@
 //#define _ESP	((CPUX86State *)env)->regs[R_ESP]
 #define _ESP	((CPUX86State *)((CPUState *)env->env_ptr))->regs[R_ESP]
 #elif defined(TARGET_ARM)
-#define _ESP	((CPUARMState *)env)->regs[13]
+#define _ESP	((CPUARMState *)((CPUState *)env->env_ptr))->regs[13]
+#elif defined(TARGET_PPC)
+#define _ESP	((CPUPPCState *)((CPUState *)env->env_ptr))->gpr[1]
 #else
 #error	"_ESP macro not defined for target architecture."
 #endif
