@@ -157,7 +157,11 @@ getReg (CPUState *cpu, int index)
     /* This will segfault if the register hasn't been saved.  */
     /* not sure if we dereference register or simply get value  */
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+#if defined(TARGET_I386) || defined(TARGET_ARM)
     return env->regs[index];
+#elif defined(TARGET_PPC)
+    return env->gpr[index];
+#endif
 }
 
 
