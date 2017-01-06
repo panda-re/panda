@@ -33,6 +33,11 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
+#include "panda/callback_support.h"
+
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
 
 #define CPU_SINGLE_STEP 0x1
 #define CPU_BRANCH_STEP 0x2
@@ -7061,6 +7066,13 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+    if (rr_mode == RR_REPLAY) {
+        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+        if (max_insns > until_interrupt) {
+            max_insns = until_interrupt;
+        }
+    }
+
     gen_tb_start(tb);
     tcg_clear_temp_count();
     /* Set env in case of segfault during code fetch */
@@ -7083,6 +7095,16 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
                   ctx.nip, ctx.mem_idx, (int)msr_ir);
         if (num_insns == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
+
+#ifdef CONFIG_SOFTMMU
+        //mz let's count this instruction
+        // In LLVM mode we generate this more efficiently.
+        if (rr_mode != RR_OFF && !generate_llvm) {
+            gen_op_update_panda_pc(ctx.nip);
+            gen_op_update_rr_icount();
+        }
+#endif
+
         if (unlikely(need_byteswap(&ctx))) {
             ctx.opcode = bswap32(cpu_ldl_code(env, ctx.nip));
         } else {
@@ -7135,6 +7157,13 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
                 break;
             }
         }
+
+        // PANDA: ask if anyone wants execution notification
+        if (unlikely(panda_callbacks_insn_translate(cs, ctx.nip))) {
+            // PANDA: Insert the instrumentation
+            gen_helper_panda_insn_exec(tcg_const_tl(ctx.nip));
+        }
+
         (*(handler->handler))(&ctx);
 #if defined(DO_PPC_STATISTICS)
         handler->count++;
