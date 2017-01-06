@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # import re
 import os
 from os.path import abspath, join, basename
@@ -89,8 +89,12 @@ isoname = os.path.join(panda_log_loc, project['name']) + ".iso"
 progress("Creaing ISO {}...".format(isoname))
 
 with open(os.devnull, "w") as DEVNULL:
-    subprocess32.check_call(['genisoimage', '-RJ', '-max-iso9660-filenames', '-o', isoname, installdir], stderr=DEVNULL)
-
+    if sys.platform.startswith('linux'):
+        subprocess32.check_call(['genisoimage', '-RJ', '-max-iso9660-filenames', '-o', isoname, installdir], stderr=DEVNULL)
+    elif sys.platform == 'darwin':
+        subprocess32.check_call(['hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', isoname, installdir], stderr=DEVNULL)
+    else:
+        raise NotImplementedError("Unsupported operating system!")
 tempdir = tempfile.mkdtemp()
 
 monitor_path = os.path.join(tempdir, 'monitor')

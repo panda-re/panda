@@ -21,6 +21,9 @@
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 
+#include "panda/callback_support.h"
+#include "panda/helper_impl.h"
+
 #include "helper_regs.h"
 
 /*****************************************************************************/
