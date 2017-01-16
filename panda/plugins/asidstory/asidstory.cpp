@@ -82,8 +82,10 @@ bool pid_ok(int pid) {
 }
  
 #define MILLION 1000000
-#define NAMELEN 10
-#define NAMELENS "10"
+//#define NAMELEN 10
+//#define NAMELENS "10"
+#define NAMELEN 20
+#define NAMELENS "20"
 
 uint64_t a_counter = 0;
 uint64_t b_counter = 0;

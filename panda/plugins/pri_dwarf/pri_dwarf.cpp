@@ -82,6 +82,7 @@ const char *guest_debug_path = NULL;
 const char *host_debug_path = NULL;
 const char *host_mount_path = NULL;
 const char *proc_to_monitor = NULL;
+bool allow_just_plt = false;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -164,6 +165,12 @@ typedef struct LineRange {
     unsigned long line_number;
     Dwarf_Unsigned line_off;
 
+    friend std::ostream &operator<<(std::ostream &os, const LineRange &lr) {
+        os << "0x" << std::hex << lr.lowpc << "-0x" << std::hex << lr.highpc <<
+            lr.filename << ":" << lr.line_number << ":" << lr.line_off;
+        return os;
+    }
+
     LineRange(Dwarf_Addr lowpc, Dwarf_Addr highpc, unsigned long line_number,
             char *filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
         lowpc(lowpc), highpc(highpc), function_addr(function_addr),
@@ -181,7 +188,7 @@ std::map<Dwarf_Addr,std::pair<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepoin
 
 
 bool sortRange(const LineRange &x1,
-               const LineRange &x2){
+               const LineRange &x2) {
     return x1.lowpc < x2.lowpc ||
            x1.highpc < x2.highpc;
 }
@@ -189,7 +196,7 @@ bool sortRange(const LineRange &x1,
 struct CompareRangeAndPC
 {
     bool operator () (const LineRange &ln_info,
-                    const Dwarf_Addr &pc) const{
+                    const Dwarf_Addr &pc) const {
         //if (ln_info.lowpc <= pc && ln_info.highpc >= pc){
         if (ln_info.lowpc <= pc && ln_info.highpc > pc){
             return 0;
@@ -616,7 +623,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
                         rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
-                                &array_typesize, 
+                                &array_typesize,
                                 &err);
                         // array size is 0 than we likely have a 0 length
                         // array which is common at the end of structs to make a
@@ -1478,13 +1485,17 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
                     }
                     //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
                     if (needs_reloc){
-                        line_range_list.push_back(LineRange(base_address+lower_bound_addr,
-                                                            base_address+upper_bound_addr,
-                                                            line_num, filenm_line, line_off, 0));
+                        LineRange lr = LineRange(base_address+lower_bound_addr,
+                                base_address+upper_bound_addr,
+                                line_num, filenm_line, line_off, 0);
+                        std::cout << lr << "\n";
+                        line_range_list.push_back(lr);
                     }
                     else{
-                        line_range_list.push_back(LineRange(lower_bound_addr, upper_bound_addr, line_num,
-                                                            filenm_line, line_off, 0));
+                        LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
+                                filenm_line, line_off, 0);
+                        std::cout << lr << "\n";
+                        line_range_list.push_back(lr);
                     }
                     //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr);
                 }
@@ -1541,7 +1552,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
     }
     printf("Processed %d Compilation Units\n", count);
     // sort the line number ranges
-    if (count < 1){
+    if (count < 1 && !allow_just_plt){
          return false;
     }
     std::sort(fn_start_line_range_list.begin(), fn_start_line_range_list.end(), sortRange);
@@ -1584,13 +1595,6 @@ bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_ad
 
 target_ulong monitored_asid = 0;
 unsigned num_libs_known = 0;
-
-// We want to catch all loaded modules, but don't want to
-// check every single call. This is a compromise -- check
-// every 1000 calls. If we had a callback in OSI for
-// on_library_load we could do away with this hack.
-int mod_check_count = 0;
-#define MOD_CHECK_FREQ 1000
 
 bool correct_asid(CPUState *cpu) {
     OsiProc *p = get_current_process(cpu);
@@ -1662,6 +1666,12 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
     return;
 }
 
+// We want to catch all loaded modules, but don't want to
+// check every single call. This is a compromise -- check
+// every 1000 calls. If we had a callback in OSI for
+// on_library_load we could do away with this hack.
+int mod_check_count = 0;
+#define MOD_CHECK_FREQ 1000
 void ensure_dbg_initialized(CPUState *cpu) {
     OsiProc *p = get_current_process(cpu);
     bool dbg_initialized;
@@ -2238,6 +2248,10 @@ bool init_plugin(void *self) {
     host_mount_path = panda_parse_string(args, "host_mount_path", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
     libc_host_path = panda_parse_string(args, "host_libc_path", "None");
+    // this option allows dwarf/elf processing to continue if no 
+    // dwarf symbols are including.  presumably only using plt symbols
+    // for line range data.  could be useful for tracking calls to functions
+    allow_just_plt = panda_parse_bool(args, "allow_just_plt");
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
@@ -2272,6 +2286,14 @@ bool init_plugin(void *self) {
     // directory on host machine, so add '/bin/' in order to get the main executable
     if (s.st_mode & S_IFDIR) {
         bin_path = std::string(host_debug_path) + "/bin/" + proc_to_monitor;
+        if (stat(bin_path.c_str(), &s) != 0) {
+            bin_path = std::string(host_debug_path) + "/lib/" + proc_to_monitor;
+            if (stat(bin_path.c_str(), &s) != 0) {
+                printf("Can\' find a valid main bin path");
+                printf("[WARNING] Skipping processing of main file!!!");
+                bin_path = "";
+            }
+        }
     }
     // if debug path actually points to a file, then make host_debug_path the
     // directory that contains the executable
@@ -2284,13 +2306,15 @@ bool init_plugin(void *self) {
         printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path);
         exit(1);
     }
-    printf("opening debug info for starting binary %s\n", bin_path.c_str());
-    // third arg (actual_base address or executable) is 0 because we don't know what it is, but for now
-    // assume that it is not pie
-    elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
-    if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
-        fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
-        return false;
+    if (bin_path != "") {
+        printf("opening debug info for starting binary %s\n", bin_path.c_str());
+        // third arg (actual_base address or executable) is 0 because we don't know what it is, but for now
+        // assume that it is not pie
+        elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
+        if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
+            fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
+            return false;
+        }
     }
 
     {
