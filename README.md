@@ -66,7 +66,7 @@ Details about the architecture-neutral plugin interface can be found in
 
 PANDA currently supports whole-system record/replay execution of x86, x86\_64,
 and ARM guests. Documentation can be found in
-[panda/docs/record\_replay.md](panda/docs/record\_replay.md).
+[the manual](panda/docs/manual.md#recordreplay-details).
 
 ## Publications
 
