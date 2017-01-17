@@ -8,6 +8,18 @@ PANDA_LLVM="$(/bin/readlink -f "${PANDA_LLVM_ROOT}/${PANDA_LLVM_BUILD}" 2>/dev/n
 # stop on any error
 set -e
 
+#Check if the path actually exists
+if [ "$PANDA_LLVM" != "" ] && [ ! -d "$PANDA_LLVM" ]; then
+    echo "$PANDA_LLVM does not exist"
+    if [ -f "$PANDA_LLVM_ROOT/bin/llvm-config" ]; then
+        echo "llvm-config found in ${PANDA_LLVM_ROOT}/bin/llvm-config, setting llvm path to just $PANDA_LLVM_ROOT"
+        PANDA_LLVM="$(/bin/readlink -f "${PANDA_LLVM_ROOT}")"
+    else
+        echo "$PANDA_LLVM_ROOT/bin/llvm-config not found either, are you sure that PANDA_LLVM_ROOT is correct?"
+        PANDA_LLVM=""
+    fi
+
+fi
 # set the LLVM_BIT
 if [ "$PANDA_LLVM" != "" ]; then
   ## Using PANDA LLVM.
@@ -26,6 +38,7 @@ else
     LLVM_BIT=""
   fi
 fi
+
 
 "$(dirname $0)/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
