@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
 #include <vector>
 #include <map>
 #include <set>
+#include <memory>
 #include <string>
 #include <algorithm>
 
@@ -98,7 +99,7 @@ bool debug = false;
 Dwarf_Unsigned prev_line = 0, cur_line;
 Dwarf_Addr prev_function = 0, cur_function;
 Dwarf_Addr prev_line_pc = 0;
-char *prev_file_name = NULL;
+std::string prev_file_name = "";
 std::string prev_funct_name = std::string("");
 bool inExecutableSource = false;
 
@@ -161,7 +162,7 @@ std::vector<VarInfo> global_var_list;
 
 typedef struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
-    char *filename;
+    std::string filename;
     unsigned long line_number;
     Dwarf_Unsigned line_off;
 
@@ -172,9 +173,11 @@ typedef struct LineRange {
     }
 
     LineRange(Dwarf_Addr lowpc, Dwarf_Addr highpc, unsigned long line_number,
-            char *filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
+            std::string filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
         lowpc(lowpc), highpc(highpc), function_addr(function_addr),
-        filename(filename), line_number(line_number), line_off(line_off) {}
+        filename(filename), line_number(line_number), line_off(line_off) {
+        assert(lowpc <= highpc);
+   }
 } LineRange;
 std::vector<LineRange> line_range_list;
 std::vector<LineRange> fn_start_line_range_list;
@@ -189,8 +192,12 @@ std::map<Dwarf_Addr,std::pair<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepoin
 
 bool sortRange(const LineRange &x1,
                const LineRange &x2) {
-    return x1.lowpc < x2.lowpc ||
-           x1.highpc < x2.highpc;
+    /*
+     * if (x1.lowpc < x2.lowpc) return true;
+     * else if (x1.lowpc > x2.lowpc) return false;
+     * return x1.highpc < x2.highpc;
+     */
+    return std::tie(x1.lowpc, x1.highpc) < std::tie(x2.lowpc, x2.highpc);
 }
 
 struct CompareRangeAndPC
@@ -212,16 +219,17 @@ struct CompareRangeAndPC
     required string file_caller = 4;
     required uint64 line_number_caller = 5;
 */
-void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee,
-        char *file_caller, uint64_t lno_caller, bool isCall) {
+void pri_dwarf_plog(const char *file_callee, const char *fn_callee, uint64_t lno_callee,
+        const char *file_caller, uint64_t lno_caller, bool isCall) {
     // setup
     Panda__DwarfCall *dwarf = (Panda__DwarfCall *) malloc (sizeof (Panda__DwarfCall));
     *dwarf = PANDA__DWARF_CALL__INIT;
     // assign values
-    dwarf->function_name_callee = fn_callee;
-    dwarf->file_callee = file_callee;
+    // these (char *) casts are ugly
+    dwarf->function_name_callee = (char *) fn_callee;
+    dwarf->file_callee = (char *) file_callee;
     dwarf->line_number_callee = lno_callee;
-    dwarf->file_caller = file_caller;
+    dwarf->file_caller = (char *) file_caller;
     dwarf->line_number_caller = lno_caller;
 
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
@@ -316,8 +324,6 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     // XXX: note: byte swapping omitted
     // XXX: 64-bit support omitted. Mess with ELFCLASS
     struct elfhdr ehdr;
-    struct elf_phdr *phdr;
-    struct elf_shdr *shdr;
     uint16_t shstrndx;
     uint32_t load_addr, loaddr, hiaddr;
     int i, retval;
@@ -336,19 +342,24 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         return -1;
     }
 
-    phdr = (struct elf_phdr *) malloc(ehdr.e_phnum * sizeof(struct elf_phdr));
+    //struct elf_phdr *phdr;
+    //phdr = (struct elf_phdr *) malloc(ehdr.e_phnum * sizeof(struct elf_phdr));
+    //struct elf_phdr *phdr;
+    std::unique_ptr<elf_phdr[]> phdr(new elf_phdr[ehdr.e_phnum]);
     fseek(f, ehdr.e_phoff, SEEK_SET);
-    retval = fread(phdr, sizeof(struct elf_phdr), ehdr.e_phnum, f);
+    retval = fread(phdr.get(), sizeof(struct elf_phdr), ehdr.e_phnum, f);
     if (retval != ehdr.e_phnum) {
-        free(phdr);
+        //free(phdr);
         return -1;
     }
 
-    shdr = (struct elf_shdr *) malloc(ehdr.e_shnum * sizeof(struct elf_shdr));
+    //struct elf_shdr *shdr;
+    //shdr = (struct elf_shdr *) malloc(ehdr.e_shnum * sizeof(struct elf_shdr));
+    std::unique_ptr<elf_shdr[]> shdr(new elf_shdr[ehdr.e_shnum]);
     fseek(f, ehdr.e_shoff, SEEK_SET);
-    retval = fread(shdr, sizeof(struct elf_shdr), ehdr.e_shnum, f);
+    retval = fread(shdr.get(), sizeof(struct elf_shdr), ehdr.e_shnum, f);
     if (retval != ehdr.e_shnum) {
-        free(shdr);
+        //free(shdr);
         return -1;
     }
     shstrndx = ehdr.e_shstrndx;
@@ -365,9 +376,11 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     //printf("shstrtable file offset: %d\n", str_table_off);
     //printf("shstrtable size: %d\n", shdr[ehdr.e_shstrndx].sh_size);
     //printf("shstrtable offset: %d\n", shdr[ehdr.e_shstrndx].sh_offset);
-    char *shstrtable = (char *) malloc(shdr[ehdr.e_shstrndx].sh_size);
+    //char *shstrtable = (char *) malloc(shdr[ehdr.e_shstrndx].sh_size);
+    std::unique_ptr<char[]> shstrtable(new char[shdr[ehdr.e_shstrndx].sh_size]);
     fseek(f, shdr[ehdr.e_shstrndx].sh_offset, SEEK_SET);
-    if (shdr[ehdr.e_shstrndx].sh_size != fread(shstrtable, 1,  shdr[ehdr.e_shstrndx].sh_size, f)){
+    if (shdr[ehdr.e_shstrndx].sh_size != fread(shstrtable.get(), 1,  shdr[ehdr.e_shstrndx].sh_size, f)){
+        //free(shstrtable);
         printf("Wasn't able to successfully read string table from file\n");
         return -1;
     }
@@ -388,10 +401,11 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         }
         else if (strcmp(".strtab", &shstrtable[shdr[i].sh_name]) == 0){
             //printf("got .strtab\n");
+            //std::unique_ptr<char[]> strtable(new char[shdr[i].sh_size]);
             strtable= (char *) malloc(shdr[i].sh_size);
             fseek(f, shdr[i].sh_offset, SEEK_SET);
             if (shdr[i].sh_size != fread(strtable, 1, shdr[i].sh_size, f)){
-                printf("Wasn't able to successfully populate the dynstrtable\n");
+                printf("Wasn't able to successfully populate the strtable\n");
                 return -1;
             }
         }
@@ -655,7 +669,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
     return -1;
 }
 
-std::string getNameFromDie(Dwarf_Die the_die){
+std::string getNameFromDie(Dwarf_Debug *dbg, Dwarf_Die the_die){
     Dwarf_Error err;
     int rc;
     char *die_name = 0;
@@ -666,7 +680,10 @@ std::string getNameFromDie(Dwarf_Die the_die){
         die("Error in dwarf_diename\n");
     }
     if (rc != DW_DLV_OK) ret_string = "?";
-    else ret_string = die_name;
+    else {
+        ret_string = die_name;
+        dwarf_dealloc(*dbg, die_name, DW_DLA_STRING);
+    }
     return ret_string;
 }
 
@@ -1322,7 +1339,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         switch (tag) {
             /* fall through to default case to get sibling die */
             case DW_TAG_formal_parameter:
-                argname = getNameFromDie(arg_child);
+                argname = getNameFromDie(dbg, arg_child);
 
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, arg_child};
@@ -1367,7 +1384,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                     }
                 }
             case DW_TAG_variable:
-                argname = getNameFromDie(arg_child);
+                argname = getNameFromDie(dbg, arg_child);
 
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, arg_child};
@@ -1441,47 +1458,56 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
             char *filenm_tmp;
             char *filenm_cu;
             if (line_count > 0){
-                dwarf_linesrc(dwarf_lines[0], &filenm_tmp, &err);
-                filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
-                strcpy(filenm_cu, filenm_tmp);
+                dwarf_linesrc(dwarf_lines[0], &filenm_cu, &err);
+                //filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
+                //strcpy(filenm_cu, filenm_tmp);
 
                 for (i = 1; i < line_count; i++){
                     char *filenm_line;
                     filenm_tmp = NULL;
-                    Dwarf_Addr upper_bound_addr;
-                    Dwarf_Addr lower_bound_addr;
-                    Dwarf_Unsigned line_num;
-                    Dwarf_Unsigned line_off;
+                    Dwarf_Addr upper_bound_addr=0, lower_bound_addr = 0;
+                    Dwarf_Unsigned line_num, line_off;
                     dwarf_lineaddr(dwarf_lines[i-1], &lower_bound_addr, &err);
                     dwarf_lineaddr(dwarf_lines[i], &upper_bound_addr, &err);
 
-                    dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
-                    dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
-                    dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
-                    if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
-                        filenm_line = filenm_cu;
+                    // only continue processing the line if lower is less than
+                    // upper
+                    if (lower_bound_addr < upper_bound_addr) {
+                        dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
+                        dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
+                        dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
+                        if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
+                            filenm_line = filenm_cu;
+                        }
+                        else {
+                            filenm_line = filenm_tmp;
+                            //filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
+                            //strcpy(filenm_line, filenm_tmp);
+                        }
+                        //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+                        if (needs_reloc){
+                            LineRange lr = LineRange(base_address+lower_bound_addr,
+                                    base_address+upper_bound_addr,
+                                    line_num, filenm_line, line_off, 0);
+                            //std::cout << lr << "\n";
+                            line_range_list.push_back(lr);
+                        }
+                        else{
+                            LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
+                                    filenm_line, line_off, 0);
+                            //std::cout << lr << "\n";
+                            line_range_list.push_back(lr);
+                        }
+                        dwarf_dealloc(*dbg, filenm_tmp, DW_DLA_STRING);
+                        //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr);
+                    } else {
+                        // lower bound is greater than upper bound so we skip
+                        // the line block that we are processing
                     }
-                    else {
-                        filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
-                        strcpy(filenm_line, filenm_tmp);
-                    }
-                    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
-                    if (needs_reloc){
-                        LineRange lr = LineRange(base_address+lower_bound_addr,
-                                base_address+upper_bound_addr,
-                                line_num, filenm_line, line_off, 0);
-                        std::cout << lr << "\n";
-                        line_range_list.push_back(lr);
-                    }
-                    else{
-                        LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
-                                filenm_line, line_off, 0);
-                        std::cout << lr << "\n";
-                        line_range_list.push_back(lr);
-                    }
-                    //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr);
                 }
+                dwarf_dealloc(*dbg, filenm_cu, DW_DLA_STRING);
             }
+            dwarf_srclines_dealloc(*dbg, dwarf_lines, line_count);
         }
         else
             printf("Could not get get function line number\n");
@@ -1508,7 +1534,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 
                 Dwarf_Locdesc **locdesclist=NULL;
                 Dwarf_Signed loccnt;
-                argname = getNameFromDie(child_die);
+                argname = getNameFromDie(dbg, child_die);
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, child_die};
                 if (-1 == get_die_loc_info(*dbg, child_die, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
@@ -1545,6 +1571,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 }
 
 bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_address, bool needs_reloc) {
+    //std::unique_ptr<Dwarf_Debug> dbg = make_unique<Dwarf_Debug>();
     Dwarf_Debug *dbg = (Dwarf_Debug *) malloc(sizeof(Dwarf_Debug));
     Dwarf_Error err;
     int fd = -1;
@@ -1783,7 +1810,7 @@ bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
 
 }
 
-void dwarf_log_callsite(CPUState *cpu, char *file_callee, char *fn_callee, uint64_t lno_callee, bool isCall){
+void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
     target_ulong ra = 0;
 
     int num_received = get_callers(&ra, 1, cpu);
@@ -1799,18 +1826,18 @@ void dwarf_log_callsite(CPUState *cpu, char *file_callee, char *fn_callee, uint6
         return;
     }
     Dwarf_Addr call_site_fn = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     Dwarf_Unsigned lno = it->line_number;
     std::string funct_name = funcaddrs[call_site_fn];
 
     //void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
-    pri_dwarf_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
+    pri_dwarf_plog(file_callee, fn_callee, lno_callee, file_name.c_str(), lno, isCall);
     /*
     if (isCall) {
     }
-        printf(" CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+        printf(" CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),call_site_fn, funct_name.c_str(),lno,ra);
     else {
-        printf(" RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+        printf(" RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),call_site_fn, funct_name.c_str(),lno,ra);
     }
     */
     return;
@@ -1830,15 +1857,15 @@ void on_call(CPUState *cpu, target_ulong pc) {
         return;
     }
     cur_function = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
     if (it->lowpc == it->highpc){
-        //printf("Calling %s through .plt\n",file_name);
+        //printf("Calling %s through .plt\n",file_name.c_str());
     }
-    //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
-    dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, true);
-    pri_runcb_on_fn_start(cpu, pc, file_name, funct_name.c_str());
+    //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
+    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    pri_runcb_on_fn_start(cpu, pc, file_name.c_str(), funct_name.c_str());
 
     /*
     if (funcaddrs.find(pc) != funcaddrs.end()){
@@ -1880,12 +1907,12 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
         return;
     }
     cur_function = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
-    //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_func);
-    dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, false);
-    pri_runcb_on_fn_return(cpu, pc_func, file_name, funct_name.c_str());
+    //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc_func);
+    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }
 
 void __livevar_iter(CPUState *cpu,
@@ -2049,7 +2076,7 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
     }
     // we are in dwarf-land, so populate info struct
     Dwarf_Addr call_site_fn = it->function_addr;
-    info->filename = it->filename;
+    info->filename = it->filename.c_str();
     info->line_number = it->line_number;
     std::string funct_name = funcaddrs[call_site_fn];
     info->funct_name = funct_name.c_str();
@@ -2107,24 +2134,24 @@ int exec_callback_dwarf(CPUState *cpu, target_ulong pc) {
         inExecutableSource = false;
     }
     cur_function = it2->function_addr;
-    char *file_name = it2->filename;
+    std::string file_name = it2->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it2->line_number;
 
-    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
     if (funcaddrs.find(cur_function) == funcaddrs.end())
         return 0;
     if (cur_function == 0)
         return 0;
-    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
     //__livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
     //__livevar_iter(env, pc, global_var_list, push_var_if_live);
     //__livevar_iter(env, pc, global_var_list, print_var_if_live);
     if (cur_line != prev_line){
-        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
-        pri_runcb_on_after_line_change(cpu,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
-        pri_runcb_on_before_line_change(cpu, pc, file_name, funct_name.c_str(), cur_line);
-        PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name, funct_name.c_str(), cur_line);
+        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(), funct_name.c_str(),cur_line,pc);
+        pri_runcb_on_after_line_change(cpu,pc,prev_file_name.c_str(),prev_funct_name.c_str(), prev_line);
+        pri_runcb_on_before_line_change(cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
+        PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
 
         // reset previous line information
         prev_file_name = file_name;
