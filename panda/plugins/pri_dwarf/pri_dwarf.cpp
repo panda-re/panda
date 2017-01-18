@@ -487,6 +487,8 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         //printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
         // check if we have already processed this symbol name
         auto it = fn_name_to_line_info.find(plt_fun_name);
+        // if plt_fun_name has already been processed in the dwarf compilation
+        // unit of some other executable, then add it to line_range_list
         if (it != fn_name_to_line_info.end()){
             const LineRange &lr = it->second;
             line_range_list.push_back(LineRange(plt_fun_addr, plt_fun_addr,
@@ -495,6 +497,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         else {
             dynl_functions[std::string(basename) + ":plt!" + plt_fun_name] = plt_fun_addr;
             addr_to_dynl_function[plt_fun_addr] = "plt!" + plt_fun_name;
+            funcaddrs[plt_fun_addr] = std::string(basename) + ":plt!" + plt_fun_name;
         }
     }
     // sort the line_range_list because we changed it
@@ -1177,11 +1180,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     if (rc == DW_DLV_ERROR){
         die("Error in dwarf_diename\n");
         return;
-    }
-    else if (rc == DW_DLV_NO_ENTRY)
+    } else if (rc == DW_DLV_NO_ENTRY)
         return;
 
-    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK){
+    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK) {
         die("Error in dwarf_tag\n");
         return;
     }
@@ -1210,8 +1212,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
             // in order to skip past function prologue
 
             //die("Error: line %d, address: 0x%llx, function %s\n", j, lowpc_before_prol, die_name);
-        }
-        else if (attrcode == DW_AT_high_pc) {
+        } else if (attrcode == DW_AT_high_pc) {
             enum Dwarf_Form_Class fc = DW_FORM_CLASS_UNKNOWN;
             Dwarf_Half theform = 0;
             Dwarf_Half directform = 0;
@@ -1231,13 +1232,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 highpc += lowpc;
 
             found_highpc = true;
-        }
-        else if (attrcode == DW_AT_frame_base){
+        } else if (attrcode == DW_AT_frame_base) {
             // get where attribute frame base attribute points
             if (-1 == get_die_loc_info(*dbg, the_die, attrcode, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                 printf("Was not able to get [%s] location info for it\'s frame pointer\n", die_name);
-            }
-            else{
+            } else{
                 found_fp_info = true;
             }
         }
@@ -1250,11 +1249,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         }
         //functions[std::string(basename)+"!"+die_name] = std::make_pair(lowpc, highpc);
         auto lineToFuncAddress = [lowpc, highpc](LineRange &x){
-                // if a line range (we just need to check its lowpc) fits between range of a function
-                // we update the LineRange to reflect that the line is in the current function
-                if (x.lowpc < highpc && x.lowpc >= lowpc){
-                    x.function_addr = lowpc;
-                }
+            // if a line range (we just need to check its lowpc) fits between range of a function
+            // we update the LineRange to reflect that the line is in the current function
+            if (x.lowpc < highpc && x.lowpc >= lowpc){
+                x.function_addr = lowpc;
+            }
         };
         auto lineIsFunctionDef = [lowpc](LineRange &x){
             return x.lowpc == lowpc;
@@ -1293,8 +1292,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
 
                 }
             }
-        }
-        else {
+        } else {
             printf("Could not find start of function [%s] in line number table something went wrong\n", die_name);
         }
 
@@ -1309,12 +1307,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         // now add functions frame pointer locaiton list funct_to_framepointers mapping
         if (found_fp_info){
             funct_to_framepointers[lowpc] = std::make_pair(locdesclist, loccnt);
-        }
-        else {
+        } else {
             funct_to_framepointers[lowpc] = std::make_pair((Dwarf_Locdesc **)NULL, 0);
         }
-    }
-    else {
+    } else {
         // we are processing a function that is in the .plt so we skip it because the function
         // is either defined in a library we don't have access to or a library our dwarf processor
         // will process later (or maybe already has!)
@@ -1417,15 +1413,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     //printf(" %s #variables: %lu\n", funcaddrs[lowpc].c_str(), var_list.size());
 
 }
-
-/* Load all function and globar variable info.
-*/
-bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
+bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
     Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
     Dwarf_Half version_stamp, address_size;
     Dwarf_Error err;
-    Dwarf_Die no_die = 0, cu_die, child_die;
-    int count = 0;
+    Dwarf_Die no_die = 0, cu_die;
     /* Find compilation unit header */
     while (dwarf_next_cu_header(
                 *dbg,
@@ -1488,13 +1480,13 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
                         if (needs_reloc){
                             LineRange lr = LineRange(base_address+lower_bound_addr,
                                     base_address+upper_bound_addr,
-                                    line_num, filenm_line, line_off, 0);
+                                    line_num, filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
                             line_range_list.push_back(lr);
                         }
                         else{
                             LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
-                                    filenm_line, line_off, 0);
+                                    filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
                             line_range_list.push_back(lr);
                         }
@@ -1509,20 +1501,62 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
             }
             dwarf_srclines_dealloc(*dbg, dwarf_lines, line_count);
         }
-        else
+        else {
             printf("Could not get get function line number\n");
+        }
+    }
+    return true;
+}
 
+/* Load all function and globar variable info.
+*/
+bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
+    Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
+    Dwarf_Half version_stamp, address_size;
+    Dwarf_Error err;
+    Dwarf_Die no_die = 0, cu_die, child_die;
+    int count = 0;
+
+    populate_line_range_list(dbg, basename, base_address, needs_reloc);
+    /* Find compilation unit header */
+    while (dwarf_next_cu_header(
+                *dbg,
+                &cu_header_length,
+                &version_stamp,
+                &abbrev_offset,
+                &address_size,
+                &next_cu_header,
+                &err) != DW_DLV_NO_ENTRY) {
+        /* Expect the CU to have a single sibling - a DIE */
+        if (dwarf_siblingof(*dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
+            die("Error getting sibling of CU\n");
+            continue;
+        }
+        //Dwarf_Line *dwarf_lines;
+        //Dwarf_Signed line_count;
+
+        Dwarf_Addr cu_base_address;
+        Dwarf_Attribute cu_loc_attr;
+        if (dwarf_attr(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
+            //printf("CU did not have  low pc.  Setting to 0 . . .\n");
+            cu_base_address=0;
+        }
+        else{
+            dwarf_formaddr(cu_loc_attr, &cu_base_address, 0);
+            //printf("CU did have low pc 0x%llx\n", cu_base_address);
+        }
+        int rc;
         /* Expect the CU DIE to have children */
-        if (dwarf_child(cu_die, &child_die, &err) == DW_DLV_ERROR) {
-            die("Error getting child of CU DIE\n");
+        if ((rc = dwarf_child(cu_die, &child_die, &err)) != DW_DLV_OK) {
+            if (rc == DW_DLV_ERROR)
+                die("Error getting child of CU DIE\n");
             continue;
         }
 
-        /* Now go over all children DIEs */
+        /* Now go over all children DIEs in the compilation unit */
         DwarfVarType *dvt;
         while (1) {
             std::string argname;
-            int rc;
             Dwarf_Half tag;
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
                 die("Error in dwarf_tag\n");
@@ -1559,10 +1593,10 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
         count ++;
     }
     printf("Processed %d Compilation Units\n", count);
-    // sort the line number ranges
     if (count < 1 && !allow_just_plt){
          return false;
     }
+    // sort the line number ranges
     std::sort(fn_start_line_range_list.begin(), fn_start_line_range_list.end(), sortRange);
     std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     printf("Successfully loaded debug symbols for %s\n", basename);
@@ -1613,8 +1647,7 @@ bool correct_asid(CPUState *cpu) {
         if (!p || (p && p->name && strcmp(p->name, proc_to_monitor) != 0)) {
             //printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
             return false;
-        }
-        else {
+        } else {
             monitored_asid = panda_current_asid(cpu);
         }
     }
@@ -1680,53 +1713,65 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
 // every 1000 calls. If we had a callback in OSI for
 // on_library_load we could do away with this hack.
 int mod_check_count = 0;
+bool main_exec_initialized = false;
 #define MOD_CHECK_FREQ 1000
-void ensure_dbg_initialized(CPUState *cpu) {
+bool ensure_main_exec_initialized(CPUState *cpu) {
+    //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
-    bool dbg_initialized;
     OsiModules *libs = NULL;
+    libs = get_libraries(cpu, p);
+    if (!libs)
+        return false;
+    //printf("[ensure_main_exec_initialized] iterating through libraries\n");
+    //if (!libs || libs->num == num_libs_known) {
+        //return;
+    //}
+    //num_libs_known = libs->num;
     // Don't check too often
-    if (++mod_check_count == MOD_CHECK_FREQ) {
-        mod_check_count = 0;
-        libs = get_libraries(cpu, p);
-        if (!libs || libs->num == num_libs_known) {
-            dbg_initialized = true;
-        }
-        else {
-            num_libs_known = libs->num;
-            dbg_initialized = false;
-        }
-    }
-    else {
-        dbg_initialized = true;
-    }
-
-    if (!dbg_initialized) {
-        for (unsigned i = 0; i < libs->num; i++) {
-            char fname[260] = {};
-            OsiModule *m = &libs->module[i];
-            if (!m->name) continue;
-            if (mods_seen.find(m->name) != mods_seen.end()) continue;
-            mods_seen.insert(m->name);
-            //printf("Trying to load symbols for %s at %#x.\n", m->name, m->base);
-            sprintf(fname, "%s/%s", host_debug_path, m->name);
-            printf("access(%s, F_OK): %x\n", fname, access(fname, F_OK));
-            if (access(fname, F_OK) == -1) {
-                //fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
-                continue;
-            }
-            uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
-            bool needs_reloc = elf_base != m->base;
-            if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
-                fprintf(stderr, "Couldn't load symbols from %s.\n", fname);
-                continue;
-            }
-        }
-        dbg_initialized = true;
-        //for (auto &kvp : funcaddrs) {
-        //    printf("%#x %s\n", kvp.first, kvp.second.c_str());
+    //if (++mod_check_count == MOD_CHECK_FREQ) {
+        //mod_check_count = 0;
+        //libs = get_libraries(cpu, p);
+        //if (!libs || libs->num == num_libs_known) {
+            //return;
         //}
+        //num_libs_known = libs->num;
+    //} else {
+        //return;
+    //}
+
+    for (unsigned i = 0; i < libs->num; i++) {
+        char fname[260] = {};
+        OsiModule *m = &libs->module[i];
+        if (!m->file) continue;
+        if (!m->name) continue;
+        std::string lib = std::string(m->file);
+        if (0 == strstr(m->file, proc_to_monitor)) continue;
+        printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
+        //std::size_t found = lib.find(guest_debug_path);
+        //if (found == std::string::npos) continue;
+        //std::string host_name = lib.substr(0, found) +
+            //host_debug_path +
+            //lib.substr(found + strlen(guest_debug_path));
+        // TODO: change this to do a replace on guest_debug_path like above
+        std::string host_name =  host_debug_path + lib;
+        strcpy(fname, host_name.c_str());
+
+        printf("[ensure_main_exec_initialized] Trying to load symbols for %s at 0x%x.\n", fname, m->base);
+        printf("[ensure_main_exec_initialized] access(%s, F_OK): %x\n", fname, access(fname, F_OK));
+        if (access(fname, F_OK) == -1) {
+            fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
+            continue;
+        }
+        uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
+        bool needs_reloc = elf_base != m->base;
+        if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
+            fprintf(stderr, "Couldn't load symbols from %s.\n", fname);
+            continue;
+        }
+        printf("[ensure_main_exec_initialized] SUCCESS\n");
+        return true;
     }
+    return false;
 }
 
 target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
@@ -1770,44 +1815,21 @@ bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
     if (!correct_asid(cpu)) return false;
 
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
+    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
+    if (it2 == line_range_list.end() || pc < it2->lowpc)
+        return false;
+    return true;
     /*
-    // these are just checks to make sure the lower_bound returns the same value as lower_bound
-    // after checking this through a recording, I am pretty sure that I have ironed all the kinks out
-    // in implementing lower_bound for a vector of ranges
-    auto addressInRange = [pc](std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x) {
-        return pc >= std::get<0>(x) && pc < std::get<1>(x);
+    // This is just the linear search to confirm binary search (lower_bound) is
+    // working correctly
+    auto addressInRange = [pc](LineRange lr) {
+        return pc >= lr.lowpc && pc < lr.highpc;
     };
     auto it = find_if(line_range_list.begin(), line_range_list.end(), addressInRange);
     if (it == line_range_list.end())
         return false;
     */
-    /*
-    // debugging print statements
-    printf(" pc: 0x%x, addr1: 0x%llx-0x%llx addr2: 0x%llx-0x%llx\n", pc,std::get<0>(*it), std::get<1>(*it),
-            std::get<0>(*it2), std::get<1>(*it2));
-    //printf(" pc: 0x%x, addr2: 0x%llx-0x%llx\n", pc, std::get<0>(*it2), std::get<1>(*it2));
-    if (std::get<0>(*it) != std::get<0>(*it2)) {
-        auto before_it1 = it - 1;
-        auto after_it1 = it + 1;
-        auto before_it2 = it2 - 1;
-        auto after_it2 = it2 + 1;
-        printf(" before linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
-                std::get<0>(*before_it1), std::get<1>(*before_it1),
-                std::get<0>(*before_it2), std::get<1>(*before_it2));
-        printf(" after linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
-                std::get<0>(*after_it1), std::get<1>(*after_it1),
-                std::get<0>(*after_it2), std::get<1>(*after_it2));
-        abort();
-    }
-    */
-    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
-    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
-    if (pc < it2->lowpc || it2 == line_range_list.end())
-        return false;
-
-
-    return true;
-
 }
 
 void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
@@ -1846,7 +1868,7 @@ void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_c
 void on_call(CPUState *cpu, target_ulong pc) {
     if (!correct_asid(cpu)) return;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
             pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
@@ -1897,7 +1919,7 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     if (!correct_asid(cpu)) return;
     //printf(" on_ret address: %x\n", func);
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_func, CompareRangeAndPC());
-    if (pc_func < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc_func < it->lowpc) {
         auto it_dyn = addr_to_dynl_function.find(pc_func);
         if (it_dyn != addr_to_dynl_function.end()){
             pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
@@ -2023,7 +2045,7 @@ void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, cha
     target_ulong fn_address;
 
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end() ) {
+    if (it == line_range_list.end() || pc < it->lowpc ) {
         *symbol_name = NULL;
         return;
     }
@@ -2054,7 +2076,7 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
         return;
     }
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
             //printf("In a a plt function\n");
@@ -2187,6 +2209,9 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
 // get current process before each bb execs
 // which will probably help us actually know the current process
 int osi_foo(CPUState *cpu, TranslationBlock *tb) {
+    if (!main_exec_initialized){
+        main_exec_initialized = ensure_main_exec_initialized(cpu);
+    }
 
     if (panda_in_kernel(cpu)) {
 
@@ -2303,27 +2328,25 @@ bool init_plugin(void *self) {
                 bin_path = "";
             }
         }
-    }
-    // if debug path actually points to a file, then make host_debug_path the
-    // directory that contains the executable
-    else if (s.st_mode & S_IFREG) {
+    } else if (s.st_mode & S_IFREG) {
+        // if debug path actually points to a file, then make host_debug_path the
+        // directory that contains the executable
         bin_path = std::string(host_debug_path);
         //host_debug_path = dirname(strdup(host_debug_path));
         host_debug_path = dirname(strdup(host_debug_path));
-    }
-    else {
+    } else {
         printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path);
         exit(1);
     }
     if (bin_path != "") {
-        printf("opening debug info for starting binary %s\n", bin_path.c_str());
-        // third arg (actual_base address or executable) is 0 because we don't know what it is, but for now
-        // assume that it is not pie
-        elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
-        if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
-            fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
-            return false;
-        }
+        // now we do this in ensure_main_exec_initialized() which is called from
+        // osi_foo() TODO figure out a more efficient place to put that check
+        // because it gets called too often
+        //elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
+        //if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
+            //fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
+            //return false;
+        //}
     }
 
     {

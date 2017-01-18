@@ -80,14 +80,21 @@ static inline uint32_t get_stack(CPUState *env, int offset_number) {
     return get_word(env, ESP + word_size*offset_number);
 }
 
+inline bool endswith(const char *haystack, std::string suffix) {
+    std::string s(haystack);
+    return suffix.size() <= s.size() && (s.substr(s.size() - suffix.size()) == suffix);
+}
+
+
 void fn_start(CPUState *env, target_ulong pc, const char *file_name, 
               const char *funct_name) {
     if (debug) printf ("fn start %s pc=0x%x\n", funct_name, pc);
     // grab args for this fn if this guy has either enter or exit cb
     for (LibFICbEntry &cbe : libficbes) {
-        if (cbe.fnname == funct_name) {
+        if (endswith(funct_name, "!" + cbe.fnname)) {
             set_word_size();
             if (calling_convention == CC_CDECL ) {                
+                if (debug) printf ("fn start %s pc=0x%x\n", funct_name, pc);
                 if (debug) printf ("grabbing %d fn args\n", cbe.numargs);
                 for (uint32_t i=0; i<cbe.numargs; i++) {
                     if (word_size == 4) {
@@ -113,9 +120,13 @@ void fn_start(CPUState *env, target_ulong pc, const char *file_name,
 
 void fn_return(CPUState *env, target_ulong pc, const char *file_name, 
                const char *funct_name) {
+    if (!arg) return;
     if (debug) printf ("fn end %s EAX=%x\n", funct_name, EAX);
     for (LibFICbEntry &cbe : libficbes) {
-        if (!cbe.isenter && cbe.fnname == funct_name) {
+        // funct_name comes from pri_dwarf and may be lib:!plt:fname
+        // or lib:fname
+        if (!cbe.isenter && (endswith(funct_name, "!" + cbe.fnname))) {
+            if (debug) printf ("fn end %s EAX=%x\n", funct_name, EAX);
             // args populated by fn_start i hope
             for (uint32_t i=0; i<cbe.numargs; i++) {
                 uint32_t a = *((uint32_t *) (arg + word_size*i));
