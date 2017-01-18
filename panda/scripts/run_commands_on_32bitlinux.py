@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 """run_commands_on_32bitlinux.py binary [args]
 
