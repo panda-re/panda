@@ -45,8 +45,14 @@ mkdir -p build-panda && cd build-panda
 ../panda/build.sh
 ```
 
-We don't currently support building on Mac/BSD, although it shouldn't be
-impossible with a few patches. We do rely on a few Linux-specific APIs.
+Building on Mac is less well-tested, but has been known to work. There is a script,
+[panda/scripts/install\_osx.sh](panda/scripts/install\_osx.sh) to build under OS X.
+
+Finally, if you want to skip the build process altogether, there is a 
+[Docker image](https://hub.docker.com/r/ctfhacker/panda-re/) available, created by
+[ctfhacker](https://hub.docker.com/r/ctfhacker/). You can get it by running:
+
+    docker pull ctfhacker/panda-re
 
 ## Support
 
