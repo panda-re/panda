@@ -117,7 +117,7 @@ struct TCGLLVMContextPrivate {
     /* Pointers to in-memory versions of globals or local temps */
     Value* m_memValuesPtr[TCG_MAX_TEMPS];
 
-    std::map<int64_t, Value *> m_envOffsetValues;
+    std::map<std::pair<int64_t, llvm::Type *>, Value *> m_envOffsetValues;
     Value *m_envInt;
 
     /* For reg-based globals, store argument number,
@@ -433,15 +433,39 @@ Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 }
 
 Value* TCGLLVMContextPrivate::getEnvOffsetPtr(int64_t offset, TCGTemp &temp) {
-    auto it = m_envOffsetValues.find(offset);
     llvm::Type *tempType = tcgPtrType(temp.type);
-    if (it == m_envOffsetValues.end() || tempType != it->second->getType()) {
-        Value *v;
-        v = m_builder.CreateAdd(m_envInt, ConstantInt::get(wordType(), offset));
+    auto key = std::make_pair(offset, tempType);
+    auto it = m_envOffsetValues.lower_bound(key);
+    // it->first > or = key. > case:
+    if (it == m_envOffsetValues.end() || key < it->first) {
+        // Have to make sure that these get inserted in a basic block that
+        // always runs.
+        auto savedIP = m_builder.saveIP();
+        BasicBlock *currentBlock = m_builder.GetInsertBlock();
+        assert(currentBlock && currentBlock->getParent());
+        BasicBlock *entry = &m_tbFunction->front();
+        assert(entry);
+        if (entry->getTerminator()) {
+            // get "false" successor of entry block, i.e. not tcg_exit_req branch.
+            BasicBlock *body = entry->getTerminator()->getSuccessor(1);
+            assert(body);
+            if (currentBlock != entry && currentBlock != body) {
+                // this means we are in one of the terminating blocks of the BB.
+                // i.e. the halves of a conditional branch.
+                if (body->getFirstNonPHI()) {
+                    m_builder.SetInsertPoint(body->getFirstNonPHI());
+                } else {
+                    m_builder.SetInsertPoint(body);
+                }
+            }
+        }
+
+        Value *v = m_builder.CreateAdd(m_envInt, ConstantInt::get(wordType(), offset));
         v = m_builder.CreateIntToPtr(
                 v, tcgPtrType(temp.type),
                 temp.name ? StringRef(temp.name) + "_ptr": "");
-        m_envOffsetValues[offset] = v;
+        m_builder.restoreIP(savedIP);
+        m_envOffsetValues.insert(it, std::make_pair(key, v));
         return v;
     } else {
         return it->second;
