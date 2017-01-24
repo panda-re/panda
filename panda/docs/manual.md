@@ -781,7 +781,7 @@ one has a USAGE.md file linked here for further explanation.
   Required by most other taint plugins.
 * [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data
   (tainted, but not used in branches).
-* [`ida_taint2`](../plugins/ida_taint2/USAGE.md) - IDA taint
+* [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) not yet ported from panda1 - IDA taint
   integration.
 * [`file_taint`](../plugins/file_taint/USAGE.md) - Syscall and
   OSI-based automatic tainting of file input by filename.
