@@ -777,16 +777,16 @@ We have written a bunch of generic plugins for use in analyzing replays. Each
 one has a USAGE.md file linked here for further explanation.
 
 #### Taint-related plugins
-* [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin.
+* [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin. Already ported from panda1
   Required by most other taint plugins.
-* [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data
+* [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data Already ported from panda1
   (tainted, but not used in branches).
-* [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) not yet ported from panda1 - IDA taint
+* [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
   integration.
 * [`file_taint`](../plugins/file_taint/USAGE.md) - Syscall and
-  OSI-based automatic tainting of file input by filename.
+  OSI-based automatic tainting of file input by filename. Already ported from panda1
 * [`tainted_branch`](../plugins/tainted_branch/USAGE.md) - Find
-  conditional branches where the choice depends on tainted data.
+  conditional branches where the choice depends on tainted data. Already ported from panda1
 * [`tainted_instr`](../../../panda1/qemu/panda_plugins/tainted_instr/USAGE.md) - Find
   instructions which process tainted data.
 * [`taint_compute_numbers`](../../../panda1/qemu/panda_plugins/taint_compute_numbers/USAGE.md)
@@ -800,7 +800,7 @@ one has a USAGE.md file linked here for further explanation.
   integration for old taint plugin.
 
 #### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
-* [`stringsearch`](../plugins/stringsearch/USAGE.md) - Mine memory
+* [`stringsearch`](../plugins/stringsearch/USAGE.md) - Mine memory Already ported from panda1
   accesses for a particular string.
 * [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/USAGE.md)
 * [`textprinter`](../../../panda1/qemu/panda_plugins/textprinter/USAGE.md)
@@ -815,7 +815,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/USAGE.md)
 
 #### Callstack Tracking
-* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) -
+* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) - Already ported from panda1
   Instruction-based callstack tracing.
 * [`fullstack`](../../../panda1/qemu/panda_plugins/fullstack/USAGE.md)
 * [`printstack`](../../../panda1/qemu/panda_plugins/printstack/USAGE.md)
@@ -824,13 +824,13 @@ one has a USAGE.md file linked here for further explanation.
 
 #### Operating System Introspection (OSI) plugins
 * [`osi`](../plugins/osi/USAGE.md) - Operating system introspection
-  framework.
-* [`osi_linux`](../plugins/osi_linux/USAGE.md) - Generic Linux OSI.
+  framework. Already ported from panda1
+* [`osi_linux`](../plugins/osi_linux/USAGE.md) - Generic Linux OSI. Already ported from panda1
 * [`osi_test`](../../../panda1/qemu/panda_plugins/osi_test/USAGE.md)
 * [`osi_winxpsp3x86`](../../../panda1/qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
   Windows XP SP3 x86.
 * [`asidstory`](../plugins/asidstory/USAGE.md) - ASCII art view of
-  process execution inside VM.
+  process execution inside VM. Already ported from panda1
 * [`linux_vmi`](../../../panda1/qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
   system from DECAF.
 * [`debianwheezyx86intro`](../../../panda1/qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
@@ -842,7 +842,7 @@ one has a USAGE.md file linked here for further explanation.
 #### System call logging & analysis
 
 ##### Current generation
-* [`syscalls2`](../plugins/syscalls2/USAGE.md) - Modern syscalls
+* [`syscalls2`](../plugins/syscalls2/USAGE.md) - Modern syscalls Already ported from panda1
   tracking.
 * [`win7proc`](../../../panda1/qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
   interpretation of syscalls for Windows 7 x86.
@@ -875,7 +875,7 @@ one has a USAGE.md file linked here for further explanation.
   into a movie.
 * [`sample`](../../../panda1/qemu/panda_plugins/sample/USAGE.md)
 * [`scissors`](../plugins/scissors/USAGE.md) - Cut out a smaller piece
-  of a given replay.
+  of a given replay. Already ported from panda1
 * [`useafterfree`](../../../panda1/qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
   allocations and search for uses after frees.
     
