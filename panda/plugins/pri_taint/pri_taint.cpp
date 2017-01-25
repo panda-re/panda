@@ -86,6 +86,18 @@ Addr make_greg(uint64_t r, uint16_t off) {
     };
     return ra;
 }
+void print_membytes(CPUState *env, target_ulong a, target_ulong len) {
+    unsigned char c;
+    printf("{ ");
+    for (int i = 0; i < len; i++) {
+        if (-1 == panda_virtual_memory_read(env, a+i, (uint8_t *) &c, sizeof(char))) {
+            printf(" XX");
+        } else {
+            printf("%02x ", c);
+        }
+    }
+    printf("}");
+}
 
 // max length of strnlen or taint query
 #define LAVA_TAINT_QUERY_MAX_LEN 64
@@ -100,15 +112,14 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
         return;
     CPUState *cpu = first_cpu;
     bool is_strnlen = ((int) buf_len == -1);
-    if (is_strnlen){
-        //printf("Querying char* @ 0x" TARGET_FMT_lx "\n", buf);
-    }
-    else{
-        //printf("Querying " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx ", strnlen=false\n", buf_len, buf);
-
-    }
     //if  (pandalog && taintEnabled && (taint2_num_labels_applied() > 0)){
     if  (pandalog && taint2_enabled() && (taint2_num_labels_applied() > 0)){
+        target_ulong phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
+        if (debug) {
+            printf("Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx " phys 0x" TARGET_FMT_lx ", strnlen=%d", astnodename, buf_len, buf, phys, is_strnlen);
+            print_membytes(cpu, buf, is_strnlen? 32 : buf_len);
+            printf("\n");
+        }
         // okay, taint is on and some labels have actually been applied
         // is there *any* taint on this extent
         uint32_t num_tainted = 0;

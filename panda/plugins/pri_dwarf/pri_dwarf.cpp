@@ -600,8 +600,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         rc = dwarf_bytesize(type_die, &base_typesize, &err);
                         if (rc == DW_DLV_OK){
                             return base_typesize;
-                        }
-                        else {
+                        } else {
                             return -1;
                         }
                     }
@@ -736,9 +735,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
             // http://web.mit.edu/freebsd/head/cddl/contrib/opensolaris/tools/ctf/cvt/dwarf.c
             // the lack of a type reference implies a reference to a void type
             return;
-        }
-        else
-        {
+        } else {
 
             // http://stackoverflow.com/questions/12233061/any-experienced-dwarf-parsers-users-need-to-get-the-attribute-type-offset-of-a
             // user swann outlines these two functions are necessary to jump to a dwarf reference
@@ -764,7 +761,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             cur_astnodename  = cur_astnodename.substr(1);
                         else
                             cur_astnodename = "(*" + cur_astnodename + ")";
-                        
+
                         Dwarf_Die struct_child;
                         if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                         {
@@ -877,26 +874,11 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             cur_astnodename  = cur_astnodename.substr(1);
                         else
                             cur_astnodename = "*(" + cur_astnodename + ")";
-                        if (loc_t == LocMem) {
-                            rc = panda_virtual_memory_rw(cpu, cur_base_addr,
-                                    (uint8_t *)&cur_base_addr,
-                                    sizeof(cur_base_addr), 0);
-                            if (rc == -1){
-                                //printf("Could not dereference pointer so done"
-                                       //" tainting\n");
-                                return;
-                            }
+                        if (debug) {
+                            printf("Querying: ([]) %s\n", cur_astnodename.c_str());
                         }
-                        else if (loc_t == LocReg){
-                            if (cur_base_addr < CPU_NB_REGS)
-                                cur_base_addr = env->regs[cur_base_addr];
-                            else
-                                return;
-                        }
-                        else {
-                            // shouldn't get herer
-                            abort();
-                        }
+                        assert(loc_t == LocMem);
+
                         if (dwarf_child(type_die,
                                     &array_child, &err) != DW_DLV_OK){
                              break;
@@ -907,7 +889,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         elem_typesize = die_get_type_size(dbg, type_die);
                         //printf("Querying: ([]) %s\n", cur_astnodename.c_str());
                         rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
-                                &array_typesize, 
+                                &array_typesize,
                                 &err);
                         // array size is 0 than we likely have a 0 length
                         // array which is common at the end of structs to make a
