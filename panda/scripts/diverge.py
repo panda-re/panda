@@ -289,7 +289,6 @@ def goto_instr(instr):
         if instr_counts[replay] == instr_count_max or \
                 instr_counts[record] == instr_count_max:
             direction = BACKWARDS
-            continue
 
         ahead = argmax(instr_counts)
         behind = other[ahead]
