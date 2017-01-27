@@ -45,10 +45,8 @@ char * rr_requested_name = NULL;
 
 // write this program point to this file 
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
-  fprintf(fp, "{guest_instr_count=%llu pc=0x%08llx, secondary=0x%08llx}\n", 
-      (unsigned long long)pp.guest_instr_count,
-	  (unsigned long long)pp.pc,
-	  (unsigned long long)pp.secondary);
+  fprintf(fp, "{guest_instr_count=%llu}\n",
+      (unsigned long long)pp.guest_instr_count);
 }
 
 void rr_spit_prog_point(RR_prog_point pp) {
@@ -107,9 +105,6 @@ static void rr_spit_log_entry(RR_log_entry item) {
             }
         case RR_LAST:
             printf("\tRR_LAST\n");
-            break;
-        case RR_DEBUG:
-            printf("\tRR_DEBUG\n");
             break;
         default:
             printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -250,7 +245,6 @@ static RR_log_entry *rr_read_item(void) {
             }
             break;
         case RR_LAST:
-        case RR_DEBUG:
             //mz nothing to read
             break;
         default:

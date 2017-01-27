@@ -34,7 +34,7 @@ static FILE *oldlog = NULL;
 static FILE *newlog = NULL;
 
 //static RR_log_entry entry;
-static RR_prog_point orig_last_prog_point = {0, 0, 0};
+static RR_prog_point orig_last_prog_point = {0};
 
 static bool snipping = false;
 static bool done = false;
@@ -83,9 +83,11 @@ static RR_prog_point copy_entry(void) {
     //ph Fix up instruction count
     RR_prog_point original_prog_point = item.header.prog_point;
     item.header.prog_point.guest_instr_count -= actual_start_count;
+    uint64_t unused = 0;
+    rr_fwrite(&unused, sizeof(unused), 1, newlog);
+    rr_fwrite(&unused, sizeof(unused), 1, newlog);
     rr_fwrite(&item.header.prog_point, sizeof(item.header.prog_point), 1, newlog);
 
-    //mz this is more compact, as it doesn't include extra padding.
 #define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
     RR_COPY_ITEM(item.header.kind);
     RR_COPY_ITEM(item.header.callsite_loc);
@@ -159,7 +161,6 @@ static RR_prog_point copy_entry(void) {
             }
         } break;
         case RR_LAST:
-        case RR_DEBUG:
             //mz nothing to read
             //ph We don't copy RR_LAST here; write out afterwards.
             break;
@@ -181,12 +182,19 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
-    sassert(fwrite(&(end.prog_point), sizeof(end.prog_point), 1, newlog) == 1, 5);
+    uint64_t unused = 0;
+    fwrite(&unused, sizeof(unused), 1, newlog);
+    fwrite(&unused, sizeof(unused), 1, newlog);
+    sassert(fwrite(&(end.prog_point.guest_instr_count),
+                sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 5);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1, 6);
     sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1, 7);
 
     rewind(newlog);
-    fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
+    fwrite(&unused, sizeof(unused), 1, newlog);
+    fwrite(&unused, sizeof(unused), 1, newlog);
+    fwrite(&prog_point.guest_instr_count,
+            sizeof(prog_point.guest_instr_count), 1, newlog);
     fclose(newlog);
 
     done = true;
@@ -218,8 +226,12 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         newlog = fopen(nondet_name, "w");
         sassert(newlog, 10);
         // We'll fix this up later.
-        RR_prog_point prog_point = {0, 0, 0};
-        fwrite(&prog_point, sizeof(RR_prog_point), 1, newlog);
+        RR_prog_point prog_point = {0};
+        uint64_t unused = 0;
+        fwrite(&unused, sizeof(unused), 1, newlog);
+        fwrite(&unused, sizeof(unused), 1, newlog);
+        fwrite(&prog_point.guest_instr_count,
+                sizeof(prog_point.guest_instr_count), 1, newlog);
 
         fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
 
