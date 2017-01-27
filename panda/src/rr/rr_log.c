@@ -828,7 +828,7 @@ void rr_fill_queue(void) {
 
     // mz first, some sanity checks.  The queue should be empty when this is
     // called.
-    if (!rr_nondet_log) return;
+    if (rr_mode != RR_REPLAY) return;
     rr_assert(rr_queue_empty());
 
     while (!rr_log_is_empty() && num_entries < RR_QUEUE_MAX_LEN) {
@@ -1095,8 +1095,11 @@ void rr_create_record_log(const char* filename)
     // This way, when we print progress, we can use something better than size
     // of log consumed
     //(as that can jump //sporadically).
-    fwrite(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1,
-           rr_nondet_log->fp);
+    uint64_t unused = 0;
+    rr_fwrite(&unused, sizeof(unused), 1);
+    rr_fwrite(&unused, sizeof(unused), 1);
+    rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
+            sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
 
 // create replay log
@@ -1135,8 +1138,11 @@ void rr_destroy_log(void)
         // mz if in record, update the header with the last written prog point.
         if (rr_nondet_log->type == RECORD) {
             rewind(rr_nondet_log->fp);
-            fwrite(&(rr_nondet_log->last_prog_point), sizeof(RR_prog_point), 1,
-                   rr_nondet_log->fp);
+            uint64_t unused = 0;
+            rr_fwrite(&unused, sizeof(unused), 1);
+            rr_fwrite(&unused, sizeof(unused), 1);
+            rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
+                    sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
         }
         fclose(rr_nondet_log->fp);
         rr_nondet_log->fp = NULL;
