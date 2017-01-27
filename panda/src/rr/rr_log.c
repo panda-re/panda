@@ -57,8 +57,12 @@
 volatile RR_mode rr_mode = RR_OFF;
 
 // mz FIFO queue of log entries read from the log file
+// Implemented as ring buffer.
+#define RR_QUEUE_MAX_LEN 65536
+static RR_log_entry rr_queue[RR_QUEUE_MAX_LEN];
 RR_log_entry* rr_queue_head;
 RR_log_entry* rr_queue_tail;
+RR_log_entry* rr_queue_end; // end of buffer.
 
 // mz 11.06.2009 Flags to manage nested recording
 volatile sig_atomic_t rr_record_in_progress = 0;
@@ -77,14 +81,12 @@ RR_log* rr_nondet_log = NULL;
         rr_assert_fail(#exp, __FILE__, __LINE__, __FUNCTION__);                \
     }
 
-double rr_get_percentage(void)
-{
+inline double rr_get_percentage(void) {
     return 100.0 * rr_get_guest_instr_count() /
         rr_nondet_log->last_prog_point.guest_instr_count;
 }
 
-static inline uint8_t rr_log_is_empty(void)
-{
+static inline uint8_t rr_log_is_empty(void) {
     if ((rr_nondet_log->type == REPLAY) &&
         (rr_nondet_log->size == rr_nondet_log->bytes_read)) {
         return 1;
@@ -141,9 +143,8 @@ int rr_hist_index = 0;
 // write this program point to this file
 static void rr_spit_prog_point_fp(RR_prog_point pp)
 {
-    qemu_log("{guest_instr_count=%llu pc=0x%08llx, secondary=0x%08llx}\n",
-             (unsigned long long)pp.guest_instr_count,
-             (unsigned long long)pp.pc, (unsigned long long)pp.secondary);
+    qemu_log("{guest_instr_count=%llu}\n",
+             (unsigned long long)pp.guest_instr_count);
 }
 
 void rr_debug_log_prog_point(RR_prog_point pp) { rr_spit_prog_point_fp(pp); }
@@ -186,9 +187,6 @@ static void rr_spit_log_entry(RR_log_entry item)
     case RR_LAST:
         printf("\tRR_LAST\n");
         break;
-    case RR_DEBUG:
-        printf("\tRR_DEBUG\n");
-        break;
     default:
         printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
         break;
@@ -228,7 +226,7 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
 {
     printf("RR rr_assertion `%s' failed at %s:%d\n", exp, file, line);
     printf("Current log point:\n");
-    if (rr_queue_head != NULL) {
+    if (rr_queue_head != rr_queue_tail) {
         rr_spit_prog_point(rr_queue_head->header.prog_point);
         printf("Next log entry type: %s\n",
                log_entry_kind_str[rr_queue_head->header.kind]);
@@ -268,14 +266,17 @@ static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
 static inline void rr_write_item(void)
 {
     RR_log_entry item = rr_nondet_log->current_item;
+    uint64_t unused = 0;
 
     // mz save the header
     rr_assert(rr_in_record());
     rr_assert(rr_nondet_log != NULL);
 
 #define RR_WRITE_ITEM(field) rr_fwrite(&(field), sizeof(field), 1)
-    // mz this is more compact, as it doesn't include extra padding.
-    RR_WRITE_ITEM(item.header.prog_point);
+    // keep replay format the same.
+    RR_WRITE_ITEM(unused);
+    RR_WRITE_ITEM(unused);
+    RR_WRITE_ITEM(item.header.prog_point.guest_instr_count);
     RR_WRITE_ITEM(item.header.kind);
     RR_WRITE_ITEM(item.header.callsite_loc);
 
@@ -339,7 +340,6 @@ static inline void rr_write_item(void)
             }
         } break;
         case RR_LAST:
-        case RR_DEBUG:
             // mz nothing to read
             break;
         default:
@@ -347,20 +347,6 @@ static inline void rr_write_item(void)
             rr_assert(0 && "Unimplemented replay log entry!");
     }
     rr_nondet_log->item_number++;
-}
-
-// bdg in debug mode, to find divergences more quickly
-void rr_record_debug(RR_callsite_id call_site)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_DEBUG;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    rr_write_item();
 }
 
 // mz record 1-byte CPU input to log file
@@ -640,9 +626,6 @@ static void rr_record_end_of_log(void)
 /* REPLAY */
 /******************************************************************************************/
 
-// mz avoid actually releasing memory
-static RR_log_entry* recycle_list = NULL;
-
 static inline void free_entry_params(RR_log_entry* entry)
 {
     // mz cleanup associated resources
@@ -673,40 +656,6 @@ static inline void free_entry_params(RR_log_entry* entry)
     }
 }
 
-// mz "free" a used entry
-static inline void add_to_recycle_list(RR_log_entry* entry)
-{
-    free_entry_params(entry);
-    // mz add to the recycle list
-    if (recycle_list == NULL) {
-        recycle_list = entry;
-    } else {
-        entry->next = recycle_list;
-        recycle_list = entry;
-    }
-    // mz save item in history
-    // mz NB: we're not saving the buffer here (for
-    // RR_SKIPPED_CALL/RR_CALL_CPU_MEM_RW),
-    // mz so don't try to read it later!
-    rr_log_entry_history[rr_hist_index] = *entry;
-    rr_hist_index = (rr_hist_index + 1) % RR_HIST_SIZE;
-}
-
-// mz allocate a new entry (not filled yet)
-static inline RR_log_entry* alloc_new_entry(void)
-{
-    RR_log_entry* new_entry = NULL;
-    if (recycle_list != NULL) {
-        new_entry = recycle_list;
-        recycle_list = recycle_list->next;
-        new_entry->next = NULL;
-    } else {
-        new_entry = g_new(RR_log_entry, 1);
-    }
-    memset(new_entry, 0, sizeof(RR_log_entry));
-    return new_entry;
-}
-
 static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
     size_t result = fread(ptr, size, nmemb, rr_nondet_log->fp);
     rr_nondet_log->bytes_read += nmemb * size;
@@ -714,55 +663,101 @@ static inline size_t rr_fread(void *ptr, size_t size, size_t nmemb) {
     return result;
 }
 
-// mz fill an entry
-static RR_log_entry* rr_read_item(void)
-{
-    RR_log_entry item;
-    item.next = NULL;
+static inline int rr_queue_size(void) {
+    int distance = rr_queue_tail - rr_queue_head + 1 + RR_QUEUE_MAX_LEN;
+    return distance % RR_QUEUE_MAX_LEN;
+}
 
-    // mz read header
+static inline bool rr_queue_empty(void) {
+    return rr_queue_head == NULL;
+}
+
+static inline bool rr_queue_has_space(void) {
+    return rr_queue_size() < RR_QUEUE_MAX_LEN;
+}
+
+static inline RR_log_entry *rr_queue_alloc_back(void) {
+    if (rr_queue_tail) {
+        rr_queue_tail++;
+        if (rr_queue_tail == rr_queue_end) {
+            rr_queue_tail = rr_queue;
+        }
+        // we shouldn't be about to overwrite rr_queue_head.
+        rr_assert(rr_queue_tail != rr_queue_head);
+    } else {
+        rr_queue_tail = rr_queue_head = rr_queue;
+    }
+
+    memset(rr_queue_tail, 0, sizeof(*rr_queue_tail));
+    return rr_queue_tail;
+}
+
+static inline void rr_queue_push_back(RR_log_entry *entry) {
+    *rr_queue_alloc_back() = *entry;
+}
+
+static inline void rr_queue_pop_front(void) {
+    rr_assert(rr_queue_head); // nonempty.
+    free_entry_params(rr_queue_head);
+    if (rr_queue_head == rr_queue_tail) { // only 1 item.
+        rr_queue_head = rr_queue_tail = NULL;
+    } else {
+        rr_queue_head++;
+        if (rr_queue_head == rr_queue_end) {
+            rr_queue_head = rr_queue;
+        }
+    }
+}
+
+// Add an entry to the back of the queue.
+// Returns pointer to item just read.
+static RR_log_entry *rr_read_item(void) {
+    RR_log_entry *item = rr_queue_alloc_back();
+    uint64_t unused;
+
     rr_assert(rr_in_replay());
     rr_assert(!rr_log_is_empty());
     rr_assert(rr_nondet_log->fp != NULL);
 
-    item.header.file_pos = rr_nondet_log->bytes_read;
+    item->header.file_pos = rr_nondet_log->bytes_read;
 
 #define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
-    // mz this is more compact, as it doesn't include extra padding.
-    RR_READ_ITEM(item.header.prog_point);
-    RR_READ_ITEM(item.header.kind);
-    RR_READ_ITEM(item.header.callsite_loc);
+    // mz read header
+    // keep replay format compatible.
+    RR_READ_ITEM(unused);
+    RR_READ_ITEM(unused);
+    RR_READ_ITEM(item->header.prog_point.guest_instr_count);
+    RR_READ_ITEM(item->header.kind);
+    RR_READ_ITEM(item->header.callsite_loc);
 
     // mz read the rest of the item
-    switch (item.header.kind) {
+    switch (item->header.kind) {
         case RR_INPUT_1:
-            RR_READ_ITEM(item.variant.input_1);
+            RR_READ_ITEM(item->variant.input_1);
             break;
         case RR_INPUT_2:
-            RR_READ_ITEM(item.variant.input_2);
+            RR_READ_ITEM(item->variant.input_2);
             break;
         case RR_INPUT_4:
-            RR_READ_ITEM(item.variant.input_4);
+            RR_READ_ITEM(item->variant.input_4);
             break;
         case RR_INPUT_8:
-            RR_READ_ITEM(item.variant.input_8);
+            RR_READ_ITEM(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            RR_READ_ITEM(item.variant.interrupt_request);
+            RR_READ_ITEM(item->variant.interrupt_request);
             break;
         case RR_EXIT_REQUEST:
-            RR_READ_ITEM(item.variant.exit_request);
+            RR_READ_ITEM(item->variant.exit_request);
             break;
         case RR_SKIPPED_CALL: {
-            RR_skipped_call_args* args = &item.variant.call_args;
+            RR_skipped_call_args* args = &item->variant.call_args;
             // mz read kind first!
             RR_READ_ITEM(args->kind);
             switch (args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_READ_ITEM(args->variant.cpu_mem_rw_args);
                     // mz buffer length in args->variant.cpu_mem_rw_args.len
-                    // mz always allocate a new one. we free it when the item is added
-                    // to the recycle list
                     args->variant.cpu_mem_rw_args.buf =
                         g_malloc(args->variant.cpu_mem_rw_args.len);
                     // mz read the buffer
@@ -811,7 +806,6 @@ static RR_log_entry* rr_read_item(void)
             }
         } break;
         case RR_LAST:
-        case RR_DEBUG:
             // mz nothing to read
             break;
         default:
@@ -821,44 +815,29 @@ static RR_log_entry* rr_read_item(void)
     rr_nondet_log->item_number++;
 
     // mz let's do some counting
-    rr_size_of_log_entries[item.header.kind] +=
-        rr_nondet_log->bytes_read - item.header.file_pos;
-    rr_number_of_log_entries[item.header.kind]++;
+    rr_size_of_log_entries[item->header.kind] +=
+        rr_nondet_log->bytes_read - item->header.file_pos;
+    rr_number_of_log_entries[item->header.kind]++;
 
-    RR_log_entry *result = alloc_new_entry();
-    *result = item;
-    return result;
+    return item;
 }
 
-#define RR_MAX_QUEUE_LEN 65536
-
 // mz fill the queue of log entries from the file
-static void rr_fill_queue(void)
-{
-    RR_log_entry* log_entry = NULL;
+void rr_fill_queue(void) {
     unsigned long long num_entries = 0;
 
     // mz first, some sanity checks.  The queue should be empty when this is
     // called.
-    rr_assert(rr_queue_head == NULL && rr_queue_tail == NULL);
+    if (!rr_nondet_log) return;
+    rr_assert(rr_queue_empty());
 
-    while (!rr_log_is_empty()) {
-        log_entry = rr_read_item();
-
-        // mz add it to the queue
-        if (rr_queue_head == NULL) {
-            rr_queue_head = rr_queue_tail = log_entry;
-        } else {
-            rr_queue_tail->next = log_entry;
-            rr_queue_tail = rr_queue_tail->next;
-        }
+    while (!rr_log_is_empty() && num_entries < RR_QUEUE_MAX_LEN) {
+        RR_header header = rr_read_item()->header;
         num_entries++;
 
-        RR_log_entry entry = *log_entry;
-        if ((entry.header.kind == RR_SKIPPED_CALL &&
-                    entry.header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
-                || entry.header.kind == RR_INTERRUPT_REQUEST
-                || num_entries > RR_MAX_QUEUE_LEN) {
+        if ((header.kind == RR_SKIPPED_CALL
+                    && header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
+                || header.kind == RR_INTERRUPT_REQUEST) {
             // Cut off queue so we don't run out of memory on long runs of
             // non-interrupts
             break;
@@ -868,192 +847,92 @@ static void rr_fill_queue(void)
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
     }
+
     static uint64_t next_progress = 1;
     if (rr_get_percentage() >= next_progress) {
+        if (next_progress == 1) {
+            printf("%s:  %10" PRIu64 " instrs total.\n", rr_nondet_log->name,
+                    rr_nondet_log->last_prog_point.guest_instr_count);
+        }
         replay_progress();
         next_progress += 1;
     }
 }
 
-// mz return next log entry from the queue
-static inline RR_log_entry* get_next_entry(RR_log_entry_kind kind,
-                                           RR_callsite_id call_site,
-                                           bool check_callsite)
-{
-    RR_log_entry* current;
-    // mz make sure queue is not empty, and that we have the right element next
-    if (rr_queue_head == NULL) {
+// Makes sure queue is full and returns fron entry.
+// after using, make sure to rr_queue_pop_front to consume.
+static inline RR_log_entry* get_next_entry(void) {
+    if (rr_queue_empty()) {
         // Try again; we may have failed because the queue got too big and we
         // need to refill
         rr_fill_queue();
         // If it's still empty, fail
-        if (rr_queue_head == NULL) {
+        if (rr_queue_empty()) {
             printf("Queue is empty, will return NULL\n");
             return NULL;
         }
     }
-
-    if (kind != RR_INTERRUPT_REQUEST && kind != RR_SKIPPED_CALL) {
-        while (rr_queue_head && rr_queue_head->header.kind == RR_DEBUG) {
-            // printf("Removing RR_DEBUG because we are looking for %s\n",
-            // log_entry_kind_str[kind]);
-            current = rr_queue_head;
-            rr_queue_head = rr_queue_head->next;
-            current->next = NULL;
-            if (current == rr_queue_tail) {
-                rr_queue_tail = NULL;
-            }
-        }
-    }
-
-    RR_log_entry head = *rr_queue_head;
-    // XXX FIXME this is a temporary hack to get around the fact that we
-    // cannot currently do a tb_flush and a savevm in the same instant.
-    if (head.header.prog_point.guest_instr_count == 0) {
-        // We'll process this one beacuse it's the start of the log
-    }
-    // mz rr_prog_point_compare will fail if we're ahead of the log
-    else if (rr_prog_point_compare(rr_prog_point(),
-                head.header.prog_point, kind) != 0) {
-        return NULL;
-    }
-
-    if (head.header.kind != kind) {
-        return NULL;
-    }
-
-    if (check_callsite && head.header.callsite_loc != call_site) {
-        return NULL;
-    }
-
-    // mz remove log entry from queue and return it.
-    current = rr_queue_head;
-    rr_queue_head = rr_queue_head->next;
-    current->next = NULL;
-    if (current == rr_queue_tail) {
-        rr_queue_tail = NULL;
-    }
-    return current;
+    return rr_queue_head;
 }
 
-void rr_replay_debug(RR_callsite_id call_site)
-{
-    RR_log_entry* current_item;
+// same as above. make sure to consume after.
+static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
+        RR_callsite_id call_site, bool check_callsite) {
+    RR_log_entry *entry = get_next_entry();
+    if (!entry) return NULL;
 
-    if (rr_queue_head == NULL) {
-        return;
+    RR_header header = entry->header;
+    // XXX FIXME this is a temporary hack to get around the fact that we
+    // cannot currently do a tb_flush and a savevm in the same instant.
+    if (header.prog_point.guest_instr_count == 0) {
+        // We'll process this one beacuse it's the start of the log
+    } else if (rr_prog_point_compare(rr_prog_point(),
+                header.prog_point, kind) != 0) {
+        // mz rr_prog_point_compare will fail if we're ahead of the log
+        return NULL;
     }
 
-    if (rr_queue_head->header.kind != RR_DEBUG) {
-        return;
+    if (header.kind != kind) {
+        return NULL;
     }
 
-    RR_prog_point log_point = rr_queue_head->header.prog_point;
-    RR_prog_point current = rr_prog_point();
-
-    if (log_point.guest_instr_count > current.guest_instr_count) {
-        // This is normal -- in replay we may hit the checkpoint more often
-        // than in record due to TB chaining being off
-        return;
-    } else if (log_point.guest_instr_count == current.guest_instr_count) {
-        current_item = rr_queue_head;
-        rr_queue_head = rr_queue_head->next;
-        current_item->next = NULL;
-        if (current_item == rr_queue_tail) {
-            rr_queue_tail = NULL;
-        }
-
-        add_to_recycle_list(current_item);
-        printf("RR_DEBUG check passed: ");
-        rr_spit_prog_point(current);
-    } else { // log_point.guest_instr_count < current.guest_instr_count
-        // This shouldn't happen. We're ahead of the log.
-        // rr_signal_disagreement(current, log_point);
-        current_item = rr_queue_head;
-        rr_queue_head = rr_queue_head->next;
-        current_item->next = NULL;
-        if (current_item == rr_queue_tail) {
-            rr_queue_tail = NULL;
-        }
-
-        add_to_recycle_list(current_item);
-
-        // abort();
+    if (check_callsite && header.callsite_loc != call_site) {
+        return NULL;
     }
+
+    return entry;
 }
 
 // mz replay 1-byte input to the CPU
-void rr_replay_input_1(RR_callsite_id call_site, uint8_t* data)
-{
-    RR_log_entry* current_item = get_next_entry(RR_INPUT_1, call_site, false);
-    if (current_item == NULL) {
-        // mz we're trying to replay too early or we have the wrong kind of
-        // rr_nondet_log
-        // entry.  this is cause for failure
-        rr_assert(0);
-    }
-    // mz now we have our item and it is appropriate for replay here.
-    // mz final sanity checks
-    rr_assert(current_item->header.callsite_loc == call_site);
+void rr_replay_input_1(RR_callsite_id call_site, uint8_t* data) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_INPUT_1, call_site, true);
+    rr_assert(current_item);
     *data = current_item->variant.input_1;
-    // mz we've used the item - recycle it.
-    add_to_recycle_list(current_item);
+    rr_queue_pop_front();
 }
 
 // mz replay 2-byte input to the CPU
-void rr_replay_input_2(RR_callsite_id call_site, uint16_t* data)
-{
-    RR_log_entry* current_item = get_next_entry(RR_INPUT_2, call_site, false);
-    if (current_item == NULL) {
-        // mz we're trying to replay too early or we have the wrong kind of
-        // rr_nondet_log
-        // entry.  this is cause for failure
-        rr_assert(0);
-    }
-    // mz now we have our item and it is appropriate for replay here.
-    // mz final sanity checks
-    rr_assert(current_item->header.callsite_loc == call_site);
+void rr_replay_input_2(RR_callsite_id call_site, uint16_t* data) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_INPUT_2, call_site, true);
+    rr_assert(current_item);
     *data = current_item->variant.input_2;
-    // mz we've used the item - recycle it.
-    add_to_recycle_list(current_item);
+    rr_queue_pop_front();
 }
 
 // mz replay 4-byte input to the CPU
-void rr_replay_input_4(RR_callsite_id call_site, uint32_t* data)
-{
-    RR_log_entry* current_item = get_next_entry(RR_INPUT_4, call_site, false);
-
-    if (current_item == NULL) {
-        // mz we're trying to replay too early or we have the wrong kind of
-        // rr_nondet_log
-        // entry.  this is cause for failure
-        rr_assert(0);
-    }
-
-    // mz now we have our item and it is appropriate for replay here.
-    // mz final sanity checks
-    rr_assert(current_item->header.callsite_loc == call_site);
+void rr_replay_input_4(RR_callsite_id call_site, uint32_t* data) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_INPUT_4, call_site, true);
+    rr_assert(current_item);
     *data = current_item->variant.input_4;
-    // mz we've used the item - recycle it.
-    add_to_recycle_list(current_item);
+    rr_queue_pop_front();
 }
 
 // mz replay 8-byte input to the CPU
-void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data)
-{
-    RR_log_entry* current_item = get_next_entry(RR_INPUT_8, call_site, false);
-    if (current_item == NULL) {
-        // mz we're trying to replay too early or we have the wrong kind of
-        // rr_nondet_log
-        // entry.  this is cause for failure
-        rr_assert(0);
-    }
-    // mz now we have our item and it is appropriate for replay here.
-    // mz final sanity checks
-    rr_assert(current_item->header.callsite_loc == call_site);
+void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_INPUT_8, call_site, true);
+    rr_assert(current_item);
     *data = current_item->variant.input_8;
-    // mz we've used the item - recycle it.
-    add_to_recycle_list(current_item);
+    rr_queue_pop_front();
 }
 
 /**
@@ -1064,14 +943,10 @@ void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  uint32_t* interrupt_request)
 {
     RR_log_entry* current_item =
-        get_next_entry(RR_INTERRUPT_REQUEST, call_site, true);
+        get_next_entry_checked(RR_INTERRUPT_REQUEST, call_site, true);
     if (current_item != NULL) {
         panda_current_interrupt_request = current_item->variant.interrupt_request;
-        // mz we've used the item
-        add_to_recycle_list(current_item);
-        // mz before we can return, we need to fill the queue with information
-        // up to the next interrupt value!
-        rr_fill_queue();
+        rr_queue_pop_front();
     }
     *interrupt_request = panda_current_interrupt_request;
 }
@@ -1079,7 +954,7 @@ void rr_replay_interrupt_request(RR_callsite_id call_site,
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
 {
     RR_log_entry* current_item =
-        get_next_entry(RR_EXIT_REQUEST, call_site, false);
+        get_next_entry_checked(RR_EXIT_REQUEST, call_site, false);
     if (current_item == NULL) {
         *exit_request = 0;
     } else {
@@ -1091,12 +966,18 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
             rr_assert(current_item->header.callsite_loc == call_site);
         }
         *exit_request = current_item->variant.exit_request;
-        // mz we've used the item
-        add_to_recycle_list(current_item);
-        // mz before we can return, we need to fill the queue with information
-        // up to the next exit_request value!
-        // rr_fill_queue();
+        rr_queue_pop_front();
     }
+}
+
+bool rr_replay_intno(uint32_t *intno) {
+    RR_log_entry *current_item =
+        get_next_entry_checked(RR_INPUT_4, RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO, true);
+    if (!current_item) return false;
+
+    *intno = current_item->variant.input_4;
+    rr_queue_pop_front();
+    return true;
 }
 
 static void rr_create_memory_region(hwaddr start, uint64_t size, RR_mem_type mtype, char *name) {
@@ -1131,7 +1012,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
     uint8_t replay_done = 0;
     do {
         RR_log_entry* current_item =
-            get_next_entry(RR_SKIPPED_CALL, call_site, false);
+            get_next_entry_checked(RR_SKIPPED_CALL, call_site, false);
         if (current_item == NULL) {
             // mz queue is empty or we've replayed all we can for this prog
             // point
@@ -1180,15 +1061,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 // mz sanity check
                 rr_assert(0);
             }
-            add_to_recycle_list(current_item);
-            // bdg Now that we are also breaking on main loop skipped calls we
-            // have to
-            // bdg refill the queue here
-            // RW ...but only if the queue is actually empty at this point
-            if ((call_site == RR_CALLSITE_MAIN_LOOP_WAIT) &&
-                (rr_queue_head == NULL)) { // RW queue is empty
-                rr_fill_queue();
-            }
+            rr_queue_pop_front();
         }
     } while (!replay_done);
 #endif
@@ -1248,8 +1121,11 @@ void rr_create_replay_log(const char* filename)
                  rr_nondet_log->size);
     }
     // mz read the last program point from the log header.
-    rr_assert(rr_fread(&(rr_nondet_log->last_prog_point),
-                sizeof(RR_prog_point), 1) == 1);
+    uint64_t unused;
+    rr_fread(&unused, sizeof(unused), 1);
+    rr_fread(&unused, sizeof(unused), 1);
+    rr_fread(&(rr_nondet_log->last_prog_point.guest_instr_count),
+            sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
 
 // close file and free associated memory
@@ -1272,8 +1148,6 @@ void rr_destroy_log(void)
 
 struct timeval replay_start_time;
 
-uint8_t spit_out_total_num_instr_once = 0;
-
 // mz display a measure of replay progress (using instruction counts and log
 // size)
 void replay_progress(void)
@@ -1294,12 +1168,6 @@ void replay_progress(void)
             char* dot = strrchr(name, '.');
             if (dot && dot - name > 10)
                 *(dot - 10) = '\0';
-
-            if (!spit_out_total_num_instr_once) {
-                spit_out_total_num_instr_once = 1;
-                printf("total_instr in replay: %10" PRIu64 "\n",
-                       rr_nondet_log->last_prog_point.guest_instr_count);
-            }
 
             printf("%s:  %10" PRIu64
                    " (%6.2f%%) instrs. %7.2f sec. %5.2f GB ram.\n",
@@ -1480,7 +1348,6 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     g_free(rr_name_base);
     // set global to turn on recording
     rr_mode = RR_RECORD;
-    // cpu_set_log(CPU_LOG_TB_IN_ASM|CPU_LOG_RR);
     return snapshot_ret;
 #endif
 }
@@ -1573,7 +1440,9 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // set global to turn on replay
     rr_mode = RR_REPLAY;
 
-    // mz fill the queue!
+    // set up event queue
+    rr_queue_head = rr_queue_tail = NULL;
+    rr_queue_end = &rr_queue[RR_QUEUE_MAX_LEN];
     rr_fill_queue();
     return 0; // snapshot_ret;
 #endif
@@ -1586,7 +1455,7 @@ void rr_do_end_replay(int is_error)
 #ifdef CONFIG_SOFTMMU
     // log is empty - we're done
     // dump cpu state at exit as a sanity check.
-    int i;
+
     replay_progress();
     if (is_error) {
         printf("ERROR: replay failed!\n");
@@ -1599,6 +1468,7 @@ void rr_do_end_replay(int is_error)
     printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
 
     printf("Stats:\n");
+    int i;
     for (i = 0; i < RR_LAST; i++) {
         printf("%s number = %llu, size = %llu bytes\n",
                get_log_entry_kind_string(i), rr_number_of_log_entries[i],
@@ -1608,20 +1478,7 @@ void rr_do_end_replay(int is_error)
     }
     printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
     rr_max_num_queue_entries = 0;
-    // cleanup the recycled list for log entries
-    {
-        unsigned long num_items = 0;
-        RR_log_entry* entry;
-        while (recycle_list) {
-            entry = recycle_list;
-            recycle_list = entry->next;
-            // mz entry params already freed
-            g_free(entry);
-            num_items++;
-        }
-        printf("%lu items on recycle list, %lu bytes total\n", num_items,
-               num_items * sizeof(RR_log_entry));
-    }
+
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
@@ -1632,17 +1489,6 @@ void rr_do_end_replay(int is_error)
             printf("ERROR: replay failed!\n");
         } else {
             printf("Replay terminated at user request.\n");
-        }
-    }
-    // cleanup the queue
-    {
-        RR_log_entry* entry;
-        while (rr_queue_head) {
-            entry = rr_queue_head;
-            rr_queue_head = entry->next;
-            entry->next = NULL;
-            free_entry_params(entry);
-            g_free(entry);
         }
     }
     rr_queue_head = NULL;
@@ -1687,8 +1533,14 @@ uint32_t rr_checksum_regs(void) {
          printf("Need to be in VCPU thread!\n");
          return 0;
     }
+    CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
     uint32_t crc = crc32(0, Z_NULL, 0);
-    crc = crc32(crc, first_cpu->env_ptr, sizeof(CPUArchState));
+    crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
+#if defined(TARGET_I386)
+    crc = crc32(crc, (unsigned char *)&env->eip, sizeof(env->eip));
+#elif defined(TARGET_ARM)
+    crc = crc32(crc, (unsigned char *)&env->pc, sizeof(env->pc));
+#endif
     return crc;
 }
 
