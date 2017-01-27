@@ -760,12 +760,11 @@ int cpu_exec(CPUState *cpu)
 
 #ifdef CONFIG_SOFTMMU
                 uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if (rr_mode == RR_REPLAY && until_interrupt > 0 &&
-                         tb->icount > until_interrupt) {
-                    assert(false && "bad interrupt scheduling state!");
-                }
-                if (panda_invalidate_tb) {
-                    // retranslate TB.
+                if (panda_invalidate_tb
+                        || (rr_mode == RR_REPLAY && until_interrupt > 0
+                            && tb->icount > until_interrupt)) {
+                    // retranslate so that basic block boundary matches
+                    // record & replay for interrupt delivery
                     breakpoint_invalidate(cpu,tb->pc);
                     tb = tb_find(cpu, last_tb, tb_exit);
                 }
