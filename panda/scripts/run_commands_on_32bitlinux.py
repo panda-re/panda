@@ -2,15 +2,15 @@
 
 """run_commands_on_32bitlinux.py binary [args]
 
-So you want to try panda but dont have any recordings.  Poor you.  
-This script allows you to run commands on a 32-bit linux guest.  
+So you want to try panda but dont have any recordings.  Poor you.
+This script allows you to run commands on a 32-bit linux guest.
 
 1st arg is binary which should be a 32-bit ELF.
 Remaining arguments are the args that binary needs.
 
-For example, 
+For example,
 
-run_commands_on_32bitlinux.py foo2 
+run_commands_on_32bitlinux.py foo2
 
 will run the binary foo2 (which needs to be in the cwd) under a panda
 32-bit wheezy machine and create a recording.  The recording files will be in
@@ -26,39 +26,35 @@ the build dir.
 
 """
 
-
-
-
 import os
-import sys
 import json
-import subprocess as sp
+import pipes
 import shutil
+import subprocess as sp
+import sys
+
+from os.path import basename, dirname, join, realpath
 
 home_dir = os.getenv("HOME")
-dot_dir = home_dir + "/.panda"
+dot_dir = join(home_dir, '.panda')
 
 if not (os.path.exists(dot_dir)):
     os.mkdir(dot_dir)
 
 this_script = os.path.abspath(__file__)
-(this_script_dir, foo) = os.path.split(this_script)
+this_script_dir = dirname(this_script)
 
 filemap = {}
 
 def filecopy(orig_filename):
-    (path,name) = os.path.split(orig_filename)
-    copy_filename = install_dir + "/" + name
-    shutil.copy(orig_filename, copy_filename)
-    filemap[orig_filename] = copy_filename
-    return copy_filename
-
-def is_filename(possible_filename):
-    if '/' in possible_filename:
-        return True
-
-proj = {}
-proj["qemu"] = os.path.realpath(this_script_dir + "/../../build/i386-softmmu/qemu-system-i386")
+    if orig_filename.startswith('guest:'):
+        return orig_filename[6:]
+    else:
+        name = basename(orig_filename)
+        copy_filename = join(install_dir, name)
+        shutil.copy(orig_filename, copy_filename)
+        filemap[orig_filename] = copy_filename
+        return copy_filename
 
 binary = sys.argv[1]
 args = []
@@ -67,68 +63,61 @@ if (len(sys.argv) >= 2):
 
 # create installdir if necessary
 
-rcp_dir = os.getcwd() + "/rcp-panda"
+rcp_dir = join(os.getcwd(), 'rcp-panda')
 if os.path.exists(rcp_dir):
     shutil.rmtree(rcp_dir)
 os.mkdir(rcp_dir)
 
-install_dir = rcp_dir + "/install"
+install_dir = join(rcp_dir, 'install')
 if os.path.exists(install_dir):
     shutil.rmtree(install_dir)
 os.mkdir(install_dir)
 
-
 # get qcow if necessary
 
-qcow = dot_dir + "/wheezy_panda2.qcow2"
-proj["qcow"] = qcow
+qcow = join(dot_dir, "wheezy_panda2.qcow2")
 
 if not (os.path.isfile(qcow)):
     print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
     sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
 
-
-proj["snapshot"] = "root"
-
-(binpath, exename) = os.path.split(binary)
-
-binary_copy = install_dir + "/" + exename
-
-filecopy(binary)
+exename = basename(binary)
+binary_copy = filecopy(binary)
 
 new_args = []
 for arg in args:
-    if is_filename(arg):
-        copyname = filecopy(arg)
-        new_args.append(copyname)
+    if os.path.exists(arg) or arg.startswith('guest:'):
+        new_args.append(filecopy(arg))
     else:
         new_args.append(arg)
 
-print "args = " + (str(args))
-print "new_args = " + (str(new_args))    
+print "args =", args
+print "new_args =", new_args
 
-proj["install_dir"] = install_dir
-proj["library_path"] = ""
-proj["directory"] = rcp_dir
-proj["name"] = exename
-proj["recording_name"] = rcp_dir + "/" + exename + "-recording"
-proj["command"] = "{install_dir}/" + exename + " " + (" ".join(new_args))
-proj["input"] = "/bin/ls"
+proj = {
+    "qemu": realpath(join(this_script_dir,
+                          '..', '..', 'build', 'i386-softmmu', 'qemu-system-i386')),
+    "qcow": qcow,
+    "snapshot": "root",
+    "install_dir": install_dir,
+    "directory": rcp_dir,
+    "name": exename,
+    "recording_name": join(rcp_dir, exename + "-recording"),
+    "command": pipes.quote(binary_copy) + " " + sp.list2cmdline(new_args),
+}
 
-
-jsonfile = rcp_dir + "/rc.json"
+jsonfile = join(rcp_dir, 'rc.json')
 f = open(jsonfile, "w")
-f.write(json.dumps(proj))
+json.dump(proj, f)
 f.close()
 
-print "jsonfile: [%s]" % jsonfile
+print "jsonfile: [{}]".format(jsonfile)
 
+rcog = join(this_script_dir, "run_commands_on_guest.py")
 
-rcog = this_script_dir + '/' + "run_commands_on_guest.py"
+cmd = ['python', rcog, jsonfile]
 
-cmd = "python " + rcog + " " + jsonfile
+print "cmd = [{}]".format(sp.list2cmdline(cmd))
+print "filemap:", filemap
 
-print "cmd = [%s]" % cmd
-
-sp.check_call(cmd.split())
-
+sp.check_call(cmd)
