@@ -6,14 +6,22 @@ So you want to try panda but dont have any recordings.  Poor you.
 This script allows you to run commands on a 32-bit linux guest.
 
 1st arg is binary which should be a 32-bit ELF.
-Remaining arguments are the args that binary needs.
+Remaining arguments are the args that binary needs. Files on the host will
+automatically be copied to the guest, unless the argument is prefixed with
+"guest:". This works for the binary too.
 
 For example,
 
 run_commands_on_32bitlinux.py foo2
 
-will run the binary foo2 (which needs to be in the cwd) under a panda
-32-bit wheezy machine and create a recording.  The recording files will be in
+will copy into the guest the binary foo2 (which needs to be in the cwd) and
+create a recording of running it under a panda 32-bit wheezy machine.
+
+run_commands_on_32bitlinux.py guest:/bin/cat guest:/etc/passwd
+
+will create a recording of running the guest's cat on the guest's /etc/passwd.
+
+The recording files will be in
 
 ./rcp-panda/foo2-recording*
 
