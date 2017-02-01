@@ -88,13 +88,12 @@ inline bool endswith(const char *haystack, std::string suffix) {
 
 void fn_start(CPUState *env, target_ulong pc, const char *file_name, 
               const char *funct_name) {
-    if (debug) printf ("fn start %s pc=0x%x\n", funct_name, pc);
     // grab args for this fn if this guy has either enter or exit cb
     for (LibFICbEntry &cbe : libficbes) {
         if (endswith(funct_name, "!" + cbe.fnname)) {
             set_word_size();
             if (calling_convention == CC_CDECL ) {                
-                if (debug) printf ("fn start %s pc=0x%x\n", funct_name, pc);
+                if (debug) printf ("fn start %s pc=0x%x file_name %s\n", funct_name, pc, file_name);
                 if (debug) printf ("grabbing %d fn args\n", cbe.numargs);
                 for (uint32_t i=0; i<cbe.numargs; i++) {
                     if (word_size == 4) {
@@ -111,16 +110,22 @@ void fn_start(CPUState *env, target_ulong pc, const char *file_name,
         }
     }
     for (LibFICbEntry &cbe : libficbes) {
-        if (cbe.isenter && cbe.fnname == funct_name) {            
+        if (cbe.isenter && endswith(funct_name, "!" + cbe.fnname)) {
             if (debug) printf (" -- fn start callback\n");
             (*cbe.callback)(env, pc, (uint8_t *) arg);
         }
-    }   
+    }
 }
 
 void fn_return(CPUState *env, target_ulong pc, const char *file_name, 
                const char *funct_name) {
-    if (!arg) return;
+    if (!arg) {
+        if (debug) {
+            printf ("*error* fn end %s .  Did not have argument array populated. EAX=%x\n", 
+                    funct_name, EAX);
+        }
+        return;
+    }
     if (debug) printf ("fn end %s EAX=%x\n", funct_name, EAX);
     for (LibFICbEntry &cbe : libficbes) {
         // funct_name comes from pri_dwarf and may be lib:!plt:fname
@@ -134,8 +139,8 @@ void fn_return(CPUState *env, target_ulong pc, const char *file_name,
             }
             if (debug) printf (" -- fn exit callback\n");
             (*cbe.callback)(env, pc, (uint8_t *) arg);
-        }           
-    }   
+        }
+    }
 }
 
 void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numargs, libfi_cb_t cb) {
