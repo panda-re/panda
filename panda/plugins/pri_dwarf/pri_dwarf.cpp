@@ -1745,7 +1745,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         if (!m->file) continue;
         if (!m->name) continue;
         std::string lib = std::string(m->file);
-        if (0 == strstr(m->file, proc_to_monitor)) continue;
+        if (0 != strstr(m->name, proc_to_monitor)) continue;
         printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
         //std::size_t found = lib.find(guest_debug_path);
         //if (found == std::string::npos) continue;
@@ -2209,9 +2209,6 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
 // get current process before each bb execs
 // which will probably help us actually know the current process
 int osi_foo(CPUState *cpu, TranslationBlock *tb) {
-    if (!main_exec_initialized){
-        main_exec_initialized = ensure_main_exec_initialized(cpu);
-    }
 
     if (panda_in_kernel(cpu)) {
 
@@ -2267,6 +2264,9 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
                 }
             }
         }
+    }
+    if (correct_asid(cpu) && !main_exec_initialized){
+        main_exec_initialized = ensure_main_exec_initialized(cpu);
     }
 
     return 0;
