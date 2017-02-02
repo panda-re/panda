@@ -1745,7 +1745,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         if (!m->file) continue;
         if (!m->name) continue;
         std::string lib = std::string(m->file);
-        if (0 != strstr(m->name, proc_to_monitor)) continue;
+        if (0 != strcmp(m->name, proc_to_monitor)) continue;
         printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
         //std::size_t found = lib.find(guest_debug_path);
         //if (found == std::string::npos) continue;
