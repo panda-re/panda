@@ -290,6 +290,8 @@ const QEMULogItem qemu_log_items[] = {
       "show generated LLVM IR code" },
     { CPU_LOG_LLVM_ASM, "llvm_asm",
       "show LLVM-generated assembly code" },
+    { CPU_LOG_TAINT_OPS, "taint_ops",
+      "show taint ops for each llvm bb", },
 #endif
     { CPU_LOG_RR, "rr",
         "record/replay program points" },
