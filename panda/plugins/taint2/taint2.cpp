@@ -178,7 +178,7 @@ int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
 }
 
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr,
-        target_ulong size, void *buf){
+        target_ulong size){
     /*if (size == 4) {
         printf("pmem: " TARGET_FMT_lx "\n", addr);
     }*/
@@ -208,8 +208,8 @@ void __taint2_enable_taint(void) {
     panda_register_callback(plugin_ptr, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     pcb.after_block_exec = after_block_exec;
     panda_register_callback(plugin_ptr, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    pcb.phys_mem_after_read = phys_mem_read_callback;
-    panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_AFTER_READ, pcb);
+    pcb.phys_mem_before_read = phys_mem_read_callback;
+    panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
     pcb.phys_mem_before_write = phys_mem_write_callback;
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_BEFORE_WRITE, pcb);
 /*
@@ -273,7 +273,7 @@ void __taint2_enable_taint(void) {
         exit(1);
     }
 
-    //tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
+    tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 
     printf("taint2: Done verifying module. Running...\n");
 }

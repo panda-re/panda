@@ -2,7 +2,7 @@
 QEMU_CXXFLAGS+= $(LLVM_CXXFLAGS)
 
 DBGFLAGS=
-DBGFLAGS+= #-DTAINTDEBUG
+DBGFLAGS+= -DTAINTDEBUG
 
 QEMU_CFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= $(DBGFLAGS)
@@ -10,7 +10,7 @@ QEMU_CXXFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= -Wno-type-limits -Wno-cast-qual
 
 TAINT_OP_CFLAGS = -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
-TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++
+TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++ -DTAINTDEBUG
 TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS)
 
 TAINT_OP_FILTER = -g -Wold-style-declaration -std=c11 -fpermissive
