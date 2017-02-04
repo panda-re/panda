@@ -54,7 +54,7 @@ uint32_t start_label = 0;
 
 uint64_t first_instr = 0;
 
-bool taint_stdin = false;
+const char *taint_stdin = nullptr;
 
 std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
@@ -218,8 +218,22 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
     last_pos = pos;
     saw_read = false;
     if (debug) printf ("read_enter filename=[%s]\n", filename.c_str());
-    if (filename.find(taint_filename) != std::string::npos) {
-        //    if (0 == strcmp(filename.c_str(), taint_filename)) {
+    std::string read_filename = taint_stdin ? "stdin" : taint_filename;
+
+    auto it = running_procs.find(the_asid);
+    if (taint_stdin) {
+        if (it == running_procs.end()) {
+            if (debug) printf("read_enter unknown proc.\n");
+            return;
+        }
+        std::string proc_name = it->second.name;
+        if (proc_name.find(taint_stdin) == std::string::npos) {
+            if (debug) printf("read_enter wrong proc %s.\n", proc_name.c_str());
+            return;
+        }
+    }
+
+    if (filename.find(read_filename) != std::string::npos) {
         if (debug) printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
         saw_read = true;
     }
@@ -441,13 +455,13 @@ bool init_plugin(void *self) {
     start_label = panda_parse_ulong(args, "start", 0);
     enable_taint_on_open = panda_parse_bool(args, "enable_taint_on_open");
     first_instr = panda_parse_uint64(args, "first_instr", 0);
+    taint_stdin = panda_parse_string(args, "use_stdin_for", nullptr);
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
     printf ("no_taint = %d\n", no_taint);
     printf ("end_label = %d\n", end_label);
     printf ("first_instr = %" PRId64 " \n", first_instr);
-
 
     // you must use '-os os_name' cmdline arg!
     assert (!(panda_os_type == OST_UNKNOWN));
@@ -456,9 +470,8 @@ bool init_plugin(void *self) {
     assert(init_osi_api());
     panda_require("syscalls2");
 
-    if (0 == strcmp(taint_filename, "stdin")) {
+    if (taint_stdin) {
         printf("tainting stdin\n");
-        taint_stdin = true;
         assert (panda_os_type == OST_LINUX);
     }
 
@@ -466,8 +479,7 @@ bool init_plugin(void *self) {
         panda_require("osi_linux");
         assert(init_osi_linux_api());
 
-        if (!taint_stdin) 
-            PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
+        PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter);

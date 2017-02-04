@@ -133,7 +133,6 @@ typedef struct rr_log_entry_t {
         // if log_entry.kind == RR_LAST
         // no variant fields
     } variant;
-    struct rr_log_entry_t* next;
 } RR_log_entry;
 
 // a program-point indexed record/replay log
@@ -158,7 +157,6 @@ RR_log_entry* rr_get_queue_head(void);
 
 void panda_end_replay(void);
 
-extern RR_log_entry *rr_queue_tail;
 static inline uint64_t rr_get_guest_instr_count(void) {
     assert(first_cpu);
     return first_cpu->rr_guest_instr_count;
@@ -171,26 +169,25 @@ static inline RR_prog_point rr_prog_point(void) {
     return ret;
 }
 
+extern void rr_fill_queue(void);
+extern RR_log_entry *rr_queue_tail;
 static inline uint64_t rr_num_instr_before_next_interrupt(void) {
-    if (!rr_queue_tail) {
-        return -1;
-    }
-    RR_log_entry last = *rr_queue_tail;
-    switch (last.header.kind) {
+    if (!rr_queue_tail) rr_fill_queue();
+    if (!rr_queue_tail) return -1;
+
+    RR_header last_header = rr_queue_tail->header;
+    switch (last_header.kind) {
         case RR_SKIPPED_CALL:
-            if (last.header.callsite_loc != RR_CALLSITE_MAIN_LOOP_WAIT) {
+            if (last_header.callsite_loc != RR_CALLSITE_MAIN_LOOP_WAIT) {
                 return -1;
             } // otherwise fall through
         case RR_LAST:
         case RR_INTERRUPT_REQUEST:
-            return last.header.prog_point.guest_instr_count -
+            return last_header.prog_point.guest_instr_count -
                 rr_get_guest_instr_count();
         default:
             return -1;
     }
 }
-
-
-//void breakpoint_invalidate(CPUState *cpu, target_ulong pc);
 
 #endif

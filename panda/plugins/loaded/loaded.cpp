@@ -52,7 +52,7 @@ PPP_PROT_REG_CB(on_library_load);
 // This creates the global for this call back fn (on_library_load)
 PPP_CB_BOILERPLATE(on_library_load)
 
-bool debug = false;
+bool debug = true;
 
 #define MAX_FILENAME 256
 std::map <target_ulong, OsiProc> running_procs;
@@ -81,6 +81,19 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
 }
 
 #if defined(TARGET_I386)
+// 125 long sys_mprotect ['unsigned long start', ' size_t len', 'unsigned long prot']
+void linux_mprotect_return(CPUState* cpu,target_ulong pc,uint32_t start,uint32_t len,uint32_t prot) {
+    if (debug) {
+        printf("[loaded] mprotect()\n");
+    }
+}
+// 90 long sys_old_mmap ['struct mmap_arg_struct __user *arg']
+void linux_old_mmap_return(CPUState *cpu, target_ulong pc, uint32_t arg_ptr) {
+    if (debug) {
+        printf("[loaded] old mmap()\n");
+    }
+}
+
 void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_t len,uint32_t prot,uint32_t flags,uint32_t fd,uint32_t pgoff) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     target_ulong asid = panda_current_asid(cpu);
@@ -100,12 +113,17 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
     // TODO: fix this magic constant of 0x04 for PROT_EXEC
     if (filename != NULL && ((prot & 0x04) == 0x04)) {
         if (debug) {
-            printf ("linux_mmap_pgoff(fd=%d filename=[%s] "
+            printf ("[loaded] linux_mmap_pgoff(fd=%d filename=[%s] "
                     "len=%d prot=%x flags=%x "
                     "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
                     filename, len, prot, flags, pgoff, env->regs[R_EAX]);
         }
         PPP_RUN_CB(on_library_load, cpu, pc, filename, env->regs[R_EAX])
+    } else if ((prot & 0x04) == 0x04) {
+        printf ("[loaded] linux_mmap_pgoff(fd=%d "
+                "len=%d prot=%x flags=%x "
+                "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
+                len, prot, flags, pgoff, env->regs[R_EAX]);
     }
 }
 #endif
@@ -161,6 +179,9 @@ bool init_plugin(void *self) {
     }
 
     PPP_REG_CB("syscalls2", on_sys_mmap_pgoff_return, linux_mmap_pgoff_return);
+    // don't use these at them moment
+    //PPP_REG_CB("syscalls2", on_sys_old_mmap_return, linux_old_mmap_return);
+    //PPP_REG_CB("syscalls2", on_sys_mprotect_return, linux_mprotect_return);
 #else
     fprintf(stderr, "The loaded plugin is not currently supported on this platform.\n");
     return false;

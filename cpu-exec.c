@@ -749,23 +749,20 @@ int cpu_exec(CPUState *cpu)
                 cpu_handle_interrupt(cpu, &last_tb);
                 panda_before_find_fast();
                 tb = tb_find(cpu, last_tb, tb_exit);
-                panda_bb_invalidate_done = panda_callbacks_after_find_fast(cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+                panda_bb_invalidate_done = panda_callbacks_after_find_fast(
+                        cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
                 if (qemu_loglevel_mask(CPU_LOG_RR)) {
                     RR_prog_point pp = rr_prog_point();
                     qemu_log_mask(CPU_LOG_RR,
-                      "Prog point: 0x" TARGET_FMT_lx
-                      " {guest_instr_count=%llu, pc=%08llx, secondary=%08llx}\n",
-                      tb->pc,
-                     (unsigned long long)pp.guest_instr_count,
-                      (unsigned long long)pp.pc,
-                      (unsigned long long)pp.secondary);
+                            "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
+                            tb->pc, (unsigned long long)pp.guest_instr_count);
                 }
 
 #ifdef CONFIG_SOFTMMU
                 uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if ( panda_invalidate_tb
-                     || (rr_mode == RR_REPLAY && until_interrupt > 0 &&
-                         tb->icount > until_interrupt)) {
+                if (panda_invalidate_tb
+                        || (rr_mode == RR_REPLAY && until_interrupt > 0
+                            && tb->icount > until_interrupt)) {
                     // retranslate so that basic block boundary matches
                     // record & replay for interrupt delivery
                     breakpoint_invalidate(cpu,tb->pc);
@@ -778,7 +775,7 @@ int cpu_exec(CPUState *cpu)
                     qemu_cpu_kick(cpu);
                     break;
                 }
-                if (!rr_in_replay() || rr_num_instr_before_next_interrupt() > 0) {
+                if (!rr_in_replay() || until_interrupt > 0) {
                     cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
                     /* Try to align the host and virtual clocks
                        if the guest is in advance */

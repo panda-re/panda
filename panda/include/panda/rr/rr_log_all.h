@@ -90,8 +90,6 @@ void rr_quit_cpu_loop(void);
 // mz A record of a point in the program.  This is a subset of guest CPU state
 // mz and the number of guest instructions executed so far.
 typedef struct RR_prog_point_t {
-    uint64_t pc;
-    uint64_t secondary;
     uint64_t guest_instr_count;
 } RR_prog_point;
 
@@ -303,6 +301,7 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data);
 void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  uint32_t* interrupt_request);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request);
+bool rr_replay_intno(uint32_t *intno);
 
 extern void rr_replay_skipped_calls_internal(RR_callsite_id cs);
 
@@ -369,20 +368,6 @@ static inline void rr_exit_request(uint32_t* exit_request)
     case RR_REPLAY:
         rr_replay_exit_request((RR_callsite_id)rr_skipped_callsite_location,
                                (uint32_t*)exit_request);
-        break;
-    default:
-        break;
-    }
-}
-
-static inline void rr_debug(void)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_debug((RR_callsite_id)rr_skipped_callsite_location);
-        break;
-    case RR_REPLAY:
-        rr_replay_debug((RR_callsite_id)rr_skipped_callsite_location);
         break;
     default:
         break;
