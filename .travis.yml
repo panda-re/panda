@@ -2,7 +2,7 @@ sudo: false
 language: c
 
 before_install:
-  - panda/scripts/install_ubuntu.sh
+  - sudo panda/scripts/install_ubuntu.sh
 
 script:
 
