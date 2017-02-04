@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 ##  @file kernelinfo_parse.py
 #   @brief Script for retrieving the last kernelinfo block from dmesg.

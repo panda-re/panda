@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 from volatility.plugins.overlays.windows.vista_sp0_x64_syscalls import syscalls as vista_sp0_x64_syscalls
 from volatility.plugins.overlays.windows.vista_sp0_x86_syscalls import syscalls as vista_sp0_x86_syscalls

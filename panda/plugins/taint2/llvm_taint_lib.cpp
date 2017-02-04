@@ -49,6 +49,9 @@ extern bool tainted_pointer;
 PPP_PROT_REG_CB(on_branch2);
 PPP_CB_BOILERPLATE(on_branch2);
 
+PPP_PROT_REG_CB(on_non_const_eip);
+PPP_CB_BOILERPLATE(on_non_const_eip);
+
 }
 
 extern char **gargv;
@@ -92,6 +95,12 @@ static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
+}
+
+static void taint_storeEip_run(FastShad *shad, uint64_t src, uint64_t size) {
+    // this arg should be the register number
+    Addr a = make_laddr(src / MAXREGSIZE, 0);
+    PPP_RUN_CB(on_non_const_eip, a, size);
 }
 
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
@@ -184,6 +193,15 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     }
     assert(PTV.branchF);
     EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
+
+    PTV.storeEipF = M.getFunction("taint_storeEip");
+    if (!PTV.storeEipF) { // insert
+        PTV.storeEipF = Function::Create(
+            FunctionType::get(llvm::Type::getVoidTy(ctx), argTs, false /*isVarArg*/),
+            GlobalVariable::ExternalLinkage, "taint_storeEip", &M);
+    }
+    assert(PTV.storeEipF);
+    EE->addGlobalMapping(PTV.storeEipF, (void *)taint_storeEip_run);
 #define ADD_MAPPING(func) \
     EE->addGlobalMapping(M.getFunction(#func), (void *)(func));\
     M.getFunction(#func)->deleteBody();
@@ -626,6 +644,16 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     inlineCallBefore(I, branchF, args);
 }
 
+void PandaTaintVisitor::insertStoreEip(Instruction &I, Value *new_eip) {
+    if (isa<Constant>(new_eip)) return;
+    LLVMContext &ctx = I.getContext();
+
+    vector<Value *> args{
+        llvConst, constSlot(new_eip), const_uint64(ctx, getValueSize(new_eip))
+    };
+    inlineCallBefore(I, storeEipF, args);
+}
+
 // Terminator instructions
 void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     Value *ret = I.getReturnValue();
@@ -854,6 +882,19 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         } else {
             ptrConst = gsvConst;
             ptrAddr = addr.val.gs;
+#if defined(TARGET_ARM)
+        if (ptrAddr == cpu_off(pc) && isStore) {
+#elif defined(TARGET_I386)
+        if (ptrAddr == cpu_off(eip) && isStore) {
+#else
+        // shouldn't happend
+        assert(1 == 0);
+#endif
+                 // we are storing to eip
+                 // insert instrumentation before for querying taint
+                 // on LLVM register `val` being stored
+                insertStoreEip(I, val);
+            }
         }
 
         Constant *destConst = isStore ? ptrConst : llvConst;

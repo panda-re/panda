@@ -1,8 +1,24 @@
+#!/usr/bin/python2.7
+
 import sys
+import os
 import zlib
-import plog_pb2
 import struct
 from google.protobuf.json_format import MessageToJson
+from os.path import dirname, join, realpath
+
+panda_dir = dirname(dirname(dirname(realpath(sys.argv[0]))))
+
+def try_path(*args):
+    args = list(args) + ['i386-softmmu']
+    build_dir = join(*args)
+    if os.path.isdir(build_dir):
+        sys.path.append(build_dir)
+try_path(panda_dir, 'build')
+try_path(panda_dir)
+try_path(dirname(panda_dir), 'opt-panda')
+try_path(dirname(panda_dir), 'debug-panda')
+import plog_pb2
 
 f = open(sys.argv[1])
 

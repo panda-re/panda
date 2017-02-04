@@ -19,6 +19,7 @@ PANDAENDCOMMENT */
 #include <vector>
 #include <map>
 #include <set>
+#include <memory>
 #include <string>
 #include <algorithm>
 
@@ -82,6 +83,7 @@ const char *guest_debug_path = NULL;
 const char *host_debug_path = NULL;
 const char *host_mount_path = NULL;
 const char *proc_to_monitor = NULL;
+bool allow_just_plt = false;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -97,7 +99,7 @@ bool debug = false;
 Dwarf_Unsigned prev_line = 0, cur_line;
 Dwarf_Addr prev_function = 0, cur_function;
 Dwarf_Addr prev_line_pc = 0;
-char *prev_file_name = NULL;
+std::string prev_file_name = "";
 std::string prev_funct_name = std::string("");
 bool inExecutableSource = false;
 
@@ -160,14 +162,22 @@ std::vector<VarInfo> global_var_list;
 
 typedef struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
-    char *filename;
+    std::string filename;
     unsigned long line_number;
     Dwarf_Unsigned line_off;
 
+    friend std::ostream &operator<<(std::ostream &os, const LineRange &lr) {
+        os << "0x" << std::hex << lr.lowpc << "-0x" << std::hex << lr.highpc <<
+            lr.filename << ":" << lr.line_number << ":" << lr.line_off;
+        return os;
+    }
+
     LineRange(Dwarf_Addr lowpc, Dwarf_Addr highpc, unsigned long line_number,
-            char *filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
+            std::string filename, Dwarf_Addr function_addr, Dwarf_Unsigned line_off) :
         lowpc(lowpc), highpc(highpc), function_addr(function_addr),
-        filename(filename), line_number(line_number), line_off(line_off) {}
+        filename(filename), line_number(line_number), line_off(line_off) {
+        assert(lowpc <= highpc);
+   }
 } LineRange;
 std::vector<LineRange> line_range_list;
 std::vector<LineRange> fn_start_line_range_list;
@@ -181,15 +191,19 @@ std::map<Dwarf_Addr,std::pair<Dwarf_Locdesc**, Dwarf_Signed>> funct_to_framepoin
 
 
 bool sortRange(const LineRange &x1,
-               const LineRange &x2){
-    return x1.lowpc < x2.lowpc ||
-           x1.highpc < x2.highpc;
+               const LineRange &x2) {
+    /*
+     * if (x1.lowpc < x2.lowpc) return true;
+     * else if (x1.lowpc > x2.lowpc) return false;
+     * return x1.highpc < x2.highpc;
+     */
+    return std::tie(x1.lowpc, x1.highpc) < std::tie(x2.lowpc, x2.highpc);
 }
 
 struct CompareRangeAndPC
 {
     bool operator () (const LineRange &ln_info,
-                    const Dwarf_Addr &pc) const{
+                    const Dwarf_Addr &pc) const {
         //if (ln_info.lowpc <= pc && ln_info.highpc >= pc){
         if (ln_info.lowpc <= pc && ln_info.highpc > pc){
             return 0;
@@ -205,16 +219,17 @@ struct CompareRangeAndPC
     required string file_caller = 4;
     required uint64 line_number_caller = 5;
 */
-void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee,
-        char *file_caller, uint64_t lno_caller, bool isCall) {
+void pri_dwarf_plog(const char *file_callee, const char *fn_callee, uint64_t lno_callee,
+        const char *file_caller, uint64_t lno_caller, bool isCall) {
     // setup
     Panda__DwarfCall *dwarf = (Panda__DwarfCall *) malloc (sizeof (Panda__DwarfCall));
     *dwarf = PANDA__DWARF_CALL__INIT;
     // assign values
-    dwarf->function_name_callee = fn_callee;
-    dwarf->file_callee = file_callee;
+    // these (char *) casts are ugly
+    dwarf->function_name_callee = (char *) fn_callee;
+    dwarf->file_callee = (char *) file_callee;
     dwarf->line_number_callee = lno_callee;
-    dwarf->file_caller = file_caller;
+    dwarf->file_caller = (char *) file_caller;
     dwarf->line_number_caller = lno_caller;
 
     Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
@@ -309,8 +324,6 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     // XXX: note: byte swapping omitted
     // XXX: 64-bit support omitted. Mess with ELFCLASS
     struct elfhdr ehdr;
-    struct elf_phdr *phdr;
-    struct elf_shdr *shdr;
     uint16_t shstrndx;
     uint32_t load_addr, loaddr, hiaddr;
     int i, retval;
@@ -329,19 +342,24 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         return -1;
     }
 
-    phdr = (struct elf_phdr *) malloc(ehdr.e_phnum * sizeof(struct elf_phdr));
+    //struct elf_phdr *phdr;
+    //phdr = (struct elf_phdr *) malloc(ehdr.e_phnum * sizeof(struct elf_phdr));
+    //struct elf_phdr *phdr;
+    std::unique_ptr<elf_phdr[]> phdr(new elf_phdr[ehdr.e_phnum]);
     fseek(f, ehdr.e_phoff, SEEK_SET);
-    retval = fread(phdr, sizeof(struct elf_phdr), ehdr.e_phnum, f);
+    retval = fread(phdr.get(), sizeof(struct elf_phdr), ehdr.e_phnum, f);
     if (retval != ehdr.e_phnum) {
-        free(phdr);
+        //free(phdr);
         return -1;
     }
 
-    shdr = (struct elf_shdr *) malloc(ehdr.e_shnum * sizeof(struct elf_shdr));
+    //struct elf_shdr *shdr;
+    //shdr = (struct elf_shdr *) malloc(ehdr.e_shnum * sizeof(struct elf_shdr));
+    std::unique_ptr<elf_shdr[]> shdr(new elf_shdr[ehdr.e_shnum]);
     fseek(f, ehdr.e_shoff, SEEK_SET);
-    retval = fread(shdr, sizeof(struct elf_shdr), ehdr.e_shnum, f);
+    retval = fread(shdr.get(), sizeof(struct elf_shdr), ehdr.e_shnum, f);
     if (retval != ehdr.e_shnum) {
-        free(shdr);
+        //free(shdr);
         return -1;
     }
     shstrndx = ehdr.e_shstrndx;
@@ -358,9 +376,11 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
     //printf("shstrtable file offset: %d\n", str_table_off);
     //printf("shstrtable size: %d\n", shdr[ehdr.e_shstrndx].sh_size);
     //printf("shstrtable offset: %d\n", shdr[ehdr.e_shstrndx].sh_offset);
-    char *shstrtable = (char *) malloc(shdr[ehdr.e_shstrndx].sh_size);
+    //char *shstrtable = (char *) malloc(shdr[ehdr.e_shstrndx].sh_size);
+    std::unique_ptr<char[]> shstrtable(new char[shdr[ehdr.e_shstrndx].sh_size]);
     fseek(f, shdr[ehdr.e_shstrndx].sh_offset, SEEK_SET);
-    if (shdr[ehdr.e_shstrndx].sh_size != fread(shstrtable, 1,  shdr[ehdr.e_shstrndx].sh_size, f)){
+    if (shdr[ehdr.e_shstrndx].sh_size != fread(shstrtable.get(), 1,  shdr[ehdr.e_shstrndx].sh_size, f)){
+        //free(shstrtable);
         printf("Wasn't able to successfully read string table from file\n");
         return -1;
     }
@@ -381,10 +401,11 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         }
         else if (strcmp(".strtab", &shstrtable[shdr[i].sh_name]) == 0){
             //printf("got .strtab\n");
+            //std::unique_ptr<char[]> strtable(new char[shdr[i].sh_size]);
             strtable= (char *) malloc(shdr[i].sh_size);
             fseek(f, shdr[i].sh_offset, SEEK_SET);
             if (shdr[i].sh_size != fread(strtable, 1, shdr[i].sh_size, f)){
-                printf("Wasn't able to successfully populate the dynstrtable\n");
+                printf("Wasn't able to successfully populate the strtable\n");
                 return -1;
             }
         }
@@ -466,6 +487,8 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         //printf(" [%d] r_offset: %x, .text location: %x,  sym_name: %s\n", i, relplt[i].r_offset, plt_addr+16*i,  &dynstrtable[f_name_strndx]);
         // check if we have already processed this symbol name
         auto it = fn_name_to_line_info.find(plt_fun_name);
+        // if plt_fun_name has already been processed in the dwarf compilation
+        // unit of some other executable, then add it to line_range_list
         if (it != fn_name_to_line_info.end()){
             const LineRange &lr = it->second;
             line_range_list.push_back(LineRange(plt_fun_addr, plt_fun_addr,
@@ -474,6 +497,7 @@ uint64_t elf_get_baseaddr(const char *fname, const char *basename, target_ulong 
         else {
             dynl_functions[std::string(basename) + ":plt!" + plt_fun_name] = plt_fun_addr;
             addr_to_dynl_function[plt_fun_addr] = "plt!" + plt_fun_name;
+            funcaddrs[plt_fun_addr] = std::string(basename) + ":plt!" + plt_fun_name;
         }
     }
     // sort the line_range_list because we changed it
@@ -593,8 +617,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         rc = dwarf_bytesize(type_die, &base_typesize, &err);
                         if (rc == DW_DLV_OK){
                             return base_typesize;
-                        }
-                        else {
+                        } else {
                             return -1;
                         }
                     }
@@ -616,7 +639,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                         // fix this
                         elem_typesize = die_get_type_size(dbg, type_die);
                         rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
-                                &array_typesize, 
+                                &array_typesize,
                                 &err);
                         // array size is 0 than we likely have a 0 length
                         // array which is common at the end of structs to make a
@@ -649,7 +672,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
     return -1;
 }
 
-std::string getNameFromDie(Dwarf_Die the_die){
+std::string getNameFromDie(Dwarf_Debug *dbg, Dwarf_Die the_die){
     Dwarf_Error err;
     int rc;
     char *die_name = 0;
@@ -660,7 +683,10 @@ std::string getNameFromDie(Dwarf_Die the_die){
         die("Error in dwarf_diename\n");
     }
     if (rc != DW_DLV_OK) ret_string = "?";
-    else ret_string = die_name;
+    else {
+        ret_string = die_name;
+        dwarf_dealloc(*dbg, die_name, DW_DLA_STRING);
+    }
     return ret_string;
 }
 
@@ -729,9 +755,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
             // http://web.mit.edu/freebsd/head/cddl/contrib/opensolaris/tools/ctf/cvt/dwarf.c
             // the lack of a type reference implies a reference to a void type
             return;
-        }
-        else
-        {
+        } else {
 
             // http://stackoverflow.com/questions/12233061/any-experienced-dwarf-parsers-users-need-to-get-the-attribute-type-offset-of-a
             // user swann outlines these two functions are necessary to jump to a dwarf reference
@@ -757,7 +781,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             cur_astnodename  = cur_astnodename.substr(1);
                         else
                             cur_astnodename = "(*" + cur_astnodename + ")";
-                        
+
                         Dwarf_Die struct_child;
                         if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                         {
@@ -870,26 +894,11 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             cur_astnodename  = cur_astnodename.substr(1);
                         else
                             cur_astnodename = "*(" + cur_astnodename + ")";
-                        if (loc_t == LocMem) {
-                            rc = panda_virtual_memory_rw(cpu, cur_base_addr,
-                                    (uint8_t *)&cur_base_addr,
-                                    sizeof(cur_base_addr), 0);
-                            if (rc == -1){
-                                //printf("Could not dereference pointer so done"
-                                       //" tainting\n");
-                                return;
-                            }
+                        if (debug) {
+                            printf("Querying: ([]) %s\n", cur_astnodename.c_str());
                         }
-                        else if (loc_t == LocReg){
-                            if (cur_base_addr < CPU_NB_REGS)
-                                cur_base_addr = env->regs[cur_base_addr];
-                            else
-                                return;
-                        }
-                        else {
-                            // shouldn't get herer
-                            abort();
-                        }
+                        assert(loc_t == LocMem);
+
                         if (dwarf_child(type_die,
                                     &array_child, &err) != DW_DLV_OK){
                              break;
@@ -900,7 +909,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         elem_typesize = die_get_type_size(dbg, type_die);
                         //printf("Querying: ([]) %s\n", cur_astnodename.c_str());
                         rc = dwarf_get_attr_unsigned(array_child, DW_AT_upper_bound,
-                                &array_typesize, 
+                                &array_typesize,
                                 &err);
                         // array size is 0 than we likely have a 0 length
                         // array which is common at the end of structs to make a
@@ -1171,11 +1180,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     if (rc == DW_DLV_ERROR){
         die("Error in dwarf_diename\n");
         return;
-    }
-    else if (rc == DW_DLV_NO_ENTRY)
+    } else if (rc == DW_DLV_NO_ENTRY)
         return;
 
-    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK){
+    if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK) {
         die("Error in dwarf_tag\n");
         return;
     }
@@ -1204,8 +1212,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
             // in order to skip past function prologue
 
             //die("Error: line %d, address: 0x%llx, function %s\n", j, lowpc_before_prol, die_name);
-        }
-        else if (attrcode == DW_AT_high_pc) {
+        } else if (attrcode == DW_AT_high_pc) {
             enum Dwarf_Form_Class fc = DW_FORM_CLASS_UNKNOWN;
             Dwarf_Half theform = 0;
             Dwarf_Half directform = 0;
@@ -1225,13 +1232,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 highpc += lowpc;
 
             found_highpc = true;
-        }
-        else if (attrcode == DW_AT_frame_base){
+        } else if (attrcode == DW_AT_frame_base) {
             // get where attribute frame base attribute points
             if (-1 == get_die_loc_info(*dbg, the_die, attrcode, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
                 printf("Was not able to get [%s] location info for it\'s frame pointer\n", die_name);
-            }
-            else{
+            } else{
                 found_fp_info = true;
             }
         }
@@ -1244,11 +1249,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         }
         //functions[std::string(basename)+"!"+die_name] = std::make_pair(lowpc, highpc);
         auto lineToFuncAddress = [lowpc, highpc](LineRange &x){
-                // if a line range (we just need to check its lowpc) fits between range of a function
-                // we update the LineRange to reflect that the line is in the current function
-                if (x.lowpc < highpc && x.lowpc >= lowpc){
-                    x.function_addr = lowpc;
-                }
+            // if a line range (we just need to check its lowpc) fits between range of a function
+            // we update the LineRange to reflect that the line is in the current function
+            if (x.lowpc < highpc && x.lowpc >= lowpc){
+                x.function_addr = lowpc;
+            }
         };
         auto lineIsFunctionDef = [lowpc](LineRange &x){
             return x.lowpc == lowpc;
@@ -1287,8 +1292,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
 
                 }
             }
-        }
-        else {
+        } else {
             printf("Could not find start of function [%s] in line number table something went wrong\n", die_name);
         }
 
@@ -1303,12 +1307,10 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         // now add functions frame pointer locaiton list funct_to_framepointers mapping
         if (found_fp_info){
             funct_to_framepointers[lowpc] = std::make_pair(locdesclist, loccnt);
-        }
-        else {
+        } else {
             funct_to_framepointers[lowpc] = std::make_pair((Dwarf_Locdesc **)NULL, 0);
         }
-    }
-    else {
+    } else {
         // we are processing a function that is in the .plt so we skip it because the function
         // is either defined in a library we don't have access to or a library our dwarf processor
         // will process later (or maybe already has!)
@@ -1333,7 +1335,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         switch (tag) {
             /* fall through to default case to get sibling die */
             case DW_TAG_formal_parameter:
-                argname = getNameFromDie(arg_child);
+                argname = getNameFromDie(dbg, arg_child);
 
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, arg_child};
@@ -1378,7 +1380,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                     }
                 }
             case DW_TAG_variable:
-                argname = getNameFromDie(arg_child);
+                argname = getNameFromDie(dbg, arg_child);
 
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, arg_child};
@@ -1411,15 +1413,11 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
     //printf(" %s #variables: %lu\n", funcaddrs[lowpc].c_str(), var_list.size());
 
 }
-
-/* Load all function and globar variable info.
-*/
-bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
+bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
     Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
     Dwarf_Half version_stamp, address_size;
     Dwarf_Error err;
-    Dwarf_Die no_die = 0, cu_die, child_die;
-    int count = 0;
+    Dwarf_Die no_die = 0, cu_die;
     /* Find compilation unit header */
     while (dwarf_next_cu_header(
                 *dbg,
@@ -1452,58 +1450,113 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
             char *filenm_tmp;
             char *filenm_cu;
             if (line_count > 0){
-                dwarf_linesrc(dwarf_lines[0], &filenm_tmp, &err);
-                filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
-                strcpy(filenm_cu, filenm_tmp);
+                dwarf_linesrc(dwarf_lines[0], &filenm_cu, &err);
+                //filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
+                //strcpy(filenm_cu, filenm_tmp);
 
                 for (i = 1; i < line_count; i++){
                     char *filenm_line;
                     filenm_tmp = NULL;
-                    Dwarf_Addr upper_bound_addr;
-                    Dwarf_Addr lower_bound_addr;
-                    Dwarf_Unsigned line_num;
-                    Dwarf_Unsigned line_off;
+                    Dwarf_Addr upper_bound_addr=0, lower_bound_addr = 0;
+                    Dwarf_Unsigned line_num, line_off;
                     dwarf_lineaddr(dwarf_lines[i-1], &lower_bound_addr, &err);
                     dwarf_lineaddr(dwarf_lines[i], &upper_bound_addr, &err);
 
-                    dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
-                    dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
-                    dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
-                    if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
-                        filenm_line = filenm_cu;
+                    // only continue processing the line if lower is less than
+                    // upper
+                    if (lower_bound_addr < upper_bound_addr) {
+                        dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
+                        dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
+                        dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
+                        if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
+                            filenm_line = filenm_cu;
+                        }
+                        else {
+                            filenm_line = filenm_tmp;
+                            //filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
+                            //strcpy(filenm_line, filenm_tmp);
+                        }
+                        //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
+                        if (needs_reloc){
+                            LineRange lr = LineRange(base_address+lower_bound_addr,
+                                    base_address+upper_bound_addr,
+                                    line_num, filenm_line, 0, line_off);
+                            //std::cout << lr << "\n";
+                            line_range_list.push_back(lr);
+                        }
+                        else{
+                            LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
+                                    filenm_line, 0, line_off);
+                            //std::cout << lr << "\n";
+                            line_range_list.push_back(lr);
+                        }
+                        dwarf_dealloc(*dbg, filenm_tmp, DW_DLA_STRING);
+                        //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr);
+                    } else {
+                        // lower bound is greater than upper bound so we skip
+                        // the line block that we are processing
                     }
-                    else {
-                        filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
-                        strcpy(filenm_line, filenm_tmp);
-                    }
-                    //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
-                    if (needs_reloc){
-                        line_range_list.push_back(LineRange(base_address+lower_bound_addr,
-                                                            base_address+upper_bound_addr,
-                                                            line_num, filenm_line, line_off, 0));
-                    }
-                    else{
-                        line_range_list.push_back(LineRange(lower_bound_addr, upper_bound_addr, line_num,
-                                                            filenm_line, line_off, 0));
-                    }
-                    //printf("line no: %lld at addr: 0x%llx\n", line_num, lower_bound_addr);
                 }
+                dwarf_dealloc(*dbg, filenm_cu, DW_DLA_STRING);
             }
+            dwarf_srclines_dealloc(*dbg, dwarf_lines, line_count);
         }
-        else
+        else {
             printf("Could not get get function line number\n");
+        }
+    }
+    return true;
+}
 
+/* Load all function and globar variable info.
+*/
+bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_address, bool needs_reloc) {
+    Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
+    Dwarf_Half version_stamp, address_size;
+    Dwarf_Error err;
+    Dwarf_Die no_die = 0, cu_die, child_die;
+    int count = 0;
+
+    populate_line_range_list(dbg, basename, base_address, needs_reloc);
+    /* Find compilation unit header */
+    while (dwarf_next_cu_header(
+                *dbg,
+                &cu_header_length,
+                &version_stamp,
+                &abbrev_offset,
+                &address_size,
+                &next_cu_header,
+                &err) != DW_DLV_NO_ENTRY) {
+        /* Expect the CU to have a single sibling - a DIE */
+        if (dwarf_siblingof(*dbg, no_die, &cu_die, &err) == DW_DLV_ERROR) {
+            die("Error getting sibling of CU\n");
+            continue;
+        }
+        //Dwarf_Line *dwarf_lines;
+        //Dwarf_Signed line_count;
+
+        Dwarf_Addr cu_base_address;
+        Dwarf_Attribute cu_loc_attr;
+        if (dwarf_attr(cu_die, DW_AT_low_pc, &cu_loc_attr, &err) != DW_DLV_OK){
+            //printf("CU did not have  low pc.  Setting to 0 . . .\n");
+            cu_base_address=0;
+        }
+        else{
+            dwarf_formaddr(cu_loc_attr, &cu_base_address, 0);
+            //printf("CU did have low pc 0x%llx\n", cu_base_address);
+        }
+        int rc;
         /* Expect the CU DIE to have children */
-        if (dwarf_child(cu_die, &child_die, &err) == DW_DLV_ERROR) {
-            die("Error getting child of CU DIE\n");
+        if ((rc = dwarf_child(cu_die, &child_die, &err)) != DW_DLV_OK) {
+            if (rc == DW_DLV_ERROR)
+                die("Error getting child of CU DIE\n");
             continue;
         }
 
-        /* Now go over all children DIEs */
+        /* Now go over all children DIEs in the compilation unit */
         DwarfVarType *dvt;
         while (1) {
             std::string argname;
-            int rc;
             Dwarf_Half tag;
             if (dwarf_tag(child_die, &tag, &err) != DW_DLV_OK)
                 die("Error in dwarf_tag\n");
@@ -1515,7 +1568,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 
                 Dwarf_Locdesc **locdesclist=NULL;
                 Dwarf_Signed loccnt;
-                argname = getNameFromDie(child_die);
+                argname = getNameFromDie(dbg, child_die);
                 dvt = (DwarfVarType *)malloc(sizeof(DwarfVarType));
                 *dvt = {*dbg, child_die};
                 if (-1 == get_die_loc_info(*dbg, child_die, DW_AT_location, &locdesclist,&loccnt, base_address, cu_base_address, needs_reloc)){
@@ -1540,10 +1593,10 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
         count ++;
     }
     printf("Processed %d Compilation Units\n", count);
-    // sort the line number ranges
-    if (count < 1){
+    if (count < 1 && !allow_just_plt){
          return false;
     }
+    // sort the line number ranges
     std::sort(fn_start_line_range_list.begin(), fn_start_line_range_list.end(), sortRange);
     std::sort(line_range_list.begin(), line_range_list.end(), sortRange);
     printf("Successfully loaded debug symbols for %s\n", basename);
@@ -1552,6 +1605,7 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 }
 
 bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_address, bool needs_reloc) {
+    //std::unique_ptr<Dwarf_Debug> dbg = make_unique<Dwarf_Debug>();
     Dwarf_Debug *dbg = (Dwarf_Debug *) malloc(sizeof(Dwarf_Debug));
     Dwarf_Error err;
     int fd = -1;
@@ -1585,13 +1639,6 @@ bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_ad
 target_ulong monitored_asid = 0;
 unsigned num_libs_known = 0;
 
-// We want to catch all loaded modules, but don't want to
-// check every single call. This is a compromise -- check
-// every 1000 calls. If we had a callback in OSI for
-// on_library_load we could do away with this hack.
-int mod_check_count = 0;
-#define MOD_CHECK_FREQ 1000
-
 bool correct_asid(CPUState *cpu) {
     OsiProc *p = get_current_process(cpu);
     if (monitored_asid == 0) {
@@ -1600,8 +1647,7 @@ bool correct_asid(CPUState *cpu) {
         if (!p || (p && p->name && strcmp(p->name, proc_to_monitor) != 0)) {
             //printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
             return false;
-        }
-        else {
+        } else {
             monitored_asid = panda_current_asid(cpu);
         }
     }
@@ -1662,52 +1708,70 @@ void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, targe
     return;
 }
 
-void ensure_dbg_initialized(CPUState *cpu) {
+// We want to catch all loaded modules, but don't want to
+// check every single call. This is a compromise -- check
+// every 1000 calls. If we had a callback in OSI for
+// on_library_load we could do away with this hack.
+int mod_check_count = 0;
+bool main_exec_initialized = false;
+#define MOD_CHECK_FREQ 1000
+bool ensure_main_exec_initialized(CPUState *cpu) {
+    //if (!correct_asid(cpu)) return;
     OsiProc *p = get_current_process(cpu);
-    bool dbg_initialized;
     OsiModules *libs = NULL;
+    libs = get_libraries(cpu, p);
+    if (!libs)
+        return false;
+    //printf("[ensure_main_exec_initialized] iterating through libraries\n");
+    //if (!libs || libs->num == num_libs_known) {
+        //return;
+    //}
+    //num_libs_known = libs->num;
     // Don't check too often
-    if (++mod_check_count == MOD_CHECK_FREQ) {
-        mod_check_count = 0;
-        libs = get_libraries(cpu, p);
-        if (!libs || libs->num == num_libs_known) {
-            dbg_initialized = true;
-        }
-        else {
-            num_libs_known = libs->num;
-            dbg_initialized = false;
-        }
-    }
-    else {
-        dbg_initialized = true;
-    }
-
-    if (!dbg_initialized) {
-        for (unsigned i = 0; i < libs->num; i++) {
-            char fname[260] = {};
-            OsiModule *m = &libs->module[i];
-            if (!m->name) continue;
-            if (mods_seen.find(m->name) != mods_seen.end()) continue;
-            mods_seen.insert(m->name);
-            //printf("Trying to load symbols for %s at %#x.\n", m->name, m->base);
-            sprintf(fname, "%s/%s", host_debug_path, m->name);
-            printf("access(%s, F_OK): %x\n", fname, access(fname, F_OK));
-            if (access(fname, F_OK) == -1) {
-                //fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
-                continue;
-            }
-            uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
-            bool needs_reloc = elf_base != m->base;
-            if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
-                fprintf(stderr, "Couldn't load symbols from %s.\n", fname);
-                continue;
-            }
-        }
-        dbg_initialized = true;
-        //for (auto &kvp : funcaddrs) {
-        //    printf("%#x %s\n", kvp.first, kvp.second.c_str());
+    //if (++mod_check_count == MOD_CHECK_FREQ) {
+        //mod_check_count = 0;
+        //libs = get_libraries(cpu, p);
+        //if (!libs || libs->num == num_libs_known) {
+            //return;
         //}
+        //num_libs_known = libs->num;
+    //} else {
+        //return;
+    //}
+
+    for (unsigned i = 0; i < libs->num; i++) {
+        char fname[260] = {};
+        OsiModule *m = &libs->module[i];
+        if (!m->file) continue;
+        if (!m->name) continue;
+        std::string lib = std::string(m->file);
+        if (0 != strcmp(m->name, proc_to_monitor)) continue;
+        printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
+        //std::size_t found = lib.find(guest_debug_path);
+        //if (found == std::string::npos) continue;
+        //std::string host_name = lib.substr(0, found) +
+            //host_debug_path +
+            //lib.substr(found + strlen(guest_debug_path));
+        // TODO: change this to do a replace on guest_debug_path like above
+        std::string host_name =  host_debug_path + lib;
+        strcpy(fname, host_name.c_str());
+
+        printf("[ensure_main_exec_initialized] Trying to load symbols for %s at 0x%x.\n", fname, m->base);
+        printf("[ensure_main_exec_initialized] access(%s, F_OK): %x\n", fname, access(fname, F_OK));
+        if (access(fname, F_OK) == -1) {
+            fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
+            continue;
+        }
+        uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
+        bool needs_reloc = elf_base != m->base;
+        if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
+            fprintf(stderr, "Couldn't load symbols from %s.\n", fname);
+            continue;
+        }
+        printf("[ensure_main_exec_initialized] SUCCESS\n");
+        return true;
     }
+    return false;
 }
 
 target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
@@ -1751,47 +1815,24 @@ bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
     if (!correct_asid(cpu)) return false;
 
     auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
+    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
+    if (it2 == line_range_list.end() || pc < it2->lowpc)
+        return false;
+    return true;
     /*
-    // these are just checks to make sure the lower_bound returns the same value as lower_bound
-    // after checking this through a recording, I am pretty sure that I have ironed all the kinks out
-    // in implementing lower_bound for a vector of ranges
-    auto addressInRange = [pc](std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr> x) {
-        return pc >= std::get<0>(x) && pc < std::get<1>(x);
+    // This is just the linear search to confirm binary search (lower_bound) is
+    // working correctly
+    auto addressInRange = [pc](LineRange lr) {
+        return pc >= lr.lowpc && pc < lr.highpc;
     };
     auto it = find_if(line_range_list.begin(), line_range_list.end(), addressInRange);
     if (it == line_range_list.end())
         return false;
     */
-    /*
-    // debugging print statements
-    printf(" pc: 0x%x, addr1: 0x%llx-0x%llx addr2: 0x%llx-0x%llx\n", pc,std::get<0>(*it), std::get<1>(*it),
-            std::get<0>(*it2), std::get<1>(*it2));
-    //printf(" pc: 0x%x, addr2: 0x%llx-0x%llx\n", pc, std::get<0>(*it2), std::get<1>(*it2));
-    if (std::get<0>(*it) != std::get<0>(*it2)) {
-        auto before_it1 = it - 1;
-        auto after_it1 = it + 1;
-        auto before_it2 = it2 - 1;
-        auto after_it2 = it2 + 1;
-        printf(" before linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
-                std::get<0>(*before_it1), std::get<1>(*before_it1),
-                std::get<0>(*before_it2), std::get<1>(*before_it2));
-        printf(" after linear it: 0x%llx-0x%llx binary search it: 0x%llx-0x%llx\n",
-                std::get<0>(*after_it1), std::get<1>(*after_it1),
-                std::get<0>(*after_it2), std::get<1>(*after_it2));
-        abort();
-    }
-    */
-    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
-    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
-    if (pc < it2->lowpc || it2 == line_range_list.end())
-        return false;
-
-
-    return true;
-
 }
 
-void dwarf_log_callsite(CPUState *cpu, char *file_callee, char *fn_callee, uint64_t lno_callee, bool isCall){
+void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
     target_ulong ra = 0;
 
     int num_received = get_callers(&ra, 1, cpu);
@@ -1807,18 +1848,18 @@ void dwarf_log_callsite(CPUState *cpu, char *file_callee, char *fn_callee, uint6
         return;
     }
     Dwarf_Addr call_site_fn = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     Dwarf_Unsigned lno = it->line_number;
     std::string funct_name = funcaddrs[call_site_fn];
 
     //void pri_dwarf_plog(char *file_callee, char *fn_callee, uint64_t lno_callee, char *file_caller, uint64_t lno_caller, bool isCall)
-    pri_dwarf_plog(file_callee, fn_callee, lno_callee, file_name, lno, isCall);
+    pri_dwarf_plog(file_callee, fn_callee, lno_callee, file_name.c_str(), lno, isCall);
     /*
     if (isCall) {
     }
-        printf(" CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+        printf(" CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),call_site_fn, funct_name.c_str(),lno,ra);
     else {
-        printf(" RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,call_site_fn, funct_name.c_str(),lno,ra);
+        printf(" RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),call_site_fn, funct_name.c_str(),lno,ra);
     }
     */
     return;
@@ -1827,7 +1868,7 @@ void dwarf_log_callsite(CPUState *cpu, char *file_callee, char *fn_callee, uint6
 void on_call(CPUState *cpu, target_ulong pc) {
     if (!correct_asid(cpu)) return;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
             pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
@@ -1838,15 +1879,15 @@ void on_call(CPUState *cpu, target_ulong pc) {
         return;
     }
     cur_function = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
     if (it->lowpc == it->highpc){
-        //printf("Calling %s through .plt\n",file_name);
+        //printf("Calling %s through .plt\n",file_name.c_str());
     }
-    //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
-    dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, true);
-    pri_runcb_on_fn_start(cpu, pc, file_name, funct_name.c_str());
+    //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
+    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    pri_runcb_on_fn_start(cpu, pc, file_name.c_str(), funct_name.c_str());
 
     /*
     if (funcaddrs.find(pc) != funcaddrs.end()){
@@ -1878,7 +1919,7 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     if (!correct_asid(cpu)) return;
     //printf(" on_ret address: %x\n", func);
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc_func, CompareRangeAndPC());
-    if (pc_func < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc_func < it->lowpc) {
         auto it_dyn = addr_to_dynl_function.find(pc_func);
         if (it_dyn != addr_to_dynl_function.end()){
             pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
@@ -1888,12 +1929,12 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
         return;
     }
     cur_function = it->function_addr;
-    char *file_name = it->filename;
+    std::string file_name = it->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
-    //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc_func);
-    dwarf_log_callsite(cpu, file_name,(char *)funct_name.c_str(), cur_line, false);
-    pri_runcb_on_fn_return(cpu, pc_func, file_name, funct_name.c_str());
+    //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc_func);
+    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }
 
 void __livevar_iter(CPUState *cpu,
@@ -2004,7 +2045,7 @@ void dwarf_get_vma_symbol (CPUState *cpu, target_ulong pc, target_ulong vma, cha
     target_ulong fn_address;
 
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end() ) {
+    if (it == line_range_list.end() || pc < it->lowpc ) {
         *symbol_name = NULL;
         return;
     }
@@ -2035,7 +2076,7 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
         return;
     }
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
             //printf("In a a plt function\n");
@@ -2057,7 +2098,7 @@ void dwarf_get_pc_source_info(CPUState *cpu, target_ulong pc, SrcInfo *info, int
     }
     // we are in dwarf-land, so populate info struct
     Dwarf_Addr call_site_fn = it->function_addr;
-    info->filename = it->filename;
+    info->filename = it->filename.c_str();
     info->line_number = it->line_number;
     std::string funct_name = funcaddrs[call_site_fn];
     info->funct_name = funct_name.c_str();
@@ -2115,24 +2156,24 @@ int exec_callback_dwarf(CPUState *cpu, target_ulong pc) {
         inExecutableSource = false;
     }
     cur_function = it2->function_addr;
-    char *file_name = it2->filename;
+    std::string file_name = it2->filename;
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it2->line_number;
 
-    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
     if (funcaddrs.find(cur_function) == funcaddrs.end())
         return 0;
     if (cur_function == 0)
         return 0;
-    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name,cur_function, funct_name.c_str(),cur_line,pc);
+    //printf("[%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
     //__livevar_iter(env, pc, funcvars[cur_function], push_var_if_live);
     //__livevar_iter(env, pc, global_var_list, push_var_if_live);
     //__livevar_iter(env, pc, global_var_list, print_var_if_live);
     if (cur_line != prev_line){
-        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name, funct_name.c_str(),cur_line,pc);
-        pri_runcb_on_after_line_change(cpu,pc,prev_file_name,prev_funct_name.c_str(), prev_line);
-        pri_runcb_on_before_line_change(cpu, pc, file_name, funct_name.c_str(), cur_line);
-        PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name, funct_name.c_str(), cur_line);
+        //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(), funct_name.c_str(),cur_line,pc);
+        pri_runcb_on_after_line_change(cpu,pc,prev_file_name.c_str(),prev_funct_name.c_str(), prev_line);
+        pri_runcb_on_before_line_change(cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
+        PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
 
         // reset previous line information
         prev_file_name = file_name;
@@ -2224,6 +2265,9 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
             }
         }
     }
+    if (correct_asid(cpu) && !main_exec_initialized){
+        main_exec_initialized = ensure_main_exec_initialized(cpu);
+    }
 
     return 0;
 }
@@ -2238,6 +2282,10 @@ bool init_plugin(void *self) {
     host_mount_path = panda_parse_string(args, "host_mount_path", "dbg");
     proc_to_monitor = panda_parse_string(args, "proc", "None");
     libc_host_path = panda_parse_string(args, "host_libc_path", "None");
+    // this option allows dwarf/elf processing to continue if no 
+    // dwarf symbols are including.  presumably only using plt symbols
+    // for line range data.  could be useful for tracking calls to functions
+    allow_just_plt = panda_parse_bool(args, "allow_just_plt");
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
@@ -2272,25 +2320,33 @@ bool init_plugin(void *self) {
     // directory on host machine, so add '/bin/' in order to get the main executable
     if (s.st_mode & S_IFDIR) {
         bin_path = std::string(host_debug_path) + "/bin/" + proc_to_monitor;
-    }
-    // if debug path actually points to a file, then make host_debug_path the
-    // directory that contains the executable
-    else if (s.st_mode & S_IFREG) {
+        if (stat(bin_path.c_str(), &s) != 0) {
+            bin_path = std::string(host_debug_path) + "/lib/" + proc_to_monitor;
+            if (stat(bin_path.c_str(), &s) != 0) {
+                printf("Can\' find a valid main bin path");
+                printf("[WARNING] Skipping processing of main file!!!");
+                bin_path = "";
+            }
+        }
+    } else if (s.st_mode & S_IFREG) {
+        // if debug path actually points to a file, then make host_debug_path the
+        // directory that contains the executable
         bin_path = std::string(host_debug_path);
         //host_debug_path = dirname(strdup(host_debug_path));
         host_debug_path = dirname(strdup(host_debug_path));
-    }
-    else {
+    } else {
         printf("Don\'t know what host_debug_path: %s is, but it is not a file or directory\n", host_debug_path);
         exit(1);
     }
-    printf("opening debug info for starting binary %s\n", bin_path.c_str());
-    // third arg (actual_base address or executable) is 0 because we don't know what it is, but for now
-    // assume that it is not pie
-    elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
-    if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
-        fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
-        return false;
+    if (bin_path != "") {
+        // now we do this in ensure_main_exec_initialized() which is called from
+        // osi_foo() TODO figure out a more efficient place to put that check
+        // because it gets called too often
+        //elf_get_baseaddr(bin_path.c_str(), proc_to_monitor, 0);
+        //if (!read_debug_info(bin_path.c_str(), proc_to_monitor, 0, false)) {
+            //fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
+            //return false;
+        //}
     }
 
     {
