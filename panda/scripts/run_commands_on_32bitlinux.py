@@ -2,7 +2,7 @@
 
 """run_commands_on_32bitlinux.py binary [args]
 
-So you want to try panda but dont have any recordings.  Poor you.  
+So you want to try panda but dont have any recordings.  Poor you. 
 This script allows you to run commands on a 32-bit linux guest.  
 
 1st arg is binary which should be a 32-bit ELF.
