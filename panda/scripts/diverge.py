@@ -28,32 +28,32 @@ parser.add_argument("--instr-bounds",
                     help=("Instruction bounds where divergence could have occurred.\n" + \
                           "Also to seed search."))
 parser.add_argument("--instr-max", help="Last instruction before replay failed.")
-args = parser.parse_args()
+cli_args = parser.parse_args()
 
 # Check arguments
-if not os.path.isfile(args.rr):
-    raise IOError("Cannot find rr bin at {}".format(args.rr))
-if not os.path.isdir(args.record_rr):
-    raise IOError("Cannot find recording replay at {}".format(args.record_rr))
-if not os.path.isdir(args.replay_rr):
-    raise IOError("Cannot find replay replay at {}".format(args.replay_rr))
+if not os.path.isfile(cli_args.rr):
+    raise IOError("Cannot find rr bin at {}".format(cli_args.rr))
+if not os.path.isdir(cli_args.record_rr):
+    raise IOError("Cannot find recording replay at {}".format(cli_args.record_rr))
+if not os.path.isdir(cli_args.replay_rr):
+    raise IOError("Cannot find replay replay at {}".format(cli_args.replay_rr))
 
 def argmax(d):
     return max(d.iteritems(), key=operator.itemgetter(1))[0]
 def argmin(d):
     return min(d.iteritems(), key=operator.itemgetter(1))[0]
 
-assert args.rr
+assert cli_args.rr
 
 class RRInstance(Process):
-    def __init__(self, description, rr_replay, logfile, results_queue):
+    def __init__(self, description, rr_replay, logfile, results_queue, *args, **kwargs):
         self.description = description
         self.work = Queue()
         self.results_queue = results_queue
-        self.spawn_cmd = "{} replay {}".format(args.rr, rr_replay)
+        self.spawn_cmd = "{} replay {}".format(cli_args.rr, rr_replay)
         self.logfile = logfile
 
-        Process.__init__(self)
+        Process.__init__(self, *args, **kwargs)
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
@@ -83,9 +83,9 @@ class RRInstance(Process):
         process.terminate()
 
 results_queue = Queue()
-record = RRInstance("record", args.record_rr, "record_log.txt", results_queue)
+record = RRInstance("record", cli_args.record_rr, "record_log.txt", results_queue)
 record.start()
-replay = RRInstance("replay", args.replay_rr, "replay_log.txt", results_queue)
+replay = RRInstance("replay", cli_args.replay_rr, "replay_log.txt", results_queue)
 replay.start()
 
 both = [record, replay]
@@ -141,12 +141,23 @@ def condition(break_arg, cond):
         replay: "condition {} {}".format(breakpoints[break_arg], conds[replay])
     })
 
+def get_value(procs, value_str):
+    if set(procs) != set([record, replay]):
+        result = { proc: gdb_run(proc, "print {}".format(value_str)) \
+                for proc in procs }
+    else:
+        result = gdb_run_both("print/u {}".format(value_str))
+    return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+
 gdb_run_both("set confirm off")
 gdb_run_both("set pagination off")
 
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
 gdb_run_both("continue", timeout=None)
+ram_ptrs = get_value([record, replay], "memory_region_find(" + \
+             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+
 gdb_run_both("finish", timeout=None)
 gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
 gdb_run_both("continue", timeout=None)
@@ -156,15 +167,12 @@ breakpoint("debug_counter")
 
 def get_whens():
     result = gdb_run_both("when")
-    return { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
-
-def get_value(procs, value_str):
-    if set(procs) != set([record, replay]):
-        result = { proc: gdb_run(proc, "print {}".format(value_str)) \
-                for proc in procs }
-    else:
-        result = gdb_run_both("print {}".format(value_str))
-    return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+    try:
+        ret = { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
+    except AttributeError:
+        ret = { record: 0, replay: 0 }
+        IPython.embed()
+    return ret
 
 def get_instr_counts(procs=[record, replay]):
     return get_value(procs, "cpus->tqh_first->rr_guest_instr_count")
@@ -172,20 +180,16 @@ def get_instr_counts(procs=[record, replay]):
 def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
-gdb_run_both("set $ptr = memory_region_find(" + \
-             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
-
 ram_size = get_value([record], "ram_size")[record]
 
 def get_crc32s(low, size, procs=[record, replay]):
     step = 1 << 31 if size > (1 << 31) else size
     crc32s = { proc: 0 for proc in procs }
     for start in range(low, low + size, step):
-        step_crc32s = get_value(procs,
-                     "(uint32_t)crc32(0, $ptr + {}, {})".format(
-                         hex(start), hex(step)))
-        for proc in step_crc32s:
-            crc32s[proc] ^= step_crc32s[proc]
+        for proc in procs:
+            crc32s[proc] ^= get_value([proc],
+                        "(uint32_t)crc32(0, {} + {}, {})".format(
+                            hex(ram_ptrs[proc]), hex(start), hex(step)))[proc]
     return crc32s
 
 def get_checksums(procs=[record, replay]):
@@ -195,19 +199,19 @@ def get_checksums(procs=[record, replay]):
 
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
-        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(args.rr, replay_dir)
+        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr, replay_dir)
 
     str_result = check_output(cmd, shell=True)
     return int(str_result)
 
-record_last = get_last_event(args.record_rr)
-replay_last = get_last_event(args.replay_rr)
+record_last = get_last_event(cli_args.record_rr)
+replay_last = get_last_event(cli_args.replay_rr)
 
 print "Last known events: record={}, replay={}".format(record_last, replay_last)
 
 minimum_events = { k: v + 1 for k, v in get_whens().items() }
-if args.instr_max:
-    instr_count_max = int(args.instr_max)
+if cli_args.instr_max:
+    instr_count_max = int(cli_args.instr_max)
 else:
     # get last instruction in failed replay
     gdb_run_both({
@@ -221,9 +225,9 @@ else:
 
 print "Failing replay instr count:", instr_count_max
 
-def format_each(format_str, *args):
-    return { k: format_str.format(*[arg[k] for arg in args]) \
-            for k in args[0] }
+def format_each(format_str, *cli_args):
+    return { k: format_str.format(*[arg[k] for arg in cli_args]) \
+            for k in cli_args[0] }
 
 instr_to_event = sorteddict([(1, minimum_events)])
 def record_instr_event():
@@ -312,8 +316,8 @@ maximum_events = get_whens()
 
 disable_all()
 
-if args.instr_bounds:
-    instr_bounds = map(int, args.instr_bounds.split(','))
+if cli_args.instr_bounds:
+    instr_bounds = map(int, cli_args.instr_bounds.split(','))
 else:
     instr_bounds = [0, instr_count_max]
 
@@ -322,7 +326,7 @@ divergence_info = """
 Current divergence understanding:
     Instr range: [{instr_lo}, {instr_hi}]
 
-    Args to get back here:
+    args to get back here:
     --instr-bounds={instr_lo},{instr_hi} \\
     --instr-max={instr_max}
 ------------------------------------------------------
