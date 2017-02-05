@@ -7,21 +7,17 @@ import shutil
 import time
 import pipes
 import json
-import colorama
-import select
 import socket
 
 from colorama import Fore, Style
-from datetime import datetime
-from errno import EAGAIN, EWOULDBLOCK
-from os.path import abspath, join, basename
-from subprocess32 import PIPE, STDOUT
+from os.path import abspath, join
+from subprocess32 import STDOUT
+
+from expect import Expect
 
 debug = True
 
 DEVNULL = open(os.devnull, "w")
-
-class TimeoutExpired(Exception): pass
 
 class TempDir(object):
     def __enter__(self):
@@ -30,61 +26,6 @@ class TempDir(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         shutil.rmtree(self.path)
-
-class Expect(object):
-    def __init__(self, filelike, logfile=None, quiet=False):
-        if type(filelike) in [int, long]:
-            self.fd = filelike
-        else:
-            self.fd = filelike.fileno()
-        self.poller = select.poll()
-        self.poller.register(self.fd, select.POLLIN)
-
-        if logfile is None: logfile = os.devnull
-        self.logfile = open(logfile, "w")
-        self.quiet = quiet
-
-    def __del__(self):
-        self.logfile.close()
-
-    def expect(self, expectation, timeout=30):
-        sofar = bytearray()
-        start_time = datetime.now()
-        time_passed = 0
-        while time_passed < timeout:
-            time_passed = (datetime.now() - start_time).total_seconds()
-            time_left = timeout - time_passed
-            ready = self.poller.poll(0)
-
-            if self.fd in [fd for (fd, _) in ready]:
-                try:
-                    char = os.read(self.fd, 1)
-                except OSError as e:
-                    if e.errno in [EAGAIN, EWOULDBLOCK]:
-                        continue
-                    else: raise
-                self.logfile.write(char)
-                if not self.quiet: sys.stdout.write(char)
-
-                sofar.extend(char)
-                if sofar.endswith(expectation):
-                    self.logfile.flush()
-                    if not self.quiet: sys.stdout.flush()
-                    sofar.append('\n')
-                    return str(sofar)
-            elif time_left > 0:
-                time.sleep(min(time_left, 1))
-        self.logfile.flush()
-        if not self.quiet: sys.stdout.flush()
-        raise TimeoutExpired()
-
-    def send(self, msg):
-        os.write(self.fd, msg)
-        self.logfile.write(msg)
-        self.logfile.flush()
-
-    def sendline(self, msg=""):
-        self.send(msg + "\n")
 
 def progress(msg):
     print ''
