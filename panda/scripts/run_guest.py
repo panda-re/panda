@@ -1,5 +1,4 @@
 #!/usr/bin/env python2.7
-# import re
 import os
 import sys
 import tempfile

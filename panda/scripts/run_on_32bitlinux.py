@@ -1,9 +1,9 @@
 #!/usr/bin/env python2.7
 
-"""run_commands_on_32bitlinux.py binary [args]
+"""run_on_32bitlinux.py binary [args]
 
-So you want to try panda but dont have any recordings.  Poor you. 
-This script allows you to run commands on a 32-bit linux guest.  
+So you want to try panda but dont have any recordings.  Poor you.
+This script allows you to run commands on a 32-bit linux guest.
 
 1st arg is binary which should be a 32-bit ELF.
 Remaining arguments are the args that binary needs. Files on the host will
@@ -12,12 +12,12 @@ automatically be copied to the guest, unless the argument is prefixed with
 
 For example,
 
-run_commands_on_32bitlinux.py foo2
+run_on_32bitlinux.py foo2
 
 will copy into the guest the binary foo2 (which needs to be in the cwd) and
 create a recording of running it under a panda 32-bit wheezy machine.
 
-run_commands_on_32bitlinux.py guest:/bin/cat guest:/etc/passwd
+run_on_32bitlinux.py guest:/bin/cat guest:/etc/passwd
 
 will create a recording of running the guest's cat on the guest's /etc/passwd.
 
@@ -30,7 +30,8 @@ You can replay with
 $PANDA_DIR/build/i386-softmmu/qemu-system-i386 -replay ./rcp-panda/ps-recording
 
 Assuming PANDA_DIR is path to your panda directory and you built under
-the build dir.
+the build dir. If you built somewhere else, set PANDA_BUILD env to your build
+dir.
 
 """
 
@@ -41,7 +42,7 @@ import shutil
 import subprocess as sp
 import sys
 
-from os.path import basename, dirname, join, realpath
+from os.path import basename, dirname, join
 
 home_dir = os.getenv("HOME")
 dot_dir = join(home_dir, '.panda')
@@ -51,6 +52,8 @@ if not (os.path.exists(dot_dir)):
 
 this_script = os.path.abspath(__file__)
 this_script_dir = dirname(this_script)
+default_build_dir = join(dirname(dirname(this_script_dir)), 'build')
+panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
 
@@ -103,8 +106,7 @@ print "args =", args
 print "new_args =", new_args
 
 proj = {
-    "qemu": realpath(join(this_script_dir,
-                          '..', '..', 'build', 'i386-softmmu', 'qemu-system-i386')),
+    "qemu": join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
     "qcow": qcow,
     "snapshot": "root",
     "install_dir": install_dir,
@@ -121,7 +123,7 @@ f.close()
 
 print "jsonfile: [{}]".format(jsonfile)
 
-rcog = join(this_script_dir, "run_commands_on_guest.py")
+rcog = join(this_script_dir, "run_guest.py")
 
 cmd = ['python', rcog, jsonfile]
 
