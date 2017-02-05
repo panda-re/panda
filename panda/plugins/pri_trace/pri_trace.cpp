@@ -56,7 +56,7 @@ void on_line_change(CPUState *env, target_ulong pc, const char *file_Name, const
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     panda_arg_list *args = panda_get_args("general");
-    const char *asid_s = panda_parse_string(args, "asid", NULL);
+    const char *asid_s = panda_parse_string_req(args, "asid", "asid of the process to follow for pri_trace");
     asid_of_interest = strtoul(asid_s, NULL, 16);
     panda_require("pri");
     //    assert(init_pri_api());
