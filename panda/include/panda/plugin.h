@@ -720,4 +720,19 @@ void panda_cleanup(void);
 }
 #endif
 
+#include "panda/plugin_plugin.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "panda/rr/rr_log.h"
+#include "panda/plog.h"
+
+#ifdef __cplusplus
+}
+#endif
+
+
 #endif
