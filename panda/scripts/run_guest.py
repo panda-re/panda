@@ -9,7 +9,7 @@ import time
 
 from colorama import Fore, Style
 from errno import EEXIST
-from os.path import abspath, basename, dirname, join, realpath
+from os.path import abspath, join, realpath
 from subprocess32 import STDOUT
 from traceback import print_exception
 
@@ -19,8 +19,8 @@ from tempdir import TempDir
 debug = True
 
 def progress(msg):
-    print
     print Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
+    print
 
 class Qemu(object):
     def __init__(self, qemu_path, qcow, snapshot, tempdir):
@@ -37,10 +37,11 @@ class Qemu(object):
         self.monitor.sendline(cmd)
         self.monitor.expect("(qemu)")
         print
+        print
 
     def type_console(self, cmd):
         if debug:
-            print "\n\nconsole cmd: [%s]" % cmd
+            print "console cmd: [%s]" % cmd
         self.console.send(cmd)
 
     # types a command into the guest os and waits for it to complete
@@ -50,6 +51,7 @@ class Qemu(object):
         print Style.BRIGHT + "root@debian-i386:~#" + Style.RESET_ALL,
         self.console.sendline()
         self.console.expect(expectation, timeout=timeout)
+        print
         print
 
     def __enter__(self):
@@ -82,6 +84,7 @@ class Qemu(object):
         print
         self.console.sendline()
         self.console.expect("root@debian-i386:~#")
+        print
         print
 
         return self
