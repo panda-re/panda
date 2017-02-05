@@ -162,7 +162,8 @@ static TaintGranularity granularity;
 static TaintLabelMode mode;
 bool optimize_llvm = true;
 extern bool inline_taint;
-
+bool debug_taint = false;
+target_ulong debug_asid = 0;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -194,6 +195,8 @@ void verify(void) {
     }
 }
 
+int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval);
+
 void __taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     printf ("taint2: __taint_enable_taint\n");
@@ -212,6 +215,8 @@ void __taint2_enable_taint(void) {
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_BEFORE_READ, pcb);
     pcb.phys_mem_before_write = phys_mem_write_callback;
     panda_register_callback(plugin_ptr, PANDA_CB_PHYS_MEM_BEFORE_WRITE, pcb);
+    pcb.asid_changed = asid_changed_callback;
+    panda_register_callback(plugin_ptr, PANDA_CB_ASID_CHANGED, pcb);
 /*
     pcb.cb_cpu_restore_state = cb_cpu_restore_state;
     panda_register_callback(plugin_ptr, PANDA_CB_CPU_RESTORE_STATE, pcb);
@@ -712,12 +717,35 @@ bool __taint2_enabled() {
     return taintEnabled;
 }
 
+int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval) {
+    if (debug_asid) {
+        if (newval == debug_asid) {
+            qemu_loglevel |= CPU_LOG_TAINT_OPS | CPU_LOG_LLVM_IR | CPU_LOG_TB_IN_ASM | CPU_LOG_EXEC;
+        } else {
+            qemu_loglevel &= ~(CPU_LOG_TAINT_OPS | CPU_LOG_LLVM_IR | CPU_LOG_TB_IN_ASM | CPU_LOG_EXEC);
+        }
+    }
+    return 0;
+}
+
+static void start_debugging() {
+    extern int qemu_loglevel;
+    if (!debug_asid) {
+        debug_asid = panda_current_asid(first_cpu);
+        printf("taint2: ENABLING DEBUG MODE for asid 0x" TARGET_FMT_lx "\n",
+                debug_asid);
+    }
+    qemu_loglevel |= CPU_LOG_TAINT_OPS | CPU_LOG_LLVM_IR | CPU_LOG_TB_IN_ASM | CPU_LOG_EXEC;
+}
+
 // label this phys addr in memory with this label
 void __taint2_label_ram(uint64_t pa, uint32_t l) {
+    if (debug_taint) start_debugging();
     tp_label_ram(shadow, pa, l);
 }
 
 void __taint2_label_reg(int reg_num, int offset, uint32_t l) {
+    if (debug_taint) start_debugging();
     tp_label_reg(shadow, reg_num, offset, l);
 }
 
@@ -1063,6 +1091,7 @@ bool init_plugin(void *self) {
     if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
     if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
     optimize_llvm = panda_parse_bool(args, "opt");
+    debug_taint = panda_parse_bool(args, "debug");
 
     panda_require("callstack_instr");
     assert(init_callstack_instr_api());
