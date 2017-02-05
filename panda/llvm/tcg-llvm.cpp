@@ -716,9 +716,28 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
                                             (void*) helperFuncAddr);
     }
 
-    return m_builder.CreateCall(helperFunction, ArrayRef<Value*>(argValues));
-
-
+    Value *loadedValue = m_builder.CreateCall(helperFunction, ArrayRef<Value*>(argValues));
+    switch (opc & MO_SSIZE) {
+    case MO_SB:
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(8));
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
+    case MO_SW:
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(16));
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
+#if TCG_TARGET_REG_BITS == 64
+    case MO_SL:
+        loadedValue = m_builder.CreateTrunc(loadedValue, intType(32));
+        return m_builder.CreateSExt(loadedValue, intType(TCG_TARGET_REG_BITS));
+#endif
+    case MO_UB:
+    case MO_UW:
+    case MO_UL:
+    case MO_Q:
+        return loadedValue;
+    default:
+        assert(false);
+        return nullptr;
+    }
 #else // CONFIG_SOFTMMU
     std::vector<Value*> argValues2;
     addr = m_builder.CreateZExt(addr, wordType());
@@ -729,7 +748,7 @@ inline Value* TCGLLVMContextPrivate::generateQemuMemOp(bool ld,
         return m_builder.CreateLoad(addr);
     } else {
         m_builder.CreateStore(value, addr);
-        return NULL;
+        return nullptr;
     }
 #endif // CONFIG_SOFTMMU
 }

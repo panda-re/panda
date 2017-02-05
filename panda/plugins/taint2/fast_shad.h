@@ -33,7 +33,7 @@ extern bool track_taint_state;
 extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t size);
 }
 
-#define CPU_LOG_TAINT_OPS (1 << 14)
+#define CPU_LOG_TAINT_OPS (1 << 28)
 #ifndef TAINTDEBUG
 #define taint_log(...) {}
 #define tassert(...) {}

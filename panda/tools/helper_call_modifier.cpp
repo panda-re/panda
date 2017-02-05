@@ -39,6 +39,10 @@ PANDAENDCOMMENT */
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 using namespace llvm;
 
 namespace {
@@ -64,48 +68,38 @@ int main(int argc, char **argv) {
      * the original function.  This is how we have to do it with the while loop
      * because of how the LLVM function list is implemented.
      */
-    Module::iterator i = Mod->begin();
-    while (i != Mod->end()) {
-        Function *f = i;
-        i++;
+    std::regex mmu_regex("helper_[bl]e_(ld|st)[us]?[bwlq]_mmu(_panda)?",
+            std::regex::egrep);
+    std::vector<Function*> funcs;
+    for (Function &f : *Mod) {
+        funcs.push_back(&f);
+    }
 
-        Module *m = f->getParent();
-        assert(m);
-        std::regex mmu_regex("helper_[bl]e_(ld|st)[us]?[bwlq]_mmu(_panda)?",
-                std::regex::egrep);
-        if (!f->isDeclaration()) { // internal functions only
-            std::string fname = f->getName();
-            if (std::regex_match(fname, mmu_regex)) {
-                /* Replace LLVM memory functions with ASM panda (logging) memory
-                 * functions and delete original.  For example, we want to call
-                 * out of the LLVM module to __ldb_mmu_panda().
-                 */
-                Function *pandaFunc = m->getFunction(fname + "_panda");
-                assert(pandaFunc);
-                if (!pandaFunc->isDeclaration()) {
-                    pandaFunc->deleteBody();
-                }
-                f->replaceAllUsesWith(pandaFunc);
-                f->eraseFromParent();
-            } else {
-                ValueToValueMapTy VMap;
-                Function *newFunc = CloneFunction(f, VMap, false);
-                newFunc->setName(f->getName() + "_llvm");
-                /*
-                 * XXX: We need to remove stack smash protection from helper
-                 * functions that are to be compiled with the JIT.  There is a bug
-                 * in LLVM 3.0 that causes the JIT to generate stack protection code
-                 * that causes the program to segfault.  More information available
-                 * here: http://llvm.org/bugs/show_bug.cgi?id=11089
-                 */
-                const AttributeSet AS = newFunc->getAttributes();
-                newFunc->setAttributes(AS.removeAttribute(newFunc->getContext(),
-                    AttributeSet::FunctionIndex, Attribute::StackProtectReq));
-                // push to the front so the iterator doesn't see them again
-                m->getFunctionList().push_front(newFunc);
-                f->replaceAllUsesWith(newFunc);
-                f->eraseFromParent();
-            }
+    for (Function *f : funcs) {
+        std::string fname = f->getName();
+        std::string newName = fname;
+        if (std::regex_match(fname, mmu_regex)) {
+            newName.append("_panda");
+            f->setName(newName);
+        } else if (!f->isDeclaration() && fname.find("helper_") == 0) {
+            newName.append("_llvm");
+            ValueToValueMapTy VMap;
+            Function *newFunc = CloneFunction(f, VMap, false);
+            newFunc->setName(newName);
+            /*
+             * XXX: We need to remove stack smash protection from helper
+             * functions that are to be compiled with the JIT.  There is a bug
+             * in LLVM 3.0 that causes the JIT to generate stack protection code
+             * that causes the program to segfault.  More information available
+             * here: http://llvm.org/bugs/show_bug.cgi?id=11089
+             */
+            const AttributeSet AS = newFunc->getAttributes();
+            newFunc->setAttributes(AS.removeAttribute(newFunc->getContext(),
+                AttributeSet::FunctionIndex, Attribute::StackProtectReq));
+            // push to the front so the iterator doesn't see them again
+            Mod->getFunctionList().push_front(newFunc);
+            f->replaceAllUsesWith(newFunc);
+            f->eraseFromParent();
         }
     }
 

@@ -85,6 +85,11 @@ void taint_copy(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_src, uint64_t src,
         uint64_t size, llvm::Instruction *I) {
+    if (unlikely(src >= shad_src->get_size() || dest >= shad_dest->get_size())) {
+        taint_log("  Ignoring IO RW\n");
+        return;
+    }
+
     taint_log("copy: %s[%lx+%lx] <- %s[%lx] (",
             shad_dest->name(), dest, size, shad_src->name(), src);
 #ifdef TAINTDEBUG
@@ -94,11 +99,6 @@ void taint_copy(
     }
     taint_log(")\n");
 #endif
-
-    if (dest + size >= shad_dest->get_size() || src + size >= shad_src->get_size()) {
-        taint_log("Ignoring IO\n");
-        return;
-    }
 
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 
@@ -110,6 +110,12 @@ void taint_parallel_compute(
         uint64_t dest, uint64_t ignored,
         uint64_t src1, uint64_t src2, uint64_t src_size,
         llvm::Instruction *I) {
+    uint64_t shad_size = shad->get_size();
+    if (unlikely(dest >= shad_size || src1 >= shad_size || src2 >= shad_size)) {
+        taint_log("  Ignoring IO RW\n");
+        return;
+    }
+
     taint_log("pcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, src_size, src1, src2);
     uint64_t i;
@@ -448,27 +454,45 @@ static void update_cb(
     uint64_t &one_mask = cb_masks.one_mask;
     uint64_t &zero_mask = cb_masks.zero_mask;
 
-    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
-    llvm::Value *rhs = I->getNumOperands() >= 2 ? I->getOperand(1) : nullptr;
-    llvm::ConstantInt *CI = rhs ? llvm::dyn_cast<llvm::ConstantInt>(rhs) : nullptr;
-    uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask, orig_cb_mask = cb_mask;
+    std::vector<uint64_t> literals;
+    uint64_t last_literal = ~0UL; // last valid literal.
+    literals.reserve(I->getNumOperands());
+
+    for (auto it = I->value_op_begin(); it != I->value_op_end(); it++) {
+        const llvm::Value *arg = *it;
+        const llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(arg);
+        uint64_t literal = CI ? CI->getZExtValue() : ~0UL;
+        literals.push_back(literal);
+        if (literal != ~0UL) last_literal = literal;
+    }
     int log2 = 0;
 
     switch (I->getOpcode()) {
         // Totally reversible cases.
-        case llvm::Instruction::Add:
         case llvm::Instruction::Sub:
-            tassert(literal != ~0UL);
-            log2 = 64 - __builtin_clz(literal);
+            if (literals[1] == ~0UL) {
+                tassert(last_literal != ~0UL);
+                // first operand is a variable. so negate.
+                // throw out ones/zeroes info.
+                // FIXME: handle better.
+                one_mask = zero_mask = 0;
+                break;
+            } // otherwise fall through.
+        case llvm::Instruction::Add:
+            tassert(last_literal != ~0UL);
+            log2 = 64 - __builtin_clz(last_literal);
+            // FIXME: this isn't quite right. for example, if all bits ones,
+            // adding one makes all bits zero.
             one_mask &= ~((1 << log2) - 1);
             zero_mask &= ~((1 << log2) - 1);
             break;
 
         case llvm::Instruction::Xor:
-            one_mask &= ~literal;
-            one_mask |= literal & orig_zero_mask;
-            zero_mask &= ~literal;
-            zero_mask |= literal & orig_one_mask;
+            one_mask &= ~last_literal;
+            one_mask |= last_literal & orig_zero_mask;
+            zero_mask &= ~last_literal;
+            zero_mask |= last_literal & orig_one_mask;
             break;
 
         case llvm::Instruction::ZExt:
@@ -493,9 +517,9 @@ static void update_cb(
 
         case llvm::Instruction::Mul:
         {
-            tassert(literal != ~0UL);
-            // Powers of two in literal destroy reversibility.
-            uint64_t trailing_zeroes = __builtin_ctz(literal);
+            tassert(last_literal != ~0UL);
+            // Powers of two in last_literal destroy reversibility.
+            uint64_t trailing_zeroes = __builtin_ctz(last_literal);
             cb_mask <<= trailing_zeroes;
             zero_mask = (1 << trailing_zeroes) - 1;
             one_mask = 0;
@@ -504,8 +528,8 @@ static void update_cb(
 
         case llvm::Instruction::URem:
         case llvm::Instruction::SRem:
-            tassert(literal != ~0UL);
-            log2 = 64 - __builtin_clz(literal);
+            tassert(last_literal != ~0UL);
+            log2 = 64 - __builtin_clz(last_literal);
             cb_mask &= (1 << log2) - 1;
             one_mask = 0;
             zero_mask = 0;
@@ -513,56 +537,56 @@ static void update_cb(
 
         case llvm::Instruction::UDiv:
         case llvm::Instruction::SDiv:
-            tassert(literal != ~0UL);
-            log2 = 64 - __builtin_clz(literal);
+            tassert(last_literal != ~0UL);
+            log2 = 64 - __builtin_clz(last_literal);
             cb_mask >>= log2;
             one_mask = 0;
             zero_mask = 0;
             break;
 
         case llvm::Instruction::And:
-            tassert(literal != ~0UL);
+            tassert(last_literal != ~0UL);
             // Bits not in the bit mask are no longer controllable
-            cb_mask &= literal;
-            zero_mask |= ~literal;
-            one_mask &= literal;
+            cb_mask &= last_literal;
+            zero_mask |= ~last_literal;
+            one_mask &= last_literal;
             break;
 
         case llvm::Instruction::Or:
-            tassert(literal != ~0UL);
+            tassert(last_literal != ~0UL);
             // Bits in the bit mask are no longer controllable
-            cb_mask &= ~literal;
-            one_mask |= literal;
-            zero_mask &= ~literal;
+            cb_mask &= ~last_literal;
+            one_mask |= last_literal;
+            zero_mask &= ~last_literal;
             break;
 
         case llvm::Instruction::Shl:
-            tassert(literal != ~0UL);
-            cb_mask <<= literal;
-            one_mask <<= literal;
-            zero_mask <<= literal;
-            zero_mask |= (1 << literal) - 1;
+            tassert(last_literal != ~0UL);
+            cb_mask <<= last_literal;
+            one_mask <<= last_literal;
+            zero_mask <<= last_literal;
+            zero_mask |= (1 << last_literal) - 1;
             break;
 
         case llvm::Instruction::LShr:
-            tassert(literal != ~0UL);
-            cb_mask >>= literal;
-            one_mask >>= literal;
-            zero_mask >>= literal;
-            zero_mask |= ~((1 << (64 - literal)) - 1);
+            tassert(last_literal != ~0UL);
+            cb_mask >>= last_literal;
+            one_mask >>= last_literal;
+            zero_mask >>= last_literal;
+            zero_mask |= ~((1 << (64 - last_literal)) - 1);
             break;
 
         case llvm::Instruction::AShr: // High bits not really controllable.
-            tassert(literal != ~0UL);
-            cb_mask >>= literal;
-            one_mask >>= literal;
-            zero_mask >>= literal;
+            tassert(last_literal != ~0UL);
+            cb_mask >>= last_literal;
+            one_mask >>= last_literal;
+            zero_mask >>= last_literal;
 
-            // See if high bit is a literal
+            // See if high bit is a last_literal
             if (orig_one_mask & (1 << (size * 8 - 1))) {
-                one_mask |= ~((1 << (64 - literal)) - 1);
+                one_mask |= ~((1 << (64 - last_literal)) - 1);
             } else if (orig_zero_mask & (1 << (size * 8 - 1))) {
-                zero_mask |= ~((1 << (64 - literal)) - 1);
+                zero_mask |= ~((1 << (64 - last_literal)) - 1);
             }
             break;
 

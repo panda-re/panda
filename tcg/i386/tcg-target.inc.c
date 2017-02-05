@@ -1294,7 +1294,10 @@ static inline void tcg_out_tlb_load(TCGContext *s, TCGReg addrlo, TCGReg addrhi,
     tcg_out_mov(s, ttype, r1, addrlo);
 
     /* jne slow_path */
-    tcg_out_opc(s, OPC_JCC_long + JCC_JNE, 0, 0, 0);
+    if (panda_use_memcb)
+        tcg_out_opc(s, OPC_JMP_long, 0, 0, 0);
+    else
+        tcg_out_opc(s, OPC_JCC_long + JCC_JNE, 0, 0, 0);
     label_ptr[0] = s->code_ptr;
     s->code_ptr += 4;
 
@@ -1303,10 +1306,7 @@ static inline void tcg_out_tlb_load(TCGContext *s, TCGReg addrlo, TCGReg addrhi,
         tcg_out_modrm_offset(s, OPC_CMP_GvEv, addrhi, r0, 4);
 
         /* jne slow_path */
-        if (panda_use_memcb)
-            tcg_out_opc(s, OPC_JMP_long, 0, 0, 0);
-        else
-            tcg_out_opc(s, OPC_JCC_long + JCC_JNE, 0, 0, 0);
+        tcg_out_opc(s, OPC_JCC_long + JCC_JNE, 0, 0, 0);
         label_ptr[1] = s->code_ptr;
         s->code_ptr += 4;
     }
