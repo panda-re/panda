@@ -123,7 +123,8 @@ bool init_plugin(void *self) {
     pcb.after_block_exec = tbranch_after_block_exec;
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     */
-    PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);                                                                       
+    PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
+    PPP_REG_CB("taint2", on_non_const_eip, tbranch_on_branch_taint2);
     return true;
 }
 
