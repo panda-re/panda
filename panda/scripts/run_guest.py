@@ -120,13 +120,11 @@ def make_iso(directory, iso_path):
 
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
-def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recording_path):
+def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recording_path, isoname=None):
     DEVNULL = open(os.devnull, "w")
 
     recording_path = realpath(recording_path)
-    directory = dirname(recording_path)
-    exename = basename(command[0])
-    isoname = join(directory, exename + '.iso')
+    if not isoname: isoname = copy_directory + '.iso'
 
     progress("Creaing ISO {}...".format(isoname))
     make_iso(copy_directory, isoname)
