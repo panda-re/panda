@@ -35,12 +35,30 @@ extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t siz
 
 #define CPU_LOG_TAINT_OPS (1 << 28)
 #ifndef TAINTDEBUG
+#define tassert(cond) {}
 #define taint_log(...) {}
-#define tassert(...) {}
+#define taint_log_labels(shad, src, size) {}
 #else
 #define tassert(cond) assert((cond))
-#define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__)
-//#define taint_log(...) printf(__VA_ARGS__)
+#define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__);
+#define taint_log_labels(shad, src, size) \
+    extern int qemu_loglevel; \
+    if (qemu_loglevel & CPU_LOG_TAINT_OPS) { \
+        bool tainted = false; \
+        for (int __i = 0; __i < size; __i++) { \
+            LabelSetP ls = shad->query(src + __i); \
+            qemu_log("{"); \
+            if (ls) { \
+                tainted = true; \
+                for (uint32_t l : *shad->query(src + __i)) { \
+                    qemu_log("%u, ", l); \
+                } \
+            } \
+            qemu_log("}; "); \
+        } \
+        if (tainted) qemu_log("TAINTED"); \
+        qemu_log("\n"); \
+    }
 #endif
 
 void *memset(void *dest, int val, size_t n);
@@ -99,7 +117,6 @@ private:
     std::string _name;
 
     inline TaintData *get_td_p(uint64_t guest_addr) {
-        //taint_log("  %lx->get_ls_p(%lx)\n", (uint64_t)this, guest_addr);
         tassert(guest_addr < size);
         return &labels[guest_addr];
     }
@@ -128,18 +145,6 @@ public:
         tassert(src + size >= src);
         tassert(dest + size <= shad_dest->size);
         tassert(src + size <= shad_src->size);
-        
-#ifdef TAINTDEBUG
-        for (unsigned i = 0; i < size; i++) {
-            if (shad_src->get_td_p(src + i)->ls != NULL) {
-                taint_log("TAINTED_COPY: %s[%lx] <- %s[%lx] (%lx)\n",
-                        shad_dest->name(), dest + i,
-                        shad_src->name(), src + i,
-                        (uint64_t)shad_src->get_td_p(src + i)->ls);
-                break;
-            }
-        }
-#endif
 
         bool change = false;
         if (track_taint_state && (shad_dest->range_tainted(dest, size) ||
@@ -155,16 +160,6 @@ public:
     inline void remove(uint64_t addr, uint64_t remove_size) {
         tassert(addr + remove_size >= addr);
         tassert(addr + remove_size <= size);
-        
-#ifdef TAINTDEBUG
-        for (unsigned i = 0; i < remove_size && remove_size < 64; i++) {
-            if (get_td_p(addr + i)->ls != NULL) {
-                taint_log("TAINTED_DELETE: %s[%lx+%lx]\n",
-                        name(), addr, remove_size);
-                break;
-            }
-        }
-#endif
 
         bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size))
@@ -181,7 +176,7 @@ public:
 
     inline void reset_frame() {
         labels = orig_labels;
-        //taint_log("reset: %lx\n", (uint64_t)labels);
+        taint_log("reset: %lx\n", (uint64_t)labels);
     }
 
     inline void push_frame(uint64_t framesize) {

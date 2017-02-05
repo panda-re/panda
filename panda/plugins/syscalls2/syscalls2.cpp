@@ -489,9 +489,6 @@ extern "C" {
 panda_arg_list *args;
 
 bool init_plugin(void *self) {
-
-    printf("Initializing plugin syscalls2\n");
-
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 

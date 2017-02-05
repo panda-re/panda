@@ -1476,6 +1476,10 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
                             //filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
                             //strcpy(filenm_line, filenm_tmp);
                         }
+                        if (0 == strcmp(".S", strlen(filenm_line) + filenm_line -2)) {
+                            continue;
+                        }
+
                         //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
                         if (needs_reloc){
                             LineRange lr = LineRange(base_address+lower_bound_addr,

@@ -135,7 +135,8 @@ void lava_taint_query ( target_ulong buf, LocType loc_t, target_ulong buf_len, c
                 // null terminator
                 if (c==0 && offset >= 32) break;
             }
-            if ((int) pa != -1) {
+            extern ram_addr_t ram_size;
+            if ((int) pa != -1 && pa < ram_size) {
                 Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);
                 if (taint2_query(a)) {
                     if (loc_t == LocMem) { 

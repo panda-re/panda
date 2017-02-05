@@ -441,8 +441,6 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 
 bool init_plugin(void *self) {
 
-    printf("Initializing plugin file_taint\n");
-
 #ifdef TARGET_I386
     panda_cb pcb;
     panda_arg_list *args;
