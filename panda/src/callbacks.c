@@ -63,7 +63,8 @@ bool panda_update_pc = false;
 bool panda_use_memcb = false;
 bool panda_tb_chaining = true;
 
-
+bool panda_help_wanted = false;
+bool panda_plugin_load_failed = false;
 
 bool panda_add_arg(const char *arg, int arglen) {
     if (arglen > 255) return false;
@@ -71,7 +72,7 @@ bool panda_add_arg(const char *arg, int arglen) {
     return true;
 }
 
-bool panda_load_plugin(const char *filename) {
+bool panda_load_plugin(const char *filename, const char *plugin_name) {
     // don't load the same plugin twice
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
@@ -84,7 +85,6 @@ bool panda_load_plugin(const char *filename) {
     // and not yet called init_plugin fn.  needed to avoid infinite loop with panda_require  
     panda_plugins_loaded[nb_panda_plugins_loaded] = strdup(filename);
     nb_panda_plugins_loaded ++;
-    printf ("loading %s\n", filename);
     void *plugin = dlopen(filename, RTLD_NOW);
     if(!plugin) {
         fprintf(stderr, "Failed to load %s: %s\n", filename, dlerror());
@@ -102,17 +102,16 @@ bool panda_load_plugin(const char *filename) {
     panda_plugins[nb_panda_plugins].plugin = plugin;
     strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
     nb_panda_plugins++;
-    if(init_fn(plugin)) {
+    fprintf(stderr, "Initializing plugin %s\n", plugin_name ? plugin_name : filename);
+    if(init_fn(plugin) && !panda_plugin_load_failed) {
         // TRL: Don't do this here!  See above
         //        panda_plugins[nb_panda_plugins].plugin = plugin;
         //        strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
         //        nb_panda_plugins++;
-        fprintf (stderr, "Success\n");
         return true;
     }
     else {
         dlclose(plugin);
-        fprintf (stderr, "Fail. init_fn returned 0\n");
         return false;
     }
 }
@@ -139,7 +138,7 @@ void panda_require(const char *plugin_name) {
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name);
     // load plugin same as in vl.c
-    if (!panda_load_plugin(plugin_path)) {
+    if (!panda_load_plugin(plugin_path, plugin_name)) {
         fprintf(stderr, "panda_require: FAIL: Unable to load plugin `%s' `%s'\n", plugin_name, plugin_path);
         abort();
     }
@@ -460,6 +459,13 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
 
     ret->list = list;
 
+    for (i = 0; i < ret->nargs; i++) {
+        if (strcmp(ret->list[i].key, "help") == 0) {
+            panda_help_wanted = true;
+            printf("Options for plugin %s:\n", plugin_name); 
+        }
+    }
+
     return ret;
 
 fail:
@@ -468,8 +474,9 @@ fail:
     return NULL;
 }
 
-bool panda_parse_bool(panda_arg_list *args, const char *argname) {
-    if (!args) return false;
+static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
     int i;
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
@@ -481,55 +488,177 @@ bool panda_parse_bool(panda_arg_list *args, const char *argname) {
             }
         }
     }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required bool argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s\n", argname, help);
+    }
+
     // not found
     return false;
 }
 
-target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval) {
-    if (!args) return defval;
+bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_bool_internal(args, argname, help, true);
+}
+
+bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_bool_internal(args, argname, help, false);
+}
+
+bool panda_parse_bool(panda_arg_list *args, const char *argname) {
+    return panda_parse_bool_internal(args, argname, "Undocumented option. Complain to the developer!", false);
+}
+
+static target_ulong panda_parse_ulong_internal(panda_arg_list *args, const char *argname, target_ulong defval, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
     int i;
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
             return strtoul(args->list[i].value, NULL, 0);
         }
     }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required ulong argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s (default=" TARGET_FMT_ld ")\n", argname, help, defval);
+    }
+
     return defval;
+}
+
+target_ulong panda_parse_ulong_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_ulong_internal(args, argname, 0, help, true);
+}
+
+target_ulong panda_parse_ulong_opt(panda_arg_list *args, const char *argname, target_ulong defval, const char *help) {
+    return panda_parse_ulong_internal(args, argname, defval, help, false);
+}
+
+target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval) {
+    return panda_parse_ulong_internal(args, argname, defval, "Undocumented option. Complain to the developer!", false);
+}
+
+static uint32_t panda_parse_uint32_internal(panda_arg_list *args, const char *argname, uint32_t defval, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
+    int i;
+    for (i = 0; i < args->nargs; i++) {
+        if (strcmp(args->list[i].key, argname) == 0) {
+            return strtoull(args->list[i].value, NULL, 0);
+        }
+    }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required uint32 argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s (default=%d)\n", argname, help, defval);
+    }
+
+    return defval;
+}
+
+uint32_t panda_parse_uint32_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_uint32_internal(args, argname, 0, help, true);
+}
+
+uint32_t panda_parse_uint32_opt(panda_arg_list *args, const char *argname, uint32_t defval, const char *help) {
+    return panda_parse_uint32_internal(args, argname, defval, help, false);
 }
 
 uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval) {
-    if (!args) return defval;
+    return panda_parse_uint32_internal(args, argname, defval, "Undocumented option. Complain to the developer!", false);
+}
+
+static uint64_t panda_parse_uint64_internal(panda_arg_list *args, const char *argname, uint64_t defval, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
     int i;
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
             return strtoull(args->list[i].value, NULL, 0);
         }
     }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required uint64 argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s (default=%" PRId64 ")\n", argname, help, defval);
+    }
+
     return defval;
 }
 
+uint64_t panda_parse_uint64_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_uint64_internal(args, argname, 0, help, true);
+}
+
+uint64_t panda_parse_uint64_opt(panda_arg_list *args, const char *argname, uint64_t defval, const char *help) {
+    return panda_parse_uint64_internal(args, argname, defval, help, false);
+}
 
 uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval) {
-    if (!args) return defval;
-    int i;
-    for (i = 0; i < args->nargs; i++) {
-        if (strcmp(args->list[i].key, argname) == 0) {
-            return strtoull(args->list[i].value, NULL, 0);
-        }
-    }
-    return defval;
+    return panda_parse_uint64_internal(args, argname, defval, "Undocumented option. Complain to the developer!", false);
 }
 
-double panda_parse_double(panda_arg_list *args, const char *argname, double defval) {
-    if (!args) return defval;
+static double panda_parse_double_internal(panda_arg_list *args, const char *argname, double defval, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
     int i;
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
             return strtod(args->list[i].value, NULL);
         }
     }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required double argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s (default=%f)\n", argname, help, defval);
+    }
+
     return defval;
 }
 
+double panda_parse_double_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_double_internal(args, argname, 0, help, true);
+}
+
+double panda_parse_double_opt(panda_arg_list *args, const char *argname, double defval, const char *help) {
+    return panda_parse_double_internal(args, argname, defval, help, false);
+}
+
+double panda_parse_double(panda_arg_list *args, const char *argname, double defval) {
+    return panda_parse_double_internal(args, argname, defval, "Undocumented option. Complain to the developer!", false);
+}
 
 char** str_split(char* a_str, const char a_delim)  {
     char** result    = 0;
@@ -569,15 +698,40 @@ char** str_split(char* a_str, const char a_delim)  {
 
 
 // Returns pointer to string inside arg list, freed when list is freed.
-const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval) {
-    if (!args) return defval;
+static const char *panda_parse_string_internal(panda_arg_list *args, const char *argname, const char *defval, const char *help, bool required) {
+    if (panda_help_wanted) goto help;
+    if (!args) goto error_handling;
     int i;
     for (i = 0; i < args->nargs; i++) {
         if (strcmp(args->list[i].key, argname) == 0) {
             return args->list[i].value;
         }
     }
+
+error_handling:
+    if (required) {
+        fprintf(stderr, "ERROR: plugin required string argument \"%s\" but you did not provide it\n", argname);
+        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+        panda_plugin_load_failed = true;
+    }
+help:
+    if (panda_help_wanted) {
+        fprintf(stderr, "%s\t\t%s (default=\"%s\")\n", argname, help, defval);
+    }
+
     return defval;
+}
+
+const char *panda_parse_string_req(panda_arg_list *args, const char *argname, const char *help) {
+    return panda_parse_string_internal(args, argname, "", help, true);
+}
+
+const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, const char *defval, const char *help) {
+    return panda_parse_string_internal(args, argname, defval, help, false);
+}
+
+const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval) {
+    return panda_parse_string_internal(args, argname, defval, "Undocumented option. Complain to the developer!", false);
 }
 
 // Free a list of parsed arguments
@@ -602,7 +756,7 @@ void qmp_plugin_cmd(const char * cmd, Error **errp);
 
 
 void qmp_load_plugin(const char *filename, Error **errp) {
-    if(!panda_load_plugin(filename)) {
+    if(!panda_load_plugin(filename, NULL)) {
         // TODO: do something with errp here?
     }
 }

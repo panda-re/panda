@@ -141,13 +141,11 @@ FILE *mem_report = NULL;
 bool init_plugin(void *self) {
     panda_cb pcb;
 
-    printf("Initializing plugin stringsearch\n");
-
     panda_require("callstack_instr");
 
     panda_arg_list *args = panda_get_args("stringsearch");
 
-    const char *arg_str = panda_parse_string(args, "str", "");
+    const char *arg_str = panda_parse_string_opt(args, "str", "", "a single string to search for");
     size_t arg_len = strlen(arg_str);
     if (arg_len > 0) {
         memcpy(tofind[num_strings], arg_str, arg_len);
@@ -155,10 +153,10 @@ bool init_plugin(void *self) {
         num_strings++;
     }
 
-    n_callers = panda_parse_uint64(args, "callers", 16);
+    n_callers = panda_parse_uint64_opt(args, "callers", 16, "depth of callstack for matches");
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
 
-    const char *prefix = panda_parse_string(args, "name", "stringsearch");
+    const char *prefix = panda_parse_string_req(args, "name", "filename containing search strings");
     char stringsfile[128] = {};
     sprintf(stringsfile, "%s_search_strings.txt", prefix);
 
