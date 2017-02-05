@@ -1078,23 +1078,23 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("taint2");
 
-    tainted_pointer = !panda_parse_bool(args, "no_tp");
+    tainted_pointer = !panda_parse_bool_opt(args, "no_tp", "track taint through pointer dereference");
     if (tainted_pointer) {
         printf("taint2: Propagating taint through pointer dereference ENABLED.\n");
     } else {
         printf("taint2: Propagating taint through pointer dereference DISABLED.\n");
     }
 
-    inline_taint = panda_parse_bool(args, "inline");
+    inline_taint = panda_parse_bool_opt(args, "inline", "inline taint operations");
     if (inline_taint) {
         printf("taint2: Inlining taint ops by default.\n");
     } else {
         printf("taint2: Instructed not to inline taint ops.\n");
     }
-    if (panda_parse_bool(args, "binary")) mode = TAINT_BINARY_LABEL;
-    if (panda_parse_bool(args, "word")) granularity = TAINT_GRANULARITY_WORD;
-    optimize_llvm = panda_parse_bool(args, "opt");
-    debug_taint = panda_parse_bool(args, "debug");
+    if (panda_parse_bool_opt(args, "binary", "use binary taint")) mode = TAINT_BINARY_LABEL;
+    if (panda_parse_bool_opt(args, "word", "use word-level taint")) granularity = TAINT_GRANULARITY_WORD;
+    optimize_llvm = panda_parse_bool_opt(args, "opt", "run LLVM optimization on taint");
+    debug_taint = panda_parse_bool_opt(args, "debug", "enable taint debugging");
 
     panda_require("callstack_instr");
     assert(init_callstack_instr_api());

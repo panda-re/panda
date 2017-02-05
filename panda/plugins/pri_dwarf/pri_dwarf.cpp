@@ -2281,15 +2281,15 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     panda_arg_list *args = panda_get_args("pri_dwarf");
-    guest_debug_path = panda_parse_string(args, "g_debugpath", "dbg");
-    host_debug_path = panda_parse_string(args, "h_debugpath", "dbg");
-    host_mount_path = panda_parse_string(args, "host_mount_path", "dbg");
-    proc_to_monitor = panda_parse_string(args, "proc", "None");
-    libc_host_path = panda_parse_string(args, "host_libc_path", "None");
+    guest_debug_path = panda_parse_string_req(args, "g_debugpath", "path to binary/build dir on guest machine");
+    host_debug_path = panda_parse_string_req(args, "h_debugpath", "path to binary/build dir on host machine");
+    host_mount_path = panda_parse_string_opt(args, "host_mount_path", "dbg", "path to mounted guest file system");
+    proc_to_monitor = panda_parse_string_req(args, "proc", "name of process to follow with dwarf info");
+    libc_host_path = panda_parse_string_opt(args, "host_libc_path", "None", "path to guest libc on host");
     // this option allows dwarf/elf processing to continue if no 
     // dwarf symbols are including.  presumably only using plt symbols
     // for line range data.  could be useful for tracking calls to functions
-    allow_just_plt = panda_parse_bool(args, "allow_just_plt");
+    allow_just_plt = panda_parse_bool_opt(args, "allow_just_plt", "allow parsing of elf for dynamic symbol information if dwarf is not available");
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
