@@ -122,7 +122,6 @@ int virt_mem_write(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulo
 bool init_plugin(void *self) {
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf("Initializing plugin pri_simple\n");
     //panda_arg_list *args = panda_get_args("pri_taint");
     panda_require("pri");
     assert(init_pri_api());

@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, int);
-extern bool panda_load_plugin(const char *);
+extern bool panda_load_plugin(const char *, const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
@@ -3129,6 +3129,7 @@ int main(int argc, char **argv, char **envp)
     const char* replay_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
+    const char * panda_plugin_names[64] = {};
     int nb_panda_plugins = 0;
 
     module_call_init(MODULE_INIT_TRACE);
@@ -4176,8 +4177,9 @@ int main(int argc, char **argv, char **envp)
                 }
                 break;
             case QEMU_OPTION_panda_plugin:
-                panda_plugin_files[nb_panda_plugins++] = optarg;
-                printf ("adding %s to panda_plugin_files %d\n", optarg, nb_panda_plugins-1);
+                panda_plugin_files[nb_panda_plugins] = optarg;
+                panda_plugin_names[nb_panda_plugins] = NULL;
+                nb_panda_plugins++;
                 break;
             case QEMU_OPTION_panda_plugins:
                 {
@@ -4215,8 +4217,9 @@ int main(int argc, char **argv, char **envp)
                         }
                         else {                        
                             char *plugin_path = panda_plugin_path((const char *) plugin_start);
-                            panda_plugin_files[nb_panda_plugins++] = plugin_path;
-                            printf("adding %s to panda_plugin_files %d\n", plugin_path, nb_panda_plugins - 1);
+                            panda_plugin_files[nb_panda_plugins] = plugin_path;
+                            panda_plugin_names[nb_panda_plugins] = strdup(plugin_start);
+                            nb_panda_plugins++;
                         }
 
                         plugin_start = plugin_end + 1;
@@ -4245,7 +4248,7 @@ int main(int argc, char **argv, char **envp)
     // Now that all arguments are available, we can load plugins
     int pp_idx;
     for (pp_idx = 0; pp_idx < nb_panda_plugins; pp_idx++) {
-      if(!panda_load_plugin(panda_plugin_files[pp_idx])) {
+      if(!panda_load_plugin(panda_plugin_files[pp_idx], panda_plugin_names[pp_idx])) {
           fprintf(stderr, "FAIL: Unable to load plugin `%s'\n", panda_plugin_files[pp_idx]);
           abort();
       }

@@ -1146,7 +1146,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (calledName == "cpu_loop_exit") {
             return;
         } else if (std::regex_match(calledName, ldRegex)) {
-            Value *ptr = I.getArgOperand(0);
+            Value *ptr = I.getArgOperand(1);
             if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
             } else {
@@ -1154,8 +1154,8 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             }
             return;
         } else if (std::regex_match(calledName, stRegex)) {
-            Value *ptr = I.getArgOperand(0);
-            Value *val = I.getArgOperand(1);
+            Value *ptr = I.getArgOperand(1);
+            Value *val = I.getArgOperand(2);
             if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, val, true /* is_store */ );
             } else if (isa<Constant>(val)) {

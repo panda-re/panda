@@ -354,9 +354,6 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
 
 
 bool init_plugin(void *self) {    
-
-    printf ("Initializing plugin asidstory\n");
-
     panda_require("osi");
    
     // this sets up OS introspection API

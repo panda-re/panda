@@ -152,7 +152,6 @@ void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numar
 
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    printf ("Initializing plugin libfi\n");
     panda_require("pri");
     assert(init_callstack_instr_api());
     PPP_REG_CB("pri", on_fn_start, fn_start);

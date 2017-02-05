@@ -639,7 +639,7 @@ typedef struct panda_plugin {
 
 void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
-bool   panda_load_plugin(const char *filename);
+bool   panda_load_plugin(const char *filename, const char *plugin_name);
 bool   panda_add_arg(const char *arg, int arglen);
 void * panda_get_plugin_by_name(const char *name);
 void   panda_do_unload_plugin(int index);
@@ -703,12 +703,25 @@ panda_arg_list *panda_get_args(const char *plugin_name);
 void panda_free_args(panda_arg_list *args);
 
 target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
+target_ulong panda_parse_ulong_req(panda_arg_list *args, const char *argname, const char *help);
+target_ulong panda_parse_ulong_opt(panda_arg_list *args, const char *argname, target_ulong defval, const char *help);
 uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);
+uint32_t panda_parse_uint32_req(panda_arg_list *args, const char *argname, const char *help);
+uint32_t panda_parse_uint32_opt(panda_arg_list *args, const char *argname, uint32_t defval, const char *help);
 uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);
+uint64_t panda_parse_uint64_req(panda_arg_list *args, const char *argname, const char *help);
+uint64_t panda_parse_uint64_opt(panda_arg_list *args, const char *argname, uint64_t defval, const char *help);
 double panda_parse_double(panda_arg_list *args, const char *argname, double defval);
+double panda_parse_double_req(panda_arg_list *args, const char *argname, const char *help);
+double panda_parse_double_opt(panda_arg_list *args, const char *argname, double defval, const char *help);
 // Returns true if arg present, unless arg=false or arg=no exists.
 bool panda_parse_bool(panda_arg_list *args, const char *argname);
+bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help);
+bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help);
 const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
+const char *panda_parse_string_req(panda_arg_list *args, const char *argname, const char *help);
+const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, const char *defval, const char *help);
+
 char** str_split(char* a_str, const char a_delim);
 
 char *panda_plugin_path(const char *name);
