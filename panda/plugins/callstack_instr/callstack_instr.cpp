@@ -376,8 +376,6 @@ bool init_plugin(void *self) {
     cs_option(cs_handle_64, CS_OPT_DETAIL, CS_OPT_ON);
 #endif
 
-    printf("Initializing plugin callstack_instr\n");
-
     panda_cb pcb;
 
     panda_enable_memcb();
