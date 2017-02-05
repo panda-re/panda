@@ -165,7 +165,7 @@ with TempDir() as tempdir:
     monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-    qemu_args = ['rr', 'record', project['qemu'], project['qcow'], '-loadvm', project['snapshot'],
+    qemu_args = [project['qemu'], project['qcow'], '-loadvm', project['snapshot'],
                     '-monitor', 'unix:{},server,nowait'.format(monitor_path),
                     '-serial', 'unix:{},server,nowait'.format(serial_path),
                     '-display', 'none']
