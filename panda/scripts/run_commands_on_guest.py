@@ -1,7 +1,6 @@
 #!/usr/bin/env python2.7
 # import re
 import os
-from os.path import abspath, join, basename
 import sys
 import tempfile
 import subprocess32
@@ -10,35 +9,108 @@ import time
 import pipes
 import json
 import colorama
-import pexpect
+import select
+import socket
+
+from colorama import Fore, Style
+from datetime import datetime
+from errno import EAGAIN, EWOULDBLOCK
+from os.path import abspath, join, basename
+from subprocess32 import PIPE, STDOUT
 
 debug = True
 
+DEVNULL = open(os.devnull, "w")
+
+class TimeoutExpired(Exception): pass
+
+class TempDir(object):
+    def __enter__(self):
+        self.path = tempfile.mkdtemp()
+        return self.path
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        shutil.rmtree(self.path)
+
+class Expect(object):
+    def __init__(self, filelike, logfile=None, quiet=False):
+        if type(filelike) in [int, long]:
+            self.fd = filelike
+        else:
+            self.fd = filelike.fileno()
+        self.poller = select.poll()
+        self.poller.register(self.fd, select.POLLIN)
+
+        if logfile is None: logfile = os.devnull
+        self.logfile = open(logfile, "w")
+        self.quiet = quiet
+
+    def __del__(self):
+        self.logfile.close()
+
+    def expect(self, expectation, timeout=30):
+        sofar = bytearray()
+        start_time = datetime.now()
+        time_passed = 0
+        while time_passed < timeout:
+            time_passed = (datetime.now() - start_time).total_seconds()
+            time_left = timeout - time_passed
+            ready = self.poller.poll(0)
+
+            if self.fd in [fd for (fd, _) in ready]:
+                try:
+                    char = os.read(self.fd, 1)
+                except OSError as e:
+                    if e.errno in [EAGAIN, EWOULDBLOCK]:
+                        continue
+                    else: raise
+                self.logfile.write(char)
+                if not self.quiet: sys.stdout.write(char)
+
+                sofar.extend(char)
+                if sofar.endswith(expectation):
+                    self.logfile.flush()
+                    if not self.quiet: sys.stdout.flush()
+                    sofar.append('\n')
+                    return str(sofar)
+            elif time_left > 0:
+                time.sleep(min(time_left, 1))
+        self.logfile.flush()
+        if not self.quiet: sys.stdout.flush()
+        raise TimeoutExpired()
+
+    def send(self, msg):
+        os.write(self.fd, msg)
+        self.logfile.write(msg)
+        self.logfile.flush()
+
+    def sendline(self, msg=""):
+        self.send(msg + "\n")
+
 def progress(msg):
-    print colorama.Fore.RED + msg + colorama.Fore.RESET
+    print ''
+    print Fore.GREEN + '[run_commands.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
 
 # types a command into the qemu monitor and waits for it to complete
 def run_monitor(cmd):
     if debug:
         print "monitor cmd: [%s]" % cmd
-    print colorama.Style.BRIGHT + "(qemu)" + colorama.Style.RESET_ALL,
+    print Style.BRIGHT + "(qemu)" + Style.RESET_ALL,
     monitor.sendline(cmd)
-    monitor.expect_exact("(qemu)")
-    print monitor.before.partition("\r\n")[2]
+    monitor.expect("(qemu)")
 
-# types a command into the guest os and waits for it to complete
-def run_console(cmd, expectation="root@debian-i386:~"):
+def type_console(cmd):
     if debug:
         print "\n\nconsole cmd: [%s]" % cmd
-    print colorama.Style.BRIGHT + "root@debian-i386:~#" + colorama.Style.RESET_ALL,
-    console.sendline(cmd)
-    try:
-        console.expect_exact(expectation)
-    except pexpect.TIMEOUT:
-        print "\ntimeout"
-        print console.before
-        raise
-    print console.before.partition("\n")[2]
+    print Style.BRIGHT + "root@debian-i386:~#" + Style.RESET_ALL,
+    console.send(cmd)
+
+# types a command into the guest os and waits for it to complete
+def run_console(cmd=None, timeout=30, expectation="root@debian-i386:~#"):
+    if cmd is not None:
+        type_console(cmd)
+    console.sendline()
+    console.expect(expectation, timeout=timeout)
 
 if len(sys.argv) < 2:
     print >>sys.stderr, "Usage: python project.json"
@@ -79,64 +151,70 @@ isoname = os.path.join(panda_log_loc, project['name']) + ".iso"
 
 progress("Creaing ISO {}...".format(isoname))
 
-with open(os.devnull, "w") as DEVNULL:
-    if sys.platform.startswith('linux'):
-        subprocess32.check_call(['genisoimage', '-RJ', '-max-iso9660-filenames', '-o', isoname, installdir], stderr=DEVNULL)
-    elif sys.platform == 'darwin':
-        subprocess32.check_call(['hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', isoname, installdir], stderr=DEVNULL)
-    else:
-        raise NotImplementedError("Unsupported operating system!")
-tempdir = tempfile.mkdtemp()
+if sys.platform.startswith('linux'):
+    subprocess32.check_call(['genisoimage', '-RJ', '-max-iso9660-filenames', '-o', isoname, installdir], stderr=DEVNULL)
+elif sys.platform == 'darwin':
+    subprocess32.check_call(['hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', isoname, installdir], stderr=DEVNULL)
+else:
+    raise NotImplementedError("Unsupported operating system!")
 
-monitor_path = os.path.join(tempdir, 'monitor')
-serial_path = os.path.join(tempdir, 'serial')
-qemu_args = [project['qemu'], project['qcow'], '-loadvm', project['snapshot'],
-        '-monitor', 'unix:' + monitor_path + ',server,nowait',
-        '-serial', 'unix:' + serial_path + ',server,nowait',
-        '-nographic']
+with TempDir() as tempdir:
+    monitor_path = join(tempdir, 'monitor')
+    serial_path = join(tempdir, 'serial')
 
-progress("Running qemu with args:")
-print subprocess32.list2cmdline(qemu_args)
+    monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-os.mkfifo(monitor_path)
-os.mkfifo(serial_path)
-qemu = subprocess32.Popen(qemu_args, stderr=subprocess32.STDOUT)
-time.sleep(2)
+    qemu_args = ['rr', 'record', project['qemu'], project['qcow'], '-loadvm', project['snapshot'],
+                    '-monitor', 'unix:{},server,nowait'.format(monitor_path),
+                    '-serial', 'unix:{},server,nowait'.format(serial_path),
+                    '-display', 'none']
 
-monitor = pexpect.spawn("socat", ["stdin", "unix-connect:" + monitor_path])
-monitor.logfile = open(os.path.join(tempdir, 'monitor.txt'), 'w')
-console = pexpect.spawn("socat", ["stdin", "unix-connect:" + serial_path])
-console.logfile = open(os.path.join(tempdir, 'console.txt'), 'w')
+    progress("Running qemu with args:")
+    print subprocess32.list2cmdline(qemu_args)
 
-# Make sure monitor/console are in right state.
-monitor.expect_exact("(qemu)")
-console.sendline("")
-console.expect_exact("root@debian-i386:~#")
-progress("Inserting CD...")
-run_monitor("change ide1-cd0 {}".format(isoname))
-run_console("mkdir -p {}".format(installdir))
-# Make sure cdrom didn't automount
-# Make sure guest path mirrors host path
-run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(installdir)) +
-            "do sleep 0.3; umount /dev/cdrom; done")
+    qemu = subprocess32.Popen(qemu_args, stderr=STDOUT)
+    while not all([os.path.exists(p) for p in [monitor_path, serial_path]]):
+        time.sleep(0.2)
 
-# start PANDA recording
-run_monitor("begin_record {}".format(project['recording_name']))
+    monitor_socket.connect(monitor_path)
+    serial_socket.connect(serial_path)
 
-# run the actual command
-progress("Running command inside guest. Panda log to: {}".format(panda_log_name))
-expectation = "root@debian-i386:~"
+    monitor = Expect(monitor_socket)
+    console = Expect(serial_socket)
 
-progress("Running command " + project['command'] + " on guest")
-run_console(project['command'].format(install_dir=installdir),
-            expectation)
+    # Make sure monitor/console are in right state.
+    monitor.expect("(qemu)")
+    console.sendline()
+    console.expect("root@debian-i386:~#")
+    progress("Inserting CD...")
+    run_monitor("change ide1-cd0 {}".format(isoname))
+    run_console("mkdir -p {}".format(installdir))
+    # Make sure cdrom didn't automount
+    # Make sure guest path mirrors host path
+    run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(installdir)) +
+                "do sleep 0.3; umount /dev/cdrom; done")
 
-print 'back from run_console'
-#time.sleep(2)
+    # run the actual command
+    progress("Running command inside guest. Panda log to: {}".format(panda_log_name))
 
-# end PANDA recording
-progress("Ending recording...")
-run_monitor("end_record")
+    # Important that we type command into console before recording starts and only
+    progress("Running command " + project['command'] + " on guest")
+    type_console(project['command'].format(install_dir=installdir))
 
-monitor.sendline("quit")
-shutil.rmtree(tempdir)
+    # start PANDA recording
+    run_monitor("begin_record {}".format(project['recording_name']))
+    run_console(timeout=1200)
+
+    # end PANDA recording
+    progress("Ending recording...")
+    run_monitor("end_record")
+
+    monitor.sendline("quit")
+
+    try:
+        qemu.wait(timeout=3)
+    except subprocess32.TimeoutExpired:
+        qemu.terminate()
+
+    DEVNULL.close()
