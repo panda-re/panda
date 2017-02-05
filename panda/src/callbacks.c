@@ -463,6 +463,8 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
         if (strcmp(ret->list[i].key, "help") == 0) {
             panda_help_wanted = true;
             printf("Options for plugin %s:\n", plugin_name); 
+            fprintf(stderr, "ARGUMENT                REQUIRED        DESCRIPTION\n");
+            fprintf(stderr, "========                ========        ===========\n");
         }
     }
 
@@ -497,7 +499,7 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s\n", argname, help);
+        fprintf(stderr, "%-24sOptional        %s (default=true)\n", argname, help);
     }
 
     // not found
@@ -534,7 +536,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s (default=" TARGET_FMT_ld ")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
+        else fprintf(stderr, "%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", argname, help, defval);
     }
 
     return defval;
@@ -570,7 +573,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s (default=%d)\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
+        else fprintf(stderr, "%-24sOptional        %s (default=%d)\n", argname, help, defval);
     }
 
     return defval;
@@ -606,7 +610,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s (default=%" PRId64 ")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-24sRequired        %s)\n", argname, help);
+        else fprintf(stderr, "%-24sOptional        %s (default=%" PRId64 ")\n", argname, help, defval);
     }
 
     return defval;
@@ -642,7 +647,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s (default=%f)\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
+        else fprintf(stderr, "%-24sOptional        %s (default=%f)\n", argname, help, defval);
     }
 
     return defval;
@@ -716,7 +722,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%s\t\t%s (default=\"%s\")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
+        else fprintf(stderr, "%-24sOptional        %s (default=\"%s\")\n", argname, help, defval);
     }
 
     return defval;

@@ -116,7 +116,7 @@ bool init_plugin(void *self) {
     panda_require("taint2");
     assert (init_taint2_api());    
     panda_arg_list *args = panda_get_args("tainted_instr");
-    summary = panda_parse_bool(args, "summary");
+    summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
     if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
     /*
     panda_cb pcb;

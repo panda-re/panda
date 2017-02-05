@@ -4,6 +4,7 @@ libfi
 loaded
 osi
 osi_linux
+osi_test
 pri
 pri_dwarf
 pri_simple

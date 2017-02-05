@@ -372,8 +372,8 @@ bool init_plugin(void *self) {
 
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
     panda_arg_list *args = panda_get_args("pri_taint");
-    hypercall_taint = panda_parse_bool(args, "hypercall");
-    linechange_taint = panda_parse_bool(args, "linechange");
+    hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
+    linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
         linechange_taint = true;

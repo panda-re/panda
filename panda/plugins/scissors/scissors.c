@@ -272,9 +272,9 @@ bool init_plugin(void *self) {
 
     panda_arg_list *args = panda_get_args("scissors");
     if (args != NULL) {
-        name = panda_parse_string(args, "name", "scissors");
-        start_count = panda_parse_uint64(args, "start", 0);
-        end_count = panda_parse_uint64(args, "end", UINT64_MAX);
+        name = panda_parse_string_req(args, "name", "name of the scissored replay");
+        start_count = panda_parse_uint64_opt(args, "start", 0, "starting instruction count");
+        end_count = panda_parse_uint64_opt(args, "end", UINT64_MAX, "ending instruction count");
     }
 
     snprintf(nondet_name, 128, "%s-rr-nondet.log", name);
