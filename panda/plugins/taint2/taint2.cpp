@@ -641,7 +641,10 @@ void i386_hypercall_callback(CPUState *cpu){
 #else
         target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
         if ((int)addr == -1) {
-            printf ("panda hypercall with ptr to invalid PandaHypercallStruct: vaddr=0x%x paddr=0x%x\n",
+            // if EAX is not a valid ptr, then it is unlikely that this is a
+            // PandaHypercall which requires EAX to point to a block of memory
+            // defined by PandaHypercallStruct
+            printf ("cpuid with invalid ptr in EAX: vaddr=0x%x paddr=0x%x. Probably not a Panda Hypercall\n",
                     (uint32_t) env->regs[R_EAX], (uint32_t) addr);
         }
         else {
