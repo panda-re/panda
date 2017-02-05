@@ -1,13 +1,13 @@
 #!/usr/bin/env python2.7
+import json
 import os
+import pipes
+import shutil
+import socket
+import subprocess32
 import sys
 import tempfile
-import subprocess32
-import shutil
 import time
-import pipes
-import json
-import socket
 
 from colorama import Fore, Style
 from os.path import abspath, join
