@@ -19,26 +19,23 @@ PANDAENDCOMMENT */
 #define INVOKE_FREQ_PGD
 //#define INVOKE_FREQ_BBL
 
-#include "config.h"
-#include "qemu-common.h"
-
-#include "panda_plugin.h"
-#include "../osi/osi_types.h"
-#include "../osi/osi_ext.h"
+#include "panda/plugin.h"
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-int vmi_pgd_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd);
-int before_block_exec(CPUState *env, TranslationBlock *tb);
+int vmi_pgd_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
+int before_block_exec(CPUState *cpu, TranslationBlock *tb);
 
-int before_block_exec(CPUState *env, TranslationBlock *tb) {
+int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     int i;
 
-    OsiProc *current = get_current_process(env);
+    OsiProc *current = get_current_process(cpu);
     printf("Current process: %s PID:" TARGET_FMT_ld " PPID:" TARGET_FMT_ld "\n", current->name, current->pid, current->ppid);
 
-    OsiModules *ms = get_libraries(env, current);
+    OsiModules *ms = get_libraries(cpu, current);
     if (ms == NULL) {
         printf("No mapped dynamic libraries.\n");
     }
@@ -50,7 +47,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     printf("\n");
 
-    OsiProcs *ps = get_processes(env);
+    OsiProcs *ps = get_processes(cpu);
     if (ps == NULL) {
         printf("Process list not available.\n");
     }
@@ -62,7 +59,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     printf("\n");
 
-    OsiModules *kms = get_modules(env);
+    OsiModules *kms = get_modules(cpu);
     if (kms == NULL) {
         printf("No mapped kernel modules.\n");
     }
@@ -82,16 +79,16 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     return 0;
 }
 
-int vmi_pgd_changed(CPUState *env, target_ulong old_pgd, target_ulong new_pgd) {
+int vmi_pgd_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
-    return before_block_exec(env, NULL);
+    return before_block_exec(cpu, NULL);
 }
 
 bool init_plugin(void *self) {
 #if defined(INVOKE_FREQ_PGD)
     // relatively short execution
-    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
-    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    panda_cb pcb = { .asid_changed = vmi_pgd_changed };
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #else
     // expect this to take forever to run
     panda_cb pcb = { .before_block_exec = before_block_exec };
