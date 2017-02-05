@@ -34,9 +34,12 @@ void uninit_plugin(void *);
 
 }
 
-using namespace std;
+#include "asid_instr_count.h"
+extern "C" {
+#include "asid_instr_count_int_fns.h"
+}
 
-typedef uint64_t Instr;
+using namespace std;
 
 // instruction count at start of bb before which asid changed
 Instr ac_instr_start=0;
@@ -63,7 +66,7 @@ void update_asid_rr_sub_factor(target_ulong old_asid, InstrRange rri) {
     // update subtract factor for all other asids
     for (auto kvp : asid_rr_sub_factor) {
         auto asid = kvp.first;
-        if (asid != old_asid) asid_rr_sub_factor[asid] += rri_len;            
+        if (asid != old_asid) asid_rr_sub_factor[asid] += rri_len;
     }
     if (asid_rr_sub_factor.count(old_asid) == 0) {
         // first time seeing this asid.  
