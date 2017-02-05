@@ -512,8 +512,8 @@ bool init_plugin(void *self) {
 
 	// Read the name of the kernel configuration to use.
 	panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
-	char *kconf_file = g_strdup(panda_parse_string(plugin_args, "kconf_file", DEFAULT_KERNELINFO_FILE));
-	char *kconf_group = g_strdup(panda_parse_string(plugin_args, "kconf_group", DEFAULT_KERNELINFO_GROUP));
+	char *kconf_file = g_strdup(panda_parse_string_req(plugin_args, "kconf_file", "file containing kernel configuration information"));
+	char *kconf_group = g_strdup(panda_parse_string_req(plugin_args, "kconf_group", "kernel profile to use"));
 	panda_free_args(plugin_args);
 
 	// Load kernel offsets.

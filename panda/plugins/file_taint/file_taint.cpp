@@ -445,15 +445,15 @@ bool init_plugin(void *self) {
     panda_cb pcb;
     panda_arg_list *args;
     args = panda_get_args("file_taint");
-    taint_filename = panda_parse_string(args, "filename", "abc123");
-    positional_labels = panda_parse_bool(args, "pos");
-    no_taint = panda_parse_bool(args, "notaint");
-    end_label = panda_parse_ulong(args, "max_num_labels", 1000000);
-    end_label = panda_parse_ulong(args, "end", end_label);
-    start_label = panda_parse_ulong(args, "start", 0);
-    enable_taint_on_open = panda_parse_bool(args, "enable_taint_on_open");
-    first_instr = panda_parse_uint64(args, "first_instr", 0);
-    taint_stdin = panda_parse_string(args, "use_stdin_for", nullptr);
+    taint_filename = panda_parse_string_opt(args, "filename", "abc123", "filename to taint");
+    positional_labels = panda_parse_bool_req(args, "pos", "use positional labels");
+    no_taint = panda_parse_bool_opt(args, "notaint", "don't actually taint anything");
+    end_label = panda_parse_ulong_opt(args, "max_num_labels", 1000000, "maximum label number to use");
+    end_label = panda_parse_ulong_opt(args, "end", end_label, "which byte to end tainting at");
+    start_label = panda_parse_ulong_opt(args, "start", 0, "which byte to start tainting at");
+    enable_taint_on_open = panda_parse_bool_opt(args, "enable_taint_on_open", "don't turn on taint until the file is opened");
+    first_instr = panda_parse_uint64_opt(args, "first_instr", 0, "don't turn on taint until this instruction");
+    taint_stdin = panda_parse_string_opt(args, "use_stdin_for", nullptr, "not quite finished don't use");
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
