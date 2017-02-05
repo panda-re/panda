@@ -31,10 +31,10 @@ extern "C" {
 #include "stringsearch.h"
 }
 
-using namespace std;
-
 #include "callstack_instr/prog_point.h"
 #include "callstack_instr/callstack_instr_ext.h"
+
+using namespace std;
 
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
