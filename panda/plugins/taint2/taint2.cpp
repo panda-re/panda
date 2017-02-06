@@ -1062,7 +1062,6 @@ bool before_block_exec_invalidate_opt(CPUState *cpu, TranslationBlock *tb) {
 }
 
 bool init_plugin(void *self) {
-    printf("Initializing taint plugin\n");
     plugin_ptr = self;
     panda_cb pcb;
     panda_enable_memcb();

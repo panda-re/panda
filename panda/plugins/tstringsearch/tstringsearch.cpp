@@ -159,8 +159,6 @@ bool labeled = false;
 #endif
 
 bool init_plugin(void *self) {
-    printf ("Initializing tstringsearch\n");
-
     plugin_self = self;
 
     panda_require("stringsearch");
@@ -169,13 +167,12 @@ bool init_plugin(void *self) {
 #ifdef CONFIG_SOFTMMU
 
     panda_arg_list *args;
+    args = panda_get_args("tstringsearch");    
+    positional_tainting = panda_parse_bool_opt(args, "pos", "positional taint");
     args = panda_get_args("general");
     enable_taint_instr_count = 
         panda_parse_uint64_opt(args, "first_instr", 0, 
                                "enable taint at this instruction");
-
-    args = panda_get_args("tstringsearch");    
-    positional_tainting = panda_parse_bool_opt(args, "pos", "positional taint");
 
     // this sets up the taint api fn ptrs so we have access
     assert(init_taint2_api());
