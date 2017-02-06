@@ -670,7 +670,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
     } else {
         vector<Value *> args{
             retConst, const_uint64(ctx, 0),
-            llvConst, const_uint64(ctx, PST->getLocalSlot(ret)),
+            llvConst, constSlot(ret),
             const_uint64(ctx, getValueSize(ret)), constNull(ctx)
         };
         inlineCallBefore(I, copyF, args);
