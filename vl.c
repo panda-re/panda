@@ -149,6 +149,7 @@ void pandalog_open(const char *path, const char *mode);
 int  pandalog_close(void);
 int pandalog = 0;
 int panda_in_main_loop = 0;
+extern bool panda_abort_requested;
 
 #include "panda/rr/rr_log_all.h"
 
@@ -4253,6 +4254,12 @@ int main(int argc, char **argv, char **envp)
           abort();
       }
     }
+
+    // This is to support having a help option in the plugins. If
+    // someone asked for help on a plugin, we don't want to start
+    // anything else.
+    if (panda_abort_requested)
+        exit(0);
 
     replay_configure(icount_opts);
 
