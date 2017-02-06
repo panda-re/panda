@@ -266,7 +266,6 @@ static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
 static inline void rr_write_item(void)
 {
     RR_log_entry item = rr_nondet_log->current_item;
-    uint64_t unused = 0;
 
     // mz save the header
     rr_assert(rr_in_record());
@@ -274,8 +273,6 @@ static inline void rr_write_item(void)
 
 #define RR_WRITE_ITEM(field) rr_fwrite(&(field), sizeof(field), 1)
     // keep replay format the same.
-    RR_WRITE_ITEM(unused);
-    RR_WRITE_ITEM(unused);
     RR_WRITE_ITEM(item.header.prog_point.guest_instr_count);
     RR_WRITE_ITEM(item.header.kind);
     RR_WRITE_ITEM(item.header.callsite_loc);
@@ -713,7 +710,6 @@ static inline void rr_queue_pop_front(void) {
 // Returns pointer to item just read.
 static RR_log_entry *rr_read_item(void) {
     RR_log_entry *item = rr_queue_alloc_back();
-    uint64_t unused;
 
     rr_assert(rr_in_replay());
     rr_assert(!rr_log_is_empty());
@@ -724,8 +720,6 @@ static RR_log_entry *rr_read_item(void) {
 #define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
     // mz read header
     // keep replay format compatible.
-    RR_READ_ITEM(unused);
-    RR_READ_ITEM(unused);
     RR_READ_ITEM(item->header.prog_point.guest_instr_count);
     RR_READ_ITEM(item->header.kind);
     RR_READ_ITEM(item->header.callsite_loc);
@@ -1095,9 +1089,6 @@ void rr_create_record_log(const char* filename)
     // This way, when we print progress, we can use something better than size
     // of log consumed
     //(as that can jump //sporadically).
-    uint64_t unused = 0;
-    rr_fwrite(&unused, sizeof(unused), 1);
-    rr_fwrite(&unused, sizeof(unused), 1);
     rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
@@ -1124,9 +1115,6 @@ void rr_create_replay_log(const char* filename)
                  rr_nondet_log->size);
     }
     // mz read the last program point from the log header.
-    uint64_t unused;
-    rr_fread(&unused, sizeof(unused), 1);
-    rr_fread(&unused, sizeof(unused), 1);
     rr_fread(&(rr_nondet_log->last_prog_point.guest_instr_count),
             sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
 }
@@ -1138,9 +1126,6 @@ void rr_destroy_log(void)
         // mz if in record, update the header with the last written prog point.
         if (rr_nondet_log->type == RECORD) {
             rewind(rr_nondet_log->fp);
-            uint64_t unused = 0;
-            rr_fwrite(&unused, sizeof(unused), 1);
-            rr_fwrite(&unused, sizeof(unused), 1);
             rr_fwrite(&(rr_nondet_log->last_prog_point.guest_instr_count),
                     sizeof(rr_nondet_log->last_prog_point.guest_instr_count), 1);
         }
