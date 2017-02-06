@@ -70,13 +70,14 @@ def transform_arg_copy(orig_filename):
 
 binary = sys.argv[1]
 if binary.startswith('guest:'): binary = binary[6:]
+binary_basename = basename(binary)
 
 # Directory structure:
 # + replays
 # +---+ binary1
 #     +---- cdrom
 #     +---- cdrom.iso
-binary_dir = join(os.getcwd(), 'replays', binary)
+binary_dir = join(os.getcwd(), 'replays', binary_basename)
 if not os.path.exists(binary_dir):
     os.makedirs(binary_dir)
 
@@ -97,5 +98,5 @@ print "new_args =", new_args
 
 create_recording(
     join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
-    qcow, "root", new_args, install_dir, join(binary_dir, binary)
+    qcow, "root", new_args, install_dir, join(binary_dir, binary_basename)
 )
