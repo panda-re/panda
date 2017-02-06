@@ -19,6 +19,7 @@
 #include "net/eth.h"
 #include "sysemu/char.h"
 #include "sysemu/block-backend.h"
+#include "qemu/config-file.h"
 #include "qemu/option.h"
 #include "qemu/timer.h"
 #include "qmp-commands.h"
@@ -1808,7 +1809,6 @@ void hmp_object_add(Monitor *mon, const QDict *qdict)
 {
     Error *err = NULL;
     QemuOpts *opts;
-    Visitor *v;
     Object *obj = NULL;
 
     opts = qemu_opts_from_qdict(qemu_find_opts("object"), qdict, &err);
@@ -1817,9 +1817,7 @@ void hmp_object_add(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    v = opts_visitor_new(opts);
-    obj = user_creatable_add(qdict, v, &err);
-    visit_free(v);
+    obj = user_creatable_add_opts(opts, &err);
     qemu_opts_del(opts);
 
     if (err) {
@@ -2081,13 +2079,11 @@ void hmp_info_memdev(Monitor *mon, const QDict *qdict)
     MemdevList *m = memdev_list;
     Visitor *v;
     char *str;
-    int i = 0;
-
 
     while (m) {
         v = string_output_visitor_new(false, &str);
         visit_type_uint16List(v, NULL, &m->value->host_nodes, NULL);
-        monitor_printf(mon, "memory backend: %d\n", i);
+        monitor_printf(mon, "memory backend: %s\n", m->value->id);
         monitor_printf(mon, "  size:  %" PRId64 "\n", m->value->size);
         monitor_printf(mon, "  merge: %s\n",
                        m->value->merge ? "true" : "false");
@@ -2103,7 +2099,6 @@ void hmp_info_memdev(Monitor *mon, const QDict *qdict)
         g_free(str);
         visit_free(v);
         m = m->next;
-        i++;
     }
 
     monitor_printf(mon, "\n");

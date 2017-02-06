@@ -219,6 +219,7 @@ static void isabus_bridge_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    set_bit(DEVICE_CATEGORY_BRIDGE, dc->categories);
     dc->fw_name = "isa";
 }
 
@@ -287,7 +288,7 @@ MemoryRegion *isa_address_space_io(ISADevice *dev)
 
 type_init(isabus_register_types)
 
-static void parallel_init(ISABus *bus, int index, CharDriverState *chr)
+static void parallel_init(ISABus *bus, int index, Chardev *chr)
 {
     DeviceState *dev;
     ISADevice *isadev;

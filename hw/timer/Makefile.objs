@@ -6,6 +6,9 @@ common-obj-$(CONFIG_DS1338) += ds1338.o
 common-obj-$(CONFIG_HPET) += hpet.o
 common-obj-$(CONFIG_I8254) += i8254_common.o i8254.o
 common-obj-$(CONFIG_M48T59) += m48t59.o
+ifeq ($(CONFIG_ISA_BUS),y)
+common-obj-$(CONFIG_M48T59) += m48t59-isa.o
+endif
 common-obj-$(CONFIG_PL031) += pl031.o
 common-obj-$(CONFIG_PUV3) += puv3_ost.o
 common-obj-$(CONFIG_TWL92230) += twl92230.o
@@ -18,6 +21,7 @@ common-obj-$(CONFIG_IMX) += imx_gpt.o
 common-obj-$(CONFIG_LM32) += lm32_timer.o
 common-obj-$(CONFIG_MILKYMIST) += milkymist-sysctl.o
 
+obj-$(CONFIG_ALTERA_TIMER) += altera_timer.o
 obj-$(CONFIG_EXYNOS4) += exynos4210_mct.o
 obj-$(CONFIG_EXYNOS4) += exynos4210_pwm.o
 obj-$(CONFIG_EXYNOS4) += exynos4210_rtc.o
@@ -34,3 +38,5 @@ obj-$(CONFIG_ALLWINNER_A10_PIT) += allwinner-a10-pit.o
 
 common-obj-$(CONFIG_STM32F2XX_TIMER) += stm32f2xx_timer.o
 common-obj-$(CONFIG_ASPEED_SOC) += aspeed_timer.o
+
+common-obj-$(CONFIG_SUN4V_RTC) += sun4v-rtc.o

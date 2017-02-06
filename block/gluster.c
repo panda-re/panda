@@ -48,7 +48,7 @@ typedef struct BDRVGlusterState {
     struct glfs_fd *fd;
     char *logfile;
     bool supports_seek_data;
-    int debug_level;
+    int debug;
 } BDRVGlusterState;
 
 typedef struct BDRVGlusterReopenState {
@@ -239,12 +239,13 @@ static glfs_t *glfs_find_preopened(const char *volume)
 static void glfs_clear_preopened(glfs_t *fs)
 {
     ListElement *entry = NULL;
+    ListElement *next;
 
     if (fs == NULL) {
         return;
     }
 
-    QLIST_FOREACH(entry, &glfs_list, list) {
+    QLIST_FOREACH_SAFE(entry, &glfs_list, list, next) {
         if (entry->saved.fs == fs) {
             if (--entry->saved.ref) {
                 return;
@@ -433,7 +434,7 @@ static struct glfs *qemu_gluster_glfs_init(BlockdevOptionsGluster *gconf,
         }
     }
 
-    ret = glfs_set_logging(glfs, gconf->logfile, gconf->debug_level);
+    ret = glfs_set_logging(glfs, gconf->logfile, gconf->debug);
     if (ret < 0) {
         goto out;
     }
@@ -787,17 +788,17 @@ static int qemu_gluster_open(BlockDriverState *bs,  QDict *options,
 
     filename = qemu_opt_get(opts, GLUSTER_OPT_FILENAME);
 
-    s->debug_level = qemu_opt_get_number(opts, GLUSTER_OPT_DEBUG,
-                                         GLUSTER_DEBUG_DEFAULT);
-    if (s->debug_level < 0) {
-        s->debug_level = 0;
-    } else if (s->debug_level > GLUSTER_DEBUG_MAX) {
-        s->debug_level = GLUSTER_DEBUG_MAX;
+    s->debug = qemu_opt_get_number(opts, GLUSTER_OPT_DEBUG,
+                                   GLUSTER_DEBUG_DEFAULT);
+    if (s->debug < 0) {
+        s->debug = 0;
+    } else if (s->debug > GLUSTER_DEBUG_MAX) {
+        s->debug = GLUSTER_DEBUG_MAX;
     }
 
     gconf = g_new0(BlockdevOptionsGluster, 1);
-    gconf->debug_level = s->debug_level;
-    gconf->has_debug_level = true;
+    gconf->debug = s->debug;
+    gconf->has_debug = true;
 
     logfile = qemu_opt_get(opts, GLUSTER_OPT_LOGFILE);
     s->logfile = g_strdup(logfile ? logfile : GLUSTER_LOGFILE_DEFAULT);
@@ -873,8 +874,8 @@ static int qemu_gluster_reopen_prepare(BDRVReopenState *state,
     qemu_gluster_parse_flags(state->flags, &open_flags);
 
     gconf = g_new0(BlockdevOptionsGluster, 1);
-    gconf->debug_level = s->debug_level;
-    gconf->has_debug_level = true;
+    gconf->debug = s->debug;
+    gconf->has_debug = true;
     gconf->logfile = g_strdup(s->logfile);
     gconf->has_logfile = true;
     reop_s->glfs = qemu_gluster_init(gconf, state->bs->filename, NULL, errp);
@@ -1010,14 +1011,14 @@ static int qemu_gluster_create(const char *filename,
     char *tmp = NULL;
 
     gconf = g_new0(BlockdevOptionsGluster, 1);
-    gconf->debug_level = qemu_opt_get_number_del(opts, GLUSTER_OPT_DEBUG,
-                                                 GLUSTER_DEBUG_DEFAULT);
-    if (gconf->debug_level < 0) {
-        gconf->debug_level = 0;
-    } else if (gconf->debug_level > GLUSTER_DEBUG_MAX) {
-        gconf->debug_level = GLUSTER_DEBUG_MAX;
+    gconf->debug = qemu_opt_get_number_del(opts, GLUSTER_OPT_DEBUG,
+                                           GLUSTER_DEBUG_DEFAULT);
+    if (gconf->debug < 0) {
+        gconf->debug = 0;
+    } else if (gconf->debug > GLUSTER_DEBUG_MAX) {
+        gconf->debug = GLUSTER_DEBUG_MAX;
     }
-    gconf->has_debug_level = true;
+    gconf->has_debug = true;
 
     gconf->logfile = qemu_opt_get_del(opts, GLUSTER_OPT_LOGFILE);
     if (!gconf->logfile) {
@@ -1252,7 +1253,7 @@ static int qemu_gluster_has_zero_init(BlockDriverState *bs)
  * If @start is in a trailing hole or beyond EOF, return -ENXIO.
  * If we can't find out, return a negative errno other than -ENXIO.
  *
- * (Shamefully copied from raw-posix.c, only miniscule adaptions.)
+ * (Shamefully copied from file-posix.c, only miniscule adaptions.)
  */
 static int find_allocation(BlockDriverState *bs, off_t start,
                            off_t *data, off_t *hole)
@@ -1348,7 +1349,7 @@ exit:
  * 'nb_sectors' is the max value 'pnum' should be set to.  If nb_sectors goes
  * beyond the end of the disk image it will be clamped.
  *
- * (Based on raw_co_get_block_status() from raw-posix.c.)
+ * (Based on raw_co_get_block_status() from file-posix.c.)
  */
 static int64_t coroutine_fn qemu_gluster_co_get_block_status(
         BlockDriverState *bs, int64_t sector_num, int nb_sectors, int *pnum,

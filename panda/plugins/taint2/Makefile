@@ -2,7 +2,7 @@
 QEMU_CXXFLAGS+= $(LLVM_CXXFLAGS)
 
 DBGFLAGS=
-DBGFLAGS+= -DTAINTDEBUG
+DBGFLAGS+= #-DTAINTDEBUG
 
 QEMU_CFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= $(DBGFLAGS)
@@ -10,8 +10,8 @@ QEMU_CXXFLAGS+= $(DBGFLAGS)
 QEMU_CXXFLAGS+= -Wno-type-limits -Wno-cast-qual
 
 TAINT_OP_CFLAGS = -O3 -std=c11 -Wno-typedef-redefinition -fno-stack-protector
-TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -stdlib=libc++ -DTAINTDEBUG
-TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS)
+TAINT_OP_CFLAGS+= -fno-omit-frame-pointer -Wno-type-limits -x c++
+TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS) $(DBGFLAGS)
 
 TAINT_OP_FILTER = -g -Wold-style-declaration -std=c11 -fpermissive
 TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp -mcx16
@@ -26,7 +26,7 @@ $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/taint_processor.o \
     $(PLUGIN_OBJ_DIR)/taint2.o
 
-%_llvm.bc: %.cpp $(wildcard *.h)
+%_llvm.bc: %.h $(wildcard *.h)
 	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	$(call quiet-command,\
 		$(filter-out $(TAINT_OP_FILTER),\

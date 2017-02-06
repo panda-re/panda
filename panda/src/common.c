@@ -204,12 +204,6 @@ void panda_set_os_name(char *os_name) {
     printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
 }
 
-
-// Note: these call things in exec.c
-void panda_invalidate_single_tb(CPUState *cpu, target_ulong pc) {
-    breakpoint_invalidate(cpu, pc);
-}
-
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
     return cpu_physical_memory_rw_ex(addr, buf, len, is_write, true);
 }

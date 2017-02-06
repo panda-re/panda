@@ -327,7 +327,7 @@ static inline int ctpop8(uint8_t val)
 #else
     val = (val & 0x55) + ((val >> 1) & 0x55);
     val = (val & 0x33) + ((val >> 2) & 0x33);
-    val = (val & 0x0f) + ((val >> 4) & 0x0f);
+    val = (val + (val >> 4)) & 0x0f;
 
     return val;
 #endif
@@ -344,8 +344,8 @@ static inline int ctpop16(uint16_t val)
 #else
     val = (val & 0x5555) + ((val >> 1) & 0x5555);
     val = (val & 0x3333) + ((val >> 2) & 0x3333);
-    val = (val & 0x0f0f) + ((val >> 4) & 0x0f0f);
-    val = (val & 0x00ff) + ((val >> 8) & 0x00ff);
+    val = (val + (val >> 4)) & 0x0f0f;
+    val = (val + (val >> 8)) & 0x00ff;
 
     return val;
 #endif
@@ -360,11 +360,10 @@ static inline int ctpop32(uint32_t val)
 #if QEMU_GNUC_PREREQ(3, 4)
     return __builtin_popcount(val);
 #else
-    val = (val & 0x55555555) + ((val >>  1) & 0x55555555);
-    val = (val & 0x33333333) + ((val >>  2) & 0x33333333);
-    val = (val & 0x0f0f0f0f) + ((val >>  4) & 0x0f0f0f0f);
-    val = (val & 0x00ff00ff) + ((val >>  8) & 0x00ff00ff);
-    val = (val & 0x0000ffff) + ((val >> 16) & 0x0000ffff);
+    val = (val & 0x55555555) + ((val >> 1) & 0x55555555);
+    val = (val & 0x33333333) + ((val >> 2) & 0x33333333);
+    val = (val + (val >> 4)) & 0x0f0f0f0f;
+    val = (val * 0x01010101) >> 24;
 
     return val;
 #endif
@@ -379,12 +378,10 @@ static inline int ctpop64(uint64_t val)
 #if QEMU_GNUC_PREREQ(3, 4)
     return __builtin_popcountll(val);
 #else
-    val = (val & 0x5555555555555555ULL) + ((val >>  1) & 0x5555555555555555ULL);
-    val = (val & 0x3333333333333333ULL) + ((val >>  2) & 0x3333333333333333ULL);
-    val = (val & 0x0f0f0f0f0f0f0f0fULL) + ((val >>  4) & 0x0f0f0f0f0f0f0f0fULL);
-    val = (val & 0x00ff00ff00ff00ffULL) + ((val >>  8) & 0x00ff00ff00ff00ffULL);
-    val = (val & 0x0000ffff0000ffffULL) + ((val >> 16) & 0x0000ffff0000ffffULL);
-    val = (val & 0x00000000ffffffffULL) + ((val >> 32) & 0x00000000ffffffffULL);
+    val = (val & 0x5555555555555555ULL) + ((val >> 1) & 0x5555555555555555ULL);
+    val = (val & 0x3333333333333333ULL) + ((val >> 2) & 0x3333333333333333ULL);
+    val = (val + (val >> 4)) & 0x0f0f0f0f0f0f0f0fULL;
+    val = (val * 0x0101010101010101ULL) >> 56;
 
     return val;
 #endif
@@ -515,5 +512,32 @@ static inline uint64_t pow2ceil(uint64_t value)
     }
     return 1ULL << (64 - nlz);
 }
+
+/**
+ * urshift - 128-bit Unsigned Right Shift.
+ * @plow: in/out - lower 64-bit integer.
+ * @phigh: in/out - higher 64-bit integer.
+ * @shift: in - bytes to shift, between 0 and 127.
+ *
+ * Result is zero-extended and stored in plow/phigh, which are
+ * input/output variables. Shift values outside the range will
+ * be mod to 128. In other words, the caller is responsible to
+ * verify/assert both the shift range and plow/phigh pointers.
+ */
+void urshift(uint64_t *plow, uint64_t *phigh, int32_t shift);
+
+/**
+ * ulshift - 128-bit Unsigned Left Shift.
+ * @plow: in/out - lower 64-bit integer.
+ * @phigh: in/out - higher 64-bit integer.
+ * @shift: in - bytes to shift, between 0 and 127.
+ * @overflow: out - true if any 1-bit is shifted out.
+ *
+ * Result is zero-extended and stored in plow/phigh, which are
+ * input/output variables. Shift values outside the range will
+ * be mod to 128. In other words, the caller is responsible to
+ * verify/assert both the shift range and plow/phigh pointers.
+ */
+void ulshift(uint64_t *plow, uint64_t *phigh, int32_t shift, bool *overflow);
 
 #endif

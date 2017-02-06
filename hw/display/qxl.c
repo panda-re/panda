@@ -306,12 +306,11 @@ void qxl_spice_reset_cursor(PCIQXLDevice *qxl)
 
 static ram_addr_t qxl_rom_size(void)
 {
-    uint32_t required_rom_size = sizeof(QXLRom) + sizeof(QXLModes) +
-                                 sizeof(qxl_modes);
-    uint32_t rom_size = 8192; /* two pages */
+#define QXL_REQUIRED_SZ (sizeof(QXLRom) + sizeof(QXLModes) + sizeof(qxl_modes))
+#define QXL_ROM_SZ 8192
 
-    QEMU_BUILD_BUG_ON(required_rom_size > rom_size);
-    return rom_size;
+    QEMU_BUILD_BUG_ON(QXL_REQUIRED_SZ > QXL_ROM_SZ);
+    return QXL_ROM_SZ;
 }
 
 static void init_qxl_rom(PCIQXLDevice *d)
@@ -992,6 +991,34 @@ static uint32_t qxl_crc32(const uint8_t *p, unsigned len)
     return crc32(0xffffffff, p, len) ^ 0xffffffff;
 }
 
+static bool qxl_rom_monitors_config_changed(QXLRom *rom,
+        VDAgentMonitorsConfig *monitors_config,
+        unsigned int max_outputs)
+{
+    int i;
+    unsigned int monitors_count;
+
+    monitors_count = MIN(monitors_config->num_of_monitors, max_outputs);
+
+    if (rom->client_monitors_config.count != monitors_count) {
+        return true;
+    }
+
+    for (i = 0 ; i < rom->client_monitors_config.count ; ++i) {
+        VDAgentMonConfig *monitor = &monitors_config->monitors[i];
+        QXLURect *rect = &rom->client_monitors_config.heads[i];
+        /* monitor->depth ignored */
+        if ((rect->left != monitor->x) ||
+            (rect->top != monitor->y)  ||
+            (rect->right != monitor->x + monitor->width) ||
+            (rect->bottom != monitor->y + monitor->height)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /* called from main context only */
 static int interface_client_monitors_config(QXLInstance *sin,
                                         VDAgentMonitorsConfig *monitors_config)
@@ -1000,6 +1027,7 @@ static int interface_client_monitors_config(QXLInstance *sin,
     QXLRom *rom = memory_region_get_ram_ptr(&qxl->rom_bar);
     int i;
     unsigned max_outputs = ARRAY_SIZE(rom->client_monitors_config.heads);
+    bool config_changed = false;
 
     if (qxl->revision < 4) {
         trace_qxl_client_monitors_config_unsupported_by_device(qxl->id,
@@ -1030,6 +1058,10 @@ static int interface_client_monitors_config(QXLInstance *sin,
     }
 #endif
 
+    config_changed = qxl_rom_monitors_config_changed(rom,
+                                                     monitors_config,
+                                                     max_outputs);
+
     memset(&rom->client_monitors_config, 0,
            sizeof(rom->client_monitors_config));
     rom->client_monitors_config.count = monitors_config->num_of_monitors;
@@ -1059,7 +1091,9 @@ static int interface_client_monitors_config(QXLInstance *sin,
     trace_qxl_interrupt_client_monitors_config(qxl->id,
                         rom->client_monitors_config.count,
                         rom->client_monitors_config.heads);
-    qxl_send_events(qxl, QXL_INTERRUPT_CLIENT_MONITORS_CONFIG);
+    if (config_changed) {
+        qxl_send_events(qxl, QXL_INTERRUPT_CLIENT_MONITORS_CONFIG);
+    }
     return 1;
 }
 

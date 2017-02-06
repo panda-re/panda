@@ -27,7 +27,7 @@
 
 #include "qemu-common.h"
 #include "exec/memory.h"
-#include "target-arm/cpu-qom.h"
+#include "target/arm/cpu-qom.h"
 
 #define EXYNOS4210_NCPUS                    2
 
@@ -131,7 +131,7 @@ void exynos4210_combiner_get_gpioin(Exynos4210Irq *irqs, DeviceState *dev,
 DeviceState *exynos4210_uart_create(hwaddr addr,
                                     int fifo_size,
                                     int channel,
-                                    CharDriverState *chr,
+                                    Chardev *chr,
                                     qemu_irq irq);
 
 #endif /* EXYNOS4210_H */

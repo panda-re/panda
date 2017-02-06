@@ -63,7 +63,6 @@ void qemu_system_vmstop_request_prepare(void);
 int qemu_shutdown_requested_get(void);
 int qemu_reset_requested_get(void);
 void qemu_system_killed(int signal, pid_t pid);
-void qemu_devices_reset(void);
 void qemu_system_reset(bool report);
 void qemu_system_guest_panicked(void);
 size_t qemu_target_page_bits(void);
@@ -75,6 +74,7 @@ void qemu_add_machine_init_done_notifier(Notifier *notify);
 void qemu_remove_machine_init_done_notifier(Notifier *notify);
 
 void hmp_savevm(Monitor *mon, const QDict *qdict);
+int save_vmstate(Monitor *mon, const char *name);
 int load_vmstate(const char *name);
 void hmp_delvm(Monitor *mon, const QDict *qdict);
 void hmp_info_snapshots(Monitor *mon, const QDict *qdict);
@@ -169,13 +169,6 @@ extern int mem_prealloc;
 #define MAX_NODES 128
 #define NUMA_NODE_UNASSIGNED MAX_NODES
 
-/* The following shall be true for all CPUs:
- *   cpu->cpu_index < max_cpus <= MAX_CPUMASK_BITS
- *
- * Note that cpu->get_arch_id() may be larger than MAX_CPUMASK_BITS.
- */
-#define MAX_CPUMASK_BITS 288
-
 #define MAX_OPTION_ROMS 16
 typedef struct QEMUOptionRom {
     const char *name;
@@ -198,13 +191,13 @@ void hmp_pcie_aer_inject_error(Monitor *mon, const QDict *qdict);
 
 #define MAX_SERIAL_PORTS 4
 
-extern CharDriverState *serial_hds[MAX_SERIAL_PORTS];
+extern Chardev *serial_hds[MAX_SERIAL_PORTS];
 
 /* parallel ports */
 
 #define MAX_PARALLEL_PORTS 3
 
-extern CharDriverState *parallel_hds[MAX_PARALLEL_PORTS];
+extern Chardev *parallel_hds[MAX_PARALLEL_PORTS];
 
 void hmp_usb_add(Monitor *mon, const QDict *qdict);
 void hmp_usb_del(Monitor *mon, const QDict *qdict);
