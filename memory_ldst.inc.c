@@ -376,7 +376,12 @@ void glue(address_space_stl_notdirty, SUFFIX)(ARG1_DECL,
     if (l < 4 || !IS_DIRECT(mr, true)) {
         release_lock |= prepare_mmio_access(mr);
 
-        r = memory_region_dispatch_write(mr, addr1, val, 4, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+        /*action=*/
+        r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
+        /*record=*/RR_NO_ACTION,
+        /*replay=*/r = MEMTX_OK,
+        /*location=*/RR_CALLSITE_WRITE_4);
     } else {
         ptr = MAP_RAM(mr, addr1);
         stl_p(ptr, val);
@@ -522,7 +527,12 @@ void glue(address_space_stb, SUFFIX)(ARG1_DECL,
     mr = TRANSLATE(addr, &addr1, &l, true);
     if (!IS_DIRECT(mr, true)) {
         release_lock |= prepare_mmio_access(mr);
-        r = memory_region_dispatch_write(mr, addr1, val, 1, attrs);
+        RR_DO_RECORD_OR_REPLAY(
+        /*action=*/
+        r = memory_region_dispatch_write(mr, addr1, val, 1, attrs),
+        /*record=*/RR_NO_ACTION,
+        /*replay=*/r = MEMTX_OK,
+        /*location=*/RR_CALLSITE_WRITE_1);
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
