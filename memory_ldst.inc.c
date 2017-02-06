@@ -42,7 +42,7 @@ static inline uint32_t glue(address_space_ldl_internal, SUFFIX)(ARG1_DECL,
             /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 4, attrs),
             /*record*/   rr_input_4(&r); rr_input_8(&val),
             /*replay*/   rr_input_4(&r); rr_input_8(&val),
-            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDL_INTERNAL);
+            /*location*/ RR_CALLSITE_READ_4);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap32(val);
@@ -140,7 +140,7 @@ static inline uint64_t glue(address_space_ldq_internal, SUFFIX)(ARG1_DECL,
             /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 8, attrs),
             /*record*/   rr_input_4(&r); rr_input_8(&val),
             /*replay*/   rr_input_4(&r); rr_input_8(&val),
-            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDQ_INTERNAL);
+            /*location*/ RR_CALLSITE_READ_8);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap64(val);
@@ -236,7 +236,7 @@ uint32_t glue(address_space_ldub, SUFFIX)(ARG1_DECL,
             /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 1, attrs),
             /*record*/   rr_input_4(&r); rr_input_8(&val),
             /*replay*/   rr_input_4(&r); rr_input_8(&val),
-            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDUB);
+            /*location*/ RR_CALLSITE_READ_1);
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
@@ -282,7 +282,7 @@ static inline uint32_t glue(address_space_lduw_internal, SUFFIX)(ARG1_DECL,
             /*action*/   r = memory_region_dispatch_read(mr, addr1, &val, 2, attrs),
             /*record*/   rr_input_4(&r); rr_input_8(&val),
             /*replay*/   rr_input_4(&r); rr_input_8(&val),
-            /*location*/ RR_CALLSITE_ADDRESS_SPACE_LDUW_INTERNAL);
+            /*location*/ RR_CALLSITE_READ_2);
 #if defined(TARGET_WORDS_BIGENDIAN)
         if (endian == DEVICE_LITTLE_ENDIAN) {
             val = bswap16(val);
@@ -439,7 +439,7 @@ static inline void glue(address_space_stl_internal, SUFFIX)(ARG1_DECL,
         r = memory_region_dispatch_write(mr, addr1, val, 4, attrs),
         /*record=*/RR_NO_ACTION,
         /*replay=*/r = MEMTX_OK,
-        /*location=*/RR_CALLSITE_STL_INTERNAL);
+        /*location=*/RR_CALLSITE_WRITE_4);
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
@@ -577,7 +577,7 @@ static inline void glue(address_space_stw_internal, SUFFIX)(ARG1_DECL,
         r = memory_region_dispatch_write(mr, addr1, val, 2, attrs),
         /*record=*/RR_NO_ACTION,
         /*replay=*/r = MEMTX_OK,
-        /*location=*/RR_CALLSITE_STW_INTERNAL);
+        /*location=*/RR_CALLSITE_WRITE_2);
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
@@ -674,7 +674,7 @@ static void glue(address_space_stq_internal, SUFFIX)(ARG1_DECL,
         r = memory_region_dispatch_write(mr, addr1, val, 8, attrs),
         /*record=*/RR_NO_ACTION,
         /*replay=*/r = MEMTX_OK,
-        /*location=*/RR_CALLSITE_STQ_INTERNAL);
+        /*location=*/RR_CALLSITE_WRITE_8);
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);

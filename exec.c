@@ -2672,7 +2672,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                        attrs),
                 /*record=*/RR_NO_ACTION,
                 /*replay=*/RR_NO_ACTION,
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_8);
+                /*location=*/RR_CALLSITE_WRITE_8);
                 break;
             case 4:
                 /* 32 bit write access */
@@ -2683,7 +2683,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                        attrs),
                 /*record=*/RR_NO_ACTION,
                 /*replay=*/RR_NO_ACTION,
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_4);
+                /*location=*/RR_CALLSITE_WRITE_4);
                 break;
             case 2:
                 /* 16 bit write access */
@@ -2694,7 +2694,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                        attrs),
                 /*record=*/RR_NO_ACTION,
                 /*replay=*/RR_NO_ACTION,
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_2);
+                /*location=*/RR_CALLSITE_WRITE_2);
                 break;
             case 1:
                 /* 8 bit write access */
@@ -2705,7 +2705,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
                                                        attrs),
                 /*record=*/RR_NO_ACTION,
                 /*replay=*/RR_NO_ACTION,
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_1);
+                /*location=*/RR_CALLSITE_WRITE_1);
                 break;
             default:
                 abort();
@@ -2786,7 +2786,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
                                                       attrs),
                 /*record=*/rr_input_4(&result); rr_input_8(&val),
                 /*replay=*/rr_input_4(&result); rr_input_8(&val),
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_8);
+                /*location=*/RR_CALLSITE_READ_8);
                 stq_p(buf, val);
                 break;
             case 4:
@@ -2796,7 +2796,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
                                                       attrs),
                 /*record=*/rr_input_4(&result); rr_input_8(&val),
                 /*replay=*/rr_input_4(&result); rr_input_8(&val),
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_4);
+                /*location=*/RR_CALLSITE_READ_4);
                 stl_p(buf, val);
                 break;
             case 2:
@@ -2806,7 +2806,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
                                                       attrs),
                 /*record=*/rr_input_4(&result); rr_input_8(&val),
                 /*replay=*/rr_input_4(&result); rr_input_8(&val),
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_2);
+                /*location=*/RR_CALLSITE_READ_2);
                 stw_p(buf, val);
                 break;
             case 1:
@@ -2816,7 +2816,7 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
                                                       attrs),
                 /*record=*/rr_input_4(&result); rr_input_8(&val),
                 /*replay=*/rr_input_4(&result); rr_input_8(&val),
-                /*location=*/RR_CALLSITE_ADDRESS_SPACE_READ_CONTINUE_1);
+                /*location=*/RR_CALLSITE_READ_1);
                 stb_p(buf, val);
                 break;
             default:
