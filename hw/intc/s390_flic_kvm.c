@@ -201,7 +201,7 @@ static int kvm_s390_register_io_adapter(S390FLICState *fs, uint32_t id,
         .addr = (uint64_t)&adapter,
     };
 
-    if (!kvm_check_extension(kvm_state, KVM_CAP_IRQ_ROUTING)) {
+    if (!kvm_gsi_routing_enabled()) {
         /* nothing to do */
         return 0;
     }
@@ -226,7 +226,7 @@ static int kvm_s390_io_adapter_map(S390FLICState *fs, uint32_t id,
     KVMS390FLICState *flic = KVM_S390_FLIC(fs);
     int r;
 
-    if (!kvm_check_extension(kvm_state, KVM_CAP_IRQ_ROUTING)) {
+    if (!kvm_gsi_routing_enabled()) {
         /* nothing to do */
         return 0;
     }
@@ -286,7 +286,8 @@ static void kvm_s390_release_adapter_routes(S390FLICState *fs,
  * increase until buffer is sufficient or maxium size is
  * reached
  */
-static void kvm_flic_save(QEMUFile *f, void *opaque, size_t size)
+static int kvm_flic_save(QEMUFile *f, void *opaque, size_t size,
+                         VMStateField *field, QJSON *vmdesc)
 {
     KVMS390FLICState *flic = opaque;
     int len = FLIC_SAVE_INITIAL_SIZE;
@@ -302,7 +303,7 @@ static void kvm_flic_save(QEMUFile *f, void *opaque, size_t size)
          * migration state */
         error_report("flic: couldn't allocate memory");
         qemu_put_be64(f, FLIC_FAILED);
-        return;
+        return 0;
     }
 
     count = __get_all_irqs(flic, &buf, len);
@@ -319,6 +320,8 @@ static void kvm_flic_save(QEMUFile *f, void *opaque, size_t size)
                         count * sizeof(struct kvm_s390_irq));
     }
     g_free(buf);
+
+    return 0;
 }
 
 /**
@@ -331,7 +334,8 @@ static void kvm_flic_save(QEMUFile *f, void *opaque, size_t size)
  * Note: Do nothing when no interrupts where stored
  * in QEMUFile
  */
-static int kvm_flic_load(QEMUFile *f, void *opaque, size_t size)
+static int kvm_flic_load(QEMUFile *f, void *opaque, size_t size,
+                         VMStateField *field)
 {
     uint64_t len = 0;
     uint64_t count = 0;

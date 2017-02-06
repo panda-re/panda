@@ -26,6 +26,7 @@
 #include "hw/i386/apic.h"
 #include "hw/i386/apic_internal.h"
 #include "trace.h"
+#include "sysemu/hax.h"
 #include "sysemu/kvm.h"
 #include "hw/qdev.h"
 #include "hw/sysbus.h"
@@ -316,7 +317,7 @@ static void apic_common_realize(DeviceState *dev, Error **errp)
 
     /* Note: We need at least 1M to map the VAPIC option ROM */
     if (!vapic && s->vapic_control & VAPIC_ENABLE_MASK &&
-        ram_size >= 1024 * 1024) {
+        !hax_enabled() && ram_size >= 1024 * 1024) {
         vapic = sysbus_create_simple("kvmvapic", -1, NULL);
     }
     s->vapic = vapic;
@@ -384,6 +385,25 @@ static bool apic_common_sipi_needed(void *opaque)
     return s->wait_for_sipi != 0;
 }
 
+static bool apic_irq_delivered_needed(void *opaque)
+{
+    APICCommonState *s = APIC_COMMON(opaque);
+    return s->cpu == X86_CPU(first_cpu) && apic_irq_delivered != 0;
+}
+
+static void apic_irq_delivered_pre_save(void *opaque)
+{
+    APICCommonState *s = APIC_COMMON(opaque);
+    s->apic_irq_delivered = apic_irq_delivered;
+}
+
+static int apic_irq_delivered_post_load(void *opaque, int version_id)
+{
+    APICCommonState *s = APIC_COMMON(opaque);
+    apic_irq_delivered = s->apic_irq_delivered;
+    return 0;
+}
+
 static const VMStateDescription vmstate_apic_common_sipi = {
     .name = "apic_sipi",
     .version_id = 1,
@@ -392,6 +412,19 @@ static const VMStateDescription vmstate_apic_common_sipi = {
     .fields = (VMStateField[]) {
         VMSTATE_INT32(sipi_vector, APICCommonState),
         VMSTATE_INT32(wait_for_sipi, APICCommonState),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static const VMStateDescription vmstate_apic_irq_delivered = {
+    .name = "apic_irq_delivered",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .needed = apic_irq_delivered_needed,
+    .pre_save = apic_irq_delivered_pre_save,
+    .post_load = apic_irq_delivered_post_load,
+    .fields = (VMStateField[]) {
+        VMSTATE_INT32(apic_irq_delivered, APICCommonState),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -430,6 +463,7 @@ static const VMStateDescription vmstate_apic_common = {
     },
     .subsections = (const VMStateDescription*[]) {
         &vmstate_apic_common_sipi,
+        &vmstate_apic_irq_delivered,
         NULL
     }
 };

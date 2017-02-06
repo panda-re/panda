@@ -1,3 +1,6 @@
+# necessary for QEMU headers to compile in C++ code.
+QEMU_CXXFLAGS += -Wno-pointer-arith
+
 # determine list of plugins
 # remove spaces from lines. skip lines starting with a #. concatenate the rest into a space-delimited list
 PANDA_PLUGINS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.panda | grep -v "^\#" | xargs)
@@ -35,6 +38,7 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
 plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f "$(SRC_PATH)/panda/plugins/panda.mak" \
@@ -43,6 +47,7 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
 extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
 		-f "$(SRC_PATH)/panda/plugins/panda.mak" \
@@ -138,22 +143,22 @@ X86_HELPERS += svm_helper.bc2 smm_helper.bc2 misc_helper.bc2 mem_helper.bc2 seg_
 X86_HELPERS += mpx_helper.bc2
 
 llvm-$(TARGET_I386) += fpu/softfloat.bc2
-llvm-$(TARGET_I386) += $(addprefix target-i386/,$(X86_HELPERS))
+llvm-$(TARGET_I386) += $(addprefix target/i386/,$(X86_HELPERS))
 llvmmorph-$(TARGET_I386) += llvm-helpers.bc
 
 llvm-$(TARGET_X86_64) += fpu/softfloat.bc2
-llvm-$(TARGET_X86_64) += $(addprefix target-i386/,$(X86_HELPERS))
+llvm-$(TARGET_X86_64) += $(addprefix target/i386/,$(X86_HELPERS))
 llvmmorph-$(TARGET_X86_64) += llvm-helpers.bc
 
 ARM_HELPERS = op_helper.bc2 helper.bc2 neon_helper.bc2 iwmmxt_helper.bc2
 ARM_HELPERS += crypto_helper.bc2
 
 llvm-$(TARGET_ARM) += fpu/softfloat.bc2
-llvm-$(TARGET_ARM) += $(addprefix target-arm/,$(ARM_HELPERS))
+llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
 
 CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16
-QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2
+QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
 %.bc2: %.c $(GENERATED_HEADERS)
 	$(call quiet-command,\
 		$(LLVMCC) $(QEMU_INCLUDES) $(QEMU_BC2FLAGS) $(QEMU_DGFLAGS) -c -emit-llvm -o $@ $<,\
@@ -169,7 +174,10 @@ panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS)
 panda/tools:
 	$(call quiet-command,mkdir -p panda/tools,)
 
-panda/tools/helper_call_modifier.o: | panda/tools
+../panda/tools:
+	$(call quiet-command,mkdir -p ../panda/tools,)
+
+panda/tools/helper_call_modifier.o: | panda/tools ../panda/tools
 panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 
 llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier

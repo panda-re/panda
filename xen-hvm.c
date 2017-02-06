@@ -22,7 +22,7 @@
 #include "qemu/error-report.h"
 #include "qemu/range.h"
 #include "sysemu/xen-mapcache.h"
-#include "trace.h"
+#include "trace-root.h"
 #include "exec/address-spaces.h"
 
 #include <xen/hvm/ioreq.h>
@@ -810,6 +810,10 @@ static void cpu_ioreq_pio(ioreq_t *req)
     trace_cpu_ioreq_pio(req, req->dir, req->df, req->data_is_ptr, req->addr,
                          req->data, req->count, req->size);
 
+    if (req->size > sizeof(uint32_t)) {
+        hw_error("PIO: bad size (%u)", req->size);
+    }
+
     if (req->dir == IOREQ_READ) {
         if (!req->data_is_ptr) {
             req->data = do_inp(req->addr, req->size);
@@ -845,6 +849,10 @@ static void cpu_ioreq_move(ioreq_t *req)
 
     trace_cpu_ioreq_move(req, req->dir, req->df, req->data_is_ptr, req->addr,
                          req->data, req->count, req->size);
+
+    if (req->size > sizeof(req->data)) {
+        hw_error("MMIO: bad size (%u)", req->size);
+    }
 
     if (!req->data_is_ptr) {
         if (req->dir == IOREQ_READ) {
@@ -987,6 +995,9 @@ static int handle_buffered_iopage(XenIOState *state)
     }
 
     memset(&req, 0x00, sizeof(req));
+    req.state = STATE_IOREQ_READY;
+    req.count = 1;
+    req.dir = IOREQ_WRITE;
 
     for (;;) {
         uint32_t rdptr = buf_page->read_pointer, wrptr;
@@ -1001,23 +1012,32 @@ static int handle_buffered_iopage(XenIOState *state)
             break;
         }
         buf_req = &buf_page->buf_ioreq[rdptr % IOREQ_BUFFER_SLOT_NUM];
-        req.size = 1UL << buf_req->size;
-        req.count = 1;
+        req.size = 1U << buf_req->size;
         req.addr = buf_req->addr;
         req.data = buf_req->data;
-        req.state = STATE_IOREQ_READY;
-        req.dir = buf_req->dir;
-        req.df = 1;
         req.type = buf_req->type;
-        req.data_is_ptr = 0;
+        xen_rmb();
         qw = (req.size == 8);
         if (qw) {
+            if (rdptr + 1 == wrptr) {
+                hw_error("Incomplete quad word buffered ioreq");
+            }
             buf_req = &buf_page->buf_ioreq[(rdptr + 1) %
                                            IOREQ_BUFFER_SLOT_NUM];
             req.data |= ((uint64_t)buf_req->data) << 32;
+            xen_rmb();
         }
 
         handle_ioreq(state, &req);
+
+        /* Only req.data may get updated by handle_ioreq(), albeit even that
+         * should not happen as such data would never make it to the guest (we
+         * can only usefully see writes here after all).
+         */
+        assert(req.state == STATE_IOREQ_READY);
+        assert(req.count == 1);
+        assert(req.dir == IOREQ_WRITE);
+        assert(!req.data_is_ptr);
 
         atomic_add(&buf_page->read_pointer, qw + 1);
     }
@@ -1045,7 +1065,11 @@ static void cpu_handle_ioreq(void *opaque)
 
     handle_buffered_iopage(state);
     if (req) {
-        handle_ioreq(state, req);
+        ioreq_t copy = *req;
+
+        xen_rmb();
+        handle_ioreq(state, &copy);
+        req->data = copy.data;
 
         if (req->state != STATE_IOREQ_INPROCESS) {
             fprintf(stderr, "Badness in I/O request ... not in service?!: "
@@ -1316,6 +1340,10 @@ void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory)
     }
     xen_be_register_common();
     xen_read_physmap(state);
+
+    /* Disable ACPI build because Xen handles it */
+    pcms->acpi_build_enabled = false;
+
     return;
 
 err:

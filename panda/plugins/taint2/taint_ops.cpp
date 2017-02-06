@@ -439,7 +439,8 @@ static void update_cb(
     uint64_t &one_mask = cb_masks.one_mask;
     uint64_t &zero_mask = cb_masks.zero_mask;
 
-    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask, orig_cb_mask = cb_mask;
+    uint64_t orig_one_mask = one_mask, orig_zero_mask = zero_mask;
+    __attribute__((unused)) uint64_t orig_cb_mask = cb_mask;
     std::vector<uint64_t> literals;
     uint64_t last_literal = ~0UL; // last valid literal.
     literals.reserve(I->getNumOperands());

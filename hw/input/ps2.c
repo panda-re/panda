@@ -252,6 +252,9 @@ static const uint16_t qcode_to_keycode_set1[Q_KEY_CODE__MAX] = {
     [Q_KEY_CODE_ASTERISK] = 0x37,
     [Q_KEY_CODE_LESS] = 0x56,
     [Q_KEY_CODE_RO] = 0x73,
+    [Q_KEY_CODE_HIRAGANA] = 0x70,
+    [Q_KEY_CODE_HENKAN] = 0x79,
+    [Q_KEY_CODE_YEN] = 0x7d,
     [Q_KEY_CODE_KP_COMMA] = 0x7e,
 };
 
@@ -394,6 +397,9 @@ static const uint16_t qcode_to_keycode_set2[Q_KEY_CODE__MAX] = {
     [Q_KEY_CODE_LESS] = 0x61,
     [Q_KEY_CODE_SYSRQ] = 0x7f,
     [Q_KEY_CODE_RO] = 0x51,
+    [Q_KEY_CODE_HIRAGANA] = 0x13,
+    [Q_KEY_CODE_HENKAN] = 0x64,
+    [Q_KEY_CODE_YEN] = 0x6a,
     [Q_KEY_CODE_KP_COMMA] = 0x6d,
 };
 
@@ -504,6 +510,10 @@ static const uint16_t qcode_to_keycode_set3[Q_KEY_CODE__MAX] = {
     [Q_KEY_CODE_COMMA] = 0x41,
     [Q_KEY_CODE_DOT] = 0x49,
     [Q_KEY_CODE_SLASH] = 0x4a,
+
+    [Q_KEY_CODE_HIRAGANA] = 0x87,
+    [Q_KEY_CODE_HENKAN] = 0x86,
+    [Q_KEY_CODE_YEN] = 0x5d,
 };
 
 static uint8_t translate_table[256] = {
@@ -871,9 +881,11 @@ static void ps2_mouse_event(DeviceState *dev, QemuConsole *src,
                             InputEvent *evt)
 {
     static const int bmap[INPUT_BUTTON__MAX] = {
-        [INPUT_BUTTON_LEFT]   = MOUSE_EVENT_LBUTTON,
-        [INPUT_BUTTON_MIDDLE] = MOUSE_EVENT_MBUTTON,
-        [INPUT_BUTTON_RIGHT]  = MOUSE_EVENT_RBUTTON,
+        [INPUT_BUTTON_LEFT]   = PS2_MOUSE_BUTTON_LEFT,
+        [INPUT_BUTTON_MIDDLE] = PS2_MOUSE_BUTTON_MIDDLE,
+        [INPUT_BUTTON_RIGHT]  = PS2_MOUSE_BUTTON_RIGHT,
+        [INPUT_BUTTON_SIDE]   = PS2_MOUSE_BUTTON_SIDE,
+        [INPUT_BUTTON_EXTRA]  = PS2_MOUSE_BUTTON_EXTRA,
     };
     PS2MouseState *s = (PS2MouseState *)dev;
     InputMoveEvent *move;

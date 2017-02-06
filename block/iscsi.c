@@ -362,6 +362,7 @@ iscsi_set_events(IscsiLun *iscsilun)
                            false,
                            (ev & POLLIN) ? iscsi_process_read : NULL,
                            (ev & POLLOUT) ? iscsi_process_write : NULL,
+                           NULL,
                            iscsilun);
         iscsilun->events = ev;
     }
@@ -498,14 +499,18 @@ iscsi_allocmap_update(IscsiLun *iscsilun, int64_t sector_num,
     if (allocated) {
         bitmap_set(iscsilun->allocmap, cl_num_expanded, nb_cls_expanded);
     } else {
-        bitmap_clear(iscsilun->allocmap, cl_num_shrunk, nb_cls_shrunk);
+        if (nb_cls_shrunk > 0) {
+            bitmap_clear(iscsilun->allocmap, cl_num_shrunk, nb_cls_shrunk);
+        }
     }
 
     if (iscsilun->allocmap_valid == NULL) {
         return;
     }
     if (valid) {
-        bitmap_set(iscsilun->allocmap_valid, cl_num_shrunk, nb_cls_shrunk);
+        if (nb_cls_shrunk > 0) {
+            bitmap_set(iscsilun->allocmap_valid, cl_num_shrunk, nb_cls_shrunk);
+        }
     } else {
         bitmap_clear(iscsilun->allocmap_valid, cl_num_expanded,
                      nb_cls_expanded);
@@ -1083,7 +1088,9 @@ coroutine_fn iscsi_co_pdiscard(BlockDriverState *bs, int64_t offset, int count)
     struct IscsiTask iTask;
     struct unmap_list list;
 
-    assert(is_byte_request_lun_aligned(offset, count, iscsilun));
+    if (!is_byte_request_lun_aligned(offset, count, iscsilun)) {
+        return -ENOTSUP;
+    }
 
     if (!iscsilun->lbp.lbpu) {
         /* UNMAP is not supported by the target */
@@ -1524,7 +1531,7 @@ static void iscsi_detach_aio_context(BlockDriverState *bs)
     IscsiLun *iscsilun = bs->opaque;
 
     aio_set_fd_handler(iscsilun->aio_context, iscsi_get_fd(iscsilun->iscsi),
-                       false, NULL, NULL, NULL);
+                       false, NULL, NULL, NULL, NULL);
     iscsilun->events = 0;
 
     if (iscsilun->nop_timer) {

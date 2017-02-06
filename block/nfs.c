@@ -134,7 +134,7 @@ static int nfs_parse_uri(const char *filename, QDict *options, Error **errp)
             qdict_put(options, "page-cache-size",
                       qstring_from_str(qp->p[i].value));
         } else if (!strcmp(qp->p[i].name, "debug")) {
-            qdict_put(options, "debug-level",
+            qdict_put(options, "debug",
                       qstring_from_str(qp->p[i].value));
         } else {
             error_setg(errp, "Unknown NFS parameter name: %s",
@@ -165,7 +165,7 @@ static bool nfs_has_filename_options_conflict(QDict *options, Error **errp)
             !strcmp(qe->key, "tcp-syn-count") ||
             !strcmp(qe->key, "readahead-size") ||
             !strcmp(qe->key, "page-cache-size") ||
-            !strcmp(qe->key, "debug-level") ||
+            !strcmp(qe->key, "debug") ||
             strstart(qe->key, "server.", NULL))
         {
             error_setg(errp, "Option %s cannot be used with a filename",
@@ -197,7 +197,8 @@ static void nfs_set_events(NFSClient *client)
         aio_set_fd_handler(client->aio_context, nfs_get_fd(client->context),
                            false,
                            (ev & POLLIN) ? nfs_process_read : NULL,
-                           (ev & POLLOUT) ? nfs_process_write : NULL, client);
+                           (ev & POLLOUT) ? nfs_process_write : NULL,
+                           NULL, client);
 
     }
     client->events = ev;
@@ -395,7 +396,7 @@ static void nfs_detach_aio_context(BlockDriverState *bs)
     NFSClient *client = bs->opaque;
 
     aio_set_fd_handler(client->aio_context, nfs_get_fd(client->context),
-                       false, NULL, NULL, NULL);
+                       false, NULL, NULL, NULL, NULL);
     client->events = 0;
 }
 
@@ -415,7 +416,7 @@ static void nfs_client_close(NFSClient *client)
             nfs_close(client->context, client->fh);
         }
         aio_set_fd_handler(client->aio_context, nfs_get_fd(client->context),
-                           false, NULL, NULL, NULL);
+                           false, NULL, NULL, NULL, NULL);
         nfs_destroy_context(client->context);
     }
     memset(client, 0, sizeof(NFSClient));

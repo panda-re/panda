@@ -157,7 +157,6 @@ get_skipped_call_kind_string(RR_skipped_call_kind kind)
     ACTION(RR_INTERRUPT_REQUEST), \
     ACTION(RR_EXIT_REQUEST), \
     ACTION(RR_SKIPPED_CALL), \
-    ACTION(RR_DEBUG), \
     ACTION(RR_LAST)
 
 typedef enum {
@@ -262,6 +261,8 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
     ACTION(RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_4), \
     ACTION(RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_2), \
     ACTION(RR_CALLSITE_ADDRESS_SPACE_WRITE_CONTINUE_1), \
+    ACTION(RR_CALLSITE_ADDRESS_SPACE_LDUB), \
+    ACTION(RR_CALLSITE_STQ_INTERNAL), \
     ACTION(RR_CALLSITE_LAST),
 
 typedef enum {

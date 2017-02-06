@@ -39,7 +39,7 @@
 #include "qemu-common.h"
 #define NO_CPU_IO_DEFS
 #include "cpu.h"
-#include "trace.h"
+#include "trace-root.h"
 #include "disas/disas.h"
 #include "exec/exec-all.h"
 #include "tcg.h"
@@ -794,7 +794,7 @@ static inline void *alloc_code_gen_buffer(void)
         size_t size2;
         void *buf2 = mmap(NULL, size + qemu_real_host_page_size,
                           PROT_NONE, flags, -1, 0);
-        switch (buf2 != MAP_FAILED) {
+        switch ((int)(buf2 != MAP_FAILED)) {
         case 1:
             if (!cross_256mb(buf2, size)) {
                 /* Success!  Use the new buffer.  */
@@ -1347,6 +1347,8 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         /* flush must be done */
         tb_flush(cpu);
         mmap_unlock();
+        /* Make the execution loop process the flush as soon as possible.  */
+        cpu->exception_index = EXCP_INTERRUPT;
         cpu_loop_exit(cpu);
     }
 

@@ -68,8 +68,11 @@ do {                                                                    \
  * This way we will never overlap with our own libraries or binaries or stack
  * or anything else that QEMU maps.
  */
-# ifdef TARGET_MIPS
-/* MIPS only supports 31 bits of virtual address space for user space */
+# if defined(TARGET_MIPS) || defined(TARGET_NIOS2)
+/*
+ * MIPS only supports 31 bits of virtual address space for user space.
+ * Nios2 also only supports 31 bits.
+ */
 unsigned long reserved_va = 0x77000000;
 # else
 unsigned long reserved_va = 0xf7000000;
@@ -570,6 +573,7 @@ void cpu_loop(CPUARMState *env)
 
         switch(trapnr) {
         case EXCP_UDEF:
+        case EXCP_NOCP:
             {
                 TaskState *ts = cs->opaque;
                 uint32_t opcode;
@@ -1166,7 +1170,7 @@ void cpu_loop (CPUSPARCState *env)
                 /* XXX: check env->error_code */
                 info.si_code = TARGET_SEGV_MAPERR;
                 if (trapnr == TT_DFAULT)
-                    info._sifields._sigfault._addr = env->dmmuregs[4];
+                    info._sifields._sigfault._addr = env->dmmu.mmuregs[4];
                 else
                     info._sifields._sigfault._addr = cpu_tsptr(env)->tpc;
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
@@ -2462,6 +2466,109 @@ error:
 }
 #endif
 
+#ifdef TARGET_NIOS2
+
+void cpu_loop(CPUNios2State *env)
+{
+    CPUState *cs = ENV_GET_CPU(env);
+    Nios2CPU *cpu = NIOS2_CPU(cs);
+    target_siginfo_t info;
+    int trapnr, gdbsig, ret;
+
+    for (;;) {
+        cpu_exec_start(cs);
+        trapnr = cpu_exec(cs);
+        cpu_exec_end(cs);
+        gdbsig = 0;
+
+        switch (trapnr) {
+        case EXCP_INTERRUPT:
+            /* just indicate that signals should be handled asap */
+            break;
+        case EXCP_TRAP:
+            if (env->regs[R_AT] == 0) {
+                abi_long ret;
+                qemu_log_mask(CPU_LOG_INT, "\nSyscall\n");
+
+                ret = do_syscall(env, env->regs[2],
+                                 env->regs[4], env->regs[5], env->regs[6],
+                                 env->regs[7], env->regs[8], env->regs[9],
+                                 0, 0);
+
+                if (env->regs[2] == 0) {    /* FIXME: syscall 0 workaround */
+                    ret = 0;
+                }
+
+                env->regs[2] = abs(ret);
+                /* Return value is 0..4096 */
+                env->regs[7] = (ret > 0xfffffffffffff000ULL);
+                env->regs[CR_ESTATUS] = env->regs[CR_STATUS];
+                env->regs[CR_STATUS] &= ~0x3;
+                env->regs[R_EA] = env->regs[R_PC] + 4;
+                env->regs[R_PC] += 4;
+                break;
+            } else {
+                qemu_log_mask(CPU_LOG_INT, "\nTrap\n");
+
+                env->regs[CR_ESTATUS] = env->regs[CR_STATUS];
+                env->regs[CR_STATUS] &= ~0x3;
+                env->regs[R_EA] = env->regs[R_PC] + 4;
+                env->regs[R_PC] = cpu->exception_addr;
+
+                gdbsig = TARGET_SIGTRAP;
+                break;
+            }
+        case 0xaa:
+            switch (env->regs[R_PC]) {
+            /*case 0x1000:*/  /* TODO:__kuser_helper_version */
+            case 0x1004:      /* __kuser_cmpxchg */
+                start_exclusive();
+                if (env->regs[4] & 0x3) {
+                    goto kuser_fail;
+                }
+                ret = get_user_u32(env->regs[2], env->regs[4]);
+                if (ret) {
+                    end_exclusive();
+                    goto kuser_fail;
+                }
+                env->regs[2] -= env->regs[5];
+                if (env->regs[2] == 0) {
+                    put_user_u32(env->regs[6], env->regs[4]);
+                }
+                end_exclusive();
+                env->regs[R_PC] = env->regs[R_RA];
+                break;
+            /*case 0x1040:*/  /* TODO:__kuser_sigtramp */
+            default:
+                ;
+kuser_fail:
+                info.si_signo = TARGET_SIGSEGV;
+                info.si_errno = 0;
+                /* TODO: check env->error_code */
+                info.si_code = TARGET_SEGV_MAPERR;
+                info._sifields._sigfault._addr = env->regs[R_PC];
+                queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            }
+            break;
+        default:
+            EXCP_DUMP(env, "\nqemu: unhandled CPU exception %#x - aborting\n",
+                     trapnr);
+            gdbsig = TARGET_SIGILL;
+            break;
+        }
+        if (gdbsig) {
+            gdb_handlesig(cs, gdbsig);
+            if (gdbsig != TARGET_SIGTRAP) {
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        process_pending_signals(env);
+    }
+}
+
+#endif /* TARGET_NIOS2 */
+
 #ifdef TARGET_OPENRISC
 
 void cpu_loop(CPUOpenRISCState *env)
@@ -2861,6 +2968,13 @@ void cpu_loop(CPUM68KState *env)
             info.si_signo = TARGET_SIGILL;
             info.si_errno = 0;
             info.si_code = TARGET_ILL_ILLOPN;
+            info._sifields._sigfault._addr = env->pc;
+            queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            break;
+        case EXCP_DIV0:
+            info.si_signo = TARGET_SIGFPE;
+            info.si_errno = 0;
+            info.si_code = TARGET_FPE_INTDIV;
             info._sifields._sigfault._addr = env->pc;
             queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             break;
@@ -3505,6 +3619,169 @@ void cpu_loop(CPUTLGState *env)
 
 #endif
 
+#ifdef TARGET_HPPA
+
+static abi_ulong hppa_lws(CPUHPPAState *env)
+{
+    uint32_t which = env->gr[20];
+    abi_ulong addr = env->gr[26];
+    abi_ulong old = env->gr[25];
+    abi_ulong new = env->gr[24];
+    abi_ulong size, ret;
+
+    switch (which) {
+    default:
+        return -TARGET_ENOSYS;
+
+    case 0: /* elf32 atomic 32bit cmpxchg */
+        if ((addr & 3) || !access_ok(VERIFY_WRITE, addr, 4)) {
+            return -TARGET_EFAULT;
+        }
+        old = tswap32(old);
+        new = tswap32(new);
+        ret = atomic_cmpxchg((uint32_t *)g2h(addr), old, new);
+        ret = tswap32(ret);
+        break;
+
+    case 2: /* elf32 atomic "new" cmpxchg */
+        size = env->gr[23];
+        if (size >= 4) {
+            return -TARGET_ENOSYS;
+        }
+        if (((addr | old | new) & ((1 << size) - 1))
+            || !access_ok(VERIFY_WRITE, addr, 1 << size)
+            || !access_ok(VERIFY_READ, old, 1 << size)
+            || !access_ok(VERIFY_READ, new, 1 << size)) {
+            return -TARGET_EFAULT;
+        }
+        /* Note that below we use host-endian loads so that the cmpxchg
+           can be host-endian as well.  */
+        switch (size) {
+        case 0:
+            old = *(uint8_t *)g2h(old);
+            new = *(uint8_t *)g2h(new);
+            ret = atomic_cmpxchg((uint8_t *)g2h(addr), old, new);
+            ret = ret != old;
+            break;
+        case 1:
+            old = *(uint16_t *)g2h(old);
+            new = *(uint16_t *)g2h(new);
+            ret = atomic_cmpxchg((uint16_t *)g2h(addr), old, new);
+            ret = ret != old;
+            break;
+        case 2:
+            old = *(uint32_t *)g2h(old);
+            new = *(uint32_t *)g2h(new);
+            ret = atomic_cmpxchg((uint32_t *)g2h(addr), old, new);
+            ret = ret != old;
+            break;
+        case 3:
+            {
+                uint64_t o64, n64, r64;
+                o64 = *(uint64_t *)g2h(old);
+                n64 = *(uint64_t *)g2h(new);
+#ifdef CONFIG_ATOMIC64
+                r64 = atomic_cmpxchg__nocheck((uint64_t *)g2h(addr), o64, n64);
+                ret = r64 != o64;
+#else
+                start_exclusive();
+                r64 = *(uint64_t *)g2h(addr);
+                ret = 1;
+                if (r64 == o64) {
+                    *(uint64_t *)g2h(addr) = n64;
+                    ret = 0;
+                }
+                end_exclusive();
+#endif
+            }
+            break;
+        }
+        break;
+    }
+
+    env->gr[28] = ret;
+    return 0;
+}
+
+void cpu_loop(CPUHPPAState *env)
+{
+    CPUState *cs = CPU(hppa_env_get_cpu(env));
+    target_siginfo_t info;
+    abi_ulong ret;
+    int trapnr;
+
+    while (1) {
+        cpu_exec_start(cs);
+        trapnr = cpu_exec(cs);
+        cpu_exec_end(cs);
+        process_queued_cpu_work(cs);
+
+        switch (trapnr) {
+        case EXCP_SYSCALL:
+            ret = do_syscall(env, env->gr[20],
+                             env->gr[26], env->gr[25],
+                             env->gr[24], env->gr[23],
+                             env->gr[22], env->gr[21], 0, 0);
+            switch (ret) {
+            default:
+                env->gr[28] = ret;
+                /* We arrived here by faking the gateway page.  Return.  */
+                env->iaoq_f = env->gr[31];
+                env->iaoq_b = env->gr[31] + 4;
+                break;
+            case -TARGET_ERESTARTSYS:
+            case -TARGET_QEMU_ESIGRETURN:
+                break;
+            }
+            break;
+        case EXCP_SYSCALL_LWS:
+            env->gr[21] = hppa_lws(env);
+            /* We arrived here by faking the gateway page.  Return.  */
+            env->iaoq_f = env->gr[31];
+            env->iaoq_b = env->gr[31] + 4;
+            break;
+        case EXCP_SIGSEGV:
+            info.si_signo = TARGET_SIGSEGV;
+            info.si_errno = 0;
+            info.si_code = TARGET_SEGV_ACCERR;
+            info._sifields._sigfault._addr = env->ior;
+            queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            break;
+        case EXCP_SIGILL:
+            info.si_signo = TARGET_SIGILL;
+            info.si_errno = 0;
+            info.si_code = TARGET_ILL_ILLOPN;
+            info._sifields._sigfault._addr = env->iaoq_f;
+            queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            break;
+        case EXCP_SIGFPE:
+            info.si_signo = TARGET_SIGFPE;
+            info.si_errno = 0;
+            info.si_code = 0;
+            info._sifields._sigfault._addr = env->iaoq_f;
+            queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+            break;
+        case EXCP_DEBUG:
+            trapnr = gdb_handlesig(cs, TARGET_SIGTRAP);
+            if (trapnr) {
+                info.si_signo = trapnr;
+                info.si_errno = 0;
+                info.si_code = TARGET_TRAP_BRKPT;
+                queue_signal(env, trapnr, QEMU_SI_FAULT, &info);
+            }
+            break;
+        case EXCP_INTERRUPT:
+            /* just indicate that signals should be handled asap */
+            break;
+        default:
+            g_assert_not_reached();
+        }
+        process_pending_signals(env);
+    }
+}
+
+#endif /* TARGET_HPPA */
+
 THREAD CPUState *thread_cpu;
 
 bool qemu_cpu_is_self(CPUState *cpu)
@@ -4045,6 +4322,8 @@ int main(int argc, char **argv, char **envp)
 # endif
 #elif defined TARGET_SH4
         cpu_model = TYPE_SH7785_CPU;
+#elif defined TARGET_S390X
+        cpu_model = "qemu";
 #else
         cpu_model = "any";
 #endif
@@ -4172,15 +4451,16 @@ int main(int argc, char **argv, char **envp)
 
         qemu_log("start_brk   0x" TARGET_ABI_FMT_lx "\n", info->start_brk);
         qemu_log("end_code    0x" TARGET_ABI_FMT_lx "\n", info->end_code);
-        qemu_log("start_code  0x" TARGET_ABI_FMT_lx "\n",
-                 info->start_code);
-        qemu_log("start_data  0x" TARGET_ABI_FMT_lx "\n",
-                 info->start_data);
+        qemu_log("start_code  0x" TARGET_ABI_FMT_lx "\n", info->start_code);
+        qemu_log("start_data  0x" TARGET_ABI_FMT_lx "\n", info->start_data);
         qemu_log("end_data    0x" TARGET_ABI_FMT_lx "\n", info->end_data);
-        qemu_log("start_stack 0x" TARGET_ABI_FMT_lx "\n",
-                 info->start_stack);
+        qemu_log("start_stack 0x" TARGET_ABI_FMT_lx "\n", info->start_stack);
         qemu_log("brk         0x" TARGET_ABI_FMT_lx "\n", info->brk);
         qemu_log("entry       0x" TARGET_ABI_FMT_lx "\n", info->entry);
+        qemu_log("argv_start  0x" TARGET_ABI_FMT_lx "\n", info->arg_start);
+        qemu_log("env_start   0x" TARGET_ABI_FMT_lx "\n",
+                 info->arg_end + (abi_ulong)sizeof(abi_ulong));
+        qemu_log("auxv_start  0x" TARGET_ABI_FMT_lx "\n", info->saved_auxv);
     }
 
     target_set_brk(info->brk);
@@ -4461,6 +4741,36 @@ int main(int argc, char **argv, char **envp)
             restore_snan_bit_mode(env);
         }
     }
+#elif defined(TARGET_NIOS2)
+    {
+        env->regs[0] = 0;
+        env->regs[1] = regs->r1;
+        env->regs[2] = regs->r2;
+        env->regs[3] = regs->r3;
+        env->regs[4] = regs->r4;
+        env->regs[5] = regs->r5;
+        env->regs[6] = regs->r6;
+        env->regs[7] = regs->r7;
+        env->regs[8] = regs->r8;
+        env->regs[9] = regs->r9;
+        env->regs[10] = regs->r10;
+        env->regs[11] = regs->r11;
+        env->regs[12] = regs->r12;
+        env->regs[13] = regs->r13;
+        env->regs[14] = regs->r14;
+        env->regs[15] = regs->r15;
+        /* TODO: unsigned long  orig_r2; */
+        env->regs[R_RA] = regs->ra;
+        env->regs[R_FP] = regs->fp;
+        env->regs[R_SP] = regs->sp;
+        env->regs[R_GP] = regs->gp;
+        env->regs[CR_ESTATUS] = regs->estatus;
+        env->regs[R_EA] = regs->ea;
+        /* TODO: unsigned long  orig_r7; */
+
+        /* Emulate eret when starting thread. */
+        env->regs[R_PC] = regs->ea;
+    }
 #elif defined(TARGET_OPENRISC)
     {
         int i;
@@ -4530,6 +4840,15 @@ int main(int argc, char **argv, char **envp)
             env->spregs[i] = 0;
         }
         env->pc = regs->pc;
+    }
+#elif defined(TARGET_HPPA)
+    {
+        int i;
+        for (i = 1; i < 32; i++) {
+            env->gr[i] = regs->gr[i];
+        }
+        env->iaoq_f = regs->iaoq[0];
+        env->iaoq_b = regs->iaoq[1];
     }
 #else
 #error unsupported target CPU

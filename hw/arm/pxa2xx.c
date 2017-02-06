@@ -1258,7 +1258,7 @@ static void pxa2xx_i2c_update(PXA2xxI2CState *s)
 }
 
 /* These are only stubs now.  */
-static void pxa2xx_i2c_event(I2CSlave *i2c, enum i2c_event event)
+static int pxa2xx_i2c_event(I2CSlave *i2c, enum i2c_event event)
 {
     PXA2xxI2CSlaveState *slave = PXA2XX_I2C_SLAVE(i2c);
     PXA2xxI2CState *s = slave->host;
@@ -1280,6 +1280,8 @@ static void pxa2xx_i2c_event(I2CSlave *i2c, enum i2c_event event)
         break;
     }
     pxa2xx_i2c_update(s);
+
+    return 0;
 }
 
 static int pxa2xx_i2c_rx(I2CSlave *i2c)
@@ -1449,17 +1451,10 @@ static const VMStateDescription vmstate_pxa2xx_i2c = {
     }
 };
 
-static int pxa2xx_i2c_slave_init(I2CSlave *i2c)
-{
-    /* Nothing to do.  */
-    return 0;
-}
-
 static void pxa2xx_i2c_slave_class_init(ObjectClass *klass, void *data)
 {
     I2CSlaveClass *k = I2C_SLAVE_CLASS(klass);
 
-    k->init = pxa2xx_i2c_slave_init;
     k->event = pxa2xx_i2c_event;
     k->recv = pxa2xx_i2c_rx;
     k->send = pxa2xx_i2c_tx;
@@ -2029,7 +2024,7 @@ static PXA2xxFIrState *pxa2xx_fir_init(MemoryRegion *sysmem,
                                        hwaddr base,
                                        qemu_irq irq, qemu_irq rx_dma,
                                        qemu_irq tx_dma,
-                                       CharDriverState *chr)
+                                       Chardev *chr)
 {
     DeviceState *dev;
     SysBusDevice *sbd;
@@ -2070,7 +2065,7 @@ PXA2xxState *pxa270_init(MemoryRegion *address_space,
     }
     if (!revision)
         revision = "pxa270";
-    
+
     s->cpu = cpu_arm_init(revision);
     if (s->cpu == NULL) {
         fprintf(stderr, "Unable to find CPU definition\n");
