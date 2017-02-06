@@ -109,6 +109,11 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     fprintf(stderr, "Initializing plugin %s\n", plugin_name ? plugin_name : filename);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
+    if (panda_help_wanted) {
+        printf("Options for plugin %s:\n", plugin_name); 
+        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        fprintf(stderr, "======              ========                ========        ===========\n");
+    }
     if(init_fn(plugin) && !panda_plugin_load_failed) {
         // TRL: Don't do this here!  See above
         //        panda_plugins[nb_panda_plugins].plugin = plugin;
@@ -475,11 +480,6 @@ static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool che
         if (strcmp(ret->list[i].key, "help") == 0) {
             panda_help_wanted = true;
             panda_abort_requested = true;
-            if (!check_only) {
-                printf("Options for plugin %s:\n", ret->plugin_name); 
-                fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
-                fprintf(stderr, "======              ========                ========        ===========\n");
-            }
         }
     }
     
