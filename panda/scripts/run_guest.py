@@ -126,17 +126,18 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recordi
     recording_path = realpath(recording_path)
     if not isoname: isoname = copy_directory + '.iso'
 
-    progress("Creaing ISO {}...".format(isoname))
-    make_iso(copy_directory, isoname)
-
     with TempDir() as tempdir, Qemu(qemu_path, qcow, snapshot, tempdir) as qemu:
-        progress("Inserting CD...")
-        qemu.run_monitor("change ide1-cd0 \"{}\"".format(isoname))
-        qemu.run_console("mkdir -p {}".format(pipes.quote(copy_directory)))
-        # Make sure cdrom didn't automount
-        # Make sure guest path mirrors host path
-        qemu.run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(copy_directory)) +
-                    "do sleep 0.3; umount /dev/cdrom; done")
+        if os.listdir(copy_directory):
+            progress("Creating ISO {}...".format(isoname))
+            make_iso(copy_directory, isoname)
+
+            progress("Inserting CD...")
+            qemu.run_monitor("change ide1-cd0 \"{}\"".format(isoname))
+            qemu.run_console("mkdir -p {}".format(pipes.quote(copy_directory)))
+            # Make sure cdrom didn't automount
+            # Make sure guest path mirrors host path
+            qemu.run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(copy_directory)) +
+                        "do sleep 0.3; umount /dev/cdrom; done")
 
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.

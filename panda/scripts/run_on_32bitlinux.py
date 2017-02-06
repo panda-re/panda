@@ -82,8 +82,9 @@ if not os.path.exists(binary_dir):
     os.makedirs(binary_dir)
 
 install_dir = join(binary_dir, 'cdrom')
-if not os.path.exists(install_dir):
-    os.mkdir(install_dir)
+if os.path.exists(install_dir):
+    shutil.rmtree(install_dir)
+os.mkdir(install_dir)
 
 qcow = join(dot_dir, "wheezy_panda2.qcow2")
 if not os.path.isfile(qcow):
