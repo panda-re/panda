@@ -65,6 +65,7 @@ bool panda_tb_chaining = true;
 
 bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
+bool panda_abort_requested = false;
 
 bool panda_add_arg(const char *arg, int arglen) {
     if (arglen > 255) return false;
@@ -103,6 +104,8 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
     nb_panda_plugins++;
     fprintf(stderr, "Initializing plugin %s\n", plugin_name ? plugin_name : filename);
+    // Set this to false here so that we only get help plugins that request it
+    panda_help_wanted = false;
     if(init_fn(plugin) && !panda_plugin_load_failed) {
         // TRL: Don't do this here!  See above
         //        panda_plugins[nb_panda_plugins].plugin = plugin;
@@ -462,6 +465,7 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
     for (i = 0; i < ret->nargs; i++) {
         if (strcmp(ret->list[i].key, "help") == 0) {
             panda_help_wanted = true;
+            panda_abort_requested = true;
             printf("Options for plugin %s:\n", plugin_name); 
             fprintf(stderr, "ARGUMENT                REQUIRED        DESCRIPTION\n");
             fprintf(stderr, "========                ========        ===========\n");
