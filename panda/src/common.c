@@ -176,7 +176,8 @@ void panda_set_os_name(char *os_name) {
 
     gboolean os_details_ok = FALSE;
     if (panda_os_type == OST_WINDOWS) {
-        for (const char **os=valid_os; *os != NULL; os++) {
+        const char **os;
+        for (os=valid_os; *os != NULL; os++) {
             if (0 == strcmp(panda_os_name, *os)) {
                 os_details_ok = TRUE;
                 break;
@@ -185,7 +186,8 @@ void panda_set_os_name(char *os_name) {
 
         if (!os_details_ok) {
             fprintf(stderr, "os_name=[%s] is not on the list :\n", panda_os_name);
-            for (const char **os=valid_os; *os != NULL; os++) {
+            const char **os;
+            for (os=valid_os; *os != NULL; os++) {
                 fprintf(stderr, "\t[%s]\n", *os);
             }
         }
