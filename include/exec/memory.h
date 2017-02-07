@@ -1680,7 +1680,7 @@ address_space_read_cached(MemoryRegionCache *cache, hwaddr addr,
                           void *buf, int len)
 {
     assert(addr < cache->len && len <= cache->len - addr);
-    memcpy(buf, cache->ptr + addr, len);
+    memcpy(buf, (uint8_t *)cache->ptr + addr, len);
 }
 
 /**
@@ -1696,7 +1696,7 @@ address_space_write_cached(MemoryRegionCache *cache, hwaddr addr,
                            void *buf, int len)
 {
     assert(addr < cache->len && len <= cache->len - addr);
-    memcpy(cache->ptr + addr, buf, len);
+    memcpy((uint8_t *)cache->ptr + addr, buf, len);
 }
 
 #endif
