@@ -759,6 +759,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     Value *v;
     TCGOpDef &def = tcg_op_defs[opc];
     int nb_args = def.nb_args;
+    int op_size = def.flags & TCG_OPF_64BIT ? 64 : 32;
 
     switch(opc) {
     case INDEX_op_insn_start:
@@ -1328,6 +1329,54 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
         ret = m_builder.CreateAnd(arg1, APInt(64, ~(mask << ofs)));
         ret = m_builder.CreateOr(ret, t1);
+        setValue(args[0], ret);
+    }
+    break;
+
+    case INDEX_op_sextract_i32:
+    case INDEX_op_sextract_i64:
+    case INDEX_op_extract_i32:
+    case INDEX_op_extract_i64: {
+        Value *source = getValue(args[1]);
+        uint64_t offset = args[2];
+        uint64_t len = args[3];
+
+        Value *shifted = offset == 0 ? source
+            : m_builder.CreateLShr(source, APInt(op_size, offset));
+        uint64_t mask = (1UL << len) - 1;
+        // len == op_size should imply offset == 0.
+        Value *ret = len == op_size ? shifted
+            : m_builder.CreateAnd(shifted, APInt(op_size, mask));
+        if (len < op_size
+                && (opc == INDEX_op_sextract_i32
+                    || opc == INDEX_op_sextract_i64)) {
+            assert(len % 8 == 0);
+            ret = m_builder.CreateTrunc(ret, intType(len));
+            ret = m_builder.CreateSExt(ret, intType(op_size));
+        }
+        setValue(args[0], ret);
+    }
+    break;
+
+    case INDEX_op_ctz_i32:
+    case INDEX_op_ctz_i64:
+    case INDEX_op_clz_i32:
+    case INDEX_op_clz_i64: {
+        Value *source = getValue(args[1]);
+        Value *default_ = getValue(args[2]);
+        Value *isZero = m_builder.CreateICmpEQ(source, constInt(op_size, 0));
+        llvm::Type* Tys[] = { intType(op_size) };
+        Intrinsic::ID intrinsicID =
+            (opc == INDEX_op_ctz_i32 || opc == INDEX_op_ctz_i64)
+            ? Intrinsic::cttz : Intrinsic::ctlz;
+        Function *intrinsic = Intrinsic::getDeclaration(m_module,
+                intrinsicID, llvm::ArrayRef<llvm::Type*>(Tys, 1));
+        // declare i32  @llvm.ctlz.i32 (i32  <src>, i1 <is_zero_undef>)
+        llvm::Value* callArgs[] = { source, constInt(1, false) };
+        Value *result = m_builder.CreateCall(intrinsic,
+                llvm::ArrayRef<llvm::Value*>(callArgs, 2));
+        // select args go condition, ifTrue, ifFalse
+        Value *ret = m_builder.CreateSelect(isZero, default_, result);
         setValue(args[0], ret);
     }
     break;
