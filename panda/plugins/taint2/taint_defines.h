@@ -23,10 +23,10 @@
 #define MAXFRAMESIZE 5000 // maximum number of LLVM values a function can use.
 
 #if defined(TARGET_I386)
-#define NUMREGS CPU_NB_REGS
+#define NUM_REGS CPU_NB_REGS
 #define REGS(env) ((env)->regs)
 #elif defined(TARGET_ARM)
-#define NUMREGS 16
+#define NUM_REGS 16
 #define REGS(env) ((env)->aarch64 ? (env)->xregs : (env)->regs)
 #endif
 
