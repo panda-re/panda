@@ -32,7 +32,7 @@ uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
 void taint2_labelset_spit(LabelSetP ls);
 
-void taint2_labelset_addr_iter(void *addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void taint2_labelset_addr_iter(Addr addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);

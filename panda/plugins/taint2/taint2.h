@@ -80,9 +80,9 @@ struct ShadowState {
     }
 };
 
+extern "C" {
 // label -- associate label l with address a
 void tp_label(Addr *a, uint32_t l);
-
 
 void tp_label_ram(uint64_t pa, uint32_t l);
 void tp_label_reg(int reg_num, int offset, uint32_t l);
@@ -105,7 +105,7 @@ uint32_t ls_card(LabelSetP ls);
 void tp_delete_ram(uint64_t pa) ;
 void tp_delete_reg(int reg_num, int offset);
 
-void tp_ls_a_iter(Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
+void tp_ls_a_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
 
 void tp_ls_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
@@ -125,5 +125,6 @@ Addr make_laddr(uint64_t a, uint64_t o);
 Addr make_iaddr(uint64_t a);
 Addr make_paddr(uint64_t a);
 Addr make_greg(uint64_t r, uint16_t off);
+}
 
 #endif
