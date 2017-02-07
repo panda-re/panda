@@ -561,7 +561,26 @@ void rr_record_net_transfer(RR_callsite_id call_site,
 
 // Needed from main-loop.c which is not target-specific
 void rr_tracked_mem_regions_record(void);
-void rr_begin_main_loop_wait(void);
-void rr_end_main_loop_wait(void);
+
+// Record skipped calls.
+static inline void rr_begin_main_loop_wait(void) {
+#ifdef CONFIG_SOFTMMU
+    if (rr_in_record()) {
+        rr_record_in_main_loop_wait = 1;
+        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+    }
+#endif
+}
+
+static inline void rr_end_main_loop_wait(void) {
+#ifdef CONFIG_SOFTMMU
+    if (rr_in_record()) {
+        rr_record_in_main_loop_wait = 0;
+        // Check if DMA-mapped regions have changed
+        rr_tracked_mem_regions_record();
+    }
+#endif
+}
+
 
 #endif

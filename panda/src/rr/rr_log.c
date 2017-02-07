@@ -1501,26 +1501,6 @@ void rr_do_end_replay(int is_error)
 #endif // CONFIG_SOFTMMU
 }
 
-// Record skipped calls.
-void rr_begin_main_loop_wait(void) {
-#ifdef CONFIG_SOFTMMU
-    if (rr_in_record()) {
-        rr_record_in_main_loop_wait = 1;
-        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-    }
-#endif
-}
-
-void rr_end_main_loop_wait(void) {
-#ifdef CONFIG_SOFTMMU
-    if (rr_in_record()) {
-        rr_record_in_main_loop_wait = 0;
-        // Check if DMA-mapped regions have changed
-        rr_tracked_mem_regions_record();
-    }
-#endif
-}
-
 #ifdef CONFIG_SOFTMMU
 uint32_t rr_checksum_memory(void);
 uint32_t rr_checksum_memory(void) {
