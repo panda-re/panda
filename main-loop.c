@@ -213,7 +213,9 @@ static void glib_pollfds_poll(void)
     GPollFD *pfds = &g_array_index(gpollfds, GPollFD, glib_pollfds_idx);
 
     if (g_main_context_check(context, max_priority, pfds, glib_n_poll_fds)) {
+        rr_begin_main_loop_wait();
         g_main_context_dispatch(context);
+        rr_end_main_loop_wait();
     }
 }
 
@@ -512,17 +514,12 @@ int main_loop_wait(int nonblocking)
                                       timerlistgroup_deadline_ns(
                                           &main_loop_tlg));
 
-#ifdef CONFIG_SOFTMMU
-    if (rr_in_record()) {
-        rr_record_in_main_loop_wait = 1;
-        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-    }
-#endif
-
     ret = os_host_main_loop_wait(timeout_ns);
 
 #ifdef CONFIG_SLIRP
+    rr_begin_main_loop_wait();
     slirp_pollfds_poll(gpollfds, (ret < 0));
+    rr_end_main_loop_wait();
 #endif
 
     /* CPU thread can infinitely wait for event after
@@ -534,14 +531,6 @@ int main_loop_wait(int nonblocking)
         qemu_start_warp_timer();
         qemu_clock_run_all_timers();
 #ifdef CONFIG_SOFTMMU
-    }
-#endif
-
-#ifdef CONFIG_SOFTMMU
-    if (rr_in_record()) {
-        rr_record_in_main_loop_wait = 0;
-        // Check if DMA-mapped regions have changed
-        rr_tracked_mem_regions_record();
     }
 #endif
 
