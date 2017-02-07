@@ -165,19 +165,19 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
 
 uint32_t taint2_query(Addr a) {
     LabelSetP ls = tp_labelset_get(a);
-    return ls->size();
+    return ls ? ls->size() : 0;
 }
 
 // if phys addr pa is untainted, return 0.
 // else returns label set cardinality
 uint32_t taint2_query_ram(uint64_t pa) {
     LabelSetP ls = tp_labelset_get(make_maddr(pa));
-    return ls->size();
+    return ls ? ls->size() : 0;
 }
 
 uint32_t taint2_query_reg(int reg_num, int offset) {
     LabelSetP ls = tp_labelset_get(make_greg(reg_num, offset));
-    return ls->size();
+    return ls ? ls->size() : 0;
 }
 
 uint32_t taint2_query_tcn(Addr a) {
@@ -289,7 +289,7 @@ Panda__TaintQuery *taint2_query_pandalog (Addr a, uint32_t offset) {
                 malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
             *tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
             tquls->ptr = (uint64_t) ls;
-            tquls->n_label = ls->size();
+            tquls->n_label = ls ? ls->size() : 0;
             tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
             el_arr_ind = 0;
             tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
