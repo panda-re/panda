@@ -1,10 +1,12 @@
 #include "taint_api.h"
+#include "taint2.h"
 
 extern bool debug_taint;
 target_ulong debug_asid = 0;
 
 // Implements taint2:debug plugin arg. Turns on -d llvm_ir,taint_ops,in_asm,exec
 // for that specific asid.
+extern "C"
 int asid_changed_callback(CPUState *env, target_ulong oldval, target_ulong newval) {
     if (debug_asid) {
         if (newval == debug_asid) {
@@ -152,7 +154,7 @@ void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), 
     tp_ls_iter(ls, app, stuff2);
 }
 
-void taint2_labelset_addr_iter(Addr *a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
+void taint2_labelset_addr_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
     tp_ls_a_iter(a, app, stuff2);
 }
 
@@ -242,4 +244,9 @@ void pandalog_taint_query_free(Panda__TaintQuery *tq) {
         }
         free(tq->unique_label_set);
     }
+}
+
+extern bool taintEnabled;
+int taint2_enabled() {
+    return taintEnabled;
 }
