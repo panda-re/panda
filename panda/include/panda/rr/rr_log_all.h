@@ -561,5 +561,7 @@ void rr_record_net_transfer(RR_callsite_id call_site,
 
 // Needed from main-loop.c which is not target-specific
 void rr_tracked_mem_regions_record(void);
+void rr_begin_main_loop_wait(void);
+void rr_end_main_loop_wait(void);
 
 #endif
