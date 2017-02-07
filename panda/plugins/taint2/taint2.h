@@ -81,49 +81,8 @@ struct ShadowState {
 };
 
 extern "C" {
-// label -- associate label l with address a
-void tp_label(Addr *a, uint32_t l);
-
-void tp_label_ram(uint64_t pa, uint32_t l);
-void tp_label_reg(int reg_num, int offset, uint32_t l);
-
-LabelSetP tp_query(Addr a);
-LabelSetP tp_query_ram(uint64_t pa) ;
-LabelSetP tp_query_reg(int reg_num, int offset);
-LabelSetP tp_query_llvm(int reg_num, int offset);
-
-uint32_t tp_query_tcn(Addr a);
-uint32_t tp_query_tcn_ram(uint64_t pa);
-uint32_t tp_query_tcn_reg(int reg_num, int offset);
-uint32_t tp_query_tcn_llvm(int reg_num, int offset);
-
-uint64_t tp_query_cb_mask(Addr a, uint8_t size);
-
-// label set cardinality
-uint32_t ls_card(LabelSetP ls);
-
-void tp_delete_ram(uint64_t pa) ;
-void tp_delete_reg(int reg_num, int offset);
-
-void tp_ls_a_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
-
-void tp_ls_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-void tp_ls_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-void tp_ls_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-
-// returns set of so-far applied labels as a sorted array
-// NB: This allocates memory. Caller frees.
-uint32_t *tp_labels_applied(void);
-
-// just tells how big that labels_applied set will be
-uint32_t tp_num_labels_applied(void);
-
-Addr make_haddr(uint64_t a);
 Addr make_maddr(uint64_t a);
 Addr make_laddr(uint64_t a, uint64_t o);
-Addr make_iaddr(uint64_t a);
-Addr make_paddr(uint64_t a);
 Addr make_greg(uint64_t r, uint16_t off);
 }
 

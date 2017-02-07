@@ -23,7 +23,6 @@ $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/fast_shad.o \
     $(PLUGIN_OBJ_DIR)/taint_ops.o \
     $(PLUGIN_OBJ_DIR)/label_set.o \
-    $(PLUGIN_OBJ_DIR)/taint_processor.o \
     $(PLUGIN_OBJ_DIR)/taint2.o \
     $(PLUGIN_OBJ_DIR)/taint_api.o
 

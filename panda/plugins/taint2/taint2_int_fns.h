@@ -1,7 +1,5 @@
-
 #ifndef __TAINT_INT_FNS_H__
 #define __TAINT_INT_FNS_H__
-
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -23,20 +21,18 @@ void taint2_label_reg(int reg_num, int offset, uint32_t l);
 uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
-uint32_t taint2_query_llvm(int reg_num, int offset);
 
 // returns taint compute number associated with addr
 uint32_t taint2_query_tcn(Addr a);
 uint32_t taint2_query_tcn_ram(uint64_t pa);
 uint32_t taint2_query_tcn_reg(int reg_num, int offset);
-uint32_t taint2_query_tcn_llvm(int reg_num, int offset);
 
 // Returns a mask indicating which bits are attacker-controlled (derived
 // reversibly from input).
 uint64_t taint2_query_cb_mask(Addr a, uint8_t size);
 
 // delete taint from this phys addr
-void taint2_delete_ram(uint64_t pa) ;
+void taint2_delete_ram(uint64_t pa);
 
 // delete taint from this register
 void taint2_delete_reg(int reg_num, int offset);
@@ -56,11 +52,8 @@ void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1)
 // offset is byte offset withing that reg.
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
-// ditto, but for llvm regs.  dunno where you are getting that number
-void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-
 // ditto, but someone handed you the ls, e.g. a callback like tainted branch
-void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) ;
+void taint2_labelset_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // just tells how big that labels_applied set will be
 uint32_t taint2_num_labels_applied(void);
@@ -73,9 +66,9 @@ void taint2_track_taint_state(void);
 // writes an entry to pandalog with lots of stuff like
 // label set, taint compute #, call stack
 // offset is needed since this is likely a query in the middle of an extent (of 4, 8, or more bytes)
-Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset) ;
+Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 
 // used to free memory associated with that struct
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
-#endif                                                                                   
+#endif
