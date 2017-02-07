@@ -173,10 +173,10 @@ void write_current_chunk(void) {
     }
     // ccs is final compressed chunk size
     assert(ret == Z_OK);
-    printf("writing chunk %u of pandalog %lu / %lu = %.2f compression %u entries\n",
+    printf("writing chunk %u of pandalog, %lu / %lu = %.2f compression, %u entries\n",
             thePandalog->chunk_num, cs, ccs, ((float)cs) / ccs,
-            thePandalog->chunk.num_entries);
-    if (thePandalog->chunk.num_entries == 0) {
+            thePandalog->chunk.ind_entry);
+    if (thePandalog->chunk.ind_entry == 0) {
         printf("WARNING: Empty chunk written to pandalog. Did you forget?\n");
     }
     fwrite(thePandalog->chunk.zbuf, 1, ccs, thePandalog->file);
