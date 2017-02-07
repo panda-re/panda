@@ -7,9 +7,6 @@
 #include <stdbool.h>
 #include "panda/addr.h"
 
-typedef void *LabelSetP;
-typedef void Panda__TaintQuery;
-
 // turns on taint
 void taint2_enable_taint(void);
 

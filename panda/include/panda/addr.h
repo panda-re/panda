@@ -18,7 +18,7 @@ typedef uint64_t Const;    // constant that we currently treat as untainted
 typedef uint64_t Ret;      // LLVM return value, also temp register
 
 typedef enum {HADDR, MADDR, IADDR, PADDR, LADDR, GREG, GSPEC,
-    UNK, CONST, RET} AddrType;
+    UNK, CONST, RET, ADDR_LAST} AddrType;
 
 typedef enum {
     IRRELEVANT=5,  // memory access to CPU state we don't care about

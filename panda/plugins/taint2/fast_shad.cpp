@@ -24,7 +24,7 @@ PANDAENDCOMMENT */
 
 #include <sys/mman.h>
 
-#include "defines.h"
+#include "taint_defines.h"
 #include "fast_shad.h"
 
 #include <set>

@@ -164,11 +164,11 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     assert(instrT);
     PTV.instrT = PointerType::getUnqual(instrT);
 
-    PTV.llvConst = const_struct_ptr(ctx, shadP, shad->llv);
-    PTV.memConst = const_struct_ptr(ctx, shadP, shad->ram);
-    PTV.grvConst = const_struct_ptr(ctx, shadP, shad->grv);
-    PTV.gsvConst = const_struct_ptr(ctx, shadP, shad->gsv);
-    PTV.retConst = const_struct_ptr(ctx, shadP, shad->ret);
+    PTV.llvConst = const_struct_ptr(ctx, shadP, &shad->llv);
+    PTV.memConst = const_struct_ptr(ctx, shadP, &shad->ram);
+    PTV.grvConst = const_struct_ptr(ctx, shadP, &shad->grv);
+    PTV.gsvConst = const_struct_ptr(ctx, shadP, &shad->gsv);
+    PTV.retConst = const_struct_ptr(ctx, shadP, &shad->ret);
 
     PTV.dataLayout = new DataLayout(&M);
 
