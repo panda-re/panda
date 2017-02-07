@@ -3063,6 +3063,7 @@ int main(int argc, char **argv, char **envp)
     gargc = argc;
     qemu_file = realpath(argv[0], NULL);
     const char* replay_name = NULL;
+    const char* record_name = NULL;
     // In order to load PANDA plugins all at once at the end
     const char * panda_plugin_files[64] = {};
     const char * panda_plugin_names[64] = {};
@@ -4109,6 +4110,9 @@ int main(int argc, char **argv, char **envp)
                 pandalog_open(optarg, "w");
                 printf ("pandalogging to [%s]\n", optarg);
                 break;
+            case QEMU_OPTION_record_from:
+                record_name = optarg;
+	            break;
             case QEMU_OPTION_panda_arg:
                 if(!panda_add_arg(optarg, strlen(optarg))) {
                     fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
@@ -4829,6 +4833,37 @@ int main(int argc, char **argv, char **envp)
 
         //unblock signals
         sigprocmask(SIG_SETMASK, &oldset, NULL);
+    }
+
+    if (record_name) {
+        Error *err;
+        char snap_name[256];
+        char rec_name[256];
+        // None of QEMU's built-in parsers seem to be able to do something this simple
+        int s_i = 0;
+        int r_i = 0;
+        int full_i = 0;
+
+        while(record_name[full_i] != '\0'){
+            if (':' == record_name[full_i]){
+                snap_name[s_i] = '\0';
+                s_i = -1;
+                full_i++;
+                continue;
+            }
+            if (s_i < 0){
+                rec_name[r_i++] = record_name[full_i++];
+            } else {
+                snap_name[s_i++] = record_name[full_i++];
+            }
+            if (s_i >= 256 || r_i >= 256){
+                // BAIL BAIL BAIL
+                fprintf(stderr,"snapshots and recordings must have names no longer than 256 characters\n");
+                exit(1);
+            }
+            rec_name[r_i] = '\0';
+        }
+        qmp_begin_record_from(snap_name,rec_name, &err);
     }
 
     if (replay_mode != REPLAY_MODE_NONE) {
