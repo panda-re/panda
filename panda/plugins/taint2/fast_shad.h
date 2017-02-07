@@ -22,8 +22,6 @@ PANDAENDCOMMENT */
 #include "taint_defines.h"
 #include "label_set.h"
 
-#include "panda/cheaders.h"
-
 class FastShad;
 
 extern "C" {
