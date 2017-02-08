@@ -143,11 +143,14 @@ def condition(break_arg, cond):
 
 def get_value(procs, value_str):
     if set(procs) != set([record, replay]):
-        result = { proc: gdb_run(proc, "print {}".format(value_str)) \
+        result = { proc: gdb_run(proc, "print/u {}".format(value_str)) \
                 for proc in procs }
     else:
         result = gdb_run_both("print/u {}".format(value_str))
     return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+
+def get_same_value(value_str):
+    return get_value([record], value_str)[record]
 
 gdb_run_both("set confirm off")
 gdb_run_both("set pagination off")
@@ -180,7 +183,7 @@ def get_instr_counts(procs=[record, replay]):
 def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
-ram_size = get_value([record], "ram_size")[record]
+ram_size = get_same_value("ram_size")
 
 def get_crc32s(low, size, procs=[record, replay]):
     step = 1 << 31 if size > (1 << 31) else size
@@ -195,7 +198,13 @@ def get_crc32s(low, size, procs=[record, replay]):
 def get_checksums(procs=[record, replay]):
     # NB: Only run when you are at a breakpoint in CPU thread!
     gdb_run_both("info threads")
-    return get_crc32s(0, ram_size, procs)
+    memory = get_crc32s(0, ram_size, procs)
+    regs = get_value(procs, "rr_checksum_regs()")
+    return { k: (memory[k], regs[k]) for k in procs }
+
+def checksums_equal():
+    checksums = get_checksums()
+    return checksums[record] == checksums[replay]
 
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
@@ -346,12 +355,9 @@ while last_now != now_instr:
     print_divergence_info()
 
     mid = (instr_bounds[0] + instr_bounds[1]) / 2
-    print "instr_bounds", instr_bounds
-    print "mid", mid
 
     last_now = now_instr
     now_instr = goto_instr(mid)
-    print "now_instr", now_instr
 
     whens = get_whens()
     checksums = get_checksums()
@@ -401,37 +407,77 @@ for d in divergences:
 print divergences
 print diverged_ranges
 
-ram_ptrs = get_value([record, replay], "(uint64_t)memory_region_find(" + \
-             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+diverged_registers = []
+reg_size = get_same_value("sizeof ((CPUX86State*)0)->regs[0]")
+num_regs = get_same_value("sizeof ((CPUX86State*)0)->regs") / reg_size
+for reg in range(num_regs):
+    values = get_value(both, "((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
+    if values[record] != values[replay]:
+        diverged_registers.append(reg)
 
 # Return to latest converged instr
 goto_instr(instr_bounds[0])
 
-disable_all()
-if len(diverged_ranges) > 4:
-    print "WARNING: Too much divergence! Trying anyway."
-for d in diverged_ranges[-4:]:
+# x86 debug registers can only watch 4 locations of 8 bytes.
+# we need to make sure to enforce that.
+watches_set = 0
+def watch(addrs, size):
+    bits = size * 8
     gdb_run_both({
-        k: "watch *0x{:x}".format(ram_ptrs[k] + d[0]) for k in [record, replay]
+        proc: "watch *(uint{}_t)0x{:x}".format(bits, addrs[proc]) for proc in both
     })
+    global watches_set
+    watches_set += 1
+    if watches_set >= 4:
+        print "WARNING: Too much divergence! Not watching some diverged points."
+
+disable_all()
+reg_ptrs = get_value(both, "(uintptr_t)&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
+for reg in diverged_registers:
+    watch({ proc: reg_ptrs[proc] + reg * reg_size for proc in both }, reg_size)
+    if watches_set >= 4: break
+
+# Heuristic: Should watch each range at most once. So iterate over offset
+# in outer loop, range in inner loop.
+max_range = max([high - low for (high, low) in diverged_ranges])
+for offset in range(0, max_range, 8):
+    for low, high in diverged_ranges:
+        watch_bytes = min(high - offset, 8)
+        watch({ proc: ram_ptrs[proc] + offset for proc in both }, watch_bytes)
+        if watches_set >= 4: break
+    if watches_set >= 4: break
 
 instr_counts = get_instr_counts()
-while instr_counts[record] == instr_counts[replay] and \
-        instr_counts[record] > 0:
+while instr_counts[record] == instr_counts[replay] \
+        and instr_counts[record] > 0 \
+        and instr_counts[replay] < instr_count_max \
+        and checksums_equal():
     gdb_run_both("continue", timeout=None)
     instr_counts = get_instr_counts()
 
-if instr_counts[record] > 0:
-    backtraces = gdb_run_both("backtrace")
+backtraces = gdb_run_both("backtrace")
+def show_backtrace(proc):
+    print "{} BACKTRACE: ".format(proc.description.upper())
+    print backtraces[proc]
+    print
 
-    print
-    print "RECORD BACKTRACE: "
-    print backtraces[record]
-    print
-    print "REPLAY BACKTRACE: "
-    print backtraces[replay]
+print
+if instr_counts[record] > 0:
+    print "Found first divergence!"
+    if instr_counts[record] != instr_counts[replay]:
+        ahead = argmax(instr_counts)
+        behind = other[ahead]
+
+        print "Saw behavior in {} not seen in {}.".format(
+            behind.description, ahead.description)
+        print
+        show_backtrace(behind)
+    else:
+        print "Saw different behavior."
+        print
+        show_backtrace(record)
+        show_backtrace(replay)
 else:
-    print
     print "Failed to find exact divergence. Look at mem ranges {}".format(
             diverged_ranges)
     print_divergence_info()
