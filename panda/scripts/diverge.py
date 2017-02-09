@@ -7,11 +7,13 @@ import pipes
 import psutil
 import re
 import sys
+import threading
 import time
 
 from blist import sorteddict
 from errno import EAGAIN, EWOULDBLOCK
 from multiprocessing import Process, Pipe
+from multiprocessing.pool import ThreadPool
 from os.path import join
 from subprocess32 import check_call, check_output, CalledProcessError
 
@@ -89,16 +91,21 @@ class RRInstance(Process):
         self.spawn_cmd = "{} replay {}".format(
             pipes.quote(cli_args.rr), pipes.quote(rr_replay))
 
+        self.breakpoints = {}
+
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
 
+    # Runs in child process.
     def sendline(self, msg):
         check_call(['tmux', 'send-keys', '-t', self.pane, '-l', msg])
         check_call(['tmux', 'send-keys', '-t', self.pane, 'ENTER'])
 
+    # Runs in child process.
     def kill(self):
         check_call(['tmux', 'kill-pane', '-t', self.pane])
 
+    # Runs in child process.
     def loop(self, pipe, tempdir):
         logfile = join(tempdir, self.description + "out")
         os.mkfifo(logfile)
@@ -126,7 +133,6 @@ class RRInstance(Process):
 
             if item == "quit":
                 self.sendline("quit")
-                pipe.send("quit")
                 break
 
             try:
@@ -138,12 +144,149 @@ class RRInstance(Process):
 
             pipe.send(output)
 
+    # Runs in child process.
     def go(self, pipe):
         try:
             with TempDir() as tempdir:
                 self.loop(pipe, tempdir)
         except KeyboardInterrupt:
             self.kill()
+
+    # Following run in parent process.
+    def gdb(self, *args, **kwargs):
+        timeout = kwargs.get('timeout', None)
+        cmd = " ".join(map(str, args))
+        print "(rr-{}) {}".format(self.description, cmd)
+        self.pipe.send((cmd, timeout))
+        return self.pipe.recv()
+
+    def quit(self):
+        self.pipe.send("quit")
+        self.join()
+
+    def breakpoint(self, break_arg):
+        result = self.gdb("break", break_arg)
+        bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
+        self.breakpoints[break_arg] = bp_num
+
+    def disable_all(self):
+        self.gdb("disable")
+
+    def enable(self, break_arg):
+        self.gdb("enable", self.breakpoints[break_arg])
+
+    def condition(self, break_arg, cond):
+        self.gdb("condition", self.breakpoints[break_arg], cond)
+
+    def condition_instr(self, break_arg, op, instr):
+        if not hasattr(self, 'instr_count_ptr'):
+            self.instr_count_ptr = self.get_value("&cpus->tqh_first->rr_guest_instr_count")
+        self.condition(break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+
+    def get_value(self, value_str):
+        result = self.gdb("print/u", value_str)
+        re_result = re.search(r"\$[0-9]+ = ([0-9]+)", result)
+        if re_result:
+            return int(re_result.group(1))
+        else:
+            print "get_value failed. result:", result
+            IPython.embed()
+            raise RuntimeError("get_value")
+
+    def instr_count(self):
+        return self.get_value("cpus->tqh_first->rr_guest_instr_count")
+
+    def ram_ptr(self):
+        if not hasattr(self, '_ram_ptr'):
+            self._ram_ptr = self.get_value("memory_region_find(" + \
+                    "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+        return self._ram_ptr
+
+    def crc32_ram(self, low, size):
+        step = 1 << 31 if size > (1 << 31) else size
+        crc32s = 0
+        for start in range(low, low + size, step):
+            crc32s ^= self.get_value("crc32(0, {} + {}, {})".format(
+                            hex(self.ram_ptr()), hex(start), hex(step)))
+        return crc32s
+
+    def checksum(self):
+        if not hasattr(self, 'ram_size'):
+            self.ram_size = self.get_value('ram_size')
+        # NB: Only run when you are at a breakpoint in CPU thread!
+        memory = self.crc32_ram(0, self.ram_size)
+        regs = self.get_value("rr_checksum_regs()")
+        return (memory, regs)
+
+    def when(self):
+        result = self.gdb("when")
+        re_result = re.search(r"Current event: ([0-9]+)", result)
+        if re_result:
+            return int(re_result.group(1))
+        else:
+            print "when failed. result:", result
+            IPython.embed()
+            raise RuntimeError("when")
+
+    def cont(self):
+        self.gdb("continue", timeout=None)
+
+    def reverse_cont(self):
+        self.gdb("reverse-continue", timeout=None)
+
+    def run_event(self, event):
+        self.gdb("run", event, timeout=None)
+
+    # x86 debug registers can only watch 4 locations of 8 bytes.
+    # we need to make sure to enforce that.
+    # returns true if can set more watchpoints. false if we're full up.
+    def watch(self, addr, size):
+        assert size in [1, 2, 4, 8]
+        bits = size * 8
+        self.gdb("watch *(uint{}_t)0x{:x}".format(bits, addr))
+        if self.watches_set is None:
+            self.watches_set = 0
+        self.watches_set += 1
+        if self.watches_set >= 4:
+            print
+            print "WARNING: Too much divergence! Not watching some diverged points."
+            print "(watchpoints are full...)"
+            print
+
+pool = ThreadPool(processes=2)
+
+# Forward calls to self.procs, splitting arguments along the way.
+class All(object):
+    def __init__(self, procs):
+        self.procs = procs
+
+    def split_args(self, args):
+        out_args = { proc: [] for proc in self.procs }
+        for arg in args:
+            for proc in out_args:
+                out_args[proc].append(arg[proc] if type(arg) == dict else arg)
+
+        return out_args
+
+    def gdb(self, *args, **kwargs):
+        split_args = self.split_args(args)
+        timeout = kwargs.get('timeout', None)
+        for proc, gdb_args in split_args.iteritems():
+            cmd = " ".join(map(str, gdb_args))
+            print "(rr-{}) {}".format(proc.description, cmd)
+            proc.pipe.send((cmd, timeout))
+
+        return { proc: proc.pipe.recv() for proc in self.procs }
+
+    def __getattr__(self, name):
+        def getattr_apply((proc, func_args)):
+            return (proc, getattr(proc, name)(*func_args))
+
+        def result(*args, **kwargs):
+            split_args = self.split_args(args)
+            return dict(pool.map(getattr_apply, split_args.iteritems()))
+
+        return result
 
 record = RRInstance("record", cli_args.record_rr)
 record.start()
@@ -152,104 +295,25 @@ replay = RRInstance("replay", cli_args.replay_rr)
 replay.start()
 
 both = [record, replay]
+Both = All(both)
 other = { record: replay, replay: record }
 descriptions = { record: "record", replay: "replay" }
 objs = { "record": record, "replay": replay }
 
-def gdb_run(cmd, proc, timeout=-1):
-    print "(rr-{}) {}".format(descriptions[proc], cmd)
-    proc.pipe.send((cmd, timeout))
-    return proc.pipe.recv()
-
-def gdb_run_both(cmd, timeout=-1):
-    if isinstance(cmd, str):
-        cmds = { record: cmd, replay: cmd }
-    elif isinstance(cmd, dict):
-        cmds = cmd
-    else:
-        assert False
-
-    for proc in cmds:
-        print "(rr-{}) {}".format(descriptions[proc], cmds[proc])
-        proc.pipe.send((cmds[proc], timeout))
-
-    return { proc: proc.pipe.recv() for proc in cmds }
-
 def cleanup_error():
-    gdb_run_both("quit")
+    Both.gdb("quit")
     record.join()
     replay.join()
     sys.exit(1)
 
-breakpoints = {}
-def breakpoint(break_arg):
-    result = gdb_run_both("break {}".format(break_arg))[record]
-    print result
-    bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
-    breakpoints[break_arg] = bp_num
-
-def disable_all(proc=None):
-    if proc:
-        gdb_run("disable", proc)
-    else:
-        gdb_run_both("disable")
-
-def enable(break_arg, proc=None):
-    cmd = "enable {}".format(breakpoints[break_arg])
-    if proc:
-        gdb_run(proc, cmd)
-    else:
-        gdb_run_both(cmd)
-
-def condition(break_arg, cond):
-    if isinstance(cond, str):
-        conds = { record: cond, replay: cond }
-    elif isinstance(cond, dict):
-        conds = cond
-    else: assert False
-
-    gdb_run_both({
-        record: "condition {} {}".format(breakpoints[break_arg], conds[record]),
-        replay: "condition {} {}".format(breakpoints[break_arg], conds[replay])
-    })
-
-def get_value(procs, value_str):
-    if set(procs) != set([record, replay]):
-        result = { proc: gdb_run("print/u {}", proc.format(value_str)) \
-                for proc in procs }
-    else:
-        result = gdb_run_both("print/u {}".format(value_str))
-    try:
-        return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
-    except AttributeError:
-        print "get_value failed:"
-        print result
-        raise
-
-def get_same_value(value_str):
-    return get_value([record], value_str)[record]
-
-gdb_run_both("set confirm off")
-gdb_run_both("set pagination off")
+Both.gdb("set confirm off")
+Both.gdb("set pagination off")
 
 check_call(['tmux', 'select-layout', 'even-horizontal'])
 
-breakpoint("rr_do_begin_record")
-breakpoint("rr_do_begin_replay")
-breakpoint("cpu_loop_exec_tb")
-disable_all()
-enable("rr_do_begin_record")
-enable("rr_do_begin_replay")
-def start_sync(proc):
-    gdb_run("continue", proc, timeout=None)
-    enable("cpu_loop_exec_tb", proc)
-    gdb_run("continue", proc)
-
-sync_thread = {
-    proc: Process(target=start_sync, args=[proc]) for proc in both
-}
-
-for proc in both: sync_thread[proc].start()
+Both.breakpoint("rr_do_begin_record")
+Both.breakpoint("rr_do_begin_replay")
+Both.breakpoint("cpu_loop_exec_tb")
 
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
@@ -261,107 +325,69 @@ def get_last_event(replay_dir):
 replay_last = get_last_event(cli_args.replay_rr)
 print "Last known replay event: {}".format(replay_last)
 
-def get_whens(procs=both):
-    result = gdb_run_both({ proc: "when" for proc in procs })
-    try:
-        ret = { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
-    except AttributeError:
-        ret = { record: 0, replay: 0 }
-        IPython.embed()
-    return ret
+# Go from beginning of program to execution of first TB after record/replay.
+def goto_first_tb(proc):
+    proc.disable_all()
+    proc.enable("rr_do_begin_record")
+    proc.enable("rr_do_begin_replay")
+    proc.cont()
+    proc.enable("cpu_loop_exec_tb")
+    proc.cont()
 
-def get_instr_counts(procs=both):
-    return get_value(procs, "cpus->tqh_first->rr_guest_instr_count")
+def start_replay(proc):
+    global instr_count_max
+    goto_first_tb(proc)
 
-def get_instr_count(proc):
-    return get_instr_counts([proc])[proc]
+    if cli_args.instr_max:
+        instr_count_max = int(cli_args.instr_max)
+    else:
+        # get last instruction in failed replay
+        proc.run_event(replay_last)
+        proc.disable_all()
+        proc.enable("cpu_loop_exec_tb")
+        proc.reverse_cont()
+        proc.reverse_cont()
+        instr_count_max = proc.instr_count()
 
-minimum_events = {}
-if cli_args.instr_max:
-    instr_count_max = int(cli_args.instr_max)
-    sync_thread[replay].join()
-    sync_thread[record].join()
-else:
-    sync_thread[replay].join()
-    # get last instruction in failed replay
-    gdb_run("run {}", replay.format(replay_last), timeout=None)
-    disable_all(replay)
-    enable("cpu_loop_exec_tb", replay)
-    gdb_run("reverse-continue", replay)
-    gdb_run("reverse-continue", replay)
-    instr_count_max = get_instr_count(replay)
+        # reset replay so it is in same state as record
+        proc.gdb("run 0")
+        goto_first_tb(proc)
 
-    # reset replay so it is in same state as record
-    disable_all(replay)
-    enable("rr_do_begin_record", replay)
-    enable("rr_do_begin_replay", replay)
-    gdb_run("run 0", replay)
-    gdb_run("continue", replay)
-    enable("cpu_loop_exec_tb", replay)
-    gdb_run("continue", replay)
+sync_thread = {
+    record: threading.Thread(target=goto_first_tb, args=(record,)),
+    replay: threading.Thread(target=start_replay, args=(replay,))
+}
 
-    sync_thread[record].join()
+for proc in both: sync_thread[proc].start()
+for proc in both: sync_thread[proc].join()
 
-minimum_events = get_whens()
+minimum_events = Both.when()
 
 print "Failing replay instr count:", instr_count_max
 
 try:
-    breakpoint("debug_counter")
+    Both.breakpoint("debug_counter")
 except AttributeError:
     print "Must run diverge.py on a debug build of panda. Run ./configure ",
     print "with --enable-debug for this to work."
     cleanup_error()
 
-instr_count_ptrs = get_value(both, "&cpus->tqh_first->rr_guest_instr_count")
-def condition_instr(break_arg, op, instr):
-    condition(break_arg, {
-        record: "*(uint64_t *){} {} {}".format(instr_count_ptrs[record], op, instr),
-        replay: "*(uint64_t *){} {} {}".format(instr_count_ptrs[replay], op, instr)
-    })
-
-ram_size = get_same_value("ram_size")
-ram_ptrs = get_value(both, "memory_region_find(" + \
-            "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
-
-def get_crc32s(low, size, procs=[record, replay]):
-    step = 1 << 31 if size > (1 << 31) else size
-    crc32s = { proc: 0 for proc in procs }
-    for start in range(low, low + size, step):
-        for proc in procs:
-            crc32s[proc] ^= get_value([proc],
-                        "(uint32_t)crc32(0, {} + {}, {})".format(
-                            hex(ram_ptrs[proc]), hex(start), hex(step)))[proc]
-    return crc32s
-
-def get_checksums(procs=[record, replay]):
-    # NB: Only run when you are at a breakpoint in CPU thread!
-    gdb_run_both("info threads")
-    memory = get_crc32s(0, ram_size, procs)
-    regs = get_value(procs, "rr_checksum_regs()")
-    return { k: (memory[k], regs[k]) for k in procs }
-
 def checksums_equal():
-    checksums = get_checksums()
-    return checksums[record] == checksums[replay]
-
-def format_each(format_str, *cli_args):
-    return { k: format_str.format(*[arg[k] for arg in cli_args]) \
-            for k in cli_args[0] }
+    return record.checksum() == replay.checksum()
 
 instr_to_event = sorteddict([(0, minimum_events)])
 def record_instr_event():
-    instr_counts = get_instr_counts()
+    instr_counts = Both.instr_count()
     if instr_counts[record] == instr_counts[replay]:
-        instr_to_event[instr_counts[record]] = get_whens()
+        instr_to_event[instr_counts[record]] = Both.when()
     else:
         print "Warning: tried to record non-synchronized instr<->event"
         IPython.embed()
 
 def goto_instr(instr):
     print "Moving to instr", instr
-    disable_all()
-    instr_counts = get_instr_counts()
+    Both.disable_all()
+    instr_counts = Both.instr_count()
     if instr in instr_to_event:
         run_instr = instr
     index = instr_to_event.keys().bisect_left(instr) - 1
@@ -371,38 +397,49 @@ def goto_instr(instr):
     for proc in both:
         if instr_counts[proc] > instr or instr_counts[proc] < run_instr:
             to_run.append(proc)
-    gdb_run_both(format_each("run {}",
-                { proc: instr_to_event[run_instr][proc] for proc in to_run }),
-            timeout=None)
+    needs_run = All(to_run)
+    needs_run.run_event({ proc: instr_to_event[run_instr][proc] for proc in to_run })
 
+    # We should have now guaranteed that both will be in [run_instr, instr].
+    # Now run them forwards to as close to instr as we can get.
     run_instr = instr - DEBUG_COUNTER_PERIOD
-    instr_counts = get_instr_counts()
+    instr_counts = Both.instr_count()
     to_run = [proc for proc in both if instr_counts[proc] < run_instr]
+    needs_run = All(to_run)
 
+    # debug_counter fires eevery 128k instrs, so move to last debug_counter
+    # before desired instr count.
     print "Moving to {} below {}".format(run_instr, instr)
-    enable("debug_counter")
-    condition_instr("debug_counter", ">=", run_instr)
-    gdb_run_both({ proc: "continue" for proc in to_run }, timeout=None)
+    needs_run.enable("debug_counter")
+    needs_run.condition_instr("debug_counter", ">=", run_instr)
+    needs_run.cont()
 
-    instr_counts = get_instr_counts()
+    # unfortunately, we might have gone too far above. move back one
+    # debug_counter fire if necessary.
+    instr_counts = Both.instr_count()
     to_run = [proc for proc in both if instr_counts[proc] > instr]
     if to_run:
-        print "Moving too-far ones back to {}".format(instr)
+        print "Moving too-far procs back to {}".format(instr)
         print { proc: instr_counts[proc] for proc in to_run }
-        condition_instr("debug_counter", "<=", instr)
-        gdb_run_both({ proc: "reverse-continue" for proc in to_run }, timeout=None)
+        needs_run = All(to_run)
+        needs_run.enable("debug_counter")
+        needs_run.condition_instr("debug_counter", "<=", instr)
+        needs_run.reverse_cont()
 
-    instr_counts = get_instr_counts()
+    instr_counts = Both.instr_count()
     to_run = [proc for proc in both if instr_counts[proc] < instr]
+    needs_run = All(to_run)
 
     print "Moving precisely to", instr
-    disable_all()
-    enable("cpu_loop_exec_tb")
-    condition_instr("cpu_loop_exec_tb", ">=", instr)
-    gdb_run_both({ proc: "continue" for proc in to_run }, timeout=None)
+    needs_run.disable_all()
+    needs_run.enable("cpu_loop_exec_tb")
+    needs_run.condition_instr("cpu_loop_exec_tb", ">=", instr)
+    needs_run.cont()
 
-    condition("cpu_loop_exec_tb", "")
-    instr_counts = get_instr_counts()
+    Both.disable_all()
+    Both.enable("cpu_loop_exec_tb")
+    Both.condition("cpu_loop_exec_tb", "")
+    instr_counts = Both.instr_count()
     FORWARDS = 0
     BACKWARDS = 1
     direction = FORWARDS
@@ -414,20 +451,20 @@ def goto_instr(instr):
         ahead = argmax(instr_counts)
         behind = other[ahead]
         if direction == FORWARDS:
-            condition_instr("cpu_loop_exec_tb", ">=", instr_counts[ahead])
-            gdb_run("continue", behind, timeout=None)
+            behind.condition_instr("cpu_loop_exec_tb", ">=", instr_counts[ahead])
+            behind.cont()
         else:
-            condition_instr("cpu_loop_exec_tb", "<=", instr_counts[behind])
-            gdb_run("reverse-continue", ahead, timeout=None)
+            ahead.condition_instr("cpu_loop_exec_tb", "<=", instr_counts[behind])
+            ahead.reverse_cont()
 
-        instr_counts = get_instr_counts()
+        instr_counts = Both.instr_count()
 
     record_instr_event()
     return instr_counts[record]
 
-maximum_events = get_whens()
+maximum_events = Both.when()
 
-disable_all()
+Both.disable_all()
 
 if cli_args.instr_bounds:
     instr_bounds = map(int, cli_args.instr_bounds.split(','))
@@ -452,7 +489,7 @@ def print_divergence_info():
         instr_max=instr_count_max
     )
 
-whens = get_whens()
+whens = Both.when()
 now_instr = instr_bounds[0]
 last_now = None
 while last_now != now_instr:
@@ -463,22 +500,25 @@ while last_now != now_instr:
     last_now = now_instr
     now_instr = goto_instr(mid)
 
-    whens = get_whens()
-    checksums = get_checksums()
+    whens = Both.when()
+    checksums = Both.checksum()
 
     print
     print whens
     print "Current checksums:", checksums
     if checksums[replay] != checksums[record]: # after divergence
+        # make right side of range smaller, i.e. new first divergence.
         instr_bounds[1] = min(instr_bounds[1], now_instr)
     else:
+        # make left side of range smaller, i.e. new last converged point.
         instr_bounds[0] = max(instr_bounds[0], now_instr)
 
 print "Haven't made progress since last iteration. Moving to memory checksum."
 print_divergence_info()
 
-disable_all()
+Both.disable_all()
 
+ram_size = record.get_value("ram_size")
 search_queue = [(0, ram_size)]
 divergences = []
 while search_queue:
@@ -490,8 +530,8 @@ while search_queue:
         continue
 
     size = (high - low) / 2
-    crc32s_low = get_crc32s(low, size)
-    crc32s_high = get_crc32s(low + size, size)
+    crc32s_low = Both.crc32_ram(low, size)
+    crc32s_high = Both.crc32_ram(low + size, size)
 
     if crc32s_low[record] != crc32s_low[replay]:
         search_queue.append((low, high - size))
@@ -509,10 +549,10 @@ for d in divergences:
         diverged_ranges.append([d, d+4])
 
 diverged_registers = []
-reg_size = get_same_value("sizeof ((CPUX86State*)0)->regs[0]")
-num_regs = get_same_value("sizeof ((CPUX86State*)0)->regs") / reg_size
+reg_size = record.get_value("sizeof ((CPUX86State*)0)->regs[0]")
+num_regs = record.get_value("sizeof ((CPUX86State*)0)->regs") / reg_size
 for reg in range(num_regs):
-    values = get_value(both, "((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
+    values = Both.get_value("((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
     if values[record] != values[replay]:
         diverged_registers.append(reg)
 
@@ -523,49 +563,36 @@ print "Diverged registers:", diverged_registers
 # Return to latest converged instr
 goto_instr(instr_bounds[0])
 
-# x86 debug registers can only watch 4 locations of 8 bytes.
-# we need to make sure to enforce that.
-watches_set = 0
-def watch(addrs, size):
-    bits = size * 8
-    gdb_run_both({
-        proc: "watch *(uint{}_t)0x{:x}".format(bits, addrs[proc]) for proc in both
-    })
-    global watches_set
-    watches_set += 1
-    if watches_set >= 4:
-        print "WARNING: Too much divergence! Not watching some diverged points."
-
-disable_all()
-reg_ptrs = get_value(both, "(uintptr_t)&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
+Both.disable_all()
+reg_ptrs = Both.get_value("(uintptr_t)&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
 for reg in diverged_registers:
-    watch({ proc: reg_ptrs[proc] + reg * reg_size for proc in both }, reg_size)
-    if watches_set >= 4: break
+    result = Both.watch({ proc: reg_ptrs[proc] + reg * reg_size for proc in both }, reg_size)
+    if record.watches_set >= 4: break
 
 # Heuristic: Should watch each range at most once. So iterate over offset
 # in outer loop, range in inner loop.
 max_range = max([high - low for (low, high) in diverged_ranges])
 for offset in range(0, max_range, 8):
+    if record.watches_set >= 4: break
     for low, high in diverged_ranges:
         watch_bytes = min(high - offset, 8)
-        watch({ proc: ram_ptrs[proc] + low + offset for proc in both }, watch_bytes)
-        if watches_set >= 4: break
-    if watches_set >= 4: break
+        Both.watch({ proc: ram_ptrs[proc] + low + offset for proc in both }, watch_bytes)
+        if record.watches_set >= 4: break
 
 if watches_set == 0:
     print "WARNING: Couldn't find any watchpoints to set at beginning of ",
     print "divergence range. What do you want to do?"
     IPython.embed()
 
-instr_counts = get_instr_counts()
+instr_counts = Both.instr_count()
 while instr_counts[record] == instr_counts[replay] \
         and instr_counts[record] > 0 \
         and instr_counts[replay] < instr_count_max \
         and checksums_equal():
-    gdb_run_both("continue", timeout=None)
-    instr_counts = get_instr_counts()
+    Both.gdb("continue", timeout=None)
+    instr_counts = Both.instr_count()
 
-backtraces = gdb_run_both("backtrace")
+backtraces = Both.gdb("backtrace")
 def show_backtrace(proc):
     print "{} BACKTRACE: ".format(proc.description.upper())
     print backtraces[proc]
@@ -594,7 +621,7 @@ else:
 
 IPython.embed()
 
-gdb_run_both("quit")
+Both.gdb("quit")
 
 record.join()
 replay.join()
