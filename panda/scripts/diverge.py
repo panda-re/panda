@@ -211,7 +211,10 @@ def get_value(procs, value_str):
                 for proc in procs }
     else:
         result = gdb_run_both("print/u {}".format(value_str))
-    return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+    try:
+        return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
+    except AttributeError:
+        return IPython.embed()
 
 def get_same_value(value_str):
     return get_value([record], value_str)[record]
@@ -506,13 +509,18 @@ for reg in diverged_registers:
 
 # Heuristic: Should watch each range at most once. So iterate over offset
 # in outer loop, range in inner loop.
-max_range = max([high - low for (high, low) in diverged_ranges])
+max_range = max([high - low for (low, high) in diverged_ranges])
 for offset in range(0, max_range, 8):
     for low, high in diverged_ranges:
         watch_bytes = min(high - offset, 8)
-        watch({ proc: ram_ptrs[proc] + offset for proc in both }, watch_bytes)
+        watch({ proc: ram_ptrs[proc] + low + offset for proc in both }, watch_bytes)
         if watches_set >= 4: break
     if watches_set >= 4: break
+
+if watches_set == 0:
+    print "WARNING: Couldn't find any watchpoints to set at beginning of ",
+    print "divergence range. What do you want to do?"
+    IPython.embed()
 
 instr_counts = get_instr_counts()
 while instr_counts[record] == instr_counts[replay] \
@@ -546,7 +554,7 @@ if instr_counts[record] > 0:
         show_backtrace(replay)
 else:
     print "Failed to find exact divergence. Look at mem ranges {}".format(
-            diverged_ranges)
+        [(hex(low), hex(high)) for low, high in diverged_ranges])
     print_divergence_info()
 
 IPython.embed()
