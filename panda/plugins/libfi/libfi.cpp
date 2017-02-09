@@ -31,7 +31,6 @@ void libfi_add_callback(char *libname, char *fnname, int isenter, uint32_t numar
 }
 
 #include "callstack_instr/callstack_instr.h"
-#include "callstack_instr/prog_point.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
 using namespace std;
