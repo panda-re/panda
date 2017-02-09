@@ -59,7 +59,7 @@ extern "C" {
 #include "panda/addr.h"
 #include "panda/plog.h"
 
-#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
     //#define TAINT_LEGACY_HYPERCALL // for use with replays that use old hypercall
