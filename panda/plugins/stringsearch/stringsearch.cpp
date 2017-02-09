@@ -31,7 +31,7 @@ extern "C" {
 #include "stringsearch.h"
 }
 
-#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
 using namespace std;
