@@ -6,10 +6,12 @@ import os
 import pipes
 import psutil
 import re
+import sys
+import time
 
 from blist import sorteddict
 from errno import EAGAIN, EWOULDBLOCK
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Pipe
 from os.path import join
 from subprocess32 import check_call, check_output, CalledProcessError
 
@@ -75,16 +77,17 @@ if tmux:
             break
 else:
     print "diverge.py must be run inside tmux. Please try again."
+    sys.exit(1)
 
 class RRInstance(Process):
-    def __init__(self, description, rr_replay, results_queue, *args, **kwargs):
+    def __init__(self, description, rr_replay):
+        parent_pipe, child_pipe = Pipe()
+        super(RRInstance, self).__init__(target=self.go, args=[child_pipe])
+
         self.description = description
-        self.work = Queue()
-        self.results_queue = results_queue
+        self.pipe = parent_pipe
         self.spawn_cmd = "{} replay {}".format(
             pipes.quote(cli_args.rr), pipes.quote(rr_replay))
-
-        Process.__init__(self, *args, **kwargs)
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
@@ -96,13 +99,13 @@ class RRInstance(Process):
     def kill(self):
         check_call(['tmux', 'kill-pane', '-t', self.pane])
 
-    def loop(self, tempdir):
+    def loop(self, pipe, tempdir):
         logfile = join(tempdir, self.description + "out")
         os.mkfifo(logfile)
         bash_command = "{} 2>&1 | tee {} | tee {}_log.txt".format(
             self.spawn_cmd, pipes.quote(logfile), self.description)
         self.pane = check_output([
-            'tmux', 'split-window', '-hP',
+            'tmux', 'split-window', '-hdP',
             '-F', '#{pane_id}', '-t', pane,
             'bash', '-c', bash_command]).strip()
 
@@ -110,7 +113,7 @@ class RRInstance(Process):
         proc.expect("(rr) ")
 
         while True:
-            item, timeout = self.work.get()
+            item, timeout = pipe.recv()
             # consume all waiting input before sending command.
             while True:
                 try:
@@ -123,7 +126,7 @@ class RRInstance(Process):
 
             if item == "quit":
                 self.sendline("quit")
-                self.results_queue.put((self.description, "quit"))
+                pipe.send("quit")
                 break
 
             try:
@@ -131,21 +134,21 @@ class RRInstance(Process):
             except TimeoutExpired:
                 print proc.sofar
                 print "EXCEPTION!"
-                IPython.embed()
+                sys.stdout.flush()
 
-            self.results_queue.put((self.description, output))
+            pipe.send(output)
 
-    def run(self):
+    def go(self, pipe):
         try:
             with TempDir() as tempdir:
-                self.loop(tempdir)
+                self.loop(pipe, tempdir)
         except KeyboardInterrupt:
             self.kill()
 
-results_queue = Queue()
-record = RRInstance("record", cli_args.record_rr, results_queue)
+record = RRInstance("record", cli_args.record_rr)
 record.start()
-replay = RRInstance("replay", cli_args.replay_rr, results_queue)
+time.sleep(0.3)
+replay = RRInstance("replay", cli_args.replay_rr)
 replay.start()
 
 both = [record, replay]
@@ -153,10 +156,10 @@ other = { record: replay, replay: record }
 descriptions = { record: "record", replay: "replay" }
 objs = { "record": record, "replay": replay }
 
-def gdb_run(proc, cmd, timeout=-1):
+def gdb_run(cmd, proc, timeout=-1):
     print "(rr-{}) {}".format(descriptions[proc], cmd)
-    proc.work.put((cmd, timeout))
-    return results_queue.get()[1]
+    proc.pipe.send((cmd, timeout))
+    return proc.pipe.recv()
 
 def gdb_run_both(cmd, timeout=-1):
     if isinstance(cmd, str):
@@ -168,30 +171,35 @@ def gdb_run_both(cmd, timeout=-1):
 
     for proc in cmds:
         print "(rr-{}) {}".format(descriptions[proc], cmds[proc])
-        proc.work.put((cmds[proc], timeout))
+        proc.pipe.send((cmds[proc], timeout))
 
-    results = {}
-    for i in range(len(cmds)):
-        name, value = results_queue.get()
-        results[objs[name]] = value
+    return { proc: proc.pipe.recv() for proc in cmds }
 
-    return results
+def cleanup_error():
+    gdb_run_both("quit")
+    record.join()
+    replay.join()
+    sys.exit(1)
 
 breakpoints = {}
 def breakpoint(break_arg):
     result = gdb_run_both("break {}".format(break_arg))[record]
-    try:
-        bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
-    except AttributeError:
-        print result
-        raise
+    print result
+    bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
     breakpoints[break_arg] = bp_num
 
-def disable_all():
-    gdb_run_both("disable")
+def disable_all(proc=None):
+    if proc:
+        gdb_run("disable", proc)
+    else:
+        gdb_run_both("disable")
 
-def enable(break_arg):
-    gdb_run_both("enable {}".format(breakpoints[break_arg]))
+def enable(break_arg, proc=None):
+    cmd = "enable {}".format(breakpoints[break_arg])
+    if proc:
+        gdb_run(proc, cmd)
+    else:
+        gdb_run_both(cmd)
 
 def condition(break_arg, cond):
     if isinstance(cond, str):
@@ -207,14 +215,16 @@ def condition(break_arg, cond):
 
 def get_value(procs, value_str):
     if set(procs) != set([record, replay]):
-        result = { proc: gdb_run(proc, "print/u {}".format(value_str)) \
+        result = { proc: gdb_run("print/u {}", proc.format(value_str)) \
                 for proc in procs }
     else:
         result = gdb_run_both("print/u {}".format(value_str))
     try:
         return { k: int(re.search(r"\$[0-9]+ = ([0-9]+)", v).group(1)) for k, v in result.items()}
     except AttributeError:
-        return IPython.embed()
+        print "get_value failed:"
+        print result
+        raise
 
 def get_same_value(value_str):
     return get_value([record], value_str)[record]
@@ -226,19 +236,33 @@ check_call(['tmux', 'select-layout', 'even-horizontal'])
 
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
-gdb_run_both("continue", timeout=None)
-ram_ptrs = get_value([record, replay], "memory_region_find(" + \
-             "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
-
-gdb_run_both("finish", timeout=None)
-gdb_run_both("watch cpus->tqh_first->rr_guest_instr_count")
-gdb_run_both("continue", timeout=None)
-
 breakpoint("cpu_loop_exec_tb")
-breakpoint("debug_counter")
+disable_all()
+enable("rr_do_begin_record")
+enable("rr_do_begin_replay")
+def start_sync(proc):
+    gdb_run("continue", proc, timeout=None)
+    enable("cpu_loop_exec_tb", proc)
+    gdb_run("continue", proc)
 
-def get_whens():
-    result = gdb_run_both("when")
+sync_thread = {
+    proc: Process(target=start_sync, args=[proc]) for proc in both
+}
+
+for proc in both: sync_thread[proc].start()
+
+def get_last_event(replay_dir):
+    cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
+        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr, replay_dir)
+
+    str_result = check_output(cmd, shell=True)
+    return int(str_result)
+
+replay_last = get_last_event(cli_args.replay_rr)
+print "Last known replay event: {}".format(replay_last)
+
+def get_whens(procs=both):
+    result = gdb_run_both({ proc: "when" for proc in procs })
     try:
         ret = { k: int(re.search(r"Current event: ([0-9]+)", v).group(1)) for k, v in result.items()}
     except AttributeError:
@@ -246,13 +270,59 @@ def get_whens():
         IPython.embed()
     return ret
 
-def get_instr_counts(procs=[record, replay]):
+def get_instr_counts(procs=both):
     return get_value(procs, "cpus->tqh_first->rr_guest_instr_count")
 
 def get_instr_count(proc):
     return get_instr_counts([proc])[proc]
 
+minimum_events = {}
+if cli_args.instr_max:
+    instr_count_max = int(cli_args.instr_max)
+    sync_thread[replay].join()
+    sync_thread[record].join()
+else:
+    sync_thread[replay].join()
+    # get last instruction in failed replay
+    gdb_run("run {}", replay.format(replay_last), timeout=None)
+    disable_all(replay)
+    enable("cpu_loop_exec_tb", replay)
+    gdb_run("reverse-continue", replay)
+    gdb_run("reverse-continue", replay)
+    instr_count_max = get_instr_count(replay)
+
+    # reset replay so it is in same state as record
+    disable_all(replay)
+    enable("rr_do_begin_record", replay)
+    enable("rr_do_begin_replay", replay)
+    gdb_run("run 0", replay)
+    gdb_run("continue", replay)
+    enable("cpu_loop_exec_tb", replay)
+    gdb_run("continue", replay)
+
+    sync_thread[record].join()
+
+minimum_events = get_whens()
+
+print "Failing replay instr count:", instr_count_max
+
+try:
+    breakpoint("debug_counter")
+except AttributeError:
+    print "Must run diverge.py on a debug build of panda. Run ./configure ",
+    print "with --enable-debug for this to work."
+    cleanup_error()
+
+instr_count_ptrs = get_value(both, "&cpus->tqh_first->rr_guest_instr_count")
+def condition_instr(break_arg, op, instr):
+    condition(break_arg, {
+        record: "*(uint64_t *){} {} {}".format(instr_count_ptrs[record], op, instr),
+        replay: "*(uint64_t *){} {} {}".format(instr_count_ptrs[replay], op, instr)
+    })
+
 ram_size = get_same_value("ram_size")
+ram_ptrs = get_value(both, "memory_region_find(" + \
+            "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
 
 def get_crc32s(low, size, procs=[record, replay]):
     step = 1 << 31 if size > (1 << 31) else size
@@ -275,39 +345,11 @@ def checksums_equal():
     checksums = get_checksums()
     return checksums[record] == checksums[replay]
 
-def get_last_event(replay_dir):
-    cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
-        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr, replay_dir)
-
-    str_result = check_output(cmd, shell=True)
-    return int(str_result)
-
-record_last = get_last_event(cli_args.record_rr)
-replay_last = get_last_event(cli_args.replay_rr)
-
-print "Last known events: record={}, replay={}".format(record_last, replay_last)
-
-minimum_events = { k: v + 1 for k, v in get_whens().items() }
-if cli_args.instr_max:
-    instr_count_max = int(cli_args.instr_max)
-else:
-    # get last instruction in failed replay
-    gdb_run_both({
-        record: "run {}".format(record_last),
-        replay: "run {}".format(replay_last)
-    }, timeout=None)
-
-    gdb_run_both("reverse-continue", timeout=None)
-
-    instr_count_max = get_instr_count(replay)
-
-print "Failing replay instr count:", instr_count_max
-
 def format_each(format_str, *cli_args):
     return { k: format_str.format(*[arg[k] for arg in cli_args]) \
             for k in cli_args[0] }
 
-instr_to_event = sorteddict([(1, minimum_events)])
+instr_to_event = sorteddict([(0, minimum_events)])
 def record_instr_event():
     instr_counts = get_instr_counts()
     if instr_counts[record] == instr_counts[replay]:
@@ -339,8 +381,7 @@ def goto_instr(instr):
 
     print "Moving to {} below {}".format(run_instr, instr)
     enable("debug_counter")
-    condition("debug_counter",
-            "cpus->tqh_first->rr_guest_instr_count >= {}".format(run_instr))
+    condition_instr("debug_counter", ">=", run_instr)
     gdb_run_both({ proc: "continue" for proc in to_run }, timeout=None)
 
     instr_counts = get_instr_counts()
@@ -348,8 +389,7 @@ def goto_instr(instr):
     if to_run:
         print "Moving too-far ones back to {}".format(instr)
         print { proc: instr_counts[proc] for proc in to_run }
-        condition("debug_counter",
-                "cpus->tqh_first->rr_guest_instr_count <= {}".format(instr))
+        condition_instr("debug_counter", "<=", instr)
         gdb_run_both({ proc: "reverse-continue" for proc in to_run }, timeout=None)
 
     instr_counts = get_instr_counts()
@@ -358,8 +398,7 @@ def goto_instr(instr):
     print "Moving precisely to", instr
     disable_all()
     enable("cpu_loop_exec_tb")
-    condition("cpu_loop_exec_tb",
-            "cpus->tqh_first->rr_guest_instr_count >= {}".format(instr))
+    condition_instr("cpu_loop_exec_tb", ">=", instr)
     gdb_run_both({ proc: "continue" for proc in to_run }, timeout=None)
 
     condition("cpu_loop_exec_tb", "")
@@ -375,15 +414,11 @@ def goto_instr(instr):
         ahead = argmax(instr_counts)
         behind = other[ahead]
         if direction == FORWARDS:
-            condition("cpu_loop_exec_tb",
-                    "cpus->tqh_first->rr_guest_instr_count >= {}".format(
-                        instr_counts[ahead]))
-            gdb_run(behind, "continue", timeout=None)
+            condition_instr("cpu_loop_exec_tb", ">=", instr_counts[ahead])
+            gdb_run("continue", behind, timeout=None)
         else:
-            condition("cpu_loop_exec_tb",
-                    "cpus->tqh_first->rr_guest_instr_count <= {}".format(
-                        instr_counts[behind]))
-            gdb_run(ahead, "reverse-continue", timeout=None)
+            condition_instr("cpu_loop_exec_tb", "<=", instr_counts[behind])
+            gdb_run("reverse-continue", ahead, timeout=None)
 
         instr_counts = get_instr_counts()
 
