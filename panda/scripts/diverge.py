@@ -92,6 +92,7 @@ class RRInstance(Process):
             pipes.quote(cli_args.rr), pipes.quote(rr_replay))
 
         self.breakpoints = {}
+        self.watches_set = 0
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
@@ -157,6 +158,7 @@ class RRInstance(Process):
         timeout = kwargs.get('timeout', None)
         cmd = " ".join(map(str, args))
         print "(rr-{}) {}".format(self.description, cmd)
+        sys.stdout.flush()
         self.pipe.send((cmd, timeout))
         return self.pipe.recv()
 
@@ -244,14 +246,16 @@ class RRInstance(Process):
         assert size in [1, 2, 4, 8]
         bits = size * 8
         self.gdb("watch *(uint{}_t)0x{:x}".format(bits, addr))
-        if self.watches_set is None:
-            self.watches_set = 0
         self.watches_set += 1
         if self.watches_set >= 4:
             print
             print "WARNING: Too much divergence! Not watching some diverged points."
             print "(watchpoints are full...)"
             print
+
+    # watch a location in guest ram.
+    def watch_ram(self, ram_addr, size):
+        self.watch(self.ram_ptr() + ram_addr, size)
 
 pool = ThreadPool(processes=2)
 
@@ -284,7 +288,7 @@ class All(object):
 
         def result(*args, **kwargs):
             split_args = self.split_args(args)
-            return dict(pool.map(getattr_apply, split_args.iteritems()))
+            return dict(pool.map(getattr_apply, split_args.iteritems(), chunksize=1))
 
         return result
 
@@ -384,58 +388,49 @@ def record_instr_event():
         print "Warning: tried to record non-synchronized instr<->event"
         IPython.embed()
 
-def goto_instr(instr):
-    print "Moving to instr", instr
-    Both.disable_all()
-    instr_counts = Both.instr_count()
-    if instr in instr_to_event:
-        run_instr = instr
-    index = instr_to_event.keys().bisect_left(instr) - 1
-    run_instr = instr_to_event.keys()[index]
+def move_proc(proc, target_instr):
+    print "Moving", proc, "to instr", target_instr
+    proc.disable_all()
+    current_instr = proc.instr_count()
+    if target_instr in instr_to_event:
+        run_instr = target_instr
+    else:
+        index = instr_to_event.keys().bisect_left(target_instr) - 1
+        run_instr = instr_to_event.keys()[index]
 
-    to_run = []
-    for proc in both:
-        if instr_counts[proc] > instr or instr_counts[proc] < run_instr:
-            to_run.append(proc)
-    needs_run = All(to_run)
-    needs_run.run_event({ proc: instr_to_event[run_instr][proc] for proc in to_run })
+    if current_instr > target_instr or current_instr < run_instr:
+        proc.run_event(instr_to_event[run_instr][proc])
 
-    # We should have now guaranteed that both will be in [run_instr, instr].
-    # Now run them forwards to as close to instr as we can get.
-    run_instr = instr - DEBUG_COUNTER_PERIOD
-    instr_counts = Both.instr_count()
-    to_run = [proc for proc in both if instr_counts[proc] < run_instr]
-    needs_run = All(to_run)
-
-    # debug_counter fires eevery 128k instrs, so move to last debug_counter
+    # We should have now guaranteed that both will be in [run_instr, target_instr].
+    # Now run them forwards to as close to target_instr as we can get.
+    # debug_counter fires every 128k instrs, so move to last debug_counter
     # before desired instr count.
-    print "Moving to {} below {}".format(run_instr, instr)
-    needs_run.enable("debug_counter")
-    needs_run.condition_instr("debug_counter", ">=", run_instr)
-    needs_run.cont()
+    run_instr = target_instr - DEBUG_COUNTER_PERIOD
+    current_instr = proc.instr_count()
+    if current_instr < run_instr:
+        print "Moving from {} to {} below {}".format(current_instr, run_instr, target_instr)
+        proc.enable("debug_counter")
+        proc.condition_instr("debug_counter", ">=", run_instr)
+        proc.cont()
 
     # unfortunately, we might have gone too far above. move back one
     # debug_counter fire if necessary.
-    instr_counts = Both.instr_count()
-    to_run = [proc for proc in both if instr_counts[proc] > instr]
-    if to_run:
-        print "Moving too-far procs back to {}".format(instr)
-        print { proc: instr_counts[proc] for proc in to_run }
-        needs_run = All(to_run)
-        needs_run.enable("debug_counter")
-        needs_run.condition_instr("debug_counter", "<=", instr)
-        needs_run.reverse_cont()
+    current_instr = proc.instr_count()
+    if current_instr > target_instr:
+        print "Moving back to {}".format(target_instr)
+        proc.enable("debug_counter")
+        proc.condition_instr("debug_counter", "<=", target_instr)
+        proc.reverse_cont()
 
-    instr_counts = Both.instr_count()
-    to_run = [proc for proc in both if instr_counts[proc] < instr]
-    needs_run = All(to_run)
+    current_instr = proc.instr_count()
+    if current_instr != target_instr:
+        print "Moving precisely to", target_instr
+        proc.disable_all()
+        proc.enable("cpu_loop_exec_tb")
+        proc.condition_instr("cpu_loop_exec_tb", ">=", target_instr)
+        proc.cont()
 
-    print "Moving precisely to", instr
-    needs_run.disable_all()
-    needs_run.enable("cpu_loop_exec_tb")
-    needs_run.condition_instr("cpu_loop_exec_tb", ">=", instr)
-    needs_run.cont()
-
+def sync_precise(target_instr):
     Both.disable_all()
     Both.enable("cpu_loop_exec_tb")
     Both.condition("cpu_loop_exec_tb", "")
@@ -462,7 +457,11 @@ def goto_instr(instr):
     record_instr_event()
     return instr_counts[record]
 
-maximum_events = Both.when()
+def goto_instr(target_instr):
+    pool.map(lambda proc: move_proc(proc, target_instr), both, chunksize=1)
+    now_instr = sync_precise(target_instr)
+    record_instr_event()
+    return now_instr
 
 Both.disable_all()
 
@@ -576,10 +575,10 @@ for offset in range(0, max_range, 8):
     if record.watches_set >= 4: break
     for low, high in diverged_ranges:
         watch_bytes = min(high - offset, 8)
-        Both.watch({ proc: ram_ptrs[proc] + low + offset for proc in both }, watch_bytes)
+        Both.watch_ram(low + offset, watch_bytes)
         if record.watches_set >= 4: break
 
-if watches_set == 0:
+if record.watches_set == 0:
     print "WARNING: Couldn't find any watchpoints to set at beginning of ",
     print "divergence range. What do you want to do?"
     IPython.embed()
