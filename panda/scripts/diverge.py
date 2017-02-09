@@ -111,6 +111,7 @@ class RRInstance(Process):
 
         while True:
             item, timeout = self.work.get()
+            # consume all waiting input before sending command.
             while True:
                 try:
                     os.read(proc.fd, 1024)
@@ -122,8 +123,6 @@ class RRInstance(Process):
 
             if item == "quit":
                 self.sendline("quit")
-                time.sleep(0.5)
-                self.kill()
                 self.results_queue.put((self.description, "quit"))
                 break
 
