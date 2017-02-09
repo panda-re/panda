@@ -11,7 +11,7 @@
 #include "taint2/taint2.h"
 
 // needed for callstack logging
-#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr.h"
 
 extern "C" {
 
