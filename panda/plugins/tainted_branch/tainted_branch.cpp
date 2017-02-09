@@ -33,7 +33,7 @@ extern "C" {
 }
 
 // NB: callstack_instr_ext needs this, sadly
-#include "callstack_instr/prog_point.h"
+#include "callstack_instr/callstack_instr.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
 // this includes on_branch2_t
