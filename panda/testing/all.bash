@@ -50,6 +50,7 @@ declare -A result
 for tst in `/bin/ls tests`
 do  
     starttime=$(date +%s%N)
+    echo 
     echo "=============="
     echo "test [${tst}] BEGIN"
     #
@@ -60,6 +61,17 @@ do
     testcmds="./tests/${tst}/${tst}.bash $regressiondir"
     echo "testcmds=[$testcmds]"
     time $testcmds
+    if [ $? != 0 ]
+    then
+        echo 
+        echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        echo "TEST SCRIPT $tst IS BROKEN!"
+        if [[ $mode == "ref" ]]
+        then
+            echo "Please fix it and re-run to get complete refs which are currently *incomplete"
+        fi
+        exit 1
+    fi
     echo "test [${tst}] output END"
     echo "--------------"
     set_outputs $tst
