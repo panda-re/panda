@@ -1,20 +1,27 @@
 #!/usr/bin/python
 import IPython
 import argparse
-import pexpect
-import os
-import re
 import operator
-from subprocess32 import check_output
-from multiprocessing import Process, Queue
+import os
+import pipes
+import psutil
+import re
+
 from blist import sorteddict
+from errno import EAGAIN, EWOULDBLOCK
+from multiprocessing import Process, Queue
+from os.path import join
+from subprocess32 import check_call, check_output, CalledProcessError
+
+from expect import Expect, TimeoutExpired
+from tempdir import TempDir
 
 DEBUG_COUNTER_PERIOD = 1 << 17
 
 def get_default_rr_path():
     try:
         rr_path = check_output(["which", "rr"]).strip()
-    except:
+    except CalledProcessError:
         rr_path = None
     return rr_path
 
@@ -45,47 +52,101 @@ def argmin(d):
 
 assert cli_args.rr
 
+tmux = False
+pane = None
+parent_pids = []
+proc = psutil.Process(os.getpid())
+while True:
+    parent_pids.append(proc.pid)
+    try:
+        proc = psutil.Process(proc.ppid())
+    except psutil.NoSuchProcess:
+        break
+    if 'tmux' in proc.name():
+        tmux = True
+        print "tmux mode on!"
+
+if tmux:
+    panes = check_output(['tmux', 'list-panes', '-a', '-F', '#{pane_id} #{pane_pid}'])
+    for line in panes.splitlines():
+        pane_id, pid_s = line.split()
+        if int(pid_s) in parent_pids:
+            pane = pane_id
+            break
+else:
+    print "diverge.py must be run inside tmux. Please try again."
+
 class RRInstance(Process):
-    def __init__(self, description, rr_replay, logfile, results_queue, *args, **kwargs):
+    def __init__(self, description, rr_replay, results_queue, *args, **kwargs):
         self.description = description
         self.work = Queue()
         self.results_queue = results_queue
-        self.spawn_cmd = "{} replay {}".format(cli_args.rr, rr_replay)
-        self.logfile = logfile
+        self.spawn_cmd = "{} replay {}".format(
+            pipes.quote(cli_args.rr), pipes.quote(rr_replay))
 
         Process.__init__(self, *args, **kwargs)
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
 
-    def run(self):
-        process = pexpect.spawn(self.spawn_cmd, timeout=5)
-        process.logfile = open(self.logfile, "w")
-        process.expect_exact("(rr) ")
+    def sendline(self, msg):
+        check_call(['tmux', 'send-keys', '-t', self.pane, '-l', msg])
+        check_call(['tmux', 'send-keys', '-t', self.pane, 'ENTER'])
+
+    def kill(self):
+        check_call(['tmux', 'kill-pane', '-t', self.pane])
+
+    def loop(self, tempdir):
+        logfile = join(tempdir, self.description + "out")
+        os.mkfifo(logfile)
+        bash_command = "{} 2>&1 | tee {} | tee {}_log.txt".format(
+            self.spawn_cmd, pipes.quote(logfile), self.description)
+        self.pane = check_output([
+            'tmux', 'split-window', '-hP',
+            '-F', '#{pane_id}', '-t', pane,
+            'bash', '-c', bash_command]).strip()
+
+        proc = Expect(os.open(logfile, os.O_RDONLY | os.O_NONBLOCK), quiet=True)
+        proc.expect("(rr) ")
 
         while True:
             item, timeout = self.work.get()
-            process.sendline(item)
+            while True:
+                try:
+                    os.read(proc.fd, 1024)
+                except OSError as e:
+                    if e.errno in [EAGAIN, EWOULDBLOCK]:
+                        break
+                    else: raise
+            self.sendline(item)
 
             if item == "quit":
+                self.sendline("quit")
+                time.sleep(0.5)
+                self.kill()
                 self.results_queue.put((self.description, "quit"))
                 break
 
             try:
-                process.expect_exact("(rr) ", timeout=timeout)
-            except pexpect.TIMEOUT:
-                print process.before
+                output = proc.expect("(rr) ", timeout=timeout)
+            except TimeoutExpired:
+                print proc.sofar
                 print "EXCEPTION!"
                 IPython.embed()
 
-            self.results_queue.put((self.description, process.before))
+            self.results_queue.put((self.description, output))
 
-        process.terminate()
+    def run(self):
+        try:
+            with TempDir() as tempdir:
+                self.loop(tempdir)
+        except KeyboardInterrupt:
+            self.kill()
 
 results_queue = Queue()
-record = RRInstance("record", cli_args.record_rr, "record_log.txt", results_queue)
+record = RRInstance("record", cli_args.record_rr, results_queue)
 record.start()
-replay = RRInstance("replay", cli_args.replay_rr, "replay_log.txt", results_queue)
+replay = RRInstance("replay", cli_args.replay_rr, results_queue)
 replay.start()
 
 both = [record, replay]
@@ -120,7 +181,11 @@ def gdb_run_both(cmd, timeout=-1):
 breakpoints = {}
 def breakpoint(break_arg):
     result = gdb_run_both("break {}".format(break_arg))[record]
-    bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
+    try:
+        bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
+    except AttributeError:
+        print result
+        raise
     breakpoints[break_arg] = bp_num
 
 def disable_all():
@@ -154,6 +219,8 @@ def get_same_value(value_str):
 
 gdb_run_both("set confirm off")
 gdb_run_both("set pagination off")
+
+check_call(['tmux', 'select-layout', 'even-horizontal'])
 
 breakpoint("rr_do_begin_record")
 breakpoint("rr_do_begin_replay")
@@ -404,9 +471,6 @@ for d in divergences:
     else:
         diverged_ranges.append([d, d+4])
 
-print divergences
-print diverged_ranges
-
 diverged_registers = []
 reg_size = get_same_value("sizeof ((CPUX86State*)0)->regs[0]")
 num_regs = get_same_value("sizeof ((CPUX86State*)0)->regs") / reg_size
@@ -414,6 +478,10 @@ for reg in range(num_regs):
     values = get_value(both, "((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
     if values[record] != values[replay]:
         diverged_registers.append(reg)
+
+print "Diverged memory addresses:",
+print [(hex(low), hex(high)) for low, high in diverged_ranges]
+print "Diverged registers:", diverged_registers
 
 # Return to latest converged instr
 goto_instr(instr_bounds[0])
