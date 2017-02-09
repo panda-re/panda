@@ -16,7 +16,8 @@ PLUGIN_OBJ_DIR=panda/plugins/$(PLUGIN_NAME)
 
 PLUGIN_SRC_DIR=$(PLUGIN_SRC_ROOT)/$(PLUGIN_NAME)
 
-TARGET_PATH=$(SRC_PATH)/target-$(TARGET_BASE_ARCH)
+TARGET_PATH=$(SRC_PATH)/target/$(TARGET_BASE_ARCH)
+TARGET_BUILD=../target/$(TARGET_BASE_ARCH)
 
 QEMU_CFLAGS+=-DNEED_CPU_H -fPIC
 QEMU_CXXFLAGS+=-DNEED_CPU_H -fPIC
@@ -25,10 +26,10 @@ QEMU_CXXFLAGS+=-fpermissive -std=c++11
 
 # These are all includes. I think.
 QEMU_CFLAGS+=$(GLIB_CFLAGS)
-QEMU_CXXFLAGS+=$(GLIB_CFLAGS)
+QEMU_CXXFLAGS+=$(GLIB_CFLAGS) -Wno-pointer-arith
 
 QEMU_INCLUDES+=-I$(PLUGIN_SRC_DIR) -I$(PLUGIN_SRC_ROOT) -I$(SRC_PATH)/panda/plugins
-QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I.. -I$(TARGET_PATH)
+QEMU_INCLUDES+=-I$(PLUGIN_TARGET_DIR) -I.. -I$(TARGET_PATH) -I$(TARGET_BUILD)
 
 # These should get generated automatically and include dependency information.
 -include $(wildcard $(PLUGIN_OBJ_DIR)/*.d)

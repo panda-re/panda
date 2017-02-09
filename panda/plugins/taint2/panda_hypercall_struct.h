@@ -7,12 +7,11 @@
  * Keep me in sync between PANDA and LAVA repos
  */
 
-#ifdef PANDA
-#include "stdint.h"
-typedef uint32_t lavaint;
-#else
 typedef unsigned int lavaint;
+#ifndef __cplusplus
+#define static_assert _Static_assert
 #endif
+static_assert(sizeof(lavaint) == 4, "lavaint size must be 4!");
 
 #pragma pack(push,1)
 typedef struct panda_hypercall_struct {
@@ -26,6 +25,7 @@ typedef struct panda_hypercall_struct {
     lavaint src_linenum;        // line number
     lavaint src_ast_node_name;  // the name of the l-value queries 
     lavaint info;               // general info
+    lavaint insertion_point;    // unused now.
 } PandaHypercallStruct;
 #pragma pack(pop)
 

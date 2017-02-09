@@ -9,7 +9,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "hw/i386/pc.h"
 #include "hw/xen/xen_backend.h"
 #include "qmp-commands.h"
 #include "sysemu/char.h"
@@ -26,7 +25,7 @@
     do { } while (0)
 #endif
 
-static int store_dev_info(int domid, CharDriverState *cs, const char *string)
+static int store_dev_info(int domid, Chardev *cs, const char *string)
 {
     struct xs_handle *xs = NULL;
     char *path = NULL;
@@ -75,7 +74,7 @@ out:
     return ret;
 }
 
-void xenstore_store_pv_console_info(int i, CharDriverState *chr)
+void xenstore_store_pv_console_info(int i, Chardev *chr)
 {
     if (i == 0) {
         store_dev_info(xen_domid, chr, "/console");
@@ -115,11 +114,6 @@ static void xen_change_state_handler(void *opaque, int running,
 
 static int xen_init(MachineState *ms)
 {
-    PCMachineState *pcms = PC_MACHINE(ms);
-
-    /* Disable ACPI build because Xen handles it */
-    pcms->acpi_build_enabled = false;
-
     xen_xc = xc_interface_open(0, 0, 0);
     if (xen_xc == NULL) {
         xen_pv_printf(NULL, 0, "can't open xen interface\n");

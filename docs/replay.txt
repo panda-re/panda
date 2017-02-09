@@ -195,3 +195,33 @@ Queue is flushed at checkpoints and information about processed requests
 is recorded to the log. In replay phase the queue is matched with
 events read from the log. Therefore block devices requests are processed
 deterministically.
+
+Snapshotting
+------------
+
+New VM snapshots may be created in replay mode. They can be used later
+to recover the desired VM state. All VM states created in replay mode
+are associated with the moment of time in the replay scenario.
+After recovering the VM state replay will start from that position.
+
+Default starting snapshot name may be specified with icount field
+rrsnapshot as follows:
+ -icount shift=7,rr=record,rrfile=replay.bin,rrsnapshot=snapshot_name
+
+This snapshot is created at start of recording and restored at start
+of replaying. It also can be loaded while replaying to roll back
+the execution.
+
+Network devices
+---------------
+
+Record and replay for network interactions is performed with the network filter.
+Each backend must have its own instance of the replay filter as follows:
+ -netdev user,id=net1 -device rtl8139,netdev=net1
+ -object filter-replay,id=replay,netdev=net1
+
+Replay network filter is used to record and replay network packets. While
+recording the virtual machine this filter puts all packets coming from
+the outer world into the log. In replay mode packets from the log are
+injected into the network device. All interactions with network backend
+in replay mode are disabled.

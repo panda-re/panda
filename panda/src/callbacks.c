@@ -65,12 +65,16 @@ bool panda_tb_chaining = true;
 
 bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
+bool panda_abort_requested = false;
 
 bool panda_add_arg(const char *arg, int arglen) {
     if (arglen > 255) return false;
     strncpy(panda_argv[panda_argc++], arg, 255);
     return true;
 }
+
+// Forward declaration
+static void panda_args_set_help_wanted(const char *);
 
 bool panda_load_plugin(const char *filename, const char *plugin_name) {
     // don't load the same plugin twice
@@ -103,6 +107,13 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
     nb_panda_plugins++;
     fprintf(stderr, "Initializing plugin %s\n", plugin_name ? plugin_name : filename);
+    panda_help_wanted = false;
+    panda_args_set_help_wanted(plugin_name);
+    if (panda_help_wanted) {
+        printf("Options for plugin %s:\n", plugin_name); 
+        fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
+        fprintf(stderr, "======              ========                ========        ===========\n");
+    }
     if(init_fn(plugin) && !panda_plugin_load_failed) {
         // TRL: Don't do this here!  See above
         //        panda_plugins[nb_panda_plugins].plugin = plugin;
@@ -134,6 +145,9 @@ char *panda_plugin_path(const char *plugin_name) {
 
 
 void panda_require(const char *plugin_name) {
+    // If we're printing help, panda_require will be a no-op.
+    if (panda_help_wanted) return;
+
     printf ("panda_require: %s\n", plugin_name);
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name);
@@ -401,7 +415,7 @@ void panda_memsavep(FILE *f) {
 }
 
 // Parse out arguments and return them to caller
-panda_arg_list *panda_get_args(const char *plugin_name) {
+static panda_arg_list *panda_get_args_internal(const char *plugin_name, bool check_only) {
     panda_arg_list *ret = NULL;
     panda_arg *list = NULL;
 
@@ -417,11 +431,14 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
         }
     }
 
-    if (nargs == 0) goto fail;
+    if (nargs != 0) {
+        ret->nargs = nargs;
+        list = (panda_arg *) g_malloc(sizeof(panda_arg)*nargs);
+        if (list == NULL) goto fail;
+    }
 
-    ret->nargs = nargs;
-    list = (panda_arg *) g_malloc(sizeof(panda_arg)*nargs);
-    if (list == NULL) goto fail;
+    // Put plugin name in here so we can use it
+    ret->plugin_name = g_strdup(plugin_name);
 
     // second pass to copy and parse each arg into key/value
     int ret_idx = 0;
@@ -462,10 +479,13 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
     for (i = 0; i < ret->nargs; i++) {
         if (strcmp(ret->list[i].key, "help") == 0) {
             panda_help_wanted = true;
-            printf("Options for plugin %s:\n", plugin_name); 
-            fprintf(stderr, "ARGUMENT                REQUIRED        DESCRIPTION\n");
-            fprintf(stderr, "========                ========        ===========\n");
+            panda_abort_requested = true;
         }
+    }
+    
+    if (check_only) {
+        panda_free_args(ret);
+        ret = NULL;
     }
 
     return ret;
@@ -474,6 +494,14 @@ fail:
     if (ret != NULL) g_free(ret);
     if (list != NULL) g_free(list);
     return NULL;
+}
+
+static void panda_args_set_help_wanted(const char *plugin_name) {
+    panda_get_args_internal(plugin_name, true);
+}
+
+panda_arg_list *panda_get_args(const char *plugin_name) {
+    return panda_get_args_internal(plugin_name, false);
 }
 
 static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname, const char *help, bool required) {
@@ -499,7 +527,7 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        fprintf(stderr, "%-24sOptional        %s (default=true)\n", argname, help);
+        fprintf(stderr, "%-20s%-24sOptional        %s (default=true)\n", args->plugin_name, argname, help);
     }
 
     // not found
@@ -536,8 +564,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
-        else fprintf(stderr, "%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else fprintf(stderr, "%-20s%-24sOptional        %s (default=" TARGET_FMT_ld ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -573,8 +601,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
-        else fprintf(stderr, "%-24sOptional        %s (default=%d)\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%d)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -610,8 +638,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-24sRequired        %s)\n", argname, help);
-        else fprintf(stderr, "%-24sOptional        %s (default=%" PRId64 ")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-20s%-24sRequired        %s)\n", args->plugin_name, argname, help);
+        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%" PRId64 ")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -647,8 +675,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
-        else fprintf(stderr, "%-24sOptional        %s (default=%f)\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else fprintf(stderr, "%-20s%-24sOptional        %s (default=%f)\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -722,8 +750,8 @@ error_handling:
     }
 help:
     if (panda_help_wanted) {
-        if (required) fprintf(stderr, "%-24sRequired        %s\n", argname, help);
-        else fprintf(stderr, "%-24sOptional        %s (default=\"%s\")\n", argname, help, defval);
+        if (required) fprintf(stderr, "%-20s%-24sRequired        %s\n", args->plugin_name, argname, help);
+        else fprintf(stderr, "%-20s%-24sOptional        %s (default=\"%s\")\n", args->plugin_name, argname, help, defval);
     }
 
     return defval;
@@ -748,6 +776,7 @@ void panda_free_args(panda_arg_list *args) {
     for (i = 0; i < args->nargs; i++) {
         g_free(args->list[i].argptr);
     }
+    g_free(args->plugin_name);
     g_free(args);
 }
 

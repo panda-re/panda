@@ -400,13 +400,13 @@ static void pc_cmos_init_late(void *opaque)
     int i, trans;
 
     val = 0;
-    if (ide_get_geometry(arg->idebus[0], 0,
-                         &cylinders, &heads, &sectors) >= 0) {
+    if (arg->idebus[0] && ide_get_geometry(arg->idebus[0], 0,
+                                           &cylinders, &heads, &sectors) >= 0) {
         cmos_init_hd(s, 0x19, 0x1b, cylinders, heads, sectors);
         val |= 0xf0;
     }
-    if (ide_get_geometry(arg->idebus[0], 1,
-                         &cylinders, &heads, &sectors) >= 0) {
+    if (arg->idebus[0] && ide_get_geometry(arg->idebus[0], 1,
+                                           &cylinders, &heads, &sectors) >= 0) {
         cmos_init_hd(s, 0x1a, 0x24, cylinders, heads, sectors);
         val |= 0x0f;
     }
@@ -418,7 +418,8 @@ static void pc_cmos_init_late(void *opaque)
            geometry.  It is always such that: 1 <= sects <= 63, 1
            <= heads <= 16, 1 <= cylinders <= 16383. The BIOS
            geometry can be different if a translation is done. */
-        if (ide_get_geometry(arg->idebus[i / 2], i % 2,
+        if (arg->idebus[i / 2] &&
+            ide_get_geometry(arg->idebus[i / 2], i % 2,
                              &cylinders, &heads, &sectors) >= 0) {
             trans = ide_get_bios_chs_trans(arg->idebus[i / 2], i % 2) - 1;
             assert((trans & ~3) == 0);
@@ -700,16 +701,20 @@ static uint32_t x86_cpu_apic_id_from_index(unsigned int cpu_index)
     }
 }
 
-static void pc_build_smbios(FWCfgState *fw_cfg)
+static void pc_build_smbios(PCMachineState *pcms)
 {
     uint8_t *smbios_tables, *smbios_anchor;
     size_t smbios_tables_len, smbios_anchor_len;
     struct smbios_phys_mem_area *mem_array;
     unsigned i, array_count;
+    X86CPU *cpu = X86_CPU(pcms->possible_cpus->cpus[0].cpu);
+
+    /* tell smbios about cpuid version and features */
+    smbios_set_cpuid(cpu->env.cpuid_version, cpu->env.features[FEAT_1_EDX]);
 
     smbios_tables = smbios_get_table_legacy(&smbios_tables_len);
     if (smbios_tables) {
-        fw_cfg_add_bytes(fw_cfg, FW_CFG_SMBIOS_ENTRIES,
+        fw_cfg_add_bytes(pcms->fw_cfg, FW_CFG_SMBIOS_ENTRIES,
                          smbios_tables, smbios_tables_len);
     }
 
@@ -730,9 +735,9 @@ static void pc_build_smbios(FWCfgState *fw_cfg)
     g_free(mem_array);
 
     if (smbios_anchor) {
-        fw_cfg_add_file(fw_cfg, "etc/smbios/smbios-tables",
+        fw_cfg_add_file(pcms->fw_cfg, "etc/smbios/smbios-tables",
                         smbios_tables, smbios_tables_len);
-        fw_cfg_add_file(fw_cfg, "etc/smbios/smbios-anchor",
+        fw_cfg_add_file(pcms->fw_cfg, "etc/smbios/smbios-anchor",
                         smbios_anchor, smbios_anchor_len);
     }
 }
@@ -1087,28 +1092,24 @@ void pc_acpi_smi_interrupt(void *opaque, int irq, int level)
     }
 }
 
-static X86CPU *pc_new_cpu(const char *typename, int64_t apic_id,
-                          Error **errp)
+static void pc_new_cpu(const char *typename, int64_t apic_id, Error **errp)
 {
-    X86CPU *cpu = NULL;
+    Object *cpu = NULL;
     Error *local_err = NULL;
 
-    cpu = X86_CPU(object_new(typename));
+    cpu = object_new(typename);
 
-    object_property_set_int(OBJECT(cpu), apic_id, "apic-id", &local_err);
-    object_property_set_bool(OBJECT(cpu), true, "realized", &local_err);
+    object_property_set_int(cpu, apic_id, "apic-id", &local_err);
+    object_property_set_bool(cpu, true, "realized", &local_err);
 
+    object_unref(cpu);
     if (local_err) {
         error_propagate(errp, local_err);
-        object_unref(OBJECT(cpu));
-        cpu = NULL;
     }
-    return cpu;
 }
 
 void pc_hot_add_cpu(const int64_t id, Error **errp)
 {
-    X86CPU *cpu;
     ObjectClass *oc;
     PCMachineState *pcms = PC_MACHINE(qdev_get_machine());
     int64_t apic_id = x86_cpu_apic_id_from_index(id);
@@ -1128,12 +1129,11 @@ void pc_hot_add_cpu(const int64_t id, Error **errp)
 
     assert(pcms->possible_cpus->cpus[0].cpu); /* BSP is always present */
     oc = OBJECT_CLASS(CPU_GET_CLASS(pcms->possible_cpus->cpus[0].cpu));
-    cpu = pc_new_cpu(object_class_get_name(oc), apic_id, &local_err);
+    pc_new_cpu(object_class_get_name(oc), apic_id, &local_err);
     if (local_err) {
         error_propagate(errp, local_err);
         return;
     }
-    object_unref(OBJECT(cpu));
 }
 
 void pc_cpus_init(PCMachineState *pcms)
@@ -1143,7 +1143,6 @@ void pc_cpus_init(PCMachineState *pcms)
     ObjectClass *oc;
     const char *typename;
     gchar **model_pieces;
-    X86CPU *cpu = NULL;
     MachineState *machine = MACHINE(pcms);
 
     /* init CPUs */
@@ -1185,14 +1184,9 @@ void pc_cpus_init(PCMachineState *pcms)
         pcms->possible_cpus->cpus[i].arch_id = x86_cpu_apic_id_from_index(i);
         pcms->possible_cpus->len++;
         if (i < smp_cpus) {
-            cpu = pc_new_cpu(typename, x86_cpu_apic_id_from_index(i),
-                             &error_fatal);
-            object_unref(OBJECT(cpu));
+            pc_new_cpu(typename, x86_cpu_apic_id_from_index(i), &error_fatal);
         }
     }
-
-    /* tell smbios about cpuid version and features */
-    smbios_set_cpuid(cpu->env.cpuid_version, cpu->env.features[FEAT_1_EDX]);
 }
 
 static void pc_build_feature_control_file(PCMachineState *pcms)
@@ -1265,7 +1259,7 @@ void pc_machine_done(Notifier *notifier, void *data)
 
     acpi_setup();
     if (pcms->fw_cfg) {
-        pc_build_smbios(pcms->fw_cfg);
+        pc_build_smbios(pcms);
         pc_build_feature_control_file(pcms);
         /* update FW_CFG_NB_CPUS to account for -device added CPUs */
         fw_cfg_modify_i16(pcms->fw_cfg, FW_CFG_NB_CPUS, pcms->boot_cpus);
@@ -1535,6 +1529,7 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
                           ISADevice **rtc_state,
                           bool create_fdctrl,
                           bool no_vmport,
+                          bool has_pit,
                           uint32_t hpet_irqs)
 {
     int i;
@@ -1588,7 +1583,7 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
 
     qemu_register_boot_set(pc_boot_set, *rtc_state);
 
-    if (!xen_enabled()) {
+    if (!xen_enabled() && has_pit) {
         if (kvm_pit_in_kernel()) {
             pit = kvm_pit_init(isa_bus, 0x40);
         } else {
@@ -1713,6 +1708,11 @@ static void pc_dimm_plug(HotplugHandler *hotplug_dev,
     }
 
     if (object_dynamic_cast(OBJECT(dev), TYPE_NVDIMM)) {
+        if (!pcms->acpi_nvdimm_state.is_enabled) {
+            error_setg(&local_err,
+                       "nvdimm is not enabled: missing 'nvdimm' in '-M'");
+            goto out;
+        }
         nvdimm_plug(&pcms->acpi_nvdimm_state);
     }
 
@@ -1782,7 +1782,7 @@ static int pc_apic_cmp(const void *a, const void *b)
 
 /* returns pointer to CPUArchId descriptor that matches CPU's apic_id
  * in pcms->possible_cpus->cpus, if pcms->possible_cpus->cpus has no
- * entry correponding to CPU's apic_id returns NULL.
+ * entry corresponding to CPU's apic_id returns NULL.
  */
 static CPUArchId *pc_find_cpu_slot(PCMachineState *pcms, CPUState *cpu,
                                    int *idx)
@@ -1818,8 +1818,10 @@ static void pc_cpu_plug(HotplugHandler *hotplug_dev,
 
     /* increment the number of CPUs */
     pcms->boot_cpus++;
-    if (dev->hotplugged) {
+    if (pcms->rtc) {
         rtc_set_cpus_count(pcms->rtc, pcms->boot_cpus);
+    }
+    if (pcms->fw_cfg) {
         fw_cfg_modify_i16(pcms->fw_cfg, FW_CFG_NB_CPUS, pcms->boot_cpus);
     }
 
@@ -2158,6 +2160,48 @@ static void pc_machine_set_nvdimm(Object *obj, bool value, Error **errp)
     pcms->acpi_nvdimm_state.is_enabled = value;
 }
 
+static bool pc_machine_get_smbus(Object *obj, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    return pcms->smbus;
+}
+
+static void pc_machine_set_smbus(Object *obj, bool value, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    pcms->smbus = value;
+}
+
+static bool pc_machine_get_sata(Object *obj, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    return pcms->sata;
+}
+
+static void pc_machine_set_sata(Object *obj, bool value, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    pcms->sata = value;
+}
+
+static bool pc_machine_get_pit(Object *obj, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    return pcms->pit;
+}
+
+static void pc_machine_set_pit(Object *obj, bool value, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    pcms->pit = value;
+}
+
 static void pc_machine_initfn(Object *obj)
 {
     PCMachineState *pcms = PC_MACHINE(obj);
@@ -2169,6 +2213,9 @@ static void pc_machine_initfn(Object *obj)
     pcms->acpi_nvdimm_state.is_enabled = false;
     /* acpi build is enabled by default if machine supports it */
     pcms->acpi_build_enabled = PC_MACHINE_GET_CLASS(pcms)->has_acpi_build;
+    pcms->smbus = true;
+    pcms->sata = true;
+    pcms->pit = true;
 }
 
 static void pc_machine_reset(void)
@@ -2198,15 +2245,11 @@ static unsigned pc_cpu_index_to_socket_id(unsigned cpu_index)
     return topo.pkg_id;
 }
 
-static CPUArchIdList *pc_possible_cpu_arch_ids(MachineState *machine)
+static const CPUArchIdList *pc_possible_cpu_arch_ids(MachineState *machine)
 {
     PCMachineState *pcms = PC_MACHINE(machine);
-    int len = sizeof(CPUArchIdList) +
-              sizeof(CPUArchId) * (pcms->possible_cpus->len);
-    CPUArchIdList *list = g_malloc(len);
-
-    memcpy(list, pcms->possible_cpus, len);
-    return list;
+    assert(pcms->possible_cpus);
+    return pcms->possible_cpus;
 }
 
 static HotpluggableCPUList *pc_query_hotpluggable_cpus(MachineState *machine)
@@ -2329,6 +2372,15 @@ static void pc_machine_class_init(ObjectClass *oc, void *data)
 
     object_class_property_add_bool(oc, PC_MACHINE_NVDIMM,
         pc_machine_get_nvdimm, pc_machine_set_nvdimm, &error_abort);
+
+    object_class_property_add_bool(oc, PC_MACHINE_SMBUS,
+        pc_machine_get_smbus, pc_machine_set_smbus, &error_abort);
+
+    object_class_property_add_bool(oc, PC_MACHINE_SATA,
+        pc_machine_get_sata, pc_machine_set_sata, &error_abort);
+
+    object_class_property_add_bool(oc, PC_MACHINE_PIT,
+        pc_machine_get_pit, pc_machine_set_pit, &error_abort);
 }
 
 static const TypeInfo pc_machine_info = {

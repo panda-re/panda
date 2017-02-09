@@ -656,7 +656,7 @@ static void pcie_ext_cap_set_next(PCIDevice *dev, uint16_t pos, uint16_t next)
 }
 
 /*
- * caller must supply valid (offset, size) * such that the range shouldn't
+ * Caller must supply valid (offset, size) such that the range wouldn't
  * overlap with other capability or other registers.
  * This function doesn't check it.
  */
@@ -716,4 +716,19 @@ void pcie_dev_ser_num_init(PCIDevice *dev, uint16_t offset, uint64_t ser_num)
     pcie_add_capability(dev, PCI_EXT_CAP_ID_DSN, pci_dsn_ver, offset,
                         PCI_EXT_CAP_DSN_SIZEOF);
     pci_set_quad(dev->config + offset + pci_dsn_cap, ser_num);
+}
+
+void pcie_ats_init(PCIDevice *dev, uint16_t offset)
+{
+    pcie_add_capability(dev, PCI_EXT_CAP_ID_ATS, 0x1,
+                        offset, PCI_EXT_CAP_ATS_SIZEOF);
+
+    dev->exp.ats_cap = offset;
+
+    /* Invalidate Queue Depth 0, Page Aligned Request 0 */
+    pci_set_word(dev->config + offset + PCI_ATS_CAP, 0);
+    /* STU 0, Disabled by default */
+    pci_set_word(dev->config + offset + PCI_ATS_CTRL, 0);
+
+    pci_set_word(dev->wmask + dev->exp.ats_cap + PCI_ATS_CTRL, 0x800f);
 }

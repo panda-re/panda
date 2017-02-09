@@ -39,7 +39,12 @@ enum ReplayCheckpoint {
 };
 typedef enum ReplayCheckpoint ReplayCheckpoint;
 
+typedef struct ReplayNetState ReplayNetState;
+
 extern ReplayMode replay_mode;
+
+/* Name of the initial VM snapshot */
+extern char *replay_snapshot;
 
 /* Replay process control functions */
 
@@ -123,9 +128,9 @@ uint64_t blkreplay_next_id(void);
 /* Character device */
 
 /*! Registers char driver to save it's events */
-void replay_register_char_driver(struct CharDriverState *chr);
+void replay_register_char_driver(struct Chardev *chr);
 /*! Saves write to char device event to the log */
-void replay_chr_be_write(struct CharDriverState *s, uint8_t *buf, int len);
+void replay_chr_be_write(struct Chardev *s, uint8_t *buf, int len);
 /*! Writes char write return value to the replay log. */
 void replay_char_write_event_save(int res, int offset);
 /*! Reads char write return value from the replay log. */
@@ -136,5 +141,21 @@ int replay_char_read_all_load(uint8_t *buf);
 void replay_char_read_all_save_error(int res);
 /*! Writes character read_all execution result into the replay log. */
 void replay_char_read_all_save_buf(uint8_t *buf, int offset);
+
+/* Network */
+
+/*! Registers replay network filter attached to some backend. */
+ReplayNetState *replay_register_net(NetFilterState *nfs);
+/*! Unregisters replay network filter. */
+void replay_unregister_net(ReplayNetState *rns);
+/*! Called to write network packet to the replay log. */
+void replay_net_packet_event(ReplayNetState *rns, unsigned flags,
+                             const struct iovec *iov, int iovcnt);
+
+/* VM state operations */
+
+/*! Called at the start of execution.
+    Loads or saves initial vmstate depending on execution mode. */
+void replay_vmstate_init(void);
 
 #endif

@@ -29,6 +29,7 @@
 #include "qemu/error-report.h"
 #include "qemu/help_option.h"
 #include "sysemu/block-backend.h"
+#include "migration/migration.h"
 
 /*
  * Aliases were a bad idea from the start.  Let's keep them
@@ -136,6 +137,7 @@ static void qdev_print_devinfos(bool show_no_user)
         [DEVICE_CATEGORY_DISPLAY] = "Display",
         [DEVICE_CATEGORY_SOUND]   = "Sound",
         [DEVICE_CATEGORY_MISC]    = "Misc",
+        [DEVICE_CATEGORY_CPU]     = "CPU",
         [DEVICE_CATEGORY_MAX]     = "Uncategorized",
     };
     GSList *list, *elt;
@@ -539,10 +541,28 @@ static BusState *qbus_find(const char *path, Error **errp)
     return bus;
 }
 
+void qdev_set_id(DeviceState *dev, const char *id)
+{
+    if (id) {
+        dev->id = id;
+    }
+
+    if (dev->id) {
+        object_property_add_child(qdev_get_peripheral(), dev->id,
+                                  OBJECT(dev), NULL);
+    } else {
+        static int anon_count;
+        gchar *name = g_strdup_printf("device[%d]", anon_count++);
+        object_property_add_child(qdev_get_peripheral_anon(), name,
+                                  OBJECT(dev), NULL);
+        g_free(name);
+    }
+}
+
 DeviceState *qdev_device_add(QemuOpts *opts, Error **errp)
 {
     DeviceClass *dc;
-    const char *driver, *path, *id;
+    const char *driver, *path;
     DeviceState *dev;
     BusState *bus = NULL;
     Error *err = NULL;
@@ -557,6 +577,14 @@ DeviceState *qdev_device_add(QemuOpts *opts, Error **errp)
     dc = qdev_get_device_class(&driver, errp);
     if (!dc) {
         return NULL;
+    }
+
+    if (only_migratable) {
+        if (dc->vmsd->unmigratable) {
+            error_setg(errp, "Device %s is not migratable, but "
+                       "--only-migratable was specified", driver);
+            return NULL;
+        }
     }
 
     /* find bus */
@@ -591,21 +619,7 @@ DeviceState *qdev_device_add(QemuOpts *opts, Error **errp)
         qdev_set_parent_bus(dev, bus);
     }
 
-    id = qemu_opts_id(opts);
-    if (id) {
-        dev->id = id;
-    }
-
-    if (dev->id) {
-        object_property_add_child(qdev_get_peripheral(), dev->id,
-                                  OBJECT(dev), NULL);
-    } else {
-        static int anon_count;
-        gchar *name = g_strdup_printf("device[%d]", anon_count++);
-        object_property_add_child(qdev_get_peripheral_anon(), name,
-                                  OBJECT(dev), NULL);
-        g_free(name);
-    }
+    qdev_set_id(dev, qemu_opts_id(opts));
 
     /* set properties */
     if (qemu_opt_foreach(opts, set_property, dev, &err)) {

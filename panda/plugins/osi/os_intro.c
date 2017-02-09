@@ -147,7 +147,7 @@ bool init_plugin(void *self) {
     assert (!(panda_os_type == OST_UNKNOWN));
     if (panda_os_type == OST_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
-        char *progname = gargv[0];
+        gchar *progname = gargv[0];
         gchar *progname_path;
         gchar *progdir;
 

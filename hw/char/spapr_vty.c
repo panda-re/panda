@@ -25,7 +25,7 @@ static int vty_can_receive(void *opaque)
 {
     VIOsPAPRVTYDevice *dev = VIO_SPAPR_VTY_DEVICE(opaque);
 
-    return (dev->in - dev->out) < VTERM_BUFSIZE;
+    return VTERM_BUFSIZE - (dev->in - dev->out);
 }
 
 static void vty_receive(void *opaque, const uint8_t *buf, int size)
@@ -141,7 +141,7 @@ static target_ulong h_get_term_char(PowerPCCPU *cpu, sPAPRMachineState *spapr,
     return H_SUCCESS;
 }
 
-void spapr_vty_create(VIOsPAPRBus *bus, CharDriverState *chardev)
+void spapr_vty_create(VIOsPAPRBus *bus, Chardev *chardev)
 {
     DeviceState *dev;
 

@@ -13,9 +13,11 @@ rcutorture
 test-aio
 test-base64
 test-bitops
+test-bitcnt
 test-blockjob
 test-blockjob-txn
 test-bufferiszero
+test-char
 test-clone-visitor
 test-coroutine
 test-crypto-afsplit
@@ -67,6 +69,7 @@ test-qmp-marshal.c
 test-qobject-output-visitor
 test-rcu-list
 test-replication
+test-shift128
 test-string-input-visitor
 test-string-output-visitor
 test-thread-pool

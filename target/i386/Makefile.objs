@@ -1,0 +1,14 @@
+obj-y += translate.o helper.o cpu.o bpt_helper.o
+obj-y += excp_helper.o fpu_helper.o cc_helper.o int_helper.o svm_helper.o
+obj-y += smm_helper.o misc_helper.o mem_helper.o seg_helper.o mpx_helper.o
+obj-y += gdbstub.o
+obj-$(CONFIG_SOFTMMU) += machine.o arch_memory_mapping.o arch_dump.o monitor.o
+obj-$(CONFIG_KVM) += kvm.o hyperv.o
+obj-$(call lnot,$(CONFIG_KVM)) += kvm-stub.o
+# HAX support
+ifdef CONFIG_WIN32
+obj-$(CONFIG_HAX) += hax-all.o hax-mem.o hax-windows.o
+endif
+ifdef CONFIG_DARWIN
+obj-$(CONFIG_HAX) += hax-all.o hax-mem.o hax-darwin.o
+endif

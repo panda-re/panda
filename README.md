@@ -1,5 +1,7 @@
 # PANDA
 
+[![Build Status](https://travis-ci.org/panda-re/panda.svg?branch=master)](https://travis-ci.org/panda-re/panda)
+
 PANDA is an open-source Platform for Architecture-Neutral Dynamic Analysis. It
 is built upon the QEMU whole system emulator, and so analyses have access to all
 code executing in the guest and all data. PANDA adds the ability to record and

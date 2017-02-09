@@ -1,9 +1,12 @@
 # -*- Mode: Python -*-
 #
-# QAPI crypto definitions
 
 ##
-# QCryptoTLSCredsEndpoint:
+# = QAPI crypto definitions
+##
+
+##
+# @QCryptoTLSCredsEndpoint:
 #
 # The type of network endpoint that will be using the credentials.
 # Most types of credential require different setup / structures
@@ -22,7 +25,7 @@
 
 
 ##
-# QCryptoSecretFormat:
+# @QCryptoSecretFormat:
 #
 # The data format that the secret is provided in
 #
@@ -36,7 +39,7 @@
 
 
 ##
-# QCryptoHashAlgorithm:
+# @QCryptoHashAlgorithm:
 #
 # The supported algorithms for computing content digests
 #
@@ -55,7 +58,7 @@
 
 
 ##
-# QCryptoCipherAlgorithm:
+# @QCryptoCipherAlgorithm:
 #
 # The supported algorithms for content encryption ciphers
 #
@@ -63,6 +66,7 @@
 # @aes-192: AES with 192 bit / 24 byte keys
 # @aes-256: AES with 256 bit / 32 byte keys
 # @des-rfb: RFB specific variant of single DES. Do not use except in VNC.
+# @3des: 3DES(EDE) with 192 bit / 24 byte keys (since 2.9)
 # @cast5-128: Cast5 with 128 bit / 16 byte keys
 # @serpent-128: Serpent with 128 bit / 16 byte keys
 # @serpent-192: Serpent with 192 bit / 24 byte keys
@@ -75,14 +79,14 @@
 { 'enum': 'QCryptoCipherAlgorithm',
   'prefix': 'QCRYPTO_CIPHER_ALG',
   'data': ['aes-128', 'aes-192', 'aes-256',
-           'des-rfb',
+           'des-rfb', '3des',
            'cast5-128',
            'serpent-128', 'serpent-192', 'serpent-256',
            'twofish-128', 'twofish-192', 'twofish-256']}
 
 
 ##
-# QCryptoCipherMode:
+# @QCryptoCipherMode:
 #
 # The supported modes for content encryption ciphers
 #
@@ -98,7 +102,7 @@
 
 
 ##
-# QCryptoIVGenAlgorithm:
+# @QCryptoIVGenAlgorithm:
 #
 # The supported algorithms for generating initialization
 # vectors for full disk encryption. The 'plain' generator
@@ -116,7 +120,7 @@
   'data': ['plain', 'plain64', 'essiv']}
 
 ##
-# QCryptoBlockFormat:
+# @QCryptoBlockFormat:
 #
 # The supported full disk encryption formats
 #
@@ -131,7 +135,7 @@
   'data': ['qcow', 'luks']}
 
 ##
-# QCryptoBlockOptionsBase:
+# @QCryptoBlockOptionsBase:
 #
 # The common options that apply to all full disk
 # encryption formats
@@ -144,7 +148,7 @@
   'data': { 'format': 'QCryptoBlockFormat' }}
 
 ##
-# QCryptoBlockOptionsQCow:
+# @QCryptoBlockOptionsQCow:
 #
 # The options that apply to QCow/QCow2 AES-CBC encryption format
 #
@@ -158,7 +162,7 @@
   'data': { '*key-secret': 'str' }}
 
 ##
-# QCryptoBlockOptionsLUKS:
+# @QCryptoBlockOptionsLUKS:
 #
 # The options that apply to LUKS encryption format
 #
@@ -172,7 +176,7 @@
 
 
 ##
-# QCryptoBlockCreateOptionsLUKS:
+# @QCryptoBlockCreateOptionsLUKS:
 #
 # The options that apply to LUKS encryption format initialization
 #
@@ -202,7 +206,7 @@
 
 
 ##
-# QCryptoBlockOpenOptions:
+# @QCryptoBlockOpenOptions:
 #
 # The options that are available for all encryption formats
 # when opening an existing volume
@@ -217,7 +221,7 @@
 
 
 ##
-# QCryptoBlockCreateOptions:
+# @QCryptoBlockCreateOptions:
 #
 # The options that are available for all encryption formats
 # when initializing a new volume
@@ -232,7 +236,7 @@
 
 
 ##
-# QCryptoBlockInfoBase:
+# @QCryptoBlockInfoBase:
 #
 # The common information that applies to all full disk
 # encryption formats
@@ -246,7 +250,7 @@
 
 
 ##
-# QCryptoBlockInfoLUKSSlot:
+# @QCryptoBlockInfoLUKSSlot:
 #
 # Information about the LUKS block encryption key
 # slot options
@@ -266,7 +270,7 @@
 
 
 ##
-# QCryptoBlockInfoLUKS:
+# @QCryptoBlockInfoLUKS:
 #
 # Information about the LUKS block encryption options
 #
@@ -294,7 +298,7 @@
            'slots': [ 'QCryptoBlockInfoLUKSSlot' ] }}
 
 ##
-# QCryptoBlockInfoQCow:
+# @QCryptoBlockInfoQCow:
 #
 # Information about the QCow block encryption options
 #
@@ -305,7 +309,7 @@
 
 
 ##
-# QCryptoBlockInfo:
+# @QCryptoBlockInfo:
 #
 # Information about the block encryption options
 #

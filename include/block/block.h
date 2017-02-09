@@ -116,6 +116,7 @@ typedef struct HDGeometry {
 
 #define BDRV_REQUEST_MAX_SECTORS MIN(SIZE_MAX >> BDRV_SECTOR_BITS, \
                                      INT_MAX >> BDRV_SECTOR_BITS)
+#define BDRV_REQUEST_MAX_BYTES (BDRV_REQUEST_MAX_SECTORS << BDRV_SECTOR_BITS)
 
 /*
  * Allocation status flags
@@ -526,8 +527,6 @@ int bdrv_probe_geometry(BlockDriverState *bs, HDGeometry *geo);
 
 void bdrv_io_plug(BlockDriverState *bs);
 void bdrv_io_unplug(BlockDriverState *bs);
-void bdrv_io_unplugged_begin(BlockDriverState *bs);
-void bdrv_io_unplugged_end(BlockDriverState *bs);
 
 /**
  * bdrv_drained_begin:

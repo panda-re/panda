@@ -47,7 +47,7 @@ ssize_t pdu_marshal(V9fsPDU *pdu, size_t offset, const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    ret = virtio_pdu_vmarshal(pdu, offset, fmt, ap);
+    ret = pdu->s->transport->pdu_vmarshal(pdu, offset, fmt, ap);
     va_end(ap);
 
     return ret;
@@ -59,7 +59,7 @@ ssize_t pdu_unmarshal(V9fsPDU *pdu, size_t offset, const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    ret = virtio_pdu_vunmarshal(pdu, offset, fmt, ap);
+    ret = pdu->s->transport->pdu_vunmarshal(pdu, offset, fmt, ap);
     va_end(ap);
 
     return ret;
@@ -67,7 +67,7 @@ ssize_t pdu_unmarshal(V9fsPDU *pdu, size_t offset, const char *fmt, ...)
 
 static void pdu_push_and_notify(V9fsPDU *pdu)
 {
-    virtio_9p_push_and_notify(pdu);
+    pdu->s->transport->push_and_notify(pdu);
 }
 
 static int omode_to_uflags(int8_t mode)
@@ -979,6 +979,7 @@ static void coroutine_fn v9fs_attach(void *opaque)
     size_t offset = 7;
     V9fsQID qid;
     ssize_t err;
+    Error *local_err = NULL;
 
     v9fs_string_init(&uname);
     v9fs_string_init(&aname);
@@ -1007,26 +1008,36 @@ static void coroutine_fn v9fs_attach(void *opaque)
         clunk_fid(s, fid);
         goto out;
     }
+
+    /*
+     * disable migration if we haven't done already.
+     * attach could get called multiple times for the same export.
+     */
+    if (!s->migration_blocker) {
+        error_setg(&s->migration_blocker,
+                   "Migration is disabled when VirtFS export path '%s' is mounted in the guest using mount_tag '%s'",
+                   s->ctx.fs_root ? s->ctx.fs_root : "NULL", s->tag);
+        err = migrate_add_blocker(s->migration_blocker, &local_err);
+        if (local_err) {
+            error_free(local_err);
+            error_free(s->migration_blocker);
+            s->migration_blocker = NULL;
+            clunk_fid(s, fid);
+            goto out;
+        }
+        s->root_fid = fid;
+    }
+
     err = pdu_marshal(pdu, offset, "Q", &qid);
     if (err < 0) {
         clunk_fid(s, fid);
         goto out;
     }
     err += offset;
+
     memcpy(&s->root_qid, &qid, sizeof(qid));
     trace_v9fs_attach_return(pdu->tag, pdu->id,
                              qid.type, qid.version, qid.path);
-    /*
-     * disable migration if we haven't done already.
-     * attach could get called multiple times for the same export.
-     */
-    if (!s->migration_blocker) {
-        s->root_fid = fid;
-        error_setg(&s->migration_blocker,
-                   "Migration is disabled when VirtFS export path '%s' is mounted in the guest using mount_tag '%s'",
-                   s->ctx.fs_root ? s->ctx.fs_root : "NULL", s->tag);
-        migrate_add_blocker(s->migration_blocker);
-    }
 out:
     put_fid(pdu, fidp);
 out_nofid:
@@ -1571,7 +1582,7 @@ out_nofid:
     v9fs_string_free(&name);
 }
 
-static void v9fs_fsync(void *opaque)
+static void coroutine_fn v9fs_fsync(void *opaque)
 {
     int err;
     int32_t fid;
@@ -1633,14 +1644,43 @@ out_nofid:
     pdu_complete(pdu, err);
 }
 
+/*
+ * Create a QEMUIOVector for a sub-region of PDU iovecs
+ *
+ * @qiov:       uninitialized QEMUIOVector
+ * @skip:       number of bytes to skip from beginning of PDU
+ * @size:       number of bytes to include
+ * @is_write:   true - write, false - read
+ *
+ * The resulting QEMUIOVector has heap-allocated iovecs and must be cleaned up
+ * with qemu_iovec_destroy().
+ */
+static void v9fs_init_qiov_from_pdu(QEMUIOVector *qiov, V9fsPDU *pdu,
+                                    size_t skip, size_t size,
+                                    bool is_write)
+{
+    QEMUIOVector elem;
+    struct iovec *iov;
+    unsigned int niov;
+
+    if (is_write) {
+        pdu->s->transport->init_out_iov_from_pdu(pdu, &iov, &niov);
+    } else {
+        pdu->s->transport->init_in_iov_from_pdu(pdu, &iov, &niov, size + skip);
+    }
+
+    qemu_iovec_init_external(&elem, iov, niov);
+    qemu_iovec_init(qiov, niov);
+    qemu_iovec_concat(qiov, &elem, skip, size);
+}
+
 static int v9fs_xattr_read(V9fsState *s, V9fsPDU *pdu, V9fsFidState *fidp,
                            uint64_t off, uint32_t max_count)
 {
     ssize_t err;
     size_t offset = 7;
     uint64_t read_count;
-    V9fsVirtioState *v = container_of(s, V9fsVirtioState, state);
-    VirtQueueElement *elem = v->elems[pdu->idx];
+    QEMUIOVector qiov_full;
 
     if (fidp->fs.xattr.len < off) {
         read_count = 0;
@@ -1656,9 +1696,11 @@ static int v9fs_xattr_read(V9fsState *s, V9fsPDU *pdu, V9fsFidState *fidp,
     }
     offset += err;
 
-    err = v9fs_pack(elem->in_sg, elem->in_num, offset,
+    v9fs_init_qiov_from_pdu(&qiov_full, pdu, offset, read_count, false);
+    err = v9fs_pack(qiov_full.iov, qiov_full.niov, 0,
                     ((char *)fidp->fs.xattr.value) + off,
                     read_count);
+    qemu_iovec_destroy(&qiov_full);
     if (err < 0) {
         return err;
     }
@@ -1730,32 +1772,6 @@ static int coroutine_fn v9fs_do_readdir_with_stat(V9fsPDU *pdu,
         return err;
     }
     return count;
-}
-
-/*
- * Create a QEMUIOVector for a sub-region of PDU iovecs
- *
- * @qiov:       uninitialized QEMUIOVector
- * @skip:       number of bytes to skip from beginning of PDU
- * @size:       number of bytes to include
- * @is_write:   true - write, false - read
- *
- * The resulting QEMUIOVector has heap-allocated iovecs and must be cleaned up
- * with qemu_iovec_destroy().
- */
-static void v9fs_init_qiov_from_pdu(QEMUIOVector *qiov, V9fsPDU *pdu,
-                                    size_t skip, size_t size,
-                                    bool is_write)
-{
-    QEMUIOVector elem;
-    struct iovec *iov;
-    unsigned int niov;
-
-    virtio_init_iov_from_pdu(pdu, &iov, &niov, is_write);
-
-    qemu_iovec_init_external(&elem, iov, niov);
-    qemu_iovec_init(qiov, niov);
-    qemu_iovec_concat(qiov, &elem, skip, size);
 }
 
 static void coroutine_fn v9fs_read(void *opaque)
@@ -2332,7 +2348,7 @@ out_nofid:
     v9fs_string_free(&symname);
 }
 
-static void v9fs_flush(void *opaque)
+static void coroutine_fn v9fs_flush(void *opaque)
 {
     ssize_t err;
     int16_t tag;
@@ -3440,7 +3456,6 @@ void pdu_submit(V9fsPDU *pdu)
 /* Returns 0 on success, 1 on failure. */
 int v9fs_device_realize_common(V9fsState *s, Error **errp)
 {
-    V9fsVirtioState *v = container_of(s, V9fsVirtioState, state);
     int i, len;
     struct stat stat;
     FsDriverEntry *fse;
@@ -3450,10 +3465,10 @@ int v9fs_device_realize_common(V9fsState *s, Error **errp)
     /* initialize pdu allocator */
     QLIST_INIT(&s->free_list);
     QLIST_INIT(&s->active_list);
-    for (i = 0; i < (MAX_REQ - 1); i++) {
-        QLIST_INSERT_HEAD(&s->free_list, &v->pdus[i], next);
-        v->pdus[i].s = s;
-        v->pdus[i].idx = i;
+    for (i = 0; i < MAX_REQ; i++) {
+        QLIST_INSERT_HEAD(&s->free_list, &s->pdus[i], next);
+        s->pdus[i].s = s;
+        s->pdus[i].idx = i;
     }
 
     v9fs_path_init(&path);
@@ -3521,8 +3536,11 @@ int v9fs_device_realize_common(V9fsState *s, Error **errp)
     rc = 0;
 out:
     if (rc) {
-        g_free(s->ctx.fs_root);
+        if (s->ops && s->ops->cleanup && s->ctx.private) {
+            s->ops->cleanup(&s->ctx);
+        }
         g_free(s->tag);
+        g_free(s->ctx.fs_root);
         v9fs_path_free(&path);
     }
     return rc;
@@ -3530,8 +3548,11 @@ out:
 
 void v9fs_device_unrealize_common(V9fsState *s, Error **errp)
 {
-    g_free(s->ctx.fs_root);
+    if (s->ops->cleanup) {
+        s->ops->cleanup(&s->ctx);
+    }
     g_free(s->tag);
+    g_free(s->ctx.fs_root);
 }
 
 typedef struct VirtfsCoResetData {

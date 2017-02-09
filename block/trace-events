@@ -35,8 +35,6 @@ mirror_one_iteration(void *s, int64_t sector_num, int nb_sectors) "s %p sector_n
 mirror_iteration_done(void *s, int64_t sector_num, int nb_sectors, int ret) "s %p sector_num %"PRId64" nb_sectors %d ret %d"
 mirror_yield(void *s, int64_t cnt, int buf_free_count, int in_flight) "s %p dirty count %"PRId64" free buffers %d in_flight %d"
 mirror_yield_in_flight(void *s, int64_t sector_num, int in_flight) "s %p sector_num %"PRId64" in_flight %d"
-mirror_yield_buf_busy(void *s, int nb_chunks, int in_flight) "s %p requested chunks %d in_flight %d"
-mirror_break_buf_busy(void *s, int nb_chunks, int in_flight) "s %p requested chunks %d in_flight %d"
 
 # block/backup.c
 backup_do_cow_enter(void *job, int64_t start, int64_t sector_num, int nb_sectors) "job %p start %"PRId64" sector_num %"PRId64" nb_sectors %d"
@@ -53,8 +51,8 @@ qmp_block_job_resume(void *job) "job %p"
 qmp_block_job_complete(void *job) "job %p"
 qmp_block_stream(void *bs, void *job) "bs %p job %p"
 
-# block/raw-win32.c
-# block/raw-posix.c
+# block/file-win32.c
+# block/file-posix.c
 paio_submit_co(int64_t offset, int count, int type) "offset %"PRId64" count %d type %d"
 paio_submit(void *acb, void *opaque, int64_t offset, int count, int type) "acb %p opaque %p offset %"PRId64" count %d type %d"
 

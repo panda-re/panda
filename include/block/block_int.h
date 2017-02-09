@@ -184,7 +184,7 @@ struct BlockDriver {
 
     /*
      * Flushes all data that was already written to the OS all the way down to
-     * the disk (for example raw-posix calls fsync()).
+     * the disk (for example file-posix.c calls fsync()).
      */
     int coroutine_fn (*bdrv_co_flush_to_disk)(BlockDriverState *bs);
 
@@ -526,9 +526,8 @@ struct BlockDriverState {
     uint64_t write_threshold_offset;
     NotifierWithReturn write_threshold_notifier;
 
-    /* counters for nested bdrv_io_plug and bdrv_io_unplugged_begin */
+    /* counter for nested bdrv_io_plug */
     unsigned io_plugged;
-    unsigned io_plug_disabled;
 
     int quiesce_counter;
 };
