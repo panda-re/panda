@@ -76,7 +76,6 @@ void on_global_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *a
 }
 
 #include "callstack_instr/callstack_instr.h"
-#include "callstack_instr/prog_point.h"
 #include "callstack_instr/callstack_instr_ext.h"
 
 const char *guest_debug_path = NULL;
