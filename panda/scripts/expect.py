@@ -28,15 +28,19 @@ class Expect(object):
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
-        while time_passed < timeout:
-            time_passed = (datetime.now() - start_time).total_seconds()
-            time_left = timeout - time_passed
-            ready = self.poller.poll(0)
+        while timeout is None or time_passed < timeout or timeout:
+            if timeout is not None:
+                time_passed = (datetime.now() - start_time).total_seconds()
+                time_left = timeout - time_passed
+            else:
+                time_left = float("inf")
+            ready = self.poller.poll(min(time_left, 1))
 
             if self.fd in [fd for (fd, _) in ready]:
                 try:
                     char = os.read(self.fd, 1)
                 except OSError as e:
+                    self.sofar = str(sofar)
                     if e.errno in [EAGAIN, EWOULDBLOCK]:
                         continue
                     else: raise
@@ -49,10 +53,9 @@ class Expect(object):
                     if not self.quiet: sys.stdout.flush()
                     sofar.append('\n')
                     return str(sofar)
-            elif time_left > 0:
-                time.sleep(min(time_left, 1))
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
+        self.sofar = str(sofar)
         raise TimeoutExpired()
 
     def send(self, msg):
