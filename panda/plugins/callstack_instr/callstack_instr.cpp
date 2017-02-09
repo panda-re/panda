@@ -34,7 +34,6 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 
 #include "callstack_instr.h"
-#include "prog_point.h"
 
 extern "C" {
 #include "panda/plog.h"
