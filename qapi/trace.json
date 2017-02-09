@@ -5,6 +5,9 @@
 # This work is licensed under the terms of the GNU GPL, version 2 or later.
 # See the COPYING file in the top-level directory.
 
+##
+# = Tracing commands
+##
 
 ##
 # @TraceEventState:
@@ -17,7 +20,7 @@
 #
 # @enabled: The event is dynamically enabled.
 #
-# Since 2.2
+# Since: 2.2
 ##
 { 'enum': 'TraceEventState',
   'data': ['unavailable', 'disabled', 'enabled'] }
@@ -34,7 +37,7 @@
 # An event is per-vCPU if it has the "vcpu" property in the "trace-events"
 # files.
 #
-# Since 2.2
+# Since: 2.2
 ##
 { 'struct': 'TraceEventInfo',
   'data': {'name': 'str', 'state': 'TraceEventState', 'vcpu': 'bool'} }
@@ -58,7 +61,14 @@
 # exact match, @vcpu is given and the event does not have the "vcpu" property,
 # an error is returned.
 #
-# Since 2.2
+# Since: 2.2
+#
+# Example:
+#
+# -> { "execute": "trace-event-get-state",
+#      "arguments": { "name": "qemu_memalign" } }
+# <- { "return": [ { "name": "qemu_memalign", "state": "disabled" } ] }
+#
 ##
 { 'command': 'trace-event-get-state',
   'data': {'name': 'str', '*vcpu': 'int'},
@@ -83,7 +93,14 @@
 # match, @vcpu is given and the event does not have the "vcpu" property, an
 # error is returned.
 #
-# Since 2.2
+# Since: 2.2
+#
+# Example:
+#
+# -> { "execute": "trace-event-set-state",
+#      "arguments": { "name": "qemu_memalign", "enable": "true" } }
+# <- { "return": {} }
+#
 ##
 { 'command': 'trace-event-set-state',
   'data': {'name': 'str', 'enable': 'bool', '*ignore-unavailable': 'bool',

@@ -152,47 +152,49 @@ bool init_plugin(void *self) {
     n_callers = panda_parse_uint64_opt(args, "callers", 16, "depth of callstack for matches");
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
 
-    const char *prefix = panda_parse_string_req(args, "name", "filename containing search strings");
-    char stringsfile[128] = {};
-    sprintf(stringsfile, "%s_search_strings.txt", prefix);
+    const char *prefix = panda_parse_string_opt(args, "name", "", "filename containing search strings");
+    if (strlen(prefix) > 0) {
+        char stringsfile[128] = {};
+        sprintf(stringsfile, "%s_search_strings.txt", prefix);
 
-    printf ("search strings file [%s]\n", stringsfile);
+        printf ("search strings file [%s]\n", stringsfile);
 
-    std::ifstream search_strings(stringsfile);
-    if (!search_strings) {
-        printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
-        return false;
-    }
-
-    // Format: lines of colon-separated hex chars or quoted strings, e.g.
-    // 0a:1b:2c:3d:4e
-    // or "string" (no newlines)
-    std::string line;
-    while(std::getline(search_strings, line)) {
-        std::istringstream iss(line);
-
-        if (line[0] == '"') {
-            size_t len = line.size() - 2;
-            memcpy(tofind[num_strings], line.substr(1, len).c_str(), len);
-            strlens[num_strings] = len;
-        } else {
-            std::string x;
-            int i = 0;
-            while (std::getline(iss, x, ':')) {
-                tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
-                if (i >= MAX_STRLEN) {
-                    printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
-                    break;
-                }
-            }
-            strlens[num_strings] = i;
+        std::ifstream search_strings(stringsfile);
+        if (!search_strings) {
+            printf("Couldn't open %s; no strings to search for. Exiting.\n", stringsfile);
+            return false;
         }
- 
-        printf("stringsearch: added string of length %d to search set\n", strlens[num_strings]);
 
-        if(++num_strings >= MAX_STRINGS) {
-            printf("WARN: maximum number of strings (%d) reached, will not load any more.\n", MAX_STRINGS);
-            break;
+        // Format: lines of colon-separated hex chars or quoted strings, e.g.
+        // 0a:1b:2c:3d:4e
+        // or "string" (no newlines)
+        std::string line;
+        while(std::getline(search_strings, line)) {
+            std::istringstream iss(line);
+
+            if (line[0] == '"') {
+                size_t len = line.size() - 2;
+                memcpy(tofind[num_strings], line.substr(1, len).c_str(), len);
+                strlens[num_strings] = len;
+            } else {
+                std::string x;
+                int i = 0;
+                while (std::getline(iss, x, ':')) {
+                    tofind[num_strings][i++] = (uint8_t)strtoul(x.c_str(), NULL, 16);
+                    if (i >= MAX_STRLEN) {
+                        printf("WARN: Reached max number of characters (%d) on string %d, truncating.\n", MAX_STRLEN, num_strings);
+                        break;
+                    }
+                }
+                strlens[num_strings] = i;
+            }
+
+            printf("stringsearch: added string of length %d to search set\n", strlens[num_strings]);
+
+            if(++num_strings >= MAX_STRINGS) {
+                printf("WARN: maximum number of strings (%d) reached, will not load any more.\n", MAX_STRINGS);
+                break;
+            }
         }
     }
 

@@ -135,6 +135,8 @@
 #define USB_REQ_GET_INTERFACE		0x0A
 #define USB_REQ_SET_INTERFACE		0x0B
 #define USB_REQ_SYNCH_FRAME		0x0C
+#define USB_REQ_SET_SEL                 0x30
+#define USB_REQ_SET_ISOCH_DELAY         0x31
 
 #define USB_DEVICE_SELF_POWERED		0
 #define USB_DEVICE_REMOTE_WAKEUP	1
@@ -471,6 +473,7 @@ void usb_generic_async_ctrl_complete(USBDevice *s, USBPacket *p);
 /* usb-linux.c */
 USBDevice *usb_host_device_open(USBBus *bus, const char *devname);
 void hmp_info_usbhost(Monitor *mon, const QDict *qdict);
+bool usb_host_dev_is_scsi_storage(USBDevice *usbdev);
 
 /* usb ports of the VM */
 

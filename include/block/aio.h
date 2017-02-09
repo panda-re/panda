@@ -44,6 +44,7 @@ void qemu_aio_ref(void *p);
 
 typedef struct AioHandler AioHandler;
 typedef void QEMUBHFunc(void *opaque);
+typedef bool AioPollFn(void *opaque);
 typedef void IOHandler(void *opaque);
 
 struct ThreadPool;
@@ -52,17 +53,11 @@ struct LinuxAioState;
 struct AioContext {
     GSource source;
 
-    /* Protects all fields from multi-threaded access */
+    /* Used by AioContext users to protect from multi-threaded access.  */
     QemuRecMutex lock;
 
-    /* The list of registered AIO handlers */
+    /* The list of registered AIO handlers.  Protected by ctx->list_lock. */
     QLIST_HEAD(, AioHandler) aio_handlers;
-
-    /* This is a simple lock used to protect the aio_handlers list.
-     * Specifically, it's used to ensure that no callbacks are removed while
-     * we're walking and dispatching callbacks.
-     */
-    int walking_handlers;
 
     /* Used to avoid unnecessary event_notifier_set calls in aio_notify;
      * accessed with atomic primitives.  If this field is 0, everything
@@ -89,16 +84,14 @@ struct AioContext {
      */
     uint32_t notify_me;
 
-    /* lock to protect between bh's adders and deleter */
-    QemuMutex bh_lock;
+    /* A lock to protect between QEMUBH and AioHandler adders and deleter,
+     * and to ensure that no callbacks are removed while we're walking and
+     * dispatching them.
+     */
+    QemuLockCnt list_lock;
 
     /* Anchor of the list of Bottom Halves belonging to the context */
     struct QEMUBH *first_bh;
-
-    /* A simple lock used to protect the first_bh list, and ensure that
-     * no callbacks are removed while we're walking and dispatching callbacks.
-     */
-    int walking_bh;
 
     /* Used by aio_notify.
      *
@@ -115,7 +108,9 @@ struct AioContext {
     bool notified;
     EventNotifier notifier;
 
-    /* Thread pool for performing work and receiving completion callbacks */
+    /* Thread pool for performing work and receiving completion callbacks.
+     * Has its own locking.
+     */
     struct ThreadPool *thread_pool;
 
 #ifdef CONFIG_LINUX_AIO
@@ -125,10 +120,24 @@ struct AioContext {
     struct LinuxAioState *linux_aio;
 #endif
 
-    /* TimerLists for calling timers - one per clock type */
+    /* TimerLists for calling timers - one per clock type.  Has its own
+     * locking.
+     */
     QEMUTimerListGroup tlg;
 
     int external_disable_cnt;
+
+    /* Number of AioHandlers without .io_poll() */
+    int poll_disable_cnt;
+
+    /* Polling mode parameters */
+    int64_t poll_ns;        /* current polling time in nanoseconds */
+    int64_t poll_max_ns;    /* maximum polling time in nanoseconds */
+    int64_t poll_grow;      /* polling time growth factor */
+    int64_t poll_shrink;    /* polling time shrink factor */
+
+    /* Are we in polling mode or monitoring file descriptors? */
+    bool poll_started;
 
     /* epoll(7) state used when built with CONFIG_EPOLL */
     int epollfd;
@@ -167,9 +176,11 @@ void aio_context_unref(AioContext *ctx);
  * automatically takes care of calling aio_context_acquire and
  * aio_context_release.
  *
- * Access to timers and BHs from a thread that has not acquired AioContext
- * is possible.  Access to callbacks for now must be done while the AioContext
- * is owned by the thread (FIXME).
+ * Note that this is separate from bdrv_drained_begin/bdrv_drained_end.  A
+ * thread still has to call those to avoid being interrupted by the guest.
+ *
+ * Bottom halves, timers and callbacks can be created or removed without
+ * acquiring the AioContext.
  */
 void aio_context_acquire(AioContext *ctx);
 
@@ -195,8 +206,8 @@ QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque);
  * aio_notify: Force processing of pending events.
  *
  * Similar to signaling a condition variable, aio_notify forces
- * aio_wait to exit, so that the next call will re-examine pending events.
- * The caller of aio_notify will usually call aio_wait again very soon,
+ * aio_poll to exit, so that the next call will re-examine pending events.
+ * The caller of aio_notify will usually call aio_poll again very soon,
  * or go through another iteration of the GLib main loop.  Hence, aio_notify
  * also has the side effect of recalculating the sets of file descriptors
  * that the main loop waits for.
@@ -295,8 +306,12 @@ bool aio_pending(AioContext *ctx);
 /* Dispatch any pending callbacks from the GSource attached to the AioContext.
  *
  * This is used internally in the implementation of the GSource.
+ *
+ * @dispatch_fds: true to process fds, false to skip them
+ *                (can be used as an optimization by callers that know there
+ *                are no fds ready)
  */
-bool aio_dispatch(AioContext *ctx);
+bool aio_dispatch(AioContext *ctx, bool dispatch_fds);
 
 /* Progress in completing AIO work to occur.  This can issue new pending
  * aio as a result of executing I/O completion or bh callbacks.
@@ -325,7 +340,16 @@ void aio_set_fd_handler(AioContext *ctx,
                         bool is_external,
                         IOHandler *io_read,
                         IOHandler *io_write,
+                        AioPollFn *io_poll,
                         void *opaque);
+
+/* Set polling begin/end callbacks for a file descriptor that has already been
+ * registered with aio_set_fd_handler.  Do nothing if the file descriptor is
+ * not registered.
+ */
+void aio_set_fd_poll(AioContext *ctx, int fd,
+                     IOHandler *io_poll_begin,
+                     IOHandler *io_poll_end);
 
 /* Register an event notifier and associated callbacks.  Behaves very similarly
  * to event_notifier_set_handler.  Unlike event_notifier_set_handler, these callbacks
@@ -337,7 +361,17 @@ void aio_set_fd_handler(AioContext *ctx,
 void aio_set_event_notifier(AioContext *ctx,
                             EventNotifier *notifier,
                             bool is_external,
-                            EventNotifierHandler *io_read);
+                            EventNotifierHandler *io_read,
+                            AioPollFn *io_poll);
+
+/* Set polling begin/end callbacks for an event notifier that has already been
+ * registered with aio_set_event_notifier.  Do nothing if the event notifier is
+ * not registered.
+ */
+void aio_set_event_notifier_poll(AioContext *ctx,
+                                 EventNotifier *notifier,
+                                 EventNotifierHandler *io_poll_begin,
+                                 EventNotifierHandler *io_poll_end);
 
 /* Return a GSource that lets the main loop poll the file descriptors attached
  * to this AioContext.
@@ -473,5 +507,18 @@ static inline bool aio_context_in_iothread(AioContext *ctx)
  * Initialize the aio context.
  */
 void aio_context_setup(AioContext *ctx);
+
+/**
+ * aio_context_set_poll_params:
+ * @ctx: the aio context
+ * @max_ns: how long to busy poll for, in nanoseconds
+ * @grow: polling time growth factor
+ * @shrink: polling time shrink factor
+ *
+ * Poll mode can be disabled by setting poll_max_ns to 0.
+ */
+void aio_context_set_poll_params(AioContext *ctx, int64_t max_ns,
+                                 int64_t grow, int64_t shrink,
+                                 Error **errp);
 
 #endif

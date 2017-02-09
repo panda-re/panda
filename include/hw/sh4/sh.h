@@ -3,7 +3,7 @@
 /* Definitions for SH board emulation.  */
 
 #include "hw/sh4/sh_intc.h"
-#include "target-sh4/cpu-qom.h"
+#include "target/sh4/cpu-qom.h"
 
 #define A7ADDR(x) ((x) & 0x1fffffff)
 #define P4ADDR(x) ((x) | 0xe0000000)
@@ -42,7 +42,7 @@ void tmu012_init(struct MemoryRegion *sysmem, hwaddr base,
 #define SH_SERIAL_FEAT_SCIF (1 << 0)
 void sh_serial_init(MemoryRegion *sysmem,
                     hwaddr base, int feat,
-		     uint32_t freq, CharDriverState *chr,
+                    uint32_t freq, Chardev *chr,
 		     qemu_irq eri_source,
 		     qemu_irq rxi_source,
 		     qemu_irq txi_source,

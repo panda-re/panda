@@ -28,6 +28,8 @@
 static struct virtio_gpu_simple_resource*
 virtio_gpu_find_resource(VirtIOGPU *g, uint32_t resource_id);
 
+static void virtio_gpu_cleanup_mapping(struct virtio_gpu_simple_resource *res);
+
 #ifdef CONFIG_VIRGL
 #include <virglrenderer.h>
 #define VIRGL(_g, _virgl, _simple, ...)                     \
@@ -84,6 +86,7 @@ static void update_cursor_data_virgl(VirtIOGPU *g,
 
     if (width != s->current_cursor->width ||
         height != s->current_cursor->height) {
+        free(data);
         return;
     }
 
@@ -337,10 +340,14 @@ static void virtio_gpu_resource_create_2d(VirtIOGPU *g,
         cmd->error = VIRTIO_GPU_RESP_ERR_INVALID_PARAMETER;
         return;
     }
-    res->image = pixman_image_create_bits(pformat,
-                                          c2d.width,
-                                          c2d.height,
-                                          NULL, 0);
+
+    res->hostmem = PIXMAN_FORMAT_BPP(pformat) * c2d.width * c2d.height;
+    if (res->hostmem + g->hostmem < g->conf.max_hostmem) {
+        res->image = pixman_image_create_bits(pformat,
+                                              c2d.width,
+                                              c2d.height,
+                                              NULL, 0);
+    }
 
     if (!res->image) {
         qemu_log_mask(LOG_GUEST_ERROR,
@@ -352,13 +359,16 @@ static void virtio_gpu_resource_create_2d(VirtIOGPU *g,
     }
 
     QTAILQ_INSERT_HEAD(&g->reslist, res, next);
+    g->hostmem += res->hostmem;
 }
 
 static void virtio_gpu_resource_destroy(VirtIOGPU *g,
                                         struct virtio_gpu_simple_resource *res)
 {
     pixman_image_unref(res->image);
+    virtio_gpu_cleanup_mapping(res);
     QTAILQ_REMOVE(&g->reslist, res, next);
+    g->hostmem -= res->hostmem;
     g_free(res);
 }
 
@@ -704,6 +714,11 @@ virtio_gpu_resource_attach_backing(VirtIOGPU *g,
         return;
     }
 
+    if (res->iov) {
+        cmd->error = VIRTIO_GPU_RESP_ERR_UNSPEC;
+        return;
+    }
+
     ret = virtio_gpu_create_mapping_iov(&ab, cmd, &res->addrs, &res->iov);
     if (ret != 0) {
         cmd->error = VIRTIO_GPU_RESP_ERR_UNSPEC;
@@ -988,7 +1003,8 @@ static const VMStateDescription vmstate_virtio_gpu_scanouts = {
     },
 };
 
-static void virtio_gpu_save(QEMUFile *f, void *opaque, size_t size)
+static int virtio_gpu_save(QEMUFile *f, void *opaque, size_t size,
+                           VMStateField *field, QJSON *vmdesc)
 {
     VirtIOGPU *g = opaque;
     struct virtio_gpu_simple_resource *res;
@@ -1013,15 +1029,20 @@ static void virtio_gpu_save(QEMUFile *f, void *opaque, size_t size)
     qemu_put_be32(f, 0); /* end of list */
 
     vmstate_save_state(f, &vmstate_virtio_gpu_scanouts, g, NULL);
+
+    return 0;
 }
 
-static int virtio_gpu_load(QEMUFile *f, void *opaque, size_t size)
+static int virtio_gpu_load(QEMUFile *f, void *opaque, size_t size,
+                           VMStateField *field)
 {
     VirtIOGPU *g = opaque;
     struct virtio_gpu_simple_resource *res;
     struct virtio_gpu_scanout *scanout;
     uint32_t resource_id, pformat;
     int i;
+
+    g->hostmem = 0;
 
     resource_id = qemu_get_be32(f);
     while (resource_id != 0) {
@@ -1035,14 +1056,18 @@ static int virtio_gpu_load(QEMUFile *f, void *opaque, size_t size)
         /* allocate */
         pformat = get_pixman_format(res->format);
         if (!pformat) {
+            g_free(res);
             return -EINVAL;
         }
         res->image = pixman_image_create_bits(pformat,
                                               res->width, res->height,
                                               NULL, 0);
         if (!res->image) {
+            g_free(res);
             return -EINVAL;
         }
+
+        res->hostmem = PIXMAN_FORMAT_BPP(pformat) * res->width * res->height;
 
         res->addrs = g_new(uint64_t, res->iov_cnt);
         res->iov = g_new(struct iovec, res->iov_cnt);
@@ -1061,11 +1086,22 @@ static int virtio_gpu_load(QEMUFile *f, void *opaque, size_t size)
             res->iov[i].iov_base =
                 cpu_physical_memory_map(res->addrs[i], &len, 1);
             if (!res->iov[i].iov_base || len != res->iov[i].iov_len) {
+                /* Clean up the half-a-mapping we just created... */
+                if (res->iov[i].iov_base) {
+                    cpu_physical_memory_unmap(res->iov[i].iov_base,
+                                              len, 0, 0);
+                }
+                /* ...and the mappings for previous loop iterations */
+                res->iov_cnt = i;
+                virtio_gpu_cleanup_mapping(res);
+                pixman_image_unref(res->image);
+                g_free(res);
                 return -EINVAL;
             }
         }
 
         QTAILQ_INSERT_HEAD(&g->reslist, res, next);
+        g->hostmem += res->hostmem;
 
         resource_id = qemu_get_be32(f);
     }
@@ -1100,20 +1136,13 @@ static void virtio_gpu_device_realize(DeviceState *qdev, Error **errp)
     VirtIODevice *vdev = VIRTIO_DEVICE(qdev);
     VirtIOGPU *g = VIRTIO_GPU(qdev);
     bool have_virgl;
+    Error *local_err = NULL;
     int i;
 
     if (g->conf.max_outputs > VIRTIO_GPU_MAX_SCANOUTS) {
         error_setg(errp, "invalid max_outputs > %d", VIRTIO_GPU_MAX_SCANOUTS);
         return;
     }
-
-    g->config_size = sizeof(struct virtio_gpu_config);
-    g->virtio_config.num_scanouts = g->conf.max_outputs;
-    virtio_init(VIRTIO_DEVICE(g), "virtio-gpu", VIRTIO_ID_GPU,
-                g->config_size);
-
-    g->req_state[0].width = 1024;
-    g->req_state[0].height = 768;
 
     g->use_virgl_renderer = false;
 #if !defined(CONFIG_VIRGL) || defined(HOST_WORDS_BIGENDIAN)
@@ -1124,6 +1153,24 @@ static void virtio_gpu_device_realize(DeviceState *qdev, Error **errp)
     if (!have_virgl) {
         g->conf.flags &= ~(1 << VIRTIO_GPU_FLAG_VIRGL_ENABLED);
     }
+
+    if (virtio_gpu_virgl_enabled(g->conf)) {
+        error_setg(&g->migration_blocker, "virgl is not yet migratable");
+        migrate_add_blocker(g->migration_blocker, &local_err);
+        if (local_err) {
+            error_propagate(errp, local_err);
+            error_free(g->migration_blocker);
+            return;
+        }
+    }
+
+    g->config_size = sizeof(struct virtio_gpu_config);
+    g->virtio_config.num_scanouts = g->conf.max_outputs;
+    virtio_init(VIRTIO_DEVICE(g), "virtio-gpu", VIRTIO_ID_GPU,
+                g->config_size);
+
+    g->req_state[0].width = 1024;
+    g->req_state[0].height = 768;
 
     if (virtio_gpu_virgl_enabled(g->conf)) {
         /* use larger control queue in 3d mode */
@@ -1150,11 +1197,6 @@ static void virtio_gpu_device_realize(DeviceState *qdev, Error **errp)
         if (i > 0) {
             dpy_gfx_replace_surface(g->scanout[i].con, NULL);
         }
-    }
-
-    if (virtio_gpu_virgl_enabled(g->conf)) {
-        error_setg(&g->migration_blocker, "virgl is not yet migratable");
-        migrate_add_blocker(g->migration_blocker);
     }
 }
 
@@ -1240,6 +1282,8 @@ static const VMStateDescription vmstate_virtio_gpu = {
 
 static Property virtio_gpu_properties[] = {
     DEFINE_PROP_UINT32("max_outputs", VirtIOGPU, conf.max_outputs, 1),
+    DEFINE_PROP_SIZE("max_hostmem", VirtIOGPU, conf.max_hostmem,
+                     256 * 1024 * 1024),
 #ifdef CONFIG_VIRGL
     DEFINE_PROP_BIT("virgl", VirtIOGPU, conf.flags,
                     VIRTIO_GPU_FLAG_VIRGL_ENABLED, true),
@@ -1265,6 +1309,7 @@ static void virtio_gpu_class_init(ObjectClass *klass, void *data)
 
     dc->props = virtio_gpu_properties;
     dc->vmsd = &vmstate_virtio_gpu;
+    dc->hotpluggable = false;
 }
 
 static const TypeInfo virtio_gpu_info = {

@@ -10,9 +10,8 @@ void pprint_ple(Panda__LogEntry *ple);
 
 void pprint_call_stack(Panda__CallStack *cs);
 
-#ifdef LAVA
+typedef struct Panda__AttackPoint Panda__AttackPoint;
 void pprint_attack_point(Panda__AttackPoint *ap);
-#endif
 
 void pprint_src_info(Panda__SrcInfo *si);
 void pprint_src_info_pri(Panda__SrcInfoPri *sip);

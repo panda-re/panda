@@ -695,6 +695,7 @@ typedef struct panda_arg {
 typedef struct panda_arg_list {
     int nargs;
     panda_arg *list;
+    char *plugin_name;
 } panda_arg_list;
 
 // Parse out arguments and return them to caller

@@ -668,6 +668,14 @@ static int qcow2_update_options_prepare(BlockDriverState *bs,
     r->cache_clean_interval =
         qemu_opt_get_number(opts, QCOW2_OPT_CACHE_CLEAN_INTERVAL,
                             s->cache_clean_interval);
+#ifndef CONFIG_LINUX
+    if (r->cache_clean_interval != 0) {
+        error_setg(errp, QCOW2_OPT_CACHE_CLEAN_INTERVAL
+                   " not supported on this host");
+        ret = -EINVAL;
+        goto fail;
+    }
+#endif
     if (r->cache_clean_interval > UINT_MAX) {
         error_setg(errp, "Cache clean interval too big");
         ret = -EINVAL;
@@ -1206,6 +1214,7 @@ static void qcow2_refresh_limits(BlockDriverState *bs, Error **errp)
         bs->bl.request_alignment = BDRV_SECTOR_SIZE;
     }
     bs->bl.pwrite_zeroes_alignment = s->cluster_size;
+    bs->bl.pdiscard_alignment = s->cluster_size;
 }
 
 static int qcow2_set_key(BlockDriverState *bs, const char *key)
@@ -2490,6 +2499,11 @@ static coroutine_fn int qcow2_co_pdiscard(BlockDriverState *bs,
     int ret;
     BDRVQcow2State *s = bs->opaque;
 
+    if (!QEMU_IS_ALIGNED(offset | count, s->cluster_size)) {
+        assert(count < s->cluster_size);
+        return -ENOTSUP;
+    }
+
     qemu_co_mutex_lock(&s->lock);
     ret = qcow2_discard_clusters(bs, offset, count >> BDRV_SECTOR_BITS,
                                  QCOW2_DISCARD_REQUEST, false);
@@ -2794,7 +2808,8 @@ static int qcow2_make_empty(BlockDriverState *bs)
 {
     BDRVQcow2State *s = bs->opaque;
     uint64_t start_sector;
-    int sector_step = INT_MAX / BDRV_SECTOR_SIZE;
+    int sector_step = (QEMU_ALIGN_DOWN(INT_MAX, s->cluster_size) /
+                       BDRV_SECTOR_SIZE);
     int l1_clusters, ret = 0;
 
     l1_clusters = DIV_ROUND_UP(s->l1_size, s->cluster_size / sizeof(uint64_t));

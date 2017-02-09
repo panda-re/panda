@@ -83,9 +83,6 @@ static RR_prog_point copy_entry(void) {
     //ph Fix up instruction count
     RR_prog_point original_prog_point = item.header.prog_point;
     item.header.prog_point.guest_instr_count -= actual_start_count;
-    uint64_t unused = 0;
-    rr_fwrite(&unused, sizeof(unused), 1, newlog);
-    rr_fwrite(&unused, sizeof(unused), 1, newlog);
     rr_fwrite(&item.header.prog_point, sizeof(item.header.prog_point), 1, newlog);
 
 #define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
@@ -182,17 +179,12 @@ static void end_snip(void) {
     end.kind = RR_LAST;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
-    uint64_t unused = 0;
-    fwrite(&unused, sizeof(unused), 1, newlog);
-    fwrite(&unused, sizeof(unused), 1, newlog);
     sassert(fwrite(&(end.prog_point.guest_instr_count),
                 sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 5);
     sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1, 6);
     sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1, 7);
 
     rewind(newlog);
-    fwrite(&unused, sizeof(unused), 1, newlog);
-    fwrite(&unused, sizeof(unused), 1, newlog);
     fwrite(&prog_point.guest_instr_count,
             sizeof(prog_point.guest_instr_count), 1, newlog);
     fclose(newlog);
@@ -227,9 +219,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         sassert(newlog, 10);
         // We'll fix this up later.
         RR_prog_point prog_point = {0};
-        uint64_t unused = 0;
-        fwrite(&unused, sizeof(unused), 1, newlog);
-        fwrite(&unused, sizeof(unused), 1, newlog);
         fwrite(&prog_point.guest_instr_count,
                 sizeof(prog_point.guest_instr_count), 1, newlog);
 

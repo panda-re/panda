@@ -906,6 +906,16 @@ void serial_realize_core(SerialState *s, Error **errp)
 void serial_exit_core(SerialState *s)
 {
     qemu_chr_fe_deinit(&s->chr);
+
+    timer_del(s->modem_status_poll);
+    timer_free(s->modem_status_poll);
+
+    timer_del(s->fifo_timeout_timer);
+    timer_free(s->fifo_timeout_timer);
+
+    fifo8_destroy(&s->recv_fifo);
+    fifo8_destroy(&s->xmit_fifo);
+
     qemu_unregister_reset(serial_reset, s);
 }
 
@@ -927,7 +937,7 @@ const MemoryRegionOps serial_io_ops = {
 };
 
 SerialState *serial_init(int base, qemu_irq irq, int baudbase,
-                         CharDriverState *chr, MemoryRegion *system_io)
+                         Chardev *chr, MemoryRegion *system_io)
 {
     SerialState *s;
 
@@ -983,7 +993,7 @@ static const MemoryRegionOps serial_mm_ops[3] = {
 SerialState *serial_mm_init(MemoryRegion *address_space,
                             hwaddr base, int it_shift,
                             qemu_irq irq, int baudbase,
-                            CharDriverState *chr, enum device_endian end)
+                            Chardev *chr, enum device_endian end)
 {
     SerialState *s;
 

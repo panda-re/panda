@@ -19,10 +19,8 @@ PANDAENDCOMMENT */
 #include <cstdint>
 #include <string>
 
-#include "defines.h"
+#include "taint_defines.h"
 #include "label_set.h"
-
-#include "panda/cheaders.h"
 
 class FastShad;
 

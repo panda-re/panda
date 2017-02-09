@@ -27,7 +27,7 @@
  * this it needs a backend to manage the datas, the same as other
  * memory-related devices. In this case as the backend is so trivial we
  * have merged it with the frontend instead of creating and maintaining a
- * seperate backend.
+ * separate backend.
  */
 
 #include "qemu/osdep.h"
@@ -79,7 +79,7 @@ static void generic_loader_realize(DeviceState *dev, Error **errp)
                        "loading memory values");
             return;
         } else if (!s->data_len) {
-            /* We cant' check for !data here as a value of 0 is still valid. */
+            /* We can't check for !data here as a value of 0 is still valid. */
             error_setg(errp, "Both data and data-len must be specified");
             return;
         } else if (s->data_len > 8) {
@@ -93,7 +93,12 @@ static void generic_loader_realize(DeviceState *dev, Error **errp)
                        "image");
             return;
         }
-        s->set_pc = true;
+        /* The user specified a file, only set the PC if they also specified
+         * a CPU to use.
+         */
+        if (s->cpu_num != CPU_NONE) {
+            s->set_pc = true;
+        }
     } else if (s->addr) {
         /* User is setting the PC */
         if (s->data || s->data_len || s->data_be) {

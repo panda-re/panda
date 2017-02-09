@@ -162,8 +162,6 @@ bool labeled = false;
 #endif
 
 bool init_plugin(void *self) {
-    printf ("Initializing tstringsearch\n");
-
     plugin_self = self;
 
     panda_require("stringsearch");

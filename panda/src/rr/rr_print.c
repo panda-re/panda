@@ -157,7 +157,8 @@ static RR_log_entry *rr_read_item(void) {
     assert (rr_nondet_log->fp != NULL);
 
     //mz XXX we assume that the log is not trucated - should probably fix this.
-    if (fread(&(item->header.prog_point), sizeof(RR_prog_point), 1, rr_nondet_log->fp) != 1) {
+    if (fread(&(item->header.prog_point.guest_instr_count),
+                sizeof(item->header.prog_point.guest_instr_count), 1, rr_nondet_log->fp) != 1) {
         //mz an error occurred
         if (feof(rr_nondet_log->fp)) {
             // replay is done - we've reached the end of file

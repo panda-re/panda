@@ -19,11 +19,7 @@ extern "C" {
 #include "panda/addr.h"
 #include "panda/plog.h"
 
-#ifdef PANDA_LAVA
-#include "../../../../lava/include/panda_hypercall_struct.h"
-#else
 #include "taint2/panda_hypercall_struct.h"
-#endif
 
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"

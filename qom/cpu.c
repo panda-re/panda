@@ -22,14 +22,14 @@
 #include "qapi/error.h"
 #include "qemu-common.h"
 #include "qom/cpu.h"
-#include "sysemu/kvm.h"
+#include "sysemu/hw_accel.h"
 #include "qemu/notify.h"
 #include "qemu/log.h"
 #include "exec/log.h"
 #include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "hw/qdev-properties.h"
-#include "trace.h"
+#include "trace-root.h"
 
 bool cpu_exists(int64_t id)
 {
@@ -270,8 +270,14 @@ static void cpu_common_reset(CPUState *cpu)
     cpu->exception_index = -1;
     cpu->crash_occurred = false;
 
-    for (i = 0; i < TB_JMP_CACHE_SIZE; ++i) {
-        atomic_set(&cpu->tb_jmp_cache[i], NULL);
+    if (tcg_enabled()) {
+        for (i = 0; i < TB_JMP_CACHE_SIZE; ++i) {
+            atomic_set(&cpu->tb_jmp_cache[i], NULL);
+        }
+
+#ifdef CONFIG_SOFTMMU
+        tlb_flush(cpu, 0);
+#endif
     }
 }
 
@@ -348,6 +354,8 @@ static void cpu_common_realizefn(DeviceState *dev, Error **errp)
 static void cpu_common_unrealizefn(DeviceState *dev, Error **errp)
 {
     CPUState *cpu = CPU(dev);
+    /* NOTE: latest generic point before the cpu is fully unrealized */
+    trace_fini_vcpu(cpu);
     cpu_exec_unrealizefn(cpu);
 }
 
@@ -407,6 +415,7 @@ static void cpu_class_init(ObjectClass *klass, void *data)
     k->cpu_exec_enter = cpu_common_noop;
     k->cpu_exec_exit = cpu_common_noop;
     k->cpu_exec_interrupt = cpu_common_exec_interrupt;
+    set_bit(DEVICE_CATEGORY_CPU, dc->categories);
     dc->realize = cpu_common_realizefn;
     dc->unrealize = cpu_common_unrealizefn;
     /*

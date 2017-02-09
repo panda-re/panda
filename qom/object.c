@@ -272,6 +272,12 @@ static void type_initialize(TypeImpl *ti)
 
     ti->class_size = type_class_get_size(ti);
     ti->instance_size = type_object_get_size(ti);
+    /* Any type with zero instance_size is implicitly abstract.
+     * This means interface types are all abstract.
+     */
+    if (ti->instance_size == 0) {
+        ti->abstract = true;
+    }
 
     ti->class = g_malloc0(ti->class_size);
 
@@ -351,7 +357,7 @@ static void object_post_init_with_type(Object *obj, TypeImpl *ti)
     }
 }
 
-void object_initialize_with_type(void *data, size_t size, TypeImpl *type)
+static void object_initialize_with_type(void *data, size_t size, TypeImpl *type)
 {
     Object *obj = data;
 
@@ -467,7 +473,7 @@ static void object_finalize(void *data)
     }
 }
 
-Object *object_new_with_type(Type type)
+static Object *object_new_with_type(Type type)
 {
     Object *obj;
 

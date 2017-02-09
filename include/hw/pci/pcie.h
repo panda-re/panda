@@ -74,6 +74,9 @@ struct PCIExpressDevice {
     /* AER */
     uint16_t aer_cap;
     PCIEAERLog aer_log;
+
+    /* Offset of ATS capability in config space */
+    uint16_t ats_cap;
 };
 
 #define COMPAT_PROP_PCP "power_controller_present"
@@ -120,16 +123,7 @@ void pcie_add_capability(PCIDevice *dev,
 
 void pcie_ari_init(PCIDevice *dev, uint16_t offset, uint16_t nextfn);
 void pcie_dev_ser_num_init(PCIDevice *dev, uint16_t offset, uint64_t ser_num);
-
-extern const VMStateDescription vmstate_pcie_device;
-
-#define VMSTATE_PCIE_DEVICE(_field, _state) {                        \
-    .name       = (stringify(_field)),                               \
-    .size       = sizeof(PCIDevice),                                 \
-    .vmsd       = &vmstate_pcie_device,                              \
-    .flags      = VMS_STRUCT,                                        \
-    .offset     = vmstate_offset_value(_state, _field, PCIDevice),   \
-}
+void pcie_ats_init(PCIDevice *dev, uint16_t offset);
 
 void pcie_cap_slot_hotplug_cb(HotplugHandler *hotplug_dev, DeviceState *dev,
                               Error **errp);

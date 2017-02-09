@@ -28,8 +28,6 @@ TMPB="qemu-conf"
 TMPC="${TMPDIR1}/${TMPB}.c"
 TMPO="${TMPDIR1}/${TMPB}.o"
 TMPCXX="${TMPDIR1}/${TMPB}.cxx"
-TMPL="${TMPDIR1}/${TMPB}.lo"
-TMPA="${TMPDIR1}/lib${TMPB}.la"
 TMPE="${TMPDIR1}/${TMPB}.exe"
 TMPMO="${TMPDIR1}/${TMPB}.mo"
 
@@ -239,7 +237,7 @@ vhost_net="no"
 vhost_scsi="no"
 vhost_vsock="no"
 kvm="no"
-colo="yes"
+hax="no"
 rdma=""
 gprof="no"
 debug_tcg="no"
@@ -324,6 +322,7 @@ gnutls_rnd=""
 nettle=""
 nettle_kdf="no"
 gcrypt=""
+gcrypt_hmac="no"
 gcrypt_kdf="no"
 vte=""
 virglrenderer=""
@@ -574,6 +573,7 @@ CYGWIN*)
 ;;
 MINGW32*)
   mingw32="yes"
+  hax="yes"
   audio_possible_drivers="dsound sdl"
   if check_include dsound.h; then
     audio_drv_list="dsound"
@@ -593,6 +593,8 @@ FreeBSD)
   audio_possible_drivers="oss sdl pa"
   # needed for kinfo_getvmmap(3) in libutil.h
   LIBS="-lutil $LIBS"
+  # needed for kinfo_getproc
+  libs_qga="-lutil $libs_qga"
   netmap=""  # enable netmap autodetect
   HOST_VARIANT_DIR="freebsd"
 ;;
@@ -621,6 +623,7 @@ OpenBSD)
 Darwin)
   bsd="yes"
   darwin="yes"
+  hax="yes"
   LDFLAGS_SHARED="-bundle -undefined dynamic_lookup"
   if [ "$cpu" = "x86_64" ] ; then
     QEMU_CFLAGS="-arch x86_64 $QEMU_CFLAGS"
@@ -938,9 +941,9 @@ for opt do
   ;;
   --enable-kvm) kvm="yes"
   ;;
-  --disable-colo) colo="no"
+  --disable-hax) hax="no"
   ;;
-  --enable-colo) colo="yes"
+  --enable-hax) hax="yes"
   ;;
   --disable-tcg-interpreter) tcg_interpreter="no"
   ;;
@@ -1393,7 +1396,7 @@ disabled with --disable-FEATURE, default is enabled if available:
   fdt             fdt device tree
   bluez           bluez stack connectivity
   kvm             KVM acceleration support
-  colo            COarse-grain LOck-stepping VM for Non-stop Service
+  hax             HAX acceleration support
   rdma            RDMA-based migration support
   vde             support for vde network
   netmap          support for netmap network
@@ -2437,6 +2440,19 @@ EOF
         if compile_prog "$gcrypt_cflags" "$gcrypt_libs" ; then
             gcrypt_kdf=yes
         fi
+
+        cat > $TMPC << EOF
+#include <gcrypt.h>
+int main(void) {
+  gcry_mac_hd_t handle;
+  gcry_mac_open(&handle, GCRY_MAC_HMAC_MD5,
+                GCRY_MAC_FLAG_SECURE, NULL);
+  return 0;
+}
+EOF
+        if compile_prog "$gcrypt_cflags" "$gcrypt_libs" ; then
+            gcrypt_hmac=yes
+        fi
     else
         if test "$gcrypt" = "yes"; then
             feature_not_found "gcrypt" "Install gcrypt devel"
@@ -2758,7 +2774,7 @@ if compile_prog "" "" ; then
 fi
 
 ##########################################
-# xfsctl() probe, used for raw-posix
+# xfsctl() probe, used for file-posix.c
 if test "$xfs" != "no" ; then
   cat > $TMPC << EOF
 #include <stddef.h>  /* NULL */
@@ -3085,7 +3101,7 @@ fi
 
 # g_test_trap_subprocess added in 2.38. Used by some tests.
 glib_subprocess=yes
-if test "$mingw32" = "yes" || ! $pkg_config --atleast-version=2.38 glib-2.0; then
+if ! $pkg_config --atleast-version=2.38 glib-2.0; then
     glib_subprocess=no
 fi
 
@@ -4422,11 +4438,11 @@ if have_backend "ust"; then
 #include <lttng/tracepoint.h>
 int main(void) { return 0; }
 EOF
-  if compile_prog "" "" ; then
+  if compile_prog "" "-Wl,--no-as-needed -ldl" ; then
     if $pkg_config lttng-ust --exists; then
       lttng_ust_libs=$($pkg_config --libs lttng-ust)
     else
-      lttng_ust_libs="-llttng-ust"
+      lttng_ust_libs="-llttng-ust -ldl"
     fi
     if $pkg_config liburcu-bp --exists; then
       urcu_bp_libs=$($pkg_config --libs liburcu-bp)
@@ -4840,8 +4856,14 @@ EOF
 if ! compile_object ""; then
   error_exit "Failed to compile object file for LD_REL_FLAGS test"
 fi
-if do_cc -nostdlib -Wl,-r -Wl,--no-relax -o $TMPMO $TMPO; then
-  LD_REL_FLAGS="-Wl,--no-relax"
+for i in '-Wl,-r -Wl,--no-relax' -Wl,-r -r; do
+  if do_cc -nostdlib $i -o $TMPMO $TMPO; then
+    LD_REL_FLAGS=$i
+    break
+  fi
+done
+if test "$modules" = "yes" && test "$LD_REL_FLAGS" = ""; then
+  feature_not_found "modules" "Cannot find how to build relocatable objects"
 fi
 
 ##########################################
@@ -5162,7 +5184,7 @@ echo "Linux AIO support $linux_aio"
 echo "ATTR/XATTR support $attr"
 echo "Install blobs     $blobs"
 echo "KVM support       $kvm"
-echo "COLO support      $colo"
+echo "HAX support       $hax"
 echo "RDMA support      $rdma"
 echo "LLVM support      $llvm"
 echo "TCG interpreter   $tcg_interpreter"
@@ -5503,6 +5525,9 @@ if test "$gnutls_rnd" = "yes" ; then
 fi
 if test "$gcrypt" = "yes" ; then
   echo "CONFIG_GCRYPT=y" >> $config_host_mak
+  if test "$gcrypt_hmac" = "yes" ; then
+    echo "CONFIG_GCRYPT_HMAC=y" >> $config_host_mak
+  fi
   if test "$gcrypt_kdf" = "yes" ; then
     echo "CONFIG_GCRYPT_KDF=y" >> $config_host_mak
   fi
@@ -5817,10 +5842,6 @@ if have_backend "syslog"; then
 fi
 echo "CONFIG_TRACE_FILE=$trace_file" >> $config_host_mak
 
-if test "$colo" = "yes"; then
-  echo "CONFIG_COLO=y" >> $config_host_mak
-fi
-
 if test "$rdma" = "yes" ; then
   echo "CONFIG_RDMA=y" >> $config_host_mak
 fi
@@ -5961,7 +5982,7 @@ target_name=$(echo $target | cut -d '-' -f 1)
 target_bigendian="no"
 
 case "$target_name" in
-  armeb|lm32|m68k|microblaze|mips|mipsn32|mips64|moxie|or32|ppc|ppcemb|ppc64|ppc64abi32|s390x|sh4eb|sparc|sparc64|sparc32plus|xtensaeb)
+  armeb|hppa|lm32|m68k|microblaze|mips|mipsn32|mips64|moxie|or32|ppc|ppcemb|ppc64|ppc64abi32|s390x|sh4eb|sparc|sparc64|sparc32plus|xtensaeb)
   target_bigendian=yes
   ;;
 esac
@@ -6024,6 +6045,8 @@ case "$target_name" in
   ;;
   cris)
   ;;
+  hppa)
+  ;;
   lm32)
   ;;
   m68k)
@@ -6050,6 +6073,8 @@ case "$target_name" in
     echo "TARGET_ABI_MIPSN64=y" >> $config_target_mak
   ;;
   moxie)
+  ;;
+  nios2)
   ;;
   or32)
     TARGET_ARCH=openrisc
@@ -6166,6 +6191,15 @@ case "$target_name" in
       fi
     fi
 esac
+if test "$hax" = "yes" ; then
+  if test "$target_softmmu" = "yes" ; then
+    case "$target_name" in
+    i386|x86_64)
+      echo "CONFIG_HAX=y" >> $config_target_mak
+    ;;
+    esac
+  fi
+fi
 if test "$target_bigendian" = "yes" ; then
   echo "TARGET_WORDS_BIGENDIAN=y" >> $config_target_mak
 fi
@@ -6228,6 +6262,9 @@ for i in $ARCH $TARGET_BASE_ARCH ; do
   cris)
     disas_config "CRIS"
   ;;
+  hppa)
+    disas_config "HPPA"
+  ;;
   i386|x86_64|x32)
     disas_config "I386"
   ;;
@@ -6248,6 +6285,9 @@ for i in $ARCH $TARGET_BASE_ARCH ; do
   ;;
   moxie*)
     disas_config "MOXIE"
+  ;;
+  nios2)
+    disas_config "NIOS2"
   ;;
   or32)
     disas_config "OPENRISC"
@@ -6319,7 +6359,7 @@ fi
 
 # build tree in object directory in case the source is not in the current directory
 DIRS="tests tests/tcg tests/tcg/cris tests/tcg/lm32 tests/libqos tests/qapi-schema tests/tcg/xtensa tests/qemu-iotests"
-DIRS="$DIRS fsdev"
+DIRS="$DIRS docs fsdev"
 DIRS="$DIRS pc-bios/optionrom pc-bios/spapr-rtas pc-bios/s390-ccw"
 DIRS="$DIRS roms/seabios roms/vgabios"
 DIRS="$DIRS qapi-generated"
