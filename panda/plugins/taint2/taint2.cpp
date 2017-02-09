@@ -45,11 +45,7 @@
 #include "label_set.h"
 #include "taint_api.h"
 
-#ifdef PANDA_LAVA
-#include "../../../../lava/include/panda_hypercall_struct.h"
-#else
 #include "panda_hypercall_struct.h"
-#endif
 
 extern "C" {
 
@@ -275,7 +271,6 @@ Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
     si->filename = phs.src_filename;
     si->astnodename = phs.src_ast_node_name;
     si->linenum = phs.src_linenum;
-#ifdef PANDA_LAVA
     si->has_insertionpoint = 0;
     if (phs.insertion_point) {
         si->has_insertionpoint = 1;
@@ -283,7 +278,6 @@ Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
     }
     si->has_ast_loc_id = 1;
     si->ast_loc_id = phs.src_filename;
-#endif
     return si;
 }
 
