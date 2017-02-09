@@ -23,11 +23,11 @@ extern "C" {
 }
 
 #include "panda/plugin.h"
-#include "../taint2/taint2.h"
-#include "../stringsearch/stringsearch.h"
+#include "taint2/taint2.h"
+#include "stringsearch/stringsearch.h"
 
 extern "C" {   
-#include "../taint2/taint2_ext.h"
+#include "taint2/taint2_ext.h"
 }
 
 // These need to be extern "C" so that the ABI is compatible with
@@ -48,7 +48,9 @@ uint32_t old_amt_ram_tainted;
 
 uint64_t enable_taint_instr_count = 0;
 
-uint32_t positional_tainting = 0;
+bool positional_tainting = false;
+bool only_first = false;
+bool done_labeling = false;
 
 void *plugin_self;
 
@@ -71,7 +73,7 @@ int tstringsearch_label(CPUState *env, target_ulong pc, target_ulong addr, targe
     if (tstringsearch_label_on == false) {
         return 0;
     }
-    if (pc == the_pc) {
+    if (!done_labeling && pc == the_pc) {
         printf ("\n****************************************************************************\n");
         printf ("applying taint labels to search string of length %d  @ p=0x" TARGET_FMT_lx "\n", the_len, the_buf);
         printf ("******************************************************************************\n");
@@ -91,6 +93,7 @@ int tstringsearch_label(CPUState *env, target_ulong pc, target_ulong addr, targe
             }
         }
         tstringsearch_label_on = false;
+        if (only_first) done_labeling = true;
     }
     return 0;
 }
@@ -169,13 +172,15 @@ bool init_plugin(void *self) {
 #ifdef CONFIG_SOFTMMU
 
     panda_arg_list *args;
+
+    args = panda_get_args("tstringsearch");    
+    positional_tainting = panda_parse_bool_opt(args, "pos", "positional taint");
+    only_first = panda_parse_bool_opt(args, "only_first", "only label first match");
+
     args = panda_get_args("general");
     enable_taint_instr_count = 
         panda_parse_uint64_opt(args, "first_instr", 0, 
                                "enable taint at this instruction");
-
-    args = panda_get_args("tstringsearch");    
-    positional_tainting = panda_parse_bool_opt(args, "pos", "positional taint");
 
     // this sets up the taint api fn ptrs so we have access
     assert(init_taint2_api());
