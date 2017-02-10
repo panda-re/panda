@@ -12,7 +12,6 @@ import time
 
 from blist import sorteddict
 from errno import EAGAIN, EWOULDBLOCK
-from multiprocessing import Process, Pipe
 from multiprocessing.pool import ThreadPool
 from os.path import join
 from subprocess32 import check_call, check_output, CalledProcessError
@@ -29,14 +28,9 @@ def get_default_rr_path():
         rr_path = None
     return rr_path
 
-class RRInstance(Process):
-
+class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
-        parent_pipe, child_pipe = Pipe()
-        super(RRInstance, self).__init__(target=self.go, args=[child_pipe])
-
         self.description = description
-        self.pipe = parent_pipe
         self.spawn_cmd = "{} replay {}".format(
             pipes.quote(cli_args.rr), pipes.quote(rr_replay))
         self.source_pane = source_pane
@@ -56,66 +50,56 @@ class RRInstance(Process):
     def kill(self):
         check_call(['tmux', 'kill-pane', '-t', self.pane])
 
-    # Runs in child process.
-    def loop(self, pipe, tempdir):
+    def __enter__(self):
+        self.tempdir_obj = TempDir()
+        tempdir = self.tempdir_obj.__enter__()
         logfile = join(tempdir, self.description + "out")
         os.mkfifo(logfile)
         bash_command = "{} 2>&1 | tee -i --output-error=warn {} | tee -i --output-error=warn {}_log.txt".format(
             self.spawn_cmd, pipes.quote(logfile), self.description)
+
         self.pane = check_output([
             'tmux', 'split-window', '-hdP',
             '-F', '#{pane_id}', '-t', pane,
             'bash', '-c', bash_command]).strip()
 
-        proc = Expect(os.open(logfile, os.O_RDONLY | os.O_NONBLOCK), quiet=True)
-        proc.expect("(rr) ")
+        self.proc = Expect(os.open(logfile, os.O_RDONLY | os.O_NONBLOCK), quiet=True)
+        self.proc.expect("(rr) ")
+        return self
 
-        while True:
-            item, timeout = pipe.recv()
-            # consume all waiting input before sending command.
-            while True:
-                try:
-                    os.read(proc.fd, 1024)
-                except OSError as e:
-                    if e.errno in [EAGAIN, EWOULDBLOCK]:
-                        break
-                    else:
-                        raise
-            self.sendline(item)
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type:
+            self.quit()
+        self.tempdir_obj.__exit__(exc_type, exc_value, traceback)
 
-            if item == "quit":
-                self.sendline("quit")
-                break
-
-            try:
-                output = proc.expect("(rr) ", timeout=timeout)
-            except TimeoutExpired:
-                print proc.sofar
-                print "EXCEPTION!"
-                sys.stdout.flush()
-
-            pipe.send(output)
-
-    # Runs in child process.
-    def go(self, pipe):
-        try:
-            with TempDir() as tempdir:
-                self.loop(pipe, tempdir)
-        except KeyboardInterrupt:
-            self.kill()
-
-    # Following run in parent process.
     def gdb(self, *args, **kwargs):
         timeout = kwargs.get('timeout', None)
         cmd = " ".join(map(str, args))
         print "(rr-{}) {}".format(self.description, cmd)
         sys.stdout.flush()
-        self.pipe.send((cmd, timeout))
-        return self.pipe.recv()
+
+        while True:
+            try:
+                os.read(self.proc.fd, 1024)
+            except OSError as e:
+                if e.errno in [EAGAIN, EWOULDBLOCK]:
+                    break
+                else:
+                    raise
+        self.sendline(cmd)
+
+        try:
+            output = self.proc.expect("(rr) ", timeout=timeout)
+        except TimeoutExpired:
+            print self.proc.sofar
+            print "EXCEPTION!"
+            sys.stdout.flush()
+
+        return output
 
     def quit(self):
-        self.pipe.send("quit")
-        self.join()
+        self.sendline("quit")
+        self.kill()
 
     def breakpoint(self, break_arg):
         result = self.gdb("break", break_arg)
@@ -284,8 +268,6 @@ class RRInstance(Process):
         return instr_count_max
 
 # Forward calls to self.procs, splitting arguments along the way.
-
-
 class All(object):
     pool = ThreadPool(processes=2)
 
@@ -293,59 +275,41 @@ class All(object):
         self.procs = procs
 
     def split_args(self, args):
-        out_args = {proc: [] for proc in self.procs}
+        out_args = { proc: [] for proc in self.procs }
         for arg in args:
             for proc in out_args:
-                out_args[proc].append(
-                    arg[proc] if isinstance(
-                        arg, dict) else arg)
+                out_args[proc].append(arg[proc] if type(arg) == dict else arg)
 
         return out_args
 
-    def gdb(self, *args, **kwargs):
-        split_args = self.split_args(args)
-        timeout = kwargs.get('timeout', None)
-        for proc, gdb_args in split_args.iteritems():
-            cmd = " ".join(map(str, gdb_args))
-            print "(rr-{}) {}".format(proc.description, cmd)
-            proc.pipe.send((cmd, timeout))
-
-        return {proc: proc.pipe.recv() for proc in self.procs}
-
     def __getattr__(self, name):
-        def getattr_apply(xxx_todo_changeme):
-            (proc, func_args) = xxx_todo_changeme
+        def getattr_apply((proc, func_args)):
             return proc, getattr(proc, name)(*func_args)
 
         def result(*args, **kwargs):
             split_args = self.split_args(args)
-            return dict(
-                self.pool.map(
-                    getattr_apply,
-                    split_args.iteritems(),
-                    chunksize=1))
+            async_obj = self.pool.map_async(
+                getattr_apply, split_args.iteritems(), chunksize=1)
+            # timeout necessary due to http://bugs.python.org/issue8844
+            return dict(async_obj.get(9999999))
 
         return result
 
     def do(self, func_map):
-        def star_apply(xxx_todo_changeme1):
-            (proc, (func, func_args)) = xxx_todo_changeme1
+        def star_apply((proc, (func, func_args))):
             return proc, func(proc, *func_args)
 
-        return dict(
-            self.pool.map(
-                star_apply,
-                func_map.iteritems(),
-                chunksize=1))
+        async_obj = self.pool.map_async(
+            star_apply, func_map.iteritems(), chunksize=1)
+        # timeout necessary due to http://bugs.python.org/issue8844
+        return dict(async_obj.get(9999999))
 
     def __dir__(self):
-        return dir(self.procs[0]) + ['split_args', 'gdb', 'do']
-
+        return dir(self.procs[0]) + ['split_args', 'do']
 
 def values_equal(thedict):
     values = thedict.values()
     return all([x == values[0] for x in values])
-
 
 def bisect_memory(record, replay):
     Both = All([record, replay])
@@ -398,6 +362,7 @@ BACKWARDS = 1
 # Assume only cpu_loop_exec_tb enabled.
 def get_closer(record, replay, direction):
     other = { record: replay, replay: record }
+    Both = All([record, replay])
     instr_counts = Both.instr_count()
     ahead = argmax(instr_counts)
     behind = other[ahead]
@@ -410,7 +375,7 @@ def get_closer(record, replay, direction):
             "cpu_loop_exec_tb", "<=", instr_counts[behind])
         ahead.reverse_cont()
 
-def sync_precise(record, replay, target_instr):
+def sync_precise(record, replay, target_instr, instr_count_max):
     Both = All([record, replay])
 
     Both.disable_all()
@@ -449,14 +414,12 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
-
 def print_divergence_info(instr_bounds, instr_count_max):
     print divergence_info.format(
         instr_lo=instr_bounds[0],
         instr_hi=instr_bounds[1],
         instr_max=instr_count_max
     )
-
 
 def find_tmux_pane():
     tmux = False
@@ -484,7 +447,6 @@ def find_tmux_pane():
         print "diverge.py must be run inside tmux. Please try again."
         sys.exit(1)
 
-
 def bisect_time(record, replay, instr_bounds, instr_count_max):
     Both = All([record, replay])
     whens = Both.when()
@@ -496,7 +458,7 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
         mid = (instr_bounds[0] + instr_bounds[1]) / 2
 
         last_now = now_instr
-        now_instr = goto_instr(record, replay, mid)
+        now_instr = goto_instr(record, replay, mid, instr_count_max)
 
         whens = Both.when()
         checksums = Both.checksum()
@@ -513,7 +475,6 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
 
     return instr_bounds
 
-
 def check_registers(record, replay):
     Both = All([record, replay])
     diverged_registers = []
@@ -526,58 +487,17 @@ def check_registers(record, replay):
             diverged_registers.append(reg)
     return diverged_registers
 
-
-def goto_instr(record, replay, target_instr):
+def goto_instr(record, replay, target_instr, instr_count_max):
+    Both = All([record, replay])
     Both.goto(target_instr)
-    now_instr = sync_precise(record, replay, target_instr)
+    now_instr = sync_precise(record, replay, target_instr, instr_count_max)
     record_instr_event(record, replay)
     return now_instr
 
-if __name__ == '__main__':
-    default_rr = get_default_rr_path()
-    parser = argparse.ArgumentParser(
-        description="A script to automatically find replay divergences")
-    parser.add_argument("record_rr",
-            help="Path to the rr directory for the recording replay")
-    parser.add_argument("replay_rr",
-            help="Path to the rr directory for the replay replay")
-    parser.add_argument("--rr", default=default_rr,
-            help="A path to the rr binary (default={})".format(default_rr))
-    parser.add_argument("--instr-bounds",
-            help=("Instruction bounds where divergence could have occurred."))
-    parser.add_argument("--instr-max",
-            help="Last instruction before replay failed.")
-    cli_args = parser.parse_args()
-
-    # Check arguments
-    if not os.path.isfile(cli_args.rr):
-        raise IOError("Cannot find rr bin at {}".format(cli_args.rr))
-    if not os.path.isdir(cli_args.record_rr):
-        raise IOError("Cannot find recording replay at {}".format(
-                cli_args.record_rr))
-    if not os.path.isdir(cli_args.replay_rr):
-        raise IOError("Cannot find replay replay at {}".format(
-                cli_args.replay_rr))
-
-    def argmax(d):
-        return max(d.iteritems(), key=operator.itemgetter(1))[0]
-
-    def argmin(d):
-        return min(d.iteritems(), key=operator.itemgetter(1))[0]
-
-    assert cli_args.rr
-
-    pane = find_tmux_pane()
-
-    replay = RRInstance("replay", cli_args.replay_rr, pane)
-    replay.start()
-    time.sleep(0.3)
-    record = RRInstance("record", cli_args.record_rr, pane)
-    record.start()
-
+def main(record, replay, cli_args):
     both = [record, replay]
     Both = All(both)
-    other = {record: replay, replay: record}
+    other = { record: replay, replay: record }
 
     def cleanup_error():
         Both.quit()
@@ -642,7 +562,7 @@ if __name__ == '__main__':
     print "Diverged eips:", diverged_pcs
 
     # Return to latest converged instr
-    now_instr = goto_instr(record, replay, instr_bounds[0])
+    now_instr = goto_instr(record, replay, instr_bounds[0], instr_count_max)
 
     # Make sure we're actually at a converged point.
     # If we're more than 1000 instrs too far forward, make user intervene.
@@ -677,25 +597,22 @@ if __name__ == '__main__':
     reg_ptrs = Both.get_value(
         "&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
     for reg in diverged_registers:
-        result = Both.watch(
-            {proc: reg_ptrs[proc] + reg * reg_size for proc in both},
-            reg_size)
-        if record.watches_set >= 4:
-            break
+        result = Both.watch({
+            proc: reg_ptrs[proc] + reg * reg_size for proc in both
+        }, reg_size)
+        if record.watches_set >= 4: break
 
     # Heuristic: Should watch each range at most once. So iterate over offset
     # in outer loop, range in inner loop.
     max_range = max([high - low for (low, high) in diverged_ranges])
     max_range += max_range % 8
     for offset in range(0, max_range, 8):
-        if record.watches_set >= 4:
-            break
+        if record.watches_set >= 4: break
         for low, high in diverged_ranges:
             low -= low % 8
             watch_bytes = min(high - offset, 8)
             Both.watch_ram(low + offset, watch_bytes)
-            if record.watches_set >= 4:
-                break
+            if record.watches_set >= 4: break
 
     if record.watches_set == 0:
         print "WARNING: Couldn't find any watchpoints to set at beginning of ",
@@ -746,3 +663,42 @@ if __name__ == '__main__':
 
     record.join()
     replay.join()
+
+if __name__ == '__main__':
+    default_rr = get_default_rr_path()
+    parser = argparse.ArgumentParser(
+        description="A script to automatically find replay divergences")
+    parser.add_argument("record_rr",
+            help="Path to the rr directory for the recording replay")
+    parser.add_argument("replay_rr",
+            help="Path to the rr directory for the replay replay")
+    parser.add_argument("--rr", default=default_rr,
+            help="A path to the rr binary (default={})".format(default_rr))
+    parser.add_argument("--instr-bounds",
+            help=("Instruction bounds where divergence could have occurred."))
+    parser.add_argument("--instr-max",
+            help="Last instruction before replay failed.")
+    cli_args = parser.parse_args()
+
+    # Check arguments
+    if not os.path.isfile(cli_args.rr):
+        raise IOError("Cannot find rr bin at {}".format(cli_args.rr))
+    if not os.path.isdir(cli_args.record_rr):
+        raise IOError("Cannot find recording replay at {}".format(
+                cli_args.record_rr))
+    if not os.path.isdir(cli_args.replay_rr):
+        raise IOError("Cannot find replay replay at {}".format(
+                cli_args.replay_rr))
+
+    def argmax(d):
+        return max(d.iteritems(), key=operator.itemgetter(1))[0]
+
+    def argmin(d):
+        return min(d.iteritems(), key=operator.itemgetter(1))[0]
+
+    assert cli_args.rr
+
+    pane = find_tmux_pane()
+    with RRInstance("replay", cli_args.replay_rr, pane) as replay, \
+            RRInstance("record", cli_args.record_rr, pane) as record:
+        main(record, replay, cli_args)
