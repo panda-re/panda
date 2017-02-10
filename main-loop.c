@@ -495,13 +495,9 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
-#ifdef CONFIG_SOFTMMU
     if (!rr_in_replay()) {
-#endif
         slirp_pollfds_fill(gpollfds, &timeout);
-#ifdef CONFIG_SOFTMMU
     }
-#endif
 #endif
 
     if (timeout == UINT32_MAX) {
@@ -525,14 +521,10 @@ int main_loop_wait(int nonblocking)
     /* CPU thread can infinitely wait for event after
        missing the warp */
     // ru: add check if in in replay for running timers
-#ifdef CONFIG_SOFTMMU
     if (!rr_in_replay()) {
-#endif
         qemu_start_warp_timer();
         qemu_clock_run_all_timers();
-#ifdef CONFIG_SOFTMMU
     }
-#endif
 
     return ret;
 }
