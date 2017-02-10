@@ -96,6 +96,7 @@ class RRInstance(object):
         return output
 
     def quit(self):
+        self.gdb("set confirm off")
         self.sendline("quit")
 
     def breakpoint(self, break_arg):
@@ -288,7 +289,9 @@ class All(object):
             async_obj = self.pool.map_async(
                 getattr_apply, split_args.iteritems(), chunksize=1)
             # timeout necessary due to http://bugs.python.org/issue8844
-            return dict(async_obj.get(9999999))
+            ret = dict(async_obj.get(9999999))
+            if any([value is not None for value in ret.viewvalues()]):
+                return ret
 
         return result
 
@@ -299,7 +302,9 @@ class All(object):
         async_obj = self.pool.map_async(
             star_apply, func_map.iteritems(), chunksize=1)
         # timeout necessary due to http://bugs.python.org/issue8844
-        return dict(async_obj.get(9999999))
+        ret = dict(async_obj.get(9999999))
+        if any([value is not None for value in ret.viewvalues()]):
+            return ret
 
     def __dir__(self):
         return dir(self.procs[0]) + ['split_args', 'do']
@@ -520,6 +525,7 @@ def main(record, replay, cli_args):
     })
 
     instr_count_max = result[replay]
+    assert instr_count_max is not None
     minimum_events = Both.when()
 
     print "Failing replay instr count:", instr_count_max
@@ -653,7 +659,6 @@ def main(record, replay, cli_args):
         print_divergence_info(instr_bounds, instr_count_max)
 
     Both.gdb("set confirm on")
-    Both.gdb("set pagination on")
     IPython.embed()
 
 if __name__ == '__main__':
