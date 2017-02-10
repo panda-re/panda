@@ -11,16 +11,20 @@
 #
 # arg 2, regressiondir, also must be present
 # 
-usage="try again with all.bash mode regressiondir"
 
-if [ $# != 2 ]
+if [ $# != 1 ]
 then
-    echo $usage
+    echo "try again with all.bash mode regressiondir"
     exit 1
 fi
 
+if [ -z "$PANDA_REGRESSION_DIR" ]; then
+    echo "Need to set PANDA_REGRESSION_DIR"
+    exit 1
+fi  
+
 mode=$1
-regressiondir=$2
+regressiondir=$PANDA_REGRESSION_DIR
 
 if [[ $mode != "ref" ]] && [[ $mode != "test" ]]
 then
@@ -58,7 +62,7 @@ do
     # and that is it creates an output in $testout
     echo "--------------"
     echo "test [${tst}] output BEGIN"
-    testcmds="./tests/${tst}/${tst}.bash $regressiondir"
+    testcmds="./tests/${tst}/${tst}-test.bash" # $regressiondir"
     echo "testcmds=[$testcmds]"
     time $testcmds
     if [ $? != 0 ]
