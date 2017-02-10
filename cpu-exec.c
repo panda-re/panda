@@ -673,15 +673,17 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 }
 
 #ifdef CONFIG_DEBUG_TCG
-static uint64_t counter_128k = 0;
-static void debug_counter(void) {
+uint64_t counter_128k = 0;
+void debug_counter(void);
+void debug_counter(void) {
     counter_128k++;
 }
 #endif
-inline static void debug_checkpoint(void) {
+__attribute__((always_inline))
+inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_mode != RR_OFF
-            && rr_get_guest_instr_count() >> 17 > counter_128k) {
+            && cpu->rr_guest_instr_count >> 17 > counter_128k) {
         debug_counter();
     }
 #endif
@@ -740,7 +742,7 @@ int cpu_exec(CPUState *cpu)
 
             for(;;) {
                 bool panda_invalidate_tb = false;
-                debug_checkpoint();
+                debug_checkpoint(cpu);
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
