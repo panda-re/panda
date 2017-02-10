@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-"""run_on_32bitlinux.py binary [args]
+USAGE="""run_on_32bitlinux.py binary [args]
 
 So you want to try panda but dont have any replays.  Poor you.
 This script allows you to run commands on a 32-bit linux guest.
@@ -68,36 +68,45 @@ def transform_arg_copy(orig_filename):
     else:
         return orig_filename
 
-binary = sys.argv[1]
-if binary.startswith('guest:'): binary = binary[6:]
-binary_basename = basename(binary)
+def EXIT_USAGE():
+    print(USAGE)
+    sys.exit(1)
 
-# Directory structure:
-# + replays
-# +---+ binary1
-#     +---- cdrom
-#     +---- cdrom.iso
-binary_dir = join(os.getcwd(), 'replays', binary_basename)
-if not os.path.exists(binary_dir):
-    os.makedirs(binary_dir)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        EXIT_USAGE()
+    elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
+        EXIT_USAGE()
+    binary = sys.argv[1]
+    if binary.startswith('guest:'): binary = binary[6:]
+    binary_basename = basename(binary)
 
-install_dir = join(binary_dir, 'cdrom')
-if os.path.exists(install_dir):
-    shutil.rmtree(install_dir)
-os.mkdir(install_dir)
+    # Directory structure:
+    # + replays
+    # +---+ binary1
+    #     +---- cdrom
+    #     +---- cdrom.iso
+    binary_dir = join(os.getcwd(), 'replays', binary_basename)
+    if not os.path.exists(binary_dir):
+        os.makedirs(binary_dir)
 
-qcow = join(dot_dir, "wheezy_panda2.qcow2")
-if not os.path.isfile(qcow):
-    print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
-    sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
+    install_dir = join(binary_dir, 'cdrom')
+    if os.path.exists(install_dir):
+        shutil.rmtree(install_dir)
+    os.mkdir(install_dir)
 
-new_args = map(transform_arg_copy, sys.argv[1:])
-exename = basename(new_args[0])
+    qcow = join(dot_dir, "wheezy_panda2.qcow2")
+    if not os.path.isfile(qcow):
+        print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
+        sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
 
-print "args =", sys.argv[1:]
-print "new_args =", new_args
+    new_args = map(transform_arg_copy, sys.argv[1:])
+    exename = basename(new_args[0])
 
-create_recording(
-    join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
-    qcow, "root", new_args, install_dir, join(binary_dir, binary_basename)
-)
+    print "args =", sys.argv[1:]
+    print "new_args =", new_args
+
+    create_recording(
+        join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
+        qcow, "root", new_args, install_dir, join(binary_dir, binary_basename)
+    )
