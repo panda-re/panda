@@ -7,7 +7,6 @@ import pipes
 import psutil
 import re
 import sys
-import threading
 import time
 
 from blist import sorteddict
@@ -23,10 +22,9 @@ DEBUG_COUNTER_PERIOD = 1 << 17
 
 def get_default_rr_path():
     try:
-        rr_path = check_output(["which", "rr"]).strip()
+        return check_output(["which", "rr"]).strip()
     except CalledProcessError:
-        rr_path = None
-    return rr_path
+        return None
 
 class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
@@ -69,7 +67,7 @@ class RRInstance(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type:
-            self.quit()
+            self.kill()
         self.tempdir_obj.__exit__(exc_type, exc_value, traceback)
 
     def gdb(self, *args, **kwargs):
@@ -99,7 +97,6 @@ class RRInstance(object):
 
     def quit(self):
         self.sendline("quit")
-        self.kill()
 
     def breakpoint(self, break_arg):
         result = self.gdb("break", break_arg)
@@ -658,11 +655,6 @@ def main(record, replay, cli_args):
     Both.gdb("set confirm on")
     Both.gdb("set pagination on")
     IPython.embed()
-
-    Both.quit()
-
-    record.join()
-    replay.join()
 
 if __name__ == '__main__':
     default_rr = get_default_rr_path()
