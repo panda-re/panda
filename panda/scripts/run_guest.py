@@ -23,12 +23,13 @@ def progress(msg):
     print
 
 class Qemu(object):
-    def __init__(self, qemu_path, qcow, snapshot, tempdir, rr=False):
+    def __init__(self, qemu_path, qcow, snapshot, tempdir, boot=False, rr=False):
         self.qemu_path = qemu_path
         self.qcow = qcow
         self.snapshot = snapshot
         self.tempdir = tempdir
         self.rr = rr
+        self.boot = boot
 
     # types a command into the qemu monitor and waits for it to complete
     def run_monitor(self, cmd):
@@ -41,12 +42,14 @@ class Qemu(object):
         print
 
     def type_console(self, cmd):
+        assert (not self.boot)
         if debug:
             print "console cmd: [%s]" % cmd
         self.console.send(cmd)
 
     # types a command into the guest os and waits for it to complete
     def run_console(self, cmd=None, timeout=30, expectation="root@debian-i386:~#"):
+        assert (not self.boot)
         if cmd is not None:
             self.type_console(cmd)
         print Style.BRIGHT + "root@debian-i386:~#" + Style.RESET_ALL,
@@ -57,35 +60,48 @@ class Qemu(object):
 
     def __enter__(self):
         monitor_path = join(self.tempdir, 'monitor')
-        serial_path = join(self.tempdir, 'serial')
+        if not self.boot:
+            serial_path = join(self.tempdir, 'serial')
 
-        qemu_args = [self.qemu_path, self.qcow, '-loadvm', self.snapshot,
-                        '-monitor', 'unix:{},server,nowait'.format(monitor_path),
-                        '-serial', 'unix:{},server,nowait'.format(serial_path),
-                        '-display', 'none']
+        qemu_args = [self.qemu_path, self.qcow]
+#        if not self.boot:
+#        
+        qemu_args.extend(['-monitor', 'unix:{},server,nowait'.format(monitor_path)])
+        if self.boot:
+            qemu_args.append('-S')
+        else:
+            qemu_args.extend(['-serial', 'unix:{},server,nowait'.format(serial_path),
+                              '-loadvm', self.snapshot])
+        qemu_args.extend(['-display', 'none'])
         if self.rr: qemu_args = ['rr', 'record'] + qemu_args
 
         progress("Running qemu with args:")
         print subprocess32.list2cmdline(qemu_args)
 
         DEVNULL = open(os.devnull, "w")
-        self.qemu = subprocess32.Popen(qemu_args, stdout=DEVNULL, stderr=DEVNULL)
-        while not all([os.path.exists(p) for p in [monitor_path, serial_path]]):
+        self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
+        while not os.path.exists(monitor_path):
             time.sleep(0.1)
+        if not self.boot:
+            while not os.path.exists(serial_path):
+                time.sleep(0.1)
+#        while not all([os.path.exists(p) for p in [monitor_path, serial_path]]):
+#            time.sleep(0.1)
 
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.monitor_socket.connect(monitor_path)
-        self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.serial_socket.connect(serial_path)
-
         self.monitor = Expect(self.monitor_socket)
-        self.console = Expect(self.serial_socket)
+        if not self.boot:
+            self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.serial_socket.connect(serial_path)
+            self.console = Expect(self.serial_socket)
 
         # Make sure monitor/console are in right state.
         self.monitor.expect("(qemu)")
         print
-        self.console.sendline()
-        self.console.expect("root@debian-i386:~#")
+        if not self.boot:
+            self.console.sendline()
+            self.console.expect("root@debian-i386:~#")
         print
         print
 
@@ -97,7 +113,8 @@ class Qemu(object):
         else:
             self.monitor.sendline("quit")
             self.monitor_socket.close()
-            self.serial_socket.close()
+            if not self.boot:
+                self.serial_socket.close()
 
         try:
             self.qemu.wait(timeout=3)
@@ -150,6 +167,25 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recordi
         qemu.run_monitor("begin_record \"{}\"".format(recording_path))
         qemu.run_console(timeout=1200)
 
+        # end PANDA recording
+        progress("Ending recording...")
+        qemu.run_monitor("end_record")
+
+    DEVNULL.close()
+
+def create_boot_recording(qemu_path, qcow, recording_path, boot_time):
+    DEVNULL = open(os.devnull, "w")
+
+    recording_path = realpath(recording_path)
+
+    with TempDir() as tempdir, Qemu(qemu_path, qcow, None, tempdir, \
+                                    boot=True, rr=None) as qemu:
+
+        # start PANDA recording
+        qemu.run_monitor("begin_record \"{}\"".format(recording_path))
+        qemu.run_monitor("cont")
+        # wait for this long
+        time.sleep(boot_time)
         # end PANDA recording
         progress("Ending recording...")
         qemu.run_monitor("end_record")
