@@ -110,7 +110,7 @@ class RRInstance(Process):
     def loop(self, pipe, tempdir):
         logfile = join(tempdir, self.description + "out")
         os.mkfifo(logfile)
-        bash_command = "{} 2>&1 | tee {} | tee {}_log.txt".format(
+        bash_command = "{} 2>&1 | tee -i --output-error=warn {} | tee -i --output-error=warn {}_log.txt".format(
             self.spawn_cmd, pipes.quote(logfile), self.description)
         self.pane = check_output([
             'tmux', 'split-window', '-hdP',
@@ -189,10 +189,9 @@ class RRInstance(Process):
         result = self.gdb("print/u", value_str)
         re_result = re.search(r"\$[0-9]+ = ([0-9]+)", result)
         if re_result:
-            return int(re_result.group(1))
+            return long(re_result.group(1))
         else:
             print "get_value failed. result:", result
-            IPython.embed()
             raise RuntimeError("get_value")
 
     def instr_count(self):
@@ -227,7 +226,6 @@ class RRInstance(Process):
             return int(re_result.group(1))
         else:
             print "when failed. result:", result
-            IPython.embed()
             raise RuntimeError("when")
 
     def cont(self):
@@ -245,7 +243,7 @@ class RRInstance(Process):
     def watch(self, addr, size):
         assert size in [1, 2, 4, 8]
         bits = size * 8
-        self.gdb("watch *(uint{}_t)0x{:x}".format(bits, addr))
+        self.gdb("watch *(uint{}_t *)0x{:x}".format(bits, addr))
         self.watches_set += 1
         if self.watches_set >= 4:
             print
@@ -517,35 +515,40 @@ print_divergence_info()
 
 Both.disable_all()
 
-ram_size = record.get_value("ram_size")
-search_queue = [(0, ram_size)]
-divergences = []
-while search_queue:
-    low, high = search_queue.pop()
-    if high - low <= 4:
-        print "Divergence occurred in range [{:08x}, {:08x}]".format(
-            low, high)
-        divergences.append(low)
-        continue
+def bisect_memory():
+    ram_size = record.get_value("ram_size")
+    search_queue = [(0, ram_size)]
+    divergences = []
+    while search_queue:
+        low, high = search_queue.pop()
+        if high - low <= 4:
+            print "Divergence occurred in range [{:08x}, {:08x}]".format(
+                low, high)
+            divergences.append(low)
+            continue
 
-    size = (high - low) / 2
-    crc32s_low = Both.crc32_ram(low, size)
-    crc32s_high = Both.crc32_ram(low + size, size)
+        size = (high - low) / 2
+        crc32s_low = Both.crc32_ram(low, size)
+        crc32s_high = Both.crc32_ram(low + size, size)
 
-    if crc32s_low[record] != crc32s_low[replay]:
-        search_queue.append((low, high - size))
-    if crc32s_high[record] != crc32s_high[replay]:
-        search_queue.append((low + size, high))
+        if crc32s_low[record] != crc32s_low[replay]:
+            search_queue.append((low, high - size))
+        if crc32s_high[record] != crc32s_high[replay]:
+            search_queue.append((low + size, high))
 
-divergences.sort()
-diverged_ranges = []
-for d in divergences:
-    if not diverged_ranges:
-        diverged_ranges.append([d, d+4])
-    elif diverged_ranges[-1][1] == d:
-        diverged_ranges[-1][1] += 4
-    else:
-        diverged_ranges.append([d, d+4])
+    divergences.sort()
+    diverged_ranges = []
+    for d in divergences:
+        if not diverged_ranges:
+            diverged_ranges.append([d, d+4])
+        elif diverged_ranges[-1][1] == d:
+            diverged_ranges[-1][1] += 4
+        else:
+            diverged_ranges.append([d, d+4])
+
+    return diverged_ranges
+
+diverged_ranges = bisect_memory()
 
 diverged_registers = []
 reg_size = record.get_value("sizeof ((CPUX86State*)0)->regs[0]")
@@ -555,15 +558,25 @@ for reg in range(num_regs):
     if values[record] != values[replay]:
         diverged_registers.append(reg)
 
+diverged_pcs = False
+pcs = Both.get_value("((CPUX86State*)cpus->tqh_first->env_ptr)->eip")
+if pcs[record] != pcs[replay]:
+    diverged_pcs = True
+
 print "Diverged memory addresses:",
 print [(hex(low), hex(high)) for low, high in diverged_ranges]
 print "Diverged registers:", diverged_registers
+print "Diverged eips:", diverged_pcs
 
 # Return to latest converged instr
 goto_instr(instr_bounds[0])
 
 Both.disable_all()
-reg_ptrs = Both.get_value("(uintptr_t)&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
+if diverged_pcs:
+    pc_ptrs = Both.get_value("&((CPUX86State*)cpus->tqh_first->env_ptr)->eip")
+    Both.watch(pc_ptrs, reg_size)
+
+reg_ptrs = Both.get_value("&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
 for reg in diverged_registers:
     result = Both.watch({ proc: reg_ptrs[proc] + reg * reg_size for proc in both }, reg_size)
     if record.watches_set >= 4: break
@@ -571,9 +584,11 @@ for reg in diverged_registers:
 # Heuristic: Should watch each range at most once. So iterate over offset
 # in outer loop, range in inner loop.
 max_range = max([high - low for (low, high) in diverged_ranges])
+max_range += max_range % 8
 for offset in range(0, max_range, 8):
     if record.watches_set >= 4: break
     for low, high in diverged_ranges:
+        low -= low % 8
         watch_bytes = min(high - offset, 8)
         Both.watch_ram(low + offset, watch_bytes)
         if record.watches_set >= 4: break
