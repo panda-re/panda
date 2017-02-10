@@ -30,6 +30,7 @@ def get_default_rr_path():
     return rr_path
 
 class RRInstance(Process):
+
     def __init__(self, description, rr_replay, source_pane):
         parent_pipe, child_pipe = Pipe()
         super(RRInstance, self).__init__(target=self.go, args=[child_pipe])
@@ -78,7 +79,8 @@ class RRInstance(Process):
                 except OSError as e:
                     if e.errno in [EAGAIN, EWOULDBLOCK]:
                         break
-                    else: raise
+                    else:
+                        raise
             self.sendline(item)
 
             if item == "quit":
@@ -131,8 +133,10 @@ class RRInstance(Process):
 
     def condition_instr(self, break_arg, op, instr):
         if not hasattr(self, 'instr_count_ptr'):
-            self.instr_count_ptr = self.get_value("&cpus->tqh_first->rr_guest_instr_count")
-        self.condition(break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+            self.instr_count_ptr = self.get_value(
+                "&cpus->tqh_first->rr_guest_instr_count")
+        self.condition(
+            break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
 
     def get_value(self, value_str):
         result = self.gdb("print/u", value_str)
@@ -148,8 +152,8 @@ class RRInstance(Process):
 
     def ram_ptr(self):
         if not hasattr(self, '_ram_ptr'):
-            self._ram_ptr = self.get_value("memory_region_find(" + \
-                    "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
+            self._ram_ptr = self.get_value(
+                "memory_region_find(" + "get_system_memory(), 0x2000000, 1).mr->ram_block.host")
         return self._ram_ptr
 
     def crc32_ram(self, low, size):
@@ -277,7 +281,11 @@ class RRInstance(Process):
             self.run_event(0)
             self.goto_first_tb()
 
+        return instr_count_max
+
 # Forward calls to self.procs, splitting arguments along the way.
+
+
 class All(object):
     pool = ThreadPool(processes=2)
 
@@ -285,10 +293,12 @@ class All(object):
         self.procs = procs
 
     def split_args(self, args):
-        out_args = { proc: [] for proc in self.procs }
+        out_args = {proc: [] for proc in self.procs}
         for arg in args:
             for proc in out_args:
-                out_args[proc].append(arg[proc] if type(arg) == dict else arg)
+                out_args[proc].append(
+                    arg[proc] if isinstance(
+                        arg, dict) else arg)
 
         return out_args
 
@@ -300,27 +310,42 @@ class All(object):
             print "(rr-{}) {}".format(proc.description, cmd)
             proc.pipe.send((cmd, timeout))
 
-        return { proc: proc.pipe.recv() for proc in self.procs }
+        return {proc: proc.pipe.recv() for proc in self.procs}
 
     def __getattr__(self, name):
-        def getattr_apply((proc, func_args)):
+        def getattr_apply(xxx_todo_changeme):
+            (proc, func_args) = xxx_todo_changeme
             return proc, getattr(proc, name)(*func_args)
 
         def result(*args, **kwargs):
             split_args = self.split_args(args)
-            return dict(self.pool.map(getattr_apply, split_args.iteritems(), chunksize=1))
+            return dict(
+                self.pool.map(
+                    getattr_apply,
+                    split_args.iteritems(),
+                    chunksize=1))
 
         return result
 
     def do(self, func_map):
-        def star_apply((proc, (func, func_args))):
+        def star_apply(xxx_todo_changeme1):
+            (proc, (func, func_args)) = xxx_todo_changeme1
             return proc, func(proc, *func_args)
 
-        return dict(self.pool.map(star_apply, func_map.iteritems(), chunksize=1))
+        return dict(
+            self.pool.map(
+                star_apply,
+                func_map.iteritems(),
+                chunksize=1))
+
+    def __dir__(self):
+        return dir(self.procs[0]) + ['split_args', 'gdb', 'do']
+
 
 def values_equal(thedict):
     values = thedict.values()
     return all([x == values[0] for x in values])
+
 
 def bisect_memory(record, replay):
     Both = All([record, replay])
@@ -356,49 +381,59 @@ def bisect_memory(record, replay):
 
     return diverged_ranges
 
+
 def record_instr_event(record, replay):
     global instr_to_event
     Both = All([record, replay])
     instr_counts = Both.instr_count()
     if instr_counts[record] == instr_counts[replay]:
-        instr_to_event[instr_counts[record]]= Both.when()
+        instr_to_event[instr_counts[record]] = Both.when()
     else:
         print "Warning: tried to record non-synchronized instr<->event"
         IPython.embed()
 
+FORWARDS = 0
+BACKWARDS = 1
+# if FORWARDS, move behind up, and vice versa.
+# Assume only cpu_loop_exec_tb enabled.
+def get_closer(record, replay, direction):
+    other = { record: replay, replay: record }
+    instr_counts = Both.instr_count()
+    ahead = argmax(instr_counts)
+    behind = other[ahead]
+    if direction == FORWARDS:
+        behind.condition_instr(
+            "cpu_loop_exec_tb", ">=", instr_counts[ahead])
+        behind.cont()
+    else:
+        ahead.condition_instr(
+            "cpu_loop_exec_tb", "<=", instr_counts[behind])
+        ahead.reverse_cont()
+
 def sync_precise(record, replay, target_instr):
     Both = All([record, replay])
-    other = { record: replay, replay: record }
 
     Both.disable_all()
     Both.enable("cpu_loop_exec_tb")
     Both.condition("cpu_loop_exec_tb", "")
     instr_counts = Both.instr_count()
-    FORWARDS = 0
-    BACKWARDS = 1
     direction = FORWARDS
     while instr_counts[record] != instr_counts[replay]:
         if instr_counts[replay] == instr_count_max or \
                 instr_counts[record] == instr_count_max:
             direction = BACKWARDS
 
-        ahead = argmax(instr_counts)
-        behind = other[ahead]
-        if direction == FORWARDS:
-            behind.condition_instr("cpu_loop_exec_tb", ">=", instr_counts[ahead])
-            behind.cont()
-        else:
-            ahead.condition_instr("cpu_loop_exec_tb", "<=", instr_counts[behind])
-            ahead.reverse_cont()
-
+        get_closer(record, replay, direction)
         instr_counts = Both.instr_count()
 
     record_instr_event(record, replay)
     return instr_counts[record]
 
+
 def get_last_event(replay_dir):
-    cmd = ("{} dump {} | grep global_time | tail -n 1 | " + \
-        "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr, replay_dir)
+    cmd = ("{} dump {} | grep global_time | tail -n 1 | " +
+           "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr,
+                                                                 replay_dir)
 
     str_result = check_output(cmd, shell=True)
     return int(str_result)
@@ -414,12 +449,14 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
+
 def print_divergence_info(instr_bounds, instr_count_max):
     print divergence_info.format(
         instr_lo=instr_bounds[0],
         instr_hi=instr_bounds[1],
         instr_max=instr_count_max
     )
+
 
 def find_tmux_pane():
     tmux = False
@@ -437,7 +474,8 @@ def find_tmux_pane():
             print "tmux mode on!"
 
     if tmux:
-        panes = check_output(['tmux', 'list-panes', '-a', '-F', '#{pane_id} #{pane_pid}'])
+        panes = check_output(
+            ['tmux', 'list-panes', '-a', '-F', '#{pane_id} #{pane_pid}'])
         for line in panes.splitlines():
             pane_id, pid_s = line.split()
             if int(pid_s) in parent_pids:
@@ -445,6 +483,7 @@ def find_tmux_pane():
     else:
         print "diverge.py must be run inside tmux. Please try again."
         sys.exit(1)
+
 
 def bisect_time(record, replay, instr_bounds, instr_count_max):
     Both = All([record, replay])
@@ -465,7 +504,7 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
         print
         print whens
         print "Current checksums:", checksums
-        if values_equal(checksums): # after divergence
+        if values_equal(checksums):  # after divergence
             # make right side of range smaller, i.e. new first divergence.
             instr_bounds[1] = min(instr_bounds[1], now_instr)
         else:
@@ -474,16 +513,19 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
 
     return instr_bounds
 
+
 def check_registers(record, replay):
     Both = All([record, replay])
     diverged_registers = []
     reg_size = record.get_value("sizeof ((CPUX86State*)0)->regs[0]")
     num_regs = record.get_value("sizeof ((CPUX86State*)0)->regs") / reg_size
     for reg in range(num_regs):
-        values = Both.get_value("((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
+        values = Both.get_value(
+            "((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
         if values[record] != values[replay]:
             diverged_registers.append(reg)
     return diverged_registers
+
 
 def goto_instr(record, replay, target_instr):
     Both.goto(target_instr)
@@ -493,27 +535,33 @@ def goto_instr(record, replay, target_instr):
 
 if __name__ == '__main__':
     default_rr = get_default_rr_path()
-    parser = argparse.ArgumentParser(description="A script to automatically find replay divergences")
-    parser.add_argument("record_rr", help="Path to the rr directory for the recording replay")
-    parser.add_argument("replay_rr", help="Path to the rr directory for the replay replay")
+    parser = argparse.ArgumentParser(
+        description="A script to automatically find replay divergences")
+    parser.add_argument("record_rr",
+            help="Path to the rr directory for the recording replay")
+    parser.add_argument("replay_rr",
+            help="Path to the rr directory for the replay replay")
     parser.add_argument("--rr", default=default_rr,
-                        help="A path to the rr binary (default={})".format(default_rr))
+            help="A path to the rr binary (default={})".format(default_rr))
     parser.add_argument("--instr-bounds",
-                        help=("Instruction bounds where divergence could have occurred.\n" + \
-                            "Also to seed search."))
-    parser.add_argument("--instr-max", help="Last instruction before replay failed.")
+            help=("Instruction bounds where divergence could have occurred."))
+    parser.add_argument("--instr-max",
+            help="Last instruction before replay failed.")
     cli_args = parser.parse_args()
 
     # Check arguments
     if not os.path.isfile(cli_args.rr):
         raise IOError("Cannot find rr bin at {}".format(cli_args.rr))
     if not os.path.isdir(cli_args.record_rr):
-        raise IOError("Cannot find recording replay at {}".format(cli_args.record_rr))
+        raise IOError("Cannot find recording replay at {}".format(
+                cli_args.record_rr))
     if not os.path.isdir(cli_args.replay_rr):
-        raise IOError("Cannot find replay replay at {}".format(cli_args.replay_rr))
+        raise IOError("Cannot find replay replay at {}".format(
+                cli_args.replay_rr))
 
     def argmax(d):
         return max(d.iteritems(), key=operator.itemgetter(1))[0]
+
     def argmin(d):
         return min(d.iteritems(), key=operator.itemgetter(1))[0]
 
@@ -529,7 +577,7 @@ if __name__ == '__main__':
 
     both = [record, replay]
     Both = All(both)
-    other = { record: replay, replay: record }
+    other = {record: replay, replay: record}
 
     def cleanup_error():
         Both.quit()
@@ -581,6 +629,7 @@ if __name__ == '__main__':
     print "Haven't made progress since last iteration. Moving to memory checksum."
     print_divergence_info(instr_bounds, instr_count_max)
 
+    # Find diverged memory ranges and registers.
     diverged_ranges = bisect_memory(record, replay)
     diverged_registers = check_registers(record, replay)
 
@@ -593,30 +642,60 @@ if __name__ == '__main__':
     print "Diverged eips:", diverged_pcs
 
     # Return to latest converged instr
-    goto_instr(record, replay, instr_bounds[0])
+    now_instr = goto_instr(record, replay, instr_bounds[0])
+
+    # Make sure we're actually at a converged point.
+    # If we're more than 1000 instrs too far forward, make user intervene.
+    if now_instr > instr_bounds[0] + 1000:
+        print "WARNING: Processes are too far ahead of last divergence."
+        print "Please sync them manually behind", instr_bounds[0],
+        print "and continue."
+        IPython.embed()
+        instr_counts = Both.instr_count()
+        assert values_equal(instr_counts)
+        assert instr_counts[record] <= instr_bounds[0]
+    else:
+        # NB: in some cases, instr_bounds[0] (i.e. we observe the same instr
+        # both converged and diverged. This should make sure we move before it
+        # before setting watchpoints.
+        if now_instr >= instr_bounds[1]:
+            Both.disable_all()
+            Both.enable("cpu_loop_exec_tb")
+            Both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
+            Both.reverse_cont()
+            while not values_equal(Both.instr_count()):
+                print "Not synced."
+                get_closer(record, replay, BACKWARDS)
 
     Both.disable_all()
     reg_size = record.get_value("sizeof ((CPUX86State*)0)->regs[0]")
     if diverged_pcs:
-        pc_ptrs = Both.get_value("&((CPUX86State*)cpus->tqh_first->env_ptr)->eip")
+        pc_ptrs = Both.get_value(
+            "&((CPUX86State*)cpus->tqh_first->env_ptr)->eip")
         Both.watch(pc_ptrs, reg_size)
 
-    reg_ptrs = Both.get_value("&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
+    reg_ptrs = Both.get_value(
+        "&(((CPUX86State*)cpus->tqh_first->env_ptr)->regs)")
     for reg in diverged_registers:
-        result = Both.watch({ proc: reg_ptrs[proc] + reg * reg_size for proc in both }, reg_size)
-        if record.watches_set >= 4: break
+        result = Both.watch(
+            {proc: reg_ptrs[proc] + reg * reg_size for proc in both},
+            reg_size)
+        if record.watches_set >= 4:
+            break
 
     # Heuristic: Should watch each range at most once. So iterate over offset
     # in outer loop, range in inner loop.
     max_range = max([high - low for (low, high) in diverged_ranges])
     max_range += max_range % 8
     for offset in range(0, max_range, 8):
-        if record.watches_set >= 4: break
+        if record.watches_set >= 4:
+            break
         for low, high in diverged_ranges:
             low -= low % 8
             watch_bytes = min(high - offset, 8)
             Both.watch_ram(low + offset, watch_bytes)
-            if record.watches_set >= 4: break
+            if record.watches_set >= 4:
+                break
 
     if record.watches_set == 0:
         print "WARNING: Couldn't find any watchpoints to set at beginning of ",
@@ -627,12 +706,12 @@ if __name__ == '__main__':
     while instr_counts[record] == instr_counts[replay] \
             and instr_counts[record] > 0 \
             and instr_counts[replay] < instr_count_max \
-            and values_equal(Both.checksums()):
-        Both.gdb("continue", timeout=None)
+            and values_equal(Both.checksum()):
+        Both.cont()
         instr_counts = Both.instr_count()
 
-    # Backtra
     backtraces = Both.gdb("backtrace")
+
     def show_backtrace(proc):
         print "{} BACKTRACE: ".format(proc.description.upper())
         print backtraces[proc]
