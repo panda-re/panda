@@ -7,7 +7,12 @@ fi
 
 regressiondir=$PANDA_REGRESSION_DIR
 
-source testing.defs
+
+SCRIPTFILE=$(readlink -f "$0")
+SCRIPTDIR=$(dirname $SCRIPTFILE)
+echo $SCRIPTDIR
+
+source ${SCRIPTDIR}/../../testing.defs
 
 tst=asidstory1
 

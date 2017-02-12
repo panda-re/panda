@@ -90,113 +90,93 @@ for testname in enabled_tests:
     file_required(testdir + "/" + testname + "-setup.py")
     file_required(testdir + "/" + testname + "-test.py")
 
+
 def setup(testname):
     progress ("Setup %s" % testname)
-    run("%s/%s/%s-setup.py" % (testsdir, testname, testname))
+    try:
+        run("%s/%s/%s-setup.py" % (testsdir, testname, testname))
+        progress ("Setup %s succeeded" % testname)
+        return True
+    except:
+        error ("Setup %s failed" % testname)
+        return False
 
-def setup_all():
+def bless(testname):
+    progress ("Bless %s" % testname)
+    try:
+        run("%s/%s/%s-test.py" % (testsdir, testname, testname))
+        progress ("Replacing blessed file %s" % the_blessedfile(testname))
+        shutil.move(the_tmpoutfile(testname), the_blessedfile(testname))
+        progress ("Bless %s succeeded" % testname)
+        return True
+    except:
+        error ("Bless %s failed" % testname)
+        return False
+
+def test(testname):
+    progress ("Test %s" % testname)
+    try:
+        run("%s/%s/%s-test.py" % (testsdir, testname, testname))
+        tof = the_tmpoutfile(testname)
+        if not (file_exists(tof)):
+            error ("tmp out for %s missing: %s" % (testname, tof))
+            return False
+        bf = the_blessedfile(testname)
+        if not (file_exists(bf)):
+            error ("blessed output for %s missing: %s" % (testname, bf))
+            return False
+        if filecmp.cmp(tof, bf):
+            progress ("New output for %s agrees with blessed" % testname)        
+        progress("Test %s succeeded" % testname)
+        return True
+    except:
+        error ("Test %s failed" % testname)
+        return False
+
+def do_all(do_fn):
+    res = {}
     for testname in enabled_tests:
-        setup(testname)
+        res[testname] = do_fn(testname)
+    return res
+
+def run_mode(the_mode, do_fn):
+    res = {}
+    if all_targets:
+        res = do_all(do_fn)
+    else:
+        for testname in targets:
+            res[testname] = do_fn(testname)
+    progress ("Summary results for %s" % the_mode)
+    all_res = True
+    for testname in res:
+        if res[testname]:
+            progress("  test %s : %s succeeded" % (testname, the_mode))
+        else:
+            error("  test %s : %s FAILED" % (testname, the_mode))
+        all_res &= res[testname]
+    if all_res:
+        progress("All %s succeeded" % the_mode)
+    else:
+        error("Some %s failed" % the_mode)
 
 if mode == 'init':
     progress("Initializing panda regression test dir in " + pandaregressiondir)
     shutil.rmtree(pandaregressiondir, ignore_errors=True)
     os.makedirs(pandaregressiondir)
-    os.mkdir(pandaregressiondir + "/qcows")
-    os.mkdir(pandaregressiondir + "/replays")
-    os.mkdir(pandaregressiondir + "/blessed")
-    os.mkdir(pandaregressiondir + "/tmpout")
-    for testname in enabled_tests:
-        os.mkdir(the_dir("replays", testname))
-        os.mkdir(the_dir("blessed", testname))
-        os.mkdir(the_dir("tmpout", testname))
-    setup_all()
-    sys.exit(0)
+    for dirname in ['qcows', 'replays', 'blessed', 'tmpout', 'misc']:
+        os.mkdir(pandaregressiondir + "/" + dirname)
+        for testname in enabled_tests:
+            os.mkdir(the_dir(dirname, testname))
+    run_mode('setup', setup)
 
 if mode == 'setup':
-    if all_targets:
-        setup_all()
-    else:
-        for testname in targets:
-            setup(testname)
-
-def bless(testname):
-    try:
-        run("%s/%s/%s-test.py" % (testsdir, testname, testname))
-        shutil.move(the_tmpoutfile(testname), the_blessedfile(testname))
-        progress ("Replacing blessed file %s" % the_blessedfile(testname))
-        return True
-    except:
-        progress ("Blessing of %s failed" % testname)
-        return False
-
-def bless_all():
-    blessed = {}
-    for testname in enabled_tests:
-        blessed[testname] = bless(testname)
-    return blessed
+    run_mode(mode, setup)
 
 if mode == 'bless':
-    blessed = {}
-    if all_targets:
-        blessed = bless_all()
-    else:
-        for testname in targets:
-            blessed[testname] = bless(testname)
-    progress("Blessing summary:")
-    all_blessed = True
-    for testname in blessed:
-        if blessed[testname]:
-            progress ("  test %s : blessed" % testname)
-        else:
-            progress ("  test %s : NOT blessed" % testname)
-        all_blessed &= blessed[testname]
-    if all_blessed:
-        progress("Every enabled test has been blessed")
-    else:
-        progress ("XXX Not all enabeld tests were blessed")
-
-def test(testname):
-    run("%s/%s/%s-test.py" % (testsdir, testname, testname))
-    tof = the_tmpoutfile(testname)
-    if not (file_exists(tof)):
-        progress ("tmp out %s doesnt exist" % tof)
-        sys.exit(1)
-    bf = the_blessedfile(testname)
-    if not (file_exists(bf)):
-        progress ("blessed %s doesnt exist" % bf)
-        sys.exit(1)            
-    if filecmp.cmp(tof, bf):
-        progress ("New output agrees with blessed")        
-        return True
-    return False
-
-def test_all():
-    succeeded = {}
-    for testname in enabled_tests:
-        succeeded[testname] = test(testname)
-    return succeeded
+    run_mode(mode, bless)
 
 if mode == 'test':
-    succeeded = {}
-    if all_targets:
-        succeeded = test_all()
-    else:
-        for testname in targets:
-            testd[testname] = test(testname)
-    progress ("Testing summary:")
-    all_succeeded = True
-    for testname in succeeded:
-        if succeeded[testname]:
-            progress ("  test %s : succeeded" % testname)
-        else:
-            progress ("  test %s : FAILED" % testname)
-        all_succeeded &= succeeded[testname]
-    if all_succeeded:
-        progress("Every enabled test agreed with blessed")
-    else:
-        progress ("XXX Not all enabeld tests agreed with blessed")
-
+    run_mode(mode, test)
 
 
 
