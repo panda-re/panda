@@ -10,19 +10,8 @@ sys.path.append(td)
 
 from ptest_utils import *
 
+run_test_32bitlinux("-panda asidstory")
 
-progress("Running test " + testname)
-cmd = qemu + " -replay " + replayfile + " -os linux-32-lava32 -panda asidstory"
-
-try:
-    os.chdir(tmpoutdir)
-    sp.check_call(cmd.split())
-    progress ("Test %s succeeded" % testname)
-except:
-    progress ("Test %s failed to run " % testname)
-    out = open(tmpoutfile, "w")
-    out.write("Replay failed\n")
-
+os.chdir(tmpoutdir)
 shutil.move("asidstory", tmpoutfile)
-
 

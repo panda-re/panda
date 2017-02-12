@@ -12,6 +12,10 @@ def progress(msg):
     print Fore.GREEN + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
     print
 
+def error(msg):
+    print Fore.RED + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
+    print
+
 def dir_exists(dirname):
     return os.path.exists(dirname) and os.path.isdir(dirname)
 
@@ -43,6 +47,8 @@ def run(cmd):
     else:
         DEVNULL = open(os.devnull, "w")
         sp.check_call([cmd], stdout=DEVNULL, stderr=DEVNULL)
+
+
 
 
 pandaregressiondir = "PANDA_REGRESSION_DIR"
@@ -85,6 +91,46 @@ if foo:
     replaydir = the_dir("replay", testname)
     blesseddir = the_dir("blessed", testname)
     tmpoutdir = the_dir("tmpout", testname)
+    miscdir = the_dir("misc", testname)
     replayfile = the_replayfile(testname)
     blessedfile = the_blessedfile(testname)
     tmpoutfile = the_tmpoutfile(testname)
+
+
+def record_32bitlinux(cmds, replayname):
+    progress("Creating setup recording %s [%s]" % (replayname, cmds))
+    # create the replay to use for reference / test
+    cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
+    os.chdir(pandaregressiondir)
+    print cmd
+    sp.check_call(cmd.split())
+
+    base = pandaregressiondir + ("/replays/%s/%s-rr-" % (replayname, replayname))
+    replaysdir = pandaregressiondir + "/replays/" + testname
+    if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
+        os.makedirs(replaysdir)
+
+    newbase = replaysdir + "/" + testname + "-rr-"
+
+    moveit(base, newbase, "nondet.log")
+    moveit(base, newbase, "snp")
+
+    # cruft
+    shutil.rmtree(pandaregressiondir + ("/replays/%s" % replayname))
+             
+def run_test_32bitlinux(panda_args):
+    progress("Running test " + testname)
+    cmd = qemu + " -replay " + replayfile + " -os linux-32-lava32 " + panda_args
+    try:
+        os.chdir(tmpoutdir)
+        sp.check_call(cmd.split())
+        progress ("Test %s succeeded" % testname)
+    except:
+        progress ("Test %s failed to run " % testname)
+        out = open(tmpoutfile, "w")
+        out.write("Replay failed\n")
+
+
+
+
+

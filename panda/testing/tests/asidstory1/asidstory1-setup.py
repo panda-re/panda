@@ -12,22 +12,4 @@ sys.path.append(td)
 
 from ptest_utils import *
 
-# create the replay to use for reference / test
-cmd = pandascriptsdir + "/run_on_32bitlinux.py guest:/bin/netstat -a"
-os.chdir(pandaregressiondir)
-print cmd
-sp.check_call(cmd.split())
-
-base = pandaregressiondir + "/replays/netstat/netstat-rr-"
-replaysdir = pandaregressiondir + "/replays/" + testname
-if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
-    os.makedirs(replaysdir)
-
-newbase = replaysdir + "/" + testname + "-rr-"
-
-moveit(base, newbase, "nondet.log")
-moveit(base, newbase, "snp")
-
-# cruft
-shutil.rmtree(pandaregressiondir + "/replays/netstat")
-
+record_32bitlinux("guest:/bin/netstat -a", "netstat")
