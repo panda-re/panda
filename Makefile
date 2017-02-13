@@ -276,6 +276,8 @@ dummy := $(call unnest-vars,, \
                 trace-obj-y)
 
 ifneq ($(wildcard config-host.mak),)
+include $(SRC_PATH)/panda/Makefile.panda
+
 include $(SRC_PATH)/tests/Makefile.include
 endif
 
