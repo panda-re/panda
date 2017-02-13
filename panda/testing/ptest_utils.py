@@ -61,13 +61,15 @@ pandascriptsdir = os.path.realpath(pandadir + "/panda/scripts")
 testingscriptsdir = thisdir
 qemu = pandadir + "/build/i386-softmmu/qemu-system-i386"
 
-ptest_config = testingscriptsdir + "/config.testing"
+ptest_config = testingscriptsdir + "/tests/config.testing"
 if not (file_exists(ptest_config)):
     progress ("ptest_config file missing: " + ptest_config)
     sys.exit(1)
               
 maybe_tests = [test.strip() for test in open(ptest_config).readlines()]
 enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
+
+progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
 def the_dir(thing, test):
     return "%s/%s/%s" % (pandaregressiondir, thing, test)
@@ -125,11 +127,11 @@ def run_test_32bitlinux(panda_args):
         os.chdir(tmpoutdir)
         sp.check_call(cmd.split())
         progress ("Test %s succeeded" % testname)
-    except:
+    except Exception as e:
         progress ("Test %s failed to run " % testname)
         out = open(tmpoutfile, "w")
         out.write("Replay failed\n")
-
+        raise e
 
 
 

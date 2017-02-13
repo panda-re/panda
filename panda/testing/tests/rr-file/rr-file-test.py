@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+# record and then replay the command '/usr/bin/file /bin/ls' 
+# running on a 32-bit linux guest
+
 import os
 import sys
 import shutil
