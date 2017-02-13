@@ -680,6 +680,8 @@ void debug_counter(void) {
 }
 #endif
 __attribute__((always_inline))
+inline void debug_checkpoint(CPUState *cpu);
+__attribute__((always_inline))
 inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_mode != RR_OFF

@@ -84,7 +84,7 @@ endif
 #########################################################
 # Panda code
 #########################################################
-include $(SRC_PATH)/panda/Makefile.panda
+include $(SRC_PATH)/panda/Makefile.panda.target
 
 all: $(PROGS) stap
 
