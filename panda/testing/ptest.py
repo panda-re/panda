@@ -1,61 +1,27 @@
 #!/usr/bin/python
-#
-"""NB: you need to set the PANDA_REGRESSION_DIR env variable for any
-of this to work
+
+"""
+
+NB: you need to set the PANDA_REGRESSION_DIR env variable for any
+of this to work.  This is where all your regression testing will happen
+
+You should be able to run the following
+
+ptest.py init         (initializes testing, downloads some qcows)
+ptest.py bless        (runs all enabled tests, blesses and saves outputs)
+ptest.py test         (re-runs all enabled tests and checks output against blessed)
+
+each of these will print out lots of info about how the operation is
+proceeding, and, at the end, provide a summary of which enabled tests
+the operation succeeded for and which it failed for.  The very last
+line will tell you if, overall, the operation succeeded.
 
 
-./config.testing file contains list of tests that are currently enabled.
-each line in that file should be a directory under tests.
-for example, say we have the following
+Details.
 
- % cat ./config.testing
-   asidstory1
-   stringsearch1
-   ...
-
-Then that means the following directories should exist
-
- % ls -1 tests
-   asidstory1
-   stringsearch1 
-   ...
-
-Each of those subdirectories should contain two python scripts.
-
- % ls -1 asidstory1
-   asidstory1-setup.py    [for set up -- creating a replay, downloading a qcow, etc
-   asi
-
-
-USAGE:
-
-ptest.py init 
-
-    will delete and recreate the regression directory.  Destructive!
-    will also run all setup scripts for enabled tests
-
-
-ptest.py setup asidstory1
-
-    runs setup just for this test
-
-ptest.py bless all
- 
-    runs all of the tests and if they all succeed, saves blessed
-    outputs for later comparison
-
-ptest.py bless asidstory1
-
-    just runs test for asidstory1 and blesses output
-
-ptest.py test all
-
-    runs all tests and checks against blessed output
-
-ptesty.py test asdistory1
-
-    runs asidstory1 test and checks it
-
+./config.testing file contains list of tests that are currently
+enabled.  each line in that file should be a directory under tests.
+If you put '#' at the front of a line that will disable the test.
 
 """
 
@@ -148,25 +114,30 @@ def run_mode(the_mode, do_fn):
             res[testname] = do_fn(testname)
     progress ("Summary results for %s" % the_mode)
     all_res = True
+    i = 0
     for testname in res:
         if res[testname]:
-            progress("  test %s : %s succeeded" % (testname, the_mode))
+            progress("  test %d %20s : %s succeeded" % (i, testname, the_mode))
         else:
-            error("  test %s : %s FAILED" % (testname, the_mode))
+            error("  test %d %20s : %s FAILED" % (i, testname, the_mode))
         all_res &= res[testname]
+        i += 1
     if all_res:
         progress("All %s succeeded" % the_mode)
     else:
-        error("Some %s failed" % the_mode)
+        error("XXX Some %s failed" % the_mode)
 
 if mode == 'init':
     progress("Initializing panda regression test dir in " + pandaregressiondir)
+    progress("Removing " + pandaregressiondir)
     shutil.rmtree(pandaregressiondir, ignore_errors=True)
     os.makedirs(pandaregressiondir)
     for dirname in ['qcows', 'replays', 'blessed', 'tmpout', 'misc']:
         os.mkdir(pandaregressiondir + "/" + dirname)
         for testname in enabled_tests:
             os.mkdir(the_dir(dirname, testname))
+    os.chdir(pandaregressiondir + "/qcows")
+    sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", "wheezy_32bit.qcow2"])
     run_mode('setup', setup)
 
 if mode == 'setup':
