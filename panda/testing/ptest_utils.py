@@ -97,32 +97,32 @@ if foo:
     replayfile = the_replayfile(testname)
     blessedfile = the_blessedfile(testname)
     tmpoutfile = the_tmpoutfile(testname)
+    search_string_file_pfx = miscdir + "/" + testname 
+    search_string_file = search_string_file_pfx + "_search_strings.txt"
 
 
 def record_32bitlinux(cmds, replayname):
     progress("Creating setup recording %s [%s]" % (replayname, cmds))
     # create the replay to use for reference / test
     cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
+    progress(cmd)
     os.chdir(pandaregressiondir)
     print cmd
     sp.check_call(cmd.split())
-
     base = pandaregressiondir + ("/replays/%s/%s-rr-" % (replayname, replayname))
     replaysdir = pandaregressiondir + "/replays/" + testname
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
-
     newbase = replaysdir + "/" + testname + "-rr-"
-
     moveit(base, newbase, "nondet.log")
     moveit(base, newbase, "snp")
-
     # cruft
     shutil.rmtree(pandaregressiondir + ("/replays/%s" % replayname))
              
 def run_test_32bitlinux(panda_args):
     progress("Running test " + testname)
     cmd = qemu + " -replay " + replayfile + " -os linux-32-lava32 " + panda_args
+    progress(cmd)
     try:
         os.chdir(tmpoutdir)
         sp.check_call(cmd.split())
@@ -133,6 +133,7 @@ def run_test_32bitlinux(panda_args):
         out.write("Replay failed\n")
         raise e
 
-
-
-
+def create_search_string_file(search_string):
+    ssf = open(search_string_file, "w")
+    ssf.write(search_string + "\n")
+    ssf.close()
