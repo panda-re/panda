@@ -11,6 +11,10 @@ ptest.py init         (initializes testing, downloads some qcows)
 ptest.py bless        (runs all enabled tests, blesses and saves outputs)
 ptest.py test         (re-runs all enabled tests and checks output against blessed)
 
+also, 
+
+ptest.py              which is equiv to ptests.py test
+
 each of these will print out lots of info about how the operation is
 proceeding, and, at the end, provide a summary of which enabled tests
 the operation succeeded for and which it failed for.  The very last
@@ -23,6 +27,8 @@ Details.
 enabled.  each line in that file should be a directory under tests.
 If you put '#' at the front of a line that will disable the test.
 
+
+
 """
 
 import os
@@ -32,16 +38,18 @@ import shutil
 import subprocess as sp
 import filecmp
 
-if len(sys.argv) == 3:
-    targets = sys.argv[2:]
-    all_targets = (sys.argv[2] == 'all')
-else:
+if len(sys.argv) == 1:
+    mode = 'test'
+    all_targets = True
+elif len(sys.argv) > 1:
+    mode = sys.argv[1]
     all_targets = True
     targets = None
+    if len(sys.argv) == 3:
+        targets = sys.argv[2:]
+        all_targets = (sys.argv[2] == 'all')
 
 from ptest_utils import *
-
-mode = sys.argv[1]
 
 assert(mode in ['init', 'setup', 'bless', 'test'])
 
@@ -93,8 +101,11 @@ def test(testname):
             return False
         if filecmp.cmp(tof, bf):
             progress ("New output for %s agrees with blessed" % testname)        
-        progress("Test %s succeeded" % testname)
-        return True
+            progress("Test %s succeeded" % testname)
+            return True
+        error("New output for %s DISAGREES with blessed" % testname)
+        error("%s != %s" % (tof, bf))
+        return False    
     except:
         error ("Test %s failed" % testname)
         return False
