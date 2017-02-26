@@ -134,4 +134,4 @@ Data structures used by OSI:
 Example
 -------
 
-The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](osi_test/osi_test.cpp).
+The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](/panda/plugins/osi_test/).
