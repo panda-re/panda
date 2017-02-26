@@ -21,7 +21,7 @@ The key is that you can swap out the bottom layer to support a new operating sys
 Arguments
 ---------
 
-None.
+* `os`: the target os. Options can be seen in [common.c](/panda/src/common.c) or in the error message if you get the argument wrong, but in the correct format, e.g.: `-os windows-32-0`
 
 Dependencies
 ------------
