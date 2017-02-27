@@ -21,7 +21,7 @@ The key is that you can swap out the bottom layer to support a new operating sys
 Arguments
 ---------
 
-None.
+* `os`: the target os. Options can be seen in [common.c](/panda/src/common.c) or in the error message if you get the argument wrong, but in the correct format, e.g.: `-os windows-32-0`
 
 Dependencies
 ------------
@@ -134,4 +134,4 @@ Data structures used by OSI:
 Example
 -------
 
-The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](osi_test/osi_test.cpp).
+The `osi` plugin is not very useful on its own. If you want to see an example of how to use when writing your own plugins, have a look at [osi_test](/panda/plugins/osi_test/).
