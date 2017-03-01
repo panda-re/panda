@@ -197,9 +197,12 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     MemoryRegion *sysmem = get_system_memory();
 
     QDICT_ASSERT_KEY_TYPE(mapping, "name", QTYPE_QSTRING);
-    QDICT_ASSERT_KEY_TYPE(mapping, "is_rom", QTYPE_QBOOL);
     QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QINT);
     g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
+
+    if(qdict_haskey(mapping, "is_rom")) {
+        QDICT_ASSERT_KEY_TYPE(mapping, "is_rom", QTYPE_QBOOL);
+    }
 
     name = qdict_get_str(mapping, "name");
     is_rom = qdict_haskey(mapping, "is_rom")
