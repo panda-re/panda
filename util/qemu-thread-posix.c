@@ -546,11 +546,19 @@ void qemu_avatar_sem_post(QemuAvatarSemaphore *sem)
 #endif
 }
 
-void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name)
+void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name, size_t msg_size)
 {
 #if defined(__APPLE__) || defined(__NetBSD__)
 #else
-    mqd_t m = mq_open(name, O_CREAT | O_RDONLY | O_NONBLOCK, 0666, NULL);
+    mq_unlink(name);
+
+    struct mq_attr attr;
+    attr.mq_flags = O_NONBLOCK;
+    attr.mq_msgsize = msg_size;
+    attr.mq_maxmsg = 10;
+    attr.mq_curmsgs = 0;
+
+    mqd_t m = mq_open(name, O_CREAT | O_RDONLY, 0666, &attr);
 
     if(m == -1)
     {
@@ -561,11 +569,18 @@ void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name)
 #endif
 }
 
-void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name)
+void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name, size_t msg_size)
 {
 #if defined(__APPLE__) || defined(__NetBSD__)
 #else
-    mqd_t m = mq_open(name, O_CREAT | O_WRONLY | O_NONBLOCK, 0666, NULL);
+    mq_unlink(name);
+
+    struct mq_attr attr;
+    attr.mq_msgsize = msg_size;
+    attr.mq_maxmsg = 10;
+    attr.mq_curmsgs = 0;
+
+    mqd_t m = mq_open(name, O_CREAT | O_WRONLY, 0666, &attr);
  
     if(m == -1)
     {
@@ -605,7 +620,11 @@ int qemu_avatar_mq_receive(QemuAvatarMessageQueue *mq, void *buffer, size_t len)
         error_exit(errno, __func__);
     }
 
-    return 0;
+    return rc;
 #endif
 }
 
+int qemu_avatar_mq_get_fd(QemuAvatarMessageQueue *mq)
+{
+    return mq->mq;
+}
