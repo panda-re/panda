@@ -21,7 +21,7 @@
 #include "qapi/qmp/qint.h"
 #include "qapi/qmp/qdict.h"
 #include "exec/memory.h"
-#include "target-arm/cpu.h"
+#include "target/arm/cpu.h"
 #include "qemu/thread.h"
 #include "exec/ram_addr.h"
 
