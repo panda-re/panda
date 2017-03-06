@@ -220,6 +220,9 @@ struct CompareRangeAndPC
 */
 void pri_dwarf_plog(const char *file_callee, const char *fn_callee, uint64_t lno_callee,
         const char *file_caller, uint64_t lno_caller, bool isCall) {
+    // don't log hypercalls.
+    if (strstr(file_callee, "pirate_mark_lava.h")) return;
+
     // setup
     Panda__DwarfCall *dwarf = (Panda__DwarfCall *) malloc (sizeof (Panda__DwarfCall));
     *dwarf = PANDA__DWARF_CALL__INIT;
