@@ -9,6 +9,7 @@ extern "C" {
 
 target_ulong panda_current_pc(CPUState *env);
 target_ulong panda_current_asid(CPUState *env);
+target_ulong panda_current_sp(CPUState *env);
 bool panda_in_kernel(CPUState *env);
 
 void panda_disas(FILE *out, void *code, unsigned long size);
