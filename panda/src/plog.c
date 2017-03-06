@@ -59,12 +59,13 @@
 #include "panda/rr/rr_log.h"
 #endif
 
-#include <string.h>
 #include <math.h>
-#include "panda/plog.h"
-
-#include <zlib.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <zlib.h>
+
+#include "panda/plog.h"
 
 Pandalog *thePandalog = NULL;
 
@@ -119,7 +120,7 @@ void pandalog_create(uint32_t chunk_size) {
     thePandalog->chunk.zbuf = (unsigned char *) malloc(thePandalog->chunk.zsize);
     thePandalog->chunk.start_instr = 0;
     thePandalog->chunk.start_pos = PL_HEADER_SIZE;
-    thePandalog->chunk.entry = 0;
+    thePandalog->chunk.entry = NULL;
     thePandalog->chunk.num_entries = 0;
     thePandalog->chunk.max_num_entries = 0;
     thePandalog->chunk.ind_entry = 0;
@@ -417,61 +418,58 @@ static void __pandalog_free_entry(Panda__LogEntry *entry) {
     panda__log_entry__free_unpacked(entry, NULL);
 }
 
-uint8_t unmarshall_chunk_first_time = 1;
-
 // uncompress this chunk, ready for use
-void unmarshall_chunk(uint32_t c) {
-    printf ("unmarshalling chunk %d\n", c);
+void unmarshall_chunk(uint32_t chunk_num) {
+    printf ("unmarshalling chunk %d\n", chunk_num);
     PandalogChunk *chunk = &(thePandalog->chunk);
     // read compressed chunk data off disk
-    int ret = fseek(thePandalog->file, thePandalog->dir.pos[c], SEEK_SET);
+    int ret = fseek(thePandalog->file, thePandalog->dir.pos[chunk_num], SEEK_SET);
     assert (ret == 0);
-    unsigned long ccs = thePandalog->dir.pos[c+1] - thePandalog->dir.pos[c] + 1;
-    uint32_t n = fread(chunk->zbuf, 1, ccs, thePandalog->file);
-    assert (ccs == n);
-    unsigned long cs = chunk->size;
+    unsigned long compressed_size = thePandalog->dir.pos[chunk_num+1] - thePandalog->dir.pos[chunk_num] + 1;
+    size_t bytes_read = fread(chunk->zbuf, 1, compressed_size, thePandalog->file);
+    assert (bytes_read == compressed_size);
+    unsigned long uncompressed_size = chunk->size;
     // uncompress it
-    printf ("cs=%d ccs=%d\n", (int) cs, (int) ccs);
-    uint8_t done = 0;
-    while (!done) {
-        ret = uncompress(chunk->buf, &cs, chunk->zbuf, ccs);
+    printf ("chunk size=%lu compressed=%lu\n", uncompressed_size, compressed_size);
+    while (true) {
+        ret = uncompress(chunk->buf, &uncompressed_size, chunk->zbuf, compressed_size);
         printf ("ret = %d\n", ret);
-        if (ret == Z_OK) done = 1;
-        else {
-            if (ret == Z_BUF_ERROR) {
-                // need a bigger buffer
-                // make sure we won't int overflow
-                assert (chunk->size < UINT32_MAX/2);
-                chunk->size *= 2;
-                printf ("grew chunk buffer to %d\n", chunk->size);
-                chunk->buf = (unsigned char *)
-                    realloc(chunk->buf,chunk->size);
-                chunk->buf_p = chunk->buf;
-                cs = chunk->size;
-            }
+        if (ret == Z_BUF_ERROR) {
+            // need a bigger buffer
+            // make sure we won't int overflow
+            assert (chunk->size < UINT32_MAX/2);
+            chunk->size *= 2;
+            printf ("grew chunk buffer to %d\n", chunk->size);
+            free(chunk->buf);
+            chunk->buf = (unsigned char *)malloc(chunk->size);
+            chunk->buf_p = chunk->buf;
+            uncompressed_size = chunk->size;
+        } else if (ret == Z_OK) {
+            break;
+        } else {
+            assert(false && "Decompression failed");
         }
     }
-    printf ("ret =%d\n", ret);
-    assert (ret == Z_OK);
-    thePandalog->chunk_num = c;
-    // realloc current chunk arrays if necessary
-    if (chunk->max_num_entries < thePandalog->dir.num_entries[c]) {
-        chunk->max_num_entries = thePandalog->dir.num_entries[c];
-        chunk->entry =
-            (Panda__LogEntry **)
-            realloc(chunk->entry,
-                    sizeof(Panda__LogEntry *) * chunk->max_num_entries);
+
+    // need to free previous chunk's pandalog entries
+    unsigned i;
+    for (i = 0; i < chunk->num_entries; i++) {
+        __pandalog_free_entry(chunk->entry[i]);
     }
-    chunk->num_entries = thePandalog->dir.num_entries[c];
+
+    thePandalog->chunk_num = chunk_num;
+    // realloc current chunk arrays if necessary. this always happens on first call.
+    if (chunk->max_num_entries < thePandalog->dir.num_entries[chunk_num]) {
+        chunk->max_num_entries = thePandalog->dir.num_entries[chunk_num];
+        free(chunk->entry);
+        chunk->entry = (Panda__LogEntry **)malloc(
+                sizeof(Panda__LogEntry *) * chunk->max_num_entries);
+    }
+    chunk->num_entries = thePandalog->dir.num_entries[chunk_num];
     // unpack pandalog entries out of uncompressed buffer into array of pl entries
     unsigned char *p = chunk->buf;
-    uint32_t i;
-    for (i=0; i<chunk->num_entries; i++) {
-        if (!unmarshall_chunk_first_time && chunk->entry[i] != NULL) {
-            // need to free previous chunk's pandalog entries
-            __pandalog_free_entry(chunk->entry[i]);
-        }
-        assert (p < chunk->buf + cs);
+    for (i = 0; i < chunk->num_entries; i++) {
+        assert (p < chunk->buf + chunk->size);
         uint32_t n = *((uint32_t *) p);
         p += sizeof(uint32_t);
         Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, p);
@@ -479,7 +477,6 @@ void unmarshall_chunk(uint32_t c) {
         chunk->entry[i] = ple;
     }
     chunk->ind_entry = 0;  // a guess
-    unmarshall_chunk_first_time = 0;
 }
 
 Panda__LogEntry *pandalog_read_entry(void) {
