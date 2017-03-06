@@ -113,6 +113,26 @@ target_ulong panda_current_asid(CPUState *cpu) {
 }
 
 /*
+  returns current stack pointer.
+  architecture-independent
+*/
+target_ulong panda_current_sp(CPUState *cpu) {
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+  return env->regs[R_ESP];
+#elif defined(TARGET_ARM)
+  // R13 on ARM.
+  return env->regs[13];
+#elif defined(TARGET_PPC)
+  // R1 on PPC.
+  return env->regs[1];
+#else
+#error "panda_current_asid() not implemented for target architecture."
+  return 0;
+#endif
+}
+
+/*
   returns true if we are currently executing in kernel-mode
 */
 
