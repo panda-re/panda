@@ -126,7 +126,7 @@ struct TCGLLVMContextPrivate {
 
     BasicBlock* m_labels[TCG_MAX_LABELS];
 
-    StructType *m_CPUArchStateType;
+    StructType *m_CPUArchStateType = nullptr;
     std::string m_CPUArchStateName;
 
 public:
