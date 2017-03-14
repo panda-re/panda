@@ -558,7 +558,7 @@ void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name, size
     attr.mq_maxmsg = 10;
     attr.mq_curmsgs = 0;
 
-    mqd_t m = mq_open(name, O_CREAT | O_RDONLY, 0666, &attr);
+    mqd_t m = mq_open(name, O_CREAT | O_EXCL | O_RDONLY, 0600, &attr);
 
     if(m == -1)
     {
@@ -580,7 +580,7 @@ void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name, siz
     attr.mq_maxmsg = 10;
     attr.mq_curmsgs = 0;
 
-    mqd_t m = mq_open(name, O_CREAT | O_WRONLY, 0666, &attr);
+    mqd_t m = mq_open(name, O_CREAT | O_EXCL | O_WRONLY, 0600, &attr);
  
     if(m == -1)
     {
