@@ -297,6 +297,8 @@ static void init_peripheral(QDict *device)
     address = qdict_get_int(device, "address");
     name = qdict_get_str(device, "name");
 
+    printf("Configurable: Adding peripheral[%s] region %s at address 0x%" PRIx64 "\n", 
+            qemu_name, name, address);
     if (strcmp(bus, "sysbus") == 0)
     {
         SysBusDevice *sb;

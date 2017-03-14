@@ -1,1 +1,1 @@
-obj-y += memory_forwarder.o
+obj-y += remote_memory.o
