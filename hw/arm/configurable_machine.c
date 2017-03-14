@@ -131,7 +131,9 @@ static void set_properties(DeviceState *dev, QList *properties)
 static void dummy_interrupt(void *opaque, int irq, int level)
 {}
 
-static SysBusDevice *make_configurable_device(const char *qemu_name, uint64_t address, QList *properties)
+static SysBusDevice *make_configurable_device(const char *qemu_name,
+                                              uint64_t address,
+                                              QList *properties)
 {
     DeviceState *dev;
     SysBusDevice *s;
@@ -315,29 +317,53 @@ static void init_peripheral(QDict *device)
     }
 }
 
+static struct arm_boot_info boot_info;
 
-static void board_init(MachineState * ms)
+static void set_entry_point(QDict *conf, ARMCPU *cpuu)
 {
-    const char *kernel_filename = ms->kernel_filename;
-    const char *cpu_model = ms->cpu_model;
+    const char *entry_field = "entry_address";
+    uint32_t entry;
 
+    if(!qdict_haskey(conf, entry_field))
+        return;
+
+    QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
+    entry = qdict_get_int(conf, entry_field);
+
+    cpuu->env.regs[15] = entry & (~1);
+    cpuu->env.thumb = (entry & 1) != 0 ? 1 : 0;
+    boot_info.entry = entry;
+}
+
+static void set_endianness(QDict *conf, ARMCPU *cpu)
+{
+    const char *endnes_field = "endianness";
+    const char *value;
+    if(!qdict_haskey(conf, endnes_field))
+        return;
+
+    QDICT_ASSERT_KEY_TYPE(conf, endnes_field, QTYPE_QSTRING);
+    value = qdict_get_str(conf, endnes_field);
+    if (strcasecmp(value, "big32") == 0) {
+        boot_info.endianness = ARM_ENDIANNESS_BE32;
+    } else if (strcasecmp(value, "big8") == 0) {
+        boot_info.endianness = ARM_ENDIANNESS_BE8;
+    } else if (strcasecmp(value, "little") == 0) {
+        boot_info.endianness = ARM_ENDIANNESS_LE;
+    } else {
+        fprintf(stderr, "Wrong endianness setting.\n");
+        exit(1);
+    }
+}
+
+static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
+{
+    const char *cpu_model = ms->cpu_model;
     ObjectClass *cpu_oc;
     Object *cpuobj;
     ARMCPU *cpuu;
     CPUState *cpu;
-    QDict * conf = NULL;
 
-    //Load configuration file
-    if (kernel_filename)
-    {
-        conf = load_configuration(kernel_filename);
-    }
-    else
-    {
-        conf = qdict_new();
-    }
-
-    //Configure CPU
     if (qdict_haskey(conf, "cpu_model"))
     {
         cpu_model = qdict_get_str(conf, "cpu_model");
@@ -356,6 +382,7 @@ static void board_init(MachineState * ms)
 
     cpuobj = object_new(object_class_get_name(cpu_oc));
 
+    object_property_set_bool(cpuobj, true, "cfgend", &error_fatal);
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
     cpu = CPU(cpuu);
@@ -365,12 +392,33 @@ static void board_init(MachineState * ms)
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
+    cpuu->env.boot_info = &boot_info;
 
+    return cpuu;
+}
+
+static void board_init(MachineState * ms)
+{
+    const char *kernel_filename = ms->kernel_filename;
+
+    ARMCPU *cpuu;
+    QDict * conf = NULL;
+
+    //Load configuration file
+    if (kernel_filename)
+    {
+        conf = load_configuration(kernel_filename);
+    }
+    else
+    {
+        conf = qdict_new();
+    }
+
+    cpuu = create_cpu(ms, conf);
     load_program(conf, cpuu);
+    set_entry_point(conf, cpuu);
+    set_endianness(conf, cpuu);
 
-    /*
-     * The devices stuff is just considered a hack, I want to replace everything here with a device tree parser as soon as I have the time ...
-     */
     if (qdict_haskey(conf, "memory_mapping"))
     {
         peripherals = qdict_new();
@@ -396,8 +444,6 @@ static void board_init(MachineState * ms)
     }
 }
 
-static struct arm_boot_info boot_info;
-
 static void load_program(QDict *conf, ARMCPU *cpu)
 {
     const char *program;
@@ -406,7 +452,10 @@ static void load_program(QDict *conf, ARMCPU *cpu)
     size_t ram_size = 1024 * 1024;
     hwaddr offset = 0;
 
-    g_assert(qdict_haskey(conf, "kernel"));
+    if(!qdict_haskey(conf, "kernel"))
+       return;
+
+    QDICT_ASSERT_KEY_TYPE(conf, "kernel", QTYPE_QSTRING);
     program = qdict_get_str(conf, "kernel");
 
     if(qdict_haskey(conf, "kernel_ram_size"))
