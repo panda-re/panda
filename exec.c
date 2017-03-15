@@ -2714,7 +2714,7 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
-                rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
+                rr_device_mem_rw_call_record(addr, buf, l, /*is_write*/1);
             }
             panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
             memcpy(ptr, buf, l);
@@ -3188,7 +3188,7 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
         if (is_write) {
             //bdg Save addr1,access_len,buffer contents
             if (rr_in_record()) {
-                rr_cpu_physical_memory_unmap_record(addr1, buffer, access_len, is_write);
+                rr_cpu_physical_memory_unmap_record(memory_region_to_absolute_addr(mr, addr1), buffer, access_len, is_write);
             }
             invalidate_and_set_dirty(mr, addr1, access_len);
         }
