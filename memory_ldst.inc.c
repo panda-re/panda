@@ -460,7 +460,7 @@ static inline void glue(address_space_stl_internal, SUFFIX)(ARG1_DECL,
             break;
         }
         if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
-            rr_device_mem_rw_call_record(addr1, ptr, l, /*is_write*/1);
+            rr_device_mem_rw_call_record(addr, ptr, l, /*is_write*/1);
         }
         INVALIDATE(mr, addr1, 4);
         r = MEMTX_OK;
