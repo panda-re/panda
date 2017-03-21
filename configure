@@ -339,7 +339,6 @@ pyperipheral3="yes"
 
 supported_cpu="no"
 supported_os="no"
-bogus_os="no"
 
 # parse CC options first
 for opt do
@@ -540,11 +539,11 @@ ARCH=
 # Normalise host CPU name and set ARCH.
 # Note that this case should only have supported host CPUs, not guests.
 case "$cpu" in
-  ppc|ppc64|s390|s390x|sparc64|x32)
+  ppc|ppc64|s390|s390x|x32)
     cpu="$cpu"
     supported_cpu="yes"
   ;;
-  ia64)
+  ia64|sparc64)
     cpu="$cpu"
   ;;
   i386|i486|i586|i686|i86pc|BePC)
@@ -655,6 +654,7 @@ Darwin)
   # won't work when we're compiling with gcc as a C compiler.
   QEMU_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $QEMU_CFLAGS"
   HOST_VARIANT_DIR="darwin"
+  supported_os="yes"
 ;;
 SunOS)
   solaris="yes"
@@ -711,7 +711,12 @@ Linux)
   vhost_scsi="yes"
   vhost_vsock="yes"
   QEMU_INCLUDES="-I\$(SRC_PATH)/linux-headers -I$(pwd)/linux-headers $QEMU_INCLUDES"
+  supported_os="yes"
   LIBS="-ldl $LIBS"
+;;
+*)
+  error_exit "Unsupported host OS $targetos"
+>>>>>>> 898be3e041... configure: Warn about deprecated hosts
 ;;
 esac
 
@@ -5364,8 +5369,8 @@ if test "$supported_os" = "no"; then
     echo
     echo "WARNING: SUPPORT FOR THIS HOST OS WILL GO AWAY IN FUTURE RELEASES!"
     echo
-    echo "Host OS $targetos support is not currently maintained."
-    echo "The QEMU project intends to remove support for this host OS in"
+    echo "CPU host OS $targetos support is not currently maintained."
+    echo "The QEMU project intends to remove support for this host CPU in"
     echo "a future release if nobody volunteers to maintain it and to"
     echo "provide a build host for our continuous integration setup."
     echo "configure has succeeded and you can continue to build, but"
