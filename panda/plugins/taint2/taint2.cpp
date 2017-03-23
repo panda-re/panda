@@ -389,8 +389,13 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
+
 #ifdef TARGET_I386
 
+#define EAX ((CPUArchState*)cpu->env_ptr)->regs[R_EAX]
+#define EBX ((CPUArchState*)cpu->env_ptr)->regs[R_EBX]
+#define ECX ((CPUArchState*)cpu->env_ptr)->regs[R_ECX]
+#define EDI ((CPUArchState*)cpu->env_ptr)->regs[R_EDI]
 
 // Support all features of label and query program
 void i386_hypercall_callback(CPUState *cpu){
@@ -403,13 +408,13 @@ void i386_hypercall_callback(CPUState *cpu){
             if (R_EAX == 7) {
                 // Standard buffer label
                 printf("taint2: single taint label\n");
-                taint2_add_taint_ram_single_label(env, (uint64_t)buf_start,
+                taint2_add_taint_ram_single_label(cpu, (uint64_t)buf_start,
                     (int)buf_len, label);
             }
             else if (R_EAX == 8){
                 // Positional buffer label
                 printf("taint2: positional taint label\n");
-                taint2_add_taint_ram_pos(env, (uint64_t)buf_start, (int)buf_len, label);
+                taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
             }
         }
         else {
