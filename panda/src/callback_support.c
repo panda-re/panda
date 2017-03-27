@@ -120,7 +120,7 @@ void panda_callbacks_before_mem_read(CPUState *env, target_ulong pc,
         plist->entry.virt_mem_before_read(env, env->panda_guest_pc, addr,
                                           data_size);
     }
-    hwaddr paddr = NULL;
+    hwaddr paddr = 0;
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_READ]) {
         paddr = panda_virt_to_phys(env, addr);
     }
@@ -141,7 +141,7 @@ void panda_callbacks_after_mem_read(CPUState *env, target_ulong pc,
         plist->entry.virt_mem_after_read(env, env->panda_guest_pc, addr,
                                          data_size, &result);
     }
-    hwaddr paddr = NULL;
+    hwaddr paddr = 0;
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_READ]) {
         paddr = panda_virt_to_phys(env, addr);
     }
@@ -162,7 +162,7 @@ void panda_callbacks_before_mem_write(CPUState *env, target_ulong pc,
         plist->entry.virt_mem_before_write(env, env->panda_guest_pc, addr,
                                            data_size, &val);
     }
-    hwaddr paddr = NULL;
+    hwaddr paddr = 0;
     if (panda_cbs[PANDA_CB_PHYS_MEM_BEFORE_WRITE]) {
         paddr = panda_virt_to_phys(env, addr);
     }
@@ -183,7 +183,7 @@ void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
         plist->entry.virt_mem_after_write(env, env->panda_guest_pc, addr,
                                           data_size, &val);
     }
-    hwaddr paddr = NULL;
+    hwaddr paddr = 0;
     if (panda_cbs[PANDA_CB_PHYS_MEM_AFTER_WRITE]) {
         paddr = panda_virt_to_phys(env, addr);
     }
