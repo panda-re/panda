@@ -18,6 +18,9 @@ from tempdir import TempDir
 
 debug = True
 
+def env_to_list(env):
+    return ["{}='{}'".format(k, v) for k, v in env.iteritems()]
+
 def progress(msg):
     print Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
     print
@@ -139,7 +142,8 @@ def make_iso(directory, iso_path):
 
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
-def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recording_path, isoname=None, rr=False):
+def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
+                     recording_path, isoname=None, rr=False, env={}):
     DEVNULL = open(os.devnull, "w")
 
     recording_path = realpath(recording_path)
@@ -161,7 +165,7 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recordi
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
         progress("Running command inside guest.")
-        qemu.type_console(subprocess32.list2cmdline(command))
+        qemu.type_console(subprocess32.list2cmdline(env_to_list(env) + command))
 
         # start PANDA recording
         qemu.run_monitor("begin_record \"{}\"".format(recording_path))
