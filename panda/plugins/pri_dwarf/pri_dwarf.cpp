@@ -1457,6 +1457,7 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
             char *filenm_tmp;
             char *filenm_cu;
             if (line_count > 0){
+                // TODO: fix these filenames
                 dwarf_linesrc(dwarf_lines[0], &filenm_cu, &err);
                 //filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
                 //strcpy(filenm_cu, filenm_tmp);
@@ -1475,27 +1476,30 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
                         dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
                         dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
                         dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
-                        if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
-                            filenm_line = filenm_cu;
-                        }
-                        else {
+                        //if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
+                        if (!filenm_tmp || *filenm_tmp == '\0') {
+                            filenm_line = (char *) "(unknown filename)";
+                            //filenm_line = filenm_cu;
+                        } else {
                             filenm_line = filenm_tmp;
-                            //filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
-                            //strcpy(filenm_line, filenm_tmp);
                         }
-                        if (0 == strcmp(".S", strlen(filenm_line) + filenm_line -2)) {
+                        //if (0 == strcmp(".S", strlen(filenm_line) + filenm_line -2)) {
+                        // this implicitly assumes that filenames are more than
+                        // one character
+                        if ('.' == filenm_line[strlen(filenm_line) - 1] &&
+                            'S' == filenm_line[strlen(filenm_line) - 2]) {
+                            dwarf_dealloc(*dbg, filenm_tmp, DW_DLA_STRING);
                             continue;
                         }
 
                         //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
-                        if (needs_reloc){
+                        if (needs_reloc) {
                             LineRange lr = LineRange(base_address+lower_bound_addr,
                                     base_address+upper_bound_addr,
                                     line_num, filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
                             line_range_list.push_back(lr);
-                        }
-                        else{
+                        } else {
                             LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
                                     filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
@@ -1814,9 +1818,7 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
 bool dwarf_in_target_code(CPUState *cpu, target_ulong pc){
     if (!correct_asid(cpu)) return false;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end())
-        return false;
-    return true;
+    return (it != line_range_list.end() && pc >= it->lowpc);
 }
 
 void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
@@ -1829,7 +1831,7 @@ void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_c
 
     ra -= 5; // subtract 5 to get address of call instead of return address
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), ra, CompareRangeAndPC());
-    if (ra < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || ra < it->lowpc){
         //printf("No DWARF information for callsite 0x%x for current function.\n", ra);
         //printf("Callsite must be in an external library we do not have DWARF information for.\n");
         return;
@@ -1944,19 +1946,21 @@ void __livevar_iter(CPUState *cpu,
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
                 LocType loc = execute_stack_op(cpu,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
-                switch (loc){
-                    case LocReg:
-                        //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocMem:
-                        //printf(" VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocConst:
-                        //printf(" VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocErr:
-                        //printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
-                        break;
+                if (debug) {
+                    switch (loc){
+                        case LocReg:
+                            printf(" [livevar_iter] VAR %s in REG %d\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocMem:
+                            printf(" [livevar_iter] VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocConst:
+                            printf(" [livevar_iter] VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocErr:
+                            printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
+                            break;
+                    }
                 }
                 f((void *)var_type, var_name.c_str(),loc, var_loc, args);
             }
@@ -1980,18 +1984,15 @@ int livevar_find(CPUState *cpu,
         return 0;
     }
     for (auto it : vars){
-        void *var_type    = it.var_type;
-        std::string var_name    = it.var_name;
         Dwarf_Locdesc **locdesc = it.locations;
-        Dwarf_Signed loc_cnt    = it.num_locations;
-        for (int i=0; i < loc_cnt; i++){
+        for (int i=0; i < it.num_locations; i++){
             //printf("var active in range 0x%llx - 0x%llx\n", locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
             if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
                 target_ulong var_loc;
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
                 LocType loc = execute_stack_op(cpu,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
-                if (pred(var_type, var_name.c_str(),loc, var_loc, args)){
+                if (pred(it.var_type, it.var_name.c_str(),loc, var_loc, args)){
                     ret_var.var_type = it.var_type;
                     ret_var.var_name = it.var_name;
                     ret_var.locations = it.locations;
@@ -2012,11 +2013,7 @@ int compare_address(void *var_ty, const char *var_nm, LocType loc_t, target_ulon
         case LocReg:
             break;
         case LocMem:
-            if (loc == (*(target_ulong *) query_address) ){
-            //if (loc == *query_address) {
-                return 1;
-            }
-            break;
+            return (loc == (*(target_ulong *) query_address));
         case LocConst:
             break;
         case LocErr:
