@@ -396,6 +396,8 @@ void appendReturnPoint(ReturnPoint &rp){
 }
 
 
+#if defined (TARGET_PPC) 
+#else
 static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
     // check if any of the internally tracked syscalls has returned
     // only one should be at its return point for any given basic block
@@ -411,7 +413,7 @@ static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
 
     return false;
 }
-
+#endif
 
 // This will only be called for instructions where the
 // translate_callback returned true
@@ -479,6 +481,8 @@ bool translate_callback(CPUState *cpu, target_ulong pc) {
             return true;
         }
     }
+    return false;
+#elif defined(TARGET_PPC)
     return false;
 #endif
 }

@@ -125,7 +125,7 @@ target_ulong panda_current_sp(CPUState *cpu) {
   return env->regs[13];
 #elif defined(TARGET_PPC)
   // R1 on PPC.
-  return env->regs[1];
+  return env->gpr[1];
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;
