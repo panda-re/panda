@@ -28,6 +28,9 @@
 #elif defined(TARGET_ARM)
 #define NUM_REGS 16
 #define REGS(env) ((env)->aarch64 ? (env)->xregs : (env)->regs)
+#elif defined(TARGET_PPC)
+#define NUM_REGS 32
+#define REGS(env) ((env)->gpr)
 #endif
 
 #endif
