@@ -23,9 +23,9 @@ block, with the option to invalidate the TB
 `true` if we should invalidate the current translation block and retranslate, `false` otherwise
 
 **Signature**:
-
-    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
-
+```C
+bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 **before_block_exec**: called before execution of every basic block
@@ -42,9 +42,9 @@ block, with the option to invalidate the TB
 unused
 
 **Signature**:
-
-    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 **after_block_exec**: called after execution of every basic block
@@ -62,9 +62,9 @@ unused
 unused
 
 **Signature:**:
- 
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
-
+ ```C
+int (*after_block_exec)(CPUState *env, TranslationBlock *tb, TranslationBlock *next_tb);
+```
 ---
 
 **before_block_translate**: called before translation of each basic block
@@ -81,9 +81,9 @@ unused
 unused
 
 **Signature**:
-
-	int (*before_block_translate)(CPUState *env, target_ulong pc);
-
+```C
+int (*before_block_translate)(CPUState *env, target_ulong pc);
+```
 ---
 
 **after_block_translate**: called after the translation of each basic block
@@ -107,9 +107,9 @@ code (particularly by manipulating the LLVM code)
 has already been generated. Modify the IR and then regenerate?
 
 **Signature**:
-
-	int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 **insn_translate**: called before the translation of each instruction
@@ -134,9 +134,9 @@ If you do want to instrument every single instruction, just return
 true. See the documentation for `PANDA_CB_INSN_EXEC` for more detail.
 
 **Signature**:
-
-	bool (*insn_translate)(CPUState *env, target_ulong pc);
-
+```C
+bool (*insn_translate)(CPUState *env, target_ulong pc);
+```
 ---
 
 **insn_exec**: called before execution of any instruction identified
@@ -161,9 +161,9 @@ This is fairly expensive, which is why it's only enabled via
 the `PANDA_CB_INSN_TRANSLATE` callback.
 
 **Signature**:
-
-	int (*insn_exec)(CPUState *env, target_ulong pc);
-
+```C
+int (*insn_exec)(CPUState *env, target_ulong pc);
+```
 ---
 
 **guest_hypercall**: called when a program inside the guest makes a
@@ -202,9 +202,9 @@ it is an unprivileged instruction in this scenario.  Plugins can also check for
 magic values in registers on ARM.
 
 **Signature**:
-
-	int (*guest_hypercall)(CPUState *env);
-
+```C
+int (*guest_hypercall)(CPUState *env);
+```
 ---
 
 **monitor**: called when someone uses the `plugin_cmd` monitor command
@@ -236,9 +236,9 @@ monitor commands are uniquely named, e.g. by using the plugin name
 as a prefix (`sample_do_foo` rather than `do_foo`).
 
 **Signature**:
-
-	int (*monitor)(Monitor *mon, const char *cmd);
-
+```C
+int (*monitor)(Monitor *mon, const char *cmd);
+```
 ---
 
 **cb_cpu_restore_state**: Called inside of cpu_restore_state(), when there is a
@@ -254,9 +254,9 @@ CPU fault/exception
 **Return value**: unused
 
 **Signature**:
-
-    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 **user_before_syscall**: Called before a syscall for QEMU user mode.
@@ -284,12 +284,12 @@ plugins for examples of legacy usage. This callback will likely be removed in
 future versions of PANDA.
 
 **Signature**:
-
-    int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                               int num, abi_long arg1, abi_long arg2, abi_long
-                               arg3, abi_long arg4, abi_long arg5,
-                               abi_long arg6, abi_long arg7, abi_long arg8);
-
+```C
+int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                            int num, abi_long arg1, abi_long arg2, abi_long
+                            arg3, abi_long arg4, abi_long arg5,
+                            abi_long arg6, abi_long arg7, abi_long arg8);
+```
 ---
 
 **user_after_syscall**: Called after a syscall for QEMU user mode
@@ -319,13 +319,13 @@ plugins for examples of legacy usage. This callback will likely be removed in
 future versions of PANDA.
 
 **Signature**:
-
-    int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                              int num, abi_long arg1, abi_long arg2, abi_long
-                              arg3, abi_long arg4, abi_long arg5, abi_long arg6,
-                              abi_long arg7, abi_long arg8, void *p,
-                              abi_long ret);
-
+```C
+int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                            int num, abi_long arg1, abi_long arg2, abi_long
+                            arg3, abi_long arg4, abi_long arg5, abi_long arg6,
+                            abi_long arg7, abi_long arg8, void *p,
+                            abi_long ret);
+```
 ---
 
 **replay_hd_transfer**: Called during a replay of a hard drive transfer action
@@ -350,10 +350,10 @@ doesn't happen in replay, useful instrumentations (such as taint analysis) can
 still be applied accurately.
 
 **Signature**:
-
-    int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
-                              uint64_t dest_addr, uint32_t num_bytes);
-
+```C
+int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                            uint64_t dest_addr, uint32_t num_bytes);
+```
 ---
 
 **replay_before_cpu_physical_mem_rw_ram**: In replay only, we are about to dma
@@ -379,11 +379,11 @@ type HD_TRANSFER_HD_TO_RAM (and vice versa).  Other devices still appear to use
 cpu_physical_memory_rw() though.
 
 **Signature**:
-
-    int (*replay_before_cpu_physical_mem_rw_ram)(
-            CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
-            uint32_t num_bytes);
-
+```C
+int (*replay_before_cpu_physical_mem_rw_ram)(
+        CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
+        uint32_t num_bytes);
+```
 ---
 
 **replay_handle_packet**: TODO: This will be used for network packet replay.
@@ -399,10 +399,10 @@ cpu_physical_memory_rw() though.
 * `uint64_t old_buf_addr`: XXX this is a mystery
 
 **Signature**:
-
-    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
-                                uint8_t direction, uint64_t old_buf_addr);
-
+```C
+int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
+                            uint8_t direction, uint64_t old_buf_addr);
+```
 ---
 
 ## Sample Plugin: Syscall Monitor
@@ -411,7 +411,7 @@ To make the information in the preceding sections concrete, we will now show how
 
 First, we will create a `Makefile` for our plugin, and place it in `panda/qemu/panda_plugins/syscalls`:
 
-```
+```Makefile
 # Don't forget to add your plugin to config.panda!
 
 # Set your plugin name here. It does not have to correspond to the name
@@ -435,7 +435,7 @@ all: panda_$(PLUGIN_NAME).so
 
 Next, we'll create the main code for the plugin, and put it in `panda/qemu/panda_plugins/syscalls.c`:
 
-```
+```C
 #include "config.h"
 #include "qemu-common.h"
 #include "cpu.h"
