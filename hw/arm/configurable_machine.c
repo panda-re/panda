@@ -28,6 +28,7 @@
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
     g_assert(qdict_haskey(_dict, _key) && qobject_type(qdict_get(_dict, _key)) == _type)
 
+#define RAM_RESIZEABLE (1 << 2)
 /* Board init.  */
 
 static QDict * load_configuration(const char * filename)
@@ -232,6 +233,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     } else {
         memory_region_init_rom(ram, NULL, name, size, &error_fatal);
     }
+    ram->ram_block->flags &= ~RAM_RESIZEABLE;
 
     QDICT_ASSERT_KEY_TYPE(mapping, "address", QTYPE_QINT);
     address = qdict_get_int(mapping, "address");
