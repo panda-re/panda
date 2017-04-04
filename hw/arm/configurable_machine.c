@@ -233,7 +233,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     } else {
         memory_region_init_rom(ram, NULL, name, size, &error_fatal);
     }
-    ram->ram_block->flags &= ~RAM_RESIZEABLE;
+    vmstate_register_ram(ram, NULL);
 
     QDICT_ASSERT_KEY_TYPE(mapping, "address", QTYPE_QINT);
     address = qdict_get_int(mapping, "address");
@@ -398,7 +398,7 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     cpuobj = object_new(object_class_get_name(cpu_oc));
 
-    object_property_set_bool(cpuobj, true, "cfgend", &error_fatal);
+//    object_property_set_bool(cpuobj, true, "cfgend", &error_fatal);
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
     cpu = CPU(cpuu);
