@@ -25,42 +25,50 @@ APIs and Callbacks
 
 Name: **on_call**
 
-Signature: `typedef void (* on_call_t)(CPUState *env, target_ulong func)`
+Signature:
+
+```C
+typedef void (* on_call_t)(CPUState *env, target_ulong func)
+```
 
 Description: Called every time a function call occurs in the guest. Arguments are the CPU state pointer `env` and the virtual address of the function that is being called.
 
 Name: **on_ret**
 
-Signature: `typedef void (* on_ret_t)(CPUState *env, target_ulong func)`
+Signature:
+
+```C
+typedef void (* on_ret_t)(CPUState *env, target_ulong func)
+```
 
 Description: Called every time a function call returns in guest (e.g., at the `ret` instruction). Arguments are the CPU state pointer `env` and the virtual address of the function we're returning from. This can be used to match up the return with the appropriate call, but does not indicate the level of nesting in the case of recursive calls. If you want to match returns with calls in this case, you will need to keep a counter inside your plugin.
 
 
 `callstack_instr` also provides the following API functions that can be called from other plugins:
+```C
+// Get up to n callers from the given address space at this moment
+// Callers are returned in callers[], most recent first
+// Return value is the number of callers actually retrieved
+int get_callers(target_ulong *callers, int n, CPUState *env);
 
-    // Get up to n callers from the given address space at this moment
-    // Callers are returned in callers[], most recent first
-    // Return value is the number of callers actually retrieved
-    int get_callers(target_ulong *callers, int n, CPUState *env);
+// Get up to n functions from the given address space at this moment
+// Functions are returned in functions[], most recent first
+// Return value is the number of callers actually retrieved
+int get_functions(target_ulong *functions, int n, CPUState *env);
 
-    // Get up to n functions from the given address space at this moment
-    // Functions are returned in functions[], most recent first
-    // Return value is the number of callers actually retrieved
-    int get_functions(target_ulong *functions, int n, CPUState *env);
-
-    // Get the current program point: (Caller, PC, ASID)
-    // This isn't quite the right place for it, but since it's awkward
-    // right now to have a "utilities" library, this will have to do
-    void get_prog_point(CPUState *env, prog_point *p);
-
+// Get the current program point: (Caller, PC, ASID)
+// This isn't quite the right place for it, but since it's awkward
+// right now to have a "utilities" library, this will have to do
+void get_prog_point(CPUState *env, prog_point *p);
+```
 There are also functions available for getting callstack information in [pandalog format](docs/pandalog.md):
+```C
+// Create pandalog message for callstack info 
+Panda__CallStack *pandalog_callstack_create(void);
 
-    // Create pandalog message for callstack info 
-    Panda__CallStack *pandalog_callstack_create(void);
-
-    // Free a Panda__CallStack struct
-    void pandalog_callstack_free(Panda__CallStack *cs);
-
+// Free a Panda__CallStack struct
+void pandalog_callstack_free(Panda__CallStack *cs);
+```
 Example
 -------
 
