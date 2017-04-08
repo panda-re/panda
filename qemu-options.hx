@@ -4104,7 +4104,7 @@ DEF("generate-llvm", 0, QEMU_OPTION_generate_llvm,
 #endif
 
 DEF("record-from", HAS_ARG, QEMU_OPTION_record_from,
-    "-record-from <snapshot>\n"
+    "-record-from <snapshot>:<record-name>\n"
     "                load snapshot <snapshot> and begin recording\n", QEMU_ARCH_ALL)
 
 DEF("replay", HAS_ARG, QEMU_OPTION_replay,
