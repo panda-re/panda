@@ -784,13 +784,6 @@ void panda_free_args(panda_arg_list *args) {
 
 // QMP
 
-
-void qmp_load_plugin(const char *filename, Error **errp);
-void qmp_unload_plugin(int64_t index, Error **errp);
-void qmp_list_plugins(Error **errp);
-void qmp_plugin_cmd(const char * cmd, Error **errp);
-
-
 void qmp_load_plugin(const char *filename, Error **errp) {
     if(!panda_load_plugin(filename, NULL)) {
         // TODO: do something with errp here?
