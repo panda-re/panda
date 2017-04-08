@@ -1546,7 +1546,11 @@ uint32_t rr_checksum_regs(void) {
     }
     CPUArchState *env = (CPUArchState *)first_cpu->env_ptr;
     uint32_t crc = crc32(0, Z_NULL, 0);
+#if defined(TARGET_PPC)
+    crc = crc32(crc, (unsigned char *)env->gpr, sizeof(env->gpr));
+#else
     crc = crc32(crc, (unsigned char *)env->regs, sizeof(env->regs));
+#endif
 #if defined(TARGET_I386)
     crc = crc32(crc, (unsigned char *)&env->eip, sizeof(env->eip));
 #elif defined(TARGET_ARM)

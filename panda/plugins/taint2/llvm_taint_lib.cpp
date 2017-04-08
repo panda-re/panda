@@ -66,6 +66,7 @@ extern char **gargv;
 #define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
 #define cpu_size(member) sizeof(((CPUArchState *)0)->member)
 #define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
+
 #define contains_offset(member) ((signed)cpu_off(member) <= (offset) && (unsigned)(offset) < cpu_endoff(member))
 
 using namespace llvm;
@@ -852,12 +853,21 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         return true;
     }
 
+#if defined (TARGET_PPC) 
+    if (contains_offset(gpr)) {
+        addrOut.typ = GREG;
+        addrOut.val.gr = (offset - cpu_off(gpr)) / cpu_size(gpr[0]);
+        addrOut.off = (offset - cpu_off(gpr)) % cpu_size(gpr[0]);
+        return true;
+    }
+#else
     if (contains_offset(regs)) {
         addrOut.typ = GREG;
         addrOut.val.gr = (offset - cpu_off(regs)) / cpu_size(regs[0]);
         addrOut.off = (offset - cpu_off(regs)) % cpu_size(regs[0]);
         return true;
     }
+#endif
     addrOut.typ = GSPEC;
     addrOut.val.gs = offset;
     addrOut.off = 0;

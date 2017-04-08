@@ -45,7 +45,7 @@ FastShad::FastShad(std::string name, uint64_t labelsets) : _name(name) {
     } else {
         printf("taint2: Allocating large fast_shad (%lu bytes).\n", bytes);
         array = (TaintData *)mmap(NULL, bytes, PROT_READ | PROT_WRITE,
-                MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+                MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
         if (array == (TaintData *)MAP_FAILED) {
             puts(strerror(errno));
         }
