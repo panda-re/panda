@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <set>
@@ -59,7 +60,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 //void on_ret(CPUState *cpu, target_ulong pc);
 //void on_call(CPUState *cpu, target_ulong pc);
-void on_library_load(CPUState *cpu, target_ulong pc, char *lib_name, target_ulong base_addr);
+void on_library_load(CPUState *cpu, target_ulong pc, char *lib_name, target_ulong base_addr, target_ulong size);
 void on_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args);
 
 void on_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args);
@@ -83,6 +84,7 @@ const char *host_debug_path = NULL;
 const char *host_mount_path = NULL;
 const char *proc_to_monitor = NULL;
 bool allow_just_plt = false;
+bool logCallSites = true;
 std::string bin_path;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
@@ -157,6 +159,27 @@ struct VarInfo {
 
 std::map<Dwarf_Addr,std::vector<VarInfo>> funcvars;
 std::vector<VarInfo> global_var_list;
+// don't really need this but why not
+typedef struct Lib {
+    std::string libname;
+    target_ulong lowpc, highpc;
+
+    friend std::ostream &operator<<(std::ostream &os, const Lib &lib) {
+        //os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "[" << lib.libname << "] ";
+        os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "," << lib.libname;
+        return os;
+    }
+
+    Lib(std::string libname, target_ulong lowpc, target_ulong highpc) :
+        libname(libname), lowpc(lowpc), highpc(highpc) {
+        assert(lowpc < highpc);
+        }
+
+    bool operator <(const Lib &lib) const {
+        return this->lowpc < lib.lowpc;
+    }
+} Lib;
+std::vector<Lib> active_libs;
 
 typedef struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
@@ -1677,9 +1700,10 @@ bool looking_for_libc=false;
 const char *libc_host_path=NULL;
 std::string libc_name;
 
-void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
+void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
     if (!correct_asid(cpu)) return;
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
+    active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
     std::string lib = std::string(guest_lib_name);
@@ -1767,6 +1791,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
             fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
             continue;
         }
+        active_libs.push_back(Lib(fname, m->base, m->base + m->size));
         uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
         bool needs_reloc = elf_base != m->base;
         if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
@@ -1875,7 +1900,9 @@ void on_call(CPUState *cpu, target_ulong pc) {
         //printf("Calling %s through .plt\n",file_name.c_str());
     }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
-    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    if (logCallSites) {
+        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    }
     pri_runcb_on_fn_start(cpu, pc, file_name.c_str(), funct_name.c_str());
 
     /*
@@ -1922,7 +1949,9 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
     //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc_func);
-    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    if (logCallSites) {
+        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    }
     pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }
 
@@ -2300,6 +2329,10 @@ bool init_plugin(void *self) {
     // dwarf symbols are including.  presumably only using plt symbols
     // for line range data.  could be useful for tracking calls to functions
     allow_just_plt = panda_parse_bool_opt(args, "allow_just_plt", "allow parsing of elf for dynamic symbol information if dwarf is not available");
+    bool dont_log_callsites = panda_parse_bool_opt(args, "dont_log_callsites", "Turn off pandalogging of callsites in order to reduce plog output");
+    if (dont_log_callsites) {
+         logCallSites = false;
+    }
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
@@ -2396,4 +2429,13 @@ bool init_plugin(void *self) {
 #endif
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    std::sort(active_libs.begin(), active_libs.end());
+    std::ofstream outfile(std::string(proc_to_monitor) + ".libs");
+    for (auto l : active_libs) {
+        std::cout << l << "\n";
+        outfile << l << "\n";
+    }
+#endif
+}

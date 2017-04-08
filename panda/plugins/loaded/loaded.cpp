@@ -118,8 +118,9 @@ void linux_mmap_pgoff_return(CPUState *cpu,target_ulong pc,uint32_t addr,uint32_
                     "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
                     filename, len, prot, flags, pgoff, env->regs[R_EAX]);
         }
-        PPP_RUN_CB(on_library_load, cpu, pc, filename, env->regs[R_EAX])
+        PPP_RUN_CB(on_library_load, cpu, pc, filename, env->regs[R_EAX], len)
     } else if ((prot & 0x04) == 0x04) {
+        printf("[loaded] mapped executable section without a filename!\n");
         printf ("[loaded] linux_mmap_pgoff(fd=%d "
                 "len=%d prot=%x flags=%x "
                 "pgoff=%d)=" TARGET_FMT_lx "\n", (int) fd,
