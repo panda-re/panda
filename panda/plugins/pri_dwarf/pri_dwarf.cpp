@@ -1679,19 +1679,10 @@ unsigned num_libs_known = 0;
 
 bool correct_asid(CPUState *cpu) {
     if (monitored_asid == 0) {
-        OsiProc *p = get_current_process(cpu);
+        return false;
+        //OsiProc *p = get_current_process(cpu);
         // checking if p is not null because we got a segfault here
         // if p is null return false, not @ correct_asid
-        if (!p) { return false; }
-        if (!p->name) { return false; }
-        printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
-        //if (strcmp(p->name, proc_to_monitor) != 0) {
-        if (strncmp(p->name, proc_to_monitor, strlen(p->name)) != 0) {
-            return false;
-        } else {
-            monitored_asid = panda_current_asid(cpu);
-        }
-        free_osiproc(p);
     }
     return monitored_asid == panda_current_asid(cpu);
 }
@@ -2241,6 +2232,30 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
     return i;
 }
 
+typedef void (* on_proc_change_t)(CPUState *env, target_ulong asid, OsiProc *proc);
+
+void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
+    if (!p) { return; }
+    if (!p->name) { return; }
+    if (debug) {
+        printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
+    }
+    //if (strcmp(p->name, proc_to_monitor) != 0) {
+    if (strncmp(p->name, proc_to_monitor, strlen(p->name)) == 0) {
+        monitored_asid = panda_current_asid(cpu);
+    }
+    if (correct_asid(cpu) && !main_exec_initialized){
+        main_exec_initialized = ensure_main_exec_initialized(cpu);
+    }
+    //free_osiproc(p);
+
+}
+// XXX: osi_foo is largetly commented out and basically does nothing
+// I am keeping it here as a reminder of maybe tracking of a data structure
+// that maps asid's to process data (library information, proc name, etc)
+// but we don't need that yet, and it's probably better suited in asidstory
+// or pri
+// XXX
 // get current process before each bb execs
 // which will probably help us actually know the current process
 int osi_foo(CPUState *cpu, TranslationBlock *tb) {
@@ -2300,9 +2315,9 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
             //}
         //}
     }
-    if (correct_asid(cpu) && !main_exec_initialized){
-        main_exec_initialized = ensure_main_exec_initialized(cpu);
-    }
+    //if (correct_asid(cpu) && !main_exec_initialized){
+        //main_exec_initialized = ensure_main_exec_initialized(cpu);
+    //}
 
     return 0;
 }
@@ -2343,6 +2358,7 @@ bool init_plugin(void *self) {
     panda_require("osi");
     panda_require("loaded");
     panda_require("pri");
+    panda_require("asidstory");
 
     //panda_require("osi_linux");
     // make available the api for
@@ -2415,6 +2431,7 @@ bool init_plugin(void *self) {
         panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb_dwarf);
     }
 
+    PPP_REG_CB("asidstory", on_proc_change, handle_asid_change);
     PPP_REG_CB("loaded", on_library_load, on_library_load);
     // contracts we fulfill for pri plugin
     PPP_REG_CB("pri", on_get_pc_source_info, dwarf_get_pc_source_info);
