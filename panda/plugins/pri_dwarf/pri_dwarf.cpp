@@ -2344,10 +2344,8 @@ bool init_plugin(void *self) {
     // dwarf symbols are including.  presumably only using plt symbols
     // for line range data.  could be useful for tracking calls to functions
     allow_just_plt = panda_parse_bool_opt(args, "allow_just_plt", "allow parsing of elf for dynamic symbol information if dwarf is not available");
-    bool dont_log_callsites = panda_parse_bool_opt(args, "dont_log_callsites", "Turn off pandalogging of callsites in order to reduce plog output");
-    if (dont_log_callsites) {
-         logCallSites = false;
-    }
+    logCallSites = !panda_parse_bool_opt(args, "dont_log_callsites", "Turn off pandalogging of callsites in order to reduce plog output");
+
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
