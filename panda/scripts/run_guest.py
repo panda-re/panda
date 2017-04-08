@@ -162,6 +162,11 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
             qemu.run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(copy_directory)) +
                         "do sleep 0.3; umount /dev/cdrom; done")
 
+        # if there is a setup.sh script in the replay/proc_name/cdrom/ folder
+        # then run that setup.sh script first (good for scriptst that need to
+        # prep guest environment before script runs
+        qemu.run_console("{}/setup.sh &> /dev/null || true".format(pipes.quote(copy_directory)))
+        qemu.run_console("ls /nas/ulrich/glibc-sanitizer/build/install")
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
         progress("Running command inside guest.")
