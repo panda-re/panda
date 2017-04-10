@@ -35,43 +35,71 @@ To implement OS-specific introspection support, an OSI provider should register 
 
 Name: **on_get_processes**
 
-Signature: `typedef void (*on_get_processes_t)(CPUState *, OsiProcs **)`
+Signature:
+
+```C
+typedef void (*on_get_processes_t)(CPUState *, OsiProcs **)
+```
 
 Description: Called to get the process list from the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProcs` struct. The returned list can be freed with `on_free_osiprocs`.
 
 Name: **on_get_current_process**
 
-Signature: `typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)`
+Signature:
+
+```C
+typedef void (*on_get_current_process_t)(CPUState *, OsiProc **)
+```
 
 Description: Called to get the currently running process in the guest OS. The implementation should allocate memory and fill in the pointer to an `OsiProc` struct. The returned `OsiProc` can be freed with `on_free_osiproc`.
 
 Name: **on_get_modules**
 
-Signature: `typedef void (*on_get_modules_t)(CPUState *, OsiModules **)`
+Signature:
+
+```C
+typedef void (*on_get_modules_t)(CPUState *, OsiModules **)
+```
 
 Description: Called to get the list of kernel modules loaded in the guest. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
 
 Name: **on_get_libraries**
 
-Signature: `typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, OsiModules**)`
+Signature:
+
+```C
+typedef void (*on_get_libraries_t)(CPUState *, OsiProc *, OsiModules**)
+```
 
 Description: Called to get the list of shared libraries loaded for some particular process in the guest. The process should be an `OsiProc` previously returned by `on_get_current_process` or `on_get_processes`. The implementation should allocate memory and fill in the pointer to an `OsiModules` struct. The returned list can be freed with `on_free_osimodules`.
 
 Name: **on_free_osiproc**
 
-Signature: `typedef void (*on_free_osiproc_t)(OsiProc *p)`
+Signature:
+
+```C
+typedef void (*on_free_osiproc_t)(OsiProc *p)`
+```
 
 Description: Frees an `OsiProc` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
 Name: **on_free_osiprocs**
 
-Signature: `typedef void (*on_free_osiprocs_t)(OsiProcs *ps)`
+Signature:
+
+```C
+typedef void (*on_free_osiprocs_t)(OsiProcs *ps)
+```
 
 Description: Frees an `OsiProcs` struct. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
 Name: **on_free_osimodules**
 
-Signature: `typedef void (*on_free_osimodules_t)(OsiModules *ms)`
+Signature:
+
+```C
+typedef void (*on_free_osimodules_t)(OsiModules *ms)
+```
 
 Description: Frees an `OsiModules` structure. You only need to implement this if you use a custom memory allocator (instead of the default malloc/free) in your plugin.
 
@@ -81,13 +109,21 @@ In addition, there are two callbacks intended to be used by `osi` *users*, rathe
 
 Name: **on_new_process**
 
-Signature: `typedef void (*on_new_process_t)(CPUState *, OsiProc *)`
+Signature:
+
+```C
+typedef void (*on_new_process_t)(CPUState *, OsiProc *)
+```
 
 Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
 
 Name: **on_finished_process**
 
-Signature: `typedef void (*on_finished_process_t)(CPUState *, OsiProc *)`
+Signature:
+
+```C
+typedef void (*on_finished_process_t)(CPUState *, OsiProc *)
+```
 
 Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.
 
