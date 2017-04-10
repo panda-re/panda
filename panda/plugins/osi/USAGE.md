@@ -93,6 +93,7 @@ Description: Called whenever a process exits in the guest. Passes in an `OsiProc
 
 Data structures used by OSI:
 
+```C
     // Represents a page of memory
     typedef struct osi_page_struct {
         target_ulong start;
@@ -129,7 +130,7 @@ Data structures used by OSI:
         uint32_t num;
         OsiModule *module;
     } OsiModules;
-
+```
 
 Example
 -------
