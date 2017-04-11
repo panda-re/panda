@@ -129,9 +129,6 @@ There are three API functions provided to clients that allow them to iterate thr
     char *pri_get_vma_symbol (CPUState *env, target_ulong pc, target_ulong vma);
 
     // iterate through the live vars at the current state of execution
-    void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t, target_ulong loc));
-    // iterate through the live vars at the current state of execution
-    // iterate through the live vars at the current state of execution
     void pri_all_livevar_iter (CPUState *env, target_ulong pc, void (*f)(void *var_ty, const char *var_nm, LocType loc_t,     target_ulong loc));
 
     // iterate through the function vars at the current state of execution
