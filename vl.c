@@ -4863,6 +4863,12 @@ int main(int argc, char **argv, char **envp)
             }
             rec_name[r_i] = '\0';
         }
+
+        if(*rec_name == '\0'){
+            fprintf(stderr, "missing record name, usage: -record-from <snapshot>:<record-name>\n");
+            exit(1);
+        }
+
         qmp_begin_record_from(snap_name,rec_name, &err);
     }
 
@@ -4897,6 +4903,10 @@ int main(int argc, char **argv, char **envp)
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;
+
+    if(rr_in_record()){
+        rr_do_end_record();
+    }
 
     replay_disable_events();
     iothread_stop_all();
