@@ -42,7 +42,7 @@ if entries[-1][1] != dir_pos:
 
 #print entries
 
-json_entries = []
+print "["
 for entry, next_entry in zip(entries, entries[1:]):
     start_instr, start_pos, num_entries = entry
     next_pos = next_entry[1]
@@ -54,11 +54,12 @@ for entry, next_entry in zip(entries, entries[1:]):
     #print len(data)
     i = 0
     while i < len(data):
+        if i != 0: print ","
         entry_size = struct.unpack('<I', data[i:i+4])[0]
         i += 4
         entry_data = data[i:i+entry_size]
         message = plog_pb2.LogEntry()
         message.ParseFromString(entry_data)
-        json_entries.append(MessageToJson(message))
+        print MessageToJson(message)
         i += entry_size
-print "[" + ",".join(json_entries) + "]"
+print "]"
