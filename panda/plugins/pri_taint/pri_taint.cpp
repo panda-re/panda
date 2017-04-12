@@ -127,11 +127,8 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
         printf("\n");
     }
 
-    // okay, taint is on and some labels have actually been applied
-    // is there *any* taint on this extent
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
     uint32_t len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);
-    uint32_t num_tainted = 0;
     if (is_strnlen) {
         panda_physical_memory_rw(phys, bytes, LAVA_TAINT_QUERY_MAX_LEN, false);
         for (int i = 0; i < LAVA_TAINT_QUERY_MAX_LEN; i++) {
@@ -139,15 +136,10 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
                 len = i;
                 break;
             }
-
-            Addr a = loc_t == LocMem ? make_maddr(phys + i) : make_greg(buf, i);
-            if (taint2_query(a)) num_tainted++;
         }
         // Only include extent of string (but at least 32 bytes).
         len = std::max(32U, len);
     }
-    // If nothing's tainted and we aren't doing chaff bugs, return.
-    if (!chaff_bugs && !num_tainted) return;
 
     // don't cross page boundaries.
     target_ulong page1 = phys & TARGET_PAGE_MASK;
@@ -155,6 +147,17 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     if (page1 != page2) {
         len = page1 + TARGET_PAGE_SIZE - phys;
     }
+
+    // okay, taint is on and some labels have actually been applied
+    // is there *any* taint on this extent
+    uint32_t num_tainted = 0;
+    for (uint32_t i = 0; i < len; i++) {
+        Addr a = loc_t == LocMem ? make_maddr(phys + i) : make_greg(buf, i);
+        if (taint2_query(a)) num_tainted++;
+    }
+
+    // If nothing's tainted and we aren't doing chaff bugs, return.
+    if (!chaff_bugs && num_tainted == 0) return;
 
     // 1. write the pandalog entry that tells us something was tainted on this extent
     Panda__TaintQueryPri tqh = PANDA__TAINT_QUERY_PRI__INIT;
