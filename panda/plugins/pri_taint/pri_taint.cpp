@@ -113,8 +113,13 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
         return;
 
     CPUState *cpu = first_cpu;
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     bool is_strnlen = ((int) buf_len == -1);
+    extern ram_addr_t ram_size;
     target_ulong phys = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
+
+    if (phys == -1 || phys > ram_size) return;
+
     if (debug) {
         printf("Querying \"%s\": " TARGET_FMT_lu " bytes @ 0x" TARGET_FMT_lx " phys 0x" TARGET_FMT_lx ", strnlen=%d", astnodename, buf_len, buf, phys, is_strnlen);
         print_membytes(cpu, buf, is_strnlen? 32 : buf_len);
@@ -124,18 +129,29 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     // okay, taint is on and some labels have actually been applied
     // is there *any* taint on this extent
     uint8_t bytes[LAVA_TAINT_QUERY_MAX_LEN] = {0};
-    uint32_t pa = loc_t == LocMem ? panda_virt_to_phys(cpu, buf) : 0;
-    uint32_t len = buf_len;
-    if (is_strnlen && pa != (uint32_t)-1) {
-        panda_virtual_memory_rw(cpu, buf, bytes, LAVA_TAINT_QUERY_MAX_LEN, false);
+    uint32_t len = std::min(buf_len, LAVA_TAINT_QUERY_MAX_LEN);
+    uint32_t num_tainted = 0;
+    if (is_strnlen) {
+        panda_physical_memory_rw(phys, bytes, LAVA_TAINT_QUERY_MAX_LEN, false);
         for (int i = 0; i < LAVA_TAINT_QUERY_MAX_LEN; i++) {
             if (bytes[i] == '\0') {
                 len = i;
                 break;
             }
+
+            Addr a = loc_t == LocMem ? make_maddr(phys + i) : make_greg(buf, i);
+            if (taint2_query(a)) num_tainted++;
         }
         // Only include extent of string (but at least 32 bytes).
         len = std::max(32U, len);
+    }
+    if (!num_tainted) return;
+
+    // don't cross page boundaries.
+    target_ulong page1 = phys & TARGET_PAGE_MASK;
+    target_ulong page2 = (phys + len) & TARGET_PAGE_MASK;
+    if (page1 != page2) {
+        len = page1 + TARGET_PAGE_SIZE - phys;
     }
 
     // 1. write the pandalog entry that tells us something was tainted on this extent
@@ -144,37 +160,31 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
     tqh.len = len;
     uint32_t data[LAVA_TAINT_QUERY_MAX_LEN] = {0};
     // this is just a snippet.  we dont want to write 1M buffer
-    uint32_t n = std::min(len, LAVA_TAINT_QUERY_MAX_LEN);
-    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     if (loc_t == LocMem) {
-        for (int i = 0; i < n; i++) {
-            panda_virtual_memory_rw(cpu, buf + i, (uint8_t *)&data[i], 1, false);
+        for (int i = 0; i < len; i++) {
+            panda_physical_memory_rw(phys + i, (uint8_t *)&data[i], 1, false);
         }
     } else {
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < len; i++) {
             data[i] = (uint8_t)(env->regs[buf] >> (8 * i));
         }
     }
-    tqh.n_data = n;
+    tqh.n_data = len;
     tqh.data = data;
+    tqh.num_tainted = num_tainted;
 
     // 2. iterate over the bytes in the extent and pandalog detailed info about taint
     std::vector<Panda__TaintQuery *> tq;
     for (uint32_t offset = 0; offset < len; offset++) {
-        uint32_t va = buf + offset;
-        uint32_t pa = loc_t == LocMem ? panda_virt_to_phys(cpu, va) : 0;
-        extern ram_addr_t ram_size;
-        if (pa != (uint32_t)-1 && pa < ram_size) {
-            Addr a = loc_t == LocMem ? make_maddr(pa) : make_greg(buf, offset);
-            if (taint2_query(a)) {
-                if (loc_t == LocMem) {
-                    dprintf("\"%s\" @ 0x%x is tainted\n", astnodename, va);
-                } else {
-                    dprintf("\"%s\" in REG " TARGET_FMT_ld ", byte %d is tainted\n", astnodename, buf, offset);
-                }
-                tqh.num_tainted++;
-                tq.push_back(taint2_query_pandalog(a, offset));
+        uint32_t pa_indexed = phys + offset;
+        Addr a = loc_t == LocMem ? make_maddr(pa_indexed) : make_greg(buf, offset);
+        if (taint2_query(a)) {
+            if (loc_t == LocMem) {
+                dprintf("\"%s\" @ 0x%x is tainted\n", astnodename, buf + offset);
+            } else {
+                dprintf("\"%s\" in REG " TARGET_FMT_ld ", byte %d is tainted\n", astnodename, buf, offset);
             }
+            tq.push_back(taint2_query_pandalog(a, offset));
         }
     }
 
