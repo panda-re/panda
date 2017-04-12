@@ -43,6 +43,7 @@ void set_loglevel(int new_loglevel);
 }
 bool linechange_taint = true;
 bool hypercall_taint = true;
+bool chaff_bugs = false;
 Panda__SrcInfoPri *si = NULL;
 const char *global_src_filename = NULL;
 uint64_t global_src_linenum;
@@ -145,7 +146,8 @@ void lava_taint_query(target_ulong buf, LocType loc_t, target_ulong buf_len, con
         // Only include extent of string (but at least 32 bytes).
         len = std::max(32U, len);
     }
-    if (!num_tainted) return;
+    // If nothing's tainted and we aren't doing chaff bugs, return.
+    if (!chaff_bugs && !num_tainted) return;
 
     // don't cross page boundaries.
     target_ulong page1 = phys & TARGET_PAGE_MASK;
@@ -350,6 +352,7 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("pri_taint");
     hypercall_taint = panda_parse_bool_opt(args, "hypercall", "Register tainting on a panda hypercall callback");
     linechange_taint = panda_parse_bool_opt(args, "linechange", "Register tainting on every line change in the source code (default)");
+    chaff_bugs = panda_parse_bool_opt(args, "chaff", "Record untainted extents for chaff bugs.");
     // default linechange_taint to true if there is no hypercall taint
     if (!hypercall_taint)
         linechange_taint = true;
