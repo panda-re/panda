@@ -523,7 +523,9 @@ int main_loop_wait(int nonblocking)
     // ru: add check if in in replay for running timers
     if (!rr_in_replay()) {
         qemu_start_warp_timer();
+        rr_begin_main_loop_wait();
         qemu_clock_run_all_timers();
+        rr_end_main_loop_wait();
     }
 
     return ret;
