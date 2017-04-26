@@ -455,11 +455,15 @@ you may care about what order plugins' callbacks execute in, since some
 operations may not make sense if they're done out of order.
 
 The bad news is that PANDA does not guarantee any fixed ordering for its
-callbacks. In the current implementation, each callback of a given type will be
-executed in the order it was registered (which is usually the order in which the
-plugins were loaded; however, because callbacks can be registered at any time
-throughout a plugin's lifetime, even this is not guaranteed). This could change
-in the future, though, and in general it's not a good idea to rely on it.
+callbacks across different plugins. In the current implementation, each callback
+of a given type will be executed in the order it was registered.
+Although this creates a deterministic order for callbacks of a specific type
+within one plugin, a fixed callback execution order among multiple distinct
+plugins can not be ensured.
+(Usually, this order corresponds to the order in which the plugins were loaded;
+however, because callbacks can be registered at any time throughout a plugin's
+lifetime, this is not guaranteed to hold true). This could change in the future,
+though, and in general it's not a good idea to rely on it.
 
 The good news is that there's a better way to enforce an ordering. As described
 in the next section, plugins support explicit mechanisms for interacting with
