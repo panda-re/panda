@@ -180,7 +180,17 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
 
 #if defined(TARGET_I386)
     csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
-#elif defined(TARGET_ARM) || defined(TARGET_PPC)
+#elif defined(TARGET_ARM)
+    csh handle = cs_handle_32;
+
+    if (env->thumb){
+        cs_option(handle, CS_OPT_MODE, CS_MODE_THUMB);
+    }
+    else {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_ARM);
+    }
+
+#elif defined(TARGET_PPC)
     csh handle = cs_handle_32;
 #endif
 
