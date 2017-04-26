@@ -226,7 +226,7 @@ void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
     new_list->next = NULL;
     new_list->enabled = true;
     if(panda_cbs[type] != NULL) {
-        for(plist = panda_cbs[type]; panda_cb_list_next(plist) != NULL; plist = panda_cb_list_next(plist));
+        for(plist = panda_cbs[type]; plist->next != NULL; plist = plist->next);
         plist->next = new_list;
         new_list->prev = plist;
     }
