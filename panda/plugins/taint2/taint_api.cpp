@@ -98,7 +98,7 @@ static void tp_label(Addr a, uint32_t l) {
 
 // retrieve ls for this addr
 static void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t, void *), void *opaque) {
-    if(ls == nullptr){
+    if (ls == nullptr) {
         return;
     }
     for (uint32_t el : *ls) {
