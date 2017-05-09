@@ -1799,6 +1799,38 @@ ETEXI
     },
 
     {
+        .name       = "begin_replay",
+        .args_type  = "file_name:s",
+        .params     = "[file_name]",
+        .help       = "begin to replay a record",
+        .cmd = hmp_begin_replay,
+    },
+
+    {
+        .name       = "load_plugin",
+        .args_type  = "plugin_name:s,plugin_args:s?",
+        .params     = "plugin_name [plugin_args]",
+        .help       = "Load a panda plugin",
+        .cmd = hmp_panda_load_plugin,
+    },
+
+    {
+        .name       = "unload_plugin",
+        .args_type  = "index:i",
+        .params     = "index",
+        .help       = "Unload a panda plugin",
+        .cmd = hmp_panda_unload_plugin,
+    },
+
+    {
+        .name       = "list_plugins",
+        .args_type  = "",
+        .params     = "",
+        .help       = "list the loaded plugins",
+        .cmd = hmp_panda_list_plugins,
+    },
+
+    {
         .name       = "end_replay",
         .args_type  = "",
         .params     = "",
