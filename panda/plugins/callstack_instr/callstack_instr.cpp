@@ -289,6 +289,7 @@ int get_callers(target_ulong callers[], int n, CPUState* cpu) {
 }
 
 
+#define CALLSTACK_MAX_SIZE 16
 // writes an entry to the pandalog with callstack info (and instr count and pc)
 Panda__CallStack *pandalog_callstack_create() {
     assert (pandalog);
@@ -297,7 +298,7 @@ Panda__CallStack *pandalog_callstack_create() {
     uint32_t n = 0;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
     auto rit = v.rbegin();
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
+    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit) {
         n ++;
     }
     Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
@@ -307,7 +308,7 @@ Panda__CallStack *pandalog_callstack_create() {
     v = callstacks[get_stackid(env)];
     rit = v.rbegin();
     uint32_t i=0;
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
+    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit, ++i) {
         cs->addr[i] = rit->pc;
     }
     return cs;
