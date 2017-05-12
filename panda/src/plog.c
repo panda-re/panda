@@ -483,7 +483,7 @@ void unmarshall_chunk(uint32_t chunk_num) {
 }
 
 Panda__LogEntry *pandalog_read_entry(void) {
-    assert (in_read_mode);
+    assert (in_read_mode());
     PandalogChunk *plc = &(thePandalog->chunk);
     uint8_t done = 0;
     uint8_t new_chunk = 0;
