@@ -6059,6 +6059,15 @@
 { 'command': 'end_record' }
 
 ##
+# @begin_replay:
+#
+# Requests that we begin replaying
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_replay', 'data': { 'file_name': 'str' } }
+
+##
 # @end_replay:
 #
 # Requests that we end replaying 
@@ -6074,7 +6083,8 @@
 # 
 # BDG 20120821
 ##
-{ 'command': 'load_plugin', 'data': { 'file_name': 'str' } }
+{ 'command': 'load_plugin', 'data': { '*file_name': 'str', 'plugin_name': 'str',
+                                      '*plugin_args': 'str'} }
 
 ##
 # @unload_plugin:
@@ -6085,6 +6095,14 @@
 ##
 { 'command': 'unload_plugin', 'data': { 'index': 'int' } }
 
+
+##
+# @PandaPluginInfo:
+#
+# Structure holding the information of a PANDA plugin
+##
+{ 'struct': 'PandaPluginInfo', 'data': {'index': 'int', 'name': 'str', 'address': 'int'} }
+
 ##
 # @list_plugins:
 #
@@ -6092,7 +6110,7 @@
 # 
 # BDG 20120821
 ##
-{ 'command': 'list_plugins' }
+{ 'command': 'list_plugins', 'returns': ['PandaPluginInfo']}
 
 ##
 # @plugin_cmd:

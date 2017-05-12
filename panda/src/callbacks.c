@@ -788,8 +788,31 @@ void panda_free_args(panda_arg_list *args) {
 
 // QMP
 
-void qmp_load_plugin(const char *filename, Error **errp) {
-    if(!panda_load_plugin(filename, NULL)) {
+void qmp_load_plugin(bool has_file_name, const char *file_name, const char *plugin_name, bool has_plugin_args, const char *plugin_args, Error **errp){
+
+    if(!has_file_name)
+        file_name = panda_plugin_path(plugin_name);
+
+    if (has_plugin_args){
+        char arg_str[255];
+        char *args = strdup(plugin_args);
+        char *args_start = args;
+        char *args_end = args;
+
+        while (args_end != NULL) {
+            args_end = strchr(args_start, ',');
+            if (args_end != NULL) *args_end = '\0';
+
+            snprintf(arg_str, 255, "%s:%s", plugin_name, args_start);
+            if( !panda_add_arg(arg_str, strlen(arg_str))){
+                // TODO: do something with errp here?
+            }
+            args_start = args_end + 1;
+        }
+        free(args);
+    }
+
+    if(!panda_load_plugin(file_name, plugin_name)) {
         // TODO: do something with errp here?
     }
 }
@@ -802,25 +825,41 @@ void qmp_unload_plugin(int64_t index, Error **errp) {
     }
 }
 
-void qmp_list_plugins(Error **errp) {
-    
+PandaPluginInfoList *qmp_list_plugins(Error **errp) {
+    PandaPluginInfoList *head = NULL;
+    int i;
+
+    for (i = 0; i < nb_panda_plugins; i++) {
+        PandaPluginInfoList *list_item = g_new0(typeof(*list_item), 1);
+        PandaPluginInfo *plugin_item = g_new0(typeof(*plugin_item), 1);
+
+        plugin_item->index = i;
+        plugin_item->name = g_strdup(panda_plugins[i].name);
+        plugin_item->address = (unsigned long) panda_plugins[i].plugin;
+
+        list_item->value = plugin_item;
+        list_item->next = head;
+        head = list_item;
+    }
+    return head;
 }
 
 void qmp_plugin_cmd(const char * cmd, Error **errp) {
     
 }
 
-void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict);
-void hmp_panda_unload_plugin(Monitor *mon, const QDict *qdict);
-void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) ;
 void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict);
 
 
 // HMP
 void hmp_panda_load_plugin(Monitor *mon, const QDict *qdict) {
     Error *err;
-    const char *filename = qdict_get_try_str(qdict, "filename");
-    qmp_load_plugin(filename, &err);
+    const char *file_name   = qdict_get_try_str(qdict, "file_name");
+    const char *plugin_name = qdict_get_try_str(qdict, "plugin_name");
+    const char *plugin_args = qdict_get_try_str(qdict, "plugin_args");
+    bool has_file_name   = file_name ? true : false;
+    bool has_plugin_args = plugin_args ? true : false;
+    qmp_load_plugin(has_file_name, file_name, plugin_name, has_plugin_args, plugin_args, &err);
 }
 
 void hmp_panda_unload_plugin(Monitor *mon, const QDict *qdict) {
@@ -831,12 +870,14 @@ void hmp_panda_unload_plugin(Monitor *mon, const QDict *qdict) {
 
 void hmp_panda_list_plugins(Monitor *mon, const QDict *qdict) {
     Error *err;
-    int i;
+    PandaPluginInfoList *plugin_item = qmp_list_plugins(&err);
     monitor_printf(mon, "idx\t%-20s\taddr\n", "name");
-    for (i = 0; i < nb_panda_plugins; i++) {
-        monitor_printf(mon, "%d\t%-20s\t%p\n", i, panda_plugins[i].name, panda_plugins[i].plugin);
+    while (plugin_item != NULL){
+        monitor_printf(mon, "%ld\t%-20s\t%lx\n", plugin_item->value->index, 
+                        plugin_item->value->name, plugin_item->value->address);
+        plugin_item = plugin_item->next;
+
     }
-    qmp_list_plugins(&err);
 }
 
 void hmp_panda_plugin_cmd(Monitor *mon, const QDict *qdict) {
