@@ -866,9 +866,9 @@ one has a USAGE.md file linked here for further explanation.
 * [`llvm_trace`](../../../panda1/qemu/panda_plugins/llvm_trace/USAGE.md) - Record trace of
   dynamic information necessary for later analysis.
 * [`lsmll`](../../../panda1/qemu/panda_plugins/lsmll/USAGE.md)
-* [`memsavep`](../../../panda1/qemu/panda_plugins/memsavep/USAGE.md) - Create a dump of
+* [`memsavep`](../plugins/memsavep/USAGE.md) - Create a dump of
   physical memory at a given point in a replay. The dump can then be fed to
-  Volatility.
+  Volatility. `Already ported from panda1`
 * [`memstats`](../../../../../panda1/qemu/panda_panda1/qemu/panda_plugins/memstats/USAGE.md)
 * [`network`](../../../panda1/qemu/panda_plugins/network/USAGE.md)
 * [`pmemaccess`](../../../panda1/qemu/panda_plugins/pmemaccess/USAGE.md)
