@@ -104,13 +104,15 @@ static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
     PPP_RUN_CB(on_branch2, a, size);
 }
 
-void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store) {
+void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size) {
     // I think this has to be an LLVM register
     Addr ptr_addr = make_laddr(ptr / MAXREGSIZE, 0);
-//    if (is_store) 
-        PPP_RUN_CB(on_ptr_store, ptr_addr, dest);    
-//    else 
-        PPP_RUN_CB(on_ptr_load, ptr_addr, src);
+    if (is_store) {
+        PPP_RUN_CB(on_ptr_store, ptr_addr, dest, size);    
+    }
+    else {
+        PPP_RUN_CB(on_ptr_load, ptr_addr, src, size);
+    }
 }
 
 static void taint_storeEip_run(FastShad *shad, uint64_t src, uint64_t size) {

@@ -220,7 +220,7 @@ void taint_mix(
 
 static const uint64_t ones = ~0UL;
 
-void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store);
+void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size);
 
 // Model for tainted pointer is to mix all the labels from the pointer and then
 // union that mix with each byte of the actual copied data. So if the pointer
@@ -245,7 +245,7 @@ void taint_pointer(
 
     // query taint on pointer either being read or written
     if (tainted_pointer & TAINT_POINTER_MODE_CHECK) {
-        taint_pointer_run(src, ptr, dest, (bool) is_store);
+        taint_pointer_run(src, ptr, dest, (bool) is_store, size);
     }
 
     // this is [1234] in our example
