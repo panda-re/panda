@@ -134,6 +134,11 @@ void verify(void) {
     }
 }
 
+void taint2_enable_tainted_pointer(void) {
+    tainted_pointer = true;
+}
+
+
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     printf ("taint2: __taint_enable_taint\n");

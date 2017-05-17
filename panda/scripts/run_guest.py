@@ -18,6 +18,9 @@ from tempdir import TempDir
 
 debug = True
 
+def env_to_list(env):
+    return ["{}='{}'".format(k, v) for k, v in env.iteritems()]
+
 def progress(msg):
     print Fore.GREEN + '[run_guest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
     print
@@ -78,7 +81,6 @@ class Qemu(object):
         progress("Running qemu with args:")
         print subprocess32.list2cmdline(qemu_args)
 
-        DEVNULL = open(os.devnull, "w")
         self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
         while not os.path.exists(monitor_path):
             time.sleep(0.1)
@@ -139,9 +141,8 @@ def make_iso(directory, iso_path):
 
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
-def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recording_path, isoname=None, rr=False):
-    DEVNULL = open(os.devnull, "w")
-
+def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
+                     recording_path, isoname=None, rr=False, env={}):
     recording_path = realpath(recording_path)
     if not isoname: isoname = copy_directory + '.iso'
 
@@ -158,10 +159,14 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recordi
             qemu.run_console("while ! mount /dev/cdrom {}; ".format(pipes.quote(copy_directory)) +
                         "do sleep 0.3; umount /dev/cdrom; done")
 
+        # if there is a setup.sh script in the replay/proc_name/cdrom/ folder
+        # then run that setup.sh script first (good for scriptst that need to
+        # prep guest environment before script runs
+        qemu.run_console("{}/setup.sh &> /dev/null || true".format(pipes.quote(copy_directory)))
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
         progress("Running command inside guest.")
-        qemu.type_console(subprocess32.list2cmdline(command))
+        qemu.type_console(subprocess32.list2cmdline(env_to_list(env) + command))
 
         # start PANDA recording
         qemu.run_monitor("begin_record \"{}\"".format(recording_path))
@@ -170,8 +175,6 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory, recordi
         # end PANDA recording
         progress("Ending recording...")
         qemu.run_monitor("end_record")
-
-    DEVNULL.close()
 
 def create_boot_recording(qemu_path, qcow, recording_path, boot_time):
     DEVNULL = open(os.devnull, "w")

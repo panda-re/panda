@@ -245,6 +245,9 @@ void pandalog_open_write(const char *path, uint32_t chunk_size) {
     thePandalog->dir.num_entries = (uint64_t *) malloc(sizeof(uint64_t) * thePandalog->dir.max_chunks);
     thePandalog->chunk_num = 0;
     printf ("max_chunks = %d\n", thePandalog->dir.max_chunks);
+    // write bogus inital chunk
+    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+    pandalog_write_entry(&ple);
 }
 
 extern int panda_in_main_loop;
@@ -480,7 +483,7 @@ void unmarshall_chunk(uint32_t chunk_num) {
 }
 
 Panda__LogEntry *pandalog_read_entry(void) {
-    assert (in_read_mode);
+    assert (in_read_mode());
     PandalogChunk *plc = &(thePandalog->chunk);
     uint8_t done = 0;
     uint8_t new_chunk = 0;

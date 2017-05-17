@@ -481,13 +481,20 @@ static int os_host_main_loop_wait(int64_t timeout)
 }
 #endif
 
+
+#define RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY 1000
+
+
 int main_loop_wait(int nonblocking)
 {
     int ret;
     uint32_t timeout = UINT32_MAX;
     int64_t timeout_ns;
 
-    if (nonblocking) {
+    if (rr_in_replay()) {
+        timeout = RR_MAIN_WAIT_LOOP_TIMEOUT_IN_REPLAY;
+    }
+    else if (nonblocking) {
         timeout = 0;
     }
 
@@ -495,7 +502,7 @@ int main_loop_wait(int nonblocking)
     g_array_set_size(gpollfds, 0); /* reset for new iteration */
     /* XXX: separate device handlers from system ones */
 #ifdef CONFIG_SLIRP
-    if (!rr_in_replay()) {
+    if (! (rr_in_replay() || rr_replay_requested)) {
         slirp_pollfds_fill(gpollfds, &timeout);
     }
 #endif
@@ -521,9 +528,11 @@ int main_loop_wait(int nonblocking)
     /* CPU thread can infinitely wait for event after
        missing the warp */
     // ru: add check if in in replay for running timers
-    if (!rr_in_replay()) {
+    if (! (rr_in_replay() || rr_replay_requested)) {
         qemu_start_warp_timer();
+        rr_begin_main_loop_wait();
         qemu_clock_run_all_timers();
+        rr_end_main_loop_wait();
     }
 
     return ret;
