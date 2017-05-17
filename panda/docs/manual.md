@@ -228,9 +228,9 @@ These functions don't really form an API to QEMU or PANDA, but they are useful
 for controlling PANDA or interacting with QEMU.
 
 #### QEMU translation control
-
-	void panda_do_flush_tb(void);
-	
+```C
+void panda_do_flush_tb(void);
+```
 This function requests that the translation block cache be flushed as soon as
 possible. If running with translation block chaining turned off (e.g. when in
 LLVM mode or replay mode), this will happen when the current translation block
@@ -244,10 +244,10 @@ makes changes to the way code is translated.  For example, by using
 code translation may cause QEMU to crash! This is because QEMU's interrupt
 handling mechanism relies on translation being deterministic (see the
 `search_pc` stuff in translate-all.c for details).
-
-	void panda_disable_tb_chaining(void);
-	void panda_enable_tb_chaining(void);
-
+```C
+void panda_disable_tb_chaining(void);
+void panda_enable_tb_chaining(void);
+```
 These functions allow plugins to selectively turn translation block chaining on
 and off, regardless of whether the backend is TCG or LLVM, and independent of
 record and replay.
@@ -255,10 +255,10 @@ record and replay.
 #### Precise program counter
 
 By default, QEMU does not update the program counter after every instruction.
-
-	void panda_enable_precise_pc(void);
-	void panda_disable_precise_pc(void);
-
+```C
+void panda_enable_precise_pc(void);
+void panda_disable_precise_pc(void);
+```
 These functions enable or disable precise tracking of the program counter.
 After enabling precise PC tracking, the program counter will be available in
 `env->panda_guest_pc` and can be assumed to accurately reflect the guest state.
@@ -266,37 +266,37 @@ After enabling precise PC tracking, the program counter will be available in
 Some plugins (`taint2`, `callstack_instr`, etc) add instrumentation that runs
 *inside* a basic block of emulated code.  If such a plugin is enabled mid-replay
 then it is important to flush the cache so that all subsequent guest code will
-be properly instrumented. 
+be properly instrumented.
 
 #### Memory access
 
 PANDA has callbacks for virtual and physical memory read and write, but these
 are off by default due to overhead.
-	
-	void panda_enable_memcb(void);
-	void panda_disable_memcb(void);
-
-Use these two functions to enable and disable the memory callbacks. 
-
-    int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
-
+```C
+void panda_enable_memcb(void);
+void panda_disable_memcb(void);
+```
+Use these two functions to enable and disable the memory callbacks.
+```C
+int panda_physical_memory_rw(target_phys_addr_t addr, uint8_t *buf, int len, int is_write);
+```
 This function allows a plugin to read or write `len` bytes of guest physical
 memory at `addr` into or from the supplied buffer `buf`. This function differs
 from QEMU's `cpu_physical_memory_rw` in that it will never access I/O, only
 RAM. This function returns zero on success, and negative values on failure (page not mapped).
-
-    int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
-
+```C
+int panda_virtual_memory_rw(CPUState *env, target_ulong addr, uint8_t *buf, int len, int is_write);
+```
 This function is analogous to the previous one except that it uses the current
 virtual to physical mapping (page tables) to permit read and write of guest
 memory.  It has the same contract but the `addr` is a guest virtual address for
 the current process.
 
 #### LLVM control
-
-    void panda_enable_llvm(void);
-    void panda_disable_llvm(void);
-
+```C
+void panda_enable_llvm(void);
+void panda_disable_llvm(void);
+```
 These functions enable and disable the use of the LLVM JIT in replacement of the
 TCG (QEMU intermediate language and compiler) backend.  Here, an additional
 translation step is added from the TCG IR to the LLVM IR, and that is executed
@@ -305,24 +305,24 @@ are hoping to support dynamic configuration of code generation soon.
 
 
 #### Miscellany
-
-    void panda_memsavep(FILE *out);
-
+```C
+void panda_memsavep(FILE *out);
+```
 Saves a physical memory snapshot into the open file pointer `out`. This function
 is guaranteed not to perturb guest state.
-
-    target_ulong panda_current_asid(CPUState *env);
-
+```C
+target_ulong panda_current_asid(CPUState *env);
+```
 Returns the current asid for a variety of architectures (`cr3` for x86, e.g.).
-
-    bool panda_in_kernel(CPUState *env);
-
+```C
+bool panda_in_kernel(CPUState *env);
+```
 Returns true if the processor is in the privilege level corresponding to
 executing kernel code for various architectures.
 
-
-    void panda_disas(FILE *out, void *code, unsigned long size);
-
+```C
+void panda_disas(FILE *out, void *code, unsigned long size);
+```
 Writes a textual representation of disassembly of the guest code at virtual
 address `code` of `size` bytes.
 
@@ -381,6 +381,9 @@ end_record:
     Ends an active recording session. The guest will be paused, but can
     be resumed and another recording can be made once the guest is
     resumed.
+
+A commandline flag `-record-from <snapshot>:<record-name>` to restores a
+qcow2 snapshot and immediately start recording is also provided for convenience.
 
 Start replays from the command line using the `-replay <name>` option. 
 
@@ -452,11 +455,15 @@ you may care about what order plugins' callbacks execute in, since some
 operations may not make sense if they're done out of order.
 
 The bad news is that PANDA does not guarantee any fixed ordering for its
-callbacks. In the current implementation, each callback of a given type will be
-executed in the order it was registered (which is usually the order in which the
-plugins were loaded; however, because callbacks can be registered at any time
-throughout a plugin's lifetime, even this is not guaranteed). This could change
-in the future, though, and in general it's not a good idea to rely on it.
+callbacks across different plugins. In the current implementation, each callback
+of a given type will be executed in the order it was registered.
+Although this creates a deterministic order for callbacks of a specific type
+within one plugin, a fixed callback execution order among multiple distinct
+plugins can not be ensured.
+(Usually, this order corresponds to the order in which the plugins were loaded;
+however, because callbacks can be registered at any time throughout a plugin's
+lifetime, this is not guaranteed to hold true). This could change in the future,
+though, and in general it's not a good idea to rely on it.
 
 The good news is that there's a better way to enforce an ordering. As described
 in the next section, plugins support explicit mechanisms for interacting with
@@ -487,25 +494,25 @@ When you run `make`, the QEMU build system will build your plugin for each
 target architecture that was specified in `./configure --target-list=`. This
 means that architecture-specific parts of your plugin should be guarded using
 code like:
-
-    #if defined(TARGET_I386)
-    // Do x86-specific stuff
-    #elif defined(TARGET_ARM)
-    // Do ARM-specific stuff
-    #endif
-    
+```C
+#if defined(TARGET_I386)
+// Do x86-specific stuff
+#elif defined(TARGET_ARM)
+// Do ARM-specific stuff
+#endif
+```
 It also means that your code can use the various target-specific macros, such as
 `target_ulong`, in order to get code that works with all of QEMU's
-architectures.        
-    
+architectures.
+
 #### Plugin Initialization and Shutdown
 
 All plugins are required to contain, at minimum, two functions with the
 following signatures:
-
-	bool init_plugin(void *self);
-  	void uninit_plugin(void *self);
-
+```C
+bool init_plugin(void *self);
+void uninit_plugin(void *self);
+```
 The single void * parameter is a handle to the plugin; because this comes from
 `dlopen`, it can be safely used with `dlsym` and friends. This handle is also
 what should be passed to `panda_register_callback` in order to register a plugin
@@ -515,10 +522,10 @@ In general, `init_plugin` should perform any setup the plugin needs, and call
 `panda_register_callback` to tell PANDA what plugin functions to call for
 various events. For example, to register a callback that will be executed after
 the execution of each basic block, you would use the following code:
-
-    pcb.after_block_exec = after_block_callback;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-
+```C
+pcb.after_block_exec = after_block_callback;
+panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
+```
 The `uninit_plugin` function will be called when the plugin is unloaded. You
 should free any resources used by the plugin here, as plugins can be unloaded in
 mid replay or from the monitor – so you can't rely on QEMU doing all your
@@ -528,70 +535,70 @@ cleanup for you.
 
 Typically in the `init_plugin` function, you will register a number of
 callbacks.
-
-	void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
-
+```C
+void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+```
 Registers a callback with PANDA. The `type` parameter specifies what type of
 callback, and `cb` is used for the callback itself (`panda_cb` is a union of all
-possible callback signatures). 
-
-    PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
-    PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
-    PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
-    PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
-    PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
-    PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
-    PANDA_CB_INSN_EXEC,         // Before an instruction is executed
-    PANDA_CB_VIRT_MEM_BEFORE_READ,  // Before read of virtual memory
-    PANDA_CB_VIRT_MEM_BEFORE_WRITE, // Before write to virtual memory
-    PANDA_CB_PHYS_MEM_BEFORE_READ,  // Before read of physical memory
-    PANDA_CB_PHYS_MEM_BEFORE_WRITE, // Before write to physical memory
-    PANDA_CB_VIRT_MEM_AFTER_READ,   // After read of virtual memory
-    PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
-    PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
-    PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
-    PANDA_CB_HD_READ,           // Each HDD read                                                                   
-    PANDA_CB_HD_WRITE,          // Each HDD write                                                                  
-    PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)                                           
-    PANDA_CB_MONITOR,           // Monitor callback                                                                
-    PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)                                       
-    PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm                                        
-    PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to                                                   
-    PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer                                                      
-    PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)             
-    PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw     
-    PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw      
-    PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out                                                
-
+possible callback signatures).
+```C
+PANDA_CB_BEFORE_BLOCK_TRANSLATE,    // Before translating each basic block
+PANDA_CB_AFTER_BLOCK_TRANSLATE,     // After translating each basic block
+PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT,    // Before executing each basic block (with option to invalidate, may trigger retranslation)
+PANDA_CB_BEFORE_BLOCK_EXEC,         // Before executing each basic block
+PANDA_CB_AFTER_BLOCK_EXEC,          // After executing each basic block
+PANDA_CB_INSN_TRANSLATE,    // Before an instruction is translated
+PANDA_CB_INSN_EXEC,         // Before an instruction is executed
+PANDA_CB_VIRT_MEM_BEFORE_READ,  // Before read of virtual memory
+PANDA_CB_VIRT_MEM_BEFORE_WRITE, // Before write to virtual memory
+PANDA_CB_PHYS_MEM_BEFORE_READ,  // Before read of physical memory
+PANDA_CB_PHYS_MEM_BEFORE_WRITE, // Before write to physical memory
+PANDA_CB_VIRT_MEM_AFTER_READ,   // After read of virtual memory
+PANDA_CB_VIRT_MEM_AFTER_WRITE,  // After write to virtual memory
+PANDA_CB_PHYS_MEM_AFTER_READ,   // After read of physical memory
+PANDA_CB_PHYS_MEM_AFTER_WRITE,  // After write to physical memory
+PANDA_CB_HD_READ,           // Each HDD read
+PANDA_CB_HD_WRITE,          // Each HDD write
+PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
+PANDA_CB_MONITOR,           // Monitor callback
+PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
+PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm
+PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
+PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
+PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
+PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
+PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+```
 For more information on each callback, see the "Callbacks" section.
-	
-	void * panda_get_plugin_by_name(const char *name);
-	
+```C
+void * panda_get_plugin_by_name(const char *name);
+```
 Retrieves a handle to a plugin, given its name (the name is just the base name
 of the plugin's filename; that is, if the path to the plugin is
 `qemu/panda/panda_test.so`, the plugin name will be `panda_test.so`).
 
 This can be used to allow one plugin to call functions another, since the handle
 returned is usable with `dlsym`.
-
-	bool   panda_load_plugin(const char *filename);
-
+```C
+bool   panda_load_plugin(const char *filename);
+```
 Load a PANDA plugin. The `filename` parameter is currently interpreted as a
 simple filename; no searching is done (this may change in the future). This can
 be used to allow one plugin to load another.
-
-	void   panda_unload_plugin(void *plugin);
-
+```C
+void   panda_unload_plugin(void *plugin);
+```
 Unload a PANDA plugin. This can be used to allow one plugin to unload another
 one.
-
-	void   panda_disable_plugin(void *plugin);
-
+```C
+void   panda_disable_plugin(void *plugin);
+```
 Disables callbacks registered by a PANDA plugin. This can be used to allow one
 plugin to temporarily disable another one.
-
-	void   panda_enable_plugin(void *plugin);
-
+```C
+void   panda_enable_plugin(void *plugin);
+```
 Enables callbacks registered by a PANDA plugin. This can be used to re-enable
 callbacks of a plugin that was disabled.
 
@@ -605,25 +612,25 @@ consider that example from above.
 The `llvm_trace` plugin has two arguments, `base` and `foo` with values `/tmp`
 and `6`.  In `init_plugin` for `llvm_trace`, include the following code to
 retrieve just the arguments for the `llvm_trace` plugin and then to parse the individual arguments.
-
-    panda_arg_list *args = panda_get_args("llvm_trace");
-    uint32_t foo = panda_parse_uint32(args, "foo", 0);
-    char *base = panda_parse_string(args, "base", NULL);
-
+```C
+panda_arg_list *args = panda_get_args("llvm_trace");
+uint32_t foo = panda_parse_uint32(args, "foo", 0);
+char *base = panda_parse_string(args, "base", NULL);
+```
 Here is the complete list of PANDA arg parsing functions.
-
-    target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);  
-    uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);         
-    uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);         
-    double panda_parse_double(panda_arg_list *args, const char *argname, double defval);             
-    bool panda_parse_bool(panda_arg_list *args, const char *argname);                                              
-    const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);   
-
+```C
+target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
+uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);
+uint64_t panda_parse_uint64(panda_arg_list *args, const char *argname, uint64_t defval);
+double panda_parse_double(panda_arg_list *args, const char *argname, double defval);
+bool panda_parse_bool(panda_arg_list *args, const char *argname);
+const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
+```
 Note that calling `panda_get_args` allocates memory to store the list, which
 should be freed after use with `panda_free_args`.
-
-    void panda_free_args(panda_arg_list *args);
-
+```C
+void panda_free_args(panda_arg_list *args);
+```
 Frees an argument list created with `panda_get_args`.
 
 
@@ -656,12 +663,12 @@ To export an API for use in another plugin:
 1. Create a file named `<plugin>_int_fns.h` in the plugin's directory and list
    each function's prototype, along with any data types it requires.
 2. Create a file named `<plugin>_int.h` in the plugin's directory looks like:
+```C
+typedef void YourCustomType;
+typedef void YourOtherCustomType;
 
-        typedef void YourCustomType;
-        typedef void YourOtherCustomType;
-
-        #include "<plugin>_int_fns.h"
-
+#include "<plugin>_int_fns.h"
+```
 This slightly insane-looking arrangement is necessary because the `apigen.py`
 script (which is invoked from `build.sh`) uses `pycparser` to parse each
 plugin's `<plugin>_int.h` header and generate the necessary code to seamlessly
@@ -749,7 +756,7 @@ powers combined, these two plugins allow us to perform a complicated task
 (content-based taint labeling).
 
 
-### Personal Plugins 
+### Personal Plugins
 
 You can also pull plugin code from some other directory, i.e., not from
 `panda/panda/plugins`.  This allows you to maintain a separate repository
@@ -777,16 +784,14 @@ We have written a bunch of generic plugins for use in analyzing replays. Each
 one has a USAGE.md file linked here for further explanation.
 
 #### Taint-related plugins
-* [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin. Already ported from panda1
-  Required by most other taint plugins.
-* [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data Already ported from panda1
-  (tainted, but not used in branches).
+* [`taint2`](../plugins/taint2/USAGE.md) - Modern taint plugin. Required by most other taint plugins. `Already ported from panda1`
+* [`dead_data`](../plugins/dead_data/USAGE.md) - Track dead data (tainted, but not used in branches). `Already ported from panda1`
 * [`ida_taint2`](../../../panda1/qemu/panda_plugins/ida_taint2/USAGE.md) - IDA taint
   integration.
 * [`file_taint`](../plugins/file_taint/USAGE.md) - Syscall and
-  OSI-based automatic tainting of file input by filename. Already ported from panda1
+  OSI-based automatic tainting of file input by filename. `Already ported from panda1`
 * [`tainted_branch`](../plugins/tainted_branch/USAGE.md) - Find
-  conditional branches where the choice depends on tainted data. Already ported from panda1
+  conditional branches where the choice depends on tainted data. `Already ported from panda1`
 * [`tainted_instr`](../../../panda1/qemu/panda_plugins/tainted_instr/USAGE.md) - Find
   instructions which process tainted data.
 * [`taint_compute_numbers`](../../../panda1/qemu/panda_plugins/taint_compute_numbers/USAGE.md)
@@ -800,8 +805,7 @@ one has a USAGE.md file linked here for further explanation.
   integration for old taint plugin.
 
 #### Plugins related to [Tappan Zee (North) Bridge](http://wenke.gtisc.gatech.edu/papers/tzb.pdf)
-* [`stringsearch`](../plugins/stringsearch/USAGE.md) - Mine memory Already ported from panda1
-  accesses for a particular string.
+* [`stringsearch`](../plugins/stringsearch/USAGE.md) - Mine memory accesses for a particular string. `Already ported from panda1`
 * [`textfinder`](../../../panda1/qemu/panda_plugins/textfinder/USAGE.md)
 * [`textprinter`](../../../panda1/qemu/panda_plugins/textprinter/USAGE.md)
 * [`textprinter_fast`](../../../panda1/qemu/panda_plugins/textprinter_fast/USAGE.md)
@@ -815,8 +819,8 @@ one has a USAGE.md file linked here for further explanation.
 * [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/USAGE.md)
 
 #### Callstack Tracking
-* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) - Already ported from panda1
-  Instruction-based callstack tracing.
+* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) - 
+  Instruction-based callstack tracing. `Already ported from panda1`
 * [`fullstack`](../../../panda1/qemu/panda_plugins/fullstack/USAGE.md)
 * [`printstack`](../../../panda1/qemu/panda_plugins/printstack/USAGE.md)
 * [`callstack_block_pc`](../../../panda1/qemu/panda_plugins/callstack_block_pc/USAGE.md) -
@@ -824,13 +828,13 @@ one has a USAGE.md file linked here for further explanation.
 
 #### Operating System Introspection (OSI) plugins
 * [`osi`](../plugins/osi/USAGE.md) - Operating system introspection
-  framework. Already ported from panda1
-* [`osi_linux`](../plugins/osi_linux/USAGE.md) - Generic Linux OSI. Already ported from panda1
+  framework. `Already ported from panda1`
+* [`osi_linux`](../plugins/osi_linux/USAGE.md) - Generic Linux OSI. `Already ported from panda1`
 * [`osi_test`](../../../panda1/qemu/panda_plugins/osi_test/USAGE.md)
 * [`osi_winxpsp3x86`](../../../panda1/qemu/panda_plugins/osi_winxpsp3x86/USAGE.md) - OSI for
   Windows XP SP3 x86.
 * [`asidstory`](../plugins/asidstory/USAGE.md) - ASCII art view of
-  process execution inside VM. Already ported from panda1
+  process execution inside VM. `Already ported from panda1`
 * [`linux_vmi`](../../../panda1/qemu/panda_plugins/linux_vmi/USAGE.md) - Alternate Linux OSI
   system from DECAF.
 * [`debianwheezyx86intro`](../../../panda1/qemu/panda_plugins/debianwheezyx86intro/USAGE.md) -
@@ -842,8 +846,7 @@ one has a USAGE.md file linked here for further explanation.
 #### System call logging & analysis
 
 ##### Current generation
-* [`syscalls2`](../plugins/syscalls2/USAGE.md) - Modern syscalls Already ported from panda1
-  tracking.
+* [`syscalls2`](../plugins/syscalls2/USAGE.md) - Modern syscalls tracking. `Already ported from panda1`
 * [`win7proc`](../../../panda1/qemu/panda_plugins/win7proc/USAGE.md) - Semantic pandalog
   interpretation of syscalls for Windows 7 x86.
 
@@ -875,10 +878,10 @@ one has a USAGE.md file linked here for further explanation.
   into a movie.
 * [`sample`](../../../panda1/qemu/panda_plugins/sample/USAGE.md)
 * [`scissors`](../plugins/scissors/USAGE.md) - Cut out a smaller piece
-  of a given replay. Already ported from panda1
+  of a given replay. `Already ported from panda1`
 * [`useafterfree`](../../../panda1/qemu/panda_plugins/useafterfree/USAGE.md) - Track memory
   allocations and search for uses after frees.
-    
+
 
 ## Pandalog
 
@@ -912,18 +915,18 @@ way to auto-generate code for C with flatbuffers, as yet.  A big design goal
 here (3) was for the logging spec to be distributed throughout the plugins.
 That is, if new plugin foo wants to write something to the pandalog, it should
 only have to specify what new fields it wants to add to the pandalog and add the
-actual logging statements. 
+actual logging statements.
 
 ### Adding PANDA Logging to a Plugin
 
-The `asidstory` plugin is a good example. 
+The `asidstory` plugin is a good example.
 Two small additions are all that are required to add pandalogging.
 
 First, a new file was added to the plugin directory
 
     $ cd plugins/asidstory/
     $ cat asidstory.proto
-    optional uint64 asid = 3; 
+    optional uint64 asid = 3;
     optional string process_name = 4;
     optional uint32 process_id = 5;
 
@@ -937,47 +940,47 @@ plugins.  If `asidstory` uses slot 3, then plugin `foo` better not try to use it
 as well.  Don't worry; if you screw this up, you'll get an error at build time.
 
 Second, the actual logging message was inserted into `asidstory.cpp`
-
-    extern "C" {
-    ...
-    #include "pandalog.h"
-    ...
-    }
-    ...
-    int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    ...
-           if (pandalog) {
-            if (last_name == 0
-                || (p->asid != last_asid)
-                || (p->pid != last_pid) 
-                || (0 != strcmp(p->name, last_name))) {        
-                Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-                ple.has_asid = 1;
-                ple.asid = p->asid;
-                ple.has_process_id = 1;
-                ple.process_id = p->pid;
-                ple.process_name = p->name;
-                pandalog_write_entry(&ple);           
-                last_asid = p->asid;
-                last_pid = p->pid;
-                free(last_name);
-                last_name = strdup(p->name);
-            }
+```C
+extern "C" {
+...
+#include "pandalog.h"
+...
+}
+...
+int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+...
+       if (pandalog) {
+        if (last_name == 0
+            || (p->asid != last_asid)
+            || (p->pid != last_pid)
+            || (0 != strcmp(p->name, last_name))) {
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.has_asid = 1;
+            ple.asid = p->asid;
+            ple.has_process_id = 1;
+            ple.process_id = p->pid;
+            ple.process_name = p->name;
+            pandalog_write_entry(&ple);
+            last_asid = p->asid;
+            last_pid = p->pid;
+            free(last_name);
+            last_name = strdup(p->name);
         }
-    ...
-
+    }
+...
+```
 The logging message was inserted into the function
 `asidstory_before_block_exec`, and the logic is complicated by the fact that we
 are keeping track of the last asid, process name, and process id.  When any of
 them change, we write a pandalog message.  All of that is incidental.
 
 Note that we have available to us a global `pandalog`, which we can use to
-determine if panda logging is turned on.  
+determine if panda logging is turned on.
 
 To add the logging message, you have to create the `ple`, initializing it as so:
-
-    Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-
+```C
+Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+```
 That `ple` is just a C struct, defined in autogenerated code.  Look in
 `panda/qemu/panda/pandalog.pb-c.h` for the typedef of `Panda__LogEntry`.  Once
 you have a `ple`, you just populate it with the fields you want logged.  Note
@@ -986,17 +989,17 @@ set to indicate its presence.  Well, not quite.  If the field is a pointer (an
 array or a string), a null pointer stands in for `has_fieldname=0`.
 
 Here is the part of the code above in which we populate the struct for logging
-
-    ple.has_asid = 1;
-    ple.asid = p->asid;
-    ple.has_process_id = 1;
-    ple.process_id = p->pid;
-    ple.process_name = p->name;
-
+```C
+ple.has_asid = 1;
+ple.asid = p->asid;
+ple.has_process_id = 1;
+ple.process_id = p->pid;
+ple.process_name = p->name;
+```
 Now all that is left is to write the entry to the pandalog.
-
-    pandalog_write_entry(&ple);
-
+```C
+pandalog_write_entry(&ple);
+```
 
 ### Building
 
@@ -1030,27 +1033,27 @@ You can read a pandalog using this little program and also see how easy it is to
 unmarshall the pandalog.  Here's how to use it and some of its output.
 
     $ ./pandalog_reader /tmp/pandlog | head
-    instr=16356  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
-    instr=78182  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]   
-    instr=80130  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8] 
-    instr=142967  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=16356  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8]
+    instr=78182  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]
+    instr=80130  pc=0xc12c3586 :  asid=2 pid=171 process=[jbd2/sda1-8]
+    instr=142967  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]
     instr=209715  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
-    instr=253940  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=253940  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]
     instr=256674  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
     instr=258267  pc=0xc12c3586 :  asid=7984000 pid=2511 process=[sshd]
-    instr=262487  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]  
+    instr=262487  pc=0xc12c3586 :  asid=2 pid=4 process=[kworker/0:0]
     instr=268164  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
 
 Note that there are two required fields always added to every pandalog entry:
 instruction count and program counter.  The rest of thes log messages come from
-the asidstory logging.  
+the asidstory logging.
 
 ### External References
 
 You may want to search google for "Protocol Buffers" to learn more about it.
 
 ## LLVM
-        
+
 PANDA uses the LLVM architecture from the [S2E
 project](https://github.com/dslab-epfl/s2e). This means you can translate from
 QEMU's intermediate representation, TCG, to LLVM IR, which is easier to
@@ -1061,20 +1064,20 @@ non-trivial overhead, but it enables complex analyses like our `taint2` plugin.
 
 To build LLVM (if your OS does not have llvm-3.3 packages), run the following
 script:
-
-    cd panda
-    svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_33/final/ llvm
-    cd llvm/tools
-    svn checkout http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_33/final/ clang
-    cd -
-    cd llvm/tools/clang/tools
-    svn checkout http://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/final/ extra
-    cd -
-    cd llvm
-    ./configure --enable-optimized --disable-assertions --enable-targets=x86 && \
-        REQUIRES_RTTI=1 make -j $(nproc)
-    cd -
-
+```bash
+cd panda
+svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_33/final/ llvm
+cd llvm/tools
+svn checkout http://llvm.org/svn/llvm-project/cfe/tags/RELEASE_33/final/ clang
+cd -
+cd llvm/tools/clang/tools
+svn checkouthttp://llvm.org/svn/llvm-project/clang-tools-extra/tags/RELEASE_33/final/ extra
+cd -
+cd llvm
+./configure --enable-optimized --disable-assertions --enable-targets=x86 && \
+    REQUIRES_RTTI=1 make -j $(nproc)
+cd -
+```
 This will build a "Release" build of LLVM. You can use `PANDA_LLVM_BUILD` to
 have PANDA use a different build, like Debug or Debug+Asserts. You will also
 have to build the other build using e.g. `--disable-optimized
@@ -1112,14 +1115,14 @@ You can access the LLVM code for a certain `TranslationBlock` by using the
 `llvm::Function` object. We recommend using an `llvm::FunctionPass` to run over
 each `TranslationBlock` you would like to analyze. Initialize the
 `FunctionPassManager` like this:
-
-    extern "C" TCGLLVMContext *tcg_llvm_ctx;
-    panda_enable_llvm();
-    panda_enable_llvm_helpers();
-    llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
-    fpm->add(new MyFunctionPass());
-    FPM->doInitialization();
-
+```C
+extern "C" TCGLLVMContext *tcg_llvm_ctx;
+panda_enable_llvm();
+panda_enable_llvm_helpers();
+llvm::FunctionPassManager *fpm = tcg_llvm_ctx->getFunctionPassManager();
+fpm->add(new MyFunctionPass());
+FPM->doInitialization();
+```
 The pass will then run after each block is translated. You want to have the pass
 insert callbacks into the generated code that accept the dynamic values as
 arguments (pointers, for example). Look at `taint2`
@@ -1146,9 +1149,9 @@ What is missing from PANDA?  What do we know how to do but just don't have time 
 unused
 
 **Signature**:
-
-	int (*before_block_translate)(CPUState *env, target_ulong pc);
-
+```C
+int (*before_block_translate)(CPUState *env, target_ulong pc);
+```
 ---
 
 `after_block_translate`: called after the translation of each basic block
@@ -1165,9 +1168,9 @@ unused
 unused
 
 **Signature**:
-
-	int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*after_block_translate)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 `before_block_exec`: called before execution of every basic block
@@ -1184,9 +1187,9 @@ unused
 unused
 
 **Signature**:
-
-    int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*before_block_exec)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 `before_block_exec_invalidate_opt`: called before execution of every basic
@@ -1204,9 +1207,9 @@ block, with the option to invalidate the TB
 `true` if we should invalidate the current translation block and retranslate, `false` otherwise
 
 **Signature**:
-
-    bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
-
+```C
+bool (*before_block_exec_invalidate_opt)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 `after_block_exec`: called after execution of every basic block
@@ -1223,9 +1226,9 @@ block, with the option to invalidate the TB
 unused
 
 **Signature:**:
- 
-    int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*after_block_exec)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 
@@ -1251,9 +1254,9 @@ If you do want to instrument every single instruction, just return
 true. See the documentation for `PANDA_CB_INSN_EXEC` for more detail.
 
 **Signature**:
-
-	bool (*insn_translate)(CPUState *env, target_ulong pc);
-
+```C
+bool (*insn_translate)(CPUState *env, target_ulong pc);
+```
 ---
 
 `insn_exec`: called before execution of any instruction identified
@@ -1278,9 +1281,9 @@ This is fairly expensive, which is why it's only enabled via
 the `PANDA_CB_INSN_TRANSLATE` callback.
 
 **Signature**:
-
-	int (*insn_exec)(CPUState *env, target_ulong pc);
-
+```C
+int (*insn_exec)(CPUState *env, target_ulong pc);
+```
 ---
 
 `virt_mem_before_read`: called before memory is read
@@ -1304,9 +1307,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*virt_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
-
+```C
+int (*virt_mem_before_read)(CPUState *env, target_ulong pc,target_ulong addr, target_ulong size);
+```
 ---
 
 `virt_mem_before_write`: called before memory is read
@@ -1319,7 +1322,7 @@ before this callback will take effect.
 * `target_ulong pc`: the guest PC doing the write
 * `target_ulong addr`: the (virtual) address being written
 * `target_ulong size`: the size of the write
-* `void *buf`: pointer to the data that is to be written 
+* `void *buf`: pointer to the data that is to be written
 
 **Return value**:
 
@@ -1331,9 +1334,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*virt_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `phys_mem_before_read`: called before memory is read
@@ -1357,9 +1360,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
-
+```C
+int (*phys_mem_before_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size);
+```
 ---
 
 `phys_mem_before_write`: called before memory is written
@@ -1372,7 +1375,7 @@ before this callback will take effect.
 * `target_ulong pc`: the guest PC doing the write
 * `target_ulong addr`: the (physical) address being written
 * `target_ulong size`: the size of the write
-* `void *buf`: pointer to the data that is to be written 
+* `void *buf`: pointer to the data that is to be written
 
 **Return value**:
 
@@ -1384,9 +1387,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*phys_mem_before_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `virt_mem_after_read`: called after memory is read
@@ -1411,9 +1414,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*virt_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `virt_mem_after_write`: called after memory is written
@@ -1426,7 +1429,7 @@ before this callback will take effect.
 * `target_ulong pc`: the guest PC doing the write
 * `target_ulong addr`: the (virtual) address being written
 * `target_ulong size`: the size of the write
-* `void *buf`: pointer to the data that was written 
+* `void *buf`: pointer to the data that was written
 
 **Return value**:
 
@@ -1438,9 +1441,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*virt_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `phys_mem_after_read`: called after memory is read
@@ -1453,7 +1456,7 @@ before this callback will take effect.
 * `target_ulong pc`: the guest PC doing the write
 * `target_ulong addr`: the (physical) address being written
 * `target_ulong size`: the size of the write
-* `void *buf`: pointer to the data that was written 
+* `void *buf`: pointer to the data that was written
 
 **Return value**:
 
@@ -1465,9 +1468,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*phys_mem_after_read)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `phys_mem_after_write`: called after memory is written
@@ -1480,7 +1483,7 @@ before this callback will take effect.
 * `target_ulong pc`: the guest PC doing the write
 * `target_ulong addr`: the (physical) address being written
 * `target_ulong size`: the size of the write
-* `void *buf`: pointer to the data that was written 
+* `void *buf`: pointer to the data that was written
 
 **Return value**:
 
@@ -1492,9 +1495,9 @@ You must call `panda_enable_memcb()` to turn on memory callbacks
 before this callback will take effect.
 
 **Signature**:
-
-    int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
-
+```C
+int (*phys_mem_after_write)(CPUState *env, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
+```
 ---
 
 `guest_hypercall`: called when a program inside the guest makes a
@@ -1533,9 +1536,9 @@ it is an unprivileged instruction in this scenario.  Plugins can also check for
 magic values in registers on ARM.
 
 **Signature**:
-
-	int (*guest_hypercall)(CPUState *env);
-
+```C
+int (*guest_hypercall)(CPUState *env);
+```
 ---
 
 **monitor**: called when someone uses the `plugin_cmd` monitor command
@@ -1567,9 +1570,9 @@ monitor commands are uniquely named, e.g. by using the plugin name
 as a prefix (`sample_do_foo` rather than `do_foo`).
 
 **Signature**:
-
-	int (*monitor)(Monitor *mon, const char *cmd);
-
+```C
+int (*monitor)(Monitor *mon, const char *cmd);
+```
 ---
 
 `cb_cpu_restore_state`: Called inside of cpu_restore_state(), when there is a
@@ -1585,9 +1588,9 @@ CPU fault/exception
 **Return value**: unused
 
 **Signature**:
-
-    int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
-
+```C
+int (*cb_cpu_restore_state)(CPUState *env, TranslationBlock *tb);
+```
 ---
 
 `before_loadvm`: called at the start of replay, just before the snapshot state
@@ -1611,9 +1614,9 @@ existing handler for the device first)
 An example of how to use this callback can be found in the `sample` plugin.
 
 **Signature**
-
-    int (*before_loadvm)(void);
-
+```C
+int (*before_loadvm)(void);
+```
 ---
 
 `user_before_syscall`: Called before a syscall for QEMU user mode.
@@ -1636,17 +1639,17 @@ arguments, be sure to process them in similar ways.
 
 Additionally, this callback is dependent on running qemu in linux-user mode,
 a mode for which PANDA support is being phased out. To use this callback you
-will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
-plugins for examples of legacy usage. This callback will likely be removed in 
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA
+plugins for examples of legacy usage. This callback will likely be removed in
 future versions of PANDA.
 
 **Signature**:
-
-    int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                               int num, abi_long arg1, abi_long arg2, abi_long
-                               arg3, abi_long arg4, abi_long arg5,
-                               abi_long arg6, abi_long arg7, abi_long arg8);
-
+```C
+int (*user_before_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                            int num, abi_long arg1, abi_long arg2, abi_long
+                            arg3, abi_long arg4, abi_long arg5,
+                            abi_long arg6, abi_long arg7, abi_long arg8);
+```
 ---
 
 `user_after_syscall`: Called after a syscall for QEMU user mode
@@ -1672,18 +1675,18 @@ arguments, be sure to process them in similar ways.
 
 Additionally, this callback is dependent on running qemu in linux-user mode,
 a mode for which PANDA support is being phased out. To use this callback you
-will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA 
-plugins for examples of legacy usage. This callback will likely be removed in 
+will need to wrap the code in #ifdefs. See the 'taint' or 'llvm_trace' PANDA
+plugins for examples of legacy usage. This callback will likely be removed in
 future versions of PANDA.
 
 **Signature**:
-
-    int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
-                              int num, abi_long arg1, abi_long arg2, abi_long
-                              arg3, abi_long arg4, abi_long arg5, abi_long arg6,
-                              abi_long arg7, abi_long arg8, void *p,
-                              abi_long ret);
-
+```C
+int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
+                            int num, abi_long arg1, abi_long arg2, abi_long
+                            arg3, abi_long arg4, abi_long arg5, abi_long arg6,
+                            abi_long arg7, abi_long arg8, void *p,
+                            abi_long ret);
+```
 ---
 
 `after_PGD_write`: called when the CPU changes to a different address space
@@ -1701,15 +1704,15 @@ future versions of PANDA.
 unused
 
 **Signature**:
-
+```C
     int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
-
+```
 ---
 
 `replay_hd_transfer`: Called during a replay of a hard drive transfer action
 
-**Callback ID**: `PANDA_CB_REPLAY_HD_TRANSFER` 
- 
+**Callback ID**: `PANDA_CB_REPLAY_HD_TRANSFER`
+
 **Arguments**:
 
 * `CPUState* env`: pointer to CPUState
@@ -1738,23 +1741,23 @@ The allowed values for type are:
 * `HD_TRANSFER_RAM_TO_HD`
 
 **Signature**:
-
-    int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
-                              uint64_t dest_addr, uint32_t num_bytes);
-
+```C
+int (*replay_hd_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                            uint64_t dest_addr, uint32_t num_bytes);
+```
 ---
 
 `replay_net_transfer`: Called during a replay of a network transfer action
 
-**Callback ID**: `PANDA_CB_REPLAY_NET_TRANSFER` 
- 
+**Callback ID**: `PANDA_CB_REPLAY_NET_TRANSFER`
+
 **Arguments**:
 
-        CPUState* env:        pointer to CPUState
-        uint32_t type:        type of transfer  (Net_transfer_type)
-        uint64_t src_addr:    address for src
-        uint64_t dest_addr:   address for dest
-        uint32_t num_bytes:   size of transfer in bytes
+* `CPUState* env:     `   pointer to CPUState
+* `uint32_t type:     `   type of transfer  (Net_transfer_type)
+* `uint64_t src_addr: `   address for src
+* `uint64_t dest_addr:`   address for dest
+* `uint32_t num_bytes:`   size of transfer in bytes
 
 **Return value**: unused
 
@@ -1766,10 +1769,10 @@ replay the transfer doesn't really happen.  We are *at* the point at which it
 happened, really.
 
 **Signature**:
-
-    int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
-                               uint64_t dest_addr, uint32_t num_bytes);
-
+```C
+int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr,
+                            uint64_t dest_addr, uint32_t num_bytes);
+```
 ---
 
 `replay_before_cpu_physical_mem_rw_ram`: In replay only, we are about to dma
@@ -1795,11 +1798,11 @@ type `HD_TRANSFER_HD_TO_RAM` (and vice versa). Other devices still appear to use
 cpu_physical_memory_rw() though.
 
 **Signature**:
-
-    int (*replay_before_cpu_physical_mem_rw_ram)(
-            CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
-            uint32_t num_bytes);
-
+```C
+int (*replay_before_cpu_physical_mem_rw_ram)(
+        CPUState *env, uint32_t is_write, uint64_t src_addr, uint64_t dest_addr,
+        uint32_t num_bytes);
+```
 ---
 
 `replay_after_cpu_physical_mem_rw_ram`: In replay only, we have just done a DMA
@@ -1826,11 +1829,11 @@ type HD_TRANSFER_HD_TO_RAM (and vice versa).  Other devices still appear to use
 cpu_physical_memory_rw() though.
 
 **Signature**:
-
-    int (*replay_after_cpu_physical_mem_rw_ram)(
-            CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr,
-            uint32_t num_bytes);
-
+```C
+int (*replay_after_cpu_physical_mem_rw_ram)(
+        CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr,
+        uint32_t num_bytes);
+```
 ---
 
 `replay_handle_packet`: used for network packet replay
@@ -1851,7 +1854,7 @@ cpu_physical_memory_rw() though.
 unused
 
 **Signature**:
-
-    int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
-                                uint8_t direction, uint64_t old_buf_addr);
-
+```C
+int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
+                            uint8_t direction, uint64_t old_buf_addr);
+```

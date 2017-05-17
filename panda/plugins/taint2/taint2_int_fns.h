@@ -8,6 +8,9 @@
 // turns on taint
 void taint2_enable_taint(void);
 
+// turns on tainted pointer
+void taint2_enable_tainted_pointer(void);
+
 // returns 1 if taint is on
 int taint2_enabled(void);
 

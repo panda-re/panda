@@ -591,7 +591,7 @@ int64_t timerlistgroup_deadline_ns(QEMUTimerListGroup *tlg)
     bool play = replay_mode == REPLAY_MODE_PLAY;
 
 #ifdef CONFIG_SOFTMMU
-    if (rr_in_replay()) return RR_REPLAY_DEADLINE;
+    if (rr_in_replay() || rr_replay_requested) return RR_REPLAY_DEADLINE;
 #endif
 
     for (type = 0; type < QEMU_CLOCK_MAX; type++) {

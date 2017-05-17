@@ -68,13 +68,6 @@ int rr_do_begin_replay(const char* name, CPUState* cpu_state);
 void rr_do_end_replay(int is_error);
 void rr_reset_state(CPUState* cpu_state);
 
-void qmp_begin_record(const char* file_name, Error** errp);
-void qmp_begin_record_from(const char* snapshot, const char* file_name,
-                                  Error** errp);
-void qmp_begin_replay(const char* file_name, Error** errp);
-void qmp_end_record(Error** errp);
-void qmp_end_replay(Error** errp);
-
 
 // mz display indication of replay progress
 extern void replay_progress(void);

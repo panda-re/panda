@@ -33,6 +33,12 @@ Assuming PANDA_DIR is path to your panda directory and you built under
 the build dir. If you built somewhere else, set PANDA_BUILD env to your build
 dir.
 
+Advanced USAGE:
+
+    --env "PYTHON_DICT" where PYTHON_DICT represents the user environment
+                         you would like to enforce on the guest
+        eg.  --env "{'CC':'/bin/gcc', 'LD_LIBRARY_PATH':'/usr/bin/gcc'}"
+
 """
 
 import os
@@ -56,13 +62,15 @@ panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
 
+
 def transform_arg_copy(orig_filename):
     if orig_filename.startswith('guest:'):
         return orig_filename[6:]
     elif os.path.exists(orig_filename):
         name = basename(orig_filename)
         copy_filename = join(install_dir, name)
-        shutil.copy(orig_filename, copy_filename)
+        if copy_filename != orig_filename:
+            shutil.copy(orig_filename, copy_filename)
         filemap[orig_filename] = copy_filename
         return copy_filename
     else:
@@ -77,7 +85,20 @@ if __name__ == "__main__":
         EXIT_USAGE()
     elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
         EXIT_USAGE()
-    binary = sys.argv[1]
+    if sys.argv[1] == "--env":
+        try:
+            env = eval(sys.argv[2])
+        except:
+            print("Something went wrong parsing the environment string: [{}]".format(sys.argv[2]))
+            EXIT_USAGE()
+        guest_cmd = sys.argv[3:]
+        binary = sys.argv[3]
+
+    else:
+        env = {}
+        guest_cmd = sys.argv[1:]
+        binary = sys.argv[1]
+
     if binary.startswith('guest:'): binary = binary[6:]
     binary_basename = basename(binary)
 
@@ -91,22 +112,26 @@ if __name__ == "__main__":
         os.makedirs(binary_dir)
 
     install_dir = join(binary_dir, 'cdrom')
-    if os.path.exists(install_dir):
-        shutil.rmtree(install_dir)
-    os.mkdir(install_dir)
+    # if os.path.exists(install_dir):
+        # shutil.rmtree(install_dir)
+    if not os.path.exists(install_dir):
+        os.mkdir(install_dir)
 
     qcow = join(dot_dir, "wheezy_panda2.qcow2")
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
 
-    new_args = map(transform_arg_copy, sys.argv[1:])
-    exename = basename(new_args[0])
+    new_guest_cmd = map(transform_arg_copy, guest_cmd)
+    exename = basename(new_guest_cmd[0])
 
-    print "args =", sys.argv[1:]
-    print "new_args =", new_args
+    print "args =", guest_cmd
+    print "new_guest_cmd =", new_guest_cmd
 
     create_recording(
         join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
-        qcow, "root", new_args, install_dir, join(binary_dir, binary_basename)
+        qcow, "root", new_guest_cmd,
+        install_dir,
+        join(binary_dir, binary_basename),
+        env=env
     )

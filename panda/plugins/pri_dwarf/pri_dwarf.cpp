@@ -16,6 +16,7 @@ PANDAENDCOMMENT */
 #define __STDC_FORMAT_MACROS
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <set>
@@ -59,7 +60,7 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 //void on_ret(CPUState *cpu, target_ulong pc);
 //void on_call(CPUState *cpu, target_ulong pc);
-void on_library_load(CPUState *cpu, target_ulong pc, char *lib_name, target_ulong base_addr);
+void on_library_load(CPUState *cpu, target_ulong pc, char *lib_name, target_ulong base_addr, target_ulong size);
 void on_all_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args);
 
 void on_funct_livevar_iter(CPUState *cpu, target_ulong pc, liveVarCB f, void *args);
@@ -83,6 +84,8 @@ const char *host_debug_path = NULL;
 const char *host_mount_path = NULL;
 const char *proc_to_monitor = NULL;
 bool allow_just_plt = false;
+bool logCallSites = true;
+std::string bin_path;
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
@@ -119,12 +122,10 @@ bool proc_diff(OsiProc *p_curr, OsiProc *p_new) {
     return false;
 }
 bool proc_changed = false;
-bool bbbexec_check_proc = false;
 //////// end effects plugin globals
 
 // asid changed -- start looking for valid proc info
 int asid_changed(CPUState *cpu, target_ulong old_asid, target_ulong new_asid) {
-    bbbexec_check_proc = true;
     if (current_proc) {
         free_osiproc(current_proc);
         current_proc = NULL;
@@ -158,6 +159,27 @@ struct VarInfo {
 
 std::map<Dwarf_Addr,std::vector<VarInfo>> funcvars;
 std::vector<VarInfo> global_var_list;
+// don't really need this but why not
+typedef struct Lib {
+    std::string libname;
+    target_ulong lowpc, highpc;
+
+    friend std::ostream &operator<<(std::ostream &os, const Lib &lib) {
+        //os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "[" << lib.libname << "] ";
+        os << "0x" << std::hex << lib.lowpc << "-0x" << std::hex << lib.highpc << "," << lib.libname;
+        return os;
+    }
+
+    Lib(std::string libname, target_ulong lowpc, target_ulong highpc) :
+        libname(libname), lowpc(lowpc), highpc(highpc) {
+        assert(lowpc < highpc);
+        }
+
+    bool operator <(const Lib &lib) const {
+        return this->lowpc < lib.lowpc;
+    }
+} Lib;
+std::vector<Lib> active_libs;
 
 typedef struct LineRange {
     Dwarf_Addr lowpc, highpc, function_addr;
@@ -850,8 +872,11 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             }
                         }
                         else if (loc_t == LocReg){
-                            if (cur_base_addr < CPU_NB_REGS)
+                            if (cur_base_addr < CPU_NB_REGS) {
                                 cur_base_addr = env->regs[cur_base_addr];
+                                // change location type to memory now
+                                loc_t = LocMem;
+                            }
                             else
                                 return;
                         }
@@ -1208,7 +1233,7 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
         /* We only take some of the attributes for display here.
         ** More can be picked with appropriate tag constants.
         */
-        if (attrcode == DW_AT_low_pc){
+        if (attrcode == DW_AT_low_pc) {
             dwarf_formaddr(attrs[i], &lowpc, 0);
             // address is line of function + 1
             // in order to skip past function prologue
@@ -1229,9 +1254,12 @@ void load_func_from_die(Dwarf_Debug *dbg, Dwarf_Die the_die,
                 break;
             }
             fc = dwarf_get_form_class(version,attrcode,offset_size,theform);
-            dwarf_formaddr(attrs[i], &highpc, 0);
-            if (fc == DW_FORM_CLASS_CONSTANT)
+            if (DW_DLV_OK != dwarf_formaddr(attrs[i], &highpc, &err)) {
+                printf("Was not able to process function [%s].  Error in getting highpc\n", die_name);
+            }
+            if (fc == DW_FORM_CLASS_CONSTANT) {
                 highpc += lowpc;
+            }
 
             found_highpc = true;
         } else if (attrcode == DW_AT_frame_base) {
@@ -1452,6 +1480,7 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
             char *filenm_tmp;
             char *filenm_cu;
             if (line_count > 0){
+                // TODO: fix these filenames
                 dwarf_linesrc(dwarf_lines[0], &filenm_cu, &err);
                 //filenm_cu = (char *) malloc(strlen(filenm_tmp)+1);
                 //strcpy(filenm_cu, filenm_tmp);
@@ -1470,27 +1499,30 @@ bool populate_line_range_list(Dwarf_Debug *dbg, const char *basename, uint64_t b
                         dwarf_lineno(dwarf_lines[i-1], &line_num, &err);
                         dwarf_lineoff_b(dwarf_lines[i-1], &line_off, &err);
                         dwarf_linesrc(dwarf_lines[i-1], &filenm_tmp, &err);
-                        if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
-                            filenm_line = filenm_cu;
-                        }
-                        else {
+                        //if (!filenm_tmp || 0 == strcmp(filenm_tmp, filenm_cu)){
+                        if (!filenm_tmp || *filenm_tmp == '\0') {
+                            filenm_line = (char *) "(unknown filename)";
+                            //filenm_line = filenm_cu;
+                        } else {
                             filenm_line = filenm_tmp;
-                            //filenm_line = (char *) malloc(strlen(filenm_tmp)+1);
-                            //strcpy(filenm_line, filenm_tmp);
                         }
-                        if (0 == strcmp(".S", strlen(filenm_line) + filenm_line -2)) {
+                        //if (0 == strcmp(".S", strlen(filenm_line) + filenm_line -2)) {
+                        // this implicitly assumes that filenames are more than
+                        // one character
+                        if ('.' == filenm_line[strlen(filenm_line) - 1] &&
+                            'S' == filenm_line[strlen(filenm_line) - 2]) {
+                            dwarf_dealloc(*dbg, filenm_tmp, DW_DLA_STRING);
                             continue;
                         }
 
                         //std::vector<std::tuple<Dwarf_Addr, Dwarf_Addr, Dwarf_Unsigned, char *, Dwarf_Addr>> line_range_list;
-                        if (needs_reloc){
+                        if (needs_reloc) {
                             LineRange lr = LineRange(base_address+lower_bound_addr,
                                     base_address+upper_bound_addr,
                                     line_num, filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
                             line_range_list.push_back(lr);
-                        }
-                        else{
+                        } else {
                             LineRange lr = LineRange(lower_bound_addr, upper_bound_addr, line_num,
                                     filenm_line, 0, line_off);
                             //std::cout << lr << "\n";
@@ -1646,30 +1678,23 @@ target_ulong monitored_asid = 0;
 unsigned num_libs_known = 0;
 
 bool correct_asid(CPUState *cpu) {
-    OsiProc *p = get_current_process(cpu);
     if (monitored_asid == 0) {
+        return false;
+        //OsiProc *p = get_current_process(cpu);
         // checking if p is not null because we got a segfault here
         // if p is null return false, not @ correct_asid
-        if (!p || (p && p->name && strcmp(p->name, proc_to_monitor) != 0)) {
-            //printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
-            return false;
-        } else {
-            monitored_asid = panda_current_asid(cpu);
-        }
     }
-    if (monitored_asid != panda_current_asid(cpu)) {
-        return false;
-    }
-    return true;
+    return monitored_asid == panda_current_asid(cpu);
 }
 
 bool looking_for_libc=false;
 const char *libc_host_path=NULL;
 std::string libc_name;
 
-void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr){
-    printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
+void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
     if (!correct_asid(cpu)) return;
+    printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
+    active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
     std::string lib = std::string(guest_lib_name);
@@ -1728,39 +1753,28 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
     libs = get_libraries(cpu, p);
     if (!libs)
         return false;
-    //printf("[ensure_main_exec_initialized] iterating through libraries\n");
-    //if (!libs || libs->num == num_libs_known) {
-        //return;
-    //}
-    //num_libs_known = libs->num;
-    // Don't check too often
-    //if (++mod_check_count == MOD_CHECK_FREQ) {
-        //mod_check_count = 0;
-        //libs = get_libraries(cpu, p);
-        //if (!libs || libs->num == num_libs_known) {
-            //return;
-        //}
-        //num_libs_known = libs->num;
-    //} else {
-        //return;
-    //}
 
+    //printf("[ensure_main_exec_initialized] looking at libraries\n");
     for (unsigned i = 0; i < libs->num; i++) {
         char fname[260] = {};
         OsiModule *m = &libs->module[i];
         if (!m->file) continue;
         if (!m->name) continue;
         std::string lib = std::string(m->file);
-        if (0 != strcmp(m->name, proc_to_monitor)) continue;
-        printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
+        if (debug) {
+            printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
+        }
+        if (0 != strncmp(m->name, proc_to_monitor, strlen(m->name))) continue;
+        //printf("[ensure_main_exec_initialized] looking at file %s\n", m->file);
         //std::size_t found = lib.find(guest_debug_path);
         //if (found == std::string::npos) continue;
         //std::string host_name = lib.substr(0, found) +
             //host_debug_path +
             //lib.substr(found + strlen(guest_debug_path));
         // TODO: change this to do a replace on guest_debug_path like above
-        std::string host_name =  host_debug_path + lib;
-        strcpy(fname, host_name.c_str());
+        //std::string host_name =  host_debug_path + lib;
+        //strcpy(fname, host_name.c_str());
+        strcpy(fname, bin_path.c_str());
 
         printf("[ensure_main_exec_initialized] Trying to load symbols for %s at 0x%x.\n", fname, m->base);
         printf("[ensure_main_exec_initialized] access(%s, F_OK): %x\n", fname, access(fname, F_OK));
@@ -1768,6 +1782,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
             fprintf(stderr, "Couldn't open %s; will not load symbols for it.\n", fname);
             continue;
         }
+        active_libs.push_back(Lib(fname, m->base, m->base + m->size));
         uint64_t elf_base = elf_get_baseaddr(fname, m->name, m->base);
         bool needs_reloc = elf_base != m->base;
         if (!read_debug_info(fname, m->name, m->base, needs_reloc)) {
@@ -1791,18 +1806,25 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
         printf("loc_cnt: Could not properly determine fp\n");
         return -1;
     }
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     target_ulong fp_loc;
     int i;
     for (i = 0; i < loc_cnt; i++){
        //printf("in loc description for frame pointer:0x%llx-0x%llx\n",locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
        if (pc >= locdesc[i]->ld_lopc && pc < locdesc[i]->ld_hipc){
             LocType loc_type = execute_stack_op(cpu,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, 0, &fp_loc);
-            if (loc_type != LocMem){
-                printf("loc_type: Could not properly determine fp\n");
-                return -1;
+            switch (loc_type){
+                case LocReg:
+                    //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
+                    return env->regs[fp_loc];
+                case LocMem:
+                    return fp_loc;
+                case LocConst:
+                case LocErr:
+                    printf("loc_type: Could not properly determine fp\n");
+                    return -1;
             }
             //printf("Found fp at 0x%x\n", fp_loc);
-            return fp_loc;
         }
     }
     printf("Not in range: Could not properly determine fp for pc @ 0x" TARGET_FMT_lx "\n", pc);
@@ -1812,30 +1834,7 @@ target_ulong get_cur_fp(CPUState *cpu, target_ulong pc){
 bool dwarf_in_target_code(CPUState *cpu, target_ulong pc){
     if (!correct_asid(cpu)) return false;
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    if (pc < it->lowpc || it == line_range_list.end())
-        return false;
-    return true;
-}
-
-bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
-    if (!correct_asid(cpu)) return false;
-
-    auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
-    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
-    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
-    if (it2 == line_range_list.end() || pc < it2->lowpc)
-        return false;
-    return true;
-    /*
-    // This is just the linear search to confirm binary search (lower_bound) is
-    // working correctly
-    auto addressInRange = [pc](LineRange lr) {
-        return pc >= lr.lowpc && pc < lr.highpc;
-    };
-    auto it = find_if(line_range_list.begin(), line_range_list.end(), addressInRange);
-    if (it == line_range_list.end())
-        return false;
-    */
+    return (it != line_range_list.end() && pc >= it->lowpc);
 }
 
 void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_callee, uint64_t lno_callee, bool isCall){
@@ -1848,7 +1847,7 @@ void dwarf_log_callsite(CPUState *cpu, const char *file_callee, const char *fn_c
 
     ra -= 5; // subtract 5 to get address of call instead of return address
     auto it = std::lower_bound(line_range_list.begin(), line_range_list.end(), ra, CompareRangeAndPC());
-    if (ra < it->lowpc || it == line_range_list.end()){
+    if (it == line_range_list.end() || ra < it->lowpc){
         //printf("No DWARF information for callsite 0x%x for current function.\n", ra);
         //printf("Callsite must be in an external library we do not have DWARF information for.\n");
         return;
@@ -1892,7 +1891,9 @@ void on_call(CPUState *cpu, target_ulong pc) {
         //printf("Calling %s through .plt\n",file_name.c_str());
     }
     //printf("CALL: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc);
-    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    if (logCallSites) {
+        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, true);
+    }
     pri_runcb_on_fn_start(cpu, pc, file_name.c_str(), funct_name.c_str());
 
     /*
@@ -1939,7 +1940,9 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     std::string funct_name = funcaddrs[cur_function];
     cur_line = it->line_number;
     //printf("RET: [%s] [0x%llx]-%s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(),cur_function, funct_name.c_str(),cur_line,pc_func);
-    dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    if (logCallSites) {
+        dwarf_log_callsite(cpu, file_name.c_str(), funct_name.c_str(), cur_line, false);
+    }
     pri_runcb_on_fn_return(cpu, pc_func, file_name.c_str(), funct_name.c_str());
 }
 
@@ -1963,19 +1966,21 @@ void __livevar_iter(CPUState *cpu,
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
                 LocType loc = execute_stack_op(cpu,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
-                switch (loc){
-                    case LocReg:
-                        //printf(" VAR %s in REG %d\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocMem:
-                        //printf(" VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocConst:
-                        //printf(" VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
-                        break;
-                    case LocErr:
-                        //printf(" VAR %s - Can\'t handle location information\n", var_name.c_str());
-                        break;
+                if (debug) {
+                    switch (loc){
+                        case LocReg:
+                            printf(" [livevar_iter] VAR %s in REG %d\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocMem:
+                            printf(" [livevar_iter] VAR %s in MEM 0x%x\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocConst:
+                            printf(" [livevar_iter] VAR %s CONST VAL %d\n", var_name.c_str(), var_loc);
+                            break;
+                        case LocErr:
+                            printf(" [livevar_iter] VAR %s - Can\'t handle location information\n", var_name.c_str());
+                            break;
+                    }
                 }
                 f((void *)var_type, var_name.c_str(),loc, var_loc, args);
             }
@@ -1999,18 +2004,15 @@ int livevar_find(CPUState *cpu,
         return 0;
     }
     for (auto it : vars){
-        void *var_type    = it.var_type;
-        std::string var_name    = it.var_name;
         Dwarf_Locdesc **locdesc = it.locations;
-        Dwarf_Signed loc_cnt    = it.num_locations;
-        for (int i=0; i < loc_cnt; i++){
+        for (int i=0; i < it.num_locations; i++){
             //printf("var active in range 0x%llx - 0x%llx\n", locdesc[i]->ld_lopc, locdesc[i]->ld_hipc);
             if (pc >= locdesc[i]->ld_lopc && pc <= locdesc[i]->ld_hipc){
                 target_ulong var_loc;
                 //process_dwarf_locs(locdesc[i]->ld_s, locdesc[i]->ld_cents);
                 //printf("\n");
                 LocType loc = execute_stack_op(cpu,pc, locdesc[i]->ld_s, locdesc[i]->ld_cents, fp, &var_loc);
-                if (pred(var_type, var_name.c_str(),loc, var_loc, args)){
+                if (pred(it.var_type, it.var_name.c_str(),loc, var_loc, args)){
                     ret_var.var_type = it.var_type;
                     ret_var.var_name = it.var_name;
                     ret_var.locations = it.locations;
@@ -2031,11 +2033,7 @@ int compare_address(void *var_ty, const char *var_nm, LocType loc_t, target_ulon
         case LocReg:
             break;
         case LocMem:
-            if (loc == (*(target_ulong *) query_address) ){
-            //if (loc == *query_address) {
-                return 1;
-            }
-            break;
+            return (loc == (*(target_ulong *) query_address));
         case LocConst:
             break;
         case LocErr:
@@ -2134,7 +2132,7 @@ void dwarf_funct_livevar_iter(CPUState *cpu,
         liveVarCB f,
         void *args){
     //printf("iterating through live vars\n");
-    if (inExecutableSource){
+    if (inExecutableSource) {
         target_ulong fp = get_cur_fp(cpu, pc);
         if (fp == (target_ulong) -1){
             printf("Error: was not able to get the Frame Pointer for the function %s at @ 0x" TARGET_FMT_lx "\n",
@@ -2151,6 +2149,28 @@ void dwarf_global_livevar_iter(CPUState *cpu,
     // iterating through global vars does not require a frame pointer
     __livevar_iter(cpu, pc, global_var_list, f, args, 0);
 }
+
+bool translate_callback_dwarf(CPUState *cpu, target_ulong pc) {
+    if (!correct_asid(cpu)) return false;
+
+    auto it2 = std::lower_bound(line_range_list.begin(), line_range_list.end(), pc, CompareRangeAndPC());
+    // after the call to lower_bound the `pc` should be between it2->lowpc and it2->highpc
+    // if it2 == line_range_list.end() we know we definitely didn't find out pc in our line_range_list
+    if (it2 == line_range_list.end() || pc < it2->lowpc)
+        return false;
+    return true;
+    /*
+    // This is just the linear search to confirm binary search (lower_bound) is
+    // working correctly
+    auto addressInRange = [pc](LineRange lr) {
+        return pc >= lr.lowpc && pc < lr.highpc;
+    };
+    auto it = find_if(line_range_list.begin(), line_range_list.end(), addressInRange);
+    if (it == line_range_list.end())
+        return false;
+    */
+}
+
 int exec_callback_dwarf(CPUState *cpu, target_ulong pc) {
     inExecutableSource = false;
     if (!correct_asid(cpu)) return 0;
@@ -2177,7 +2197,7 @@ int exec_callback_dwarf(CPUState *cpu, target_ulong pc) {
     //__livevar_iter(env, pc, global_var_list, print_var_if_live);
     if (cur_line != prev_line){
         //printf("[%s] %s(), ln: %4lld, pc @ 0x%x\n",file_name.c_str(), funct_name.c_str(),cur_line,pc);
-        pri_runcb_on_after_line_change(cpu,pc,prev_file_name.c_str(),prev_funct_name.c_str(), prev_line);
+        pri_runcb_on_after_line_change (cpu, pc, prev_file_name.c_str(), prev_funct_name.c_str(), prev_line);
         pri_runcb_on_before_line_change(cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
         PPP_RUN_CB(on_pri_dwarf_line_change, cpu, pc, file_name.c_str(), funct_name.c_str(), cur_line);
 
@@ -2212,6 +2232,30 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
     return i;
 }
 
+typedef void (* on_proc_change_t)(CPUState *env, target_ulong asid, OsiProc *proc);
+
+void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
+    if (!p) { return; }
+    if (!p->name) { return; }
+    if (debug) {
+        printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
+    }
+    //if (strcmp(p->name, proc_to_monitor) != 0) {
+    if (strncmp(p->name, proc_to_monitor, strlen(p->name)) == 0) {
+        monitored_asid = panda_current_asid(cpu);
+    }
+    if (correct_asid(cpu) && !main_exec_initialized){
+        main_exec_initialized = ensure_main_exec_initialized(cpu);
+    }
+    //free_osiproc(p);
+
+}
+// XXX: osi_foo is largetly commented out and basically does nothing
+// I am keeping it here as a reminder of maybe tracking of a data structure
+// that maps asid's to process data (library information, proc name, etc)
+// but we don't need that yet, and it's probably better suited in asidstory
+// or pri
+// XXX
 // get current process before each bb execs
 // which will probably help us actually know the current process
 int osi_foo(CPUState *cpu, TranslationBlock *tb) {
@@ -2219,61 +2263,61 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
     if (panda_in_kernel(cpu)) {
 
         OsiProc *p = get_current_process(cpu);
+        if (!p) return 0;
 
         //some sanity checks on what we think the current process is
         // this means we didnt find current task
-        if (p->offset == 0) return 0;
-        // or the name
-        if (p->name == 0) return 0;
-        // this is just not ok
-        if (((int) p->pid) == -1) return 0;
-        uint32_t n = strnlen(p->name, 32);
-        // name is one char?
-        if (n<2) return 0;
-        uint32_t np = 0;
-        for (uint32_t i=0; i<n; i++) {
-            np += (isprint(p->name[i]) != 0);
-        }
-        // name doesnt consist of solely printable characters
-        //        printf ("np=%d n=%d\n", np, n);
-        if (np != n) return 0;
+        //if (p->offset == 0) return 0;
+        //// or the name
+        //if (p->name == 0) return 0;
+        //// this is just not ok
+        //if (((int) p->pid) == -1) return 0;
+        //uint32_t n = strnlen(p->name, 32);
+        //// name is one char?
+        //if (n<2) return 0;
+        //uint32_t np = 0;
+        //for (uint32_t i=0; i<n; i++) {
+            //np += (isprint(p->name[i]) != 0);
+        //}
+        //// name doesnt consist of solely printable characters
+        //if (np != n) return 0;
         target_ulong asid = panda_current_asid(cpu);
         if (running_procs.count(asid) == 0) {
             printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
         }
         running_procs[asid] = *p;
-        proc_changed = proc_diff(current_proc, p);
-        if (proc_changed) {
-            if (current_proc != NULL) {
-                free_osiproc(current_proc);
-                current_proc = NULL;
-            }
-            current_proc = copy_osiproc_g(p, current_proc);
-            //printf ("proc changed to [%s]\n", current_proc->name);
-        }
+        //proc_changed = proc_diff(current_proc, p);
+        //if (proc_changed) {
+            //if (current_proc != NULL) {
+                //free_osiproc(current_proc);
+                //current_proc = NULL;
+            //}
+            //current_proc = copy_osiproc_g(p, current_proc);
+            ////printf ("proc changed to [%s]\n", current_proc->name);
+        //}
         free_osiproc(p);
         // turn this off until next asid change
-        bbbexec_check_proc = false;
-        if (current_proc != NULL && proc_changed) {
-            // if we get here, we have a valid proc in current_proc
-            // that is new.  That is, we believe process has changed
-            if (current_libs) {
-                free_osimodules(current_libs);
-            }
-            current_libs = get_libraries(cpu, current_proc);
-            if (current_libs) {
-                for (unsigned i=0; i<current_libs->num; i++) {
-                    OsiModule *m = &(current_libs->module[i]);
-                    if (tb->pc >= m->base && tb->pc < (m->base + m->size)) {
-                        current_lib = m;
-                    }
-                }
-            }
-        }
+        //if (current_proc != NULL && proc_changed) {
+            //// if we get here, we have a valid proc in current_proc
+            //// that is new.  That is, we believe process has changed
+            //if (current_libs) {
+                //free_osimodules(current_libs);
+            //}
+            //current_libs = get_libraries(cpu, current_proc);
+            //if (current_libs) {
+                //for (unsigned i=0; i<current_libs->num; i++) {
+                    //OsiModule *m = &(current_libs->module[i]);
+                    //if (tb->pc >= m->base &&
+                            //tb->pc < (m->base + m->size)) {
+                        //current_lib = m;
+                    //}
+                //}
+            //}
+        //}
     }
-    if (correct_asid(cpu) && !main_exec_initialized){
-        main_exec_initialized = ensure_main_exec_initialized(cpu);
-    }
+    //if (correct_asid(cpu) && !main_exec_initialized){
+        //main_exec_initialized = ensure_main_exec_initialized(cpu);
+    //}
 
     return 0;
 }
@@ -2282,6 +2326,14 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
 #endif
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    panda_arg_list *args_gen = panda_get_args("general");
+    const char *asid_s = panda_parse_string_opt(args_gen, "asid", NULL, "asid of the process to follow for pri_trace");
+    if (asid_s) {
+        monitored_asid = strtoul(asid_s, NULL, 16);
+        std::cout << "Tracking process by ASID: " << std::hex << monitored_asid << "\n";
+    } else {
+        monitored_asid = 0;
+    }
     panda_arg_list *args = panda_get_args("pri_dwarf");
     guest_debug_path = panda_parse_string_req(args, "g_debugpath", "path to binary/build dir on guest machine");
     host_debug_path = panda_parse_string_req(args, "h_debugpath", "path to binary/build dir on host machine");
@@ -2292,6 +2344,8 @@ bool init_plugin(void *self) {
     // dwarf symbols are including.  presumably only using plt symbols
     // for line range data.  could be useful for tracking calls to functions
     allow_just_plt = panda_parse_bool_opt(args, "allow_just_plt", "allow parsing of elf for dynamic symbol information if dwarf is not available");
+    logCallSites = !panda_parse_bool_opt(args, "dont_log_callsites", "Turn off pandalogging of callsites in order to reduce plog output");
+
     if (0 != strcmp(libc_host_path, "None")) {
         looking_for_libc=true;
         libc_name = std::string(strstr(libc_host_path, "libc"));
@@ -2302,6 +2356,7 @@ bool init_plugin(void *self) {
     panda_require("osi");
     panda_require("loaded");
     panda_require("pri");
+    panda_require("asidstory");
 
     //panda_require("osi_linux");
     // make available the api for
@@ -2315,7 +2370,6 @@ bool init_plugin(void *self) {
     // we may want to change back to using on_call and on_ret CBs
     PPP_REG_CB("callstack_instr", on_call, on_call);
     PPP_REG_CB("callstack_instr", on_ret, on_ret);
-    std::string bin_path;
     struct stat s;
     if (stat(host_debug_path, &s) != 0){
         printf("host_debug path does not exist. exiting . . .\n");
@@ -2329,9 +2383,12 @@ bool init_plugin(void *self) {
         if (stat(bin_path.c_str(), &s) != 0) {
             bin_path = std::string(host_debug_path) + "/lib/" + proc_to_monitor;
             if (stat(bin_path.c_str(), &s) != 0) {
-                printf("Can\' find a valid main bin path");
-                printf("[WARNING] Skipping processing of main file!!!");
-                bin_path = "";
+                bin_path = std::string(host_debug_path) + "/" + proc_to_monitor;
+                if (stat(bin_path.c_str(), &s) != 0) {
+                    printf("Can\' find a valid main bin path\n");
+                    printf("[WARNING] Skipping processing of main file!!!\n");
+                    bin_path = "";
+                }
             }
         }
     } else if (s.st_mode & S_IFREG) {
@@ -2353,6 +2410,9 @@ bool init_plugin(void *self) {
             //fprintf(stderr, "Couldn't load symbols from %s.\n", bin_path.c_str());
             //return false;
         //}
+    } else {
+        printf("Don\'t know bin path\n");
+        exit(1);
     }
 
     {
@@ -2369,6 +2429,7 @@ bool init_plugin(void *self) {
         panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb_dwarf);
     }
 
+    PPP_REG_CB("asidstory", on_proc_change, handle_asid_change);
     PPP_REG_CB("loaded", on_library_load, on_library_load);
     // contracts we fulfill for pri plugin
     PPP_REG_CB("pri", on_get_pc_source_info, dwarf_get_pc_source_info);
@@ -2383,4 +2444,13 @@ bool init_plugin(void *self) {
 #endif
 }
 
-void uninit_plugin(void *self) { }
+void uninit_plugin(void *self) {
+#if defined(TARGET_I386) && !defined(TARGET_X86_64)
+    std::sort(active_libs.begin(), active_libs.end());
+    std::ofstream outfile(std::string(proc_to_monitor) + ".libs");
+    for (auto l : active_libs) {
+        std::cout << l << "\n";
+        outfile << l << "\n";
+    }
+#endif
+}
