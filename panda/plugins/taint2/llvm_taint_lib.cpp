@@ -15,7 +15,6 @@ PANDAENDCOMMENT */
 
 #include <iostream>
 #include <vector>
-#include <regex>
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Support/raw_ostream.h>
@@ -1113,14 +1112,33 @@ void PandaTaintVisitor::visitMemSetInst(MemSetInst &I) {
     inlineCallAfter(I, hostDeleteF, args);
 }
 
-static const std::regex mathRegex(
-    "sin|cos|tan|log|__isinf|__isnan|rint|floor|abs|fabs|ceil|exp2",
-    std::regex::egrep);
-static const std::regex ldRegex("helper_(ret|be|le)_ld[us]?[bwlq]_mmu(_panda)?",
-        std::regex::egrep);
-static const std::regex stRegex("helper_(ret|be|le)_st[us]?[bwlq]_mmu(_panda)?",
-        std::regex::egrep);
-static const std::regex inoutRegex("helper_(in|out)[bwlq]", std::regex::egrep);
+const static std::set<std::string> ldFuncs{
+    "helper_le_ldq_mmu_panda", "helper_le_ldul_mmu_panda", "helper_le_lduw_mmu_panda",
+    "helper_le_ldub_mmu_panda", "helper_le_ldsl_mmu_panda", "helper_le_ldsw_mmu_panda",
+    "helper_le_ldsb_mmu_panda",
+    "helper_be_ldq_mmu_panda", "helper_be_ldul_mmu_panda", "helper_be_lduw_mmu_panda",
+    "helper_be_ldub_mmu_panda", "helper_be_ldsl_mmu_panda", "helper_be_ldsw_mmu_panda",
+    "helper_be_ldsb_mmu_panda",
+    "helper_ret_ldq_mmu_panda", "helper_ret_ldul_mmu_panda", "helper_ret_lduw_mmu_panda",
+    "helper_ret_ldub_mmu_panda", "helper_ret_ldsl_mmu_panda", "helper_ret_ldsw_mmu_panda",
+    "helper_ret_ldsb_mmu_panda"
+};
+const static std::set<std::string> stFuncs{
+    "helper_le_stq_mmu_panda", "helper_le_stl_mmu_panda", "helper_le_stw_mmu_panda",
+    "helper_le_stb_mmu_panda",
+    "helper_be_stq_mmu_panda", "helper_be_stl_mmu_panda", "helper_be_stw_mmu_panda",
+    "helper_be_stb_mmu_panda",
+    "helper_ret_stq_mmu_panda", "helper_ret_stl_mmu_panda", "helper_ret_stw_mmu_panda",
+    "helper_ret_stb_mmu_panda"
+};
+const static std::set<std::string> inoutFuncs{
+    "helper_inb", "helper_inw", "helper_inl", "helper_inq",
+    "helper_outb", "helper_outw", "helper_outl", "helper_outq"
+};
+const static std::set<std::string> unaryMathFuncs{
+    "sin", "cos", "tan", "log", "__isinf", "__isnan", "rint", "floor", "abs",
+    "fabs", "ceil", "exp2"
+};
 void PandaTaintVisitor::visitCallInst(CallInst &I) {
     LLVMContext &ctx = I.getContext();
     Function *calledF = I.getCalledFunction();
@@ -1171,7 +1189,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (calledName == "cpu_loop_exit") {
             return;
-        } else if (std::regex_match(calledName, ldRegex)) {
+        } else if (ldFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
             if (tainted_pointer && !isa<Constant>(ptr)) {
                 insertTaintPointer(I, ptr, &I, false);
@@ -1179,7 +1197,7 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, llvConst, &I, memConst, NULL, getValueSize(&I));
             }
             return;
-        } else if (std::regex_match(calledName, stRegex)) {
+        } else if (stFuncs.count(calledName) > 0) {
             Value *ptr = I.getArgOperand(1);
             Value *val = I.getArgOperand(2);
             if (tainted_pointer && !isa<Constant>(ptr)) {
@@ -1190,13 +1208,13 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
                 insertTaintCopy(I, memConst, NULL, llvConst, val, getValueSize(val));
             }
             return;
-        } else if (std::regex_match(calledName, mathRegex)) {
+        } else if (unaryMathFuncs.count(calledName) > 0) {
             insertTaintMix(I, I.getArgOperand(0));
             return;
         } else if (calledName == "ldexp" || calledName == "atan2") {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
-        } else if (std::regex_match(calledName, inoutRegex)) {
+        } else if (inoutFuncs.count(calledName) > 0) {
             return;
         }
         // Else fall through to named case.
