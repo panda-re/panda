@@ -1,24 +1,28 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import IPython
 import argparse
 import operator
 import os
-import pipes
 import psutil
 import re
+import shlex
+import subprocess
 import sys
-import time
 
 from blist import sorteddict
 from errno import EAGAIN, EWOULDBLOCK
 from multiprocessing.pool import ThreadPool
 from os.path import join
-from subprocess32 import check_call, check_output, CalledProcessError
+from subprocess import check_call, CalledProcessError
 
 from expect import Expect, TimeoutExpired
 from tempdir import TempDir
 
 DEBUG_COUNTER_PERIOD = 1 << 17
+
+def check_output(args, **kwargs):
+    kwargs['universal_newlines'] = kwargs.get('universal_newlines', True)
+    return subprocess.check_output(args, **kwargs)
 
 def get_default_rr_path():
     try:
@@ -30,7 +34,7 @@ class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
         self.description = description
         self.spawn_cmd = "{} replay {}".format(
-            pipes.quote(cli_args.rr), pipes.quote(rr_replay))
+            shlex.quote(cli_args.rr), shlex.quote(rr_replay))
         self.source_pane = source_pane
 
         self.breakpoints = {}
@@ -54,7 +58,7 @@ class RRInstance(object):
         logfile = join(tempdir, self.description + "out")
         os.mkfifo(logfile)
         bash_command = "{} 2>&1 | tee -i --output-error=warn {} | tee -i --output-error=warn {}_log.txt".format(
-            self.spawn_cmd, pipes.quote(logfile), self.description)
+            self.spawn_cmd, shlex.quote(logfile), self.description)
 
         self.pane = check_output([
             'tmux', 'split-window', '-hdP',
@@ -73,7 +77,7 @@ class RRInstance(object):
     def gdb(self, *args, **kwargs):
         timeout = kwargs.get('timeout', None)
         cmd = " ".join(map(str, args))
-        print "(rr-{}) {}".format(self.description, cmd)
+        print("(rr-{}) {}".format(self.description, cmd))
         sys.stdout.flush()
 
         while True:
@@ -89,8 +93,8 @@ class RRInstance(object):
         try:
             output = self.proc.expect("(rr) ", timeout=timeout)
         except TimeoutExpired:
-            print self.proc.sofar
-            print "EXCEPTION!"
+            print(self.proc.sofar)
+            print("EXCEPTION!")
             sys.stdout.flush()
 
         return output
@@ -124,9 +128,9 @@ class RRInstance(object):
         result = self.gdb("print/u", value_str)
         re_result = re.search(r"\$[0-9]+ = ([0-9]+)", result)
         if re_result:
-            return long(re_result.group(1))
+            return int(re_result.group(1))
         else:
-            print "get_value failed. result:", result
+            print("get_value failed. result:", result)
             raise RuntimeError("get_value")
 
     def instr_count(self):
@@ -163,7 +167,7 @@ class RRInstance(object):
         if re_result:
             return int(re_result.group(1))
         else:
-            print "when failed. result:", result
+            print("when failed. result:", result)
             raise RuntimeError("when")
 
     def cont(self):
@@ -184,10 +188,10 @@ class RRInstance(object):
         self.gdb("watch *(uint{}_t *)0x{:x}".format(bits, addr))
         self.watches_set += 1
         if self.watches_set >= 4:
-            print
-            print "WARNING: Too much divergence! Not watching some diverged points."
-            print "(watchpoints are full...)"
-            print
+            print()
+            print("WARNING: Too much divergence! Not watching some diverged points.")
+            print("(watchpoints are full...)")
+            print()
 
     # watch a location in guest ram.
     def watch_ram(self, ram_addr, size):
@@ -195,7 +199,7 @@ class RRInstance(object):
 
     # Get as close to instr as possible.
     def goto(self, target_instr):
-        print "Moving", self, "to instr", target_instr
+        print("Moving", self, "to instr", target_instr)
         self.disable_all()
         current_instr = self.instr_count()
         if target_instr in instr_to_event:
@@ -214,7 +218,7 @@ class RRInstance(object):
         run_instr = target_instr - DEBUG_COUNTER_PERIOD
         current_instr = self.instr_count()
         if current_instr < run_instr:
-            print "Moving from {} to {} below {}".format(current_instr, run_instr, target_instr)
+            print("Moving from {} to {} below {}".format(current_instr, run_instr, target_instr))
             self.enable("debug_counter")
             self.condition_instr("debug_counter", ">=", run_instr)
             self.cont()
@@ -223,14 +227,14 @@ class RRInstance(object):
         # debug_counter fire if necessary.
         current_instr = self.instr_count()
         if current_instr > target_instr:
-            print "Moving back to {}".format(target_instr)
+            print("Moving back to {}".format(target_instr))
             self.enable("debug_counter")
             self.condition_instr("debug_counter", "<=", target_instr)
             self.reverse_cont()
 
         current_instr = self.instr_count()
         if current_instr != target_instr:
-            print "Moving precisely to", target_instr
+            print("Moving precisely to", target_instr)
             self.disable_all()
             self.enable("cpu_loop_exec_tb")
             self.condition_instr("cpu_loop_exec_tb", ">=", target_instr)
@@ -281,37 +285,38 @@ class All(object):
         return out_args
 
     def __getattr__(self, name):
-        def getattr_apply((proc, func_args)):
+        def getattr_apply(proc_func_args):
+            (proc, func_args) = proc_func_args
             return proc, getattr(proc, name)(*func_args)
 
         def result(*args, **kwargs):
             split_args = self.split_args(args)
             async_obj = self.pool.map_async(
-                getattr_apply, split_args.iteritems(), chunksize=1)
+                getattr_apply, split_args.items(), chunksize=1)
             # timeout necessary due to http://bugs.python.org/issue8844
             ret = dict(async_obj.get(9999999))
-            if any([value is not None for value in ret.viewvalues()]):
+            if any([value is not None for value in ret.values()]):
                 return ret
 
         return result
 
     def do(self, func_map):
-        def star_apply((proc, (func, func_args))):
+        def star_apply(proc_func_func_args):
+            (proc, (func, func_args)) = proc_func_func_args
             return proc, func(proc, *func_args)
 
         async_obj = self.pool.map_async(
-            star_apply, func_map.iteritems(), chunksize=1)
+            star_apply, func_map.items(), chunksize=1)
         # timeout necessary due to http://bugs.python.org/issue8844
         ret = dict(async_obj.get(9999999))
-        if any([value is not None for value in ret.viewvalues()]):
+        if any([value is not None for value in ret.values()]):
             return ret
 
     def __dir__(self):
         return dir(self.procs[0]) + ['split_args', 'do']
 
 def values_equal(thedict):
-    values = thedict.values()
-    return all([x == values[0] for x in values])
+    return len(set(thedict.values())) == 1
 
 def bisect_memory(record, replay):
     Both = All([record, replay])
@@ -321,12 +326,12 @@ def bisect_memory(record, replay):
     while search_queue:
         low, high = search_queue.pop()
         if high - low <= 4:
-            print "Divergence occurred in range [{:08x}, {:08x}]".format(
-                low, high)
+            print("Divergence occurred in range [{:08x}, {:08x}]".format(
+                low, high))
             divergences.append(low)
             continue
 
-        size = (high - low) / 2
+        size = (high - low) // 2
         crc32s_low = Both.crc32_ram(low, size)
         crc32s_high = Both.crc32_ram(low + size, size)
 
@@ -355,7 +360,7 @@ def record_instr_event(record, replay):
     if instr_counts[record] == instr_counts[replay]:
         instr_to_event[instr_counts[record]] = Both.when()
     else:
-        print "Warning: tried to record non-synchronized instr<->event"
+        print("Warning: tried to record non-synchronized instr<->event")
         IPython.embed()
 
 FORWARDS = 0
@@ -417,15 +422,14 @@ Current divergence understanding:
 """
 
 def print_divergence_info(instr_bounds, instr_count_max):
-    print divergence_info.format(
+    print(divergence_info.format(
         instr_lo=instr_bounds[0],
         instr_hi=instr_bounds[1],
         instr_max=instr_count_max
-    )
+    ))
 
 def find_tmux_pane():
     tmux = False
-    pane = None
     parent_pids = []
     proc = psutil.Process(os.getpid())
     while True:
@@ -436,7 +440,7 @@ def find_tmux_pane():
             break
         if 'tmux' in proc.name():
             tmux = True
-            print "tmux mode on!"
+            print("tmux mode on!")
 
     if tmux:
         panes = check_output(
@@ -446,7 +450,7 @@ def find_tmux_pane():
             if int(pid_s) in parent_pids:
                 return pane_id
     else:
-        print "diverge.py must be run inside tmux. Please try again."
+        print("diverge.py must be run inside tmux. Please try again.")
         sys.exit(1)
 
 def bisect_time(record, replay, instr_bounds, instr_count_max):
@@ -457,7 +461,7 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
     while last_now != now_instr:
         print_divergence_info(instr_bounds, instr_count_max)
 
-        mid = (instr_bounds[0] + instr_bounds[1]) / 2
+        mid = (instr_bounds[0] + instr_bounds[1]) // 2
 
         last_now = now_instr
         now_instr = goto_instr(record, replay, mid, instr_count_max)
@@ -465,10 +469,10 @@ def bisect_time(record, replay, instr_bounds, instr_count_max):
         whens = Both.when()
         checksums = Both.checksum()
 
-        print
-        print whens
-        print "Current checksums:", checksums
-        if values_equal(checksums):  # after divergence
+        print()
+        print(whens)
+        print("Current checksums:", checksums)
+        if not values_equal(checksums):  # after divergence
             # make right side of range smaller, i.e. new first divergence.
             instr_bounds[1] = min(instr_bounds[1], now_instr)
         else:
@@ -481,7 +485,7 @@ def check_registers(record, replay):
     Both = All([record, replay])
     diverged_registers = []
     reg_size = record.get_value("sizeof ((CPUX86State*)0)->regs[0]")
-    num_regs = record.get_value("sizeof ((CPUX86State*)0)->regs") / reg_size
+    num_regs = record.get_value("sizeof ((CPUX86State*)0)->regs") // reg_size
     for reg in range(num_regs):
         values = Both.get_value(
             "((CPUX86State*)cpus->tqh_first->env_ptr)->regs[{}]".format(reg))
@@ -517,7 +521,7 @@ def main(record, replay, cli_args):
     Both.breakpoint("cpu_loop_exec_tb")
 
     replay_last = get_last_event(cli_args.replay_rr)
-    print "Last known replay event: {}".format(replay_last)
+    print("Last known replay event: {}".format(replay_last))
 
     result = Both.do({
         record: (RRInstance.goto_first_tb, []),
@@ -528,20 +532,20 @@ def main(record, replay, cli_args):
     assert instr_count_max is not None
     minimum_events = Both.when()
 
-    print "Failing replay instr count:", instr_count_max
+    print("Failing replay instr count:", instr_count_max)
 
     try:
         Both.breakpoint("debug_counter")
     except AttributeError:
-        print "Must run diverge.py on a debug build of panda. Run ./configure ",
-        print "with --enable-debug for this to work."
+        print("Must run diverge.py on a debug build of panda. Run ./configure ",)
+        print("with --enable-debug for this to work.")
         cleanup_error()
 
     global instr_to_event
     instr_to_event = sorteddict([(0, minimum_events)])
 
     if cli_args.instr_bounds:
-        instr_bounds = map(int, cli_args.instr_bounds.split(','))
+        instr_bounds = [int(s) for s in cli_args.instr_bounds.split(',')]
     else:
         instr_bounds = [0, instr_count_max]
 
@@ -549,7 +553,7 @@ def main(record, replay, cli_args):
     # find the first point of memory or register divergence.
     instr_bounds = bisect_time(record, replay, instr_bounds, instr_count_max)
 
-    print "Haven't made progress since last iteration. Moving to memory checksum."
+    print("Haven't made progress since last iteration. Moving to memory checksum.")
     print_divergence_info(instr_bounds, instr_count_max)
 
     # Find diverged memory ranges and registers.
@@ -559,10 +563,10 @@ def main(record, replay, cli_args):
     diverged_pcs = not values_equal(
         Both.get_value("((CPUX86State*)cpus->tqh_first->env_ptr)->eip"))
 
-    print "Diverged memory addresses:",
-    print [(hex(low), hex(high)) for low, high in diverged_ranges]
-    print "Diverged registers:", diverged_registers
-    print "Diverged eips:", diverged_pcs
+    print("Diverged memory addresses:",)
+    print([(hex(low), hex(high)) for low, high in diverged_ranges])
+    print("Diverged registers:", diverged_registers)
+    print("Diverged eips:", diverged_pcs)
 
     # Return to latest converged instr
     now_instr = goto_instr(record, replay, instr_bounds[0], instr_count_max)
@@ -570,9 +574,9 @@ def main(record, replay, cli_args):
     # Make sure we're actually at a converged point.
     # If we're more than 1000 instrs too far forward, make user intervene.
     if now_instr > instr_bounds[0] + 1000:
-        print "WARNING: Processes are too far ahead of last divergence."
-        print "Please sync them manually behind", instr_bounds[0],
-        print "and continue."
+        print("WARNING: Processes are too far ahead of last divergence.")
+        print("Please sync them manually behind", instr_bounds[0],)
+        print("and continue.")
         IPython.embed()
         instr_counts = Both.instr_count()
         assert values_equal(instr_counts)
@@ -587,7 +591,7 @@ def main(record, replay, cli_args):
             Both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
             Both.reverse_cont()
             while not values_equal(Both.instr_count()):
-                print "Not synced."
+                print("Not synced.")
                 get_closer(record, replay, BACKWARDS)
 
     Both.disable_all()
@@ -618,8 +622,8 @@ def main(record, replay, cli_args):
             if record.watches_set >= 4: break
 
     if record.watches_set == 0:
-        print "WARNING: Couldn't find any watchpoints to set at beginning of ",
-        print "divergence range. What do you want to do?"
+        print("WARNING: Couldn't find any watchpoints to set at beginning of ",)
+        print("divergence range. What do you want to do?")
         IPython.embed()
 
     instr_counts = Both.instr_count()
@@ -633,29 +637,29 @@ def main(record, replay, cli_args):
     backtraces = Both.gdb("backtrace")
 
     def show_backtrace(proc):
-        print "{} BACKTRACE: ".format(proc.description.upper())
-        print backtraces[proc]
-        print
+        print("{} BACKTRACE: ".format(proc.description.upper()))
+        print(backtraces[proc])
+        print()
 
-    print
+    print()
     if instr_counts[record] > 0:
-        print "Found first divergence!"
+        print("Found first divergence!")
         if instr_counts[record] != instr_counts[replay]:
             ahead = argmax(instr_counts)
             behind = other[ahead]
 
-            print "Saw behavior in {} not seen in {}.".format(
-                behind.description, ahead.description)
-            print
+            print("Saw behavior in {} not seen in {}.".format(
+                behind.description, ahead.description))
+            print()
             show_backtrace(behind)
         else:
-            print "Saw different behavior."
-            print
+            print("Saw different behavior.")
+            print()
             show_backtrace(record)
             show_backtrace(replay)
     else:
-        print "Failed to find exact divergence. Look at mem ranges {}".format(
-            [(hex(low), hex(high)) for low, high in diverged_ranges])
+        print("Failed to find exact divergence. Look at mem ranges {}".format(
+            [(hex(lo), hex(hi)) for lo, hi in diverged_ranges]))
         print_divergence_info(instr_bounds, instr_count_max)
 
     Both.gdb("set confirm on")
@@ -688,10 +692,10 @@ if __name__ == '__main__':
                 cli_args.replay_rr))
 
     def argmax(d):
-        return max(d.iteritems(), key=operator.itemgetter(1))[0]
+        return max(d.items(), key=operator.itemgetter(1))[0]
 
     def argmin(d):
-        return min(d.iteritems(), key=operator.itemgetter(1))[0]
+        return min(d.items(), key=operator.itemgetter(1))[0]
 
     assert cli_args.rr
 
