@@ -1609,6 +1609,13 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
                 cpu_restore_state_from_tb(cpu, current_tb, cpu->mem_io_pc);
                 cpu_get_tb_cpu_state(env, &current_pc, &current_cs_base,
                                      &current_flags);
+
+                /* this is a hack, but probably a necessary one. fixes
+                double-counting when SMC occurs. long-term fix: count
+                BEFORE instr executes instead of after. */
+                if (rr_mode != RR_OFF) {
+                    cpu->rr_guest_instr_count--;
+                }
             }
 #endif /* TARGET_HAS_PRECISE_SMC */
             tb_phys_invalidate(tb, -1);
