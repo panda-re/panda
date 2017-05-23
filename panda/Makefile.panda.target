@@ -157,7 +157,7 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
 
-CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16
+CLANG_FILTER = -Wold-style-declaration -fstack-protector-strong -Wno-error=cpp -g -O0 -O1 -O3 -mcx16 -Wno-shift-negative-value
 QEMU_BC2FLAGS:=$(filter-out $(CLANG_FILTER),$(QEMU_CFLAGS) $(CFLAGS)) -O2 -I../target/$(TARGET_BASE_ARCH)
 %.bc2: %.c $(GENERATED_HEADERS)
 	$(call quiet-command,\
@@ -169,7 +169,7 @@ llvm-helpers.bc1: $(llvm-y)
 
 # Make explicit the fact that we need the tool present to do the morphing
 
-panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS)
+panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation
 
 panda/tools:
 	$(call quiet-command,mkdir -p panda/tools,)
