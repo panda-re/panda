@@ -7,7 +7,7 @@ import shutil
 from colorama import Fore, Style
 import tempfile
 
-debug = True
+debug = False
 
 def progress(msg):
     print Fore.GREEN + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
@@ -22,7 +22,7 @@ def dir_exists(dirname):
 
 def dir_required(dirname):
     if dir_exists(dirname):
-        progress("Dir found: " + dirname)
+        if debug: progress("Dir found: " + dirname)
     else:
         progress("Dir missing: " + dirname)
         sys.exit(1)
@@ -32,7 +32,7 @@ def file_exists(filename):
 
 def file_required(filename):
     if file_exists(filename):
-        progress("File found: " + filename)
+        if debug: progress("File found: " + filename)
     else:
         progress("File missing: " + filename)
         sys.exit(1)
@@ -70,7 +70,7 @@ if not (file_exists(ptest_config)):
 maybe_tests = [test.strip() for test in open(ptest_config).readlines()]
 enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
 
-progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
+if debug: progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
 def the_dir(thing, test):
     return "%s/%s/%s" % (pandaregressiondir, thing, test)
