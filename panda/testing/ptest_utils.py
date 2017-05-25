@@ -5,6 +5,7 @@ import sys
 import re
 import shutil 
 from colorama import Fore, Style
+import tempfile
 
 debug = True
 
@@ -106,18 +107,19 @@ def record_32bitlinux(cmds, replayname):
     # create the replay to use for reference / test
     cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
     progress(cmd)
-    os.chdir(pandaregressiondir)
+    tempd = tempfile.mkdtemp()
+    os.chdir(tempd)
     print cmd
     sp.check_call(cmd.split())
-    base = pandaregressiondir + ("/replays/%s/%s-rr-" % (replayname, replayname))
+    # this is where we want the replays to end up
     replaysdir = pandaregressiondir + "/replays/" + testname
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
-    newbase = replaysdir + "/" + testname + "-rr-"
-    moveit(base, newbase, "nondet.log")
-    moveit(base, newbase, "snp")
-    # cruft
-    shutil.rmtree(pandaregressiondir + ("/replays/%s" % replayname))
+    temp_base = tempd + ("/replays/%s/%s-rr-" % (replayname, replayname))
+    new_base = replaysdir + "/" + testname + "-rr-"
+    moveit(temp_base, new_base, "nondet.log")
+    moveit(temp_base, new_base, "snp")
+    shutil.rmtree(tempd)
              
 def run_test_32bitlinux(panda_args):
     progress("Running test " + testname)
