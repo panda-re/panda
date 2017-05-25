@@ -15,6 +15,8 @@ TAINT_OP_CFLAGS+= $(CLANG_CXXFLAGS) $(DBGFLAGS)
 
 TAINT_OP_FILTER = -g -Wold-style-declaration -std=c11 -fpermissive
 TAINT_OP_FILTER+= -fstack-protector-strong -Wno-error=cpp -mcx16
+TAINT_OP_FILTER+= -Wno-shift-negative-value
+
 
 $(PLUGIN_TARGET_DIR)/panda_taint2.so: \
     $(PLUGIN_OBJ_DIR)/shad_dir_32.o \
