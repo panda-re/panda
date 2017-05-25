@@ -68,6 +68,7 @@ for testname in enabled_tests:
 def setup(testname):
     progress ("Setup %s" % testname)
     try:
+        os.chdir(testsdir)
         run("%s/%s/%s-setup.py" % (testsdir, testname, testname))
         progress ("Setup %s succeeded" % testname)
         return True
