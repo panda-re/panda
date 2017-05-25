@@ -57,7 +57,7 @@ testsdir = testingscriptsdir+"/tests"
 
 # make sure all enabled tests have min requirements
 # of a setup and a test script
-progress("checking min requirements")
+if debug: progress("checking min requirements")
 for testname in enabled_tests:
     testdir = testsdir + "/" + testname
     dir_required(testdir)
