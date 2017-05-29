@@ -74,6 +74,7 @@ RR_log* rr_nondet_log = NULL;
 
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
+#define CONFIG_SOFTMMU 1
 
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \
@@ -277,6 +278,8 @@ static inline void rr_write_item(void)
     RR_WRITE_ITEM(item.header.prog_point.guest_instr_count);
     RR_WRITE_ITEM(item.header.kind);
     RR_WRITE_ITEM(item.header.callsite_loc);
+
+    printf("guest_instr_count %lu kind %d callsite_lo %lu", item.header.prog_point.guest_instr_count, item.header.kind, item.header.callsite_loc);
 
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
@@ -1431,7 +1434,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
         return snapshot_ret;
     }
     printf("... done.\n");
-    // log_all_cpu_states();
+//     log_all_cpu_states();
 
     // save the time so we can report how long replay takes
     time(&rr_start_time);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
+#include <panda/include/panda/rr/rr_log.h>
 
 #define RR_LOG_STANDALONE
 #include "qemu/osdep.h"
@@ -175,6 +176,7 @@ static RR_log_entry *rr_read_item(void) {
     assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) == 1);
     assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) == 1);
 
+    printf("Item header guest_isntr_count: %llu file_pos: %16x kind: %8x callsite_loc: %8x\n", item->header.prog_point.guest_instr_count, item->header.file_pos, item->header.kind, item->header.callsite_loc);
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
