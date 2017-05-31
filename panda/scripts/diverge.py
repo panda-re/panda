@@ -20,6 +20,19 @@ from tempdir import TempDir
 
 DEBUG_COUNTER_PERIOD = 1 << 17
 
+class ArchConfig(object):
+    def __init__(self, cpu_state_name, pc_name, reg_name):
+        self.cpu_state_name = cpu_state_name
+        self.pc_name = pc_name
+        self.reg_name = reg_name
+
+SUPPORTED_ARCHS = {
+    'i386': ArchConfig('CPUX86State', 'eip', 'regs'),
+    'x86_64': ArchConfig('CPUX86State', 'eip', 'regs'),
+    'arm': ArchConfig('CPUARMState', 'pc', 'regs'),
+    'ppc': ArchConfig('CPUPPCState', 'lr', 'gpr')
+}
+
 def check_output(args, **kwargs):
     kwargs['universal_newlines'] = kwargs.get('universal_newlines', True)
     return subprocess.check_output(args, **kwargs)
@@ -60,7 +73,7 @@ class Watch(object):
 
 class WatchEIP(Watch):
     def render(self, proc):
-        return proc.env_ptr("eip"), proc.reg_size
+        return proc.env_ptr(proc.arch.pc_name), proc.reg_size
 
     def __repr__(self):
         return "WatchEIP()"
@@ -88,6 +101,7 @@ class WatchReg(Watch):
 
 class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
+        self.rr_replay = rr_replay
         self.description = description
         self.spawn_cmd = "{} replay {}".format(
             shlex.quote(cli_args.rr), shlex.quote(rr_replay))
@@ -99,6 +113,14 @@ class RRInstance(object):
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
+
+    @cached_property
+    def arch(self):
+        rr_ps = check_output(['rr', 'ps', self.rr_replay])
+        qemu_regex = r"qemu-system-({})".format("|".join(SUPPORTED_ARCHS.keys()))
+        re_result = re.search(qemu_regex, rr_ps)
+        if not re_result: raise RuntimeError("Unsupported architecture!")
+        return SUPPORTED_ARCHS[re_result.group(1)]
 
     # Runs in child process.
     def sendline(self, msg):
@@ -228,17 +250,21 @@ class RRInstance(object):
 
     @cached_property
     def reg_size(self):
-        return self.get_value("sizeof ((CPUX86State*)0)->regs[0]")
+        return self.get_value("sizeof (({}*)0)->{}[0]".format(
+            self.arch.cpu_state_name, self.arch.reg_name))
 
     @cached_property
     def num_regs(self):
-        return self.get_value("sizeof ((CPUX86State*)0)->regs") // self.reg_size
+        return self.get_value("sizeof (({}*)0)->{}".format(
+            self.arch.cpu_state_name, self.arch.reg_name)) // self.reg_size
 
     def env_value(self, name):
-        return self.get_value("((CPUX86State*)cpus->tqh_first->env_ptr)->" + name)
+        return self.get_value("(({}*)cpus->tqh_first->env_ptr)->{}".format(
+            self.arch.cpu_state_name, name))
 
     def env_ptr(self, name):
-        return self.get_value("&((CPUX86State*)cpus->tqh_first->env_ptr)->" + name)
+        return self.get_value("&(({}*)cpus->tqh_first->env_ptr)->{}".format(
+            self.arch.cpu_state_name, name))
 
     def checksum(self):
         # NB: Only run when you are at a breakpoint in CPU thread!
@@ -434,7 +460,7 @@ def argmin(d):
     return min(d.items(), key=operator.itemgetter(1))[0]
 
 class Diverge(object):
-    def __init__(self, record, replay, cli_args):
+    def __init__(self, record, replay):
         self.record = record
         self.replay = replay
         self.both = All([record, replay])
@@ -539,7 +565,8 @@ class Diverge(object):
     def check_registers(self):
         diverged_registers = []
         for reg in range(self.record.num_regs):
-            reg_values = self.both.env_value("regs[{}]".format(reg))
+            reg_values = self.both.env_value("{}[{}]".format(
+                self.record.arch.reg_name, reg))
             if not values_equal(reg_values):
                 diverged_registers.append(reg)
         return diverged_registers
@@ -633,8 +660,6 @@ class Diverge(object):
     def go(self):
         def cleanup_error():
             self.both.quit()
-            self.record.join()
-            self.replay.join()
             sys.exit(1)
 
         self.both.gdb("set confirm off")
@@ -687,7 +712,7 @@ class Diverge(object):
         # Find diverged memory ranges and registers.
         diverged_ranges = self.bisect_memory()
         diverged_registers = self.check_registers()
-        diverged_pcs = not values_equal(self.both.env_value("eip"))
+        diverged_pcs = not values_equal(self.both.env_value(self.record.arch.pc_name))
 
         print("Diverged memory addresses:",)
         print([(hex(lo), hex(hi)) for lo, hi in diverged_ranges])
@@ -792,5 +817,5 @@ if __name__ == '__main__':
     pane = find_tmux_pane()
     with RRInstance("replay", cli_args.replay_rr, pane) as replay, \
             RRInstance("record", cli_args.record_rr, pane) as record:
-        diverge = Diverge(record, replay, cli_args)
+        diverge = Diverge(record, replay)
         diverge.go()
