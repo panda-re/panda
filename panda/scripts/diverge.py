@@ -112,7 +112,11 @@ class RRInstance(object):
             'bash', '-c', bash_command]).strip()
 
         self.proc = Expect(os.open(logfile, os.O_RDONLY | os.O_NONBLOCK), quiet=True)
-        self.proc.expect("(rr) ")
+        try:
+            self.proc.expect("(rr) ", timeout=3)
+        except TimeoutExpired:
+            print(self.proc.sofar)
+            raise
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
