@@ -51,10 +51,10 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
                     sofar.extend(b'\n')
-                    return str(sofar)
+                    return sofar.decode('utf8')
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
-        self.sofar = str(sofar)
+        self.sofar = sofar.decode('utf8')
         raise TimeoutExpired()
 
     def send(self, msg):
