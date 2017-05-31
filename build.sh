@@ -41,6 +41,7 @@ fi
 
 
 "$(dirname $0)/configure" \
+    --disable-vhost-net \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \
     --prefix="$(pwd)/install" \
     $LLVM_BIT \
