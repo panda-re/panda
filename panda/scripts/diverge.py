@@ -55,10 +55,15 @@ def re_search_int(result_re, result):
 
 class Watch(object):
     def render(self, procs): raise NotImplemented()
+    def __repr__(self): raise NotImplemented()
+    def __str__(self): return repr(self)
 
 class WatchEIP(Watch):
     def render(self, proc):
         return proc.env_ptr("eip"), proc.reg_size
+
+    def __repr__(self):
+        return "WatchEIP()"
 
 class WatchRAM(Watch):
     def __init__(self, addr, size):
@@ -68,12 +73,18 @@ class WatchRAM(Watch):
     def render(self, proc):
         return proc.ram_ptr + self.addr, self.size
 
+    def __repr__(self):
+        return "WatchRAM({:#x}, {})".format(self.addr, self.size)
+
 class WatchReg(Watch):
     def __init__(self, reg_num):
         self.reg_num = reg_num
 
     def render(self, proc):
         return proc.env_ptr("regs[{}]".format(self.reg_num)), proc.reg_size
+
+    def __repr__(self):
+        return "WatchReg({})".format(self.reg_num)
 
 class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
@@ -244,9 +255,6 @@ class RRInstance(object):
     def reverse_cont(self):
         return self.gdb("reverse-continue", timeout=None)
 
-    def run_event(self, event):
-        self.gdb("run", event, timeout=None)
-
     # x86 debug registers can only watch 4 locations of 8 bytes.
     # we need to make sure to enforce that.
     # returns true if can set more watchpoints. false if we're full up.
@@ -330,7 +338,7 @@ class RRInstance(object):
             instr_count_max = cli_args.instr_max
         else:
             # get last instruction in failed replay
-            self.run_event(last_event)
+            self.gdb("run", last_event, timeout=None)
             self.enable_only("cpu_loop_exec_tb")
             self.reverse_cont() # go backwards through failure signal
             self.reverse_cont() # land on last TB exec
@@ -608,15 +616,19 @@ class Diverge(object):
                     hit = self.both.cont()
                     instr_counts = self.both.instr_count()
 
-                new_watches.extend(set(
-                    num_to_watch_dict[
-                        re_search_int(r"hit Hardware watchpoint ([0-9]+):", hit[proc])
+                hit_watches = {
+                    proc: num_to_watch_dict[
+                        re_search_int(r"hit Hardware watchpoint ([0-9]+):",
+                                      hit[proc])
                     ] for proc in hit
-                ))
+                }
+                new_watches.extend(set(hit_watches.values()))
 
             if len(watches) == len(new_watches): break
             watches = new_watches
             assert len(watches) > 0
+
+        return hit_watches
 
     def go(self):
         def cleanup_error():
@@ -682,13 +694,17 @@ class Diverge(object):
         print("Diverged registers:", diverged_registers)
         print("Diverged eips:", diverged_pcs)
 
-        self.find_precise_divergence(instr_bounds, diverged_ranges, diverged_registers, diverged_pcs)
+        hit_watches = self.find_precise_divergence(
+            instr_bounds, diverged_ranges, diverged_registers, diverged_pcs
+        )
 
         # Now we are precisely at first point of divergence
         instr_counts = self.both.instr_count()
         backtraces = self.both.gdb("backtrace")
 
         def show_backtrace(proc):
+            print("{} stopped at {}".format(proc.description.upper(),
+                                            hit_watches[proc]))
             print("{} BACKTRACE: ".format(proc.description.upper()))
             print(backtraces[proc])
             print()
