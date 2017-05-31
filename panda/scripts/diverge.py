@@ -40,6 +40,41 @@ def cached_property(func):
 
     return property(fget=getter)
 
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+def re_search_int(result_re, result):
+    re_result = re.search(result_re, result)
+    if re_result:
+        return int(re_result.group(1))
+    else:
+        print("re_search_int failed. result:", result)
+        raise RuntimeError("re_search_int")
+
+class Watch(object):
+    def render(self, procs): raise NotImplemented()
+
+class WatchEIP(Watch):
+    def render(self, proc):
+        return proc.env_ptr("eip"), proc.reg_size
+
+class WatchRAM(Watch):
+    def __init__(self, addr, size):
+        self.addr = addr
+        self.size = size
+
+    def render(self, proc):
+        return proc.ram_ptr + self.addr, self.size
+
+class WatchReg(Watch):
+    def __init__(self, reg_num):
+        self.reg_num = reg_num
+
+    def render(self, proc):
+        return proc.env_ptr("regs[{}]".format(self.reg_num)), proc.reg_size
+
 class RRInstance(object):
     def __init__(self, description, rr_replay, source_pane):
         self.description = description
@@ -49,7 +84,7 @@ class RRInstance(object):
 
         self.breakpoints = {}
         self.watches_set = 0
-        self.instr_to_event = sorteddict()
+        self.instr_to_checkpoint = sorteddict()
 
     def __repr__(self):
         return "RRInstance({!r})".format(self.description)
@@ -95,10 +130,8 @@ class RRInstance(object):
             try:
                 os.read(self.proc.fd, 1024)
             except OSError as e:
-                if e.errno in [EAGAIN, EWOULDBLOCK]:
-                    break
-                else:
-                    raise
+                if e.errno in [EAGAIN, EWOULDBLOCK]: break
+                else: raise
         self.sendline(cmd)
 
         try:
@@ -108,34 +141,46 @@ class RRInstance(object):
             print("EXCEPTION!")
             sys.stdout.flush()
 
-        return output
+        if output.endswith("(rr) "): output = output[:-5]
+        if output.startswith(cmd): output = output[len(cmd):]
+        return output.strip()
 
     def quit(self):
         self.gdb("set confirm off")
         self.sendline("quit")
 
+    def gdb_int_re(self, result_re, *args):
+        result = self.gdb(*args)
+        return re_search_int(result_re, result)
+
     def breakpoint(self, break_arg):
-        result = self.gdb("break", break_arg)
-        bp_num = int(re.search(r"Breakpoint ([0-9]+) at", result).group(1))
+        bp_num = self.gdb_int_re(r"Breakpoint ([0-9]+) at", "break", break_arg)
         self.breakpoints[break_arg] = bp_num
 
     def disable_all(self):
         self.gdb("disable")
+        self.watches_set = 0
 
     def enable(self, break_arg):
         self.gdb("enable", self.breakpoints[break_arg])
 
+    def enable_only(self, *breaks):
+        self.disable_all()
+        for break_arg in breaks:
+            self.enable(break_arg)
+
     def condition(self, break_arg, cond):
         self.gdb("condition", self.breakpoints[break_arg], cond)
 
-    def get_value(self, value_str):
-        result = self.gdb("print/u", value_str)
-        re_result = re.search(r"\$[0-9]+ = ([0-9]+)", result)
-        if re_result:
-            return int(re_result.group(1))
-        else:
-            print("get_value failed. result:", result)
-            raise RuntimeError("get_value")
+    def checkpoint(self):
+        return self.gdb_int_re(r"Checkpoint ([0-9]+) at", "checkpoint")
+
+    def restart(self, checkpoint):
+        self.disable_all()
+        self.gdb("restart", checkpoint)
+
+    def get_value(self, expr):
+        return self.gdb_int_re(r"\$[0-9]+ = ([0-9]+)", "print/u", expr)
 
     def instr_count(self):
         return self.get_value("cpus->tqh_first->rr_guest_instr_count")
@@ -187,13 +232,7 @@ class RRInstance(object):
         return (memory, regs)
 
     def when(self):
-        result = self.gdb("when")
-        re_result = re.search(r"Current event: ([0-9]+)", result)
-        if re_result:
-            return int(re_result.group(1))
-        else:
-            print("when failed. result:", result)
-            raise RuntimeError("when")
+        return self.gdb_int_re(r"Current event: ([0-9]+)", "when")
 
     def cont(self):
         return self.gdb("continue", timeout=None)
@@ -207,37 +246,41 @@ class RRInstance(object):
     # x86 debug registers can only watch 4 locations of 8 bytes.
     # we need to make sure to enforce that.
     # returns true if can set more watchpoints. false if we're full up.
-    def watch(self, addr, size):
+    def watch_addr(self, addr, size):
         assert size in [1, 2, 4, 8]
         bits = size * 8
-        self.gdb("watch *(uint{}_t *)0x{:x}".format(bits, addr))
+        num = self.gdb_int_re(r"Hardware watchpoint ([0-9]+):",
+                              "watch", "*(uint{}_t *)0x{:x}".format(bits, addr))
         self.watches_set += 1
-        if self.watches_set >= 4:
+        if self.watches_set > 4:
             print()
             print("WARNING: Too much divergence! Not watching some diverged points.")
             print("(watchpoints are full...)")
             print()
 
-    # watch a location in guest ram.
-    def watch_ram(self, ram_addr, size):
-        self.watch(self.ram_ptr + ram_addr, size)
+        return num
 
-    def record_instr_event(self):
-        self.instr_to_event[self.instr_count()] = self.when()
+    def watch(self, watchpoint):
+        return self.watch_addr(*watchpoint.render(self))
+
+    def record_instr_checkpoint(self):
+        instr_count = self.instr_count()
+        if instr_count not in self.instr_to_checkpoint:
+            self.instr_to_checkpoint[instr_count] = self.checkpoint()
+        return self.instr_to_checkpoint[instr_count]
 
     # Get as close to instr as possible.
-    def goto(self, target_instr):
+    def goto_rough(self, target_instr):
         print("Moving", self, "to instr", target_instr)
-        self.disable_all()
         current_instr = self.instr_count()
-        if target_instr in self.instr_to_event:
+        if target_instr in self.instr_to_checkpoint:
             run_instr = target_instr
         else:
-            index = self.instr_to_event.keys().bisect_left(target_instr) - 1
-            run_instr = self.instr_to_event.keys()[index]
+            index = self.instr_to_checkpoint.keys().bisect_left(target_instr) - 1
+            run_instr = self.instr_to_checkpoint.keys()[index]
 
         if current_instr > target_instr or current_instr < run_instr:
-            self.run_event(self.instr_to_event[run_instr])
+            self.restart(self.instr_to_checkpoint[run_instr])
 
         # We should have now guaranteed that both will be in [run_instr, target_instr].
         # Now run them forwards to as close to target_instr as we can get.
@@ -247,53 +290,50 @@ class RRInstance(object):
         current_instr = self.instr_count()
         if current_instr < run_instr:
             print("Moving from {} to {} below {}".format(current_instr, run_instr, target_instr))
-            self.enable("debug_counter")
+            self.enable_only("debug_counter")
             self.condition_instr("debug_counter", ">=", run_instr)
             self.cont()
+            current_instr = self.instr_count()
 
         # unfortunately, we might have gone too far above. move back one
         # debug_counter fire if necessary.
-        current_instr = self.instr_count()
         if current_instr > target_instr:
             print("Moving back to {}".format(target_instr))
-            self.enable("debug_counter")
+            self.enable_only("debug_counter")
             self.condition_instr("debug_counter", "<=", target_instr)
             self.reverse_cont()
+            current_instr = self.instr_count()
 
-        current_instr = self.instr_count()
         if current_instr != target_instr:
             print("Moving precisely to", target_instr)
-            self.disable_all()
-            self.enable("cpu_loop_exec_tb")
+            self.enable_only("cpu_loop_exec_tb")
             self.condition_instr("cpu_loop_exec_tb", ">=", target_instr)
             self.cont()
 
     # Go from beginning of program to execution of first TB after record/replay.
+    # Return number of that checkpoint.
     def goto_first_tb(self):
-        self.disable_all()
-        self.enable("rr_do_begin_record")
-        self.enable("rr_do_begin_replay")
+        self.enable_only("rr_do_begin_record", "rr_do_begin_replay")
         self.cont()
-        self.enable("cpu_loop_exec_tb")
+        self.enable_only("cpu_loop_exec_tb")
         self.cont()
+        return self.record_instr_checkpoint()
 
     def find_last_instr(self, cli_args, last_event):
-        self.goto_first_tb()
+        first_tb_checkpoint = self.goto_first_tb()
 
         if cli_args.instr_max is not None:
             instr_count_max = cli_args.instr_max
         else:
             # get last instruction in failed replay
             self.run_event(last_event)
-            self.disable_all()
-            self.enable("cpu_loop_exec_tb")
-            self.reverse_cont()
-            self.reverse_cont()
+            self.enable_only("cpu_loop_exec_tb")
+            self.reverse_cont() # go backwards through failure signal
+            self.reverse_cont() # land on last TB exec
             instr_count_max = self.instr_count()
 
             # reset replay so it is in same state as record
-            self.run_event(0)
-            self.goto_first_tb()
+            self.restart(first_tb_checkpoint)
 
         return instr_count_max
 
@@ -301,8 +341,11 @@ class RRInstance(object):
 class All(object):
     pool = ThreadPool(processes=2)
 
-    def __init__(self, procs):
+    def __init__(self, procs, unify=False):
         self.procs = procs
+        self.unify = unify # unify results of calls?
+        if not unify:
+            self.same = All(procs, unify=True)
 
     def split_args(self, args):
         out_args = { proc: [] for proc in self.procs }
@@ -322,9 +365,13 @@ class All(object):
             async_obj = self.pool.map_async(
                 getattr_apply, split_args.items(), chunksize=1)
             # timeout necessary due to http://bugs.python.org/issue8844
-            ret = dict(async_obj.get(9999999))
+            ret = dict(async_obj.get(None))
             if any([value is not None for value in ret.values()]):
-                return ret
+                if self.unify:
+                    assert values_equal(ret)
+                    return next(iter(ret.values()))
+                else:
+                    return ret
 
         return result
 
@@ -336,7 +383,7 @@ class All(object):
         async_obj = self.pool.map_async(
             star_apply, func_map.items(), chunksize=1)
         # timeout necessary due to http://bugs.python.org/issue8844
-        ret = dict(async_obj.get(9999999))
+        ret = dict(async_obj.get(None))
         if any([value is not None for value in ret.values()]):
             return ret
 
@@ -360,13 +407,6 @@ Current divergence understanding:
 ------------------------------------------------------
 """
 
-def print_divergence_info(instr_bounds, instr_count_max):
-    print(divergence_info.format(
-        instr_lo=instr_bounds[0],
-        instr_hi=instr_bounds[1],
-        instr_max=instr_count_max
-    ))
-
 def get_last_event(replay_dir):
     cmd = ("{} dump {} | grep global_time | tail -n 1 | " +
         "sed -E 's/^.*global_time:([0-9]+),.*$/\\1/'").format(cli_args.rr,
@@ -387,6 +427,13 @@ class Diverge(object):
         self.replay = replay
         self.both = All([record, replay])
         self.other = { record: replay, replay: record }
+
+    def print_divergence_info(self, instr_bounds):
+        print(divergence_info.format(
+            instr_lo=instr_bounds[0],
+            instr_hi=instr_bounds[1],
+            instr_max=self.instr_count_max
+        ))
 
     def bisect_memory(self):
         search_queue = [(0, self.record.ram_size)]
@@ -437,40 +484,36 @@ class Diverge(object):
                 "cpu_loop_exec_tb", "<=", instr_counts[behind])
             ahead.reverse_cont()
 
-    def sync_precise(self, target_instr, instr_count_max):
-        self.both.disable_all()
-        self.both.enable("cpu_loop_exec_tb")
+    def sync_precise(self, target_instr):
+        self.both.enable_only("cpu_loop_exec_tb")
         self.both.condition("cpu_loop_exec_tb", "")
         instr_counts = self.both.instr_count()
         direction = Diverge.FORWARDS
         while not values_equal(instr_counts):
-            if max(instr_counts.values()) == instr_count_max:
+            if max(instr_counts.values()) == self.instr_count_max:
                 direction = Diverge.BACKWARDS
 
             self.get_closer(direction)
             instr_counts = self.both.instr_count()
 
-        self.both.record_instr_event()
+        self.both.record_instr_checkpoint()
         return instr_counts[record]
 
 
-    def bisect_time(self, instr_bounds, instr_count_max):
-        whens = self.both.when()
+    def bisect_time(self, instr_bounds):
         now_instr = instr_bounds[0]
         last_now = None
         while last_now != now_instr:
-            print_divergence_info(instr_bounds, instr_count_max)
+            self.print_divergence_info(instr_bounds)
 
             mid = (instr_bounds[0] + instr_bounds[1]) // 2
 
             last_now = now_instr
-            now_instr = self.goto_instr(mid, instr_count_max)
+            now_instr = self.goto_instr(mid)
 
-            whens = self.both.when()
             checksums = self.both.checksum()
 
             print()
-            print(whens)
             print("Current checksums:", checksums)
             if not values_equal(checksums):  # after divergence
                 # make right side of range smaller, i.e. new first divergence.
@@ -489,11 +532,87 @@ class Diverge(object):
                 diverged_registers.append(reg)
         return diverged_registers
 
-    def goto_instr(self, target_instr, instr_count_max):
-        self.both.goto(target_instr)
-        now_instr = self.sync_precise(target_instr, instr_count_max)
-        self.both.record_instr_event()
+    def goto_instr(self, target_instr, strict=False):
+        self.both.goto_rough(target_instr)
+        now_instr = self.sync_precise(target_instr)
+        if strict: assert target_instr == now_instr
+        self.both.record_instr_checkpoint()
         return now_instr
+
+    def find_precise_divergence(self, instr_bounds, diverged_ranges,
+                                diverged_registers, diverged_pcs):
+        watches = [WatchReg(reg) for reg in diverged_registers]
+        if diverged_pcs: watches.append(WatchEIP())
+
+        for low, high in diverged_ranges:
+            if low % 8 != 0:
+                assert low % 8 == 4
+                watches.append(WatchRAM(low, 4))
+                low += 4
+            while low < high:
+                watches.append(WatchRAM(low, min(8, high - low)))
+                low += 8
+
+        if len(watches) == 0:
+            print("WARNING: Couldn't find any watchpoints to set at beginning of ",)
+            print("divergence range. What do you want to do?")
+            IPython.embed()
+
+        # Return to latest converged instr
+        now_instr = self.goto_instr(instr_bounds[0])
+
+        # Make sure we're actually at a converged point.
+        # If we're more than 1000 instrs too far forward, make user intervene.
+        if now_instr > instr_bounds[0] + 1000:
+            print("WARNING: Processes are too far ahead of last divergence.")
+            print("Please sync them manually behind", instr_bounds[0],)
+            print("and continue.")
+            IPython.embed()
+            instr_counts = self.both.instr_count()
+            assert values_equal(instr_counts)
+            assert instr_counts[self.record] <= instr_bounds[0]
+        elif now_instr >= instr_bounds[1]:
+            # NB: in some cases, instr_bounds[0] (i.e. we observe the same instr
+            # both converged and diverged. This should make sure we move before it
+            # before setting watchpoints.
+            self.both.enable_only("cpu_loop_exec_tb")
+            self.both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
+            self.both.reverse_cont()
+            while not values_equal(self.both.instr_count()):
+                print("Not synced.")
+                self.get_closer(Diverge.BACKWARDS)
+
+        last_converged_checkpoint = self.both.checkpoint()
+
+        # Unfortunately, only 4 hardware watchpoints on x86 hosts. So we check
+        # potential divergence points in groups of 4, finding the first to
+        # diverge in each group. That reduces potential first divergence points
+        # by a factor of 2 in each loop.
+        while True:
+            new_watches = []
+            for watches_chunk in chunks(watches, 4):
+                num_to_watch_dict = {}
+                self.both.restart(last_converged_checkpoint)
+                for watch in watches_chunk:
+                    num_to_watch_dict[self.both.same.watch(watch)] = watch
+
+                instr_counts = self.both.instr_count()
+                while values_equal(instr_counts) \
+                        and instr_counts[self.record] > 0 \
+                        and instr_counts[self.replay] < self.instr_count_max \
+                        and values_equal(self.both.checksum()):
+                    hit = self.both.cont()
+                    instr_counts = self.both.instr_count()
+
+                new_watches.extend(set(
+                    num_to_watch_dict[
+                        re_search_int(r"hit Hardware watchpoint ([0-9]+):", hit[proc])
+                    ] for proc in hit
+                ))
+
+            if len(watches) == len(new_watches): break
+            watches = new_watches
+            assert len(watches) > 0
 
     def go(self):
         def cleanup_error():
@@ -519,104 +638,50 @@ class Diverge(object):
             self.replay: (RRInstance.find_last_instr, [cli_args, replay_last])
         })
 
-        instr_count_max = result[self.replay]
-        assert instr_count_max is not None
-        self.both.record_instr_event()
+        # This is a guardrail to avoid moving the recording past the last
+        # instr in the (failing) replay.
+        self.instr_count_max = result[self.replay]
+        assert self.instr_count_max is not None
 
-        print("Failing replay instr count:", instr_count_max)
+        print("Failing replay instr count:", self.instr_count_max)
 
         try:
             self.both.breakpoint("debug_counter")
-        except AttributeError:
+        except RuntimeError:
             print("Must run diverge.py on a debug build of panda. Run ./configure ",)
             print("with --enable-debug for this to work.")
             cleanup_error()
 
         if cli_args.instr_bounds:
             instr_bounds = [int(s) for s in cli_args.instr_bounds.split(',')]
+            self.goto_instr(instr_bounds[0], strict=True)
         else:
-            instr_bounds = [0, instr_count_max]
+            instr_bounds = [0, self.instr_count_max]
 
-        # This is the most important function. Do a binary search over time to
-        # find the first point of memory or register divergence.
-        instr_bounds = self.bisect_time(instr_bounds, instr_count_max)
+        if cli_args.skip_bisect_time:
+            self.goto_instr(instr_bounds[1], strict=True)
+        else:
+            # This is the most important function. Do a binary search over time
+            # to find the first point of memory or register divergence.
+            instr_bounds = self.bisect_time(instr_bounds)
+            print("Haven't made progress since last iteration. Moving to memory checksum.")
 
-        print("Haven't made progress since last iteration. Moving to memory checksum.")
-        print_divergence_info(instr_bounds, instr_count_max)
+        self.print_divergence_info(instr_bounds)
 
         # Find diverged memory ranges and registers.
         diverged_ranges = self.bisect_memory()
         diverged_registers = self.check_registers()
-
         diverged_pcs = not values_equal(self.both.env_value("eip"))
 
         print("Diverged memory addresses:",)
-        print([(hex(low), hex(high)) for low, high in diverged_ranges])
+        print([(hex(lo), hex(hi)) for lo, hi in diverged_ranges])
         print("Diverged registers:", diverged_registers)
         print("Diverged eips:", diverged_pcs)
 
-        # Return to latest converged instr
-        now_instr = self.goto_instr(instr_bounds[0], instr_count_max)
+        self.find_precise_divergence(instr_bounds, diverged_ranges, diverged_registers, diverged_pcs)
 
-        # Make sure we're actually at a converged point.
-        # If we're more than 1000 instrs too far forward, make user intervene.
-        if now_instr > instr_bounds[0] + 1000:
-            print("WARNING: Processes are too far ahead of last divergence.")
-            print("Please sync them manually behind", instr_bounds[0],)
-            print("and continue.")
-            IPython.embed()
-            instr_counts = self.both.instr_count()
-            assert values_equal(instr_counts)
-            assert instr_counts[self.record] <= instr_bounds[0]
-        else:
-            # NB: in some cases, instr_bounds[0] (i.e. we observe the same instr
-            # both converged and diverged. This should make sure we move before it
-            # before setting watchpoints.
-            if now_instr >= instr_bounds[1]:
-                self.both.disable_all()
-                self.both.enable("cpu_loop_exec_tb")
-                self.both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
-                self.both.reverse_cont()
-                while not values_equal(self.both.instr_count()):
-                    print("Not synced.")
-                    self.get_closer(Diverge.BACKWARDS)
-
-        self.both.disable_all()
-        if diverged_pcs:
-            pc_ptrs = self.both.env_ptr("eip")
-            self.both.watch(pc_ptrs, self.record.reg_size)
-
-        for reg in diverged_registers:
-            result = self.both.watch({
-                proc: proc.env_ptr("regs[{}]".format(reg)) for proc in self.both
-            }, self.record.reg_size)
-            if self.record.watches_set >= 4: break
-
-        # Heuristic: Should watch each range at most once. So iterate over offset
-        # in outer loop, range in inner loop.
-        max_range = max([high - low for (low, high) in diverged_ranges])
-        max_range += max_range % 8
-        for offset in range(0, max_range, 8):
-            if self.record.watches_set >= 4: break
-            for low, high in diverged_ranges:
-                low -= low % 8
-                watch_bytes = min(high - offset, 8)
-                self.both.watch_ram(low + offset, watch_bytes)
-                if self.record.watches_set >= 4: break
-
-        if self.record.watches_set == 0:
-            print("WARNING: Couldn't find any watchpoints to set at beginning of ",)
-            print("divergence range. What do you want to do?")
-            IPython.embed()
-
+        # Now we are precisely at first point of divergence
         instr_counts = self.both.instr_count()
-        while values_equal(instr_counts) \
-                and instr_counts[self.record] > 0 \
-                and instr_counts[self.replay] < instr_count_max \
-                and values_equal(self.both.checksum()):
-            self.both.cont()
-            instr_counts = self.both.instr_count()
-
         backtraces = self.both.gdb("backtrace")
 
         def show_backtrace(proc):
@@ -643,7 +708,7 @@ class Diverge(object):
         else:
             print("Failed to find exact divergence. Look at mem ranges {}".format(
                 [(hex(lo), hex(hi)) for lo, hi in diverged_ranges]))
-            print_divergence_info(instr_bounds, instr_count_max)
+            self.print_divergence_info(instr_bounds)
 
         self.both.gdb("set confirm on")
         self.both.gdb("set pagination on")
@@ -688,6 +753,8 @@ if __name__ == '__main__':
             help=("Instruction bounds where divergence could have occurred."))
     parser.add_argument("--instr-max", type=int,
             help="Last instruction before replay failed.")
+    parser.add_argument("--skip-bisect-time", action='store_true',
+            help="Skip binary search over time (use provided instr bounds).")
     cli_args = parser.parse_args()
 
     # Check arguments
