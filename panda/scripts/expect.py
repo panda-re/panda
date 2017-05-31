@@ -27,7 +27,7 @@ class Expect(object):
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
-        while timeout is None or time_passed < timeout or timeout:
+        while timeout is None or time_passed < timeout:
             if timeout is not None:
                 time_passed = (datetime.now() - start_time).total_seconds()
                 time_left = timeout - time_passed
