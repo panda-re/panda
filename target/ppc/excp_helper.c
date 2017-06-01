@@ -28,6 +28,10 @@
 //#define DEBUG_SOFTWARE_TLB
 //#define DEBUG_EXCEPTIONS
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 #ifdef DEBUG_EXCEPTIONS
 #  define LOG_EXCP(...) qemu_log(__VA_ARGS__)
 #else
@@ -745,7 +749,7 @@ void ppc_cpu_do_interrupt(CPUState *cs)
 static void ppc_hw_interrupt(CPUPPCState *env)
 {
     PowerPCCPU *cpu = ppc_env_get_cpu(env);
-#if 0
+#if 1
     CPUState *cs = CPU(cpu);
 
     qemu_log_mask(CPU_LOG_INT, "%s: %p pending %08x req %08x me %d ee %d\n",
@@ -753,6 +757,15 @@ static void ppc_hw_interrupt(CPUPPCState *env)
                   cs->interrupt_request, (int)msr_me, (int)msr_ee);
 #endif
     /* External reset */
+
+    int pending_interrupts = 0;
+    RR_DO_RECORD_OR_REPLAY(
+            /*action=*/pending_interrupts = env->pending_interrupts,
+            /*record=*/rr_input_4((uint32_t*)&pending_interrupts),
+    /*replay=*/if (!rr_replay_intno((uint32_t*)&env->pending_interrupts)) { printf("Failed!"); },
+    /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
+
+
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_RESET)) {
         env->pending_interrupts &= ~(1 << PPC_INTERRUPT_RESET);
         powerpc_excp(cpu, env->excp_model, POWERPC_EXCP_RESET);

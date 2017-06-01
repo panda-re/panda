@@ -322,6 +322,7 @@ int qemu_timeout_ns_to_ms(int64_t ns)
  */
 int qemu_poll_ns(GPollFD *fds, guint nfds, int64_t timeout)
 {
+//#define CONFIG_PPOLL 1
 #ifdef CONFIG_PPOLL
     if (timeout < 0) {
         return ppoll((struct pollfd *)fds, nfds, NULL, NULL);

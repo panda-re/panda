@@ -39,6 +39,8 @@ else
   fi
 fi
 
+LLVM_BIT=""
+
 
 "$(dirname $0)/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu \

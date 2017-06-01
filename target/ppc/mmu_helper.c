@@ -1391,7 +1391,7 @@ static int get_physical_address(CPUPPCState *env, mmu_ctx_t *ctx,
         if (real_mode) {
             ret = check_physical(env, ctx, eaddr, rw);
         } else {
-            cpu_abort(CPU(cpu), "PowerPC in real mode do not do any translation\n");
+            cpu_abort(CPU(cpu), "PowerPC askein real mode do not do any translation\n");
         }
         return -1;
     default:

@@ -106,6 +106,7 @@ target_ulong panda_current_asid(CPUState *cpu) {
   /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+  //rw: WHy is this the case??
   return env->sr[0];
 #else
 #error "panda_current_asid() not implemented for target architecture."
@@ -144,6 +145,7 @@ bool panda_in_kernel(CPUState *cpu) {
 #elif defined(TARGET_ARM)
     return ((env->uncached_cpsr & CPSR_M) == ARM_CPU_MODE_SVC);
 #elif defined(TARGET_PPC)
+    //TODO: rw fix this
     return msr_pr;
 #else
 #error "panda_in_kernel() not implemented for target architecture."
