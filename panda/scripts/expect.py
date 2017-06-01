@@ -27,7 +27,7 @@ class Expect(object):
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
-        while timeout is None or time_passed < timeout or timeout:
+        while timeout is None or time_passed < timeout:
             if timeout is not None:
                 time_passed = (datetime.now() - start_time).total_seconds()
                 time_left = timeout - time_passed
@@ -51,10 +51,10 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
                     sofar.extend(b'\n')
-                    return str(sofar)
+                    return sofar.decode('utf8')
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
-        self.sofar = str(sofar)
+        self.sofar = sofar.decode('utf8')
         raise TimeoutExpired()
 
     def send(self, msg):
