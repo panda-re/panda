@@ -28,7 +28,7 @@
 #include "qemu/osdep.h"
 
 #include <glib/gprintf.h>
-
+#include "qapi/error.h"
 #include "qemu/memfd.h"
 #include "qemu/host-utils.h"
 
