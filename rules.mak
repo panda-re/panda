@@ -20,9 +20,6 @@ MAKEFLAGS += -rR
 %.mak:
 clean-target:
 
-# Flags for C++ compilation
-QEMU_CXXFLAGS = -std=c++11 -fPIC -fpermissive -Wno-sign-compare -D__STDC_LIMIT_MACROS $(filter-out -std=% -Wstrict-prototypes -Wmissing-prototypes -Wnested-externs -Wold-style-declaration -Wold-style-definition -Wredundant-decls, $(QEMU_CFLAGS))
-
 # Flags for dependency generation
 QEMU_DGFLAGS += -MMD -MP -MT $@ -MF $(@D)/$(*F).d
 
