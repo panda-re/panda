@@ -1,4 +1,5 @@
 /.idea/*
+.DS_Store
 Cmakelists.txt
 /config-devices.*
 /config-all-devices.*
