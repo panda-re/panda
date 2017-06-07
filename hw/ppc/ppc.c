@@ -39,6 +39,10 @@
 #include "kvm_ppc.h"
 #include "trace.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 //#define PPC_DEBUG_IRQ
 //#define PPC_DEBUG_TB
 
@@ -462,11 +466,38 @@ void ppce500_set_mpic_proxy(bool enabled)
 
 /*****************************************************************************/
 /* PowerPC time base and decrementer emulation */
+void record_tb_log(uint64_t tb_val);
+void replay_tb_log(uint64_t tb_val);
+
+void record_tb_log(uint64_t tb_val){
+    printf("recording tb_val %lu\n", tb_val);
+}
+
+void replay_tb_log(uint64_t tb_val){
+    printf("replaying tb_val %lu\n", tb_val);
+}
+
 
 uint64_t cpu_ppc_get_tb(ppc_tb_t *tb_env, uint64_t vmclk, int64_t tb_offset)
 {
+    uint64_t tb_val;
     /* TB time in tb periods */
-    return muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;
+#ifdef CONFIG_SOFTMMU
+     RR_DO_RECORD_OR_REPLAY(
+        tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;,
+        /*record=*/rr_input_8(&tb_val);
+        //record_tb_log(tb_val);
+        ,
+        /*replay=*/rr_input_8(&tb_val);
+        //replay_tb_log(tb_val);
+        ,
+        /*location=*/RR_CALLSITE_RDTSC);
+
+    //printf("cpu getting host ticks powerpc\n");
+#else
+    tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;
+#endif
+    return tb_val;
 }
 
 uint64_t cpu_ppc_load_tbl (CPUPPCState *env)
@@ -849,6 +880,7 @@ static void cpu_ppc_set_tb_clk (void *opaque, uint32_t freq)
 
 static void timebase_save(PPCTimebase *tb)
 {
+    printf("Timebase save being executed\n");
     uint64_t ticks = cpu_get_host_ticks();
     PowerPCCPU *first_ppc_cpu = POWERPC_CPU(first_cpu);
 
