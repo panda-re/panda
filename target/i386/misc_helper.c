@@ -24,8 +24,6 @@
 #include "exec/cpu_ldst.h"
 #include "exec/address-spaces.h"
 
-#define CONFIG_SOFTMMU 1
-
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif

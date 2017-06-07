@@ -74,7 +74,6 @@ RR_log* rr_nondet_log = NULL;
 
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
-#define CONFIG_SOFTMMU 1
 
 // our own assertion mechanism
 #define rr_assert(exp)                                                         \

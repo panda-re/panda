@@ -28,9 +28,6 @@
 //#define DEBUG_SOFTWARE_TLB
 //#define DEBUG_EXCEPTIONS
 
-#ifdef CONFIG_SOFTMMU
-#include "panda/rr/rr_log.h"
-#endif
 
 #ifdef DEBUG_EXCEPTIONS
 #  define LOG_EXCP(...) qemu_log(__VA_ARGS__)
