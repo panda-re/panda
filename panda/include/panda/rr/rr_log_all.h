@@ -47,6 +47,7 @@ typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN} RR_mem_type;
 
 extern volatile RR_mode rr_mode;
 
+
 // Log management
 void rr_create_record_log(const char* filename);
 void rr_create_replay_log(const char* filename);
@@ -103,7 +104,7 @@ extern void rr_signal_disagreement(RR_prog_point current,
 
 //
 // Record/Replay log structures
-//
+//:w
 
 // Skipped calls are records of machine emulation activity that were triggered
 // by hardware devices during record session.  Since device emulation code is
@@ -150,7 +151,8 @@ get_skipped_call_kind_string(RR_skipped_call_kind kind)
     ACTION(RR_INTERRUPT_REQUEST), \
     ACTION(RR_EXIT_REQUEST), \
     ACTION(RR_SKIPPED_CALL), \
-    ACTION(RR_LAST)
+    ACTION(RR_LAST),\
+    ACTION(RR_PENDING_INTERRUPTS) // For PowerPC
 
 typedef enum {
     FOREACH_LOGTYPE(GENERATE_ENUM)
@@ -162,7 +164,7 @@ static const char* log_entry_kind_str[] = {
 
 static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
 {
-    if (kind <= RR_LAST)
+    if (kind <= RR_PENDING_INTERRUPTS)
         return log_entry_kind_str[kind];
     else
         return NULL;
@@ -188,11 +190,18 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
     ACTION(RR_CALLSITE_WRITE_4), \
     ACTION(RR_CALLSITE_WRITE_2), \
     ACTION(RR_CALLSITE_WRITE_1), \
-    ACTION(RR_CALLSITE_LAST),
+    ACTION(RR_CALLSITE_LAST), \
+    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS)
 
 typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
 } RR_callsite_id;
+
+// Used for state tracking of powerpc
+typedef enum {
+    RR_INTERRUPT_PENDING,
+    RR_INTERRUPT_DONE
+} RR_log_state;
 
 static const char* callsite_str[] = {
     FOREACH_CALLSITE(GENERATE_STRING)
@@ -200,11 +209,13 @@ static const char* callsite_str[] = {
 
 static inline const char* get_callsite_string(RR_callsite_id cid)
 {
-    if (cid <= RR_CALLSITE_LAST)
+    if (cid <= RR_CALLSITE_CPU_PENDING_INTERRUPTS)
         return callsite_str[cid];
     else
         return NULL;
 }
+
+void rr_set_state(RR_log_state log_state);
 
 // Record routines
 void rr_record_debug(RR_callsite_id call_site);
@@ -217,6 +228,8 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request);
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
+void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_interrupt);
+
 // Replay routines
 void rr_replay_debug(RR_callsite_id call_site);
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t* data);
@@ -226,6 +239,7 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  uint32_t* interrupt_request);
+bool rr_replay_pending_interrupts(uint32_t* pending_interrupt);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request);
 bool rr_replay_intno(uint32_t *intno);
 
@@ -242,6 +256,8 @@ static inline int rr_prog_point_compare(RR_prog_point current,
                                         RR_prog_point recorded,
                                         RR_log_entry_kind kind)
 {
+
+     printf("rr prog point compare: log header point: %lu, replay prog point: %lu\n", recorded.guest_instr_count, current.guest_instr_count);
     // mz my contention is that we should never be in a situation where the
     // program point counts are higher than current item being replayed.  This
     // is

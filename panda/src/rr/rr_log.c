@@ -941,6 +941,7 @@ static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
     }
 
     if (check_callsite && header.callsite_loc != call_site) {
+        printf("check callsite failed, expected %d but read %d from log\n", call_site, header.callsite_loc);
         return NULL;
     }
 
@@ -1017,6 +1018,21 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
 //TODO: Not yet done
 // This is for PPC
 bool rr_replay_pending_interrupts(uint32_t* pending_int) {
+    //if (rr_nondet_log->current_state == RR_INTERRUPT_DONE){
+
+        //RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, RR_CALLSITE_CPU_PENDING_INTERRUPTS, true);
+
+        //if (!current_item) return false;
+        //printf("replaying interrupt %8x\n", current_item->variant.pending_interrupts);
+
+        //*pending_int = current_item->variant.pending_interrupts;
+
+        ////then, pop off queue and return
+        //rr_queue_pop_front();
+        //return true;
+    //} else{
+        //return false;
+    //}
     RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, RR_CALLSITE_CPU_PENDING_INTERRUPTS, true);
 
     if (!current_item) return false;
@@ -1538,7 +1554,7 @@ void rr_do_end_replay(int is_error)
 
     printf("Stats:\n");
     int i;
-    for (i = 0; i < RR_LAST; i++) {
+    for (i = 0; i < RR_PENDING_INTERRUPTS; i++) {
         printf("%s number = %llu, size = %llu bytes\n",
                get_log_entry_kind_string(i), rr_number_of_log_entries[i],
                rr_size_of_log_entries[i]);

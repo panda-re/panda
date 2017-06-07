@@ -780,8 +780,8 @@ static void ppc_hw_interrupt(CPUPPCState *env)
     RR_DO_RECORD_OR_REPLAY(
             pending_interrupts = env->pending_interrupts,
                 rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
-            //if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
-            rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
+            if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
+            //rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
              RR_CALLSITE_CPU_PENDING_INTERRUPTS);
 
     //RR_DO_RECORD_OR_REPLAY(
