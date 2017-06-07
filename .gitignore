@@ -1,4 +1,5 @@
 /.idea/*
+Cmakelists.txt
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*
