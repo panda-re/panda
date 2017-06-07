@@ -249,14 +249,18 @@ static inline void powerpc_excp(PowerPCCPU *cpu, int excp_model, int excp)
     case POWERPC_EXCP_EXTERNAL:  /* External input                           */
         cs = CPU(cpu);
 
+        printf("external excp 2\n");
+
         if (!lpes0) {
             new_msr |= (target_ulong)MSR_HVB;
             new_msr |= env->msr & ((target_ulong)1 << MSR_RI);
             srr0 = SPR_HSRR0;
             srr1 = SPR_HSRR1;
+            printf("srr0 %8x srr1 %8x\n", srr0, srr1);
         }
         if (env->mpic_proxy) {
             /* IACK the IRQ on delivery */
+            printf("mpic proxy\n");
             env->spr[SPR_BOOKE_EPR] = ldl_phys(cs->as, env->mpic_iack);
         }
         break;
@@ -670,6 +674,7 @@ static inline void powerpc_excp(PowerPCCPU *cpu, int excp_model, int excp)
 
     /* Jump to handler */
     vector = env->excp_vectors[excp];
+    //printf("vector %8x\n", vector);
     if (vector == (target_ulong)-1ULL) {
         cpu_abort(cs, "Raised an exception without defined vector %d\n",
                   excp);
@@ -743,6 +748,17 @@ void ppc_cpu_do_interrupt(CPUState *cs)
     powerpc_excp(cpu, env->excp_model, cs->exception_index);
 }
 
+void record_log(CPUPPCState *env);
+void replay_log(CPUPPCState *env);
+
+void record_log(CPUPPCState *env){
+    printf("recording env->pending_interrupts %8x\n", env->pending_interrupts);
+}
+
+void replay_log(CPUPPCState *env){
+    printf("replaying env->pending_interrupts %8x\n", env->pending_interrupts);
+}
+
 static void ppc_hw_interrupt(CPUPPCState *env)
 {
     PowerPCCPU *cpu = ppc_env_get_cpu(env);
@@ -756,12 +772,14 @@ static void ppc_hw_interrupt(CPUPPCState *env)
     /* External reset */
 
     int pending_interrupts = 0;
+    //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
     RR_DO_RECORD_OR_REPLAY(
-            /*action=*/pending_interrupts = env->pending_interrupts,
-            /*record=*/rr_input_4((uint32_t*)&pending_interrupts),
-    /*replay=*/if (!rr_replay_intno((uint32_t*)&env->pending_interrupts)) { printf("Failed!"); },
-    /*location=*/ RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
+            pending_interrupts = env->pending_interrupts,
+                rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
+            if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("Failed!"); },
+             RR_CALLSITE_CPU_PENDING_INTERRUPTS);
 
+    //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
 
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_RESET)) {
         env->pending_interrupts &= ~(1 << PPC_INTERRUPT_RESET);
