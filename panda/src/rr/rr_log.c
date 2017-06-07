@@ -68,7 +68,7 @@ RR_log_entry* rr_queue_end; // end of buffer.
 volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
-
+int pending_int_count = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
@@ -254,6 +254,11 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
     /* NOT REACHED */
 }
 
+void rr_set_state(RR_log_state log_state){
+    printf("Setting state to %d\n", log_state);
+    rr_nondet_log->current_state = log_state;
+}
+
 /******************************************************************************************/
 /* RECORD */
 /******************************************************************************************/
@@ -279,7 +284,7 @@ static inline void rr_write_item(void)
     RR_WRITE_ITEM(item.header.kind);
     RR_WRITE_ITEM(item.header.callsite_loc);
 
-    printf("guest_instr_count %lu kind %d callsite_lo %lu", item.header.prog_point.guest_instr_count, item.header.kind, item.header.callsite_loc);
+    printf("guest_instr_count %lu kind %d callsite_lo %d\n", item.header.prog_point.guest_instr_count, item.header.kind, item.header.callsite_loc);
 
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
@@ -303,6 +308,9 @@ static inline void rr_write_item(void)
             break;
         case RR_EXIT_REQUEST:
             RR_WRITE_ITEM(item.variant.exit_request);
+            break;
+        case RR_PENDING_INTERRUPTS:
+            RR_WRITE_ITEM(item.variant.pending_interrupts);
             break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
@@ -426,6 +434,9 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request)
 {
     if (panda_current_interrupt_request != interrupt_request) {
+        // If the interrupt_request has a state transition, then set state for record_pending_interrupts to done
+        // TODO: Maybe don't even need a state variable? Maybe just use same technique of change on curr_pending_interrupts
+        rr_set_state(RR_INTERRUPT_DONE);
         RR_log_entry* item = &(rr_nondet_log->current_item);
         memset(item, 0, sizeof(RR_log_entry));
 
@@ -437,6 +448,40 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
         panda_current_interrupt_request = interrupt_request;
         rr_write_item();
     }
+}
+
+void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int){
+    // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
+    //TODO: Should I use latest or earliest guest instr count? Try earliest for now.
+
+    RR_log_entry* prev_item = &(rr_nondet_log->prev_item);
+    RR_log_entry* item = &(rr_nondet_log->current_item);
+
+    // Check state. If prev item was a pending interrupt as well, and interrupts have not changed, do nothing.
+    assert(prev_item);
+
+    //if( prev_item->header.kind == RR_PENDING_INTERRUPTS && prev_item->variant.pending_interrupts == pending_int){
+        //return;
+    //}
+
+    printf("CUrrent state: %d\n", rr_nondet_log->current_state );
+
+    if (rr_nondet_log->current_state == RR_INTERRUPT_PENDING){
+        printf("INTERUPPT PENDING, not writing log\n");
+        return;
+    }
+
+    pending_int_count++;
+    printf("Writing RR_PENDING_INTERRUPTS to log %d callsite %d\n", pending_int_count, call_site);
+    memset(item, 0, sizeof(RR_log_entry));
+    item->header.kind = RR_PENDING_INTERRUPTS;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point();
+
+    item->variant.pending_interrupts = pending_int;
+
+    rr_write_item();
+    rr_nondet_log->current_state = RR_INTERRUPT_PENDING;
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
@@ -745,6 +790,8 @@ static RR_log_entry *rr_read_item(void) {
         case RR_INTERRUPT_REQUEST:
             RR_READ_ITEM(item->variant.interrupt_request);
             break;
+        case RR_PENDING_INTERRUPTS:
+            RR_READ_ITEM(item->variant.pending_interrupts);
         case RR_EXIT_REQUEST:
             RR_READ_ITEM(item->variant.exit_request);
             break;
@@ -966,6 +1013,19 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
         *exit_request = current_item->variant.exit_request;
         rr_queue_pop_front();
     }
+}
+
+//TODO: Not yet done
+// This is for PPC
+bool rr_replay_pending_interrupts(uint32_t* pending_int) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, RR_CALLSITE_CPU_PENDING_INTERRUPTS, true);
+
+    if (!current_item) return false;
+
+    *pending_int = current_item->variant.pending_interrupts;
+
+    //then,
+    return true;
 }
 
 bool rr_replay_intno(uint32_t *intno) {

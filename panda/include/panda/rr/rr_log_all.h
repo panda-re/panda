@@ -269,6 +269,7 @@ static inline int rr_prog_point_compare(RR_prog_point current,
 // Convenience routines that perform appropriate action based on rr_mode setting
 static inline void rr_interrupt_request(int* interrupt_request)
 {
+    //printf("executing rr_interrupt_request\n");
     switch (rr_mode) {
     case RR_RECORD:
         rr_record_interrupt_request(

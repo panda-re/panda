@@ -128,12 +128,17 @@ typedef struct rr_log_entry_t {
                                     // request value!
         // if log_entry.kind == RR_EXIT_REQUEST
         uint16_t exit_request;
+        // pending interrupts for PPC
+        uint32_t pending_interrupts;
         // if log_entry.kind == RR_SKIPPED_CALL
         RR_skipped_call_args call_args;
         // if log_entry.kind == RR_LAST
         // no variant fields
     } variant;
 } RR_log_entry;
+
+
+extern int pending_int_count;
 
 // a program-point indexed record/replay log
 typedef enum { RECORD, REPLAY } RR_log_type;
@@ -149,6 +154,7 @@ typedef struct RR_log_t {
     uint64_t bytes_read;
 
     RR_log_entry current_item;
+    RR_log_state current_state;
     uint8_t current_item_valid;
     uint64_t item_number;
 } RR_log;
