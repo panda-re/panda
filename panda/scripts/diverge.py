@@ -94,7 +94,7 @@ class WatchReg(Watch):
         self.reg_num = reg_num
 
     def render(self, proc):
-        return proc.env_ptr("regs[{}]".format(self.reg_num)), proc.reg_size
+        return proc.env_ptr("{}[{}]".format(proc.arch.reg_name, self.reg_num)), proc.reg_size
 
     def __repr__(self):
         return "WatchReg({})".format(self.reg_num)
