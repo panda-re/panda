@@ -453,17 +453,9 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
     // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
     //TODO: Should I use latest or earliest guest instr count? Try earliest for now.
 
-    RR_log_entry* prev_item = &(rr_nondet_log->prev_item);
     RR_log_entry* item = &(rr_nondet_log->current_item);
 
-    // Check state. If prev item was a pending interrupt as well, and interrupts have not changed, do nothing.
-    assert(prev_item);
-
-    //if( prev_item->header.kind == RR_PENDING_INTERRUPTS && prev_item->variant.pending_interrupts == pending_int){
-        //return;
-    //}
-
-    printf("CUrrent state: %d\n", rr_nondet_log->current_state );
+    //printf("CUrrent state: %d\n", rr_nondet_log->current_state );
 
     if (rr_nondet_log->current_state == RR_INTERRUPT_PENDING){
         printf("INTERUPPT PENDING, not writing log\n");
@@ -481,6 +473,13 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
 
     rr_write_item();
     rr_nondet_log->current_state = RR_INTERRUPT_PENDING;
+
+    //memset(item, 0, sizeof(RR_log_entry));
+    //item->header.kind = RR_PENDING_INTERRUPTS;
+    //item->header.callsite_loc = call_site;
+    //item->header.prog_point = rr_prog_point();
+    //item->variant.pending_interrupts = pending_int;
+    //rr_write_item();
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
@@ -791,6 +790,7 @@ static RR_log_entry *rr_read_item(void) {
             break;
         case RR_PENDING_INTERRUPTS:
             RR_READ_ITEM(item->variant.pending_interrupts);
+            break;
         case RR_EXIT_REQUEST:
             RR_READ_ITEM(item->variant.exit_request);
             break;
@@ -1020,10 +1020,12 @@ bool rr_replay_pending_interrupts(uint32_t* pending_int) {
     RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, RR_CALLSITE_CPU_PENDING_INTERRUPTS, true);
 
     if (!current_item) return false;
+    printf("replaying interrupt %8x\n", current_item->variant.pending_interrupts);
 
     *pending_int = current_item->variant.pending_interrupts;
 
-    //then,
+    //then, pop off queue and return
+    rr_queue_pop_front();
     return true;
 }
 

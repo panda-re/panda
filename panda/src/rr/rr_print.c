@@ -44,7 +44,7 @@ volatile sig_atomic_t rr_end_record_requested = 0;
 volatile sig_atomic_t rr_end_replay_requested = 0;
 char * rr_requested_name = NULL;
 
-// write this program point to this file 
+// write this program point to this file
 static void rr_spit_prog_point_fp(FILE *fp, RR_prog_point pp) {
   fprintf(fp, "{guest_instr_count=%llu}\n",
       (unsigned long long)pp.guest_instr_count);
@@ -75,6 +75,9 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_EXIT_REQUEST:
             printf("\tRR_EXIT_REQUEST_%d from %s\n", item.variant.exit_request, get_callsite_string(item.header.callsite_loc));
             break;
+        case RR_PENDING_INTERRUPTS:
+            printf("\tRR_PENDING_INTERRUPTS_%d from %s\n", item.variant.pending_interrupts, get_callsite_string(item.header.callsite_loc));
+            break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item.variant.call_args;
@@ -98,7 +101,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
 
                         break;
                 }
-                printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
+                printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n",
                         get_skipped_call_kind_string(item.variant.call_args.kind),
                         get_callsite_string(item.header.callsite_loc),
                         callbytes);
@@ -114,7 +117,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
 }
 
 //mz allocate a new entry (not filled yet)
-static inline RR_log_entry *alloc_new_entry(void) 
+static inline RR_log_entry *alloc_new_entry(void)
 {
     static RR_log_entry *new_entry = NULL;
     if(!new_entry) new_entry = g_new(RR_log_entry, 1);
@@ -122,7 +125,7 @@ static inline RR_log_entry *alloc_new_entry(void)
     return new_entry;
 }
 
-static inline void free_entry_params(RR_log_entry *entry) 
+static inline void free_entry_params(RR_log_entry *entry)
 {
     //mz cleanup associated resources
     switch (entry->header.kind) {
@@ -165,7 +168,7 @@ static RR_log_entry *rr_read_item(void) {
             // replay is done - we've reached the end of file
             //mz we should never get here!
             assert(0);
-        } 
+        }
         else {
             //mz some other kind of error
             //mz XXX something more graceful, perhaps?
@@ -176,7 +179,7 @@ static RR_log_entry *rr_read_item(void) {
     assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) == 1);
     assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) == 1);
 
-    printf("Item header guest_isntr_count: %llu file_pos: %16x kind: %8x callsite_loc: %8x\n", item->header.prog_point.guest_instr_count, item->header.file_pos, item->header.kind, item->header.callsite_loc);
+    printf("Item header guest_isntr_count: %lu file_pos: %lu kind: %8x callsite_loc: %d\n", item->header.prog_point.guest_instr_count, item->header.file_pos, item->header.kind, item->header.callsite_loc);
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:
@@ -196,6 +199,9 @@ static RR_log_entry *rr_read_item(void) {
             break;
         case RR_EXIT_REQUEST:
             assert(fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp) == 1);
+            break;
+        case RR_PENDING_INTERRUPTS:
+            assert(fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_SKIPPED_CALL:
             {
@@ -252,6 +258,7 @@ static RR_log_entry *rr_read_item(void) {
             break;
         default:
             //mz unimplemented
+            printf("rr_read_item: Log type unimplemented!");
             assert(0);
     }
     rr_nondet_log->item_number++;

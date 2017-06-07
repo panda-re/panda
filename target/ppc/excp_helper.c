@@ -24,6 +24,10 @@
 
 #include "helper_regs.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 //#define DEBUG_OP
 //#define DEBUG_SOFTWARE_TLB
 //#define DEBUG_EXCEPTIONS
@@ -771,13 +775,20 @@ static void ppc_hw_interrupt(CPUPPCState *env)
 #endif
     /* External reset */
 
-    int pending_interrupts = 0;
+    int pending_interrupts;
     //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
     RR_DO_RECORD_OR_REPLAY(
             pending_interrupts = env->pending_interrupts,
                 rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
-            if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("Failed!"); },
+            //if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
+            rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
              RR_CALLSITE_CPU_PENDING_INTERRUPTS);
+
+    //RR_DO_RECORD_OR_REPLAY(
+          //pending_interrupts = env->pending_interrupts,
+          //rr_input_4((uint32_t*)&pending_interrupts),
+          //if (!rr_replay_intno((uint32_t*)&env->pending_interrupts)) { printf("Failed!");  },
+           //RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
 
     //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
 
