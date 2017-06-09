@@ -5246,7 +5246,7 @@ static void init_proc_601 (CPUPPCState *env)
                  0x00000000);
     /* Memory management */
     init_excp_601(env);
-    /* XXX: beware that dcache line size is 64 
+    /* XXX: beware that dcache line size is 64
      *      but dcbz uses 32 bytes "sectors"
      * XXX: this breaks clcs instruction !
      */
@@ -10257,10 +10257,10 @@ static bool ppc_cpu_has_work(CPUState *cs)
 
 static void ppc_cpu_exec_enter(CPUState *cs)
 {
-    PowerPCCPU *cpu = POWERPC_CPU(cs);
-    CPUPPCState *env = &cpu->env;
+    /*PowerPCCPU *cpu = POWERPC_CPU(cs);*/
+    /*CPUPPCState *env = &cpu->env;*/
 
-    env->reserve_addr = -1;
+    /*env->reserve_addr = -1;*/
 }
 
 /* CPUClass::reset() */
