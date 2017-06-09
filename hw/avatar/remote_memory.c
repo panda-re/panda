@@ -4,6 +4,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/error-report.h"
 #include "hw/sysbus.h"
 
 #define TYPE_AVATAR_RMEMORY "avatar-rmemory"
@@ -59,8 +60,8 @@ static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
     ret = qemu_avatar_mq_receive(s->rx_queue, &resp, sizeof(resp));
     if(!resp.success || (resp.id != request.id)){
 
-        printf("TBD: Handle Errors\n");
-        printf("%d, %d, %ld - %ld\n", ret, resp.success, resp.id, request.id);
+        error_report("RemoteMemoryRead failed (%d)!\n", ret);
+        exit(1);
     }
 
     //TODO Evaluate Response
@@ -71,7 +72,6 @@ static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
 static void avatar_rmemory_write(void *opaque, hwaddr offset,
                         uint64_t value, unsigned size)
 {
-    printf("WERE HERE\n");
     int ret;
     RemoteMemoryResp resp;
     memset(&resp, 0, sizeof(resp));
@@ -84,8 +84,8 @@ static void avatar_rmemory_write(void *opaque, hwaddr offset,
     ret = qemu_avatar_mq_receive(s->rx_queue, &resp, sizeof(resp));
     if(!resp.success || (resp.id != request.id)){
 
-        printf("TBD: Handle Errors\n");
-        printf("%d, %d, %ld - %ld\n", ret, resp.success, resp.id, request.id);
+        error_report("RemoteMemoryWrite failed (%d)!\n", ret);
+        exit(1);
     }
 }
 
