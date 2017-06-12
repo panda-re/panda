@@ -775,22 +775,23 @@ static void ppc_hw_interrupt(CPUPPCState *env)
 #endif
     /* External reset */
 
-    int pending_interrupts;
-    //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
-    RR_DO_RECORD_OR_REPLAY(
-            pending_interrupts = env->pending_interrupts,
-                rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
-            if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
-            //rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
-             RR_CALLSITE_CPU_PENDING_INTERRUPTS);
+		int pending_interrupts;
+		//printf("Env-> pending_interrupt before replay %8x\n", env->pending_interrupts);
+		RR_DO_RECORD_OR_REPLAY(
+				pending_interrupts = env->pending_interrupts,
+					rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts); record_log(env);,
+				if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
+				//if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { return; },
+				 RR_CALLSITE_CPU_PENDING_INTERRUPTS);
 
-    //RR_DO_RECORD_OR_REPLAY(
-          //pending_interrupts = env->pending_interrupts,
-          //rr_input_4((uint32_t*)&pending_interrupts),
-          //if (!rr_replay_intno((uint32_t*)&env->pending_interrupts)) { printf("Failed!");  },
-           //RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
+	 //target_ulong msr;
+	//RR_DO_RECORD_OR_REPLAY(
+		 //msr = env->msr,
+		  //rr_input_4((uint32_t*)&msr),
+		  //if (!rr_replay_intno((uint32_t*)&env->msr)) { printf("Failed!");  },
+		   //RR_CALLSITE_CPU_HANDLE_INTERRUPT_INTNO);
 
-    //printf("Env-> pending_interrupts %8x\n", env->pending_interrupts);
+    //printf("Env-> pending_interrupt after replay %8x\n", env->pending_interrupts);
 
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_RESET)) {
         env->pending_interrupts &= ~(1 << PPC_INTERRUPT_RESET);
@@ -824,6 +825,7 @@ static void ppc_hw_interrupt(CPUPPCState *env)
     }
     /* Extermal interrupt can ignore MSR:EE under some circumstances */
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_EXT)) {
+        //env->pending_interrupts &= ~(1 << PPC_INTERRUPT_EXT);
         bool lpes0 = !!(env->spr[SPR_LPCR] & LPCR_LPES0);
         if (msr_ee != 0 || (env->has_hv_mode && msr_hv == 0 && !lpes0)) {
             powerpc_excp(cpu, env->excp_model, POWERPC_EXCP_EXTERNAL);
@@ -903,6 +905,8 @@ void ppc_cpu_do_system_reset(CPUState *cs)
 }
 #endif /* !CONFIG_USER_ONLY */
 
+// Returns true if interrupt_request HARDWARE is pending
+// false otherwise
 bool ppc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
     PowerPCCPU *cpu = POWERPC_CPU(cs);

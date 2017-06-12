@@ -254,7 +254,10 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
 }
 
 void rr_set_state(RR_log_state log_state){
-    printf("Setting state to %d\n", log_state);
+    //printf("Setting state to %d\n", log_state);
+    if (rr_nondet_log == NULL){
+        return;
+    }
     rr_nondet_log->current_state = log_state;
 }
 
@@ -283,7 +286,7 @@ static inline void rr_write_item(void)
     RR_WRITE_ITEM(item.header.kind);
     RR_WRITE_ITEM(item.header.callsite_loc);
 
-    printf("guest_instr_count %lu kind %d callsite_lo %d\n", item.header.prog_point.guest_instr_count, item.header.kind, item.header.callsite_loc);
+    //printf("guest_instr_count %lu kind %d callsite_lo %d\n", item.header.prog_point.guest_instr_count, item.header.kind, item.header.callsite_loc);
 
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
@@ -463,7 +466,7 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
     }
 
     pending_int_count++;
-    printf("Writing RR_PENDING_INTERRUPTS to log %d callsite %d\n", pending_int_count, call_site);
+    printf("Writing RR_PENDING_INTERRUPTS to log %d callsite %d at prog point %lu\n", pending_int_count, call_site, rr_prog_point().guest_instr_count);
     memset(item, 0, sizeof(RR_log_entry));
     item->header.kind = RR_PENDING_INTERRUPTS;
     item->header.callsite_loc = call_site;

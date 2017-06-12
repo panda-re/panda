@@ -43,7 +43,7 @@
 #include "panda/rr/rr_log.h"
 #endif
 
-//#define PPC_DEBUG_IRQ
+#define PPC_DEBUG_IRQ
 //#define PPC_DEBUG_TB
 
 #ifdef PPC_DEBUG_IRQ
@@ -77,6 +77,25 @@ void ppc_set_irq(PowerPCCPU *cpu, int n_IRQ, int level)
             cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
         }
     }
+
+#ifdef CONFIG_SOFTMMU
+    //int pending_interrupts;
+    ////printf("Guest intr count %lu\n", cs->rr_guest_instr_count);
+    //if (cs->rr_guest_instr_count == 0){
+        //return;
+    //}
+    //printf("Env-> pending_interrupt before replay set_irq %8x\n", env->pending_interrupts);
+    //RR_DO_RECORD_OR_REPLAY(
+            //pending_interrupts = env->pending_interrupts,
+                //rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
+            //if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
+            ////if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { return; },
+             //RR_CALLSITE_CPU_PENDING_INTERRUPTS);
+
+    //set flag that pending_interrupts has changed, so we will write change to log ASAP
+    rr_set_state(RR_INTERRUPT_DONE);
+#endif
+    //printf("Env-> pending_interrupt after replay set_irq %8x\n", env->pending_interrupts);
 
     if (old_pending != env->pending_interrupts) {
 #ifdef CONFIG_KVM

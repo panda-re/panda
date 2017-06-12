@@ -163,6 +163,8 @@ class RRInstance(object):
         print("(rr-{}) {}".format(self.description, cmd))
         sys.stdout.flush()
 
+        expect_prompt = kwargs.get("expect_prompt", "(rr) ")
+
         while True:
             try:
                 os.read(self.proc.fd, 1024)
@@ -171,8 +173,10 @@ class RRInstance(object):
                 else: raise
         self.sendline(cmd)
 
+        print("self.expect prompt ", expect_prompt)
+
         try:
-            output = self.proc.expect("(rr) ", timeout=timeout)
+            output = self.proc.expect(expect_prompt, timeout=timeout)
         except TimeoutExpired:
             print(self.proc.sofar)
             print("EXCEPTION!")
@@ -209,6 +213,9 @@ class RRInstance(object):
     def condition(self, break_arg, cond):
         self.gdb("condition", self.breakpoints[break_arg], cond)
 
+    def display(self, cmd):
+        self.gdb("display", cmd)
+
     def checkpoint(self):
         return self.gdb_int_re(r"Checkpoint ([0-9]+) at", "checkpoint")
 
@@ -229,6 +236,17 @@ class RRInstance(object):
     def condition_instr(self, break_arg, op, instr):
         self.condition(
             break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+
+    def set_breakpoint_commands(self, break_num):
+        self.gdb("commands", break_num, expect_prompt = ">")
+        # self.gdb("p/u cpus->tqh_first->rr_guest_instr_count", expect_prompt = ">")
+        self.gdb("call target_disas(stdout, cpu, tb->pc, tb->size, 0)", expect_prompt = ">")
+        self.gdb("end")
+
+    def display_commands(self):
+        self.display("p/u cpus->tqh_first->rr_guest_instr_count")
+        self.gdb("set $env = ((CPUPPCState*) cpus->tqh_first->env_ptr)")
+        self.display("p/u $env->pending_interrupts")
 
     @cached_property
     def ram_ptr(self):
