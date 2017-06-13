@@ -452,18 +452,25 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
     }
 }
 
+int panda_prev_pending_interrupts = 0;
+int prev_guest_instr_count = -1;
+
 void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int){
     // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
-    //TODO: Should I use latest or earliest guest instr count? Try earliest for now.
 
     RR_log_entry* item = &(rr_nondet_log->current_item);
 
     //printf("CUrrent state: %d\n", rr_nondet_log->current_state );
 
     if (rr_nondet_log->current_state == RR_INTERRUPT_PENDING){
-        printf("INTERUPPT PENDING, not writing log\n");
         return;
     }
+
+    if (rr_prog_point().guest_instr_count == prev_guest_instr_count){
+        printf("two changes to pending_interrupts in same instr count, skipping\n");
+        return;
+    }
+    prev_guest_instr_count = rr_prog_point().guest_instr_count;
 
     pending_int_count++;
     printf("Writing RR_PENDING_INTERRUPTS to log %d callsite %d at prog point %lu\n", pending_int_count, call_site, rr_prog_point().guest_instr_count);
@@ -477,12 +484,22 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
     rr_write_item();
     rr_nondet_log->current_state = RR_INTERRUPT_PENDING;
 
-    //memset(item, 0, sizeof(RR_log_entry));
-    //item->header.kind = RR_PENDING_INTERRUPTS;
-    //item->header.callsite_loc = call_site;
-    //item->header.prog_point = rr_prog_point();
-    //item->variant.pending_interrupts = pending_int;
-    //rr_write_item();
+    //TODO: We may see that pending_interrupts changes twice with the same guest instr count. so, only record new pending_interrupt if guest instr count has changed as well. or, do we replace old one?
+
+    //if (panda_prev_pending_interrupts != pending_int) {
+        //RR_log_entry* item = &(rr_nondet_log->current_item);
+
+        //printf("Writing RR_PENDING_INTERRUPTS to log %d callsite %d at prog point %lu\n", pending_int_count, call_site, rr_prog_point().guest_instr_count);
+
+        //memset(item, 0, sizeof(RR_log_entry));
+        //item->header.kind = RR_PENDING_INTERRUPTS;
+        //item->header.callsite_loc = call_site;
+        //item->header.prog_point = rr_prog_point();
+
+        //item->variant.pending_interrupts = pending_int;
+        //panda_prev_pending_interrupts = pending_int;
+        //rr_write_item();
+    //}
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
