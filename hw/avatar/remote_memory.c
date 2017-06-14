@@ -61,7 +61,7 @@ static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
     if(!resp.success || (resp.id != request.id)){
 
         error_report("RemoteMemoryRead failed (%d)!\n", ret);
-        exit(1);
+        //exit(1);
     }
 
     //TODO Evaluate Response
@@ -85,7 +85,7 @@ static void avatar_rmemory_write(void *opaque, hwaddr offset,
     if(!resp.success || (resp.id != request.id)){
 
         error_report("RemoteMemoryWrite failed (%d)!\n", ret);
-        exit(1);
+        //exit(1);
     }
 }
 
