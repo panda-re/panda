@@ -463,7 +463,6 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
     }
     prev_guest_instr_count = rr_prog_point().guest_instr_count;
 
-    pending_int_count++;
     memset(item, 0, sizeof(RR_log_entry));
     item->header.kind = RR_PENDING_INTERRUPTS;
     item->header.callsite_loc = call_site;
