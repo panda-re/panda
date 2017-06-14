@@ -123,15 +123,15 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 uint8_t rr_replay_finished(void)
 {
     return rr_log_is_empty()
-        && rr_queue_head->header.kind == RR_LAST
+        && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
                rr_queue_head->header.prog_point.guest_instr_count;
 }
 
 // mz "performance" counters - basically, how much of the log is taken up by
 // mz each kind of entry.
-volatile unsigned long long rr_number_of_log_entries[RR_PENDING_INTERRUPTS];
-volatile unsigned long long rr_size_of_log_entries[RR_PENDING_INTERRUPTS];
+volatile unsigned long long rr_number_of_log_entries[RR_LAST];
+volatile unsigned long long rr_size_of_log_entries[RR_LAST];
 volatile unsigned long long rr_max_num_queue_entries;
 
 // mz a history of last few log entries for replay
@@ -184,8 +184,8 @@ static void rr_spit_log_entry(RR_log_entry item)
                get_skipped_call_kind_string(item.variant.call_args.kind),
                get_callsite_string(item.header.callsite_loc));
         break;
-    case RR_LAST:
-        printf("\tRR_LAST\n");
+    case RR_END_OF_LOG:
+        printf("\tRR_END_OF_LOG\n");
         break;
     default:
         printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -347,7 +347,7 @@ static inline void rr_write_item(void)
                     rr_assert(0 && "Unimplemented skipped call!");
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             // mz nothing to read
             break;
         default:
@@ -652,8 +652,8 @@ static void rr_record_end_of_log(void)
     // mz just in case
     memset(item, 0, sizeof(RR_log_entry));
 
-    item->header.kind = RR_LAST;
-    item->header.callsite_loc = RR_CALLSITE_LAST;
+    item->header.kind = RR_END_OF_LOG;
+    item->header.callsite_loc = RR_CALLSITE_END_OF_LOG;
     item->header.prog_point = rr_prog_point();
 
     rr_write_item();
@@ -842,7 +842,7 @@ static RR_log_entry *rr_read_item(void) {
                     rr_assert(0 && "Unimplemented skipped call!");
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             // mz nothing to read
             break;
         default:
@@ -1542,7 +1542,7 @@ void rr_do_end_replay(int is_error)
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
-        rr_queue_head->header.kind == RR_LAST) {
+        rr_queue_head->header.kind == RR_END_OF_LOG) {
         printf("Replay completed successfully 2.\n");
     } else {
         if (is_error) {

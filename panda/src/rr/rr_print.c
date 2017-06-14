@@ -107,8 +107,8 @@ static void rr_spit_log_entry(RR_log_entry item) {
                         callbytes);
                 break;
             }
-        case RR_LAST:
-            printf("\tRR_LAST\n");
+        case RR_END_OF_LOG:
+            printf("\tRR_END_OF_LOG\n");
             break;
         default:
             printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -252,7 +252,7 @@ static RR_log_entry *rr_read_item(void) {
                 }
             }
             break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             //mz nothing to read
             break;
         default:

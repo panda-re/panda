@@ -150,8 +150,9 @@ get_skipped_call_kind_string(RR_skipped_call_kind kind)
     ACTION(RR_INTERRUPT_REQUEST), \
     ACTION(RR_EXIT_REQUEST), \
     ACTION(RR_SKIPPED_CALL), \
-    ACTION(RR_LAST),\
-    ACTION(RR_PENDING_INTERRUPTS) // For PowerPC
+    ACTION(RR_END_OF_LOG),\
+    ACTION(RR_PENDING_INTERRUPTS), \
+    ACTION(RR_LAST),
 
 typedef enum {
     FOREACH_LOGTYPE(GENERATE_ENUM)
@@ -163,7 +164,7 @@ static const char* log_entry_kind_str[] = {
 
 static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
 {
-    if (kind <= RR_PENDING_INTERRUPTS)
+    if (kind <= RR_LAST)
         return log_entry_kind_str[kind];
     else
         return NULL;
@@ -189,8 +190,9 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
     ACTION(RR_CALLSITE_WRITE_4), \
     ACTION(RR_CALLSITE_WRITE_2), \
     ACTION(RR_CALLSITE_WRITE_1), \
-    ACTION(RR_CALLSITE_LAST), \
-    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS)
+    ACTION(RR_CALLSITE_END_OF_LOG), \
+    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS), \
+    ACTION(RR_CALLSITE_LAST)
 
 typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
@@ -208,7 +210,7 @@ static const char* callsite_str[] = {
 
 static inline const char* get_callsite_string(RR_callsite_id cid)
 {
-    if (cid <= RR_CALLSITE_CPU_PENDING_INTERRUPTS)
+    if (cid <= RR_CALLSITE_LAST)
         return callsite_str[cid];
     else
         return NULL;
