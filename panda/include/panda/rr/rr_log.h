@@ -137,9 +137,6 @@ typedef struct rr_log_entry_t {
     } variant;
 } RR_log_entry;
 
-
-extern int pending_int_count;
-
 // a program-point indexed record/replay log
 typedef enum { RECORD, REPLAY } RR_log_type;
 typedef struct RR_log_t {
@@ -154,6 +151,9 @@ typedef struct RR_log_t {
     uint64_t bytes_read;
 
     RR_log_entry current_item;
+
+    // For PPC pending interrupts, set when pending_interrupt can be written to log
+    // and cleared otherwise
     RR_log_state current_state;
     uint8_t current_item_valid;
     uint64_t item_number;

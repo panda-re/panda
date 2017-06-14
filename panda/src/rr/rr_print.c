@@ -179,7 +179,6 @@ static RR_log_entry *rr_read_item(void) {
     assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) == 1);
     assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) == 1);
 
-    printf("Item header guest_isntr_count: %lu file_pos: %lu kind: %8x callsite_loc: %d\n", item->header.prog_point.guest_instr_count, item->header.file_pos, item->header.kind, item->header.callsite_loc);
     //mz read the rest of the item
     switch (item->header.kind) {
         case RR_INPUT_1:

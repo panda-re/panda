@@ -42,8 +42,6 @@
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
 #endif
-
-#define PPC_DEBUG_IRQ
 //#define PPC_DEBUG_TB
 
 #ifdef PPC_DEBUG_IRQ
@@ -79,23 +77,9 @@ void ppc_set_irq(PowerPCCPU *cpu, int n_IRQ, int level)
     }
 
 #ifdef CONFIG_SOFTMMU
-    //int pending_interrupts;
-    ////printf("Guest intr count %lu\n", cs->rr_guest_instr_count);
-    //if (cs->rr_guest_instr_count == 0){
-        //return;
-    //}
-    //printf("Env-> pending_interrupt before replay set_irq %8x\n", env->pending_interrupts);
-    //RR_DO_RECORD_OR_REPLAY(
-            //pending_interrupts = env->pending_interrupts,
-                //rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
-            //if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { printf("ppc_hw_interrupt: replay_pending_interrupts failed!\n"); },
-            ////if (!rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts)) { return; },
-             //RR_CALLSITE_CPU_PENDING_INTERRUPTS);
-
     //set flag that pending_interrupts has changed, so we will write change to log ASAP
     rr_set_state(RR_INTERRUPT_DONE);
 #endif
-    //printf("Env-> pending_interrupt after replay set_irq %8x\n", env->pending_interrupts);
 
     if (old_pending != env->pending_interrupts) {
 #ifdef CONFIG_KVM
@@ -485,18 +469,6 @@ void ppce500_set_mpic_proxy(bool enabled)
 
 /*****************************************************************************/
 /* PowerPC time base and decrementer emulation */
-void record_tb_log(uint64_t tb_val);
-void replay_tb_log(uint64_t tb_val);
-
-void record_tb_log(uint64_t tb_val){
-    printf("recording tb_val %lu\n", tb_val);
-}
-
-void replay_tb_log(uint64_t tb_val){
-    printf("replaying tb_val %lu\n", tb_val);
-}
-
-
 uint64_t cpu_ppc_get_tb(ppc_tb_t *tb_env, uint64_t vmclk, int64_t tb_offset)
 {
     uint64_t tb_val;
@@ -504,15 +476,9 @@ uint64_t cpu_ppc_get_tb(ppc_tb_t *tb_env, uint64_t vmclk, int64_t tb_offset)
 #ifdef CONFIG_SOFTMMU
      RR_DO_RECORD_OR_REPLAY(
         tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;,
-        /*record=*/rr_input_8(&tb_val);
-        //record_tb_log(tb_val);
-        ,
-        /*replay=*/rr_input_8(&tb_val);
-        //replay_tb_log(tb_val);
-        ,
+        /*record=*/rr_input_8(&tb_val);,
+        /*replay=*/rr_input_8(&tb_val);,
         /*location=*/RR_CALLSITE_RDTSC);
-
-    //printf("cpu getting host ticks powerpc\n");
 #else
     tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;
 #endif
@@ -899,7 +865,6 @@ static void cpu_ppc_set_tb_clk (void *opaque, uint32_t freq)
 
 static void timebase_save(PPCTimebase *tb)
 {
-    printf("Timebase save being executed\n");
     uint64_t ticks = cpu_get_host_ticks();
     PowerPCCPU *first_ppc_cpu = POWERPC_CPU(first_cpu);
 

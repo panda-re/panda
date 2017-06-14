@@ -104,7 +104,6 @@ extern void rr_signal_disagreement(RR_prog_point current,
 
 //
 // Record/Replay log structures
-//:w
 
 // Skipped calls are records of machine emulation activity that were triggered
 // by hardware devices during record session.  Since device emulation code is
@@ -197,7 +196,7 @@ typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
 } RR_callsite_id;
 
-// Used for state tracking of powerpc
+// Used for tracking whether to write pending_interrupts to log
 typedef enum {
     RR_INTERRUPT_PENDING,
     RR_INTERRUPT_DONE
@@ -257,7 +256,6 @@ static inline int rr_prog_point_compare(RR_prog_point current,
                                         RR_log_entry_kind kind)
 {
 
-     printf("rr prog point compare: log header point: %lu, replay prog point: %lu\n", recorded.guest_instr_count, current.guest_instr_count);
     // mz my contention is that we should never be in a situation where the
     // program point counts are higher than current item being replayed.  This
     // is
@@ -285,7 +283,6 @@ static inline int rr_prog_point_compare(RR_prog_point current,
 // Convenience routines that perform appropriate action based on rr_mode setting
 static inline void rr_interrupt_request(int* interrupt_request)
 {
-    //printf("executing rr_interrupt_request\n");
     switch (rr_mode) {
     case RR_RECORD:
         rr_record_interrupt_request(

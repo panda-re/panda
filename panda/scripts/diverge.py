@@ -173,8 +173,6 @@ class RRInstance(object):
                 else: raise
         self.sendline(cmd)
 
-        print("self.expect prompt ", expect_prompt)
-
         try:
             output = self.proc.expect(expect_prompt, timeout=timeout)
         except TimeoutExpired:
@@ -244,9 +242,9 @@ class RRInstance(object):
         self.gdb("end")
 
     def display_commands(self):
-        self.display("p/u cpus->tqh_first->rr_guest_instr_count")
+        self.display("cpus->tqh_first->rr_guest_instr_count")
         self.gdb("set $env = ((CPUPPCState*) cpus->tqh_first->env_ptr)")
-        self.display("p/u $env->pending_interrupts")
+        self.display("$env->pending_interrupts")
 
     @cached_property
     def ram_ptr(self):

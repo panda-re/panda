@@ -10,7 +10,7 @@
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;
     uint32_t flags;
-    CPUArchState *env = cpu->env_ptr;  
+    CPUArchState *env = cpu->env_ptr;
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
     return pc;
 }
@@ -106,7 +106,6 @@ target_ulong panda_current_asid(CPUState *cpu) {
   /*return arm_get_vaddr_table(env, panda_current_pc(env));*/
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
-  //rw: WHy is this the case??
   return env->sr[0];
 #else
 #error "panda_current_asid() not implemented for target architecture."
@@ -159,9 +158,9 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
 }
 
 const char * valid_os[] = {
-    "windows-32-xpsp2", 
-    "windows-32-xpsp3", 
-    "windows-32-7", 
+    "windows-32-xpsp2",
+    "windows-32-xpsp3",
+    "windows-32-7",
     "linux-32-*",
     "linux-64-*",
     NULL
@@ -226,7 +225,7 @@ void panda_set_os_name(char *os_name) {
     }
     assert (os_details_ok);
 
-    printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
+    printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details);
 }
 
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
