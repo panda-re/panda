@@ -744,6 +744,7 @@ void ppc_cpu_do_interrupt(CPUState *cs)
     PowerPCCPU *cpu = POWERPC_CPU(cs);
     CPUPPCState *env = &cpu->env;
 
+	//TODO: Need to record this...
     powerpc_excp(cpu, env->excp_model, cs->exception_index);
 }
 
@@ -761,10 +762,10 @@ static void ppc_hw_interrupt(CPUPPCState *env)
 
 		int pending_interrupts;
 		RR_DO_RECORD_OR_REPLAY(
-				pending_interrupts = env->pending_interrupts,
-					rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
-				rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
-				 RR_CALLSITE_CPU_PENDING_INTERRUPTS);
+			pending_interrupts = env->pending_interrupts,
+			rr_record_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS, pending_interrupts);,
+			rr_replay_pending_interrupts((uint32_t*)&env->pending_interrupts),
+			RR_CALLSITE_CPU_PENDING_INTERRUPTS);
 
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_RESET)) {
         env->pending_interrupts &= ~(1 << PPC_INTERRUPT_RESET);
