@@ -180,7 +180,7 @@ class RRInstance(object):
             print("EXCEPTION!")
             sys.stdout.flush()
 
-        if output.endswith("(rr) "): output = output[:-5]
+        if output.endswith(expect_prompt): output = output[:-len(expect_prompt)]
         if output.startswith(cmd): output = output[len(cmd):]
         return output.strip()
 

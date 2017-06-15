@@ -47,7 +47,6 @@ typedef enum { RR_MEM_IO, RR_MEM_RAM, RR_MEM_UNKNOWN} RR_mem_type;
 
 extern volatile RR_mode rr_mode;
 
-
 // Log management
 void rr_create_record_log(const char* filename);
 void rr_create_replay_log(const char* filename);
@@ -257,7 +256,6 @@ static inline int rr_prog_point_compare(RR_prog_point current,
                                         RR_prog_point recorded,
                                         RR_log_entry_kind kind)
 {
-
     // mz my contention is that we should never be in a situation where the
     // program point counts are higher than current item being replayed.  This
     // is
