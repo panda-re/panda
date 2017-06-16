@@ -39,8 +39,6 @@ else
   fi
 fi
 
-LLVM_BIT=""
-
 
 "$(dirname $0)/configure" \
     --disable-vhost-net \
