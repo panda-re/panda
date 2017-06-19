@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-USAGE="""run_on_32bitlinux.py binary [args]
+USAGE="""run_on_32bitlinux.py [args] binary
 
 So you want to try panda but dont have any replays.  Poor you.
 This script allows you to run commands on a 32-bit linux guest.
@@ -9,8 +9,6 @@ This script allows you to run commands on a 32-bit linux guest.
 Remaining arguments are the args that binary needs. Files on the host will
 automatically be copied to the guest, unless the argument is prefixed with
 "guest:". This works for the binary too.
-
-For example,
 
 run_on_32bitlinux.py foo2
 
@@ -41,10 +39,17 @@ Advanced USAGE:
 
 """
 
+SUPPORTED_ARCHES = {
+    'i386': ('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#"),
+    'ppc': ('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#")
+}
+
+
 import os
 import shutil
 import subprocess as sp
 import sys
+import argparse
 
 from os.path import basename, dirname, join
 from run_guest import create_recording
@@ -81,23 +86,39 @@ def EXIT_USAGE():
     sys.exit(1)
 
 if __name__ == "__main__":
+    rr = False
+
+    #TODO: Port to argparse 
+
+    parser = argparse.ArgumentParser(usage=USAGE)
+
+    parser.add_argument("--rr", action='store_true', dest='rr',)
+    parser.add_argument("guest_args", metavar='guest_arg', nargs='+')
+
+    parser.add_argument("--env", action='store', dest='env')
+    parser.add_argument("--arch", action='store', dest='arch', default='i386')
+
+    args = parser.parse_args()
+
     if len(sys.argv) < 2:
         EXIT_USAGE()
-    elif sys.argv[1] == "--help" or sys.argv[1] == "-h":
-        EXIT_USAGE()
-    if sys.argv[1] == "--env":
-        try:
-            env = eval(sys.argv[2])
-        except:
-            print("Something went wrong parsing the environment string: [{}]".format(sys.argv[2]))
-            EXIT_USAGE()
-        guest_cmd = sys.argv[3:]
-        binary = sys.argv[3]
 
-    else:
-        env = {}
-        guest_cmd = sys.argv[1:]
-        binary = sys.argv[1]
+    rr = False
+    if args.rr:
+        rr = True
+    
+    (qemu_softmmu, qemu_binary, expect_prompt) = SUPPORTED_ARCHES[args.arch]
+
+    env = {}
+    if args.env:
+        try:
+            env = eval(args.env)
+        except:
+            print("Something went wrong parsing the environment string: [{}]".format(env))
+            EXIT_USAGE()
+
+    guest_cmd = args.guest_args
+    binary = args.guest_args[0]
 
     if binary.startswith('guest:'): binary = binary[6:]
     binary_basename = basename(binary)
@@ -113,11 +134,11 @@ if __name__ == "__main__":
 
     install_dir = join(binary_dir, 'cdrom')
     # if os.path.exists(install_dir):
-        # shutil.rmtree(install_dir)
+    # shutil.rmtree(install_dir)
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, "wheezy_panda2.qcow2")
+    qcow = join(dot_dir, "i386_wheezy.qcow")
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
@@ -127,11 +148,14 @@ if __name__ == "__main__":
 
     print "args =", guest_cmd
     print "new_guest_cmd =", new_guest_cmd
+    print "env = ", env
 
     create_recording(
-        join(panda_build_dir, 'i386-softmmu', 'qemu-system-i386'),
-        qcow, "root", new_guest_cmd,
+        join(panda_build_dir, qemu_softmmu, qemu_binary),
+        qcow, "i386_booted_root", new_guest_cmd,
         install_dir,
         join(binary_dir, binary_basename),
-        env=env
+        expect_prompt,
+        rr=rr,
+        env=env,
     )
