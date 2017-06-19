@@ -133,7 +133,7 @@ if __name__ == "__main__":
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, "i386_wheezy.qcow")
+    qcow = join(dot_dir, "ppc_wheezy.qcow")
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
         # sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     create_recording(
         join(panda_build_dir, qemu_softmmu, qemu_binary),
-        qcow, "i386_booted_root", new_guest_cmd,
+        qcow, "powerpc_booted_root", new_guest_cmd,
         install_dir,
         join(binary_dir, binary_basename),
         expect_prompt,

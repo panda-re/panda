@@ -497,8 +497,6 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             cpu->exception_index = -1;
             return true;
 #else
-            //TODO: Record/replay exceptions...
-            
             if (replay_exception()) {
 
 #ifdef CONFIG_SOFTMMU
