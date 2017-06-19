@@ -310,6 +310,9 @@ static inline void rr_write_item(void)
         case RR_PENDING_INTERRUPTS:
             RR_WRITE_ITEM(item.variant.pending_interrupts);
             break;
+        case RR_EXCEPTION:
+            RR_WRITE_ITEM(item.variant.exception_index);
+            break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
             // mz write kind first!
@@ -471,7 +474,20 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
 
     rr_write_item();
     rr_nondet_log->current_state = RR_INTERRUPT_PENDING;
+}
 
+void rr_record_exception(RR_callsite_id call_site, int32_t exception_index){
+    
+    RR_log_entry* item = &(rr_nondet_log->current_item);
+    
+    memset(item, 0, sizeof(RR_log_entry));
+    item->header.kind = RR_EXCEPTION;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point();
+
+    item->variant.exception_index = exception_index;
+
+    rr_write_item();
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
@@ -783,6 +799,9 @@ static RR_log_entry *rr_read_item(void) {
         case RR_PENDING_INTERRUPTS:
             RR_READ_ITEM(item->variant.pending_interrupts);
             break;
+        case RR_EXCEPTION:
+            RR_READ_ITEM(item->variant.exception_index);
+            break;
         case RR_EXIT_REQUEST:
             RR_READ_ITEM(item->variant.exit_request);
             break;
@@ -1004,6 +1023,19 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
         *exit_request = current_item->variant.exit_request;
         rr_queue_pop_front();
     }
+}
+
+bool rr_replay_exception(int32_t* exception_index){
+    
+    RR_log_entry* current_item = get_next_entry_checked(RR_EXCEPTION, RR_CALLSITE_CPU_EXCEPTION_INDEX, true);
+
+    if (!current_item) return false;
+
+    *exception_index = current_item->variant.exception_index;
+
+    //then, pop off queue and return
+    rr_queue_pop_front();
+    return true;
 }
 
 //rw: replay powerpc pending interrupts
@@ -1528,7 +1560,7 @@ void rr_do_end_replay(int is_error)
 
     printf("Stats:\n");
     int i;
-    for (i = 0; i < RR_PENDING_INTERRUPTS; i++) {
+    for (i = 0; i < RR_LAST; i++) {
         printf("%s number = %llu, size = %llu bytes\n",
                get_log_entry_kind_string(i), rr_number_of_log_entries[i],
                rr_size_of_log_entries[i]);

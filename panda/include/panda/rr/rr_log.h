@@ -130,6 +130,10 @@ typedef struct rr_log_entry_t {
         uint16_t exit_request;
         // pending interrupts for PPC
         uint32_t pending_interrupts;
+
+        //exception_indx
+        int32_t exception_index;
+
         // if log_entry.kind == RR_SKIPPED_CALL
         RR_skipped_call_args call_args;
         // if log_entry.kind == RR_LAST

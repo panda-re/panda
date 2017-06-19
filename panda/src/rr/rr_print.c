@@ -78,6 +78,9 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_PENDING_INTERRUPTS:
             printf("\tRR_PENDING_INTERRUPTS_%d from %s\n", item.variant.pending_interrupts, get_callsite_string(item.header.callsite_loc));
             break;
+        case RR_EXCEPTION:
+            printf("\tRR_EXCEPTION_%d from %s\n", item.variant.exception_index, get_callsite_string(item.header.callsite_loc));
+            break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item.variant.call_args;
@@ -201,6 +204,9 @@ static RR_log_entry *rr_read_item(void) {
             break;
         case RR_PENDING_INTERRUPTS:
             assert(fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->fp) == 1);
+            break;
+        case RR_EXCEPTION:
+            assert(fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->fp) == 1);
             break;
         case RR_SKIPPED_CALL:
             {
