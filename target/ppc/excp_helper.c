@@ -757,7 +757,6 @@ static void ppc_hw_interrupt(CPUPPCState *env)
                   cs->interrupt_request, (int)msr_me, (int)msr_ee);
 #endif
     /* External reset */
-
 	int pending_interrupts;
 	RR_DO_RECORD_OR_REPLAY(
 		pending_interrupts = env->pending_interrupts,
