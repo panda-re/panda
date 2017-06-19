@@ -37,6 +37,7 @@ static QDict * load_configuration(const char * filename)
     off_t filesize = lseek(file, 0, SEEK_END);
     char * filedata = NULL;
     ssize_t err;
+    Error * qerr = NULL;
     QObject * obj;
 
     lseek(file, 0, SEEK_SET);
@@ -61,7 +62,7 @@ static QDict * load_configuration(const char * filename)
 
     close(file);
 
-    obj = qobject_from_json(filedata);
+    obj = qobject_from_json(filedata, &qerr);
     if (!obj || qobject_type(obj) != QTYPE_QDICT)
     {
         fprintf(stderr, "Error parsing JSON configuration file\n");
@@ -72,8 +73,6 @@ static QDict * load_configuration(const char * filename)
 
     return qobject_to_qdict(obj);
 }
-
-static void load_program(QDict *conf, ARMCPU *cpu);
 
 static QDict *peripherals;
 
@@ -333,7 +332,6 @@ static void init_peripheral(QDict *device)
     }
 }
 
-static struct arm_boot_info boot_info;
 
 static void set_entry_point(QDict *conf, ARMCPU *cpuu)
 {
@@ -347,29 +345,8 @@ static void set_entry_point(QDict *conf, ARMCPU *cpuu)
     entry = qdict_get_int(conf, entry_field);
 
     cpuu->env.regs[15] = entry & (~1);
-    cpuu->env.thumb = (entry & 1) != 0 ? 1 : 0;
-    boot_info.entry = entry;
-}
+    cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
 
-static void set_endianness(QDict *conf, ARMCPU *cpu)
-{
-    const char *endnes_field = "endianness";
-    const char *value;
-    if(!qdict_haskey(conf, endnes_field))
-        return;
-
-    QDICT_ASSERT_KEY_TYPE(conf, endnes_field, QTYPE_QSTRING);
-    value = qdict_get_str(conf, endnes_field);
-    if (strcasecmp(value, "big32") == 0) {
-        boot_info.endianness = ARM_ENDIANNESS_BE32;
-    } else if (strcasecmp(value, "big8") == 0) {
-        boot_info.endianness = ARM_ENDIANNESS_BE8;
-    } else if (strcasecmp(value, "little") == 0) {
-        boot_info.endianness = ARM_ENDIANNESS_LE;
-    } else {
-        fprintf(stderr, "Wrong endianness setting.\n");
-        exit(1);
-    }
 }
 
 static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
@@ -408,7 +385,6 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
-    cpuu->env.boot_info = &boot_info;
 
     return cpuu;
 }
@@ -431,9 +407,7 @@ static void board_init(MachineState * ms)
     }
 
     cpuu = create_cpu(ms, conf);
-    load_program(conf, cpuu);
     set_entry_point(conf, cpuu);
-    set_endianness(conf, cpuu);
 
     if (qdict_haskey(conf, "memory_mapping"))
     {
@@ -458,43 +432,6 @@ static void board_init(MachineState * ms)
 
         }
     }
-}
-
-static void load_program(QDict *conf, ARMCPU *cpu)
-{
-    const char *program;
-    MemoryRegion *sysmem = get_system_memory();
-    MemoryRegion *ram = g_new(MemoryRegion, 1);
-    size_t ram_size = 1024 * 1024;
-    hwaddr offset = 0;
-
-    if(!qdict_haskey(conf, "kernel"))
-       return;
-
-    QDICT_ASSERT_KEY_TYPE(conf, "kernel", QTYPE_QSTRING);
-    program = qdict_get_str(conf, "kernel");
-
-    if(qdict_haskey(conf, "kernel_ram_size"))
-    {
-        ram_size = qdict_get_int(conf, "kernel_ram_size");
-    }
-
-    if(qdict_haskey(conf, "kernel_offset"))
-    {
-        offset = qdict_get_int(conf, "kernel_offset");
-    }
-    
-
-    memory_region_allocate_system_memory(ram, NULL, "configurable.ram", ram_size);
-    memory_region_add_subregion(sysmem, offset, ram);
-
-    boot_info.ram_size = ram_size;
-    boot_info.kernel_filename = program;
-    boot_info.kernel_cmdline = "";
-    boot_info.initrd_filename = "";
-    boot_info.board_id = 1;
-    boot_info.loader_start = offset;
-    arm_load_kernel(cpu, &boot_info);
 }
 
 static void configurable_machine_class_init(ObjectClass *oc, void *data)
