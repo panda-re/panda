@@ -235,6 +235,19 @@ class RRInstance(object):
         self.condition(
             break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
 
+    def set_breakpoint_commands(self, break_num):
+        self.gdb("commands", break_num, expect_prompt = ">")
+        # self.gdb("p/u cpus->tqh_first->rr_guest_instr_count", expect_prompt = ">")
+        self.gdb("call target_disas(stdout, cpu, tb->pc, tb->size, 0)", expect_prompt = ">")
+        self.gdb("end")
+
+    def display_commands(self):
+        self.display("cpus->tqh_first->rr_guest_instr_count")
+        self.display("cpus->tqh_first->exception_index")
+        self.display("cpus->tqh_first->exit_request")
+        self.gdb("set $env = ((CPUPPCState*) cpus->tqh_first->env_ptr)")
+        self.display("$env->pending_interrupts")
+
     @cached_property
     def ram_ptr(self):
         return self.get_value(

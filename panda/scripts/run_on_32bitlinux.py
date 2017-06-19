@@ -86,15 +86,10 @@ def EXIT_USAGE():
     sys.exit(1)
 
 if __name__ == "__main__":
-    rr = False
-
-    #TODO: Port to argparse 
-
     parser = argparse.ArgumentParser(usage=USAGE)
 
     parser.add_argument("--rr", action='store_true', dest='rr',)
     parser.add_argument("guest_args", metavar='guest_arg', nargs='+')
-
     parser.add_argument("--env", action='store', dest='env')
     parser.add_argument("--arch", action='store', dest='arch', default='i386')
 
@@ -134,14 +129,14 @@ if __name__ == "__main__":
 
     install_dir = join(binary_dir, 'cdrom')
     # if os.path.exists(install_dir):
-    # shutil.rmtree(install_dir)
+        # shutil.rmtree(install_dir)
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
     qcow = join(dot_dir, "i386_wheezy.qcow")
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
-        sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
+        # sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
 
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
