@@ -200,12 +200,6 @@ typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
 } RR_callsite_id;
 
-// Used for tracking whether to write pending_interrupts to log
-typedef enum {
-    RR_INTERRUPT_PENDING,
-    RR_INTERRUPT_DONE
-} RR_log_state;
-
 static const char* callsite_str[] = {
     FOREACH_CALLSITE(GENERATE_STRING)
 };
