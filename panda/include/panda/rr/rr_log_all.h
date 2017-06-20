@@ -206,9 +206,6 @@ static const char* callsite_str[] = {
 
 static inline const char* get_callsite_string(RR_callsite_id cid)
 {
-    /*for (int i = 0; i < RR_CALLSITE_LAST; i++){*/
-        /*printf(" %d %s\n", i, callsite_str[i]);*/
-    /*}*/
     if (cid <= RR_CALLSITE_LAST)
         return callsite_str[cid];
     else
