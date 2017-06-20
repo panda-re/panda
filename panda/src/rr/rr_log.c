@@ -252,13 +252,6 @@ static inline void rr_assert_fail(const char* exp, const char* file, int line,
     /* NOT REACHED */
 }
 
-void rr_set_state(RR_log_state log_state){
-    if (rr_nondet_log == NULL){
-        return;
-    }
-    rr_nondet_log->current_state = log_state;
-}
-
 /******************************************************************************************/
 /* RECORD */
 /******************************************************************************************/
@@ -436,7 +429,6 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
 {
     if (panda_current_interrupt_request != interrupt_request) {
         // If the interrupt_request is set in cpu-exec.c, then enable writing PPC pending_interrupts to log
-        rr_set_state(RR_INTERRUPT_DONE);
         RR_log_entry* item = &(rr_nondet_log->current_item);
         memset(item, 0, sizeof(RR_log_entry));
 
@@ -451,14 +443,17 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
 }
 
 int prev_guest_instr_count = -1;
+uint32_t panda_prev_pending_int = -1; 
 
+//rw: Pending_interrupts field for powerpc
 void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int){
     // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
     RR_log_entry* item = &(rr_nondet_log->current_item);
 
-    if (rr_nondet_log->current_state == RR_INTERRUPT_PENDING){
+    if (pending_int == panda_prev_pending_int){
         return;
     }
+    panda_prev_pending_int = pending_int;
 
     if (rr_prog_point().guest_instr_count == prev_guest_instr_count){
         return;
@@ -473,9 +468,9 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
     item->variant.pending_interrupts = pending_int;
 
     rr_write_item();
-    rr_nondet_log->current_state = RR_INTERRUPT_PENDING;
 }
 
+//rw 6/20/17: Added as a fix for powerpc
 void rr_record_exception(RR_callsite_id call_site, int32_t exception_index){
     
     RR_log_entry* item = &(rr_nondet_log->current_item);
@@ -1039,8 +1034,8 @@ bool rr_replay_exception(int32_t* exception_index){
 }
 
 //rw: replay powerpc pending interrupts
-bool rr_replay_pending_interrupts(uint32_t* pending_int) {
-    RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, RR_CALLSITE_CPU_PENDING_INTERRUPTS, true);
+bool rr_replay_pending_interrupts(RR_callsite_id callsite_id, uint32_t* pending_int) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, callsite_id, true);
 
     if (!current_item) return false;
 

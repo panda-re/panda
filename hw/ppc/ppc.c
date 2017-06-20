@@ -76,11 +76,6 @@ void ppc_set_irq(PowerPCCPU *cpu, int n_IRQ, int level)
         }
     }
 
-#ifdef CONFIG_SOFTMMU
-    //set flag that pending_interrupts has changed, so we will write change to log ASAP
-    rr_set_state(RR_INTERRUPT_DONE);
-#endif
-
     if (old_pending != env->pending_interrupts) {
 #ifdef CONFIG_KVM
         kvmppc_set_interrupt(cpu, n_IRQ, level);

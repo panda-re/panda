@@ -131,7 +131,7 @@ typedef struct rr_log_entry_t {
         // pending interrupts for PPC
         uint32_t pending_interrupts;
 
-        //exception_indx
+        // Exception number in cpu
         int32_t exception_index;
 
         // if log_entry.kind == RR_SKIPPED_CALL
@@ -156,9 +156,6 @@ typedef struct RR_log_t {
 
     RR_log_entry current_item;
 
-    // For PPC pending interrupts, set when pending_interrupt can be written to log
-    // and cleared otherwise
-    RR_log_state current_state;
     uint8_t current_item_valid;
     uint64_t item_number;
 } RR_log;
