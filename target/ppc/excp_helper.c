@@ -757,7 +757,6 @@ static void ppc_hw_interrupt(CPUPPCState *env)
                   cs->interrupt_request, (int)msr_me, (int)msr_ee);
 #endif
     /* External reset */
-
     if (env->pending_interrupts & (1 << PPC_INTERRUPT_RESET)) {
         env->pending_interrupts &= ~(1 << PPC_INTERRUPT_RESET);
         powerpc_excp(cpu, env->excp_model, POWERPC_EXCP_RESET);
