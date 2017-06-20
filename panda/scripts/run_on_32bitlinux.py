@@ -33,6 +33,10 @@ dir.
 
 Advanced USAGE:
 
+    --rr turns on Mozilla rr record for your command
+
+    --arch specifies another architecture (Default is i386)
+
     --env "PYTHON_DICT" where PYTHON_DICT represents the user environment
                          you would like to enforce on the guest
         eg.  --env "{'CC':'/bin/gcc', 'LD_LIBRARY_PATH':'/usr/bin/gcc'}"
@@ -40,8 +44,8 @@ Advanced USAGE:
 """
 
 SUPPORTED_ARCHES = {
-    'i386': ('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#"),
-    'ppc': ('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#")
+    'i386': ('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2"),
+    'ppc': ('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow")
 }
 
 
@@ -102,7 +106,7 @@ if __name__ == "__main__":
     if args.rr:
         rr = True
     
-    (qemu_softmmu, qemu_binary, expect_prompt) = SUPPORTED_ARCHES[args.arch]
+    (qemu_softmmu, qemu_binary, expect_prompt, qcow_fname) = SUPPORTED_ARCHES[args.arch]
 
     env = {}
     if args.env:
@@ -133,10 +137,10 @@ if __name__ == "__main__":
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, "ppc_wheezy.qcow")
+    qcow = join(dot_dir, qcow_fname)
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
-        # sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", qcow])
+        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + qcow_fname, "-O", qcow])
 
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
@@ -147,7 +151,7 @@ if __name__ == "__main__":
 
     create_recording(
         join(panda_build_dir, qemu_softmmu, qemu_binary),
-        qcow, "powerpc_booted_root", new_guest_cmd,
+        qcow, "root", new_guest_cmd,
         install_dir,
         join(binary_dir, binary_basename),
         expect_prompt,
