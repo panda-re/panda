@@ -882,7 +882,6 @@ bool ppc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
         }
 
 		rr_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER, (uint32_t*)&env->pending_interrupts);
-        
 		return true;
     }
     return false;
