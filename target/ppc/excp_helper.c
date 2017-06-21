@@ -24,6 +24,10 @@
 
 #include "helper_regs.h"
 
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
+
 //#define DEBUG_OP
 //#define DEBUG_SOFTWARE_TLB
 //#define DEBUG_EXCEPTIONS
@@ -869,11 +873,15 @@ bool ppc_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     PowerPCCPU *cpu = POWERPC_CPU(cs);
     CPUPPCState *env = &cpu->env;
 
-    if (interrupt_request & CPU_INTERRUPT_HARD) {
+	rr_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE, (uint32_t*)&env->pending_interrupts);
+    
+	if (interrupt_request & CPU_INTERRUPT_HARD) {
         ppc_hw_interrupt(env);
         if (env->pending_interrupts == 0) {
             cs->interrupt_request &= ~CPU_INTERRUPT_HARD;
         }
+
+        rr_pending_interrupts(RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER, (uint32_t*)&env->pending_interrupts);
         return true;
     }
     return false;

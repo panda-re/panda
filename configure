@@ -1687,7 +1687,7 @@ if test "$solaris" = "yes" ; then
 fi
 
 if test -z "${target_list+xxx}" ; then
-    target_list="i386-softmmu x86_64-softmmu arm-softmmu"
+    target_list="i386-softmmu x86_64-softmmu arm-softmmu ppc-softmmu"
 else
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
 fi

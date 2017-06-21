@@ -68,7 +68,6 @@ RR_log_entry* rr_queue_end; // end of buffer.
 volatile sig_atomic_t rr_record_in_progress = 0;
 volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
-
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
@@ -124,7 +123,7 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 uint8_t rr_replay_finished(void)
 {
     return rr_log_is_empty()
-        && rr_queue_head->header.kind == RR_LAST
+        && rr_queue_head->header.kind == RR_END_OF_LOG
         && rr_get_guest_instr_count() >=
                rr_queue_head->header.prog_point.guest_instr_count;
 }
@@ -185,8 +184,8 @@ static void rr_spit_log_entry(RR_log_entry item)
                get_skipped_call_kind_string(item.variant.call_args.kind),
                get_callsite_string(item.header.callsite_loc));
         break;
-    case RR_LAST:
-        printf("\tRR_LAST\n");
+    case RR_END_OF_LOG:
+        printf("\tRR_END_OF_LOG\n");
         break;
     default:
         printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -301,6 +300,12 @@ static inline void rr_write_item(void)
         case RR_EXIT_REQUEST:
             RR_WRITE_ITEM(item.variant.exit_request);
             break;
+        case RR_PENDING_INTERRUPTS:
+            RR_WRITE_ITEM(item.variant.pending_interrupts);
+            break;
+        case RR_EXCEPTION:
+            RR_WRITE_ITEM(item.variant.exception_index);
+            break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
             // mz write kind first!
@@ -337,7 +342,7 @@ static inline void rr_write_item(void)
                     rr_assert(0 && "Unimplemented skipped call!");
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             // mz nothing to read
             break;
         default:
@@ -423,6 +428,7 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request)
 {
     if (panda_current_interrupt_request != interrupt_request) {
+        // If the interrupt_request is set in cpu-exec.c, then enable writing PPC pending_interrupts to log
         RR_log_entry* item = &(rr_nondet_log->current_item);
         memset(item, 0, sizeof(RR_log_entry));
 
@@ -434,6 +440,49 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
         panda_current_interrupt_request = interrupt_request;
         rr_write_item();
     }
+}
+
+int prev_guest_instr_count = -1;
+uint32_t panda_prev_pending_int = -1; 
+
+//rw: Pending_interrupts field for powerpc
+void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int){
+    // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
+    RR_log_entry* item = &(rr_nondet_log->current_item);
+
+    if (pending_int == panda_prev_pending_int){
+        return;
+    }
+    panda_prev_pending_int = pending_int;
+
+    if (rr_prog_point().guest_instr_count == prev_guest_instr_count){
+        return;
+    }
+    prev_guest_instr_count = rr_prog_point().guest_instr_count;
+
+    memset(item, 0, sizeof(RR_log_entry));
+    item->header.kind = RR_PENDING_INTERRUPTS;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point();
+
+    item->variant.pending_interrupts = pending_int;
+
+    rr_write_item();
+}
+
+//rw 6/20/17: Added as a fix for powerpc
+void rr_record_exception(RR_callsite_id call_site, int32_t exception_index){
+    
+    RR_log_entry* item = &(rr_nondet_log->current_item);
+    
+    memset(item, 0, sizeof(RR_log_entry));
+    item->header.kind = RR_EXCEPTION;
+    item->header.callsite_loc = call_site;
+    item->header.prog_point = rr_prog_point();
+
+    item->variant.exception_index = exception_index;
+
+    rr_write_item();
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
@@ -613,8 +662,8 @@ static void rr_record_end_of_log(void)
     // mz just in case
     memset(item, 0, sizeof(RR_log_entry));
 
-    item->header.kind = RR_LAST;
-    item->header.callsite_loc = RR_CALLSITE_LAST;
+    item->header.kind = RR_END_OF_LOG;
+    item->header.callsite_loc = RR_CALLSITE_END_OF_LOG;
     item->header.prog_point = rr_prog_point();
 
     rr_write_item();
@@ -742,6 +791,12 @@ static RR_log_entry *rr_read_item(void) {
         case RR_INTERRUPT_REQUEST:
             RR_READ_ITEM(item->variant.interrupt_request);
             break;
+        case RR_PENDING_INTERRUPTS:
+            RR_READ_ITEM(item->variant.pending_interrupts);
+            break;
+        case RR_EXCEPTION:
+            RR_READ_ITEM(item->variant.exception_index);
+            break;
         case RR_EXIT_REQUEST:
             RR_READ_ITEM(item->variant.exit_request);
             break;
@@ -800,7 +855,7 @@ static RR_log_entry *rr_read_item(void) {
                     rr_assert(0 && "Unimplemented skipped call!");
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             // mz nothing to read
             break;
         default:
@@ -963,6 +1018,32 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
         *exit_request = current_item->variant.exit_request;
         rr_queue_pop_front();
     }
+}
+
+bool rr_replay_exception(int32_t* exception_index){
+    
+    RR_log_entry* current_item = get_next_entry_checked(RR_EXCEPTION, RR_CALLSITE_CPU_EXCEPTION_INDEX, true);
+
+    if (!current_item) return false;
+
+    *exception_index = current_item->variant.exception_index;
+
+    //then, pop off queue and return
+    rr_queue_pop_front();
+    return true;
+}
+
+//rw: replay powerpc pending interrupts
+bool rr_replay_pending_interrupts(RR_callsite_id callsite_id, uint32_t* pending_int) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_PENDING_INTERRUPTS, callsite_id, true);
+
+    if (!current_item) return false;
+
+    *pending_int = current_item->variant.pending_interrupts;
+
+    //then, pop off queue and return
+    rr_queue_pop_front();
+    return true;
 }
 
 bool rr_replay_intno(uint32_t *intno) {
@@ -1487,7 +1568,7 @@ void rr_do_end_replay(int is_error)
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
-        rr_queue_head->header.kind == RR_LAST) {
+        rr_queue_head->header.kind == RR_END_OF_LOG) {
         printf("Replay completed successfully 2.\n");
     } else {
         if (is_error) {

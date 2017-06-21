@@ -94,7 +94,7 @@ class WatchReg(Watch):
         self.reg_num = reg_num
 
     def render(self, proc):
-        return proc.env_ptr("regs[{}]".format(self.reg_num)), proc.reg_size
+        return proc.env_ptr("{}[{}]".format(proc.arch.reg_name, self.reg_num)), proc.reg_size
 
     def __repr__(self):
         return "WatchReg({})".format(self.reg_num)
@@ -163,6 +163,8 @@ class RRInstance(object):
         print("(rr-{}) {}".format(self.description, cmd))
         sys.stdout.flush()
 
+        expect_prompt = kwargs.get("expect_prompt", "(rr) ")
+
         while True:
             try:
                 os.read(self.proc.fd, 1024)
@@ -172,13 +174,13 @@ class RRInstance(object):
         self.sendline(cmd)
 
         try:
-            output = self.proc.expect("(rr) ", timeout=timeout)
+            output = self.proc.expect(expect_prompt, timeout=timeout)
         except TimeoutExpired:
             print(self.proc.sofar)
             print("EXCEPTION!")
             sys.stdout.flush()
 
-        if output.endswith("(rr) "): output = output[:-5]
+        if output.endswith(expect_prompt): output = output[:-len(expect_prompt)]
         if output.startswith(cmd): output = output[len(cmd):]
         return output.strip()
 
@@ -209,6 +211,9 @@ class RRInstance(object):
     def condition(self, break_arg, cond):
         self.gdb("condition", self.breakpoints[break_arg], cond)
 
+    def display(self, cmd):
+        self.gdb("display", cmd)
+
     def checkpoint(self):
         return self.gdb_int_re(r"Checkpoint ([0-9]+) at", "checkpoint")
 
@@ -229,6 +234,19 @@ class RRInstance(object):
     def condition_instr(self, break_arg, op, instr):
         self.condition(
             break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+
+    def set_breakpoint_commands(self, break_num):
+        self.gdb("commands", break_num, expect_prompt = ">")
+        # self.gdb("p/u cpus->tqh_first->rr_guest_instr_count", expect_prompt = ">")
+        self.gdb("call target_disas(stdout, cpu, tb->pc, tb->size, 0)", expect_prompt = ">")
+        self.gdb("end")
+
+    def display_commands(self):
+        self.display("cpus->tqh_first->rr_guest_instr_count")
+        self.display("cpus->tqh_first->exception_index")
+        self.display("cpus->tqh_first->exit_request")
+        self.gdb("set $env = ((CPUPPCState*) cpus->tqh_first->env_ptr)")
+        self.display("$env->pending_interrupts")
 
     @cached_property
     def ram_ptr(self):
@@ -643,12 +661,16 @@ class Diverge(object):
                     hit = self.both.cont()
                     instr_counts = self.both.instr_count()
 
-                hit_watches = {
-                    proc: num_to_watch_dict[
-                        re_search_int(r"hit Hardware watchpoint ([0-9]+):",
-                                      hit[proc])
-                    ] for proc in hit
-                }
+                hit_watches = {}
+                for proc in hit:
+                    try:
+                        hit_watches[proc] = num_to_watch_dict[
+                            re_search_int(r"hit Hardware watchpoint ([0-9]+):",
+                                        hit[proc])
+                        ]
+                    except RuntimeError:
+                        # one of the processes has hit the end
+                        pass
                 new_watches.extend(set(hit_watches.values()))
 
             if len(watches) == len(new_watches): break

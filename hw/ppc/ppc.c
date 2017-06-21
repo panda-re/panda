@@ -39,7 +39,9 @@
 #include "kvm_ppc.h"
 #include "trace.h"
 
-//#define PPC_DEBUG_IRQ
+#ifdef CONFIG_SOFTMMU
+#include "panda/rr/rr_log.h"
+#endif
 //#define PPC_DEBUG_TB
 
 #ifdef PPC_DEBUG_IRQ
@@ -462,11 +464,20 @@ void ppce500_set_mpic_proxy(bool enabled)
 
 /*****************************************************************************/
 /* PowerPC time base and decrementer emulation */
-
 uint64_t cpu_ppc_get_tb(ppc_tb_t *tb_env, uint64_t vmclk, int64_t tb_offset)
 {
+    uint64_t tb_val;
     /* TB time in tb periods */
-    return muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;
+#ifdef CONFIG_SOFTMMU
+     RR_DO_RECORD_OR_REPLAY(
+        tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;,
+        /*record=*/rr_input_8(&tb_val);,
+        /*replay=*/rr_input_8(&tb_val);,
+        /*location=*/RR_CALLSITE_RDTSC);
+#else
+    tb_val = muldiv64(vmclk, tb_env->tb_freq, NANOSECONDS_PER_SECOND) + tb_offset;
+#endif
+    return tb_val;
 }
 
 uint64_t cpu_ppc_load_tbl (CPUPPCState *env)

@@ -103,7 +103,6 @@ extern void rr_signal_disagreement(RR_prog_point current,
 
 //
 // Record/Replay log structures
-//
 
 // Skipped calls are records of machine emulation activity that were triggered
 // by hardware devices during record session.  Since device emulation code is
@@ -150,7 +149,10 @@ get_skipped_call_kind_string(RR_skipped_call_kind kind)
     ACTION(RR_INTERRUPT_REQUEST), \
     ACTION(RR_EXIT_REQUEST), \
     ACTION(RR_SKIPPED_CALL), \
-    ACTION(RR_LAST)
+    ACTION(RR_END_OF_LOG),\
+    ACTION(RR_PENDING_INTERRUPTS), \
+    ACTION(RR_EXCEPTION), \
+    ACTION(RR_LAST),
 
 typedef enum {
     FOREACH_LOGTYPE(GENERATE_ENUM)
@@ -188,7 +190,11 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
     ACTION(RR_CALLSITE_WRITE_4), \
     ACTION(RR_CALLSITE_WRITE_2), \
     ACTION(RR_CALLSITE_WRITE_1), \
-    ACTION(RR_CALLSITE_LAST),
+    ACTION(RR_CALLSITE_END_OF_LOG), \
+    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_BEFORE), \
+    ACTION(RR_CALLSITE_CPU_PENDING_INTERRUPTS_AFTER), \
+    ACTION(RR_CALLSITE_CPU_EXCEPTION_INDEX), \
+    ACTION(RR_CALLSITE_LAST)
 
 typedef enum {
     FOREACH_CALLSITE(GENERATE_ENUM)
@@ -217,6 +223,9 @@ void rr_record_interrupt_request(RR_callsite_id call_site,
                                  uint32_t interrupt_request);
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
+void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_interrupt);
+void rr_record_exception(RR_callsite_id call_site, int32_t exception_index);
+
 // Replay routines
 void rr_replay_debug(RR_callsite_id call_site);
 void rr_replay_input_1(RR_callsite_id call_site, uint8_t* data);
@@ -226,6 +235,8 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site,
                                  uint32_t* interrupt_request);
+bool rr_replay_pending_interrupts(RR_callsite_id call_site, uint32_t* pending_interrupt);
+bool rr_replay_exception(int32_t* exception_index);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request);
 bool rr_replay_intno(uint32_t *intno);
 
@@ -281,6 +292,19 @@ static inline void rr_interrupt_request(int* interrupt_request)
         break;
     default:
         break;
+    }
+}
+
+static inline void rr_pending_interrupts(RR_callsite_id callsite_id, uint32_t* pending_int){
+    switch(rr_mode){
+        case RR_RECORD:
+            rr_record_pending_interrupts(callsite_id, *pending_int);
+            break;
+        case RR_REPLAY:
+            rr_replay_pending_interrupts(callsite_id, pending_int);
+            break;
+        default:
+            break;
     }
 }
 
