@@ -64,6 +64,7 @@ void restore_state_to_opc(CPUArchState *env, struct TranslationBlock *tb,
                           target_ulong *data);
 
 void cpu_gen_init(void);
+int inst_offset_back(target_ulong guest_pc);
 bool cpu_restore_state(CPUState *cpu, uintptr_t searched_pc);
 
 void QEMU_NORETURN cpu_loop_exit_noexc(CPUState *cpu);

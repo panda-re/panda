@@ -121,10 +121,10 @@ static bool all_cpu_threads_idle(void)
 
 /* Protected by TimersState seqlock */
 
-static bool icount_sleep = true;
+static bool icount_sleep = false;
 static int64_t vm_clock_warp_start = -1;
 /* Conversion factor from emulated instructions to virtual clock ticks.  */
-static int icount_time_shift;
+static int icount_time_shift = 7;
 /* Arbitrarily pick 1MIPS as the minimum allowable speed.  */
 #define MAX_ICOUNT_SHIFT 10
 
@@ -152,6 +152,16 @@ typedef struct TimersState {
 } TimersState;
 
 static TimersState timers_state;
+
+void cpu_reset_icount(void)
+{
+    timers_state.qemu_icount = 0;
+}
+
+int64_t cpu_get_icount_raw_raw(void)
+{
+    return timers_state.qemu_icount;
+}
 
 int64_t cpu_get_icount_raw(void)
 {
@@ -1066,6 +1076,8 @@ static void *qemu_dummy_cpu_thread_fn(void *arg)
 static int64_t tcg_get_icount_limit(void)
 {
     int64_t deadline;
+
+    if (rr_in_replay()) return rr_num_instr_before_next_interrupt();
 
     if (replay_mode != REPLAY_MODE_PLAY) {
         deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL);

@@ -11674,13 +11674,6 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
-    if (rr_mode == RR_REPLAY) {
-        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-        if (max_insns > until_interrupt) {
-            max_insns = until_interrupt;
-        }
-    }
-
     gen_tb_start(tb);
 
     tcg_clear_temp_count();
@@ -11784,7 +11777,6 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
         // In LLVM mode we generate this more efficiently.
         if (rr_mode != RR_OFF && !generate_llvm) {
             gen_op_update_panda_pc(dc->pc);
-            gen_op_update_rr_icount();
         }
 #endif
 

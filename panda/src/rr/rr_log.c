@@ -47,9 +47,12 @@
 #include "panda/rr/rr_log.h"
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
+#include "include/exec/exec-all.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
+#include "tcg/tcg.h"
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -1298,7 +1301,6 @@ void rr_reset_state(CPUState* cpu_state)
     // clear flags
     rr_record_in_progress = 0;
     rr_skipped_callsite_location = 0;
-    cpu_state->rr_guest_instr_count = 0;
 }
 
 //////////////////////////////////////////////////////////////
@@ -1424,6 +1426,10 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
+    cpu_reset_icount();
+    icount_align_option = false;
+    use_icount = 1;
+
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf("opening nondet log for write :\t%s\n", name_buf);
@@ -1516,6 +1522,10 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
 
     // save the time so we can report how long replay takes
     time(&rr_start_time);
+
+    cpu_reset_icount();
+    icount_align_option = false;
+    use_icount = 1;
 
     // second, open non-deterministic input log for read.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1614,6 +1624,21 @@ void rr_end_main_loop_wait(void) {
         rr_tracked_mem_regions_record();
     }
 #endif
+}
+
+uint64_t rr_get_guest_instr_count(void) {
+    CPUState *cpu = current_cpu;
+    int64_t count = cpu_get_icount_raw_raw();
+    if (!cpu) {
+        return count;
+    }
+
+    count -= (cpu->icount_extra + cpu->icount_decr.u16.low);
+    if (!cpu->can_do_io) {
+        count -= inst_offset_back(cpu->panda_guest_pc);
+        count += 1;
+    }
+    return count;
 }
 
 #ifdef CONFIG_SOFTMMU

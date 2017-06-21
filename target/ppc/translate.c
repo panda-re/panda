@@ -7013,13 +7013,6 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
-    if (rr_mode == RR_REPLAY) {
-        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-        if (max_insns > until_interrupt) {
-            max_insns = until_interrupt;
-        }
-    }
-
     gen_tb_start(tb);
     tcg_clear_temp_count();
     /* Set env in case of segfault during code fetch */
@@ -7048,7 +7041,6 @@ void gen_intermediate_code(CPUPPCState *env, struct TranslationBlock *tb)
         // In LLVM mode we generate this more efficiently.
         if (rr_mode != RR_OFF && !generate_llvm) {
             gen_op_update_panda_pc(ctx.nip);
-            gen_op_update_rr_icount();
         }
 #endif
 

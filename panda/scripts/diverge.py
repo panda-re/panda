@@ -225,11 +225,11 @@ class RRInstance(object):
         return self.gdb_int_re(r"\$[0-9]+ = ([0-9]+)", "print/u", expr)
 
     def instr_count(self):
-        return self.get_value("cpus->tqh_first->rr_guest_instr_count")
+        return self.get_value("rr_get_guest_instr_count()")
 
     @cached_property
     def instr_count_ptr(self):
-        return self.get_value("&cpus->tqh_first->rr_guest_instr_count")
+        return self.get_value("&timers_state.qemu_icount")
 
     def condition_instr(self, break_arg, op, instr):
         self.condition(

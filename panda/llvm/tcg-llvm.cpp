@@ -1432,7 +1432,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
     LLVMContext &C = m_context;
     MDNode *PCUpdateMD = MDNode::get(C, MDString::get(C, "pcupdate"));
-    MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
     MDNode *RuntimeMD = MDNode::get(C, MDString::get(C, "runtime"));
 
     /* Init int for adding offsets to env */
@@ -1447,15 +1446,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
             (uintptr_t)&tcg_llvm_runtime.last_pc);
     Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, intPtrType(64), "lastpc");
-
-    /* Setup rr_guest_instr_count stores */
-    Constant *InstrCountPtrInt = constInt(sizeof(uintptr_t) * 8,
-            (uintptr_t)&first_cpu->rr_guest_instr_count);
-    Value *InstrCountPtr = m_builder.CreateIntToPtr(
-            InstrCountPtrInt, intPtrType(64), "rrgicp");
-    Instruction *InstrCount = m_builder.CreateLoad(InstrCountPtr, true, "rrgic");
-    InstrCount->setMetadata("host", RRUpdateMD);
-    Value *One64 = constInt(64, 1);
 
     /* Generate code for each opc */
     const TCGArg *args;
@@ -1475,13 +1465,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
             // that sets PC
             LastPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("host", PCUpdateMD);
-
-            InstrCount = dyn_cast<Instruction>(
-                    m_builder.CreateAdd(InstrCount, One64, "rrgic"));
-            assert(InstrCount);
-            Instruction *RRSt = m_builder.CreateStore(InstrCount, InstrCountPtr, true);
-            InstrCount->setMetadata("host", RRUpdateMD);
-            RRSt->setMetadata("host", RRUpdateMD);
         }
 
         args += generateOperation(opc, op, args);

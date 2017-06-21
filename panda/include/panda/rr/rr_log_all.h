@@ -449,6 +449,13 @@ static inline uint8_t rr_off(void) { return (rr_mode == RR_OFF); }
 
 static inline uint8_t rr_on(void) { return (!rr_off()); }
 
+static inline void rr_replay_skipped_calls_from(RR_callsite_id location) {
+    if (rr_in_replay()) {
+        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+        rr_replay_skipped_calls();
+    }
+}
+
 // mz flag indicating that TB cache flush has been requested
 extern uint8_t rr_please_flush_tb;
 // returns true if we are supposed to be flushing the tb whenever possible.

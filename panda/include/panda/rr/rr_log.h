@@ -164,16 +164,22 @@ RR_log_entry* rr_get_queue_head(void);
 
 void panda_end_replay(void);
 
-static inline uint64_t rr_get_guest_instr_count(void) {
-    assert(first_cpu);
-    return first_cpu->rr_guest_instr_count;
-}
+uint64_t rr_get_guest_instr_count(void);
 
 //mz program execution state
 static inline RR_prog_point rr_prog_point(void) {
     RR_prog_point ret = {0};
-    ret.guest_instr_count = first_cpu->rr_guest_instr_count;
+    ret.guest_instr_count = rr_get_guest_instr_count();
     return ret;
+}
+
+static inline void qemu_log_rr(target_ulong pc) {
+    if (qemu_loglevel_mask(CPU_LOG_RR)) {
+        RR_prog_point pp = rr_prog_point();
+        qemu_log_mask(CPU_LOG_RR,
+                "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
+                pc, (unsigned long long)pp.guest_instr_count);
+    }
 }
 
 extern void rr_fill_queue(void);

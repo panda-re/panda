@@ -8420,14 +8420,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     cpu_ptr1 = tcg_temp_new_ptr();
     cpu_cc_srcT = tcg_temp_local_new();
 
-#ifdef CONFIG_SOFTMMU
-    //mz for record and replay, let's start each block with EIP = pc_start.
-    //mz this way, we can chain in record and not chain in replay.
-    if (rr_mode != RR_OFF) {
-        gen_jmp_im(pc_start - dc->cs_base);
-    }
-#endif
-
     dc->is_jmp = DISAS_NEXT;
     pc_ptr = pc_start;
     num_insns = 0;
@@ -8437,13 +8429,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     }
     if (max_insns > TCG_MAX_INSNS) {
         max_insns = TCG_MAX_INSNS;
-    }
-
-    if (rr_mode == RR_REPLAY) {
-        uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-        if (max_insns > until_interrupt) {
-            max_insns = until_interrupt;
-        }
     }
 
     /*
@@ -8477,7 +8462,6 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         // In LLVM mode we generate this more efficiently.
         if (rr_mode != RR_OFF && !generate_llvm) {
             gen_op_update_panda_pc(pc_ptr);
-            gen_op_update_rr_icount();
         }
 #endif
 
@@ -8507,7 +8491,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
            If current instruction already crossed the bound - it's ok,
            because an exception hasn't stopped this code.
          */
-        if (((tb->cflags & CF_USE_ICOUNT) || rr_in_record() || rr_in_replay())
+        if ((tb->cflags & CF_USE_ICOUNT)
             && ((pc_ptr & TARGET_PAGE_MASK)
                 != ((pc_ptr + TARGET_MAX_INSN_SIZE - 1) & TARGET_PAGE_MASK)
                 || (pc_ptr & ~TARGET_PAGE_MASK) == 0)) {
