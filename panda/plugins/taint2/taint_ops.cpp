@@ -307,9 +307,17 @@ void taint_select(
      (size_t)(offset) < cpu_endoff(member))
 
 static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
+#ifdef TARGET_PPC
+    if (cpu_contains(gpr, offset)) {
+#else 
     if (cpu_contains(regs, offset)) {
+#endif
         *dest = greg;
+#ifdef TARGET_PPC
+        *addr = (offset - cpu_off(gpr)) * labels_per_reg / sizeof(((CPUArchState *)0)->gpr[0]);
+#else
         *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUArchState *)0)->regs[0]);
+#endif
     } else {
         *dest= gspec;
         *addr= offset;

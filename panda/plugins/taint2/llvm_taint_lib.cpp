@@ -913,9 +913,10 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         if (ptrAddr == cpu_off(pc) && isStore) {
 #elif defined(TARGET_I386)
         if (ptrAddr == cpu_off(eip) && isStore) {
+#elif defined(TARGET_PPC)
+        if (ptrAddr == cpu_off(nip) && isStore) {
 #else
-        // shouldn't happend
-        assert(1 == 0);
+#error "unsupported architecture"
 #endif
                  // we are storing to eip
                  // insert instrumentation before for querying taint
