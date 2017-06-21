@@ -48,7 +48,6 @@
 #endif
 #include "sysemu/replay.h"
 #include "panda/rr/rr_log.h"
-
 #include "panda/callback_support.h"
 #include "panda/common.h"
 
@@ -499,6 +498,15 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             return true;
 #else
             if (replay_exception()) {
+
+#ifdef CONFIG_SOFTMMU
+                int32_t excp_index; 
+                RR_DO_RECORD_OR_REPLAY(
+                    excp_index = cpu->exception_index;,
+                    rr_record_exception(RR_CALLSITE_CPU_EXCEPTION_INDEX, excp_index);,
+                    rr_replay_exception((int32_t*)&cpu->exception_index);,
+                    RR_CALLSITE_CPU_EXCEPTION_INDEX);
+#endif
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 cc->do_interrupt(cpu);
                 cpu->exception_index = -1;

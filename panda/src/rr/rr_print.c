@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
+#include <panda/include/panda/rr/rr_log.h>
 
 #define RR_LOG_STANDALONE
 #include "qemu/osdep.h"
@@ -74,6 +75,12 @@ static void rr_spit_log_entry(RR_log_entry item) {
         case RR_EXIT_REQUEST:
             printf("\tRR_EXIT_REQUEST_%d from %s\n", item.variant.exit_request, get_callsite_string(item.header.callsite_loc));
             break;
+        case RR_PENDING_INTERRUPTS:
+            printf("\tRR_PENDING_INTERRUPTS_%d from %s\n", item.variant.pending_interrupts, get_callsite_string(item.header.callsite_loc));
+            break;
+        case RR_EXCEPTION:
+            printf("\tRR_EXCEPTION_%d from %s\n", item.variant.exception_index, get_callsite_string(item.header.callsite_loc));
+            break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item.variant.call_args;
@@ -103,8 +110,8 @@ static void rr_spit_log_entry(RR_log_entry item) {
                         callbytes);
                 break;
             }
-        case RR_LAST:
-            printf("\tRR_LAST\n");
+        case RR_END_OF_LOG:
+            printf("\tRR_END_OF_LOG\n");
             break;
         default:
             printf("\tUNKNOWN RR log kind %d\n", item.header.kind);
@@ -195,6 +202,12 @@ static RR_log_entry *rr_read_item(void) {
         case RR_EXIT_REQUEST:
             assert(fread(&(item->variant.exit_request), sizeof(item->variant.exit_request), 1, rr_nondet_log->fp) == 1);
             break;
+        case RR_PENDING_INTERRUPTS:
+            assert(fread(&(item->variant.pending_interrupts), sizeof(item->variant.pending_interrupts), 1, rr_nondet_log->fp) == 1);
+            break;
+        case RR_EXCEPTION:
+            assert(fread(&(item->variant.exception_index), sizeof(item->variant.exception_index), 1, rr_nondet_log->fp) == 1);
+            break;
         case RR_SKIPPED_CALL:
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
@@ -245,11 +258,12 @@ static RR_log_entry *rr_read_item(void) {
                 }
             }
             break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             //mz nothing to read
             break;
         default:
             //mz unimplemented
+            printf("rr_read_item: Log type unimplemented!");
             assert(0);
     }
     rr_nondet_log->item_number++;

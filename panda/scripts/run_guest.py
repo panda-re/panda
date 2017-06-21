@@ -26,13 +26,14 @@ def progress(msg):
     print
 
 class Qemu(object):
-    def __init__(self, qemu_path, qcow, snapshot, tempdir, boot=False, rr=False):
+    def __init__(self, qemu_path, qcow, snapshot, tempdir, expect_prompt, boot=False, rr=False):
         self.qemu_path = qemu_path
         self.qcow = qcow
         self.snapshot = snapshot
         self.tempdir = tempdir
         self.rr = rr
         self.boot = boot
+        self.expect_prompt = expect_prompt
 
     # types a command into the qemu monitor and waits for it to complete
     def run_monitor(self, cmd):
@@ -51,13 +52,13 @@ class Qemu(object):
         self.console.send(cmd)
 
     # types a command into the guest os and waits for it to complete
-    def run_console(self, cmd=None, timeout=30, expectation="root@debian-i386:~#"):
+    def run_console(self, cmd=None, timeout=30):
         assert (not self.boot)
         if cmd is not None:
             self.type_console(cmd)
-        print Style.BRIGHT + "root@debian-i386:~#" + Style.RESET_ALL,
+        print Style.BRIGHT + self.expect_prompt + Style.RESET_ALL,
         self.console.sendline()
-        self.console.expect(expectation, timeout=timeout)
+        self.console.expect(self.expect_prompt, timeout=timeout)
         print
         print
 
@@ -68,7 +69,7 @@ class Qemu(object):
 
         qemu_args = [self.qemu_path, self.qcow]
 #        if not self.boot:
-#        
+#
         qemu_args.extend(['-monitor', 'unix:{},server,nowait'.format(monitor_path)])
         if self.boot:
             qemu_args.append('-S')
@@ -103,7 +104,7 @@ class Qemu(object):
         print
         if not self.boot:
             self.console.sendline()
-            self.console.expect("root@debian-i386:~#")
+            self.console.expect(self.expect_prompt)
         print
         print
 
@@ -142,11 +143,11 @@ def make_iso(directory, iso_path):
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
 def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
-                     recording_path, isoname=None, rr=False, env={}):
+                     recording_path, expect_prompt, isoname=None, rr=False, env={}):
     recording_path = realpath(recording_path)
     if not isoname: isoname = copy_directory + '.iso'
 
-    with TempDir() as tempdir, Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr) as qemu:
+    with TempDir() as tempdir, Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr, expect_prompt=expect_prompt) as qemu:
         if os.listdir(copy_directory):
             progress("Creating ISO {}...".format(isoname))
             make_iso(copy_directory, isoname)

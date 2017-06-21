@@ -128,6 +128,12 @@ typedef struct rr_log_entry_t {
                                     // request value!
         // if log_entry.kind == RR_EXIT_REQUEST
         uint16_t exit_request;
+        // pending interrupts for PPC
+        uint32_t pending_interrupts;
+
+        // Exception number in cpu
+        int32_t exception_index;
+
         // if log_entry.kind == RR_SKIPPED_CALL
         RR_skipped_call_args call_args;
         // if log_entry.kind == RR_LAST
@@ -149,6 +155,7 @@ typedef struct RR_log_t {
     uint64_t bytes_read;
 
     RR_log_entry current_item;
+
     uint8_t current_item_valid;
     uint64_t item_number;
 } RR_log;
@@ -182,6 +189,7 @@ static inline uint64_t rr_num_instr_before_next_interrupt(void) {
                 return -1;
             } // otherwise fall through
         case RR_LAST:
+        case RR_END_OF_LOG:
         case RR_INTERRUPT_REQUEST:
             return last_header.prog_point.guest_instr_count -
                 rr_get_guest_instr_count();
