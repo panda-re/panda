@@ -75,7 +75,7 @@ filemap = {}
 def transform_arg_copy(orig_filename):
     if orig_filename.startswith('guest:'):
         return orig_filename[6:]
-    elif os.path.exists(orig_filename):
+    elif os.path.isfile(orig_filename):
         name = basename(orig_filename)
         copy_filename = join(install_dir, name)
         if copy_filename != orig_filename:
@@ -93,11 +93,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage=USAGE)
 
     parser.add_argument("--rr", action='store_true', dest='rr',)
-    parser.add_argument("guest_args", metavar='guest_arg', nargs='+')
     parser.add_argument("--env", action='store', dest='env')
     parser.add_argument("--arch", action='store', dest='arch', default='i386')
 
-    args = parser.parse_args()
+    args, guest_cmd = parser.parse_known_args()
 
     if len(sys.argv) < 2:
         EXIT_USAGE()
@@ -105,7 +104,7 @@ if __name__ == "__main__":
     rr = False
     if args.rr:
         rr = True
-    
+
     (qemu_softmmu, qemu_binary, expect_prompt, qcow_fname) = SUPPORTED_ARCHES[args.arch]
 
     env = {}
@@ -116,8 +115,7 @@ if __name__ == "__main__":
             print("Something went wrong parsing the environment string: [{}]".format(env))
             EXIT_USAGE()
 
-    guest_cmd = args.guest_args
-    binary = args.guest_args[0]
+    binary = guest_cmd[0]
 
     if binary.startswith('guest:'): binary = binary[6:]
     binary_basename = basename(binary)
