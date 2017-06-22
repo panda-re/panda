@@ -227,13 +227,9 @@ class RRInstance(object):
     def instr_count(self):
         return self.get_value("rr_get_guest_instr_count()")
 
-    @cached_property
-    def instr_count_ptr(self):
-        return self.get_value("&timers_state.qemu_icount")
-
     def condition_instr(self, break_arg, op, instr):
-        self.condition(
-            break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+        current = "timers_state.qemu_icount - (int32_t)cpus->tqh_first->icount_decr.u32"
+        self.condition(break_arg, "{} {} {}".format(current, op, instr))
 
     def set_breakpoint_commands(self, break_num):
         self.gdb("commands", break_num, expect_prompt = ">")
