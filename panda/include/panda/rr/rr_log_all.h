@@ -451,21 +451,10 @@ static inline uint8_t rr_on(void) { return (!rr_off()); }
 
 static inline void rr_replay_skipped_calls_from(RR_callsite_id location) {
     if (rr_in_replay()) {
-        rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+        rr_skipped_callsite_location = location;
         rr_replay_skipped_calls();
     }
 }
-
-// mz flag indicating that TB cache flush has been requested
-extern uint8_t rr_please_flush_tb;
-// returns true if we are supposed to be flushing the tb whenever possible.
-static inline uint8_t rr_flush_tb(void) { return rr_please_flush_tb; }
-
-// sets flag so that we'll flush tb whenever possible.
-static inline void rr_flush_tb_on(void) { rr_please_flush_tb = 1; }
-
-// unsets flag so that we'll not flush tb whenever possible.
-static inline void rr_flush_tb_off(void) { rr_please_flush_tb = 0; }
 
 //
 // Debug level

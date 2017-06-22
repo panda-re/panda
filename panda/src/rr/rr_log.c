@@ -99,9 +99,6 @@ static inline uint8_t rr_log_is_empty(void) {
 
 RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
 
-// used as a signal that TB cache needs flushing.
-uint8_t rr_please_flush_tb = 0;
-
 // mz Flags set by monitor to indicate requested record/replay action
 volatile sig_atomic_t rr_record_requested = 0;
 volatile sig_atomic_t rr_replay_requested = 0;
@@ -1294,10 +1291,10 @@ static inline void rr_get_nondet_log_file_name(char* rr_name, char* rr_path,
     snprintf(file_name, file_name_len, "%s/%s-rr-nondet.log", rr_path, rr_name);
 }
 
-void rr_reset_state(CPUState* cpu_state)
+void rr_reset_state(CPUState* cpu)
 {
     // set flag to signal that we'll be needing the tb flushed.
-    rr_flush_tb_on();
+    tb_flush(cpu);
     // clear flags
     rr_record_in_progress = 0;
     rr_skipped_callsite_location = 0;
