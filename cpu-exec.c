@@ -498,15 +498,13 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             return true;
 #else
             if (replay_exception()) {
-
-#ifdef CONFIG_SOFTMMU
-                int32_t excp_index; 
+                int32_t excp_index;
                 RR_DO_RECORD_OR_REPLAY(
-                    excp_index = cpu->exception_index;,
-                    rr_record_exception(RR_CALLSITE_CPU_EXCEPTION_INDEX, excp_index);,
-                    rr_replay_exception((int32_t*)&cpu->exception_index);,
+                    excp_index = cpu->exception_index,
+                    rr_record_exception(RR_CALLSITE_CPU_EXCEPTION_INDEX, excp_index),
+                    rr_replay_exception((int32_t*)&cpu->exception_index),
                     RR_CALLSITE_CPU_EXCEPTION_INDEX);
-#endif
+
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 cc->do_interrupt(cpu);
                 cpu->exception_index = -1;
@@ -710,15 +708,6 @@ int cpu_exec(CPUState *cpu)
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
 
-#ifdef CONFIG_SOFTMMU
-    //mz This is done once at the start of record and once at the start of
-    //replay.  So we should be ok.
-    if (unlikely(rr_flush_tb())) {
-        qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
-        tb_flush(cpu);
-        rr_flush_tb_off();  // just the first time, eh?
-    }
-#endif
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
     }
