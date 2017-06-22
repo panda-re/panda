@@ -1802,15 +1802,28 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
 
 #ifdef CONFIG_LLVM
         if (execute_llvm) {
-            assert((uintptr_t)tb->llvm_tc_ptr <= tc_ptr);
-            assert(tc_ptr <= (uintptr_t)tb->llvm_tc_end);
+            if (tc_ptr >= (uintptr_t)tb->llvm_tc_ptr &&
+                    tc_ptr < (uintptr_t)tb->llvm_tc_end) {
+                return tb;
+            } else {
+                int i;
+                for (i = tcg_ctx.tb_ctx.nb_tbs - 1; i >= 0; i--) {
+                    tb = &tcg_ctx.tb_ctx.tbs[i];
+                    if (tc_ptr >= (uintptr_t)tb->llvm_tc_ptr &&
+                            tc_ptr < (uintptr_t)tb->llvm_tc_end) {
+                        return tb;
+                    }
+                }
+            }
         } else
 #endif
         {
-            assert((uintptr_t)tb->tc_ptr <= tc_ptr);
-            assert(!next_tb->tc_ptr || (uintptr_t)next_tb->tc_ptr > tc_ptr);
+            if (tc_ptr >= (uintptr_t)tb->tc_ptr &&
+                    tc_ptr < (uintptr_t)next_tb->tc_ptr) {
+                return tb;
+            }
         }
-        return tb;
+        tb = NULL;
     }
 #ifdef CONFIG_LLVM
     /* if we get here in LLVM mode something is wrong! */
