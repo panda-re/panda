@@ -1424,6 +1424,8 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     time(&rr_start_time);
 
     cpu_reset_icount();
+    first_cpu->icount_decr.u32 = 0;
+    first_cpu->icount_extra = 0;
     icount_align_option = false;
     use_icount = 1;
 
@@ -1461,7 +1463,7 @@ void rr_do_end_record(void)
     time(&rr_end_time);
     printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
 
-    // log_all_cpu_states();
+    use_icount = 0;
 
     rr_destroy_log();
 
@@ -1521,6 +1523,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     time(&rr_start_time);
 
     cpu_reset_icount();
+    first_cpu->icount_decr.u32 = 0;
+    first_cpu->icount_extra = 0;
     icount_align_option = false;
     use_icount = 1;
 
@@ -1592,6 +1596,7 @@ void rr_do_end_replay(int is_error)
     rr_destroy_log();
     // turn off replay
     rr_mode = RR_OFF;
+    use_icount = 0;
 
     // mz XXX something more graceful?
     if (is_error) {
