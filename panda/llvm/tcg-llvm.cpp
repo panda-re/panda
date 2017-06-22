@@ -75,9 +75,6 @@ static const char *qemu_st_helper_names[16];
 
 extern "C" {
     TCGLLVMContext* tcg_llvm_ctx = 0;
-
-    /* These data is accessible from generated code */
-    TCGLLVMRuntime tcg_llvm_runtime = {0};
 }
 
 extern CPUState *env;
@@ -763,6 +760,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
     switch(opc) {
     case INDEX_op_insn_start:
+    case INDEX_op_set_label:
         break;
 
     case INDEX_op_discard:
@@ -930,11 +928,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 #undef __OP_SETCOND_C
 #undef __OP_SETCOND
 
-    case INDEX_op_set_label:
-        assert(getLabel(arg_label(args[0])->id)->getParent() == 0);
-        startNewBasicBlock(getLabel(arg_label(args[0])->id));
-        break;
-
     case INDEX_op_movi_i32:
         setValue(args[0], ConstantInt::get(intType(32), args[1]));
         break;
@@ -1005,10 +998,13 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         assert(getValue(args[0])->getType() == intType(regBits));   \
         assert(!m_tcgContext->temps[args[1]].name                   \
                 || !strcmp(m_tcgContext->temps[args[1]].name, "env"));\
-        Value* valueToStore = getValue(args[0]);                    \
-        Value* storePtr = getEnvOffsetPtr(args[2], temp);           \
-        m_builder.CreateStore(m_builder.CreateTrunc(                \
-                valueToStore, intType(memBits)), storePtr);         \
+        Value* valueToStoreLong = getValue(args[0]);                \
+        Value* valueToStore = m_builder.CreateTrunc(valueToStoreLong,\
+                intType(memBits));                                  \
+        Value* storePtrLong = getEnvOffsetPtr(args[2], temp);       \
+        Value* storePtr = m_builder.CreatePointerCast(storePtrLong, \
+                intPtrType(memBits));                               \
+        m_builder.CreateStore(valueToStore, storePtr);              \
     } break;
 
     __LD_OP(INDEX_op_ld8u_i32,   8, 32, Z)
@@ -1274,7 +1270,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         break;
 
     case INDEX_op_goto_tb:
-        /* XXX: tb linking is disabled */
+        /* XXX: tb linking is disabled. spec says to pass */
         break;
 
     case INDEX_op_deposit_i32: {
@@ -1443,9 +1439,6 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     Constant *GuestPCPtrInt = constInt(sizeof(uintptr_t) * 8,
             (uintptr_t)&first_cpu->panda_guest_pc);
     Value *GuestPCPtr = m_builder.CreateIntToPtr(GuestPCPtrInt, intPtrType(64), "guestpc");
-    Constant *LastPCPtrInt = constInt(sizeof(uintptr_t) * 8,
-            (uintptr_t)&tcg_llvm_runtime.last_pc);
-    Value *LastPCPtr = m_builder.CreateIntToPtr(LastPCPtrInt, intPtrType(64), "lastpc");
 
     /* Generate code for each opc */
     const TCGArg *args;
@@ -1459,12 +1452,14 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
         if (opc == INDEX_op_insn_start) {
             // volatile store of current PC
             Constant *PC = ConstantInt::get(intType(64), args[0]);
-            Instruction *LastPCSt = m_builder.CreateStore(PC, LastPCPtr, true);
             Instruction *GuestPCSt = m_builder.CreateStore(PC, GuestPCPtr, true);
             // TRL 2014 hack to annotate that last instruction as the one
             // that sets PC
-            LastPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("host", PCUpdateMD);
+        } else if (opc == INDEX_op_set_label) {
+            startNewBasicBlock(getLabel(arg_label(args[0])->id));
+        } else if (m_builder.GetInsertBlock()->getTerminator()) {
+            startNewBasicBlock();
         }
 
         args += generateOperation(opc, op, args);
@@ -1472,7 +1467,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
 
     /* Finalize function */
     if(!isa<ReturnInst>(m_tbFunction->back().back()))
-        m_builder.CreateRet(ConstantInt::get(wordType(), 0));
+        assert(false);
 
     /* Clean up unused m_values */
     for(int i=0; i<TCG_MAX_TEMPS; ++i)
@@ -1632,10 +1627,7 @@ const char* tcg_llvm_get_func_name(TranslationBlock *tb)
 
 uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
 {
-    tcg_llvm_runtime.last_tb = tb;
-    uintptr_t next_tb;
-    next_tb = ((uintptr_t (*)(void*)) tb->llvm_tc_ptr)(env);
-    return next_tb;
+    return ((uintptr_t (*)(void*)) tb->llvm_tc_ptr)(env);
 }
 
 void tcg_llvm_write_module(TCGLLVMContext *l, const char *path) {

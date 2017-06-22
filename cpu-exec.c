@@ -195,6 +195,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
+    cpu->panda_current_tb = itb;
 
 #if defined(CONFIG_LLVM)
     if (execute_llvm){
@@ -212,6 +213,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
+    cpu->panda_current_tb = NULL;
     panda_callbacks_after_block_exec(cpu, itb);
 
     tb_exit = ret & TB_EXIT_MASK;
@@ -700,6 +702,8 @@ inline void debug_checkpoint(CPUState *cpu) {
 }
 
 static void detect_infinite_loops(void) {
+    if (!rr_in_replay()) return;
+
     static uint64_t last_instr_count = 0;
     static unsigned loop_tries = 0;
     if (last_instr_count == rr_get_guest_instr_count()) {
@@ -801,6 +805,7 @@ int cpu_exec(CPUState *cpu)
             g_assert(cpu == current_cpu);
             g_assert(cc == CPU_GET_CLASS(cpu));
 #endif /* buggy compiler */
+            cpu->panda_current_tb = NULL;
             cpu->can_do_io = 1;
             tb_lock_reset();
         }

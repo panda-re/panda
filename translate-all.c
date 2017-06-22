@@ -416,6 +416,7 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         cpu->icount_decr.u16.low += num_insns;
         /* Clear the IO flag.  */
         cpu->can_do_io = 0;
+        cpu->panda_current_tb = NULL;
     }
     cpu->icount_decr.u16.low -= i;
     restore_state_to_opc(env, tb, data);
@@ -1795,32 +1796,32 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
         return NULL;
     }
 
+    if (current_cpu && current_cpu->panda_current_tb) {
+        tb = current_cpu->panda_current_tb;
+        TranslationBlock *next_tb = tb + 1;
+
 #ifdef CONFIG_LLVM
-    if (execute_llvm) {
-        /* first check last tb. optimization for coming from generated code. */
-        tb = tcg_llvm_runtime.last_tb;
-        if (tb && tb->llvm_function
-                && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
-                && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
-            return tb;
+        if (execute_llvm) {
+            assert((uintptr_t)tb->llvm_tc_ptr <= tc_ptr);
+            assert(tc_ptr <= (uintptr_t)tb->llvm_tc_end);
+        } else
+#endif
+        {
+            assert((uintptr_t)tb->tc_ptr <= tc_ptr);
+            assert(!next_tb->tc_ptr || (uintptr_t)next_tb->tc_ptr > tc_ptr);
         }
-        /* then do linear search. */
-        for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
-            tb = &tcg_ctx.tb_ctx.tbs[m];
-            if (tb->llvm_function
-                    && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
-                    && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
-                return tb;
-            }
-        }
-        return NULL;
+        return tb;
     }
+#ifdef CONFIG_LLVM
+    /* if we get here in LLVM mode something is wrong! */
+    assert(!execute_llvm);
 #endif
 
     if (tc_ptr < (uintptr_t)tcg_ctx.code_gen_buffer ||
         tc_ptr >= (uintptr_t)tcg_ctx.code_gen_ptr) {
         return NULL;
     }
+
     /* binary search (cf Knuth) */
     m_min = 0;
     m_max = tcg_ctx.tb_ctx.nb_tbs - 1;

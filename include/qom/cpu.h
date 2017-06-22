@@ -383,6 +383,8 @@ struct CPUState {
     } icount_decr;
     uint32_t can_do_io;
     int32_t exception_index; /* used by m68k TCG */
+
+    struct TranslationBlock *panda_current_tb;
     uint64_t panda_guest_pc;
 
     /* Used to keep track of an outstanding cpu throttle thread for migration
