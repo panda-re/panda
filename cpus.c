@@ -646,6 +646,51 @@ void cpu_ticks_init(void)
                                            cpu_throttle_timer_tick, NULL);
 }
 
+void configure_icount_num(int use_icount_, bool icount_sleep_, bool icount_align_,
+        int icount_time_shift_)
+{
+    use_icount = use_icount_;
+
+    icount_sleep = icount_sleep_;
+    if (icount_sleep) {
+        icount_warp_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL_RT,
+                                         icount_timer_cb, NULL);
+    }
+
+    icount_align_option = icount_align_;
+    assert(!icount_align_option || icount_sleep);
+    if (icount_time_shift_ > 0) {
+        icount_time_shift = icount_time_shift_;
+        use_icount = 1;
+        return;
+    } else if (icount_align_option) {
+        assert(false && "shift=auto and align=on are incompatible");
+    } else if (!icount_sleep) {
+        assert(false && "shift=auto and sleep=off are incompatible");
+    }
+
+    use_icount = 2;
+
+    /* 125MIPS seems a reasonable initial guess at the guest speed.
+       It will be corrected fairly quickly anyway.  */
+    icount_time_shift = 3;
+
+    /* Have both realtime and virtual time triggers for speed adjustment.
+       The realtime trigger catches emulated time passing too slowly,
+       the virtual time trigger catches emulated time passing too fast.
+       Realtime triggers occur even when idle, so use them less frequently
+       than VM triggers.  */
+    icount_rt_timer = timer_new_ms(QEMU_CLOCK_VIRTUAL_RT,
+                                   icount_adjust_rt, NULL);
+    timer_mod(icount_rt_timer,
+                   qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL_RT) + 1000);
+    icount_vm_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                        icount_adjust_vm, NULL);
+    timer_mod(icount_vm_timer,
+                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+                   NANOSECONDS_PER_SECOND / 10);
+}
+
 void configure_icount(QemuOpts *opts, Error **errp)
 {
     const char *option;
