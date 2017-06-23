@@ -1193,6 +1193,9 @@ static int tcg_cpu_exec(CPUState *cpu)
         cpu->icount_extra = 0;
         replay_account_executed_instructions();
     }
+    if (rr_in_replay() && rr_replay_finished()) {
+        rr_do_end_replay(0);
+    }
     return ret;
 }
 
