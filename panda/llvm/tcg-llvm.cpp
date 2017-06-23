@@ -978,6 +978,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __EXT_OP(INDEX_op_ext8u_i32,   8, 32, Z)
     __EXT_OP(INDEX_op_ext16s_i32, 16, 32, S)
     __EXT_OP(INDEX_op_ext16u_i32, 16, 32, Z)
+    __EXT_OP(INDEX_op_extu_i32_i64, 32, 64, Z)
 
 #if TCG_TARGET_REG_BITS == 64
     __EXT_OP(INDEX_op_ext8s_i64,   8, 64, S)
