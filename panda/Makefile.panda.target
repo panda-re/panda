@@ -157,7 +157,7 @@ llvm-$(TARGET_ARM) += fpu/softfloat.bc2
 llvm-$(TARGET_ARM) += $(addprefix target/arm/,$(ARM_HELPERS))
 llvmmorph-$(TARGET_ARM) += llvm-helpers.bc
 
-PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2 mmu_helper.bc2 mem_helper.bc2
+PPC_HELPERS = excp_helper.bc2 fpu_helper.bc2 timebase_helper.bc2 misc_helper.bc2 mmu_helper.bc2 mem_helper.bc2 int_helper.bc2
 
 llvm-$(TARGET_PPC) += fpu/softfloat.bc2
 llvm-$(TARGET_PPC) += $(addprefix target/ppc/,$(PPC_HELPERS))
