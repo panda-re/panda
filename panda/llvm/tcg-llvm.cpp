@@ -532,7 +532,7 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
     m_values[idx] = v;
 
     //Checks that bitwidth of Value equals bitwidth of pointer we're storing to
-    assert(v->getType() != cast<PointerType>(getPtrForValue(idx)->getType())->getElementType());
+    assert(v->getType() == cast<PointerType>(getPtrForValue(idx)->getType())->getElementType());
 
     if(!v->hasName() && !isa<Constant>(v)) {
         if(idx < m_tcgContext->nb_globals)
