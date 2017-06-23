@@ -772,7 +772,9 @@ int cpu_exec(CPUState *cpu)
                 qemu_log_rr(tb->pc);
 
                 if (panda_invalidate_tb) {
-                    tb_flush(cpu);
+                    tb_lock();
+                    tb_phys_invalidate(tb, -1);
+                    tb_unlock();
                     tb = tb_find(cpu, last_tb, tb_exit);
                 }
 
