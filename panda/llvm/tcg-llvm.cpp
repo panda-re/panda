@@ -1135,36 +1135,36 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         } break;
 
 // for ops of type op out_low, out_high, in_low, in_high, in_low, in_high
-#define __ARITH_OP_DECOMPOSE_2(opc_name, op, bits)       \
-    case opc_name: {                                             \
-        assert(getValue(args[2])->getType() == intType(bits));     \
-        assert(getValue(args[3])->getType() == intType(bits));     \
-        assert(getValue(args[4])->getType() == intType(bits));     \
-        assert(getValue(args[5])->getType() == intType(bits));     \
-        Value *ext1 = m_builder.CreateZExt(                  \
-                getValue(args[2]), intType(bits*2));              \
-        Value *ext2 = m_builder.CreateShl(                                    \
-                m_builder.CreateZExt(                               \
-                    getValue(args[3]), intType(bits*2)),            \
-                m_builder.CreateZExt(                               \
-                    ConstantInt::get(intType(bits), bits),          \
-                    intType(bits*2)));                              \
-        Value *first_arg = m_builder.CreateOr(ext1, ext2);          \
-        Value *ext3 = m_builder.CreateZExt(                   \
-                getValue(args[4]), intType(bits*2));               \
-        Value *ext4 = m_builder.CreateShl(                                    \
-                m_builder.CreateZExt(                               \
-                    getValue(args[5]), intType(bits*2)),            \
-                m_builder.CreateZExt(                               \
-                    ConstantInt::get(intType(bits), bits),          \
-                    intType(bits*2)));                              \
-        Value *second_arg = m_builder.CreateOr(ext3, ext4);           \
-        Value *full = m_builder.Create ## op(first_arg, second_arg); \
-        setValue(args[0], m_builder.CreateTrunc(                    \
-                    full, intType(bits)));                          \
-        setValue(args[1], m_builder.CreateTrunc(                    \
-                    m_builder.CreateLShr(full, bits),               \
-                    intType(bits)));                                \
+#define __ARITH_OP_DECOMPOSE_2(opc_name, op, bits)                     \
+    case opc_name: {                                                   \
+        assert(getValue(args[2])->getType() == intType(bits));         \
+        assert(getValue(args[3])->getType() == intType(bits));         \
+        assert(getValue(args[4])->getType() == intType(bits));         \
+        assert(getValue(args[5])->getType() == intType(bits));         \
+        Value *ext1 = m_builder.CreateZExt(                            \
+                getValue(args[2]), intType(bits*2));                   \
+        Value *ext2 = m_builder.CreateShl(                             \
+                m_builder.CreateZExt(                                  \
+                    getValue(args[3]), intType(bits*2)),               \
+                m_builder.CreateZExt(                                  \
+                    ConstantInt::get(intType(bits), bits),             \
+                    intType(bits*2)));                                 \
+        Value *first_arg = m_builder.CreateOr(ext1, ext2);             \
+        Value *ext3 = m_builder.CreateZExt(                            \
+                getValue(args[4]), intType(bits*2));                   \
+        Value *ext4 = m_builder.CreateShl(                             \
+                m_builder.CreateZExt(                                  \
+                    getValue(args[5]), intType(bits*2)),               \
+                m_builder.CreateZExt(                                  \
+                    ConstantInt::get(intType(bits), bits),             \
+                    intType(bits*2)));                                 \
+        Value *second_arg = m_builder.CreateOr(ext3, ext4);            \
+        Value *full = m_builder.Create ## op(first_arg, second_arg);    \
+        setValue(args[0], m_builder.CreateTrunc(                        \
+                    full, intType(bits)));                              \
+        setValue(args[1], m_builder.CreateTrunc(                        \
+                    m_builder.CreateLShr(full, bits),                   \
+                    intType(bits)));                                    \
         } break;
 
     __ARITH_OP(INDEX_op_add_i32, Add, 32)
