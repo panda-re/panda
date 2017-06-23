@@ -228,7 +228,7 @@ class RRInstance(object):
         return self.get_value("rr_get_guest_instr_count()")
 
     def condition_instr(self, break_arg, op, instr):
-        current = "timers_state.qemu_icount - (int32_t)cpus->tqh_first->icount_decr.u32"
+        current = "timers_state.qemu_icount - (int32_t)cpus->tqh_first->icount_decr.u32 - cpus->tqh_first->icount_extra"
         self.condition(break_arg, "{} {} {}".format(current, op, instr))
 
     def set_breakpoint_commands(self, break_num):
