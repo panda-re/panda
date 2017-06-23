@@ -777,7 +777,9 @@ int cpu_exec(CPUState *cpu)
                             && tb->icount > until_interrupt)) {
                     // retranslate so that basic block boundary matches
                     // record & replay for interrupt delivery
-                    tb_flush(cpu);
+                    tb_lock();
+                    tb_phys_invalidate(tb, -1);
+                    tb_unlock();
                     tb = tb_find(cpu, last_tb, tb_exit);
                 }
 #endif //CONFIG_SOFTMMU
