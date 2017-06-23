@@ -495,7 +495,7 @@ unsigned TCGLLVMContextPrivate::getValueBits(int idx)
 {
     switch (m_tcgContext->temps[idx].type) {
         case TCG_TYPE_I32: return 32;
-		case TCG_TYPE_I64: return 64;
+        case TCG_TYPE_I64: return 64;
         default: assert(false && "Unknown size");
     }
     return 0;
@@ -792,7 +792,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
             assert(nb_oargs == 0 || nb_oargs == 1);
 
-			//args[0] contains ptr to store to. Set return type based on it
+            //args[0] contains ptr to store to. Set return type based on it
             llvm::Type* retType = nb_oargs == 0 ?
                 llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[0]));
 
@@ -978,7 +978,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __EXT_OP(INDEX_op_ext8u_i32,   8, 32, Z)
     __EXT_OP(INDEX_op_ext16s_i32, 16, 32, S)
     __EXT_OP(INDEX_op_ext16u_i32, 16, 32, Z)
-	__EXT_OP(INDEX_op_extu_i32_i64, 32, 64, Z)
+    __EXT_OP(INDEX_op_extu_i32_i64, 32, 64, Z)
 
 #if TCG_TARGET_REG_BITS == 64
     __EXT_OP(INDEX_op_ext8s_i64,   8, 64, S)
