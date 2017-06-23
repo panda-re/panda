@@ -1073,9 +1073,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         v = m_builder.CreateShl(                                    \
                 m_builder.CreateZExt(                               \
                     getValue(args[3]), intType(bits*2)),            \
-                m_builder.CreateZExt(                               \
-                    ConstantInt::get(intType(bits), bits),          \
-                    intType(bits*2)));                              \
+                bits);                                              \
         v = m_builder.CreateOr(v,                                   \
                 m_builder.CreateZExt(                               \
                     getValue(args[2]), intType(bits*2)));           \
@@ -1147,18 +1145,14 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         Value *ext2 = m_builder.CreateShl(                             \
                 m_builder.CreateZExt(                                  \
                     getValue(args[3]), intType(bits*2)),               \
-                m_builder.CreateZExt(                                  \
-                    ConstantInt::get(intType(bits), bits),             \
-                    intType(bits*2)));                                 \
+                bits);                                 \
         Value *first_arg = m_builder.CreateOr(ext1, ext2);             \
         Value *ext3 = m_builder.CreateZExt(                            \
                 getValue(args[4]), intType(bits*2));                   \
         Value *ext4 = m_builder.CreateShl(                             \
                 m_builder.CreateZExt(                                  \
                     getValue(args[5]), intType(bits*2)),               \
-                m_builder.CreateZExt(                                  \
-                    ConstantInt::get(intType(bits), bits),             \
-                    intType(bits*2)));                                 \
+                bits);                                 \
         Value *second_arg = m_builder.CreateOr(ext3, ext4);            \
         Value *full = m_builder.Create ## op(first_arg, second_arg);    \
         setValue(args[0], m_builder.CreateTrunc(                        \
@@ -1171,8 +1165,11 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_add_i32, Add, 32)
     __ARITH_OP(INDEX_op_sub_i32, Sub, 32)
     __ARITH_OP(INDEX_op_mul_i32, Mul, 32)
+
+#ifdef TCG_TARGET_HAS_add2_i32
     __ARITH_OP_DECOMPOSE_2(INDEX_op_add2_i32, Add, 32)
     __ARITH_OP_DECOMPOSE_2(INDEX_op_sub2_i32, Sub, 32)
+#endif
 
 #ifdef TCG_TARGET_HAS_mulu2_i32
     __ARITH_OP_DECOMPOSE(INDEX_op_mulu2_i32, Mul, ZExt, 32)
