@@ -531,6 +531,9 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
     delValue(idx);
     m_values[idx] = v;
 
+    //Checks that bitwidth of Value equals bitwidth of pointer we're storing to
+    assert(v->getType() == cast<PointerType>(getPtrForValue(idx)->getType())->getElementType());
+
     if(!v->hasName() && !isa<Constant>(v)) {
         if(idx < m_tcgContext->nb_globals)
             v->setName(StringRef(m_tcgContext->temps[idx].name) + "_v");
@@ -561,7 +564,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
             }
         }
     } else if(m_tcgContext->temps[idx].temp_local) {
-
         // We need to save an in-memory copy of a value
         m_builder.CreateStore(v, getPtrForValue(idx));
     }
@@ -789,8 +791,10 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
             }
 
             assert(nb_oargs == 0 || nb_oargs == 1);
+
+            //args[0] contains ptr to store to. Set return type based on it
             llvm::Type* retType = nb_oargs == 0 ?
-                llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[1]));
+                llvm::Type::getVoidTy(m_context) : wordType(getValueBits(args[0]));
 
             Value* helperAddr = ConstantInt::get(intType(sizeof(uintptr_t)*8),
                 args[nb_oargs + nb_iargs]);
@@ -801,7 +805,6 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
 
             const char *helperName = tcg_find_helper(m_tcgContext,
                                                      (uintptr_t)helperAddrC);
-            //printf("call to helper: %s\n", helperName);
             assert(helperName);
 
             std::string funcName = std::string("helper_") + helperName;
@@ -975,6 +978,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __EXT_OP(INDEX_op_ext8u_i32,   8, 32, Z)
     __EXT_OP(INDEX_op_ext16s_i32, 16, 32, S)
     __EXT_OP(INDEX_op_ext16u_i32, 16, 32, Z)
+    __EXT_OP(INDEX_op_extu_i32_i64, 32, 64, Z)
 
 #if TCG_TARGET_REG_BITS == 64
     __EXT_OP(INDEX_op_ext8s_i64,   8, 64, S)
@@ -1069,9 +1073,7 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
         v = m_builder.CreateShl(                                    \
                 m_builder.CreateZExt(                               \
                     getValue(args[3]), intType(bits*2)),            \
-                m_builder.CreateZExt(                               \
-                    ConstantInt::get(intType(bits), bits),          \
-                    intType(bits*2)));                              \
+                bits);                                              \
         v = m_builder.CreateOr(v,                                   \
                 m_builder.CreateZExt(                               \
                     getValue(args[2]), intType(bits*2)));           \
@@ -1131,10 +1133,43 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
                     intType(bits)));                                \
         } break;
 
+// for ops of type op out_low, out_high, in_low, in_high, in_low, in_high
+#define __ARITH_OP_DECOMPOSE_2(opc_name, op, bits)                     \
+    case opc_name: {                                                   \
+        assert(getValue(args[2])->getType() == intType(bits));         \
+        assert(getValue(args[3])->getType() == intType(bits));         \
+        assert(getValue(args[4])->getType() == intType(bits));         \
+        assert(getValue(args[5])->getType() == intType(bits));         \
+        Value *ext1 = m_builder.CreateZExt(                            \
+                getValue(args[2]), intType(bits*2));                   \
+        Value *ext2 = m_builder.CreateShl(                             \
+                m_builder.CreateZExt(                                  \
+                    getValue(args[3]), intType(bits*2)),               \
+                bits);                                 \
+        Value *first_arg = m_builder.CreateOr(ext1, ext2);             \
+        Value *ext3 = m_builder.CreateZExt(                            \
+                getValue(args[4]), intType(bits*2));                   \
+        Value *ext4 = m_builder.CreateShl(                             \
+                m_builder.CreateZExt(                                  \
+                    getValue(args[5]), intType(bits*2)),               \
+                bits);                                 \
+        Value *second_arg = m_builder.CreateOr(ext3, ext4);            \
+        Value *full = m_builder.Create ## op(first_arg, second_arg);    \
+        setValue(args[0], m_builder.CreateTrunc(                        \
+                    full, intType(bits)));                              \
+        setValue(args[1], m_builder.CreateTrunc(                        \
+                    m_builder.CreateLShr(full, bits),                   \
+                    intType(bits)));                                    \
+        } break;
 
     __ARITH_OP(INDEX_op_add_i32, Add, 32)
     __ARITH_OP(INDEX_op_sub_i32, Sub, 32)
     __ARITH_OP(INDEX_op_mul_i32, Mul, 32)
+
+#ifdef TCG_TARGET_HAS_add2_i32
+    __ARITH_OP_DECOMPOSE_2(INDEX_op_add2_i32, Add, 32)
+    __ARITH_OP_DECOMPOSE_2(INDEX_op_sub2_i32, Sub, 32)
+#endif
 
 #ifdef TCG_TARGET_HAS_mulu2_i32
     __ARITH_OP_DECOMPOSE(INDEX_op_mulu2_i32, Mul, ZExt, 32)
@@ -1148,10 +1183,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_divu_i32, UDiv, 32)
     __ARITH_OP(INDEX_op_rem_i32,  SRem, 32)
     __ARITH_OP(INDEX_op_remu_i32, URem, 32)
-#else
+#endif
     __ARITH_OP_DIV2(INDEX_op_div2_i32,  S, 32)
     __ARITH_OP_DIV2(INDEX_op_divu2_i32, U, 32)
-#endif
 
     __ARITH_OP(INDEX_op_and_i32, And, 32)
     __ARITH_OP(INDEX_op_or_i32,   Or, 32)
