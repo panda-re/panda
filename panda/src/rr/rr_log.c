@@ -184,6 +184,10 @@ static void rr_spit_log_entry(RR_log_entry item)
                get_skipped_call_kind_string(item.variant.call_args.kind),
                get_callsite_string(item.header.callsite_loc));
         break;
+    case RR_EXCEPTION:
+        printf("\tRR_EXCEPTION from %s\n",
+               get_callsite_string(item.header.callsite_loc));
+        break;
     case RR_END_OF_LOG:
         printf("\tRR_END_OF_LOG\n");
         break;
@@ -741,7 +745,8 @@ void rr_fill_queue(void) {
 
         if ((header.kind == RR_SKIPPED_CALL
                     && header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
-                || header.kind == RR_INTERRUPT_REQUEST) {
+                || header.kind == RR_INTERRUPT_REQUEST
+                || header.kind == RR_EXCEPTION) {
             // Cut off queue so we don't run out of memory on long runs of
             // non-interrupts
             break;

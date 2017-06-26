@@ -167,6 +167,7 @@ static inline uint64_t rr_num_instr_before_next_interrupt(void) {
         case RR_LAST:
         case RR_END_OF_LOG:
         case RR_INTERRUPT_REQUEST:
+        case RR_EXCEPTION:
             return last_header.prog_point.guest_instr_count -
                 rr_get_guest_instr_count();
         default:
