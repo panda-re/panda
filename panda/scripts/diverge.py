@@ -221,6 +221,9 @@ class RRInstance(object):
         self.disable_all()
         self.gdb("restart", checkpoint)
 
+    def restart_instr(self, instr):
+        self.restart(self.instr_to_checkpoint[instr])
+
     def get_value(self, expr):
         return self.gdb_int_re(r"\$[0-9]+ = ([0-9]+)", "print/u", expr)
 
@@ -615,32 +618,6 @@ class Diverge(object):
             print("divergence range. What do you want to do?")
             IPython.embed()
 
-        # Return to latest converged instr
-        now_instr = self.goto_instr(instr_bounds[0])
-
-        # Make sure we're actually at a converged point.
-        # If we're more than 1000 instrs too far forward, make user intervene.
-        if now_instr > instr_bounds[0] + 1000:
-            print("WARNING: Processes are too far ahead of last divergence.")
-            print("Please sync them manually behind", instr_bounds[0],)
-            print("and continue.")
-            IPython.embed()
-            instr_counts = self.both.instr_count()
-            assert values_equal(instr_counts)
-            assert instr_counts[self.record] <= instr_bounds[0]
-        elif now_instr >= instr_bounds[1]:
-            # NB: in some cases, instr_bounds[0] (i.e. we observe the same instr
-            # both converged and diverged. This should make sure we move before it
-            # before setting watchpoints.
-            self.both.enable_only("cpu_loop_exec_tb")
-            self.both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
-            self.both.reverse_cont()
-            while not values_equal(self.both.instr_count()):
-                print("Not synced.")
-                self.get_closer(Diverge.BACKWARDS)
-
-        last_converged_checkpoint = self.both.checkpoint()
-
         # Unfortunately, only 4 hardware watchpoints on x86 hosts. So we check
         # potential divergence points in groups of 4, finding the first to
         # diverge in each group. That reduces potential first divergence points
@@ -649,7 +626,7 @@ class Diverge(object):
             new_watches = []
             for watches_chunk in chunks(watches, 4):
                 num_to_watch_dict = {}
-                self.both.restart(last_converged_checkpoint)
+                self.both.restart_instr(instr_bounds[0])
                 for watch in watches_chunk:
                     num_to_watch_dict[self.both.same.watch(watch)] = watch
 
@@ -728,6 +705,7 @@ class Diverge(object):
             # to find the first point of memory or register divergence.
             instr_bounds = self.bisect_time(instr_bounds)
             print("Haven't made progress since last iteration. Moving to memory checksum.")
+            self.both.restart_instr(instr_bounds[1])
 
         self.print_divergence_info(instr_bounds)
 
