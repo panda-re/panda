@@ -440,16 +440,12 @@ void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int
 //rw 6/20/17: Added as a fix for powerpc
 void rr_record_exception_index(RR_callsite_id call_site,
         int32_t exception_index) {
-    RR_log_entry item;
-
-    memset(&item, 0, sizeof(RR_log_entry));
-    item.header.kind = RR_EXCEPTION;
-    item.header.callsite_loc = call_site;
-    item.header.prog_point = rr_prog_point();
-
-    item.variant.exception_index = exception_index;
-
-    rr_write_item(item);
+    if (exception_index != -1) {
+        rr_write_item((RR_log_entry) {
+            .header = rr_header(RR_EXCEPTION, call_site),
+            .variant.exception_index = exception_index
+        });
+    }
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)

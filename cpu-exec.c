@@ -475,6 +475,9 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
+#ifdef TARGET_PPC
+    rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
+#endif
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
             /* exit request from the cpu execution loop */
@@ -498,13 +501,6 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             return true;
 #else
             if (replay_exception()) {
-                int32_t excp_index;
-                RR_DO_RECORD_OR_REPLAY(
-                    excp_index = cpu->exception_index,
-                    rr_exception_index(&excp_index),
-                    rr_exception_index((int32_t*)&cpu->exception_index),
-                    RR_CALLSITE_CPU_EXCEPTION_INDEX);
-
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 cc->do_interrupt(cpu);
                 cpu->exception_index = -1;
