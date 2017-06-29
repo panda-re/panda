@@ -831,6 +831,17 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                         char *field_name;
                         while (1) // enumerate struct arguments
                         {
+                            do {
+                            Dwarf_Bool hasLocation;
+                            if (dwarf_hasattr(struct_child, DW_AT_bit_size, &hasLocation, &err) != DW_DLV_OK)
+                                die("Error determining bitsize attr\n");
+                            else if (hasLocation)
+                                break;
+                            if (dwarf_hasattr(struct_child, DW_AT_bit_offset, &hasLocation, &err) != DW_DLV_OK)
+                                die("Error determining bitoffset attr\n");
+                            else if (hasLocation)
+                                break;
+
                             rc = dwarf_diename(struct_child, &field_name, &err);
                             struct_offset = get_struct_member_offset(struct_child);
                             if (rc != DW_DLV_OK){
@@ -840,6 +851,8 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                             //printf(" struct: %s, offset: %llu\n", temp_name.c_str(), struct_offset);
                             __dwarf_type_iter(cpu, cur_base_addr + struct_offset, loc_t, dbg,
                                            struct_child, temp_name, cb, recursion_level - 1);
+                            } while (0);
+
                             rc = dwarf_siblingof(dbg, struct_child, &struct_child, &err);
                             if (rc == DW_DLV_ERROR) {
                                 die("Struct: Error getting sibling of DIE\n");
