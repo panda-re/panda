@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-USAGE="""run_on_32bitlinux.py [args] binary
+USAGE="""run_debian.py [args] binary
 
 So you want to try panda but dont have any replays.  Poor you.
 This script allows you to run commands on a 32-bit linux guest.
@@ -10,12 +10,12 @@ Remaining arguments are the args that binary needs. Files on the host will
 automatically be copied to the guest, unless the argument is prefixed with
 "guest:". This works for the binary too.
 
-run_on_32bitlinux.py foo2
+run_debian.py foo2
 
 will copy into the guest the binary foo2 (which needs to be in the cwd) and
 create a recording of running it under a panda 32-bit wheezy machine.
 
-run_on_32bitlinux.py guest:/bin/cat guest:/etc/passwd
+run_debian.py guest:/bin/cat guest:/etc/passwd
 
 will create a recording of running the guest's cat on the guest's /etc/passwd.
 
@@ -51,6 +51,7 @@ SUPPORTED_ARCHES = {
 
 
 import os
+import shlex
 import shutil
 import subprocess as sp
 import sys
@@ -93,18 +94,18 @@ def EXIT_USAGE():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(usage=USAGE)
 
-    parser.add_argument("--rr", action='store_true', dest='rr',)
-    parser.add_argument("--env", action='store', dest='env')
-    parser.add_argument("--arch", action='store', dest='arch', default='i386')
+    parser.add_argument("--perf", action='store_true')
+    parser.add_argument("--rr", action='store_true')
+    parser.add_argument("--cmd", action='store')
+    parser.add_argument("--env", action='store')
+    parser.add_argument("--arch", action='store', default='i386')
 
     args, guest_cmd = parser.parse_known_args()
+    if args.cmd:
+        guest_cmd = shlex.split(args.cmd)
 
     if len(sys.argv) < 2:
         EXIT_USAGE()
-
-    rr = False
-    if args.rr:
-        rr = True
 
     (qemu_softmmu, qemu_binary, expect_prompt, qcow_fname) = SUPPORTED_ARCHES[args.arch]
 
@@ -154,6 +155,7 @@ if __name__ == "__main__":
         install_dir,
         join(binary_dir, binary_basename),
         expect_prompt,
-        rr=rr,
+        rr=args.rr,
+        perf=args.perf,
         env=env,
     )
