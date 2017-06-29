@@ -1278,7 +1278,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     cpu_reset_icount();
     first_cpu->icount_decr.u32 = 0;
     first_cpu->icount_extra = 0;
-    configure_icount_num(1, false, false, 7);
+    configure_icount_num(1, true, false, 3);
 
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
@@ -1376,7 +1376,7 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     cpu_reset_icount();
     first_cpu->icount_decr.u32 = 0;
     first_cpu->icount_extra = 0;
-    configure_icount_num(1, false, false, 7);
+    configure_icount_num(1, true, false, 3);
 
     // second, open non-deterministic input log for read.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
