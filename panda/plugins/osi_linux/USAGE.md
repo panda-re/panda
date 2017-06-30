@@ -19,7 +19,7 @@ Because the offsets of fields in Linux kernel data structures change frequently 
 
     [... omitted ...]
 
-    [debian_wheezy_i386_desktop] 
+    [debian_wheezy_i386_desktop]
     name = #1 SMP Debian 3.2.51-1 i686
     task.size = 1060
     #task.init_addr = 0xC13E0FE0
@@ -36,7 +36,9 @@ Of course, generating this file by hand would be extremely painful. So instead w
 
 To do so, you will need the kernel headers and a compiler installed in the guest. On a Debian guest, you can do:
 
-    # apt-get install build-essential linux-headers-`uname -r`
+```sh
+    apt-get install build-essential linux-headers-`uname -r`
+```
 
 Then copy the `panda_plugins/osi_linux/utils/kernelinfo` directory into the guest (e.g., using `scp` from inside the guest or simply by cloning the PANDA repository), and run `make` to build `kernelinfo.ko`. Finally, insert the kernel module and run `dmesg` to get the values. Note that although `insmod` will return an "Operation not permitted" error, it will still print the right information to the log:
 
@@ -94,18 +96,21 @@ APIs and Callbacks
 
 In addition to providing the standard APIs used by OSI, `osi_linux` also provides two Linux-specific API calls that resolve file descriptors to filenames and tell you the current file position:
 
+```C
     // returns fd for a filename or a NULL if failed
     char *osi_linux_fd_to_filename(CPUState *env, OsiProc *p, int fd);
 
-    // returns pos in a file 
+    // returns pos in a file
     unsigned long long  osi_linux_fd_to_pos(CPUState *env, OsiProc *p, int fd);
-
+```
 
 Example
 -------
 
 Assuming you have a `kernelinfo.conf` in the current directory with a configuration named `my_kernel_info`, you can run the OSI test plugin on a Linux replay as follows:
 
+```bash
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
         -panda osi -panda osi_linux:kconf_file=kernelinfo.conf,kconf_group=my_kernel_info \
         -panda osi_test
+```
