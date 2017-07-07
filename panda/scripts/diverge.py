@@ -672,6 +672,13 @@ class Diverge(object):
         self.both.breakpoint("rr_do_begin_replay")
         self.both.breakpoint("cpu_loop_exec_tb")
 
+        try:
+            self.both.breakpoint("debug_counter")
+        except RuntimeError:
+            print("Must run diverge.py on a debug build of panda. Run ./configure ",)
+            print("with --enable-debug for this to work.")
+            cleanup_error()
+
         replay_last = get_last_event(cli_args.replay_rr)
         print("Last known replay event: {}".format(replay_last))
 
@@ -686,13 +693,6 @@ class Diverge(object):
         assert self.instr_count_max is not None
 
         print("Failing replay instr count:", self.instr_count_max)
-
-        try:
-            self.both.breakpoint("debug_counter")
-        except RuntimeError:
-            print("Must run diverge.py on a debug build of panda. Run ./configure ",)
-            print("with --enable-debug for this to work.")
-            cleanup_error()
 
         if cli_args.instr_bounds:
             instr_bounds = [int(s) for s in cli_args.instr_bounds.split(',')]
