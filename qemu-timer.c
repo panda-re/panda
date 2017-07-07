@@ -686,7 +686,7 @@ static void qemu_clock_stop_timers(QEMUClockType type)
     QEMUTimerList *timer_list;
     QEMUClock *clock = qemu_clock_ptr(type);
     QLIST_FOREACH(timer_list, &clock->timerlists, list) {
-        if (timer_list->active_timers) {
+        while (timer_list->active_timers) {
             if (debug)
                 printf("Deleting timerlist for QEMUClockType: %d\n", type);
             timer_del(timer_list->active_timers);
