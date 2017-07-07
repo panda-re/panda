@@ -190,4 +190,7 @@ static inline uint64_t rr_num_instr_before_next_interrupt(void) {
     }
 }
 
+uint32_t rr_checksum_memory(void);
+uint32_t rr_checksum_regs(void);
+
 #endif
