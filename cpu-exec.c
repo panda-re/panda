@@ -693,6 +693,22 @@ inline void debug_checkpoint(CPUState *cpu) {
 #endif
 }
 
+static void detect_infinite_loops(void) {
+    if (!rr_in_replay()) return;
+
+    static uint64_t last_instr_count = 0;
+    static unsigned loop_tries = 0;
+    if (last_instr_count == rr_get_guest_instr_count()) {
+        loop_tries++;
+        if (loop_tries > 20) {
+            assert(false);
+        }
+    } else {
+        loop_tries = 0;
+        last_instr_count = rr_get_guest_instr_count();
+    }
+}
+
 /* main execution loop */
 
 int cpu_exec(CPUState *cpu)
@@ -738,6 +754,8 @@ int cpu_exec(CPUState *cpu)
             for(;;) {
                 bool panda_invalidate_tb = false;
                 debug_checkpoint(cpu);
+                detect_infinite_loops();
+                rr_maybe_progress();
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
@@ -748,12 +766,7 @@ int cpu_exec(CPUState *cpu)
                 tb = tb_find(cpu, last_tb, tb_exit);
                 panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                         cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
-                if (qemu_loglevel_mask(CPU_LOG_RR)) {
-                    RR_prog_point pp = rr_prog_point();
-                    qemu_log_mask(CPU_LOG_RR,
-                            "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
-                            tb->pc, (unsigned long long)pp.guest_instr_count);
-                }
+                qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU
                 uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
