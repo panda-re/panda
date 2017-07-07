@@ -152,6 +152,21 @@ static inline void qemu_log_rr(target_ulong pc) {
     }
 }
 
+extern RR_log *rr_nondet_log;
+static inline void rr_maybe_progress(void) {
+    if (!rr_in_replay()) return;
+
+    static uint64_t next_progress = 1;
+    if (unlikely(rr_get_percentage() >= next_progress)) {
+        if (next_progress == 1) {
+            printf("%s:  %10" PRIu64 " instrs total.\n", rr_nondet_log->name,
+                    rr_nondet_log->last_prog_point.guest_instr_count);
+        }
+        replay_progress();
+        next_progress += 1;
+    }
+}
+
 extern void rr_fill_queue(void);
 extern RR_log_entry *rr_queue_tail;
 static inline uint64_t rr_num_instr_before_next_interrupt(void) {

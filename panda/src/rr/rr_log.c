@@ -752,16 +752,6 @@ void rr_fill_queue(void) {
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
     }
-
-    static uint64_t next_progress = 1;
-    if (rr_get_percentage() >= next_progress) {
-        if (next_progress == 1) {
-            printf("%s:  %10" PRIu64 " instrs total.\n", rr_nondet_log->name,
-                    rr_nondet_log->last_prog_point.guest_instr_count);
-        }
-        replay_progress();
-        next_progress += 1;
-    }
 }
 
 // Makes sure queue is full and returns fron entry.

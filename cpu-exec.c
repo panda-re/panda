@@ -757,6 +757,7 @@ int cpu_exec(CPUState *cpu)
                 bool panda_invalidate_tb = false;
                 debug_checkpoint(cpu);
                 detect_infinite_loops();
+                rr_maybe_progress();
                 //bdg Replay skipped calls from the I/O thread here
                 rr_replay_skipped_calls_from(RR_CALLSITE_MAIN_LOOP_WAIT);
 
