@@ -595,7 +595,10 @@ class Diverge(object):
     def goto_instr(self, target_instr, strict=False):
         self.both.goto_rough(target_instr)
         now_instr = self.sync_precise(target_instr)
-        if strict: assert target_instr == now_instr
+        if strict and target_instr != now_instr:
+            print("WARNING: Failed to sync exactly. Please fix manually.")
+            print("Trying to go to instr {}.".format(target_instr))
+            IPython.embed()
         self.both.record_instr_checkpoint()
         return now_instr
 
