@@ -618,7 +618,7 @@ class Diverge(object):
             print("divergence range. What do you want to do?")
             IPython.embed()
 
-        self.both.goto_instr(instr_bounds[0], strict=True)
+        self.goto_instr(instr_bounds[0], strict=True)
 
         # Unfortunately, only 4 hardware watchpoints on x86 hosts. So we check
         # potential divergence points in groups of 4, finding the first to
