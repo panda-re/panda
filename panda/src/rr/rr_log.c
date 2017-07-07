@@ -1272,6 +1272,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 #endif
 }
 
+static uint32_t rr_checksum_memory_internal(void);
 void rr_do_end_record(void)
 {
 #ifdef CONFIG_SOFTMMU
@@ -1291,6 +1292,7 @@ void rr_do_end_record(void)
     time_t rr_end_time;
     time(&rr_end_time);
     printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
 
     // log_all_cpu_states();
 
@@ -1399,6 +1401,8 @@ void rr_do_end_replay(int is_error)
     printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
     rr_max_num_queue_entries = 0;
 
+    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
@@ -1451,12 +1455,7 @@ void rr_end_main_loop_wait(void) {
 }
 
 #ifdef CONFIG_SOFTMMU
-uint32_t rr_checksum_memory(void);
-uint32_t rr_checksum_memory(void) {
-    if (!qemu_in_vcpu_thread()) {
-         printf("Need to be in VCPU thread!\n");
-         return 0;
-    }
+static uint32_t rr_checksum_memory_internal(void) {
     MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
@@ -1467,7 +1466,14 @@ uint32_t rr_checksum_memory(void) {
     return crc;
 }
 
-uint32_t rr_checksum_regs(void);
+uint32_t rr_checksum_memory(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    return rr_checksum_memory_internal();
+}
+
 uint32_t rr_checksum_regs(void) {
     if (!qemu_in_vcpu_thread()) {
          printf("Need to be in VCPU thread!\n");
