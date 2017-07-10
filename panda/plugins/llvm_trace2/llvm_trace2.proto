@@ -1,0 +1,12 @@
+message LLVMInstruction {
+	optional uint32 numArgs = 1;
+	repeated uint64 SlotOrAddress = 2;
+}
+
+message SlotOrAddress {
+	optional uint64 slotNum = 1;
+	optional uint64 address = 2;
+}
+
+optional LLVMInstruction llvmInstr = 30;
+

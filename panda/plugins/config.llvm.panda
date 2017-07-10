@@ -5,3 +5,4 @@ taint2
 tainted_branch
 tstringsearch
 tainted_instr
+llvm_trace2
