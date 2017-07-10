@@ -1,1 +1,2 @@
-obj-y += remote_memory.o
+obj-$(TARGET_ARM)  += configurable_machine.o remote_memory.o
+obj-$(TARGET_MIPS) += configurable_machine.o remote_memory.o

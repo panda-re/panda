@@ -1,29 +1,54 @@
 /*
- * ARM Versatile Platform/Application Baseboard System emulation.
+ * Avatar2 configurable machine for dynamic creation of emulated boards
  *
- * Copyright (c) 2005-2007 CodeSourcery.
- * Written by Paul Brook
+ * Copyright (C) 2017 Eurecom
+ * Written by Dario Nisi, Marius Muench & Jonas Zaddach
  *
- * This code is licensed under the GPL.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ * for more details.
+ *
+ * This code is derived from versatilepb.c:
+ *   ARM Versatile Platform/Application Baseboard System emulation.
+ *   Copyright (c) 2005-2007 CodeSourcery.
+ *   Written by Paul Brook
  */
 
+//general imports
 #include "qemu/osdep.h"
-#include "qapi/error.h"
-#include "hw/hw.h"
 #include "sysemu/sysemu.h"
-#include "hw/arm/arm.h"
 #include "exec/address-spaces.h"
+#include "hw/hw.h"
 #include "hw/sysbus.h"
 #include "hw/devices.h"
 #include "hw/boards.h"
+
+//plattform specific imports
+#ifdef TARGET_ARM
+#include "hw/arm/arm.h"
+#include "target/arm/cpu.h"
+#endif
+
+#ifdef TARGET_MIPS
+#include "hw/mips/mips.h"
+#include "hw/mips/cpudevs.h"
+#include "target/mips/cpu.h"
+#endif
+
+//qapi imports
+#include "qapi/error.h"
 #include "qapi/qmp/qjson.h"
 #include "qapi/qmp/qobject.h"
 #include "qapi/qmp/qint.h"
 #include "qapi/qmp/qdict.h"
-#include "exec/memory.h"
-#include "target/arm/cpu.h"
-#include "qemu/thread.h"
-#include "exec/ram_addr.h"
+
+
 
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
     g_assert(qdict_haskey(_dict, _key) && qobject_type(qdict_get(_dict, _key)) == _type)
@@ -37,7 +62,6 @@ static QDict * load_configuration(const char * filename)
     off_t filesize = lseek(file, 0, SEEK_END);
     char * filedata = NULL;
     ssize_t err;
-    Error * qerr = NULL;
     QObject * obj;
 
     lseek(file, 0, SEEK_SET);
@@ -62,7 +86,7 @@ static QDict * load_configuration(const char * filename)
 
     close(file);
 
-    obj = qobject_from_json(filedata, &qerr);
+    obj = qobject_from_json(filedata);
     if (!obj || qobject_type(obj) != QTYPE_QDICT)
     {
         fprintf(stderr, "Error parsing JSON configuration file\n");
@@ -333,7 +357,11 @@ static void init_peripheral(QDict *device)
 }
 
 
+#ifdef TARGET_ARM
 static void set_entry_point(QDict *conf, ARMCPU *cpuu)
+#elif TARGET_MIPS
+static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
+#endif
 {
     const char *entry_field = "entry_address";
     uint32_t entry;
@@ -344,11 +372,16 @@ static void set_entry_point(QDict *conf, ARMCPU *cpuu)
     QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
     entry = qdict_get_int(conf, entry_field);
 
+#ifdef TARGET_ARM
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
+#elif TARGET_MIPS
+    //Not implemented yet
+#endif
 
 }
 
+#ifdef TARGET_ARM
 static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 {
     const char *cpu_model = ms->cpu_model;
@@ -375,7 +408,6 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     cpuobj = object_new(object_class_get_name(cpu_oc));
 
-//    object_property_set_bool(cpuobj, true, "cfgend", &error_fatal);
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
     cpu = CPU(cpuu);
@@ -388,12 +420,49 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     return cpuu;
 }
+#elif TARGET_MIPS
+static MIPSCPU *create_cpu(MachineState * ms, QDict *conf)
+{
+    const char *cpu_model = ms->cpu_model;
+    MIPSCPU *cpuu;
+    CPUState *cpu;
+
+    if (qdict_haskey(conf, "cpu_model"))
+    {
+        cpu_model = qdict_get_str(conf, "cpu_model");
+        g_assert(cpu_model);
+    }
+
+    if (!cpu_model) cpu_model = "mips32r6-generic";
+
+    printf("Configurable: Adding processor %s\n", cpu_model);
+
+    cpuu = cpu_mips_init(cpu_model);
+    if (cpuu == NULL) {
+        fprintf(stderr, "Unable to find CPU definition\n");
+        exit(1);
+    }
+
+    cpu = (CPUState *) &(cpuu->env);
+    if (!cpu) {
+        fprintf(stderr, "Unable to find CPU definition\n");
+        exit(1);
+    }
+
+    return cpuu;
+}
+#endif
+
 
 static void board_init(MachineState * ms)
 {
-    const char *kernel_filename = ms->kernel_filename;
-
+#ifdef TARGET_ARM
     ARMCPU *cpuu;
+#elif TARGET_MIPS
+    MIPSCPU *cpuu;
+#endif
+
+    const char *kernel_filename = ms->kernel_filename;
     QDict * conf = NULL;
 
     //Load configuration file
