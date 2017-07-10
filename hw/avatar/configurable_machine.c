@@ -31,9 +31,8 @@
 
 //plattform specific imports
 #ifdef TARGET_ARM
-#include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
-#include "hw/avatar/arm_helper.h"
+#include "target/arm/cpu.h"
 #endif
 
 #ifdef TARGET_MIPS
@@ -56,18 +55,6 @@
 
 #define RAM_RESIZEABLE (1 << 2)
 /* Board init.  */
-
-#ifdef TARGET_ARM
-static inline void set_feature(CPUARMState *env, int feature)
-{
-    env->features |= 1ULL << feature;
-}
-
-static inline void unset_feature(CPUARMState *env, int feature)
-{
-    env->features &= ~(1ULL << feature);
-}
-#endif
 
 static QDict * load_configuration(const char * filename)
 {
@@ -158,14 +145,14 @@ static void set_properties(DeviceState *dev, QList *properties)
         else if(!strcmp(type, "int64"))
         {
             QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
-            const int64_t value = qdict_get_int(property, "value");
-            qdev_prop_set_uint64(dev, name, value);
+            const int value = qdict_get_int(property, "value");
+            qdev_prop_set_int32(dev, name, value);
         }
         else if(!strcmp(type, "uint64"))
         {
             QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
-            const uint64_t value = qdict_get_int(property, "value");
-            qdev_prop_set_uint64(dev, name, value);
+            const int value = qdict_get_int(property, "value");
+            qdev_prop_set_int32(dev, name, value);
         }
         else if(!strcmp(type, "device"))
         {
@@ -249,7 +236,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
 
     QDICT_ASSERT_KEY_TYPE(mapping, "name", QTYPE_QSTRING);
     QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QINT);
-    //g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
+    g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
 
     if(qdict_haskey(mapping, "is_rom")) {
         QDICT_ASSERT_KEY_TYPE(mapping, "is_rom", QTYPE_QBOOL);
@@ -376,10 +363,8 @@ static void set_entry_point(QDict *conf, ARMCPU *cpuu)
 static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
 #endif
 {
-#ifdef TARGET_ARM
     const char *entry_field = "entry_address";
     uint32_t entry;
-
 
     if(!qdict_haskey(conf, entry_field))
         return;
@@ -387,6 +372,7 @@ static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
     QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
     entry = qdict_get_int(conf, entry_field);
 
+#ifdef TARGET_ARM
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
 #elif TARGET_MIPS
@@ -402,7 +388,7 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
     ObjectClass *cpu_oc;
     Object *cpuobj;
     ARMCPU *cpuu;
-    CPUState *env;
+    CPUState *cpu;
 
     if (qdict_haskey(conf, "cpu_model"))
     {
@@ -424,15 +410,14 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
-    env = (CPUState *) &(cpuu->env);
-    if (!env)
+    cpu = CPU(cpuu);
+    cpu = (CPUState *) &(cpuu->env);
+    if (!cpu)
     {
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
 
-    avatar_add_banked_registers(cpuu);
-    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
     return cpuu;
 }
 #elif TARGET_MIPS
