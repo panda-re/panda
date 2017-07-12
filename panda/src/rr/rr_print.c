@@ -103,6 +103,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
                             args->variant.hd_transfer_args.num_bytes);
 
                         break;
+                    default: break;
                 }
                 printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
                         get_skipped_call_kind_string(item.variant.call_args.kind),
