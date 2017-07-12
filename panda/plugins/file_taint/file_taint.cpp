@@ -258,8 +258,16 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
     }
 
     if (filename.find(read_filename) != std::string::npos) {
-        if (debug) printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
-        ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) };
+        target_ulong sp;
+        if (panda_os_type == OST_WINDOWS) {
+            sp = panda_current_sp(cpu) + 4;
+        }
+        else {
+            sp = panda_current_sp(cpu);
+        }
+        if (debug) printf ("read_enter: asid=0x" TARGET_FMT_lx " sp=0x" TARGET_FMT_lx "\n", panda_current_asid(cpu), sp);
+        ThreadInfo thread{ panda_current_asid(cpu), sp };
+
         seen_reads[thread] = ReadInfo{ filename, pos, buf, count };
     }
 }
