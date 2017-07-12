@@ -143,6 +143,7 @@ static inline void free_entry_params(RR_log_entry *entry)
                     g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
                     entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
                     break;
+                default: break;
             }
             break;
         case RR_INPUT_1:
