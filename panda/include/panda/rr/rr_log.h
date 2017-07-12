@@ -66,13 +66,13 @@ void rr_mem_region_transaction_record(bool begin);
 typedef struct {
     RR_prog_point prog_point;
     uint64_t file_pos;
-    uint8_t kind;
-    uint8_t callsite_loc; // mz This is used for another sanity check
+    RR_log_entry_kind kind;
+    RR_callsite_id callsite_loc; // mz This is used for another sanity check
 } RR_header;
 
 // mz generic args
 typedef struct {
-    uint8_t kind;
+    RR_skipped_call_kind kind;
     union {
         RR_mem_region_change_args mem_region_change_args;
         RR_cpu_mem_rw_args cpu_mem_rw_args;

@@ -270,8 +270,8 @@ static inline void rr_write_item(RR_log_entry item)
 #define RR_WRITE_ITEM(field) rr_fwrite(&(field), sizeof(field), 1)
     // keep replay format the same.
     RR_WRITE_ITEM(item.header.prog_point.guest_instr_count);
-    RR_WRITE_ITEM(item.header.kind);
-    RR_WRITE_ITEM(item.header.callsite_loc);
+    rr_fwrite(&(item.header.kind), 1, 1);
+    rr_fwrite(&(item.header.callsite_loc), 1, 1);
 
     // mz also save the program point in the log structure to ensure that our
     // header will include the latest program point.
@@ -304,8 +304,7 @@ static inline void rr_write_item(RR_log_entry item)
             break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item.variant.call_args;
-            // mz write kind first!
-            RR_WRITE_ITEM(args->kind);
+            rr_fwrite(&(args->kind), 1, 1);
             switch (args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_WRITE_ITEM(args->variant.cpu_mem_rw_args);
@@ -540,6 +539,7 @@ static inline void free_entry_params(RR_log_entry* entry)
             g_free(entry->variant.call_args.variant.handle_packet_args.buf);
             entry->variant.call_args.variant.handle_packet_args.buf = NULL;
             break;
+        default: break;
         }
         break;
     case RR_INPUT_1:
@@ -618,10 +618,9 @@ static RR_log_entry *rr_read_item(void) {
 
 #define RR_READ_ITEM(field) rr_fread(&(field), sizeof(field), 1)
     // mz read header
-    // keep replay format compatible.
     RR_READ_ITEM(item->header.prog_point.guest_instr_count);
-    RR_READ_ITEM(item->header.kind);
-    RR_READ_ITEM(item->header.callsite_loc);
+    rr_fread(&(item->header.kind), 1, 1);
+    rr_fread(&(item->header.callsite_loc), 1, 1);
 
     // mz read the rest of the item
     switch (item->header.kind) {
@@ -651,8 +650,7 @@ static RR_log_entry *rr_read_item(void) {
             break;
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args* args = &item->variant.call_args;
-            // mz read kind first!
-            RR_READ_ITEM(args->kind);
+            rr_fread(&(args->kind), 1, 1);
             switch (args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_READ_ITEM(args->variant.cpu_mem_rw_args);
