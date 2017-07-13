@@ -7,6 +7,12 @@
 #include "qemu/error-report.h"
 #include "hw/sysbus.h"
 
+#ifdef TARGET_ARM
+#include "target/arm/cpu.h"
+#elif TARGET_MIPS
+#endif
+
+
 #define TYPE_AVATAR_RMEMORY "avatar-rmemory"
 #define AVATAR_RMEMORY(obj) OBJECT_CHECK(AvatarRMemoryState, (obj), TYPE_AVATAR_RMEMORY)
 
@@ -19,6 +25,7 @@ enum RemoteMemoryOperation{
 
 typedef struct MemoryForwardReq{
   uint64_t id;
+  uint64_t pc;
   uint64_t address;
   uint64_t value;
   uint32_t size;
@@ -45,6 +52,18 @@ typedef struct AvatarRMemoryState {
     qemu_irq irq;
 } AvatarRMemoryState;
 
+
+static uint64_t get_current_pc(void){
+#ifdef TARGET_ARM
+    ARMCPU *cpu = ARM_CPU(qemu_get_cpu(0));
+    return cpu->env.regs[15];
+#elif TARGET_MIPS
+    return 0; /*  implement me */
+#endif
+    return 0;
+}
+
+
 static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
@@ -52,8 +71,10 @@ static uint64_t avatar_rmemory_read(void *opaque, hwaddr offset,
     RemoteMemoryResp resp;
     memset(&resp, 0, sizeof(resp));
     AvatarRMemoryState *s = (AvatarRMemoryState *) opaque;
+    uint64_t pc = get_current_pc();
     
-    MemoryForwardReq request = {s->request_id++, s->address+offset, 0, size, AVATAR_READ};
+
+    MemoryForwardReq request = {s->request_id++, pc, s->address+offset, 0, size, AVATAR_READ};
 
     qemu_avatar_mq_send(s->tx_queue, &request, sizeof(request));
     
@@ -77,8 +98,9 @@ static void avatar_rmemory_write(void *opaque, hwaddr offset,
     memset(&resp, 0, sizeof(resp));
 
     AvatarRMemoryState *s = (AvatarRMemoryState *) opaque;
+    uint64_t pc = get_current_pc();
     
-    MemoryForwardReq request = {s->request_id++, s->address+offset, value, size, AVATAR_WRITE};
+    MemoryForwardReq request = {s->request_id++, pc, s->address+offset, value, size, AVATAR_WRITE};
 
     qemu_avatar_mq_send(s->tx_queue, &request, sizeof(request));
     ret = qemu_avatar_mq_receive(s->rx_queue, &resp, sizeof(resp));
