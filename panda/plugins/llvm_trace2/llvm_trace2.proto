@@ -1,12 +1,9 @@
-message LLVMInstruction {
+message LLVMEntry {
 	optional uint32 numArgs = 1;
-	repeated uint64 SlotOrAddress = 2;
+	optional uint32 type = 2;
+	optional uint64 address = 3;
 }
 
-message SlotOrAddress {
-	optional uint64 slotNum = 1;
-	optional uint64 address = 2;
-}
+optional LLVMEntry llvmInstr = 30;
 
-optional LLVMInstruction llvmInstr = 30;
-
+// will also need func names, bb boundaries, metadata, 
