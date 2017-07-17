@@ -145,14 +145,14 @@ static void set_properties(DeviceState *dev, QList *properties)
         else if(!strcmp(type, "int64"))
         {
             QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
-            const int value = qdict_get_int(property, "value");
-            qdev_prop_set_int32(dev, name, value);
+            const int64_t value = qdict_get_int(property, "value");
+            qdev_prop_set_uint64(dev, name, value);
         }
         else if(!strcmp(type, "uint64"))
         {
             QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QINT);
-            const int value = qdict_get_int(property, "value");
-            qdev_prop_set_int32(dev, name, value);
+            const uint64_t value = qdict_get_int(property, "value");
+            qdev_prop_set_uint64(dev, name, value);
         }
         else if(!strcmp(type, "device"))
         {
