@@ -82,7 +82,7 @@ typedef enum {
 									 //        ordering, synchscope]
 FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
 								 //         ordering, synchscope]
-BB = 43
+	BB = 43
 } FunctionCode;
 
 namespace llvm {

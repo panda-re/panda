@@ -26,14 +26,16 @@ PANDAENDCOMMENT */
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 #include "panda/plugin_plugin.h"
-
+#include <iostream>
 
 #include <llvm/PassManager.h>
 #include <llvm/PassRegistry.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include "llvm/ExecutionEngine/GenericValue.h"
+#include "llvm/Support/raw_ostream.h"
 
 
 namespace llvm {
@@ -55,19 +57,22 @@ void recordStartBB(uint64_t fp, unsigned lastBB){
 	
 	printf("recording start of BB\n");
 
-	if (pandalog) {
-		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-		*ple = PANDA__LLVMENTRY__INIT;
-		ple->has_type = 1;
-		ple->type = FunctionCode::BB;
-        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-		logEntry.llvmentry = ple;
-		pandalog_write_entry(&logEntry);
-	}
+    //giri doesn't write to log, instead pushes onto a bb stack. 
+
+
+	//if (pandalog) {
+		//Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+		//*ple = PANDA__LLVMENTRY__INIT;
+		//ple->has_type = 1;
+		//ple->type = FunctionCode::BB;
+        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		//logEntry.llvmentry = ple;
+		//pandalog_write_entry(&logEntry);
+	//}
 }
 
 void recordCall(uint64_t fp){
-	
+
 	if (pandalog) {
 		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
 		*ple = PANDA__LLVMENTRY__INIT;
@@ -124,7 +129,6 @@ void recordReturn(){
 
 void recordStore(uint64_t address){
 
-	printf("recording load at address %" PRIx64 "\n", address);
 	/*printf("recording store to address %08x", address);*/
 
 	if (pandalog) {
@@ -214,8 +218,6 @@ void instrumentBasicBlock(BasicBlock &BB){
 	std::vector<Value*> args = make_vector<Value*>(FP, lastBB, 0);
 	CallInst::Create(recordBBF, args, "", BB.getTerminator());
 
-	printf("Instrumented bb\n");
-
   // Insert code at the beginning of the basic block to record that it started
   // execution.
   args = make_vector<Value *>(FP, 0);
@@ -252,11 +254,13 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 
 	//initialize all the other record/logging functionsu
 	//PLTV->log_dynvalF = module.getOrInsertFunction("log_dynval");
-	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, Int64Type, nullptr));
-	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, Int64Type, nullptr));
-	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
+	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
+	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
+	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
+	// recordStartBB: 
 	PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, nullptr));
-	PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, nullptr));
+	// recordBB: VoidPtrType fp, Int64Type lastBB
+	PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
 	PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, VoidPtrType, nullptr));
 
 
@@ -293,21 +297,40 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 	// and cast to void ptr type
 	Value *ptr = I.getPointerOperand();
 	ptr = castTo(ptr, VoidPtrType, ptr->getName(), &I);
+	std::vector<Value*> args = make_vector(ptr, 0);
 
-    CallInst *CI = CallInst::Create(recordLoadF);
+    CallInst *CI = CallInst::Create(recordLoadF, args);
 	
 	//insert call into function
 	CI->insertAfter(static_cast<Instruction*>(&I));
 	
-	I.dump();
+	/*I.dump();*/
 }
 
 void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	//Function *func = module->getFunction("log_dynval");
 
-	/*Function *calledFunc = I.getCalledFunction();*/
+	Function *calledFunc = I.getCalledFunction();
 
-	Value *fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
+	// if it's an intrinsic function, record the ID that was called
+	Value *fp;
+	if (calledFunc->isIntrinsic()){
+		//fp = ConstantInt::get(Type::getInt64Ty(module->getContext()), calledFunc->getIntrinsicID());
+		//fp = castTo(fp, VoidPtrType, "", &I);
+		//std::cout << "called intrinsic " <<  Intrinsic::getName(Intrinsic::ID(calledFunc->getIntrinsicID())) << "\n";
+		printf("INTRINSIC FUNC\n");
+        fp = Constant::getNullValue(VoidPtrType);
+	} else {
+		fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
+		//fp = I.getCalledValue();
+		//printf("TYPE %s", fp->getType()->print());
+		//std::string type_str;
+		//raw_string_ostream rso(type_str);
+		//fp->getType()->print(rso);
+		//std::cout<<rso.str()<<"\n";
+	}
+
+	//TODO: Should i do something about helper functions?? 
 
 	std::vector<Value*> args = make_vector(fp, 0);
 
@@ -367,6 +390,4 @@ bool init_plugin(void *self){
 
 	return true;
 }
-
-
 

@@ -1,9 +1,8 @@
 message LLVMEntry {
-	optional uint32 numArgs = 1;
-	optional uint32 type = 2;
-	optional uint64 address = 3;
+	optional uint64 type = 1;
+	optional uint64 address = 2;
 }
 
-optional LLVMEntry llvmInstr = 30;
+optional LLVMEntry llvmEntry = 30;
 
 // will also need func names, bb boundaries, metadata, 
