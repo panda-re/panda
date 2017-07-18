@@ -6107,7 +6107,7 @@ case "$target_name" in
     TARGET_ARCH=arm
     bflt="yes"
     mttcg="yes"
-    gdb_xml_files="arm-core.xml arm-vfp.xml arm-vfp3.xml arm-neon.xml"
+    gdb_xml_files="arm-core.xml arm-vfp.xml arm-vfp3.xml arm-neon.xml arm-banked.xml"
   ;;
   aarch64)
     TARGET_BASE_ARCH=arm
