@@ -31,8 +31,9 @@
 
 //plattform specific imports
 #ifdef TARGET_ARM
-#include "hw/arm/arm.h"
 #include "target/arm/cpu.h"
+#include "hw/arm/arm.h"
+#include "arm_helper.h"
 #endif
 
 #ifdef TARGET_MIPS
@@ -55,6 +56,18 @@
 
 #define RAM_RESIZEABLE (1 << 2)
 /* Board init.  */
+
+#ifdef TARGET_ARM
+static inline void set_feature(CPUARMState *env, int feature)
+{
+    env->features |= 1ULL << feature;
+}
+
+static inline void unset_feature(CPUARMState *env, int feature)
+{
+    env->features &= ~(1ULL << feature);
+}
+#endif
 
 static QDict * load_configuration(const char * filename)
 {
@@ -363,8 +376,10 @@ static void set_entry_point(QDict *conf, ARMCPU *cpuu)
 static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
 #endif
 {
+#ifdef TARGET_ARM
     const char *entry_field = "entry_address";
     uint32_t entry;
+
 
     if(!qdict_haskey(conf, entry_field))
         return;
@@ -372,7 +387,6 @@ static void set_entry_point(QDict *conf, MIPSCPU *cpuu)
     QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QINT);
     entry = qdict_get_int(conf, entry_field);
 
-#ifdef TARGET_ARM
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
 #elif TARGET_MIPS
@@ -388,7 +402,7 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
     ObjectClass *cpu_oc;
     Object *cpuobj;
     ARMCPU *cpuu;
-    CPUState *cpu;
+    CPUState *env;
 
     if (qdict_haskey(conf, "cpu_model"))
     {
@@ -410,14 +424,15 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
-    cpu = CPU(cpuu);
-    cpu = (CPUState *) &(cpuu->env);
-    if (!cpu)
+    env = (CPUState *) &(cpuu->env);
+    if (!env)
     {
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
 
+    avatar_add_banked_registers(cpuu);
+    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
     return cpuu;
 }
 #elif TARGET_MIPS
