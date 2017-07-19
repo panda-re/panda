@@ -399,10 +399,8 @@ void TCGLLVMContextPrivate::initMemoryHelpers() {
 
 Value* TCGLLVMContextPrivate::getPtrForValue(int idx)
 {
-    //printf("getptrforvalue: %d\n", idx);
     TCGContext *s = m_tcgContext;
     TCGTemp &temp = s->temps[idx];
-
     assert(idx < s->nb_globals || temp.temp_local);
 
     /* rwhelan: hack to deal with the fact that this code is written assuming
@@ -530,9 +528,6 @@ void TCGLLVMContextPrivate::setValue(int idx, Value *v)
 {
     delValue(idx);
     m_values[idx] = v;
-
-    //Checks that bitwidth of Value equals bitwidth of pointer we're storing to
-    assert(v->getType() == cast<PointerType>(getPtrForValue(idx)->getType())->getElementType());
 
     if(!v->hasName() && !isa<Constant>(v)) {
         if(idx < m_tcgContext->nb_globals)

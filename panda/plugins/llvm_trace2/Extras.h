@@ -2,8 +2,6 @@
 
 #include <vector>
 
-
-
 namespace llvm {
 
 /// Given an LLVM value, insert a cast expressions or cast instructions as

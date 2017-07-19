@@ -19,6 +19,8 @@ PANDAENDCOMMENT */
  */
 
 #include <vector>
+#include <set>
+#include <string>
 
 #include "llvm_trace2.h"
 #include "Extras.h"
@@ -55,10 +57,9 @@ PandaLLVMTracePass *PLTP;
 //}
 void recordStartBB(uint64_t fp, unsigned lastBB){
 	
-	printf("recording start of BB\n");
+	//printf("recording start of BB\n");
 
     //giri doesn't write to log, instead pushes onto a bb stack. 
-
 
 	//if (pandalog) {
 		//Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
@@ -100,7 +101,7 @@ void recordBB(uint64_t fp, unsigned lastBB){
 }
 
 void recordLoad(uint64_t address){
-	printf("recording load at address %" PRIx64 "\n", address);
+	//printf("ecording load at address %" PRIx64 "\n", address);
 
 	if (pandalog) {
 		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
@@ -226,6 +227,8 @@ void instrumentBasicBlock(BasicBlock &BB){
 }
 
 char PandaLLVMTracePass::ID = 0;
+static RegisterPass<PandaLLVMTracePass>
+Y("PandaLLVMTrace", "Instrument instructions that produce dynamic values");
 
 bool PandaLLVMTracePass::runOnBasicBlock(BasicBlock &B){
 	//TODO: Iterate over function instrs
@@ -307,6 +310,11 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 	/*I.dump();*/
 }
 
+
+const static std::set<std::string> ignore_funcs{
+    "recordStartBB", "recordBB"
+};
+
 void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	//Function *func = module->getFunction("log_dynval");
 
@@ -319,7 +327,12 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 		//fp = castTo(fp, VoidPtrType, "", &I);
 		//std::cout << "called intrinsic " <<  Intrinsic::getName(Intrinsic::ID(calledFunc->getIntrinsicID())) << "\n";
 		printf("INTRINSIC FUNC\n");
-        fp = Constant::getNullValue(VoidPtrType);
+		return;
+        /*fp = Constant::getNullValue(VoidPtrType);*/
+	}
+	else if (ignore_funcs.count(calledFunc->getName())) {
+		/*printf("IGNORING FUNC\n");*/
+		return;
 	} else {
 		fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
 		//fp = I.getCalledValue();
@@ -348,6 +361,11 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
 	//Function *func = module->getFunction("log_dynval");
 
+    if (I.isVolatile()){
+        // Stores to LLVM runtime that we don't care about
+        return;
+    }
+
 	Value *address = castTo(I.getPointerOperand(), VoidPtrType, "", &I);	
 
 	std::vector<Value*> args = make_vector(address, 0);
@@ -364,8 +382,34 @@ void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
 } // namespace llvm
 // I'll need a pass manager to traverse stuff. 
 
+
+int before_block_exec(CPUState *env, TranslationBlock *tb) {
+	// write LLVM FUNCTION to pandalog
+	
+	if (pandalog) {
+		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+		*ple = PANDA__LLVMENTRY__INIT;
+		ple->has_type = 1;
+		ple->type = FunctionCode::LLVM_FN;
+		ple->has_address = 0;
+        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = ple;
+		pandalog_write_entry(&logEntry);
+	}
+
+	printf("before block exec\n");
+	
+	return 0;
+}
+
 bool init_plugin(void *self){
     printf("Initializing plugin llvm_trace2\n");
+
+
+    panda_cb pcb;
+    panda_enable_memcb();
+    pcb.before_block_exec = before_block_exec;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
 
     // Initialize pass manager
 	
@@ -390,4 +434,28 @@ bool init_plugin(void *self){
 
 	return true;
 }
+void uninit_plugin(void *self){
+    printf("Uninitializing plugin\n");
 
+    /*char modpath[256];*/
+    /*strcpy(modpath, basedir);*/
+    /*strcat(modpath, "/llvm-mod.bc");*/
+    tcg_llvm_write_module(tcg_llvm_ctx, "./llvm-mod.bc");
+    
+	 llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
+    const llvm::PassInfo *pi =
+        pr->getPassInfo(llvm::StringRef("PandaLLVMTrace"));
+    if (!pi){
+        printf("Unable to find 'PandaLLVMTrace' pass in pass registry\n");
+    }
+    else {
+        pr->unregisterPass(*pi);
+    }
+
+    panda_disable_llvm_helpers();
+
+    if (execute_llvm){
+        panda_disable_llvm();
+    }
+    panda_disable_memcb();
+}

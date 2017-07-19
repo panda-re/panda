@@ -16,8 +16,10 @@ PANDAENDCOMMENT */
 extern "C" {
 
 #include "panda/plog.h"
+#include "panda/plugin.h"
 bool init_plugin(void *self);
 void uninit_plugin(void *self);
+int before_block_exec(CPUState *env, TranslationBlock *tb);
 }
 
 
@@ -82,7 +84,8 @@ typedef enum {
 									 //        ordering, synchscope]
 FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
 								 //         ordering, synchscope]
-	BB = 43
+	BB = 43,
+	LLVM_FN = 44
 } FunctionCode;
 
 namespace llvm {
