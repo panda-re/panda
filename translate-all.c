@@ -283,6 +283,32 @@ static target_long decode_sleb128(uint8_t **pp)
     return val;
 }
 
+int inst_offset_back(target_ulong guest_pc) {
+    /* Reconstruct the stored insn data while looking for the point at
+       which the end of the insn exceeds the searched_pc.  */
+    // Copied from cpu_restore_state_from_tb.
+    // Must be called from CPU thread.
+    CPUState *cpu = current_cpu;
+    assert(cpu);
+    TranslationBlock *tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(guest_pc)];
+    target_ulong data[TARGET_INSN_START_WORDS] = { guest_pc };
+    uint8_t *p = tb->tc_search;
+    int i, j, num_insns = tb->icount;
+    assert(tb);
+    assert(guest_pc >= tb->pc);
+    assert(guest_pc < tb->pc + tb->size);
+    for (i = 0; i < num_insns; ++i) {
+        for (j = 0; j < TARGET_INSN_START_WORDS; ++j) {
+            data[j] += decode_sleb128(&p);
+        }
+        decode_sleb128(&p); // throw away value
+        if (data[0] >= guest_pc) {
+            return num_insns - i;
+        }
+    }
+    assert(false);
+}
+
 /* Encode the data collected about the instructions while compiling TB.
    Place the data at BLOCK, and return the number of bytes consumed.
 
@@ -390,6 +416,7 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         cpu->icount_decr.u16.low += num_insns;
         /* Clear the IO flag.  */
         cpu->can_do_io = 0;
+        cpu->panda_current_tb = NULL;
     }
     cpu->icount_decr.u16.low -= i;
     restore_state_to_opc(env, tb, data);
@@ -1609,13 +1636,6 @@ void tb_invalidate_phys_page_range(tb_page_addr_t start, tb_page_addr_t end,
                 cpu_restore_state_from_tb(cpu, current_tb, cpu->mem_io_pc);
                 cpu_get_tb_cpu_state(env, &current_pc, &current_cs_base,
                                      &current_flags);
-
-                /* this is a hack, but probably a necessary one. fixes
-                double-counting when SMC occurs. long-term fix: count
-                BEFORE instr executes instead of after. */
-                if (rr_mode != RR_OFF) {
-                    cpu->rr_guest_instr_count--;
-                }
             }
 #endif /* TARGET_HAS_PRECISE_SMC */
             tb_phys_invalidate(tb, -1);
@@ -1776,32 +1796,45 @@ static TranslationBlock *tb_find_pc(uintptr_t tc_ptr)
         return NULL;
     }
 
+    if (current_cpu && current_cpu->panda_current_tb) {
+        tb = current_cpu->panda_current_tb;
+        TranslationBlock *next_tb = tb + 1;
+
 #ifdef CONFIG_LLVM
-    if (execute_llvm) {
-        /* first check last tb. optimization for coming from generated code. */
-        tb = tcg_llvm_runtime.last_tb;
-        if (tb && tb->llvm_function
-                && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
-                && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
-            return tb;
-        }
-        /* then do linear search. */
-        for (m = 0; m < tcg_ctx.tb_ctx.nb_tbs; m++) {
-            tb = &tcg_ctx.tb_ctx.tbs[m];
-            if (tb->llvm_function
-                    && tc_ptr >= (uintptr_t)tb->llvm_tc_ptr
-                    && tc_ptr <  (uintptr_t)tb->llvm_tc_end) {
+        if (execute_llvm) {
+            if (tc_ptr >= (uintptr_t)tb->llvm_tc_ptr &&
+                    tc_ptr < (uintptr_t)tb->llvm_tc_end) {
+                return tb;
+            } else {
+                int i;
+                for (i = tcg_ctx.tb_ctx.nb_tbs - 1; i >= 0; i--) {
+                    tb = &tcg_ctx.tb_ctx.tbs[i];
+                    if (tc_ptr >= (uintptr_t)tb->llvm_tc_ptr &&
+                            tc_ptr < (uintptr_t)tb->llvm_tc_end) {
+                        return tb;
+                    }
+                }
+            }
+        } else
+#endif
+        {
+            if (tc_ptr >= (uintptr_t)tb->tc_ptr &&
+                    tc_ptr < (uintptr_t)next_tb->tc_ptr) {
                 return tb;
             }
         }
-        return NULL;
+        tb = NULL;
     }
+#ifdef CONFIG_LLVM
+    /* if we get here in LLVM mode something is wrong! */
+    assert(!execute_llvm);
 #endif
 
     if (tc_ptr < (uintptr_t)tcg_ctx.code_gen_buffer ||
         tc_ptr >= (uintptr_t)tcg_ctx.code_gen_ptr) {
         return NULL;
     }
+
     /* binary search (cf Knuth) */
     m_min = 0;
     m_max = tcg_ctx.tb_ctx.nb_tbs - 1;

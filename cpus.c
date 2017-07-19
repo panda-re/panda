@@ -153,6 +153,16 @@ typedef struct TimersState {
 
 static TimersState timers_state;
 
+void cpu_reset_icount(void)
+{
+    timers_state.qemu_icount = 0;
+}
+
+int64_t cpu_get_icount_raw_raw(void)
+{
+    return timers_state.qemu_icount;
+}
+
 int64_t cpu_get_icount_raw(void)
 {
     int64_t icount;
@@ -636,6 +646,51 @@ void cpu_ticks_init(void)
                                            cpu_throttle_timer_tick, NULL);
 }
 
+void configure_icount_num(int use_icount_, bool icount_sleep_, bool icount_align_,
+        int icount_time_shift_)
+{
+    use_icount = use_icount_;
+
+    icount_sleep = icount_sleep_;
+    if (icount_sleep) {
+        icount_warp_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL_RT,
+                                         icount_timer_cb, NULL);
+    }
+
+    icount_align_option = icount_align_;
+    assert(!icount_align_option || icount_sleep);
+    if (icount_time_shift_ > 0) {
+        icount_time_shift = icount_time_shift_;
+        use_icount = 1;
+        return;
+    } else if (icount_align_option) {
+        assert(false && "shift=auto and align=on are incompatible");
+    } else if (!icount_sleep) {
+        assert(false && "shift=auto and sleep=off are incompatible");
+    }
+
+    use_icount = 2;
+
+    /* 125MIPS seems a reasonable initial guess at the guest speed.
+       It will be corrected fairly quickly anyway.  */
+    icount_time_shift = 3;
+
+    /* Have both realtime and virtual time triggers for speed adjustment.
+       The realtime trigger catches emulated time passing too slowly,
+       the virtual time trigger catches emulated time passing too fast.
+       Realtime triggers occur even when idle, so use them less frequently
+       than VM triggers.  */
+    icount_rt_timer = timer_new_ms(QEMU_CLOCK_VIRTUAL_RT,
+                                   icount_adjust_rt, NULL);
+    timer_mod(icount_rt_timer,
+                   qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL_RT) + 1000);
+    icount_vm_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                        icount_adjust_vm, NULL);
+    timer_mod(icount_vm_timer,
+                   qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) +
+                   NANOSECONDS_PER_SECOND / 10);
+}
+
 void configure_icount(QemuOpts *opts, Error **errp)
 {
     const char *option;
@@ -1067,6 +1122,8 @@ static int64_t tcg_get_icount_limit(void)
 {
     int64_t deadline;
 
+    if (rr_in_replay()) return rr_num_instr_before_next_interrupt();
+
     if (replay_mode != REPLAY_MODE_PLAY) {
         deadline = qemu_clock_deadline_ns_all(QEMU_CLOCK_VIRTUAL);
 
@@ -1136,6 +1193,11 @@ static int tcg_cpu_exec(CPUState *cpu)
         cpu->icount_extra = 0;
         replay_account_executed_instructions();
     }
+
+    if (unlikely(rr_in_replay() && rr_replay_finished())) {
+        rr_do_end_replay(0);
+    }
+
     return ret;
 }
 
@@ -1169,6 +1231,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         cpu->thread_id = qemu_get_thread_id();
         cpu->created = true;
         cpu->can_do_io = 1;
+        cpu->panda_current_tb = NULL;
     }
     qemu_cond_signal(&qemu_cpu_cond);
 

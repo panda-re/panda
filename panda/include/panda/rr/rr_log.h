@@ -51,38 +51,13 @@ typedef struct RR_MapList {
     QLIST_ENTRY(RR_MapList) link;
 } RR_MapList;
 
-void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
-                               const uint8_t* buf, int len, int is_write);
-void rr_record_memory_region_change(RR_callsite_id call_site,
-                                     hwaddr start_addr, uint64_t size,
-                                     const char *name, RR_mem_type mtype, bool added);
-void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
-                             uint8_t* buf, hwaddr len, int is_write);
-
-static inline void rr_cpu_physical_memory_unmap_record(hwaddr addr,
-                                                       uint8_t* buf, hwaddr len,
-                                                       int is_write)
-{
-    rr_record_cpu_mem_unmap((RR_callsite_id)rr_skipped_callsite_location, addr,
-                            buf, len, is_write);
-}
-
-// mz XXX addr should be hwaddr
-static inline void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
-                                                int len, int is_write)
-{
-    rr_record_cpu_mem_rw_call((RR_callsite_id)rr_skipped_callsite_location,
-                              addr, buf, len, is_write);
-}
-
-// mz XXX addr should be hwaddr
-static inline void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
-                                          const char *name, RR_mem_type mtype, bool added)
-{
-    rr_record_memory_region_change(
-        (RR_callsite_id)rr_skipped_callsite_location, start_addr, size,
-        name, mtype, added);
-}
+void rr_cpu_physical_memory_unmap_record(hwaddr addr, uint8_t* buf,
+                                         hwaddr len, int is_write);
+void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write);
+void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
+                                 const char *name, RR_mem_type mtype, bool added);
+void rr_mem_region_transaction_record(bool begin);
 
 // mz using uint8_t for kind and callsite_loc to control space - enums default
 // to int.
@@ -153,27 +128,43 @@ typedef struct RR_log_t {
     unsigned long long
         size; // for a log being opened for read, this will be the size in bytes
     uint64_t bytes_read;
-
-    RR_log_entry current_item;
-
-    uint8_t current_item_valid;
-    uint64_t item_number;
 } RR_log;
 
 RR_log_entry* rr_get_queue_head(void);
 
 void panda_end_replay(void);
 
-static inline uint64_t rr_get_guest_instr_count(void) {
-    assert(first_cpu);
-    return first_cpu->rr_guest_instr_count;
-}
+uint64_t rr_get_guest_instr_count(void);
 
 //mz program execution state
 static inline RR_prog_point rr_prog_point(void) {
     RR_prog_point ret = {0};
-    ret.guest_instr_count = first_cpu->rr_guest_instr_count;
+    ret.guest_instr_count = rr_get_guest_instr_count();
     return ret;
+}
+
+static inline void qemu_log_rr(target_ulong pc) {
+    if (qemu_loglevel_mask(CPU_LOG_RR)) {
+        RR_prog_point pp = rr_prog_point();
+        qemu_log_mask(CPU_LOG_RR,
+                "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
+                pc, (unsigned long long)pp.guest_instr_count);
+    }
+}
+
+extern RR_log *rr_nondet_log;
+static inline void rr_maybe_progress(void) {
+    if (!rr_in_replay()) return;
+
+    static uint64_t next_progress = 1;
+    if (unlikely(rr_get_percentage() >= next_progress)) {
+        if (next_progress == 1) {
+            printf("%s:  %10" PRIu64 " instrs total.\n", rr_nondet_log->name,
+                    rr_nondet_log->last_prog_point.guest_instr_count);
+        }
+        replay_progress();
+        next_progress += 1;
+    }
 }
 
 extern void rr_fill_queue(void);
@@ -191,11 +182,15 @@ static inline uint64_t rr_num_instr_before_next_interrupt(void) {
         case RR_LAST:
         case RR_END_OF_LOG:
         case RR_INTERRUPT_REQUEST:
+        case RR_EXCEPTION:
             return last_header.prog_point.guest_instr_count -
                 rr_get_guest_instr_count();
         default:
             return -1;
     }
 }
+
+uint32_t rr_checksum_memory(void);
+uint32_t rr_checksum_regs(void);
 
 #endif

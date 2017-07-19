@@ -26,12 +26,15 @@ def progress(msg):
     print
 
 class Qemu(object):
-    def __init__(self, qemu_path, qcow, snapshot, tempdir, expect_prompt, boot=False, rr=False):
+    def __init__(self, qemu_path, qcow, snapshot, tempdir, expect_prompt,
+                 boot=False, rr=False, perf=False):
+        assert not (perf and rr)
         self.qemu_path = qemu_path
         self.qcow = qcow
         self.snapshot = snapshot
         self.tempdir = tempdir
         self.rr = rr
+        self.perf = perf
         self.boot = boot
         self.expect_prompt = expect_prompt
 
@@ -78,6 +81,7 @@ class Qemu(object):
                               '-loadvm', self.snapshot])
         qemu_args.extend(['-display', 'none'])
         if self.rr: qemu_args = ['rr', 'record'] + qemu_args
+        if self.perf: qemu_args = ['perf', 'record'] + qemu_args
 
         progress("Running qemu with args:")
         print subprocess32.list2cmdline(qemu_args)
@@ -143,11 +147,16 @@ def make_iso(directory, iso_path):
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
 def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
-                     recording_path, expect_prompt, isoname=None, rr=False, env={}):
+                     recording_path, expect_prompt, isoname=None, rr=False,
+                     perf=False, env={}):
+    assert not (rr and perf)
+
     recording_path = realpath(recording_path)
     if not isoname: isoname = copy_directory + '.iso'
 
-    with TempDir() as tempdir, Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr, expect_prompt=expect_prompt) as qemu:
+    with TempDir() as tempdir, \
+            Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr, perf=perf,
+                 expect_prompt=expect_prompt) as qemu:
         if os.listdir(copy_directory):
             progress("Creating ISO {}...".format(isoname))
             make_iso(copy_directory, isoname)

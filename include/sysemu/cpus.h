@@ -9,6 +9,8 @@ void pause_all_vcpus(void);
 void cpu_stop_current(void);
 void cpu_ticks_init(void);
 
+void configure_icount_num(int use_icount_, bool icount_sleep_, bool icount_align_,
+        int icount_time_shift_);
 void configure_icount(QemuOpts *opts, Error **errp);
 extern int use_icount;
 extern int icount_align_option;

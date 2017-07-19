@@ -195,6 +195,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     // NB: This is where we did this in panda1
     panda_bb_invalidate_done = false;
+    cpu->panda_current_tb = itb;
 
 #if defined(CONFIG_LLVM)
     if (execute_llvm){
@@ -212,6 +213,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
+    cpu->panda_current_tb = NULL;
     panda_callbacks_after_block_exec(cpu, itb);
 
     tb_exit = ret & TB_EXIT_MASK;
@@ -475,6 +477,9 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
+#ifdef TARGET_PPC
+    rr_exception_index_at(RR_CALLSITE_CPU_EXCEPTION_INDEX, &cpu->exception_index);
+#endif
     if (cpu->exception_index >= 0) {
         if (cpu->exception_index >= EXCP_INTERRUPT) {
             /* exit request from the cpu execution loop */
@@ -498,15 +503,6 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             return true;
 #else
             if (replay_exception()) {
-
-#ifdef CONFIG_SOFTMMU
-                int32_t excp_index; 
-                RR_DO_RECORD_OR_REPLAY(
-                    excp_index = cpu->exception_index;,
-                    rr_record_exception(RR_CALLSITE_CPU_EXCEPTION_INDEX, excp_index);,
-                    rr_replay_exception((int32_t*)&cpu->exception_index);,
-                    RR_CALLSITE_CPU_EXCEPTION_INDEX);
-#endif
                 CPUClass *cc = CPU_GET_CLASS(cpu);
                 cc->do_interrupt(cpu);
                 cpu->exception_index = -1;
@@ -693,10 +689,26 @@ __attribute__((always_inline))
 inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_mode != RR_OFF
-            && cpu->rr_guest_instr_count >> 17 > counter_128k) {
+            && rr_get_guest_instr_count() >> 17 > counter_128k) {
         debug_counter();
     }
 #endif
+}
+
+static void detect_infinite_loops(void) {
+    if (!rr_in_replay()) return;
+
+    static uint64_t last_instr_count = 0;
+    static unsigned loop_tries = 0;
+    if (last_instr_count == rr_get_guest_instr_count()) {
+        loop_tries++;
+        if (loop_tries > 20) {
+            assert(false);
+        }
+    } else {
+        loop_tries = 0;
+        last_instr_count = rr_get_guest_instr_count();
+    }
 }
 
 /* main execution loop */
@@ -710,15 +722,6 @@ int cpu_exec(CPUState *cpu)
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
 
-#ifdef CONFIG_SOFTMMU
-    //mz This is done once at the start of record and once at the start of
-    //replay.  So we should be ok.
-    if (unlikely(rr_flush_tb())) {
-        qemu_log_mask(CPU_LOG_RR, "flushing tb\n");
-        tb_flush(cpu);
-        rr_flush_tb_off();  // just the first time, eh?
-    }
-#endif
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
     }
@@ -753,46 +756,29 @@ int cpu_exec(CPUState *cpu)
             for(;;) {
                 bool panda_invalidate_tb = false;
                 debug_checkpoint(cpu);
+                detect_infinite_loops();
+                rr_maybe_progress();
                 //bdg Replay skipped calls from the I/O thread here
-                if (rr_in_replay()) {
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_replay_skipped_calls();
-                }
+                rr_replay_skipped_calls_from(RR_CALLSITE_MAIN_LOOP_WAIT);
+
                 cpu_handle_interrupt(cpu, &last_tb);
                 panda_before_find_fast();
                 tb = tb_find(cpu, last_tb, tb_exit);
                 panda_bb_invalidate_done = panda_callbacks_after_find_fast(
                         cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
-                if (qemu_loglevel_mask(CPU_LOG_RR)) {
-                    RR_prog_point pp = rr_prog_point();
-                    qemu_log_mask(CPU_LOG_RR,
-                            "Prog point: 0x" TARGET_FMT_lx " {guest_instr_count=%llu}\n",
-                            tb->pc, (unsigned long long)pp.guest_instr_count);
-                }
+                qemu_log_rr(tb->pc);
 
-#ifdef CONFIG_SOFTMMU
-                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if (panda_invalidate_tb
-                        || (rr_mode == RR_REPLAY && until_interrupt > 0
-                            && tb->icount > until_interrupt)) {
-                    // retranslate so that basic block boundary matches
-                    // record & replay for interrupt delivery
-                    tb_flush(cpu);
+                if (panda_invalidate_tb) {
+                    tb_lock();
+                    tb_phys_invalidate(tb, -1);
+                    tb_unlock();
                     tb = tb_find(cpu, last_tb, tb_exit);
                 }
-#endif //CONFIG_SOFTMMU
-                // Check for termination in replay
-                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
-                    rr_do_end_replay(0);
-                    qemu_cpu_kick(cpu);
-                    break;
-                }
-                if (!rr_in_replay() || until_interrupt > 0) {
-                    cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-                    /* Try to align the host and virtual clocks
-                       if the guest is in advance */
-                    align_clocks(&sc, cpu);
-                }
+
+                cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
+                /* Try to align the host and virtual clocks
+                   if the guest is in advance */
+                align_clocks(&sc, cpu);
             } /* for(;;) */
         } else {
 #if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
@@ -807,6 +793,7 @@ int cpu_exec(CPUState *cpu)
             g_assert(cpu == current_cpu);
             g_assert(cc == CPU_GET_CLASS(cpu));
 #endif /* buggy compiler */
+            cpu->panda_current_tb = NULL;
             cpu->can_do_io = 1;
             tb_lock_reset();
         }

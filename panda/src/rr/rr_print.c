@@ -266,7 +266,6 @@ static RR_log_entry *rr_read_item(void) {
             printf("rr_read_item: Log type unimplemented!");
             assert(0);
     }
-    rr_nondet_log->item_number++;
 
     return item;
 }

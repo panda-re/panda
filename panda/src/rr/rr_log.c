@@ -47,9 +47,12 @@
 #include "panda/rr/rr_log.h"
 #include "migration/migration.h"
 #include "include/exec/address-spaces.h"
+#include "include/exec/exec-all.h"
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
+#include "tcg/tcg.h"
+
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -95,9 +98,6 @@ static inline uint8_t rr_log_is_empty(void) {
 }
 
 RR_debug_level_type rr_debug_level = RR_DEBUG_NOISY;
-
-// used as a signal that TB cache needs flushing.
-uint8_t rr_please_flush_tb = 0;
 
 // mz Flags set by monitor to indicate requested record/replay action
 volatile sig_atomic_t rr_record_requested = 0;
@@ -184,6 +184,10 @@ static void rr_spit_log_entry(RR_log_entry item)
                get_skipped_call_kind_string(item.variant.call_args.kind),
                get_callsite_string(item.header.callsite_loc));
         break;
+    case RR_EXCEPTION:
+        printf("\tRR_EXCEPTION from %s\n",
+               get_callsite_string(item.header.callsite_loc));
+        break;
     case RR_END_OF_LOG:
         printf("\tRR_END_OF_LOG\n");
         break;
@@ -263,12 +267,10 @@ static inline size_t rr_fwrite(void *ptr, size_t size, size_t nmemb) {
 }
 
 // mz write the current log item to file
-static inline void rr_write_item(void)
+static inline void rr_write_item(RR_log_entry item)
 {
-    RR_log_entry item = rr_nondet_log->current_item;
-
     // mz save the header
-    rr_assert(rr_in_record());
+    if (!rr_in_record()) return;
     rr_assert(rr_nondet_log != NULL);
 
 #define RR_WRITE_ITEM(field) rr_fwrite(&(field), sizeof(field), 1)
@@ -349,74 +351,49 @@ static inline void rr_write_item(void)
             // mz unimplemented
             rr_assert(0 && "Unimplemented replay log entry!");
     }
-    rr_nondet_log->item_number++;
+}
+
+static inline RR_header rr_header(RR_log_entry_kind kind,
+                                  RR_callsite_id call_site) {
+    return (RR_header) {
+        .kind = kind,
+        .callsite_loc = call_site,
+        .prog_point = rr_prog_point()
+    };
 }
 
 // mz record 1-byte CPU input to log file
-void rr_record_input_1(RR_callsite_id call_site, uint8_t data)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_INPUT_1;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.input_1 = data;
-
-    rr_write_item();
+void rr_record_input_1(RR_callsite_id call_site, uint8_t data) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_INPUT_1, call_site),
+        .variant.input_1 = data
+    });
 }
 
-// mz record 2-byte CPU input to file
-void rr_record_input_2(RR_callsite_id call_site, uint16_t data)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_INPUT_2;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.input_2 = data;
-
-    rr_write_item();
+// mz record 2-byte CPU input to log file
+void rr_record_input_2(RR_callsite_id call_site, uint16_t data) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_INPUT_2, call_site),
+        .variant.input_2 = data
+    });
 }
 
-// mz record 4-byte CPU input to file
-void rr_record_input_4(RR_callsite_id call_site, uint32_t data)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_INPUT_4;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.input_4 = data;
-
-    rr_write_item();
+// mz record 4-byte CPU input to log file
+void rr_record_input_4(RR_callsite_id call_site, uint32_t data) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_INPUT_4, call_site),
+        .variant.input_4 = data
+    });
 }
 
-// mz record 8-byte CPU input to file
-void rr_record_input_8(RR_callsite_id call_site, uint64_t data)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_INPUT_8;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.input_8 = data;
-
-    rr_write_item();
+// mz record 8-byte CPU input to log file
+void rr_record_input_8(RR_callsite_id call_site, uint64_t data) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_INPUT_8, call_site),
+        .variant.input_8 = data
+    });
 }
 
-int panda_current_interrupt_request = 0;
 /**
  * Save every time cpu->interrupt_request is different than the last time
  * we observed it (panda_current_interrupt_request. In replay, we use these
@@ -424,130 +401,88 @@ int panda_current_interrupt_request = 0;
  * cpu->interrupt_request without having to record the value every time it is
  * checked
  */
+int panda_current_interrupt_request = 0;
 void rr_record_interrupt_request(RR_callsite_id call_site,
-                                 uint32_t interrupt_request)
+                                 int interrupt_request)
 {
     if (panda_current_interrupt_request != interrupt_request) {
-        // If the interrupt_request is set in cpu-exec.c, then enable writing PPC pending_interrupts to log
-        RR_log_entry* item = &(rr_nondet_log->current_item);
-        memset(item, 0, sizeof(RR_log_entry));
-
-        item->header.kind = RR_INTERRUPT_REQUEST;
-        item->header.callsite_loc = call_site;
-        item->header.prog_point = rr_prog_point();
-
-        item->variant.interrupt_request = interrupt_request;
+        rr_write_item((RR_log_entry) {
+            .header = rr_header(RR_INTERRUPT_REQUEST, call_site),
+            .variant.interrupt_request = interrupt_request
+        });
         panda_current_interrupt_request = interrupt_request;
-        rr_write_item();
     }
 }
 
 int prev_guest_instr_count = -1;
-uint32_t panda_prev_pending_int = -1; 
+uint32_t panda_prev_pending_int = -1;
 
 //rw: Pending_interrupts field for powerpc
 void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_int){
     // Determine if pending interrupt has changed or not, and if not, do not rewrite log.
-    RR_log_entry* item = &(rr_nondet_log->current_item);
+    RR_log_entry item;
 
     if (pending_int == panda_prev_pending_int){
         return;
     }
     panda_prev_pending_int = pending_int;
 
-    if (rr_prog_point().guest_instr_count == prev_guest_instr_count){
+    uint64_t guest_instr_count = rr_get_guest_instr_count();
+    if (guest_instr_count == prev_guest_instr_count){
         return;
     }
-    prev_guest_instr_count = rr_prog_point().guest_instr_count;
+    prev_guest_instr_count = guest_instr_count;
 
-    memset(item, 0, sizeof(RR_log_entry));
-    item->header.kind = RR_PENDING_INTERRUPTS;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
+    memset(&item, 0, sizeof(RR_log_entry));
+    item.header.kind = RR_PENDING_INTERRUPTS;
+    item.header.callsite_loc = call_site;
+    item.header.prog_point = rr_prog_point();
 
-    item->variant.pending_interrupts = pending_int;
+    item.variant.pending_interrupts = pending_int;
 
-    rr_write_item();
+    rr_write_item(item);
 }
 
 //rw 6/20/17: Added as a fix for powerpc
-void rr_record_exception(RR_callsite_id call_site, int32_t exception_index){
-    
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    
-    memset(item, 0, sizeof(RR_log_entry));
-    item->header.kind = RR_EXCEPTION;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.exception_index = exception_index;
-
-    rr_write_item();
+void rr_record_exception_index(RR_callsite_id call_site,
+        int32_t exception_index) {
+    if (exception_index != -1) {
+        rr_write_item((RR_log_entry) {
+            .header = rr_header(RR_EXCEPTION, call_site),
+            .variant.exception_index = exception_index
+        });
+    }
 }
 
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request)
 {
     if (exit_request != 0) {
-        RR_log_entry* item = &(rr_nondet_log->current_item);
-        // mz just in case
-        memset(item, 0, sizeof(RR_log_entry));
-
-        item->header.kind = RR_EXIT_REQUEST;
-        item->header.callsite_loc = call_site;
-        item->header.prog_point = rr_prog_point();
-
-        item->variant.exit_request = exit_request;
-
-        rr_write_item();
+        rr_write_item((RR_log_entry) {
+            .header = rr_header(RR_EXIT_REQUEST, call_site),
+            .variant.exit_request = exit_request
+        });
     }
 }
 
-// mz record call to cpu_physical_memory_rw() that will need to be replayed.
-// mz only "write" modifications are recorded
-void rr_record_cpu_mem_rw_call(RR_callsite_id call_site, hwaddr addr,
-                               const uint8_t* buf, int len, int is_write)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_CPU_MEM_RW;
-    item->variant.call_args.variant.cpu_mem_rw_args.addr = addr;
-    item->variant.call_args.variant.cpu_mem_rw_args.buf = (uint8_t *)buf;
-    item->variant.call_args.variant.cpu_mem_rw_args.len = len;
-    // mz is_write is dropped on the floor, as we only record writes
-
-    rr_write_item();
+static inline void rr_record_skipped_call(RR_skipped_call_args args) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_SKIPPED_CALL, rr_skipped_callsite_location),
+        .variant.call_args = args
+    });
 }
 
 // bdg Record the memory modified during a call to
-// cpu_physical_memory_map/unmap.
-// bdg Really we could subsume the functionality of rr_record_cpu_mem_rw_call
-// into this,
-// bdg since they're both concerned with capturing the memory side effects of
-// device code
-void rr_record_cpu_mem_unmap(RR_callsite_id call_site, hwaddr addr,
-                             uint8_t* buf, hwaddr len, int is_write)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_CPU_MEM_UNMAP;
-    item->variant.call_args.variant.cpu_mem_unmap.addr = addr;
-    item->variant.call_args.variant.cpu_mem_unmap.buf = (uint8_t *)buf;
-    item->variant.call_args.variant.cpu_mem_unmap.len = len;
-    // mz is_write is dropped on the floor, as we only record writes
-
-    rr_write_item();
+// address_space_map/unmap.
+void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
+                                  int len, int is_write) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_CPU_MEM_UNMAP,
+        .variant.cpu_mem_unmap = {
+            .addr = addr,
+            .buf = (uint8_t *)buf,
+            .len = len
+        }
+    });
 }
 
 extern QLIST_HEAD(rr_map_list, RR_MapList) rr_map_list;
@@ -567,106 +502,26 @@ void rr_tracked_mem_regions_record(void) {
 }
 
 // bdg Record a change in the I/O memory map
-void rr_record_memory_region_change(RR_callsite_id call_site,
-                                     hwaddr start_addr, uint64_t size,
-                                     const char *name, RR_mem_type mtype, bool added)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_MEM_REGION_CHANGE;
-    item->variant.call_args.variant.mem_region_change_args.start_addr =
-        start_addr;
-    item->variant.call_args.variant.mem_region_change_args.size = size;
-    item->variant.call_args.variant.mem_region_change_args.name = (char *)name;
-    item->variant.call_args.variant.mem_region_change_args.len = strlen(name);
-    item->variant.call_args.variant.mem_region_change_args.mtype = mtype;
-    item->variant.call_args.variant.mem_region_change_args.added = added;
-
-    rr_write_item();
-}
-
-void rr_record_hd_transfer(RR_callsite_id call_site,
-                           Hd_transfer_type transfer_type, uint64_t src_addr,
-                           uint64_t dest_addr, uint32_t num_bytes)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    // item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_HD_TRANSFER;
-    item->variant.call_args.variant.hd_transfer_args.type = transfer_type;
-    item->variant.call_args.variant.hd_transfer_args.src_addr = src_addr;
-    item->variant.call_args.variant.hd_transfer_args.dest_addr = dest_addr;
-    item->variant.call_args.variant.hd_transfer_args.num_bytes = num_bytes;
-
-    rr_write_item();
-}
-
-void rr_record_net_transfer(RR_callsite_id call_site,
-                            Net_transfer_type transfer_type, uint64_t src_addr,
-                            uint64_t dest_addr, uint32_t num_bytes)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    // item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_NET_TRANSFER;
-    item->variant.call_args.variant.net_transfer_args.type = transfer_type;
-    item->variant.call_args.variant.net_transfer_args.src_addr = src_addr;
-    item->variant.call_args.variant.net_transfer_args.dest_addr = dest_addr;
-    item->variant.call_args.variant.net_transfer_args.num_bytes = num_bytes;
-
-    rr_write_item();
-}
-
-void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t* buf,
-                                  int size, uint8_t direction)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_SKIPPED_CALL;
-    // item->header.qemu_loc = rr_qemu_location;
-    item->header.callsite_loc = call_site;
-    item->header.prog_point = rr_prog_point();
-
-    item->variant.call_args.kind = RR_CALL_HANDLE_PACKET;
-    item->variant.call_args.variant.handle_packet_args.buf = buf;
-    item->variant.call_args.variant.handle_packet_args.size = size;
-    item->variant.call_args.variant.handle_packet_args.direction = direction;
-
-    rr_write_item();
+void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
+                                 const char *name, RR_mem_type mtype, bool added) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_MEM_REGION_CHANGE,
+        .variant.mem_region_change_args = {
+            .start_addr = start_addr,
+            .size = size,
+            .name = (char *)name,
+            .len = strlen(name),
+            .mtype = mtype,
+            .added = added
+        }
+    });
 }
 
 // mz record a marker for end of the log
-static void rr_record_end_of_log(void)
-{
-    RR_log_entry* item = &(rr_nondet_log->current_item);
-    // mz just in case
-    memset(item, 0, sizeof(RR_log_entry));
-
-    item->header.kind = RR_END_OF_LOG;
-    item->header.callsite_loc = RR_CALLSITE_END_OF_LOG;
-    item->header.prog_point = rr_prog_point();
-
-    rr_write_item();
+static inline void rr_record_end_of_log(void) {
+    rr_write_item((RR_log_entry) {
+        .header = rr_header(RR_END_OF_LOG, RR_CALLSITE_END_OF_LOG)
+    });
 }
 
 /******************************************************************************************/
@@ -862,7 +717,6 @@ static RR_log_entry *rr_read_item(void) {
             // mz unimplemented
             rr_assert(0 && "Unimplemented replay log entry!");
     }
-    rr_nondet_log->item_number++;
 
     // mz let's do some counting
     rr_size_of_log_entries[item->header.kind] +=
@@ -887,7 +741,8 @@ void rr_fill_queue(void) {
 
         if ((header.kind == RR_SKIPPED_CALL
                     && header.callsite_loc == RR_CALLSITE_MAIN_LOOP_WAIT)
-                || header.kind == RR_INTERRUPT_REQUEST) {
+                || header.kind == RR_INTERRUPT_REQUEST
+                || header.kind == RR_EXCEPTION) {
             // Cut off queue so we don't run out of memory on long runs of
             // non-interrupts
             break;
@@ -896,16 +751,6 @@ void rr_fill_queue(void) {
     // mz let's gather some stats
     if (num_entries > rr_max_num_queue_entries) {
         rr_max_num_queue_entries = num_entries;
-    }
-
-    static uint64_t next_progress = 1;
-    if (rr_get_percentage() >= next_progress) {
-        if (next_progress == 1) {
-            printf("%s:  %10" PRIu64 " instrs total.\n", rr_nondet_log->name,
-                    rr_nondet_log->last_prog_point.guest_instr_count);
-        }
-        replay_progress();
-        next_progress += 1;
     }
 }
 
@@ -990,7 +835,7 @@ void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data) {
  * and use it to return the correct value for cpu->interrupt_requested
  */
 void rr_replay_interrupt_request(RR_callsite_id call_site,
-                                 uint32_t* interrupt_request)
+                                 int* interrupt_request)
 {
     RR_log_entry* current_item =
         get_next_entry_checked(RR_INTERRUPT_REQUEST, call_site, true);
@@ -1020,15 +865,13 @@ void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request)
     }
 }
 
-bool rr_replay_exception(int32_t* exception_index){
-    
-    RR_log_entry* current_item = get_next_entry_checked(RR_EXCEPTION, RR_CALLSITE_CPU_EXCEPTION_INDEX, true);
+bool rr_replay_exception_index(RR_callsite_id call_site, int32_t* exception_index) {
+    RR_log_entry* current_item = get_next_entry_checked(RR_EXCEPTION, call_site, true);
 
     if (!current_item) return false;
 
     *exception_index = current_item->variant.exception_index;
 
-    //then, pop off queue and return
     rr_queue_pop_front();
     return true;
 }
@@ -1041,7 +884,6 @@ bool rr_replay_pending_interrupts(RR_callsite_id callsite_id, uint32_t* pending_
 
     *pending_int = current_item->variant.pending_interrupts;
 
-    //then, pop off queue and return
     rr_queue_pop_front();
     return true;
 }
@@ -1291,14 +1133,13 @@ static inline void rr_get_nondet_log_file_name(char* rr_name, char* rr_path,
     snprintf(file_name, file_name_len, "%s/%s-rr-nondet.log", rr_path, rr_name);
 }
 
-void rr_reset_state(CPUState* cpu_state)
+void rr_reset_state(CPUState* cpu)
 {
     // set flag to signal that we'll be needing the tb flushed.
-    rr_flush_tb_on();
+    tb_flush(cpu);
     // clear flags
     rr_record_in_progress = 0;
     rr_skipped_callsite_location = 0;
-    cpu_state->rr_guest_instr_count = 0;
 }
 
 //////////////////////////////////////////////////////////////
@@ -1424,6 +1265,11 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
     // save the time so we can report how long record takes
     time(&rr_start_time);
 
+    cpu_reset_icount();
+    first_cpu->icount_decr.u32 = 0;
+    first_cpu->icount_extra = 0;
+    configure_icount_num(1, true, false, 3);
+
     // second, open non-deterministic input log for write.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf("opening nondet log for write :\t%s\n", name_buf);
@@ -1438,6 +1284,7 @@ int rr_do_begin_record(const char* file_name_full, CPUState* cpu_state)
 #endif
 }
 
+static uint32_t rr_checksum_memory_internal(void);
 void rr_do_end_record(void)
 {
 #ifdef CONFIG_SOFTMMU
@@ -1457,8 +1304,9 @@ void rr_do_end_record(void)
     time_t rr_end_time;
     time(&rr_end_time);
     printf("Time taken was: %ld seconds.\n", rr_end_time - rr_start_time);
+    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
 
-    // log_all_cpu_states();
+    use_icount = 0;
 
     rr_destroy_log();
 
@@ -1517,6 +1365,11 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     // save the time so we can report how long replay takes
     time(&rr_start_time);
 
+    cpu_reset_icount();
+    first_cpu->icount_decr.u32 = 0;
+    first_cpu->icount_extra = 0;
+    configure_icount_num(1, true, false, 3);
+
     // second, open non-deterministic input log for read.
     rr_get_nondet_log_file_name(rr_name, rr_path, name_buf, sizeof(name_buf));
     printf("opening nondet log for read :\t%s\n", name_buf);
@@ -1565,6 +1418,8 @@ void rr_do_end_replay(int is_error)
     printf("max_queue_len = %llu\n", rr_max_num_queue_entries);
     rr_max_num_queue_entries = 0;
 
+    printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (rr_queue_head == rr_queue_tail && rr_queue_head != NULL &&
@@ -1585,6 +1440,7 @@ void rr_do_end_replay(int is_error)
     rr_destroy_log();
     // turn off replay
     rr_mode = RR_OFF;
+    use_icount = 0;
 
     // mz XXX something more graceful?
     if (is_error) {
@@ -1616,13 +1472,23 @@ void rr_end_main_loop_wait(void) {
 #endif
 }
 
-#ifdef CONFIG_SOFTMMU
-uint32_t rr_checksum_memory(void);
-uint32_t rr_checksum_memory(void) {
-    if (!qemu_in_vcpu_thread()) {
-         printf("Need to be in VCPU thread!\n");
-         return 0;
+uint64_t rr_get_guest_instr_count(void) {
+    CPUState *cpu = current_cpu;
+    int64_t count = cpu_get_icount_raw_raw();
+    if (!cpu) {
+        return count;
     }
+
+    count -= (cpu->icount_extra + cpu->icount_decr.u16.low);
+    if (!cpu->can_do_io) {
+        count -= inst_offset_back(cpu->panda_guest_pc);
+        count += 1;
+    }
+    return count;
+}
+
+#ifdef CONFIG_SOFTMMU
+static uint32_t rr_checksum_memory_internal(void) {
     MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
@@ -1633,7 +1499,14 @@ uint32_t rr_checksum_memory(void) {
     return crc;
 }
 
-uint32_t rr_checksum_regs(void);
+uint32_t rr_checksum_memory(void) {
+    if (!qemu_in_vcpu_thread()) {
+         printf("Need to be in VCPU thread!\n");
+         return 0;
+    }
+    return rr_checksum_memory_internal();
+}
+
 uint32_t rr_checksum_regs(void) {
     if (!qemu_in_vcpu_thread()) {
          printf("Need to be in VCPU thread!\n");

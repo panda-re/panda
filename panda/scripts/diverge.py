@@ -221,19 +221,18 @@ class RRInstance(object):
         self.disable_all()
         self.gdb("restart", checkpoint)
 
+    def restart_instr(self, instr):
+        self.restart(self.instr_to_checkpoint[instr])
+
     def get_value(self, expr):
         return self.gdb_int_re(r"\$[0-9]+ = ([0-9]+)", "print/u", expr)
 
     def instr_count(self):
-        return self.get_value("cpus->tqh_first->rr_guest_instr_count")
-
-    @cached_property
-    def instr_count_ptr(self):
-        return self.get_value("&cpus->tqh_first->rr_guest_instr_count")
+        return self.get_value("rr_get_guest_instr_count()")
 
     def condition_instr(self, break_arg, op, instr):
-        self.condition(
-            break_arg, "*(uint64_t *){} {} {}".format(self.instr_count_ptr, op, instr))
+        current = "timers_state.qemu_icount - cpus->tqh_first->icount_decr.u16.low - cpus->tqh_first->icount_extra"
+        self.condition(break_arg, "{} {} {}".format(current, op, instr))
 
     def set_breakpoint_commands(self, break_num):
         self.gdb("commands", break_num, expect_prompt = ">")
@@ -592,7 +591,10 @@ class Diverge(object):
     def goto_instr(self, target_instr, strict=False):
         self.both.goto_rough(target_instr)
         now_instr = self.sync_precise(target_instr)
-        if strict: assert target_instr == now_instr
+        if strict and target_instr != now_instr:
+            print("WARNING: Failed to sync exactly. Please fix manually.")
+            print("Trying to go to instr {}.".format(target_instr))
+            IPython.embed()
         self.both.record_instr_checkpoint()
         return now_instr
 
@@ -615,31 +617,7 @@ class Diverge(object):
             print("divergence range. What do you want to do?")
             IPython.embed()
 
-        # Return to latest converged instr
-        now_instr = self.goto_instr(instr_bounds[0])
-
-        # Make sure we're actually at a converged point.
-        # If we're more than 1000 instrs too far forward, make user intervene.
-        if now_instr > instr_bounds[0] + 1000:
-            print("WARNING: Processes are too far ahead of last divergence.")
-            print("Please sync them manually behind", instr_bounds[0],)
-            print("and continue.")
-            IPython.embed()
-            instr_counts = self.both.instr_count()
-            assert values_equal(instr_counts)
-            assert instr_counts[self.record] <= instr_bounds[0]
-        elif now_instr >= instr_bounds[1]:
-            # NB: in some cases, instr_bounds[0] (i.e. we observe the same instr
-            # both converged and diverged. This should make sure we move before it
-            # before setting watchpoints.
-            self.both.enable_only("cpu_loop_exec_tb")
-            self.both.condition_instr("cpu_loop_exec_tb", "<", instr_bounds[0])
-            self.both.reverse_cont()
-            while not values_equal(self.both.instr_count()):
-                print("Not synced.")
-                self.get_closer(Diverge.BACKWARDS)
-
-        last_converged_checkpoint = self.both.checkpoint()
+        self.goto_instr(instr_bounds[0], strict=True)
 
         # Unfortunately, only 4 hardware watchpoints on x86 hosts. So we check
         # potential divergence points in groups of 4, finding the first to
@@ -649,7 +627,7 @@ class Diverge(object):
             new_watches = []
             for watches_chunk in chunks(watches, 4):
                 num_to_watch_dict = {}
-                self.both.restart(last_converged_checkpoint)
+                self.both.restart_instr(instr_bounds[0])
                 for watch in watches_chunk:
                     num_to_watch_dict[self.both.same.watch(watch)] = watch
 
@@ -693,6 +671,13 @@ class Diverge(object):
         self.both.breakpoint("rr_do_begin_replay")
         self.both.breakpoint("cpu_loop_exec_tb")
 
+        try:
+            self.both.breakpoint("debug_counter")
+        except RuntimeError:
+            print("Must run diverge.py on a debug build of panda. Run ./configure ",)
+            print("with --enable-debug for this to work.")
+            cleanup_error()
+
         replay_last = get_last_event(cli_args.replay_rr)
         print("Last known replay event: {}".format(replay_last))
 
@@ -708,13 +693,6 @@ class Diverge(object):
 
         print("Failing replay instr count:", self.instr_count_max)
 
-        try:
-            self.both.breakpoint("debug_counter")
-        except RuntimeError:
-            print("Must run diverge.py on a debug build of panda. Run ./configure ",)
-            print("with --enable-debug for this to work.")
-            cleanup_error()
-
         if cli_args.instr_bounds:
             instr_bounds = [int(s) for s in cli_args.instr_bounds.split(',')]
             self.goto_instr(instr_bounds[0], strict=True)
@@ -728,6 +706,7 @@ class Diverge(object):
             # to find the first point of memory or register divergence.
             instr_bounds = self.bisect_time(instr_bounds)
             print("Haven't made progress since last iteration. Moving to memory checksum.")
+            self.both.restart_instr(instr_bounds[1])
 
         self.print_divergence_info(instr_bounds)
 
