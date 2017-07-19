@@ -105,6 +105,8 @@ volatile sig_atomic_t rr_end_replay_requested = 0;
 char* rr_requested_name = NULL;
 char* rr_snapshot_name = NULL;
 
+unsigned rr_next_progress = 1;
+
 //
 // mz Other useful things
 //
@@ -128,9 +130,9 @@ uint8_t rr_replay_finished(void)
 
 // mz "performance" counters - basically, how much of the log is taken up by
 // mz each kind of entry.
-volatile unsigned long long rr_number_of_log_entries[RR_LAST];
-volatile unsigned long long rr_size_of_log_entries[RR_LAST];
-volatile unsigned long long rr_max_num_queue_entries;
+unsigned long long rr_number_of_log_entries[RR_LAST];
+unsigned long long rr_size_of_log_entries[RR_LAST];
+unsigned long long rr_max_num_queue_entries;
 
 // mz a history of last few log entries for replay
 // mz use rr_print_history() to dump in a debugger

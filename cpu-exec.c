@@ -778,7 +778,7 @@ int cpu_exec(CPUState *cpu)
                     tb_lock();
                     tb_phys_invalidate(tb, -1);
                     tb_unlock();
-                    tb = tb_find(cpu, last_tb, tb_exit);
+                    continue;
                 }
 #endif //CONFIG_SOFTMMU
                 // Check for termination in replay
