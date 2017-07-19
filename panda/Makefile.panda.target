@@ -97,6 +97,7 @@ obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
+obj-y += panda/src/checkpoint.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
