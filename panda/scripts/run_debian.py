@@ -43,10 +43,18 @@ Advanced USAGE:
 
 """
 
+from collections import namedtuple
+
+Arch = namedtuple('Arch', ['dir', 'binary', 'prompt', 'qcow', 'extra_files', 'extra_args'])
+Arch.__new__.__defaults__ = (None,None)
+
 SUPPORTED_ARCHES = {
-    'i386': ('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2"),
-    'x86_64': ('x86_64-softmmu', 'qemu-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2"),
-    'ppc': ('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow")
+    'i386': Arch('i386-softmmu', 'qemu-system-i386', "root@debian-i386:~#", "wheezy_panda2.qcow2"),
+    'x86_64': Arch('x86_64-softmmu', 'qemu-system-x86_64', "root@debian-amd64:~#", "wheezy_x64.qcow2"),
+    'ppc': Arch('ppc-softmmu', 'qemu-system-ppc', "root@debian-powerpc:~#", "ppc_wheezy.qcow"),
+    'arm': Arch('arm-softmmu', 'qemu-system-arm', "root@debian-armel:~#", "arm_wheezy.qcow", 
+        extra_files=['vmlinuz-3.2.0-4-versatile', 'initrd.img-3.2.0-4-versatile'],
+        extra_args='-M versatilepb -append "root=/dev/sda1" -kernel {DOT_DIR}/vmlinuz-3.2.0-4-versatile -initrd {DOT_DIR}/initrd.img-3.2.0-4-versatile')
 }
 
 
@@ -98,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--rr", action='store_true')
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
-    parser.add_argument("--arch", action='store', default='i386')
+    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
 
     args, guest_cmd = parser.parse_known_args()
     if args.cmd:
@@ -107,7 +115,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         EXIT_USAGE()
 
-    (qemu_softmmu, qemu_binary, expect_prompt, qcow_fname) = SUPPORTED_ARCHES[args.arch]
+    arch_data = SUPPORTED_ARCHES[args.arch]
 
     env = {}
     if args.env:
@@ -137,10 +145,21 @@ if __name__ == "__main__":
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, qcow_fname)
+    qcow = join(dot_dir, arch_data.qcow)
     if not os.path.isfile(qcow):
         print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
-        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + qcow_fname, "-O", qcow])
+        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
+        for extra_file in arch_data.extra_files or []:
+            extra_file_path = join(dot_dir, extra_file)
+            sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
+
+    # Expand out the dot dir in extra_args if necessary
+    if arch_data.extra_args:
+        extra_args = arch_data.extra_args.format(**{'DOT_DIR': dot_dir})
+        # And split it
+        extra_args = shlex.split(extra_args)
+    else:
+        extra_args = None
 
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
@@ -150,12 +169,13 @@ if __name__ == "__main__":
     print "env = ", env
 
     create_recording(
-        join(panda_build_dir, qemu_softmmu, qemu_binary),
+        join(panda_build_dir, arch_data.dir, arch_data.binary),
         qcow, "root", new_guest_cmd,
         install_dir,
         join(binary_dir, binary_basename),
-        expect_prompt,
+        arch_data.prompt,
         rr=args.rr,
         perf=args.perf,
         env=env,
+        extra_args=extra_args
     )

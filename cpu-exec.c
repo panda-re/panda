@@ -58,6 +58,7 @@ const int has_llvm_engine = 1;
 
 int generate_llvm = 0;
 int execute_llvm = 0;
+extern bool panda_tb_chaining;
 
 /* -icount align implementation. */
 
@@ -417,7 +418,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY /* && panda_tb_chaining */) {
+    if (rr_mode != RR_REPLAY && panda_tb_chaining) {
 #endif
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
