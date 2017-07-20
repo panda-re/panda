@@ -25,7 +25,6 @@ PANDAENDCOMMENT */
 
 #include "panda/plugins/llvm_trace2/functionCode.h"
 extern "C" {
-
 #include "panda/plog.h"
 }
 
@@ -56,7 +55,6 @@ extern "C" {
  * Then, with this criterion, I can work backwards and find the uses/definitions. 
  * 
  * I need a working set, uses, and definitions set. 
- *
  *
  */
 extern "C"{
@@ -137,13 +135,19 @@ Panda__LogEntry* cursor;
 void updateUsesAndDefs(){
 	
 }
-
-void slice_trace(std::vector<traceEntry> ){
+/*
+ * This function takes in a list of criteria
+ * and iterates backwards over an LLVM function
+ * updating the global workList, uses, and defs. 
+ *
+ */
+void slice_trace(std::vector<SliceVar> criteria){
 	// Iterate every instruction to find its uses and its definition
 	// if one of the definitions is in the working list (which contains initial criterion)
 	// update working list with the uses 
 
 	//update worklist 
+	
 	
 }
 
@@ -194,7 +198,7 @@ int main(int argc, char **argv){
     //parse args 
     
 	if (argc < 4) {
-		printf("Usage: <llvm-mod.bc> <slice-file>\n");
+		printf("Usage: <llvm-mod.bc> <trace-file> <criterion> (<criterion>)\n");
 		return EXIT_FAILURE;   
 	}
 
@@ -263,7 +267,9 @@ int main(int argc, char **argv){
 	printf("Slicing trace\n");
 
 	std::vector<Panda__LogEntry*> ple_vector; 	
-
+	
+	pandalog_open_read_fwd(llvm_trace_fname);
+	
 	Panda__LogEntry *ple;
 	// read all pandalog entries into memory. 
 	while ((ple = pandalog_read_entry()) != NULL){
@@ -271,23 +277,24 @@ int main(int argc, char **argv){
 		ple_vector.push_back(ple); 
 	}
     
-    uint64_t ple_idx = ple_vector.size();
+    uint64_t ple_idx = ple_vector.size()-1;
 
 	// Process by the function? I'll just do the same thing as dynslice1.cpp for now. 
-	while (ple_idx < ple_vector.size() ) {
+	while (ple_idx > 0) {
 		// while we haven't reached beginning of file yet 
+		printf("type is %lu\n", ple_vector[ple_idx]->llvmentry->type);
 		
-		if (ple_vector[ple_idx]->llvmentry->type != FunctionCode::LLVM_FN){
-			ple_idx--;
+		if (ple_vector[ple_idx]->llvmentry->type == FunctionCode::LLVM_FN){
+			printf("FOund an LLVM FUn\n");	 	
+			
+			// now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
+			align_trace(ple_vector)
 		}
-
-
-		printf("FOund an LLVM FUn\n");	 	
-
+		ple_idx--;
 	}
 	
-	/*slice_trace();*/
+	slice_trace(ple_vector);
 
-
+	pandalog_close();
 }
 
