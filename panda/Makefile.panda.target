@@ -8,6 +8,8 @@ ifdef CONFIG_LLVM
 	PANDA_PLUGINS+=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.llvm.panda | grep -v "^\#" | xargs)
 endif
 
+PANDA_TOOLS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/tools/config.panda | grep -v "^\#" | xargs)
+
 ALL_PLUGIN_SUBDIRS=$(addprefix $(SRC_PATH)/panda/plugins/,$(PANDA_PLUGINS))
 
 # ditto for extra plugins
@@ -29,6 +31,9 @@ endif
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
+TOOLS_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
+TOOLS_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
+
 PANDA_API_INT_POSSIBLE=$(foreach plugin,$(PANDA_PLUGINS),panda/plugins/$(plugin)/$(plugin)_int.h)
 PANDA_EXTRA_API_INT_POSSIBLE=$(foreach plugin,$(EXTRA_PANDA_PLUGINS),panda/plugins/$(plugin)/$(plugin)_int.h)
 
@@ -36,6 +41,8 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 			  $(if $(wildcard $(SRC_PATH)/$(header)),$(header),)) $(foreach header,$(PANDA_EXTRA_API_INT_POSSIBLE), $(if $(wildcard $(EXTRA_PLUGINS_PATH)/$(header)),$(header),))
 
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
+
+$(info tools_subdir_rules is $(TOOLS_SUBDIR_RULES))
 
 plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
@@ -46,6 +53,16 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
+tool-%: plog.pb-c.h $(PANDA_API_EXT)
+	$(info dollar star is $*)
+	$(call quiet-command,mkdir -p ../panda/tools/$*,)
+	$(call quiet-command,mkdir -p panda/tools/$*,)
+	$(call quiet-command,$(MAKE) $(TOOLS_SUBDIR_MAKEFLAGS) \
+		-f "$(SRC_PATH)/panda/tools/panda.mak" \
+		-f "$(SRC_PATH)/panda/tools/$*/Makefile" \
+		TOOL_SRC_ROOT="$(SRC_PATH)/panda/tools" \
+		V="$(V)" TOOL_NAME="$*" all,)
+
 extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
@@ -55,7 +72,8 @@ extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
-all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
+
+all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES) $(TOOLS_SUBDIR_RULES)
 
 PROTO_FILES=$(wildcard $(addsuffix /*.proto,$(ALL_PLUGIN_SUBDIRS)))
 
@@ -83,6 +101,7 @@ GENERATED_HEADERS += plog.pb-c.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
 
 # This keeps make from thinking it's an "intermediate" file
+$(info panda_api_ext is $(PANDA_API_EXT))
 .PRECIOUS: $(PANDA_API_EXT)
 
 %_ext.h: %_int.h

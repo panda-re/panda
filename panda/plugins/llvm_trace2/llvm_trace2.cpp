@@ -382,7 +382,6 @@ void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
 } // namespace llvm
 // I'll need a pass manager to traverse stuff. 
 
-
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
 	// write LLVM FUNCTION to pandalog
 	
@@ -397,14 +396,12 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 		pandalog_write_entry(&logEntry);
 	}
 
-	printf("before block exec\n");
-	
 	return 0;
 }
 
+
 bool init_plugin(void *self){
     printf("Initializing plugin llvm_trace2\n");
-
 
     panda_cb pcb;
     panda_enable_memcb();

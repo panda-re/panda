@@ -20,12 +20,12 @@ PANDAENDCOMMENT */
  */
 
 #include <vector>
+#include <set>
+#include <deque>
 
-#include "llvm_trace2.h"
-#include "Extras.h"
-#include "plog.h"
+#include "functionCode.h"
+#include "panda/plog.h"
 
-#include "panda/tcg-llvm.h"
 #include <iostream>
 
 #include <llvm/PassManager.h>
@@ -36,7 +36,14 @@ PANDAENDCOMMENT */
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/raw_ostream.h"
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/InstVisitor.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/Pass.h>
 
+#include "Extras.h"
 
 /*
  * Switch statement to handle all instructions
@@ -53,8 +60,8 @@ PANDAENDCOMMENT */
  */
 
 
-bool is_ignored(Function *f) {
-    StringRef func_name = f->getName();
+bool is_ignored(llvm::Function *f) {
+    llvm::StringRef func_name = f->getName();
     if (func_name.startswith("__ld") ||
         func_name.startswith("__st") ||
         func_name.startswith("llvm.memcpy") ||
@@ -70,13 +77,6 @@ bool is_ignored(Function *f) {
     else
         return false;
 }
-
-
-void updateUsesAndDefs(){
-	
-	
-}
-
 
 
 
@@ -106,15 +106,34 @@ std::vector<traceEntry> traceEntries;
 
 //add stuff to this as needed
 struct traceEntry {
-	Function *func;
-	Instruction *inst;
+	llvm::Function *func;
+	llvm::Instruction *inst;
 	
 	Panda__LogEntry ple;
 	//special snowflake?
 }
 
 
-int main(){
+Panda__LogEntry* cursor; 
+
+void updateUsesAndDefs(){
+		
+	
+}
+
+void slice_trace(std::vector<traceEntry> ){
+	// Iterate every instruction to find its uses and its definition
+	// if one of the definitions is in the working list (which contains initial criterion)
+	// update working list with the uses 
+
+	
+	
+	//update worklist 
+	
+}
+
+
+int main(int argc, char **argv){
     //parse args 
     
 	if (argc < 4) {
@@ -172,9 +191,45 @@ int main(){
 	// if mem, search for last occurrence of that physical address	
 
 	//find_slice();
-		
+ 	 		
+    llvm::LLVMContext &ctx = getGlobalContext();
+    llvm::Module *mod = llvm::ParseIRFile(llvm_mod_fname, err, ctx);
 
-	// read trace into file
+	// read trace into memory
+
+    // Add the slicing criteria
+    std::set<SliceVar> work;
+    for (int i = optind + 2; i < argc; i++) {
+        workList.insert(VarFromStr(argv[i]));
+    }
+
+	printf("Slicing trace\n");
+	
+
+	std::vector<Panda__LogEntry*> ple_vector; 	
+
+	Panda__LogEntry *ple;
+	// read all pandalog entries into memory. 
+	while (ple = pandalog_read_entry() != NULL){
+		//XXX: This may take up a shitload of memory
+		ple_vector.push_back(ple); 
+	}
+
+	// Process by the function? I'll just do the same thing as dynslice1.cpp for now. 
+	while (ple_idx < ple_vector.size() ) {
+		// while we haven't reached beginning of file yet 
+		
+		if (ple_vector[ple_idx].type != FunctionCode::LLVM_FN){
+			ple_idx--;
+		}
+
+
+		printf("FOund an LLVM FUn\n");	 	
+
+	}
+	
+	slice_trace();
+
 
 }
 

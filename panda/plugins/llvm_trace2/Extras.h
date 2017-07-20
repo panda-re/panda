@@ -1,6 +1,14 @@
 
-
 #include <vector>
+#include <set>
+#include "llvm/ADT/Twine.h"
+#include <llvm/PassManager.h>
+#include <llvm/PassRegistry.h>
+#include <llvm/IR/Intrinsics.h>
+#include <llvm/Analysis/Verifier.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include "llvm/ExecutionEngine/GenericValue.h"
 
 namespace llvm {
 
@@ -34,6 +42,7 @@ static inline Value *castTo(Value *V,
   // Otherwise, insert a cast instruction.
   return CastInst::CreateZExtOrBitCast(V, Ty, Name, InsertPt);
 }
+
 /// make_vector - Helper function which is useful for building temporary vectors
 /// to pass into type construction of CallInst ctors.  This turns a null
 /// terminated list of pointers (or other value types) into a real live vector.
