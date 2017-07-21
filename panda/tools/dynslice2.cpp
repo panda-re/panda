@@ -131,23 +131,92 @@ std::set<traceEntry> uses;
 std::vector<traceEntry> traceEntries;
 
 Panda__LogEntry* cursor; 
+std::vector<Panda__LogEntry*> ple_vector; 	
 
 void updateUsesAndDefs(){
 	
 }
+
+static void handleStore(traceEntry &t)
+
+void get_uses_and_defs(trace_entry &t,
+        std::set<SliceVar> &uses,
+        std::set<SliceVar> &defs) {
+    switch (t.insn->getOpcode()) {
+        case Instruction::Store:
+            handleStore(t, uses, defs);
+            return;
+        case Instruction::Load:
+            handleLoad(t, uses, defs);
+            return;
+        case Instruction::Call:
+            handleCall(t, uses, defs);
+            return;
+        case Instruction::Ret:
+            handleRet(t, uses, defs);
+            return;
+        case Instruction::PHI:
+            handlePHI(t, uses, defs);
+            return;
+        case Instruction::Select:
+            handleSelect(t, uses, defs);
+            return;
+        case Instruction::Unreachable: // how do we even get these??
+            return;
+        case Instruction::Br:
+        case Instruction::Switch:
+        case Instruction::Add:
+        case Instruction::Sub:
+        case Instruction::Mul:
+        case Instruction::UDiv:
+        case Instruction::URem:
+        case Instruction::SDiv:
+        case Instruction::SRem:
+        case Instruction::IntToPtr:
+        case Instruction::PtrToInt:
+        case Instruction::And:
+        case Instruction::Xor:
+        case Instruction::Or:
+        case Instruction::ZExt:
+        case Instruction::SExt:
+        case Instruction::Trunc:
+        case Instruction::BitCast:
+        case Instruction::GetElementPtr: // possible loss of precision
+        case Instruction::ExtractValue:
+        case Instruction::InsertValue:
+        case Instruction::Shl:
+        case Instruction::AShr:
+        case Instruction::LShr:
+        case Instruction::ICmp:
+        case Instruction::FCmp:
+        case Instruction::Alloca:
+            handleDefault(t, uses, defs);
+            return;
+        default:
+            printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.insn->getOpcodeName());
+            // Try "default" operand handling
+            // defs = LHS, right = operands
+
+            handleDefault(t, uses, defs);
+            return;
+    }
+    return;
+}
+
+
 /*
  * This function takes in a list of criteria
  * and iterates backwards over an LLVM function
  * updating the global workList, uses, and defs. 
  *
  */
-void slice_trace(std::vector<SliceVar> criteria){
+void slice_trace(llvm::Function *func, std::vector<SliceVar> criteria){
 	// Iterate every instruction to find its uses and its definition
 	// if one of the definitions is in the working list (which contains initial criterion)
 	// update working list with the uses 
 
 	//update worklist 
-	
+	for (auto it )
 	
 }
 
@@ -266,7 +335,6 @@ int main(int argc, char **argv){
 
 	printf("Slicing trace\n");
 
-	std::vector<Panda__LogEntry*> ple_vector; 	
 	
 	pandalog_open_read_fwd(llvm_trace_fname);
 	
@@ -288,13 +356,106 @@ int main(int argc, char **argv){
 			printf("FOund an LLVM FUn\n");	 	
 			
 			// now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
-			align_trace(ple_vector)
+			// maybe i can do this lazily...
+
+			align_trace(ple_vector);
 		}
 		ple_idx--;
 	}
 	
+	sprintf(namebuf, "tcg-llvm-tb-%llu-%llx", cursor->arg1, cursor->pc);
+        if (debug) printf("********** %s **********\n", namebuf);
+	Function *f = mod->getFunction(namebuf);
+	
+	assert(f != NULL);
+
+	std::vector<trace_entry> aligned_block;
+	align_function(aligned_block, f, );
+	
+
 	slice_trace(ple_vector);
 
 	pandalog_close();
 }
 
+
+void align_function(std::vector<traceEntry aligned_block, llvm::Function f, int cursor_idx){
+
+    BasicBlock &entry = f->getEntryBlock();
+    BasicBlock *block = &entry;
+    bool have_successor = true;
+    while (have_successor) {
+        have_successor = false;
+        
+        int bb_index = getBlockIndex(f, block);
+        int insn_index = 0;
+        for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
+            traceEntry t = {};
+            //t.index = insn_index | (bb_index << 16);
+            //insn_index++;
+		}
+
+		if(in_exception) return cursor;
+
+		//if (ple_vector[cursor_idx]->type == FunctionCode::LLVM_FN){
+			
+		//}
+
+
+		switch (i->getOpcode()){
+			case Instruction::Load {
+				// get the value from the trace 
+				//
+				Panda__LogEntry* ple = ple_vector[cursor_idx];
+				assert (ple->type == FunctionCode::FUNC_CODE_INST_LOAD);
+				t.ple = ple;
+				t.inst = i;
+				t.func = f;
+
+				cursor_idx--;
+				aligned_block.push_back(t);
+				break;
+			}
+			case Instruction::Store {
+				Panda__LogEntry* ple = ple_vector[cursor_idx];
+				assert (ple->type == FunctionCode::FUNC_CODE_INST_STORE);
+				t.ple = ple;
+				t.inst = i;
+				t.func = f;
+
+				cursor_idx--;
+				aligned_block.push_back(t);
+
+				break;
+			}
+			case Instruction::Br {
+				t.ple = ple;
+				t.inst = i;
+				t.func = f;
+
+				cursor_idx--;
+				aligned_block.push_back(t);
+				have_successor = true;
+				break;
+			}
+			case Instruction::Switch {
+
+				cursor_idx--;
+			}
+			case Instruction::PHI {
+
+				cursor_idx--;
+			}
+			case Instruction::Select {
+
+				cursor_idx--;
+			}
+			case Instruction::Call {
+
+				cursor_idx--;
+			}
+
+
+		}
+	}		
+}

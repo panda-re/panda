@@ -42,7 +42,6 @@ PANDAENDCOMMENT */
 
 namespace llvm {
 
-
 PandaLLVMTracePass *PLTP; 
   // Integer types
   // Removed const modifier since method signatures have changed
@@ -127,6 +126,71 @@ void recordReturn(){
 		pandalog_write_entry(&logEntry);
 	}
 }
+
+void recordSelect(uint8_t condition){
+
+	if (pandalog) {
+		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+		*ple = PANDA__LLVMENTRY__INIT;
+		ple->has_type = 1;
+		ple->type = FunctionCode::FUNC_CODE_INST_SELECT;
+		ple->has_condition = 1;
+		ple->condition = condition;
+        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = ple;
+		pandalog_write_entry(&logEntry);
+	}
+}
+
+
+/*void recordSwitch(uint64_t address){*/
+
+	/*if (pandalog) {*/
+		/*Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));*/
+		/**ple = PANDA__LLVMENTRY__INIT;*/
+		/*ple->has_type = 1;*/
+		/*ple->type = FunctionCode::FUNC_CODE_INST_STORE;*/
+		/*ple->has_address = 1;*/
+		/*ple->address = address;*/
+        /*Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;*/
+		/*logEntry.llvmentry = ple;*/
+		/*pandalog_write_entry(&logEntry);*/
+	/*}*/
+/*}*/
+
+/*void recordPhi(uint64_t address){*/
+
+	/*[>printf("recording store to address %08x", address);<]*/
+
+	/*if (pandalog) {*/
+		/*Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));*/
+		/**ple = PANDA__LLVMENTRY__INIT;*/
+		/*ple->has_type = 1;*/
+		/*ple->type = FunctionCode::FUNC_CODE_INST_STORE;*/
+		/*ple->has_address = 1;*/
+		/*ple->address = address;*/
+        /*Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;*/
+		/*logEntry.llvmentry = ple;*/
+		/*pandalog_write_entry(&logEntry);*/
+	/*}*/
+/*}*/
+
+/*void recordBranch(uint64_t address){*/
+
+	/*[>printf("recording store to address %08x", address);<]*/
+
+	/*if (pandalog) {*/
+		/*Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));*/
+		/**ple = PANDA__LLVMENTRY__INIT;*/
+		/*ple->has_type = 1;*/
+		/*ple->type = FunctionCode::FUNC_CODE_INST_STORE;*/
+		/*ple->has_address = 1;*/
+		/*ple->address = address;*/
+        /*Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;*/
+		/*logEntry.llvmentry = ple;*/
+		/*pandalog_write_entry(&logEntry);*/
+	/*}*/
+/*}*/
 
 void recordStore(uint64_t address){
 
@@ -259,7 +323,9 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 	//PLTV->log_dynvalF = module.getOrInsertFunction("log_dynval");
 	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
 	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
-	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
+	/*PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));*/
+	PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
+	/*PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, VoidPtrType, nullptr));*/
 	// recordStartBB: 
 	PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, nullptr));
 	// recordBB: VoidPtrType fp, Int64Type lastBB
@@ -290,6 +356,24 @@ void PandaLLVMTraceVisitor::visitInstruction(Instruction &I) {
 }
 
 //TODO: Do i need to check metadata to see if host instruction?
+
+void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
+	//Function *func = module->getFunction("log_dynval");
+
+	//std::vector<GenericValue> noargs;
+
+	// Get the condition and record it
+	Value *cond = I.getCondition();
+	cond = castTo(ptr, Int8Type, ptr->getName(), &I);
+	std::vector<Value*> args = make_vector(cond, 0);
+
+    CallInst *CI = CallInst::Create(recordSelectF, args);
+	
+	//insert call into function
+	CI->insertAfter(static_cast<Instruction*>(&I));
+	
+	/*I.dump();*/
+}
 
 void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 	//Function *func = module->getFunction("log_dynval");

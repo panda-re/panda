@@ -42,6 +42,10 @@ public:
 	Function *recordStartBBF;
     Function *recordStoreF;
     Function *recordLoadF;
+    Function *recordSelectF;
+    Function *recordBranchF;
+    Function *recordSwitchF;
+    Function *recordPhiF;
     Function *recordCallF;
     Function *recordReturnF;
 	Module *module;
@@ -58,7 +62,7 @@ public:
     //void visitAllocaInst(AllocaInst &I);
     //void visitGetElementPtrInst(GetElementPtrInst &I);
 	void visitCallInst(CallInst &I);
-    //void visitSelectInst(SelectInst &I);
+	void visitSelectInst(SelectInst &I);
     //void visitExtractValueInst(ExtractValueInst &I);
     //void visitInsertValueInst(InsertValueInst &I);
     //void visitInsertElementInst(InsertElementInst &I);
@@ -66,11 +70,10 @@ public:
 
     //void visitReturnInst(ReturnInst &I);
     //void visitBinaryOperator(BinaryOperator &I);
-    //void visitPHINode(PHINode &I);
+	//void visitPHINode(PHINode &I);
 
-    //void visitBranchInst(BranchInst &I);
-    //void visitIndirectBrInst(IndirectBrInst &I);
-    //void visitSwitchInst(SwitchInst &I);
+	//void visitBranchInst(BranchInst &I);
+	//void visitSwitchInst(SwitchInst &I);
     //void visitTerminatorInst(TerminatorInst &I);
     //void visitCastInst(CastInst &I);
     //void visitCmpInst(CmpInst &I);
