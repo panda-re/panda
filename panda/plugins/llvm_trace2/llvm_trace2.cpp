@@ -33,6 +33,8 @@ PANDAENDCOMMENT */
 #include <llvm/PassManager.h>
 #include <llvm/PassRegistry.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/BasicBlock.h>
+
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
@@ -41,6 +43,7 @@ PANDAENDCOMMENT */
 
 
 namespace llvm {
+
 
 PandaLLVMTracePass *PLTP; 
   // Integer types
@@ -323,7 +326,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 	//PLTV->log_dynvalF = module.getOrInsertFunction("log_dynval");
 	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
 	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
-	/*PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));*/
+	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
 	PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
 	/*PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, VoidPtrType, nullptr));*/
 	// recordStartBB: 
@@ -341,6 +344,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     ADD_MAPPING(recordLoad);
     ADD_MAPPING(recordStore);
     ADD_MAPPING(recordCall);
+    ADD_MAPPING(recordSelect);
     ADD_MAPPING(recordStartBB);
     ADD_MAPPING(recordBB);
     ADD_MAPPING(recordReturn);
@@ -364,7 +368,7 @@ void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
 
 	// Get the condition and record it
 	Value *cond = I.getCondition();
-	cond = castTo(ptr, Int8Type, ptr->getName(), &I);
+	cond = castTo(cond, Int8Type, cond->getName(), &I);
 	std::vector<Value*> args = make_vector(cond, 0);
 
     CallInst *CI = CallInst::Create(recordSelectF, args);
@@ -404,15 +408,20 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 
 	Function *calledFunc = I.getCalledFunction();
 
+	if (!calledFunc || !calledFunc->hasName()) { return; }
+
 	// if it's an intrinsic function, record the ID that was called
 	Value *fp;
-	if (calledFunc->isIntrinsic()){
+	if (calledFunc->isIntrinsic() && calledFunc->isDeclaration()){
+		//this is like a memset or memcpy
+		// 
+
 		//fp = ConstantInt::get(Type::getInt64Ty(module->getContext()), calledFunc->getIntrinsicID());
 		//fp = castTo(fp, VoidPtrType, "", &I);
 		//std::cout << "called intrinsic " <<  Intrinsic::getName(Intrinsic::ID(calledFunc->getIntrinsicID())) << "\n";
-		printf("INTRINSIC FUNC\n");
+		 std::string name = calledFunc->getName().str();
+		 printf("intrinsic func name %s\n", name.c_str());
 		return;
-        /*fp = Constant::getNullValue(VoidPtrType);*/
 	}
 	else if (ignore_funcs.count(calledFunc->getName())) {
 		/*printf("IGNORING FUNC\n");*/
@@ -428,6 +437,8 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	}
 
 	//TODO: Should i do something about helper functions?? 
+	
+	// LLVM C special functions: memset and memcpy
 
 	std::vector<Value*> args = make_vector(fp, 0);
 
@@ -506,12 +517,16 @@ bool init_plugin(void *self){
      * Run instrumentation pass over all helper functions that are now in the
      * module, and verify module.
      */
-    //llvm::Module *mod = tcg_llvm_ctx->getModule();
+	llvm::Module *module = tcg_llvm_ctx->getModule();
 
     // Populate module with helper function log ops 
-    //for (auto i = mod->begin(); i != mod->end(); i++){
-        //if (!i->isDeclaration()) llvm::PLTP->runOnBasicBlock(*i);
-    //}
+	/*for (llvm::Function f : *mod){*/
+		for (llvm::Module::iterator func = module->begin(), mod_end = module->end(); func != mod_end; ++func) {
+		for (llvm::Function::iterator b = func->begin(), be = func->end(); b != be; ++b) {
+			llvm::BasicBlock* bb = b;
+			llvm::PLTP->runOnBasicBlock(*bb);
+		}
+	}
 
 	return true;
 }

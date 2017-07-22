@@ -382,14 +382,14 @@ int main(int argc, char **argv){
 void align_function(std::vector<traceEntry aligned_block, llvm::Function f, int cursor_idx){
 
     BasicBlock &entry = f->getEntryBlock();
-    BasicBlock *block = &entry;
-    bool have_successor = true;
-    while (have_successor) {
-        have_successor = false;
+    BasicBlock *nextBlock = &entry;
+    bool has_successor = true;
+    while (has_successor) {
+        has_successor = false;
         
-        int bb_index = getBlockIndex(f, block);
+        int bb_index = getBlockIndex(f, nextBlock);
         int insn_index = 0;
-        for (BasicBlock::iterator i = block->begin(), e = block->end(); i != e; ++i) {
+        for (BasicBlock::iterator i = nextBlock->begin(), e = nextBlock->end(); i != e; ++i) {
             traceEntry t = {};
             //t.index = insn_index | (bb_index << 16);
             //insn_index++;
@@ -412,48 +412,132 @@ void align_function(std::vector<traceEntry aligned_block, llvm::Function f, int 
 				t.inst = i;
 				t.func = f;
 
-				cursor_idx--;
+				cursor_idx++;
 				aligned_block.push_back(t);
 				break;
 			}
 			case Instruction::Store {
+				if (i->isVolatile()){
+					break;
+				}
+
 				Panda__LogEntry* ple = ple_vector[cursor_idx];
 				assert (ple->type == FunctionCode::FUNC_CODE_INST_STORE);
 				t.ple = ple;
 				t.inst = i;
 				t.func = f;
 
-				cursor_idx--;
+				cursor_idx++;
 				aligned_block.push_back(t);
 
 				break;
 			}
 			case Instruction::Br {
+				Panda__LogEntry* ple = ple_vector[cursor_idx];
+				assert(ple->type = FunctionCode::FUNC_CODE_INST_BR);
 				t.ple = ple;
 				t.inst = i;
 				t.func = f;
 
-				cursor_idx--;
+				//update next block to examine
+				BranchInst *b = cast<BranchInst>(&*i);
+				nextBlock = b->getSuccessor(ple->condition);
+
+				cursor_idx++;
 				aligned_block.push_back(t);
-				have_successor = true;
+				has_successor = true;
 				break;
 			}
 			case Instruction::Switch {
+				Panda__LogEntry* ple = ple_vector[cursor_idx];
+				assert(ple->type = FunctionCode::FUNC_CODE_INST_SWITCH);
+				
+				//update next block to examine
+				SwitchInst *s = cast<SwitchInst>(&*i);
+				unsigned width = s->getCondition()->getType()->getPrimitiveSizeInBits();
+				IntegerType *intType = IntegerType::get(getGlobalContext(), width);
+				ConstantInt *caseVal = ConstantInt::get(intType, ple->condition);
+				SwitchInst::CaseIt caseIndex = s->findCaseValue(caseVal);
+				block = s->getSuccessor(caseIndex.getSuccessorIndex());
+				has_successor = true;
 
-				cursor_idx--;
+				t.ple = ple;
+				t.inst = i;
+				t.func = f;
+
+				aligned_block.push_back(t);
+				cursor_idx++;
+				break;
 			}
 			case Instruction::PHI {
-
-				cursor_idx--;
+				
+				// We don't actually have a dynamic log entry here, but for
+				// convenience we do want to know which basic block we just
+				// came from. So we peek at the previous non-PHI thing in
+				// our trace, which should be the predecessor basic block
+				// to this PHI
+				PHINode *p = cast<PHINode>(&*i);
+				Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+				*ple = PANDA__LLVMENTRY__INIT;
+				ple->has_phi_index = 1;
+				ple->phi_index = -1;
+				Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+				new_dyn.llvmentry = ple; // sentinel
+				// Find the last non-PHI instruction
+				// Search from Reverse beginning (most recent traceEntry) 
+				for (auto sit = aligned_block.rbegin(); sit != aligned_block.rend(); sit++) {
+					if (sit->insn->getOpcode() != Instruction::PHI) {
+						ple->phi_index = p->getBasicBlockIndex(sit->insn->getParent());
+						break;
+					}
+				}
+				assert(new_dyn->arg1 != (uint64_t) -1);
+				t.func = f; t.insn = i; t.dyn = new_dyn;
+				aligned_block.push_back(t);
+				cursor_idx++;
+				break;
 			}
 			case Instruction::Select {
+				Panda__LogEntry* ple = ple_vector[cursor_idx];
+				assert(ple->type = FunctionCode::FUNC_CODE_INST_SELECT);
 
-				cursor_idx--;
+				t.ple = ple;
+				t.inst = i;
+				t.func = f;
+
+				aligned_block.push_back(t);
+				cursor_idx++;
+				break;
 			}
 			case Instruction::Call {
+				CallInst *call = cast<CallInst>(*i);
+			
+				if (func_name.startswith("record_") ||
+                             subf->isDeclaration() ||
+                             subf->isIntrinsic()) {
+                        // ignore
+                    }
+				else if {
+					
 
-				cursor_idx--;
+				}
+				else if {
+
+				}
+				else {
+
+				}
+
+
+
+
+				cursor_idx++;
 			}
+   			default:
+				t.func = f; t.insn = i; t.dyn = NULL;
+				serialized.push_back(t);
+				break;
+
 
 
 		}
