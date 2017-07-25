@@ -67,6 +67,11 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     uint32_t taint2_query_reg(int reg_num, int offset);
     uint32_t taint2_query_llvm(int reg_num, int offset);
 
+    // query set fns return taint set
+    LabelSetP taint2_query_set(Addr a);
+    LabelSetP taint2_query_set_ram(uint64_t pa);
+    LabelSetP taint2_query_set_reg(int reg_num, int offset);
+
     // returns taint compute number associated with addr
     uint32_t taint2_query_tcn(Addr a);
     uint32_t taint2_query_tcn_ram(uint64_t pa);

@@ -181,6 +181,18 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
     return ls ? ls->size() : 0;
 }
 
+LabelSetP taint2_query_set(Addr a) {
+	return tp_labelset_get(a);
+}
+
+LabelSetP taint2_query_set_ram(uint64_t pa) {
+	return tp_labelset_get(make_maddr(pa));
+}
+
+LabelSetP taint2_query_set_reg(int reg_num, int offset) {
+	return tp_labelset_get(make_greg(reg_num, offset));
+}
+
 uint32_t taint2_query_tcn(Addr a) {
     return tp_query_full(a).tcn;
 }
