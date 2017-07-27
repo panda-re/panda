@@ -9,7 +9,7 @@ These offsets are dependent on the kernel version *and* the flags used to
 compile it. Some of them could be guessed using heuristics. 
 A more robust approach is retrieving them by querying the running kernel.
 
-The ``procinfo.c`` module in this directory implements this approach.
+The ``kernelinfo.c`` module in this directory implements this approach.
 After compiling and inserting the module into the kernel, the required
 offsets are printed in the kernel log.
 From there, they have to be copied in a ``kernelinfo.conf`` file on the
@@ -17,3 +17,12 @@ host, for further use.
 Note that the module initialization will (intentionally) always fail. But
 the required offset will have been printed in the kernel log before that.
 
+To copy the source for the module in your VM in order to compile and run
+it, use the following oneliner:
+
+```
+svn export https://github.com/panda-re/panda/trunk/panda/plugins/osi_linux/utils/kernelinfo
+```
+
+To compile the module, you will need to have installed the appropriate
+linux-headers package.
