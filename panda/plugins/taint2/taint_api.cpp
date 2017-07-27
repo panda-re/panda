@@ -181,16 +181,34 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
     return ls ? ls->size() : 0;
 }
 
-LabelSetP taint2_query_set(Addr a) {
-	return tp_labelset_get(a);
+extern "C" void taint2_query_set(Addr a, uint32_t *out) {
+	auto set = tp_labelset_get(a);
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
 }
 
-LabelSetP taint2_query_set_ram(uint64_t pa) {
-	return tp_labelset_get(make_maddr(pa));
+extern "C" void taint2_query_set_ram(uint64_t pa, uint32_t *out) {
+	auto set = tp_labelset_get(make_maddr(pa));
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
 }
 
-LabelSetP taint2_query_set_reg(int reg_num, int offset) {
-	return tp_labelset_get(make_greg(reg_num, offset));
+extern "C" void taint2_query_set_reg(int reg_num, int offset, uint32_t *out) {
+	auto set = tp_labelset_get(make_greg(reg_num, offset));
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
 }
 
 uint32_t taint2_query_tcn(Addr a) {
@@ -225,17 +243,6 @@ void taint2_delete_ram(uint64_t pa) {
 void taint2_delete_reg(int reg_num, int offset) {
     Addr a = make_greg(reg_num, offset);
     tp_delete(a);
-}
-
-void taint2_labelset_spit(LabelSetP ls) {
-    for (uint32_t l : *ls) {
-        printf("%u ", l);
-    }
-    printf("\n");
-}
-
-void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    tp_ls_iter(ls, app, stuff2);
 }
 
 void taint2_labelset_addr_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -330,3 +337,4 @@ extern bool taintEnabled;
 int taint2_enabled() {
     return taintEnabled;
 }
+
