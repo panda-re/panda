@@ -90,9 +90,17 @@ std::set<uint32_t> labels_applied;
 // label -- associate label l with address a
 static void tp_label(Addr a, uint32_t l) {
     if (debug_taint) start_debugging();
-    LabelSetP ls = label_set_singleton(l);
-    tp_labelset_put(a, ls);
-    labels_applied.insert(l);
+
+    LabelSetP ls_at_a = tp_labelset_get(a);     // get the set at addr a
+    LabelSetP ls_of_l = label_set_singleton(l); // get new set with label l
+	
+	// merge the existing set at addr a and the new set containing the label l.
+	// if successful, add the labelset, skip otherwise.
+    LabelSetP new_ls = label_set_union(ls_at_a, ls_of_l);
+    if (new_ls) {
+        tp_labelset_put(a, new_ls);
+        labels_applied.insert(l);
+	}
 }
 
 // retrieve ls for this addr
