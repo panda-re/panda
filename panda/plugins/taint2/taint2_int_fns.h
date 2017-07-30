@@ -25,6 +25,12 @@ uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
 
+// query set fns writes taint set contents to the specified array. the size of
+// the array must be >= the cardianlity of the taint set.
+void taint2_query_set(Addr a, uint32_t *out);
+void taint2_query_set_ram(uint64_t pa, uint32_t *out);
+void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
+
 // returns taint compute number associated with addr
 uint32_t taint2_query_tcn(Addr a);
 uint32_t taint2_query_tcn_ram(uint64_t pa);
@@ -40,9 +46,6 @@ void taint2_delete_ram(uint64_t pa);
 // delete taint from this register
 void taint2_delete_reg(int reg_num, int offset);
 
-// spit labelset.
-void taint2_labelset_spit(LabelSetP ls) ; 
-
 // addr is an opaque.  it should be &a if a is known to be an Addr
 void taint2_labelset_addr_iter(Addr addr, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
@@ -54,9 +57,6 @@ void taint2_labelset_ram_iter(uint64_t pa, int (*app)(uint32_t el, void *stuff1)
 // you should be able to use R_EAX, etc as reg_num
 // offset is byte offset withing that reg.
 void taint2_labelset_reg_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
-
-// ditto, but someone handed you the ls, e.g. a callback like tainted branch
-void taint2_labelset_iter(LabelSetP ls, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 
 // just tells how big that labels_applied set will be
 uint32_t taint2_num_labels_applied(void);
@@ -75,3 +75,4 @@ Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
 #endif
+
