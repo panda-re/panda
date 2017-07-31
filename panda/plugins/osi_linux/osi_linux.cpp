@@ -228,7 +228,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// 	a. Simplifying the traversal when OSI_LINUX_LIST_THREADS is disabled.
 	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
 	//	 the current task is a thread.
-	// See kernel_structs.md for details.
+	// See kernel_structs.html for details.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 	if (ts_current == (PTR)NULL) goto error0;
 	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {

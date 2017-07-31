@@ -487,7 +487,7 @@ bool init_plugin(void *self) {
     panda_arg_list *args;
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string_opt(args, "filename", "abc123", "filename to taint");
-    positional_labels = panda_parse_bool_req(args, "pos", "use positional labels");
+    positional_labels = panda_parse_bool_opt(args, "pos", "use positional labels");
     read_callback = panda_parse_bool_opt(args, "read_callback", "Do not label file bytes as tainted but rather pass address and offset to a callback");
     no_taint = panda_parse_bool_opt(args, "notaint", "don't actually taint anything");
     end_label = panda_parse_ulong_opt(args, "max_num_labels", 1000000, "maximum label number to use");
