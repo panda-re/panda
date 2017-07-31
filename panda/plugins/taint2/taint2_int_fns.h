@@ -14,11 +14,21 @@ void taint2_enable_tainted_pointer(void);
 // returns 1 if taint is on
 int taint2_enabled(void);
 
-// label this phys addr in memory with label l
+// label this phys addr in memory with label l, and only label l. any previous
+// labels applied to this address are removed.
 void taint2_label_ram(uint64_t pa, uint32_t l);
 
-// label this reg with label l
+// label this reg with label l, and only label l. any previous labels applied 
+// to this address are removed.
 void taint2_label_reg(int reg_num, int offset, uint32_t l);
+
+// add label l to this phys addr in memory. any previous labels applied to this
+// address are not removed.
+void taint2_label_ram_additive(uint64_t pa, uint32_t l);
+
+// add label l to this register. any previous labels applied to this register
+// are not removed.
+void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 
 // query fns return 0 if untainted, else cardinality of taint set
 uint32_t taint2_query(Addr a);
