@@ -87,15 +87,26 @@ static void tp_labelset_put(const Addr &a, LabelSetP ls) {
 // used to keep track of labels that have been applied
 std::set<uint32_t> labels_applied;
 
-// label -- associate label l with address a
+// label -- associate label l, and only label l, with address a. any previous
+// labels applied to the address are removed.
 static void tp_label(Addr a, uint32_t l) {
+    if (debug_taint) start_debugging();
+
+    LabelSetP ls = label_set_singleton(l);
+    tp_labelset_put(a, ls);
+    labels_applied.insert(l);
+}
+
+// label -- add label l to the label set of address a. previous labels applied
+// to the address are not removed.
+static void tp_label_additive(Addr a, uint32_t l) {
     if (debug_taint) start_debugging();
 
     LabelSetP ls_at_a = tp_labelset_get(a);     // get the set at addr a
     LabelSetP ls_of_l = label_set_singleton(l); // get new set with label l
-	
-	// merge the existing set at addr a and the new set containing the label l.
-	// if successful, add the labelset, skip otherwise.
+    
+    // merge the existing set at addr a and the new set containing the label l.
+    // if successful, add the labelset, skip otherwise.
     LabelSetP new_ls = label_set_union(ls_at_a, ls_of_l);
     if (new_ls) {
         tp_labelset_put(a, new_ls);
@@ -124,6 +135,15 @@ void taint2_label_reg(int reg_num, int offset, uint32_t l) {
     tp_label(a, l);
 }
 
+void taint2_label_ram_additive(uint64_t pa, uint32_t l) {
+    Addr a = make_maddr(pa);
+    tp_label_additive(a, l);
+}
+
+void taint2_label_reg_additive(int reg_num, int offset, uint32_t l) {
+    Addr a = make_greg(reg_num, offset);
+    tp_label_additive(a, l);
+}
 
 void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
     hwaddr pa = panda_virt_to_phys(cpu, virt_addr);
