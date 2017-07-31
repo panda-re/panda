@@ -9,6 +9,8 @@ void taint2_enable_tainted_pointer(void);
 int taint2_enabled(void);
 void taint2_label_ram(uint64_t pa, uint32_t l) ;
 void taint2_label_reg(int reg_num, int offset, uint32_t l) ;
+void taint2_label_ram_additive(uint64_t pa, uint32_t l);
+void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uint32_t start_label);
 void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
     uint32_t length, long label);
