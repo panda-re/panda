@@ -398,6 +398,30 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 	/*I.dump();*/
 }
 
+/**
+ * This function handles intrinsics like llvm.memset and llvm.memcpy. 
+ * llvm.memset is recorded as a Store, and llvm.memcpy is recorded as a Load from src and Store to dest
+ *
+ */
+void handleVisitSpecialCall(CallInst &I){
+	
+	Function *calledFunc = I.getCalledFunction();
+
+	std::string name =calledFunc->getName().str();
+	printf("func name %s\n", name.c_str());
+
+	if (name.substr(0,12) == "llvm.memset.") {
+		// Record store
+		//
+	} else if (name.substr(0,12) == "llvm.memcpy." ||
+             name.substr(0,13) == "llvm.memmove.")  {
+//
+// Record load and store
+//
+	} else{
+
+	}
+}
 
 const static std::set<std::string> ignore_funcs{
     "recordStartBB", "recordBB"
@@ -409,37 +433,25 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	Function *calledFunc = I.getCalledFunction();
 
 	if (!calledFunc || !calledFunc->hasName()) { return; }
+	 
 
-	// if it's an intrinsic function, record the ID that was called
 	Value *fp;
 	if (calledFunc->isIntrinsic() && calledFunc->isDeclaration()){
 		//this is like a memset or memcpy
-		// 
 
-		//fp = ConstantInt::get(Type::getInt64Ty(module->getContext()), calledFunc->getIntrinsicID());
-		//fp = castTo(fp, VoidPtrType, "", &I);
-		//std::cout << "called intrinsic " <<  Intrinsic::getName(Intrinsic::ID(calledFunc->getIntrinsicID())) << "\n";
-		 std::string name = calledFunc->getName().str();
-		 printf("intrinsic func name %s\n", name.c_str());
+		 handleVisitSpecialCall(I);
 		return;
 	}
 	else if (ignore_funcs.count(calledFunc->getName())) {
-		/*printf("IGNORING FUNC\n");*/
 		return;
-	} else {
-		fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
-		//fp = I.getCalledValue();
-		//printf("TYPE %s", fp->getType()->print());
-		//std::string type_str;
-		//raw_string_ostream rso(type_str);
-		//fp->getType()->print(rso);
-		//std::cout<<rso.str()<<"\n";
 	}
+
+	std::string name = calledFunc->getName().str();
+	printf("func name %s\n", name.c_str());
+	fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
 
 	//TODO: Should i do something about helper functions?? 
 	
-	// LLVM C special functions: memset and memcpy
-
 	std::vector<Value*> args = make_vector(fp, 0);
 
     CallInst *CI = CallInst::Create(recordCallF, args);
@@ -522,11 +534,11 @@ bool init_plugin(void *self){
     // Populate module with helper function log ops 
 	/*for (llvm::Function f : *mod){*/
 		for (llvm::Module::iterator func = module->begin(), mod_end = module->end(); func != mod_end; ++func) {
-		for (llvm::Function::iterator b = func->begin(), be = func->end(); b != be; ++b) {
-			llvm::BasicBlock* bb = b;
-			llvm::PLTP->runOnBasicBlock(*bb);
+			for (llvm::Function::iterator b = func->begin(), be = func->end(); b != be; ++b) {
+				llvm::BasicBlock* bb = b;
+				llvm::PLTP->runOnBasicBlock(*bb);
+			}
 		}
-	}
 
 	return true;
 }
