@@ -1,11 +1,12 @@
 message LLVMEntry {
 	optional uint64 type = 1;
 	optional uint64 address = 2;
-	optional uint32 tbnum = 3;
+	optional uint64 num_bytes = 3;
+	optional uint64 tb_num = 4;
 
 	// Used to select the target for Branch, Select, and Switch instructions 
-	optional uint32 condition = 4;
-	optional uint32 phiIndex = 5;
+	optional uint32 condition = 5;
+	optional uint32 phi_index = 6; // The basic block index before a phi instruction
 
 }
 

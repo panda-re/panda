@@ -62,6 +62,7 @@ public:
     //void visitAllocaInst(AllocaInst &I);
     //void visitGetElementPtrInst(GetElementPtrInst &I);
 	void visitCallInst(CallInst &I);
+	void handleVisitSpecialCall(CallInst &I);
 	void visitSelectInst(SelectInst &I);
     //void visitExtractValueInst(ExtractValueInst &I);
     //void visitInsertValueInst(InsertValueInst &I);
@@ -99,9 +100,9 @@ public:
 
 	/*bool doInitialization(Module &module);*/
 	//bool doInitialization(Function &module);
-  virtual bool doInitialization(Module &M);
- virtual bool doFinalization(Module &M) { return false; }
- virtual bool doInitialization(Function &F) { return false; }
+	virtual bool doInitialization(Module &M);
+	virtual bool doFinalization(Module &M) { return false; }
+	virtual bool doInitialization(Function &F) { return false; }
 	virtual bool doFinalization(Function &F) { return false; }
 };
 

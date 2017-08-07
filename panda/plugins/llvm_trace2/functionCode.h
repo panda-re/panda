@@ -62,6 +62,7 @@ typedef enum {
 FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
 								 //         ordering, synchscope]
 	BB = 43,
-	LLVM_FN = 44
+	LLVM_FN = 44,
+    LLVM_EXCEPTION = 45
 } FunctionCode;
 

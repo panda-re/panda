@@ -57,21 +57,22 @@ PandaLLVMTracePass *PLTP;
 //void PandaLLVMTraceVisitor::visitPhiInst(){
 
 //}
-void recordStartBB(uint64_t fp, unsigned lastBB){
+void recordStartBB(uint64_t fp, uint64_t tb_num){
 	
-	//printf("recording start of BB\n");
-
     //giri doesn't write to log, instead pushes onto a bb stack. 
-
-	//if (pandalog) {
-		//Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-		//*ple = PANDA__LLVMENTRY__INIT;
-		//ple->has_type = 1;
-		//ple->type = FunctionCode::BB;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-		//logEntry.llvmentry = ple;
-		//pandalog_write_entry(&logEntry);
-	//}
+	if (pandalog) {
+		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+		*ple = PANDA__LLVMENTRY__INIT;
+		ple->has_type = 1;
+		ple->type = FunctionCode::BB;
+		if (tb_num > 0){
+			ple->has_tb_num = 1;
+			ple->tb_num = tb_num;
+		}
+		Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = ple;
+		pandalog_write_entry(&logEntry);
+	}
 }
 
 void recordCall(uint64_t fp){
@@ -102,7 +103,7 @@ void recordBB(uint64_t fp, unsigned lastBB){
 	}
 }
 
-void recordLoad(uint64_t address){
+void recordLoad(uint64_t address, uint64_t num_bytes = 8){
 	//printf("ecording load at address %" PRIx64 "\n", address);
 
 	if (pandalog) {
@@ -112,11 +113,33 @@ void recordLoad(uint64_t address){
 		ple->type = FunctionCode::FUNC_CODE_INST_LOAD;
 		ple->has_address = 1;
 		ple->address = address;
+		ple->has_num_bytes = 1;
+		ple->num_bytes = num_bytes;
         Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
 		logEntry.llvmentry = ple;
 		pandalog_write_entry(&logEntry);
 	}
 }
+
+void recordStore(uint64_t address, uint64_t num_bytes = 8){
+
+	/*printf("recording store to address %08x", address);*/
+
+	if (pandalog) {
+		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+		*ple = PANDA__LLVMENTRY__INIT;
+		ple->has_type = 1;
+		ple->type = FunctionCode::FUNC_CODE_INST_STORE;
+		ple->has_address = 1;
+		ple->address = address;
+		ple->has_num_bytes = 1;
+		ple->num_bytes = num_bytes;
+        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = ple;
+		pandalog_write_entry(&logEntry);
+	}
+}
+
 
 void recordReturn(){
 	if (pandalog) {
@@ -195,23 +218,6 @@ void recordSelect(uint8_t condition){
 	/*}*/
 /*}*/
 
-void recordStore(uint64_t address){
-
-	/*printf("recording store to address %08x", address);*/
-
-	if (pandalog) {
-		Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-		*ple = PANDA__LLVMENTRY__INIT;
-		ple->has_type = 1;
-		ple->type = FunctionCode::FUNC_CODE_INST_STORE;
-		ple->has_address = 1;
-		ple->address = address;
-        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-		logEntry.llvmentry = ple;
-		pandalog_write_entry(&logEntry);
-	}
-}
-
 
 void write_trace_log(){
 	printf("writing trace log\n");
@@ -273,7 +279,16 @@ static void llvm_init(){
 void instrumentBasicBlock(BasicBlock &BB){
     Module *module = tcg_llvm_ctx->getModule();
 	Value *FP = castTo(BB.getParent(), VoidPtrType, "", BB.getTerminator());
-	
+	Value *tb_num_val;
+	if (BB.getParent()->getName().startswith("tcg-llvm-tb-")) {
+		int tb_num; 
+		sscanf(BB.getParent()->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
+		printf("sscanf tb num %i\n", tb_num);
+		tb_num_val = ConstantInt::get(Int64Type, tb_num);
+	} else {
+		tb_num_val = ConstantInt::get(Int64Type, 0);
+	}	
+
 	Function *recordBBF = module->getFunction("recordBB");
 	Function *recordStartBBF = module->getFunction("recordStartBB");
 
@@ -286,11 +301,12 @@ void instrumentBasicBlock(BasicBlock &BB){
 	std::vector<Value*> args = make_vector<Value*>(FP, lastBB, 0);
 	CallInst::Create(recordBBF, args, "", BB.getTerminator());
 
-  // Insert code at the beginning of the basic block to record that it started
-  // execution.
-  args = make_vector<Value *>(FP, 0);
-  Instruction *F = BB.getFirstInsertionPt();
-  CallInst::Create(recordStartBBF, args, "", F);
+	// Insert code at the beginning of the basic block to record that it started
+	// execution.
+
+	args = make_vector<Value *>(FP, tb_num_val, 0);
+	Instruction *F = BB.getFirstInsertionPt();
+	CallInst::Create(recordStartBBF, args, "", F);
 }
 
 char PandaLLVMTracePass::ID = 0;
@@ -324,14 +340,15 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 
 	//initialize all the other record/logging functionsu
 	//PLTV->log_dynvalF = module.getOrInsertFunction("log_dynval");
+	/*PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, Int64Type, nullptr));*/
+	/*PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, nullptr));*/
 	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
 	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
 	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
 	PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
 	/*PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, VoidPtrType, nullptr));*/
 	// recordStartBB: 
-	PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, nullptr));
-	// recordBB: VoidPtrType fp, Int64Type lastBB
+	PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
 	PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
 	PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, VoidPtrType, nullptr));
 
@@ -401,25 +418,68 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 /**
  * This function handles intrinsics like llvm.memset and llvm.memcpy. 
  * llvm.memset is recorded as a Store, and llvm.memcpy is recorded as a Load from src and Store to dest
- *
  */
-void handleVisitSpecialCall(CallInst &I){
+void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 	
 	Function *calledFunc = I.getCalledFunction();
 
-	std::string name =calledFunc->getName().str();
+	std::string name = calledFunc->getName().str();
 	printf("func name %s\n", name.c_str());
 
 	if (name.substr(0,12) == "llvm.memset.") {
 		// Record store
-		//
+		
+		Value *dest = I.getOperand(0);
+		dest = castTo(dest, VoidPtrType, dest->getName(), &I);
+		
+		Value* numBytes = I.getOperand(2);
+
+		int bytes = 0;
+		if (ConstantInt* CI = dyn_cast<ConstantInt>(numBytes)) {
+			if (CI->getBitWidth() <= 64) {
+				bytes = CI->getSExtValue();
+			}
+		}
+
+		if (bytes > 100) {
+			//This mostly happens in cpu state reset
+			printf("Note: dyn log ignoring memset greater than 100 bytes\n");
+			return;
+		}
+
+		/*std::vector<Value*> args = make_vector(dest, numBytes, 0);*/
+		std::vector<Value*> args = make_vector(dest, 0);
+		CallInst *CI = CallInst::Create(recordStoreF, args);
+		
+		//insert call into function
+		CI->insertAfter(static_cast<Instruction*>(&I));
+		
 	} else if (name.substr(0,12) == "llvm.memcpy." ||
              name.substr(0,13) == "llvm.memmove.")  {
 //
 // Record load and store
-//
-	} else{
 
+		Value *dest = I.getOperand(0);
+		Value *src = I.getOperand(1);
+
+		/*Value *numBytes = I.getOperand(2);*/
+
+		dest = castTo(dest, VoidPtrType, dest->getName(), &I);
+		src = castTo(src, VoidPtrType, src->getName(), &I);
+		/*std::vector<Value*> args = make_vector(src, numBytes, 0);*/
+		std::vector<Value*> args = make_vector(src, 0);
+
+		//record load first
+		CallInst *CI = CallInst::Create(recordLoadF, args);
+		CI->insertAfter(static_cast<Instruction*>(&I));
+
+		/*args = make_vector(dest, numBytes, 0);*/
+		args = make_vector(dest, 0);
+		CI = CallInst::Create(recordStoreF, args);
+		CI->insertAfter(static_cast<Instruction*>(&I));
+		
+	} else{
+		printf("Unhandled special call\n");
 	}
 }
 
@@ -438,8 +498,7 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	Value *fp;
 	if (calledFunc->isIntrinsic() && calledFunc->isDeclaration()){
 		//this is like a memset or memcpy
-
-		 handleVisitSpecialCall(I);
+		handleVisitSpecialCall(I);
 		return;
 	}
 	else if (ignore_funcs.count(calledFunc->getName())) {
@@ -447,7 +506,6 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 	}
 
 	std::string name = calledFunc->getName().str();
-	printf("func name %s\n", name.c_str());
 	fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
 
 	//TODO: Should i do something about helper functions?? 
@@ -498,12 +556,36 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 		ple->has_type = 1;
 		ple->type = FunctionCode::LLVM_FN;
 		ple->has_address = 0;
+		if (tb->llvm_function->getName().startswith("tcg-llvm-tb-")) {
+			int tb_num; 
+			sscanf(tb->llvm_function->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
+			ple->has_tb_num = 1;
+			ple->tb_num = tb_num;
+		}	
+		
         Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
 		logEntry.llvmentry = ple;
 		pandalog_write_entry(&logEntry);
 	}
 
 	return 0;
+}
+
+int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
+    printf("EXCEPTION - logging\n");
+		
+	if (pandalog) {
+			Panda__LLVMEntry *ple = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+			*ple = PANDA__LLVMENTRY__INIT;
+			ple->has_type = 1;
+			ple->type = FunctionCode::LLVM_EXCEPTION;
+			ple->has_address = 0;
+			Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+			logEntry.llvmentry = ple;
+			pandalog_write_entry(&logEntry);
+		}
+	
+    return 0; 
 }
 
 
