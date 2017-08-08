@@ -30,6 +30,7 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 #include <iostream>
 
+#include <llvm/IR/Metadata.h>
 #include <llvm/PassManager.h>
 #include <llvm/PassRegistry.h>
 #include <llvm/IR/Intrinsics.h>
@@ -42,7 +43,10 @@ PANDAENDCOMMENT */
 #include "llvm/Support/raw_ostream.h"
 
 
+
 namespace llvm {
+
+    MDNode *LLVMTraceMD;
 
 
 PandaLLVMTracePass *PLTP; 
@@ -240,7 +244,8 @@ static void llvm_init(){
     FunctionPassManager *passMngr = tcg_llvm_ctx->getFunctionPassManager();
     Module *mod = tcg_llvm_ctx->getModule();
     LLVMContext &ctx = mod->getContext();
-	
+    LLVMTraceMD = MDNode::get(ctx, MDString::get(ctx, "llvmtrace"));
+
 	std::vector<Type*> argTypes;
 
 	//1st arg, LLVM Instr opcode
@@ -392,7 +397,8 @@ void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
 	
 	//insert call into function
 	CI->insertAfter(static_cast<Instruction*>(&I));
-	
+	CI->setMetadata("host", LLVMTraceMD);
+
 	/*I.dump();*/
 }
 
@@ -411,6 +417,7 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 	
 	//insert call into function
 	CI->insertAfter(static_cast<Instruction*>(&I));
+	CI->setMetadata("host", LLVMTraceMD);
 	
 	/*I.dump();*/
 }
@@ -453,7 +460,8 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 		
 		//insert call into function
 		CI->insertAfter(static_cast<Instruction*>(&I));
-		
+        CI->setMetadata("host", LLVMTraceMD);
+
 	} else if (name.substr(0,12) == "llvm.memcpy." ||
              name.substr(0,13) == "llvm.memmove.")  {
 //
@@ -472,12 +480,14 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 		//record load first
 		CallInst *CI = CallInst::Create(recordLoadF, args);
 		CI->insertAfter(static_cast<Instruction*>(&I));
+        CI->setMetadata("host", LLVMTraceMD);
 
 		/*args = make_vector(dest, numBytes, 0);*/
 		args = make_vector(dest, 0);
 		CI = CallInst::Create(recordStoreF, args);
 		CI->insertAfter(static_cast<Instruction*>(&I));
-		
+        CI->setMetadata("host", LLVMTraceMD);
+
 	} else{
 		printf("Unhandled special call\n");
 	}
@@ -515,6 +525,7 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
     CallInst *CI = CallInst::Create(recordCallF, args);
 
 	CI->insertAfter(static_cast<Instruction*>(&I));
+    CI->setMetadata("host", LLVMTraceMD);
 
 	//record return of call inst
 	//CallInst *returnInst = CallInst::Create(recordReturn, args, "", &I);
@@ -538,6 +549,8 @@ void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
     CallInst *CI = CallInst::Create(recordStoreF, args);
 
 	CI->insertAfter(static_cast<Instruction*>(&I));
+	CI->setMetadata("host", LLVMTraceMD);
+
 	//I.dump();	
 
 	//handle cases where dynamic values are being used. 
