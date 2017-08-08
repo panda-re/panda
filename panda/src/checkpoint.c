@@ -28,7 +28,7 @@ static int memfd_create(const char *name, unsigned int flags)
 #endif
 }
 
-/*static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);*/
+static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);
 
 extern RR_log_entry *rr_queue_head;
 
@@ -48,8 +48,12 @@ typedef struct Checkpoint {
 
     int memfd;
 
+    size_t memfd_usage;
+
     QLIST_ENTRY(Checkpoint) next;
 } Checkpoint;
+
+static size_t total_usage = 0;
 
 /*
  * Perform replay checkpoint which we can later rewind to.
@@ -62,14 +66,20 @@ void *panda_checkpoint(void) {
     uint64_t instr_count = rr_get_guest_instr_count();
 
     /* Find last existing checkpoint before this point */
-    /*Checkpoint *base = NULL;
+    Checkpoint *base = NULL;
     Checkpoint *check = NULL;
     QLIST_FOREACH(check, &checkpoints, next) {
-        if (check->guest_instr_count >= instr_count) break;
+        if (check->guest_instr_count > instr_count) break;
         base = check;
-    }*/
+    }
 
     Checkpoint *checkpoint = (Checkpoint *)malloc(sizeof(Checkpoint));
+
+    if (base) {
+        QLIST_INSERT_AFTER(base, checkpoint, next);
+    } else {
+        QLIST_INSERT_HEAD(&checkpoints, checkpoint, next);
+    }
 
     checkpoint->guest_instr_count = instr_count;
     checkpoint->nondet_log_position = rr_queue_head
@@ -91,6 +101,14 @@ void *panda_checkpoint(void) {
 
     global_state_store_running();
     qemu_savevm_state(file, NULL);
+
+    qemu_fflush(file);
+    checkpoint->memfd_usage = lseek(checkpoint->memfd, 0, SEEK_CUR);
+    total_usage += checkpoint->memfd_usage;
+
+    printf("Created checkpoint @ %lu. Size %.1f MB. Total usage %.1f GB\n",
+            instr_count, ((float) checkpoint->memfd_usage) / (1 << 20),
+            ((float) total_usage) / (1 << 30));
 
     return checkpoint;
 }
@@ -124,4 +142,8 @@ void panda_restart(void *opaque) {
             sizeof(rr_size_of_log_entries));
     rr_max_num_queue_entries = checkpoint->max_num_queue_entries;
     rr_next_progress = checkpoint->next_progress;
+
+    if (qemu_in_vcpu_thread() && first_cpu->jmp_env) {
+        cpu_loop_exit(first_cpu);
+    }
 }
