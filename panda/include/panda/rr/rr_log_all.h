@@ -329,7 +329,7 @@ static inline void rr_replay_skipped_calls(void)
     do {                                                                       \
         switch (rr_mode) {                                                     \
         case RR_RECORD: {                                                      \
-            if (rr_record_in_progress) {                                       \
+            if (rr_record_in_progress || rr_record_in_main_loop_wait) {        \
                 ACTION;                                                        \
             } else {                                                           \
                 rr_record_in_progress = 1;                                     \
