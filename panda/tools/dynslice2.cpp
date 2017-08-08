@@ -523,9 +523,9 @@ int align_function(std::vector<traceEntry> aligned_block, llvm::Function* f, std
 }
 
 SliceVar VarFromStr(const char *str) {
-    SliceVarType typ;
+    SliceVarType typ = LLVM;
     uint64_t addr = 0;
-    char *addrstr;
+    char *addrstr = NULL;
 
     char *work = strdup(str);
     char *c = work;
