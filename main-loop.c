@@ -260,7 +260,9 @@ static int os_host_main_loop_wait(int64_t timeout)
     if (timeout) {
         qemu_mutex_lock_iothread();
     }
+    rr_begin_main_loop_wait();
     glib_pollfds_poll();
+    rr_end_main_loop_wait();
     return ret;
 }
 #else
