@@ -142,7 +142,6 @@ enum SliceVarType {
 uint64_t ret_ctr = 0;
 
 typedef std::pair<SliceVarType,uint64_t> SliceVar;
-	
 
 //add stuff to this as needed
 struct traceEntry {
@@ -151,6 +150,7 @@ struct traceEntry {
 	
 	Panda__LogEntry* ple;
 	//special snowflake?
+    // memcpy may need another logentry 
 };
 
 
@@ -160,79 +160,130 @@ std::set<SliceVar> uses;
 std::vector<traceEntry> traceEntries;
 
 Panda__LogEntry* cursor; 
-std::vector<Panda__LogEntry*> ple_vector; 	
 
-void updateUsesAndDefs(){
-	
+//void insertAddr(Addr ){
+
+//}
+
+//void insertValue(std::set<SliceVar> &uses, Value* v){
+
+//}
+
+void get_usedefs_Store(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+    StoreInst* SI = dyn_cast<StoreInst>(t.inst);
+    
+    //insertAddr(uses, addr);
+    
+};
+
+void get_usedefs_Load(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+    LoadInst* LI = dyn_cast<LoadInst>(t.inst);
+
+    // Add the memory address to the uses list. 
+    // Giri goes back and searches for the stores before this load. Maybe that's better? 
+
+     // Whereas moyix's stuff differentiates addresses and registers when storing in use list
+     // I'll do what moyix does for now....
+     
+    // inserts dynamic address into use list
+    //insertAddr(uses, ); 
+
+    //insertValue(uses, );
+
+    //insertValue(defs, t.inst);
+    
+};
+
+void get_usedefs_Call(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+    CallInst* CI = dyn_cast<CallInst>(t.inst);
+    
+
+};
+
+void get_usedefs_Ret(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+
+};
+
+void get_usedefs_PHI(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+
+
+};
+
+void get_usedefs_Select(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+
+};
+
+void get_usedefs_default(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines){
+    // by default, add all operands to uselist
+    //for (User::op_iterator op = t.inst->op_begin(); op != t.inst->op_end(); op++){
+        //Value *v = *op;
+        
+        //if (!dyn_cast<BasicBlock>(v)){
+            //insertValue(uses, v);
+        //}
+
+    //}
 }
 
-void handleStore(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handleLoad(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handleCall(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handleRet(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handlePHI(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handleSelect(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-void handleDefault(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defines);
-
 void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defs) {
-    //switch (t.inst->getOpcode()) {
-        //case Instruction::Store:
-            //handleStore(t, uses, defs);
-            //return;
-        //case Instruction::Load:
-            //handleLoad(t, uses, defs);
-            //return;
-        //case Instruction::Call:
-            //handleCall(t, uses, defs);
-            //return;
-        //case Instruction::Ret:
-            //handleRet(t, uses, defs);
-            //return;
-        //case Instruction::PHI:
-            //handlePHI(t, uses, defs);
-            //return;
-        //case Instruction::Select:
-            //handleSelect(t, uses, defs);
-            //return;
-        //case Instruction::Unreachable: // how do we even get these??
-            //return;
-        //case Instruction::Br:
-        //case Instruction::Switch:
-        //case Instruction::Add:
-        //case Instruction::Sub:
-        //case Instruction::Mul:
-        //case Instruction::UDiv:
-        //case Instruction::URem:
-        //case Instruction::SDiv:
-        //case Instruction::SRem:
-        //case Instruction::IntToPtr:
-        //case Instruction::PtrToInt:
-        //case Instruction::And:
-        //case Instruction::Xor:
-        //case Instruction::Or:
-        //case Instruction::ZExt:
-        //case Instruction::SExt:
-        //case Instruction::Trunc:
-        //case Instruction::BitCast:
-        //case Instruction::GetElementPtr: // possible loss of precision
-        //case Instruction::ExtractValue:
-        //case Instruction::InsertValue:
-        //case Instruction::Shl:
-        //case Instruction::AShr:
-        //case Instruction::LShr:
-        //case Instruction::ICmp:
-        //case Instruction::FCmp:
-        //case Instruction::Alloca:
-            //handleDefault(t, uses, defs);
-            //return;
-        //default:
-            //printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.inst->getOpcodeName());
-            //// Try "default" operand handling
-            //// defs = LHS, right = operands
+    switch (t.inst->getOpcode()) {
+        case Instruction::Store:
+            get_usedefs_Store(t, uses, defs);
+            return;
+        case Instruction::Load:
+            get_usedefs_Load(t, uses, defs);
+            return;
+        case Instruction::Call:
+            get_usedefs_Call(t, uses, defs);
+            return;
+        case Instruction::Ret:
+            get_usedefs_Ret(t, uses, defs);
+            return;
+        case Instruction::PHI:
+            get_usedefs_PHI(t, uses, defs);
+            return;
+        case Instruction::Select:
+            get_usedefs_Select(t, uses, defs);
+            return;
+        case Instruction::Unreachable: // how do we even get these??
+            return;
+        case Instruction::Br:
+        case Instruction::Switch:
+        case Instruction::Add:
+        case Instruction::Sub:
+        case Instruction::Mul:
+        case Instruction::UDiv:
+        case Instruction::URem:
+        case Instruction::SDiv:
+        case Instruction::SRem:
+        case Instruction::IntToPtr:
+        case Instruction::PtrToInt:
+        case Instruction::And:
+        case Instruction::Xor:
+        case Instruction::Or:
+        case Instruction::ZExt:
+        case Instruction::SExt:
+        case Instruction::Trunc:
+        case Instruction::BitCast:
+        case Instruction::GetElementPtr: // possible loss of precision
+        case Instruction::ExtractValue:
+        case Instruction::InsertValue:
+        case Instruction::Shl:
+        case Instruction::AShr:
+        case Instruction::LShr:
+        case Instruction::ICmp:
+        case Instruction::FCmp:
+        case Instruction::Alloca:
+            get_usedefs_default(t, uses, defs);
+            return;
+        default:
+            printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.inst->getOpcodeName());
+            // Try "default" operand handling
+            // defs = LHS, right = operands
 
-            //handleDefault(t, uses, defs);
-            //return;
-    //}
+            get_usedefs_default(t, uses, defs);
+            return;
+    }
     return;
 }
 
@@ -241,15 +292,21 @@ void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVa
  * This function takes in a list of criteria
  * and iterates backwards over an LLVM function
  * updating the global workList, uses, and defs. 
- *
  */
-void slice_trace(llvm::Function *func, std::vector<SliceVar> criteria){
+void slice_trace(std::vector<traceEntry> &aligned_block, std::vector<SliceVar> &worklist){
+		
+    //for (std::vector<int>::reverse_iterator ri = aligned_block.rbegin() ; i != aligned_block.rend(); ++it) {
+        //if (){
+            
+        //}
 
+	//}
+	
 }
 
 bool in_exception = false;
 
-int align_function(std::vector<traceEntry> aligned_block, llvm::Function* f, int cursor_idx){
+int align_function(std::vector<traceEntry> aligned_block, llvm::Function* f, std::vector<Panda__LogEntry*> ple_vector, int cursor_idx){
 
 	cursor_idx = 0;
 	std::reverse(ple_vector.begin(), ple_vector.end());
@@ -271,7 +328,6 @@ int align_function(std::vector<traceEntry> aligned_block, llvm::Function* f, int
 				
 			//}
 
-
 			// Peek at the next thing in the log. If it's an exception, no point
 			// processing anything further, since we know there can be no dynamic
 			// values before the exception.
@@ -281,13 +337,14 @@ int align_function(std::vector<traceEntry> aligned_block, llvm::Function* f, int
 				cursor_idx++;
 				return cursor_idx;
 			}
-
+			i->dump();
 
 			switch (i->getOpcode()){
 				case Instruction::Load: {
 					// get the value from the trace 
 					//
 					Panda__LogEntry* ple = ple_vector[cursor_idx];
+					pprint_ple(ple);
 					assert (ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_LOAD);
 					t.ple = ple;
 					t.inst = i;
@@ -614,6 +671,13 @@ int main(int argc, char **argv){
 			cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
 			// now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
 			// maybe i can do this lazily...
+			
+			//slice_trace(aligned_block, work);
+
+			//printf("Working set: ");
+			//print_set(work);
+			//// CLear ple_vector for next block
+			//ple_vector.clear();
 		}
 		/*ple_idx++;*/
 	}
