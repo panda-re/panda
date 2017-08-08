@@ -710,7 +710,7 @@ class Diverge(object):
             # to find the first point of memory or register divergence.
             instr_bounds = self.bisect_time(instr_bounds)
             print("Haven't made progress since last iteration. Moving to memory checksum.")
-            self.both.restart_instr(instr_bounds[1])
+            self.goto_instr(instr_bounds[1])
 
         self.print_divergence_info(instr_bounds)
 
