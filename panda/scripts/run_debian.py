@@ -106,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--rr", action='store_true')
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
+    parser.add_argument("--qemu_args", action='store')
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
 
     args, guest_cmd = parser.parse_known_args()
@@ -159,7 +160,7 @@ if __name__ == "__main__":
         # And split it
         extra_args = shlex.split(extra_args)
     else:
-        extra_args = None
+        extra_args = []
 
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
@@ -177,5 +178,5 @@ if __name__ == "__main__":
         rr=args.rr,
         perf=args.perf,
         env=env,
-        extra_args=extra_args
+        extra_args=extra_args + shlex.split(args.qemu_args)
     )
