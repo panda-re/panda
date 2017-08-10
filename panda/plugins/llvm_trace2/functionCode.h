@@ -1,4 +1,6 @@
 
+#include <set>
+#include <string>
 
 // The function body block (FUNCTION_BLOCK_ID) describes function bodies.  It
 // can contain a constant block (CONSTANTS_BLOCK_ID).
@@ -65,4 +67,37 @@ FUNC_CODE_INST_STOREATOMIC = 42,  // STORE: [ptrty,ptr,val, align, vol
 	LLVM_FN = 44,
     LLVM_EXCEPTION = 45
 } FunctionCode;
+
+
+enum SliceVarType {
+    IGNORE = 0, // from some part of CPU state we don't care about?
+    LLVM = 1, // LLVM value
+    MEM = 2, // memory
+    HOST = 3, // host
+    REG = 4, //guest register, or a field on CPU state 
+    SPEC = 5, //special register, like floating point
+    FRET = 6,
+};
+
+// copied from helper_runtime.cpp
+const static std::set<std::string> external_helper_funcs{
+    "helper_le_ldq_mmu_panda", "helper_le_ldul_mmu_panda", "helper_le_lduw_mmu_panda",
+    "helper_le_ldub_mmu_panda", "helper_le_ldsl_mmu_panda", "helper_le_ldsw_mmu_panda",
+    "helper_le_ldsb_mmu_panda",
+    "helper_le_stq_mmu_panda", "helper_le_stl_mmu_panda", "helper_le_stw_mmu_panda",
+    "helper_le_stb_mmu_panda",
+    "helper_be_ldq_mmu_panda", "helper_be_ldul_mmu_panda", "helper_be_lduw_mmu_panda",
+    "helper_be_ldub_mmu_panda", "helper_be_ldsl_mmu_panda", "helper_be_ldsw_mmu_panda",
+    "helper_be_ldsb_mmu_panda",
+    "helper_be_stq_mmu_panda", "helper_be_stl_mmu_panda", "helper_be_stw_mmu_panda",
+    "helper_be_stb_mmu_panda",
+    "helper_ret_ldq_mmu_panda", "helper_ret_ldul_mmu_panda", "helper_ret_lduw_mmu_panda",
+    "helper_ret_ldub_mmu_panda", "helper_ret_ldsl_mmu_panda", "helper_ret_ldsw_mmu_panda",
+    "helper_ret_ldsb_mmu_panda",
+    "helper_ret_stq_mmu_panda", "helper_ret_stl_mmu_panda", "helper_ret_stw_mmu_panda",
+    "helper_ret_stb_mmu_panda",
+    "helper_inb", "helper_inw", "helper_inl", "helper_inq",
+    "helper_outb", "helper_outw", "helper_outl", "helper_outq", 
+};
+
 

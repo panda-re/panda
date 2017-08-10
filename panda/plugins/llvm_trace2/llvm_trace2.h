@@ -13,6 +13,7 @@ PANDAENDCOMMENT */
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Pass.h>
 #include "functionCode.h"
+#include "llvm/IR/IRBuilder.h"
 
 extern "C" {
 
@@ -26,12 +27,15 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 namespace llvm {
 
 class PandaLLVMTraceVisitor: public InstVisitor<PandaLLVMTraceVisitor>{
+	IRBuilder<> IRB;
 
 public:
 	// Default constructor
-	PandaLLVMTraceVisitor(){};
+	PandaLLVMTraceVisitor():
+		IRB(getGlobalContext()){};
 
 	PandaLLVMTraceVisitor(Module *M):
+		IRB(getGlobalContext()),
 		module(M){};
 				
 	//Default Destructor	
@@ -63,6 +67,7 @@ public:
     //void visitGetElementPtrInst(GetElementPtrInst &I);
 	void visitCallInst(CallInst &I);
 	void handleVisitSpecialCall(CallInst &I);
+	void handleExternalHelperCall(CallInst &I);
 	void visitSelectInst(SelectInst &I);
     //void visitExtractValueInst(ExtractValueInst &I);
     //void visitInsertValueInst(InsertValueInst &I);

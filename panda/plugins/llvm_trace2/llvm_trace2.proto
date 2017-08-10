@@ -1,13 +1,21 @@
 message LLVMEntry {
 	optional uint64 type = 1;
+
+    //address we're loading or storing from
 	optional uint64 address = 2;
-	optional uint64 num_bytes = 3;
-	optional uint64 tb_num = 4;
+
+    //value that's loaded or stored 
+    optional uint64 value = 3;
+	optional uint64 num_bytes = 4;
+	optional uint64 tb_num = 5;
+	optional uint32 addr_type = 6;
 
 	// Used to select the target for Branch, Select, and Switch instructions 
-	optional uint32 condition = 5;
-	optional uint32 phi_index = 6; // The basic block index before a phi instruction
+	optional uint32 condition = 7;
 
+    // A phi instruction has format phi i1 [val, %label1] [val, label2]
+    // in align_function, record the argument index (1 for label1, etc) of the incoming basic block,
+	optional uint32 phi_index = 8; 
 }
 
 optional LLVMEntry llvmEntry = 30;
