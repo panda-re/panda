@@ -286,7 +286,6 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
         >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
         uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
         uint32_t new_size = offset * 2;
-        printf ("reallocing chunk.buf to %d bytes\n", new_size);
         thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
         thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
         assert (thePandalog->chunk.buf != NULL);
