@@ -488,13 +488,15 @@ Panda__LogEntry *pandalog_read_entry(void) {
     PandalogChunk *plc = &(thePandalog->chunk);
     uint8_t new_chunk = 0;
     uint32_t new_chunk_num;
-    Panda__LogEntry *returnEntry = plc->entry[plc->ind_entry];
+    Panda__LogEntry *returnEntry;
 
     if (thePandalog->mode == PL_MODE_READ_FWD) {
         if (plc->ind_entry > plc->num_entries-1){
             return NULL;
         } 
-        else if (plc->ind_entry == plc->num_entries-1) {
+        
+        returnEntry = plc->entry[plc->ind_entry];
+        if (plc->ind_entry == plc->num_entries-1) {
             if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
                 // if this is the last entry of the last chunk, return it and force next read to NULL 
                 plc->ind_entry++;
@@ -513,7 +515,9 @@ Panda__LogEntry *pandalog_read_entry(void) {
         if (plc->ind_entry == -1){
             return NULL;
         }
-        else if (plc->ind_entry == 0) {
+        
+        returnEntry = plc->entry[plc->ind_entry];
+        if (plc->ind_entry == 0) {
             // if this is the first entry of the first chunk, return it and force next read to NULL
             if (thePandalog->chunk_num == 0) {
                 plc->ind_entry--;
