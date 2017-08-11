@@ -481,35 +481,55 @@ void unmarshall_chunk(uint32_t chunk_num) {
     chunk->ind_entry = 0;  // a guess
 }
 
+// Reads an entry from the pandalog in fwd or bwd direction, updating chunk and index 
+// Returns NULL if all entries have been read 
 Panda__LogEntry *pandalog_read_entry(void) {
     assert (in_read_mode());
     PandalogChunk *plc = &(thePandalog->chunk);
-    uint8_t done = 0;
     uint8_t new_chunk = 0;
     uint32_t new_chunk_num;
+    Panda__LogEntry *returnEntry;
+
     if (thePandalog->mode == PL_MODE_READ_FWD) {
+        if (plc->ind_entry > plc->num_entries-1){
+            return NULL;
+        } 
+        
+        returnEntry = plc->entry[plc->ind_entry];
         if (plc->ind_entry == plc->num_entries-1) {
-            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) done = 1;
+            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
+                // if this is the last entry of the last chunk, return it and force next read to NULL 
+                plc->ind_entry++;
+                return returnEntry;
+            }   
             else {
+                // read the next chunk
                 new_chunk_num = thePandalog->chunk_num + 1;
                 new_chunk = 1;
             }
         }
         else plc->ind_entry ++;
     }
+    
     if (thePandalog->mode == PL_MODE_READ_BWD) {
+        if (plc->ind_entry == -1){
+            return NULL;
+        }
+        
+        returnEntry = plc->entry[plc->ind_entry];
         if (plc->ind_entry == 0) {
-            if (thePandalog->chunk_num == 0) done = 1;
+            // if this is the first entry of the first chunk, return it and force next read to NULL
+            if (thePandalog->chunk_num == 0) {
+                plc->ind_entry--;
+                return returnEntry;
+            }
             else {
+                // read the next chunk
                 new_chunk_num = thePandalog->chunk_num - 1;
                 new_chunk = 1;
             }
         }
         else plc->ind_entry --;
-    }
-    if (done) {
-        // no more entries to read -- last chunk complete
-        return NULL;
     }
     if (new_chunk) {
         thePandalog->chunk_num = new_chunk_num;
@@ -517,11 +537,13 @@ Panda__LogEntry *pandalog_read_entry(void) {
         // can't use plc anymore
         plc = &(thePandalog->chunk);
         if (thePandalog->mode == PL_MODE_READ_FWD)
+            //reset ind_entry
             plc->ind_entry = 0;
         else
             plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
     }
-    return plc->entry[plc->ind_entry];
+
+    return returnEntry;
 }
 
 // binary search to find chunk for this instr
@@ -576,13 +598,15 @@ void pandalog_seek(uint64_t instr) {
     unmarshall_chunk(c);
     // figure out ind
     uint32_t ind = find_ind(instr, 0, thePandalog->dir.num_entries[c]-1);
-    if (thePandalog->mode == PL_MODE_READ_BWD) {
+    // if mode is BWD and we are not seeking from last instruction of chunk (-1)
+    if (thePandalog->mode == PL_MODE_READ_BWD && instr != -1) {
         // need *last* entry with that instr for backward mode
         uint32_t i;
-        //        uint8_t found_entry = 0;
         for (i=ind; i<thePandalog->dir.num_entries[c]; i++) {
             Panda__LogEntry *ple = thePandalog->chunk.entry[i];
-            if (ple->instr != instr || instr > ple->instr) {
+            if (ple->instr != instr) {
+                // we've gone past the last entry with that instr num
+                // backtrack by one and return
                 ind --;
                 break;
             }
