@@ -346,7 +346,7 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 
     searched_pc -= GETPC_ADJ;
 
-    panda_callbacks_cpu_restore_state(cpu->env_ptr, tb);
+    panda_callbacks_cpu_restore_state(ENV_GET_CPU(env), tb);
 
 #if defined(CONFIG_LLVM)
     target_ulong guest_pc = cpu->panda_guest_pc;
