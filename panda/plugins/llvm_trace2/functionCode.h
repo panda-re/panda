@@ -1,6 +1,7 @@
 
 #include <set>
 #include <string>
+#include <map>
 
 // The function body block (FUNCTION_BLOCK_ID) describes function bodies.  It
 // can contain a constant block (CONSTANTS_BLOCK_ID).
@@ -100,4 +101,18 @@ const static std::set<std::string> external_helper_funcs{
     "helper_outb", "helper_outw", "helper_outl", "helper_outq", 
 };
 
+
+
+std::map<FunctionCode, std::string> functionCodeStrings = {
+    {FunctionCode::LLVM_FN, "LLVM FUNCTION"},
+    {FunctionCode::FUNC_CODE_INST_LOAD, "LOAD"},
+    {FunctionCode::FUNC_CODE_INST_STORE, "STORE"},
+    {FunctionCode::FUNC_CODE_INST_PHI, "PHI"},
+    {FunctionCode::FUNC_CODE_INST_BR, "BR"},
+    {FunctionCode::FUNC_CODE_INST_SELECT, "SELECT"},
+    {FunctionCode::FUNC_CODE_INST_SWITCH, "SWITCH"},
+    {FunctionCode::FUNC_CODE_INST_CALL, "CALL"},
+    {LLVM_EXCEPTION, "EXCEPTION"},
+    {BB, "LLVM_BB"},
+};
 

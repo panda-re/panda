@@ -100,6 +100,7 @@ void recordCall(uint64_t fp){
 		pandalog_write_entry(&logEntry);
 	}
 }
+
 void recordBB(uint64_t fp, unsigned lastBB){
 	
 	if (pandalog) {
@@ -113,6 +114,7 @@ void recordBB(uint64_t fp, unsigned lastBB){
 		pandalog_write_entry(&logEntry);
 	}
 }
+
 
 void recordLoad(uint64_t address, uint64_t num_bytes = 8){
 	//printf("recording load at address %" PRIx64 "\n", address);
@@ -155,7 +157,6 @@ void recordStore(uint64_t address, uint64_t num_bytes = 8){
 
 		llvmentry->has_addr_type = 1;	
 		if ((address >= (uint64_t)first_cpu) && (address < (uint64_t)first_cpu + sizeof(CPUState))){
-			//printf("store to cpu state\n");
 			llvmentry->addr_type = REG;	// Something in CPU state
 		}else {
 			llvmentry->addr_type = MEM;	// A memory address
@@ -170,7 +171,6 @@ void recordStore(uint64_t address, uint64_t num_bytes = 8){
 		pandalog_write_entry(&logEntry);
 	}
 }
-
 
 void recordReturn(){
 	if (pandalog) {
@@ -191,6 +191,36 @@ void recordSelect(uint8_t condition){
 		*llvmentry = PANDA__LLVMENTRY__INIT;
 		llvmentry->has_type = 1;
 		llvmentry->type = FunctionCode::FUNC_CODE_INST_SELECT;
+		llvmentry->has_condition = 1;
+		llvmentry->condition = condition;
+        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = llvmentry;
+		pandalog_write_entry(&logEntry);
+	}
+}
+
+void recordSwitch(uint32_t condition){
+	if (pandalog) {
+		Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+	*llvmentry = PANDA__LLVMENTRY__INIT;
+		
+		llvmentry->has_type = 1;
+		llvmentry->type = FunctionCode::FUNC_CODE_INST_SWITCH;
+		llvmentry->has_condition = 1;
+		llvmentry->condition = condition;
+        Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
+		logEntry.llvmentry = llvmentry;
+		pandalog_write_entry(&logEntry);
+	}
+}
+
+void recordBranch(uint8_t condition){
+	if (pandalog) {
+		Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+	*llvmentry = PANDA__LLVMENTRY__INIT;
+		
+		llvmentry->has_type = 1;
+		llvmentry->type = FunctionCode::FUNC_CODE_INST_BR;
 		llvmentry->has_condition = 1;
 		llvmentry->condition = condition;
         Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
@@ -317,14 +347,13 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
   //Instruction *F = BB.getFirstInsertionPt();
   //Instruction *S = CallInst::Create(recordStartBBF, args, "", F);
 
-
-	//initialize all the other record/logging functionsu
-	//PLTV->log_dynvalF = module.getOrInsertFunction("log_dynval");
+	//initialize all the other record/logging functions
 	PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
 	PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
 	PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
 	PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
-	/*PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, VoidPtrType, nullptr));*/
+	PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
+    PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, Int8Type, nullptr));
 	// recordStartBB: 
 	PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
 	PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
@@ -340,6 +369,8 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     ADD_MAPPING(recordStore);
     ADD_MAPPING(recordCall);
     ADD_MAPPING(recordSelect);
+    ADD_MAPPING(recordSwitch);
+    ADD_MAPPING(recordBranch);
     ADD_MAPPING(recordStartBB);
     ADD_MAPPING(recordBB);
     ADD_MAPPING(recordReturn);
@@ -357,9 +388,6 @@ void PandaLLVMTraceVisitor::visitInstruction(Instruction &I) {
 //TODO: Do i need to check metadata to see if host instruction?
 
 void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
-	//Function *func = module->getFunction("log_dynval");
-
-	//std::vector<GenericValue> noargs;
 
 	// Get the condition and record it
 	Value *cond = I.getCondition();
@@ -371,14 +399,46 @@ void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
 	//insert call into function
 	CI->insertAfter(static_cast<Instruction*>(&I));
 	CI->setMetadata("host", LLVMTraceMD);
+}
+
+void PandaLLVMTraceVisitor::visitSwitchInst(SwitchInst &I){
+
+	// Get the condition and record it
+    Value *cond = I.getCondition();
+    cond = castTo(cond, Int64Type, cond->getName(), &I);
+
+	std::vector<Value*> args = make_vector(cond, 0);
+
+    CallInst *CI = CallInst::Create(recordSwitchF, args);
+	
+	//insert call into function
+	CI->insertBefore(static_cast<Instruction*>(&I));
+	CI->setMetadata("host", LLVMTraceMD);
+}
+
+void PandaLLVMTraceVisitor::visitBranchInst(BranchInst &I){
+
+	// Get the condition and record it
+    Value *cond;
+    if (I.isConditional()){
+        cond = I.getCondition();
+        cond = castTo(cond, Int8Type, cond->getName(), &I);
+    }
+    else {
+        cond = ConstantInt::get(Int8Type, 111);
+    }
+	std::vector<Value*> args = make_vector(cond, 0);
+
+    CallInst *CI = CallInst::Create(recordBranchF, args);
+	
+	//insert call into function
+	CI->insertBefore(static_cast<Instruction*>(&I));
+	CI->setMetadata("host", LLVMTraceMD);
 
 	/*I.dump();*/
 }
 
 void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
-	//Function *func = module->getFunction("log_dynval");
-
-	//std::vector<GenericValue> noargs;
 
 	//Get the address we're loading from 
 	// and cast to void ptr type
@@ -446,61 +506,56 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 		dest = castTo(dest, VoidPtrType, dest->getName(), &I);
 		src = castTo(src, VoidPtrType, src->getName(), &I);
 		/*std::vector<Value*> args = make_vector(src, numBytes, 0);*/
-		std::vector<Value*> args = make_vector(src, 0);
-
+		std::vector<Value*> args;
+		CallInst *CI;
+        
+        args = make_vector(src, 0);
 		//record load first
-		CallInst *CI = CallInst::Create(recordLoadF, args);
+		CI = CallInst::Create(recordLoadF, args);
 		CI->insertAfter(static_cast<Instruction*>(&I));
         CI->setMetadata("host", LLVMTraceMD);
 
-		/*args = make_vector(dest, numBytes, 0);*/
-		args = make_vector(dest, 0);
+        args = make_vector(dest, 0);
 		CI = CallInst::Create(recordStoreF, args);
 		CI->insertAfter(static_cast<Instruction*>(&I));
+        CI->setMetadata("host", LLVMTraceMD);
 		
 	} else {
-        CI->setMetadata("host", LLVMTraceMD);
+        printf("Unhandled special call\n");
 	}
 }
 
 void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
-    
 	Function *calledFunc = I.getCalledFunction();
 
 	std::string name = calledFunc->getName().str();
-	printf("func name %s\n", name.c_str());
 
     std::vector<Value*> args;
 	if (Regex("helper_[lb]e_ld.*_mmu_panda").match(name)) {
 		// Helper load, record load
 
-        Value *ITPI;
-        
         // THis should be address
        Value *dest = I.getArgOperand(1);
-		dest->dump();
 
-        ITPI = CastInst::Create(Instruction::IntToPtr, dest, VoidPtrType, dest->getName(), &I);
+        dest = CastInst::Create(Instruction::IntToPtr, dest, VoidPtrType, dest->getName(), &I);
 
        /*dest = castTo(dest, VoidPtrType, dest->getName(), &I);*/
-		args = make_vector(ITPI, 0);
+		args = make_vector(dest, 0);
 		CallInst *CI = CallInst::Create(recordLoadF, args);
 		CI->insertBefore(static_cast<Instruction*>(&I));
     } else if (Regex("helper_[lb]e_st.*_mmu_panda").match(name)) {
         // THis should be address
-        Value *ITPI;
-        Value *ITPI2;
 
        Value *dest = I.getArgOperand(1);
        Value *storeVal = I.getArgOperand(2);
 
        //dest = castTo(dest, VoidPtrType, dest->getName(), &I);
-        ITPI = CastInst::Create(Instruction::IntToPtr, dest, VoidPtrType, dest->getName(), &I);
+        dest = CastInst::Create(Instruction::IntToPtr, dest, VoidPtrType, dest->getName(), &I);
        //storeVal = castTo(storeVal, VoidPtrType, storeVal->getName(), &I);
         //ITPI2 = IRB.CreateIntToPtr(storeVal, VoidPtrType);
-        ITPI2 = CastInst::Create(Instruction::IntToPtr, storeVal, VoidPtrType, storeVal->getName(), &I);
+        storeVal = CastInst::Create(Instruction::IntToPtr, storeVal, VoidPtrType, storeVal->getName(), &I);
 
-		args = make_vector(ITPI, 0);
+		args = make_vector(dest, 0);
 		CallInst *CI = CallInst::Create(recordStoreF, args);
 		CI->insertBefore(static_cast<Instruction*>(&I));
     } else {
@@ -510,15 +565,18 @@ void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
 }
 
 void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
-	//Function *func = module->getFunction("log_dynval");
-
 	Function *calledFunc = I.getCalledFunction();
 
 	if (!calledFunc || !calledFunc->hasName()) { return; }
 	 
+	StringRef name = calledFunc->getName();
 
 	Value *fp;
-	if (calledFunc->isIntrinsic() && calledFunc->isDeclaration()){
+    if (name.startswith("record")) {
+        return;
+    }
+
+	if (calledFunc->isIntrinsic()){
 		//this is like a memset or memcpy
 		handleVisitSpecialCall(I);
 		return;
@@ -527,9 +585,12 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 		// model the MMU load/store functions with regular loads/stores from dmemory
        handleExternalHelperCall(I);
         return;
-	}
+    } else if (calledFunc->isDeclaration()) {
+        return;
+    }
 
-	std::string name = calledFunc->getName().str();
+    printf("call to helper %s\n", name.str().c_str());
+
 	fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
 
 	//TODO: Should i do something about helper functions?? 
@@ -538,7 +599,7 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 
     CallInst *CI = CallInst::Create(recordCallF, args);
 
-	CI->insertAfter(static_cast<Instruction*>(&I));
+	CI->insertBefore(static_cast<Instruction*>(&I));
     CI->setMetadata("host", LLVMTraceMD);
 
 	//record return of call inst
@@ -549,8 +610,6 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 }
 
 void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
-	//Function *func = module->getFunction("log_dynval");
-
     if (I.isVolatile()){
         // Stores to LLVM runtime that we don't care about
         return;

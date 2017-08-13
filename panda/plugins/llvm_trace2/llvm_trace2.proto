@@ -11,7 +11,7 @@ message LLVMEntry {
 	optional uint32 addr_type = 6;
 
 	// Used to select the target for Branch, Select, and Switch instructions 
-	optional uint32 condition = 7;
+	optional uint64 condition = 7;
 
     // A phi instruction has format phi i1 [val, %label1] [val, label2]
     // in align_function, record the argument index (1 for label1, etc) of the incoming basic block,

@@ -46,9 +46,9 @@ public:
 	Function *recordStartBBF;
     Function *recordStoreF;
     Function *recordLoadF;
-    Function *recordSelectF;
+	Function *recordSelectF;
+	Function *recordSwitchF;
     Function *recordBranchF;
-    Function *recordSwitchF;
     Function *recordPhiF;
     Function *recordCallF;
     Function *recordReturnF;
@@ -78,8 +78,8 @@ public:
     //void visitBinaryOperator(BinaryOperator &I);
 	//void visitPHINode(PHINode &I);
 
-	//void visitBranchInst(BranchInst &I);
-	//void visitSwitchInst(SwitchInst &I);
+	void visitBranchInst(BranchInst &I);
+	void visitSwitchInst(SwitchInst &I);
     //void visitTerminatorInst(TerminatorInst &I);
     //void visitCastInst(CastInst &I);
     //void visitCmpInst(CmpInst &I);
