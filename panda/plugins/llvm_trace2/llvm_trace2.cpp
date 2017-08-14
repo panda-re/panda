@@ -457,7 +457,7 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
 
 /**
  * This function handles intrinsics like llvm.memset and llvm.memcpy. 
- * llvm.memset is recorded as a Store, and llvm.memcpy is recorded as a Load from src and Store to dest
+ * llvm.memset is recorded as a Store, and llvm.memcpy is recorded as first a Load from src and second a Store to dest
  */
 void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 	
@@ -509,16 +509,17 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
 		std::vector<Value*> args;
 		CallInst *CI;
         
-        args = make_vector(src, 0);
-		//record load first
-		CI = CallInst::Create(recordLoadF, args);
-		CI->insertAfter(static_cast<Instruction*>(&I));
-        CI->setMetadata("host", LLVMTraceMD);
-
         args = make_vector(dest, 0);
 		CI = CallInst::Create(recordStoreF, args);
 		CI->insertAfter(static_cast<Instruction*>(&I));
         CI->setMetadata("host", LLVMTraceMD);
+        
+		// insert load after memcpy, pushing back store
+        args = make_vector(src, 0);
+		CI = CallInst::Create(recordLoadF, args);
+		CI->insertAfter(static_cast<Instruction*>(&I));
+        CI->setMetadata("host", LLVMTraceMD);
+
 		
 	} else {
         printf("Unhandled special call\n");

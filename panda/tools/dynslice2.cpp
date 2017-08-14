@@ -464,7 +464,12 @@ void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVa
 void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &worklist){
         
     printf("in slice trace\n");
-    std::cout << aligned_block.size() << "\n";
+    std::cout << "aligned block size" << aligned_block.size() << "\n";
+
+    //print out aligned block for debugging purposes
+    for (std::vector<traceEntry>::iterator i = aligned_block.begin() ; i != aligned_block.end(); ++i) {
+
+    }
     for (std::vector<traceEntry>::iterator i = aligned_block.begin() ; i != aligned_block.end(); ++i) {
         std::set<SliceVar> uses, defs;
         get_uses_and_defs(*i, uses, defs);
@@ -483,6 +488,9 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             
             
         }
+        
+
+        // Do something about function arguments
 
         
 
@@ -659,7 +667,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 
                     if (func_name.startswith("record")){
                             // ignore
-                        printf("ignoring record func in align\n");
                     } 
                     else if (Regex("helper_[lb]e_ld.*_mmu_panda").match(func_name)) {
                         assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_LOAD);
@@ -681,11 +688,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         aligned_block.push_back(t);
                         cursor_idx++;
 
-                    } 
-                    else if (subf->isDeclaration()) {
-                        // we don't have any code for this function
-                        // there's no log entry either, so don't increment cursor_idx
-                        
                     } 
                     else if (func_name.startswith("llvm.memset")) {
                         assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_STORE);
@@ -710,8 +712,12 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         aligned_block.push_back(t);
                         cursor_idx += 2;
                     }
-                    else if (subf->isIntrinsic()){
-                        printf("Unhandled intrinsic\n");
+                    else if (subf->isDeclaration() || subf->isIntrinsic()) {
+                        // we don't have any code for this function
+                        // there's no log entry either, so don't increment cursor_idx
+                        
+                        //XXX: But do we need to push back into aligned_block?
+                        
                     }
                     else {
                         // descend into function
@@ -724,6 +730,8 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         cursor_idx = align_function(aligned_block, subf, ple_vector, cursor_idx+2);
                         printf("Returned from descend, cursor_idx= %d\n", cursor_idx);
                     
+                        // call is placed after the instructions of the called function
+                        // so slice_trace will know 
                         Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
                         *llvmentry = PANDA__LLVMENTRY__INIT;
                         Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
@@ -732,6 +740,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         t.func = f; t.inst = i; t.ple = &new_dyn;
                         aligned_block.push_back(t);
                     }
+                    break;
                 }
                 default:
                     //printf("fell through!\n");
@@ -926,10 +935,10 @@ int main(int argc, char **argv){
             // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
             // maybe i can do this lazily...
             
-            /*slice_trace(aligned_block, workList);*/
+            slice_trace(aligned_block, workList);
 
-            /*printf("Working set: ");*/
-            /*print_set(workList);*/
+            printf("Working set: ");
+            print_set(workList);
             //// CLear ple_vector for next block
             ple_vector.clear();
         }
