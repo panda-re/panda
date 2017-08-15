@@ -77,6 +77,8 @@ int ret_ctr = 0;
 
 //add stuff to this as needed
 struct traceEntry {
+    uint16_t bb_num;
+    uint16_t inst_index;
     llvm::Function *func;
     llvm::Instruction *inst;
     
@@ -468,15 +470,17 @@ SliceVar getSliceVar(Value *v){
 void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]){
     for(int i = 0; i < MAX_BITSET/8; i++){
         for (int j = 0; j < 7; j++){
-            bytes[i] |= bitset[i*8 + j] << j
+            bytes[i] |= bitset[i*8 + j] << j;
         }
     }
 }
 
 void mark(traceEntry &t){
-    int bb_num = t.index >> 16;
-    int insn_index = t.index & 0xffff;
-    markedMap[std::make_pair<Function*, int>(t.func, bb_num)] = 1;
+    int bb_num = t.bb_num;
+    int insn_index = t.inst_index;
+    assert(insn_index < MAX_BITSET);
+    markedMap[std::make_pair(t.func, bb_num)][insn_index] = 1;
+    printf("Marking %s, block %d, instruction %d\n", t.func->getName().str().c_str(), bb_num, insn_index);
 }
 
 bool is_ignored(StringRef funcName){
@@ -487,6 +491,17 @@ bool is_ignored(StringRef funcName){
         return true;
     }
     return false;
+}
+
+
+// Find the index of a block in a function
+int getBlockIndex(Function *f, BasicBlock *b) {
+    int i = 0;
+    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
+        if (&*it == b) return i;
+        i++;
+    }
+    return -1;
 }
 
 //TODO: Don't need to store the func in every single traceEntry, only in the first entry of every function. The name suffices for mark function otherwise
@@ -600,21 +615,27 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
 
     /*cursor_idx = 0;*/
     print_set(workList);
+
     BasicBlock &entry = f->getEntryBlock();
     BasicBlock *nextBlock = &entry;
+
     bool has_successor = true;
     while (has_successor) {
         has_successor = false;
         
+        int inst_index = 0;
         for (BasicBlock::iterator i = nextBlock->begin(), e = nextBlock->end(); i != e; ++i) {
             traceEntry t = {};
+            t.bb_num = getBlockIndex(f, nextBlock);
+            t.inst_index = inst_index;
+            inst_index++;
+
             if(in_exception) return cursor_idx;
             Panda__LogEntry* ple;
             if (cursor_idx >= ple_vector.size()){
                 ple = NULL;
             } else{
                 ple = ple_vector[cursor_idx];
-                //pprint_ple(ple);
             }
 
             // Peek at the next thing in the log. If it's an exception, no point
@@ -902,7 +923,6 @@ SliceVar VarFromStr(const char *str) {
     }
 
     free(work);
-
     return std::make_pair(typ, addr);
 }
 
@@ -1044,14 +1064,14 @@ int main(int argc, char **argv){
    printf("Done slicing. Marked %lu blocks\n", markedMap.size()); 
 
    FILE *outf = fopen(output, "wb");
-   for (auto &markPair: markMap){
+   for (auto &markPair: markedMap){
         uint32_t name_size = 0;
-        uint32_t index = kvp.first.second;
+        uint32_t index = markPair.first.second;
         uint8_t bytes[MAX_BITSET/8] = {};
 
         StringRef func_name = markPair.first.first->getName();
         name_size = func_name.size();
-        bits2bytes(kvp.second, bytes);
+        bitset2bytes(markPair.second, bytes);
 
         fwrite(&name_size, sizeof(uint32_t), 1, outf);
         fwrite(func_name.str().c_str(), name_size, 1, outf);
