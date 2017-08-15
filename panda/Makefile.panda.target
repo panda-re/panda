@@ -63,7 +63,6 @@ PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
 				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
 				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
-
 plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/pp.py $@ $(PANDA_CONFIG_FILES),\
@@ -71,8 +70,12 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 
 %.pb-c.h %.pb-c.c: %.proto
 	$(call quiet-command,\
+		protoc --proto_path=. --cpp_out=. $<,\
+		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
+	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
-		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c")
+		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c",)
+
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
