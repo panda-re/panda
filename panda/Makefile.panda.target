@@ -55,8 +55,7 @@ extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(EXTRA_PLUGINS_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
-
-all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES) 
+all: $(PLUGIN_SUBDIR_RULES) $(EXTRA_PLUGIN_SUBDIR_RULES)
 
 PROTO_FILES=$(wildcard $(addsuffix /*.proto,$(ALL_PLUGIN_SUBDIRS)))
 
