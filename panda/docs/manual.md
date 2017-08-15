@@ -228,9 +228,11 @@ These functions don't really form an API to QEMU or PANDA, but they are useful
 for controlling PANDA or interacting with QEMU.
 
 #### QEMU translation control
+
 ```C
 void panda_do_flush_tb(void);
 ```
+
 This function requests that the translation block cache be flushed as soon as
 possible. If running with translation block chaining turned off (e.g. when in
 LLVM mode or replay mode), this will happen when the current translation block
@@ -612,12 +614,15 @@ consider that example from above.
 The `llvm_trace` plugin has two arguments, `base` and `foo` with values `/tmp`
 and `6`.  In `init_plugin` for `llvm_trace`, include the following code to
 retrieve just the arguments for the `llvm_trace` plugin and then to parse the individual arguments.
+
 ```C
 panda_arg_list *args = panda_get_args("llvm_trace");
 uint32_t foo = panda_parse_uint32(args, "foo", 0);
 char *base = panda_parse_string(args, "base", NULL);
 ```
+
 Here is the complete list of PANDA arg parsing functions.
+
 ```C
 target_ulong panda_parse_ulong(panda_arg_list *args, const char *argname, target_ulong defval);
 uint32_t panda_parse_uint32(panda_arg_list *args, const char *argname, uint32_t defval);
@@ -626,11 +631,14 @@ double panda_parse_double(panda_arg_list *args, const char *argname, double defv
 bool panda_parse_bool(panda_arg_list *args, const char *argname);
 const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
 ```
+
 Note that calling `panda_get_args` allocates memory to store the list, which
 should be freed after use with `panda_free_args`.
+
 ```C
 void panda_free_args(panda_arg_list *args);
 ```
+
 Frees an argument list created with `panda_get_args`.
 
 
@@ -663,6 +671,7 @@ To export an API for use in another plugin:
 1. Create a file named `<plugin>_int_fns.h` in the plugin's directory and list
    each function's prototype, along with any data types it requires.
 2. Create a file named `<plugin>_int.h` in the plugin's directory looks like:
+
 ```C
 typedef void YourCustomType;
 typedef void YourOtherCustomType;

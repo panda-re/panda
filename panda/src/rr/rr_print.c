@@ -2,12 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
-#include <panda/include/panda/rr/rr_log.h>
 
 #define RR_LOG_STANDALONE
+#include <panda/include/panda/rr/rr_log.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
-#include "panda/rr/rr_log.h"
 
 /******************************************************************************************/
 /* GLOBALS */
@@ -103,6 +102,7 @@ static void rr_spit_log_entry(RR_log_entry item) {
                             args->variant.hd_transfer_args.num_bytes);
 
                         break;
+                    default: break;
                 }
                 printf("\tRR_SKIPPED_CALL_(%s) from %s %d bytes\n", 
                         get_skipped_call_kind_string(item.variant.call_args.kind),
@@ -142,6 +142,7 @@ static inline void free_entry_params(RR_log_entry *entry)
                     g_free(entry->variant.call_args.variant.cpu_mem_unmap.buf);
                     entry->variant.call_args.variant.cpu_mem_unmap.buf = NULL;
                     break;
+                default: break;
             }
             break;
         case RR_INPUT_1:
@@ -179,8 +180,8 @@ static RR_log_entry *rr_read_item(void) {
         }
     }
     //mz this is more compact, as it doesn't include extra padding.
-    assert(fread(&(item->header.kind), sizeof(item->header.kind), 1, rr_nondet_log->fp) == 1);
-    assert(fread(&(item->header.callsite_loc), sizeof(item->header.callsite_loc), 1, rr_nondet_log->fp) == 1);
+    assert(fread(&(item->header.kind), 1, 1, rr_nondet_log->fp) == 1);
+    assert(fread(&(item->header.callsite_loc), 1, 1, rr_nondet_log->fp) == 1);
 
     //mz read the rest of the item
     switch (item->header.kind) {
@@ -212,7 +213,7 @@ static RR_log_entry *rr_read_item(void) {
             {
                 RR_skipped_call_args *args = &item->variant.call_args;
                 //mz read kind first!
-                assert(fread(&(args->kind), sizeof(args->kind), 1, rr_nondet_log->fp) == 1);
+                assert(fread(&(args->kind), 1, 1, rr_nondet_log->fp) == 1);
                 switch(args->kind) {
                     case RR_CALL_CPU_MEM_RW:
                         assert(fread(&(args->variant.cpu_mem_rw_args), sizeof(args->variant.cpu_mem_rw_args), 1, rr_nondet_log->fp) == 1);
@@ -254,6 +255,7 @@ static RR_log_entry *rr_read_item(void) {
                         break;
                     default:
                         //mz unimplemented
+                        printf("rr_read_item: Call type %d unimplemented!\n", args->kind);
                         assert(0);
                 }
             }
@@ -263,10 +265,9 @@ static RR_log_entry *rr_read_item(void) {
             break;
         default:
             //mz unimplemented
-            printf("rr_read_item: Log type unimplemented!");
+            printf("rr_read_item: Log type %d unimplemented!\n", item->header.kind);
             assert(0);
     }
-    rr_nondet_log->item_number++;
 
     return item;
 }

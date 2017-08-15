@@ -21,7 +21,6 @@ When a match is found, it is saved into `${NAME}_string_matches.txt` in a file l
     188b2992 1c9196fc 23d7f60a 3eb5b3c0  3
     1fd615c5 1fd621d8 23d80d9e 3eb5b3c0  8
 
-
 Arguments
 ---------
 
@@ -43,9 +42,11 @@ Name: **on_ssm**
 
 Signature:
 
-    typedef void (* on_ssm_t)(CPUState *env, target_ulong pc, target_ulong addr,
-                  uint8_t *matched_string, uint32_t matched_string_length, 
-                  bool is_write)
+```C
+typedef void (* on_ssm_t)(CPUState *env, target_ulong pc, target_ulong addr,
+                uint8_t *matched_string, uint32_t matched_string_length,
+                bool is_write)
+```
 
 Description: Called whenever a string match is observed. The callback is passed the CPU state, the value of the program counter when the match occurred, the actual string data that was matched (in case multiple search strings were used), the number of bytes in the matched string, and a flag indicating whether the match was seen during a read or a write.
 
@@ -58,7 +59,9 @@ To search for JPEG files being read or written in memory, create a file named `j
 
 Then run PANDA with stringsearch:
 
+```sh
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
         -panda callstack_instr -panda stringsearch:name=jpeg
+```
 
 Output will be placed in `jpeg_string_matches.txt` as well as being printed to the screen.

@@ -286,7 +286,6 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
         >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
         uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
         uint32_t new_size = offset * 2;
-        printf ("reallocing chunk.buf to %d bytes\n", new_size);
         thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
         thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
         assert (thePandalog->chunk.buf != NULL);
@@ -525,7 +524,7 @@ Panda__LogEntry *pandalog_read_entry(void) {
                 return returnEntry;
             }
             else {
-				// read the next chunk
+                // read the next chunk
                 new_chunk_num = thePandalog->chunk_num - 1;
                 new_chunk = 1;
             }
@@ -538,13 +537,13 @@ Panda__LogEntry *pandalog_read_entry(void) {
         // can't use plc anymore
         plc = &(thePandalog->chunk);
         if (thePandalog->mode == PL_MODE_READ_FWD)
-			//reset ind_entry
+            //reset ind_entry
             plc->ind_entry = 0;
         else
             plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
     }
 
-	return returnEntry;
+    return returnEntry;
 }
 
 // binary search to find chunk for this instr
@@ -599,15 +598,15 @@ void pandalog_seek(uint64_t instr) {
     unmarshall_chunk(c);
     // figure out ind
     uint32_t ind = find_ind(instr, 0, thePandalog->dir.num_entries[c]-1);
-	// if mode is BWD and we are not seeking from last instruction of chunk (-1)
+    // if mode is BWD and we are not seeking from last instruction of chunk (-1)
     if (thePandalog->mode == PL_MODE_READ_BWD && instr != -1) {
         // need *last* entry with that instr for backward mode
         uint32_t i;
         for (i=ind; i<thePandalog->dir.num_entries[c]; i++) {
             Panda__LogEntry *ple = thePandalog->chunk.entry[i];
             if (ple->instr != instr) {
-				// we've gone past the last entry with that instr num
-				// backtrack by one and return
+                // we've gone past the last entry with that instr num
+                // backtrack by one and return
                 ind --;
                 break;
             }

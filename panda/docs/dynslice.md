@@ -19,16 +19,18 @@ Given this, it is a natural fit to add to PANDA.
 The basic algorithm is quite simple, and can be expressed in a few lines
 of pseudocode. Given an execution trace:
 
-    ; initialize a working set containing the data whose computation we
-    ; want to understand
+```python
+    # initialize a working set containing the data whose computation we
+    # want to understand
     work = { initial slice variables }
 
-    ; walk backward through the trace
+    # walk backward through the trace
     for insn in reversed(trace):
         if work ∩ defines(insn) != ∅:
             mark(insn)
             work = work ∖ defines(insn)
             work = work ∪ uses(insn)
+```
 
 The `defines` and `uses` functions above just get the variables used or
 defined by a given instruction. For example, for the LLVM instruction
@@ -61,10 +63,10 @@ simplifying program analyses. It has three main benefits:
     simpler and fewer in number than native code, meaning that analyses
     which need to model each instruction (like taint and dynamic
     slicing) are vastly easier to write.
-2. Since the LLVM is generated from TCG operations, and QEMU already
+1. Since the LLVM is generated from TCG operations, and QEMU already
    lifts native code to TCG for every architecture it supports, analyses
    on LLVM automatically work for every architecture QEMU supports.
-3. Unlike analyses that work only on TCG, however, we can also analyze
+1. Unlike analyses that work only on TCG, however, we can also analyze
    functions written in C by compiling them to LLVM bitcode with
    `clang`. This is critical, since significant portions of QEMU's guest
    emulation (for example, floating point operations) are implemented as
@@ -81,9 +83,9 @@ Execution Tracing in PANDA with `llvm_trace`
 To capture a useful execution trace, we want three things:
 
 1. A list of basic blocks executed in the guest.
-2. The corresponding code for each basic block.
-3. Dynamic information, such as the address of memory loads and stores
-   and the 
+1. The corresponding code for each basic block.
+1. Dynamic information, such as the address of memory loads and stores
+   and the
 
 This is precisely what the `llvm_trace` plugin produces. When enabled,
 it runs guest code in LLVM mode, where each basic block of native code
@@ -112,8 +114,10 @@ log is a mere 2.7G when compressed with `gzip`.
 
 To actually produce a trace, run:
 
-    $ cd <arch>-softmmu
-    $ ./qemu-system-<arch> -replay <replay> -panda 'llvm_trace:tubt=1,base=<output_dir>'
+```sh
+cd <arch>-softmmu
+./qemu-system-<arch> -replay <replay> -panda 'llvm_trace:tubt=1,base=<output_dir>'
+```
 
 Which will produce `llvm-mod.bc` and `tubtf.log` in the `<output_dir>`
 directory.
@@ -124,8 +128,10 @@ Using PANDA's Dynamic Slicer
 Because dynamic slicing operates on a trace in reverse, we first need to
 reverse the logfile. This is done using the `logreverse_mmap` tool:
 
-    $ cd <arch>-softmmu/panda_tools/
-    $ ./logreverse_mmap tubtf.log
+```sh
+cd <arch>-softmmu/panda_tools/
+./logreverse_mmap tubtf.log
+```
 
 Note that since it reverses the file in-place, you may want to make a
 backup of the original somewhere.
@@ -152,7 +158,9 @@ for slicing conditions:
 So if we want to track four bytes at physical address `0x12000`, we could
 do:
 
-    $ ./dynslice llvm-mod.bc tubtf.log MEM_12000 MEM_12001 MEM_12002 MEM_1203
+```sh
+./dynslice llvm-mod.bc tubtf.log MEM_12000 MEM_12001 MEM_12002 MEM_1203
+```
 
 Both the `N` in `REG_[N]` and the `PADDR` in `MEM_[PADDR]` are
 hexadecimal numbers.
@@ -173,7 +181,9 @@ virtual address at different points in the trace). So to see, for
 example, the marked instructions in `tcg-llvm-tb-31408-74b92bec`, we can
 do:
 
-    $ ./slice_viewer llvm-mod.bc slice_report.bin tcg-llvm-tb-31408-74b92bec
+```sh
+./slice_viewer llvm-mod.bc slice_report.bin tcg-llvm-tb-31408-74b92bec
+```
 
 And we'll get the output below:
 

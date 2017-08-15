@@ -122,9 +122,11 @@ void taint_change(Addr a, uint64_t size) {
             }
             num_tainted_instr_observed++;
         }
-        else if (pc != last_pc) num_tainted_instr_observed++;
-        if (0 == (num_tainted_instr_observed % 1000))
-            printf ("%" PRId64 " tainted instr observed\n", num_tainted_instr_observed);
+        else if (pc != last_pc) {
+            num_tainted_instr_observed++;
+            if (0 == (num_tainted_instr_observed % 1000))
+                printf ("%" PRId64 " tainted instr observed\n", num_tainted_instr_observed);
+        }
     }
     last_asid = asid;
     last_pc = pc;

@@ -3188,7 +3188,7 @@ void address_space_unmap(AddressSpace *as, void *buffer, hwaddr len,
         if (is_write) {
             //bdg Save addr1,access_len,buffer contents
             if (rr_in_record()) {
-                rr_cpu_physical_memory_unmap_record(addr1, buffer, access_len, is_write);
+                rr_device_mem_rw_call_record(addr1, buffer, access_len, is_write);
             }
             invalidate_and_set_dirty(mr, addr1, access_len);
         }

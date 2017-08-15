@@ -220,11 +220,11 @@ void rr_record_input_4(RR_callsite_id call_site, uint32_t data);
 void rr_record_input_8(RR_callsite_id call_site, uint64_t data);
 
 void rr_record_interrupt_request(RR_callsite_id call_site,
-                                 uint32_t interrupt_request);
+                                 int interrupt_request);
 void rr_record_exit_request(RR_callsite_id call_site, uint32_t exit_request);
 
 void rr_record_pending_interrupts(RR_callsite_id call_site, uint32_t pending_interrupt);
-void rr_record_exception(RR_callsite_id call_site, int32_t exception_index);
+void rr_record_exception_index(RR_callsite_id call_site, int32_t exception_index);
 
 // Replay routines
 void rr_replay_debug(RR_callsite_id call_site);
@@ -234,9 +234,9 @@ void rr_replay_input_4(RR_callsite_id call_site, uint32_t* data);
 void rr_replay_input_8(RR_callsite_id call_site, uint64_t* data);
 
 void rr_replay_interrupt_request(RR_callsite_id call_site,
-                                 uint32_t* interrupt_request);
+                                 int* interrupt_request);
 bool rr_replay_pending_interrupts(RR_callsite_id call_site, uint32_t* pending_interrupt);
-bool rr_replay_exception(int32_t* exception_index);
+bool rr_replay_exception_index(RR_callsite_id call_site, int32_t* exception_index);
 void rr_replay_exit_request(RR_callsite_id call_site, uint32_t* exit_request);
 bool rr_replay_intno(uint32_t *intno);
 
@@ -277,115 +277,34 @@ static inline int rr_prog_point_compare(RR_prog_point current,
     }
 }
 
+static inline bool rr_in_replay(void) { return rr_mode == RR_REPLAY; }
+static inline bool rr_in_record(void) { return rr_mode == RR_RECORD; }
+static inline bool rr_off(void) { return rr_mode == RR_OFF; }
+static inline bool rr_on(void) { return !rr_off(); }
+
 // Convenience routines that perform appropriate action based on rr_mode setting
-static inline void rr_interrupt_request(int* interrupt_request)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_interrupt_request(
-            (RR_callsite_id)rr_skipped_callsite_location, *interrupt_request);
-        break;
-    case RR_REPLAY:
-        rr_replay_interrupt_request(
-            (RR_callsite_id)rr_skipped_callsite_location,
-            (uint32_t*)interrupt_request);
-        break;
-    default:
-        break;
+#define RR_CONVENIENCE(name, arg_type)                                  \
+    static inline void rr_ ## name ## _at(RR_callsite_id call_site,     \
+            arg_type* val) {                                            \
+        if (rr_in_record()) {                                           \
+            rr_record_ ## name(call_site, *val);                        \
+        } else if (rr_in_replay()) {                                    \
+            rr_replay_ ## name(call_site, val);                         \
+        }                                                               \
+    }                                                                   \
+    static inline void rr_ ## name(arg_type* val) {                     \
+        rr_ ## name ## _at(                                             \
+            (RR_callsite_id)rr_skipped_callsite_location, val);         \
     }
-}
 
-static inline void rr_pending_interrupts(RR_callsite_id callsite_id, uint32_t* pending_int){
-    switch(rr_mode){
-        case RR_RECORD:
-            rr_record_pending_interrupts(callsite_id, *pending_int);
-            break;
-        case RR_REPLAY:
-            rr_replay_pending_interrupts(callsite_id, pending_int);
-            break;
-        default:
-            break;
-    }
-}
-
-static inline void rr_exit_request(uint32_t* exit_request)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_exit_request((RR_callsite_id)rr_skipped_callsite_location,
-                               *exit_request);
-        break;
-    case RR_REPLAY:
-        rr_replay_exit_request((RR_callsite_id)rr_skipped_callsite_location,
-                               (uint32_t*)exit_request);
-        break;
-    default:
-        break;
-    }
-}
-
-// used from exec.c and cpu-exec.c
-static inline void rr_input_1(uint8_t* val)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_input_1((RR_callsite_id)rr_skipped_callsite_location, *val);
-        break;
-    case RR_REPLAY:
-        rr_replay_input_1((RR_callsite_id)rr_skipped_callsite_location, val);
-        break;
-    default:
-        break;
-    }
-}
-
-static inline void rr_input_2(uint16_t* val)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_input_2((RR_callsite_id)rr_skipped_callsite_location, *val);
-        break;
-    case RR_REPLAY:
-        rr_replay_input_2((RR_callsite_id)rr_skipped_callsite_location, val);
-        break;
-    default:
-        break;
-    }
-}
-
-static inline void rr_input_4(uint32_t* val)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_input_4((RR_callsite_id)rr_skipped_callsite_location, *val);
-        break;
-    case RR_REPLAY:
-        rr_replay_input_4((RR_callsite_id)rr_skipped_callsite_location, val);
-        break;
-    default:
-        break;
-    }
-}
-
-static inline void rr_input_8(uint64_t* val)
-{
-    switch (rr_mode) {
-    case RR_RECORD:
-        rr_record_input_8((RR_callsite_id)rr_skipped_callsite_location, *val);
-        break;
-    case RR_REPLAY:
-        rr_replay_input_8((RR_callsite_id)rr_skipped_callsite_location, val);
-        break;
-    default:
-        break;
-    }
-}
-
-// mz UGH. things in softmmu_template.h need these
-#define rr_input_shift_0 rr_input_1
-#define rr_input_shift_1 rr_input_2
-#define rr_input_shift_2 rr_input_4
-#define rr_input_shift_3 rr_input_8
+RR_CONVENIENCE(interrupt_request, int);
+RR_CONVENIENCE(exit_request, uint32_t);
+RR_CONVENIENCE(pending_interrupts, uint32_t);
+RR_CONVENIENCE(exception_index, int32_t);
+RR_CONVENIENCE(input_1, uint8_t);
+RR_CONVENIENCE(input_2, uint16_t);
+RR_CONVENIENCE(input_4, uint32_t);
+RR_CONVENIENCE(input_8, uint64_t);
 
 static inline void rr_replay_skipped_calls(void)
 {
@@ -410,7 +329,7 @@ static inline void rr_replay_skipped_calls(void)
     do {                                                                       \
         switch (rr_mode) {                                                     \
         case RR_RECORD: {                                                      \
-            if (rr_record_in_progress) {                                       \
+            if (rr_record_in_progress || rr_record_in_main_loop_wait) {        \
                 ACTION;                                                        \
             } else {                                                           \
                 rr_record_in_progress = 1;                                     \
@@ -439,26 +358,12 @@ static inline void rr_replay_skipped_calls(void)
 // Record/replay mode
 //
 
-// these are all returning booleans, really.
-// return true iff we are in replay/record/off
-static inline uint8_t rr_in_replay(void) { return (rr_mode == RR_REPLAY); }
-
-static inline uint8_t rr_in_record(void) { return (rr_mode == RR_RECORD); }
-
-static inline uint8_t rr_off(void) { return (rr_mode == RR_OFF); }
-
-static inline uint8_t rr_on(void) { return (!rr_off()); }
-
-// mz flag indicating that TB cache flush has been requested
-extern uint8_t rr_please_flush_tb;
-// returns true if we are supposed to be flushing the tb whenever possible.
-static inline uint8_t rr_flush_tb(void) { return rr_please_flush_tb; }
-
-// sets flag so that we'll flush tb whenever possible.
-static inline void rr_flush_tb_on(void) { rr_please_flush_tb = 1; }
-
-// unsets flag so that we'll not flush tb whenever possible.
-static inline void rr_flush_tb_off(void) { rr_please_flush_tb = 0; }
+static inline void rr_replay_skipped_calls_from(RR_callsite_id location) {
+    if (rr_in_replay()) {
+        rr_skipped_callsite_location = location;
+        rr_replay_skipped_calls();
+    }
+}
 
 //
 // Debug level
