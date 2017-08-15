@@ -8,8 +8,6 @@ ifdef CONFIG_LLVM
 	PANDA_PLUGINS+=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/plugins/config.llvm.panda | grep -v "^\#" | xargs)
 endif
 
-PANDA_TOOLS=$(shell tr -d "[:blank:]" < $(SRC_PATH)/panda/tools/config.panda | grep -v "^\#" | xargs)
-
 ALL_PLUGIN_SUBDIRS=$(addprefix $(SRC_PATH)/panda/plugins/,$(PANDA_PLUGINS))
 
 # ditto for extra plugins
@@ -31,9 +29,6 @@ endif
 PLUGIN_SUBDIR_RULES=$(patsubst %,plugin-%, $(PANDA_PLUGINS))
 PLUGIN_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
 
-TOOLS_SUBDIR_RULES=$(patsubst %,tool-%, $(PANDA_TOOLS))
-TOOLS_SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory) BUILD_DIR=$(BUILD_DIR)
-
 PANDA_API_INT_POSSIBLE=$(foreach plugin,$(PANDA_PLUGINS),panda/plugins/$(plugin)/$(plugin)_int.h)
 PANDA_EXTRA_API_INT_POSSIBLE=$(foreach plugin,$(EXTRA_PANDA_PLUGINS),panda/plugins/$(plugin)/$(plugin)_int.h)
 
@@ -50,15 +45,6 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		-f "$(SRC_PATH)/panda/plugins/$*/Makefile" \
 		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
-
-tool-%: plog.pb-c.h $(PANDA_API_EXT)
-	$(call quiet-command,mkdir -p ../panda/tools/$*,)
-	$(call quiet-command,mkdir -p panda/tools/$*,)
-	$(call quiet-command,$(MAKE) $(TOOLS_SUBDIR_MAKEFLAGS) \
-		-f "$(SRC_PATH)/panda/tools/panda.mak" \
-		-f "$(SRC_PATH)/panda/tools/$*/Makefile" \
-		TOOL_SRC_ROOT="$(SRC_PATH)/panda/tools" \
-		V="$(V)" TOOL_NAME="$*" all,)
 
 extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
@@ -192,6 +178,7 @@ llvm-helpers.bc1: $(llvm-y)
 
 panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation
 panda/tools/dynslice2.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable
+panda/tools/slice_analyzer.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable
 
 panda/tools:
 	$(call quiet-command,mkdir -p panda/tools,)
@@ -205,13 +192,17 @@ panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 panda/tools/dynslice2.o: | panda/tools ../panda/tools
 panda/tools/dynslice2: panda/tools/dynslice2.o panda/src/plog.o plog.pb-c.o
 
+panda/tools/slice_analyzer.o: | panda/tools ../panda/tools
+panda/tools/slice_analyzer: panda/tools/slice_analyzer.o
+
 llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 	$(call quiet-command,\
 		panda/tools/helper_call_modifier -i $< -o $@,\
 		"LLMORPH $(TARGET_DIR)$@")
 
 # add this to the all target
-all: $(llvmmorph-y) panda/tools/dynslice2 
+all: $(llvmmorph-y) panda/tools/dynslice2 panda/tools/slice_analyzer
+#all: $(llvmmorph-y)
 
 clean: clean-llvm
 
