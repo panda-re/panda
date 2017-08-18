@@ -16,6 +16,7 @@ int rr_fake_guest_instr_count = 0;
 int rr_fake_pc = 0;
 
 PlHeader* pandalog_read_header();
+void pandalog_read_dir();
 void unmarshall_chunk(uint32_t chunk_num);
 void pandalog_open_file(const char * fname);
 void add_dir_entry(uint32_t chunk_num);
@@ -49,8 +50,6 @@ void pandalog_create(uint32_t chunk_size) {
 }
 
 void pandalog_read_dir(){
-    pandalog_read_header();
-
     PlHeader *plh = pandalog_read_header();
     
     thePandalog->chunk.size = plh->chunk_size;
@@ -90,8 +89,11 @@ void pandalog_read_dir(){
 }
 
 PlHeader* pandalog_read_header(){
-    PlHeader *plh = (PlHeader *) malloc(sizeof(PlHeader));
+    PlHeader *plh = new PlHeader();
+    printf("sizeof plheader %lu", sizeof(PlHeader));
     thePandalog->file->read((char *)plh, sizeof(PlHeader));
+    printf("gcount %lu\n", thePandalog->file->gcount());
+    assert(thePandalog->file->gcount() == sizeof(PlHeader));
     
     //TODO: Insert failure checks
     return plh;
@@ -100,13 +102,18 @@ PlHeader* pandalog_read_header(){
 
 void pandalog_open_read(const char * fname, PlMode mode){
     std::fstream *plog_file = new fstream();
-    printf("filename %s", fname);
+    printf("filename %s\n", fname);
 
     pandalog_create(0);
-    plog_file->open(fname, ios::binary);
+    plog_file->open(fname, ios::in|ios::binary);
+    if(plog_file->fail()){
+        printf("File open failed");
+        exit(1);
+    }
 
     thePandalog->filename = fname;
     thePandalog->mode = mode;
+    thePandalog->file = plog_file;
 
     // read directory and header
     pandalog_read_dir();
@@ -141,67 +148,121 @@ std::unique_ptr<panda::LogEntry> pandalog_read_entry(){
     PandalogChunk *plc = &(thePandalog->chunk);
     uint8_t new_chunk = 0;
     uint32_t new_chunk_num;
-    std::unique_ptr<panda::LogEntry> returnEntry;
-
-    if (thePandalog->mode == PL_MODE_READ_FWD) {
-        if (plc->ind_entry > plc->num_entries-1){
-            return NULL;
-        } 
-        
-        returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
-        if (plc->ind_entry == plc->num_entries-1) {
-            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
-                // if this is the last entry of the last chunk, return it and force next read to NULL 
-                plc->ind_entry++;
-                return returnEntry;
-            }   
-            else {
-                // read the next chunk
-                new_chunk_num = thePandalog->chunk_num + 1;
-                new_chunk = 1;
-            }
-        }
-        else {
-            plc->ind_entry ++;  
-            return returnEntry;
-        }
-    }
+    std::unique_ptr<panda::LogEntry> returnEntry (new panda::LogEntry());
     
-    if (thePandalog->mode == PL_MODE_READ_BWD) {
-        if (plc->ind_entry == -1){
-            return NULL;
+    // start by unmarshalling chunk, if necessary
+    if (thePandalog->mode == PL_MODE_READ_FWD) {
+        // if we've gone past the end of the current chunk
+        if (plc->ind_entry > plc->num_entries-1){
+
+            //if this is the last chunk, just return NULL. We've read everything!
+            if (thePandalog->chunk_num == thePandalog->dir.max_chunks-1) return NULL;
+
+            // otherwise, unmarshall next chunk
+            new_chunk_num = thePandalog->chunk_num+1;
+            thePandalog->chunk_num = new_chunk_num;
+
+            unmarshall_chunk(new_chunk_num);
+            plc = &(thePandalog->chunk);
+            //reset ind_entry and return first element of new chunk
+            plc->ind_entry = 0;
+            returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+            plc->ind_entry++;
+        } else {
+            //more to read in this chunk
+            returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+            plc->ind_entry++;
         }
         
-        returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
-        if (plc->ind_entry == 0) {
-            // if this is the first entry of the first chunk, return it and force next read to NULL
-            if (thePandalog->chunk_num == 0) {
-                plc->ind_entry--;
-                return returnEntry;
-            }
-            else {
-                // read the next chunk
-                new_chunk_num = thePandalog->chunk_num - 1;
-                new_chunk = 1;
-            }
-        }
-        else plc->ind_entry --;
     }
 
-    if (new_chunk) {
-        thePandalog->chunk_num = new_chunk_num;
-        unmarshall_chunk(new_chunk_num);
-        // can't use plc anymore
-        plc = &(thePandalog->chunk);
-        if (thePandalog->mode == PL_MODE_READ_FWD)
-            //reset ind_entry
-            plc->ind_entry = 0;
-        else
+    if (thePandalog->mode == PL_MODE_READ_BWD) {
+        if (plc->ind_entry < 0){
+            // if we've gone past beginning of current chunk
+
+            //if this is first chunk, return NULL.
+            if (thePandalog->chunk_num == 0) return NULL;
+            
+            //otherwise, unmarshall next chunk
+            new_chunk_num = thePandalog->chunk_num-1;
+            thePandalog->chunk_num = new_chunk_num;
+
+            unmarshall_chunk(new_chunk_num);
+            plc = &(thePandalog->chunk);
+
+            //reset ind_entry and return last element of new chunk
             plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
+            returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+            plc->ind_entry--;
+        } else {
+            //more to read in this chunk
+            returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+            plc->ind_entry--;
+        }
+
     }
 
-    returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
     return returnEntry;
+
+    //if (thePandalog->mode == PL_MODE_READ_FWD) {
+        //if (plc->ind_entry > plc->num_entries-1){
+            //return NULL;
+        //} 
+        
+        //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+        //if (plc->ind_entry == plc->num_entries-1) {
+            //if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
+                //// if this is the last entry of the last chunk, return it and force next read to NULL 
+                //plc->ind_entry++;
+                //return returnEntry;
+            //}   
+            //else {
+                //// read the next chunk
+                //new_chunk_num = thePandalog->chunk_num + 1;
+                //new_chunk = 1;
+            //}
+        //}
+        //else {
+            //plc->ind_entry ++;  
+            //return returnEntry;
+        //}
+    //}
+    
+    //if (thePandalog->mode == PL_MODE_READ_BWD) {
+        //if (plc->ind_entry == -1){
+            //return NULL;
+        //}
+        
+        //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+        //if (plc->ind_entry == 0) {
+            //// if this is the first entry of the first chunk, return it and force next read to NULL
+            //if (thePandalog->chunk_num == 0) {
+                //plc->ind_entry--;
+                //return returnEntry;
+            //}
+            //else {
+                //// read the next chunk
+                //new_chunk_num = thePandalog->chunk_num - 1;
+                //new_chunk = 1;
+            //}
+        //}
+        //else plc->ind_entry --;
+    //}
+
+    //if (new_chunk) {
+        //thePandalog->chunk_num = new_chunk_num;
+        //unmarshall_chunk(new_chunk_num);
+        //// can't use plc anymore
+        //plc = &(thePandalog->chunk);
+        //if (thePandalog->mode == PL_MODE_READ_FWD)
+            ////reset ind_entry
+            //plc->ind_entry = 0;
+        //else
+            //plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
+    //}
+
+    //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
+    //return returnEntry;
 } 
 
 void pandalog_open_write(const char* filepath, uint32_t chunk_size){
@@ -393,6 +454,7 @@ void unmarshall_chunk(uint32_t chunk_num){
     printf ("unmarshalling chunk %d\n", chunk_num);
     PandalogChunk *chunk = &(thePandalog->chunk);
     // read compressed chunk data off disk
+    printf("Seeking to %lu\n", thePandalog->dir.pos[chunk_num]);
     thePandalog->file->seekg(thePandalog->dir.pos[chunk_num]);
 
     unsigned long compressed_size = thePandalog->dir.pos[chunk_num+1] - thePandalog->dir.pos[chunk_num] + 1;
@@ -426,16 +488,21 @@ void unmarshall_chunk(uint32_t chunk_num){
         }
     }
 
+    // clear previous chunk's entries 
+    chunk->entries.clear();
+
     if (chunk->max_num_entries < thePandalog->dir.num_entries[chunk_num]) {
         chunk->max_num_entries = thePandalog->dir.num_entries[chunk_num];
     }
+    chunk->num_entries = thePandalog->dir.num_entries[chunk_num];
 
+    printf("num_entries %u\n", chunk->num_entries);
     unsigned char *p = chunk->buf;
     for (int i = 0; i < chunk->num_entries; i++) {
         assert (p < chunk->buf + chunk->size);
         uint32_t entry_size = *((uint32_t *) p);
         p += sizeof(uint32_t);
-        std::unique_ptr<panda::LogEntry> ple;
+        std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->ParseFromArray(p, entry_size);
         p += entry_size;
         chunk->entries.push_back(std::move(ple));
@@ -447,7 +514,14 @@ uint32_t find_ind(uint64_t instr, uint32_t lo_idx, uint32_t high_idx){
     assert(lo_idx <= high_idx);
     if(lo_idx == high_idx) return lo_idx;
 
+    //First entry of log always has pc = -1 and instr = -1
+    // skip it if that's the case
+    
     PandalogChunk *chunk = &(thePandalog->chunk);
+    if (chunk->entries[lo_idx]->instr() == -1 && chunk->entries[lo_idx]->pc() == -1){
+        lo_idx++;
+    }
+
     if (instr < chunk->entries[lo_idx]->instr()) return lo_idx;
     if (instr > chunk->entries[high_idx]->instr()) return high_idx;
 
@@ -489,7 +563,7 @@ void pandalog_seek(uint64_t instr){
 
     uint32_t ind = find_ind(instr, 0, thePandalog->dir.num_entries[chunk_num]-1);
 
-    std::unique_ptr<panda::LogEntry> ple;
+    std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry);
     ple->CopyFrom(*thePandalog->chunk.entries[ind]);
     assert(ple->instr() == instr);
 
@@ -504,12 +578,10 @@ void pandalog_seek(uint64_t instr){
                 ind --;
                 break;
             }
-        
         }
     }
 
     thePandalog->chunk.ind_entry = ind;
-    
 }
 
 
