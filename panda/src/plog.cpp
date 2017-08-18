@@ -203,76 +203,16 @@ std::unique_ptr<panda::LogEntry> pandalog_read_entry(){
     }
 
     return returnEntry;
-
-    //if (thePandalog->mode == PL_MODE_READ_FWD) {
-        //if (plc->ind_entry > plc->num_entries-1){
-            //return NULL;
-        //} 
-        
-        //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
-        //if (plc->ind_entry == plc->num_entries-1) {
-            //if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
-                //// if this is the last entry of the last chunk, return it and force next read to NULL 
-                //plc->ind_entry++;
-                //return returnEntry;
-            //}   
-            //else {
-                //// read the next chunk
-                //new_chunk_num = thePandalog->chunk_num + 1;
-                //new_chunk = 1;
-            //}
-        //}
-        //else {
-            //plc->ind_entry ++;  
-            //return returnEntry;
-        //}
-    //}
-    
-    //if (thePandalog->mode == PL_MODE_READ_BWD) {
-        //if (plc->ind_entry == -1){
-            //return NULL;
-        //}
-        
-        //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
-        //if (plc->ind_entry == 0) {
-            //// if this is the first entry of the first chunk, return it and force next read to NULL
-            //if (thePandalog->chunk_num == 0) {
-                //plc->ind_entry--;
-                //return returnEntry;
-            //}
-            //else {
-                //// read the next chunk
-                //new_chunk_num = thePandalog->chunk_num - 1;
-                //new_chunk = 1;
-            //}
-        //}
-        //else plc->ind_entry --;
-    //}
-
-    //if (new_chunk) {
-        //thePandalog->chunk_num = new_chunk_num;
-        //unmarshall_chunk(new_chunk_num);
-        //// can't use plc anymore
-        //plc = &(thePandalog->chunk);
-        //if (thePandalog->mode == PL_MODE_READ_FWD)
-            ////reset ind_entry
-            //plc->ind_entry = 0;
-        //else
-            //plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
-    //}
-
-    //returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
-    //return returnEntry;
 } 
 
 void pandalog_open_write(const char* filepath, uint32_t chunk_size){
     pandalog_create(chunk_size);
 
-    fstream *plog_file;
+    fstream *plog_file = new fstream();
 
     thePandalog->mode = PL_MODE_WRITE;
     thePandalog->filename = strdup(filepath);
-    plog_file->open(filepath, ios::binary);
+    plog_file->open(filepath, ios::binary|ios::out);
     thePandalog->file = plog_file;
     // skip over header to be ready to write first chunk
     // NB: we will write the header later, when we write the directory.
@@ -286,7 +226,7 @@ void pandalog_open_write(const char* filepath, uint32_t chunk_size){
     //TODO: Do i need to reserve memory for vectors?
     thePandalog->chunk_num = 0;
     printf ("max_chunks = %d\n", thePandalog->dir.max_chunks);
-    // write bogus inital chunk
+    // write bogus initial chunk
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
     pandalog_write_entry(std::move(ple));
 }
@@ -295,12 +235,10 @@ void pandalog_open_write(const char* filepath, uint32_t chunk_size){
 void write_header(PlHeader* plh){
     //go to beginning of file
     thePandalog->file->seekg(0);
-
-    thePandalog->file->write((char *)plh, sizeof(plh));
+    thePandalog->file->write((char *)plh, sizeof(*plh));
 }
 
 void pandalog_write_dir(){
-
     PandalogDir *dir = &(thePandalog->dir);
     uint32_t num_chunks = thePandalog->chunk_num;
 
@@ -338,6 +276,9 @@ void add_dir_entry(uint32_t chunk){
    
     if (chunk >= thePandalog->dir.max_chunks) {
         uint32_t new_size = thePandalog->dir.max_chunks * 2;
+        thePandalog->dir.instr.resize(new_size);
+        thePandalog->dir.pos.resize(new_size);
+        thePandalog->dir.num_entries.resize(new_size);
         //HA! Using a vector now, so no more of this realloc bullshit
         //thePandalog->dir.instr = (uint64_t *) realloc(thePandalog->dir.instr, sizeof(uint64_t) * new_size);
         //thePandalog->dir.pos = (uint64_t *) realloc(thePandalog->dir.pos, sizeof(uint64_t) * new_size);
@@ -374,7 +315,10 @@ void write_current_chunk(){
 
     uint32_t i;
     for (i=0; i<10; i++) {
+        printf("about to compress\n");
         ret = compress2(thePandalog->chunk.zbuf, &ccs, thePandalog->chunk.buf, chunk_sz, Z_BEST_COMPRESSION);
+        
+        printf("finished compress\n");
         if (ret == Z_OK) break;
         // bigger output buffer needed to perform compression?
         thePandalog->chunk.zsize *= 2;
@@ -394,6 +338,7 @@ void write_current_chunk(){
     thePandalog->file->write((char*)thePandalog->chunk.zbuf, ccs);
     add_dir_entry(thePandalog->chunk_num);
     // reset start instr / pos
+    //TODO: Fix here 
     //thePandalog->chunk.start_instr = rr_get_guest_instr_count();
     thePandalog->chunk.start_instr = rr_fake_guest_instr_count;
     thePandalog->chunk.start_pos = thePandalog->file->tellg();
@@ -422,16 +367,20 @@ void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
 
     size_t n = entry->ByteSize();
 
+    // invariant: all log entries for an instruction belong in a single chunk
     if(instr_last_entry == -1 
         && (instr_last_entry != entry->instr())
-        && (thePandalog->chunk.buf_p + n)) {
+        && (thePandalog->chunk.buf_p + n  >= thePandalog->chunk.buf + thePandalog->chunk.size)) {
+        // entry  won't fit in current chunk
+        // and new entry is a different instr from last entry written
             write_current_chunk();
-        }
+    }
 
     // create another chunk
     //TODO: WTF is this? Can i remove by not managing my own fucking memory in C++?
     if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n
         >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
+
         uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
         uint32_t new_size = offset * 2;
         thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
