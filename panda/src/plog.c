@@ -486,64 +486,51 @@ void unmarshall_chunk(uint32_t chunk_num) {
 Panda__LogEntry *pandalog_read_entry(void) {
     assert (in_read_mode());
     PandalogChunk *plc = &(thePandalog->chunk);
-    uint8_t new_chunk = 0;
     uint32_t new_chunk_num;
     Panda__LogEntry *returnEntry;
 
     if (thePandalog->mode == PL_MODE_READ_FWD) {
-        if (plc->ind_entry > plc->num_entries-1){
-            return NULL;
-        } 
-        
-        returnEntry = plc->entry[plc->ind_entry];
-        if (plc->ind_entry == plc->num_entries-1) {
-            if (thePandalog->chunk_num == thePandalog->dir.max_chunks - 1) {
-                // if this is the last entry of the last chunk, return it and force next read to NULL 
-                plc->ind_entry++;
-                return returnEntry;
-            }   
-            else {
-                // read the next chunk
-                new_chunk_num = thePandalog->chunk_num + 1;
-                new_chunk = 1;
-            }
-        }
-        else plc->ind_entry ++;
-    }
-    
-    if (thePandalog->mode == PL_MODE_READ_BWD) {
-        if (plc->ind_entry == -1){
-            return NULL;
-        }
-        
-        returnEntry = plc->entry[plc->ind_entry];
-        if (plc->ind_entry == 0) {
-            // if this is the first entry of the first chunk, return it and force next read to NULL
-            if (thePandalog->chunk_num == 0) {
-                plc->ind_entry--;
-                return returnEntry;
-            }
-            else {
-                // read the next chunk
-                new_chunk_num = thePandalog->chunk_num - 1;
-                new_chunk = 1;
-            }
-        }
-        else plc->ind_entry --;
-    }
-    if (new_chunk) {
-        thePandalog->chunk_num = new_chunk_num;
-        unmarshall_chunk(new_chunk_num);
-        // can't use plc anymore
-        plc = &(thePandalog->chunk);
-        if (thePandalog->mode == PL_MODE_READ_FWD)
-            //reset ind_entry
+        if (plc->ind_entry > plc->num_entries-1) {
+            if (thePandalog->chunk_num == thePandalog->dir.max_chunks-1) return NULL;
+
+            new_chunk_num = thePandalog->chunk_num+1;
+            thePandalog->chunk_num = new_chunk_num;
+
+            unmarshall_chunk(new_chunk_num);
+            plc = &(thePandalog->chunk);
+            //reset ind_entry and return first element of new chunk
             plc->ind_entry = 0;
-        else
-            plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
+            returnEntry = plc->entry[plc->ind_entry];
+            plc->ind_entry++;
+        } else {
+            //more to read in this chunk
+            returnEntry = plc->entry[plc->ind_entry];
+            plc->ind_entry++;
+        }
+        return returnEntry;
     }
 
-    return returnEntry;
+    if (thePandalog->mode == PL_MODE_READ_BWD) {
+        if(plc->ind_entry == -1) {
+            if(thePandalog->chunk_num == 0) return NULL;
+
+            new_chunk_num = thePandalog->chunk_num-1;
+            thePandalog->chunk_num = new_chunk_num;
+
+            unmarshall_chunk(new_chunk_num);
+            plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
+            returnEntry = plc->entry[plc->ind_entry];
+            plc->ind_entry--;
+        } else {
+            returnEntry = plc->entry[plc->ind_entry];
+            plc->ind_entry--;
+        }
+        
+        return returnEntry;
+    }
+    
+    printf("Read not in valid mode\n");
+    exit(1);
 }
 
 // binary search to find chunk for this instr
