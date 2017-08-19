@@ -260,10 +260,8 @@ void PandaLog::write_current_chunk(){
 
     uint32_t i;
     for (i=0; i<10; i++) {
-        printf("about to compress\n");
         ret = compress2(this->chunk.zbuf, &ccs, this->chunk.buf, chunk_sz, Z_BEST_COMPRESSION);
         
-        printf("finished compress\n");
         if (ret == Z_OK) break;
         // bigger output buffer needed to perform compression?
         this->chunk.zsize *= 2;
