@@ -66,7 +66,6 @@ PlHeader* PandaLog::pandalog_read_header(){
 
 void PandaLog::pandalog_open_read(const char * fname, PlMode mode){
     std::fstream *plog_file = new fstream();
-    printf("filename %s\n", fname);
 
     pandalog_create(0);
     plog_file->open(fname, ios::in|ios::binary);
