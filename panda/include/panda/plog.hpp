@@ -1,9 +1,16 @@
+/**
+ *
+ * Header file for C++ version of Pandalog. Mostly identical to C version in plog.c
+ * See plog.c and plog.h for missing details
+ * plog.c contains an overview of the log format
+ * 8/19/17 Ray Wang 
+ *
+ */
 
 #ifndef __PANDALOG_H_
 #define __PANDALOG_H_
 
 #include <stdio.h>
-//#include <stream.h>
 #include <iostream>
 #include <memory>
 #include <stdint.h>
@@ -57,45 +64,74 @@ typedef struct pandalog_chunk_struct {
     uint32_t ind_entry;         // index into array of entries
 } PandalogChunk;
 
-typedef struct pandalog_struct {
-    PlMode mode;                // write, read fwd, read bwd
-    const char *filename;             // filename of compressed log
-    std::fstream *file;                 // file to which we write compressed chunked pandalog
-    PandalogDir dir;            // chunk directory
-    PandalogChunk chunk;        // current chunk
-    uint32_t chunk_num;         // current chunk number
-} Pandalog;
+class PandaLog {
+    PlMode mode;
+    const char *filename;
+    std::fstream *file;
+    PandalogDir dir;
+    PandalogChunk chunk;
+    uint32_t chunk_num;
 
-// open pandalog for write with this uncompressed chunk size
-void pandalog_open_write(const char *path, uint32_t chunk_size);
+public:    
+    //default constructor
+    PandaLog(){
+        mode = PL_MODE_UNKNOWN;
+        chunk_num = 0;
+    };
 
-// open pandalog for reading in forward direction
-void pandalog_open_read_fwd(const char *path);
+    // open pandalog for write with this uncompressed chunk size
+    void pandalog_open_write(const char *path, uint32_t chunk_size);
 
-// open pandalog for reading in backward direction
-void pandalog_open_read_bwd(const char *path);
+    void pandalog_open_read(const char *path, PlMode mode);
 
-void pandalog_open(const char *path, const char *mode);
+    // open pandalog for reading in forward direction
+    void pandalog_open_read_fwd(const char *path);
 
-// close pandalog (all modes)
-int  pandalog_close(void);
+    // open pandalog for reading in backward direction
+    void pandalog_open_read_bwd(const char *path);
 
-// write this element to pandpog.
-// "asid", "pc", instruction count key/values
-// b/c those will get added by this fn
-void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry);
+    void pandalog_open(const char *path, const char *mode);
 
-// read next element from pandalog.
-// allocates memory, which caller will free
-// nb depending on thePandalog->mode this could represent 
-// fwd or bwd motion in the log
-std::unique_ptr<panda::LogEntry> pandalog_read_entry(void);
+    // close pandalog (all modes)
+    int  pandalog_close(void);
 
-// seek to the element in pandalog corresponding to this instr
-// only valid in read mode.  
-// if PL_MODE_READ_FWD then we seek to FIRST element in log for this instr
-// if PL_MODE_READ_BWD then we seek to LAST element in log for this instr
-void pandalog_seek(uint64_t instr);
+    void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry);
 
-extern int pandalog;
+    std::unique_ptr<panda::LogEntry> pandalog_read_entry(void);
+
+    void pandalog_seek(uint64_t instr);
+
+private: 
+    //initializes some fields in the pandalog
+    void pandalog_create(uint32_t chunk_size);
+
+    // Reads header, located at beginning of log
+    PlHeader* pandalog_read_header();
+
+    // Write header to beginning of log
+    void write_header(PlHeader *);
+
+    //Read directory entries
+    void pandalog_read_dir();
+
+    //Write directory entries
+    void pandalog_write_dir();
+
+    // decompresses chunk and reads all entries into vector
+    void unmarshall_chunk(uint32_t chunk_num);
+
+    // Adds directory entry to list of directory entries. Does not write to log
+    void add_dir_entry(uint32_t chunk_num);
+
+    //Zlib compresses and writes current chunk to log
+    void write_current_chunk();
+
+    // Finds index of entry with this instr number
+    uint32_t find_ind(uint64_t instr, uint32_t lo, uint32_t high);
+
+    //Finds chunk with this instr number
+    uint32_t find_chunk(uint64_t instr, uint32_t lo, uint32_t high);
+
+};
+
 #endif
