@@ -57,45 +57,79 @@ typedef struct pandalog_chunk_struct {
     uint32_t ind_entry;         // index into array of entries
 } PandalogChunk;
 
-typedef struct pandalog_struct {
-    PlMode mode;                // write, read fwd, read bwd
-    const char *filename;             // filename of compressed log
-    std::fstream *file;                 // file to which we write compressed chunked pandalog
-    PandalogDir dir;            // chunk directory
-    PandalogChunk chunk;        // current chunk
-    uint32_t chunk_num;         // current chunk number
-} Pandalog;
+//typedef struct pandalog_struct {
+    //PlMode mode;                // write, read fwd, read bwd
+    //const char *filename;             // filename of compressed log
+    //std::fstream *file;                 // file to which we write compressed chunked pandalog
+    //PandalogDir dir;            // chunk directory
+    //PandalogChunk chunk;        // current chunk
+    //uint32_t chunk_num;         // current chunk number
+//} Pandalog;
 
-// open pandalog for write with this uncompressed chunk size
-void pandalog_open_write(const char *path, uint32_t chunk_size);
+class PandaLog {
+    PlMode mode;
+    const char *filename;
+    std::fstream *file;
+    PandalogDir dir;
+    PandalogChunk chunk;
+    uint32_t chunk_num;
 
-// open pandalog for reading in forward direction
-void pandalog_open_read_fwd(const char *path);
+public:    
+    
+    //default constructor
+    PandaLog(){
+        mode = PL_MODE_UNKNOWN;
+        chunk_num = 0;
+    };
 
-// open pandalog for reading in backward direction
-void pandalog_open_read_bwd(const char *path);
+    // open pandalog for write with this uncompressed chunk size
+    void pandalog_open_write(const char *path, uint32_t chunk_size);
 
-void pandalog_open(const char *path, const char *mode);
+    void pandalog_open_read(const char *path, PlMode mode);
 
-// close pandalog (all modes)
-int  pandalog_close(void);
+    // open pandalog for reading in forward direction
+    void pandalog_open_read_fwd(const char *path);
 
-// write this element to pandpog.
-// "asid", "pc", instruction count key/values
-// b/c those will get added by this fn
-void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry);
+    // open pandalog for reading in backward direction
+    void pandalog_open_read_bwd(const char *path);
 
-// read next element from pandalog.
-// allocates memory, which caller will free
-// nb depending on thePandalog->mode this could represent 
-// fwd or bwd motion in the log
-std::unique_ptr<panda::LogEntry> pandalog_read_entry(void);
+    void pandalog_open(const char *path, const char *mode);
 
-// seek to the element in pandalog corresponding to this instr
-// only valid in read mode.  
-// if PL_MODE_READ_FWD then we seek to FIRST element in log for this instr
-// if PL_MODE_READ_BWD then we seek to LAST element in log for this instr
-void pandalog_seek(uint64_t instr);
+    // close pandalog (all modes)
+    int  pandalog_close(void);
+
+    // write this element to pandpog.
+    // "asid", "pc", instruction count key/values
+    // b/c those will get added by this fn
+    void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry);
+
+    // read next element from pandalog.
+    // allocates memory, which caller will free
+    // nb depending on thePandalog->mode this could represent 
+    // fwd or bwd motion in the log
+    std::unique_ptr<panda::LogEntry> pandalog_read_entry(void);
+
+    // seek to the element in pandalog corresponding to this instr
+    // only valid in read mode.  
+    // if PL_MODE_READ_FWD then we seek to FIRST element in log for this instr
+    // if PL_MODE_READ_BWD then we seek to LAST element in log for this instr
+    void pandalog_seek(uint64_t instr);
+
+private: 
+    void pandalog_create(uint32_t chunk_size);
+    PlHeader* pandalog_read_header();
+    void write_header(PlHeader *);
+    void pandalog_read_dir();
+    void pandalog_write_dir();
+    void unmarshall_chunk(uint32_t chunk_num);
+    void pandalog_open_file(const char * fname);
+    void add_dir_entry(uint32_t chunk_num);
+    void write_current_chunk();
+    uint32_t find_ind(uint64_t instr, uint32_t lo, uint32_t high);
+    uint32_t find_chunk(uint64_t instr, uint32_t lo, uint32_t high);
+
+};
+
 
 extern int pandalog;
 #endif
