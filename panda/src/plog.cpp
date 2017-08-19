@@ -6,20 +6,7 @@
 
 using namespace std; 
 
-//XXX: Remove later
-int rr_fake_guest_instr_count = 0;
-int rr_fake_pc = 0;
-
-PlHeader* pandalog_read_header();
-void pandalog_read_dir();
-void unmarshall_chunk(uint32_t chunk_num);
-void pandalog_open_file(const char * fname);
-void add_dir_entry(uint32_t chunk_num);
-void write_current_chunk();
-
 void PandaLog::pandalog_create(uint32_t chunk_size) {
-    /*thePandalog = (Pandalog *) malloc(sizeof(Pandalog));*/
-    this->mode = PL_MODE_UNKNOWN;
     this->chunk.size = chunk_size;
     this->chunk.zsize = chunk_size;
     // NB: malloc chunk a little big since we need to maintain
@@ -50,12 +37,8 @@ void PandaLog::pandalog_read_dir(){
     
     PandalogDir *dir = &(this->dir);
     dir->max_chunks = num_chunks;
-    //dir->instr = (uint64_t *) malloc(sizeof(uint64_t) * num_chunks);
-    //dir->pos = (uint64_t *) malloc(sizeof(uint64_t) * (1+num_chunks));
-    //dir->num_entries = (uint64_t *) malloc(sizeof(uint64_t) * num_chunks);
     
     uint32_t i;
-    
     for (i = 0; i < num_chunks; i++) {
         uint64_t read_val;
         this->file->read((char *) &(read_val), sizeof(uint64_t));
@@ -74,12 +57,9 @@ void PandaLog::pandalog_read_dir(){
 
 PlHeader* PandaLog::pandalog_read_header(){
     PlHeader *plh = new PlHeader();
-    printf("sizeof plheader %lu", sizeof(PlHeader));
     this->file->read((char *)plh, sizeof(PlHeader));
-    printf("gcount %lu\n", this->file->gcount());
     assert(this->file->gcount() == sizeof(PlHeader));
     
-    //TODO: Insert failure checks
     return plh;
 }
 
@@ -116,6 +96,31 @@ void PandaLog::pandalog_open(const char *path, const char* mode){
     if (0==strcmp(mode, "r")) {
         pandalog_open_read_fwd(path);
     }
+}
+
+void PandaLog::pandalog_open_write(const char* filepath, uint32_t chunk_size){
+    pandalog_create(chunk_size);
+
+    fstream *plog_file = new fstream();
+
+    this->mode = PL_MODE_WRITE;
+    this->filename = strdup(filepath);
+    plog_file->open(filepath, ios::binary|ios::out);
+    this->file = plog_file;
+    // skip over header to be ready to write first chunk
+    // NB: we will write the header later, when we write the directory.
+    
+    this->file->seekg(this->chunk.start_pos);
+
+    this->dir.max_chunks = 128;
+    this->dir.instr = std::vector<uint64_t>(this->dir.max_chunks);
+    this->dir.pos = std::vector<uint64_t>(this->dir.max_chunks);
+    this->dir.num_entries = std::vector<uint64_t>(this->dir.max_chunks);
+    this->chunk_num = 0;
+    printf ("max_chunks = %d\n", this->dir.max_chunks);
+    // write bogus initial chunk
+    std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+    pandalog_write_entry(std::move(ple));
 }
 
 void PandaLog::pandalog_open_read_bwd(const char *fname){
@@ -156,7 +161,6 @@ std::unique_ptr<panda::LogEntry> PandaLog::pandalog_read_entry(){
             returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
             plc->ind_entry++;
         }
-        
     }
 
     if (this->mode == PL_MODE_READ_BWD) {
@@ -182,38 +186,10 @@ std::unique_ptr<panda::LogEntry> PandaLog::pandalog_read_entry(){
             returnEntry->CopyFrom(*plc->entries[plc->ind_entry]);
             plc->ind_entry--;
         }
-
     }
 
     return returnEntry;
 } 
-
-void PandaLog::pandalog_open_write(const char* filepath, uint32_t chunk_size){
-    pandalog_create(chunk_size);
-
-    fstream *plog_file = new fstream();
-
-    this->mode = PL_MODE_WRITE;
-    this->filename = strdup(filepath);
-    plog_file->open(filepath, ios::binary|ios::out);
-    this->file = plog_file;
-    // skip over header to be ready to write first chunk
-    // NB: we will write the header later, when we write the directory.
-    
-    this->file->seekg(this->chunk.start_pos);
-
-    this->dir.max_chunks = 128;
-    this->dir.instr = std::vector<uint64_t>(this->dir.max_chunks);
-    this->dir.pos = std::vector<uint64_t>(this->dir.max_chunks);
-    this->dir.num_entries = std::vector<uint64_t>(this->dir.max_chunks);
-    //TODO: Do i need to reserve memory for vectors?
-    this->chunk_num = 0;
-    printf ("max_chunks = %d\n", this->dir.max_chunks);
-    // write bogus initial chunk
-    std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
-    pandalog_write_entry(std::move(ple));
-}
-
 
 void PandaLog::write_header(PlHeader* plh){
     //go to beginning of file
@@ -235,39 +211,26 @@ void PandaLog::pandalog_write_dir(){
     printf("header: version=%d  dir_pos=%lu chunk_size=%d\n",
             plh.version, plh.dir_pos, plh.chunk_size);
     // now go ahead and write dir where we are in logfile
-    //fwrite(&(num_chunks), sizeof(num_chunks), 1, this->file);
 
     this->file->write((char*) &num_chunks, sizeof(num_chunks));
 
     uint32_t i;
     for (i=0; i<num_chunks; i++) {
         this->file->write((char*) &dir->instr[i], sizeof(dir->instr[i]));
-        //fwrite(&(dir->instr[i]), sizeof(dir->instr[i]), 1, this->file);
-        //fwrite(&(dir->pos[i]), sizeof(dir->pos[i]), 1, this->file);
         this->file->write((char*) &dir->pos[i], sizeof(dir->pos[i]));
-        //fwrite(&(dir->num_entries[i]), sizeof(dir->num_entries[i]), 1, this->file);
         this->file->write((char*) &dir->num_entries[i], sizeof(dir->num_entries[i]));
     }
 
     write_header(&plh);
-
 }
 
 void PandaLog::add_dir_entry(uint32_t chunk){
-   //where do we write dir entry? 
-   printf("adding dir entry for chunk\n");
    
     if (chunk >= this->dir.max_chunks) {
         uint32_t new_size = this->dir.max_chunks * 2;
         this->dir.instr.resize(new_size);
         this->dir.pos.resize(new_size);
         this->dir.num_entries.resize(new_size);
-        //HA! Using a vector now, so no more of this realloc bullshit
-        //this->dir.instr = (uint64_t *) realloc(this->dir.instr, sizeof(uint64_t) * new_size);
-        //this->dir.pos = (uint64_t *) realloc(this->dir.pos, sizeof(uint64_t) * new_size);
-        //this->dir.num_entries = (uint64_t *)
-            //realloc(this->dir.num_entries, sizeof(uint64_t) * new_size);
-
         this->dir.max_chunks = new_size;
     }
 
@@ -286,10 +249,10 @@ int PandaLog::pandalog_close(){
         add_dir_entry(this->chunk_num);
         pandalog_write_dir();
     }
+
     this->file->close();
 }
 
-//TODO: Do Zlib in a more C++-like fashion
 void PandaLog::write_current_chunk(){
     
     unsigned long chunk_sz = this->chunk.buf_p - this->chunk.buf;
@@ -321,9 +284,7 @@ void PandaLog::write_current_chunk(){
     this->file->write((char*)this->chunk.zbuf, ccs);
     add_dir_entry(this->chunk_num);
     // reset start instr / pos
-    //TODO: Fix here 
-    //this->chunk.start_instr = rr_get_guest_instr_count();
-    this->chunk.start_instr = rr_fake_guest_instr_count;
+    this->chunk.start_instr = rr_get_guest_instr_count();
     this->chunk.start_pos = this->file->tellg();
     // rewind chunk buf and inc chunk #
     this->chunk.buf_p = this->chunk.buf;
@@ -335,13 +296,9 @@ uint64_t instr_last_entry = -1;
 
 void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
 
-    //if (panda_in_main_loop) {
-    if (1) {
-        //entry->set_pc(panda_current_pc(first_cpu));
-        entry->set_pc(rr_fake_pc);
-        rr_fake_pc++;
-        entry->set_instr(rr_fake_guest_instr_count);
-        rr_fake_guest_instr_count++;
+    if (panda_in_main_loop) {
+        entry->set_pc(panda_current_pc(first_cpu));
+        entry->set_instr(rr_get_guest_instr_count());
     }
     else {
         entry->set_pc(-1);
@@ -360,7 +317,6 @@ void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
     }
 
     // create another chunk
-    //TODO: WTF is this? Can i remove by not managing my own fucking memory in C++?
     if (this->chunk.buf_p + sizeof(uint32_t) + n
         >= this->chunk.buf + ((int)(floor(this->chunk.size)))) {
 
@@ -386,7 +342,6 @@ void PandaLog::unmarshall_chunk(uint32_t chunk_num){
     printf ("unmarshalling chunk %d\n", chunk_num);
     PandalogChunk *chunk = &(this->chunk);
     // read compressed chunk data off disk
-    printf("Seeking to %lu\n", this->dir.pos[chunk_num]);
     this->file->seekg(this->dir.pos[chunk_num]);
 
     unsigned long compressed_size = this->dir.pos[chunk_num+1] - this->dir.pos[chunk_num] + 1;
@@ -448,7 +403,6 @@ uint32_t PandaLog::find_ind(uint64_t instr, uint32_t lo_idx, uint32_t high_idx){
 
     //First entry of log always has pc = -1 and instr = -1
     // skip it if that's the case
-    
     PandalogChunk *chunk = &(this->chunk);
     if (chunk->entries[lo_idx]->instr() == -1 && chunk->entries[lo_idx]->pc() == -1){
         lo_idx++;
@@ -515,8 +469,4 @@ void PandaLog::pandalog_seek(uint64_t instr){
 
     this->chunk.ind_entry = ind;
 }
-
-
-
-
 

@@ -1,5 +1,9 @@
 
 /*
+ * This is the old version of plog_reader that uses the protobuf-c library. 
+ * Works just fine, but be careful of memory leaks...
+ * You can uncomment compile target in Makefile.panda.target
+ *
  cd panda/qemu/panda
 
  gcc -c   pandalog_reader.c  -g
@@ -13,18 +17,13 @@
 #define __STDC_FORMAT_MACROS
 
 extern "C" {
-
     #include <inttypes.h>
     #include <stdio.h>
     #include <stdlib.h>
     #include <stdint.h>
-    //#include "../include/panda/plog.h"
-    //#include "../include/panda/plog_print.h"
     #include "panda/plog.h"
     #include "panda/plog_print.h"
 }
-//#include <map>
-//#include <string>
 
 int main (int argc, char **argv) {
     if (argc < 2) {
