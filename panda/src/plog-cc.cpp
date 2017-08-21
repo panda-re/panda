@@ -472,6 +472,7 @@ void PandaLog::seek(uint64_t instr){
     this->chunk.ind_entry = ind;
 }
 
+// Called from vl.c to open a global pandalog for all plugins to write to
 void pandalog_init(const char * fname){
     globalLog.open(fname, "w");
 }
