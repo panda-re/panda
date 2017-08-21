@@ -37,7 +37,7 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
-plugin-%: plog.pb.h $(PANDA_API_EXT)
+plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
