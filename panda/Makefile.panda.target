@@ -37,7 +37,7 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
-plugin-%: plog.pb.h $(PANDA_API_EXT)
+plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -69,9 +69,11 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 		"PROTO   $(TARGET_DIR)$@")
 
 %.pb-c.h %.pb-c.c: %.proto
+	# C++ Protobuf 
 	$(call quiet-command,\
 		protoc --proto_path=. --cpp_out=. $<,\
 		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
+	# C protobuf
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
 		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c",)
@@ -95,6 +97,7 @@ GENERATED_HEADERS += $(PANDA_API_EXT)
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@ -I$(SRC_PATH)/panda/include/fake_libc_include $(QEMU_INCLUDES),\
 		"API     $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
+# All of these will be generated according to rules in rules.mak
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
@@ -102,6 +105,7 @@ obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
+# These are for C++ protobuf pandalog
 obj-y += panda/src/plog-cc.o
 obj-y += panda/src/plog.pb.o
 #obj-y += panda/src/plog_print.o

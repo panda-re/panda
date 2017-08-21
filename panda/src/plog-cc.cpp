@@ -10,7 +10,11 @@ using namespace std;
 
 extern int panda_in_main_loop;
 
+<<<<<<< HEAD:panda/src/plog-cc.cpp
 void PandaLog::pandalog_create(uint32_t chunk_size) {
+=======
+void PandaLog::create(uint32_t chunk_size) {
+>>>>>>> pandalog-cpp:panda/src/plog-cc.cpp
     this->chunk.size = chunk_size;
     this->chunk.zsize = chunk_size;
     // NB: malloc chunk a little big since we need to maintain
@@ -24,8 +28,8 @@ void PandaLog::pandalog_create(uint32_t chunk_size) {
     return;
 }
 
-void PandaLog::pandalog_read_dir(){
-    PlHeader *plh = pandalog_read_header();
+void PandaLog::read_dir(){
+    PlHeader *plh = read_header();
     
     this->chunk.size = plh->chunk_size;
     this->chunk.zsize = plh->chunk_size;
@@ -59,7 +63,7 @@ void PandaLog::pandalog_read_dir(){
     dir->pos[num_chunks] = plh->dir_pos;
 }
 
-PlHeader* PandaLog::pandalog_read_header(){
+PlHeader* PandaLog::read_header(){
     PlHeader *plh = new PlHeader();
     this->file->read((char *)plh, sizeof(PlHeader));
     assert(this->file->gcount() == sizeof(PlHeader));
@@ -68,10 +72,10 @@ PlHeader* PandaLog::pandalog_read_header(){
 }
 
 
-void PandaLog::pandalog_open_read(const char * fname, PlMode mode){
+void PandaLog::open_read(const char * fname, PlMode mode){
     std::fstream *plog_file = new fstream();
 
-    pandalog_create(0);
+    create(0);
     plog_file->open(fname, ios::in|ios::binary);
     if(plog_file->fail()){
         printf("File open failed");
@@ -83,26 +87,26 @@ void PandaLog::pandalog_open_read(const char * fname, PlMode mode){
     this->file = plog_file;
 
     // read directory and header
-    pandalog_read_dir();
+    read_dir();
 
     if (this->mode == PL_MODE_READ_FWD){
-        pandalog_seek(0);
+        seek(0);
     } else {
-        pandalog_seek(-1);
+        seek(-1);
     }
 }
 
-void PandaLog::pandalog_open(const char *path, const char* mode){
+void PandaLog::open(const char *path, const char* mode){
     if (0==strcmp(mode, "w")) {
-        pandalog_open_write((const char *) path, (uint32_t) PL_CHUNKSIZE);
+        open_write((const char *) path, (uint32_t) PL_CHUNKSIZE);
     }
     if (0==strcmp(mode, "r")) {
-        pandalog_open_read_fwd(path);
+        open_read_fwd(path);
     }
 }
 
-void PandaLog::pandalog_open_write(const char* filepath, uint32_t chunk_size){
-    pandalog_create(chunk_size);
+void PandaLog::open_write(const char* filepath, uint32_t chunk_size){
+    create(chunk_size);
 
     fstream *plog_file = new fstream();
 
@@ -123,18 +127,18 @@ void PandaLog::pandalog_open_write(const char* filepath, uint32_t chunk_size){
     printf ("max_chunks = %d\n", this->dir.max_chunks);
     // write bogus initial chunk
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
-    pandalog_write_entry(std::move(ple));
+    write_entry(std::move(ple));
 }
 
-void PandaLog::pandalog_open_read_bwd(const char *fname){
-    pandalog_open_read(fname, PL_MODE_READ_BWD);
+void PandaLog::open_read_bwd(const char *fname){
+    open_read(fname, PL_MODE_READ_BWD);
 }
 
-void PandaLog::pandalog_open_read_fwd(const char* fname){
-    pandalog_open_read(fname, PL_MODE_READ_FWD);
+void PandaLog::open_read_fwd(const char* fname){
+    open_read(fname, PL_MODE_READ_FWD);
 }
 
-std::unique_ptr<panda::LogEntry> PandaLog::pandalog_read_entry(){
+std::unique_ptr<panda::LogEntry> PandaLog::read_entry(){
     
     PandalogCcChunk *plc = &(this->chunk);
     /*uint8_t new_chunk = 0;*/
@@ -200,7 +204,11 @@ void PandaLog::write_header(PlHeader* plh){
     this->file->write((char *)plh, sizeof(*plh));
 }
 
+<<<<<<< HEAD:panda/src/plog-cc.cpp
 void PandaLog::pandalog_write_dir(){
+=======
+void PandaLog::write_dir(){
+>>>>>>> pandalog-cpp:panda/src/plog-cc.cpp
     PandalogCcDir *dir = &(this->dir);
     uint32_t num_chunks = this->chunk_num;
 
@@ -245,12 +253,12 @@ void PandaLog::add_dir_entry(uint32_t chunk){
     this->dir.num_entries[chunk] = this->chunk.ind_entry;
 }
 
-int PandaLog::pandalog_close(){
+int PandaLog::close(){
 
     if (this->mode == PL_MODE_WRITE){
         write_current_chunk();
         add_dir_entry(this->chunk_num);
-        pandalog_write_dir();
+        write_dir();
     }
 
     this->file->close();
@@ -296,7 +304,7 @@ void PandaLog::write_current_chunk(){
 
 uint64_t last_instr_entry = -1;
 
-void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
+void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
 
     if (panda_in_main_loop) {
         entry->set_pc(panda_current_pc(first_cpu));
@@ -443,7 +451,7 @@ uint32_t PandaLog::find_chunk(uint64_t instr, uint32_t lo, uint32_t high){
 
 }
 
-void PandaLog::pandalog_seek(uint64_t instr){
+void PandaLog::seek(uint64_t instr){
     // do a Binary search for this idx 
     uint32_t chunk_num = find_chunk(instr, 0, this->dir.max_chunks-1);
     this->chunk_num = chunk_num;
@@ -472,10 +480,8 @@ void PandaLog::pandalog_seek(uint64_t instr){
     this->chunk.ind_entry = ind;
 }
 
+// Called from vl.c to open a global pandalog for all plugins to write to
 void pandalog_init(const char * fname){
-
-    globalLog.pandalog_open(fname, "w");
-    printf("padnalog init\n");
-    
+    globalLog.open(fname, "w");
 }
 

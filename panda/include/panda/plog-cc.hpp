@@ -74,42 +74,42 @@ public:
     };
 
     // open pandalog for write with this uncompressed chunk size
-    void pandalog_open_write(const char *path, uint32_t chunk_size);
+    void open_write(const char *path, uint32_t chunk_size);
 
-    void pandalog_open_read(const char *path, PlMode mode);
+    void open_read(const char *path, PlMode mode);
 
     // open pandalog for reading in forward direction
-    void pandalog_open_read_fwd(const char *path);
+    void open_read_fwd(const char *path);
 
     // open pandalog for reading in backward direction
-    void pandalog_open_read_bwd(const char *path);
+    void open_read_bwd(const char *path);
 
-    void pandalog_open(const char *path, const char *mode);
+    void open(const char *path, const char *mode);
 
     // close pandalog (all modes)
-    int  pandalog_close(void);
+    int  close(void);
 
-    void pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry);
+    void write_entry(std::unique_ptr<panda::LogEntry> entry);
 
-    std::unique_ptr<panda::LogEntry> pandalog_read_entry(void);
+    std::unique_ptr<panda::LogEntry> read_entry(void);
 
-    void pandalog_seek(uint64_t instr);
+    void seek(uint64_t instr);
 
 private: 
     //initializes some fields in the pandalog
-    void pandalog_create(uint32_t chunk_size);
+    void create(uint32_t chunk_size);
 
     // Reads header, located at beginning of log
-    PlHeader* pandalog_read_header();
+    PlHeader* read_header();
 
     // Write header to beginning of log
     void write_header(PlHeader *);
 
     //Read directory entries
-    void pandalog_read_dir();
+    void read_dir();
 
     //Write directory entries
-    void pandalog_write_dir();
+    void write_dir();
 
     // decompresses chunk and reads all entries into vector
     void unmarshall_chunk(uint32_t chunk_num);
@@ -125,7 +125,6 @@ private:
 
     //Finds chunk with this instr number
     uint32_t find_chunk(uint64_t instr, uint32_t lo, uint32_t high);
-
 };
 
 PandaLog globalLog;
