@@ -10,11 +10,7 @@ using namespace std;
 
 extern int panda_in_main_loop;
 
-<<<<<<< HEAD:panda/src/plog-cc.cpp
-void PandaLog::pandalog_create(uint32_t chunk_size) {
-=======
 void PandaLog::create(uint32_t chunk_size) {
->>>>>>> pandalog-cpp:panda/src/plog-cc.cpp
     this->chunk.size = chunk_size;
     this->chunk.zsize = chunk_size;
     // NB: malloc chunk a little big since we need to maintain
@@ -204,11 +200,7 @@ void PandaLog::write_header(PlHeader* plh){
     this->file->write((char *)plh, sizeof(*plh));
 }
 
-<<<<<<< HEAD:panda/src/plog-cc.cpp
-void PandaLog::pandalog_write_dir(){
-=======
 void PandaLog::write_dir(){
->>>>>>> pandalog-cpp:panda/src/plog-cc.cpp
     PandalogCcDir *dir = &(this->dir);
     uint32_t num_chunks = this->chunk_num;
 
