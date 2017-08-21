@@ -7,16 +7,22 @@
  *
  */
 
+#ifndef __PANDALOG_CC_H_
+#define __PANDALOG_CC_H_
 
-#ifndef __PANDALOG_H_
-#define __PANDALOG_H_
+extern "C" {
+
+#include "panda/rr/rr_log.h"
+#include <zlib.h>
+#include "panda/common.h"
+}
 
 #include <stdio.h>
 #include <iostream>
 #include <memory>
 #include <stdint.h>
-#include <zlib.h>
 #include "panda/plog.pb.h"
+#include "panda/plog.h"
 
 #define PL_CURRENT_VERSION 2
 // compression level
@@ -27,29 +33,16 @@
 #define PL_HEADER_SIZE 128
 
 
-typedef enum {
-    PL_MODE_WRITE,
-    PL_MODE_READ_FWD,
-    PL_MODE_READ_BWD,
-    PL_MODE_UNKNOWN
-} PlMode;
-
-typedef struct pandalog_header_struct {
-    uint32_t version;     // version number
-    uint64_t dir_pos;     // position in file of directory
-    uint32_t chunk_size;  // chunk size
-} PlHeader;
-
-typedef struct pandalog_dir_struct {
+typedef struct pandalog_cc_dir_struct {
     uint32_t max_chunks;       // max number of entries (chunks).  
                                // when writing, an overestimate.  when reading, this is num_chunks
     std::vector<uint64_t> instr;           // array of instruction counts.  instr[i] is start (first) instruction in chunk i
     std::vector<uint64_t> pos;             // array of file positions.      pos[i] is start file position for chunk i
     std::vector<uint64_t> num_entries;     // size of each chunk in number of pandalog entries
-} PandalogDir;
+} PandalogCcDir;
 
 
-typedef struct pandalog_chunk_struct {
+typedef struct pandalog_cc_chunk_struct {
     uint32_t size;              // in bytes of a chunk
     uint32_t zsize;             // in bytes of a compressed chunk. 
     unsigned char *buf;         // uncompressed chunk data
@@ -63,14 +56,14 @@ typedef struct pandalog_chunk_struct {
     uint32_t num_entries;       // size of that array 
     uint32_t max_num_entries;   // capacity of that array
     uint32_t ind_entry;         // index into array of entries
-} PandalogChunk;
+} PandalogCcChunk;
 
 class PandaLog {
     PlMode mode;
     const char *filename;
     std::fstream *file;
-    PandalogDir dir;
-    PandalogChunk chunk;
+    PandalogCcDir dir;
+    PandalogCcChunk chunk;
     uint32_t chunk_num;
 
 public:    
@@ -134,5 +127,7 @@ private:
     uint32_t find_chunk(uint64_t instr, uint32_t lo, uint32_t high);
 
 };
+
+PandaLog globalLog;
 
 #endif

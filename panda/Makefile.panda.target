@@ -37,7 +37,7 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+plugin-%: plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -46,7 +46,7 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
-extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+extra-plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -83,6 +83,7 @@ plog_pb2.py: plog.proto
 		"PROTO   $(TARGET_DIR)$@")
 
 GENERATED_HEADERS += plog.pb-c.h
+GENERATED_HEADERS += plog.pb.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
 
 # This keeps make from thinking it's an "intermediate" file
@@ -101,6 +102,8 @@ obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
+obj-y += panda/src/plog-cc.o
+obj-y += panda/src/plog.pb.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o

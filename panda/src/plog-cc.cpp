@@ -1,10 +1,14 @@
+
 #include <iostream>
 #include <math.h>
 #include <fstream>
 #include <memory>
-#include "panda/plog.hpp"
+#include "panda/plog-cc.hpp"
+#include "panda/plog-cc-init.h"
 
 using namespace std; 
+
+extern int panda_in_main_loop;
 
 void PandaLog::pandalog_create(uint32_t chunk_size) {
     this->chunk.size = chunk_size;
@@ -35,7 +39,7 @@ void PandaLog::pandalog_read_dir(){
     uint32_t num_chunks;
     this->file->read((char*)&num_chunks, sizeof(num_chunks));
     
-    PandalogDir *dir = &(this->dir);
+    PandalogCcDir *dir = &(this->dir);
     dir->max_chunks = num_chunks;
     
     uint32_t i;
@@ -132,8 +136,8 @@ void PandaLog::pandalog_open_read_fwd(const char* fname){
 
 std::unique_ptr<panda::LogEntry> PandaLog::pandalog_read_entry(){
     
-    PandalogChunk *plc = &(this->chunk);
-    uint8_t new_chunk = 0;
+    PandalogCcChunk *plc = &(this->chunk);
+    /*uint8_t new_chunk = 0;*/
     uint32_t new_chunk_num;
     std::unique_ptr<panda::LogEntry> returnEntry (new panda::LogEntry());
     
@@ -163,7 +167,7 @@ std::unique_ptr<panda::LogEntry> PandaLog::pandalog_read_entry(){
     }
 
     if (this->mode == PL_MODE_READ_BWD) {
-        if (plc->ind_entry < 0){
+        if (plc->ind_entry == -1){
             // if we've gone past beginning of current chunk
 
             //if this is first chunk, return NULL.
@@ -197,7 +201,7 @@ void PandaLog::write_header(PlHeader* plh){
 }
 
 void PandaLog::pandalog_write_dir(){
-    PandalogDir *dir = &(this->dir);
+    PandalogCcDir *dir = &(this->dir);
     uint32_t num_chunks = this->chunk_num;
 
     //create header
@@ -250,6 +254,7 @@ int PandaLog::pandalog_close(){
     }
 
     this->file->close();
+    return 0;
 }
 
 void PandaLog::write_current_chunk(){
@@ -289,7 +294,7 @@ void PandaLog::write_current_chunk(){
     this->chunk.ind_entry = 0;
 }
 
-uint64_t instr_last_entry = -1;
+uint64_t last_instr_entry = -1;
 
 void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
 
@@ -305,8 +310,8 @@ void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
     size_t n = entry->ByteSize();
 
     // invariant: all log entries for an instruction belong in a single chunk
-    if(instr_last_entry == -1 
-        && (instr_last_entry != entry->instr())
+    if(last_instr_entry == -1 
+        && (last_instr_entry != entry->instr())
         && (this->chunk.buf_p + n  >= this->chunk.buf + this->chunk.size)) {
         // entry  won't fit in current chunk
         // and new entry is a different instr from last entry written
@@ -331,13 +336,13 @@ void PandaLog::pandalog_write_entry(std::unique_ptr<panda::LogEntry> entry){
     entry->SerializeToArray(this->chunk.buf_p, n);
     this->chunk.buf_p += n;
     // remember instr for last entry
-    instr_last_entry = entry->instr();
+    last_instr_entry = entry->instr();
     this->chunk.ind_entry ++;
 }
 
 void PandaLog::unmarshall_chunk(uint32_t chunk_num){  
     printf ("unmarshalling chunk %d\n", chunk_num);
-    PandalogChunk *chunk = &(this->chunk);
+    PandalogCcChunk *chunk = &(this->chunk);
     // read compressed chunk data off disk
     this->file->seekg(this->dir.pos[chunk_num]);
 
@@ -400,7 +405,7 @@ uint32_t PandaLog::find_ind(uint64_t instr, uint32_t lo_idx, uint32_t high_idx){
 
     //First entry of log always has pc = -1 and instr = -1
     // skip it if that's the case
-    PandalogChunk *chunk = &(this->chunk);
+    PandalogCcChunk *chunk = &(this->chunk);
     if (chunk->entries[lo_idx]->instr() == -1 && chunk->entries[lo_idx]->pc() == -1){
         lo_idx++;
     }
@@ -465,5 +470,12 @@ void PandaLog::pandalog_seek(uint64_t instr){
     }
 
     this->chunk.ind_entry = ind;
+}
+
+void pandalog_init(const char * fname){
+
+    globalLog.pandalog_open(fname, "w");
+    printf("padnalog init\n");
+    
 }
 
