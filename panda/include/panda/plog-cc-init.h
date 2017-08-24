@@ -8,6 +8,7 @@
 extern "C" {
 #endif
 void pandalog_init(const char *fname);
+void pandalog_cc_close(void);
 #ifdef __cplusplus
 }
 #endif

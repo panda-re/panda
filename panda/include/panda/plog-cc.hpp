@@ -13,8 +13,10 @@
 extern "C" {
 
 #include "panda/rr/rr_log.h"
-#include <zlib.h>
 #include "panda/common.h"
+
+#include <zlib.h>
+#include "panda/plog.h"
 }
 
 #include <stdio.h>
@@ -22,7 +24,6 @@ extern "C" {
 #include <memory>
 #include <stdint.h>
 #include "panda/plog.pb.h"
-#include "panda/plog.h"
 
 #define PL_CURRENT_VERSION 2
 // compression level
@@ -33,16 +34,19 @@ extern "C" {
 #define PL_HEADER_SIZE 128
 
 
-typedef struct pandalog_cc_dir_struct {
-    uint32_t max_chunks;       // max number of entries (chunks).  
+struct PandalogCcDir {
+
+    uint32_t num_chunks;       // max number of entries (chunks).  
                                // when writing, an overestimate.  when reading, this is num_chunks
     std::vector<uint64_t> instr;           // array of instruction counts.  instr[i] is start (first) instruction in chunk i
     std::vector<uint64_t> pos;             // array of file positions.      pos[i] is start file position for chunk i
     std::vector<uint64_t> num_entries;     // size of each chunk in number of pandalog entries
-} PandalogCcDir;
+};
 
 
-typedef struct pandalog_cc_chunk_struct {
+struct PandalogCcChunk {
+    //pandalog_cc_chunk_struct() : entries(128){}
+
     uint32_t size;              // in bytes of a chunk
     uint32_t zsize;             // in bytes of a compressed chunk. 
     unsigned char *buf;         // uncompressed chunk data
@@ -56,7 +60,7 @@ typedef struct pandalog_cc_chunk_struct {
     uint32_t num_entries;       // size of that array 
     uint32_t max_num_entries;   // capacity of that array
     uint32_t ind_entry;         // index into array of entries
-} PandalogCcChunk;
+};
 
 class PandaLog {
     PlMode mode;
@@ -68,7 +72,7 @@ class PandaLog {
 
 public:    
     //default constructor
-    PandaLog(){
+    PandaLog(): mode(PL_MODE_UNKNOWN){
         mode = PL_MODE_UNKNOWN;
         chunk_num = 0;
     };
@@ -115,7 +119,7 @@ private:
     void unmarshall_chunk(uint32_t chunk_num);
 
     // Adds directory entry to list of directory entries. Does not write to log
-    void add_dir_entry(uint32_t chunk_num);
+    void add_dir_entry();
 
     //Zlib compresses and writes current chunk to log
     void write_current_chunk();
@@ -126,7 +130,5 @@ private:
     //Finds chunk with this instr number
     uint32_t find_chunk(uint64_t instr, uint32_t lo, uint32_t high);
 };
-
-PandaLog globalLog;
 
 #endif
