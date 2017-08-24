@@ -102,6 +102,7 @@ obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
+obj-y += panda/src/plog_no_rr.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
@@ -117,8 +118,9 @@ $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 
 $(PLOG_READER_PROG): panda/src/plog_no_rr.o \
 	panda/src/plog_reader.o \
-	panda/src/plog_print.o \
-	plog.pb-c.o
+	plog.pb.o \
+	panda/src/plog-cc.o
+
 	$(call LINK,$^)
 
 # Uncomment $(PLOG_READER_PROG) to enable compiled plog_reader.
