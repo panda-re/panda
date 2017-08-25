@@ -111,7 +111,7 @@ static void tp_label_additive(Addr a, uint32_t l) {
     if (new_ls) {
         tp_labelset_put(a, new_ls);
         labels_applied.insert(l);
-	}
+    }
 }
 
 // retrieve ls for this addr
@@ -210,33 +210,33 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
 }
 
 extern "C" void taint2_query_set(Addr a, uint32_t *out) {
-	auto set = tp_labelset_get(a);
-	if (set == nullptr || set->empty()) return;
+    auto set = tp_labelset_get(a);
+    if (set == nullptr || set->empty()) return;
 
-	auto it = set->begin();
-	for (size_t i = 0; it != set->end(); ++i, ++it) {
-		out[i] = *it;
-	}
+    auto it = set->begin();
+    for (size_t i = 0; it != set->end(); ++i, ++it) {
+        out[i] = *it;
+    }
 }
 
 extern "C" void taint2_query_set_ram(uint64_t pa, uint32_t *out) {
-	auto set = tp_labelset_get(make_maddr(pa));
-	if (set == nullptr || set->empty()) return;
+    auto set = tp_labelset_get(make_maddr(pa));
+    if (set == nullptr || set->empty()) return;
 
-	auto it = set->begin();
-	for (size_t i = 0; it != set->end(); ++i, ++it) {
-		out[i] = *it;
-	}
+    auto it = set->begin();
+    for (size_t i = 0; it != set->end(); ++i, ++it) {
+        out[i] = *it;
+    }
 }
 
 extern "C" void taint2_query_set_reg(int reg_num, int offset, uint32_t *out) {
-	auto set = tp_labelset_get(make_greg(reg_num, offset));
-	if (set == nullptr || set->empty()) return;
+    auto set = tp_labelset_get(make_greg(reg_num, offset));
+    if (set == nullptr || set->empty()) return;
 
-	auto it = set->begin();
-	for (size_t i = 0; it != set->end(); ++i, ++it) {
-		out[i] = *it;
-	}
+    auto it = set->begin();
+    for (size_t i = 0; it != set->end(); ++i, ++it) {
+        out[i] = *it;
+    }
 }
 
 uint32_t taint2_query_tcn(Addr a) {
@@ -323,8 +323,10 @@ Panda__TaintQuery *taint2_query_pandalog (Addr a, uint32_t offset) {
 
     LabelSetP ls = tp_labelset_get(a);
     if (ls) {
-        Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
-        *tq = PANDA__TAINT_QUERY__INIT;
+        //Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
+        //*tq = PANDA__TAINT_QUERY__INIT;
+        //
+        std::unique_ptr<panda::TaintQuery> tq (new panda::TaintQuery());
 
         // Returns true if insertion took place, i.e. we should plog this LS.
         if (ls_returned.insert(ls).second) {
@@ -332,26 +334,42 @@ Panda__TaintQuery *taint2_query_pandalog (Addr a, uint32_t offset) {
             // this ls hasn't yet been written to pandalog
             // write out mapping from ls pointer to labelset contents
             // as its own separate log entry
-            Panda__TaintQueryUniqueLabelSet *tquls =
-                (Panda__TaintQueryUniqueLabelSet *)
-                malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
-            *tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
-            tquls->ptr = (uint64_t) ls;
-            tquls->n_label = ls ? ls->size() : 0;
-            tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
+            //Panda__TaintQueryUniqueLabelSet *tquls =
+                //(Panda__TaintQueryUniqueLabelSet *)
+                //malloc (sizeof (Panda__TaintQueryUniqueLabelSet));
+            //*tquls = PANDA__TAINT_QUERY_UNIQUE_LABEL_SET__INIT;
+            //tquls->ptr = (uint64_t) ls;
+            //tquls->n_label = ls ? ls->size() : 0;
+            //tquls->label = (uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label);
+            //el_arr_ind = 0;
+            //tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
+            //tq->unique_label_set = tquls;
+            
+            panda::TaintQueryUniqueLabelSet* tquls(tq.mutable_unique_label_set());
+            tquls->set_ptr((uint64_t)ls);
+            uint64_t n_label = ls ? ls->size() : 0;
+            tquls->set_n_label(n_label);
+            tquls->set_label((uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label());
+
             el_arr_ind = 0;
             tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
-            tq->unique_label_set = tquls;
+
         }
-        tq->ptr = (uint64_t) ls;
-        tq->tcn = taint2_query_tcn(a);
+        //tq->ptr = (uint64_t) ls;
+        //tq->tcn = taint2_query_tcn(a);
+
+        tq->set_ptr((uint64_t) ls);
+        tq->set_tcn(taint2_query_tcn(a));
+
         // offset within larger thing being queried
-        tq->offset = offset;
+        //tq->offset = offset;
+        tq->set_offset(offset);
         return tq;
     }
     return nullptr;
 }
 
+//XXX: Remove this entirely
 void pandalog_taint_query_free(Panda__TaintQuery *tq) {
     if (tq->unique_label_set) {
         if (tq->unique_label_set->label) {
