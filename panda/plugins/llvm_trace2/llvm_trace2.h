@@ -17,12 +17,17 @@ PANDAENDCOMMENT */
 
 extern "C" {
 
-#include "panda/plog.h"
 #include "panda/plugin.h"
 bool init_plugin(void *self);
 void uninit_plugin(void *self);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 }
+
+
+#include "panda/plog-cc.hpp"
+#include "panda/plog.pb.h"
+
+extern PandaLog globalLog;
 
 namespace llvm {
 
