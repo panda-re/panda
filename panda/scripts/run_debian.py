@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--rr", action='store_true')
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
-    parser.add_argument("--qemu_args", action='store')
+    parser.add_argument("--qemu_args", action='store', default="")
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
 
     args, guest_cmd = parser.parse_known_args()
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     print "args =", guest_cmd
     print "new_guest_cmd =", new_guest_cmd
     print "env = ", env
-
+    
     create_recording(
         join(panda_build_dir, arch_data.dir, arch_data.binary),
         qcow, "root", new_guest_cmd,
