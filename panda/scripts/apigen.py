@@ -6,6 +6,7 @@ import re
 import pdb
 import pycparser
 import subprocess
+import clang.cindex
 
 KNOWN_TYPES = ['int', 'double', 'float', 'char', 'short', 'long',
                'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']
@@ -17,23 +18,33 @@ KNOWN_TYPES = ['int', 'double', 'float', 'char', 'short', 'long',
 # void taint2_labelset_llvm_iter(int reg_num, int offset, int (*app)(uint32_t el, void *stuff1), void *stuff2);
 # this will return
 # ["reg_num", "offset", "app", "stuff2"]
-#
-def get_arglists(pf):
-#    pyf = subprocess.check_output( ("gcc -E " + prototype_file).split())
-    pyc = pycparser.CParser()
-    p = pyc.parse(pf)
+
+
+def get_arglists(node):
     args = {}
-    for (dc, d) in p.children():
-        if type(d) == pycparser.c_ast.Decl:
-            # a prototype
-            function_name = d.name
-            #print "function name = [%s]" % function_name
-            fundec = d.children()[0][1]
-            args[function_name] = []
-            for arg in fundec.args.params:
-                if not (arg.name is None):
-                    args[function_name].append(arg.name)
+    for child in node.get_children():
+        if child.kind is clang.cindex.CursorKind.FUNCTION_DECL:
+            args[child.spelling] = [arg.spelling for arg in child.get_arguments()]
+    
     return args
+
+# def get_arglists(pf):
+# #    pyf = subprocess.check_output( ("gcc -E " + prototype_file).split())
+    # pyc = pycparser.CParser()
+    # p = pyc.parse(pf)
+    # args = {}
+    # for (dc, d) in p.children():
+        # if type(d) == pycparser.c_ast.Decl:
+            # # a prototype
+            # function_name = d.name
+            # #print "function name = [%s]" % function_name
+            # fundec = d.children()[0][1]
+            # args[function_name] = []
+            # for arg in fundec.args.params:
+                # if not (arg.name is None):
+                    # args[function_name].append(arg.name)
+    # return args
+
 
 
 # prototype_line is a string containint a c function prototype.
@@ -70,6 +81,8 @@ def generate_code(functions, module, includes):
 
 #include <dlfcn.h>
 #include "panda/plugin.h"
+#include "panda/plog-cc.hpp"
+#include "panda/plog.pb.cc"
 
 """
 #    for include in includes:
@@ -145,7 +158,7 @@ def resolve_type(modifiers, name):
     else:
         return rtype, name
 
-def generate_api(interface_file, ext_file, extra_gcc_args):
+def generate_api(interface_file, ext_file, extra_gcc_args, translation_unit):
     functions = []
     includes = []
 
@@ -153,14 +166,14 @@ def generate_api(interface_file, ext_file, extra_gcc_args):
     pf = subprocess.check_output(['gcc', '-E', interface_file] + extra_gcc_args).decode()
 
     # use pycparser to get arglists
-    arglist = get_arglists(pf)
+    arglist = get_arglists(translation_unit.cursor)
 
     for line in pf.split("\n"):
         line = line.strip();
         if line and not line.startswith('#') and not (re.match("^/", line)):
             # not a typedef and not a comment.
             # could be a fn prototype
-            #print line
+            # print line
             foo = split_fun_prototype(line)
             if not (foo is None):
                 # it is a fn prototype -- pull out return type, name, and arglist with types
@@ -170,6 +183,7 @@ def generate_api(interface_file, ext_file, extra_gcc_args):
     # Plugin interface file will look like [...]/plugins/<name>/<name>_int.h
     plugin_name = os.path.basename(os.path.dirname(interface_file))
     code = generate_code(functions, plugin_name, includes)
+    print code
     with open(ext_file,"w") as extAPI:
         extAPI.write(code)
 
@@ -177,4 +191,10 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         sys.stderr.write("usage: %s <interface_file.h> <external_api_file.h> extra gcc args" % sys.argv[0])
         sys.exit(1)
-    generate_api(sys.argv[1], sys.argv[2], sys.argv[3:])
+
+    # Need to locate LLVM's python bindings and libclang.so
+
+    index = clang.cindex.Index.create()
+    translation_unit = index.parse(sys.argv[1], args= '-xc++ --std=c++11'.split())
+
+    generate_api(sys.argv[1], sys.argv[2], sys.argv[3:], translation_unit)

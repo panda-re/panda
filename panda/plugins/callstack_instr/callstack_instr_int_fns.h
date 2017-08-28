@@ -18,7 +18,7 @@ int get_functions(target_ulong *functions, int n, CPUState *cpu);
 void get_prog_point(CPUState *cpu, prog_point *p);
 
 // create pandalog message for callstack info
-Panda__CallStack *pandalog_callstack_create(void);
+panda::CallStack *pandalog_callstack_create(void);
 
 // free that data structure
 void pandalog_callstack_free(Panda__CallStack *cs);

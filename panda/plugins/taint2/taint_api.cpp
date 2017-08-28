@@ -1,6 +1,8 @@
 #include "taint_api.h"
 #include "taint2.h"
 
+extern PandaLog globalLog;
+
 Addr make_maddr(uint64_t a) {
     Addr ma;
     ma.typ = MADDR;
@@ -148,14 +150,18 @@ void taint2_label_reg_additive(int reg_num, int offset, uint32_t l) {
 void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
     hwaddr pa = panda_virt_to_phys(cpu, virt_addr);
     if (pandalog) {
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        ple.has_taint_label_virtual_addr = 1;
-        ple.has_taint_label_physical_addr = 1;
-        ple.has_taint_label_number = 1;
-        ple.taint_label_virtual_addr = virt_addr;
-        ple.taint_label_physical_addr = pa;
-        ple.taint_label_number = label_num;
-        pandalog_write_entry(&ple);
+        //Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->set_taint_label_virtual_addr(virt_addr);
+        ple->set_taint_label_physical_addr(pa);
+        ple->set_taint_label_number(label_num);
+        //ple.has_taint_label_virtual_addr = 1;
+        //ple.has_taint_label_physical_addr = 1;
+        //ple.has_taint_label_number = 1;
+        //ple.taint_label_virtual_addr = virt_addr;
+        //ple.taint_label_physical_addr = pa;
+        //ple.taint_label_number = label_num;
+        globalLog.write_entry(std::move(ple));
     }
     taint2_label_ram(pa, label_num);
 }
@@ -317,16 +323,17 @@ static int collect_query_labels_pandalog(uint32_t el, void *stuff) {
   ugh.
 */
 
-Panda__TaintQuery *taint2_query_pandalog (Addr a, uint32_t offset) {
+panda::TaintQuery* taint2_query_pandalog (Addr a, uint32_t offset) {
     // used to ensure that we only write a label sets to pandalog once
     static std::set <LabelSetP> ls_returned;
+    printf("Taint query pandalog\n");
 
     LabelSetP ls = tp_labelset_get(a);
     if (ls) {
         //Panda__TaintQuery *tq = (Panda__TaintQuery *) malloc(sizeof(Panda__TaintQuery));
         //*tq = PANDA__TAINT_QUERY__INIT;
         //
-        std::unique_ptr<panda::TaintQuery> tq (new panda::TaintQuery());
+        panda::TaintQuery* tq (new panda::TaintQuery);
 
         // Returns true if insertion took place, i.e. we should plog this LS.
         if (ls_returned.insert(ls).second) {
@@ -345,14 +352,14 @@ Panda__TaintQuery *taint2_query_pandalog (Addr a, uint32_t offset) {
             //tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
             //tq->unique_label_set = tquls;
             
-            panda::TaintQueryUniqueLabelSet* tquls(tq.mutable_unique_label_set());
+            panda::TaintQueryUniqueLabelSet* tquls(tq->mutable_unique_label_set());
             tquls->set_ptr((uint64_t)ls);
             uint64_t n_label = ls ? ls->size() : 0;
-            tquls->set_n_label(n_label);
-            tquls->set_label((uint32_t *) malloc (sizeof(uint32_t) * tquls->n_label());
+            /*tquls->set_label((uint32_t *) malloc (sizeof(uint32_t) * n_label);*/
+            tquls->mutable_label()->Resize(n_label, 0);
 
             el_arr_ind = 0;
-            tp_ls_iter(ls, collect_query_labels_pandalog, (void *) tquls->label);
+            tp_ls_iter(ls, collect_query_labels_pandalog, (void *) (tquls->mutable_label()->mutable_data()));
 
         }
         //tq->ptr = (uint64_t) ls;

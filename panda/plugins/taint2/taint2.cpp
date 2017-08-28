@@ -56,6 +56,8 @@ extern "C" {
 
 }
 
+extern PandaLog globalLog;
+
 // These need to be extern "C" so that the ABI is compatible with
 // QEMU/PANDA, which is written in C
 extern "C" {
@@ -270,19 +272,29 @@ void panda_virtual_string_read(CPUState *cpu, target_ulong vaddr, char *str) {
   Construct pandalog msg for src-level info
  */
 
-Panda__SrcInfo *pandalog_src_info_create(PandaHypercallStruct phs) {
-    Panda__SrcInfo *si = (Panda__SrcInfo *) malloc(sizeof(Panda__SrcInfo));
-    *si = PANDA__SRC_INFO__INIT;
-    si->filename = phs.src_filename;
-    si->astnodename = phs.src_ast_node_name;
-    si->linenum = phs.src_linenum;
-    si->has_insertionpoint = 0;
+panda::SrcInfo* pandalog_src_info_create(PandaHypercallStruct phs) {
+    //panda::SrcInfo *si = (panda::SrcInfo *) malloc(sizeof(panda::SrcInfo));
+    //*si = PANDA__SRC_INFO__INIT;
+	panda::SrcInfo* si (new panda::SrcInfo());
+
+	si->set_filename(phs.src_filename);
+	si->set_astnodename(phs.src_ast_node_name);
+	si->set_linenum(phs.src_linenum);
     if (phs.insertion_point) {
-        si->has_insertionpoint = 1;
-        si->insertionpoint = phs.insertion_point;
+        si->set_insertionpoint(phs.insertion_point);
     }
-    si->has_ast_loc_id = 1;
-    si->ast_loc_id = phs.src_filename;
+	si->set_ast_loc_id(phs.src_filename);
+
+    //si->filename = phs.src_filename;
+    //si->astnodename = phs.src_ast_node_name;
+    //si->linenum = phs.src_linenum;
+    //si->has_insertionpoint = 0;
+    //if (phs.insertion_point) {
+        //si->has_insertionpoint = 1;
+        //si->insertionpoint = phs.insertion_point;
+    //}
+    //si->has_ast_loc_id = 1;
+    //si->ast_loc_id = phs.src_filename;
     return si;
 }
 
@@ -323,74 +335,110 @@ void taint_query_hypercall(PandaHypercallStruct phs) {
         if (num_tainted) {
             // ok at least one byte in the extent is tainted
             // 1. write the pandalog entry that tells us something was tainted on this extent
-            Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
-            *tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
-            tqh->buf = phs.buf;
-            tqh->len = len;
-            tqh->num_tainted = num_tainted;
+            //Panda__TaintQueryHypercall *tqh = (Panda__TaintQueryHypercall *) malloc (sizeof (Panda__TaintQueryHypercall));
+            //*tqh = PANDA__TAINT_QUERY_HYPERCALL__INIT;
+			
+			panda::TaintQueryHypercall* tqh (new panda::TaintQueryHypercall); 
+
+            tqh->set_buf(phs.buf);
+            tqh->set_len(len);
+            tqh->set_num_tainted(num_tainted);
             // obtain the actual data out of memory
             // NOTE: first X bytes only!
-            uint32_t data[QUERY_HYPERCALL_MAX_LEN];
+            //uint32_t data[QUERY_HYPERCALL_MAX_LEN];
             uint32_t n = len;
             // grab at most X bytes from memory to pandalog
             // this is just a snippet.  we dont want to write 1M buffer
             if (QUERY_HYPERCALL_MAX_LEN < len) n = QUERY_HYPERCALL_MAX_LEN;
-            for (uint32_t i=0; i<n; i++) {
-                data[i] = 0;
-                uint8_t c;
-                panda_virtual_memory_rw(cpu, phs.buf+i, &c, 1, false);
-                data[i] = c;
-            }
-            tqh->n_data = n;
-            tqh->data = data;
+
+			tqh->mutable_data()->Resize(n, 0);
+			for (uint32_t i=0; i<n; i++) {
+                //data[i] = 0;
+				uint8_t c;
+				panda_virtual_memory_rw(cpu, phs.buf+i, &c, 1, false);
+				tqh->set_data(i, c);
+			}
+			
+			//XXX: When porting over, be AWARE that data is a uint32_t vector but is a RepeatedField in C++
+			// Is this right??
+
+            //tqh->n_data = n;
+            //tqh->data = data;
+
             // 2. write out src-level info
-            Panda__SrcInfo *si = pandalog_src_info_create(phs);
-            tqh->src_info = si;
+			panda::SrcInfo* si = pandalog_src_info_create(phs);
+            tqh->set_allocated_src_info(si);
+
             // 3. write out callstack info
-            Panda__CallStack *cs = pandalog_callstack_create();
-            tqh->call_stack = cs;
-            std::vector<Panda__TaintQuery *> tq;
-            for (uint32_t offset=0; offset<len; offset++) {
+			panda::CallStack* cs = pandalog_callstack_create();
+            tqh->set_allocated_call_stack(cs);
+
+            std::vector<panda::TaintQuery *> tq_vec;
+            for (uint32_t offset=0; offset < len; offset++) {
                 uint32_t va = phs.buf + offset;
                 uint32_t pa =  panda_virt_to_phys(cpu, va);
+
                 if ((int) pa != -1) {
                     Addr a = make_maddr(pa);
                     if (taint2_query(a)) {
-                        tq.push_back(taint2_query_pandalog(a, offset));
+                        /*tq_vec.push_back(taint2_query_pandalog(a, offset));*/
+						//Add to tqh
+						tqh->mutable_taint_query()->AddAllocated(taint2_query_pandalog(a, offset));
                     }
                 }
             }
-            tqh->n_taint_query = tq.size();
-            tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);
-            for (uint32_t i=0; i<tqh->n_taint_query; i++) {
-                tqh->taint_query[i] = tq[i];
-            }
-            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-            ple.taint_query_hypercall = tqh;
-            pandalog_write_entry(&ple);
-            free(tqh->src_info);
-            pandalog_callstack_free(tqh->call_stack);
-            for (uint32_t i=0; i<tqh->n_taint_query; i++) {
-                pandalog_taint_query_free(tqh->taint_query[i]);
-            }
-            free(tqh);
+            /*tqh->n_taint_query = tq_vec.size();*/
+            /*tqh->taint_query = (Panda__TaintQuery **) malloc(sizeof(Panda__TaintQuery *) * tqh->n_taint_query);*/
+
+            /*for (uint32_t i=0; i<tqh->n_taint_query; i++) {*/
+                /*tqh->taint_query[i] = tq[i];*/
+            /*}*/
+
+			std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+			ple->set_allocated_taint_query_hypercall(tqh);
+			globalLog.write_entry(std::move(ple));
+
+            /*Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;*/
+            /*ple.taint_query_hypercall = tqh;*/
+			/*pandalog_write_entry(&ple);*/
+			
+			//XXX: Free crap. 
+			//free(tqh->src_info);
+            
+			//pandalog_callstack_free(tqh->call_stack);
+            //for (uint32_t i=0; i<tqh->n_taint_query; i++) {
+                //pandalog_taint_query_free(tqh->taint_query[i]);
+            //}
+            //free(tqh);
         }
     }
 }
 
 void lava_attack_point(PandaHypercallStruct phs) {
     if (pandalog) {
-        Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
-        *ap = PANDA__ATTACK_POINT__INIT;
-        ap->info = phs.info;
-        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
-        ple.attack_point = ap;
-        ple.attack_point->src_info = pandalog_src_info_create(phs);
-        ple.attack_point->call_stack = pandalog_callstack_create();
-        pandalog_write_entry(&ple);
-        free(ple.attack_point->src_info);
-        pandalog_callstack_free(ple.attack_point->call_stack);
-        free(ap);
+        //Panda__AttackPoint *ap = (Panda__AttackPoint *) malloc (sizeof (Panda__AttackPoint));
+        //*ap = PANDA__ATTACK_POINT__INIT;
+		//
+		panda::AttackPoint* ap (new panda::AttackPoint);
+
+		ap->set_info(phs.info);
+        //ap->info = phs.info;
+		std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        //Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+
+		ple->set_allocated_attack_point(ap);
+        //ple.attack_point = ap;
+
+		ple->mutable_attack_point()->set_allocated_src_info(pandalog_src_info_create(phs));
+		ple->mutable_attack_point()->set_allocated_call_stack(pandalog_callstack_create());
+		globalLog.write_entry(std::move(ple));
+
+        //ple.attack_point->src_info = pandalog_src_info_create(phs);
+        //ple.attack_point->call_stack = pandalog_callstack_create();
+        //pandalog_write_entry(&ple);
+        //free(ple.attack_point->src_info);
+        //pandalog_callstack_free(ple.attack_point->call_stack);
+        //free(ap);
     }
 }
 
