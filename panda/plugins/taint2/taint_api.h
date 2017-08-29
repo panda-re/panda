@@ -17,7 +17,7 @@ void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
 void taint2_delete_ram(uint64_t pa);
 void taint2_delete_reg(int reg_num, int offset);
 
-panda::TaintQuery* taint2_query_pandalog (Addr addr, uint32_t offset);
+Panda__TaintQuery *taint2_query_pandalog (Addr addr, uint32_t offset);
 void pandalog_taint_query_free(Panda__TaintQuery *tq);
 
 uint32_t taint2_query(Addr a);

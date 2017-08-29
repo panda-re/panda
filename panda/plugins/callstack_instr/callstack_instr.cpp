@@ -34,7 +34,6 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 
 #include "callstack_instr.h"
-#include "panda/plog-cc.hpp"
 
 extern "C" {
 #include "panda/plog.h"
@@ -292,7 +291,7 @@ int get_callers(target_ulong callers[], int n, CPUState* cpu) {
 
 #define CALLSTACK_MAX_SIZE 16
 // writes an entry to the pandalog with callstack info (and instr count and pc)
-panda::CallStack* pandalog_callstack_create() {
+Panda__CallStack *pandalog_callstack_create() {
     assert (pandalog);
     CPUState *cpu = first_cpu;
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
@@ -302,18 +301,15 @@ panda::CallStack* pandalog_callstack_create() {
     for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit) {
         n ++;
     }
-    /*Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));*/
-    /**cs = PANDA__CALL_STACK__INIT;*/
-    panda::CallStack* cs (new panda::CallStack());
-
-    /*cs->n_addr = n;*/
-    /*cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);*/
-
+    Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
+    *cs = PANDA__CALL_STACK__INIT;
+    cs->n_addr = n;
+    cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
     v = callstacks[get_stackid(env)];
     rit = v.rbegin();
     uint32_t i=0;
     for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit, ++i) {
-        cs->add_addr(rit->pc);
+        cs->addr[i] = rit->pc;
     }
     return cs;
 }

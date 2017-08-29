@@ -19,11 +19,9 @@
 
 #include <map>
 #include <set>
-#include <memory>
 
 #include "panda/plugin.h"
 
-#include "panda/plog-cc.hpp"
 #include "fast_shad.h"
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
