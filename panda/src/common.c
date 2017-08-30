@@ -6,7 +6,7 @@
 #include "panda/plugin.h"
 #include "panda/common.h"
 #include "panda/plog.h"
-#include "panda/plog-cc-init.h"
+#include "panda/plog-cc-bridge.h"
 
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;

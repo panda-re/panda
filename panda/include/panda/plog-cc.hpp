@@ -1,6 +1,6 @@
 /**
  *
- * Header file for C++ version of Pandalog. Mostly identical to C version in plog.c
+ * Header file for C++ implementation of Pandalog.
  * See plog.c and plog.h for missing details
  * plog.c contains an overview of the log format
  * 8/19/17 Ray Wang 

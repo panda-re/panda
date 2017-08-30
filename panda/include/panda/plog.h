@@ -86,7 +86,7 @@ void pandalog_open_read_bwd(const char *path);
 void pandalog_open(const char *path, const char *mode);
 
 // close pandalog (all modes)
-int  pandalog_close(void);
+void pandalog_close(void);
 
 // write this element to pandpog.
 // "asid", "pc", instruction count key/values

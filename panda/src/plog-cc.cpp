@@ -4,7 +4,7 @@
 #include <fstream>
 #include <memory>
 #include "panda/plog-cc.hpp"
-#include "panda/plog-cc-init.h"
+#include "panda/plog-cc-bridge.h"
 
 using namespace std; 
 
@@ -205,6 +205,7 @@ void PandaLog::write_header(PlHeader* plh){
     this->file->write((char *)plh, sizeof(*plh));
 }
 
+//write the directory and header
 void PandaLog::write_dir(){
     uint32_t num_chunks = this->chunk_num;
 
@@ -217,8 +218,8 @@ void PandaLog::write_dir(){
 
     printf("header: version=%d  dir_pos=%lu chunk_size=%d\n",
             plh.version, plh.dir_pos, plh.chunk_size);
-    // now go ahead and write dir where we are in logfile
 
+    // now go ahead and write dir where we are in logfile
     this->file->write((char*) &num_chunks, sizeof(num_chunks));
 
     uint32_t i;
@@ -251,14 +252,18 @@ int PandaLog::close(){
     return 0;
 }
 
-void PandaLog::write_current_chunk(){
+// compress current chunk and write it to file,
+// also update directory map
 #ifndef PLOG_READER
+void PandaLog::write_current_chunk(){
     printf("WRITING CURRENT CHUNK\n");
     
+    //uncompressed chunk size
     unsigned long chunk_sz = this->chunk.buf_p - this->chunk.buf;
     unsigned long ccs = this->chunk.zsize;
     int ret;
 
+    // loop allows compress2 to fail and resize output buffer as needed
     uint32_t i;
     for (i=0; i<10; i++) {
         ret = compress2(this->chunk.zbuf, &ccs, this->chunk.buf, chunk_sz, Z_BEST_COMPRESSION);
@@ -289,13 +294,13 @@ void PandaLog::write_current_chunk(){
     this->chunk.buf_p = this->chunk.buf;
     this->chunk_num ++;
     this->chunk.ind_entry = 0;
-#endif
 }
+#endif
 
 uint64_t last_instr_entry = -1;
 
-void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
 #ifndef PLOG_READER
+void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     if (panda_in_main_loop) {
         entry->set_pc(panda_current_pc(first_cpu));
         entry->set_instr(rr_get_guest_instr_count());
@@ -311,7 +316,7 @@ void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     if(last_instr_entry != -1 
         && (last_instr_entry != entry->instr())
         && (this->chunk.buf_p + n  >= this->chunk.buf + this->chunk.size)) {
-        // entry  won't fit in current chunk
+        // if entry won't fit in current chunk
         // and new entry is a different instr from last entry written
             write_current_chunk();
     }
@@ -336,8 +341,8 @@ void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     // remember instr for last entry
     last_instr_entry = entry->instr();
     this->chunk.ind_entry ++;
-#endif
 }
+#endif
 
 void PandaLog::unmarshall_chunk(uint32_t chunk_num){  
     printf ("unmarshalling chunk %d\n", chunk_num);
@@ -473,9 +478,24 @@ void PandaLog::seek(uint64_t instr){
 
 PandaLog globalLog;
 
+// These functions are accessible to C plugins/files
+
 // Called from vl.c to open a global pandalog for all plugins to write to
-void pandalog_init(const char * fname){
+void pandalog_cc_init_write(const char * fname){
     globalLog.open(fname, "w");
+}
+
+void pandalog_cc_init_read(const char * fname){
+    globalLog.open(fname, "r");
+}
+
+// Called from vl.c to open a global pandalog for all plugins to write to
+void pandalog_cc_init_read_bwd(const char * fname){
+    globalLog.open_read_bwd(fname);
+}
+
+void pandalog_cc_seek(uint64_t instr){
+    globalLog.seek(instr);
 }
 
 void pandalog_cc_close(){
@@ -483,14 +503,25 @@ void pandalog_cc_close(){
 }
 
 void pandalog_write_packed(size_t entry_size, unsigned char* buf){
-    /*printf("pandalog_write_entry_packed\n");*/
-
-    // Unpack entry into C++ protobuf object
-    //
+    // Unpack entry from buffer into C++ protobuf object
+    // and write it 
     
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
     ple->ParseFromArray(buf, entry_size);
     
     globalLog.write_entry(std::move(ple));
 
+}
+
+unsigned char* pandalog_read_packed(void){
+    
+    std::unique_ptr<panda::LogEntry> ple = globalLog.read_entry();
+    size_t n = ple->ByteSize();
+    unsigned char* buf = (unsigned char *) malloc(n + sizeof(size_t));
+
+    *(buf) = n;
+    
+    ple->SerializeToArray((unsigned char*)(buf + sizeof(size_t)), n);
+
+    return buf;
 }
