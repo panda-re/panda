@@ -66,6 +66,7 @@
 #include <zlib.h>
 
 #include "panda/plog.h"
+//#include "panda/plog-cc-init.h"
 
 Pandalog *thePandalog = NULL;
 
@@ -78,6 +79,8 @@ void write_dir(void);
 void pandalog_open_write(const char *path, uint32_t chunk_size);
 void pandalog_write_entry(Panda__LogEntry *entry);
 */
+
+extern void pandalog_write_packed(unsigned char* buf);
 
 int pandalog_close_write(void);
 
@@ -256,49 +259,58 @@ uint64_t instr_last_entry = -1;
 
 void pandalog_write_entry(Panda__LogEntry *entry) {
     // fill in required fields.
-    if (panda_in_main_loop) {
-        entry->pc = panda_current_pc(first_cpu);
-        entry->instr = rr_get_guest_instr_count ();
-    }
-    else {
-        entry->pc = -1;
-        entry->instr = -1;
-    }
-    size_t n = panda__log_entry__get_packed_size(entry);
-    // possibly compress and write current chunk and move on to next chunk
-    // but dont do so if it would spread log entries for same instruction between chunks
-    // invariant: all log entries for an instruction belong in a single chunk
-    if ((instr_last_entry != -1)  // first entry written
-        && (instr_last_entry != entry->instr)
-        && (thePandalog->chunk.buf_p + n >= thePandalog->chunk.buf + thePandalog->chunk.size)) {
-        // entry  won't fit in current chunk
-        // and new entry is a different instr from last entry written
-        write_current_chunk();
-    }
+	
+	// Pack this entry and pass it on to a C++ interface
+		
+	size_t packed_size = panda__log_entry__get_packed_size(entry);
+	unsigned char* buf = malloc(packed_size);
+	panda__log_entry__pack(entry, buf);
 
-    // sanity check.  If this fails, that means a large number of pandalog entries
-    // for same instr went off the end of a chunk, which was already allocated bigger than needed.
-    // possible.  but I'd rather assert its not and understand why before adding auto realloc here.
-    // TRL 2016-05-10: Ok here's a time when this legit happens.  When you pandalog in uninit_plugin
-    // this can be a lot of entries for the same instr (the very last one in the trace).
-    // So no more assert.
-    if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n
-        >= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
-        uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
-        uint32_t new_size = offset * 2;
-        thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
-        thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
-        assert (thePandalog->chunk.buf != NULL);
-    }
-    // now write the entry itself to the buffer.  size then entry itself
-    *((uint32_t *) thePandalog->chunk.buf_p) = n;
-    thePandalog->chunk.buf_p += sizeof(uint32_t);
-    // and then the entry itself (packed)
-    panda__log_entry__pack(entry, thePandalog->chunk.buf_p);
-    thePandalog->chunk.buf_p += n;
-    // remember instr for last entry
-    instr_last_entry = entry->instr;
-    thePandalog->chunk.ind_entry ++;
+	pandalog_write_packed(buf);
+
+    //if (panda_in_main_loop) {
+        //entry->pc = panda_current_pc(first_cpu);
+        //entry->instr = rr_get_guest_instr_count ();
+    //}
+    //else {
+        //entry->pc = -1;
+        //entry->instr = -1;
+    //}
+    //size_t n = panda__log_entry__get_packed_size(entry);
+    //// possibly compress and write current chunk and move on to next chunk
+    //// but dont do so if it would spread log entries for same instruction between chunks
+    //// invariant: all log entries for an instruction belong in a single chunk
+    //if ((instr_last_entry != -1)  // first entry written
+        //&& (instr_last_entry != entry->instr)
+        //&& (thePandalog->chunk.buf_p + n >= thePandalog->chunk.buf + thePandalog->chunk.size)) {
+        //// entry  won't fit in current chunk
+        //// and new entry is a different instr from last entry written
+        //write_current_chunk();
+    //}
+
+    //// sanity check.  If this fails, that means a large number of pandalog entries
+    //// for same instr went off the end of a chunk, which was already allocated bigger than needed.
+    //// possible.  but I'd rather assert its not and understand why before adding auto realloc here.
+    //// TRL 2016-05-10: Ok here's a time when this legit happens.  When you pandalog in uninit_plugin
+    //// this can be a lot of entries for the same instr (the very last one in the trace).
+    //// So no more assert.
+    //if (thePandalog->chunk.buf_p + sizeof(uint32_t) + n
+        //>= thePandalog->chunk.buf + ((int)(floor(thePandalog->chunk.size)))) {
+        //uint32_t offset = thePandalog->chunk.buf_p - thePandalog->chunk.buf;
+        //uint32_t new_size = offset * 2;
+        //thePandalog->chunk.buf = (unsigned char *) realloc(thePandalog->chunk.buf, new_size);
+        //thePandalog->chunk.buf_p = thePandalog->chunk.buf + offset;
+        //assert (thePandalog->chunk.buf != NULL);
+    //}
+    //// now write the entry itself to the buffer.  size then entry itself
+    //*((uint32_t *) thePandalog->chunk.buf_p) = n;
+    //thePandalog->chunk.buf_p += sizeof(uint32_t);
+    //// and then the entry itself (packed)
+    //panda__log_entry__pack(entry, thePandalog->chunk.buf_p);
+    //thePandalog->chunk.buf_p += n;
+    //// remember instr for last entry
+    //instr_last_entry = entry->instr;
+    //thePandalog->chunk.ind_entry ++;
 }
 
 int pandalog_close_write(void) {

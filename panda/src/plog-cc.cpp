@@ -485,3 +485,9 @@ void pandalog_init(const char * fname){
 void pandalog_cc_close(){
     globalLog.close();
 }
+
+void pandalog_write_packed(char* buf){
+    printf("pandalog_write_entry_packed\n");
+    /*globaLog.write_entry();*/
+
+}

@@ -69,15 +69,16 @@ plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 		"PROTO   $(TARGET_DIR)$@")
 
 %.pb-c.h %.pb-c.c: %.proto
-	# C++ Protobuf 
-	$(call quiet-command,\
-		protoc --proto_path=. --cpp_out=. $<,\
-		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
 	# C protobuf
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
 		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c",)
 
+%.pb.h %.pb.cc: %.proto
+	# C++ Protobuf 
+	$(call quiet-command,\
+		protoc --proto_path=. --cpp_out=. $<,\
+		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
@@ -124,7 +125,7 @@ $(PLOG_READER_PROG): panda/src/plog_no_rr.o \
 	$(call LINK,$^)
 
 # Uncomment $(PLOG_READER_PROG) to enable compiled plog_reader.
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py #$(PLOG_READER_PROG)
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py $(PLOG_READER_PROG)
 
 clean: clean-panda
 
