@@ -10,13 +10,11 @@
 #ifndef __PANDALOG_CC_H_
 #define __PANDALOG_CC_H_
 
-//#define PLOG_READER
-
 extern "C" {
-//#ifndef PLOG_READER
+#ifndef PLOG_READER
 #include "panda/rr/rr_log.h"
 #include "panda/common.h"
-//#endif
+#endif
 
 #include <zlib.h>
 #include "panda/plog.h"
