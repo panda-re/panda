@@ -519,10 +519,13 @@ void pandalog_write_packed(size_t entry_size, unsigned char* buf){
 unsigned char* pandalog_read_packed(void){
     
     std::unique_ptr<panda::LogEntry> ple = globalLog.read_entry();
+    if (!ple){
+        return NULL;
+    }
     size_t n = ple->ByteSize();
     unsigned char* buf = (unsigned char *) malloc(n + sizeof(size_t));
 
-    *(buf) = n;
+    *((size_t*) buf) = n;
     
     ple->SerializeToArray((unsigned char*)(buf + sizeof(size_t)), n);
 

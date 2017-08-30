@@ -125,7 +125,11 @@ void pandalog_close(void) {
 // Returns NULL if all entries have been read 
 Panda__LogEntry *pandalog_read_entry(void) {
 	unsigned char* buf = pandalog_read_packed();
+	if (!buf){
+		return NULL;
+	}
 	size_t n = *((size_t *) buf);
+	buf += sizeof(size_t);
 
 	Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, buf);
 	return ple;
