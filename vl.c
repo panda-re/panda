@@ -146,7 +146,7 @@ extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 
-extern void pandalog_init(const char * fname); 
+extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
@@ -4119,8 +4119,7 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_pandalog:
                 pandalog = 1;
-                //pandalog_open(optarg, "w");
-                pandalog_init(optarg);
+                pandalog_cc_init_write(optarg);
                 printf ("pandalogging to [%s]\n", optarg);
                 break;
             case QEMU_OPTION_record_from:
