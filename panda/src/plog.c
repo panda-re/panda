@@ -73,7 +73,7 @@ extern void pandalog_cc_init_read(const char* path);
 extern void pandalog_cc_init_write(const char* path);
 extern void pandalog_cc_init_read_bwd(const char* path);
 extern void pandalog_cc_seek(uint64_t);
-void pandalog_cc_close(void);
+extern void pandalog_cc_close(void);
 
 void pandalog_open_read(const char *path, uint32_t pl_mode);
 
