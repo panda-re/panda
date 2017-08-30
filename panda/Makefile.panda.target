@@ -124,8 +124,11 @@ $(PLOG_READER_PROG): panda/src/plog_no_rr.o \
 
 	$(call LINK,$^)
 
-# Uncomment $(PLOG_READER_PROG) to enable compiled plog_reader.
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py #$(PLOG_READER_PROG)
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+
+# Uncomment next two lines to enable compiled plog_reader.
+PROGS+=$(PLOG_READER_PROG) 
+QEMU_CFLAGS += -DPLOG_READER
 
 clean: clean-panda
 
