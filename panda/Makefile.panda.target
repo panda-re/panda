@@ -108,7 +108,7 @@ obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
 # These are for C++ protobuf pandalog
 obj-y += panda/src/plog-cc.o
-obj-y += panda/src/plog.pb.o
+obj-y += plog.pb.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
@@ -128,8 +128,8 @@ PROGS+=$(RR_PRINT_PROG) plog_pb2.py
 
 # Uncomment next two lines to enable compiled plog_reader.
 # if PLOG_READER is defined, plog writing functions in plog-cc.cpp will be disabled.
-PROGS+=$(PLOG_READER_PROG) 
-QEMU_CFLAGS += -DPLOG_READER
+#PROGS+=$(PLOG_READER_PROG) 
+#QEMU_CFLAGS += -DPLOG_READER
 
 clean: clean-panda
 

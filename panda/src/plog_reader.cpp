@@ -36,12 +36,12 @@ extern "C" {
 
 #include "panda/plog-cc.hpp"
 
-void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){
-    printf("\tllvmEntry: {\n");
-    printf("\t\ttype = %lu\n", ple->llvmentry().type()); 
-    printf("\t\taddress = %lx\n", ple->llvmentry().address());
-    printf("\t}\n"); 
-}
+/*void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){*/
+    /*printf("\tllvmEntry: {\n");*/
+    /*printf("\t\ttype = %lu\n", ple->llvmentry().type()); */
+    /*printf("\t\taddress = %lx\n", ple->llvmentry().address());*/
+    /*printf("\t}\n"); */
+/*}*/
 
 void pprint(std::unique_ptr<panda::LogEntry> ple) {
     if (ple == NULL) {
@@ -53,9 +53,9 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
     printf("\tPC = %lu\n", ple->pc());
     printf("\tinstr = %lu\n", ple->instr());
 
-    if (ple->has_llvmentry()) {
-        pprint_llvmentry(std::move(ple));
-    }
+    /*if (ple->has_llvmentry()) {*/
+        /*pprint_llvmentry(std::move(ple));*/
+    /*}*/
     printf("}\n\n");
 }
 
