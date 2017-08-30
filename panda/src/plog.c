@@ -80,7 +80,7 @@ void pandalog_open_write(const char *path, uint32_t chunk_size);
 void pandalog_write_entry(Panda__LogEntry *entry);
 */
 
-extern void pandalog_write_packed(unsigned char* buf);
+extern void pandalog_write_packed(size_t entry_size, unsigned char* buf);
 
 int pandalog_close_write(void);
 
@@ -266,7 +266,7 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 	unsigned char* buf = malloc(packed_size);
 	panda__log_entry__pack(entry, buf);
 
-	pandalog_write_packed(buf);
+	pandalog_write_packed(packed_size, buf);
 
     //if (panda_in_main_loop) {
         //entry->pc = panda_current_pc(first_cpu);
