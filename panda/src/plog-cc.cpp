@@ -58,7 +58,6 @@ void PandaLog::read_dir(){
         this->dir.num_entries.push_back(read_val);
     }
 
-    printf("Read directory: \n");
     for (int i = 0; i< num_chunks; ++i){
         printf("i: %d dirinstr: %lu dirpos: %lu dir.num_entries: %lu\n", i, dir.instr[i], dir.pos[i], dir.num_entries[i]);
     }
@@ -201,7 +200,6 @@ std::unique_ptr<panda::LogEntry> PandaLog::read_entry(){
 } 
 
 void PandaLog::write_header(PlHeader* plh){
-    printf("WRITING HEADER\n");
     //go to beginning of file
     this->file->seekg(0);
     this->file->write((char *)plh, sizeof(*plh));
@@ -258,7 +256,6 @@ int PandaLog::close(){
 // also update directory map
 void PandaLog::write_current_chunk(){
 #ifndef PLOG_READER
-    printf("WRITING CURRENT CHUNK\n");
     
     //uncompressed chunk size
     unsigned long chunk_sz = this->chunk.buf_p - this->chunk.buf;
@@ -478,10 +475,12 @@ void PandaLog::seek(uint64_t instr){
     this->chunk.ind_entry = ind;
 }
 
-PandaLog globalLog;
 
+//---------------------------------------------------------------------
 // These functions are accessible to C plugins/files
 // And declared in plog-cc-bridge.h
+
+PandaLog globalLog;
 
 void pandalog_cc_init_write(const char * fname){
     globalLog.open(fname, "w");
@@ -519,10 +518,13 @@ void pandalog_write_packed(size_t entry_size, unsigned char* buf){
 unsigned char* pandalog_read_packed(void){
     
     std::unique_ptr<panda::LogEntry> ple = globalLog.read_entry();
+    if (!ple){
+        return NULL;
+    }
     size_t n = ple->ByteSize();
     unsigned char* buf = (unsigned char *) malloc(n + sizeof(size_t));
 
-    *(buf) = n;
+    *((size_t*) buf) = n;
     
     ple->SerializeToArray((unsigned char*)(buf + sizeof(size_t)), n);
 

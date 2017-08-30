@@ -24,7 +24,7 @@ extern "C" {
 #include <iostream>
 #include <memory>
 #include <stdint.h>
-#include "panda/plog.pb.h"
+#include "plog.pb.h"
 
 #define PL_CURRENT_VERSION 2
 // compression level

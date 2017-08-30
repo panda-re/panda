@@ -73,7 +73,7 @@ extern void pandalog_cc_init_read(const char* path);
 extern void pandalog_cc_init_write(const char* path);
 extern void pandalog_cc_init_read_bwd(const char* path);
 extern void pandalog_cc_seek(uint64_t);
-void pandalog_cc_close(void);
+extern void pandalog_cc_close(void);
 
 void pandalog_open_read(const char *path, uint32_t pl_mode);
 
@@ -90,17 +90,7 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 }
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {
-    // NB: 0 chunk size for now -- read_dir will figure this out
-    //pandalog_create(0);
-    //thePandalog->mode = (PlMode) pl_mode;
-    //assert (in_read_mode());
-    //thePandalog->filename = strdup(path);
-    //thePandalog->file = fopen(path, "r");
-    //// read directory (and header)
-    //read_dir();
-    //thePandalog->chunk_num = 0;
 	if (pl_mode == PL_MODE_READ_FWD) {
-
 		pandalog_cc_init_read(path);
 	} else if (pl_mode == PL_MODE_READ_BWD) {
 		pandalog_cc_init_read_bwd(path);
@@ -135,58 +125,14 @@ void pandalog_close(void) {
 // Returns NULL if all entries have been read 
 Panda__LogEntry *pandalog_read_entry(void) {
 	unsigned char* buf = pandalog_read_packed();
+	if (!buf){
+		return NULL;
+	}
 	size_t n = *((size_t *) buf);
+	buf += sizeof(size_t);
 
 	Panda__LogEntry *ple = panda__log_entry__unpack(NULL, n, buf);
 	return ple;
-
-    //assert (in_read_mode());
-    //PandalogChunk *plc = &(thePandalog->chunk);
-    //uint32_t new_chunk_num;
-    //Panda__LogEntry *returnEntry;
-
-    //if (thePandalog->mode == PL_MODE_READ_FWD) {
-        //if (plc->ind_entry > plc->num_entries-1) {
-            //if (thePandalog->chunk_num == thePandalog->dir.max_chunks-1) return NULL;
-
-            //new_chunk_num = thePandalog->chunk_num+1;
-            //thePandalog->chunk_num = new_chunk_num;
-
-            //unmarshall_chunk(new_chunk_num);
-            //plc = &(thePandalog->chunk);
-            ////reset ind_entry and return first element of new chunk
-            //plc->ind_entry = 0;
-            //returnEntry = plc->entry[plc->ind_entry];
-            //plc->ind_entry++;
-        //} else {
-            ////more to read in this chunk
-            //returnEntry = plc->entry[plc->ind_entry];
-            //plc->ind_entry++;
-        //}
-        //return returnEntry;
-    //}
-
-    //if (thePandalog->mode == PL_MODE_READ_BWD) {
-        //if(plc->ind_entry == -1) {
-            //if(thePandalog->chunk_num == 0) return NULL;
-
-            //new_chunk_num = thePandalog->chunk_num-1;
-            //thePandalog->chunk_num = new_chunk_num;
-
-            //unmarshall_chunk(new_chunk_num);
-            //plc->ind_entry = thePandalog->dir.num_entries[new_chunk_num]-1;
-            //returnEntry = plc->entry[plc->ind_entry];
-            //plc->ind_entry--;
-        //} else {
-            //returnEntry = plc->entry[plc->ind_entry];
-            //plc->ind_entry--;
-        //}
-        
-        //return returnEntry;
-    //}
-    
-    //printf("Read not in valid mode\n");
-    //exit(1);
 }
 
 
