@@ -10,9 +10,9 @@ using namespace std;
 
 /*#define PLOG_READER*/
 
-#ifndef PLOG_READER
+/*#ifndef PLOG_READER*/
 extern int panda_in_main_loop;
-#endif
+/*#endif*/
 
 void PandaLog::create(uint32_t chunk_size) {
     this->chunk.size = chunk_size;
@@ -256,7 +256,7 @@ int PandaLog::close(){
 }
 
 void PandaLog::write_current_chunk(){
-#ifndef PLOG_READER
+/*#ifndef PLOG_READER*/
     printf("WRITING CURRENT CHUNK\n");
     
     unsigned long chunk_sz = this->chunk.buf_p - this->chunk.buf;
@@ -293,13 +293,13 @@ void PandaLog::write_current_chunk(){
     this->chunk.buf_p = this->chunk.buf;
     this->chunk_num ++;
     this->chunk.ind_entry = 0;
-#endif
+/*#endif*/
 }
 
 uint64_t last_instr_entry = -1;
 
 void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
-#ifndef PLOG_READER
+/*#ifndef PLOG_READER*/
     if (panda_in_main_loop) {
         entry->set_pc(panda_current_pc(first_cpu));
         entry->set_instr(rr_get_guest_instr_count());
@@ -340,7 +340,7 @@ void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     // remember instr for last entry
     last_instr_entry = entry->instr();
     this->chunk.ind_entry ++;
-#endif
+/*#endif*/
 }
 
 void PandaLog::unmarshall_chunk(uint32_t chunk_num){  
@@ -486,8 +486,15 @@ void pandalog_cc_close(){
     globalLog.close();
 }
 
-void pandalog_write_packed(char* buf){
-    printf("pandalog_write_entry_packed\n");
-    /*globaLog.write_entry();*/
+void pandalog_write_packed(size_t entry_size, unsigned char* buf){
+    /*printf("pandalog_write_entry_packed\n");*/
+
+    // Unpack entry into C++ protobuf object
+    //
+    
+    std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+    ple->ParseFromArray(buf, entry_size);
+    
+    globalLog.write_entry(std::move(ple));
 
 }
