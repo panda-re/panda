@@ -1,6 +1,13 @@
 
 /*
- * This file is an example of using the C++ API of protobuf to read or write pandalog
+ * This file is an example of using the C and C++ APIs to read or write pandalog
+ * You can either use the pandalog_* functions defined in panda/plog.h, which are C wrappers around the C++ implementation
+ * Or the C++ implementation directly, in panda/plog-cc.hpp
+ *
+ * Note that using the C wrappers requires a few more object files to be linked in (see Makefile.panda.target).
+ *
+ * To compile as part of Panda's make,
+ * Uncomment two lines in Makefile.panda.target. This will define PLOG_READER, which causes some rr code in plog-cc.cpp to be ignored 
  *
  * To compile standalone:
  * First, compile the plog.proto file to generate the plog.pb.h and plog.pb.cc files 
@@ -13,12 +20,8 @@
  *
  * You will have to implement your own printing functions.
  *
- * To compile as part of Panda's make,
- * Uncomment #define PLOG_READER in plog-cc.cpp, so we won't look for rr functions that we don't need
- * Then, uncomment PLOG_READER_PROG in Makefile.panda.target
+ * 8/30/17 Ray Wang
  *
- * There's definitely a smarter way to do this that involves linking in a #define PLOG_READER,
- * but I couldn't figure out how to get that to work... 
 */
 
 #define __STDC_FORMAT_MACROS
@@ -28,6 +31,7 @@ extern "C" {
     #include <stdio.h>
     #include <stdlib.h>
     #include <stdint.h>
+    //#include "panda/plog.h"
 }
 
 #include "panda/plog-cc.hpp"
@@ -55,6 +59,18 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
     printf("}\n\n");
 }
 
+//void pprint_old(Panda__LogEntry* ple) {
+    //if (ple == NULL) {
+        //printf("PLE is NULL\n");
+        //return;
+    //}
+
+    //printf("\n{\n");
+    //printf("\tPC = %lu\n", ple->pc);
+    //printf("\tinstr = %lu\n", ple->instr);
+    //printf("}\n\n");
+//}
+
 int main (int argc, char **argv) {
     if (argc < 2) {
          printf("USAGE: %s <plog>\n", argv[0]);
@@ -62,19 +78,19 @@ int main (int argc, char **argv) {
     }
     
     //write the pandalog
-    //{
-        //PandaLog p;
-       //p.open((const char*) argv[1], "w");
-        //for (int i = 0; i < 3000000; i++){ 
-            //std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
-            //ple->mutable_llvmentry()->set_type(i%2);
-            //ple->mutable_llvmentry()->set_address(i%2);
-            //p.write_entry(std::move(ple));
-        //}
-        //p.close();
-    //}
-
-    //read the same pandalog back
+    /*{*/
+        /*PandaLog p;*/
+       /*p.open((const char*) argv[1], "w");*/
+        /*for (int i = 0; i < 3000000; i++){ */
+            /*std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());*/
+            /*[>ple->mutable_llvmentry()->set_type(i%2);<]*/
+            /*[>ple->mutable_llvmentry()->set_address(i%2);<]*/
+            /*p.write_entry(std::move(ple));*/
+        /*}*/
+        /*p.close();*/
+    /*}*/
+    
+    //read the pandalog
     {
         PandaLog p;
         p.open_read_fwd((const char *) argv[1]);
@@ -84,4 +100,21 @@ int main (int argc, char **argv) {
         }
         p.close();
     }
+
+    //Use the C interface to read the pandalog
+    //pandalog_open((const char *) argv[1], (const char*) "r");
+    //Panda__LogEntry *ple;
+    //while (1) {
+        //ple = pandalog_read_entry();
+        //if (ple == (Panda__LogEntry *)1) {
+            //continue;
+        //}
+        //if (ple == NULL) {
+            //break;
+        //}
+        //pprint_old(ple);
+    //}
+    //pandalog_close();
 }
+
+
