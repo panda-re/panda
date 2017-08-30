@@ -66,8 +66,7 @@
 
 #include "panda/plog.h"
 
-Pandalog *thePandalog = NULL;
-
+// Externed functions that are wrappers around the C++ pandalog functions
 extern void pandalog_write_packed(size_t entry_size, unsigned char* buf);
 extern unsigned char* pandalog_read_packed(void);
 extern void pandalog_cc_init_read(const char* path);
@@ -76,21 +75,8 @@ extern void pandalog_cc_init_read_bwd(const char* path);
 extern void pandalog_cc_seek(uint64_t);
 void pandalog_cc_close(void);
 
-uint8_t in_read_mode(void);
-PlHeader *read_header(void);
-void read_dir(void);
 void pandalog_open_read(const char *path, uint32_t pl_mode);
 
-uint32_t find_chunk(uint64_t instr, uint32_t i1, uint32_t i2);
-void unmarshall_chunk(uint32_t c);
-uint32_t find_ind(uint64_t instr, uint32_t i1, uint32_t i2);
-
-/*
- this code is all about writing a pandalog which needs PANDA things.
- So it won't compile with reader which is divorced from PANDA
-*/
-
-uint64_t instr_last_entry = -1;
 
 void pandalog_write_entry(Panda__LogEntry *entry) {
 	// Pack this entry and pass it on to a C++ interface
@@ -101,60 +87,6 @@ void pandalog_write_entry(Panda__LogEntry *entry) {
 
 	pandalog_write_packed(packed_size, buf);
 
-}
-
-uint8_t in_read_mode(void) {
-    if (thePandalog->mode == PL_MODE_READ_FWD
-        || thePandalog->mode == PL_MODE_READ_BWD)
-        return 1;
-    return 0;
-}
-
-// read header out of pandalog and return it
-PlHeader *read_header(void) {
-    assert (thePandalog->file != NULL);
-    // header is at start of logfile
-    fseek(thePandalog->file, 0, SEEK_SET);
-    PlHeader *plh = (PlHeader *) malloc(sizeof(PlHeader));
-    int n = fread(plh, 1, sizeof(*plh), thePandalog->file);
-    assert (n == sizeof(*plh));
-    return plh;
-}
-
-// read directory info out of
-// pandalog file
-void read_dir(void) {
-    assert (thePandalog->file != NULL);
-    assert(in_read_mode());
-    PlHeader *plh = read_header();
-    thePandalog->chunk.size = plh->chunk_size;
-    thePandalog->chunk.zsize = plh->chunk_size;
-    // realloc those chunk bufs
-    thePandalog->chunk.buf = (unsigned char *)
-        realloc(thePandalog->chunk.buf, thePandalog->chunk.size);
-    thePandalog->chunk.buf_p = thePandalog->chunk.buf;
-    thePandalog->chunk.zbuf = (unsigned char *)
-        realloc(thePandalog->chunk.zbuf, thePandalog->chunk.zsize);
-    fseek(thePandalog->file, plh->dir_pos, SEEK_SET);
-    uint32_t nc;
-    int n = fread(&(nc), 1, sizeof(nc), thePandalog->file);
-    assert (n == sizeof(nc));
-    PandalogDir *dir = &(thePandalog->dir);
-    dir->max_chunks = nc;
-    dir->instr = (uint64_t *) malloc(sizeof(uint64_t) * nc);
-    dir->pos = (uint64_t *) malloc(sizeof(uint64_t) * (1+nc));
-    dir->num_entries = (uint64_t *) malloc(sizeof(uint64_t) * nc);
-    uint32_t i;
-    for (i=0; i<nc; i++) {
-        int n = fread(&(dir->instr[i]), 1, sizeof(dir->instr[i]), thePandalog->file);
-        assert (n == sizeof(dir->instr[i]));
-        n = fread(&(dir->pos[i]), 1, sizeof(dir->pos[i]), thePandalog->file);
-        assert (n == sizeof(dir->pos[i]));
-        n = fread(&(dir->num_entries[i]), 1, sizeof(dir->num_entries[i]), thePandalog->file);
-        assert (n == sizeof(dir->num_entries[i]));
-    }
-    // a little hack so unmarshall_chunk will work
-    dir->pos[nc] = plh->dir_pos;
 }
 
 void pandalog_open_read(const char *path, uint32_t pl_mode) {
@@ -198,9 +130,6 @@ void pandalog_close(void) {
 	pandalog_cc_close();
 }
 
-//static void __pandalog_free_entry(Panda__LogEntry *entry) {
-    //panda__log_entry__free_unpacked(entry, NULL);
-//}
 
 // Reads an entry from the pandalog in fwd or bwd direction, updating chunk and index 
 // Returns NULL if all entries have been read 

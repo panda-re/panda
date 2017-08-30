@@ -103,7 +103,6 @@ obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
 obj-y += panda/src/plog.o
-obj-y += panda/src/plog_no_rr.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
@@ -117,8 +116,7 @@ obj-y += panda/src/plog.pb.o
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-$(PLOG_READER_PROG): panda/src/plog_no_rr.o \
-	panda/src/plog_reader.o \
+$(PLOG_READER_PROG): panda/src/plog_reader.o \
 	plog.pb.o \
 	panda/src/plog-cc.o
 
@@ -128,8 +126,8 @@ PROGS+=$(RR_PRINT_PROG) plog_pb2.py
 
 # Uncomment next two lines to enable compiled plog_reader.
 # if PLOG_READER is defined, plog writing functions in plog-cc.cpp will be disabled.
-#PROGS+=$(PLOG_READER_PROG) 
-#QEMU_CFLAGS += -DPLOG_READER
+PROGS+=$(PLOG_READER_PROG) 
+QEMU_CFLAGS += -DPLOG_READER
 
 clean: clean-panda
 

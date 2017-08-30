@@ -8,7 +8,9 @@
 
 using namespace std; 
 
+#ifndef PLOG_READER
 extern int panda_in_main_loop;
+#endif
 
 void PandaLog::create(uint32_t chunk_size) {
     this->chunk.size = chunk_size;
@@ -254,8 +256,8 @@ int PandaLog::close(){
 
 // compress current chunk and write it to file,
 // also update directory map
-#ifndef PLOG_READER
 void PandaLog::write_current_chunk(){
+#ifndef PLOG_READER
     printf("WRITING CURRENT CHUNK\n");
     
     //uncompressed chunk size
@@ -294,13 +296,13 @@ void PandaLog::write_current_chunk(){
     this->chunk.buf_p = this->chunk.buf;
     this->chunk_num ++;
     this->chunk.ind_entry = 0;
-}
 #endif
+}
 
 uint64_t last_instr_entry = -1;
 
-#ifndef PLOG_READER
 void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
+#ifndef PLOG_READER
     if (panda_in_main_loop) {
         entry->set_pc(panda_current_pc(first_cpu));
         entry->set_instr(rr_get_guest_instr_count());
@@ -341,8 +343,8 @@ void PandaLog::write_entry(std::unique_ptr<panda::LogEntry> entry){
     // remember instr for last entry
     last_instr_entry = entry->instr();
     this->chunk.ind_entry ++;
-}
 #endif
+}
 
 void PandaLog::unmarshall_chunk(uint32_t chunk_num){  
     printf ("unmarshalling chunk %d\n", chunk_num);
@@ -479,8 +481,8 @@ void PandaLog::seek(uint64_t instr){
 PandaLog globalLog;
 
 // These functions are accessible to C plugins/files
+// And declared in plog-cc-bridge.h
 
-// Called from vl.c to open a global pandalog for all plugins to write to
 void pandalog_cc_init_write(const char * fname){
     globalLog.open(fname, "w");
 }
@@ -489,7 +491,6 @@ void pandalog_cc_init_read(const char * fname){
     globalLog.open(fname, "r");
 }
 
-// Called from vl.c to open a global pandalog for all plugins to write to
 void pandalog_cc_init_read_bwd(const char * fname){
     globalLog.open_read_bwd(fname);
 }
@@ -502,17 +503,19 @@ void pandalog_cc_close(){
     globalLog.close();
 }
 
+
+// Unpack entry from buffer into C++ protobuf object
+// and write it to the log
 void pandalog_write_packed(size_t entry_size, unsigned char* buf){
-    // Unpack entry from buffer into C++ protobuf object
-    // and write it 
     
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
     ple->ParseFromArray(buf, entry_size);
     
     globalLog.write_entry(std::move(ple));
-
 }
 
+// Pack an entry into binary protobuf data
+// return packed data
 unsigned char* pandalog_read_packed(void){
     
     std::unique_ptr<panda::LogEntry> ple = globalLog.read_entry();

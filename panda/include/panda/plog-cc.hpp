@@ -35,6 +35,19 @@ extern "C" {
 #define PL_HEADER_SIZE 128
 
 
+typedef struct pandalog_header_struct {
+    uint32_t version;     // version number
+    uint64_t dir_pos;     // position in file of directory
+    uint32_t chunk_size;  // chunk size
+} PlHeader;
+
+// directory mapping instructions to chunks in the outfile
+// say el[0].instr = 1234
+// that means chunk 0 contains all pandalog info for instructions 0..1234
+// and say el[1].instr = 2468
+// that means chunk 1 contains all .. for instr 12345 .. 2468
+// additionally, the data for compressed chunk 0 is in the outfile
+// from pos[0] .. pos[1]-1
 struct PandalogCcDir {
 
     uint32_t num_chunks;       // max number of entries (chunks).  
@@ -98,6 +111,10 @@ public:
 
     std::unique_ptr<panda::LogEntry> read_entry(void);
 
+    // seek to the element in pandalog corresponding to this instr
+    // only valid in read mode.  
+    // if PL_MODE_READ_FWD then we seek to FIRST element in log for this instr
+    // if PL_MODE_READ_BWD then we seek to LAST element in log for this instr
     void seek(uint64_t instr);
 
 private: 
