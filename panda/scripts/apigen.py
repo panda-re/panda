@@ -81,8 +81,6 @@ def generate_code(functions, module, includes):
 
 #include <dlfcn.h>
 #include "panda/plugin.h"
-#include "panda/plog-cc.hpp"
-#include "panda/plog.pb.cc"
 
 """
 #    for include in includes:
@@ -173,7 +171,6 @@ def generate_api(interface_file, ext_file, extra_gcc_args, translation_unit):
         if line and not line.startswith('#') and not (re.match("^/", line)):
             # not a typedef and not a comment.
             # could be a fn prototype
-            # print line
             foo = split_fun_prototype(line)
             if not (foo is None):
                 # it is a fn prototype -- pull out return type, name, and arglist with types
@@ -183,7 +180,6 @@ def generate_api(interface_file, ext_file, extra_gcc_args, translation_unit):
     # Plugin interface file will look like [...]/plugins/<name>/<name>_int.h
     plugin_name = os.path.basename(os.path.dirname(interface_file))
     code = generate_code(functions, plugin_name, includes)
-    print code
     with open(ext_file,"w") as extAPI:
         extAPI.write(code)
 
