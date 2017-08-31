@@ -194,6 +194,8 @@ llvm-helpers.bc1: $(llvm-y)
 # Make explicit the fact that we need the tool present to do the morphing
 
 panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation
+panda/tools/dynslice2.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable -Wno-cast-qual
+panda/tools/slice_analyzer.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable
 
 panda/tools:
 	$(call quiet-command,mkdir -p panda/tools,)
@@ -204,14 +206,20 @@ panda/tools:
 panda/tools/helper_call_modifier.o: | panda/tools ../panda/tools
 panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 
+panda/tools/dynslice2.o: | panda/tools ../panda/tools
+panda/tools/dynslice2: panda/tools/dynslice2.o plog.pb.o panda/src/plog-cc.o panda/src/plog_no_rr.o
+
+panda/tools/slice_analyzer.o: | panda/tools ../panda/tools
+panda/tools/slice_analyzer: panda/tools/slice_analyzer.o
+
 llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 	$(call quiet-command,\
 		panda/tools/helper_call_modifier -i $< -o $@,\
 		"LLMORPH $(TARGET_DIR)$@")
 
 # add this to the all target
-#all: $(llvmmorph-y) panda/tools/dynslice2 panda/tools/slice_analyzer
-all: $(llvmmorph-y)
+all: $(llvmmorph-y) panda/tools/dynslice2 panda/tools/slice_analyzer
+#all: $(llvmmorph-y)
 
 clean: clean-llvm
 
