@@ -77,6 +77,9 @@ EOF
   fi
 fi
 
+# Install libclang for apigen.py
+sudo apt-get -y install libclang-3.8 python-clang-3.8
+
 progress "Trying to install LLVM 3.3..."
 if ! sudo apt-get -y install llvm-3.3-dev clang-3.3
 then

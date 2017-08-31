@@ -48,7 +48,6 @@
 
 extern "C" {
 
-#include "panda/plog.h"
 #include "panda/rr/rr_log.h"
 
 #include "osi/osi_types.h"

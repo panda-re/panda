@@ -37,7 +37,7 @@ PANDA_API_INT=$(foreach header,$(PANDA_API_INT_POSSIBLE),\
 
 PANDA_API_EXT=$(patsubst %_int.h,%_ext.h,$(PANDA_API_INT))
 
-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -46,7 +46,7 @@ plugin-%: plog.pb-c.h $(PANDA_API_EXT)
 		PLUGIN_SRC_ROOT="$(SRC_PATH)/panda/plugins" \
 		V="$(V)" PLUGIN_NAME="$*" all,)
 
-extra-plugin-%: plog.pb-c.h $(PANDA_API_EXT)
+extra-plugin-%: plog.pb-c.h plog.pb.h $(PANDA_API_EXT)
 	$(call quiet-command,mkdir -p ../panda/plugins/$*,)
 	$(call quiet-command,mkdir -p panda/plugins/$*,)
 	$(call quiet-command,$(MAKE) $(PLUGIN_SUBDIR_MAKEFLAGS) \
@@ -63,16 +63,22 @@ PANDA_CONFIG_FILES=$(SRC_PATH)/panda/plugins/config.panda \
 				   $(SRC_PATH)/panda/plugins/config.llvm.panda \
 				   $(if $(EXTRA_PLUGINS_PATH),$(EXTRA_PLUGINS_PATH)/panda/plugins/config.panda,)
 
-
 plog.proto: $(PROTO_FILES) $(PANDA_CONFIG_FILES)
 	$(call quiet-command,\
 		$(SRC_PATH)/panda/scripts/pp.py $@ $(PANDA_CONFIG_FILES),\
 		"PROTO   $(TARGET_DIR)$@")
 
 %.pb-c.h %.pb-c.c: %.proto
+	# C protobuf
 	$(call quiet-command,\
 		protoc-c --proto_path=. --c_out=. $<,\
-		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c")
+		"PROTO   $(TARGET_DIR)plog.pb-c.h $(TARGET_DIR)plog.pb-c.c",)
+
+%.pb.h %.pb.cc: %.proto
+	# C++ Protobuf 
+	$(call quiet-command,\
+		protoc --proto_path=. --cpp_out=. $<,\
+		"PROTO" $(TARGET_DIR)"plog.pb.h" $(TARGET_DIR)"plog.pb.cc",)
 
 plog_pb2.py: plog.proto
 	$(call quiet-command,\
@@ -80,6 +86,7 @@ plog_pb2.py: plog.proto
 		"PROTO   $(TARGET_DIR)$@")
 
 GENERATED_HEADERS += plog.pb-c.h
+GENERATED_HEADERS += plog.pb.h
 GENERATED_HEADERS += $(PANDA_API_EXT)
 
 # This keeps make from thinking it's an "intermediate" file
@@ -91,6 +98,7 @@ GENERATED_HEADERS += $(PANDA_API_EXT)
 		$(SRC_PATH)/panda/scripts/apigen.py $< $@ -I$(SRC_PATH)/panda/include/fake_libc_include $(QEMU_INCLUDES),\
 		"API     $(TARGET_DIR)$(subst $(BUILD_DIR)/,,$@)")
 
+# All of these will be generated according to rules in rules.mak
 obj-y += panda/src/callbacks.o
 obj-y += panda/src/callback_support.o
 obj-y += panda/src/common.o
@@ -98,6 +106,9 @@ obj-y += panda/src/plog.o
 obj-y += plog.pb-c.o
 obj-y += panda/src/rr/rr_log.o
 obj-y += panda/src/checkpoint.o
+# These are for C++ protobuf pandalog
+obj-y += panda/src/plog-cc.o
+obj-y += plog.pb.o
 #obj-y += panda/src/plog_print.o
 #obj-y += panda/src/plog_reader.o
 #obj-y += panda/src/guestarch.o
@@ -105,14 +116,20 @@ obj-y += panda/src/checkpoint.o
 $(RR_PRINT_PROG): panda/src/rr/rr_print.o
 	$(call LINK,$^)
 
-$(PLOG_READER_PROG): panda/src/plog_no_rr.o \
-	panda/src/plog_reader.o \
-	panda/src/plog_print.o \
-	plog.pb-c.o
+$(PLOG_READER_PROG): panda/src/plog_reader.o \
+	plog.pb.o \
+	panda/src/plog-cc.o \
+	#plog.pb-c.o \
+	#panda/src/plog.o \
+
 	$(call LINK,$^)
 
-# Uncomment $(PLOG_READER_PROG) to enable compiled plog_reader.
-PROGS+=$(RR_PRINT_PROG) plog_pb2.py #$(PLOG_READER_PROG)
+PROGS+=$(RR_PRINT_PROG) plog_pb2.py
+
+# Uncomment next two lines to enable compiled plog_reader.
+# if PLOG_READER is defined, plog writing functions in plog-cc.cpp will be disabled.
+#PROGS+=$(PLOG_READER_PROG) 
+#QEMU_CFLAGS += -DPLOG_READER
 
 clean: clean-panda
 
@@ -193,6 +210,7 @@ llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 		"LLMORPH $(TARGET_DIR)$@")
 
 # add this to the all target
+#all: $(llvmmorph-y) panda/tools/dynslice2 panda/tools/slice_analyzer
 all: $(llvmmorph-y)
 
 clean: clean-llvm

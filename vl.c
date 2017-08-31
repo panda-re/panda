@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 
-
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *, const char *);
@@ -147,8 +146,7 @@ extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 
-void pandalog_open(const char *path, const char *mode);
-int  pandalog_close(void);
+extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
@@ -4121,7 +4119,7 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_pandalog:
                 pandalog = 1;
-                pandalog_open(optarg, "w");
+                pandalog_cc_init_write(optarg);
                 printf ("pandalogging to [%s]\n", optarg);
                 break;
             case QEMU_OPTION_record_from:
