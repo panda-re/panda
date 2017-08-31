@@ -127,28 +127,6 @@ void recordLoad(uint64_t address, uint64_t num_bytes = 8){
         globalLog.write_entry(std::move(ple));
     }
 
-    /*if (pandalog) {*/
-        /*Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));*/
-        /**llvmentry = PANDA__LLVMENTRY__INIT;*/
-        /*llvmentry->has_type = 1;*/
-        /*llvmentry->type = FunctionCode::FUNC_CODE_INST_LOAD;*/
-        
-        /*llvmentry->has_addr_type = 1;   */
-        /*if ((address >= (uint64_t)first_cpu) && (address < (uint64_t)first_cpu + sizeof(CPUState))){*/
-            /*llvmentry->addr_type = REG; // Something in CPU state, may not necessarily be a register*/
-            /*//TODO: Fix this and store*/
-        /*} else {*/
-            /*llvmentry->addr_type = MEM; // A memory address*/
-        /*}*/
-
-        /*llvmentry->has_address = 1;*/
-        /*llvmentry->address = address;*/
-        /*llvmentry->has_num_bytes = 1;*/
-        /*llvmentry->num_bytes = num_bytes;*/
-        /*Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;*/
-        /*logEntry.llvmentry = llvmentry;*/
-        /*pandalog_write_entry(&logEntry);*/
-    /*}*/
 }
 
 void recordStore(uint64_t address, uint64_t num_bytes = 8){
@@ -171,28 +149,6 @@ void recordStore(uint64_t address, uint64_t num_bytes = 8){
 
         globalLog.write_entry(std::move(ple));
     }
-    
-    //if (pandalog) {
-        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-        //*llvmentry = PANDA__LLVMENTRY__INIT;
-        //llvmentry->has_type = 1;
-        //llvmentry->type = FunctionCode::FUNC_CODE_INST_STORE;
-
-        //llvmentry->has_addr_type = 1;   
-        //if ((address >= (uint64_t)first_cpu) && (address < (uint64_t)first_cpu + sizeof(CPUState))){
-            //llvmentry->addr_type = REG; // Something in CPU state
-        //}else {
-            //llvmentry->addr_type = MEM; // A memory address
-        //}
-
-        //llvmentry->has_address = 1;
-        //llvmentry->address = address;
-        //llvmentry->has_num_bytes = 1;
-        //llvmentry->num_bytes = num_bytes;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-        //logEntry.llvmentry = llvmentry;
-        //pandalog_write_entry(&logEntry);
-    //}
 }
 
 void recordReturn(){
@@ -201,15 +157,6 @@ void recordReturn(){
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_RET);
         globalLog.write_entry(std::move(ple));
     }
-    //if (pandalog) {
-        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-        //*llvmentry = PANDA__LLVMENTRY__INIT;
-        //llvmentry->has_type = 1;
-        //llvmentry->type = FunctionCode::FUNC_CODE_INST_RET;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-        //logEntry.llvmentry = llvmentry;
-        //pandalog_write_entry(&logEntry);
-    //}
 }
 
 void recordSelect(uint8_t condition){
@@ -221,17 +168,6 @@ void recordSelect(uint8_t condition){
         globalLog.write_entry(std::move(ple));
     }
 
-    //if (pandalog) {
-        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-        //*llvmentry = PANDA__LLVMENTRY__INIT;
-        //llvmentry->has_type = 1;
-        //llvmentry->type = FunctionCode::FUNC_CODE_INST_SELECT;
-        //llvmentry->has_condition = 1;
-        //llvmentry->condition = condition;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-        //logEntry.llvmentry = llvmentry;
-        //pandalog_write_entry(&logEntry);
-    //}
 }
 
 void recordSwitch(uint32_t condition){
@@ -243,18 +179,6 @@ void recordSwitch(uint32_t condition){
         globalLog.write_entry(std::move(ple));
     }
 
-    //if (pandalog) {
-        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-    //*llvmentry = PANDA__LLVMENTRY__INIT;
-        
-        //llvmentry->has_type = 1;
-        //llvmentry->type = FunctionCode::FUNC_CODE_INST_SWITCH;
-        //llvmentry->has_condition = 1;
-        //llvmentry->condition = condition;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-        //logEntry.llvmentry = llvmentry;
-        //pandalog_write_entry(&logEntry);
-    //}
 }
 
 void recordBranch(uint8_t condition){
@@ -265,19 +189,6 @@ void recordBranch(uint8_t condition){
 
         globalLog.write_entry(std::move(ple));
     }
-
-    //if (pandalog) {
-        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-    //*llvmentry = PANDA__LLVMENTRY__INIT;
-        
-        //llvmentry->has_type = 1;
-        //llvmentry->type = FunctionCode::FUNC_CODE_INST_BR;
-        //llvmentry->has_condition = 1;
-        //llvmentry->condition = condition;
-        //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-        //logEntry.llvmentry = llvmentry;
-        //pandalog_write_entry(&logEntry);
-    //}
 }
 
 void write_trace_log(){
@@ -648,8 +559,6 @@ void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
     CI->insertAfter(static_cast<Instruction*>(&I));
     CI->setMetadata("host", LLVMTraceMD);
 
-    //I.dump(); 
-
     //handle cases where dynamic values are being used. 
 }
 
@@ -687,17 +596,6 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
         globalLog.write_entry(std::move(ple));
     }
         
-    //if (pandalog) {
-            //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-            //*llvmentry = PANDA__LLVMENTRY__INIT;
-            //llvmentry->has_type = 1;
-            //llvmentry->type = FunctionCode::LLVM_EXCEPTION;
-            //llvmentry->has_address = 0;
-            //Panda__LogEntry logEntry = PANDA__LOG_ENTRY__INIT;
-            //logEntry.llvmentry = llvmentry;
-            //pandalog_write_entry(&logEntry);
-        //}
-    
     return 0; 
 }
 

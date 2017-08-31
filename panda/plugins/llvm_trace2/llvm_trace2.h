@@ -25,7 +25,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 
 
 #include "panda/plog-cc.hpp"
-#include "panda/plog.pb.h"
+#include "plog.pb.h"
 
 extern PandaLog globalLog;
 

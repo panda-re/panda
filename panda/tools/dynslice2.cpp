@@ -25,9 +25,9 @@ PANDAENDCOMMENT */
 #include <bitset>
 
 #include "panda/plugins/llvm_trace2/functionCode.h"
+#include "panda/plog-cc.hpp"
+
 extern "C" {
-#include "panda/plog.h"
-#include "panda/plog_print.h"
 #include "panda/addr.h"
 }
 
@@ -65,28 +65,35 @@ using namespace llvm;
  * I need a working set, uses, and definitions set. 
  *
  */
-extern "C"{
-int cpus;
-int panda_current_pc;
-int panda_in_main_loop;
-}
+
+/*extern "C"{*/
+/*int cpus;*/
+/*int panda_current_pc;*/
+/*int panda_in_main_loop;*/
+/*}*/
 
 typedef std::pair<SliceVarType,uint64_t> SliceVar;
 
 int ret_ctr = 0;
 
 //add stuff to this as needed
-struct traceEntry {
+typedef struct traceEntry {
+    //traceEntry(){};
+    //traceEntry(const traceEntry&) = delete;
+    //traceEntry& operator=(const traceEntry&) = delete;
+    //traceEntry(traceEntry&&) = default;
+    //~traceEntry() = default;
+
     uint16_t bb_num;
     uint16_t inst_index;
     llvm::Function *func;
     llvm::Instruction *inst;
     
-    Panda__LogEntry* ple;
-    Panda__LogEntry* ple2;
+    panda::LogEntry* ple;
+    panda::LogEntry* ple2;
     //special snowflake?
     // memcpy may need another logentry 
-};
+} traceEntry;
 
 std::set<SliceVar> workList; 
 std::vector<traceEntry> traceEntries;
@@ -94,7 +101,7 @@ std::map<std::pair<Function*, int>, std::bitset<MAX_BITSET>> markedMap;
 
 bool debug = false;
 
-Panda__LogEntry* cursor; 
+std::unique_ptr<panda::LogEntry> cursor; 
 
 void print_insn(Instruction *insn) {
     std::string s;
@@ -141,24 +148,24 @@ void print_set(std::set<SliceVar> &s) {
     printf(" }\n");
 }
 
-void pprint_llvmentry(Panda__LogEntry *ple){
+void pprint_llvmentry(panda::LogEntry* ple){
     printf("\tllvmEntry: {\n");
-    printf("\t\ttype = %s\n", functionCodeStrings[static_cast<FunctionCode>(ple->llvmentry->type)].c_str()); 
-    printf("\t\taddress = %lx\n", ple->llvmentry->address);
+    printf("\t\ttype = %s\n", functionCodeStrings[static_cast<FunctionCode>(ple->llvmentry().type())].c_str()); 
+    printf("\t\taddress = %lx\n", ple->llvmentry().address());
     printf("\t}\n"); 
 }
 
-void pprint_ple(Panda__LogEntry *ple) {
+void pprint_ple(panda::LogEntry *ple) {
     if (ple == NULL) {
         printf("PLE is NULL\n");
         return;
     }
 
     printf("\n{\n");
-    printf("\tPC = %lu\n", ple->pc);
-    printf("\tinstr = %lu\n", ple->instr);
+    printf("\tPC = %lu\n", ple->pc());
+    printf("\tinstr = %lu\n", ple->instr());
 
-    if (ple->llvmentry) {
+    if (ple->has_llvmentry()) {
         pprint_llvmentry(ple);
     }
     printf("}\n\n");
@@ -192,13 +199,13 @@ void get_usedefs_Store(traceEntry &t,
         std::set<SliceVar> &uses, 
         std::set<SliceVar> &defines){
     StoreInst* SI = dyn_cast<StoreInst>(t.inst);
-    assert(t.ple->llvmentry->address);
-    assert(t.ple->llvmentry->num_bytes);
-    assert(t.ple->llvmentry->addr_type);
+    assert(t.ple->llvmentry().address());
+    assert(t.ple->llvmentry().num_bytes());
+    assert(t.ple->llvmentry().addr_type());
 
     if (!SI->isVolatile()){
 
-        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry->addr_type), t.ple->llvmentry->address, t.ple->llvmentry->num_bytes);
+        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), t.ple->llvmentry().num_bytes());
         insertValue(uses, SI->getValueOperand());
         insertValue(uses, SI->getPointerOperand());
     }
@@ -208,9 +215,9 @@ void get_usedefs_Load(traceEntry &t,
         std::set<SliceVar> &uses, 
         std::set<SliceVar> &defines){
     LoadInst* LI = dyn_cast<LoadInst>(t.inst);
-    assert(t.ple->llvmentry->address);
-    assert(t.ple->llvmentry->num_bytes);
-    assert(t.ple->llvmentry->addr_type);
+    assert(t.ple->llvmentry().address());
+    assert(t.ple->llvmentry().num_bytes());
+    assert(t.ple->llvmentry().addr_type());
 
     // Add the memory address to the uses list. 
     // Giri goes back and searches for the stores before this load. Maybe that's better? 
@@ -219,7 +226,7 @@ void get_usedefs_Load(traceEntry &t,
      // I'll do what moyix does for now....
 
     // inserts dynamic address into use list
-    insertAddr(uses, static_cast<SliceVarType>(t.ple->llvmentry->addr_type), t.ple->llvmentry->address, t.ple->llvmentry->num_bytes);
+    insertAddr(uses, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), t.ple->llvmentry().num_bytes());
 
     insertValue(uses, LI);
 
@@ -243,7 +250,7 @@ void get_usedefs_Call(traceEntry &t,
         else if (sz_c.endswith("b")) size = 1;
         else assert(false && "Invalid size in call to load");
         
-        insertAddr(uses, MEM, t.ple->llvmentry->address, size);
+        insertAddr(uses, MEM, t.ple->llvmentry().address(), size);
 
         Value *load_addr = c->getArgOperand(0);
         insertValue(uses, load_addr);
@@ -259,7 +266,7 @@ void get_usedefs_Call(traceEntry &t,
         else if (sz_c.endswith("b")) size = 1;
         else assert(false && "Invalid size in call to store");
         
-        insertAddr(defines, MEM, t.ple->llvmentry->address, size);
+        insertAddr(defines, MEM, t.ple->llvmentry().address(), size);
         
         Value *store_addr = c->getArgOperand(0);
         Value *store_val  = c->getArgOperand(1);
@@ -277,10 +284,10 @@ void get_usedefs_Call(traceEntry &t,
         }
 
         // Load first
-        insertAddr(uses, static_cast<SliceVarType>(t.ple->llvmentry->addr_type), t.ple->llvmentry->address, bytes);
+        insertAddr(uses, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), bytes);
 
         // Now store
-        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry->addr_type), t.ple->llvmentry->address, bytes);
+        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), bytes);
 
         // Src/Dst pointers
         insertValue(uses, c->getArgOperand(0));
@@ -297,7 +304,7 @@ void get_usedefs_Call(traceEntry &t,
         }
 
         // Now store
-        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry->addr_type), t.ple->llvmentry->address, bytes);
+        insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), bytes);
 
         // Dst pointer
         insertValue(uses, c->getArgOperand(0));
@@ -345,10 +352,10 @@ void get_usedefs_Ret(traceEntry &t,
 void get_usedefs_PHI(traceEntry &t, 
     std::set<SliceVar> &uses, 
     std::set<SliceVar> &defines){
-    assert(t.ple->llvmentry->phi_index);
+    assert(t.ple->llvmentry().phi_index());
     PHINode *p = cast<PHINode>(t.inst);
     
-    Value *v = p->getIncomingValue(t.ple->llvmentry->phi_index);
+    Value *v = p->getIncomingValue(t.ple->llvmentry().phi_index());
     insertValue(uses, v);
     insertValue(defines, t.inst); 
 };
@@ -356,9 +363,9 @@ void get_usedefs_PHI(traceEntry &t,
 void get_usedefs_Select(traceEntry &t, 
 std::set<SliceVar> &uses, std::set<SliceVar> &defines){
     SelectInst *si = cast<SelectInst>(t.inst);
-    assert(t.ple->llvmentry->condition);
+    assert(t.ple->llvmentry().condition());
     
-    if (t.ple->llvmentry->condition){
+    if (t.ple->llvmentry().condition()){
         // if condition is true, choose the first select val
        insertValue(uses, si->getTrueValue()); 
     } else {
@@ -609,11 +616,10 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
 
 bool in_exception = false;
 
-int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, std::vector<Panda__LogEntry*> ple_vector, int cursor_idx){
+int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, std::vector<std::unique_ptr<panda::LogEntry>>& ple_vector, int cursor_idx){
     
     printf("f getname %s\n", f->getName().str().c_str());
 
-    /*cursor_idx = 0;*/
     print_set(workList);
 
     BasicBlock &entry = f->getEntryBlock();
@@ -625,23 +631,24 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
         
         int inst_index = 0;
         for (BasicBlock::iterator i = nextBlock->begin(), e = nextBlock->end(); i != e; ++i) {
-            traceEntry t = {};
+            traceEntry t;
             t.bb_num = getBlockIndex(f, nextBlock);
             t.inst_index = inst_index;
             inst_index++;
 
             if(in_exception) return cursor_idx;
-            Panda__LogEntry* ple;
+
+            panda::LogEntry* ple;
             if (cursor_idx >= ple_vector.size()){
                 ple = NULL;
             } else{
-                ple = ple_vector[cursor_idx];
+                ple = ple_vector[cursor_idx].get();
             }
 
             // Peek at the next thing in the log. If it's an exception, no point
             // processing anything further, since we know there can be no dynamic
             // values before the exception.
-            if (ple && ple->llvmentry->type == LLVM_EXCEPTION) {
+            if (ple && ple->llvmentry().type() == LLVM_EXCEPTION) {
                 printf("Found exception, will not finish this function.\n");
                 in_exception = true;
                 cursor_idx++;
@@ -652,7 +659,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 case Instruction::Load: {
                     // get the value from the trace 
                     //
-                    assert (ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_LOAD);
+                    assert (ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
                     t.ple = ple;
                     t.inst = i;
                     t.func = f;
@@ -667,7 +674,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         break;
                     }
 
-                    assert (ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_STORE);
+                    assert (ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
                     t.ple = ple;
                     t.inst = i;
                     t.func = f;
@@ -679,40 +686,46 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 case Instruction::Br: {
 
                     //Check that this entry is a BR entry
-                    assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_BR);
+                    assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_BR);
 
-                    Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    *llvmentry = PANDA__LLVMENTRY__INIT;
-                    Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    new_dyn.llvmentry = llvmentry; // sentinel
+                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+                    //*llvmentry = PANDA__LLVMENTRY__INIT;
+                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+                    //new_dyn.llvmentry = llvmentry; // sentinel
 
-                    t.ple = &new_dyn;
+                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
+
+                    t.ple = new_dyn.get();
                     t.inst = i;
                     t.func = f;
 
                     //update next block to examine
                     has_successor = true;
                     BranchInst *b = cast<BranchInst>(&*i);
-                    nextBlock = b->getSuccessor(!(ple->llvmentry->condition));
+                    nextBlock = b->getSuccessor(!(ple->llvmentry().condition()));
                     //nextBlock->dump();
 
                     aligned_block.push_back(t);
                     
-                    Panda__LogEntry *bbPle = ple_vector[cursor_idx+1];
-                    assert(bbPle && bbPle->llvmentry->type == FunctionCode::BB);
+                    panda::LogEntry *bbPle = ple_vector[cursor_idx+1].get();
+                    assert(bbPle && bbPle->llvmentry().type() == FunctionCode::BB);
 
                     cursor_idx+=2;
                     break;
                 }
                 case Instruction::Switch: {
                     //Check that current entry is a startBB entry
-                    assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_SWITCH);
+                    assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_SWITCH);
                     
-                    Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    *llvmentry = PANDA__LLVMENTRY__INIT;
-                    Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    new_dyn.llvmentry = llvmentry; // sentinel
-                    t.ple = &new_dyn;
+                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+                    //*llvmentry = PANDA__LLVMENTRY__INIT;
+                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+                    //new_dyn.llvmentry = llvmentry; // sentinel
+
+                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
+                    t.ple = new_dyn.get();
                     t.inst = i;
                     t.func = f;
                     
@@ -722,15 +735,15 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     SwitchInst *s = cast<SwitchInst>(&*i);
                     unsigned width = s->getCondition()->getType()->getPrimitiveSizeInBits();
                     IntegerType *intType = IntegerType::get(getGlobalContext(), width);
-                    ConstantInt *caseVal = ConstantInt::get(intType, ple->llvmentry->condition);
+                    ConstantInt *caseVal = ConstantInt::get(intType, ple->llvmentry().condition());
                     
                     has_successor = true;
                     SwitchInst::CaseIt caseIndex = s->findCaseValue(caseVal);
                     nextBlock = s->getSuccessor(caseIndex.getSuccessorIndex());
                     //nextBlock->dump();
 
-                    Panda__LogEntry *bbPle = ple_vector[cursor_idx+1];
-                    assert(bbPle && bbPle->llvmentry->type == FunctionCode::BB);
+                    panda::LogEntry *bbPle = ple_vector[cursor_idx+1].get();
+                    assert(bbPle && bbPle->llvmentry().type() == FunctionCode::BB);
                     
                     cursor_idx+=2;
                     break;
@@ -743,28 +756,32 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     // our trace, which should be the predecessor basic block
                     // to this PHI
                     PHINode *p = cast<PHINode>(&*i);
-                    Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    *llvmentry = PANDA__LLVMENTRY__INIT;
-                    llvmentry->has_phi_index = 1;
-                    llvmentry->phi_index = -1;
-                    Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    new_dyn.llvmentry = llvmentry; // sentinel
+                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+                    //*llvmentry = PANDA__LLVMENTRY__INIT;
+                    //llvmentry->has_phi_index = 1;
+                    //llvmentry->phi_index = -1;
+                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+                    //new_dyn.llvmentry = llvmentry; // sentinel
+
+                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    new_dyn->mutable_llvmentry()->set_phi_index(-1);
+
                     // Find the last non-PHI instruction
                     // Search from Reverse beginning (most recent traceEntry) 
                     for (auto sit = aligned_block.rbegin(); sit != aligned_block.rend(); sit++) {
                         if (sit->inst->getOpcode() != Instruction::PHI) {
-                            llvmentry->phi_index = p->getBasicBlockIndex(sit->inst->getParent());
+                            new_dyn->mutable_llvmentry()->set_phi_index(p->getBasicBlockIndex(sit->inst->getParent()));
                             break;
                         }
                     }
                     t.func = f; t.inst = i;
-                    t.ple = &new_dyn;
+                    t.ple = new_dyn.get();
                     aligned_block.push_back(t);
                     //cursor_idx++;
                     break;
                 }
                 case Instruction::Select: {
-                    assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_SELECT);
+                    assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_SELECT);
 
                     t.ple = ple;
                     t.inst = i;
@@ -785,7 +802,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                             // ignore
                     } 
                     else if (Regex("helper_[lb]e_ld.*_mmu_panda").match(func_name)) {
-                        assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_LOAD);
+                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
                         
                         t.ple = ple;
                         t.inst = i; 
@@ -795,7 +812,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         cursor_idx++;
                     } 
                     else if (Regex("helper_[lb]e_st.*_mmu_panda").match(func_name)) {
-                        assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_STORE);
+                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
 
                         t.ple = ple;
                         t.inst = i; 
@@ -806,7 +823,7 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
 
                     } 
                     else if (func_name.startswith("llvm.memset")) {
-                        assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_STORE);
+                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
 
                         t.ple = ple;
                         t.inst = i; 
@@ -816,12 +833,12 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         cursor_idx++;
                     }
                     else if (func_name.startswith("llvm.memcpy")) {
-                        assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_LOAD);
-                        Panda__LogEntry *storePle = ple_vector[cursor_idx+1];
-                        assert(storePle && storePle->llvmentry->type == FunctionCode::FUNC_CODE_INST_STORE);
+                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
+                        std::unique_ptr<panda::LogEntry> storePle = std::move(ple_vector[cursor_idx+1]);
+                        assert(storePle && storePle->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
                         
                         t.ple = ple;
-                        t.ple2 = storePle;
+                        t.ple2 = storePle.get();
                         t.inst = i; 
                         t.func = f; 
 
@@ -837,10 +854,10 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     }
                     else {
                         // descend into function
-                        assert(ple && ple->llvmentry->type == FunctionCode::FUNC_CODE_INST_CALL);
+                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_CALL);
                         
-                        Panda__LogEntry *bbPle = ple_vector[cursor_idx+1];
-                        assert(bbPle && bbPle->llvmentry->type == FunctionCode::BB);
+                        panda::LogEntry *bbPle = ple_vector[cursor_idx+1].get();
+                        assert(bbPle && bbPle->llvmentry().type() == FunctionCode::BB);
                         
                         printf("descending into function, cursor_idx= %d\n", cursor_idx+2);
                         cursor_idx = align_function(aligned_block, subf, ple_vector, cursor_idx+2);
@@ -848,12 +865,17 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     
                         // call is placed after the instructions of the called function
                         // so slice_trace will know 
-                        Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                        *llvmentry = PANDA__LLVMENTRY__INIT;
-                        Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                        new_dyn.llvmentry = llvmentry; // sentinel
+                        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+                        //*llvmentry = PANDA__LLVMENTRY__INIT;
+                        //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+                        //new_dyn.llvmentry = llvmentry; // sentinel
 
-                        t.func = f; t.inst = i; t.ple = &new_dyn;
+                        std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                        new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
+
+                        t.func = f; 
+                        t.inst = i;
+                        t.ple = new_dyn.get();
                         aligned_block.push_back(t);
                     }
                     break;
@@ -862,12 +884,17 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     //printf("fell through!\n");
                     /*print_insn(i);*/
 
-                    Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    *llvmentry = PANDA__LLVMENTRY__INIT;
-                    Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    new_dyn.llvmentry = llvmentry; // sentinel
+                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
 
-                    t.func = f; t.inst = i; t.ple = &new_dyn;
+                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
+                    //*llvmentry = PANDA__LLVMENTRY__INIT;
+                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
+                    //new_dyn.llvmentry = llvmentry; // sentinel
+
+                    t.func = f; 
+                    t.inst = i; 
+                    t.ple = new_dyn.get();
                     aligned_block.push_back(t);
                     break;
 
@@ -999,41 +1026,33 @@ int main(int argc, char **argv){
     }
 
     printf("Slicing trace\n");
-    pandalog_open_read_bwd(llvm_trace_fname);
+    /*pandalog_open_read_bwd(llvm_trace_fname);*/
     
-    Panda__LogEntry *ple;
+    //Panda__LogEntry *ple;
 
-    //int i = 0;
-    //while ((ple = pandalog_read_entry()) != NULL){
-        //if(i <= 7 || i >= 2031870){
-            //pprint_ple(ple);
-        //}
-        //i++;
-    //}
-    //printf("i %d\n", i);
-    
-    /*uint64_t max_idx = ple_vector.size()-1;*/
-    /*uint64_t ple_idx = 0;*/
-    /*uint64_t ple_idx = ple_vector.size()-1;*/
-
-    std::vector<Panda__LogEntry*> ple_vector;   
+    std::vector<std::unique_ptr<panda::LogEntry>> ple_vector;   
     std::vector<traceEntry> aligned_block;
+    
+    PandaLog p;
+    p.open_read_bwd((const char *) argv[1]);
+    std::unique_ptr<panda::LogEntry> ple;
+
     // Process by the function? I'll just do the same thing as dynslice1.cpp for now. 
-    while ((ple = pandalog_read_entry()) != NULL) {
+    while ((ple = p.read_entry()) != NULL) {
         // while we haven't reached beginning of file yet 
         char namebuf[128];
         /*printf("ple_idx %lu\n", ple_idx);*/
         /*ple = pandalog_read_entry();*/
         //pprint_ple(ple);
-        ple_vector.push_back(ple);
+        ple_vector.push_back(std::move(ple));
 
-        if (ple->llvmentry != NULL && ple->llvmentry->type == FunctionCode::LLVM_FN && ple->llvmentry->tb_num){
-            if (ple->llvmentry->tb_num == 0) {
+        if (ple->has_llvmentry() && ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()){
+            if (ple->llvmentry().tb_num() == 0) {
                 //ple_idx++; 
                 continue;
             }
             int cursor_idx = 0;
-            sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry->tb_num, ple->pc);
+            sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry().tb_num(), ple->pc());
             printf("********** %s **********\n", namebuf);
             Function *f = mod->getFunction(namebuf);
             
@@ -1042,19 +1061,21 @@ int main(int argc, char **argv){
             aligned_block.clear();
             std::reverse(ple_vector.begin(), ple_vector.end());
             //Skip over first two entries, LLVM_FN and BB
-            assert(ple_vector[0]->llvmentry->type == FunctionCode::LLVM_FN && ple_vector[1]->llvmentry->type == FunctionCode::BB);
+            
+            assert(ple_vector[0]->llvmentry().type() == FunctionCode::LLVM_FN && ple_vector[1]->llvmentry().type() == FunctionCode::BB);
+
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
             cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
             // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
             // maybe i can do this lazily...
             
-            if (ple->llvmentry->tb_num == 3290){
-                slice_trace(aligned_block, workList);
+            //if (ple->llvmentry()->tb_num() == 3290){
+                //slice_trace(aligned_block, workList);
 
-                printf("Working set: ");
-                print_set(workList);
-                // CLear ple_vector for next block
-            }
+                //printf("Working set: ");
+                //print_set(workList);
+                //// CLear ple_vector for next block
+            //}
 
             ple_vector.clear();
         }
@@ -1079,7 +1100,7 @@ int main(int argc, char **argv){
         fwrite(bytes, MAX_BITSET / 8, 1, outf);
    }
 
-    pandalog_close();
+    p.close();
     return 0;
 }
 
