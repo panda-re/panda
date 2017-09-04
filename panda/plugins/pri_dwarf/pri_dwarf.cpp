@@ -1081,7 +1081,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
                     if (dwarf_child(type_die, &struct_child, &err) != DW_DLV_OK)
                     {
                         //printf("  Couldn't parse struct for var: %s\n",argname.c_str() );
-                        return type_name.c_str();
+                        return strdup(type_name.c_str());
                     }
                     char *field_name;
                     while (1) // enumerate struct arguments
@@ -1097,7 +1097,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
 
                         rc = dwarf_diename(struct_child, &field_name, &err);
                         if (rc != DW_DLV_OK)
-                            strncpy(field_name, "?\0", 2);
+                            field_name = (char *)std::string("?").c_str();
                         //printf("    [+] %s\n", field_name);
                     }
                     break;
