@@ -697,6 +697,7 @@ int die_get_type_size (Dwarf_Debug dbg, Dwarf_Die the_die){
                     return -1;
                 // continue enumerating type to get actual type
                 // just "skip" these types by continuing to descend type tree
+                case DW_TAG_restrict_type:
                 case DW_TAG_typedef:
                 case DW_TAG_volatile_type:
                 case DW_TAG_const_type:
@@ -780,7 +781,8 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
            tag == DW_TAG_typedef       ||
            tag == DW_TAG_array_type    ||
            tag == DW_TAG_volatile_type ||
-           tag == DW_TAG_const_type)
+           tag == DW_TAG_const_type    ||
+           tag == DW_TAG_restrict_type)
     {
         rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
         if (rc == DW_DLV_ERROR){
@@ -989,6 +991,7 @@ void __dwarf_type_iter (CPUState *cpu, target_ulong base_addr, LocType loc_t,
                     break;
                 // continue enumerating type to get actual type
                 case DW_TAG_typedef:
+                case DW_TAG_restrict_type:
                 // just "skip" these types by continuing to descend type tree
                 case DW_TAG_volatile_type:
                 case DW_TAG_const_type:
@@ -1038,7 +1041,8 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
            tag == DW_TAG_typedef       ||
            tag == DW_TAG_array_type    ||
            tag == DW_TAG_volatile_type ||
-           tag == DW_TAG_const_type)
+           tag == DW_TAG_const_type    ||
+           tag == DW_TAG_restrict_type)
     {
         rc = dwarf_attr (cur_die, DW_AT_type, &type_attr, &err);
         if (rc == DW_DLV_ERROR){
@@ -1125,6 +1129,7 @@ const char *dwarf_type_to_string ( DwarfVarType *var_ty ){
                     break;
                 // just "skip" these types by continuing to descend type tree
                 case DW_TAG_typedef: // continue enumerating type to get actual type
+                case DW_TAG_restrict_type:
                 case DW_TAG_ptr_to_member_type: // what to do here?
                 case DW_TAG_imported_declaration:
                 case DW_TAG_unspecified_parameters:
