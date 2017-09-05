@@ -552,12 +552,9 @@ ARCH=
 # Normalise host CPU name and set ARCH.
 # Note that this case should only have supported host CPUs, not guests.
 case "$cpu" in
-  ppc|ppc64|s390|s390x|x32)
+  ppc|ppc64|s390|s390x|sparc64|x32)
     cpu="$cpu"
     supported_cpu="yes"
-  ;;
-  ia64|sparc64)
-    cpu="$cpu"
   ;;
   i386|i486|i586|i686|i86pc|BePC)
     cpu="i386"
@@ -6449,9 +6446,6 @@ for i in $ARCH $TARGET_BASE_ARCH ; do
   ;;
   i386|x86_64|x32)
     disas_config "I386"
-  ;;
-  ia64*)
-    disas_config "IA64"
   ;;
   lm32)
     disas_config "LM32"
