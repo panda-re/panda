@@ -140,3 +140,7 @@ void pandalog_seek(uint64_t instr) {
 	pandalog_cc_seek(instr);
 }
 
+void pandalog_free_entry(Panda__LogEntry* entry){
+
+}
+
