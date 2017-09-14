@@ -293,6 +293,7 @@ opengl_dmabuf="no"
 cpuid_h="no"
 avx2_opt="no"
 zlib="yes"
+capstone=""
 lzo=""
 snappy=""
 bzip2=""
@@ -801,8 +802,6 @@ for opt do
   ;;
   --target-list=*) target_list="$optarg"
   ;;
-  --extra-plugins-path=*) extra_plugins_path="$optarg"
-  ;;
   --enable-trace-backends=*) trace_backends="$optarg"
   ;;
   # XXX: backwards compatibility
@@ -937,10 +936,6 @@ for opt do
   --disable-bluez) bluez="no"
   ;;
   --enable-bluez) bluez="yes"
-  ;;
-  --enable-llvm) llvm="yes"
-  ;;
-  --with-llvm=*) llvmdir="$optarg"
   ;;
   --disable-kvm) kvm="no"
   ;;
@@ -1189,6 +1184,16 @@ for opt do
   --disable-replication) replication="no"
   ;;
   --enable-replication) replication="yes"
+  ;;
+  --disable-capstone) capstone="no"
+  ;;
+  --enable-capstone) capstone="yes"
+  ;;
+  --enable-llvm) llvm="yes"
+  ;;
+  --with-llvm=*) llvmdir="$optarg"
+  ;;
+  --extra-plugins-path=*) extra_plugins_path="$optarg"
   ;;
   --disable-pyperipheral2) pyperipheral2="no"
   ;;
@@ -1448,6 +1453,7 @@ disabled with --disable-FEATURE, default is enabled if available:
   xfsctl          xfsctl support
   qom-cast-debug  cast debugging support
   tools           build qemu-io, qemu-nbd and qemu-image tools
+  capstone        capstone disassembler support
   pyperipheral2   avatar's python peripheral (based on python2.7)
   pyperipheral3   avatar's python peripheral (based on python3.x)
 
@@ -4435,6 +4441,22 @@ if test "$protobuf" != "no"; then
 fi
 
 ##########################################
+# capstone
+
+if test "$capstone" != no; then
+  if $pkg_config capstone; then
+    capstone=yes
+    QEMU_CFLAGS="$QEMU_CFLAGS $($pkg_config --cflags capstone)"
+    LIBS="$($pkg_config --libs capstone) $LIBS"
+  else
+    if test "$capstone" = yes; then
+      feature_not_found capstone
+    fi
+    capstone=no
+  fi
+fi
+
+##########################################
 # check if we have fdatasync
 
 fdatasync=no
@@ -5369,6 +5391,9 @@ echo "tcmalloc support  $tcmalloc"
 echo "jemalloc support  $jemalloc"
 echo "avx2 optimization $avx2_opt"
 echo "replication support $replication"
+echo "capstone          $capstone"
+echo "LLVM support      $llvm"
+echo "extra plugins path $extra_plugins_path"
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -6021,6 +6046,10 @@ fi
 
 if test "$have_sysmacros" = "yes" ; then
   echo "CONFIG_SYSMACROS=y" >> $config_host_mak
+fi
+
+if test "$capstone" = "yes" ; then
+  echo "CONFIG_CAPSTONE=y" >> $config_host_mak
 fi
 
 # Hold two types of flag:
