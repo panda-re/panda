@@ -42,6 +42,8 @@ Panda__LogEntry *pandalog_read_entry(void);
 
 void pandalog_seek(uint64_t instr);
 
+void pandalog_free_entry(Panda__LogEntry *entry);
+
 extern int pandalog;
 
 #endif
