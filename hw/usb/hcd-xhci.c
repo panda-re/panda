@@ -3891,6 +3891,11 @@ static const TypeInfo xhci_info = {
     .instance_size = sizeof(XHCIState),
     .class_init    = xhci_class_init,
     .abstract      = true,
+    .interfaces = (InterfaceInfo[]) {
+        { INTERFACE_PCIE_DEVICE },
+        { INTERFACE_CONVENTIONAL_PCI_DEVICE },
+        { }
+    },
 };
 
 static void nec_xhci_class_init(ObjectClass *klass, void *data)
