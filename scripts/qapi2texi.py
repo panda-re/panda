@@ -126,7 +126,7 @@ def texi_format(doc):
 
 def texi_body(doc):
     """Format the main documentation body"""
-    return texi_format(str(doc.body)) + '\n'
+    return texi_format(doc.body.text) + '\n'
 
 
 def texi_enum_value(value):
@@ -150,8 +150,8 @@ def texi_members(doc, what, base, variants, member_func):
     items = ''
     for section in doc.args.values():
         # TODO Drop fallbacks when undocumented members are outlawed
-        if section.content:
-            desc = texi_format(str(section))
+        if section.text:
+            desc = texi_format(section.text)
         elif (variants and variants.tag_member == section.member
               and not section.member.type.doc_type()):
             values = section.member.type.member_names()
@@ -188,9 +188,11 @@ def texi_sections(doc):
 
         if name:
             # prefer @b over @strong, so txt doesn't translate it to *Foo:*
-            body += '\n\n@b{%s:}\n' % name
-
-        body += func(doc)
+            body += '\n\n@b{%s:}\n' % section.name
+        if section.name and section.name.startswith('Example'):
+            body += texi_example(section.text)
+        else:
+            body += texi_format(section.text)
     return body
 
 
@@ -243,7 +245,8 @@ class QAPISchemaGenDocVisitor(qapi.QAPISchemaVisitor):
             self.out += '\n'
         if boxed:
             body = texi_body(doc)
-            body += '\n@b{Arguments:} the members of @code{%s}' % arg_type.name
+            body += ('\n@b{Arguments:} the members of @code{%s}\n'
+                     % arg_type.name)
             body += texi_sections(doc)
         else:
             body = texi_entity(doc, 'Arguments')
