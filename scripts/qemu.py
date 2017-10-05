@@ -106,8 +106,8 @@ class QEMUMachine(object):
                 '-display', 'none', '-vga', 'none']
 
     def _pre_launch(self):
-        self._qmp = qmp.qmp.QEMUMonitorProtocol(self._monitor_address, server=True,
-                                                debug=self._debug)
+        self._qmp = qmp.qmp.QEMUMonitorProtocol(self._monitor_address,
+                                                server=True)
 
     def _post_launch(self):
         self._qmp.accept()
