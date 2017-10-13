@@ -456,7 +456,6 @@ void PandaLog::seek(uint64_t instr){
 
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry);
     ple->CopyFrom(*this->chunk.entries[ind]);
-    assert(ple->instr() == instr);
 
     if(this->mode == PL_MODE_READ_BWD && instr != -1){
         //search forward for last index with this instr number
