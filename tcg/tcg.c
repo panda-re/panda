@@ -445,6 +445,7 @@ void tcg_func_start(TCGContext *s)
     s->gen_op_buf[0].prev = 0;
     s->gen_next_op_idx = 1;
     s->gen_next_parm_idx = 0;
+    memset(s->target_codebuf, 0, sizeof(s->target_codebuf));
 
     s->be = tcg_malloc(sizeof(TCGBackendData));
 }
@@ -1029,7 +1030,7 @@ void tcg_dump_ops(TCGContext *s)
     int oi;
 
     for (oi = s->gen_op_buf[0].next; oi != 0; oi = op->next) {
-        int i, k, nb_oargs, nb_iargs, nb_cargs;
+        int i, j, k, nb_oargs, nb_iargs, nb_cargs;
         const TCGOpDef *def;
         const TCGArg *args;
         TCGOpcode c;
@@ -1051,6 +1052,12 @@ void tcg_dump_ops(TCGContext *s)
                 a = args[i];
 #endif
                 col += qemu_log(" " TARGET_FMT_lx, a);
+            }
+            
+            col += qemu_log(" ");
+            // dump target assembly
+            for (j = 0; j < op->num_target_bytes; j++){
+                col += qemu_log("%x", s->target_codebuf[op->target_codebuf_idx + j]);
             }
         } else if (c == INDEX_op_call) {
             /* variable number of arguments */

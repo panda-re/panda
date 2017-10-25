@@ -8453,7 +8453,10 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
      * LLVM code translation and any analyses that are built on top of that.
      */
     gen_tb_start(tb);
+    
+    int codebuf_idx = 0;
     for(;;) {
+        int insn_start_idx = tcg_op_buf_count();
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
         num_insns++;
 
@@ -8488,6 +8491,33 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
+        
+        int num_target_bytes = pc_ptr - dc->pc_start;
+        tcg_set_codebuf_idx(insn_start_idx, codebuf_idx, num_target_bytes);
+        codebuf_idx += num_target_bytes; 
+        
+        // Get target assembly instructions 
+        //printf("ctxt pc start: %x, ctxt pc end: %x\n", pc_start, pc_ptr);
+        //unsigned char targetcodebuf[CODE_BUF_MAX_SIZE];
+        //for(int pc_i = dc->pc_start, i = 0; pc_i < pc_ptr; pc_i++, i++){
+            //[>printf("%x", cpu_ldub_code(env, pc_i));<]
+            //targetcodebuf[i] = cpu_ldub_code(env, pc_i);
+        //};
+
+        //target_ulong insn_len = pc_ptr - dc->pc_start;
+        //printf("insn len: %d\n", insn_len);
+        ////print targetcodebuf
+        //for (int j = 0; j < insn_len; j++){
+            //printf("%x", targetcodebuf[j]);
+        //}
+
+        //printf("\n");
+        //int disas_flags = !dc->code32;
+        //log_target_disas(cs, dc->pc_start, dc->pc - dc->pc_start, disas_flags);
+        //printf("\n");
+
+
+
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;
@@ -8532,6 +8562,16 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     }
     if (tb->cflags & CF_LAST_IO)
         gen_io_end();
+
+    //XXX: Add some bounds checking here
+    unsigned char targetcodebuf[640*15];
+    for(int pc_i = pc_start, i = 0; pc_i < pc_ptr; pc_i++, i++){
+        targetcodebuf[i] = cpu_ldub_code(env, pc_i);
+    };
+    
+    // Send raw target assembly over to TCGContext
+    tcg_set_target_code_buf(codebuf_idx, targetcodebuf);
+
 done_generating:
     gen_tb_end(tb, num_insns);
 

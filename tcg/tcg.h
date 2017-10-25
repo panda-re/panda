@@ -50,6 +50,8 @@
 #define OPC_BUF_SIZE 640
 #define OPC_MAX_SIZE (OPC_BUF_SIZE - MAX_OP_PER_INSTR)
 
+#define TARGET_CODE_BUF_MAX_SIZE (OPC_BUF_SIZE * 15)
+
 #define OPPARAM_BUF_SIZE (OPC_BUF_SIZE * MAX_OPC_PARAM)
 
 #define CPU_TEMP_BUF_NLONGS 128
@@ -638,6 +640,12 @@ typedef struct TCGOp {
 
     /* Lifetime data of the operands.  */
     unsigned life   : 16;       /* 64 */
+
+    /*rw: Added index of the target assembly for this op, only used for Op_insn_start*/
+    /* and number of host assembly instructions that the TCG op corresponds to*/
+    unsigned target_codebuf_idx : 12; 
+    unsigned num_target_bytes : 4; 
+        
 } TCGOp;
 
 /* Make sure operands fit in the bitfields above.  */
@@ -645,8 +653,8 @@ QEMU_BUILD_BUG_ON(NB_OPS > (1 << 8));
 QEMU_BUILD_BUG_ON(OPC_BUF_SIZE > (1 << 10));
 QEMU_BUILD_BUG_ON(OPPARAM_BUF_SIZE > (1 << 14));
 
-/* Make sure that we don't overflow 64 bits without noticing.  */
-QEMU_BUILD_BUG_ON(sizeof(TCGOp) > 8);
+/* rw: Make sure that we don't overflow 96 bits without noticing.  */
+QEMU_BUILD_BUG_ON(sizeof(TCGOp) > 12);
 
 struct TCGContext {
     uint8_t *pool_cur, *pool_end;
@@ -733,6 +741,9 @@ struct TCGContext {
     TCGOp gen_op_buf[OPC_BUF_SIZE];
     TCGArg gen_opparam_buf[OPPARAM_BUF_SIZE];
 
+    // rw: Added this field
+    unsigned char target_codebuf[TARGET_CODE_BUF_MAX_SIZE];
+
     uint16_t gen_insn_end_off[TCG_MAX_INSNS];
     target_ulong gen_insn_data[TCG_MAX_INSNS][TARGET_INSN_START_WORDS];
 };
@@ -756,6 +767,25 @@ static inline int tcg_op_buf_count(void)
 static inline bool tcg_op_buf_full(void)
 {
     return tcg_op_buf_count() >= OPC_MAX_SIZE;
+}
+
+//Records the target assembly in a buffer and saves the index in the first opcode of the tb
+//which is always an op_insn_start
+static inline void tcg_set_target_code_buf(int num_target_bytes, unsigned char codebuf[])
+{  
+    memcpy(tcg_ctx.target_codebuf, codebuf, num_target_bytes);
+    
+    //for (int j = 0; j < num_target_bytes; j++){
+        //printf("%x", tcg_ctx.target_codebuf[j]);
+    //}
+
+    //printf("\n");
+}
+
+static inline void tcg_set_codebuf_idx(int op_idx, int codebuf_idx, int num_bytes){
+    /*printf("op_idx: %d, codebuf_idx: %d, num_bytes: %d\n", op_idx, codebuf_idx, num_bytes);*/
+    tcg_ctx.gen_op_buf[op_idx].target_codebuf_idx = codebuf_idx;
+    tcg_ctx.gen_op_buf[op_idx].num_target_bytes = num_bytes;
 }
 
 /* pool based memory allocation */

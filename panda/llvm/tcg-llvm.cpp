@@ -40,6 +40,7 @@
 
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/PassManager.h>
@@ -150,6 +151,8 @@ public:
     llvm::Type* wordType() { return intType(TCG_TARGET_REG_BITS); }
     llvm::Type* wordType(int bits) { return intType(bits); }
     llvm::Type* wordPtrType() { return intPtrType(TCG_TARGET_REG_BITS); }
+    
+    MDNode *OpMD = MDNode::get(m_context, MDString::get(m_context, "opmd"));
 
     llvm::Constant* constInt(int bits, uint64_t value) {
         return ConstantInt::get(intType(bits), value);
@@ -1493,9 +1496,25 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
             opc_index = op->next) {
         op = &s->gen_op_buf[opc_index];
         args = &s->gen_opparam_buf[op->args];
+        //op_hostbytes = &s->gen
         int opc = op->opc;
 
         if (opc == INDEX_op_insn_start) {
+            //Get the guest assembly corresponding to this TCG instruction
+            
+            //std::stringstream ss;
+            char codebuf[op->num_target_bytes];
+            for (int j = 0; j < op->num_target_bytes; j++){
+                //printf("%02x", s->target_codebuf[op->target_codebuf_idx + j]);
+                sprintf(&codebuf[j*2], "%02x", s->target_codebuf[op->target_codebuf_idx + j]);
+                //ss << s->target_codebuf[op->target_codebuf_idx + j];
+            }
+            //printf("%s\n", codebuf);
+
+            //std::cout << ss.str() << "\n";
+            //printf("\n");
+            MDNode *targetAsmMD = MDNode::get(C, MDString::get(C, codebuf));
+
             // volatile store of current PC
             Constant *PC = ConstantInt::get(intType(64), args[0]);
             Instruction *LastPCSt = m_builder.CreateStore(PC, LastPCPtr, true);
@@ -1504,6 +1523,7 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
             // that sets PC
             LastPCSt->setMetadata("host", PCUpdateMD);
             GuestPCSt->setMetadata("host", PCUpdateMD);
+            GuestPCSt->setMetadata("targetAsm", targetAsmMD);
 
             InstrCount = dyn_cast<Instruction>(
                     m_builder.CreateAdd(InstrCount, One64, "rrgic"));
