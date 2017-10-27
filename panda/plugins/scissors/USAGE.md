@@ -30,9 +30,10 @@ Example
 
 Snipping from instruction 12345 to 8675309 into `foo_reduced`:
 
-
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-        -panda scissors:name=foo_reduced,start=12345,end=8675309
+```sh
+$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    -panda scissors:name=foo_reduced,start=12345,end=8675309
+```
 
 Bugs
 ----

@@ -25,12 +25,19 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Value.h>
 
 #include "panda/plugin.h"
+#include "panda/plugin_plugin.h"
 
 #include "fast_shad.h"
 #include "label_set.h"
 #include "taint_ops.h"
 
 uint64_t labelset_count;
+
+extern "C" {
+
+extern bool tainted_pointer;
+
+}
 
 // Memlog functions.
 
@@ -213,6 +220,8 @@ void taint_mix(
 
 static const uint64_t ones = ~0UL;
 
+void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size);
+
 // Model for tainted pointer is to mix all the labels from the pointer and then
 // union that mix with each byte of the actual copied data. So if the pointer
 // is labeled [1], [2], [3], [4], and the bytes are labeled [5], [6], [7], [8],
@@ -220,7 +229,8 @@ static const uint64_t ones = ~0UL;
 void taint_pointer(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
-        FastShad *shad_src, uint64_t src, uint64_t size) {
+        FastShad *shad_src, uint64_t src, uint64_t size, 
+        uint64_t is_store) {
     taint_log("ptr: %s[%lx+%lx] <- %s[%lx] @ %s[%lx+%lx]\n",
             shad_dest->name(), dest, size,
             shad_src->name(), src, shad_ptr->name(), ptr, ptr_size);
@@ -231,6 +241,11 @@ void taint_pointer(
     } else if (unlikely(src + size > shad_src->get_size())) {
         taint_log("  Source IO.\n");
         src = ones; // ignore source.
+    }
+
+    // query taint on pointer either being read or written
+    if (tainted_pointer & TAINT_POINTER_MODE_CHECK) {
+        taint_pointer_run(src, ptr, dest, (bool) is_store, size);
     }
 
     // this is [1234] in our example
@@ -292,9 +307,17 @@ void taint_select(
      (size_t)(offset) < cpu_endoff(member))
 
 static void find_offset(FastShad *greg, FastShad *gspec, uint64_t offset, uint64_t labels_per_reg, FastShad **dest, uint64_t *addr) {
+#ifdef TARGET_PPC
+    if (cpu_contains(gpr, offset)) {
+#else 
     if (cpu_contains(regs, offset)) {
+#endif
         *dest = greg;
+#ifdef TARGET_PPC
+        *addr = (offset - cpu_off(gpr)) * labels_per_reg / sizeof(((CPUArchState *)0)->gpr[0]);
+#else
         *addr = (offset - cpu_off(regs)) * labels_per_reg / sizeof(((CPUArchState *)0)->regs[0]);
+#endif
     } else {
         *dest= gspec;
         *addr= offset;

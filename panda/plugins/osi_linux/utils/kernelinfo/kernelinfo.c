@@ -19,6 +19,11 @@
 #include <linux/fdtable.h>
 #include <linux/dcache.h>
 #include <linux/mount.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+#include "mount.h"
+#endif
 
 /*
  * This function is used because to print offsets of members
@@ -76,6 +81,13 @@ int init_module(void)
 	struct thread_info *ti_p;
 	struct files_struct *fss_p;
 	struct vfsmount *vfsmnt_p;
+
+// Put it here because ISO C90
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+	struct mount mountstruct;
+	struct mount *mnt_p;
+	mnt_p = &mountstruct;
+#endif
 
 	ts_p = &init_task;
 	cs_p = &credstruct;
@@ -135,9 +147,14 @@ int init_module(void)
 	PRINT_OFFSET(fs_p,		f_path.dentry,	"fs");
 	PRINT_OFFSET(fs_p,		f_path.mnt,		"fs");
     PRINT_OFFSET(fs_p,      f_pos,          "fs");
+	PRINT_OFFSET(vfsmnt_p,	mnt_root,		"fs");	/* XXX: We don't use this anywhere. Marked for removal. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0)
+	PRINT_OFFSET(mnt_p,		mnt_parent,		"fs");
+	PRINT_OFFSET(mnt_p,		mnt_mountpoint, "fs");
+#else
 	PRINT_OFFSET(vfsmnt_p,	mnt_parent,		"fs");
 	PRINT_OFFSET(vfsmnt_p,	mnt_mountpoint, "fs");
-	PRINT_OFFSET(vfsmnt_p,	mnt_root,		"fs");	/* XXX: We don't use this anywhere. Marked for removal. */
+#endif
 
 	/* used in reading FDs */
 	PRINT_OFFSET(fss_p,	fdt,			"fs");

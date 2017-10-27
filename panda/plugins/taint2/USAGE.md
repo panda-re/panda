@@ -60,12 +60,26 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
 
     // label this phys addr in memory with label l
     void taint2_label_ram(uint64_t pa, uint32_t l);
+    
+    // add label l to this phys addr in memory. any previous labels applied to 
+    // this address are not removed.
+    void taint2_label_ram_additive(uint64_t pa, uint32_t l);
+
+    // add label l to this register. any previous labels applied to this 
+    // register are not removed.
+    void taint2_label_reg_additive(int reg_num, int offset, uint32_t l);
 
     // query fns return 0 if untainted, else cardinality of taint set
     uint32_t taint2_query(Addr a);
     uint32_t taint2_query_ram(uint64_t pa);
     uint32_t taint2_query_reg(int reg_num, int offset);
     uint32_t taint2_query_llvm(int reg_num, int offset);
+
+    // query set fns writes taint set contents to the specified array. the
+    // size of the array must be >= the cardianlity of the taint set.
+    void taint2_query_set(Addr a, uint32_t *out);
+    void taint2_query_set_ram(uint64_t pa, uint32_t *out);
+    void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
 
     // returns taint compute number associated with addr
     uint32_t taint2_query_tcn(Addr a);

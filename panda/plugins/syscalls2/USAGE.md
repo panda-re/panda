@@ -31,25 +31,41 @@ In addition to the OS-specific system calls, there are four callbacks defined th
 
 Name: **on_unknown_sys_enter**
 
-Signature: `typedef void (*on_unknown_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno)`
+Signature:
+
+```C
+typedef void (*on_unknown_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno)
+```
 
 Description: Called when an unknown system call (i.e., one that does not have a callback already defined for it) is invoked in the guest. The system call number will be available in the `callno` parameter.
 
 Name: **on_unknown_sys_return**
 
-Signature: `typedef void (*on_unknown_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno)`
+Signature:
+
+```C
+typedef void (*on_unknown_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno)
+```
 
 Description: Called when an unknown system call (i.e., one that does not have a callback already defined for it) returns in the guest. The system call number will be available in the `callno` parameter.
 
 Name: **on_all_sys_enter**
 
-Signature: `typedef void (*on_all_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno)`
+Signature:
+
+```C
+typedef void (*on_all_sys_enter_t)(CPUState *env, target_ulong pc, target_ulong callno)
+```
 
 Description: Called for every system call invoked in the guest. The call number is available in the `callno` parameter.
 
 Name: **on_all_sys_return**
 
-Signature: `typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno)`
+Signature:
+
+```C
+typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong callno)
+```
 
 Description: Called whenever any system call returns in the guest. The call number is available in the `callno` parameter.
 
@@ -95,7 +111,9 @@ bool init_plugin(void *self) {
 
 And then invoke it as:
 
-    $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-        -panda syscalls2:profile=windows7_x86 -panda filereadmon
+```sh
+$PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
+    -panda syscalls2:profile=windows7_x86 -panda filereadmon
+```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.

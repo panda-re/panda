@@ -5,8 +5,9 @@ import sys
 import re
 import shutil 
 from colorama import Fore, Style
+import tempfile
 
-debug = True
+debug = False
 
 def progress(msg):
     print Fore.GREEN + '[ptest.py] ' + Fore.RESET + Style.BRIGHT + msg + Style.RESET_ALL
@@ -21,7 +22,7 @@ def dir_exists(dirname):
 
 def dir_required(dirname):
     if dir_exists(dirname):
-        progress("Dir found: " + dirname)
+        if debug: progress("Dir found: " + dirname)
     else:
         progress("Dir missing: " + dirname)
         sys.exit(1)
@@ -31,7 +32,7 @@ def file_exists(filename):
 
 def file_required(filename):
     if file_exists(filename):
-        progress("File found: " + filename)
+        if debug: progress("File found: " + filename)
     else:
         progress("File missing: " + filename)
         sys.exit(1)
@@ -69,7 +70,7 @@ if not (file_exists(ptest_config)):
 maybe_tests = [test.strip() for test in open(ptest_config).readlines()]
 enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
 
-progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
+if debug: progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
 def the_dir(thing, test):
     return "%s/%s/%s" % (pandaregressiondir, thing, test)
@@ -106,18 +107,19 @@ def record_32bitlinux(cmds, replayname):
     # create the replay to use for reference / test
     cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
     progress(cmd)
-    os.chdir(pandaregressiondir)
+    tempd = tempfile.mkdtemp()
+    os.chdir(tempd)
     print cmd
     sp.check_call(cmd.split())
-    base = pandaregressiondir + ("/replays/%s/%s-rr-" % (replayname, replayname))
+    # this is where we want the replays to end up
     replaysdir = pandaregressiondir + "/replays/" + testname
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
-    newbase = replaysdir + "/" + testname + "-rr-"
-    moveit(base, newbase, "nondet.log")
-    moveit(base, newbase, "snp")
-    # cruft
-    shutil.rmtree(pandaregressiondir + ("/replays/%s" % replayname))
+    temp_base = tempd + ("/replays/%s/%s-rr-" % (replayname, replayname))
+    new_base = replaysdir + "/" + testname + "-rr-"
+    moveit(temp_base, new_base, "nondet.log")
+    moveit(temp_base, new_base, "snp")
+    shutil.rmtree(tempd)
              
 def run_test_32bitlinux(panda_args):
     progress("Running test " + testname)

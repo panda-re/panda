@@ -1,5 +1,6 @@
 asidstory
 callstack_instr
+checkpoint_test
 libfi
 loaded
 osi
@@ -14,3 +15,5 @@ syscalls2
 win7x86intro
 wintrospection
 asid_instr_count
+replaymovie
+memsavep

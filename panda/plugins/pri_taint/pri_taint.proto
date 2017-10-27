@@ -39,7 +39,7 @@ message AttackPointPri {
 // in some extent. buf is virtual addr. len is num bytes
 // data is the actual data (first 32 bytes)
 // taint_query is results of taint query on each byte in extent
-// that actually was tainted   
+// that actually was tainted
 message TaintQueryPri {
     required uint64 buf = 1;
     required uint32 len = 2;

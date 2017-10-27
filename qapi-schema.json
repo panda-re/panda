@@ -6031,3 +6031,92 @@
 #
 ##
 { 'command': 'query-hotpluggable-cpus', 'returns': ['HotpluggableCPU'] }
+
+##
+# @begin_record:
+#
+# Requests that we begin recording for later replay
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_record', 'data': { 'file_name': 'str' } }
+
+##
+# @begin_record_from:
+#
+# Requests that we revert to a snapshot and begin recording for later replay
+#
+##
+{ 'command': 'begin_record_from', 'data': { 'snapshot': 'str', 'file_name': 'str' } }
+
+##
+# @end_record:
+#
+# Requests that we begin recording for later replay
+# 
+# TRL 20120501
+##
+{ 'command': 'end_record' }
+
+##
+# @begin_replay:
+#
+# Requests that we begin replaying
+# 
+# TRL 20120501
+##
+{ 'command': 'begin_replay', 'data': { 'file_name': 'str' } }
+
+##
+# @end_replay:
+#
+# Requests that we end replaying 
+# 
+# TRL 20120501
+##
+{ 'command': 'end_replay' } 
+
+##
+# @load_plugin:
+#
+# Loads a PANDA plugin
+# 
+# BDG 20120821
+##
+{ 'command': 'load_plugin', 'data': { '*file_name': 'str', 'plugin_name': 'str',
+                                      '*plugin_args': 'str'} }
+
+##
+# @unload_plugin:
+#
+# Unloads a PANDA plugin
+# 
+# BDG 20120821
+##
+{ 'command': 'unload_plugin', 'data': { 'index': 'int' } }
+
+
+##
+# @PandaPluginInfo:
+#
+# Structure holding the information of a PANDA plugin
+##
+{ 'struct': 'PandaPluginInfo', 'data': {'index': 'int', 'name': 'str', 'address': 'int'} }
+
+##
+# @list_plugins:
+#
+# List loaded PANDA plugins
+# 
+# BDG 20120821
+##
+{ 'command': 'list_plugins', 'returns': ['PandaPluginInfo']}
+
+##
+# @plugin_cmd:
+#
+# Send a command to a loaded PANDA plugin
+# 
+# BDG 20120822
+##
+{ 'command': 'plugin_cmd', 'data': { 'cmd': 'str' } }

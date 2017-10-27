@@ -17,7 +17,7 @@ int get_functions(target_ulong *functions, int n, CPUState *cpu);
 // right now to have a "utilities" library, this will have to do
 void get_prog_point(CPUState *cpu, prog_point *p);
 
-// create pandalog message for callstack info 
+// create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);
 
 // free that data structure

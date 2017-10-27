@@ -1,8 +1,7 @@
-Plugin: osi_test
-===========
+# Plugin: osi_test
 
-Summary
--------
+## Summary
+
 This plugin is meant to test the functionality of the [PANDA OS introspection framework](../osi).
 
 By default, the `osi_test` plugin invokes the OSI code every time that the Page Directory register is written to.
@@ -10,6 +9,7 @@ By default, the `osi_test` plugin invokes the OSI code every time that the Page 
 Invocation frequency can be increased by commenting out the definition of the `INVOKE_FREQ_PGD` macro in the code. Then, OSI code will be invoked before the execution of each basic block. Be warned that this may be too frequent and even small traces will take a long time to be replayed.
 
 ### Output Normalizer
+
 The [osi_test_normalize.py](osi_test_normalize.py) script can be used to make regression testing easier.  The script will strip out any cruft coming from debug printing and print process and library lists in a normalized format.
 
 ### Example Output
@@ -39,25 +39,23 @@ The [osi_test_normalize.py](osi_test_normalize.py) script can be used to make re
       dwm.exe               1136    832
     [...]
 
-Arguments
----------
+## Arguments
 
 None.
 
-Dependencies
-------------
+## Dependencies
 
 Depends on the `osi` plugin to access the introspection API, and also a particular introspection provider (e.g., `osi_linux` or `win7x86intro`).
 
-APIs and Callbacks
-------------------
+## APIs and Callbacks
 
 None.
 
-Example
--------
+## Example
 
 Running `osi_test` on an Windows 7 32-bit replay:
 
+```sh
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
         -panda osi -panda win7x86intro -panda osi_test
+```

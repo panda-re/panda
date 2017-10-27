@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 
-
 extern void panda_cleanup(void);
 extern bool panda_add_arg(const char *, int);
 extern bool panda_load_plugin(const char *, const char *);
@@ -147,8 +146,7 @@ extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
 
-void pandalog_open(const char *path, const char *mode);
-int  pandalog_close(void);
+extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
@@ -1952,6 +1950,20 @@ static void main_loop(void)
             sigprocmask(SIG_BLOCK, &blockset, &oldset);
             rr_do_begin_record(rr_requested_name, first_cpu);
             rr_record_requested = 0;
+            //unblock signals
+            sigprocmask(SIG_SETMASK, &oldset, NULL);
+        }
+
+        if (__builtin_expect(rr_replay_requested, 0)) {
+            //block signals
+            sigprocmask(SIG_BLOCK, &blockset, &oldset);
+            if (0 != rr_do_begin_replay(rr_requested_name, first_cpu)){
+                printf("Failed to start replay\n");
+                exit(1);
+            } else { // we have to unblock signals, so we can't just continue on failure
+                qemu_rr_quit_timers();
+                rr_replay_requested = 0;
+            }
             //unblock signals
             sigprocmask(SIG_SETMASK, &oldset, NULL);
         }
@@ -4107,7 +4119,7 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_pandalog:
                 pandalog = 1;
-                pandalog_open(optarg, "w");
+                pandalog_cc_init_write(optarg);
                 printf ("pandalogging to [%s]\n", optarg);
                 break;
             case QEMU_OPTION_record_from:
@@ -4863,6 +4875,12 @@ int main(int argc, char **argv, char **envp)
             }
             rec_name[r_i] = '\0';
         }
+
+        if(*rec_name == '\0'){
+            fprintf(stderr, "missing record name, usage: -record-from <snapshot>:<record-name>\n");
+            exit(1);
+        }
+
         qmp_begin_record_from(snap_name,rec_name, &err);
     }
 
@@ -4897,6 +4915,10 @@ int main(int argc, char **argv, char **envp)
     panda_in_main_loop = 1;
     main_loop();
     panda_in_main_loop = 0;
+
+    if(rr_in_record()){
+        rr_do_end_record();
+    }
 
     replay_disable_events();
     iothread_stop_all();

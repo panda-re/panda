@@ -1687,7 +1687,7 @@ if test "$solaris" = "yes" ; then
 fi
 
 if test -z "${target_list+xxx}" ; then
-    target_list="i386-softmmu x86_64-softmmu arm-softmmu"
+    target_list="i386-softmmu x86_64-softmmu arm-softmmu ppc-softmmu"
 else
     target_list=$(echo "$target_list" | sed -e 's/,/ /g')
 fi
@@ -4120,7 +4120,9 @@ cat > $TMPC << EOF
 int main(void) { return bswap_32(0); }
 EOF
 if compile_prog "" "" ; then
-  byteswap_h=yes
+    # disabling bc this breaks our llvm
+    # byteswap_h=yes
+    true
 fi
 
 # Search for bswap32 function
@@ -4132,8 +4134,12 @@ cat > $TMPC << EOF
 int main(void) { return bswap32(0); }
 EOF
 if compile_prog "" "" ; then
-  bswap_h=yes
+    # disabling bc this breaks our llvm
+    # bswap_h=no
+    true
 fi
+
+
 
 ##########################################
 # Do we have libiscsi >= 1.9.0
