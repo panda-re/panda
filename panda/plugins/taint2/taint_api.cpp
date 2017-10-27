@@ -87,17 +87,38 @@ static void tp_labelset_put(const Addr &a, LabelSetP ls) {
 // used to keep track of labels that have been applied
 std::set<uint32_t> labels_applied;
 
-// label -- associate label l with address a
+// label -- associate label l, and only label l, with address a. any previous
+// labels applied to the address are removed.
 static void tp_label(Addr a, uint32_t l) {
-    assert (shad != NULL);
     if (debug_taint) start_debugging();
+
     LabelSetP ls = label_set_singleton(l);
     tp_labelset_put(a, ls);
     labels_applied.insert(l);
 }
 
+// label -- add label l to the label set of address a. previous labels applied
+// to the address are not removed.
+static void tp_label_additive(Addr a, uint32_t l) {
+    if (debug_taint) start_debugging();
+
+    LabelSetP ls_at_a = tp_labelset_get(a);     // get the set at addr a
+    LabelSetP ls_of_l = label_set_singleton(l); // get new set with label l
+    
+    // merge the existing set at addr a and the new set containing the label l.
+    // if successful, add the labelset, skip otherwise.
+    LabelSetP new_ls = label_set_union(ls_at_a, ls_of_l);
+    if (new_ls) {
+        tp_labelset_put(a, new_ls);
+        labels_applied.insert(l);
+	}
+}
+
 // retrieve ls for this addr
 static void tp_ls_iter(LabelSetP ls, int (*app)(uint32_t, void *), void *opaque) {
+    if (ls == nullptr) {
+        return;
+    }
     for (uint32_t el : *ls) {
         if (app(el, opaque) != 0) break;
     }
@@ -114,7 +135,15 @@ void taint2_label_reg(int reg_num, int offset, uint32_t l) {
     tp_label(a, l);
 }
 
-uint32_t taint_pos_count = 0;
+void taint2_label_ram_additive(uint64_t pa, uint32_t l) {
+    Addr a = make_maddr(pa);
+    tp_label_additive(a, l);
+}
+
+void taint2_label_reg_additive(int reg_num, int offset, uint32_t l) {
+    Addr a = make_greg(reg_num, offset);
+    tp_label_additive(a, l);
+}
 
 void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
     hwaddr pa = panda_virt_to_phys(cpu, virt_addr);
@@ -131,8 +160,9 @@ void label_byte(CPUState *cpu, target_ulong virt_addr, uint32_t label_num) {
     taint2_label_ram(pa, label_num);
 }
 
+
 // Apply positional taint to a buffer of memory
-void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length){
+void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length, uint32_t start_label){
     for (unsigned i = 0; i < length; i++){
         hwaddr pa = panda_virt_to_phys(cpu, addr + i);
         if (pa == (hwaddr)(-1)) {
@@ -140,12 +170,11 @@ void taint2_add_taint_ram_pos(CPUState *cpu, uint64_t addr, uint32_t length){
                 "i.e., it isnt actually there.\n", addr +i);
             continue;
         }
-        //taint2_label_ram(pa, i + taint_pos_count);
-        printf("taint2: adding positional taint label %d\n", i+taint_pos_count);
-        label_byte(cpu, addr+i, i+taint_pos_count);
+        printf("taint2: adding positional taint label %d\n", i+start_label);
+        label_byte(cpu, addr+i, i+start_label);
     }
-    taint_pos_count += length;
 }
+
 
 // Apply single label taint to a buffer of memory
 void taint2_add_taint_ram_single_label(CPUState *cpu, uint64_t addr,
@@ -180,6 +209,36 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
     return ls ? ls->size() : 0;
 }
 
+extern "C" void taint2_query_set(Addr a, uint32_t *out) {
+	auto set = tp_labelset_get(a);
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
+}
+
+extern "C" void taint2_query_set_ram(uint64_t pa, uint32_t *out) {
+	auto set = tp_labelset_get(make_maddr(pa));
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
+}
+
+extern "C" void taint2_query_set_reg(int reg_num, int offset, uint32_t *out) {
+	auto set = tp_labelset_get(make_greg(reg_num, offset));
+	if (set == nullptr || set->empty()) return;
+
+	auto it = set->begin();
+	for (size_t i = 0; it != set->end(); ++i, ++it) {
+		out[i] = *it;
+	}
+}
+
 uint32_t taint2_query_tcn(Addr a) {
     return tp_query_full(a).tcn;
 }
@@ -212,17 +271,6 @@ void taint2_delete_ram(uint64_t pa) {
 void taint2_delete_reg(int reg_num, int offset) {
     Addr a = make_greg(reg_num, offset);
     tp_delete(a);
-}
-
-void taint2_labelset_spit(LabelSetP ls) {
-    for (uint32_t l : *ls) {
-        printf("%u ", l);
-    }
-    printf("\n");
-}
-
-void taint2_labelset_iter(LabelSetP ls,  int (*app)(uint32_t el, void *stuff1), void *stuff2) {
-    tp_ls_iter(ls, app, stuff2);
 }
 
 void taint2_labelset_addr_iter(Addr a, int (*app)(uint32_t el, void *stuff1), void *stuff2) {
@@ -317,3 +365,4 @@ extern bool taintEnabled;
 int taint2_enabled() {
     return taintEnabled;
 }
+

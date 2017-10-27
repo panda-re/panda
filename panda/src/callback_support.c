@@ -8,7 +8,7 @@
 
 #include "panda/rr/rr_log.h"
 #include "exec/cpu-common.h"
-
+#include "exec/ram_addr.h"
 
 
 // These are used in exec.c
@@ -110,19 +110,18 @@ bool panda_callbacks_insn_translate(CPUState *env, target_ulong pc) {
     return panda_exec_cb;
 }
 
-static inline hwaddr get_paddr(CPUState *cpu, target_ulong addr,
-                                     void *ram_ptr) {
-    hwaddr paddr;
+static inline hwaddr get_paddr(CPUState *cpu, target_ulong addr, void *ram_ptr) {
     if (!ram_ptr) {
         return panda_virt_to_phys(cpu, addr);
     }
 
-    paddr = qemu_ram_addr_from_host(ram_ptr);
-    if (paddr == RAM_ADDR_INVALID) {
+    ram_addr_t offset = 0;
+    RAMBlock *block = qemu_ram_block_from_host(ram_ptr, false, &offset);
+    if (!block) {
         return panda_virt_to_phys(cpu, addr);
     } else {
-        assert(paddr == panda_virt_to_phys(cpu, addr));
-        return paddr;
+        assert(block->mr);
+        return block->mr->addr + offset;
     }
 }
 

@@ -180,7 +180,17 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
 
 #if defined(TARGET_I386)
     csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
-#elif defined(TARGET_ARM) || defined(TARGET_PPC)
+#elif defined(TARGET_ARM)
+    csh handle = cs_handle_32;
+
+    if (env->thumb){
+        cs_option(handle, CS_OPT_MODE, CS_MODE_THUMB);
+    }
+    else {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_ARM);
+    }
+
+#elif defined(TARGET_PPC)
     csh handle = cs_handle_32;
 #endif
 
@@ -279,6 +289,7 @@ int get_callers(target_ulong callers[], int n, CPUState* cpu) {
 }
 
 
+#define CALLSTACK_MAX_SIZE 16
 // writes an entry to the pandalog with callstack info (and instr count and pc)
 Panda__CallStack *pandalog_callstack_create() {
     assert (pandalog);
@@ -287,7 +298,7 @@ Panda__CallStack *pandalog_callstack_create() {
     uint32_t n = 0;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
     auto rit = v.rbegin();
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit) {
+    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit) {
         n ++;
     }
     Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
@@ -297,7 +308,7 @@ Panda__CallStack *pandalog_callstack_create() {
     v = callstacks[get_stackid(env)];
     rit = v.rbegin();
     uint32_t i=0;
-    for (/*no init*/; rit != v.rend() && n < 16; ++rit, ++i) {
+    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit, ++i) {
         cs->addr[i] = rit->pc;
     }
     return cs;
@@ -363,7 +374,7 @@ bool init_plugin(void *self) {
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
 #endif
 #elif defined(TARGET_ARM)
-    if (cs_open(CS_ARCH_ARM, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+    if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
 #endif

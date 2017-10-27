@@ -10255,12 +10255,12 @@ static bool ppc_cpu_has_work(CPUState *cs)
     return msr_ee && (cs->interrupt_request & CPU_INTERRUPT_HARD);
 }
 
+//rw: commented out this part, which introduced bugs in replay when reserve_addr was getting erroneusly cleared after an lwarx
 static void ppc_cpu_exec_enter(CPUState *cs)
 {
-    PowerPCCPU *cpu = POWERPC_CPU(cs);
-    CPUPPCState *env = &cpu->env;
-
-    env->reserve_addr = -1;
+    /*PowerPCCPU *cpu = POWERPC_CPU(cs);*/
+    /*CPUPPCState *env = &cpu->env;*/
+    /*env->reserve_addr = -1;*/
 }
 
 /* CPUClass::reset() */

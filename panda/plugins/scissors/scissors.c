@@ -21,8 +21,6 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 
-extern RR_log *rr_nondet_log;
-
 static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;

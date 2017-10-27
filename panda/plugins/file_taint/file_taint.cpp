@@ -35,6 +35,10 @@ void uninit_plugin(void *);
 int get_loglevel() ;
 void set_loglevel(int new_loglevel);
 
+#include "file_taint_int_fns.h"
+#include "file_taint.h"
+PPP_PROT_REG_CB(on_file_byte_read)
+PPP_CB_BOILERPLATE(on_file_byte_read)
 }
 
 static bool debug = false;
@@ -46,6 +50,7 @@ bool enable_taint_on_open;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
+bool read_callback = false;
 uint32_t the_asid = 0;
 uint32_t the_fd;
 
@@ -59,6 +64,10 @@ const char *taint_stdin = nullptr;
 std::map< std::pair<uint32_t, uint32_t>, char *> asidfd_to_filename;
 
 std::map <target_ulong, OsiProc> running_procs;
+
+void file_taint_enable_read_callback(void) {
+    read_callback = true;
+}
 
 // label this virtual address.  might fail, so
 // returns true iff byte was labeled
@@ -204,19 +213,34 @@ void windows_open_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle, ui
     open_return(cpu, Handle);
 }
 
-uint32_t the_buf;
-uint32_t the_count;
-bool saw_read = false;
+// Going into a read might cause the scheduler to run, which could leave
+// multiple reads outstanding at once. But should be at most one per thread. So
+// we can track per-thread. Asid plus SP should correspond to a guest thread.
 
-uint32_t last_read_buf;
+struct ThreadInfo {
+    target_ulong asid;
+    target_ulong sp;
+
+    bool operator<(const ThreadInfo &other) const {
+        return std::tie(asid, sp) < std::tie(other.asid, other.sp);
+    }
+};
+
+struct ReadInfo {
+    std::string filename;
+    uint64_t pos;
+    target_ulong buf;
+    uint32_t count;
+};
+
+// Track reads, but only the ones we care about.
+std::map<ThreadInfo, ReadInfo> seen_reads;
+
 uint64_t last_pos = (uint64_t) -1;
 
 void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t pos, uint32_t buf, uint32_t count) {
     // these things are only known at enter of read call
-    the_asid = panda_current_asid(cpu);
-    last_read_buf = buf;
     last_pos = pos;
-    saw_read = false;
     if (debug) printf ("read_enter filename=[%s]\n", filename.c_str());
     std::string read_filename = taint_stdin ? "stdin" : taint_filename;
 
@@ -234,18 +258,30 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
     }
 
     if (filename.find(read_filename) != std::string::npos) {
-        if (debug) printf ("read_enter: asid=0x%x saw read of %d bytes in file we want to taint\n", the_asid, count);
-        saw_read = true;
+        target_ulong sp;
+        if (panda_os_type == OST_WINDOWS) {
+            sp = panda_current_sp(cpu) + 4;
+        }
+        else {
+            sp = panda_current_sp(cpu);
+        }
+        if (debug) printf ("read_enter: asid=0x" TARGET_FMT_lx " sp=0x" TARGET_FMT_lx "\n", panda_current_asid(cpu), sp);
+        ThreadInfo thread{ panda_current_asid(cpu), sp };
+
+        seen_reads[thread] = ReadInfo{ filename, pos, buf, count };
     }
 }
 
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState *cpu,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_count) {
-    if (saw_read && panda_current_asid(cpu) == the_asid) {
+    ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) };
+    auto it = seen_reads.find(thread);
+    if (it != seen_reads.end()) {
+        ReadInfo read_info = it->second;
         // These are the start and end of the current range of labels.
-        uint32_t read_start = last_pos;
-        uint32_t read_end = last_pos + actual_count;
+        uint32_t read_start = read_info.pos;
+        uint32_t read_end = read_start + actual_count;
         if (debug) printf ("returning from read of [%s] count=%u\n", taint_filename, actual_count);
         // check if we overlap the range we want to label.
         if (read_start < end_label && read_end > start_label) {
@@ -257,16 +293,21 @@ void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_c
             uint32_t num_labeled = 0;
             uint32_t i = 0;
             for (uint32_t l = range_start; l < range_end; l++) {
-                if (label_byte(cpu, last_read_buf + i,
-                               positional_labels ? l : 1))
-                    num_labeled ++;
-                i ++;
+                // pass address and byte number to a callback instead of
+                // tainting
+                if (read_callback) {
+                    PPP_RUN_CB(on_file_byte_read, cpu, read_info.buf + i, l)
+                } else {
+                    if (label_byte(cpu, read_info.buf + i,
+                                positional_labels ? l : 1))
+                        num_labeled++;
+                }
+                i++;
             }
             printf("%u bytes labeled for this read\n", range_end - range_start);
         }
         last_pos += actual_count;
-        //        printf (" ... done applying labels\n");
-        saw_read = false;
+        seen_reads.erase(it);
     }
 }
 
@@ -446,7 +487,8 @@ bool init_plugin(void *self) {
     panda_arg_list *args;
     args = panda_get_args("file_taint");
     taint_filename = panda_parse_string_opt(args, "filename", "abc123", "filename to taint");
-    positional_labels = panda_parse_bool_req(args, "pos", "use positional labels");
+    positional_labels = panda_parse_bool_opt(args, "pos", "use positional labels");
+    read_callback = panda_parse_bool_opt(args, "read_callback", "Do not label file bytes as tainted but rather pass address and offset to a callback");
     no_taint = panda_parse_bool_opt(args, "notaint", "don't actually taint anything");
     end_label = panda_parse_ulong_opt(args, "max_num_labels", 1000000, "maximum label number to use");
     end_label = panda_parse_ulong_opt(args, "end", end_label, "which byte to end tainting at");

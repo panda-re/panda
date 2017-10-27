@@ -102,7 +102,8 @@ void taint_mix(
 void taint_pointer(
         FastShad *shad_dest, uint64_t dest,
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
-        FastShad *shad_src, uint64_t src, uint64_t size);
+        FastShad *shad_src, uint64_t src, uint64_t size,
+        uint64_t is_store);
 
 // Only generate when signed and dest_size > src_size.
 // Otherwise it should just be a copy.
@@ -134,5 +135,8 @@ void taint_host_delete(
         uint64_t size, uint64_t labels_per_reg);
 
 } // extern "C"
+
+
+#define TAINT_POINTER_MODE_CHECK 2
 
 #endif

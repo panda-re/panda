@@ -6,6 +6,7 @@
 #include "panda/plugin.h"
 #include "panda/common.h"
 #include "panda/plog.h"
+#include "panda/plog-cc-bridge.h"
 
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;
@@ -30,6 +31,7 @@ static inline uint32_t regime_el(CPUARMState *env, ARMMMUIdx mmu_idx)
     case ARMMMUIdx_S1SE1:
     case ARMMMUIdx_S1NSE0:
     case ARMMMUIdx_S1NSE1:
+    case ARMMMUIdx_S12NSE1:
         return 1;
     default:
         g_assert_not_reached();
@@ -106,6 +108,26 @@ target_ulong panda_current_asid(CPUState *cpu) {
 #elif defined(TARGET_PPC)
   CPUArchState *env = (CPUArchState *)cpu->env_ptr;
   return env->sr[0];
+#else
+#error "panda_current_asid() not implemented for target architecture."
+  return 0;
+#endif
+}
+
+/*
+  returns current stack pointer.
+  architecture-independent
+*/
+target_ulong panda_current_sp(CPUState *cpu) {
+  CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+#if defined(TARGET_I386)
+  return env->regs[R_ESP];
+#elif defined(TARGET_ARM)
+  // R13 on ARM.
+  return env->regs[13];
+#elif defined(TARGET_PPC)
+  // R1 on PPC.
+  return env->gpr[1];
 #else
 #error "panda_current_asid() not implemented for target architecture."
   return 0;
@@ -267,7 +289,7 @@ void panda_cleanup(void) {
     // PANDA: unload plugins
     panda_unload_plugins();
     if (pandalog) {
-        pandalog_close();
+        pandalog_cc_close();
     }
 }
 

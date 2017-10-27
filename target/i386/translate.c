@@ -27,6 +27,7 @@
 
 #ifdef CONFIG_SOFTMMU
 #include "panda/rr/rr_log.h"
+extern bool panda_update_pc;
 #endif
 
 #include "panda/callback_support.h"
@@ -8475,7 +8476,7 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 #ifdef CONFIG_SOFTMMU
         //mz let's count this instruction
         // In LLVM mode we generate this more efficiently.
-        if (rr_mode != RR_OFF && !generate_llvm) {
+        if ((rr_mode != RR_OFF || panda_update_pc) && !generate_llvm) {
             gen_op_update_panda_pc(pc_ptr);
             gen_op_update_rr_icount();
         }

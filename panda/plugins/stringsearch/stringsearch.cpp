@@ -152,7 +152,7 @@ bool init_plugin(void *self) {
     n_callers = panda_parse_uint64_opt(args, "callers", 16, "depth of callstack for matches");
     if (n_callers > MAX_CALLERS) n_callers = MAX_CALLERS;
 
-    const char *prefix = panda_parse_string_opt(args, "name", "", "filename containing search strings");
+    const char *prefix = panda_parse_string_opt(args, "name", "", "prefix of filename containing search strings, which must have the suffix _search_strings.txt");
     if (strlen(prefix) > 0) {
         char stringsfile[128] = {};
         sprintf(stringsfile, "%s_search_strings.txt", prefix);

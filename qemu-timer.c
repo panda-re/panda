@@ -591,7 +591,7 @@ int64_t timerlistgroup_deadline_ns(QEMUTimerListGroup *tlg)
     bool play = replay_mode == REPLAY_MODE_PLAY;
 
 #ifdef CONFIG_SOFTMMU
-    if (rr_in_replay()) return RR_REPLAY_DEADLINE;
+    if (rr_in_replay() || rr_replay_requested) return RR_REPLAY_DEADLINE;
 #endif
 
     for (type = 0; type < QEMU_CLOCK_MAX; type++) {
@@ -686,7 +686,7 @@ static void qemu_clock_stop_timers(QEMUClockType type)
     QEMUTimerList *timer_list;
     QEMUClock *clock = qemu_clock_ptr(type);
     QLIST_FOREACH(timer_list, &clock->timerlists, list) {
-        if (timer_list->active_timers) {
+        while (timer_list->active_timers) {
             if (debug)
                 printf("Deleting timerlist for QEMUClockType: %d\n", type);
             timer_del(timer_list->active_timers);

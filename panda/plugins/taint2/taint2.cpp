@@ -134,6 +134,11 @@ void verify(void) {
     }
 }
 
+void taint2_enable_tainted_pointer(void) {
+    tainted_pointer = true;
+}
+
+
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
     printf ("taint2: __taint_enable_taint\n");
@@ -389,46 +394,72 @@ void lava_attack_point(PandaHypercallStruct phs) {
     }
 }
 
+
 #ifdef TARGET_I386
+
+#define EAX ((CPUArchState*)cpu->env_ptr)->regs[R_EAX]
+#define EBX ((CPUArchState*)cpu->env_ptr)->regs[R_EBX]
+#define ECX ((CPUArchState*)cpu->env_ptr)->regs[R_ECX]
+#define EDI ((CPUArchState*)cpu->env_ptr)->regs[R_EDI]
+
 // Support all features of label and query program
 void i386_hypercall_callback(CPUState *cpu){
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    if (taintEnabled && pandalog) {
-        // LAVA Hypercall
-        target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
-        if ((int)addr == -1) {
-            // if EAX is not a valid ptr, then it is unlikely that this is a
-            // PandaHypercall which requires EAX to point to a block of memory
-            // defined by PandaHypercallStruct
-            printf ("cpuid with invalid ptr in EAX: vaddr=0x%x paddr=0x%x. Probably not a Panda Hypercall\n",
-                    (uint32_t) env->regs[R_EAX], (uint32_t) addr);
+    if (taintEnabled) {
+        if (EAX == 7 || EAX == 8) {
+            target_ulong buf_start = EBX;
+            target_ulong buf_len = ECX;
+            long label = EDI;            
+            if (R_EAX == 7) {
+                // Standard buffer label
+                printf("taint2: single taint label\n");
+                taint2_add_taint_ram_single_label(cpu, (uint64_t)buf_start,
+                    (int)buf_len, label);
+            }
+            else if (R_EAX == 8){
+                // Positional buffer label
+                printf("taint2: positional taint label\n");
+                taint2_add_taint_ram_pos(cpu, (uint64_t)buf_start, (int)buf_len, label);
+            }
         }
         else {
-            PandaHypercallStruct phs;
-            panda_virtual_memory_rw(cpu, env->regs[R_EAX], (uint8_t *) &phs, sizeof(phs), false);
-            if (phs.magic == 0xabcd) {
-                if  (phs.action == 11) {
-                    // it's a lava query
-                    taint_query_hypercall(phs);
-                }
-                else if (phs.action == 12) {
-                    // it's an attack point sighting
-                    lava_attack_point(phs);
-                }
-                else if (phs.action == 13) {
-                    // it's a pri taint query point
-                    // do nothing and let pri_taint with hypercall
-                    // option handle it
-                }
-                else if (phs.action == 14) {
-                    // reserved for taint-exploitability
+
+            // LAVA Hypercall
+            target_ulong addr = panda_virt_to_phys(cpu, env->regs[R_EAX]);
+            if ((int)addr == -1) {
+                // if EAX is not a valid ptr, then it is unlikely that this is a
+                // PandaHypercall which requires EAX to point to a block of memory
+                // defined by PandaHypercallStruct
+                printf ("cpuid with invalid ptr in EAX: vaddr=0x%x paddr=0x%x. Probably not a Panda Hypercall\n",
+                        (uint32_t) env->regs[R_EAX], (uint32_t) addr);
+            }
+            else if (pandalog) {
+                PandaHypercallStruct phs;
+                panda_virtual_memory_rw(cpu, env->regs[R_EAX], (uint8_t *) &phs, sizeof(phs), false);
+                if (phs.magic == 0xabcd) {
+                    if  (phs.action == 11) {
+                        // it's a lava query
+                        taint_query_hypercall(phs);
+                    }
+                    else if (phs.action == 12) {
+                        // it's an attack point sighting
+                        lava_attack_point(phs);
+                    }
+                    else if (phs.action == 13) {
+                        // it's a pri taint query point
+                        // do nothing and let pri_taint with hypercall
+                        // option handle it
+                    }
+                    else if (phs.action == 14) {
+                        // reserved for taint-exploitability
+                    }
+                    else {
+                        printf("Unknown hypercall action %d\n", phs.action);
+                    }
                 }
                 else {
-                    printf("Unknown hypercall action %d\n", phs.action);
+                    printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
                 }
-            }
-            else {
-                printf ("Invalid magic value in PHS struct: %x != 0xabcd.\n", phs.magic);
             }
         }
     }

@@ -51,10 +51,9 @@ Building on Mac is less well-tested, but has been known to work. There is a scri
 [panda/scripts/install\_osx.sh](panda/scripts/install\_osx.sh) to build under OS X.
 
 Finally, if you want to skip the build process altogether, there is a 
-[Docker image](https://hub.docker.com/r/ctfhacker/panda-re/) available, created by
-[ctfhacker](https://hub.docker.com/r/ctfhacker/). You can get it by running:
+[Docker image](https://hub.docker.com/r/pandare/panda). You can get it by running:
 
-    docker pull ctfhacker/panda-re
+    docker pull pandare/panda
 
 ## Support
 

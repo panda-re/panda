@@ -11,6 +11,8 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
+#ifndef __PROG_POINT_H
+#define __PROG_POINT_H
 struct prog_point {
     target_ulong caller;
     target_ulong pc;
@@ -40,5 +42,7 @@ struct hash_prog_point{
     }
 };
 
+
+#endif
 
 #endif

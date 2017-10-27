@@ -1,7 +1,6 @@
 import os
 import select
 import sys
-import time
 
 from datetime import datetime
 from errno import EAGAIN, EWOULDBLOCK
@@ -10,7 +9,7 @@ class TimeoutExpired(Exception): pass
 
 class Expect(object):
     def __init__(self, filelike, logfile=None, quiet=False):
-        if type(filelike) in [int, long]:
+        if type(filelike) == int:
             self.fd = filelike
         else:
             self.fd = filelike.fileno()
@@ -18,7 +17,7 @@ class Expect(object):
         self.poller.register(self.fd, select.POLLIN)
 
         if logfile is None: logfile = os.devnull
-        self.logfile = open(logfile, "w")
+        self.logfile = open(logfile, "wb")
         self.quiet = quiet
 
     def __del__(self):
@@ -28,7 +27,7 @@ class Expect(object):
         sofar = bytearray()
         start_time = datetime.now()
         time_passed = 0
-        while timeout is None or time_passed < timeout or timeout:
+        while timeout is None or time_passed < timeout:
             if timeout is not None:
                 time_passed = (datetime.now() - start_time).total_seconds()
                 time_left = timeout - time_passed
@@ -48,14 +47,14 @@ class Expect(object):
                 if not self.quiet: sys.stdout.write(char)
 
                 sofar.extend(char)
-                if sofar.endswith(expectation):
+                if sofar.endswith(expectation.encode('utf8')):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
-                    sofar.append('\n')
-                    return str(sofar)
+                    sofar.extend(b'\n')
+                    return sofar.decode('utf8')
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
-        self.sofar = str(sofar)
+        self.sofar = sofar.decode('utf8')
         raise TimeoutExpired()
 
     def send(self, msg):
@@ -64,5 +63,5 @@ class Expect(object):
         self.logfile.flush()
 
     def sendline(self, msg=""):
-        self.send(msg + "\n")
+        self.send(msg + b"\n")
 
