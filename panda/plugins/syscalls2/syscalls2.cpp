@@ -26,6 +26,7 @@ PANDAENDCOMMENT */
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include <iostream>
 
 #include "syscalls2.h"
 #include "syscalls_common.h"
@@ -47,9 +48,6 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 #include "gen_syscall_ppp_register_return.cpp"
 
 }
-// Used to confirm that entry into syscalls2 exec callback is from the sycalls2 translate callback
-std::set<std::pair <target_ulong, target_ulong>> syscallPCpoints;
-//std::set<target_ulong> syscallPCpoints;
 
 // Forward declarations
 int32_t get_s32_generic(CPUState *cpu, uint32_t argnum);
@@ -332,7 +330,7 @@ Profile profiles[PROFILE_LAST] = {
     }
 };
 
-Profile *syscalls_profile;
+static Profile *syscalls_profile;
 
 // Wrappers
 target_long  get_return_val (CPUState *cpu) {
@@ -382,7 +380,7 @@ int64_t get_return_s64_generic(CPUState *cpu, uint32_t argnum) {
     return (int64_t) get_return_64(cpu, argnum);
 }
 
-std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
+static std::vector<void (*)(CPUState*, target_ulong)> preExecCallbacks;
 
 void registerExecPreCallback(void (*callback)(CPUState*, target_ulong)){
     preExecCallbacks.push_back(callback);
@@ -415,40 +413,32 @@ static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
 }
 #endif
 
-// This will only be called for instructions where the
-// translate_callback returned true
-int exec_callback(CPUState *cpu, target_ulong pc) {
-    // check if pc, asid pair was for a valid syscall translation point
-    // if so run exec_callback
-    if (syscallPCpoints.end() != syscallPCpoints.find(std::make_pair(pc, panda_current_asid(cpu)))){
-        // run any code we need to update our state
-        for(const auto callback : preExecCallbacks){
-            callback(cpu, pc);
-        }
-        syscalls_profile->enter_switch(cpu, pc);
-    }
-    return 0;
-}
+
+static std::map<target_ulong,target_ulong> syscallCounter;
+uint32_t impossibleToReadPCs = 0;
+
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
-bool translate_callback(CPUState *cpu, target_ulong pc) {
+int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 #if defined(TARGET_I386)
     unsigned char buf[2] = {};
-    panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+
+    int res = panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
+    if(res <0){
+        return -1;
+    }
+
     // Check if the instruction is syscall (0F 05)
     if (buf[0]== 0x0F && buf[1] == 0x05) {
-        syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
         return true;
     }
     // Check if the instruction is int 0x80 (CD 80)
     else if (buf[0]== 0xCD && buf[1] == 0x80) {
-        syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
         return true;
     }
     // Check if the instruction is sysenter (0F 34)
     else if (buf[0]== 0x0F && buf[1] == 0x34) {
-        syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
         return true;
     }
     else {
@@ -463,12 +453,10 @@ bool translate_callback(CPUState *cpu, target_ulong pc) {
         panda_virtual_memory_rw(cpu, pc, buf, 4, 0);
         // EABI
         if ( ((buf[3] & 0x0F) ==  0x0F)  && (buf[2] == 0) && (buf[1] == 0) && (buf[0] == 0) ) {
-            syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
             return true;
         }
 #if defined(CAPTURE_ARM_OABI)
         else if (((buf[3] & 0x0F) == 0x0F)  && (buf[2] == 0x90)) {  // old ABI
-            syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
             return true;
         }
 #endif
@@ -477,7 +465,6 @@ bool translate_callback(CPUState *cpu, target_ulong pc) {
         panda_virtual_memory_rw(cpu, pc, buf, 2, 0);
         // check for Thumb mode syscall
         if (buf[1] == 0xDF && buf[0] == 0){
-            syscallPCpoints.insert(std::make_pair(pc, panda_current_asid(cpu)));
             return true;
         }
     }
@@ -487,10 +474,29 @@ bool translate_callback(CPUState *cpu, target_ulong pc) {
 #endif
 }
 
+// This will only be called for instructions where the
+// translate_callback returned true
+int exec_callback(CPUState *cpu, target_ulong pc) {
+    int res = isCurrentInstructionASyscall(cpu,pc);
+    if(res < 0){
+        impossibleToReadPCs++;
+    }
+    if(res == 1){
+        // run any code we need to update our state
+        for(const auto callback : preExecCallbacks){
+            callback(cpu, pc);
+        }
+        syscalls_profile->enter_switch(cpu, pc);
+        // debug
+        // syscallCounter[panda_current_asid(cpu)]++;
+    }
+    return 0;
+}
 
-extern "C" {
+bool translate_callback(CPUState* cpu, target_ulong pc){
+    return isCurrentInstructionASyscall(cpu, pc) == 1;
+}
 
-panda_arg_list *args;
 
 bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
@@ -533,31 +539,6 @@ bool init_plugin(void *self) {
     }
     assert (syscalls_profile);
 
-    // not longer necessary!
-#if 0
-    args = panda_get_args("syscalls");
-    const char *profile_name = panda_parse_string(args, "profile", "linux_x86");
-    if (0 == strncmp(profile_name, "linux_x86", 8)) {
-        syscalls_profile = &profiles[PROFILE_LINUX_X86];
-    }
-    else if (0 == strncmp(profile_name, "linux_arm", 8)) {
-        syscalls_profile = &profiles[PROFILE_LINUX_ARM];
-    }
-    else if (0 == strncmp(profile_name, "windowsxp_sp2_x86", 13)) {
-        syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
-    }
-    else if (0 == strncmp(profile_name, "windowsxp_sp3_x86", 13)) {
-        syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
-    }
-    else if (0 == strncmp(profile_name, "windows7_x86", 8)) {
-        syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
-    }
-    else {
-        printf ("Unrecognized profile %s\n", profile_name);
-        assert (1==0);
-    }
-#endif
-
 
 // Don't bother if we're not on a supported target
     // #if defined(TARGET_I386) || defined(TARGET_ARM)
@@ -578,7 +559,15 @@ bool init_plugin(void *self) {
     return true;
 }
 
-void uninit_plugin(void *self) {
-}
 
+void uninit_plugin(void *self) {
+    (void) self;
+
+/*  debug
+    std::cout << "Syscalls count" << std::endl;
+    for(const auto &asid_count : syscallCounter){
+        std::cout << asid_count.first << " " << asid_count.second << std::endl;
+    }
+    std::cout << "PCs impossible to read: " << impossibleToReadPCs << std::endl;
+*/
 }
