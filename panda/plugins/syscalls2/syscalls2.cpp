@@ -413,10 +413,10 @@ static int returned_check_callback(CPUState *cpu, TranslationBlock* tb){
 }
 #endif
 
-
+#ifdef DEBUG
 static std::map<target_ulong,target_ulong> syscallCounter;
-uint32_t impossibleToReadPCs = 0;
-
+static uint32_t impossibleToReadPCs = 0;
+#endif
 
 // Check if the instruction is sysenter (0F 34),
 // syscall (0F 05) or int 0x80 (CD 80)
@@ -478,17 +478,20 @@ int isCurrentInstructionASyscall(CPUState *cpu, target_ulong pc) {
 // translate_callback returned true
 int exec_callback(CPUState *cpu, target_ulong pc) {
     int res = isCurrentInstructionASyscall(cpu,pc);
+#ifdef DEBUG
     if(res < 0){
         impossibleToReadPCs++;
     }
+#endif
     if(res == 1){
         // run any code we need to update our state
         for(const auto callback : preExecCallbacks){
             callback(cpu, pc);
         }
         syscalls_profile->enter_switch(cpu, pc);
-        // debug
-        // syscallCounter[panda_current_asid(cpu)]++;
+#ifdef DEBUG
+        syscallCounter[panda_current_asid(cpu)]++;
+#endif
     }
     return 0;
 }
@@ -502,7 +505,11 @@ bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 
-    assert (!(panda_os_type == OST_UNKNOWN));
+    if(panda_os_type == OST_UNKNOWN){
+        std::cerr << "syscalls2: ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux' or '-os  windows-32-7' " << std::endl;
+        return false;
+    }
+
     if (panda_os_type == OST_LINUX) {
 #if defined(TARGET_I386)
         if (panda_os_bits != 32) {
@@ -537,25 +544,27 @@ bool init_plugin(void *self) {
         }
 #endif
     }
-    assert (syscalls_profile);
 
+    if(!syscalls_profile){
+        std::cerr << "syscalls2: ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
+        return false;
+    }
 
-// Don't bother if we're not on a supported target
-    // #if defined(TARGET_I386) || defined(TARGET_ARM)
     panda_cb pcb;
     pcb.insn_translate = translate_callback;
     panda_register_callback(self, PANDA_CB_INSN_TRANSLATE, pcb);
     pcb.insn_exec = exec_callback;
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
-    //    pcb.before_block_exec_invalidate_opt = returned_check_callback;
-    //   panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC_INVALIDATE_OPT, pcb);
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
-#else
+
+#else //not x86 or arm
 
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
-#endif
+
+#endif //x86 or arm
+
     return true;
 }
 
@@ -563,11 +572,14 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     (void) self;
 
-/*  debug
-    std::cout << "Syscalls count" << std::endl;
+#ifdef DEBUG
+    std::cout << "syscalls2: DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){
-        std::cout << asid_count.first << " " << asid_count.second << std::endl;
+        std::cout << asid_count.first << "=" << asid_count.second <<", ";
     }
-    std::cout << "PCs impossible to read: " << impossibleToReadPCs << std::endl;
-*/
+    std::cout<< std::endl;
+    if(impossibleToReadPCs){
+        std::cout << "syscalls2: DEBUG some instructions couldn't be read on insn_exec: " << impossibleToReadPCs << std::endl;
+    }
+#endif
 }
