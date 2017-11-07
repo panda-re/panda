@@ -447,6 +447,8 @@ int osi_foo(CPUState *cpu, TranslationBlock *tb) {
     if (panda_in_kernel(cpu)) {
         OsiProc *p = get_current_process(cpu);
         //some sanity checks on what we think the current process is
+        // we couldn't find the current task
+        if (p == NULL) return 0;
         // this means we didnt find current task
         if (p->offset == 0) return 0;
         // or the name
