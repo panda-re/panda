@@ -8,6 +8,13 @@
 
 using namespace std; 
 
+extern "C" {
+#ifndef PLOG_READER
+#include "panda/rr/rr_log.h"
+#include "panda/common.h"
+#endif
+}
+
 #ifndef PLOG_READER
 extern int panda_in_main_loop;
 #endif
@@ -456,7 +463,7 @@ void PandaLog::seek(uint64_t instr){
 
     std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry);
     ple->CopyFrom(*this->chunk.entries[ind]);
-    assert(ple->instr() == instr);
+    /*assert(ple->instr() == instr);*/
 
     if(this->mode == PL_MODE_READ_BWD && instr != -1){
         //search forward for last index with this instr number

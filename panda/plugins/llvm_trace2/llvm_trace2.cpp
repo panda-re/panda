@@ -104,8 +104,45 @@ void recordBB(uint64_t fp, unsigned lastBB){
     }
 }
 
+const char* infer_register(uint32_t offset){
+    switch (offset) {
+    case 0:
+        return "EAX";
+    case 1:
+        return "ECX";
+    case 2:
+        return "EDX";
+    case 3:
+        return "EBX";
+    case 4:
+        return "ESP ";
+    case 5:
+        return "EBP";
+    case 6:
+        return "ESI";
+    case 7:
+        return "EDI";
+    case 8:
+        return "EIP";
+    case 9:
+        return "EFLAGS";
+    case 10:
+        return "CC_DST";
+    case 11:
+        return "CC_SRC";
+    case 12:
+        return "CC_SRC2";
+    case 13:
+        return "CC_OP";
+    case 14:
+        return "DF";
+    default:
+        printf("NOT an x86 reg: %u\n", offset);
+        return "";
+	}
+}
 
-void recordLoad(uint64_t address, uint64_t num_bytes = 8){
+void recordLoad(uint64_t address){
     //printf("recording load at address %" PRIx64 "\n", address);
 
     //printf("recording load from   address %lx\n", address);
@@ -114,22 +151,30 @@ void recordLoad(uint64_t address, uint64_t num_bytes = 8){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_LOAD);
 
-        if ((address >= (uint64_t)first_cpu) && (address < (uint64_t)first_cpu + sizeof(CPUState))){
-            ple->mutable_llvmentry()->set_addr_type(REG); // Something in CPU state, may not necessarily be a register
+        uint64_t x86state = (uint64_t)cpus.tqh_first->env_ptr;
+		
+        //printf("Address: %lx, firstcpu: %lx - %lx\n", address, (uint64_t)first_cpu, (uint64_t)first_cpu + sizeof(CPUState));
+		/*printf("Address: %lx, cpux86state: %lx - %lx\n", address, x86state, x86state + sizeof(CPUState));*/
+        //printf("Value %lu\n", value);
+        if ((address >= x86state) && (address < x86state + sizeof(CPUState))){
+            uint32_t reg_offset = (address - x86state)/4;
+			/*printf("%u\n", reg_offset);*/
+			//printf("%s\n", infer_register(reg_offset));
+            ple->mutable_llvmentry()->set_addr_type(TGT); // Something in CPU state, may not necessarily be a register
+            ple->mutable_llvmentry()->set_cpustate_offset(reg_offset); // Something in CPU state, may not necessarily be a register
             //TODO: Fix this and store
         } else {
             ple->mutable_llvmentry()->set_addr_type(MEM); 
         }
 
         ple->mutable_llvmentry()->set_address(address);
-        ple->mutable_llvmentry()->set_num_bytes(num_bytes);
+        ple->mutable_llvmentry()->set_num_bytes(4);
 
         globalLog.write_entry(std::move(ple));
     }
-
 }
 
-void recordStore(uint64_t address, uint64_t num_bytes = 8){
+void recordStore(uint64_t address, uint64_t value){
 
     //printf("recording store to address %lx\n", address);
     
@@ -137,24 +182,37 @@ void recordStore(uint64_t address, uint64_t num_bytes = 8){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_STORE);
 
-        if ((address >= (uint64_t)first_cpu) && (address < (uint64_t)first_cpu + sizeof(CPUState))){
-            ple->mutable_llvmentry()->set_addr_type(REG); // Something in CPU state, may not necessarily be a register
+        //TODO: THIS REALLY NEEDS TO BE LOOKED AT 
+        uint64_t x86state = (uint64_t)cpus.tqh_first->env_ptr;
+        
+        /*printf("Address: %lx, firstcpu: %lx - %lx\n", address, (uint64_t)first_cpu, (uint64_t)first_cpu + sizeof(CPUState));*/
+		/*printf("Address: %lx, cpux86state: %lx - %lx\n", address, x86state, x86state + sizeof(CPUState));*/
+        /*printf("Value %lu\n", value);*/
+        if ((address >= x86state) && (address < x86state + sizeof(CPUState))){
+            uint32_t reg_offset = (address - x86state)/4;
+			/*printf("%u\n", reg_offset);*/
+			/*printf("%s\n", infer_register(reg_offset));*/
+            ple->mutable_llvmentry()->set_addr_type(TGT); // Something in CPU state, may not necessarily be a register
+            ple->mutable_llvmentry()->set_cpustate_offset(reg_offset); // Something in CPU state, may not necessarily be a register
             //TODO: Fix this and store
         } else {
             ple->mutable_llvmentry()->set_addr_type(MEM); 
         }
 
         ple->mutable_llvmentry()->set_address(address);
-        ple->mutable_llvmentry()->set_num_bytes(num_bytes);
+        ple->mutable_llvmentry()->set_num_bytes(4);
+        ple->mutable_llvmentry()->set_value(value);
+
 
         globalLog.write_entry(std::move(ple));
     }
 }
 
-void recordReturn(){
+void recordReturn(uint64_t retVal){
     if (pandalog){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_RET);
+        ple->mutable_llvmentry()->set_value(retVal);
         globalLog.write_entry(std::move(ple));
     }
 }
@@ -219,6 +277,23 @@ static void llvm_init(){
     passMngr->add(PLTP);
 
     passMngr->doInitialization();
+
+	 printf("eip: %lu\n", offsetof(CPUX86State, eip)/4);
+	 printf("cc_dst: %lu\n", offsetof(CPUX86State, cc_dst)/4);
+	 printf("xmm_regs: %lu\n", offsetof(CPUX86State, xmm_regs)/4);
+	 printf("segs: %lu\n", offsetof(CPUX86State, segs)/4);
+	 printf("ldt : %lu\n", offsetof(CPUX86State, ldt)/4);
+	 printf("tr : %lu\n", offsetof(CPUX86State, tr)/4);
+	 printf("segs gdt: %lu\n", offsetof(CPUX86State, gdt)/4);
+	 printf("segs idt: %lu\n", offsetof(CPUX86State, idt)/4);
+	 printf("cr array: %lu\n", offsetof(CPUX86State, cr)/4);
+	 printf("bnd_regs: %lu\n", offsetof(CPUX86State, bnd_regs)/4);
+	 printf("fpregs: %lu\n", offsetof(CPUX86State, fpregs)/4);
+	 printf("fpop: %lu\n", offsetof(CPUX86State, fpop)/4);
+
+
+	 printf("exception_next_eip: %lu\n", offsetof(CPUX86State, exception_next_eip)/4);
+
 }
 
 
@@ -284,7 +359,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 
     //initialize all the other record/logging functions
     PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
-    PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, nullptr));
+    PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, nullptr));
     PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
     PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
     PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
@@ -292,7 +367,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     // recordStartBB: 
     PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
     PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
-    PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, VoidPtrType, nullptr));
+    PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, nullptr));
 
     //add external linkages
     
@@ -320,6 +395,23 @@ void PandaLLVMTraceVisitor::visitInstruction(Instruction &I) {
 }
 
 //TODO: Do i need to check metadata to see if host instruction?
+
+
+void PandaLLVMTraceVisitor::visitReturnInst(ReturnInst &I){
+
+    // Record the return value
+    // Should not be NULL
+    //Value *retVal = I.getReturnValue();
+    //retVal = castTo(retVal, Int64Type, "", &I);
+    //std::vector<Value*> args = make_vector(retVal, 0);
+
+    CallInst *CI = CallInst::Create(recordReturnF);
+    
+    //insert call into function
+    CI->insertBefore(static_cast<Instruction*>(&I));
+    CI->setMetadata("host", LLVMTraceMD);
+}
+
 
 void PandaLLVMTraceVisitor::visitSelectInst(SelectInst &I){
 
@@ -378,6 +470,7 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
     // and cast to void ptr type
     Value *ptr = I.getPointerOperand();
     ptr = castTo(ptr, VoidPtrType, ptr->getName(), &I);
+   
     std::vector<Value*> args = make_vector(ptr, 0);
 
     CallInst *CI = CallInst::Create(recordLoadF, args);
@@ -388,6 +481,37 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
     
     /*I.dump();*/
 }
+
+void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
+    if (I.isVolatile()){
+        // Stores to LLVM runtime that we don't care about
+        return;
+    }
+
+    Value *address = castTo(I.getPointerOperand(), VoidPtrType, I.getPointerOperand()->getName(), &I);    
+    Value *val = I.getValueOperand();
+    /*val->dumpa);*/
+    if (val->getType()->isPointerTy()){
+        printf("Val is a ptr TYPE?\n");
+        /*val->getType()->dump();*/
+        /*printf("\n");*/
+        //val = ConstantInt::get(Int64Type, 111);
+        //XXX Fix this later
+        val = ConstantInt::get(Int64Type, 111);
+    } else{
+        val = castTo(val, Int64Type, I.getValueOperand()->getName(), &I);    
+    }
+
+    std::vector<Value*> args = make_vector(address, val, 0);
+
+    CallInst *CI = CallInst::Create(recordStoreF, args);
+
+    CI->insertAfter(static_cast<Instruction*>(&I));
+    CI->setMetadata("host", LLVMTraceMD);
+
+    //handle cases where dynamic values are being used. 
+}
+
 
 /**
  * This function handles intrinsics like llvm.memset and llvm.memcpy. 
@@ -405,6 +529,9 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
         
         Value *dest = I.getOperand(0);
         dest = castTo(dest, VoidPtrType, dest->getName(), &I);
+
+        Value *value = I.getOperand(1);
+        value = castTo(value, Int64Type, "", &I);
         
         Value* numBytes = I.getOperand(2);
 
@@ -422,7 +549,7 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
         }
 
         /*std::vector<Value*> args = make_vector(dest, numBytes, 0);*/
-        std::vector<Value*> args = make_vector(dest, 0);
+        std::vector<Value*> args = make_vector(dest, value, 0);
         CallInst *CI = CallInst::Create(recordStoreF, args);
         
         //insert call into function
@@ -436,14 +563,14 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
         Value *src = I.getOperand(1);
 
         /*Value *numBytes = I.getOperand(2);*/
-
         dest = castTo(dest, VoidPtrType, dest->getName(), &I);
         src = castTo(src, VoidPtrType, src->getName(), &I);
         /*std::vector<Value*> args = make_vector(src, numBytes, 0);*/
         std::vector<Value*> args;
         CallInst *CI;
         
-        args = make_vector(dest, 0);
+        Value* value = ConstantInt::get(Int64Type, 111);
+        args = make_vector(dest, value, 0);
         CI = CallInst::Create(recordStoreF, args);
         CI->insertAfter(static_cast<Instruction*>(&I));
         CI->setMetadata("host", LLVMTraceMD);
@@ -455,9 +582,10 @@ void PandaLLVMTraceVisitor::handleVisitSpecialCall(CallInst &I){
         CI->setMetadata("host", LLVMTraceMD);
 
         
-    } else {
-        printf("Unhandled special call\n");
-    }
+    } 
+    //else {
+        //printf("Unhandled special call\n");
+    //}
 }
 
 void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
@@ -486,11 +614,11 @@ void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
 
        //dest = castTo(dest, VoidPtrType, dest->getName(), &I);
         dest = CastInst::Create(Instruction::IntToPtr, dest, VoidPtrType, dest->getName(), &I);
-       //storeVal = castTo(storeVal, VoidPtrType, storeVal->getName(), &I);
+       storeVal = castTo(storeVal, Int64Type, storeVal->getName(), &I);
         //ITPI2 = IRB.CreateIntToPtr(storeVal, VoidPtrType);
-        storeVal = CastInst::Create(Instruction::IntToPtr, storeVal, VoidPtrType, storeVal->getName(), &I);
+        //storeVal = CastInst::Create(Instruction::IntToPtr, storeVal, VoidPtrType, storeVal->getName(), &I);
 
-        args = make_vector(dest, 0);
+        args = make_vector(dest, storeVal, 0);
         CallInst *CI = CallInst::Create(recordStoreF, args);
         CI->insertBefore(static_cast<Instruction*>(&I));
     } else {
@@ -540,24 +668,6 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
     //record return of call inst
     //CallInst *returnInst = CallInst::Create(recordReturn, args, "", &I);
     //I.dump(); 
-
-    //handle cases where dynamic values are being used. 
-}
-
-void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
-    if (I.isVolatile()){
-        // Stores to LLVM runtime that we don't care about
-        return;
-    }
-
-    Value *address = castTo(I.getPointerOperand(), VoidPtrType, "", &I);    
-
-    std::vector<Value*> args = make_vector(address, 0);
-
-    CallInst *CI = CallInst::Create(recordStoreF, args);
-
-    CI->insertAfter(static_cast<Instruction*>(&I));
-    CI->setMetadata("host", LLVMTraceMD);
 
     //handle cases where dynamic values are being used. 
 }

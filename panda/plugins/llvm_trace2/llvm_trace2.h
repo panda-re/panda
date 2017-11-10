@@ -25,7 +25,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb);
 
 
 #include "panda/plog-cc.hpp"
-#include "plog.pb.h"
 
 extern PandaLog globalLog;
 
@@ -79,7 +78,7 @@ public:
     //void visitInsertElementInst(InsertElementInst &I);
     //void visitShuffleVectorInst(ShuffleVectorInst &I);
 
-    //void visitReturnInst(ReturnInst &I);
+    void visitReturnInst(ReturnInst &I);
     //void visitBinaryOperator(BinaryOperator &I);
     //void visitPHINode(PHINode &I);
 

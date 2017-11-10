@@ -75,9 +75,9 @@ enum SliceVarType {
     LLVM = 1, // LLVM value
     MEM = 2, // memory
     HOST = 3, // host
-    REG = 4, //guest register, or a field on CPU state 
-    SPEC = 5, //special register, like floating point
-    FRET = 6,
+    TGT = 4, //guest register, or a field on CPU state 
+	SPEC = 5, //special register, like floating point
+	FRET = 6,
 };
 
 // copied from helper_runtime.cpp
