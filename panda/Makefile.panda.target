@@ -128,8 +128,8 @@ PROGS+=$(RR_PRINT_PROG) plog_pb2.py
 
 # Uncomment next two lines to enable compiled plog_reader.
 # if PLOG_READER is defined, plog writing functions in plog-cc.cpp will be disabled.
-#PROGS+=$(PLOG_READER_PROG) 
-#QEMU_CFLAGS += -DPLOG_READER
+ #PROGS+=$(PLOG_READER_PROG) 
+ #QEMU_CFLAGS += -DPLOG_READER
 
 clean: clean-panda
 
@@ -192,7 +192,6 @@ llvm-helpers.bc1: $(llvm-y)
 	$(call quiet-command,$(LLVM_LINK) -o $@ $^,"LLVMLD  $(TARGET_DIR)$@")
 
 # Make explicit the fact that we need the tool present to do the morphing
-
 panda/tools/helper_call_modifier.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation
 panda/tools/dynslice2.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable -Wno-cast-qual
 panda/tools/slice_analyzer.o-cflags += $(LLVM_CXXFLAGS) -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable
@@ -207,7 +206,7 @@ panda/tools/helper_call_modifier.o: | panda/tools ../panda/tools
 panda/tools/helper_call_modifier: panda/tools/helper_call_modifier.o
 
 panda/tools/dynslice2.o: | panda/tools ../panda/tools
-panda/tools/dynslice2: panda/tools/dynslice2.o plog.pb.o panda/src/plog-cc.o panda/src/plog_no_rr.o
+panda/tools/dynslice2: panda/tools/dynslice2.o plog.pb.o panda/src/plog-cc.o
 
 panda/tools/slice_analyzer.o: | panda/tools ../panda/tools
 panda/tools/slice_analyzer: panda/tools/slice_analyzer.o
@@ -217,9 +216,7 @@ llvm-helpers.bc: llvm-helpers.bc1 panda/tools/helper_call_modifier
 		panda/tools/helper_call_modifier -i $< -o $@,\
 		"LLMORPH $(TARGET_DIR)$@")
 
-# add this to the all target
-all: $(llvmmorph-y) panda/tools/dynslice2 panda/tools/slice_analyzer
-#all: $(llvmmorph-y)
+all: $(llvmmorph-y)
 
 clean: clean-llvm
 
