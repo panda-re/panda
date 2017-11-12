@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-USAGE="""run_debian.py [args] binary
+USAGE="""run_on_32bitlinux.py [args] binary
 
 So you want to try panda but dont have any replays.  Poor you.
 This script allows you to run commands on a 32-bit linux guest.
@@ -10,12 +10,12 @@ Remaining arguments are the args that binary needs. Files on the host will
 automatically be copied to the guest, unless the argument is prefixed with
 "guest:". This works for the binary too.
 
-run_debian.py foo2
+run_on_32bitlinux.py foo2
 
 will copy into the guest the binary foo2 (which needs to be in the cwd) and
 create a recording of running it under a panda 32-bit wheezy machine.
 
-run_debian.py guest:/bin/cat guest:/etc/passwd
+run_on_32bitlinux.py guest:/bin/cat guest:/etc/passwd
 
 will create a recording of running the guest's cat on the guest's /etc/passwd.
 
@@ -36,6 +36,8 @@ Advanced USAGE:
     --rr turns on Mozilla rr record for your command
 
     --arch specifies another architecture (Default is i386)
+	
+    --snapshot specifies loading a different snapshot for your vm (default is "root")
 
     --env "PYTHON_DICT" where PYTHON_DICT represents the user environment
                          you would like to enforce on the guest
@@ -107,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
     parser.add_argument("--qemu_args", action='store', default="")
+    parser.add_argument("--snapshot", action='store', default="root")
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
 
     args, guest_cmd = parser.parse_known_args()
@@ -171,7 +174,7 @@ if __name__ == "__main__":
     
     create_recording(
         join(panda_build_dir, arch_data.dir, arch_data.binary),
-        qcow, "root", new_guest_cmd,
+        qcow, args.snapshot, new_guest_cmd,
         install_dir,
         join(binary_dir, binary_basename),
         arch_data.prompt,
