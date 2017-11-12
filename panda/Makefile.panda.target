@@ -128,13 +128,8 @@ PROGS+=$(RR_PRINT_PROG) plog_pb2.py
 
 # Uncomment next two lines to enable compiled plog_reader.
 # if PLOG_READER is defined, plog writing functions in plog-cc.cpp will be disabled.
-<<<<<<< HEAD
- #PROGS+=$(PLOG_READER_PROG) 
- #QEMU_CFLAGS += -DPLOG_READER
-=======
 #PROGS+=$(PLOG_READER_PROG) 
 #QEMU_CFLAGS += -DPLOG_READER
->>>>>>> master
 
 clean: clean-panda
 
