@@ -49,7 +49,7 @@ extern "C" {
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Regex.h"
 
-#define MAX_BITSET 1024
+#define MAX_BITSET 2048
 
 using namespace llvm;
 
@@ -241,7 +241,7 @@ void get_usedefs_Call(traceEntry &t,
 
     Function *subf = c->getCalledFunction();
     StringRef func_name = subf->getName();
-	printf("getting usedefs call %s\n", func_name.data());
+    printf("getting usedefs call %s\n", func_name.data());
     SmallVector<StringRef, 2> *matches = new SmallVector<StringRef, 2>();
     if (Regex("helper_[lb]e_ld(.*)_mmu_panda").match(func_name, matches)) {
         int size = -1;
@@ -254,7 +254,7 @@ void get_usedefs_Call(traceEntry &t,
         
         insertAddr(uses, MEM, t.ple->llvmentry().address(), size);
 
-		//call looks like call i64 @helper_le_ldul_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v19, i32 1, i64 3735928559)
+        //call looks like call i64 @helper_le_ldul_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v19, i32 1, i64 3735928559)
         Value *load_addr = c->getArgOperand(1);
         insertValue(uses, load_addr);
         insertValue(defines, t.inst);
@@ -271,7 +271,7 @@ void get_usedefs_Call(traceEntry &t,
         
         insertAddr(defines, MEM, t.ple->llvmentry().address(), size);
         
-		// call looks like @helper_le_stl_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v17, i32 %tmp0_v15, i32 1, i64 3735928559)
+        // call looks like @helper_le_stl_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v17, i32 %tmp0_v15, i32 1, i64 3735928559)
         Value *store_addr = c->getArgOperand(1);
         Value *store_val  = c->getArgOperand(2);
         insertValue(uses, store_addr);
@@ -535,10 +535,10 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
         std::set<SliceVar> uses, defs;
         get_uses_and_defs(*traceIt, uses, defs);
 
-		//print_insn(traceIt->inst);
+        //print_insn(traceIt->inst);
 
         printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
-		 printf("DEFS: ");
+         printf("DEFS: ");
         print_set(defs);
         printf("USES: ");
         print_set(uses);
@@ -1039,7 +1039,7 @@ int main(int argc, char **argv){
         fprintf(stderr, "Note: no output file provided. Will save results to '%s'\n", output);
     }
 
-	printf("Slicing trace\n");
+    printf("Slicing trace\n");
     /*pandalog_open_read_bwd(llvm_trace_fname);*/
     
     //Panda__LogEntry *ple;
@@ -1048,7 +1048,7 @@ int main(int argc, char **argv){
     std::vector<traceEntry> aligned_block;
     
     PandaLog p;
-	printf("Opening logfile %s for read\n", argv[2]);
+    printf("Opening logfile %s for read\n", argv[2]);
     p.open_read_bwd((const char *) argv[2]);
     std::unique_ptr<panda::LogEntry> ple;
     panda::LogEntry* ple_raw;
@@ -1069,8 +1069,8 @@ int main(int argc, char **argv){
             }
 
             int cursor_idx = 0;
-			sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry().tb_num(), ple->pc());
-			//printf("********** %s **********\n", namebuf);
+            sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry().tb_num(), ple->pc());
+            //printf("********** %s **********\n", namebuf);
             Function *f = mod->getFunction(namebuf);
             
             assert(f != NULL);
@@ -1092,14 +1092,15 @@ int main(int argc, char **argv){
 
             
             if (ple->llvmentry().tb_num() == 15452){
-				cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
-				// now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
-				// maybe i can do this lazily...
+                cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
+                // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
+                // maybe i can do this lazily...
                 slice_trace(aligned_block, workList);
 
                 printf("Working set: ");
                 print_set(workList);
                 // CLear ple_vector for next block
+                break;
             }
 
             ple_vector.clear();
