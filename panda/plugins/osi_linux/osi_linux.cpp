@@ -197,8 +197,17 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	OsiProc *p = NULL;
 	PTR ts;
 
+#if defined(TARGET_I386)
+    target_ulong kernel_esp;
+    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
+        *out_p = NULL;
+        return;
+    }
+    ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+#else
 	//	target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
+#endif
 	if (ts) {
 		// valid task struct
 		// got a reasonable looking process.
@@ -229,7 +238,15 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
 	//	 the current task is a thread.
 	// See kernel_structs.html for details.
+#if defined(TARGET_I386)
+    target_ulong kernel_esp;
+    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0)
+        ts_first = ts_current = (PTR)NULL;
+    else
+        ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+#else
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
+#endif
 	if (ts_current == (PTR)NULL) goto error0;
 	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
@@ -316,8 +333,16 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 	PTR tg_first, tg_next;
 #endif
 
+#if defined(TARGET_I386)
+    target_ulong kernel_esp;
+    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0)
+        ts_first = ts_current = (PTR)NULL;
+    else
+        ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+#else
 	// Get a starting process.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
+#endif
 	if (ts_current == (PTR)NULL) goto error0;
 	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
