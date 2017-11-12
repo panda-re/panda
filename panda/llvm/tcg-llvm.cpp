@@ -1187,6 +1187,9 @@ int TCGLLVMContextPrivate::generateOperation(int opc, const TCGOp *op,
     __ARITH_OP(INDEX_op_or_i32,   Or, 32)
     __ARITH_OP(INDEX_op_xor_i32, Xor, 32)
 
+    __ARITH_OP_COMPUTE(INDEX_op_andc_i64, 64,
+            m_builder.CreateAnd(v1, m_builder.CreateNot(v2)))
+
     __ARITH_OP_COMPUTE(INDEX_op_andc_i32, 32,
             m_builder.CreateAnd(v1, m_builder.CreateNot(v2)))
 
