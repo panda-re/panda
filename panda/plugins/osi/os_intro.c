@@ -136,7 +136,7 @@ int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
 }
 #endif
 
-extern char **gargv;
+extern const char *qemu_file;
 
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
@@ -147,7 +147,7 @@ bool init_plugin(void *self) {
     assert (!(panda_os_type == OST_UNKNOWN));
     if (panda_os_type == OST_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
-        gchar *progname = gargv[0];
+        const gchar *progname = qemu_file;
         gchar *progname_path;
         gchar *progdir;
 

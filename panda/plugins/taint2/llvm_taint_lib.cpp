@@ -59,7 +59,7 @@ PPP_CB_BOILERPLATE(on_ptr_store);
 
 }
 
-extern char **gargv;
+extern const char *qemu_file;
 
 // Helper methods for doing structure computations.
 #define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
@@ -123,7 +123,7 @@ static void taint_storeEip_run(FastShad *shad, uint64_t src, uint64_t size) {
 extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
 bool PandaTaintFunctionPass::doInitialization(Module &M) {
     // Add taint functions to module
-    char *exe = strdup(gargv[0]);
+    char *exe = strdup(qemu_file);
     std::string bitcode(dirname(exe));
     free(exe);
     bitcode.append("/panda/plugins/panda_taint2_ops.bc");
