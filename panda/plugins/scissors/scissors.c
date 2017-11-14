@@ -42,6 +42,7 @@ static void sassert(bool condition, int which);
 
 static void sassert(bool condition, int which) {
     if (!condition) {
+        printf("sassert: %d\n", which);
         rr_do_end_replay(true);
     }
 }
@@ -66,49 +67,64 @@ static INLINEIT void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog
     rr_fwrite(ptr, size, nmemb, newlog);
 }
 
+static inline RR_log_entry *alloc_new_entry(void) 
+{
+    static RR_log_entry *new_entry = NULL;
+    if(!new_entry) new_entry = g_new(RR_log_entry, 1);
+    memset(new_entry, 0, sizeof(RR_log_entry));
+    return new_entry;
+}
+
 // Returns guest instr count (in old replay counting mode)
 static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
     // Copy entry.
-    RR_log_entry item;
+    RR_log_entry* item = alloc_new_entry();
 
-    rr_fread(&item.header.prog_point, sizeof(item.header.prog_point), 1, oldlog);
-    if (item.header.prog_point.guest_instr_count > end_count) {
+    rr_fread(&(item->header.prog_point.guest_instr_count), sizeof(item->header.prog_point.guest_instr_count), 1, oldlog);
+
+    if (item->header.prog_point.guest_instr_count > end_count) {
         // We don't want to copy this one.
-        return item.header.prog_point;
+        return item->header.prog_point;
     }
 
     //ph Fix up instruction count
-    RR_prog_point original_prog_point = item.header.prog_point;
-    item.header.prog_point.guest_instr_count -= actual_start_count;
-    rr_fwrite(&item.header.prog_point, sizeof(item.header.prog_point), 1, newlog);
+    RR_prog_point original_prog_point = item->header.prog_point;
+    item->header.prog_point.guest_instr_count -= actual_start_count;
+    rr_fwrite(&item->header.prog_point, sizeof(item->header.prog_point), 1, newlog);
 
 #define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
-    RR_COPY_ITEM(item.header.kind);
-    RR_COPY_ITEM(item.header.callsite_loc);
+    rr_fcopy(&(item->header.kind), 1, 1, oldlog, newlog);
+    rr_fcopy(&(item->header.callsite_loc), 1, 1, oldlog, newlog);
 
     //mz read the rest of the item
-    switch (item.header.kind) {
+    switch (item->header.kind) {
         case RR_INPUT_1:
-            RR_COPY_ITEM(item.variant.input_1);
+            RR_COPY_ITEM(item->variant.input_1);
             break;
         case RR_INPUT_2:
-            RR_COPY_ITEM(item.variant.input_2);
+            RR_COPY_ITEM(item->variant.input_2);
             break;
         case RR_INPUT_4:
-            RR_COPY_ITEM(item.variant.input_4);
+            RR_COPY_ITEM(item->variant.input_4);
             break;
         case RR_INPUT_8:
-            RR_COPY_ITEM(item.variant.input_8);
+            RR_COPY_ITEM(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            RR_COPY_ITEM(item.variant.interrupt_request);
+            RR_COPY_ITEM(item->variant.interrupt_request);
+            break;
+        case RR_PENDING_INTERRUPTS:
+            RR_COPY_ITEM(item->variant.pending_interrupts);
+            break;
+        case RR_EXCEPTION:
+            RR_COPY_ITEM(item->variant.exception_index);
             break;
         case RR_EXIT_REQUEST:
-            RR_COPY_ITEM(item.variant.exit_request);
+            RR_COPY_ITEM(item->variant.exit_request);
             break;
         case RR_SKIPPED_CALL: {
-            RR_skipped_call_args *args = &item.variant.call_args;
+            RR_skipped_call_args *args = &item->variant.call_args;
             //mz read kind first!
             RR_COPY_ITEM(args->kind);
             switch(args->kind) {
@@ -174,13 +190,13 @@ static void end_snip(void) {
     prog_point.guest_instr_count -= actual_start_count;
 
     RR_header end;
-    end.kind = RR_LAST;
+    end.kind = RR_END_OF_LOG;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
     sassert(fwrite(&(end.prog_point.guest_instr_count),
                 sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 5);
-    sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1, 6);
-    sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1, 7);
+    sassert(fwrite(&(end.kind), 1, 1, newlog) == 1, 6);
+    sassert(fwrite(&(end.callsite_loc), 1, 1, newlog) == 1, 7);
 
     rewind(newlog);
     fwrite(&prog_point.guest_instr_count,
