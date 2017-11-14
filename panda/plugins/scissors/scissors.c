@@ -42,7 +42,7 @@ static void sassert(bool condition, int which);
 
 static void sassert(bool condition, int which) {
     if (!condition) {
-        printf("sassert: %d\n", which);
+        printf("scissors.c: sassert %d\n", which);
         rr_do_end_replay(true);
     }
 }
@@ -57,7 +57,6 @@ static INLINEIT size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) 
 
 static INLINEIT size_t rr_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t result = fread(ptr, size, nmemb, f);
-    rr_nondet_log->bytes_read += nmemb * size;
     sassert(result == nmemb, 2);
     return result;
 }
@@ -67,12 +66,21 @@ static INLINEIT void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog
     rr_fwrite(ptr, size, nmemb, newlog);
 }
 
-static inline RR_log_entry *alloc_new_entry(void) 
+static INLINEIT RR_log_entry *alloc_new_entry(void) 
 {
     static RR_log_entry *new_entry = NULL;
     if(!new_entry) new_entry = g_new(RR_log_entry, 1);
     memset(new_entry, 0, sizeof(RR_log_entry));
     return new_entry;
+}
+
+static inline bool rr_log_is_empty(void) {
+    if (rr_nondet_log->type == REPLAY){
+        long pos = ftell(oldlog);
+        return pos == rr_nondet_log->size;
+    } else {
+        return false;
+    }
 }
 
 // Returns guest instr count (in old replay counting mode)
@@ -94,6 +102,7 @@ static RR_prog_point copy_entry(void) {
     rr_fwrite(&item->header.prog_point, sizeof(item->header.prog_point), 1, newlog);
 
 #define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
+    //rw only read 1 byte for kind and callsite_loc even though it's an enum, due to mz's optimization (see rr_log.h)
     rr_fcopy(&(item->header.kind), 1, 1, oldlog, newlog);
     rr_fcopy(&(item->header.callsite_loc), 1, 1, oldlog, newlog);
 
@@ -171,9 +180,9 @@ static RR_prog_point copy_entry(void) {
                     sassert(0, 3);
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             //mz nothing to read
-            //ph We don't copy RR_LAST here; write out afterwards.
+            //ph We don't copy RR_END_OF_LOG here; write out afterwards.
             break;
         default:
             //mz unimplemented
@@ -243,9 +252,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         RR_log_entry *item = rr_get_queue_head();
         if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
 
-        while (prog_point.guest_instr_count < end_count && !feof(oldlog)) {
+        while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
             prog_point = copy_entry();
         }
+        
         if (!feof(oldlog)) { // prog_point is the first one AFTER what we want
             printf("Reached end of old nondet log.\n");
         } else {
