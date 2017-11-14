@@ -74,7 +74,7 @@ static INLINEIT RR_log_entry *alloc_new_entry(void)
     return new_entry;
 }
 
-static inline bool rr_log_is_empty(void) {
+static INLINEIT bool rr_log_is_empty(void) {
     if (rr_nondet_log->type == REPLAY){
         long pos = ftell(oldlog);
         return pos == rr_nondet_log->size;
@@ -250,6 +250,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         // If there are items in the queue, then start copying the log
         // from there
         RR_log_entry *item = rr_get_queue_head();
+        printf("item header filepos? %lu\n", item->header.file_pos);
         if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
 
         while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
