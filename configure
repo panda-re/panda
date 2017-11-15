@@ -5573,8 +5573,9 @@ if test "$virglrenderer" = "yes" ; then
 fi
 
 if test "$llvm" = "yes" ; then
+    FILTERFLAGS="-pedantic"
   if test "$debug" = "yes" ; then
-     FILTERFLAGS="-O2 -O1 -O3 -fomit-frame-pointer"
+     FILTERFLAGS="$FILTERFLAGS -O2 -O1 -O3 -fomit-frame-pointer"
   fi
 
   echo "CLANG_CXXFLAGS:=$clang_cxxflags" >> $config_host_mak
