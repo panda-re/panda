@@ -1,9 +1,8 @@
-Panda testing framework
-=======================
+# Panda testing framework
 
-A dead simple testing framework for Panda.  Here's the idea.  You
-write bash scripts that each run qemu on a particular replay with some
-constellation of commandline params and plugins.  The script must
+A dead simple testing framework for Panda record/replay.  Here's the idea. You write Python scripts that will each run a record/replay with some plugins and parameters.
+
+ The script must
 generate some kind of output with panda and collect that output into a
 single file.  That output is blessed and squirreled away as a
 reference by you.  Later, you run that same script using a different
@@ -18,57 +17,36 @@ pandalog.  Second, your output must be the same for every replay.  So
 don't include timing numbers or datetime or host pointers or anything
 that would differ only incidentally from one run to the next.
 
-For an example of such a script, look at tests/asidstory1/asidstory1.bash.
+The `ptest.py` script controls everything.
 
+NB: you need to set the PANDA_REGRESSION_DIR env variable for any
+of this to work.  This is where all your regression testing will happen
 
-Set up
-------
+# Testing
 
-The first time you use this framework you will have to run all of the
-tests and generate known good outputs.  Unless those are in git and
-you can just retrieve them?  That would seem like a good idea but it
-would limit the size of outputs, and would really mean we should be
-storing inputs in git too.  The latter is a bad idea because inputs
-are replays which are too big for that to make sense.
+Tests are located in the testing/ folder. Which tests to run are specified in the `config.testing` file.
 
-Create or re-create the reference outputs with this commandline.
+## Set up/initialization
 
-   ./all.bash ref regressiondir
+The first time you use this framework you will have to setup all of your tests. 
 
-where `regressiondir` is a safe place where these known good outputs
-will be deposited.  That directory should end up with one reference
-output per test.
+`ptest.py init`         (initializes testing - clears PANDA_REGRESSION_DIR, downloads some qcows)
+`ptest.py setup`        (runs setup.py for all enabled tests, doesn't download qcows)
 
-NB: You will have to create the directory `regressiondir/outputs`
+## Blessing 
 
-Testing
--------
+Once you've run the setup scripts, run the tests to produce some output files, then "bless" the results as known good outputs.
 
-You can run all the tests and determine if any generate output that
-differs from reference with the following.
+`ptest.py bless`
 
-   ./all.bash test regressiondir
+## Run tests
 
-You will be told which tests succeed and which fail as well as time
-required for each.
+Now, `ptest.py test` will run all the tests, then compare the output to the blessed output. If there are inconsistencies, the test fails.
 
+# Writing tests
 
-Details
--------
+For each thing that you want to test, create a `setup.py` and `test.py` script in a new folder in `testing/`. 
 
-Ok this is a VERY SIMPLE framework.
-You write scripts that test something in PANDA.
+At a minimum, your setup script might create a recording. Your test script would replay the recording with the plugins and arguments that you specify.
 
-If the test is named `foo`, then the script should be in
-`./tests/foo/foo.bash`.  Yes, its a bash script.  Obviously, you can
-have that bash script run a python script.  The script must take one
-argument, the regressiondir.  And it should put all of its test output
-in the file `regressiondir/outputs/foo.out`, for test `foo`.
-
-That's it.  If you create that script and it creates that file, then
-`all.bash` should find it and run tha test along withe others and
-pretty much work.
-
-
-
-
+See the `asidstory` setup and test scripts for an example.
