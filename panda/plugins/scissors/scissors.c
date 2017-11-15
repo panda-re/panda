@@ -251,7 +251,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         // If there are items in the queue, then start copying the log
         // from there
         RR_log_entry *item = rr_get_queue_head();
-        printf("item header filepos? %lu\n", item->header.file_pos);
         if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
 
         //rw: For some reason I need to add an interrupt entry at the beginning of the log?
