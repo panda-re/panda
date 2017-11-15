@@ -51,7 +51,6 @@ def run(cmd):
 
 
 
-
 pandaregressiondir = "PANDA_REGRESSION_DIR"
 assert (pandaregressiondir in os.environ)
 pandaregressiondir = os.environ[pandaregressiondir]
@@ -59,8 +58,13 @@ pandaregressiondir = os.environ[pandaregressiondir]
 thisdir = os.path.dirname(os.path.realpath(__file__))
 pandadir = os.path.realpath(thisdir + "/../..")
 pandascriptsdir = os.path.realpath(pandadir + "/panda/scripts")
+default_build_dir = os.path.join(pandadir, 'debug_build')
+panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
+
+# import arch data from run_debian
+sys.path.append(pandascriptsdir)
+from run_debian import SUPPORTED_ARCHES
 testingscriptsdir = thisdir
-qemu = pandadir + "/build/i386-softmmu/qemu-system-i386"
 
 ptest_config = testingscriptsdir + "/tests/config.testing"
 if not (file_exists(ptest_config)):
@@ -102,10 +106,12 @@ if foo:
     search_string_file = search_string_file_pfx + "_search_strings.txt"
 
 
-def record_32bitlinux(cmds, replayname):
+def record_debian(cmds, replayname, arch):
     progress("Creating setup recording %s [%s]" % (replayname, cmds))
     # create the replay to use for reference / test
-    cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
+    arch_data = SUPPORTED_ARCHES[arch]
+    qcow = pandaregressiondir + "/qcows/" + arch_data.qcow
+    cmd = pandascriptsdir + "/run_debian.py " + cmds + " --qcow="  + qcow
     progress(cmd)
     tempd = tempfile.mkdtemp()
     os.chdir(tempd)
@@ -121,9 +127,12 @@ def record_32bitlinux(cmds, replayname):
     moveit(temp_base, new_base, "snp")
     shutil.rmtree(tempd)
              
-def run_test_32bitlinux(panda_args):
+def run_test_debian(replay_args, arch):
     progress("Running test " + testname)
-    cmd = qemu + " -replay " + replayfile + " -os linux-32-lava32 " + panda_args
+    arch_data = SUPPORTED_ARCHES[arch]
+    qemu = os.path.join(panda_build_dir, arch_data.dir, arch_data.binary)
+
+    cmd = qemu + " -replay " + replayfile + " " + replay_args
     progress(cmd)
     try:
         os.chdir(tmpoutdir)

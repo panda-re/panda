@@ -8,6 +8,7 @@ of this to work.  This is where all your regression testing will happen
 You should be able to run the following
 
 ptest.py init         (initializes testing, downloads some qcows)
+ptest.py setup         (runs setup.py for all enabled tests, doesn't download qcows)
 ptest.py bless        (runs all enabled tests, blesses and saves outputs)
 ptest.py test         (re-runs all enabled tests and checks output against blessed)
 
@@ -26,8 +27,6 @@ Details.
 ./config.testing file contains list of tests that are currently
 enabled.  each line in that file should be a directory under tests.
 If you put '#' at the front of a line that will disable the test.
-
-
 
 """
 
@@ -149,7 +148,7 @@ if mode == 'init':
         for testname in enabled_tests:
             os.mkdir(the_dir(dirname, testname))
     os.chdir(pandaregressiondir + "/qcows")
-    sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", "wheezy_32bit.qcow2"])
+    sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", "wheezy_panda2.qcow2"])
     run_mode('setup', setup)
 
 if mode == 'setup':

@@ -21,7 +21,7 @@ will create a recording of running the guest's cat on the guest's /etc/passwd.
 
 The recording files will be in
 
-./rcp-panda/foo2-recording*
+./replays/{binaryname}
 
 You can replay with
 
@@ -38,6 +38,8 @@ Advanced USAGE:
     --arch specifies another architecture (Default is i386)
 	
     --snapshot specifies loading a different snapshot for your vm (default is "root")
+        
+    --qcow specifies a path to an alternate qcow (otherwise uses/installs a qcow in $(HOME)/.panda)
 
     --env "PYTHON_DICT" where PYTHON_DICT represents the user environment
                          you would like to enforce on the guest
@@ -78,7 +80,7 @@ if not (os.path.exists(dot_dir)):
 
 this_script = os.path.abspath(__file__)
 this_script_dir = dirname(this_script)
-default_build_dir = join(dirname(dirname(this_script_dir)), 'build')
+default_build_dir = join(dirname(dirname(this_script_dir)), 'debug_build')
 panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
@@ -109,7 +111,8 @@ if __name__ == "__main__":
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
     parser.add_argument("--qemu_args", action='store', default="")
-    parser.add_argument("--snapshot", action='store', default="root")
+    parser.add_argument("--qcow", action='store', default="")
+    parser.add_argument("--snapshot", "-s", action='store', default="root")
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
 
     args, guest_cmd = parser.parse_known_args()
@@ -149,9 +152,13 @@ if __name__ == "__main__":
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, arch_data.qcow)
+    if args.qcow:
+        qcow = args.qcow
+    else:
+        qcow = join(dot_dir, arch_data.qcow)
+
     if not os.path.isfile(qcow):
-        print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
+        print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
