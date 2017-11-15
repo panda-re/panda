@@ -87,7 +87,7 @@ static INLINEIT bool rr_log_is_empty(void) {
 static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
     // Copy entry.
-    RR_log_entry* item = alloc_new_entry();
+    RR_log_entry *item = alloc_new_entry();
 
     rr_fread(&(item->header.prog_point.guest_instr_count), sizeof(item->header.prog_point.guest_instr_count), 1, oldlog);
 
@@ -135,7 +135,8 @@ static RR_prog_point copy_entry(void) {
         case RR_SKIPPED_CALL: {
             RR_skipped_call_args *args = &item->variant.call_args;
             //mz read kind first!
-            RR_COPY_ITEM(args->kind);
+            rr_fcopy(&args->kind, 1, 1, oldlog, newlog);
+
             switch(args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_COPY_ITEM(args->variant.cpu_mem_rw_args);
@@ -252,6 +253,19 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         RR_log_entry *item = rr_get_queue_head();
         printf("item header filepos? %lu\n", item->header.file_pos);
         if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
+
+        //rw: For some reason I need to add an interrupt entry at the beginning of the log?
+        RR_log_entry temp;
+
+        memset(&temp, 0, sizeof(RR_log_entry));
+        temp.header.kind = RR_INTERRUPT_REQUEST;
+        temp.header.callsite_loc = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
+        temp.variant.pending_interrupts = 2;
+
+        fwrite(&temp.header.prog_point, sizeof(temp.header.prog_point), 1, newlog);
+        fwrite(&temp.header.kind, 1, 1, newlog);
+        fwrite(&temp.header.callsite_loc, 1, 1, newlog);
+        fwrite(&temp.variant.pending_interrupts, sizeof(temp.variant.pending_interrupts), 1, newlog);
 
         while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
             prog_point = copy_entry();
