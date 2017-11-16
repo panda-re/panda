@@ -14,7 +14,7 @@ from ptest_utils import *
 t = tempfile.NamedTemporaryFile() 
 plogfile = t.name
 
-run_test_32bitlinux("-pandalog %s -panda file_taint:filename=taint2.input,first_instr=100000,pos -panda tainted_branch " % plogfile)
+run_test_debian("-pandalog %s -panda file_taint:filename=taint2.input,first_instr=100000,pos -panda tainted_branch " % plogfile)
 
 out = sp.check_output(["%s/plog_reader.py" % pandascriptsdir, plogfile])
 

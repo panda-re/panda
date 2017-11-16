@@ -14,6 +14,6 @@ from ptest_utils import *
 
 #cwd = os.getcwd()
 
-#record_32bitlinux("%s/taint2 %s/taint2.input" % (cwd,cwd), 'taint2')
-record_32bitlinux("%s/tests/taint2/file_branch_taint %s/tests/taint2/taint2.input" % (testingscriptsdir,testingscriptsdir), 'file_branch_taint')
+#record_debian("%s/taint2 %s/taint2.input" % (cwd,cwd), 'taint2')
+record_debian("%s/tests/taint2/file_branch_taint %s/tests/taint2/taint2.input" % (testingscriptsdir,testingscriptsdir), 'file_branch_taint')
 
