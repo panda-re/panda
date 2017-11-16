@@ -5,6 +5,8 @@
 #
 # and you fix that path, then you will regress panda every day at midnight
 
+source ~/.bashrc
+
 
 PWD=`pwd`
 PANDADIR=/home/tleek/git/panda-regression
