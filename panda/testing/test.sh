@@ -57,13 +57,13 @@ else
             
             cd ../panda/testing        
             export PANDA_REGRESSION_DIR=/home/tleek/ptest
-            ./ptest.py test | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
+            ./ptest.py test > /tmp/ptesttmp
             result="$?"
-            
+            cat /tmp/ptesttmp | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
             if [ "$result" -ne 0 ]; then
                 progress "ptest.py failed"
                 finalresult="ptest.py failed" 
-            else                
+            else
                 progress "ptest.py succeeded"
                 finalresult=`grep ptest.py /tmp/ptest.out | tail -1`
             fi
