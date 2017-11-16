@@ -17,8 +17,6 @@ pandalog.  Second, your output must be the same for every replay.  So
 don't include timing numbers or datetime or host pointers or anything
 that would differ only incidentally from one run to the next.
 
-The `ptest.py` script controls everything.
-
 NB: you need to set the `PANDA_REGRESSION_DIR` env variable for any
 of this to work.  This is where all your regression testing will happen
 
@@ -29,6 +27,8 @@ Tests are located in the `testing/` folder.
 The `./config.testing` file contains list of tests that are currently
 enabled.  each line in that file should be a directory under tests.
 If you put '#' at the front of a line that will disable the test.
+
+The `ptest.py` script controls everything. Usually you'll just run three commands in sequence: `init`, `bless`, and `test`.
 
 ## Setup/initialization
 
