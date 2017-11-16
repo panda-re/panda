@@ -58,7 +58,8 @@ pandaregressiondir = os.environ[pandaregressiondir]
 thisdir = os.path.dirname(os.path.realpath(__file__))
 pandadir = os.path.realpath(thisdir + "/../..")
 pandascriptsdir = os.path.realpath(pandadir + "/panda/scripts")
-default_build_dir = os.path.join(pandadir, 'debug_build')
+#default_build_dir = os.path.join(pandadir, 'debug_build')
+default_build_dir = os.path.join(pandadir, 'build')
 panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 # import arch data from run_debian
