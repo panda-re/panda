@@ -45,7 +45,7 @@ def get_lines():
 
 def main_loop(connection):
     for line in itertools.takewhile(bool, get_lines()):
-        print(line)
+#        print(line)
         connection.privmsg(target, line)
         time.sleep(1)
     connection.quit("Using irc.client.py")
