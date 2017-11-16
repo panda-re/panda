@@ -27,6 +27,11 @@ def dir_required(dirname):
         progress("Dir missing: " + dirname)
         sys.exit(1)
 
+# remove all files from this dir
+def clear_dir(dirname):
+    shutil.rmtree(dirname)
+    os.mkdir(dirname)
+
 def file_exists(filename):
     return os.path.exists(filename) and os.path.isfile(filename)
 
@@ -120,6 +125,7 @@ def run_test_debian(replay_args, replayname, arch):
     cmd = qemu + " -replay " + replaydir + "/" + replayname + " " + replay_args
     progress(cmd)
     try:
+        clear_dir(tmpoutdir)
         os.chdir(tmpoutdir)
         sp.check_call(cmd.split())
         progress ("Test %s succeeded" % testname)
