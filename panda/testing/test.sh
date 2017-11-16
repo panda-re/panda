@@ -18,30 +18,28 @@ progress () {
 
 
 echo " " > $PTESTOUT 
-progress "REGRESSION TESTS BEGIN"
 progress "-------------------------------------"
 progress "`date`"
+progress "Panda regression test begin"
 
 cd $PANDADIR
 x=`git ls-files -m`
 if [[ $x ]]; then
     progress "Repo in $PANDADIR has modified but unchecked in files"
-    subj="Repo in $PANDADIR has modified but unchecked in files"
+    finalresult="Repo in $PANDADIR has modified but unchecked in files"
 else
     progress "Repo in $PANDADIR has no modified files"
     
     progress "Getting up-to-date version of panda" 
-    progress "-------------------------------------"
     
     git pull # &>> $PTESTOUT
     result="$?"
     
     if [ "$result" -ne 0 ]; then
-        subj="git pull FAILED"
+        finalresult="git pull FAILED"
     else 
         
         progress "Building panda" 
-        progress "-------------------------------------"
         
         cd build
         rm -rf *
@@ -50,12 +48,11 @@ else
         
         if [ "$result" -ne 0 ]; then
             progress "build.sh failed"
-            subj="build.sh FAILED"
+            finalresult="build.sh FAILED"
         else
             progress "build.sh succeeded"
             
             progress "Testing panda"
-            progress "-------------------------------------"
             
             cd ../panda/testing        
             export PANDA_REGRESSION_DIR=/home/tleek/ptest
@@ -64,24 +61,22 @@ else
             
             if [ "$result" -ne 0 ]; then
                 progress "ptest.py failed"
-                subj="ptest.py FAILED" 
+                finalresult="ptest.py FAILED" 
             else                
                 progress "ptest.py suceeded"
-                subj=`grep ptest.py /tmp/ptest.out | tail -1`
+                finalresult=`grep ptest.py /tmp/ptest.out | tail -1`
             fi
         fi
     fi
 fi
 
-
 cd $PANDADIR/panda/testing
         
+progress "Panda regression test end"
+progress "`date`"
 progress "-------------------------------------"
-progress "PANDA REGRESSION TESTS END"
-progress "result: $subj"
-
 date >> $PTESTOUT
 
-cat /tmp/ptest.out  | mail -s "$subj" trleek@gmail.com
+cat /tmp/ptest.out  | mail -s "$finalresult" trleek@gmail.com
 
 python ./irccat.py 18.126.0.30 ptest \#panda-regression 
