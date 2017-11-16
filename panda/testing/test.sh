@@ -64,7 +64,7 @@ else
                 progress "ptest.py failed"
                 finalresult="ptest.py failed" 
             else                
-                progress "ptest.py suceeded"
+                progress "ptest.py succeeded"
                 finalresult=`grep ptest.py /tmp/ptest.out | tail -1`
             fi
         fi
@@ -76,7 +76,6 @@ cd $PANDADIR/panda/testing
 progress "Panda regression test end"
 progress "`date`"
 progress "-------------------------------------"
-date >> $PTESTOUT
 
 cat /tmp/ptest.out  | mail -s "$finalresult" trleek@gmail.com
 
