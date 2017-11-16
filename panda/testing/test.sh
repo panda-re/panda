@@ -26,14 +26,14 @@ cd $PANDADIR
 x=`git ls-files -m`
 if [[ $x ]]; then
     progress "Repo in $PANDADIR has modified but unchecked in files"
-    subj = "Repo in $PANDADIR has modified but unchecked in files"
+    subj="Repo in $PANDADIR has modified but unchecked in files"
 else
     progress "Repo in $PANDADIR has no modified files"
-
+    
     progress "Getting up-to-date version of panda" 
     progress "-------------------------------------"
     
-    git pull &>> $PTESTOUT
+    git pull # &>> $PTESTOUT
     result="$?"
     
     if [ "$result" -ne 0 ]; then
@@ -45,7 +45,7 @@ else
         
         cd build
         rm -rf *
-        ../build.sh &>> $PTESTOUT
+        ../build.sh # &>> $PTESTOUT
         result="$?"
         
         if [ "$result" -ne 0 ]; then
