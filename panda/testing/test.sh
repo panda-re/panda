@@ -22,47 +22,58 @@ progress "REGRESSION TESTS BEGIN"
 progress "-------------------------------------"
 progress "`date`"
 
-progress "Getting up-to-date version of panda" 
-progress "-------------------------------------"
 cd $PANDADIR
-git pull &>> $PTESTOUT
-result="$?"
+x=`git ls-files -m`
+echo x is $x
+if [[ $x ]]; then
+    progress "Repo in $PANDADIR has modified but unchecked in files"
+    subj = "Repo in $PANDADIR has modified but unchecked in files"
+else
+    progress "Repo in $PANDADIR has no modified files"
 
-if [ "$result" -ne 0 ]; then
-    subj="git pull FAILED"
-else 
-    
-    progress "Building panda" 
+    progress "Getting up-to-date version of panda" 
     progress "-------------------------------------"
     
-    cd build
-    rm -rf *
-    ../build.sh &>> $PTESTOUT
+    git pull &>> $PTESTOUT
     result="$?"
     
     if [ "$result" -ne 0 ]; then
-        progress "build.sh failed"
-        subj="build.sh FAILED"
-    else
-        progress "build.sh succeeded"
+        subj="git pull FAILED"
+    else 
         
-        progress "Testing panda"
+        progress "Building panda" 
         progress "-------------------------------------"
-            
-        cd ../panda/testing        
-        export PANDA_REGRESSION_DIR=/home/tleek/ptest
-        ./ptest.py test | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
+        
+        cd build
+        rm -rf *
+        ../build.sh &>> $PTESTOUT
         result="$?"
         
         if [ "$result" -ne 0 ]; then
-            progress "ptest.py failed"
-            subj="ptest.py FAILED" 
-        else                
-            progress "ptest.py suceeded"
-            subj=`grep ptest.py /tmp/ptest.out | tail -1`
+            progress "build.sh failed"
+            subj="build.sh FAILED"
+        else
+            progress "build.sh succeeded"
+            
+            progress "Testing panda"
+            progress "-------------------------------------"
+            
+            cd ../panda/testing        
+            export PANDA_REGRESSION_DIR=/home/tleek/ptest
+            ./ptest.py test | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
+            result="$?"
+            
+            if [ "$result" -ne 0 ]; then
+                progress "ptest.py failed"
+                subj="ptest.py FAILED" 
+            else                
+                progress "ptest.py suceeded"
+                subj=`grep ptest.py /tmp/ptest.out | tail -1`
+            fi
         fi
     fi
 fi
+
 
 cd $PANDADIR/panda/testing
         
