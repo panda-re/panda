@@ -13,3 +13,5 @@ from ptest_utils import *
 ss_filename = miscdir + "/cat"
 run_test_debian("-panda stringsearch:name=" + ss_filename, "cat", "i386")
 
+os.chdir(tmpoutdir)
+shutil.move(miscdir + "/cat_string_matches.txt", tmpoutfile)

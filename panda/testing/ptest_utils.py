@@ -84,6 +84,7 @@ if foo:
     blesseddir = os.path.join(pandaregressiondir, "blessed", testname)
     tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
     miscdir = os.path.join(pandaregressiondir, "misc", testname)
+    tmpoutfile = os.path.join(tmpoutdir, testname) + '.out'
 
     search_string_file_pfx = miscdir + "/" + testname 
     search_string_file = search_string_file_pfx + "_search_strings.txt"
