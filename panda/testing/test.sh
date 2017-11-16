@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/bin/bash -l
 # 
 # If you put this in your crontab with something like
 # 0 0 * * * /home/tleek/git/panda/panda/testing/test.sh
 #
 # and you fix that path, then you will regress panda every day at midnight
 
-source ~/.bashrc
 
 
 PWD=`pwd`
