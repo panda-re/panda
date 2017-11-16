@@ -85,4 +85,4 @@ date >> $PTESTOUT
 
 cat /tmp/ptest.out  | mail -s "$subj" trleek@gmail.com
 
-python ./irccat.py -l DEBUG 18.126.0.30 ptest \#panda-regression 
+python ./irccat.py 18.126.0.30 ptest \#panda-regression 
