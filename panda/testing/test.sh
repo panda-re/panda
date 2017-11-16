@@ -36,9 +36,10 @@ else
     result="$?"
     
     if [ "$result" -ne 0 ]; then
-        finalresult="git pull FAILED"
+        progress "git pull failed"
+        finalresult="git pull failed"
     else 
-        
+        progress "git pull succeeded"
         progress "Building panda" 
         
         cd build
@@ -48,7 +49,7 @@ else
         
         if [ "$result" -ne 0 ]; then
             progress "build.sh failed"
-            finalresult="build.sh FAILED"
+            finalresult="build.sh failed"
         else
             progress "build.sh succeeded"
             
@@ -61,7 +62,7 @@ else
             
             if [ "$result" -ne 0 ]; then
                 progress "ptest.py failed"
-                finalresult="ptest.py FAILED" 
+                finalresult="ptest.py failed" 
             else                
                 progress "ptest.py suceeded"
                 finalresult=`grep ptest.py /tmp/ptest.out | tail -1`
