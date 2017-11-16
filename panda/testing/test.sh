@@ -24,7 +24,6 @@ progress "`date`"
 
 cd $PANDADIR
 x=`git ls-files -m`
-echo x is $x
 if [[ $x ]]; then
     progress "Repo in $PANDADIR has modified but unchecked in files"
     subj = "Repo in $PANDADIR has modified but unchecked in files"
