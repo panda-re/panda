@@ -80,7 +80,7 @@ if not (os.path.exists(dot_dir)):
 
 this_script = os.path.abspath(__file__)
 this_script_dir = dirname(this_script)
-default_build_dir = join(dirname(dirname(this_script_dir)), 'debug_build')
+default_build_dir = join(dirname(dirname(this_script_dir)), 'build')
 panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}

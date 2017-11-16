@@ -24,14 +24,19 @@ of this to work.  This is where all your regression testing will happen
 
 # Testing
 
-Tests are located in the `testing/` folder. Which tests to run are specified in the `config.testing` file.
+Tests are located in the `testing/` folder. 
 
-## Set up/initialization
+The `./config.testing` file contains list of tests that are currently
+enabled.  each line in that file should be a directory under tests.
+If you put '#' at the front of a line that will disable the test.
+
+## Setup/initialization
 
 The first time you use this framework you will have to setup all of your tests. 
 
-`ptest.py init`         (initializes testing - clears PANDA_REGRESSION_DIR, downloads some qcows)
-`ptest.py setup`        (runs setup.py for all enabled tests, doesn't download qcows)
+`ptest.py init`         (initializes testing - clears PANDA_REGRESSION_DIR, downloads some qcows, runs setup scripts for all enabled tests)
+
+`ptest.py setup`        (only runs setup scripts)
 
 ## Blessing 
 
@@ -45,7 +50,7 @@ Now, `ptest.py test` will run all the tests inside the `/tmpout` dir, then compa
 
 # Writing tests
 
-For each thing that you want to test, create a `-setup.py` and `-test.py` script in a new folder in `testing/`. 
+For each thing that you want to test, create a `{testname}-setup.py` and `{testname}-test.py` script in a new folder in `testing/`. 
 
 At a minimum, your setup script might create a recording with the `run_debian(cmd, replayname, arch)` helper. Your test script would then replay the recording with the plugins and arguments that you specify.
 

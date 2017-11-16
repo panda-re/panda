@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-"""
+USAGE = """
 
 NB: you need to set the PANDA_REGRESSION_DIR env variable for any
 of this to work.  This is where all your regression testing will happen
@@ -50,7 +50,8 @@ elif len(sys.argv) > 1:
 
 from ptest_utils import *
 
-assert(mode in ['init', 'setup', 'bless', 'test'])
+if mode not in ['init', 'setup', 'bless', 'test']:
+    exit(USAGE)
 
 testsdir = testingscriptsdir+"/tests"
 
