@@ -10,8 +10,6 @@ sys.path.append(td)
 
 from ptest_utils import *
 
-run_test_debian("-panda asidstory  -os linux-32-lava32 ", "i386")
+run_test_debian("-panda asidstory -os linux-32-lava32 ", 'netstat',"i386")
 
-os.chdir(tmpoutdir)
-shutil.move("asidstory", tmpoutfile)
 

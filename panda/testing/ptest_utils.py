@@ -76,32 +76,15 @@ enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
 
 if debug: progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
-def the_dir(thing, test):
-    return "%s/%s/%s" % (pandaregressiondir, thing, test)
-
-def the_file(thing, test):
-    return "%s/%s" % (the_dir(thing,test), test)
-
-def the_replayfile(test):
-    return the_file("replays", test)
-
-def the_blessedfile(test):
-    return the_file("blessed", test) + ".out"
-
-def the_tmpoutfile(test):
-    return the_file("tmpout", test) + ".out"
-
 # this will only succeed if called from setup or test script
 foo = re.search("([^/]+)-([setup|test]).*.py", sys.argv[0])
 if foo:
     testname = foo.groups()[0]
-    replaydir = the_dir("replay", testname)
-    blesseddir = the_dir("blessed", testname)
-    tmpoutdir = the_dir("tmpout", testname)
-    miscdir = the_dir("misc", testname)
-    replayfile = the_replayfile(testname)
-    blessedfile = the_blessedfile(testname)
-    tmpoutfile = the_tmpoutfile(testname)
+    replaydir = os.path.join(pandaregressiondir, "replays", testname)
+    blesseddir = os.path.join(pandaregressiondir, "blessed", testname)
+    tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
+    miscdir = os.path.join(pandaregressiondir, "misc", testname)
+
     search_string_file_pfx = miscdir + "/" + testname 
     search_string_file = search_string_file_pfx + "_search_strings.txt"
 
@@ -122,17 +105,17 @@ def record_debian(cmds, replayname, arch):
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
     temp_base = tempd + ("/replays/%s/%s-rr-" % (replayname, replayname))
-    new_base = replaysdir + "/" + testname + "-rr-"
+    new_base = replaysdir + "/" + replayname + "-rr-"
     moveit(temp_base, new_base, "nondet.log")
     moveit(temp_base, new_base, "snp")
     shutil.rmtree(tempd)
              
-def run_test_debian(replay_args, arch):
+def run_test_debian(replay_args, replayname, arch):
     progress("Running test " + testname)
     arch_data = SUPPORTED_ARCHES[arch]
     qemu = os.path.join(panda_build_dir, arch_data.dir, arch_data.binary)
 
-    cmd = qemu + " -replay " + replayfile + " " + replay_args
+    cmd = qemu + " -replay " + replaydir + "/" + replayname + " " + replay_args
     progress(cmd)
     try:
         os.chdir(tmpoutdir)

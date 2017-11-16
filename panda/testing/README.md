@@ -19,12 +19,12 @@ that would differ only incidentally from one run to the next.
 
 The `ptest.py` script controls everything.
 
-NB: you need to set the PANDA_REGRESSION_DIR env variable for any
+NB: you need to set the `PANDA_REGRESSION_DIR` env variable for any
 of this to work.  This is where all your regression testing will happen
 
 # Testing
 
-Tests are located in the testing/ folder. Which tests to run are specified in the `config.testing` file.
+Tests are located in the `testing/` folder. Which tests to run are specified in the `config.testing` file.
 
 ## Set up/initialization
 
@@ -35,18 +35,18 @@ The first time you use this framework you will have to setup all of your tests.
 
 ## Blessing 
 
-Once you've run the setup scripts, run the tests to produce some output files, then "bless" the results as known good outputs.
+Once you've run the setup scripts, you must generate known good outputs. `ptest.py bless` will run the test scripts, and place the output in the `/blessed` directory.
 
 `ptest.py bless`
 
 ## Run tests
 
-Now, `ptest.py test` will run all the tests, then compare the output to the blessed output. If there are inconsistencies, the test fails.
+Now, `ptest.py test` will run all the tests inside the `/tmpout` dir, then compare the output to the blessed output. If there are inconsistencies, the test fails.
 
 # Writing tests
 
-For each thing that you want to test, create a `setup.py` and `test.py` script in a new folder in `testing/`. 
+For each thing that you want to test, create a `-setup.py` and `-test.py` script in a new folder in `testing/`. 
 
-At a minimum, your setup script might create a recording. Your test script would replay the recording with the plugins and arguments that you specify.
+At a minimum, your setup script might create a recording with the `run_debian(cmd, replayname, arch)` helper. Your test script would then replay the recording with the plugins and arguments that you specify.
 
 See the `asidstory` setup and test scripts for an example.
