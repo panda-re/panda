@@ -54,6 +54,7 @@ void uninit_plugin(void *);
 #ifdef CONFIG_SOFTMMU
 
 bool summary = false;
+bool do_indirect_jumps = false;
 
 #include <map>
 #include <set>
@@ -117,6 +118,7 @@ bool init_plugin(void *self) {
     assert (init_taint2_api());    
     panda_arg_list *args = panda_get_args("tainted_instr");
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
+    do_indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
     if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
     /*
     panda_cb pcb;
@@ -124,7 +126,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     */
     PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
-    PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
+    if (do_indirect_jumps) 
+        PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
     return true;
 }
 
