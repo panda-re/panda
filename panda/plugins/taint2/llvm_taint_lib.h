@@ -120,7 +120,7 @@ private:
     void insertTaintDelete(Instruction &I,
             Constant *shad, Value *dest, Value *size);
     void insertTaintBranch(Instruction &I, Value *cond);
-    void insertStoreEip(Instruction &I, Value *cond);
+    void insertTaintQueryNonConstPc(Instruction &I, Value *cond);
     void insertStateOp(Instruction &I);
 
 public:
@@ -145,7 +145,7 @@ public:
     Function *resetFrameF;
     Function *breadcrumbF;
     Function *branchF;
-    Function *storeEipF;
+    Function *copyRegToPcF;
 
     Constant *memlogConst;
     Function *memlogPopF;
