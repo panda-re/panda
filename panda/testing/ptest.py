@@ -171,8 +171,7 @@ if __name__ == "__main__":
                 os.makedirs(os.path.join( pandaregressiondir, dirname, testname))
                 
         os.chdir(pandaregressiondir + "/qcows")
-        # sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", "wheezy_panda2.qcow2"])
-        shutil.copy("/home/raywang/wheezy_panda2.qcow2", ".")
+        sp.check_call(["wget", "http://panda.moyix.net/~moyix/wheezy_panda2.qcow2", "-O", "wheezy_panda2.qcow2"])
         run_mode('setup', setup)
 
     if mode == 'setup':
