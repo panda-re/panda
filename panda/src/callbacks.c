@@ -73,6 +73,13 @@ bool panda_add_arg(const char *arg, int arglen) {
     return true;
 }
 
+bool panda_add_plugin_args(char *plugin_name, char *plugin_args) {
+    uint32_t len_add_str = strlen(plugin_name) + strlen(plugin_args) + 5;
+    char *add_str = (char *) malloc(len_add_str);
+    sprintf (add_str, "%s:%s", plugin_name, plugin_args);
+    return panda_add_arg(add_str, len_add_str);
+}
+
 // Forward declaration
 static void panda_args_set_help_wanted(const char *);
 
@@ -787,6 +794,7 @@ void panda_free_args(panda_arg_list *args) {
 #ifdef CONFIG_SOFTMMU
 
 // QMP
+
 
 void qmp_load_plugin(bool has_file_name, const char *file_name, const char *plugin_name, bool has_plugin_args, const char *plugin_args, Error **errp){
 
