@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python2.7
 """This should work with same cmdline as run_debian.py.  
 
 Create recording of 32-bit linux program and replay it, tainting input
