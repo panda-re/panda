@@ -1,26 +1,67 @@
 
 """This should work with same cmdline as run_debian.py.  
 
-Idea is to create recording and replay it, tainting input and querying
-taint on instr and branches, creating a pandalog.
+Create recording of 32-bit linux program and replay it, tainting input
+and querying taint on instructions and branches, outputing a pandalog.
 
-Note: there's some dodgy magic trying to figure out if input is file
-or stdin.  This is bc we need to tell the taint system when we replay.
+Usage really should be same as run_debian.py
 
-The script runs the replay under panda twice. Once, with the taint
+So, e.g., the following should work
+
+% python taint_debian.py foo /etc/passwd
+% python taint_debian.py guest:base64 /etc/passwd
+
+The first will create recording of running the binary 'foo' which is
+assumed to be in the path and a 32-bit linux executable.
+
+The second will create a recording of running the program 'base64'
+assumed to exist on the guest and be in the path.
+
+In either case the input to the program is the guest's /etc/passwd
+file.
+
+The important output of this script is a pandalog which contains
+results of all the tainted_branch and tainted_instr queries.  That
+output goes in a std place: taint.plog.  You can read this file with
+plog_reader.py, or you can use that script as a template for writing
+your own analysis.
+
+Notes
+
+1. There's some dodgy magic trying to figure out if input is file or
+stdin.  This is bc we need to tell the taint system when we replay.
+
+2. The script runs the replay under panda twice. Once, with the taint
 system disabled, to determine where the file or stdin is opened,
 i.e. what instruction count. Second run we use that instr count to
 know when to turn on taint system (which is slow).
 
-After that second run of panda, with taint turned on, the script
+3. After that second run of panda, with taint turned on, the script
 prints out all the output of panda which you should inspect to make
 sure the replay got to the end and labels were applied, etc.
 
-The real output of this script is a pandalog which contains results of
-all the tainted_branch and tainted_instr queries.  That output goes in
-a std place: taint.plog.  You can read this file with plog_reader.py,
-or you can use that script as a template for writing your own
-analysis.
+4. Whatever gets taint-labeled gets what we call 'positional' labels,
+meaning the first byte labeled gets label 0, the second byte gets
+label 1, etc.  These may correspond to byte positions in a file.
+
+5. The taint queries done by the tainted_instr plugin work as
+follows. When the taint system detects that something has changed in
+its shadow memory due to a copy or computation (not a deletion), every
+byte in the result of that change is queried to learn how it is
+tainted.  The results of each of those queries is sent to the
+pandalog, indicating what labels taint that value as well as the
+overall taint compute number of the result.
+
+6. The taint queries done by the tainted_branch are simpler.  Whenever
+there is a branch that depends upon tainted data, every byte in the
+register used to decide that branch is queried to learn how it is
+tainted.  The results of each of those queries also go to the pandalog.
+
+7. Ok, 5 & 6 are actually a little more subtle. Since the taint system
+operates at the llvm level, taint changes and branches are identified
+at that level.  This means you might see multiple tainted_instr
+entries for the same pc.  There should be just one tainted_branch
+entry for a single pc, though.
 
 """
 
