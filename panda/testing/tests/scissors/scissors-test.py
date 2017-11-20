@@ -27,7 +27,7 @@ for binary in ["netstat", "find"]:
         num_instrs = struct.unpack("<Q", f.read()[:8])
         num_instrs = num_instrs[0]
 
-    random.seed(0)
+    random.seed()
     for i in range(num_tests):
         start_pos = random.randint(0, num_instrs)
         end_pos = random.randint(start_pos, num_instrs)
