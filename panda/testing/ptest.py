@@ -159,6 +159,8 @@ def run_mode(the_mode, do_fn):
         progress("All %s succeeded" % the_mode)
     else:
         error("XXX Some %s failed" % the_mode)
+        raise RuntimeError("Some %s failed" % the_mode)
+
 
 if __name__ == "__main__":
     if mode == 'init':
