@@ -207,6 +207,7 @@ def create_boot_recording(qemu_path, qcow, recording_path, boot_time):
 
     DEVNULL.close()
 
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print >>sys.stderr, "Usage: python project.json"
