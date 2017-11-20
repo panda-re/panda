@@ -46,6 +46,7 @@ for binary in binaries:
         except Exception as e:
             msg = "Replay for %s (snipping %d to %d) FAILED" % (testname, start_pos, end_pos)
             error(msg)
+            error(e)
             num_fail += 1
 
 os.chdir(tmpoutdir)
