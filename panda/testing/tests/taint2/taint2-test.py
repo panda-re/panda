@@ -9,20 +9,23 @@ thisdir = os.path.dirname(os.path.realpath(__file__))
 td = os.path.realpath(thisdir + "/../..")
 sys.path.append(td)
 
+
 from ptest_utils import *
 
-t = tempfile.NamedTemporaryFile() 
-plogfile = t.name
+# run taint_instr and tainted_branch on file_branch_taint program
+testdir = testingscriptsdir + "/tests/taint2"
+sp.check_call([pandascriptsdir + "/taint_debian.py", testdir + "/file_branch_taint", testdir + "/taint2.input"])
 
-run_test_debian("-pandalog %s -panda file_taint:filename=taint2.input,first_instr=100000,pos -panda tainted_branch " % plogfile, "file_branch_taint", "i386")
+out = sp.check_output(["%s/plog_reader.py" % pandascriptsdir, "taint.plog"])
 
-out = sp.check_output(["%s/plog_reader.py" % pandascriptsdir, plogfile])
-
-out2 = [x for x in out.split('\n') if (not ('ptr' in x))]
+#out2 = [x for x in out.split('\n') if (not ('ptr' in x))]
 
 f = open("%s/taint2.out" % tmpoutdir, "w")
-for line in out2:
-    f.write(line + '\n')
+f.write(out)
+
+#for line in out2:
+#    f.write(line + '\n')
+
 f.close()
 
 os.chdir(tmpoutdir)
