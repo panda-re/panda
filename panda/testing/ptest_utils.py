@@ -81,6 +81,7 @@ enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
 
 if debug: progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
+replaydir=None
 # this will only succeed if called from setup or test script
 foo = re.search("([^/]+)-([setup|test]).*.py", sys.argv[0])
 if foo:
@@ -100,21 +101,15 @@ def record_debian(cmds, replayname, arch):
     # create the replay to use for reference / test
     arch_data = SUPPORTED_ARCHES[arch]
     qcow = pandaregressiondir + "/qcows/" + arch_data.qcow
-    cmd = pandascriptsdir + "/run_debian.py " + cmds + " --qcow="  + qcow
-    progress(cmd)
-    tempd = tempfile.mkdtemp()
-    os.chdir(tempd)
-    print cmd
-    sp.check_call(cmd.split())
+    cmd = pandascriptsdir + "/run_debian.py " + cmds + " --qcow="  + qcow 
     # this is where we want the replays to end up
     replaysdir = pandaregressiondir + "/replays/" + testname
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
-    temp_base = tempd + ("/replays/%s/%s-rr-" % (replayname, replayname))
-    new_base = replaysdir + "/" + replayname + "-rr-"
-    moveit(temp_base, new_base, "nondet.log")
-    moveit(temp_base, new_base, "snp")
-    shutil.rmtree(tempd)
+    cmd += " --replaybase=%s/%s" % (replaysdir,replayname)
+    progress(cmd)
+    sp.check_call(cmd.split())
+
              
 def run_test_debian(replay_args, replayname, arch, rdir = replaydir):
     progress("Running test " + testname)
