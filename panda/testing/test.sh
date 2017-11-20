@@ -13,8 +13,27 @@ PANDADIR=/home/tleek/git/panda-regression
 PTESTOUT=/tmp/ptest.out
 
 progress () {
-  echo $1
-  echo $1 >> $PTESTOUT
+    echo $@
+    echo $@ >> $PTESTOUT
+}
+
+# as in 'we are done'
+wearedone () {
+    progress $@
+
+    finalresult=$@
+
+    cd $PANDADIR/panda/testing
+        
+    progress "Panda regression test end"
+    progress "`date`"
+    progress "-------------------------------------"
+    
+    cat /tmp/ptest.out  | mail -s "$finalresult" trleek@gmail.com
+    
+    python ./irccat.py 18.126.0.30 ptest \#panda-regression 
+
+    exit 0
 }
 
 
@@ -24,60 +43,56 @@ progress "`date`"
 progress "Panda regression test begin"
 
 cd $PANDADIR
-x=`git ls-files -m`
+x=`git ls-files -m | grep -v test.sh`
+
 if [[ $x ]]; then
-    progress "Repo in $PANDADIR has modified but unchecked in files"
-    finalresult="Repo in $PANDADIR has modified but unchecked in files"
+    wearedone "Repo in $PANDADIR has modified but unchecked in files"
 else
     progress "Repo in $PANDADIR has no modified files"
-    
-    progress "Getting up-to-date version of panda" 
-    
-    git pull # &>> $PTESTOUT
-    result="$?"
-    
-    if [ "$result" -ne 0 ]; then
-        progress "git pull failed"
-        finalresult="git pull failed"
-    else 
-        progress "git pull succeeded"
-        progress "Building panda" 
-        
-        cd build
-        rm -rf *
-        ../build.sh # &>> $PTESTOUT
-        result="$?"
-        
-        if [ "$result" -ne 0 ]; then
-            progress "build.sh failed"
-            finalresult="build.sh failed"
-        else
-            progress "build.sh succeeded"
-            
-            progress "Testing panda"
-            
-            cd ../panda/testing        
-            export PANDA_REGRESSION_DIR=/home/tleek/ptest
-            ./ptest.py test > /tmp/ptesttmp
-            result="$?"
-            cat /tmp/ptesttmp | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
-            if [ "$result" -ne 0 ]; then
-                progress "ptest.py failed"
-                finalresult="ptest.py failed" 
-            else
-                progress "ptest.py succeeded"
-                finalresult=`grep ptest.py /tmp/ptest.out | tail -1`
-            fi
-        fi
-    fi
 fi
 
-cd $PANDADIR/panda/testing
+progress "Getting up-to-date version of panda" 
+    
+x=`git pull` # &>> $PTESTOUT
+result="$?"
+
+if [ "$result" -ne 0 ]; then
+    weardone progress "Git pull failed"
+else
+    progress "Git pull succeeded"
+fi
+
+if [[ $x == *"Already"* ]]; then
+    wearedone "no source change"
+else
+    progress "source changed"
+fi
+ 
+progress "Building panda" 
+
+cd build
+rm -rf *
+../build.sh # &>> $PTESTOUT
+result="$?"
         
-progress "Panda regression test end"
-progress "`date`"
-progress "-------------------------------------"
+if [ "$result" -ne 0 ]; then
+    wearedone "build.sh failed"
+else
+    progress "build.sh succeeded"
+fi
+        
+progress "Testing panda"
+            
+cd ../panda/testing        
+export PANDA_REGRESSION_DIR=/home/tleek/ptest
+./ptest.py test > /tmp/ptesttmp
+result="$?"
+cat /tmp/ptesttmp | sed '/^\s*$/d' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g"  &>> $PTESTOUT            
 
-cat /tmp/ptest.out  | mail -s "$finalresult" trleek@gmail.com
+if [ "$result" -ne 0 ]; then
+    wearedone "ptest.py failed"
+else
+    progress "ptest.py succeeded"
+fi
 
-python ./irccat.py 18.126.0.30 ptest \#panda-regression 
+wearedone "Everything seems hunky-dory; regression pased"
