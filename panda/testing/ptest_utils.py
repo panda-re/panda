@@ -63,7 +63,6 @@ pandaregressiondir = os.environ[pandaregressiondir]
 thisdir = os.path.dirname(os.path.realpath(__file__))
 pandadir = os.path.realpath(thisdir + "/../..")
 pandascriptsdir = os.path.realpath(pandadir + "/panda/scripts")
-#default_build_dir = os.path.join(pandadir, 'debug_build')
 default_build_dir = os.path.join(pandadir, 'build')
 panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
@@ -117,12 +116,12 @@ def record_debian(cmds, replayname, arch):
     moveit(temp_base, new_base, "snp")
     shutil.rmtree(tempd)
              
-def run_test_debian(replay_args, replayname, arch):
+def run_test_debian(replay_args, replayname, arch, rdir = replaydir):
     progress("Running test " + testname)
     arch_data = SUPPORTED_ARCHES[arch]
     qemu = os.path.join(panda_build_dir, arch_data.dir, arch_data.binary)
 
-    cmd = qemu + " -replay " + replaydir + "/" + replayname + " " + replay_args
+    cmd = qemu + " -replay " + rdir + "/" + replayname + " " + replay_args
     progress(cmd)
     try:
         clear_dir(tmpoutdir)

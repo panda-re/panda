@@ -42,6 +42,7 @@ static void sassert(bool condition, int which);
 
 static void sassert(bool condition, int which) {
     if (!condition) {
+        printf("scissors.c: sassert %d\n", which);
         rr_do_end_replay(true);
     }
 }
@@ -56,7 +57,6 @@ static INLINEIT size_t rr_fwrite(void *ptr, size_t size, size_t nmemb, FILE *f) 
 
 static INLINEIT size_t rr_fread(void *ptr, size_t size, size_t nmemb, FILE *f) {
     size_t result = fread(ptr, size, nmemb, f);
-    rr_nondet_log->bytes_read += nmemb * size;
     sassert(result == nmemb, 2);
     return result;
 }
@@ -66,51 +66,77 @@ static INLINEIT void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog
     rr_fwrite(ptr, size, nmemb, newlog);
 }
 
+static INLINEIT RR_log_entry *alloc_new_entry(void) 
+{
+    static RR_log_entry *new_entry = NULL;
+    if(!new_entry) new_entry = g_new(RR_log_entry, 1);
+    memset(new_entry, 0, sizeof(RR_log_entry));
+    return new_entry;
+}
+
+static INLINEIT bool rr_log_is_empty(void) {
+    if (rr_nondet_log->type == REPLAY){
+        long pos = ftell(oldlog);
+        return pos == rr_nondet_log->size;
+    } else {
+        return false;
+    }
+}
+
 // Returns guest instr count (in old replay counting mode)
 static RR_prog_point copy_entry(void) {
     // Code copied from rr_log.c.
     // Copy entry.
-    RR_log_entry item;
+    RR_log_entry *item = alloc_new_entry();
 
-    rr_fread(&item.header.prog_point, sizeof(item.header.prog_point), 1, oldlog);
-    if (item.header.prog_point.guest_instr_count > end_count) {
+    rr_fread(&(item->header.prog_point.guest_instr_count), sizeof(item->header.prog_point.guest_instr_count), 1, oldlog);
+
+    if (item->header.prog_point.guest_instr_count > end_count) {
         // We don't want to copy this one.
-        return item.header.prog_point;
+        return item->header.prog_point;
     }
 
     //ph Fix up instruction count
-    RR_prog_point original_prog_point = item.header.prog_point;
-    item.header.prog_point.guest_instr_count -= actual_start_count;
-    rr_fwrite(&item.header.prog_point, sizeof(item.header.prog_point), 1, newlog);
+    RR_prog_point original_prog_point = item->header.prog_point;
+    item->header.prog_point.guest_instr_count -= actual_start_count;
+    rr_fwrite(&item->header.prog_point, sizeof(item->header.prog_point), 1, newlog);
 
 #define RR_COPY_ITEM(field) rr_fcopy(&(field), sizeof(field), 1, oldlog, newlog)
-    RR_COPY_ITEM(item.header.kind);
-    RR_COPY_ITEM(item.header.callsite_loc);
+    //rw only read 1 byte for kind and callsite_loc even though it's an enum, due to mz's optimization (see rr_log.h)
+    rr_fcopy(&(item->header.kind), 1, 1, oldlog, newlog);
+    rr_fcopy(&(item->header.callsite_loc), 1, 1, oldlog, newlog);
 
     //mz read the rest of the item
-    switch (item.header.kind) {
+    switch (item->header.kind) {
         case RR_INPUT_1:
-            RR_COPY_ITEM(item.variant.input_1);
+            RR_COPY_ITEM(item->variant.input_1);
             break;
         case RR_INPUT_2:
-            RR_COPY_ITEM(item.variant.input_2);
+            RR_COPY_ITEM(item->variant.input_2);
             break;
         case RR_INPUT_4:
-            RR_COPY_ITEM(item.variant.input_4);
+            RR_COPY_ITEM(item->variant.input_4);
             break;
         case RR_INPUT_8:
-            RR_COPY_ITEM(item.variant.input_8);
+            RR_COPY_ITEM(item->variant.input_8);
             break;
         case RR_INTERRUPT_REQUEST:
-            RR_COPY_ITEM(item.variant.interrupt_request);
+            RR_COPY_ITEM(item->variant.interrupt_request);
+            break;
+        case RR_PENDING_INTERRUPTS:
+            RR_COPY_ITEM(item->variant.pending_interrupts);
+            break;
+        case RR_EXCEPTION:
+            RR_COPY_ITEM(item->variant.exception_index);
             break;
         case RR_EXIT_REQUEST:
-            RR_COPY_ITEM(item.variant.exit_request);
+            RR_COPY_ITEM(item->variant.exit_request);
             break;
         case RR_SKIPPED_CALL: {
-            RR_skipped_call_args *args = &item.variant.call_args;
+            RR_skipped_call_args *args = &item->variant.call_args;
             //mz read kind first!
-            RR_COPY_ITEM(args->kind);
+            rr_fcopy(&args->kind, 1, 1, oldlog, newlog);
+
             switch(args->kind) {
                 case RR_CALL_CPU_MEM_RW:
                     RR_COPY_ITEM(args->variant.cpu_mem_rw_args);
@@ -155,9 +181,9 @@ static RR_prog_point copy_entry(void) {
                     sassert(0, 3);
             }
         } break;
-        case RR_LAST:
+        case RR_END_OF_LOG:
             //mz nothing to read
-            //ph We don't copy RR_LAST here; write out afterwards.
+            //ph We don't copy RR_END_OF_LOG here; write out afterwards.
             break;
         default:
             //mz unimplemented
@@ -174,13 +200,13 @@ static void end_snip(void) {
     prog_point.guest_instr_count -= actual_start_count;
 
     RR_header end;
-    end.kind = RR_LAST;
+    end.kind = RR_END_OF_LOG;
     end.callsite_loc = RR_CALLSITE_LAST;
     end.prog_point = prog_point;
     sassert(fwrite(&(end.prog_point.guest_instr_count),
                 sizeof(end.prog_point.guest_instr_count), 1, newlog) == 1, 5);
-    sassert(fwrite(&(end.kind), sizeof(end.kind), 1, newlog) == 1, 6);
-    sassert(fwrite(&(end.callsite_loc), sizeof(end.callsite_loc), 1, newlog) == 1, 7);
+    sassert(fwrite(&(end.kind), 1, 1, newlog) == 1, 6);
+    sassert(fwrite(&(end.callsite_loc), 1, 1, newlog) == 1, 7);
 
     rewind(newlog);
     fwrite(&prog_point.guest_instr_count,
@@ -227,9 +253,23 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         RR_log_entry *item = rr_get_queue_head();
         if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
 
-        while (prog_point.guest_instr_count < end_count && !feof(oldlog)) {
+        //rw: For some reason I need to add an interrupt entry at the beginning of the log?
+        RR_log_entry temp;
+
+        memset(&temp, 0, sizeof(RR_log_entry));
+        temp.header.kind = RR_INTERRUPT_REQUEST;
+        temp.header.callsite_loc = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
+        temp.variant.pending_interrupts = 2;
+
+        fwrite(&temp.header.prog_point, sizeof(temp.header.prog_point), 1, newlog);
+        fwrite(&temp.header.kind, 1, 1, newlog);
+        fwrite(&temp.header.callsite_loc, 1, 1, newlog);
+        fwrite(&temp.variant.pending_interrupts, sizeof(temp.variant.pending_interrupts), 1, newlog);
+
+        while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
             prog_point = copy_entry();
         }
+        
         if (!feof(oldlog)) { // prog_point is the first one AFTER what we want
             printf("Reached end of old nondet log.\n");
         } else {
