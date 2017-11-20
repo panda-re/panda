@@ -13,14 +13,21 @@ sys.path.append(td)
 from ptest_utils import *
 # This test doesn't write any output files, just checks that replay works for each snip
 
+# we try this many scissor snips for each of the replays we created in setup
+# note, each snip is random start / end
+num_tests = 25
+
 # get number of instructions in file 
 for binary in ["netstat", "find"]:
+    # ew -- ray this is grossssss
     with open(replaydir+"/%s-rr-nondet.log" % binary, 'rb') as f:
         num_instrs = struct.unpack("<Q", f.read()[:8])
         num_instrs = num_instrs[0]
 
     random.seed(0)
-    for i in range(10):
+    num_pass = 0
+    num_fail = 0
+    for i in range(num_tests):
         start_pos = random.randint(0, num_instrs)
         end_pos = random.randint(start_pos, num_instrs)
 
@@ -32,7 +39,17 @@ for binary in ["netstat", "find"]:
             run_test_debian("", "%s_reduced" % binary, "i386")
             msg = "Replay for %s (snipping %d to %d) succeeded" % (testname, start_pos, end_pos)
             progress(msg)
+            num_pass += 1
         except Exception as e:
             msg = "Replay for %s (snipping %d to %d) FAILED" % (testname, start_pos, end_pos)
             error(msg)
-            raise e
+            num_fail += 1
+
+os.chdir(tmpoutdir)
+with open(tmpoutfile, "w") as f:
+    f.write("scissors-test results: %d pass %d fail\n" % (num_pass, num_fail))
+    if num_pass == num_tests:
+        f.write("Scissors PASS\n")
+    else:
+        f.write("Scissors FAIL\n")
+
