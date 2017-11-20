@@ -120,6 +120,7 @@ def run_and_create_recording():
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
     parser.add_argument("--fileinput", action='store')
     parser.add_argument("--stdin", action='store_true')
+    parser.add_argument("--replaybase", action='store')
 
     args, guest_cmd = parser.parse_known_args()
     if args.cmd:
@@ -185,7 +186,11 @@ def run_and_create_recording():
     print "new_guest_cmd =", new_guest_cmd
     print "env = ", env
 
-    replay_base = join(binary_dir, binary_basename)
+    if args.replaybase is None:
+        replay_base = join(binary_dir, binary_basename)
+    else:
+        replay_base = args.replaybase
+
     create_recording(
         qemu_binary(arch_data),
         qcow, args.snapshot, new_guest_cmd,
