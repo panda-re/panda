@@ -15,7 +15,10 @@ from ptest_utils import *
 
 # we try this many scissor snips for each of the replays we created in setup
 # note, each snip is random start / end
-num_tests = 25
+num_tests = 100
+
+num_pass = 0
+num_fail = 0
 
 # get number of instructions in file 
 for binary in ["netstat", "find"]:
@@ -25,8 +28,6 @@ for binary in ["netstat", "find"]:
         num_instrs = num_instrs[0]
 
     random.seed(0)
-    num_pass = 0
-    num_fail = 0
     for i in range(num_tests):
         start_pos = random.randint(0, num_instrs)
         end_pos = random.randint(start_pos, num_instrs)
