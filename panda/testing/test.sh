@@ -42,10 +42,16 @@ progress "-------------------------------------"
 progress "`date`"
 progress "Panda regression test begin"
 
+LASTRES=$PANDA_REGRESSION_DIR/LAST_RESULT
+last=`cat $LASTRES`
+
+progress "Last regression test result was $last"
+
 cd $PANDADIR
 x=`git ls-files -m | grep -v test.sh`
 
 if [[ $x ]]; then
+    # quit if there are un-checked-in files
     wearedone "Repo in $PANDADIR has modified but unchecked in files"
 else
     progress "Repo in $PANDADIR has no modified files"
@@ -63,7 +69,13 @@ else
 fi
 
 if [[ $x == *"Already"* ]]; then
-    wearedone "no source change"
+    # src hasnt changed.  but if last result was failed regression then
+    # we need to go ahead and try to pass
+    if [[ $last == "PASS" ]]; then
+        wearedone "no source change"
+    else
+        progress "no source change -- but last result was fail so trying for a pass"
+    fi
 else
     progress "source changed"
 fi
@@ -93,6 +105,7 @@ if [ "$result" -ne 0 ]; then
     wearedone "ptest.py failed"
 else
     progress "ptest.py succeeded"
+    echo "PASS" > $LASTRES
 fi
 
 wearedone "Everything seems hunky-dory; regression pased"
