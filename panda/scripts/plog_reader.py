@@ -7,7 +7,7 @@ import struct
 from google.protobuf.json_format import MessageToJson
 from os.path import dirname, join, realpath
 
-panda_dir = dirname(dirname(dirname(realpath(sys.argv[0]))))
+panda_dir = dirname(dirname(dirname(realpath(__file__))))
 
 def try_path(*args):
     args = list(args) + ['i386-softmmu']
@@ -66,7 +66,7 @@ def plogiter(fn):
             message.ParseFromString(entry_data)
             yield message
 #            yield (yieldstr + str(MessageToJson(message)))
-            print MessageToJson(message)
+#            print MessageToJson(message)
 #            print MessageToJson(message)
             i += entry_size
 #    print "]"
