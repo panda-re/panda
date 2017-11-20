@@ -33,7 +33,7 @@ for binary in ["netstat", "find"]:
         end_pos = random.randint(start_pos, num_instrs)
 
         # Create slice
-        run_test_debian("-panda scissors:name=" + replaydir + "/%s_reduced,start=%d,end=%d" % (binary, start_pos, end_pos), 'netstat',"i386")
+        run_test_debian("-panda scissors:name=" + replaydir + "/%s_reduced,start=%d,end=%d" % (binary, start_pos, end_pos), binary,"i386")
 
         # Attempt to replay slice. 
         try:
