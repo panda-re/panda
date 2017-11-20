@@ -23,24 +23,31 @@ ulsm = {}
 
 with open("%s/taint2.out" % tmpoutdir, "w") as out:
 
-    def print_taint_query(label,tqelist):
-        out.write(label + " ")
+    def print_taint_query(label,pc,tqelist):
+        # a wild stab
+        just_uls = False
+        if (pc < 0x8000000 or pc >= 0x9000000):
+            just_uls = True
+        if (not just_uls):
+            out.write(label + " " + hex(pc) + " ")
         for tqe in tqelist:
-            out.write("( off=%d tcn=%d" % (tqe.offset, tqe.tcn))
+            if (not just_uls):
+                out.write("( off=%d tcn=%d" % (tqe.offset, tqe.tcn))
             if tqe.HasField("unique_label_set"):
                 uls = tqe.unique_label_set
                 ulsm[uls.ptr] = uls.label
             ptr = tqe.ptr
-            for l in ulsm[ptr]:
-                out.write(" %d" % l)
-            out.write(")\n")
+            if (not just_uls):
+                for l in ulsm[ptr]:
+                    out.write(" %d" % l)
+                out.write(")\n")
 
 
     for entry in plogiter("taint.plog"):
         if entry.HasField("tainted_instr"):
-            print_taint_query("tainted_instr", entry.tainted_instr.taint_query)
+            print_taint_query("tainted_instr", entry.pc, entry.tainted_instr.taint_query)
         if entry.HasField("tainted_branch"):
-            print_taint_query("tainted_branch", entry.tainted_branch.taint_query)
+            print_taint_query("tainted_branch", entry.pc, entry.tainted_branch.taint_query)
 
 os.chdir(tmpoutdir)
 shutil.move("taint2.out", tmpoutfile)
