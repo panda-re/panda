@@ -159,7 +159,7 @@ def run_mode(the_mode, do_fn):
         progress("All %s succeeded" % the_mode)
     else:
         error("XXX Some %s failed" % the_mode)
-        raise RuntimeError("Some %s failed" % the_mode)
+        sys.exit(100)
 
 
 if __name__ == "__main__":
