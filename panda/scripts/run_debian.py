@@ -85,6 +85,8 @@ panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
 
+def qemu_binary(arch_data):
+    return join(panda_build_dir, arch_data.dir, arch_data.binary)
 
 def transform_arg_copy(orig_filename):
     if orig_filename.startswith('guest:'):
@@ -103,7 +105,9 @@ def EXIT_USAGE():
     print(USAGE)
     sys.exit(1)
 
-if __name__ == "__main__":
+def run_and_create_recording():
+    global install_dir
+    
     parser = argparse.ArgumentParser(usage=USAGE)
 
     parser.add_argument("--perf", action='store_true')
@@ -114,6 +118,8 @@ if __name__ == "__main__":
     parser.add_argument("--qcow", action='store', default="")
     parser.add_argument("--snapshot", "-s", action='store', default="root")
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
+    parser.add_argument("--fileinput", action='store')
+    parser.add_argument("--stdin", action='store_true')
 
     args, guest_cmd = parser.parse_known_args()
     if args.cmd:
@@ -178,15 +184,22 @@ if __name__ == "__main__":
     print "args =", guest_cmd
     print "new_guest_cmd =", new_guest_cmd
     print "env = ", env
-    
+
+    replay_base = join(binary_dir, binary_basename)
     create_recording(
-        join(panda_build_dir, arch_data.dir, arch_data.binary),
+        qemu_binary(arch_data),
         qcow, args.snapshot, new_guest_cmd,
         install_dir,
-        join(binary_dir, binary_basename),
+        replay_base,
         arch_data.prompt,
         rr=args.rr,
         perf=args.perf,
         env=env,
         extra_args=extra_args + shlex.split(args.qemu_args)
     )
+    return (replay_base, arch_data, args.stdin, args.fileinput, guest_cmd)
+
+
+if __name__ == "__main__":
+    run_and_create_recording()
+    
