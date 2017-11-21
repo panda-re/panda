@@ -21,7 +21,7 @@ will create a recording of running the guest's cat on the guest's /etc/passwd.
 
 The recording files will be in
 
-./rcp-panda/foo2-recording*
+./replays/{binaryname}
 
 You can replay with
 
@@ -38,6 +38,8 @@ Advanced USAGE:
     --arch specifies another architecture (Default is i386)
 	
     --snapshot specifies loading a different snapshot for your vm (default is "root")
+        
+    --qcow specifies a path to an alternate qcow (otherwise uses/installs a qcow in $(HOME)/.panda)
 
     --env "PYTHON_DICT" where PYTHON_DICT represents the user environment
                          you would like to enforce on the guest
@@ -83,6 +85,8 @@ panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
 
+def qemu_binary(arch_data):
+    return join(panda_build_dir, arch_data.dir, arch_data.binary)
 
 def transform_arg_copy(orig_filename):
     if orig_filename.startswith('guest:'):
@@ -101,7 +105,9 @@ def EXIT_USAGE():
     print(USAGE)
     sys.exit(1)
 
-if __name__ == "__main__":
+def run_and_create_recording():
+    global install_dir
+    
     parser = argparse.ArgumentParser(usage=USAGE)
 
     parser.add_argument("--perf", action='store_true')
@@ -109,8 +115,12 @@ if __name__ == "__main__":
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
     parser.add_argument("--qemu_args", action='store', default="")
-    parser.add_argument("--snapshot", action='store', default="root")
+    parser.add_argument("--qcow", action='store', default="")
+    parser.add_argument("--snapshot", "-s", action='store', default="root")
     parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
+    parser.add_argument("--fileinput", action='store')
+    parser.add_argument("--stdin", action='store_true')
+    parser.add_argument("--replaybase", action='store')
 
     args, guest_cmd = parser.parse_known_args()
     if args.cmd:
@@ -149,9 +159,13 @@ if __name__ == "__main__":
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    qcow = join(dot_dir, arch_data.qcow)
+    if args.qcow:
+        qcow = args.qcow
+    else:
+        qcow = join(dot_dir, arch_data.qcow)
+
     if not os.path.isfile(qcow):
-        print "\nYou need a qcow. Downloading from moyix. Thanks moyix!\n"
+        print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
         sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
@@ -171,15 +185,26 @@ if __name__ == "__main__":
     print "args =", guest_cmd
     print "new_guest_cmd =", new_guest_cmd
     print "env = ", env
-    
+
+    if args.replaybase is None:
+        replay_base = join(binary_dir, binary_basename)
+    else:
+        replay_base = args.replaybase
+
     create_recording(
-        join(panda_build_dir, arch_data.dir, arch_data.binary),
+        qemu_binary(arch_data),
         qcow, args.snapshot, new_guest_cmd,
         install_dir,
-        join(binary_dir, binary_basename),
+        replay_base,
         arch_data.prompt,
         rr=args.rr,
         perf=args.perf,
         env=env,
         extra_args=extra_args + shlex.split(args.qemu_args)
     )
+    return (replay_base, arch_data, args.stdin, args.fileinput, guest_cmd)
+
+
+if __name__ == "__main__":
+    run_and_create_recording()
+    

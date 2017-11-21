@@ -27,6 +27,11 @@ def dir_required(dirname):
         progress("Dir missing: " + dirname)
         sys.exit(1)
 
+# remove all files from this dir
+def clear_dir(dirname):
+    shutil.rmtree(dirname)
+    os.mkdir(dirname)
+
 def file_exists(filename):
     return os.path.exists(filename) and os.path.isfile(filename)
 
@@ -51,7 +56,6 @@ def run(cmd):
 
 
 
-
 pandaregressiondir = "PANDA_REGRESSION_DIR"
 assert (pandaregressiondir in os.environ)
 pandaregressiondir = os.environ[pandaregressiondir]
@@ -59,8 +63,13 @@ pandaregressiondir = os.environ[pandaregressiondir]
 thisdir = os.path.dirname(os.path.realpath(__file__))
 pandadir = os.path.realpath(thisdir + "/../..")
 pandascriptsdir = os.path.realpath(pandadir + "/panda/scripts")
+default_build_dir = os.path.join(pandadir, 'build')
+panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
+
+# import arch data from run_debian
+sys.path.append(pandascriptsdir)
+from run_debian import SUPPORTED_ARCHES
 testingscriptsdir = thisdir
-qemu = pandadir + "/build/i386-softmmu/qemu-system-i386"
 
 ptest_config = testingscriptsdir + "/tests/config.testing"
 if not (file_exists(ptest_config)):
@@ -72,60 +81,45 @@ enabled_tests = [test for test in maybe_tests if (not test.startswith("#"))]
 
 if debug: progress(("%d enabled tests: " % (len(enabled_tests))) + " : " + (str(enabled_tests)))
 
-def the_dir(thing, test):
-    return "%s/%s/%s" % (pandaregressiondir, thing, test)
-
-def the_file(thing, test):
-    return "%s/%s" % (the_dir(thing,test), test)
-
-def the_replayfile(test):
-    return the_file("replays", test)
-
-def the_blessedfile(test):
-    return the_file("blessed", test) + ".out"
-
-def the_tmpoutfile(test):
-    return the_file("tmpout", test) + ".out"
-
+replaydir=None
 # this will only succeed if called from setup or test script
 foo = re.search("([^/]+)-([setup|test]).*.py", sys.argv[0])
 if foo:
     testname = foo.groups()[0]
-    replaydir = the_dir("replay", testname)
-    blesseddir = the_dir("blessed", testname)
-    tmpoutdir = the_dir("tmpout", testname)
-    miscdir = the_dir("misc", testname)
-    replayfile = the_replayfile(testname)
-    blessedfile = the_blessedfile(testname)
-    tmpoutfile = the_tmpoutfile(testname)
+    replaydir = os.path.join(pandaregressiondir, "replays", testname)
+    blesseddir = os.path.join(pandaregressiondir, "blessed", testname)
+    tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
+    miscdir = os.path.join(pandaregressiondir, "misc", testname)
+    tmpoutfile = os.path.join(tmpoutdir, testname) + '.out'
+
     search_string_file_pfx = miscdir + "/" + testname 
     search_string_file = search_string_file_pfx + "_search_strings.txt"
 
 
-def record_32bitlinux(cmds, replayname):
+def record_debian(cmds, replayname, arch):
     progress("Creating setup recording %s [%s]" % (replayname, cmds))
     # create the replay to use for reference / test
-    cmd = pandascriptsdir + "/run_on_32bitlinux.py " + cmds
-    progress(cmd)
-    tempd = tempfile.mkdtemp()
-    os.chdir(tempd)
-    print cmd
-    sp.check_call(cmd.split())
+    arch_data = SUPPORTED_ARCHES[arch]
+    qcow = pandaregressiondir + "/qcows/" + arch_data.qcow
+    cmd = pandascriptsdir + "/run_debian.py " + cmds + " --qcow="  + qcow 
     # this is where we want the replays to end up
     replaysdir = pandaregressiondir + "/replays/" + testname
     if not (os.path.exists(replaysdir) and os.path.isdir(replaysdir)):
         os.makedirs(replaysdir)
-    temp_base = tempd + ("/replays/%s/%s-rr-" % (replayname, replayname))
-    new_base = replaysdir + "/" + testname + "-rr-"
-    moveit(temp_base, new_base, "nondet.log")
-    moveit(temp_base, new_base, "snp")
-    shutil.rmtree(tempd)
+    cmd += " --replaybase=%s/%s" % (replaysdir,replayname)
+    progress(cmd)
+    sp.check_call(cmd.split())
+
              
-def run_test_32bitlinux(panda_args):
+def run_test_debian(replay_args, replayname, arch, rdir = replaydir):
     progress("Running test " + testname)
-    cmd = qemu + " -replay " + replayfile + " -os linux-32-lava32 " + panda_args
+    arch_data = SUPPORTED_ARCHES[arch]
+    qemu = os.path.join(panda_build_dir, arch_data.dir, arch_data.binary)
+
+    cmd = qemu + " -replay " + rdir + "/" + replayname + " " + replay_args
     progress(cmd)
     try:
+        clear_dir(tmpoutdir)
         os.chdir(tmpoutdir)
         sp.check_call(cmd.split())
         progress ("Test %s succeeded" % testname)

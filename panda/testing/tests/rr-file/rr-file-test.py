@@ -19,7 +19,7 @@ def both(msg, disp_fn):
 
 tof = open(tmpoutfile, "w")
 try:
-    record_32bitlinux("guest:/usr/bin/file guest:/bin/ls", "file")
+    record_debian("guest:/usr/bin/file guest:/bin/ls", "file", "i386")
     msg = "Create recording for %s succeeded" % testname
     both(msg, progress)
 except Exception as e:
@@ -29,7 +29,7 @@ except Exception as e:
     raise e
 
 try:
-    run_test_32bitlinux("")
+    run_test_debian("", "file", "i386")
     msg = "Replay for %s succeeded" % testname
     both(msg, progress)
     tof.close()

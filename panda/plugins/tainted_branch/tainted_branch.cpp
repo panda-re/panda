@@ -47,6 +47,9 @@ extern "C" {
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
+#include <stdint.h>
+#include "tainted_branch_int_fns.h"
+
 }
 
 
@@ -54,6 +57,7 @@ void uninit_plugin(void *);
 #ifdef CONFIG_SOFTMMU
 
 bool summary = false;
+bool liveness = false;
 
 #include <map>
 #include <set>
@@ -62,19 +66,42 @@ bool summary = false;
 std::map<uint64_t,std::set<uint64_t>> tainted_branch;
 
 
+// a taint label is just a uint32
+typedef uint32_t Tlabel;
+
+// liveness[pos] is # of branches byte pos in file was used to decide up to this point
+std::map <Tlabel, uint64_t> liveness_map;
+
+uint64_t get_liveness(Tlabel l) {
+    return liveness_map[l];
+}
+
+// keep track of number of branches each label involved in
+int taint_branch_aux(Tlabel ln, void *stuff) {
+    liveness_map[ln] ++;
+    return 0; // continue iter
+}
+
+
 void tbranch_on_branch_taint2(Addr a, uint64_t size) {
     if (pandalog) {
         // a is an llvm reg
         assert (a.typ == LADDR);
         // count number of tainted bytes on this reg
-        // NB: assuming 8 bytes
         uint32_t num_tainted = 0;
+        Addr ao = a;
         for (uint32_t o=0; o<size; o++) {
-            Addr ao =a;
             ao.off = o;
             num_tainted += (taint2_query(ao) != 0);
         }
         if (num_tainted > 0) {
+            if (liveness) {
+                // update liveness info for all input bytes from which lval derives
+                for (uint32_t o=0; o<size; o++) {
+                    ao.off = o;
+                    taint2_labelset_addr_iter(a, taint_branch_aux, NULL);
+                }        
+            }
             if (summary) {
                 CPUState *cpu = first_cpu;
                 target_ulong asid = panda_current_asid(cpu);
@@ -117,6 +144,8 @@ bool init_plugin(void *self) {
     assert (init_taint2_api());    
     panda_arg_list *args = panda_get_args("tainted_instr");
     summary = panda_parse_bool_opt(args, "summary", "only print out a summary of tainted instructions");
+    bool indirect_jumps = panda_parse_bool_opt(args, "indirect_jumps", "also query taint on indirect jumps and calls");
+    liveness = panda_parse_bool_opt(args, "liveness", "track liveness of input bytes");
     if (summary) printf ("tainted_instr summary mode\n"); else printf ("tainted_instr full mode\n");
     /*
     panda_cb pcb;
@@ -124,7 +153,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
     */
     PPP_REG_CB("taint2", on_branch2, tbranch_on_branch_taint2);
-    PPP_REG_CB("taint2", on_non_const_eip, tbranch_on_branch_taint2);
+    if (indirect_jumps) 
+        PPP_REG_CB("taint2", on_indirect_jump, tbranch_on_branch_taint2);
     return true;
 }
 
