@@ -121,7 +121,8 @@ def run_test_debian(replay_args, replayname, arch, rdir = replaydir):
     try:
         clear_dir(tmpoutdir)
         os.chdir(tmpoutdir)
-        sp.check_call(cmd.split())
+        FNULL = open(os.devnull, 'w')
+        x = sp.check_call(cmd.split(),stdout=FNULL,stderr=FNULL)
         progress ("Test %s succeeded" % testname)
     except Exception as e:
         progress ("Test %s failed to run " % testname)
