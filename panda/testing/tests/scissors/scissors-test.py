@@ -15,7 +15,7 @@ from ptest_utils import *
 
 # we try this many scissor snips for each of the replays we created in setup
 # note, each snip is random start / end
-num_tests = 100
+num_tests = 30
 
 num_pass = 0
 num_fail = 0
@@ -31,6 +31,7 @@ for binary in binaries:
 
     random.seed()
     for i in range(num_tests):
+        progress ("binary %s test %d" % (binary, i))
         start_pos = random.randint(0, num_instrs)
         end_pos = random.randint(start_pos, num_instrs)
 
@@ -49,8 +50,10 @@ for binary in binaries:
             error(e)
             num_fail += 1
 
+
 os.chdir(tmpoutdir)
 with open(tmpoutfile, "w") as f:
+    print "scissors-test results: %d pass %d fail\n" % (num_pass, num_fail)
     f.write("scissors-test results: %d pass %d fail\n" % (num_pass, num_fail))
     if num_pass == num_tests * (len(binaries)):
         f.write("Scissors PASS\n")
