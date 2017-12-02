@@ -65,6 +65,7 @@ the actual functions rather than just their addresses. As root
 (password: `root`), issue:
 
     # apt-get update
+    # sed -i  sed -i "s/ftp.debian.org/archive.debian.org/g" /etc/apt/sources.list
     # apt-get install libssl0.9.8-dbg gdb
 
 Once this is done, you can shut down the VM.
