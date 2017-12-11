@@ -45,6 +45,7 @@ void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){
     printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
     printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
     printf("\t condition = %u\n", ple->llvmentry().condition());
+    printf("\t flags = %x\n", ple->llvmentry().flags());
     //printf("\t}\n"); 
 }
 

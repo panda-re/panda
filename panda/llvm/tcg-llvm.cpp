@@ -1470,6 +1470,8 @@ void TCGLLVMContextPrivate::generateCode(TCGContext *s, TranslationBlock *tb)
     MDNode *RRUpdateMD = MDNode::get(C, MDString::get(C, "rrupdate"));
     MDNode *RuntimeMD = MDNode::get(C, MDString::get(C, "runtime"));
 
+    /*MDNode *CPUStateMD = MDNode::get(C, MDString::get(C, (char*)&first_cpu->env_ptr);*/
+
     /* Init int for adding offsets to env */
     m_envInt = m_builder.CreatePtrToInt(m_tbFunction->arg_begin(), wordType());
     Instruction *EnvI2PI = dyn_cast<Instruction>(m_envInt);

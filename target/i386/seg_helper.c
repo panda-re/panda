@@ -73,6 +73,8 @@
 #undef MEMSUFFIX
 #endif
 
+extern int llvmtrace_flags;
+
 /* return non zero if error */
 static inline int load_segment_ra(CPUX86State *env, uint32_t *e1_ptr,
                                uint32_t *e2_ptr, int selector,
@@ -1374,6 +1376,7 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 
             qemu_log_mask(CPU_LOG_TB_IN_ASM,
                           "Servicing hardware INT=0x%02x\n", intno);
+            llvmtrace_flags |= 1;
             do_interrupt_x86_hardirq(env, intno, 1);
             /* ensure that no TB jump will be modified as
                the program flow was changed */

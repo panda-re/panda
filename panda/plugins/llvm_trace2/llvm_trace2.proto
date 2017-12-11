@@ -19,6 +19,10 @@ message LLVMEntry {
     // A phi instruction has format phi i1 [val, %label1] [val, label2]
     // in align_function, record the argument index (1 for label1, etc) of the incoming basic block,
 	optional uint32 phi_index = 9; 
+
+    //flags that tell us whether we're in a hardware int, exception, dynamic loader, etc...
+    //So the slicer can excise some parts 
+    optional uint32 flags = 10;
 }
 
 optional LLVMEntry llvmEntry = 30;

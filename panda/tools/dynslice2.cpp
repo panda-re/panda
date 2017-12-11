@@ -32,6 +32,7 @@ extern "C" {
 }
 
 #include <iostream>
+#include <fstream>
 
 #include <llvm/PassManager.h>
 #include <llvm/PassRegistry.h>
@@ -95,6 +96,16 @@ typedef struct traceEntry {
     // memcpy may need another logentry 
 } traceEntry;
 
+uint64_t cpustatebase;
+llvm::Module* mod;
+std::map<uint64_t, int> tb_addr_map;
+
+
+uint64_t startRRInstrCount;
+uint64_t endRRInstrCount;
+uint64_t startAddr;
+uint64_t endAddr;
+std::set<uint64_t> searchTbs;
 std::set<SliceVar> workList; 
 std::vector<traceEntry> traceEntries;
 std::map<std::pair<Function*, int>, std::bitset<MAX_BITSET>> markedMap;
@@ -967,9 +978,98 @@ SliceVar VarFromStr(const char *str) {
     return std::make_pair(typ, addr);
 }
 
+uint64_t infer_offset(const char* reg){
+	printf("infer offset of %s\n", reg);
+    if (strncmp(reg, "EAX", 3) == 0) {
+        return 0;
+    }
+    else if (strncmp(reg, "ECX", 3) == 0) {
+        return 1;
+    }
+    else if (strncmp(reg, "EDX", 3) == 0) {
+        return 2;
+    }
+    else if (strncmp(reg, "EBX", 3) == 0) {
+        return 3;
+    }
+    else if (strncmp(reg, "ESP", 3) == 0) {
+        return 4;
+    }
+    else if (strncmp(reg, "EBP", 3) == 0) {
+        return 5;
+    }
+    else if (strncmp(reg, "ESI", 3) == 0) {
+        return 6;
+    }
+    else if (strncmp(reg, "EDI", 3) == 0) {
+        return 7;
+    }
+    else if (strncmp(reg, "EIP", 3) == 0) {
+        return 8;
+    }
+
+	printf("NOT an x86 reg: %s\n", reg);
+	return -1;
+}
+
+int addr_to_tb(uint64_t addr){
+
+	//for (auto i = tb_addr_map.begin(); i != tb_addr_map.end(); i++){
+		//printf("addr %lx, tb %d\n", i->first, i->second);
+	//}
+
+	std::map<uint64_t, int>::iterator it = tb_addr_map.lower_bound(addr);
+	it--;
+	printf("FOund tb %d, addr %lx\n", it->second, it->first);
+	return it->second;
+
+}
+
+SliceVar VarFromCriteria(std::string str){
+    
+    SliceVarType typ = LLVM;
+
+	if (strncmp(str.c_str(), "MEM", 3) == 0) {
+        typ = MEM;
+    }
+    else if (strncmp(str.c_str(), "TGT", 3) == 0) {
+        typ = TGT;
+    }
+
+	std::string crit = str.substr(0, str.find(" at ")); 
+	std::string reg = crit.substr(4, crit.length()); 
+	uint64_t sliceVal = cpustatebase + infer_offset(reg.c_str())*4;
+	str.erase(0, str.find(" at ") + 4);
+    printf("Reg: %s, addr: %s, sliceVal: %lx\n", reg.c_str(), str.c_str(), sliceVal);
+
+	
+	std::string rangeStr = str;	
+    //parseRange(rangeStr);
+    std::string startRange = str.substr(0, rangeStr.find("-"));
+    rangeStr.erase(0, str.find("-") + 1);
+    std::string endRange = rangeStr;
+
+    if(strncmp(startRange.c_str(), "rr:", 3) == 0){
+        startRange = startRange.erase(0, 3);
+        startRRInstrCount =  std::stoull(startRange, NULL);
+        endRRInstrCount = std::stoull(endRange, NULL);
+        printf("start instr: %lu, end instr: %lu\n", startRRInstrCount, endRRInstrCount);
+    } else if (strncmp(startRange.c_str(), "addr:", 4) == 0){
+        startRange = startRange.erase(0, 4);
+        startAddr = std::stoull(startRange, NULL, 16);
+        endAddr = std::stoull(endRange, NULL, 16);
+        printf("Start range: %lx, end range: %lx\n", startAddr, endAddr);
+    }   
+
+	//searchTbs.insert(addr_to_tb(startAddr));
+
+	return std::make_pair(typ, sliceVal);
+
+}
+
 
 void usage(char *prog) {
-   fprintf(stderr, "Usage: %s [OPTIONS] <llvm_mod> <dynlog> <criterion> [<criterion> ...]\n",
+   fprintf(stderr, "Usage: %s [OPTIONS] <llvm_mod> <dynlog> <criteria_file>\n",
            prog);
    fprintf(stderr, "Options:\n"
            "  -d                : enable debug output\n"
@@ -981,6 +1081,7 @@ void usage(char *prog) {
            "                      Use TGT_[N] for registers, MEM_[PADDR] for memory\n"
           );
 }
+
 
 int main(int argc, char **argv){
     //parse args 
@@ -1017,20 +1118,45 @@ int main(int argc, char **argv){
 
     char *llvm_mod_fname = argv[optind];
     char *llvm_trace_fname = argv[optind+1];
+    char *criteria_fname = argv[optind+2];
 
     // Maintain a working set 
     // if mem, search for last occurrence of that physical address  
 
     llvm::LLVMContext &ctx = llvm::getGlobalContext();
     llvm::SMDiagnostic err;
-    llvm::Module *mod = llvm::ParseIRFile(llvm_mod_fname, err, ctx);
+    mod = llvm::ParseIRFile(llvm_mod_fname, err, ctx);
+
+	GlobalVariable* cpuStateAddr = mod->getGlobalVariable("CPUStateAddr");
+	cpuStateAddr->dump();
+	ConstantInt* constInt = cast<ConstantInt>( cpuStateAddr->getInitializer());
+	cpustatebase = constInt->getZExtValue();
 
     // read trace into memory
+	
+	// Populate map of addrs to tb_nums
+	int tb_num;
+	uint64_t addr;
+	for (auto curFref = mod->getFunctionList().begin(), 
+              endFref = mod->getFunctionList().end(); 
+              curFref != endFref; ++curFref){
+		if (strncmp(curFref->getName().str().c_str(), "tcg-llvm-tb", 11) == 0){
+			sscanf(curFref->getName().str().c_str(), "tcg-llvm-tb-%d-%lx", &tb_num, &addr); 
+			tb_addr_map[addr] = tb_num;
+		}
+	}
 
-    // Add the slicing criteria
-    for (int i = optind + 2; i < argc; i++) {
-        workList.insert(VarFromStr(argv[i]));
+    // Add the slicing criteria from the file
+	std::ifstream file(criteria_fname);
+    std::string str; 
+    while (std::getline(file, str))
+    {
+        // Process str
+		if (!str.empty()){
+        	workList.insert(VarFromCriteria(str));
+		}
     }
+
     printf("Starting worklist: ");        
     print_set(workList);
 
@@ -1053,6 +1179,8 @@ int main(int argc, char **argv){
     std::unique_ptr<panda::LogEntry> ple;
     panda::LogEntry* ple_raw;
 
+	int startSlicing = 0;
+
     // Process by the function? I'll just do the same thing as dynslice1.cpp for now. 
     while ((ple = p.read_entry()) != NULL) {
         // while we haven't reached beginning of file yet 
@@ -1060,17 +1188,23 @@ int main(int argc, char **argv){
         /*printf("ple_idx %lu\n", ple_idx);*/
         /*ple = pandalog_read_entry();*/
         //pprint_ple(ple);
+        
+        //printf("ple instr %lu\n", ple->instr());
+        if (ple->instr() > endRRInstrCount || ple->instr() < startRRInstrCount){
+            continue;
+        }
+
         ple_vector.push_back(new panda::LogEntry(*ple.get()));
         
-        if (ple->has_llvmentry() && ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()){
+        if (ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()){
             if (ple->llvmentry().tb_num() == 0) {
                 //ple_idx++; 
-                continue;
+                break;
             }
 
             int cursor_idx = 0;
             sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry().tb_num(), ple->pc());
-            //printf("********** %s **********\n", namebuf);
+			printf("********** %s **********\n", namebuf);
             Function *f = mod->getFunction(namebuf);
             
             assert(f != NULL);
@@ -1078,31 +1212,47 @@ int main(int argc, char **argv){
             //Check if this translation block is complete -- that is, if it ends with a return marker
             if (ple_vector[0]->llvmentry().type() != FunctionCode::FUNC_CODE_INST_RET){
                 printf("WARNING: BB CUT SHORT BY EXCEPTION!\n");
+                aligned_block.clear();
                 ple_vector.clear();
                 continue;
             }
+
+            // If block is marked as an interrupt, exception, etc.
+            //printf("Flags: %x\n", ple->llvmentry().flags());
+			if(ple->llvmentry().flags() & 1) {
+                //printf("BB is an interrupt, skipping\n");
+				ple_vector.clear();
+                aligned_block.clear();
+                continue;
+			}
             
-            aligned_block.clear();
             std::reverse(ple_vector.begin(), ple_vector.end());
             
             assert(ple_vector[0]->llvmentry().type() == FunctionCode::LLVM_FN && ple_vector[1]->llvmentry().type() == FunctionCode::BB);
 
             //Skip over first two entries, LLVM_FN and BB
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
-
             
-            if (ple->llvmentry().tb_num() == 15452){
+			//if (ple->llvmentry().tb_num() == 504){
+			// If this TB is one where we should start slicing
+			//if (searchTbs.find(ple->llvmentry().tb_num())  != searchTbs.end()){
+				//startSlicing = 1;
+			//}	
+            
+
+			//if (startSlicing){
                 cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
                 // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
                 // maybe i can do this lazily...
-                slice_trace(aligned_block, workList);
+				slice_trace(aligned_block, workList);
 
                 printf("Working set: ");
                 print_set(workList);
                 // CLear ple_vector for next block
-                break;
-            }
+				//break;
+			//}
 
+            aligned_block.clear();
             ple_vector.clear();
         }
         /*ple_idx++;*/

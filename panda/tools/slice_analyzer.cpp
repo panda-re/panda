@@ -37,7 +37,6 @@
 #include "llvm/Support/MemoryObject.h"
 #include "llvm/Support/TargetRegistry.h"
 
-
 using namespace llvm;
 
 #define MAX_BITSET 2048

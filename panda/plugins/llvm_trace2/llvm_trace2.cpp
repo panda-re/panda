@@ -49,6 +49,7 @@ extern "C" {
 #include "llvm/Support/Regex.h"
 
 extern PandaLog globalLog;
+extern int llvmtrace_flags;
 
 namespace llvm {
 
@@ -83,6 +84,13 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
 }
 
 void recordCall(uint64_t fp){
+
+    Function* calledFunc = (Function*)fp;
+    printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
+    if (calledFunc->getName().startswith("helper_iret")){
+        printf("FOUND AN IRET IN RECORDCALL\n");
+        llvmtrace_flags &= ~1;
+    }
 
     if (pandalog){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
@@ -202,7 +210,6 @@ void recordStore(uint64_t address, uint64_t value){
         ple->mutable_llvmentry()->set_address(address);
         ple->mutable_llvmentry()->set_num_bytes(4);
         ple->mutable_llvmentry()->set_value(value);
-
 
         globalLog.write_entry(std::move(ple));
     }
@@ -360,7 +367,7 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     //initialize all the other record/logging functions
     PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
     PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, nullptr));
-    PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, VoidPtrType, nullptr));
+    PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
     PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
     PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
     PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, Int8Type, nullptr));
@@ -629,6 +636,7 @@ void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
 
 void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
     Function *calledFunc = I.getCalledFunction();
+    //llvm::Module *mod = tcg_llvm_ctx->getModule();
 
     if (!calledFunc || !calledFunc->hasName()) { return; }
      
@@ -644,7 +652,7 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
         handleVisitSpecialCall(I);
         return;
     }
-    else if (external_helper_funcs.count(calledFunc->getName())) {
+    else if (external_helper_funcs.count(name)) {
         // model the MMU load/store functions with regular loads/stores from dmemory
        handleExternalHelperCall(I);
         return;
@@ -654,15 +662,23 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 
     printf("call to helper %s\n", name.str().c_str());
 
-    fp = castTo(I.getCalledValue(), VoidPtrType, "", &I);
+    //fp = castTo(I.getCalledFunction(), VoidPtrType, name, &I);   
+    fp = ConstantInt::get(Int64Type, (uint64_t)I.getCalledFunction());
+    //Clear llvmtrace interrupt flag if an iret
+    if (name.startswith("helper_iret")){
+        printf("HELPER IRET ENCOUNTERED\n");
+        llvmtrace_flags &= ~1;
+        fp->dump();
+        printf("iret addr: %p\n", fp); 
+    }
 
     //TODO: Should i do something about helper functions?? 
-    
+
     std::vector<Value*> args = make_vector(fp, 0);
 
     CallInst *CI = CallInst::Create(recordCallF, args);
 
-    CI->insertBefore(static_cast<Instruction*>(&I));
+    CI->insertAfter(static_cast<Instruction*>(&I));
     CI->setMetadata("host", LLVMTraceMD);
 
     //record return of call inst
@@ -688,6 +704,9 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
             sscanf(tb->llvm_function->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
             /*llvmentry->tb_num = tb_num;*/
             ple->mutable_llvmentry()->set_tb_num(tb_num);
+            printf("LVLM TRACEFLAGS %x\n", llvmtrace_flags);
+        
+            ple->mutable_llvmentry()->set_flags(llvmtrace_flags);
         }   
         
         globalLog.write_entry(std::move(ple));
@@ -755,6 +774,18 @@ bool init_plugin(void *self){
 }
 void uninit_plugin(void *self){
     printf("Uninitializing plugin\n");
+    llvm::Module *mod = tcg_llvm_ctx->getModule();
+
+	llvm::Constant* cpustate = llvm::ConstantInt::get(llvm::Int64Type, (uint64_t)cpus.tqh_first->env_ptr);
+	//Add a global variable of the CPUState address
+	llvm::GlobalVariable* CPUStateAddr =  new llvm::GlobalVariable(/*Module=*/*mod, 
+        /*Type=*/cpustate->getType(),
+        /*isConstant=*/true,
+        /*Linkage=*/llvm::GlobalValue::ExternalLinkage,
+        /*Initializer=*/cpustate, // has initializer, specified below
+        /*Name=*/"CPUStateAddr");
+	
+	CPUStateAddr->dump();
     
     //XXX: Make this be done somewhere else, in cleanup
     /*globalLog.close();*/

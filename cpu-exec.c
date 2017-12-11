@@ -55,6 +55,7 @@
 #include "panda/tcg-llvm.h"
 const int has_llvm_engine = 1;
 #endif
+int llvmtrace_flags = 0;
 
 int generate_llvm = 0;
 int execute_llvm = 0;
@@ -201,6 +202,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     if (execute_llvm){
         assert(itb->llvm_tc_ptr);
         //next_tb = tcg_llvm_qemu_tb_exec(env, tb);
+		/*uint64_t rr_count = rr_get_guest_instr_count();*/
+		//printf("rr count: %lu\n", rr_count);
         ret = tcg_llvm_qemu_tb_exec(env, itb);
     } else {
         assert(tb_ptr);

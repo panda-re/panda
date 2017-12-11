@@ -10,12 +10,12 @@
 #ifndef __PANDALOG_CC_H_
 #define __PANDALOG_CC_H_
 
-extern "C" {
-#ifndef PLOG_READER
-#include "panda/rr/rr_log.h"
-#include "panda/common.h"
-#endif
+#define STRING2(x) #x
+#define STRING(x) STRING2(x)
 
+//#pragma message(STRING(PLOG_READER))
+
+extern "C" {
 #include <zlib.h>
 #include "panda/plog.h"
 }
