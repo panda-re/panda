@@ -66,7 +66,7 @@ static INLINEIT void rr_fcopy(void *ptr, size_t size, size_t nmemb, FILE *oldlog
     rr_fwrite(ptr, size, nmemb, newlog);
 }
 
-static INLINEIT RR_log_entry *alloc_new_entry(void) 
+static INLINEIT RR_log_entry *alloc_new_entry(void) {
     static RR_log_entry *new_entry = NULL;
     if(!new_entry) new_entry = g_new(RR_log_entry, 1);
     memset(new_entry, 0, sizeof(RR_log_entry));
