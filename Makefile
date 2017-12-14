@@ -640,7 +640,7 @@ TAGS:
 
 cscope:
 	rm -f "$(SRC_PATH)"/cscope.*
-	find "$(SRC_PATH)/" -name "*.[chsS]" -print | sed 's,^\./,,' > "$(SRC_PATH)/cscope.files"
+	find "$(SRC_PATH)/" \( -name "*.[chsS]" -o -name '*.cpp' \) -print | sed 's,^\./,,' > "$(SRC_PATH)/cscope.files"
 	cscope -b -i"$(SRC_PATH)/cscope.files"
 
 # opengl shader programs
