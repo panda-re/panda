@@ -3,7 +3,6 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-#include <mqueue.h>
 
 typedef QemuMutex QemuRecMutex;
 #define qemu_rec_mutex_destroy qemu_mutex_destroy
@@ -40,24 +39,4 @@ struct QemuEvent {
 struct QemuThread {
     pthread_t thread;
 };
-
-//Avatar-specific
-typedef struct {
-    sem_t *sem;
-} QemuAvatarSemaphore;
-
-typedef struct {
-    mqd_t mq;
-} QemuAvatarMessageQueue;
-
-void qemu_avatar_sem_wait(QemuAvatarSemaphore *sem);
-void qemu_avatar_sem_post(QemuAvatarSemaphore *sem);
-void qemu_avatar_sem_open(QemuAvatarSemaphore *sem, const char *name);
-
-void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name, size_t msg_size);
-void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name, size_t msg_size);
-void qemu_avatar_mq_send(QemuAvatarMessageQueue *mq, void *msg, size_t len);
-int qemu_avatar_mq_receive(QemuAvatarMessageQueue *mq, void *buffer, size_t len);
-int  qemu_avatar_mq_get_fd(QemuAvatarMessageQueue *mq);
-
 #endif
