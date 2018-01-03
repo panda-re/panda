@@ -21,7 +21,7 @@
 
 #include "internals.h"
 
-#include "arm_helper.h"
+#include "hw/avatar/arm_helper.h"
 
 static int banked_gdb_set_reg(CPUARMState *env, uint8_t *buf, int reg){
     switch (reg) {
