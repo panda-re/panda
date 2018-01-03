@@ -33,7 +33,7 @@
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
-#include "arm_helper.h"
+#include "hw/avatar/arm_helper.h"
 #endif
 
 #ifdef TARGET_MIPS
