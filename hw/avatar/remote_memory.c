@@ -6,6 +6,8 @@
 #include "qemu/osdep.h"
 #include "qemu/error-report.h"
 #include "hw/sysbus.h"
+
+#include "hw/avatar/avatar_posix.h"
 #include "hw/avatar/remote_memory.h"
 
 #ifdef TARGET_ARM
