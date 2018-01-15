@@ -113,7 +113,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-    -panda syscalls2:profile=windows7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2:profile=windows7_x86 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.
