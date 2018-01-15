@@ -506,7 +506,7 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 
     if(panda_os_type == OST_UNKNOWN){
-        std::cerr << "syscalls2: ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux' or '-os  windows-32-7' " << std::endl;
+        std::cerr << "syscalls2: ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
         return false;
     }
 
