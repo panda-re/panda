@@ -77,7 +77,7 @@ In general one uses `syscalls2` with another plugin that registers callbacks for
 ```C
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../syscalls2/syscalls_common.h"
-#include "panda_plugin_plugin.h"
+#include "panda/plugin_plugin.h"
 
 void my_NtReadFile_enter(
         CPUState* env,
