@@ -77,7 +77,7 @@ In general one uses `syscalls2` with another plugin that registers callbacks for
 ```C
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../syscalls2/syscalls_common.h"
-#include "panda_plugin_plugin.h"
+#include "panda/plugin_plugin.h"
 
 void my_NtReadFile_enter(
         CPUState* env,
@@ -113,7 +113,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-    -panda syscalls2:profile=windows7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2:profile=windows7_x86 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.
