@@ -1551,7 +1551,6 @@ fi
 # Suppress writing compiled files
 python="$python -B"
 
-
 # Check that the C compiler works. Doing this here before testing
 # the host CPU ensures that we had a valid CC to autodetect the
 # $cpu var (and we should bail right here if that's not the case).
