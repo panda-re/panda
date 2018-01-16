@@ -148,7 +148,7 @@ def texi_member(member, suffix=''):
 def texi_members(doc, what, base, variants, member_func):
     """Format the table of members"""
     items = ''
-    for section in doc.args.itervalues():
+    for section in doc.args.values():
         # TODO Drop fallbacks when undocumented members are outlawed
         if section.content:
             desc = texi_format(str(section))
