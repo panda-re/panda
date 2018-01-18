@@ -80,7 +80,7 @@ for OS, ARCH in zip(argv[2::2], argv[3::2]):
 
 
     osarch = "%s_%s" % (OS, ARCH)
-    PROTOS = "%s_prototypes.txt" % osarch
+    PROTOS = "prototypes/%s_prototypes.txt" % osarch
     MODE=ARCH
 
 
