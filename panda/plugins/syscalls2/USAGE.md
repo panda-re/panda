@@ -6,7 +6,7 @@ Summary
 
 The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest OS is one of these supported by `syscalls2`.
 
-This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/linux_x86_prototypes.txt`.
+This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/prototypes/linux_x86_prototypes.txt`.
 
 FIXME: We should include a list of steps for adding support for a new OS to `syscalls2` here. It's a little tricky.
 
