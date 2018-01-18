@@ -2,419 +2,329 @@
 # /* PANDABEGINCOMMENT
 # *
 # * Authors:
-# *  Tim Leek               tleek@ll.mit.edu
-# *  Ryan Whelan            rwhelan@ll.mit.edu
-# *  Joshua Hodosh          josh.hodosh@ll.mit.edu
-# *  Michael Zhivich        mzhivich@ll.mit.edu
-# *  Brendan Dolan-Gavitt   brendandg@gatech.edu
+# *  Tim Leek                 tleek@ll.mit.edu
+# *  Ryan Whelan              rwhelan@ll.mit.edu
+# *  Joshua Hodosh            josh.hodosh@ll.mit.edu
+# *  Michael Zhivich          mzhivich@ll.mit.edu
+# *  Brendan Dolan-Gavitt     brendandg@gatech.edu
+# *  Manolis Stamatogiannakis manolis.stamatogiannakis@vu.nl
 # *
 # * This work is licensed under the terms of the GNU GPL, version 2.
 # * See the COPYING file in the top-level directory.
 # *
 #PANDAENDCOMMENT */
 
-"""
-Output panda tool to parse system calls on Linux
-"""
+''' PANDA tool for generating different code files from system call definitions.
+'''
 
-import re
+from __future__ import print_function
+import jinja2
+import sys
 import os
-from collections import defaultdict
-from sys import argv,exit
-
-KNOWN_OS = set(["linux", "windows7", "windowsxp_sp2", "windowsxp_sp3"])
-arch32 = set(['x86', 'arm'])
-
-def usage():
-    print "Usage syscall_parser.py <destdir> <os> <arch> [<os> <arch> ...]"
-    print "os can be", " or ".join(KNOWN_OS)
-    print "arch can be x86 or arm"
-    exit(1)
-
-if len(argv[2:]) % 2 != 0:
-    usage()
-
-DESTDIR = argv[1]
-if not os.path.isdir(DESTDIR):
-    usage()
-
-# Typedefs and names for PPP C callbacks
-# We want these to be global so that we don't get duplicate
-# definitions when multiple OSes implement a system call with the
-# same name & semantics (if it has the same name but different
-# semantics, you should rename it in the prototypes file!)
-typedefs = defaultdict(set)
-cb_names_enter = defaultdict(set)
-cb_names_return = defaultdict(set)
-
-# Common to every OS, so we put them here
-# A little goofy, but we use #if 1 as the keyname because it will
-# be pasted verbatim into the file later
-typedefs['#if 1'].add("typedef void (*on_unknown_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
-typedefs['#if 1'].add("typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
-cb_names_enter['#if 1'].add("on_unknown_sys_enter")
-cb_names_enter['#if 1'].add("on_all_sys_enter")
-typedefs['#if 1'].add("typedef void (*on_unknown_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
-typedefs['#if 1'].add("typedef void (*on_all_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);")
-cb_names_return['#if 1'].add("on_unknown_sys_return")
-cb_names_return['#if 1'].add("on_all_sys_return")
-
-for OS, ARCH in zip(argv[2::2], argv[3::2]):
-    if OS not in KNOWN_OS:
-        usage()
-
-    if not (ARCH == 'arm' or ARCH == 'x86'):
-        usage()
-
-    print "os is [%s] arch is [%s]" % (OS, ARCH)
-
-    if ARCH=="x86":
-        CALLNO="env->regs[R_EAX]"
-        SP = "env->regs[R_ESP]"
-        GUARD = "#ifdef TARGET_I386"
-
-    if ARCH=="arm":
-        CALLNO = "env->regs[7]"
-        SP = "env->regs[13]"
-        GUARD = "#ifdef TARGET_ARM"
+import re
+import logging
+import argparse
 
 
-    osarch = "%s_%s" % (OS, ARCH)
-    PROTOS = "prototypes/%s_prototypes.txt" % osarch
-    MODE=ARCH
 
+##############################################################################
+### Definitions, not controlled through command line arguments ###############
+##############################################################################
 
-    print "PROTOS = [%s]" % PROTOS
-    print "MODE = [%s]" % MODE
-    print "DESTDIR = [%s]" % DESTDIR
+# Setup logging first thing in the morning.
+LOGLEVEL = logging.INFO
+logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
 
-
-    twoword_types = ["unsigned int", "unsigned long"]
-
-    types_64 = ["loff_t", 'u64']
-    stypes_32 = ["int", "long", '__s32', 'LONG']
-    types_32 = ["unsigned int", "unsigned long", "size_t", 'u32', 'off_t', 'timer_t', 'key_t',
-                'key_serial_t', 'mqd_t', 'clockid_t', 'aio_context_t', 'qid_t', 'old_sigset_t', 'union semun',
-                'ULONG', 'SIZE_T', 'HANDLE', 'PBOOLEAN', 'PHANDLE', 'PLARGE_INTEGER', 'PLONG', 'PSIZE_T',
-                'PUCHAR', 'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR', 'PUNICODE_STRING', 'PVOID', 'PWSTR']
-    types_16 = ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT']
-    types_pointer = ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...']
-
-    syscall_enter_switch = """
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-
-#include "syscalls2.h"
-#include "syscalls_common.h"
-
-extern "C" {
-#include "gen_syscalls_ext_typedefs.h"
-#include "gen_syscall_ppp_extern_enter.h"
-#include "gen_syscall_ppp_extern_return.h"
+# Details about operating systems and architectures to be processed.
+KNOWN_OS = ['linux', 'windows7', 'windowsxp_sp2', 'windowsxp_sp3']
+KNOWN_ARCH = {
+    'x86': {
+        'bits': 32,
+        'rt_callno_reg': 'env->regs[R_EAX]',    # register holding syscall number at runtime
+        'rt_sp_reg': 'env->regs[R_ESP]',        # register holding stack pointer at runtime
+        'qemu_target': 'TARGET_I386',           # qemu target name for this arch - used in guards
+    },
+    'arm': {
+        'bits': 32,
+        'rt_callno_reg': 'env->regs[7]',        # register holding syscall number at runtime
+        'rt_sp_reg': 'env->regs[13]',           # register holding stack pointer at runtime
+        'qemu_target': 'TARGET_ARM',            # qemu target name for this arch - used in guards
+    },
 }
 
-void syscall_enter_switch_%s ( CPUState *cpu, target_ulong pc ) {  // osarch
-%s                                          // GUARD
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    ReturnPoint rp;
-    rp.ordinal = %s;                        // CALLNO
-    rp.proc_id = panda_current_asid(cpu);
-    rp.retaddr = calc_retaddr(cpu, pc);
-    switch( %s ) {                          // CALLNO
-""" % (osarch, GUARD, CALLNO, CALLNO)
-
-
-    syscall_return_switch = """
-#include "panda/plugin.h"
-#include "panda/plugin_plugin.h"
-
-#include "syscalls2.h"
-#include "syscalls_common.h"
-
-extern "C" {
-#include "gen_syscalls_ext_typedefs.h"
-#include "gen_syscall_ppp_extern_return.h"
-}
-
-void syscall_return_switch_%s ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
-%s                                          // GUARD
-    //CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    switch( ordinal ) {                          // CALLNO
-""" % (osarch, GUARD)
+# Templates for per-arch typedefs and callback registration code files.
+# Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
+GENERATED_FILES = [
+    ('syscalls_ext_typedefs.tpl', '.h'),
+    ('syscall_ppp_register_enter.tpl', '.cpp'),
+    ('syscall_ppp_register_return.tpl', '.cpp'),
+    ('syscall_ppp_boilerplate_enter.tpl', '.cpp'),
+    ('syscall_ppp_boilerplate_return.tpl', '.cpp'),
+    ('syscall_ppp_extern_enter.tpl', '.h'),
+    ('syscall_ppp_extern_return.tpl', '.h'),
+]
 
 
 
+##############################################################################
+### Wrapper classes for system calls and arguments ###########################
+##############################################################################
+class ArgumentError(Exception):
+    ''' Base error class for Argument related errors.
+    '''
+    pass
 
+class EmptyArgumentError(ArgumentError):
+    ''' Raised for empty or void arguments.
+    '''
+    pass
 
-    CHAR_STAR = 'CHAR_STAR'
-    POINTER   = 'POINTER'
-    BYTES_8   = '8BYTE'
-    BYTES_4   = '4BYTE'
-    BYTES_2   = '2BYTE'
-    SIGNED_4  = '4SIGNED'
-    # C types for callback arguments
-    ARG_TYPE_C_TRANSLATIONS = { CHAR_STAR:  'uint32_t' if ARCH in arch32 else 'uint64_t', # pointer
-                                POINTER:    'uint32_t' if ARCH in arch32 else 'uint64_t', # pointer
-                                BYTES_8:    'uint64_t',
-                                BYTES_4:    'uint32_t',
-                                SIGNED_4:   'int32_t',
-                                BYTES_2:    'uint16_t',
-                              }
+class Argument(object):
+    ''' Wraps a system call argument.
+    '''
+    charre = re.compile("char.*\*")
+    types = {
+        'reserved': ['new', 'data', 'int', 'cpu'],
+        'twoword': ['unsigned int', 'unsigned long'],
+        'u64': ['loff_t', 'u64'],
+        'u32': [
+            'unsigned int', 'unsigned long', 'size_t', 'u32', 'off_t',
+            'timer_t', 'key_t', 'key_serial_t', 'mqd_t', 'clockid_t',
+            'aio_context_t', 'qid_t', 'old_sigset_t', 'union semun',
+            'ULONG', 'SIZE_T', 'HANDLE', 'PBOOLEAN', 'PHANDLE',
+            'PLARGE_INTEGER', 'PLONG', 'PSIZE_T', 'PUCHAR',
+            'PULARGE_INTEGER', 'PULONG', 'PULONG_PTR',
+            'PUNICODE_STRING', 'PVOID', 'PWSTR'
+        ],
+        's32': ['int', 'long', '__s32', 'LONG'],
+        'u16': ['old_uid_t', 'uid_t', 'mode_t', 'gid_t', 'pid_t', 'USHORT'],
+        'ptr': ['cap_user_data_t', 'cap_user_header_t', '__sighandler_t', '...'],
+    }
 
-    CPP_RESERVED = {"new": "anew", "data":"data_arg"}
+    def __init__(self, arg, argno=-1, arch_bits=32):
+        self.no = argno
+        self.raw = arg.strip()
+        self.arch_bits = arch_bits
+        if self.raw == '' or self.raw == 'void':
+            raise EmptyArgumentError()
 
-    # Functions to emit the code that gets the nth syscall argument of a
-    # given type.
-    def get_pointer(argnum):
-        return get_32(argnum) if ARCH in arch32 else get_64(argnum)
+        # parse argument name
+        if self.raw.endswith('*') or len(self.raw.split()) == 1 or self.raw in Argument.types['twoword']:
+            # no argname, just type
+            self.name = "arg{0}".format(self.no)
+        else:
+            self.name = self.raw.split()[-1]
 
-    def get_32(argnum):
-        return "uint32_t arg%d = get_32(cpu, %d);\n" % (argnum, argnum)
+        # name sanitization
+        self.name = self.name.lstrip('\t *')
+        if self.name in Argument.types['reserved']:
+            self.name = '_' + self.name
+        elif self.name == ')':
+            self.name = 'fn'
+        self.name = self.name.rstrip('[]')
 
-    def get_s32(argnum):
-        return "int32_t arg%d = get_s32(cpu, %d);\n" % (argnum, argnum)
+        # identify argument type
+        if Argument.charre.search(self.raw) and not any([self.name.endswith('buf'), self.name == '...', self.name.endswith('[]')]):
+            self.type = 'CHAR_STAR'
+        elif any(['*' in self.raw, '[]' in self.raw, any([x in self.raw for x in Argument.types['ptr']])]):
+            self.type = 'POINTER'
+        elif any([x in self.raw for x in Argument.types['u64']]):
+            self.type = '8BYTE'
+        elif any([x in self.raw for x in Argument.types['u32']]) or any([x in self.raw for x in Argument.types['u16']]):
+            self.type = '4BYTE'
+        elif any([x in self.raw for x in Argument.types['s32']]) and 'unsigned' not in self.raw:
+            self.type = '4SIGNED'
+        elif self.raw == 'void':
+            self.type = None
+            assert False, 'Unexpected void argument.'
+        elif self.raw == 'unsigned' or (len(self.raw.split()) == 2 and self.raw.split()[0] == 'unsigned'):
+            self.type = '4BYTE'
+        else:
+            # Warn but assume it's a 32-bit argument
+            logging.debug("%s not of known type, assuming 32-bit", self.raw)
+            self.type = '4BYTE'
 
-    def get_64(argnum):
-        return "uint64_t arg%d = get_64(cpu, %d);\n" % (argnum, argnum)
+    @property
+    def ctype(self):
+        if self.type in ['CHAR_STAR', 'POINTER'] and self.arch_bits == 32:
+            return 'uint32_t'
+        elif self.type in ['CHAR_STAR', 'POINTER']:
+            return 'uint64_t'
+        elif self.type == '4BYTE':
+            return 'uint32_t'
+        elif self.type == '4SIGNED':
+            return 'int32_t'
+        elif self.type == '8BYTE':
+            return 'uint64_t'
+        elif self.type == '2BYTE':
+            return 'uint16_t'
+        assert False, 'Unknown type for argument %s: %s' % (self.name, self.type)
 
-    def get_return_pointer(argnum):
-        return "target_ulong arg%d = get_return_pointer(cpu, %d);\n" % (argnum, argnum)
+    @property
+    def temp_decl_code(self):
+        ''' Returns a snippet declaring an appropriate temp
+            variable for this argument.
+        '''
+        return "{0} arg{1};".format(self.ctype, self.no)
 
-    def get_return_32(argnum):
-        return "uint32_t arg%d = get_return_32(cpu, %d);\n" % (argnum, argnum)
+    @property
+    def temp_assg_code(self):
+        ''' Returns a snippet declaring an appropriate temp
+            variable for this argument and assigning its 
+            runtime value to it.
+        '''
+        ctype = self.ctype
+        ctype_bits = int(filter(str.isdigit, ctype))
+        assert ctype_bits in [32, 64], 'Invalid number of bits for type %s' % ctype
+        ctype_get = 'get_%d' % ctype_bits if ctype.startswith('uint') else 'get_s%d' % ctype_bits
+        return "{0} arg{1} = {2}(cpu, {1});".format(ctype, self.no, ctype_get)
 
-    def get_return_s32(argnum):
-        return "int32_t arg%d = get_return_s32(cpu, %d);\n" % (argnum, argnum)
+    @property
+    def memcpy_temp2rp_code(self):
+        ''' Returns a snippet that copies this argument from its
+            corresponding temp into a return point structure.
+        '''
+        return 'memcpy(rp.params[{0}], &arg{0}, sizeof({1}));'.format(self.no, self.ctype)
 
-    def get_return_64(argnum):
-        return "uint64_t arg%d = get_return_64(cpu, %d);\n" % (argnum, argnum)
+    @property
+    def memcpy_rp2temp_code(self):
+        ''' Returns a snippet that copies this argument from 
+            a return point structure into its corresponding temp.
+        '''
+        return 'memcpy(&arg{0}, rp.params[{0}], sizeof({1}));'.format(self.no, self.ctype)
 
-    class Argument(object):
-        def __init__(self):
-            self._type = None
-            self._name = None
-            self.var  = None
+class SysCallError(Exception):
+    ''' Base error class for SysCall related errors.
+    '''
+    pass
 
-        @property
-        def type(self):
-            return self._type
+class SysCallDefError(SysCallError):
+    ''' Raised for prototype lines that can't be parsed.
+    '''
+    pass
 
-        @type.setter
-        def type(self, newtype):
-            assert(newtype in ARG_TYPE_C_TRANSLATIONS.keys())
-            self._type = newtype
+class SysCall(object):
+    ''' Wraps a system call.
+    '''
+    # Fields: <no> <return-type> <name><signature with spaces>
+    linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
 
-        @property
-        def name(self):
-            return self._name
+    def __init__(self, line, arch_bits=32):
+        fields = SysCall.linere.match(line)
+        if fields is None:
+            raise SysCallDefError()
 
-        @name.setter
-        def name(self, newname):
-            if newname.startswith('*'):
-                newname = newname[1:]
-            if newname in CPP_RESERVED:
-                newname = CPP_RESERVED[newname]
-            if newname is ')':
-                newname = "fn"
-            if newname.endswith('[]'):
-                newname = newname[:-2]
-            self._name = newname
+        self.no = fields.group(1)
+        self.rettype = fields.group(2)
+        self.name = fields.group(3)
+        self.args_raw = fields.group(4).split(',')
+        self.arch_bits = arch_bits
 
-    # Goldfish kernel doesn't support OABI layer. Yay!
-    with open(PROTOS) as calls:
-        linere = re.compile("(\d+) (.+) (\w+) ?\((.*)\);")
-        charre = re.compile("char.*\*")
-        for line in calls:
-            # Fields: <no> <return-type> <name><signature with spaces>
-            fields = linere.match(line)
-            if fields is None:
+        # process raw args
+        self.args = []
+        for arg in self.args_raw:
+            try:
+                self.args.append(Argument(arg, argno=len(self.args), arch_bits=self.arch_bits))
+            except EmptyArgumentError:
                 continue
-            callno = fields.group(1)
-            rettype = fields.group(2)
-            callname = fields.group(3)
-            args = fields.group(4).split(',')
-            arg_types = []
-            syscall_enter_switch += "// " + str(callno)+" "+ str(rettype)+" "+ str(callname)+" "+ str(args) + '\n'
-            syscall_return_switch += "// " + str(callno)+" "+ str(rettype)+" "+ str(callname)+" "+ str(args) + '\n'
-            for argno, arg in enumerate(args):
-                # the .split() can leave us with args = ['']
-                if arg == '':
-                    continue
-                thisarg = Argument()
-                arg = arg.strip()
-                if arg.endswith('*') or len(arg.split()) == 1 or arg in twoword_types:
-                    # no argname, just type
-                    argname = "arg{0}".format(argno)
-                else:
-                    argname = arg.split()[-1]
-                thisarg.name = argname
-                if argname == 'int':
-                    print "ERROR: shouldn't be naming arg 'int'! Arg text: '{0}'".format(arg)
-                    exit(1)
-                if charre.search(arg) and not argname.endswith('buf') and argname != '...' and not argname.endswith('[]'):
-                    thisarg.type = CHAR_STAR
-                    arg_types.append(thisarg)
-                elif '*' in arg or any([x in arg for x in types_pointer]) or argname.endswith('[]'):
-                    thisarg.type = POINTER
-                    arg_types.append(thisarg)
-                elif any([x in arg for x in types_64]):
-                    thisarg.type = BYTES_8
-                    arg_types.append(thisarg)
-                elif any([x in arg for x in types_32]) or any([x in arg for x in types_16]):
-                    thisarg.type = BYTES_4
-                    arg_types.append(thisarg)
-                elif any([x in arg for x in stypes_32]) and 'unsigned' not in arg:
-                    thisarg.type = SIGNED_4
-                    arg_types.append(thisarg)
-                elif arg == 'void':
-                    pass
-                elif arg == 'unsigned' or (len(arg.split()) is 2 and arg.split()[0] == 'unsigned'):
-                    thisarg.type = BYTES_4
-                    arg_types.append(thisarg)
-                else:
-                    # Warn but assume it's a 32-bit argument
-                    print "Warning: %s not of known type, assuming 32-bit" % arg
-                    thisarg.type = BYTES_4
-                    arg_types.append(thisarg)
 
-            syscall_enter_switch += "case " + callno + ": {\n"
-            syscall_return_switch += "case " + callno + ": {\n"
-            argno = 0
-            for i, val in enumerate(arg_types):
-                arg_type = val.type
-                arg_name = val.name
-                if arg_type == CHAR_STAR:
-                    syscall_enter_switch += get_pointer(i)
-                elif arg_type == POINTER:
-                    syscall_enter_switch += get_pointer(i)
-                elif arg_type == BYTES_4:
-                    syscall_enter_switch += get_32(i)
-                elif arg_type == SIGNED_4:
-                    syscall_enter_switch += get_s32(i)
-                elif arg_type == BYTES_8:
-                    # alignment sadness. Linux tried to make sure none of these happen
-                    if (argno % 2) == 1:
-                        argno+= 1
-                    syscall_enter_switch += get_64(i)
-                    argno+=1
-                argno+=1
+    @property
+    def cargs(self):
+        ''' Returns the system call arguments.
+            each argument passed to C++ and C callbacks (the actual variable name or data)
+        '''
+        return ','.join(['cpu', 'pc'] + ['arg%d' % i for i in range(len(self.args))])
 
-            # each argument passed to C++ and C callbacks (the actual variable name or data)
-
-            _c_args = ",".join(['cpu', 'pc'] + ["arg%d" % i for i in range(len(arg_types))])
-            # declaration info (type and name) for each arg passed to C++ and C callbacks
-            def fixname(name):
-                if name == "cpu": return "cpu_fixed"
-                else: return name
-
-            _c_args_types = ",".join(['CPUState* cpu', 'target_ulong pc'] + [ARG_TYPE_C_TRANSLATIONS[x.type] + " " + fixname(x.name) for x in arg_types])
-            typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_enter", _c_args_types)
-            typedefs[GUARD].add(typedef)
-            typedef = "typedef void (*on_{0}_t)({1});".format(callname + "_return", _c_args_types)
-            typedefs[GUARD].add(typedef )
-            cb_names_enter[GUARD].add("on_{0}".format(callname + "_enter"))
-            cb_names_return[GUARD].add("on_{0}".format(callname + "_return"))
-            # Marshal the args into the ReturnPoint for use at the return site
-            # Note: not a typo; we want to check if anyone is listening for the
-            # *return* before doing the memcpys in to the ReturnPoint
-            syscall_enter_switch += "if (PPP_CHECK_CB(on_{0}_return)) {{\n".format(callname)
-            for i, x in enumerate(arg_types):
-                syscall_enter_switch += "memcpy(rp.params[{0}], &arg{0}, sizeof({1}));\n".format(i, ARG_TYPE_C_TRANSLATIONS[x.type])
-            syscall_enter_switch += "}\n"
-            # Unmarshal the args from the ReturnPoint
-            for i, x in enumerate(arg_types):
-                syscall_return_switch += "%s arg%d;\n" % (ARG_TYPE_C_TRANSLATIONS[x.type], i)
-            syscall_return_switch += "if (PPP_CHECK_CB(on_{0}_return)) {{\n".format(callname)
-            for i, x in enumerate(arg_types):
-                syscall_return_switch += "memcpy(&arg%d, rp.params[%d], sizeof(%s));\n" % (i, i, ARG_TYPE_C_TRANSLATIONS[x.type])
-            syscall_return_switch += "}\n"
-            # prototype for the C++ callback (with arg types and names)
-            syscall_enter_switch += "PPP_RUN_CB(on_{0}_enter, {1}) ; \n".format(callname, _c_args)
-            syscall_enter_switch += "}; break;"+'\n'
-            syscall_return_switch += "PPP_RUN_CB(on_{0}_return, {1}) ; \n".format(callname, _c_args)
-            syscall_return_switch += "}; break;"+'\n'
-
-        # The "all" and "unknown" callbacks
-        syscall_enter_switch += "default:\n"
-        syscall_enter_switch += "PPP_RUN_CB(on_unknown_sys_enter, cpu, pc, %s);\n" % CALLNO
-        syscall_enter_switch += "}"+'\n'
-        syscall_enter_switch += "PPP_RUN_CB(on_all_sys_enter, cpu, pc, %s);\n" % CALLNO
-        syscall_enter_switch += "appendReturnPoint(rp);\n"
-
-        syscall_return_switch += "default:\n"
-        syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp.ordinal);\n"
-        syscall_return_switch += "}"+'\n'
-        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);\n"
-
-    syscall_return_switch += "#endif\n } \n"
-    syscall_enter_switch += "#endif\n } \n"
-
-    with open(os.path.join(DESTDIR, "gen_syscall_switch_enter_%s.cpp" % osarch), "w") as dispatchfile:
-        print "Writing", "gen_syscall_switch_enter_%s.cpp" % osarch
-        dispatchfile.write(syscall_enter_switch)
-    with open(os.path.join(DESTDIR, "gen_syscall_switch_return_%s.cpp" % osarch), "w") as dispatchfile:
-        print "Writing", "gen_syscall_switch_return_%s.cpp" % osarch
-        dispatchfile.write(syscall_return_switch)
-
-# Done with all the OS specific files we produce
-# Now generate a few big files with all the typedefs
-# and registration code. Note that we need to do this
-# as a loop over each architecture, since we need to
-# appropriately guard the code for each arch in an #ifdef
-with open(os.path.join(DESTDIR, "gen_syscalls_ext_typedefs.h"), "w") as callbacktypes:
-    print "Writing", "gen_syscalls_ext_typedefs.h"
-    for GUARD in typedefs:
-        callbacktypes.write(GUARD + "\n")
-        for t in typedefs[GUARD]:
-            callbacktypes.write(t+"\n")
-        callbacktypes.write("#endif\n")
-
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_enter.cpp"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_register_enter.cpp"
-    for GUARD in cb_names_enter:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_enter[GUARD]:
-            pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
-        pppfile.write("#endif\n")
-
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_register_return.cpp"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_register_return.cpp"
-    for GUARD in cb_names_return:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_return[GUARD]:
-            pppfile.write("PPP_PROT_REG_CB({0})\n".format(ppp))
-        pppfile.write("#endif\n")
+    @property
+    def cargs_signature(self):
+        ''' Returns the system call arguments.
+            declaration info (type and name) for each arg passed to C++ and C callbacks
+        '''
+        return ','.join(['CPUState* cpu', 'target_ulong pc'] + ['%s %s' % (x.ctype, x.name) for x in self.args])
 
 
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_enter.cpp"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_boilerplate_enter.cpp"
-    for GUARD in cb_names_enter:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_enter[GUARD]:
-            pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
-        pppfile.write("#endif\n")
 
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_boilerplate_return.cpp"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_boilerplate_return.cpp"
-    for GUARD in cb_names_return:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_return[GUARD]:
-            pppfile.write("PPP_CB_BOILERPLATE({0})\n".format(ppp))
-        pppfile.write("#endif\n")
+##############################################################################
+### Main #####################################################################
+##############################################################################
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='PANDA syscalls2 support files generator.')
+    parser.add_argument('--target', '-t', action='append', required=True, help='Target os:arch tuple to process.')
+    parser.add_argument('--prefix', '-p', default='gen', help='Generated files prefix.')
+    parser.add_argument('--outdir', '-o', default='./f', help='Output directory.')
+    parser.add_argument('--prototypes', default='./prototypes', help='Prototype directory.')
+    parser.add_argument('--templates', default='./templates', help='Template directory.')
+    args = parser.parse_args()
 
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_extern_enter.h"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_extern_enter.h"
-    for GUARD in cb_names_enter:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_enter[GUARD]:
-            pppfile.write("PPP_CB_EXTERN({0})\n".format(ppp))
-        pppfile.write("#endif\n")
+    assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
+    assert os.path.isdir(args.templates), 'Template directory %s does not exist.' % args.templates
+    logging.debug(args)
 
-with open(os.path.join(DESTDIR, "gen_syscall_ppp_extern_return.h"), "w") as pppfile:
-    print "Writing", "gen_syscall_ppp_extern_return.h"
-    for GUARD in cb_names_return:
-        pppfile.write(GUARD + "\n")
-        for ppp in cb_names_return[GUARD]:
-            pppfile.write("PPP_CB_EXTERN({0})\n".format(ppp))
-        pppfile.write("#endif\n")
+    # Create a Jinja2 environment for rendering templates.
+    # Setting undefined to StrictUndefined will raise an error if a variable
+    # used in rendering is missing from the template.
+    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(args.templates), undefined=jinja2.StrictUndefined)
+
+    # Create a context dictionary, used for template rendering.
+    # Notes:
+    # Per-arch system call lists are used to generate typedefs
+    # and names for PPP C callbacks. Having such a list allows
+    # to only define once callbacks for system calls implemented
+    # by multiple OSes.
+    # XXX:
+    # Add some check for system calls having the same name but
+    # requiring different arguments.
+    global_context = {
+        'architectures': KNOWN_ARCH,
+        'syscalls': {target: [] for target in args.target}, # per target system call list
+        'syscalls_arch': {arch: {} for arch in KNOWN_ARCH},    # per arch system call list
+    }
+
+    # parse system call definitions for all targets
+    for _target in args.target:
+        _os, _arch = _target.split(':')
+        assert (_os in KNOWN_OS and _arch in KNOWN_ARCH), 'Unknown os or arch. Please read help message.'
+        logging.info('Processing system calls for %s', _target)
+
+        protofile_name = os.path.join(args.prototypes, '%s_%s_prototypes.txt' % (_os, _arch))
+        assert os.path.isfile(protofile_name), 'Missing prototype file %s' % protofile_name
+
+        syscalls = global_context['syscalls'][_target]
+        syscalls_arch = global_context['syscalls_arch'][_arch]
+        target_context = {
+            'arch': _arch,
+            'os': _os,
+            'syscalls': syscalls,
+            'arch_conf': KNOWN_ARCH[_arch],
+        }
+
+        # Parse prototype file contents.
+        # Notes:
+        # Goldfish kernel doesn't support OABI layer. Yay!
+        with open(protofile_name) as protofile:
+            for lineno, line in enumerate(protofile, 1):
+                try:
+                    syscall = SysCall(line, arch_bits=KNOWN_ARCH[_arch]['bits'])
+                    syscalls.append(syscall)
+                    syscalls_arch[syscall.name] = syscall
+                except SysCallDefError:
+                    logging.debug('Bad line in prototype %s:%d: %s', protofile.name, lineno, line)
+
+        # Render per-target output files.
+        j2tpl = j2env.get_template('syscall_switch_enter.tpl')
+        with open(os.path.join(args.outdir, "%s_syscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb") as of:
+            logging.info("Writing %s", of.name)
+            of.write(j2tpl.render(target_context))
+        j2tpl = j2env.get_template('syscall_switch_return.tpl')
+        with open(os.path.join(args.outdir, "%s_syscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb") as of:
+            logging.info("Writing %s", of.name)
+            of.write(j2tpl.render(target_context))
+
+    # Render big files.
+    for tpl, ext in GENERATED_FILES:
+        j2tpl = j2env.get_template(tpl)
+        of_name = '%s_%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
+        with open(os.path.join(args.outdir, of_name), 'wb') as of:
+            logging.info("Writing %s", of.name)
+            of.write(j2tpl.render(global_context))
 
