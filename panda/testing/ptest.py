@@ -85,6 +85,7 @@ def bless(testname):
         
         # Copy output files to blessed directory
         blesseddir = os.path.join(pandaregressiondir, "blessed", testname)
+        clear_dir(blesseddir)
         tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
         files = os.listdir(tmpoutdir)
         print tmpoutdir
