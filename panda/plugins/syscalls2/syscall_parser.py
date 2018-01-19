@@ -344,7 +344,7 @@ void syscall_return_switch_%s ( CPUState *cpu, target_ulong pc, target_ulong ord
         syscall_return_switch += "default:\n"
         syscall_return_switch += "PPP_RUN_CB(on_unknown_sys_return, cpu, pc, %s);\n" % CALLNO
         syscall_return_switch += "}"+'\n'
-        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, cpu, pc, %s);\n" % CALLNO
+        syscall_return_switch += "PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);\n"
 
     syscall_return_switch += "#endif\n } \n"
     syscall_enter_switch += "#endif\n } \n"

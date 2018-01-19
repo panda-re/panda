@@ -3531,6 +3531,6 @@ PPP_RUN_CB(on_ARM_null_segfault_return, cpu,pc) ;
 default:
 PPP_RUN_CB(on_unknown_sys_return, cpu, pc, env->regs[7]);
 }
-PPP_RUN_CB(on_all_sys_return, cpu, pc, env->regs[7]);
+PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
 #endif
  } 
