@@ -3607,6 +3607,6 @@ PPP_RUN_CB(on_sys_process_vm_writev_return, cpu,pc,arg0,arg1,arg2,arg3,arg4,arg5
 default:
 PPP_RUN_CB(on_unknown_sys_return, cpu, pc, env->regs[R_EAX]);
 }
-PPP_RUN_CB(on_all_sys_return, cpu, pc, env->regs[R_EAX]);
+PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
 #endif
  } 
