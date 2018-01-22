@@ -12,7 +12,7 @@ extern "C" {
 
 void syscall_return_switch_windows7_x86 ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 #ifdef TARGET_I386                                          // GUARD
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    //CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch( ordinal ) {                          // CALLNO
 // 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 case 0: {

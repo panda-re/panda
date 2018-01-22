@@ -138,7 +138,7 @@ extern "C" {
 
 void syscall_return_switch_%s ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 %s                                          // GUARD
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    //CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch( ordinal ) {                          // CALLNO
 """ % (osarch, GUARD)
 
