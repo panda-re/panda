@@ -3947,7 +3947,7 @@ if (PPP_CHECK_CB(on_NtQueryPortInformationProcess_return)) {
 PPP_RUN_CB(on_NtQueryPortInformationProcess_return, cpu,pc) ; 
 }; break;
 default:
-PPP_RUN_CB(on_unknown_sys_return, cpu, pc, env->regs[R_EAX]);
+PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp.ordinal);
 }
 PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
 #endif
