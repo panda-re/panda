@@ -5,7 +5,7 @@ PPP_CB_BOILERPLATE(on_{{syscall.name}}_return)
 {%- endfor %}
 #endif
 {% endfor %}
-#if 1
 PPP_CB_BOILERPLATE(on_unknown_sys_return)
 PPP_CB_BOILERPLATE(on_all_sys_return)
-#endif
+
+/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */

@@ -6,10 +6,9 @@ typedef void (*on_{{syscall.name}}_return_t)({{syscall.cargs_signature}});
 {%- endfor %}
 #endif
 {% endfor %}
-#if 1
 typedef void (*on_all_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_all_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_unknown_sys_enter_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
 typedef void (*on_unknown_sys_return_t)(CPUState *cpu, target_ulong pc, target_ulong callno);
-#endif
 
+/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */

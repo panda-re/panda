@@ -233,14 +233,14 @@ class SysCall(object):
         ''' Returns the system call arguments.
             each argument passed to C++ and C callbacks (the actual variable name or data)
         '''
-        return ','.join(['cpu', 'pc'] + ['arg%d' % i for i in range(len(self.args))])
+        return ', '.join(['cpu', 'pc'] + ['arg%d' % i for i in range(len(self.args))])
 
     @property
     def cargs_signature(self):
         ''' Returns the system call arguments.
             declaration info (type and name) for each arg passed to C++ and C callbacks
         '''
-        return ','.join(['CPUState* cpu', 'target_ulong pc'] + ['%s %s' % (x.ctype, x.name) for x in self.args])
+        return ', '.join(['CPUState* cpu', 'target_ulong pc'] + ['%s %s' % (x.ctype, x.name) for x in self.args])
 
 
 
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     global_context = {
         'architectures': KNOWN_ARCH,
         'syscalls': {target: [] for target in args.target}, # per target system call list
-        'syscalls_arch': {arch: {} for arch in KNOWN_ARCH},    # per arch system call list
+        'syscalls_arch': {arch: {} for arch in KNOWN_ARCH}, # per arch system call list
     }
 
     # parse system call definitions for all targets

@@ -5,7 +5,7 @@ PPP_PROT_REG_CB(on_{{syscall.name}}_enter)
 {%- endfor %}
 #endif
 {% endfor %}
-#if 1
 PPP_PROT_REG_CB(on_unknown_sys_enter)
 PPP_PROT_REG_CB(on_all_sys_enter)
-#endif
+
+/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */
