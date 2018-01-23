@@ -8,7 +8,7 @@ function activate_pyenv() {
 	if [ -f "$PYENV_ACTIVATE" ]; then
 		. "$PYENV_ACTIVATE"
 	else
-		virtualenv -p "$PYTHON" pyenv
+		virtualenv -p "$PYTHON" "$PYENV"
 		. "$PYENV_ACTIVATE"
 		pip install -r requirements.txt
 	fi
