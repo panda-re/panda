@@ -12,7 +12,7 @@ extern "C" {
 
 void syscall_return_switch_linux_x86 ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 #ifdef TARGET_I386                                          // GUARD
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    //CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch( ordinal ) {                          // CALLNO
 // 0 long sys_restart_syscall ['void']
 case 0: {
@@ -3605,7 +3605,7 @@ memcpy(&arg5, rp.params[5], sizeof(uint32_t));
 PPP_RUN_CB(on_sys_process_vm_writev_return, cpu,pc,arg0,arg1,arg2,arg3,arg4,arg5) ; 
 }; break;
 default:
-PPP_RUN_CB(on_unknown_sys_return, cpu, pc, env->regs[R_EAX]);
+PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp.ordinal);
 }
 PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
 #endif

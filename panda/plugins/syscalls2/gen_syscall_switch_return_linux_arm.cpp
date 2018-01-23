@@ -12,7 +12,7 @@ extern "C" {
 
 void syscall_return_switch_linux_arm ( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {  // osarch
 #ifdef TARGET_ARM                                          // GUARD
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    //CPUArchState *env = (CPUArchState*)cpu->env_ptr;
     switch( ordinal ) {                          // CALLNO
 // 0 long sys_restart_syscall ['void']
 case 0: {
@@ -3529,7 +3529,7 @@ if (PPP_CHECK_CB(on_ARM_null_segfault_return)) {
 PPP_RUN_CB(on_ARM_null_segfault_return, cpu,pc) ; 
 }; break;
 default:
-PPP_RUN_CB(on_unknown_sys_return, cpu, pc, env->regs[7]);
+PPP_RUN_CB(on_unknown_sys_return, cpu, pc, rp.ordinal);
 }
 PPP_RUN_CB(on_all_sys_return, cpu, pc, rp.ordinal);
 #endif
