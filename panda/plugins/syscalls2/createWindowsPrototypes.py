@@ -42,7 +42,7 @@ for line in open(sys.argv[1]):
     prototypes[name] = (ret, args)
 
 for syscalls, filename in tables:
-    with open(filename + "_prototypes.txt", "w") as protofile:
+    with open('prototypes/%s_prototypes.txt' % filename, "w") as protofile:
         for i in range(len(syscalls)):
             for j in range(len(syscalls[i])):
                 ordinal = i << 12 | j
