@@ -12,12 +12,12 @@ extern "C" {
 
 void syscall_enter_switch_{{os}}_{{arch}}(CPUState *cpu, target_ulong pc) {
 #ifdef {{arch_conf.qemu_target}}
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    ReturnPoint rp;
-    rp.ordinal = {{arch_conf.rt_callno_reg}};
-    rp.proc_id = panda_current_asid(cpu);
-    rp.retaddr = calc_retaddr(cpu, pc);
-    switch({{arch_conf.rt_callno_reg}}) {
+	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+	ReturnPoint rp;
+	rp.ordinal = {{arch_conf.rt_callno_reg}};
+	rp.proc_id = panda_current_asid(cpu);
+	rp.retaddr = calc_retaddr(cpu, pc);
+	switch({{arch_conf.rt_callno_reg}}) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
 		case {{syscall.no}}: {

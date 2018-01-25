@@ -12,12 +12,12 @@ extern "C" {
 
 void syscall_enter_switch_linux_arm(CPUState *cpu, target_ulong pc) {
 #ifdef TARGET_ARM
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    ReturnPoint rp;
-    rp.ordinal = env->regs[7];
-    rp.proc_id = panda_current_asid(cpu);
-    rp.retaddr = calc_retaddr(cpu, pc);
-    switch(env->regs[7]) {
+	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+	ReturnPoint rp;
+	rp.ordinal = env->regs[7];
+	rp.proc_id = panda_current_asid(cpu);
+	rp.retaddr = calc_retaddr(cpu, pc);
+	switch(env->regs[7]) {
 		// 0 long sys_restart_syscall ['void']
 		case 0: {
 			if (PPP_CHECK_CB(on_sys_restart_syscall_return)) {
