@@ -12,12 +12,12 @@ extern "C" {
 
 void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 #ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    ReturnPoint rp;
-    rp.ordinal = env->regs[R_EAX];
-    rp.proc_id = panda_current_asid(cpu);
-    rp.retaddr = calc_retaddr(cpu, pc);
-    switch(env->regs[R_EAX]) {
+	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+	ReturnPoint rp;
+	rp.ordinal = env->regs[R_EAX];
+	rp.proc_id = panda_current_asid(cpu);
+	rp.retaddr = calc_retaddr(cpu, pc);
+	switch(env->regs[R_EAX]) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0 = get_32(cpu, 0);

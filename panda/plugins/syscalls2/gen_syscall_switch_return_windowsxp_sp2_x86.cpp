@@ -9,9 +9,9 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_windowsxp_sp2_x86( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
+void syscall_return_switch_windowsxp_sp2_x86(CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
 #ifdef TARGET_I386
-    switch(ordinal) {
+	switch(ordinal) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0;

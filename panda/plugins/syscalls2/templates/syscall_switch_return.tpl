@@ -9,9 +9,9 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_{{os}}_{{arch}}( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
+void syscall_return_switch_{{os}}_{{arch}}(CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
 #ifdef {{arch_conf.qemu_target}}
-    switch(ordinal) {
+	switch(ordinal) {
 		{%- for syscall in syscalls %}
 		// {{syscall.no}} {{syscall.rettype}} {{syscall.name}} {{syscall.args_raw}}
 		case {{syscall.no}}: {
