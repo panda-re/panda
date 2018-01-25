@@ -52,6 +52,10 @@ KNOWN_ARCH = {
     },
 }
 
+# This is the the maximum generic syscall number.
+# We use this to tell apart special system calls (see last lines in arm prototypes).
+MAX_GENERIC_SYSCALL = 1023
+
 # Templates for per-arch typedefs and callback registration code files.
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
 GENERATED_FILES = [
@@ -214,7 +218,8 @@ class SysCall(object):
         if fields is None:
             raise SysCallDefError()
 
-        self.no = fields.group(1)
+        self.no = int(fields.group(1))
+        self.generic = False if self.no > MAX_GENERIC_SYSCALL else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
         self.args_raw = fields.group(4).split(',')
@@ -264,7 +269,9 @@ if __name__ == '__main__':
     # Create a Jinja2 environment for rendering templates.
     # Setting undefined to StrictUndefined will raise an error if a variable
     # used in rendering is missing from the template.
-    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(args.templates), undefined=jinja2.StrictUndefined)
+    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(args.templates),
+            extensions=['jinja2.ext.loopcontrols',],
+            undefined=jinja2.StrictUndefined)
 
     # Create a context dictionary, used for template rendering.
     # Notes:
@@ -309,7 +316,12 @@ if __name__ == '__main__':
                     syscalls.append(syscall)
                     syscalls_arch[syscall.name] = syscall
                 except SysCallDefError:
-                    logging.debug('Bad line in prototype %s:%d: %s', protofile.name, lineno, line)
+                    logging.debug('Bad prototype line in %s:%d: %s', protofile.name, lineno, line.rstrip())
+
+        # Calculate the maximum number of arguments and system call number for this os/arch.
+        target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
+        target_context['max_syscall_no'] = max([s.no for s in syscalls])
+        target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
@@ -324,7 +336,7 @@ if __name__ == '__main__':
         # Generate syscall info dynamic libraries.
         if args.generate_info:
             j2tpl = j2env.get_template('syscall_info.tpl')
-            with open(os.path.join(args.outdir, "%s_syscall_info_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
+            with open(os.path.join(args.outdir, "%s_syscall_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
                 logging.info("Writing %s", of.name)
                 of.write(j2tpl.render(target_context))
 
