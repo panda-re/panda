@@ -138,14 +138,15 @@ extern const char *qemu_file;
 
 // translate plugin name into path to .so
 char *panda_plugin_path(const char *plugin_name) {    
-    char *plugin_path = g_malloc0(1024);
-    char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
+    char *plugin_path = NULL;
+    const char *plugin_dir = g_getenv("PANDA_PLUGIN_DIR");
+
     if (plugin_dir != NULL) {
-        snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_name);
+        plugin_path = g_strdup_printf("%s/panda_%s.so", plugin_dir, plugin_name);
     } else {
-        char *dir = strdup(qemu_file);
-        dir = dirname( (char *) dir);
-        snprintf(plugin_path, 1024, "%s/panda/plugins/panda_%s.so", dir, plugin_name);
+        char *dir = g_path_get_dirname(qemu_file);
+        plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s.so", dir, plugin_name);
+        g_free(dir);
     }
     return plugin_path;
 }
@@ -163,6 +164,7 @@ void panda_require(const char *plugin_name) {
         fprintf(stderr, "panda_require: FAIL: Unable to load plugin `%s' `%s'\n", plugin_name, plugin_path);
         abort();
     }
+    g_free(plugin_path);
 }
 
     
@@ -823,6 +825,9 @@ void qmp_load_plugin(bool has_file_name, const char *file_name, const char *plug
     if(!panda_load_plugin(file_name, plugin_name)) {
         // TODO: do something with errp here?
     }
+
+    if(!has_file_name)
+        g_free((char *)file_name);
 }
 
 void qmp_unload_plugin(int64_t index, Error **errp) {
