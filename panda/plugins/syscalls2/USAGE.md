@@ -14,6 +14,7 @@ Arguments
 ---------
 
 * `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windowsxp_sp2_x86`, `windowsxp_sp3_x86`, and `windows7_x86`.
+* `load-info`: boolean, defaults to `false`. Enables loading of system call information for the selected OS profile. This allows more generic processing of system call events, without having to implement individual hooks.
 
 Dependencies
 ------------

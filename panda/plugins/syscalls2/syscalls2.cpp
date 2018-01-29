@@ -30,6 +30,9 @@ PANDAENDCOMMENT */
 
 #include "syscalls2.h"
 #include "syscalls_common.h"
+#include "syscalls2_info.h"
+
+#define PLUGIN_DEBUG PLUGIN_NAME ": "
 
 bool translate_callback(CPUState *cpu, target_ulong pc);
 int exec_callback(CPUState *cpu, target_ulong pc);
@@ -46,7 +49,6 @@ void registerExecPreCallback(void (*callback)(CPUState*, target_ulong));
 #include "gen_syscall_ppp_boilerplate_return.cpp"
 #include "gen_syscall_ppp_register_enter.cpp"
 #include "gen_syscall_ppp_register_return.cpp"
-
 }
 
 // Forward declarations
@@ -504,51 +506,53 @@ bool translate_callback(CPUState* cpu, target_ulong pc){
 bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
-
     if(panda_os_type == OST_UNKNOWN){
-        std::cerr << "syscalls2: ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
+        std::cerr << PLUGIN_DEBUG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
         return false;
     }
-
-    if (panda_os_type == OST_LINUX) {
-#if defined(TARGET_I386)
+    else if (panda_os_type == OST_LINUX) {
         if (panda_os_bits != 32) {
-            printf ("syscalls2: no support for 64-bit linux\n");
+            std::cerr << PLUGIN_DEBUG "no support for 64-bit linux" << std::endl;
             return false;
         }
-        printf ("syscalls2: using profile for linux x86 32-bit\n");
+#if defined(TARGET_I386)
+        std::cerr << PLUGIN_DEBUG "using profile for linux x86 32-bit" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_X86];
 #endif
 #if defined(TARGET_ARM)
-        printf ("syscalls2: using profile for linux arm\n");
+        std::cerr << PLUGIN_DEBUG "using profile for linux arm" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_ARM];
 #endif
     }
-    if (panda_os_type == OST_WINDOWS) {
-#if defined(TARGET_I386)
+    else if (panda_os_type == OST_WINDOWS) {
         if (panda_os_bits != 32) {
-            printf ("syscalls2: no support for 64-bit windows\n");
+            std::cerr << PLUGIN_DEBUG "no support for 64-bit windows" << std::endl;
             return false;
         }
+#if defined(TARGET_I386)
         if (0 == strcmp(panda_os_details, "xpsp2")) {
-            printf ("syscalls2: using profile for windows sp2 x86 32-bit\n");
+            std::cerr << PLUGIN_DEBUG "using profile for windows sp2 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
         }
         if (0 == strcmp(panda_os_details, "xpsp3")) {
-            printf ("syscalls2: using profile for windows sp3 x86 32-bit\n");
+            std::cerr << PLUGIN_DEBUG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
         }
         if (0 == strcmp(panda_os_details, "7")) {
-            printf ("syscalls2: using profile for windows 7 x86 32-bit\n");
+            std::cerr << PLUGIN_DEBUG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
         }
 #endif
     }
 
+    // make sure a system calls profile has been loaded
     if(!syscalls_profile){
-        std::cerr << "syscalls2: ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
+        std::cerr << PLUGIN_DEBUG "ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
         return false;
     }
+
+    // parse arguments and initialize callbacks & info api
+    panda_arg_list *plugin_args = panda_get_args(PLUGIN_NAME);
 
     panda_cb pcb;
     pcb.insn_translate = translate_callback;
@@ -557,6 +561,13 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_INSN_EXEC, pcb);
     pcb.before_block_exec = returned_check_callback;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    // load system call info
+    if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
+        load_syscall_info();
+    }
+
+    panda_free_args(plugin_args);
 
 #else //not x86 or arm
 
@@ -571,15 +582,15 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
     (void) self;
-
 #ifdef DEBUG
-    std::cout << "syscalls2: DEBUG syscall count per asid:";
+    std::cout << PLUGIN_DEBUG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){
         std::cout << asid_count.first << "=" << asid_count.second <<", ";
     }
     std::cout<< std::endl;
     if(impossibleToReadPCs){
-        std::cout << "syscalls2: DEBUG some instructions couldn't be read on insn_exec: " << impossibleToReadPCs << std::endl;
+        std::cout << PLUGIN_DEBUG "DEBUG some instructions couldn't be read on insn_exec: " << impossibleToReadPCs << std::endl;
     }
 #endif
 }
+
