@@ -8,6 +8,7 @@
 
 syscall_info_t *syscall_info;
 
+
 int load_syscall_info(void) {
     // XXX: we need to construct this string from information passed through -os
     char *syscall_info_dlname = g_strdup_printf("dso_%s_gen_syscall_info_%s_%s.so", PLUGIN_NAME, "linux", "x86");

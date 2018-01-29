@@ -14,7 +14,7 @@
 
 	See: https://stackoverflow.com/a/24640918
 #endif
-#error This file requires gcc-5 or later to be compiled.
+#warning This file may require gcc-5 or later to be compiled.
 #endif
 
 {% for syscall in syscalls -%}
