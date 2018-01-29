@@ -18,4 +18,13 @@ typedef struct {
     uint8_t *argsz;
 } syscall_info_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+// dynamically loads system call information
+int load_syscall_info(void);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

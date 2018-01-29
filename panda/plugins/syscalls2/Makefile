@@ -1,7 +1,7 @@
 # Don't forget to add your plugin to config.panda!
 
 # The main rule for your plugin. List all object-file dependencies.
-O_FILES=$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o
+O_FILES=$(PLUGIN_OBJ_DIR)/$(PLUGIN_NAME).o $(PLUGIN_OBJ_DIR)/syscalls2_info.o
 
 # Syscall switch files
 SYSCALL_SWITCH_SRC=$(basename $(notdir $(wildcard $(PLUGIN_SRC_DIR)/gen_syscall_switch_*.cpp)))
