@@ -28,5 +28,7 @@ void panda_callbacks_cpuid(CPUState *env);
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 // target-i386/helper.c
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid);
+// vl.c
+void panda_callbacks_after_machine_init(void);
 
 #endif
