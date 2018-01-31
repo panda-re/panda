@@ -69,6 +69,8 @@ typedef enum panda_cb_type {
     PANDA_CB_REPLAY_BEFORE_DMA,      // in replay, just before RAM case of cpu_physical_mem_rw
     PANDA_CB_REPLAY_AFTER_DMA,       // in replay, just after RAM case of cpu_physical_mem_rw
     PANDA_CB_REPLAY_HANDLE_PACKET,   // in replay, packet in / out
+    PANDA_CB_AFTER_MACHINE_INIT,     // Right after the machine is initialized, before any code runs
+
     PANDA_CB_LAST
 } panda_cb_type;
 
@@ -615,6 +617,8 @@ typedef union panda_cb {
         unused
  */
   int (*replay_net_transfer)(CPUState *env, uint32_t type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+  void (*after_machine_init)(CPUState *env);
 
 } panda_cb;
 
