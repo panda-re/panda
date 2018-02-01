@@ -41,6 +41,4 @@ struct ReturnPoint {
     uint8_t params[SYSCALL_MAX_ARGS][8];
 };
 
-typedef void (*pre_exec_callback_t)(CPUState*, target_ulong);
-
 #endif

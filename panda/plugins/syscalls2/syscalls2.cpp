@@ -506,11 +506,11 @@ bool translate_callback(CPUState* cpu, target_ulong pc){
 bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
-    if(panda_os_type == OST_UNKNOWN){
+    if(panda_os_familyno == OS_UNKNOWN){
         std::cerr << PLUGIN_DEBUG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
         return false;
     }
-    else if (panda_os_type == OST_LINUX) {
+    else if (panda_os_familyno == OS_LINUX) {
         if (panda_os_bits != 32) {
             std::cerr << PLUGIN_DEBUG "no support for 64-bit linux" << std::endl;
             return false;
@@ -524,21 +524,21 @@ bool init_plugin(void *self) {
         syscalls_profile = &profiles[PROFILE_LINUX_ARM];
 #endif
     }
-    else if (panda_os_type == OST_WINDOWS) {
+    else if (panda_os_familyno == OS_WINDOWS) {
         if (panda_os_bits != 32) {
             std::cerr << PLUGIN_DEBUG "no support for 64-bit windows" << std::endl;
             return false;
         }
 #if defined(TARGET_I386)
-        if (0 == strcmp(panda_os_details, "xpsp2")) {
+        if (0 == strcmp(panda_os_variant, "xpsp2")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows sp2 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
         }
-        if (0 == strcmp(panda_os_details, "xpsp3")) {
+        if (0 == strcmp(panda_os_variant, "xpsp3")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
         }
-        if (0 == strcmp(panda_os_details, "7")) {
+        if (0 == strcmp(panda_os_variant, "7")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
         }
@@ -564,18 +564,15 @@ bool init_plugin(void *self) {
 
     // load system call info
     if (panda_parse_bool_opt(plugin_args, "load-info", "Load systemcall information for the selected os.")) {
-        load_syscall_info();
+        if (load_syscall_info() < 0) return false;
     }
 
+    // done parsing arguments
     panda_free_args(plugin_args);
-
 #else //not x86 or arm
-
     fprintf(stderr,"The syscalls plugin is not currently supported on this platform.\n");
     return false;
-
 #endif //x86 or arm
-
     return true;
 }
 
