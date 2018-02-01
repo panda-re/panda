@@ -571,6 +571,7 @@ PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (cur
 PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+PANDA_CB_AFTER_MACHINE_INIT,     // Right after the machine is initialized, before any code runs
 ```
 For more information on each callback, see the "Callbacks" section.
 ```C
@@ -1867,3 +1868,30 @@ unused
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                             uint8_t direction, uint64_t old_buf_addr);
 ```
+---
+
+`after_machine_init`: called right after the machine has been initialized,
+but before any guest code runs
+
+**Callback ID**: `PANDA_CB_AFTER_MACHINE_INIT`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback allows initialization of components that need access to
+the RAM, CPU object, etc.
+E.g. if you need to enable `taint2` taint tracking for the whole of the
+replay, this would be an appropriate place to call `taint2_enable_taint()`.
+
+**Signature**
+```C
+void after_machine_init(CPUState *env);
+```
+
