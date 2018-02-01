@@ -362,9 +362,9 @@ int64_t get_file_handle_pos(CPUState *cpu, uint32_t eproc, uint32_t handle) {
 bool init_plugin(void *self) {
 #ifdef TARGET_I386
     // this stuff only currently works for win7 32-bit
-    assert (panda_os_type == OST_WINDOWS);
+    assert (panda_os_familyno == OS_WINDOWS);
     assert (panda_os_bits == 32);
-    assert (0 == strcmp(panda_os_details, "7"));
+    assert (0 == strcmp(panda_os_variant, "7"));
     return true;
 #else
     fprintf(stderr, "Plugin is not supported on this platform.\n");
