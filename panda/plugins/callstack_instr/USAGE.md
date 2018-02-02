@@ -83,7 +83,7 @@ Example
 
 ```C
 #include "../callstack_instr/callstack_instr_ext.h"
-#include "panda_plugin_plugin.h"
+#include "panda/plugin_plugin.h"
 
 // ...
 

@@ -30,7 +30,7 @@ except Exception as e:
     raise e
 
 try:
-    run_test_32bitlinux("")
+    run_test_debian("", "rr-boot-test", "i386")
     msg = "Replay for %s succeeded" % testname
     both(msg, progress)
     tof.close()

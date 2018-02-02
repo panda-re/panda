@@ -151,7 +151,9 @@ void PandaHelperCallVisitor::visitCallInst(CallInst &I) {
 
 } // namespace llvm
 
-extern const char **gargv;
+// resolved full path to the current executable
+extern const char *qemu_file;
+
 /*
  * Start the process of including the execution of QEMU helper functions in the
  * LLVM JIT.
@@ -170,7 +172,7 @@ void init_llvm_helpers() {
     llvm::LLVMContext &ctx = mod->getContext();
 
     // Read helper module, link into JIT, verify
-    char *exe = strdup(gargv[0]);
+    char *exe = strdup(qemu_file);
     std::string bitcode(dirname(exe));
     free(exe);
     bitcode.append("/llvm-helpers.bc");

@@ -660,7 +660,7 @@ dynamically loaded. Thus, even if Plugin A has a function intended to be called
 by another plugin, it is painful to obtain access to that function from Plugin B
 (hint: `dlsym` is involved). Further, the code necessary to iterate over a
 sequence of callbacks is annoying and formulaic.Software engineering to the
-rescue! `panda_plugin_plugin.h` provides a number of convenient macros that
+rescue! `panda/plugin_plugin.h` provides a number of convenient macros that
 simplify arranging for these two types of plugin interaction. Here is how to use
 them.
 
@@ -740,9 +740,9 @@ following.
 
 5. In the same file you edited in 3, in the `extern "C" {` portion near the top
    of the file, add `PPP_PROT_REG_CB(foo);`. For more information on this, see
-   `panda_plugin_plugin.h`.
+   `panda/plugin_plugin.h`.
 
-6. Remember to `#include "panda_plugin_plugin.h"` at the top of the edited
+6. Remember to `#include "panda/plugin_plugin.h"` at the top of the edited
    source file.
 
 In order to register a callback with Plugin A that is defined in Plugin B, all

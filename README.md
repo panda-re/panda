@@ -55,6 +55,10 @@ Finally, if you want to skip the build process altogether, there is a
 
     docker pull pandare/panda
 
+Alternatively, you can pull the [latest build from an unofficial](https://hub.docker.com/r/thawsystems/panda) third party.
+
+    docker pull thawsystems/panda
+
 ## Support
 
 If you need help with PANDA, or want to discuss the project, you can join our

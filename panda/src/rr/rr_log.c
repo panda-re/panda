@@ -119,7 +119,7 @@ RR_log_entry* rr_get_queue_head(void) { return rr_queue_head; }
 
 // Check if replay is really finished. Conditions:
 // 1) The log is empty
-// 2) The only thing in the queue is RR_LAST
+// 2) The only thing in the queue is RR_END_OF_LOG
 uint8_t rr_replay_finished(void)
 {
     return rr_log_is_empty()
