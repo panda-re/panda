@@ -64,6 +64,8 @@
 #if defined(TARGET_I386)
 //#define _ESP	((CPUX86State *)env)->regs[R_ESP]
 #define _ESP	((CPUX86State *)((CPUState *)env->env_ptr))->regs[R_ESP]
+#define ESP0    4
+#define TSS_BASE    (((CPUX86State *)(env->env_ptr))->tr.base + ESP0)
 #elif defined(TARGET_ARM)
 #define _ESP	((CPUARMState *)((CPUState *)env->env_ptr))->regs[13]
 #elif defined(TARGET_PPC)

@@ -157,15 +157,15 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
     disas(out,code,size);
 }
 
-const char * valid_os[] = {
-    "windows-32-xpsp2", 
-    "windows-32-xpsp3", 
-    "windows-32-7", 
-    "linux-32-*",
-    "linux-64-*",
+
+// regular expressions used to validate the -os option
+const char * valid_os_re[] = {
+    "windows-32-xpsp[23]",
+    "windows-32-7",
+    "linux-32-.+",
+    "linux-64-.+",
     NULL
 };
-
 
 
 PandaOsType panda_os_type = OST_UNKNOWN;
@@ -174,6 +174,18 @@ uint32_t panda_os_bits = 0;  // 32 or 64
 gchar *panda_os_details = NULL;
 
 void panda_set_os_name(char *os_name) {
+    // validate os_name before parsing its components
+    gboolean os_supported = FALSE;
+    const gchar **os_re;
+    for (os_re=valid_os_re; *os_re != NULL; os_re++) {
+        if (g_regex_match_simple(*os_re, os_name, 0, 0)) {
+            os_supported = TRUE;
+            break;
+        }
+        //fprintf(stderr, "%s does not match regex %s\n", os_name, *os_re);
+    }
+    assert(os_supported);
+
     // set os name and split it
     panda_os_name = g_strdup(os_name);
     gchar **osparts = g_strsplit(panda_os_name, "-", 3);
@@ -189,41 +201,15 @@ void panda_set_os_name(char *os_name) {
     else { panda_os_bits = 0; }
 
     // set os details
+    // This value is not used here, but is available to other plugins.
+    // E.g. osi_linux uses panda_os_details to load the appropriate kernel
+    // profile from kernelinfo.conf at runtime.
     panda_os_details = g_strdup(osparts[2]);
 
     // abort for invalid os type/bits
     assert (!(panda_os_type == OST_UNKNOWN));
     assert (panda_os_bits != 0);
     g_strfreev(osparts);
-
-    gboolean os_details_ok = FALSE;
-    if (panda_os_type == OST_WINDOWS) {
-        const char **os;
-        for (os=valid_os; *os != NULL; os++) {
-            if (0 == strcmp(panda_os_name, *os)) {
-                os_details_ok = TRUE;
-                break;
-            }
-        }
-
-        if (!os_details_ok) {
-            fprintf(stderr, "os_name=[%s] is not on the list :\n", panda_os_name);
-            const char **os;
-            for (os=valid_os; *os != NULL; os++) {
-                fprintf(stderr, "\t[%s]\n", *os);
-            }
-        }
-    }
-    else if (panda_os_type == OST_LINUX) {
-        // Don't do any further checking on panda_os_details for linux.
-        //
-        // Currently panda_os_details is only used by the osi plugin to determine
-        // what arguments to pass to the osi_linux plugin.
-        // However, the list of acceptable arguments is not known at compile time,
-        // because osi_linux reads it from kernelinfo.conf.
-        os_details_ok = TRUE;
-    }
-    assert (os_details_ok);
 
     printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
 }
@@ -293,4 +279,4 @@ void panda_cleanup(void) {
     }
 }
 
-
+/* vim:set shiftwidth=4 ts=4 sts=4 et: */

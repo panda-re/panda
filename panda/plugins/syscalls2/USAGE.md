@@ -6,7 +6,7 @@ Summary
 
 The `syscalls2` plugin provides callbacks that allow notification whenever system calls occur in the guest, and can provide the parameters for each system call as long as the guest OS is one of these supported by `syscalls2`.
 
-This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/linux_x86_prototypes.txt`.
+This is accomplished by automatically generating a bunch of code based on an initial prototypes file. For full details, have a look at `syscalls2/syscall_parser.py` and one of the prototypes files, such as `syscalls2/prototypes/linux_x86_prototypes.txt`.
 
 FIXME: We should include a list of steps for adding support for a new OS to `syscalls2` here. It's a little tricky.
 
@@ -77,7 +77,7 @@ In general one uses `syscalls2` with another plugin that registers callbacks for
 ```C
 #include "../syscalls2/gen_syscalls_ext_typedefs.h"
 #include "../syscalls2/syscalls_common.h"
-#include "panda_plugin_plugin.h"
+#include "panda/plugin_plugin.h"
 
 void my_NtReadFile_enter(
         CPUState* env,
@@ -113,7 +113,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-    -panda syscalls2:profile=windows7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2:profile=windows7_x86 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.
