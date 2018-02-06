@@ -10,7 +10,7 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_enter_switch_windows7_x86(CPUState *cpu, target_ulong pc) {
+void syscall_enter_switch_windows_7_x86(CPUState *cpu, target_ulong pc) {
 #ifdef TARGET_I386
 	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
 	ReturnPoint rp;

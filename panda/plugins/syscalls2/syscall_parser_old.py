@@ -22,7 +22,7 @@ import os
 from collections import defaultdict
 from sys import argv,exit
 
-KNOWN_OS = set(["linux", "windows7", "windowsxp_sp2", "windowsxp_sp3"])
+KNOWN_OS = set(["linux", "windows_7", "windows_xpsp2", "windows_xpsp3"])
 arch32 = set(['x86', 'arm'])
 
 def usage():

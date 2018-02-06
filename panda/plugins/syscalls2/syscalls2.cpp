@@ -238,9 +238,9 @@ uint64_t get_return_64_windows_x86(CPUState *cpu, uint32_t argnum) {
 enum ProfileType {
     PROFILE_LINUX_X86,
     PROFILE_LINUX_ARM,
-    PROFILE_WINDOWSXP_SP2_X86,
-    PROFILE_WINDOWSXP_SP3_X86,
-    PROFILE_WINDOWS7_X86,
+    PROFILE_WINDOWS_XPSP2_X86,
+    PROFILE_WINDOWS_XPSP3_X86,
+    PROFILE_WINDOWS_7_X86,
     PROFILE_LAST
 };
 
@@ -289,8 +289,8 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_s64 = get_return_s64_generic,
     },
     {
-        .enter_switch = syscall_enter_switch_windowsxp_sp2_x86,
-        .return_switch = syscall_return_switch_windowsxp_sp2_x86,
+        .enter_switch = syscall_enter_switch_windows_xpsp2_x86,
+        .return_switch = syscall_return_switch_windows_xpsp2_x86,
         .get_return_val = get_return_val_x86,
         .calc_retaddr = calc_retaddr_windows_x86,
         .get_32 = get_32_windows_x86,
@@ -303,8 +303,8 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_s64 = get_return_s64_generic,
     },
     {
-        .enter_switch = syscall_enter_switch_windowsxp_sp3_x86,
-        .return_switch = syscall_return_switch_windowsxp_sp3_x86,
+        .enter_switch = syscall_enter_switch_windows_xpsp3_x86,
+        .return_switch = syscall_return_switch_windows_xpsp3_x86,
         .get_return_val = get_return_val_x86,
         .calc_retaddr = calc_retaddr_windows_x86,
         .get_32 = get_32_windows_x86,
@@ -317,8 +317,8 @@ Profile profiles[PROFILE_LAST] = {
         .get_return_s64 = get_return_s64_generic,
     },
     {
-        .enter_switch = syscall_enter_switch_windows7_x86,
-        .return_switch = syscall_return_switch_windows7_x86,
+        .enter_switch = syscall_enter_switch_windows_7_x86,
+        .return_switch = syscall_return_switch_windows_7_x86,
         .get_return_val = get_return_val_x86,
         .calc_retaddr = calc_retaddr_windows_x86,
         .get_32 = get_32_windows_x86,
@@ -532,15 +532,15 @@ bool init_plugin(void *self) {
 #if defined(TARGET_I386)
         if (0 == strcmp(panda_os_variant, "xpsp2")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows sp2 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP2_X86];
+            syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP2_X86];
         }
         if (0 == strcmp(panda_os_variant, "xpsp3")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows sp3 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWSXP_SP3_X86];
+            syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
         }
         if (0 == strcmp(panda_os_variant, "7")) {
             std::cerr << PLUGIN_DEBUG "using profile for windows 7 x86 32-bit" << std::endl;
-            syscalls_profile = &profiles[PROFILE_WINDOWS7_X86];
+            syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
         }
 #endif
     }

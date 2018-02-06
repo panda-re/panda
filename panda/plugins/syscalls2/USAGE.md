@@ -13,7 +13,7 @@ FIXME: We should include a list of steps for adding support for a new OS to `sys
 Arguments
 ---------
 
-* `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windowsxp_sp2_x86`, `windowsxp_sp3_x86`, and `windows7_x86`.
+* `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windows_xpsp2_x86`, `windows_xpsp3_x86`, and `windows_7_x86`.
 * `load-info`: boolean, defaults to `false`. Enables loading of system call information for the selected OS profile. This allows more generic processing of system call events, without having to implement individual hooks.
 
 Dependencies
@@ -129,7 +129,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-    -os windows-32-7 -panda syscalls2:profile=windows7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2:profile=windows_7_x86 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.

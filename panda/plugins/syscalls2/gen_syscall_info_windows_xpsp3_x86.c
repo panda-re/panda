@@ -2490,4 +2490,4 @@ syscall_info_t __syscall_info_a[] = {
 	
 };
 
-/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */
+/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=c: */
