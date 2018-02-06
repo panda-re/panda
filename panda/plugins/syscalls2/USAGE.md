@@ -13,7 +13,8 @@ FIXME: We should include a list of steps for adding support for a new OS to `sys
 Arguments
 ---------
 
-* `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windowsxp_sp2_x86`, `windowsxp_sp3_x86`, and `windows7_x86`.
+* `profile`: string, defaults to "linux\_x86". The guest OS profile to use. This determines how system calls (e.g. the `sysenter` instruction) will actually be interpreted. Available options are: `linux_x86`, `linux_arm`, `windows_xpsp2_x86`, `windows_xpsp3_x86`, and `windows_7_x86`.
+* `load-info`: boolean, defaults to `false`. Enables loading of system call information for the selected OS profile. This allows more generic processing of system call events, without having to implement individual hooks.
 
 Dependencies
 ------------
@@ -23,6 +24,7 @@ None.
 APIs and Callbacks
 ------------------
 
+### Callbacks
 The `syscalls2` plugin defines one callback for each system call in each operating system (far too many to list here). To see the prototypes for each one, you can look at the file `gen_syscalls_ext_typedefs.h`.
 
 Each callback is named `on_${SYSCALLNAME}_enter` for calls and `on_${SYSCALLNAME}_return` for returns. The parameters are the CPU state pointer, program counter, and then the arguments to the system call.
@@ -69,6 +71,20 @@ typedef void (*on_all_sys_return_t)(CPUState *env, target_ulong pc, target_ulong
 
 Description: Called whenever any system call returns in the guest. The call number is available in the `callno` parameter.
 
+### API calls
+Finally the plugin provides one API call:
+
+Name: **get_syscall_info**
+
+Signature:
+
+```C
+syscall_info_t *get_syscall_info(uint32_t callno)
+```
+
+Description: Returns a pointer to a `syscall_info_t` struct containing information about the specified system call. Available only when the `load-info` flag of the plugin has been turned on.
+
+
 Example
 -------
 
@@ -113,7 +129,7 @@ And then invoke it as:
 
 ```sh
 $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo \
-    -os windows-32-7 -panda syscalls2:profile=windows7_x86 -panda filereadmon
+    -os windows-32-7 -panda syscalls2:profile=windows_7_x86 -panda filereadmon
 ```
 
 If you'd like more examples, you can have a look at `win7proc` and `file_taint`, which both use `syscalls2` extensively.

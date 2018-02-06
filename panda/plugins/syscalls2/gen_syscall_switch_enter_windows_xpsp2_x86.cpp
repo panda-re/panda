@@ -10,14 +10,14 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
+void syscall_enter_switch_windows_xpsp2_x86(CPUState *cpu, target_ulong pc) {
 #ifdef TARGET_I386
-    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    ReturnPoint rp;
-    rp.ordinal = env->regs[R_EAX];
-    rp.proc_id = panda_current_asid(cpu);
-    rp.retaddr = calc_retaddr(cpu, pc);
-    switch(env->regs[R_EAX]) {
+	CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+	ReturnPoint rp;
+	rp.ordinal = env->regs[R_EAX];
+	rp.proc_id = panda_current_asid(cpu);
+	rp.retaddr = calc_retaddr(cpu, pc);
+	switch(env->regs[R_EAX]) {
 		// 0 NTSTATUS NtAcceptConnectPort ['PHANDLE PortHandle', ' PVOID PortContext', ' PPORT_MESSAGE ConnectionRequest', ' BOOLEAN AcceptConnection', ' PPORT_VIEW ServerView', ' PREMOTE_PORT_VIEW ClientView']
 		case 0: {
 			uint32_t arg0 = get_32(cpu, 0);
@@ -279,15 +279,15 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtAddAtom_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 9 NTSTATUS NtEnumerateBootEntries ['PVOID Buffer', ' PULONG BufferLength']
+		// 9 NTSTATUS NtAddBootEntry ['PBOOT_ENTRY BootEntry', ' PULONG Id']
 		case 9: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
-			if (PPP_CHECK_CB(on_NtEnumerateBootEntries_return)) {
+			if (PPP_CHECK_CB(on_NtAddBootEntry_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
 				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
 			}
-			PPP_RUN_CB(on_NtEnumerateBootEntries_enter, cpu, pc, arg0, arg1);
+			PPP_RUN_CB(on_NtAddBootEntry_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
 		// 10 NTSTATUS NtAdjustGroupsToken ['HANDLE TokenHandle', ' BOOLEAN ResetToDefault', ' PTOKEN_GROUPS NewState', ' ULONG BufferLength', ' PTOKEN_GROUPS PreviousState', ' PULONG ReturnLength']
@@ -437,15 +437,6 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 				memcpy(rp.params[2], &arg2, sizeof(uint32_t));
 			}
 			PPP_RUN_CB(on_NtCallbackReturn_enter, cpu, pc, arg0, arg1, arg2);
-		}; break;
-		
-		// 21 NTSTATUS NtModifyBootEntry ['PBOOT_ENTRY BootEntry']
-		case 21: {
-			uint32_t arg0 = get_32(cpu, 0);
-			if (PPP_CHECK_CB(on_NtModifyBootEntry_return)) {
-				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
-			}
-			PPP_RUN_CB(on_NtModifyBootEntry_enter, cpu, pc, arg0);
 		}; break;
 		
 		// 22 NTSTATUS NtCancelIoFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock']
@@ -1089,8 +1080,17 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeleteAtom_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 61 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
+		// 61 NTSTATUS NtDeleteBootEntry ['ULONG Id']
 		case 61: {
+			uint32_t arg0 = get_32(cpu, 0);
+			if (PPP_CHECK_CB(on_NtDeleteBootEntry_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtDeleteBootEntry_enter, cpu, pc, arg0);
+		}; break;
+		
+		// 62 NTSTATUS NtDeleteFile ['POBJECT_ATTRIBUTES ObjectAttributes']
+		case 62: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtDeleteFile_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1098,8 +1098,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeleteFile_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 62 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
-		case 62: {
+		// 63 NTSTATUS NtDeleteKey ['HANDLE KeyHandle']
+		case 63: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtDeleteKey_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1107,8 +1107,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeleteKey_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 63 NTSTATUS NtDeleteObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' BOOLEAN GenerateOnClose']
-		case 63: {
+		// 64 NTSTATUS NtDeleteObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' BOOLEAN GenerateOnClose']
+		case 64: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1120,8 +1120,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeleteObjectAuditAlarm_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 64 NTSTATUS NtDeleteValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName']
-		case 64: {
+		// 65 NTSTATUS NtDeleteValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName']
+		case 65: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtDeleteValueKey_return)) {
@@ -1131,8 +1131,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeleteValueKey_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 65 NTSTATUS NtDeviceIoControlFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG IoControlCode', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
-		case 65: {
+		// 66 NTSTATUS NtDeviceIoControlFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG IoControlCode', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
+		case 66: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1158,8 +1158,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDeviceIoControlFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 		}; break;
 		
-		// 66 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
-		case 66: {
+		// 67 NTSTATUS NtDisplayString ['PUNICODE_STRING String']
+		case 67: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtDisplayString_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1167,8 +1167,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDisplayString_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 67 NTSTATUS NtDuplicateObject ['HANDLE SourceProcessHandle', ' HANDLE SourceHandle', ' HANDLE TargetProcessHandle', ' PHANDLE TargetHandle', ' ACCESS_MASK DesiredAccess', ' ULONG HandleAttributes', ' ULONG Options']
-		case 67: {
+		// 68 NTSTATUS NtDuplicateObject ['HANDLE SourceProcessHandle', ' HANDLE SourceHandle', ' HANDLE TargetProcessHandle', ' PHANDLE TargetHandle', ' ACCESS_MASK DesiredAccess', ' ULONG HandleAttributes', ' ULONG Options']
+		case 68: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1188,8 +1188,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDuplicateObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6);
 		}; break;
 		
-		// 68 NTSTATUS NtDuplicateToken ['HANDLE ExistingTokenHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' BOOLEAN EffectiveOnly', ' TOKEN_TYPE TokenType', ' PHANDLE NewTokenHandle']
-		case 68: {
+		// 69 NTSTATUS NtDuplicateToken ['HANDLE ExistingTokenHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' BOOLEAN EffectiveOnly', ' TOKEN_TYPE TokenType', ' PHANDLE NewTokenHandle']
+		case 69: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1207,8 +1207,19 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtDuplicateToken_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 69 NTSTATUS NtEnumerateKey ['HANDLE KeyHandle', ' ULONG Index', ' KEY_INFORMATION_CLASS KeyInformationClass', ' PVOID KeyInformation', ' ULONG Length', ' PULONG ResultLength']
-		case 69: {
+		// 70 NTSTATUS NtEnumerateBootEntries ['PVOID Buffer', ' PULONG BufferLength']
+		case 70: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			if (PPP_CHECK_CB(on_NtEnumerateBootEntries_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtEnumerateBootEntries_enter, cpu, pc, arg0, arg1);
+		}; break;
+		
+		// 71 NTSTATUS NtEnumerateKey ['HANDLE KeyHandle', ' ULONG Index', ' KEY_INFORMATION_CLASS KeyInformationClass', ' PVOID KeyInformation', ' ULONG Length', ' PULONG ResultLength']
+		case 71: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1226,8 +1237,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtEnumerateKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 70 NTSTATUS NtEnumerateSystemEnvironmentValuesEx ['ULONG InformationClass', ' PVOID Buffer', ' PULONG BufferLength']
-		case 70: {
+		// 72 NTSTATUS NtEnumerateSystemEnvironmentValuesEx ['ULONG InformationClass', ' PVOID Buffer', ' PULONG BufferLength']
+		case 72: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1239,8 +1250,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtEnumerateSystemEnvironmentValuesEx_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 71 NTSTATUS NtEnumerateValueKey ['HANDLE KeyHandle', ' ULONG Index', ' KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', ' PVOID KeyValueInformation', ' ULONG Length', ' PULONG ResultLength']
-		case 71: {
+		// 73 NTSTATUS NtEnumerateValueKey ['HANDLE KeyHandle', ' ULONG Index', ' KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', ' PVOID KeyValueInformation', ' ULONG Length', ' PULONG ResultLength']
+		case 73: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1258,8 +1269,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtEnumerateValueKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 72 NTSTATUS NtExtendSection ['HANDLE SectionHandle', ' PLARGE_INTEGER NewSectionSize']
-		case 72: {
+		// 74 NTSTATUS NtExtendSection ['HANDLE SectionHandle', ' PLARGE_INTEGER NewSectionSize']
+		case 74: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtExtendSection_return)) {
@@ -1269,8 +1280,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtExtendSection_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 73 NTSTATUS NtFilterToken ['HANDLE ExistingTokenHandle', ' ULONG Flags', ' PTOKEN_GROUPS SidsToDisable', ' PTOKEN_PRIVILEGES PrivilegesToDelete', ' PTOKEN_GROUPS RestrictedSids', ' PHANDLE NewTokenHandle']
-		case 73: {
+		// 75 NTSTATUS NtFilterToken ['HANDLE ExistingTokenHandle', ' ULONG Flags', ' PTOKEN_GROUPS SidsToDisable', ' PTOKEN_PRIVILEGES PrivilegesToDelete', ' PTOKEN_GROUPS RestrictedSids', ' PHANDLE NewTokenHandle']
+		case 75: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1288,8 +1299,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFilterToken_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 74 NTSTATUS NtFindAtom ['PWSTR AtomName', ' ULONG Length', ' PRTL_ATOM Atom']
-		case 74: {
+		// 76 NTSTATUS NtFindAtom ['PWSTR AtomName', ' ULONG Length', ' PRTL_ATOM Atom']
+		case 76: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1301,8 +1312,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFindAtom_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 75 NTSTATUS NtFlushBuffersFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock']
-		case 75: {
+		// 77 NTSTATUS NtFlushBuffersFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock']
+		case 77: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtFlushBuffersFile_return)) {
@@ -1312,8 +1323,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFlushBuffersFile_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 76 NTSTATUS NtFlushInstructionCache ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' SIZE_T Length']
-		case 76: {
+		// 78 NTSTATUS NtFlushInstructionCache ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' SIZE_T Length']
+		case 78: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1325,8 +1336,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFlushInstructionCache_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 77 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
-		case 77: {
+		// 79 NTSTATUS NtFlushKey ['HANDLE KeyHandle']
+		case 79: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtFlushKey_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1334,8 +1345,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFlushKey_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 78 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' PIO_STATUS_BLOCK IoStatus']
-		case 78: {
+		// 80 NTSTATUS NtFlushVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' PIO_STATUS_BLOCK IoStatus']
+		case 80: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1349,15 +1360,15 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFlushVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 79 NTSTATUS NtFlushWriteBuffer ['']
-		case 79: {
+		// 81 NTSTATUS NtFlushWriteBuffer ['']
+		case 81: {
 			if (PPP_CHECK_CB(on_NtFlushWriteBuffer_return)) {
 			}
 			PPP_RUN_CB(on_NtFlushWriteBuffer_enter, cpu, pc);
 		}; break;
 		
-		// 80 NTSTATUS NtFreeUserPhysicalPages ['HANDLE ProcessHandle', ' PULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
-		case 80: {
+		// 82 NTSTATUS NtFreeUserPhysicalPages ['HANDLE ProcessHandle', ' PULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
+		case 82: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1369,8 +1380,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFreeUserPhysicalPages_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 81 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG FreeType']
-		case 81: {
+		// 83 NTSTATUS NtFreeVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG FreeType']
+		case 83: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1384,8 +1395,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFreeVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 82 NTSTATUS NtFsControlFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG IoControlCode', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
-		case 82: {
+		// 84 NTSTATUS NtFsControlFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG IoControlCode', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
+		case 84: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1411,8 +1422,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtFsControlFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 		}; break;
 		
-		// 83 NTSTATUS NtGetContextThread ['HANDLE ThreadHandle', ' PCONTEXT ThreadContext']
-		case 83: {
+		// 85 NTSTATUS NtGetContextThread ['HANDLE ThreadHandle', ' PCONTEXT ThreadContext']
+		case 85: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtGetContextThread_return)) {
@@ -1422,8 +1433,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtGetContextThread_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 84 NTSTATUS NtGetDevicePowerState ['HANDLE Device', ' DEVICE_POWER_STATE *State']
-		case 84: {
+		// 86 NTSTATUS NtGetDevicePowerState ['HANDLE Device', ' DEVICE_POWER_STATE *State']
+		case 86: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtGetDevicePowerState_return)) {
@@ -1433,8 +1444,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtGetDevicePowerState_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 85 NTSTATUS NtGetPlugPlayEvent ['HANDLE EventHandle', ' PVOID Context', ' PPLUGPLAY_EVENT_BLOCK EventBlock', ' ULONG EventBufferSize']
-		case 85: {
+		// 87 NTSTATUS NtGetPlugPlayEvent ['HANDLE EventHandle', ' PVOID Context', ' PPLUGPLAY_EVENT_BLOCK EventBlock', ' ULONG EventBufferSize']
+		case 87: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1448,8 +1459,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtGetPlugPlayEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 86 NTSTATUS NtGetWriteWatch ['HANDLE ProcessHandle', ' ULONG Flags', ' PVOID BaseAddress', ' SIZE_T RegionSize', ' PVOID *UserAddressArray', ' PULONG_PTR EntriesInUserAddressArray', ' PULONG Granularity']
-		case 86: {
+		// 88 NTSTATUS NtGetWriteWatch ['HANDLE ProcessHandle', ' ULONG Flags', ' PVOID BaseAddress', ' SIZE_T RegionSize', ' PVOID *UserAddressArray', ' PULONG_PTR EntriesInUserAddressArray', ' PULONG Granularity']
+		case 88: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1469,8 +1480,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtGetWriteWatch_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6);
 		}; break;
 		
-		// 87 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
-		case 87: {
+		// 89 NTSTATUS NtImpersonateAnonymousToken ['HANDLE ThreadHandle']
+		case 89: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtImpersonateAnonymousToken_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1478,8 +1489,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtImpersonateAnonymousToken_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 88 NTSTATUS NtImpersonateClientOfPort ['HANDLE PortHandle', ' PPORT_MESSAGE Message']
-		case 88: {
+		// 90 NTSTATUS NtImpersonateClientOfPort ['HANDLE PortHandle', ' PPORT_MESSAGE Message']
+		case 90: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtImpersonateClientOfPort_return)) {
@@ -1489,8 +1500,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtImpersonateClientOfPort_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 89 NTSTATUS NtImpersonateThread ['HANDLE ServerThreadHandle', ' HANDLE ClientThreadHandle', ' PSECURITY_QUALITY_OF_SERVICE SecurityQos']
-		case 89: {
+		// 91 NTSTATUS NtImpersonateThread ['HANDLE ServerThreadHandle', ' HANDLE ClientThreadHandle', ' PSECURITY_QUALITY_OF_SERVICE SecurityQos']
+		case 91: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1502,8 +1513,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtImpersonateThread_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 90 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
-		case 90: {
+		// 92 NTSTATUS NtInitializeRegistry ['USHORT BootCondition']
+		case 92: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtInitializeRegistry_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1511,8 +1522,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtInitializeRegistry_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 91 NTSTATUS NtInitiatePowerAction ['POWER_ACTION SystemAction', ' SYSTEM_POWER_STATE MinSystemState', ' ULONG Flags', ' BOOLEAN Asynchronous']
-		case 91: {
+		// 93 NTSTATUS NtInitiatePowerAction ['POWER_ACTION SystemAction', ' SYSTEM_POWER_STATE MinSystemState', ' ULONG Flags', ' BOOLEAN Asynchronous']
+		case 93: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1526,8 +1537,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtInitiatePowerAction_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 92 NTSTATUS NtIsProcessInJob ['HANDLE ProcessHandle', ' HANDLE JobHandle']
-		case 92: {
+		// 94 NTSTATUS NtIsProcessInJob ['HANDLE ProcessHandle', ' HANDLE JobHandle']
+		case 94: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtIsProcessInJob_return)) {
@@ -1537,15 +1548,15 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtIsProcessInJob_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 93 BOOLEAN NtIsSystemResumeAutomatic ['']
-		case 93: {
+		// 95 BOOLEAN NtIsSystemResumeAutomatic ['']
+		case 95: {
 			if (PPP_CHECK_CB(on_NtIsSystemResumeAutomatic_return)) {
 			}
 			PPP_RUN_CB(on_NtIsSystemResumeAutomatic_enter, cpu, pc);
 		}; break;
 		
-		// 94 NTSTATUS NtListenPort ['HANDLE PortHandle', ' PPORT_MESSAGE ConnectionRequest']
-		case 94: {
+		// 96 NTSTATUS NtListenPort ['HANDLE PortHandle', ' PPORT_MESSAGE ConnectionRequest']
+		case 96: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtListenPort_return)) {
@@ -1555,8 +1566,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtListenPort_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 95 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
-		case 95: {
+		// 97 NTSTATUS NtLoadDriver ['PUNICODE_STRING DriverServiceName']
+		case 97: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtLoadDriver_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1564,8 +1575,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLoadDriver_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 96 NTSTATUS NtLoadKey ['POBJECT_ATTRIBUTES TargetKey', ' POBJECT_ATTRIBUTES SourceFile']
-		case 96: {
+		// 98 NTSTATUS NtLoadKey ['POBJECT_ATTRIBUTES TargetKey', ' POBJECT_ATTRIBUTES SourceFile']
+		case 98: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtLoadKey_return)) {
@@ -1575,8 +1586,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLoadKey_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 97 NTSTATUS NtLoadKey2 ['POBJECT_ATTRIBUTES TargetKey', ' POBJECT_ATTRIBUTES SourceFile', ' ULONG Flags']
-		case 97: {
+		// 99 NTSTATUS NtLoadKey2 ['POBJECT_ATTRIBUTES TargetKey', ' POBJECT_ATTRIBUTES SourceFile', ' ULONG Flags']
+		case 99: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1588,8 +1599,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLoadKey2_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 98 NTSTATUS NtLockFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER ByteOffset', ' PLARGE_INTEGER Length', ' ULONG Key', ' BOOLEAN FailImmediately', ' BOOLEAN ExclusiveLock']
-		case 98: {
+		// 100 NTSTATUS NtLockFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER ByteOffset', ' PLARGE_INTEGER Length', ' ULONG Key', ' BOOLEAN FailImmediately', ' BOOLEAN ExclusiveLock']
+		case 100: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1615,8 +1626,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLockFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 		}; break;
 		
-		// 99 NTSTATUS NtLockProductActivationKeys ['ULONG *pPrivateVer', ' ULONG *pSafeMode']
-		case 99: {
+		// 101 NTSTATUS NtLockProductActivationKeys ['ULONG *pPrivateVer', ' ULONG *pSafeMode']
+		case 101: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtLockProductActivationKeys_return)) {
@@ -1626,8 +1637,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLockProductActivationKeys_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 100 NTSTATUS NtLockRegistryKey ['HANDLE KeyHandle']
-		case 100: {
+		// 102 NTSTATUS NtLockRegistryKey ['HANDLE KeyHandle']
+		case 102: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtLockRegistryKey_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1635,8 +1646,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLockRegistryKey_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 101 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
-		case 101: {
+		// 103 NTSTATUS NtLockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
+		case 103: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1650,8 +1661,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtLockVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 102 NTSTATUS NtMakePermanentObject ['HANDLE Handle']
-		case 102: {
+		// 104 NTSTATUS NtMakePermanentObject ['HANDLE Handle']
+		case 104: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtMakePermanentObject_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1659,8 +1670,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtMakePermanentObject_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 103 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
-		case 103: {
+		// 105 NTSTATUS NtMakeTemporaryObject ['HANDLE Handle']
+		case 105: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtMakeTemporaryObject_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -1668,8 +1679,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtMakeTemporaryObject_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 104 NTSTATUS NtMapUserPhysicalPages ['PVOID VirtualAddress', ' ULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
-		case 104: {
+		// 106 NTSTATUS NtMapUserPhysicalPages ['PVOID VirtualAddress', ' ULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
+		case 106: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1681,8 +1692,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtMapUserPhysicalPages_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 105 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', ' ULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
-		case 105: {
+		// 107 NTSTATUS NtMapUserPhysicalPagesScatter ['PVOID *VirtualAddresses', ' ULONG_PTR NumberOfPages', ' PULONG_PTR UserPfnArray']
+		case 107: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1694,8 +1705,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtMapUserPhysicalPagesScatter_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 106 NTSTATUS NtMapViewOfSection ['HANDLE SectionHandle', ' HANDLE ProcessHandle', ' PVOID *BaseAddress', ' ULONG_PTR ZeroBits', ' SIZE_T CommitSize', ' PLARGE_INTEGER SectionOffset', ' PSIZE_T ViewSize', ' SECTION_INHERIT InheritDisposition', ' ULONG AllocationType', ' WIN32_PROTECTION_MASK Win32Protect']
-		case 106: {
+		// 108 NTSTATUS NtMapViewOfSection ['HANDLE SectionHandle', ' HANDLE ProcessHandle', ' PVOID *BaseAddress', ' ULONG_PTR ZeroBits', ' SIZE_T CommitSize', ' PLARGE_INTEGER SectionOffset', ' PSIZE_T ViewSize', ' SECTION_INHERIT InheritDisposition', ' ULONG AllocationType', ' WIN32_PROTECTION_MASK Win32Protect']
+		case 108: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1721,8 +1732,17 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtMapViewOfSection_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 		}; break;
 		
-		// 107 NTSTATUS NtNotifyChangeDirectoryFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' ULONG CompletionFilter', ' BOOLEAN WatchTree']
-		case 107: {
+		// 109 NTSTATUS NtModifyBootEntry ['PBOOT_ENTRY BootEntry']
+		case 109: {
+			uint32_t arg0 = get_32(cpu, 0);
+			if (PPP_CHECK_CB(on_NtModifyBootEntry_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtModifyBootEntry_enter, cpu, pc, arg0);
+		}; break;
+		
+		// 110 NTSTATUS NtNotifyChangeDirectoryFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' ULONG CompletionFilter', ' BOOLEAN WatchTree']
+		case 110: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1746,8 +1766,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtNotifyChangeDirectoryFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 108 NTSTATUS NtNotifyChangeKey ['HANDLE KeyHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG CompletionFilter', ' BOOLEAN WatchTree', ' PVOID Buffer', ' ULONG BufferSize', ' BOOLEAN Asynchronous']
-		case 108: {
+		// 111 NTSTATUS NtNotifyChangeKey ['HANDLE KeyHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG CompletionFilter', ' BOOLEAN WatchTree', ' PVOID Buffer', ' ULONG BufferSize', ' BOOLEAN Asynchronous']
+		case 111: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1773,8 +1793,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtNotifyChangeKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 		}; break;
 		
-		// 109 NTSTATUS NtNotifyChangeMultipleKeys ['HANDLE MasterKeyHandle', ' ULONG Count', ' OBJECT_ATTRIBUTES SlaveObjects[]', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG CompletionFilter', ' BOOLEAN WatchTree', ' PVOID Buffer', ' ULONG BufferSize', ' BOOLEAN Asynchronous']
-		case 109: {
+		// 112 NTSTATUS NtNotifyChangeMultipleKeys ['HANDLE MasterKeyHandle', ' ULONG Count', ' OBJECT_ATTRIBUTES SlaveObjects[]', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG CompletionFilter', ' BOOLEAN WatchTree', ' PVOID Buffer', ' ULONG BufferSize', ' BOOLEAN Asynchronous']
+		case 112: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1804,8 +1824,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtNotifyChangeMultipleKeys_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 		}; break;
 		
-		// 110 NTSTATUS NtOpenDirectoryObject ['PHANDLE DirectoryHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 110: {
+		// 113 NTSTATUS NtOpenDirectoryObject ['PHANDLE DirectoryHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 113: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1817,8 +1837,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenDirectoryObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 111 NTSTATUS NtOpenEvent ['PHANDLE EventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 111: {
+		// 114 NTSTATUS NtOpenEvent ['PHANDLE EventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 114: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1830,8 +1850,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenEvent_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 112 NTSTATUS NtOpenEventPair ['PHANDLE EventPairHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 112: {
+		// 115 NTSTATUS NtOpenEventPair ['PHANDLE EventPairHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 115: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1843,8 +1863,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenEventPair_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 113 NTSTATUS NtOpenFile ['PHANDLE FileHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG ShareAccess', ' ULONG OpenOptions']
-		case 113: {
+		// 116 NTSTATUS NtOpenFile ['PHANDLE FileHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PIO_STATUS_BLOCK IoStatusBlock', ' ULONG ShareAccess', ' ULONG OpenOptions']
+		case 116: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1862,8 +1882,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 114 NTSTATUS NtOpenIoCompletion ['PHANDLE IoCompletionHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 114: {
+		// 117 NTSTATUS NtOpenIoCompletion ['PHANDLE IoCompletionHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 117: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1875,8 +1895,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenIoCompletion_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 115 NTSTATUS NtOpenJobObject ['PHANDLE JobHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 115: {
+		// 118 NTSTATUS NtOpenJobObject ['PHANDLE JobHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 118: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1888,8 +1908,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenJobObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 116 NTSTATUS NtOpenKey ['PHANDLE KeyHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 116: {
+		// 119 NTSTATUS NtOpenKey ['PHANDLE KeyHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 119: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1901,8 +1921,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenKey_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 117 NTSTATUS NtOpenMutant ['PHANDLE MutantHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 117: {
+		// 120 NTSTATUS NtOpenMutant ['PHANDLE MutantHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 120: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1914,8 +1934,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenMutant_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 118 NTSTATUS NtOpenObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' PUNICODE_STRING ObjectTypeName', ' PUNICODE_STRING ObjectName', ' PSECURITY_DESCRIPTOR SecurityDescriptor', ' HANDLE ClientToken', ' ACCESS_MASK DesiredAccess', ' ACCESS_MASK GrantedAccess', ' PPRIVILEGE_SET Privileges', ' BOOLEAN ObjectCreation', ' BOOLEAN AccessGranted', ' PBOOLEAN GenerateOnClose']
-		case 118: {
+		// 121 NTSTATUS NtOpenObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' PUNICODE_STRING ObjectTypeName', ' PUNICODE_STRING ObjectName', ' PSECURITY_DESCRIPTOR SecurityDescriptor', ' HANDLE ClientToken', ' ACCESS_MASK DesiredAccess', ' ACCESS_MASK GrantedAccess', ' PPRIVILEGE_SET Privileges', ' BOOLEAN ObjectCreation', ' BOOLEAN AccessGranted', ' PBOOLEAN GenerateOnClose']
+		case 121: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1945,8 +1965,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenObjectAuditAlarm_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 		}; break;
 		
-		// 119 NTSTATUS NtOpenProcess ['PHANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PCLIENT_ID ClientId']
-		case 119: {
+		// 122 NTSTATUS NtOpenProcess ['PHANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PCLIENT_ID ClientId']
+		case 122: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1960,8 +1980,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenProcess_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 120 NTSTATUS NtOpenProcessToken ['HANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' PHANDLE TokenHandle']
-		case 120: {
+		// 123 NTSTATUS NtOpenProcessToken ['HANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' PHANDLE TokenHandle']
+		case 123: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1973,8 +1993,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenProcessToken_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 121 NTSTATUS NtOpenProcessTokenEx ['HANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' ULONG HandleAttributes', ' PHANDLE TokenHandle']
-		case 121: {
+		// 124 NTSTATUS NtOpenProcessTokenEx ['HANDLE ProcessHandle', ' ACCESS_MASK DesiredAccess', ' ULONG HandleAttributes', ' PHANDLE TokenHandle']
+		case 124: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -1988,8 +2008,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenProcessTokenEx_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 122 NTSTATUS NtOpenSection ['PHANDLE SectionHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 122: {
+		// 125 NTSTATUS NtOpenSection ['PHANDLE SectionHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 125: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2001,8 +2021,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenSection_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 123 NTSTATUS NtOpenSemaphore ['PHANDLE SemaphoreHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 123: {
+		// 126 NTSTATUS NtOpenSemaphore ['PHANDLE SemaphoreHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 126: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2014,8 +2034,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenSemaphore_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 124 NTSTATUS NtOpenSymbolicLinkObject ['PHANDLE LinkHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 124: {
+		// 127 NTSTATUS NtOpenSymbolicLinkObject ['PHANDLE LinkHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 127: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2027,8 +2047,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenSymbolicLinkObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 125 NTSTATUS NtOpenThread ['PHANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PCLIENT_ID ClientId']
-		case 125: {
+		// 128 NTSTATUS NtOpenThread ['PHANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' PCLIENT_ID ClientId']
+		case 128: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2042,8 +2062,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenThread_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 126 NTSTATUS NtOpenThreadToken ['HANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' BOOLEAN OpenAsSelf', ' PHANDLE TokenHandle']
-		case 126: {
+		// 129 NTSTATUS NtOpenThreadToken ['HANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' BOOLEAN OpenAsSelf', ' PHANDLE TokenHandle']
+		case 129: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2057,8 +2077,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenThreadToken_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 127 NTSTATUS NtOpenThreadTokenEx ['HANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' BOOLEAN OpenAsSelf', ' ULONG HandleAttributes', ' PHANDLE TokenHandle']
-		case 127: {
+		// 130 NTSTATUS NtOpenThreadTokenEx ['HANDLE ThreadHandle', ' ACCESS_MASK DesiredAccess', ' BOOLEAN OpenAsSelf', ' ULONG HandleAttributes', ' PHANDLE TokenHandle']
+		case 130: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2074,8 +2094,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenThreadTokenEx_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 128 NTSTATUS NtOpenTimer ['PHANDLE TimerHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 128: {
+		// 131 NTSTATUS NtOpenTimer ['PHANDLE TimerHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 131: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2087,8 +2107,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenTimer_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 129 NTSTATUS NtPlugPlayControl ['PLUGPLAY_CONTROL_CLASS PnPControlClass', ' PVOID PnPControlData', ' ULONG PnPControlDataLength']
-		case 129: {
+		// 132 NTSTATUS NtPlugPlayControl ['PLUGPLAY_CONTROL_CLASS PnPControlClass', ' PVOID PnPControlData', ' ULONG PnPControlDataLength']
+		case 132: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2100,8 +2120,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPlugPlayControl_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 130 NTSTATUS NtPowerInformation ['POWER_INFORMATION_LEVEL InformationLevel', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
-		case 130: {
+		// 133 NTSTATUS NtPowerInformation ['POWER_INFORMATION_LEVEL InformationLevel', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength']
+		case 133: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2117,8 +2137,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPowerInformation_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 131 NTSTATUS NtPrivilegeCheck ['HANDLE ClientToken', ' PPRIVILEGE_SET RequiredPrivileges', ' PBOOLEAN Result']
-		case 131: {
+		// 134 NTSTATUS NtPrivilegeCheck ['HANDLE ClientToken', ' PPRIVILEGE_SET RequiredPrivileges', ' PBOOLEAN Result']
+		case 134: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2130,8 +2150,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPrivilegeCheck_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 132 NTSTATUS NtPrivilegeObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' HANDLE ClientToken', ' ACCESS_MASK DesiredAccess', ' PPRIVILEGE_SET Privileges', ' BOOLEAN AccessGranted']
-		case 132: {
+		// 135 NTSTATUS NtPrivilegeObjectAuditAlarm ['PUNICODE_STRING SubsystemName', ' PVOID HandleId', ' HANDLE ClientToken', ' ACCESS_MASK DesiredAccess', ' PPRIVILEGE_SET Privileges', ' BOOLEAN AccessGranted']
+		case 135: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2149,8 +2169,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPrivilegeObjectAuditAlarm_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 133 NTSTATUS NtPrivilegedServiceAuditAlarm ['PUNICODE_STRING SubsystemName', ' PUNICODE_STRING ServiceName', ' HANDLE ClientToken', ' PPRIVILEGE_SET Privileges', ' BOOLEAN AccessGranted']
-		case 133: {
+		// 136 NTSTATUS NtPrivilegedServiceAuditAlarm ['PUNICODE_STRING SubsystemName', ' PUNICODE_STRING ServiceName', ' HANDLE ClientToken', ' PPRIVILEGE_SET Privileges', ' BOOLEAN AccessGranted']
+		case 136: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2166,8 +2186,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPrivilegedServiceAuditAlarm_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 134 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' WIN32_PROTECTION_MASK NewProtectWin32', ' PULONG OldProtect']
-		case 134: {
+		// 137 NTSTATUS NtProtectVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' WIN32_PROTECTION_MASK NewProtectWin32', ' PULONG OldProtect']
+		case 137: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2183,8 +2203,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtProtectVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 135 NTSTATUS NtPulseEvent ['HANDLE EventHandle', ' PLONG PreviousState']
-		case 135: {
+		// 138 NTSTATUS NtPulseEvent ['HANDLE EventHandle', ' PLONG PreviousState']
+		case 138: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtPulseEvent_return)) {
@@ -2194,8 +2214,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtPulseEvent_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 136 NTSTATUS NtQueryAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', ' PFILE_BASIC_INFORMATION FileInformation']
-		case 136: {
+		// 139 NTSTATUS NtQueryAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', ' PFILE_BASIC_INFORMATION FileInformation']
+		case 139: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryAttributesFile_return)) {
@@ -2205,8 +2225,30 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryAttributesFile_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 137 NTSTATUS NtQueryDebugFilterState ['ULONG ComponentId', ' ULONG Level']
-		case 137: {
+		// 140 NTSTATUS NtQueryBootEntryOrder ['PULONG Ids', ' PULONG Count']
+		case 140: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			if (PPP_CHECK_CB(on_NtQueryBootEntryOrder_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtQueryBootEntryOrder_enter, cpu, pc, arg0, arg1);
+		}; break;
+		
+		// 141 NTSTATUS NtQueryBootOptions ['PBOOT_OPTIONS BootOptions', ' PULONG BootOptionsLength']
+		case 141: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			if (PPP_CHECK_CB(on_NtQueryBootOptions_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtQueryBootOptions_enter, cpu, pc, arg0, arg1);
+		}; break;
+		
+		// 142 NTSTATUS NtQueryDebugFilterState ['ULONG ComponentId', ' ULONG Level']
+		case 142: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryDebugFilterState_return)) {
@@ -2216,8 +2258,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryDebugFilterState_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 138 NTSTATUS NtQueryDefaultLocale ['BOOLEAN UserProfile', ' PLCID DefaultLocaleId']
-		case 138: {
+		// 143 NTSTATUS NtQueryDefaultLocale ['BOOLEAN UserProfile', ' PLCID DefaultLocaleId']
+		case 143: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryDefaultLocale_return)) {
@@ -2227,8 +2269,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryDefaultLocale_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 139 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
-		case 139: {
+		// 144 NTSTATUS NtQueryDefaultUILanguage ['LANGID *DefaultUILanguageId']
+		case 144: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtQueryDefaultUILanguage_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -2236,8 +2278,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryDefaultUILanguage_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 140 NTSTATUS NtQueryDirectoryFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass', ' BOOLEAN ReturnSingleEntry', ' PUNICODE_STRING FileName', ' BOOLEAN RestartScan']
-		case 140: {
+		// 145 NTSTATUS NtQueryDirectoryFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass', ' BOOLEAN ReturnSingleEntry', ' PUNICODE_STRING FileName', ' BOOLEAN RestartScan']
+		case 145: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2265,8 +2307,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryDirectoryFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 		}; break;
 		
-		// 141 NTSTATUS NtQueryDirectoryObject ['HANDLE DirectoryHandle', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' BOOLEAN RestartScan', ' PULONG Context', ' PULONG ReturnLength']
-		case 141: {
+		// 146 NTSTATUS NtQueryDirectoryObject ['HANDLE DirectoryHandle', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' BOOLEAN RestartScan', ' PULONG Context', ' PULONG ReturnLength']
+		case 146: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2286,8 +2328,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryDirectoryObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6);
 		}; break;
 		
-		// 142 NTSTATUS NtQueryEaFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' PVOID EaList', ' ULONG EaListLength', ' PULONG EaIndex', ' BOOLEAN RestartScan']
-		case 142: {
+		// 147 NTSTATUS NtQueryEaFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' PVOID EaList', ' ULONG EaListLength', ' PULONG EaIndex', ' BOOLEAN RestartScan']
+		case 147: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2311,8 +2353,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryEaFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 143 NTSTATUS NtQueryEvent ['HANDLE EventHandle', ' EVENT_INFORMATION_CLASS EventInformationClass', ' PVOID EventInformation', ' ULONG EventInformationLength', ' PULONG ReturnLength']
-		case 143: {
+		// 148 NTSTATUS NtQueryEvent ['HANDLE EventHandle', ' EVENT_INFORMATION_CLASS EventInformationClass', ' PVOID EventInformation', ' ULONG EventInformationLength', ' PULONG ReturnLength']
+		case 148: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2328,8 +2370,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryEvent_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 144 NTSTATUS NtQueryFullAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', ' PFILE_NETWORK_OPEN_INFORMATION FileInformation']
-		case 144: {
+		// 149 NTSTATUS NtQueryFullAttributesFile ['POBJECT_ATTRIBUTES ObjectAttributes', ' PFILE_NETWORK_OPEN_INFORMATION FileInformation']
+		case 149: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryFullAttributesFile_return)) {
@@ -2339,8 +2381,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryFullAttributesFile_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 145 NTSTATUS NtQueryInformationAtom ['RTL_ATOM Atom', ' ATOM_INFORMATION_CLASS InformationClass', ' PVOID AtomInformation', ' ULONG AtomInformationLength', ' PULONG ReturnLength']
-		case 145: {
+		// 150 NTSTATUS NtQueryInformationAtom ['RTL_ATOM Atom', ' ATOM_INFORMATION_CLASS InformationClass', ' PVOID AtomInformation', ' ULONG AtomInformationLength', ' PULONG ReturnLength']
+		case 150: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2356,8 +2398,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationAtom_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 146 NTSTATUS NtQueryInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass']
-		case 146: {
+		// 151 NTSTATUS NtQueryInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass']
+		case 151: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2373,8 +2415,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 147 NTSTATUS NtQueryInformationJobObject ['HANDLE JobHandle', ' JOBOBJECTINFOCLASS JobObjectInformationClass', ' PVOID JobObjectInformation', ' ULONG JobObjectInformationLength', ' PULONG ReturnLength']
-		case 147: {
+		// 152 NTSTATUS NtQueryInformationJobObject ['HANDLE JobHandle', ' JOBOBJECTINFOCLASS JobObjectInformationClass', ' PVOID JobObjectInformation', ' ULONG JobObjectInformationLength', ' PULONG ReturnLength']
+		case 152: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2390,8 +2432,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationJobObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 148 NTSTATUS NtQueryInformationPort ['HANDLE PortHandle', ' PORT_INFORMATION_CLASS PortInformationClass', ' PVOID PortInformation', ' ULONG Length', ' PULONG ReturnLength']
-		case 148: {
+		// 153 NTSTATUS NtQueryInformationPort ['HANDLE PortHandle', ' PORT_INFORMATION_CLASS PortInformationClass', ' PVOID PortInformation', ' ULONG Length', ' PULONG ReturnLength']
+		case 153: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2407,8 +2449,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationPort_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 149 NTSTATUS NtQueryInformationProcess ['HANDLE ProcessHandle', ' PROCESSINFOCLASS ProcessInformationClass', ' PVOID ProcessInformation', ' ULONG ProcessInformationLength', ' PULONG ReturnLength']
-		case 149: {
+		// 154 NTSTATUS NtQueryInformationProcess ['HANDLE ProcessHandle', ' PROCESSINFOCLASS ProcessInformationClass', ' PVOID ProcessInformation', ' ULONG ProcessInformationLength', ' PULONG ReturnLength']
+		case 154: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2424,8 +2466,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationProcess_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 150 NTSTATUS NtQueryInformationThread ['HANDLE ThreadHandle', ' THREADINFOCLASS ThreadInformationClass', ' PVOID ThreadInformation', ' ULONG ThreadInformationLength', ' PULONG ReturnLength']
-		case 150: {
+		// 155 NTSTATUS NtQueryInformationThread ['HANDLE ThreadHandle', ' THREADINFOCLASS ThreadInformationClass', ' PVOID ThreadInformation', ' ULONG ThreadInformationLength', ' PULONG ReturnLength']
+		case 155: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2441,8 +2483,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationThread_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 151 NTSTATUS NtQueryInformationToken ['HANDLE TokenHandle', ' TOKEN_INFORMATION_CLASS TokenInformationClass', ' PVOID TokenInformation', ' ULONG TokenInformationLength', ' PULONG ReturnLength']
-		case 151: {
+		// 156 NTSTATUS NtQueryInformationToken ['HANDLE TokenHandle', ' TOKEN_INFORMATION_CLASS TokenInformationClass', ' PVOID TokenInformation', ' ULONG TokenInformationLength', ' PULONG ReturnLength']
+		case 156: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2458,8 +2500,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInformationToken_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 152 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
-		case 152: {
+		// 157 NTSTATUS NtQueryInstallUILanguage ['LANGID *InstallUILanguageId']
+		case 157: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtQueryInstallUILanguage_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -2467,8 +2509,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryInstallUILanguage_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 153 NTSTATUS NtQueryIntervalProfile ['KPROFILE_SOURCE ProfileSource', ' PULONG Interval']
-		case 153: {
+		// 158 NTSTATUS NtQueryIntervalProfile ['KPROFILE_SOURCE ProfileSource', ' PULONG Interval']
+		case 158: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryIntervalProfile_return)) {
@@ -2478,8 +2520,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryIntervalProfile_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 154 NTSTATUS NtQueryIoCompletion ['HANDLE IoCompletionHandle', ' IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass', ' PVOID IoCompletionInformation', ' ULONG IoCompletionInformationLength', ' PULONG ReturnLength']
-		case 154: {
+		// 159 NTSTATUS NtQueryIoCompletion ['HANDLE IoCompletionHandle', ' IO_COMPLETION_INFORMATION_CLASS IoCompletionInformationClass', ' PVOID IoCompletionInformation', ' ULONG IoCompletionInformationLength', ' PULONG ReturnLength']
+		case 159: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2495,8 +2537,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryIoCompletion_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 155 NTSTATUS NtQueryKey ['HANDLE KeyHandle', ' KEY_INFORMATION_CLASS KeyInformationClass', ' PVOID KeyInformation', ' ULONG Length', ' PULONG ResultLength']
-		case 155: {
+		// 160 NTSTATUS NtQueryKey ['HANDLE KeyHandle', ' KEY_INFORMATION_CLASS KeyInformationClass', ' PVOID KeyInformation', ' ULONG Length', ' PULONG ResultLength']
+		case 160: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2512,8 +2554,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 156 NTSTATUS NtQueryMultipleValueKey ['HANDLE KeyHandle', ' PKEY_VALUE_ENTRY ValueEntries', ' ULONG EntryCount', ' PVOID ValueBuffer', ' PULONG BufferLength', ' PULONG RequiredBufferLength']
-		case 156: {
+		// 161 NTSTATUS NtQueryMultipleValueKey ['HANDLE KeyHandle', ' PKEY_VALUE_ENTRY ValueEntries', ' ULONG EntryCount', ' PVOID ValueBuffer', ' PULONG BufferLength', ' PULONG RequiredBufferLength']
+		case 161: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2531,8 +2573,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryMultipleValueKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 157 NTSTATUS NtQueryMutant ['HANDLE MutantHandle', ' MUTANT_INFORMATION_CLASS MutantInformationClass', ' PVOID MutantInformation', ' ULONG MutantInformationLength', ' PULONG ReturnLength']
-		case 157: {
+		// 162 NTSTATUS NtQueryMutant ['HANDLE MutantHandle', ' MUTANT_INFORMATION_CLASS MutantInformationClass', ' PVOID MutantInformation', ' ULONG MutantInformationLength', ' PULONG ReturnLength']
+		case 162: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2548,8 +2590,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryMutant_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 158 NTSTATUS NtQueryObject ['HANDLE Handle', ' OBJECT_INFORMATION_CLASS ObjectInformationClass', ' PVOID ObjectInformation', ' ULONG ObjectInformationLength', ' PULONG ReturnLength']
-		case 158: {
+		// 163 NTSTATUS NtQueryObject ['HANDLE Handle', ' OBJECT_INFORMATION_CLASS ObjectInformationClass', ' PVOID ObjectInformation', ' ULONG ObjectInformationLength', ' PULONG ReturnLength']
+		case 163: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2565,8 +2607,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 159 NTSTATUS NtQueryOpenSubKeys ['POBJECT_ATTRIBUTES TargetKey', ' PULONG HandleCount']
-		case 159: {
+		// 164 NTSTATUS NtQueryOpenSubKeys ['POBJECT_ATTRIBUTES TargetKey', ' PULONG HandleCount']
+		case 164: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryOpenSubKeys_return)) {
@@ -2576,8 +2618,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryOpenSubKeys_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 160 NTSTATUS NtQueryPerformanceCounter ['PLARGE_INTEGER PerformanceCounter', ' PLARGE_INTEGER PerformanceFrequency']
-		case 160: {
+		// 165 NTSTATUS NtQueryPerformanceCounter ['PLARGE_INTEGER PerformanceCounter', ' PLARGE_INTEGER PerformanceFrequency']
+		case 165: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtQueryPerformanceCounter_return)) {
@@ -2587,8 +2629,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryPerformanceCounter_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 161 NTSTATUS NtQueryQuotaInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' PVOID SidList', ' ULONG SidListLength', ' PULONG StartSid', ' BOOLEAN RestartScan']
-		case 161: {
+		// 166 NTSTATUS NtQueryQuotaInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' BOOLEAN ReturnSingleEntry', ' PVOID SidList', ' ULONG SidListLength', ' PULONG StartSid', ' BOOLEAN RestartScan']
+		case 166: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2612,8 +2654,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryQuotaInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 162 NTSTATUS NtQuerySection ['HANDLE SectionHandle', ' SECTION_INFORMATION_CLASS SectionInformationClass', ' PVOID SectionInformation', ' SIZE_T SectionInformationLength', ' PSIZE_T ReturnLength']
-		case 162: {
+		// 167 NTSTATUS NtQuerySection ['HANDLE SectionHandle', ' SECTION_INFORMATION_CLASS SectionInformationClass', ' PVOID SectionInformation', ' SIZE_T SectionInformationLength', ' PSIZE_T ReturnLength']
+		case 167: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2629,8 +2671,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySection_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 163 NTSTATUS NtQuerySecurityObject ['HANDLE Handle', ' SECURITY_INFORMATION SecurityInformation', ' PSECURITY_DESCRIPTOR SecurityDescriptor', ' ULONG Length', ' PULONG LengthNeeded']
-		case 163: {
+		// 168 NTSTATUS NtQuerySecurityObject ['HANDLE Handle', ' SECURITY_INFORMATION SecurityInformation', ' PSECURITY_DESCRIPTOR SecurityDescriptor', ' ULONG Length', ' PULONG LengthNeeded']
+		case 168: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2646,8 +2688,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySecurityObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 164 NTSTATUS NtQuerySemaphore ['HANDLE SemaphoreHandle', ' SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass', ' PVOID SemaphoreInformation', ' ULONG SemaphoreInformationLength', ' PULONG ReturnLength']
-		case 164: {
+		// 169 NTSTATUS NtQuerySemaphore ['HANDLE SemaphoreHandle', ' SEMAPHORE_INFORMATION_CLASS SemaphoreInformationClass', ' PVOID SemaphoreInformation', ' ULONG SemaphoreInformationLength', ' PULONG ReturnLength']
+		case 169: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2663,8 +2705,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySemaphore_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 165 NTSTATUS NtQuerySymbolicLinkObject ['HANDLE LinkHandle', ' PUNICODE_STRING LinkTarget', ' PULONG ReturnedLength']
-		case 165: {
+		// 170 NTSTATUS NtQuerySymbolicLinkObject ['HANDLE LinkHandle', ' PUNICODE_STRING LinkTarget', ' PULONG ReturnedLength']
+		case 170: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2676,8 +2718,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySymbolicLinkObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 166 NTSTATUS NtQuerySystemEnvironmentValue ['PUNICODE_STRING VariableName', ' PWSTR VariableValue', ' USHORT ValueLength', ' PUSHORT ReturnLength']
-		case 166: {
+		// 171 NTSTATUS NtQuerySystemEnvironmentValue ['PUNICODE_STRING VariableName', ' PWSTR VariableValue', ' USHORT ValueLength', ' PUSHORT ReturnLength']
+		case 171: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2691,8 +2733,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySystemEnvironmentValue_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 167 NTSTATUS NtQuerySystemEnvironmentValueEx ['PUNICODE_STRING VariableName', ' LPGUID VendorGuid', ' PVOID Value', ' PULONG ValueLength', ' PULONG Attributes']
-		case 167: {
+		// 172 NTSTATUS NtQuerySystemEnvironmentValueEx ['PUNICODE_STRING VariableName', ' LPGUID VendorGuid', ' PVOID Value', ' PULONG ValueLength', ' PULONG Attributes']
+		case 172: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2708,8 +2750,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySystemEnvironmentValueEx_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 168 NTSTATUS NtQuerySystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', ' PVOID SystemInformation', ' ULONG SystemInformationLength', ' PULONG ReturnLength']
-		case 168: {
+		// 173 NTSTATUS NtQuerySystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', ' PVOID SystemInformation', ' ULONG SystemInformationLength', ' PULONG ReturnLength']
+		case 173: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2723,8 +2765,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySystemInformation_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 169 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
-		case 169: {
+		// 174 NTSTATUS NtQuerySystemTime ['PLARGE_INTEGER SystemTime']
+		case 174: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtQuerySystemTime_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -2732,8 +2774,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQuerySystemTime_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 170 NTSTATUS NtQueryTimer ['HANDLE TimerHandle', ' TIMER_INFORMATION_CLASS TimerInformationClass', ' PVOID TimerInformation', ' ULONG TimerInformationLength', ' PULONG ReturnLength']
-		case 170: {
+		// 175 NTSTATUS NtQueryTimer ['HANDLE TimerHandle', ' TIMER_INFORMATION_CLASS TimerInformationClass', ' PVOID TimerInformation', ' ULONG TimerInformationLength', ' PULONG ReturnLength']
+		case 175: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2749,8 +2791,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryTimer_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 171 NTSTATUS NtQueryTimerResolution ['PULONG MaximumTime', ' PULONG MinimumTime', ' PULONG CurrentTime']
-		case 171: {
+		// 176 NTSTATUS NtQueryTimerResolution ['PULONG MaximumTime', ' PULONG MinimumTime', ' PULONG CurrentTime']
+		case 176: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2762,8 +2804,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryTimerResolution_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 172 NTSTATUS NtQueryValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName', ' KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', ' PVOID KeyValueInformation', ' ULONG Length', ' PULONG ResultLength']
-		case 172: {
+		// 177 NTSTATUS NtQueryValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName', ' KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass', ' PVOID KeyValueInformation', ' ULONG Length', ' PULONG ResultLength']
+		case 177: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2781,8 +2823,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryValueKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 173 NTSTATUS NtQueryVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' MEMORY_INFORMATION_CLASS MemoryInformationClass', ' PVOID MemoryInformation', ' SIZE_T MemoryInformationLength', ' PSIZE_T ReturnLength']
-		case 173: {
+		// 178 NTSTATUS NtQueryVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' MEMORY_INFORMATION_CLASS MemoryInformationClass', ' PVOID MemoryInformation', ' SIZE_T MemoryInformationLength', ' PSIZE_T ReturnLength']
+		case 178: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2800,8 +2842,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 174 NTSTATUS NtQueryVolumeInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FsInformation', ' ULONG Length', ' FS_INFORMATION_CLASS FsInformationClass']
-		case 174: {
+		// 179 NTSTATUS NtQueryVolumeInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FsInformation', ' ULONG Length', ' FS_INFORMATION_CLASS FsInformationClass']
+		case 179: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2817,8 +2859,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueryVolumeInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 175 NTSTATUS NtQueueApcThread ['HANDLE ThreadHandle', ' PPS_APC_ROUTINE ApcRoutine', ' PVOID ApcArgument1', ' PVOID ApcArgument2', ' PVOID ApcArgument3']
-		case 175: {
+		// 180 NTSTATUS NtQueueApcThread ['HANDLE ThreadHandle', ' PPS_APC_ROUTINE ApcRoutine', ' PVOID ApcArgument1', ' PVOID ApcArgument2', ' PVOID ApcArgument3']
+		case 180: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2834,8 +2876,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtQueueApcThread_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 176 NTSTATUS NtRaiseException ['PEXCEPTION_RECORD ExceptionRecord', ' PCONTEXT ContextRecord', ' BOOLEAN FirstChance']
-		case 176: {
+		// 181 NTSTATUS NtRaiseException ['PEXCEPTION_RECORD ExceptionRecord', ' PCONTEXT ContextRecord', ' BOOLEAN FirstChance']
+		case 181: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2847,8 +2889,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRaiseException_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 177 NTSTATUS NtRaiseHardError ['NTSTATUS ErrorStatus', ' ULONG NumberOfParameters', ' ULONG UnicodeStringParameterMask', ' PULONG_PTR Parameters', ' ULONG ValidResponseOptions', ' PULONG Response']
-		case 177: {
+		// 182 NTSTATUS NtRaiseHardError ['NTSTATUS ErrorStatus', ' ULONG NumberOfParameters', ' ULONG UnicodeStringParameterMask', ' PULONG_PTR Parameters', ' ULONG ValidResponseOptions', ' PULONG Response']
+		case 182: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2866,8 +2908,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRaiseHardError_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 178 NTSTATUS NtReadFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
-		case 178: {
+		// 183 NTSTATUS NtReadFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
+		case 183: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2891,8 +2933,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReadFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 179 NTSTATUS NtReadFileScatter ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PFILE_SEGMENT_ELEMENT SegmentArray', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
-		case 179: {
+		// 184 NTSTATUS NtReadFileScatter ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PFILE_SEGMENT_ELEMENT SegmentArray', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
+		case 184: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2916,8 +2958,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReadFileScatter_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 180 NTSTATUS NtReadRequestData ['HANDLE PortHandle', ' PPORT_MESSAGE Message', ' ULONG DataEntryIndex', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesRead']
-		case 180: {
+		// 185 NTSTATUS NtReadRequestData ['HANDLE PortHandle', ' PPORT_MESSAGE Message', ' ULONG DataEntryIndex', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesRead']
+		case 185: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2935,8 +2977,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReadRequestData_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 181 NTSTATUS NtReadVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesRead']
-		case 181: {
+		// 186 NTSTATUS NtReadVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesRead']
+		case 186: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2952,8 +2994,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReadVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 182 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
-		case 182: {
+		// 187 NTSTATUS NtRegisterThreadTerminatePort ['HANDLE PortHandle']
+		case 187: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtRegisterThreadTerminatePort_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -2961,8 +3003,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRegisterThreadTerminatePort_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 183 NTSTATUS NtReleaseMutant ['HANDLE MutantHandle', ' PLONG PreviousCount']
-		case 183: {
+		// 188 NTSTATUS NtReleaseMutant ['HANDLE MutantHandle', ' PLONG PreviousCount']
+		case 188: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtReleaseMutant_return)) {
@@ -2972,8 +3014,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReleaseMutant_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 184 NTSTATUS NtReleaseSemaphore ['HANDLE SemaphoreHandle', ' LONG ReleaseCount', ' PLONG PreviousCount']
-		case 184: {
+		// 189 NTSTATUS NtReleaseSemaphore ['HANDLE SemaphoreHandle', ' LONG ReleaseCount', ' PLONG PreviousCount']
+		case 189: {
 			uint32_t arg0 = get_32(cpu, 0);
 			int32_t arg1 = get_s32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -2985,8 +3027,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReleaseSemaphore_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 185 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', ' PVOID *KeyContext', ' PVOID *ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER Timeout']
-		case 185: {
+		// 190 NTSTATUS NtRemoveIoCompletion ['HANDLE IoCompletionHandle', ' PVOID *KeyContext', ' PVOID *ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER Timeout']
+		case 190: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3002,8 +3044,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRemoveIoCompletion_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 186 NTSTATUS NtRemoveProcessDebug ['HANDLE ProcessHandle', ' HANDLE DebugObjectHandle']
-		case 186: {
+		// 191 NTSTATUS NtRemoveProcessDebug ['HANDLE ProcessHandle', ' HANDLE DebugObjectHandle']
+		case 191: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtRemoveProcessDebug_return)) {
@@ -3013,8 +3055,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRemoveProcessDebug_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 187 NTSTATUS NtRenameKey ['HANDLE KeyHandle', ' PUNICODE_STRING NewName']
-		case 187: {
+		// 192 NTSTATUS NtRenameKey ['HANDLE KeyHandle', ' PUNICODE_STRING NewName']
+		case 192: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtRenameKey_return)) {
@@ -3024,8 +3066,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRenameKey_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 188 NTSTATUS NtReplaceKey ['POBJECT_ATTRIBUTES NewFile', ' HANDLE TargetHandle', ' POBJECT_ATTRIBUTES OldFile']
-		case 188: {
+		// 193 NTSTATUS NtReplaceKey ['POBJECT_ATTRIBUTES NewFile', ' HANDLE TargetHandle', ' POBJECT_ATTRIBUTES OldFile']
+		case 193: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3037,8 +3079,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReplaceKey_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 189 NTSTATUS NtReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE ReplyMessage']
-		case 189: {
+		// 194 NTSTATUS NtReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE ReplyMessage']
+		case 194: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtReplyPort_return)) {
@@ -3048,8 +3090,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReplyPort_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 190 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', ' PVOID *PortContext ', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage']
-		case 190: {
+		// 195 NTSTATUS NtReplyWaitReceivePort ['HANDLE PortHandle', ' PVOID *PortContext ', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage']
+		case 195: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3063,8 +3105,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReplyWaitReceivePort_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 191 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', ' PVOID *PortContext', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage', ' PLARGE_INTEGER Timeout']
-		case 191: {
+		// 196 NTSTATUS NtReplyWaitReceivePortEx ['HANDLE PortHandle', ' PVOID *PortContext', ' PPORT_MESSAGE ReplyMessage', ' PPORT_MESSAGE ReceiveMessage', ' PLARGE_INTEGER Timeout']
+		case 196: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3080,8 +3122,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReplyWaitReceivePortEx_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 192 NTSTATUS NtReplyWaitReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE ReplyMessage']
-		case 192: {
+		// 197 NTSTATUS NtReplyWaitReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE ReplyMessage']
+		case 197: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtReplyWaitReplyPort_return)) {
@@ -3091,8 +3133,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReplyWaitReplyPort_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 194 NTSTATUS NtRequestPort ['HANDLE PortHandle', ' PPORT_MESSAGE RequestMessage']
-		case 194: {
+		// 199 NTSTATUS NtRequestPort ['HANDLE PortHandle', ' PPORT_MESSAGE RequestMessage']
+		case 199: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtRequestPort_return)) {
@@ -3102,8 +3144,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRequestPort_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 195 NTSTATUS NtRequestWaitReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE RequestMessage', ' PPORT_MESSAGE ReplyMessage']
-		case 195: {
+		// 200 NTSTATUS NtRequestWaitReplyPort ['HANDLE PortHandle', ' PPORT_MESSAGE RequestMessage', ' PPORT_MESSAGE ReplyMessage']
+		case 200: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3115,8 +3157,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRequestWaitReplyPort_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 197 NTSTATUS NtResetEvent ['HANDLE EventHandle', ' PLONG PreviousState']
-		case 197: {
+		// 202 NTSTATUS NtResetEvent ['HANDLE EventHandle', ' PLONG PreviousState']
+		case 202: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtResetEvent_return)) {
@@ -3126,8 +3168,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtResetEvent_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 198 NTSTATUS NtResetWriteWatch ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' SIZE_T RegionSize']
-		case 198: {
+		// 203 NTSTATUS NtResetWriteWatch ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' SIZE_T RegionSize']
+		case 203: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3139,8 +3181,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtResetWriteWatch_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 199 NTSTATUS NtRestoreKey ['HANDLE KeyHandle', ' HANDLE FileHandle', ' ULONG Flags']
-		case 199: {
+		// 204 NTSTATUS NtRestoreKey ['HANDLE KeyHandle', ' HANDLE FileHandle', ' ULONG Flags']
+		case 204: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3152,8 +3194,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtRestoreKey_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 200 NTSTATUS NtResumeProcess ['HANDLE ProcessHandle']
-		case 200: {
+		// 205 NTSTATUS NtResumeProcess ['HANDLE ProcessHandle']
+		case 205: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtResumeProcess_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3161,8 +3203,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtResumeProcess_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 201 NTSTATUS NtResumeThread ['HANDLE ThreadHandle', ' PULONG PreviousSuspendCount']
-		case 201: {
+		// 206 NTSTATUS NtResumeThread ['HANDLE ThreadHandle', ' PULONG PreviousSuspendCount']
+		case 206: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtResumeThread_return)) {
@@ -3172,8 +3214,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtResumeThread_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 202 NTSTATUS NtSaveKey ['HANDLE KeyHandle', ' HANDLE FileHandle']
-		case 202: {
+		// 207 NTSTATUS NtSaveKey ['HANDLE KeyHandle', ' HANDLE FileHandle']
+		case 207: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSaveKey_return)) {
@@ -3183,8 +3225,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSaveKey_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 203 NTSTATUS NtSaveKeyEx ['HANDLE KeyHandle', ' HANDLE FileHandle', ' ULONG Format']
-		case 203: {
+		// 208 NTSTATUS NtSaveKeyEx ['HANDLE KeyHandle', ' HANDLE FileHandle', ' ULONG Format']
+		case 208: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3196,8 +3238,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSaveKeyEx_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 204 NTSTATUS NtSaveMergedKeys ['HANDLE HighPrecedenceKeyHandle', ' HANDLE LowPrecedenceKeyHandle', ' HANDLE FileHandle']
-		case 204: {
+		// 209 NTSTATUS NtSaveMergedKeys ['HANDLE HighPrecedenceKeyHandle', ' HANDLE LowPrecedenceKeyHandle', ' HANDLE FileHandle']
+		case 209: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3209,8 +3251,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSaveMergedKeys_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 205 NTSTATUS NtSecureConnectPort ['PHANDLE PortHandle', ' PUNICODE_STRING PortName', ' PSECURITY_QUALITY_OF_SERVICE SecurityQos', ' PPORT_VIEW ClientView', ' PSID RequiredServerSid', ' PREMOTE_PORT_VIEW ServerView', ' PULONG MaxMessageLength', ' PVOID ConnectionInformation', ' PULONG ConnectionInformationLength']
-		case 205: {
+		// 210 NTSTATUS NtSecureConnectPort ['PHANDLE PortHandle', ' PUNICODE_STRING PortName', ' PSECURITY_QUALITY_OF_SERVICE SecurityQos', ' PPORT_VIEW ClientView', ' PSID RequiredServerSid', ' PREMOTE_PORT_VIEW ServerView', ' PULONG MaxMessageLength', ' PVOID ConnectionInformation', ' PULONG ConnectionInformationLength']
+		case 210: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3234,8 +3276,30 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSecureConnectPort_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 206 NTSTATUS NtSetContextThread ['HANDLE ThreadHandle', ' PCONTEXT ThreadContext']
-		case 206: {
+		// 211 NTSTATUS NtSetBootEntryOrder ['PULONG Ids', ' ULONG Count']
+		case 211: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			if (PPP_CHECK_CB(on_NtSetBootEntryOrder_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtSetBootEntryOrder_enter, cpu, pc, arg0, arg1);
+		}; break;
+		
+		// 212 NTSTATUS NtSetBootOptions ['PBOOT_OPTIONS BootOptions', ' ULONG FieldsToChange']
+		case 212: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			if (PPP_CHECK_CB(on_NtSetBootOptions_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtSetBootOptions_enter, cpu, pc, arg0, arg1);
+		}; break;
+		
+		// 213 NTSTATUS NtSetContextThread ['HANDLE ThreadHandle', ' PCONTEXT ThreadContext']
+		case 213: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetContextThread_return)) {
@@ -3245,8 +3309,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetContextThread_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 207 NTSTATUS NtSetDebugFilterState ['ULONG ComponentId', ' ULONG Level', ' BOOLEAN State']
-		case 207: {
+		// 214 NTSTATUS NtSetDebugFilterState ['ULONG ComponentId', ' ULONG Level', ' BOOLEAN State']
+		case 214: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3258,8 +3322,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetDebugFilterState_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 208 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
-		case 208: {
+		// 215 NTSTATUS NtSetDefaultHardErrorPort ['HANDLE DefaultHardErrorPort']
+		case 215: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetDefaultHardErrorPort_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3267,8 +3331,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetDefaultHardErrorPort_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 209 NTSTATUS NtSetDefaultLocale ['BOOLEAN UserProfile', ' LCID DefaultLocaleId']
-		case 209: {
+		// 216 NTSTATUS NtSetDefaultLocale ['BOOLEAN UserProfile', ' LCID DefaultLocaleId']
+		case 216: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetDefaultLocale_return)) {
@@ -3278,8 +3342,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetDefaultLocale_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 210 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
-		case 210: {
+		// 217 NTSTATUS NtSetDefaultUILanguage ['LANGID DefaultUILanguageId']
+		case 217: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetDefaultUILanguage_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3287,8 +3351,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetDefaultUILanguage_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 211 NTSTATUS NtSetEaFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length']
-		case 211: {
+		// 218 NTSTATUS NtSetEaFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length']
+		case 218: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3302,8 +3366,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetEaFile_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 212 NTSTATUS NtSetEvent ['HANDLE EventHandle', ' PLONG PreviousState']
-		case 212: {
+		// 219 NTSTATUS NtSetEvent ['HANDLE EventHandle', ' PLONG PreviousState']
+		case 219: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetEvent_return)) {
@@ -3313,8 +3377,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetEvent_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 213 NTSTATUS NtSetEventBoostPriority ['HANDLE EventHandle']
-		case 213: {
+		// 220 NTSTATUS NtSetEventBoostPriority ['HANDLE EventHandle']
+		case 220: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetEventBoostPriority_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3322,8 +3386,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetEventBoostPriority_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 214 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
-		case 214: {
+		// 221 NTSTATUS NtSetHighEventPair ['HANDLE EventPairHandle']
+		case 221: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetHighEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3331,8 +3395,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetHighEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 215 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
-		case 215: {
+		// 222 NTSTATUS NtSetHighWaitLowEventPair ['HANDLE EventPairHandle']
+		case 222: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetHighWaitLowEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3340,8 +3404,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetHighWaitLowEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 216 NTSTATUS NtSetInformationDebugObject ['HANDLE DebugObjectHandle', ' DEBUGOBJECTINFOCLASS DebugObjectInformationClass', ' PVOID DebugInformation', ' ULONG DebugInformationLength', ' PULONG ReturnLength']
-		case 216: {
+		// 223 NTSTATUS NtSetInformationDebugObject ['HANDLE DebugObjectHandle', ' DEBUGOBJECTINFOCLASS DebugObjectInformationClass', ' PVOID DebugInformation', ' ULONG DebugInformationLength', ' PULONG ReturnLength']
+		case 223: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3357,8 +3421,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationDebugObject_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 217 NTSTATUS NtSetInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass']
-		case 217: {
+		// 224 NTSTATUS NtSetInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FileInformation', ' ULONG Length', ' FILE_INFORMATION_CLASS FileInformationClass']
+		case 224: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3374,8 +3438,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 218 NTSTATUS NtSetInformationJobObject ['HANDLE JobHandle', ' JOBOBJECTINFOCLASS JobObjectInformationClass', ' PVOID JobObjectInformation', ' ULONG JobObjectInformationLength']
-		case 218: {
+		// 225 NTSTATUS NtSetInformationJobObject ['HANDLE JobHandle', ' JOBOBJECTINFOCLASS JobObjectInformationClass', ' PVOID JobObjectInformation', ' ULONG JobObjectInformationLength']
+		case 225: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3389,8 +3453,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationJobObject_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 219 NTSTATUS NtSetInformationKey ['HANDLE KeyHandle', ' KEY_SET_INFORMATION_CLASS KeySetInformationClass', ' PVOID KeySetInformation', ' ULONG KeySetInformationLength']
-		case 219: {
+		// 226 NTSTATUS NtSetInformationKey ['HANDLE KeyHandle', ' KEY_SET_INFORMATION_CLASS KeySetInformationClass', ' PVOID KeySetInformation', ' ULONG KeySetInformationLength']
+		case 226: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3404,8 +3468,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationKey_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 220 NTSTATUS NtSetInformationObject ['HANDLE Handle', ' OBJECT_INFORMATION_CLASS ObjectInformationClass', ' PVOID ObjectInformation', ' ULONG ObjectInformationLength']
-		case 220: {
+		// 227 NTSTATUS NtSetInformationObject ['HANDLE Handle', ' OBJECT_INFORMATION_CLASS ObjectInformationClass', ' PVOID ObjectInformation', ' ULONG ObjectInformationLength']
+		case 227: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3419,8 +3483,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationObject_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 221 NTSTATUS NtSetInformationProcess ['HANDLE ProcessHandle', ' PROCESSINFOCLASS ProcessInformationClass', ' PVOID ProcessInformation', ' ULONG ProcessInformationLength']
-		case 221: {
+		// 228 NTSTATUS NtSetInformationProcess ['HANDLE ProcessHandle', ' PROCESSINFOCLASS ProcessInformationClass', ' PVOID ProcessInformation', ' ULONG ProcessInformationLength']
+		case 228: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3434,8 +3498,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationProcess_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 222 NTSTATUS NtSetInformationThread ['HANDLE ThreadHandle', ' THREADINFOCLASS ThreadInformationClass', ' PVOID ThreadInformation', ' ULONG ThreadInformationLength']
-		case 222: {
+		// 229 NTSTATUS NtSetInformationThread ['HANDLE ThreadHandle', ' THREADINFOCLASS ThreadInformationClass', ' PVOID ThreadInformation', ' ULONG ThreadInformationLength']
+		case 229: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3449,8 +3513,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationThread_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 223 NTSTATUS NtSetInformationToken ['HANDLE TokenHandle', ' TOKEN_INFORMATION_CLASS TokenInformationClass', ' PVOID TokenInformation', ' ULONG TokenInformationLength']
-		case 223: {
+		// 230 NTSTATUS NtSetInformationToken ['HANDLE TokenHandle', ' TOKEN_INFORMATION_CLASS TokenInformationClass', ' PVOID TokenInformation', ' ULONG TokenInformationLength']
+		case 230: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3464,8 +3528,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetInformationToken_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 224 NTSTATUS NtSetIntervalProfile ['ULONG Interval', ' KPROFILE_SOURCE Source']
-		case 224: {
+		// 231 NTSTATUS NtSetIntervalProfile ['ULONG Interval', ' KPROFILE_SOURCE Source']
+		case 231: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetIntervalProfile_return)) {
@@ -3475,8 +3539,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetIntervalProfile_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 225 NTSTATUS NtSetIoCompletion ['HANDLE IoCompletionHandle', ' PVOID KeyContext', ' PVOID ApcContext', ' NTSTATUS IoStatus', ' ULONG_PTR IoStatusInformation']
-		case 225: {
+		// 232 NTSTATUS NtSetIoCompletion ['HANDLE IoCompletionHandle', ' PVOID KeyContext', ' PVOID ApcContext', ' NTSTATUS IoStatus', ' ULONG_PTR IoStatusInformation']
+		case 232: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3492,8 +3556,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetIoCompletion_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 226 NTSTATUS NtSetLdtEntries ['ULONG Selector0', ' ULONG Entry0Low', ' ULONG Entry0Hi', ' ULONG Selector1', ' ULONG Entry1Low', ' ULONG Entry1Hi']
-		case 226: {
+		// 233 NTSTATUS NtSetLdtEntries ['ULONG Selector0', ' ULONG Entry0Low', ' ULONG Entry0Hi', ' ULONG Selector1', ' ULONG Entry1Low', ' ULONG Entry1Hi']
+		case 233: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3511,8 +3575,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetLdtEntries_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 227 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
-		case 227: {
+		// 234 NTSTATUS NtSetLowEventPair ['HANDLE EventPairHandle']
+		case 234: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetLowEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3520,8 +3584,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetLowEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 228 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
-		case 228: {
+		// 235 NTSTATUS NtSetLowWaitHighEventPair ['HANDLE EventPairHandle']
+		case 235: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetLowWaitHighEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3529,8 +3593,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetLowWaitHighEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 229 NTSTATUS NtSetQuotaInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length']
-		case 229: {
+		// 236 NTSTATUS NtSetQuotaInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length']
+		case 236: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3544,8 +3608,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetQuotaInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 230 NTSTATUS NtSetSecurityObject ['HANDLE Handle', ' SECURITY_INFORMATION SecurityInformation', ' PSECURITY_DESCRIPTOR SecurityDescriptor']
-		case 230: {
+		// 237 NTSTATUS NtSetSecurityObject ['HANDLE Handle', ' SECURITY_INFORMATION SecurityInformation', ' PSECURITY_DESCRIPTOR SecurityDescriptor']
+		case 237: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3557,8 +3621,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetSecurityObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 231 NTSTATUS NtSetSystemEnvironmentValue ['PUNICODE_STRING VariableName', ' PUNICODE_STRING VariableValue']
-		case 231: {
+		// 238 NTSTATUS NtSetSystemEnvironmentValue ['PUNICODE_STRING VariableName', ' PUNICODE_STRING VariableValue']
+		case 238: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetSystemEnvironmentValue_return)) {
@@ -3568,8 +3632,25 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetSystemEnvironmentValue_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 232 NTSTATUS NtSetSystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', ' PVOID SystemInformation', ' ULONG SystemInformationLength']
-		case 232: {
+		// 239 NTSTATUS NtSetSystemEnvironmentValueEx ['PUNICODE_STRING VariableName', ' LPGUID VendorGuid', ' PVOID Value', ' ULONG ValueLength', ' ULONG Attributes']
+		case 239: {
+			uint32_t arg0 = get_32(cpu, 0);
+			uint32_t arg1 = get_32(cpu, 1);
+			uint32_t arg2 = get_32(cpu, 2);
+			uint32_t arg3 = get_32(cpu, 3);
+			uint32_t arg4 = get_32(cpu, 4);
+			if (PPP_CHECK_CB(on_NtSetSystemEnvironmentValueEx_return)) {
+				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
+				memcpy(rp.params[1], &arg1, sizeof(uint32_t));
+				memcpy(rp.params[2], &arg2, sizeof(uint32_t));
+				memcpy(rp.params[3], &arg3, sizeof(uint32_t));
+				memcpy(rp.params[4], &arg4, sizeof(uint32_t));
+			}
+			PPP_RUN_CB(on_NtSetSystemEnvironmentValueEx_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
+		}; break;
+		
+		// 240 NTSTATUS NtSetSystemInformation ['SYSTEM_INFORMATION_CLASS SystemInformationClass', ' PVOID SystemInformation', ' ULONG SystemInformationLength']
+		case 240: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3581,8 +3662,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetSystemInformation_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 233 NTSTATUS NtSetSystemPowerState ['POWER_ACTION SystemAction', ' SYSTEM_POWER_STATE MinSystemState', ' ULONG Flags']
-		case 233: {
+		// 241 NTSTATUS NtSetSystemPowerState ['POWER_ACTION SystemAction', ' SYSTEM_POWER_STATE MinSystemState', ' ULONG Flags']
+		case 241: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3594,8 +3675,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetSystemPowerState_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 234 NTSTATUS NtSetSystemTime ['PLARGE_INTEGER SystemTime', ' PLARGE_INTEGER PreviousTime']
-		case 234: {
+		// 242 NTSTATUS NtSetSystemTime ['PLARGE_INTEGER SystemTime', ' PLARGE_INTEGER PreviousTime']
+		case 242: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetSystemTime_return)) {
@@ -3605,8 +3686,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetSystemTime_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 235 NTSTATUS NtSetThreadExecutionState ['EXECUTION_STATE esFlags', ' PEXECUTION_STATE PreviousFlags']
-		case 235: {
+		// 243 NTSTATUS NtSetThreadExecutionState ['EXECUTION_STATE esFlags', ' PEXECUTION_STATE PreviousFlags']
+		case 243: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSetThreadExecutionState_return)) {
@@ -3616,8 +3697,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetThreadExecutionState_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 236 NTSTATUS NtSetTimer ['HANDLE TimerHandle', ' PLARGE_INTEGER DueTime', ' PTIMER_APC_ROUTINE TimerApcRoutine', ' PVOID TimerContext', ' BOOLEAN WakeTimer', ' LONG Period', ' PBOOLEAN PreviousState']
-		case 236: {
+		// 244 NTSTATUS NtSetTimer ['HANDLE TimerHandle', ' PLARGE_INTEGER DueTime', ' PTIMER_APC_ROUTINE TimerApcRoutine', ' PVOID TimerContext', ' BOOLEAN WakeTimer', ' LONG Period', ' PBOOLEAN PreviousState']
+		case 244: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3637,8 +3718,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetTimer_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6);
 		}; break;
 		
-		// 237 NTSTATUS NtSetTimerResolution ['ULONG DesiredTime', ' BOOLEAN SetResolution', ' PULONG ActualTime']
-		case 237: {
+		// 245 NTSTATUS NtSetTimerResolution ['ULONG DesiredTime', ' BOOLEAN SetResolution', ' PULONG ActualTime']
+		case 245: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3650,8 +3731,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetTimerResolution_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 238 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
-		case 238: {
+		// 246 NTSTATUS NtSetUuidSeed ['PCHAR Seed']
+		case 246: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSetUuidSeed_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3659,8 +3740,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetUuidSeed_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 239 NTSTATUS NtSetValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName', ' ULONG TitleIndex', ' ULONG Type', ' PVOID Data', ' ULONG DataSize']
-		case 239: {
+		// 247 NTSTATUS NtSetValueKey ['HANDLE KeyHandle', ' PUNICODE_STRING ValueName', ' ULONG TitleIndex', ' ULONG Type', ' PVOID Data', ' ULONG DataSize']
+		case 247: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3678,8 +3759,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetValueKey_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 240 NTSTATUS NtSetVolumeInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FsInformation', ' ULONG Length', ' FS_INFORMATION_CLASS FsInformationClass']
-		case 240: {
+		// 248 NTSTATUS NtSetVolumeInformationFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID FsInformation', ' ULONG Length', ' FS_INFORMATION_CLASS FsInformationClass']
+		case 248: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3695,8 +3776,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSetVolumeInformationFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 241 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
-		case 241: {
+		// 249 NTSTATUS NtShutdownSystem ['SHUTDOWN_ACTION Action']
+		case 249: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtShutdownSystem_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3704,8 +3785,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtShutdownSystem_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 242 NTSTATUS NtSignalAndWaitForSingleObject ['HANDLE SignalHandle', ' HANDLE WaitHandle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
-		case 242: {
+		// 250 NTSTATUS NtSignalAndWaitForSingleObject ['HANDLE SignalHandle', ' HANDLE WaitHandle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
+		case 250: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3719,8 +3800,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSignalAndWaitForSingleObject_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 243 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
-		case 243: {
+		// 251 NTSTATUS NtStartProfile ['HANDLE ProfileHandle']
+		case 251: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtStartProfile_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3728,8 +3809,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtStartProfile_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 244 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
-		case 244: {
+		// 252 NTSTATUS NtStopProfile ['HANDLE ProfileHandle']
+		case 252: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtStopProfile_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3737,8 +3818,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtStopProfile_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 245 NTSTATUS NtSuspendProcess ['HANDLE ProcessHandle']
-		case 245: {
+		// 253 NTSTATUS NtSuspendProcess ['HANDLE ProcessHandle']
+		case 253: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtSuspendProcess_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3746,8 +3827,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSuspendProcess_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 246 NTSTATUS NtSuspendThread ['HANDLE ThreadHandle', ' PULONG PreviousSuspendCount']
-		case 246: {
+		// 254 NTSTATUS NtSuspendThread ['HANDLE ThreadHandle', ' PULONG PreviousSuspendCount']
+		case 254: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtSuspendThread_return)) {
@@ -3757,8 +3838,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSuspendThread_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 247 NTSTATUS NtSystemDebugControl ['SYSDBG_COMMAND Command', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength', ' PULONG ReturnLength']
-		case 247: {
+		// 255 NTSTATUS NtSystemDebugControl ['SYSDBG_COMMAND Command', ' PVOID InputBuffer', ' ULONG InputBufferLength', ' PVOID OutputBuffer', ' ULONG OutputBufferLength', ' PULONG ReturnLength']
+		case 255: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3776,8 +3857,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtSystemDebugControl_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 248 NTSTATUS NtTerminateJobObject ['HANDLE JobHandle', ' NTSTATUS ExitStatus']
-		case 248: {
+		// 256 NTSTATUS NtTerminateJobObject ['HANDLE JobHandle', ' NTSTATUS ExitStatus']
+		case 256: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtTerminateJobObject_return)) {
@@ -3787,8 +3868,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtTerminateJobObject_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 249 NTSTATUS NtTerminateProcess ['HANDLE ProcessHandle', ' NTSTATUS ExitStatus']
-		case 249: {
+		// 257 NTSTATUS NtTerminateProcess ['HANDLE ProcessHandle', ' NTSTATUS ExitStatus']
+		case 257: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtTerminateProcess_return)) {
@@ -3798,8 +3879,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtTerminateProcess_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 250 NTSTATUS NtTerminateThread ['HANDLE ThreadHandle', ' NTSTATUS ExitStatus']
-		case 250: {
+		// 258 NTSTATUS NtTerminateThread ['HANDLE ThreadHandle', ' NTSTATUS ExitStatus']
+		case 258: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtTerminateThread_return)) {
@@ -3809,15 +3890,15 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtTerminateThread_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 251 NTSTATUS NtTestAlert ['']
-		case 251: {
+		// 259 NTSTATUS NtTestAlert ['']
+		case 259: {
 			if (PPP_CHECK_CB(on_NtTestAlert_return)) {
 			}
 			PPP_RUN_CB(on_NtTestAlert_enter, cpu, pc);
 		}; break;
 		
-		// 252 NTSTATUS NtTraceEvent ['HANDLE TraceHandle', ' ULONG Flags', ' ULONG FieldSize', ' PVOID Fields']
-		case 252: {
+		// 260 NTSTATUS NtTraceEvent ['HANDLE TraceHandle', ' ULONG Flags', ' ULONG FieldSize', ' PVOID Fields']
+		case 260: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3831,8 +3912,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtTraceEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 253 NTSTATUS NtTranslateFilePath ['PFILE_PATH InputFilePath', ' ULONG OutputType', ' PFILE_PATH OutputFilePath', ' PULONG OutputFilePathLength']
-		case 253: {
+		// 261 NTSTATUS NtTranslateFilePath ['PFILE_PATH InputFilePath', ' ULONG OutputType', ' PFILE_PATH OutputFilePath', ' PULONG OutputFilePathLength']
+		case 261: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3846,8 +3927,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtTranslateFilePath_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 254 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
-		case 254: {
+		// 262 NTSTATUS NtUnloadDriver ['PUNICODE_STRING DriverServiceName']
+		case 262: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtUnloadDriver_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3855,8 +3936,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnloadDriver_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 255 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
-		case 255: {
+		// 263 NTSTATUS NtUnloadKey ['POBJECT_ATTRIBUTES TargetKey']
+		case 263: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtUnloadKey_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3864,8 +3945,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnloadKey_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 256 NTSTATUS NtUnloadKeyEx ['POBJECT_ATTRIBUTES TargetKey', ' HANDLE Event']
-		case 256: {
+		// 264 NTSTATUS NtUnloadKeyEx ['POBJECT_ATTRIBUTES TargetKey', ' HANDLE Event']
+		case 264: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtUnloadKeyEx_return)) {
@@ -3875,8 +3956,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnloadKeyEx_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 257 NTSTATUS NtUnlockFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER ByteOffset', ' PLARGE_INTEGER Length', ' ULONG Key']
-		case 257: {
+		// 265 NTSTATUS NtUnlockFile ['HANDLE FileHandle', ' PIO_STATUS_BLOCK IoStatusBlock', ' PLARGE_INTEGER ByteOffset', ' PLARGE_INTEGER Length', ' ULONG Key']
+		case 265: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3892,8 +3973,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnlockFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 258 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
-		case 258: {
+		// 266 NTSTATUS NtUnlockVirtualMemory ['HANDLE ProcessHandle', ' PVOID *BaseAddress', ' PSIZE_T RegionSize', ' ULONG MapType']
+		case 266: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3907,8 +3988,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnlockVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 259 NTSTATUS NtUnmapViewOfSection ['HANDLE ProcessHandle', ' PVOID BaseAddress']
-		case 259: {
+		// 267 NTSTATUS NtUnmapViewOfSection ['HANDLE ProcessHandle', ' PVOID BaseAddress']
+		case 267: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtUnmapViewOfSection_return)) {
@@ -3918,8 +3999,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtUnmapViewOfSection_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 260 NTSTATUS NtVdmControl ['VDMSERVICECLASS Service', ' PVOID ServiceData']
-		case 260: {
+		// 268 NTSTATUS NtVdmControl ['VDMSERVICECLASS Service', ' PVOID ServiceData']
+		case 268: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			if (PPP_CHECK_CB(on_NtVdmControl_return)) {
@@ -3929,8 +4010,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtVdmControl_enter, cpu, pc, arg0, arg1);
 		}; break;
 		
-		// 261 NTSTATUS NtWaitForDebugEvent ['HANDLE DebugObjectHandle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout', ' PDBGUI_WAIT_STATE_CHANGE WaitStateChange']
-		case 261: {
+		// 269 NTSTATUS NtWaitForDebugEvent ['HANDLE DebugObjectHandle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout', ' PDBGUI_WAIT_STATE_CHANGE WaitStateChange']
+		case 269: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3944,8 +4025,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitForDebugEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 262 NTSTATUS NtWaitForMultipleObjects ['ULONG Count', ' HANDLE Handles[]', ' WAIT_TYPE WaitType', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
-		case 262: {
+		// 270 NTSTATUS NtWaitForMultipleObjects ['ULONG Count', ' HANDLE Handles[]', ' WAIT_TYPE WaitType', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
+		case 270: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3961,8 +4042,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitForMultipleObjects_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 263 NTSTATUS NtWaitForSingleObject ['HANDLE Handle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
-		case 263: {
+		// 271 NTSTATUS NtWaitForSingleObject ['HANDLE Handle', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
+		case 271: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -3974,8 +4055,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitForSingleObject_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 264 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
-		case 264: {
+		// 272 NTSTATUS NtWaitHighEventPair ['HANDLE EventPairHandle']
+		case 272: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtWaitHighEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3983,8 +4064,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitHighEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 265 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
-		case 265: {
+		// 273 NTSTATUS NtWaitLowEventPair ['HANDLE EventPairHandle']
+		case 273: {
 			uint32_t arg0 = get_32(cpu, 0);
 			if (PPP_CHECK_CB(on_NtWaitLowEventPair_return)) {
 				memcpy(rp.params[0], &arg0, sizeof(uint32_t));
@@ -3992,8 +4073,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitLowEventPair_enter, cpu, pc, arg0);
 		}; break;
 		
-		// 266 NTSTATUS NtWriteFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
-		case 266: {
+		// 274 NTSTATUS NtWriteFile ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PVOID Buffer', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
+		case 274: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4017,8 +4098,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWriteFile_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 267 NTSTATUS NtWriteFileGather ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PFILE_SEGMENT_ELEMENT SegmentArray', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
-		case 267: {
+		// 275 NTSTATUS NtWriteFileGather ['HANDLE FileHandle', ' HANDLE Event', ' PIO_APC_ROUTINE ApcRoutine', ' PVOID ApcContext', ' PIO_STATUS_BLOCK IoStatusBlock', ' PFILE_SEGMENT_ELEMENT SegmentArray', ' ULONG Length', ' PLARGE_INTEGER ByteOffset', ' PULONG Key']
+		case 275: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4042,8 +4123,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWriteFileGather_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 		}; break;
 		
-		// 268 NTSTATUS NtWriteRequestData ['HANDLE PortHandle', ' PPORT_MESSAGE Message', ' ULONG DataEntryIndex', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesWritten']
-		case 268: {
+		// 276 NTSTATUS NtWriteRequestData ['HANDLE PortHandle', ' PPORT_MESSAGE Message', ' ULONG DataEntryIndex', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesWritten']
+		case 276: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4061,8 +4142,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWriteRequestData_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4, arg5);
 		}; break;
 		
-		// 269 NTSTATUS NtWriteVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesWritten']
-		case 269: {
+		// 277 NTSTATUS NtWriteVirtualMemory ['HANDLE ProcessHandle', ' PVOID BaseAddress', ' PVOID Buffer', ' SIZE_T BufferSize', ' PSIZE_T NumberOfBytesWritten']
+		case 277: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4078,15 +4159,15 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWriteVirtualMemory_enter, cpu, pc, arg0, arg1, arg2, arg3, arg4);
 		}; break;
 		
-		// 270 NTSTATUS NtYieldExecution ['']
-		case 270: {
+		// 278 NTSTATUS NtYieldExecution ['']
+		case 278: {
 			if (PPP_CHECK_CB(on_NtYieldExecution_return)) {
 			}
 			PPP_RUN_CB(on_NtYieldExecution_enter, cpu, pc);
 		}; break;
 		
-		// 271 NTSTATUS NtCreateKeyedEvent ['PHANDLE KeyedEventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' ULONG Flags']
-		case 271: {
+		// 279 NTSTATUS NtCreateKeyedEvent ['PHANDLE KeyedEventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes', ' ULONG Flags']
+		case 279: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4100,8 +4181,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtCreateKeyedEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 272 NTSTATUS NtOpenKeyedEvent ['PHANDLE KeyedEventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
-		case 272: {
+		// 280 NTSTATUS NtOpenKeyedEvent ['PHANDLE KeyedEventHandle', ' ACCESS_MASK DesiredAccess', ' POBJECT_ATTRIBUTES ObjectAttributes']
+		case 280: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4113,8 +4194,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtOpenKeyedEvent_enter, cpu, pc, arg0, arg1, arg2);
 		}; break;
 		
-		// 273 NTSTATUS NtReleaseKeyedEvent ['HANDLE KeyedEventHandle', ' PVOID KeyValue', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
-		case 273: {
+		// 281 NTSTATUS NtReleaseKeyedEvent ['HANDLE KeyedEventHandle', ' PVOID KeyValue', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
+		case 281: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4128,8 +4209,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtReleaseKeyedEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 274 NTSTATUS NtWaitForKeyedEvent ['HANDLE KeyedEventHandle', ' PVOID KeyValue', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
-		case 274: {
+		// 282 NTSTATUS NtWaitForKeyedEvent ['HANDLE KeyedEventHandle', ' PVOID KeyValue', ' BOOLEAN Alertable', ' PLARGE_INTEGER Timeout']
+		case 282: {
 			uint32_t arg0 = get_32(cpu, 0);
 			uint32_t arg1 = get_32(cpu, 1);
 			uint32_t arg2 = get_32(cpu, 2);
@@ -4143,8 +4224,8 @@ void syscall_enter_switch_windowsxp_sp3_x86(CPUState *cpu, target_ulong pc) {
 			PPP_RUN_CB(on_NtWaitForKeyedEvent_enter, cpu, pc, arg0, arg1, arg2, arg3);
 		}; break;
 		
-		// 275 NTSTATUS NtQueryPortInformationProcess ['']
-		case 275: {
+		// 283 NTSTATUS NtQueryPortInformationProcess ['']
+		case 283: {
 			if (PPP_CHECK_CB(on_NtQueryPortInformationProcess_return)) {
 			}
 			PPP_RUN_CB(on_NtQueryPortInformationProcess_enter, cpu, pc);

@@ -36,7 +36,7 @@ LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
 
 # Details about operating systems and architectures to be processed.
-KNOWN_OS = ['linux', 'windows7', 'windowsxp_sp2', 'windowsxp_sp3']
+KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3']
 KNOWN_ARCH = {
     'x86': {
         'bits': 32,
@@ -51,6 +51,10 @@ KNOWN_ARCH = {
         'qemu_target': 'TARGET_ARM',            # qemu target name for this arch - used in guards
     },
 }
+
+# This is the the maximum generic syscall number.
+# We use this to tell apart special system calls (see last lines in arm prototypes).
+MAX_GENERIC_SYSCALL = 1023
 
 # Templates for per-arch typedefs and callback registration code files.
 # Generated files will contain definitions for multiple architectures in guarded #ifdef blocks.
@@ -214,7 +218,8 @@ class SysCall(object):
         if fields is None:
             raise SysCallDefError()
 
-        self.no = fields.group(1)
+        self.no = int(fields.group(1))
+        self.generic = False if self.no > MAX_GENERIC_SYSCALL else True
         self.rettype = fields.group(2)
         self.name = fields.group(3)
         self.args_raw = fields.group(4).split(',')
@@ -254,6 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('--outdir', '-o', default='./f', help='Output directory.')
     parser.add_argument('--prototypes', default='./prototypes', help='Prototype directory.')
     parser.add_argument('--templates', default='./templates', help='Template directory.')
+    parser.add_argument('--generate-info', default=False, action='store_true', help='Generate code for syscall info dynamic libraries.')
     args = parser.parse_args()
 
     assert os.path.isdir(args.outdir), 'Output directory %s does not exist.' % args.outdir
@@ -263,7 +269,9 @@ if __name__ == '__main__':
     # Create a Jinja2 environment for rendering templates.
     # Setting undefined to StrictUndefined will raise an error if a variable
     # used in rendering is missing from the template.
-    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(args.templates), undefined=jinja2.StrictUndefined)
+    j2env = jinja2.Environment(loader=jinja2.FileSystemLoader(args.templates),
+            extensions=['jinja2.ext.loopcontrols',],
+            undefined=jinja2.StrictUndefined)
 
     # Create a context dictionary, used for template rendering.
     # Notes:
@@ -308,23 +316,35 @@ if __name__ == '__main__':
                     syscalls.append(syscall)
                     syscalls_arch[syscall.name] = syscall
                 except SysCallDefError:
-                    logging.debug('Bad line in prototype %s:%d: %s', protofile.name, lineno, line)
+                    logging.debug('Bad prototype line in %s:%d: %s', protofile.name, lineno, line.rstrip())
+
+        # Calculate the maximum number of arguments and system call number for this os/arch.
+        target_context['max_syscall_args'] = max([len(s.args) for s in syscalls])
+        target_context['max_syscall_no'] = max([s.no for s in syscalls])
+        target_context['max_syscall_generic_no'] = max([s.no for s in syscalls if s.generic])
 
         # Render per-target output files.
         j2tpl = j2env.get_template('syscall_switch_enter.tpl')
-        with open(os.path.join(args.outdir, "%s_syscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb") as of:
+        with open(os.path.join(args.outdir, "%s_syscall_switch_enter_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
         j2tpl = j2env.get_template('syscall_switch_return.tpl')
-        with open(os.path.join(args.outdir, "%s_syscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb") as of:
+        with open(os.path.join(args.outdir, "%s_syscall_switch_return_%s_%s.cpp" % (args.prefix, _os, _arch)), "wb+") as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(target_context))
+
+        # Generate syscall info dynamic libraries.
+        if args.generate_info:
+            j2tpl = j2env.get_template('syscall_info.tpl')
+            with open(os.path.join(args.outdir, "%s_syscall_info_%s_%s.c" % (args.prefix, _os, _arch)), "wb+") as of:
+                logging.info("Writing %s", of.name)
+                of.write(j2tpl.render(target_context))
 
     # Render big files.
     for tpl, ext in GENERATED_FILES:
         j2tpl = j2env.get_template(tpl)
         of_name = '%s_%s%s' % (args.prefix, os.path.splitext(os.path.basename(tpl))[0], ext)
-        with open(os.path.join(args.outdir, of_name), 'wb') as of:
+        with open(os.path.join(args.outdir, of_name), 'wb+') as of:
             logging.info("Writing %s", of.name)
             of.write(j2tpl.render(global_context))
 
