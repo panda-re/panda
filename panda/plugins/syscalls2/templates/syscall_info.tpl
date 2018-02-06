@@ -51,4 +51,4 @@ syscall_info_t __syscall_info_a[] = {
 	{%- endfor %}
 };
 
-/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=cpp: */
+/* vim: set tabstop=4 softtabstop=4 noexpandtab ft=c: */
