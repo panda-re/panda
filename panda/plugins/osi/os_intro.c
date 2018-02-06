@@ -144,8 +144,8 @@ bool init_plugin(void *self) {
     panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
 #endif
     // figure out what kind of os introspection is needed and grab it? 
-    assert (!(panda_os_type == OST_UNKNOWN));
-    if (panda_os_type == OST_LINUX) {
+    assert (!(panda_os_familyno == OS_UNKNOWN));
+    if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
         const gchar *progname = qemu_file;
         gchar *progname_path;
@@ -184,7 +184,7 @@ bool init_plugin(void *self) {
         free(kconffile_canon);
 
         // get kconfgroup
-        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_details, panda_os_bits);
+        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
 
         // add arguments to panda
         gchar *panda_arg;
@@ -203,7 +203,7 @@ bool init_plugin(void *self) {
 
         panda_require("osi_linux");
     }
-    if (panda_os_type == OST_WINDOWS) {
+    if (panda_os_familyno == OS_WINDOWS) {
         g_printf("OSI grabbing Windows introspection backend.\n");
         panda_require("win7x86intro");
         panda_require("wintrospection");

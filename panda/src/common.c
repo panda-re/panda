@@ -160,18 +160,19 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
 
 // regular expressions used to validate the -os option
 const char * valid_os_re[] = {
-    "windows-32-xpsp[23]",
-    "windows-32-7",
-    "linux-32-.+",
-    "linux-64-.+",
+    "windows[-_]32[-_]xpsp[23]",
+    "windows[-_]32[-_]7",
+    "linux[-_]32[-_].+",
+    "linux[-_]64[-_].+",
     NULL
 };
 
 
-PandaOsType panda_os_type = OST_UNKNOWN;
-gchar *panda_os_name = NULL;
-uint32_t panda_os_bits = 0;  // 32 or 64
-gchar *panda_os_details = NULL;
+gchar *panda_os_name = NULL;                // the full name of the os, as provided by the user
+gchar *panda_os_family = NULL;              // parsed os family
+gchar *panda_os_variant = NULL;             // parsed os variant
+uint32_t panda_os_bits = 0;                 // parsed os bits
+PandaOsFamily panda_os_familyno = OS_UNKNOWN; // numeric identifier for family
 
 void panda_set_os_name(char *os_name) {
     // validate os_name before parsing its components
@@ -191,27 +192,28 @@ void panda_set_os_name(char *os_name) {
     gchar **osparts = g_strsplit(panda_os_name, "-", 3);
 
     // set os type
-    if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_type = OST_WINDOWS; }
-    else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_type = OST_LINUX; }
-    else { panda_os_type = OST_UNKNOWN; }
+    if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_familyno = OS_WINDOWS; }
+    else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_familyno = OS_LINUX; }
+    else { panda_os_familyno = OS_UNKNOWN; }
 
     // set os bits
     if (0 == g_ascii_strncasecmp("32", osparts[1], strlen("32"))) { panda_os_bits = 32; }
     else if (0 == g_ascii_strncasecmp("64", osparts[1], strlen("64"))) { panda_os_bits = 64; }
     else { panda_os_bits = 0; }
 
-    // set os details
-    // This value is not used here, but is available to other plugins.
-    // E.g. osi_linux uses panda_os_details to load the appropriate kernel
+    // set os family and variant
+    // These values are not used here, but are available to other plugins.
+    // E.g. osi_linux uses panda_os_variant to load the appropriate kernel
     // profile from kernelinfo.conf at runtime.
-    panda_os_details = g_strdup(osparts[2]);
+    panda_os_family = g_strdup(osparts[0]);
+    panda_os_variant = g_strdup(osparts[2]);
 
     // abort for invalid os type/bits
-    assert (!(panda_os_type == OST_UNKNOWN));
+    assert (!(panda_os_familyno == OS_UNKNOWN));
     assert (panda_os_bits != 0);
     g_strfreev(osparts);
 
-    printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
+    printf ("os_familyno=%d bits=%d os_details=[%s]\n", panda_os_familyno, panda_os_bits, panda_os_variant); 
 }
 
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {

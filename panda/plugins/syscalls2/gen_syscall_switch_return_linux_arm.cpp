@@ -9,9 +9,9 @@ extern "C" {
 #include "gen_syscall_ppp_extern_return.h"
 }
 
-void syscall_return_switch_linux_arm( CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
+void syscall_return_switch_linux_arm(CPUState *cpu, target_ulong pc, target_ulong ordinal, ReturnPoint &rp) {
 #ifdef TARGET_ARM
-    switch(ordinal) {
+	switch(ordinal) {
 		// 0 long sys_restart_syscall ['void']
 		case 0: {
 			if (PPP_CHECK_CB(on_sys_restart_syscall_return)) {
