@@ -116,6 +116,9 @@ typedef void (*on_new_process_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a new process is created in the guest. Passes in an `OsiProc` identifying the newly created process.
+This callback is **disabled by default** because it requires a fair amount of computation.
+To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
+
 
 Name: **on_finished_process**
 
@@ -126,6 +129,8 @@ typedef void (*on_finished_process_t)(CPUState *, OsiProc *)
 ```
 
 Description: Called whenever a process exits in the guest. Passes in an `OsiProc` identifying the process that just exited.
+This callback is **disabled by default** because it requires a fair amount of computation.
+To enable/use this callback you need to have used the `-DOSI_PROC_EVENTS` flag at compile time.
 
 Data structures used by OSI:
 
