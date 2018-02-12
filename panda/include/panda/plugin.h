@@ -58,11 +58,6 @@ typedef enum panda_cb_type {
     PANDA_CB_USER_BEFORE_SYSCALL, // before system call
     PANDA_CB_USER_AFTER_SYSCALL,  // after system call (with return value)
 #endif
-#ifdef CONFIG_PANDA_VMI
-    PANDA_CB_VMI_AFTER_FORK,    // After returning from fork()
-    PANDA_CB_VMI_AFTER_EXEC,    // After returning from exec()
-    PANDA_CB_VMI_AFTER_CLONE,    // After returning from clone()
-#endif
     PANDA_CB_ASID_CHANGED,           // When CPU asid (address space identifier) changes
     PANDA_CB_REPLAY_HD_TRANSFER,     // in replay, hd transfer
     PANDA_CB_REPLAY_NET_TRANSFER,    // in replay, transfers within network card (currently only E1000)
@@ -491,42 +486,6 @@ typedef union panda_cb {
                               abi_long ret);
 
 #endif // CONFIG_SOFTMMU
-
-#ifdef CONFIG_PANDA_VMI
-
-/* Callback ID: PANDA_CB_VMI_AFTER_FORK
- *
- *      return_from_fork: Called after fork returns
- *      Arguments:
- *       void *cpu_env: pointer to CPUState
- *
- *      Return value:
- *       unused
- */
-    int (*return_from_fork)(CPUState *env);
-
-/* Callback ID: PANDA_CB_VMI_AFTER_EXEC
- *
- *      return_from_exec: Called after exec returns
- *      Arguments:
- *       CPUState *env: pointer to CPUState
- *
- *      Return value:
- *       unused
- */
-    int (*return_from_exec)(CPUState *env);
-
-/* Callback ID: PANDA_CB_VMI_AFTER_CLONE
- *
- *      return_from_exec: Called after clone returns
- *      Arguments:
- *       CPUState *env: pointer to CPUState
- *
- *      Return value:
- *       unused
- */
-    int (*return_from_clone)(CPUState *env);
-#endif // CONFIG_PANDA_VMI
 
 /* Callback ID: PANDA_CB_ASID_CHANGED
  *
