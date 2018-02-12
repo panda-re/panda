@@ -187,13 +187,13 @@ bool init_plugin(void *self) {
         gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
 
         // add arguments to panda
-        gchar *panda_arg;
-        panda_arg = g_strdup_printf("osi_linux:kconf_file=%s", kconffile);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
-        panda_arg = g_strdup_printf("osi_linux:kconf_group=%s", kconfgroup);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
+        gchar *plugin_arg;
+        plugin_arg = g_strdup_printf("kconf_file=%s", kconffile);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
+        plugin_arg = g_strdup_printf("kconf_group=%s", kconfgroup);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
 
         // print info and finish
         g_printf("OSI grabbing Linux introspection backend.\n");
