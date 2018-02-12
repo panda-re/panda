@@ -564,8 +564,8 @@ PANDA_CB_HD_WRITE,          // Each HDD write
 PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
 PANDA_CB_MONITOR,           // Monitor callback
 PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
-PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm
-PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+PANDA_CB_ASID_CHANGED,          // after an ASID (address space identifier - aka PGD) write
 PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
 PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
 PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
@@ -1699,15 +1699,15 @@ int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 ```
 ---
 
-`after_PGD_write`: called when the CPU changes to a different address space
+`asid_changed`: called when the CPU changes to a different address space
 
-**Callback ID**: `PANDA_CB_VMI_PGD_CHANGED`
+**Callback ID**: `PANDA_CB_ASID_CHANGED`
 
 **Arguments**:
 
 * `CPUState* env`: pointer to CPUState
-* `target_ulong oldval`: old PGD (address space identifier) value
-* `target_ulong newval`: new PGD (address space identifier) value
+* `target_ulong oldval`: old ASID (address space identifier) value
+* `target_ulong newval`: new ASID (address space identifier) value
 
 **Return value**:
 
@@ -1715,7 +1715,7 @@ unused
 
 **Signature**:
 ```C
-    int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+    int (*asid_changed)(CPUState *env, target_ulong oldval, target_ulong newval);
 ```
 ---
 

@@ -26,7 +26,7 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 
-int vmi_pgd_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
+int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd);
 int before_block_exec(CPUState *cpu, TranslationBlock *tb);
 
 int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
@@ -79,7 +79,7 @@ int before_block_exec(CPUState *cpu, TranslationBlock *tb) {
     return 0;
 }
 
-int vmi_pgd_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
+int asid_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
     // tb argument is not used by before_block_exec()
     return before_block_exec(cpu, NULL);
 }
@@ -87,7 +87,7 @@ int vmi_pgd_changed(CPUState *cpu, target_ulong old_pgd, target_ulong new_pgd) {
 bool init_plugin(void *self) {
 #if defined(INVOKE_FREQ_PGD)
     // relatively short execution
-    panda_cb pcb = { .asid_changed = vmi_pgd_changed };
+    panda_cb pcb = { .asid_changed = asid_changed };
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #else
     // expect this to take forever to run

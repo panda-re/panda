@@ -35,7 +35,7 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *, target_ulong, target_ulong);
+int asid_changed(CPUState *, target_ulong, target_ulong);
 #endif
 
 PPP_PROT_REG_CB(on_get_processes)
@@ -104,7 +104,7 @@ void free_osimodules(OsiModules *ms) {
 
 
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
+int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     uint32_t i;
     OsiProcs *ps, *in, *out;
     ps = in = out = NULL;
@@ -140,8 +140,8 @@ extern const char *qemu_file;
 
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
-    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
-    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    panda_cb pcb = { .asid_changed = asid_changed };
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
     // figure out what kind of os introspection is needed and grab it? 
     assert (!(panda_os_familyno == OS_UNKNOWN));
