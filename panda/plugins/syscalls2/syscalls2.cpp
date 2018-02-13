@@ -32,8 +32,6 @@ PANDAENDCOMMENT */
 #include "syscalls_common.h"
 #include "syscalls2_info.h"
 
-#define PLUGIN_DEBUG PLUGIN_NAME ": "
-
 bool translate_callback(CPUState *cpu, target_ulong pc);
 int exec_callback(CPUState *cpu, target_ulong pc);
 
@@ -507,39 +505,39 @@ bool init_plugin(void *self) {
 // Don't bother if we're not on a supported target
 #if defined(TARGET_I386) || defined(TARGET_ARM)
     if(panda_os_familyno == OS_UNKNOWN){
-        std::cerr << PLUGIN_DEBUG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
+        std::cerr << PANDA_MSG "ERROR No OS profile specified. You can choose one with the -os switch, eg: '-os linux-32-debian-3.2.81-486' or '-os  windows-32-7' " << std::endl;
         return false;
     }
     else if (panda_os_familyno == OS_LINUX) {
         if (panda_os_bits != 32) {
-            std::cerr << PLUGIN_DEBUG "no support for 64-bit linux" << std::endl;
+            std::cerr << PANDA_MSG "no support for 64-bit linux" << std::endl;
             return false;
         }
 #if defined(TARGET_I386)
-        std::cerr << PLUGIN_DEBUG "using profile for linux x86 32-bit" << std::endl;
+        std::cerr << PANDA_MSG "using profile for linux x86 32-bit" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_X86];
 #endif
 #if defined(TARGET_ARM)
-        std::cerr << PLUGIN_DEBUG "using profile for linux arm" << std::endl;
+        std::cerr << PANDA_MSG "using profile for linux arm" << std::endl;
         syscalls_profile = &profiles[PROFILE_LINUX_ARM];
 #endif
     }
     else if (panda_os_familyno == OS_WINDOWS) {
         if (panda_os_bits != 32) {
-            std::cerr << PLUGIN_DEBUG "no support for 64-bit windows" << std::endl;
+            std::cerr << PANDA_MSG "no support for 64-bit windows" << std::endl;
             return false;
         }
 #if defined(TARGET_I386)
         if (0 == strcmp(panda_os_variant, "xpsp2")) {
-            std::cerr << PLUGIN_DEBUG "using profile for windows sp2 x86 32-bit" << std::endl;
+            std::cerr << PANDA_MSG "using profile for windows sp2 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP2_X86];
         }
         if (0 == strcmp(panda_os_variant, "xpsp3")) {
-            std::cerr << PLUGIN_DEBUG "using profile for windows sp3 x86 32-bit" << std::endl;
+            std::cerr << PANDA_MSG "using profile for windows sp3 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_XPSP3_X86];
         }
         if (0 == strcmp(panda_os_variant, "7")) {
-            std::cerr << PLUGIN_DEBUG "using profile for windows 7 x86 32-bit" << std::endl;
+            std::cerr << PANDA_MSG "using profile for windows 7 x86 32-bit" << std::endl;
             syscalls_profile = &profiles[PROFILE_WINDOWS_7_X86];
         }
 #endif
@@ -547,7 +545,7 @@ bool init_plugin(void *self) {
 
     // make sure a system calls profile has been loaded
     if(!syscalls_profile){
-        std::cerr << PLUGIN_DEBUG "ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
+        std::cerr << PANDA_MSG "ERROR Couldn't find a syscall profile for the specified OS" << std::endl;
         return false;
     }
 
@@ -580,13 +578,13 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     (void) self;
 #ifdef DEBUG
-    std::cout << PLUGIN_DEBUG "DEBUG syscall count per asid:";
+    std::cout << PANDA_MSG "DEBUG syscall count per asid:";
     for(const auto &asid_count : syscallCounter){
         std::cout << asid_count.first << "=" << asid_count.second <<", ";
     }
     std::cout<< std::endl;
     if(impossibleToReadPCs){
-        std::cout << PLUGIN_DEBUG "DEBUG some instructions couldn't be read on insn_exec: " << impossibleToReadPCs << std::endl;
+        std::cout << PANDA_MSG "DEBUG some instructions couldn't be read on insn_exec: " << impossibleToReadPCs << std::endl;
     }
 #endif
 }
