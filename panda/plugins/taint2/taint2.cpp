@@ -27,6 +27,7 @@
 #undef NDEBUG
 #endif
 
+#include <iostream>
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 
@@ -130,7 +131,7 @@ void verify(void) {
     llvm::Module *mod = tcg_llvm_ctx->getModule();
     std::string err;
     if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        printf("%s\n", err.c_str());
+        std::cerr << PANDA_MSG << err << std::endl;
     }
 }
 
@@ -141,7 +142,7 @@ void taint2_enable_tainted_pointer(void) {
 
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
-    printf ("taint2: __taint_enable_taint\n");
+    std::cerr << PANDA_MSG << __FUNCTION__ << std::endl;
     taintEnabled = true;
     panda_cb pcb;
 
@@ -170,8 +171,8 @@ void taint2_enable_taint(void) {
     llvm::Module *mod = tcg_llvm_ctx->getModule();
     FPM = tcg_llvm_ctx->getFunctionPassManager();
 
+    std::cerr << PANDA_MSG "LLVM optimizations " << PANDA_FLAG_STATUS(optimize_llvm) << std::endl;
     if (optimize_llvm) {
-        printf("taint2: Adding default optimizations (-O2).\n");
         llvm::PassManagerBuilder Builder;
         Builder.OptLevel = 2;
         Builder.SizeLevel = 0;
@@ -189,11 +190,11 @@ void taint2_enable_taint(void) {
         if (!i->isDeclaration()) PTFP->runOnFunction(*i);
     }
 
-    printf("taint2: Done processing helper functions for taint.\n");
+    std::cerr << PANDA_MSG "Done processing helper functions for taint." << std::endl;
 
     std::string err;
     if(verifyModule(*mod, llvm::AbortProcessAction, &err)){
-        printf("%s\n", err.c_str());
+        std::cerr << PANDA_MSG << err << std::endl;
         exit(1);
     }
 
@@ -201,7 +202,7 @@ void taint2_enable_taint(void) {
     tcg_llvm_write_module(tcg_llvm_ctx, "/tmp/llvm-mod.bc");
 #endif
 
-    printf("taint2: Done verifying module. Running...\n");
+    std::cerr << "Done verifying module. Running..." << std::endl;
 }
 
 // Execute taint ops
@@ -522,18 +523,11 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("taint2");
 
     tainted_pointer = !panda_parse_bool_opt(args, "no_tp", "track taint through pointer dereference");
-    if (tainted_pointer) {
-        printf("taint2: Propagating taint through pointer dereference ENABLED.\n");
-    } else {
-        printf("taint2: Propagating taint through pointer dereference DISABLED.\n");
-    }
+    std::cerr << PANDA_MSG "Propagating taint through pointer dereference " << PANDA_FLAG_STATUS(tainted_pointer) << std::endl;
 
     inline_taint = panda_parse_bool_opt(args, "inline", "inline taint operations");
-    if (inline_taint) {
-        printf("taint2: Inlining taint ops by default.\n");
-    } else {
-        printf("taint2: Instructed not to inline taint ops.\n");
-    }
+    std::cerr << PANDA_MSG "taint ops inlining " << PANDA_FLAG_STATUS(inline_taint) << std::endl;
+
     optimize_llvm = panda_parse_bool_opt(args, "opt", "run LLVM optimization on taint");
     debug_taint = panda_parse_bool_opt(args, "debug", "enable taint debugging");
 
@@ -542,8 +536,6 @@ bool init_plugin(void *self) {
 
     return true;
 }
-
-
 
 void uninit_plugin(void *self) {
     if (shadow) {
