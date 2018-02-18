@@ -1,2 +1,2 @@
-obj-$(TARGET_ARM)  += avatar_posix.o configurable_machine.o remote_memory.o arm_helper.o python_peripheral.o
+obj-$(TARGET_ARM)  += avatar_posix.o configurable_machine.o remote_memory.o arm_helper.o
 obj-$(TARGET_MIPS) += avatar_posix.o configurable_machine.o remote_memory.o
