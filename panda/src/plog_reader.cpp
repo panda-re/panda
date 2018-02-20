@@ -7,12 +7,12 @@
  * Note that using the C wrappers requires a few more object files to be linked in (see Makefile.panda.target).
  *
  * To compile as part of Panda's make,
- * Uncomment two lines in Makefile.panda.target. This will define PLOG_READER, which causes some rr code in plog-cc.cpp to be ignored 
+ * Uncomment two lines in Makefile.panda.target. This will define PLOG_READER, which causes some rr code in plog-cc.cpp to be ignored
  *
  * To compile standalone:
- * First, compile the plog.proto file to generate the plog.pb.h and plog.pb.cc files 
+ * First, compile the plog.proto file to generate the plog.pb.h and plog.pb.cc files
  * plog.proto is created by combining all the plugins' individual .proto files
- * 
+ *
  * protoc -I=$SRC_DIR --cpp_out=$DST_DIR plog.proto
  *
  * Then, assuming headers are in panda/include/panda/
@@ -38,13 +38,14 @@ extern "C" {
 
 void pprint_llvmentry(std::unique_ptr<panda::LogEntry> ple){
     printf("\tllvmEntry: {\n");
+    printf("\t pc = %lx(%lu)\n", ple->llvmentry().pc(), ple->llvmentry().pc());
     printf("\t type = %lu\n", ple->llvmentry().type()); 
     printf("\t addrtype = %u\n", ple->llvmentry().addr_type()); 
     printf("\t cpustate_offset = %u\n", ple->llvmentry().cpustate_offset()); 
     printf("\t address = %lx\n", ple->llvmentry().address());
     printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
     printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
-    printf("\t condition = %u\n", ple->llvmentry().condition());
+    printf("\t condition = %u, ", ple->llvmentry().condition());
     printf("\t flags = %x\n", ple->llvmentry().flags());
     //printf("\t}\n"); 
 }
@@ -64,18 +65,6 @@ void pprint(std::unique_ptr<panda::LogEntry> ple) {
     }
     printf("},\n");
 }
-
-//void pprint_old(Panda__LogEntry* ple) {
-    //if (ple == NULL) {
-        //printf("PLE is NULL\n");
-        //return;
-    //}
-
-    //printf("\n{\n");
-    //printf("\tPC = %lu\n", ple->pc);
-    //printf("\tinstr = %lu\n", ple->instr);
-    //printf("}\n\n");
-//}
 
 int main (int argc, char **argv) {
     if (argc < 2) {
@@ -106,21 +95,4 @@ int main (int argc, char **argv) {
         }
         p.close();
     }
-
-    //Use the C interface to read the pandalog
-    //pandalog_open((const char *) argv[1], (const char*) "r");
-    //Panda__LogEntry *ple;
-    //while (1) {
-        //ple = pandalog_read_entry();
-        //if (ple == (Panda__LogEntry *)1) {
-            //continue;
-        //}
-        //if (ple == NULL) {
-            //break;
-        //}
-        //pprint_old(ple);
-    //}
-    //pandalog_close();
 }
-
-

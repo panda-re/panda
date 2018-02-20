@@ -33,6 +33,7 @@ extern "C" {
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 
 #include <llvm/PassManager.h>
 #include <llvm/PassRegistry.h>
@@ -90,8 +91,8 @@ typedef struct traceEntry {
     llvm::Function *func;
     llvm::Instruction *inst;
     
-    panda::LogEntry* ple;
-    panda::LogEntry* ple2;
+    panda::LogEntry* ple = NULL;
+    panda::LogEntry* ple2 = NULL;
     //special snowflake?
     // memcpy may need another logentry 
 } traceEntry;
@@ -172,9 +173,16 @@ void print_set(std::set<SliceVar> &s) {
 
 void pprint_llvmentry(panda::LogEntry* ple){
     printf("\tllvmEntry: {\n");
-    printf("\t\ttype = %s\n", functionCodeStrings[static_cast<FunctionCode>(ple->llvmentry().type())].c_str()); 
-    printf("\t\taddress = %lx\n", ple->llvmentry().address());
-    printf("\t}\n"); 
+    printf("\t pc = %lx(%lu)\n", ple->llvmentry().pc(), ple->llvmentry().pc());
+    printf("\t type = %lu\n", ple->llvmentry().type()); 
+    printf("\t addrtype = %u\n", ple->llvmentry().addr_type()); 
+    printf("\t cpustate_offset = %u\n", ple->llvmentry().cpustate_offset()); 
+    printf("\t address = %lx\n", ple->llvmentry().address());
+    printf("\t numBytes = %lx\n", ple->llvmentry().num_bytes());
+    printf("\t value = %lu(%lx)\n", ple->llvmentry().value(), ple->llvmentry().value());
+    printf("\t condition = %u, ", ple->llvmentry().condition());
+    printf("\t flags = %x\n", ple->llvmentry().flags());
+    //printf("\t}\n"); 
 }
 
 void pprint_ple(panda::LogEntry *ple) {
@@ -273,17 +281,20 @@ SliceVar VarFromCriteria(std::string str){
  *
  */
 void process_criteria(std::string criteria_fname){
+    std::cout << "Processing criteria" << std::endl;
     std::string str;
 	std::ifstream file(criteria_fname);
 
     std::getline(file, str);
     
-	std::string modules = str.substr(5, str.length()); 
+	std::string modules = str.substr(4, str.length()); 
+    std::istringstream modulestream(modules);
+    std::cout << modules << std::endl;
     int pos;
-    while ((pos = str.find(",")) != std::string::npos) {
-        std::string module_name = str.substr(0, pos);
+    std::string module_name;
+    while (getline(modulestream, module_name, ',')) {
+        printf("adding %s\n", module_name.c_str());
         searchModules.insert(module_name);
-        str.erase(0, pos + 1);
     }
 
     while (std::getline(file, str))
@@ -381,6 +392,7 @@ void get_usedefs_Store(traceEntry &t,
         std::set<SliceVar> &uses, 
         std::set<SliceVar> &defines){
     StoreInst* SI = dyn_cast<StoreInst>(t.inst);
+    assert(t.ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_STORE);
     assert(t.ple->llvmentry().address());
     assert(t.ple->llvmentry().num_bytes());
     assert(t.ple->llvmentry().addr_type());
@@ -397,9 +409,10 @@ void get_usedefs_Load(traceEntry &t,
         std::set<SliceVar> &uses, 
         std::set<SliceVar> &defines){
     LoadInst* LI = dyn_cast<LoadInst>(t.inst);
-    assert(t.ple->llvmentry().address());
-    assert(t.ple->llvmentry().num_bytes());
-    assert(t.ple->llvmentry().addr_type());
+    assert(t.ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_LOAD);
+    assert(t.ple->llvmentry().has_address());
+    assert(t.ple->llvmentry().has_num_bytes());
+    assert(t.ple->llvmentry().has_addr_type());
 
     // Add the memory address to the uses list. 
     // Giri goes back and searches for the stores before this load. Maybe that's better? 
@@ -420,7 +433,8 @@ void get_usedefs_Call(traceEntry &t,
         std::set<SliceVar> &defines){
     CallInst* c = dyn_cast<CallInst>(t.inst);
 
-    
+    //assert(t.ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_CALL);
+
     Function *subf = c->getCalledFunction();
     StringRef func_name = subf->getName();
     printf("getting usedefs call %s\n", func_name.data());
@@ -593,12 +607,15 @@ void get_usedefs_default(traceEntry &t, std::set<SliceVar> &uses, std::set<Slice
 void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defs) {
     switch (t.inst->getOpcode()) {
         case Instruction::Store:
+            printf("STORE: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
             get_usedefs_Store(t, uses, defs);
             return;
         case Instruction::Load:
+            printf("LOAD: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
             get_usedefs_Load(t, uses, defs);
             return;
         case Instruction::Call:
+            printf("CALL: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
             get_usedefs_Call(t, uses, defs);
             return;
         case Instruction::Ret:
@@ -699,6 +716,7 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             for (auto usesIt = uses.begin(); usesIt != uses.end(); ){
                 auto argIt = subfArgMap.find(*usesIt);
                 if (argIt != subfArgMap.end()){
+                    printf("Mapping uses through argList");
                     // replace value in uses list with argument value
                     uses.erase(usesIt++);
                     uses.insert(argIt->second); 
@@ -742,16 +760,17 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             if (!is_ignored(subf->getName())){
                 int argIdx;
                 Function::arg_iterator argIt;
+                // argMap maps 
                 for (argIt = subf->arg_begin(), argIdx = 0; argIt != subf->arg_end(); argIt++, argIdx++){
                     argMap[getSliceVar(&*argIt)] = getSliceVar(c->getArgOperand(argIdx));
-                    printf("argMap => %s\n", SliceVarStr(getSliceVar(&*argIt)).c_str());
+                    printf("argMap %s => %s\n", SliceVarStr(getSliceVar(&*argIt)).c_str(), SliceVarStr(getSliceVar(c->getArgOperand(argIdx))).c_str());
                 }
                 argMapStack.push(argMap);
             }
 
         } else if (&*(traceIt->func->getEntryBlock().begin()) == &*(traceIt->inst)){
-            // if first instruction of entry block
-            // pop the stack
+            // if first instruction of subfunction's entry block
+            // pop the stack before we return to calling parent
             if (!argMapStack.empty()){
                 argMapStack.pop();
             }
@@ -840,15 +859,10 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     //Check that this entry is a BR entry
                     assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_BR);
 
-                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    //*llvmentry = PANDA__LLVMENTRY__INIT;
-                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    //new_dyn.llvmentry = llvmentry; // sentinel
+                    //std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    //new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
 
-                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
-                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
-
-                    t.ple = new_dyn.get();
+                    //t.ple = new_dyn.get();
                     t.inst = i;
                     t.func = f;
 
@@ -869,15 +883,10 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 case Instruction::Switch: {
                     //Check that current entry is a startBB entry
                     assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_SWITCH);
-                    
-                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    //*llvmentry = PANDA__LLVMENTRY__INIT;
-                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    //new_dyn.llvmentry = llvmentry; // sentinel
 
-                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
-                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
-                    t.ple = new_dyn.get();
+                    //std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    //new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
+                    //t.ple = new_dyn.get();
                     t.inst = i;
                     t.func = f;
                     
@@ -908,15 +917,11 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     // our trace, which should be the predecessor basic block
                     // to this PHI
                     PHINode *p = cast<PHINode>(&*i);
-                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    //*llvmentry = PANDA__LLVMENTRY__INIT;
-                    //llvmentry->has_phi_index = 1;
-                    //llvmentry->phi_index = -1;
-                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    //new_dyn.llvmentry = llvmentry; // sentinel
+                    printf("Found a PHI INSTRUCTION\n");
 
-                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
+                    panda::LogEntry* new_dyn  = new panda::LogEntry();
                     new_dyn->mutable_llvmentry()->set_phi_index(-1);
+                    new_dyn->mutable_llvmentry()->set_pc(-1);
 
                     // Find the last non-PHI instruction
                     // Search from Reverse beginning (most recent traceEntry) 
@@ -927,7 +932,8 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         }
                     }
                     t.func = f; t.inst = i;
-                    t.ple = new_dyn.get();
+                    t.ple = new_dyn;
+                    pprint_ple(t.ple);
                     aligned_block.push_back(t);
                     //cursor_idx++;
                     break;
@@ -1012,32 +1018,33 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         // there's no log entry either, so don't increment cursor_idx
                         
                         //XXX: But do we need to push back into aligned_block?
+                        printf("alignFunction: subf is declaration or intrinsic\n");
+                        t.func = f; 
+                        t.inst = i; 
+                        t.ple = new panda::LogEntry();
+                        aligned_block.push_back(t);
                         
                     }
                     else {
                         // descend into function
-                        assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_CALL);
+                        /*assert(ple && ple->llvmentry().type() == FunctionCode::FUNC_CODE_INST_CALL);*/
                         
-                        panda::LogEntry *bbPle = ple_vector[cursor_idx+1];
+                        panda::LogEntry *bbPle = ple_vector[cursor_idx];
                         assert(bbPle && bbPle->llvmentry().type() == FunctionCode::BB);
                         
-                        printf("descending into function, cursor_idx= %d\n", cursor_idx+2);
-                        cursor_idx = align_function(aligned_block, subf, ple_vector, cursor_idx+2);
+                        printf("descending into function, cursor_idx= %d\n", cursor_idx+1);
+                        cursor_idx = align_function(aligned_block, subf, ple_vector, cursor_idx+1);
                         printf("Returned from descend, cursor_idx= %d\n", cursor_idx);
+
+                        panda::LogEntry *callPle = ple_vector[cursor_idx];
+                        assert(callPle && callPle->llvmentry().type() == FunctionCode::FUNC_CODE_INST_CALL);
+                        cursor_idx += 1;
                     
                         // call is placed after the instructions of the called function
                         // so slice_trace will know 
-                        //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                        //*llvmentry = PANDA__LLVMENTRY__INIT;
-                        //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                        //new_dyn.llvmentry = llvmentry; // sentinel
-
-                        std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
-                        new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
-
                         t.func = f; 
                         t.inst = i;
-                        t.ple = new_dyn.get();
+                        t.ple = callPle;
                         aligned_block.push_back(t);
                     }
                     break;
@@ -1045,18 +1052,8 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                 default:
                     //printf("fell through!\n");
                     /*print_insn(i);*/
-
-                    std::unique_ptr<panda::LogEntry> new_dyn (new panda::LogEntry);
-                    new_dyn->set_allocated_llvmentry(new panda::LLVMEntry());
-
-                    //Panda__LLVMEntry *llvmentry = (Panda__LLVMEntry *)(malloc(sizeof(Panda__LLVMEntry)));
-                    //*llvmentry = PANDA__LLVMENTRY__INIT;
-                    //Panda__LogEntry new_dyn = PANDA__LOG_ENTRY__INIT;
-                    //new_dyn.llvmentry = llvmentry; // sentinel
-
                     t.func = f; 
                     t.inst = i; 
-                    t.ple = new_dyn.get();
                     aligned_block.push_back(t);
                     break;
 
@@ -1135,6 +1132,16 @@ int main(int argc, char **argv){
 	cpuStateAddr->dump();
 	ConstantInt* constInt = cast<ConstantInt>( cpuStateAddr->getInitializer());
 	cpustatebase = constInt->getZExtValue();
+
+    printf("EAX: %lx\n", cpustatebase +0*4);
+    printf("ECX: %lx\n", cpustatebase +1*4);
+    printf("EDX: %lx\n", cpustatebase +2*4);
+    printf("EBX: %lx\n", cpustatebase +3*4);
+    printf("ESP: %lx\n", cpustatebase +4*4);
+    printf("EBP: %lx\n", cpustatebase +5*4);
+    printf("ESI: %lx\n", cpustatebase +6*4);
+    printf("EDI: %lx\n", cpustatebase +7*4);
+    printf("EIP: %lx\n", cpustatebase +8*4);
 
     // read trace into memory
 	
@@ -1224,9 +1231,13 @@ int main(int argc, char **argv){
             //If we are not in the list of libraries/vmas of interest
             std::string module_name = ple->llvmentry().vma_name();
             printf("lib_name: %s\n", module_name.c_str());
-            if (searchModules.find(module_name) != searchModules.end()){
+
+            if (searchModules.find(module_name) == searchModules.end()){
+                // if can't find module in list of modules from criteria
+                // clear vector
                 ple_vector.clear();
                 aligned_block.clear();
+                continue;
             }
             
             std::reverse(ple_vector.begin(), ple_vector.end());
@@ -1236,13 +1247,8 @@ int main(int argc, char **argv){
             //Skip over first two entries, LLVM_FN and BB
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
             
-			// If this TB is one where we should start slicing
-			//if (searchTbs.find(ple->llvmentry().tb_num())  != searchTbs.end()){
-				//startSlicing = 1;
-			//}	
-            
 
-			//if (startSlicing){
+            if (ple->pc() == 0xb76af57f){
                 cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
                 // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
                 // maybe i can do this lazily...
@@ -1252,7 +1258,7 @@ int main(int argc, char **argv){
                 print_set(workList);
                 // CLear ple_vector for next block
 				//break;
-			//}
+            }
 
             aligned_block.clear();
             ple_vector.clear();

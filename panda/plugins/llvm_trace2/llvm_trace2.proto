@@ -1,5 +1,6 @@
 message LLVMEntry {
     optional uint64 type = 1;
+    optional uint64 pc = 12;
 
     //address we're loading or storing from
 	optional uint64 address = 2;

@@ -82,6 +82,8 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
+
 
         if (tb_num > 0){
             ple->mutable_llvmentry()->set_tb_num(tb_num);
@@ -95,8 +97,9 @@ void recordCall(uint64_t fp){
 
     Function* calledFunc = (Function*)fp;
     //printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
-    if (pandalog && do_record && do_record){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
         ple->mutable_llvmentry()->set_address(fp);
         
@@ -119,6 +122,7 @@ void recordBB(uint64_t fp, unsigned lastBB){
     
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
 
         globalLog.write_entry(std::move(ple));
@@ -132,6 +136,7 @@ void recordLoad(uint64_t address){
 
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_LOAD);
 
         uint64_t x86state = (uint64_t)cpus.tqh_first->env_ptr;
@@ -164,6 +169,7 @@ void recordStore(uint64_t address, uint64_t value){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_STORE);
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
 
         //TODO: THIS REALLY NEEDS TO BE LOOKED AT 
         uint64_t x86state = (uint64_t)cpus.tqh_first->env_ptr;
@@ -193,6 +199,7 @@ void recordStore(uint64_t address, uint64_t value){
 void recordReturn(uint64_t retVal){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_RET);
         ple->mutable_llvmentry()->set_value(retVal);
         globalLog.write_entry(std::move(ple));
@@ -202,6 +209,7 @@ void recordReturn(uint64_t retVal){
 void recordSelect(uint8_t condition){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_SELECT);
         ple->mutable_llvmentry()->set_condition(condition);
 
@@ -213,6 +221,7 @@ void recordSelect(uint8_t condition){
 void recordSwitch(uint32_t condition){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_SWITCH);
         ple->mutable_llvmentry()->set_condition(condition);
 
@@ -224,6 +233,7 @@ void recordSwitch(uint32_t condition){
 void recordBranch(uint8_t condition){
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_BR);
         ple->mutable_llvmentry()->set_condition(condition);
 
@@ -492,8 +502,7 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
         //this is like a memset or memcpy
         handleVisitSpecialCall(I);
         return;
-    }
-    else if (external_helper_funcs.count(name)) {
+    } else if (external_helper_funcs.count(name)) {
         // model the MMU load/store functions with regular loads/stores from dmemory
        handleExternalHelperCall(I);
         return;
@@ -729,7 +738,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     OsiModules *ms = get_libraries(env, current);
         
     target_ulong curpc = panda_current_pc(env);
-    printf("curpc %x\n", curpc); 
 
     //Look up mapping/library name
     const char* lib_name;
@@ -741,6 +749,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 
     if (llvmtrace_flags&1 && !record_int){
         // this is an interrupt, and we don't want to record interrupts. turn off record
+        printf("TURNING OFF RECORD\n");
         do_record = false;
     }
     printf("lib_name: %s\n", lib_name);

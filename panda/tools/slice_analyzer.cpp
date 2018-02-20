@@ -78,14 +78,14 @@ int hex2bytes(std::string hex, unsigned char outBytes[]){
     }
 }
 
-void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool marked){
+void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool marked, uint64_t baseAddr){
     char c = marked ? '*' : ' ';
     unsigned char* u = new unsigned char[targetAsm.length()/2];
     hex2bytes(targetAsm, u); 
     char *outstring = new char[50];
 
     // disassemble target asm
-    LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, 0, outstring, 50);   
+    LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, baseAddr, outstring, 50);   
     printf("%c %s\n", c, outstring);
 }
 
@@ -156,6 +156,10 @@ int main(int argc, char **argv) {
     for (auto pair : marked) {
         Function* f = pair.first;
         printf("*** Function %s ***\n", f->getName().str().c_str());
+		
+		int tb_num;
+		uint64_t base_addr;
+		sscanf(f->getName().str().c_str(), "tcg-llvm-tb-%d-%lx", &tb_num, &base_addr); 
         int i = 0;
         for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
             printf(">>> Block %d\n", i);
@@ -169,7 +173,9 @@ int main(int argc, char **argv) {
                 if (MDNode* N = insn_it->getMetadata("targetAsm")){
 
                     if (!targetAsm.empty()){
-                        print_target_asm(dcr, targetAsm, targetAsmMarked);
+						printf("%lx ", base_addr);
+						base_addr += targetAsm.length()/2;
+                        print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr);
                     }                    
                     
                     // updated targetAsm
@@ -190,7 +196,8 @@ int main(int argc, char **argv) {
             
             //Print last instruction and mark
             if (!targetAsm.empty()){
-                print_target_asm(dcr, targetAsm, targetAsmMarked);
+				printf("%lx ", base_addr);
+                print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr);
             }                    
             i++;
         }

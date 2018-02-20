@@ -3,7 +3,6 @@
 import struct
 from llvm import *
 from llvm.core import *
-from bitstring import BitArray
 from pwn import *
 
 
@@ -30,24 +29,30 @@ while True:
     
     bb_idx = struct.unpack("<I", f.read(4))[0]
     markbytes = f.read(MAX_BITSET/8)
-    bits = BitArray(bytes=markbytes)
+    
+    bits = bin(int(markbytes.encode("hex"), 16))[2:]
     marked[func][bb_idx] = bits
+    print bits.count("1")
 
 for func in marked:
+    print "*** Func %s***\n" % ( func.name)
     base_addr = int(func.name.split("-")[4], 16)
     targetAsm = ""
     bb_idx = 0
     for bb in func.basic_blocks:
+        print ">>> Block %d" % bb_idx
         if bb_idx >= len(marked[func]):
             break
         
         j = 0
         targetAsmSeen, targetAsmMarked = False, False
         for inst in bb.instructions:
-            if marked[func][bb_idx][j]:
+            if marked[func][bb_idx][j] == "1":
+                print "marked %d, %d, %s" % (bb_idx, j, marked[func][bb_idx][j])
                 targetAsmMarked = True
 
             md = inst.get_metadata("targetAsm")
+
             if md is not None:
                 if targetAsm:
                     c = "*" if targetAsmMarked else " "

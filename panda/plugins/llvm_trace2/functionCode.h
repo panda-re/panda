@@ -77,7 +77,7 @@ enum SliceVarType {
     HOST = 3, // host
     TGT = 4, //guest register, or a field on CPU state 
 	SPEC = 5, //special register, like floating point
-	FRET = 6,
+	FRET = 6, //XXX: handle LLVM function return values?
 };
 
 // copied from helper_runtime.cpp
