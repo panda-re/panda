@@ -1,0 +1,32 @@
+SRC_PATH=.
+BUILD_DIR=debug_build
+LLVM_CXXFLAGS=$(shell ./llvm/Debug+Asserts/bin/llvm-config --cxxflags)
+LLVM_LIBS = $(shell ./llvm/Debug+Asserts/bin/llvm-config --libs) 
+CXX = g++
+TARGET_DIR = .
+CXXFLAGS = -std=c++11 -I$(SRC_PATH)/panda/include -I$(SRC_PATH) -I$(SRC_PATH)/$(BUILD_DIR)/i386-softmmu
+LDFLAGS = $(shell ./llvm/Debug+Asserts/bin/llvm-config --ldflags) -lprotobuf -lstdc++
+DYNSLICE_OBJS = panda/src/plog.pb.o panda/src/plog-cc.o  panda/tools/dynslice2.o 
+panda/tools/dynslice2.o-cflags = -DPLOG_READER -Wno-misleading-indentation -Wno-unused-variable -Wno-unused-but-set-variable -Wno-cast-qual
+
+panda/src/plog.pb.o : $(BUILD_DIR)/i386-softmmu/plog.pb.cc
+	$(CXX) $(CXXFLAGS) -g -c -o panda/src/plog.pb.o $(BUILD_DIR)/i386-softmmu/plog.pb.cc
+
+panda/src/plog-cc.o : panda/src/plog.pb.o
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) -g -c -o panda/src/plog-cc.o panda/src/plog-cc.cpp -DPLOG_READER $(LDFLAGS) $(LLVM_LIBS)
+ 
+# This will pick up changes in dynslice2.cpp
+panda/tools/dynslice2.o : panda/tools/dynslice2.cpp
+	$(CXX) $(CXXFLAGS) $(LLVM_CXXFLAGS) $(LLVM_LDFLAGS) -g -c -o panda/tools/dynslice2.o panda/tools/dynslice2.cpp $(LDFLAGS) $(LLVM_LIBS) 
+
+panda/tools/slice_analyzer.o : panda/tools/slice_analyzer.cpp
+	$(CXX) $(CXXFLAGS) -g -c -o panda/tools/slice_analyzer.o panda/tools/slice_analyzer.cpp $(LLVM_CXXFLAGS) $(LLVM_LIBS) $(LDFLAGS) 
+
+dynslice2: $(DYNSLICE_OBJS)
+	$(CXX) $(CXXFLAGS) $(DYNSLICE_OBJS) $(LLVM_CXXFLAGS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -g -o dynslice2 $(LDFLAGS)
+
+slice_analyzer: panda/tools/slice_analyzer.o 
+	$(CXX) $(CXXFLAGS) -g -o slice_analyzer panda/tools/slice_analyzer.o $(LLVM_CXXFLAGS) $(LLVM_LIBS) $(LDFLAGS)
+
+clean: 
+	rm $(DYNSLICE_OBJS) panda/tools/slice_analyzer.o
