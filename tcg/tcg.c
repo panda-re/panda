@@ -58,6 +58,7 @@
 
 #include "elf.h"
 #include "exec/log.h"
+#include "panda/rr/rr_log.h"
 
 /* Forward declarations for functions declared in tcg-target.inc.c and
    used here. */
@@ -1029,6 +1030,7 @@ void tcg_dump_ops(TCGContext *s)
     TCGOp *op;
     int oi;
 
+    uint64_t rr_instr_pt = rr_get_guest_instr_count();
     for (oi = s->gen_op_buf[0].next; oi != 0; oi = op->next) {
         int i, j, k, nb_oargs, nb_iargs, nb_cargs;
         const TCGOpDef *def;
@@ -1051,7 +1053,7 @@ void tcg_dump_ops(TCGContext *s)
 #else
                 a = args[i];
 #endif
-                col += qemu_log(" " TARGET_FMT_lx, a);
+                col += qemu_log(" " TARGET_FMT_lx " " TARGET_FMT_lu, a, a);
             }
             
             col += qemu_log(" ");
@@ -1059,6 +1061,9 @@ void tcg_dump_ops(TCGContext *s)
             for (j = 0; j < op->num_target_bytes; j++){
                 col += qemu_log("%x", s->target_codebuf[op->target_codebuf_idx + j]);
             }
+
+            // Log RR instr count
+            col += qemu_log("\nrr_instr: %lu", ++rr_instr_pt);
         } else if (c == INDEX_op_call) {
             /* variable number of arguments */
             nb_oargs = op->callo;

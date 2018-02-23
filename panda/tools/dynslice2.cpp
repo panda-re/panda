@@ -250,6 +250,7 @@ void get_usedefs_Call(traceEntry &t,
         std::set<SliceVar> &defines){
     CallInst* c = dyn_cast<CallInst>(t.inst);
 
+    
     Function *subf = c->getCalledFunction();
     StringRef func_name = subf->getName();
     printf("getting usedefs call %s\n", func_name.data());
@@ -267,7 +268,7 @@ void get_usedefs_Call(traceEntry &t,
 
         //call looks like call i64 @helper_le_ldul_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v19, i32 1, i64 3735928559)
         Value *load_addr = c->getArgOperand(1);
-        insertValue(uses, load_addr);
+        //insertValue(uses, load_addr);
         insertValue(defines, t.inst);
     }
     //TODO: Fix
@@ -547,9 +548,11 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
         get_uses_and_defs(*traceIt, uses, defs);
 
         //print_insn(traceIt->inst);
+        //XXX: For some reason, these values are kinda corrupted. Should checkout what's wrong.  
+        //printf("rr instr: %lx\n", traceIt->ple->pc());
 
         printf("DEBUG: %lu defs, %lu uses\n", defs.size(), uses.size());
-         printf("DEFS: ");
+        printf("DEFS: ");
         print_set(defs);
         printf("USES: ");
         print_set(uses);
@@ -565,7 +568,7 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             
             for (auto usesIt = uses.begin(); usesIt != uses.end(); ){
                 auto argIt = subfArgMap.find(*usesIt);
-                if(argIt != subfArgMap.end()){
+                if (argIt != subfArgMap.end()){
                     // replace value in uses list with argument value
                     uses.erase(usesIt++);
                     uses.insert(argIt->second); 
@@ -1087,7 +1090,7 @@ int main(int argc, char **argv){
     //parse args 
     
     if (argc < 4) {
-        printf("Usage: <llvm-mod.bc> <trace-file> <criterion> (<criterion>)\n");
+        printf("Usage: <llvm-mod.bc> <trace-file> <criteria-file>\n");
         return EXIT_FAILURE;   
     }
 
@@ -1233,7 +1236,6 @@ int main(int argc, char **argv){
             //Skip over first two entries, LLVM_FN and BB
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
             
-			//if (ple->llvmentry().tb_num() == 504){
 			// If this TB is one where we should start slicing
 			//if (searchTbs.find(ple->llvmentry().tb_num())  != searchTbs.end()){
 				//startSlicing = 1;

@@ -86,7 +86,7 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
 void recordCall(uint64_t fp){
 
     Function* calledFunc = (Function*)fp;
-    printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
+    //printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
     if (calledFunc->getName().startswith("helper_iret")){
         printf("FOUND AN IRET IN RECORDCALL\n");
         llvmtrace_flags &= ~1;
@@ -704,7 +704,6 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
             sscanf(tb->llvm_function->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
             /*llvmentry->tb_num = tb_num;*/
             ple->mutable_llvmentry()->set_tb_num(tb_num);
-            printf("LVLM TRACEFLAGS %x\n", llvmtrace_flags);
         
             ple->mutable_llvmentry()->set_flags(llvmtrace_flags);
         }   
