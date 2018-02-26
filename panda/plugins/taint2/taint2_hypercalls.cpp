@@ -222,6 +222,26 @@ int guest_hypercall_callback(CPUState *cpu) {
         }
     }
     return 1;
+#elif defined(TARGET_ARM)
+    // R0 is command (label or query)
+    // R1 is buf_start
+    // R2 is length
+    // R3 is offset (not currently implemented)
+    CPUArchState *env = (CPUArchState*)cpu->env_ptr;
+    if (env->regs[0] == 7 || env->regs[0] == 8) { //Taint label
+        if (!taintEnabled) {
+            printf("Taint plugin: Label operation detected @ %lu\n", rr_get_guest_instr_count());
+            printf("Enabling taint processing\n");
+            taint2_enable_taint();
+        }
+        // FIXME: do labeling here.
+    }
+    else if (env->regs[0] == 9) { //Query taint on label
+        if (taintEnabled) {
+            printf("Taint plugin: Query operation detected @ %lu\n", rr_get_guest_instr_count());
+        }
+    }
+    return 1;
 #else
     // other architectures
     return 0;
