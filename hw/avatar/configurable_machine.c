@@ -249,7 +249,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
 
     QDICT_ASSERT_KEY_TYPE(mapping, "name", QTYPE_QSTRING);
     QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QINT);
-    g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
+    //g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
 
     if(qdict_haskey(mapping, "is_rom")) {
         QDICT_ASSERT_KEY_TYPE(mapping, "is_rom", QTYPE_QBOOL);
