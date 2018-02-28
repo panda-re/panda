@@ -15,7 +15,7 @@ from ptest_utils import *
 
 # we try this many scissor snips for each of the replays we created in setup
 # note, each snip is random start / end
-num_tests = 5
+num_tests = 20
 
 num_pass = 0
 num_fail = 0
