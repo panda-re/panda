@@ -777,7 +777,7 @@ of your personal plugins.
 4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `personal/panda/plugins/new_cool` and put the code for the new plugin there.
 5. Create a file `panda/plugins/config.panda` with names of enabled plugins as you would normally.
 6. You can use the the same makefile set-up as with regular plugins.
-7. configure with `--extra-plugins-path=/home/you/personal_plugins`
+7. configure with `--extra-plugins-path=/home/you/personal`
 8. Build as usual and you should compile `new_cool` plugin and its compiled code will be deposited in, e.g., `i386-softmmu/panda_plugins`
 
 #### Enabling or Disabling Plugins
