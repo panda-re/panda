@@ -13,3 +13,4 @@ from ptest_utils import *
 run_test_debian("-panda asidstory -os linux-32-lava32 ", 'netstat',"i386")
 
 
+shutil.copyfile(tmpoutdir + "/asidstory", tmpoutfile)
