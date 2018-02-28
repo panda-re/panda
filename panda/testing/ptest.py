@@ -88,7 +88,7 @@ def bless(testname):
         clear_dir(blesseddir)
         tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
         files = os.listdir(tmpoutdir)
-        print tmpoutdir
+#        print tmpoutdir
 
         for f in files:
             progress ("Moving blessed file %s" % f)
@@ -120,6 +120,8 @@ def test(testname):
                 error ("blessed output for %s missing: %s" % (testname, bf))
                 return False
 
+            progress("tof = " + tof)
+            progress("bf =  " + bf)
             if filecmp.cmp(tof, bf):
                 progress ("New output for %s agrees with blessed" % testname)        
                 progress("Test %s succeeded" % testname)
