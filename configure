@@ -331,6 +331,9 @@ numa=""
 tcmalloc="no"
 jemalloc="no"
 replication="yes"
+#AVATAR
+pyperipheral2="no"
+
 
 supported_cpu="no"
 supported_os="no"
@@ -1202,6 +1205,10 @@ for opt do
   ;;
   --enable-replication) replication="yes"
   ;;
+  --disable-pyperipheral2) pyperipheral2="no"
+  ;;
+  --enable-pyperipheral2) pyperipheral2="yes"
+  ;;
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1450,6 +1457,7 @@ disabled with --disable-FEATURE, default is enabled if available:
   xfsctl          xfsctl support
   qom-cast-debug  cast debugging support
   tools           build qemu-io, qemu-nbd and qemu-image tools
+  pyperipheral2   avatars pyththon peripheral (based on python2.7)
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -5916,6 +5924,13 @@ if test "$replication" = "yes" ; then
   echo "CONFIG_REPLICATION=y" >> $config_host_mak
 fi
 
+if test "$pyperipheral2" = "yes" ; then
+  QEMU_INCLUDES="`pkg-config --cflags-only-I python2` $QEMU_INCLUDES"
+  LIBS="-lpython2.7 $LIBS"
+fi
+
+
+
 if test "$have_af_vsock" = "yes" ; then
   echo "CONFIG_AF_VSOCK=y" >> $config_host_mak
 fi
@@ -6430,6 +6445,12 @@ fi
 
 if test "$ccache_cpp2" = "yes"; then
   echo "export CCACHE_CPP2=y" >> $config_host_mak
+fi
+
+
+if test "$pyperipheral2" = "yes" ; then
+  echo "CONFIG_PYPERIPHERAL=y" >> $config_target_mak
+
 fi
 
 # build tree in object directory in case the source is not in the current directory
