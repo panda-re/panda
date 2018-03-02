@@ -43,6 +43,12 @@
 #include <algorithm>
 #include <cmath>
 
+using std::hex;
+using std::dec;
+using std::setw;
+using std::setfill;
+using std::endl;
+
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -69,9 +75,11 @@ PPP_CB_BOILERPLATE(on_proc_change);
 
 /*
 
-How does asidstory work?
+Process info stability.  asidstory needs to know what process is at
+each bb but that information as provided by Osi is unstable.
 
-Here is a picture of what seems to happen during a replay.
+Here is a picture of what we observe happen wrt asid changing and
+processes infor from Osi
 
 *      |            |              |             |      !
 sggggggbbbggggggggggbbbbbbbbbbbbbbbbbggggggggggggbbbggggg
@@ -80,21 +88,42 @@ s - start
 g - we have a good proc (pid & name reasonable)
 b - we have a bad proc (pid or name bad)
 
+Where the '|' indicate an asid change.  
+
+So here is how we handle that.  With a finite state machine.  At asid
+change, we move to mode 'Process_unknown' which means are looking for
+the first good process.  We also start in that mode.  We'll ask Osi
+what the current process is at the beginning of each basic block until
+we see a good one (pid and name make sense).  At which point, we'll
+move to 'Process_suspicious' mode, which means we saw a good process
+after asid change but we don't believe it yet.  If we see that same
+process for PROCESS_GOOD_NUM basic blocks, then we believe it and move
+to 'Process_known' mode.  If we observe a bad process (or just
+different) whilst in the 'Process_suspicious' mode, we'll revert back to
+'Process_unknown'.  We stay in 'Process_known' until asid changes which
+moves us back into 'Process_unknown'.
+
 */
 
+enum Mode {Process_unknown, Process_suspicious, Process_known};
 
+Mode process_mode = Process_unknown;
+
+#define PROCESS_GOOD_NUM 10
+
+// use to count how many bb in a row have same proc name
+// if that is changing we won't believe it
+int process_counter=PROCESS_GOOD_NUM;
+
+// used to control spit_asidstory printout frequency
 bool *status_c=NULL;
+
+// divide replay up into this many temporal cells
 uint32_t num_cells = 80;
 uint64_t min_instr;
 uint64_t max_instr = 0;
 double scale = 0;
 
-bool pid_ok(int pid) {
-    if (pid < 4) {
-        return false;
-    }
-    return true;
-}
  
 #define MILLION 1000000
 //#define NAMELEN 10
@@ -112,6 +141,19 @@ typedef uint64_t Asid;
 typedef uint32_t Cell;
 typedef uint64_t Count;
 typedef uint64_t Instr;
+    
+// if we see svchost more than once, e.g., we use this to append 1, 2, 3, etc to the name in our output
+static std::map<std::string, unsigned> name_count;
+
+//bool spit_out_total_instr_once = false;
+
+
+bool proc_ok = false;
+bool asid_just_changed = false;
+OsiProc *first_good_proc = NULL;
+uint64_t instr_first_good_proc;
+
+target_ulong asid_at_asid_changed;
 
     
 struct NamePid {
@@ -144,12 +186,6 @@ typedef std::pair<NamePid, ProcessData> ProcessKV;
 static unsigned digits(uint64_t num) {
     return std::to_string(num).size();
 }
-
-using std::hex;
-using std::dec;
-using std::setw;
-using std::setfill;
-using std::endl;
 
 void spit_asidstory() {
     FILE *fp = fopen("asidstory", "w");
@@ -213,25 +249,15 @@ void spit_asidstory() {
 }
 
 
-    
-char last_name[256];
-target_ulong last_pid = 0;
-target_ulong last_asid = 0;
+static inline bool pid_ok(int pid) {
+    if (pid < 4) {
+        return false;
+    }
+    return true;
+}
 
-static std::map<std::string, unsigned> name_count;
 
-bool spit_out_total_instr_once = false;
-
-int num_ok = 0;
-int num_not_ok = 0;
-
-bool proc_ok = false;
-bool asid_just_changed = false;
-OsiProc *proc_at_asid_changed = NULL;
-uint64_t instr_count_at_asid_changed;
-target_ulong asid_at_asid_changed;
-
-bool check_proc(OsiProc *proc) {
+static inline bool check_proc(OsiProc *proc) {
     if (proc && pid_ok(proc->pid)) {
         int l = strlen(proc->name);
         for (int i=0; i<l; i++) 
@@ -249,8 +275,6 @@ bool check_proc(OsiProc *proc) {
    updating first / last instr and cell counts
 */
 void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
-//    printf ("saw_proc %s %d %" PRId64 "\n",
-//            proc->name, (int) proc->pid, instr_count);
 
     const NamePid namepid(proc->name ? proc->name : "", proc->pid, proc->asid);        
     ProcessData &pd = process_datas[namepid];
@@ -291,8 +315,8 @@ void saw_proc(CPUState *env, OsiProc *proc, uint64_t instr_count) {
 
 // proc was seen from instr i1 to i2
 void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
-//    printf ("saw_proc_range %s %d (%" PRId64 " ..%" PRId64 ")\n", 
-//            proc->name, (int) proc->pid, i1, i2);
+    printf ("saw_proc_range [%s,%d] (%" PRId64 " ..%" PRId64 ")\n", 
+            proc->name, (int) proc->pid, i1, i2);
 
      uint64_t step = floor(1.0 / scale) / 2;
     // assume that last process was running from last asid change to basically now
@@ -306,17 +330,6 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
 
 
 
-uint64_t num_asid_change = 0;
-uint64_t num_seq_bb = 0;
-bool asid_changed = false;
-
-OsiProc *proc_at_first_good_proc;
-uint64_t instr_at_first_good_proc;
-
-// use to count how many bb in a row have same proc name
-// if that is changing we won't believe it
-int proc_counter;
-
 // when asid changes, try to figure out current proc, which can fail in which case
 // the before_block_exec callback will try again at the start of each subsequent
 // block until we succeed in determining current proc. 
@@ -325,16 +338,12 @@ int proc_counter;
 int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return 0;
-    num_asid_change ++;
-
-//    printf ("asid just changed\n");
-    if (proc_ok && proc_counter==0) {
-//        printf ("and we had a good proc for last interval\n");
-
-        // asid just changed and for prev bb (and probably some number
-        // previoust) we had a good proc.  
+    
+    if (process_mode == Process_known) {
+        // this means we knew the process during the last asid interval
+        // so we'll record that info for later display
         uint64_t curr_instr = rr_get_guest_instr_count();
-        saw_proc_range(env, proc_at_first_good_proc, instr_at_first_good_proc, curr_instr-100);
+        saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);
 
         // just trying to arrange it so that we only spit out asidstory plot
         // for a cell once.
@@ -345,77 +354,83 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
             status_c[i] = true;
         }
         if (anychange) spit_asidstory();
-
-    }
-    asid_changed = true;
-    proc_ok = false;
+    }    
+    
+    process_mode = Process_unknown;
+    asid_at_asid_changed = new_asid;
 
     return 0;
 }
 
 
-// before every bb,  really just trying to figure out current proc correctly
-int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-    num_seq_bb ++;
 
-    // NB: we only know max instr *after* replay has started,
-    // so this code *cant* be run in init_plugin.  yuck. only triggers once
+OsiProc *copy_proc(OsiProc *from, OsiProc *to) {
+    if (to == NULL) 
+        to = (OsiProc *) malloc(sizeof(OsiProc));
+    else {
+        if (to->name != NULL) free(to->name);
+        if (to->pages != NULL) free(to->pages);
+    }
+    memcpy(to, from, sizeof(OsiProc));
+    to->name = strdup(from->name);
+    to->pages = NULL;
+    return to;
+}
+
+
+static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
+    if ((proc1->pid != proc2->pid) || (0 != strcmp(proc1->name, proc2->name))) 
+        return false;
+    return true;
+}
+
+
+// before every bb, mostly just trying to figure out current proc 
+int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
+
+    // NB: we only know max instr *after* replay has started which is why this is here
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
         scale = ((double) num_cells) / ((double) max_instr); 
         printf("max_instr = %" PRId64 "\n", max_instr);
     }
 
-    if (!asid_changed && proc_ok) {
-        if (proc_counter) {
-            OsiProc *proc = get_current_process(env);
-//            printf ("proc [%s] %d\n", proc->name, (int) proc->pid);
-            // trying to make sure that once we get a proc_ok, 
-            // it stays that way and agrees with itself
-            if (0 != strcmp(proc->name, proc_at_first_good_proc->name))  {
-//                printf ("proc no longer ok\n");
-                proc_ok = false;
-            }
-            else
-                proc_counter --;
-        }
-    }
-
-    // we only interrogate wrt proc if asid just changed
-    // and until we figure out what the proc is
-    if (!asid_changed) return 0;
-
-//    printf ("asid changed\n");
-
-    // asid did just change -- and we already saw a good proc    
-    if (proc_ok) {
+    // all this is about figuring out if and when we know the current process
+    switch (process_mode) {
+    case Process_known: {
         return 0;
+        break;
     }
-//    printf ("... and yet we still dont have good proc\n");
-
-    // ok asid changed a bit ago and we still haven't seen a good proc
-    OsiProc *proc = get_current_process(env);
-    proc_ok = check_proc(proc);
-    
-    if (proc_ok) {
-//        printf ("... now we have a good proc [%s] %d\n", proc->name, (int) proc->pid);
-        if (proc_at_first_good_proc) {
-/*
-            free(proc_at_first_good_proc->name);
-            free(proc_at_first_good_proc);
-*/
+    case Process_unknown: {
+        OsiProc *current_proc = get_current_process(env);    
+        if (check_proc(current_proc)) {
+            // first good proc 
+            first_good_proc = copy_osiproc_g(current_proc, first_good_proc);
+            instr_first_good_proc = rr_get_guest_instr_count(); 
+            process_mode = Process_suspicious;
+            process_counter = PROCESS_GOOD_NUM;
         }
-        proc_at_first_good_proc = proc;
-        proc_at_first_good_proc->name = strdup(proc->name);
-        instr_at_first_good_proc = rr_get_guest_instr_count(); 
-        // now we wait for next asid change
-        asid_changed = false;
-        proc_counter = 10;
+        break;
     }
-    else {
-//       printf ("... still not a good proc\n");
+    case Process_suspicious: {
+        OsiProc *current_proc = get_current_process(env);    
+        if (check_proc(current_proc) && (process_same(current_proc, first_good_proc))) {
+            // proc good and also stable
+            process_counter--;
+            if (process_counter == 0) {
+                // process deemed good enough
+                process_mode = Process_known;
+                PPP_RUN_CB(on_proc_change, env, asid_at_asid_changed, first_good_proc);
+            }
+        }
+        else 
+            // process either not good or not stable -- revert
+            process_mode = Process_unknown;                    
+        break;
     }
-
+    default: {}
+    }
+    
     return 0;
 }
 
