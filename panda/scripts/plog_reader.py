@@ -4,21 +4,30 @@ import sys
 import os
 import zlib
 import struct
+import itertools
 from google.protobuf.json_format import MessageToJson
-from os.path import dirname, join, realpath
+from os.path import dirname
 
-panda_dir = dirname(dirname(dirname(realpath(__file__))))
+panda_dir = dirname(dirname(dirname(os.path.realpath(__file__))))
 
-def try_path(*args):
-    args = list(args) + ['i386-softmmu']
-    build_dir = join(*args)
-    if os.path.isdir(build_dir):
-        sys.path.append(build_dir)
-try_path(panda_dir, 'build')
-try_path(panda_dir)
-try_path(dirname(panda_dir), 'opt-panda')
-try_path(dirname(panda_dir), 'debug-panda')
-import plog_pb2
+# components of paths to be serched
+top_dirs = [panda_dir, dirname(panda_dir)]
+build_dirs = ['build-panda', 'build', 'opt-panda', 'debug-panda']
+arch_dirs = ['i386-softmmu', 'x86_64-softmmu']
+searched_paths = []
+
+for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
+    d = os.path.join(*dc)
+    searched_paths.append(d)
+    if not os.path.isdir(d): continue
+    try:
+        sys.path.append(d)
+        import plog_pb2
+        break
+    except ImportError:
+        sys.path.pop()
+
+assert 'plog_pbd2' in sys.modules, "Couldn't load module plog_pb2. Searched paths:\n\t%s" % "\n\t".join(searched_paths)
 
 def plogiter(fn):
     #f = open(sys.argv[1])
