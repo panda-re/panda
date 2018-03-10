@@ -29,6 +29,8 @@ extern "C" {
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 #include "panda/plugin_plugin.h"
+#include "osi/osi_types.h"
+#include "osi/osi_ext.h"
 }
 
 #include <iostream>
@@ -50,6 +52,8 @@ extern "C" {
 
 extern PandaLog globalLog;
 extern int llvmtrace_flags;
+bool do_record = true;
+bool record_int = false;
 
 namespace llvm {
 
@@ -71,7 +75,7 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
     
     //giri doesn't write to log, instead pushes onto a bb stack. 
 
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
 
@@ -87,24 +91,29 @@ void recordCall(uint64_t fp){
 
     Function* calledFunc = (Function*)fp;
     //printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
-    if (calledFunc->getName().startswith("helper_iret")){
-        printf("FOUND AN IRET IN RECORDCALL\n");
-        llvmtrace_flags &= ~1;
-    }
-
-    if (pandalog){
+    if (pandalog && do_record && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
         ple->mutable_llvmentry()->set_address(fp);
         
         globalLog.write_entry(std::move(ple));
     }
+
+    if (calledFunc->getName().startswith("helper_iret")){
+        printf("FOUND AN IRET IN RECORDCALL\n");
+        llvmtrace_flags &= ~1;
+
+        //turn on record!
+        do_record = true;
+        printf("TURNED ON RECORD\n");
+    }
+
 }
 
 //TODO: Can I get rid of this?
 void recordBB(uint64_t fp, unsigned lastBB){
     
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
 
@@ -155,7 +164,7 @@ void recordLoad(uint64_t address){
 
     //printf("recording load from   address %lx\n", address);
 
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_LOAD);
 
@@ -186,7 +195,7 @@ void recordStore(uint64_t address, uint64_t value){
 
     //printf("recording store to address %lx\n", address);
     
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_STORE);
 
@@ -216,7 +225,7 @@ void recordStore(uint64_t address, uint64_t value){
 }
 
 void recordReturn(uint64_t retVal){
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_RET);
         ple->mutable_llvmentry()->set_value(retVal);
@@ -225,7 +234,7 @@ void recordReturn(uint64_t retVal){
 }
 
 void recordSelect(uint8_t condition){
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_SELECT);
         ple->mutable_llvmentry()->set_condition(condition);
@@ -236,7 +245,7 @@ void recordSelect(uint8_t condition){
 }
 
 void recordSwitch(uint32_t condition){
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_SWITCH);
         ple->mutable_llvmentry()->set_condition(condition);
@@ -247,7 +256,7 @@ void recordSwitch(uint32_t condition){
 }
 
 void recordBranch(uint8_t condition){
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_BR);
         ple->mutable_llvmentry()->set_condition(condition);
@@ -694,8 +703,19 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
 
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     // write LLVM FUNCTION to pandalog
+    // Get dynamic libraries of current process
+    //OsiProc *current = get_current_process(env);
+    //OsiModules *ms = get_libraries(env, current);
+        
+    target_ulong curpc = panda_current_pc(env);
+    printf("curpc %x\n", curpc); 
+
+    if (llvmtrace_flags&1 && !record_int){
+        // this is an interrupt, and we don't want to record interrupts. turn off record
+        do_record = false;
+    }
     
-    if (pandalog) {
+    if (pandalog && do_record) {
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::LLVM_FN);
 
@@ -717,7 +737,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
 int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
     printf("EXCEPTION - logging\n");
     
-    if (pandalog){
+    if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::LLVM_EXCEPTION);
 
@@ -735,6 +755,15 @@ bool init_plugin(void *self){
     panda_enable_memcb();
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    
+    // Initialize OS API
+    if(!init_osi_api()) return false;
+    
+    //Parse args
+    panda_arg_list *args = panda_get_args("llvm_trace2");
+    if (args != NULL) {
+        record_int = panda_parse_bool_opt(args, "int","set to 1 to record interrupts. 0 by default");
+    }
 
     //Initialize pandalog
     if (!pandalog){
@@ -789,9 +818,6 @@ void uninit_plugin(void *self){
     //XXX: Make this be done somewhere else, in cleanup
     /*globalLog.close();*/
 
-    /*char modpath[256];*/
-    /*strcpy(modpath, basedir);*/
-    /*strcat(modpath, "/llvm-mod.bc");*/
     tcg_llvm_write_module(tcg_llvm_ctx, "./llvm-mod.bc");
     
      llvm::PassRegistry *pr = llvm::PassRegistry::getPassRegistry();
