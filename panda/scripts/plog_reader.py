@@ -27,7 +27,7 @@ for dc in itertools.product(top_dirs, build_dirs, arch_dirs):
     except ImportError:
         sys.path.pop()
 
-assert 'plog_pbd2' in sys.modules, "Couldn't load module plog_pb2. Searched paths:\n\t%s" % "\n\t".join(searched_paths)
+assert 'plog_pb2' in sys.modules, "Couldn't load module plog_pb2. Searched paths:\n\t%s" % "\n\t".join(searched_paths)
 
 def plogiter(fn):
     #f = open(sys.argv[1])
