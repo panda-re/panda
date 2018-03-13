@@ -23,6 +23,8 @@ message LLVMEntry {
     //flags that tell us whether we're in a hardware int, exception, dynamic loader, etc...
     //So the slicer can excise some parts 
     optional uint32 flags = 10;
+
+    optional string vma_name = 11;
 }
 
 optional LLVMEntry llvmEntry = 30;

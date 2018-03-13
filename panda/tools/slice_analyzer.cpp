@@ -61,23 +61,6 @@ void print_insn(Instruction *insn) {
     return;
 }
 
-//void print_marked(Function *f, std::map<Function*, std::vector<std::bitset<MAX_BITSET>>> &marked) {
-    //printf("*** Function %s ***\n", f->getName().str().c_str());
-    //int i = 0;
-    //for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
-        //printf(">>> Block %d\n", i);
-        //int j = 0;
-        //for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
-                //insn_it != insn_ed; ++insn_it) {
-            //char m = marked[f][i][j] ? '*' : ' ';
-            //printf("%c ", m);
-            //print_insn(&*insn_it);
-            //j++;
-        //}
-        //i++;
-    //}
-//}
-
 void bytes2bits(uint8_t bytes[], std::bitset<MAX_BITSET> &bits) {
     for (int i = 0; i < MAX_BITSET / 8; i++) {
         uint8_t byte = bytes[i];
@@ -171,7 +154,6 @@ int main(int argc, char **argv) {
 
     // Now, print marked assembly
     for (auto pair : marked) {
-
         Function* f = pair.first;
         printf("*** Function %s ***\n", f->getName().str().c_str());
         int i = 0;
@@ -179,7 +161,7 @@ int main(int argc, char **argv) {
             printf(">>> Block %d\n", i);
             int j = 0;
             std::string targetAsm = "";
-            bool targetAsmSeen = true, targetAsmMarked = false;
+            bool targetAsmSeen, targetAsmMarked = false;
 
             for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
                     insn_it != insn_ed; ++insn_it) {
@@ -203,8 +185,6 @@ int main(int argc, char **argv) {
                     targetAsmMarked = true;
                 };
 
-                //printf("%c ", m);
-                //print_insn(&*insn_it);
                 j++;
             }
             
@@ -214,7 +194,6 @@ int main(int argc, char **argv) {
             }                    
             i++;
         }
-        
     }   
 
     return EXIT_SUCCESS;

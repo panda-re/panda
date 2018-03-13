@@ -68,6 +68,10 @@ namespace llvm {
   Type *VoidType;
   Type *VoidPtrType;
 
+//*************************************************************
+// Record Functions
+//************************************************************
+
 //void PandaLLVMTraceVisitor::visitPhiInst(){
 
 //}
@@ -119,44 +123,6 @@ void recordBB(uint64_t fp, unsigned lastBB){
 
         globalLog.write_entry(std::move(ple));
     }
-}
-
-const char* infer_register(uint32_t offset){
-    switch (offset) {
-    case 0:
-        return "EAX";
-    case 1:
-        return "ECX";
-    case 2:
-        return "EDX";
-    case 3:
-        return "EBX";
-    case 4:
-        return "ESP ";
-    case 5:
-        return "EBP";
-    case 6:
-        return "ESI";
-    case 7:
-        return "EDI";
-    case 8:
-        return "EIP";
-    case 9:
-        return "EFLAGS";
-    case 10:
-        return "CC_DST";
-    case 11:
-        return "CC_SRC";
-    case 12:
-        return "CC_SRC2";
-    case 13:
-        return "CC_OP";
-    case 14:
-        return "DF";
-    default:
-        printf("NOT an x86 reg: %u\n", offset);
-        return "";
-	}
 }
 
 void recordLoad(uint64_t address){
@@ -265,145 +231,11 @@ void recordBranch(uint8_t condition){
     }
 }
 
-void write_trace_log(){
-    printf("writing trace log\n");
-}
 
-//this function is inlined into LLVM assembly, writes dynamic values to trace log in protobuf format
-void log_dynval(){
-    write_trace_log();
-}
+//********************************************************
+// Visit functions
+// ********************************************************
 
-
-extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
-
-static void llvm_init(){
-
-    printf("LLVM_init\n");
-    FunctionPassManager *passMngr = tcg_llvm_ctx->getFunctionPassManager();
-    Module *mod = tcg_llvm_ctx->getModule();
-    LLVMContext &ctx = mod->getContext();
-    LLVMTraceMD = MDNode::get(ctx, MDString::get(ctx, "llvmtrace"));
-
-    std::vector<Type*> argTypes;
-
-    //TODO: Stick this somewhere
-    // Add the taint analysis pass to our taint pass manager
-    PLTP = new llvm::PandaLLVMTracePass(mod);
-    passMngr->add(PLTP);
-
-    passMngr->doInitialization();
-
-	 printf("eip: %lu\n", offsetof(CPUX86State, eip)/4);
-	 printf("cc_dst: %lu\n", offsetof(CPUX86State, cc_dst)/4);
-	 printf("xmm_regs: %lu\n", offsetof(CPUX86State, xmm_regs)/4);
-	 printf("segs: %lu\n", offsetof(CPUX86State, segs)/4);
-	 printf("ldt : %lu\n", offsetof(CPUX86State, ldt)/4);
-	 printf("tr : %lu\n", offsetof(CPUX86State, tr)/4);
-	 printf("segs gdt: %lu\n", offsetof(CPUX86State, gdt)/4);
-	 printf("segs idt: %lu\n", offsetof(CPUX86State, idt)/4);
-	 printf("cr array: %lu\n", offsetof(CPUX86State, cr)/4);
-	 printf("bnd_regs: %lu\n", offsetof(CPUX86State, bnd_regs)/4);
-	 printf("fpregs: %lu\n", offsetof(CPUX86State, fpregs)/4);
-	 printf("fpop: %lu\n", offsetof(CPUX86State, fpop)/4);
-
-
-	 printf("exception_next_eip: %lu\n", offsetof(CPUX86State, exception_next_eip)/4);
-
-}
-
-
-void instrumentBasicBlock(BasicBlock &BB){
-    Module *module = tcg_llvm_ctx->getModule();
-    Value *FP = castTo(BB.getParent(), VoidPtrType, "", BB.getTerminator());
-    Value *tb_num_val;
-    if (BB.getParent()->getName().startswith("tcg-llvm-tb-")) {
-        int tb_num; 
-        sscanf(BB.getParent()->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
-        tb_num_val = ConstantInt::get(Int64Type, tb_num);
-    } else {
-        tb_num_val = ConstantInt::get(Int64Type, 0);
-    }   
-
-    //Function *recordBBF = module->getFunction("recordBB");
-    Function *recordStartBBF = module->getFunction("recordStartBB");
-
-    //Value *lastBB;
-    //if (isa<ReturnInst>(BB.getTerminator()))
-         //lastBB = ConstantInt::get(Int32Type, 1);
-    //else
-         //lastBB = ConstantInt::get(Int32Type, 0);
-    
-    //std::vector<Value*> args = make_vector<Value*>(FP, lastBB, 0);
-    //CallInst::Create(recordBBF, args, "", BB.getTerminator());
-
-    // Insert code at the beginning of the basic block to record that it started
-    // execution.
-
-    std::vector<Value*> args = make_vector<Value *>(FP, tb_num_val, 0);
-    Instruction *F = BB.getFirstInsertionPt();
-    CallInst::Create(recordStartBBF, args, "", F);
-}
-
-char PandaLLVMTracePass::ID = 0;
-static RegisterPass<PandaLLVMTracePass>
-Y("PandaLLVMTrace", "Instrument instructions that produce dynamic values");
-
-bool PandaLLVMTracePass::runOnBasicBlock(BasicBlock &B){
-    //TODO: Iterate over function instrs
-    instrumentBasicBlock(B);
-    PLTV->visit(B);
-    return true; // modified program
-};
-
-//What initialization is necessary? 
-bool PandaLLVMTracePass::doInitialization(Module &module){
-    printf("Doing pandallvmtracepass initialization\n");
-    ExecutionEngine *execEngine = tcg_llvm_ctx->getExecutionEngine();
-      // Get references to the different types that we'll need.
-  Int8Type  = IntegerType::getInt8Ty(module.getContext());
-  Int32Type = IntegerType::getInt32Ty(module.getContext());
-  Int64Type = IntegerType::getInt64Ty(module.getContext());
-  VoidPtrType = PointerType::getUnqual(Int8Type);
-  VoidType = Type::getVoidTy(module.getContext());
-
-  // Insert code at the beginning of the basic block to record that it started
-  // execution.
-  //std::vector<Value*> args = make_vector<Value *>();
-  //Instruction *F = BB.getFirstInsertionPt();
-  //Instruction *S = CallInst::Create(recordStartBBF, args, "", F);
-
-    //initialize all the other record/logging functions
-    PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
-    PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, nullptr));
-    PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
-    PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
-    PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
-    PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, Int8Type, nullptr));
-    // recordStartBB: 
-    PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
-    PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
-    PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, nullptr));
-
-    //add external linkages
-    
-#define ADD_MAPPING(func) \
-    execEngine->addGlobalMapping(module.getFunction(#func), (void *)(func));\
-    module.getFunction(#func)->deleteBody();
-    ADD_MAPPING(recordLoad);
-    ADD_MAPPING(recordStore);
-    ADD_MAPPING(recordCall);
-    ADD_MAPPING(recordSelect);
-    ADD_MAPPING(recordSwitch);
-    ADD_MAPPING(recordBranch);
-    ADD_MAPPING(recordStartBB);
-    ADD_MAPPING(recordBB);
-    ADD_MAPPING(recordReturn);
-    return true; //modified program
-};
-
-
-// Unhandled
 void PandaLLVMTraceVisitor::visitInstruction(Instruction &I) {
     //I.dump();
     //printf("Error: Unhandled instruction\n");
@@ -697,23 +529,221 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
     //handle cases where dynamic values are being used. 
 }
 
+//*********************************************************
+// LLVM Pass Initialization
+// ********************************************************
+
+extern "C" { extern TCGLLVMContext *tcg_llvm_ctx; }
+
+static void llvm_init(){
+
+    printf("LLVM_init\n");
+    FunctionPassManager *passMngr = tcg_llvm_ctx->getFunctionPassManager();
+    Module *mod = tcg_llvm_ctx->getModule();
+    LLVMContext &ctx = mod->getContext();
+    LLVMTraceMD = MDNode::get(ctx, MDString::get(ctx, "llvmtrace"));
+
+    std::vector<Type*> argTypes;
+
+    //TODO: Stick this somewhere
+    // Add the taint analysis pass to our taint pass manager
+    PLTP = new llvm::PandaLLVMTracePass(mod);
+    passMngr->add(PLTP);
+
+    passMngr->doInitialization();
+
+	 printf("eip: %lu\n", offsetof(CPUX86State, eip)/4);
+	 printf("cc_dst: %lu\n", offsetof(CPUX86State, cc_dst)/4);
+	 printf("xmm_regs: %lu\n", offsetof(CPUX86State, xmm_regs)/4);
+	 printf("segs: %lu\n", offsetof(CPUX86State, segs)/4);
+	 printf("ldt : %lu\n", offsetof(CPUX86State, ldt)/4);
+	 printf("tr : %lu\n", offsetof(CPUX86State, tr)/4);
+	 printf("segs gdt: %lu\n", offsetof(CPUX86State, gdt)/4);
+	 printf("segs idt: %lu\n", offsetof(CPUX86State, idt)/4);
+	 printf("cr array: %lu\n", offsetof(CPUX86State, cr)/4);
+	 printf("bnd_regs: %lu\n", offsetof(CPUX86State, bnd_regs)/4);
+	 printf("fpregs: %lu\n", offsetof(CPUX86State, fpregs)/4);
+	 printf("fpop: %lu\n", offsetof(CPUX86State, fpop)/4);
+
+
+	 printf("exception_next_eip: %lu\n", offsetof(CPUX86State, exception_next_eip)/4);
+
+}
+
+
+void instrumentBasicBlock(BasicBlock &BB){
+    Module *module = tcg_llvm_ctx->getModule();
+    Value *FP = castTo(BB.getParent(), VoidPtrType, "", BB.getTerminator());
+    Value *tb_num_val;
+    if (BB.getParent()->getName().startswith("tcg-llvm-tb-")) {
+        int tb_num; 
+        sscanf(BB.getParent()->getName().str().c_str(), "tcg-llvm-tb-%d-%*d", &tb_num); 
+        tb_num_val = ConstantInt::get(Int64Type, tb_num);
+    } else {
+        tb_num_val = ConstantInt::get(Int64Type, 0);
+    }   
+
+    //Function *recordBBF = module->getFunction("recordBB");
+    Function *recordStartBBF = module->getFunction("recordStartBB");
+
+    //Value *lastBB;
+    //if (isa<ReturnInst>(BB.getTerminator()))
+         //lastBB = ConstantInt::get(Int32Type, 1);
+    //else
+         //lastBB = ConstantInt::get(Int32Type, 0);
+    
+    //std::vector<Value*> args = make_vector<Value*>(FP, lastBB, 0);
+    //CallInst::Create(recordBBF, args, "", BB.getTerminator());
+
+    // Insert code at the beginning of the basic block to record that it started
+    // execution.
+
+    std::vector<Value*> args = make_vector<Value *>(FP, tb_num_val, 0);
+    Instruction *F = BB.getFirstInsertionPt();
+    CallInst::Create(recordStartBBF, args, "", F);
+}
+
+char PandaLLVMTracePass::ID = 0;
+static RegisterPass<PandaLLVMTracePass>
+Y("PandaLLVMTrace", "Instrument instructions that produce dynamic values");
+
+bool PandaLLVMTracePass::runOnBasicBlock(BasicBlock &B){
+    //TODO: Iterate over function instrs
+    instrumentBasicBlock(B);
+    PLTV->visit(B);
+    return true; // modified program
+};
+
+//What initialization is necessary? 
+bool PandaLLVMTracePass::doInitialization(Module &module){
+    printf("Doing pandallvmtracepass initialization\n");
+    ExecutionEngine *execEngine = tcg_llvm_ctx->getExecutionEngine();
+      // Get references to the different types that we'll need.
+  Int8Type  = IntegerType::getInt8Ty(module.getContext());
+  Int32Type = IntegerType::getInt32Ty(module.getContext());
+  Int64Type = IntegerType::getInt64Ty(module.getContext());
+  VoidPtrType = PointerType::getUnqual(Int8Type);
+  VoidType = Type::getVoidTy(module.getContext());
+
+  // Insert code at the beginning of the basic block to record that it started
+  // execution.
+  //std::vector<Value*> args = make_vector<Value *>();
+  //Instruction *F = BB.getFirstInsertionPt();
+  //Instruction *S = CallInst::Create(recordStartBBF, args, "", F);
+
+    //initialize all the other record/logging functions
+    PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, nullptr));
+    PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, nullptr));
+    PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
+    PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
+    PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
+    PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, Int8Type, nullptr));
+    // recordStartBB: 
+    PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
+    PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
+    PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, nullptr));
+
+    //add external linkages
+    
+#define ADD_MAPPING(func) \
+    execEngine->addGlobalMapping(module.getFunction(#func), (void *)(func));\
+    module.getFunction(#func)->deleteBody();
+    ADD_MAPPING(recordLoad);
+    ADD_MAPPING(recordStore);
+    ADD_MAPPING(recordCall);
+    ADD_MAPPING(recordSelect);
+    ADD_MAPPING(recordSwitch);
+    ADD_MAPPING(recordBranch);
+    ADD_MAPPING(recordStartBB);
+    ADD_MAPPING(recordBB);
+    ADD_MAPPING(recordReturn);
+    return true; //modified program
+};
+
 
 } // namespace llvm
 // I'll need a pass manager to traverse stuff. 
 
+//*************************************************************************
+// Helper functions
+//*************************************************************************
+
+const char* infer_register(uint32_t offset){
+    switch (offset) {
+    case 0:
+        return "EAX";
+    case 1:
+        return "ECX";
+    case 2:
+        return "EDX";
+    case 3:
+        return "EBX";
+    case 4:
+        return "ESP ";
+    case 5:
+        return "EBP";
+    case 6:
+        return "ESI";
+    case 7:
+        return "EDI";
+    case 8:
+        return "EIP";
+    case 9:
+        return "EFLAGS";
+    case 10:
+        return "CC_DST";
+    case 11:
+        return "CC_SRC";
+    case 12:
+        return "CC_SRC2";
+    case 13:
+        return "CC_OP";
+    case 14:
+        return "DF";
+    default:
+        printf("NOT an x86 reg: %u\n", offset);
+        return "";
+	}
+}
+
+char* lookup_libname(target_ulong curpc, OsiModules* ms){
+    for (int i = 0; i < ms->num; i++){
+        if (curpc >= ms->module[i].base && curpc <= ms->module[i].base + ms->module[i].size){
+            //we've found the module this belongs to
+            //return name of module
+            return ms->module[i].name;
+        }
+    }
+    return NULL;
+}
+
+
+//*************************************************************************
+// PANDA Plugin setup functions and callbacks
+//*************************************************************************
+
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     // write LLVM FUNCTION to pandalog
     // Get dynamic libraries of current process
-    //OsiProc *current = get_current_process(env);
-    //OsiModules *ms = get_libraries(env, current);
+    OsiProc *current = get_current_process(env);
+    OsiModules *ms = get_libraries(env, current);
         
     target_ulong curpc = panda_current_pc(env);
     printf("curpc %x\n", curpc); 
+
+    //Look up mapping/library name
+    const char* lib_name;
+    if (ms == NULL){
+        lib_name = "";
+    } else {
+        lib_name = lookup_libname(curpc, ms);
+    }
 
     if (llvmtrace_flags&1 && !record_int){
         // this is an interrupt, and we don't want to record interrupts. turn off record
         do_record = false;
     }
+    printf("lib_name: %s\n", lib_name);
     
     if (pandalog && do_record) {
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
@@ -726,6 +756,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
             ple->mutable_llvmentry()->set_tb_num(tb_num);
         
             ple->mutable_llvmentry()->set_flags(llvmtrace_flags);
+            
+            if (lib_name != NULL){
+                ple->mutable_llvmentry()->set_vma_name(lib_name);
+            }
         }   
         
         globalLog.write_entry(std::move(ple));
@@ -746,7 +780,6 @@ int cb_cpu_restore_state(CPUState *env, TranslationBlock *tb){
         
     return 0; 
 }
-
 
 bool init_plugin(void *self){
     printf("Initializing plugin llvm_trace2\n");
@@ -771,8 +804,6 @@ bool init_plugin(void *self){
         exit(1);
     }
         
-    /*PandaLog plog;*/
-    /*plog.open(pandalog_fname, "w");*/
     // Initialize pass manager
     
     // I have to enable llvm to get the tcg_llvm_ctx
@@ -837,3 +868,5 @@ void uninit_plugin(void *self){
     }
     panda_disable_memcb();
 }
+
+

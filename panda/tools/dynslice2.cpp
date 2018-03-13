@@ -100,12 +100,14 @@ uint64_t cpustatebase;
 llvm::Module* mod;
 std::map<uint64_t, int> tb_addr_map;
 
-
+// Slicing globals 
 uint64_t startRRInstrCount;
 uint64_t endRRInstrCount;
 uint64_t startAddr;
 uint64_t endAddr;
 std::set<uint64_t> searchTbs;
+std::set<std::string> searchModules;
+
 std::set<SliceVar> workList; 
 std::vector<traceEntry> traceEntries;
 std::map<std::pair<Function*, int>, std::bitset<MAX_BITSET>> markedMap;
@@ -114,14 +116,15 @@ bool debug = false;
 
 std::unique_ptr<panda::LogEntry> cursor; 
 
-void print_insn(Instruction *insn) {
-    std::string s;
-    raw_string_ostream ss(s);
-    insn->print(ss);
-    ss.flush();
-    printf("%s\n", ss.str().c_str());
-    return;
-}
+
+//******************************************************************
+// Helper functions 
+//*****************************************************************
+
+
+//******************************************************************
+// Print functions 
+//*****************************************************************
 
 std::string SliceVarStr(const SliceVar &s) {
     char output[128] = {};
@@ -152,6 +155,14 @@ std::string SliceVarStr(const SliceVar &s) {
     return output;
 }
 
+void print_insn(Instruction *insn) {
+    std::string s;
+    raw_string_ostream ss(s);
+    insn->print(ss);
+    ss.flush();
+    printf("%s\n", ss.str().c_str());
+    return;
+}
 
 void print_set(std::set<SliceVar> &s) {
     printf("{");
@@ -182,6 +193,165 @@ void pprint_ple(panda::LogEntry *ple) {
     printf("}\n\n");
 }
 
+uint64_t infer_offset(const char* reg){
+	printf("infer offset of %s\n", reg);
+    if (strncmp(reg, "EAX", 3) == 0) {
+        return 0;
+    }
+    else if (strncmp(reg, "ECX", 3) == 0) {
+        return 1;
+    }
+    else if (strncmp(reg, "EDX", 3) == 0) {
+        return 2;
+    }
+    else if (strncmp(reg, "EBX", 3) == 0) {
+        return 3;
+    }
+    else if (strncmp(reg, "ESP", 3) == 0) {
+        return 4;
+    }
+    else if (strncmp(reg, "EBP", 3) == 0) {
+        return 5;
+    }
+    else if (strncmp(reg, "ESI", 3) == 0) {
+        return 6;
+    }
+    else if (strncmp(reg, "EDI", 3) == 0) {
+        return 7;
+    }
+    else if (strncmp(reg, "EIP", 3) == 0) {
+        return 8;
+    }
+
+	printf("NOT an x86 reg: %s\n", reg);
+	return -1;
+}
+
+SliceVar VarFromCriteria(std::string str){
+    
+    SliceVarType typ = LLVM;
+
+	if (strncmp(str.c_str(), "MEM", 3) == 0) {
+        typ = MEM;
+    }
+    else if (strncmp(str.c_str(), "TGT", 3) == 0) {
+        typ = TGT;
+    }
+
+	std::string crit = str.substr(0, str.find(" at ")); 
+	std::string reg = crit.substr(4, crit.length()); 
+	uint64_t sliceVal = cpustatebase + infer_offset(reg.c_str())*4;
+	str.erase(0, str.find(" at ") + 4);
+    printf("Reg: %s, addr: %s, sliceVal: %lx\n", reg.c_str(), str.c_str(), sliceVal);
+
+	
+	std::string rangeStr = str;	
+    //parseRange(rangeStr);
+    std::string startRange = str.substr(0, rangeStr.find("-"));
+    rangeStr.erase(0, str.find("-") + 1);
+    std::string endRange = rangeStr;
+
+    if(strncmp(startRange.c_str(), "rr:", 3) == 0){
+        startRange = startRange.erase(0, 3);
+        startRRInstrCount =  std::stoull(startRange, NULL);
+        endRRInstrCount = std::stoull(endRange, NULL);
+        printf("start instr: %lu, end instr: %lu\n", startRRInstrCount, endRRInstrCount);
+    } else if (strncmp(startRange.c_str(), "addr:", 4) == 0){
+        startRange = startRange.erase(0, 4);
+        startAddr = std::stoull(startRange, NULL, 16);
+        endAddr = std::stoull(endRange, NULL, 16);
+        printf("Start range: %lx, end range: %lx\n", startAddr, endAddr);
+    }   
+
+	//searchTbs.insert(addr_to_tb(startAddr));
+
+	return std::make_pair(typ, sliceVal);
+}
+
+/**
+ * 
+ *
+ */
+void process_criteria(std::string criteria_fname){
+    std::string str;
+	std::ifstream file(criteria_fname);
+
+    std::getline(file, str);
+    
+	std::string modules = str.substr(5, str.length()); 
+    int pos;
+    while ((pos = str.find(",")) != std::string::npos) {
+        std::string module_name = str.substr(0, pos);
+        searchModules.insert(module_name);
+        str.erase(0, pos + 1);
+    }
+
+    while (std::getline(file, str))
+    {
+        // Process str
+		if (!str.empty()){
+        	workList.insert(VarFromCriteria(str));
+		}
+    }
+}
+
+/**
+ * 
+ *
+ */ 
+SliceVar getSliceVar(Value *v){
+    return std::make_pair(LLVM, (uint64_t)v);
+}
+
+int addr_to_tb(uint64_t addr){
+
+	std::map<uint64_t, int>::iterator it = tb_addr_map.lower_bound(addr);
+	it--;
+	printf("FOund tb %d, addr %lx\n", it->second, it->first);
+	return it->second;
+
+}
+
+void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]){
+    for(int i = 0; i < MAX_BITSET/8; i++){
+        for (int j = 0; j < 7; j++){
+            bytes[i] |= bitset[i*8 + j] << j;
+        }
+    }
+}
+
+void mark(traceEntry &t){
+    int bb_num = t.bb_num;
+    int insn_index = t.inst_index;
+    assert(insn_index < MAX_BITSET);
+    markedMap[std::make_pair(t.func, bb_num)][insn_index] = 1;
+    printf("Marking %s, block %d, instruction %d\n", t.func->getName().str().c_str(), bb_num, insn_index);
+}
+
+bool is_ignored(StringRef funcName){
+    if (external_helper_funcs.count(funcName) || 
+        funcName.startswith("record") || 
+        funcName.startswith("llvm.memcpy") ||
+        funcName.startswith("llvm.memset") ){
+        return true;
+    }
+    return false;
+}
+
+
+// Find the index of a block in a function
+int getBlockIndex(Function *f, BasicBlock *b) {
+    int i = 0;
+    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
+        if (&*it == b) return i;
+        i++;
+    }
+    return -1;
+}
+
+//******************************************************************
+// Slicing functions
+//*****************************************************************
 
 void insertAddr(std::set<SliceVar> &sliceSet, SliceVarType type, uint64_t dyn_addr, int numBytes){
     printf("numBytes %d\n", numBytes);
@@ -486,46 +656,6 @@ void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVa
     return;
 }
 
-SliceVar getSliceVar(Value *v){
-    return std::make_pair(LLVM, (uint64_t)v);
-}
-
-void bitset2bytes(std::bitset<MAX_BITSET> &bitset, uint8_t bytes[]){
-    for(int i = 0; i < MAX_BITSET/8; i++){
-        for (int j = 0; j < 7; j++){
-            bytes[i] |= bitset[i*8 + j] << j;
-        }
-    }
-}
-
-void mark(traceEntry &t){
-    int bb_num = t.bb_num;
-    int insn_index = t.inst_index;
-    assert(insn_index < MAX_BITSET);
-    markedMap[std::make_pair(t.func, bb_num)][insn_index] = 1;
-    printf("Marking %s, block %d, instruction %d\n", t.func->getName().str().c_str(), bb_num, insn_index);
-}
-
-bool is_ignored(StringRef funcName){
-    if (external_helper_funcs.count(funcName) || 
-        funcName.startswith("record") || 
-        funcName.startswith("llvm.memcpy") ||
-        funcName.startswith("llvm.memset") ){
-        return true;
-    }
-    return false;
-}
-
-
-// Find the index of a block in a function
-int getBlockIndex(Function *f, BasicBlock *b) {
-    int i = 0;
-    for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
-        if (&*it == b) return i;
-        i++;
-    }
-    return -1;
-}
 
 //TODO: Don't need to store the func in every single traceEntry, only in the first entry of every function. The name suffices for mark function otherwise
 
@@ -634,6 +764,10 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
 
 bool in_exception = false;
 
+/*
+ * Aligns log entries and  
+ *
+ */
 int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, std::vector<panda::LogEntry*>& ple_vector, int cursor_idx){
     
     printf("f getname %s\n", f->getName().str().c_str());
@@ -939,138 +1073,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
     
 }
 
-SliceVar VarFromStr(const char *str) {
-    SliceVarType typ = LLVM;
-    uint64_t addr = 0;
-    char *addrstr = NULL;
-
-    char *work = strdup(str);
-    char *c = work;
-    while (*c) {
-        if (*c == '_') {
-            *c = '\0';
-            addrstr = c+1;
-        }
-        c++;
-    }
-    sscanf(addrstr, "%lx", &addr);
-
-    if (strncmp(str, "LLVM", 4) == 0) {
-        typ = LLVM;
-    }
-    else if (strncmp(str, "MEM", 3) == 0) {
-        typ = MEM;
-    }
-    else if (strncmp(str, "TGT", 3) == 0) {
-        typ = TGT;
-    }
-    else if (strncmp(str, "HOST", 4) == 0) {
-        typ = HOST;
-    }
-    else if (strncmp(str, "SPEC", 4) == 0) {
-        typ = SPEC;
-    }
-    else if (strncmp(str, "RET", 3) == 0) {
-        typ = FRET;
-    }
-    else {
-        assert (false && "Bad SliceVarType");
-    }
-
-    free(work);
-    return std::make_pair(typ, addr);
-}
-
-uint64_t infer_offset(const char* reg){
-	printf("infer offset of %s\n", reg);
-    if (strncmp(reg, "EAX", 3) == 0) {
-        return 0;
-    }
-    else if (strncmp(reg, "ECX", 3) == 0) {
-        return 1;
-    }
-    else if (strncmp(reg, "EDX", 3) == 0) {
-        return 2;
-    }
-    else if (strncmp(reg, "EBX", 3) == 0) {
-        return 3;
-    }
-    else if (strncmp(reg, "ESP", 3) == 0) {
-        return 4;
-    }
-    else if (strncmp(reg, "EBP", 3) == 0) {
-        return 5;
-    }
-    else if (strncmp(reg, "ESI", 3) == 0) {
-        return 6;
-    }
-    else if (strncmp(reg, "EDI", 3) == 0) {
-        return 7;
-    }
-    else if (strncmp(reg, "EIP", 3) == 0) {
-        return 8;
-    }
-
-	printf("NOT an x86 reg: %s\n", reg);
-	return -1;
-}
-
-int addr_to_tb(uint64_t addr){
-
-	//for (auto i = tb_addr_map.begin(); i != tb_addr_map.end(); i++){
-		//printf("addr %lx, tb %d\n", i->first, i->second);
-	//}
-
-	std::map<uint64_t, int>::iterator it = tb_addr_map.lower_bound(addr);
-	it--;
-	printf("FOund tb %d, addr %lx\n", it->second, it->first);
-	return it->second;
-
-}
-
-SliceVar VarFromCriteria(std::string str){
-    
-    SliceVarType typ = LLVM;
-
-	if (strncmp(str.c_str(), "MEM", 3) == 0) {
-        typ = MEM;
-    }
-    else if (strncmp(str.c_str(), "TGT", 3) == 0) {
-        typ = TGT;
-    }
-
-	std::string crit = str.substr(0, str.find(" at ")); 
-	std::string reg = crit.substr(4, crit.length()); 
-	uint64_t sliceVal = cpustatebase + infer_offset(reg.c_str())*4;
-	str.erase(0, str.find(" at ") + 4);
-    printf("Reg: %s, addr: %s, sliceVal: %lx\n", reg.c_str(), str.c_str(), sliceVal);
-
-	
-	std::string rangeStr = str;	
-    //parseRange(rangeStr);
-    std::string startRange = str.substr(0, rangeStr.find("-"));
-    rangeStr.erase(0, str.find("-") + 1);
-    std::string endRange = rangeStr;
-
-    if(strncmp(startRange.c_str(), "rr:", 3) == 0){
-        startRange = startRange.erase(0, 3);
-        startRRInstrCount =  std::stoull(startRange, NULL);
-        endRRInstrCount = std::stoull(endRange, NULL);
-        printf("start instr: %lu, end instr: %lu\n", startRRInstrCount, endRRInstrCount);
-    } else if (strncmp(startRange.c_str(), "addr:", 4) == 0){
-        startRange = startRange.erase(0, 4);
-        startAddr = std::stoull(startRange, NULL, 16);
-        endAddr = std::stoull(endRange, NULL, 16);
-        printf("Start range: %lx, end range: %lx\n", startAddr, endAddr);
-    }   
-
-	//searchTbs.insert(addr_to_tb(startAddr));
-
-	return std::make_pair(typ, sliceVal);
-
-}
-
-
 void usage(char *prog) {
    fprintf(stderr, "Usage: %s [OPTIONS] <llvm_mod> <dynlog> <criteria_file>\n",
            prog);
@@ -1080,8 +1082,7 @@ void usage(char *prog) {
            "  -o OUTPUT         : save slice results to OUTPUT\n"
            "  <llvm_mod>        : the LLVM bitcode module\n"
            "  <dynlog>          : the pandalog trace file\n"
-           "  <criterion> ...   : the slicing criteria, i.e., what to slice on\n"
-           "                      Use TGT_[N] for registers, MEM_[PADDR] for memory\n"
+           "  <criteria_file> ...   : the slicing criteria, i.e., what to slice on\n"
           );
 }
 
@@ -1150,15 +1151,7 @@ int main(int argc, char **argv){
 	}
 
     // Add the slicing criteria from the file
-	std::ifstream file(criteria_fname);
-    std::string str; 
-    while (std::getline(file, str))
-    {
-        // Process str
-		if (!str.empty()){
-        	workList.insert(VarFromCriteria(str));
-		}
-    }
+    process_criteria(criteria_fname);
 
     printf("Starting worklist: ");        
     print_set(workList);
@@ -1192,7 +1185,7 @@ int main(int argc, char **argv){
         /*ple = pandalog_read_entry();*/
         //pprint_ple(ple);
         
-        //printf("ple instr %lu\n", ple->instr());
+        // If we're not in the slicing range specified in criteria file
         if (ple->instr() > endRRInstrCount || ple->instr() < startRRInstrCount){
             continue;
         }
@@ -1201,7 +1194,6 @@ int main(int argc, char **argv){
         
         if (ple->llvmentry().type() == FunctionCode::LLVM_FN && ple->llvmentry().tb_num()){
             if (ple->llvmentry().tb_num() == 0) {
-                //ple_idx++; 
                 break;
             }
 
@@ -1228,6 +1220,14 @@ int main(int argc, char **argv){
                 aligned_block.clear();
                 continue;
 			}
+
+            //If we are not in the list of libraries/vmas of interest
+            std::string module_name = ple->llvmentry().vma_name();
+            printf("lib_name: %s\n", module_name.c_str());
+            if (searchModules.find(module_name) != searchModules.end()){
+                ple_vector.clear();
+                aligned_block.clear();
+            }
             
             std::reverse(ple_vector.begin(), ple_vector.end());
             
