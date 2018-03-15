@@ -1338,7 +1338,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
     qemu_system_reset(VMRESET_SILENT);
-    migration_incoming_state_new(snp);
+    MigrationIncomingState* mis = migration_incoming_get_current();
+    mis->from_src_file = snp;
     snapshot_ret = qemu_loadvm_state(snp);
     qemu_fclose(snp);
     migration_incoming_state_destroy();

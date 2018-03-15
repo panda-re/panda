@@ -18,6 +18,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
 #include "cpu.h"
 #include "exec/exec-all.h"
 #include "exec/memory.h"
@@ -498,6 +499,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     hwaddr physaddr = iotlbentry->addr;
     MemoryRegion *mr = iotlb_to_region(cpu, physaddr, iotlbentry->attrs);
     uint64_t val;
+    bool locked = false;
 
     physaddr = (physaddr & TARGET_PAGE_MASK) + addr;
     cpu->mem_io_pc = retaddr;
@@ -506,12 +508,21 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
 
     cpu->mem_io_vaddr = addr;
+
+    if (mr->global_locking) {
+        qemu_mutex_lock_iothread();
+        locked = true;
+    }
     RR_DO_RECORD_OR_REPLAY(
         /* action= */
         memory_region_dispatch_read(mr, physaddr, &val, size, iotlbentry->attrs),
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
+    if (locked) {
+        qemu_mutex_unlock_iothread();
+    }
+
     return val;
 }
 
@@ -522,14 +533,19 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     CPUState *cpu = ENV_GET_CPU(env);
     hwaddr physaddr = iotlbentry->addr;
     MemoryRegion *mr = iotlb_to_region(cpu, physaddr, iotlbentry->attrs);
+    bool locked = false;
 
     physaddr = (physaddr & TARGET_PAGE_MASK) + addr;
     if (mr != &io_mem_rom && mr != &io_mem_notdirty && !cpu->can_do_io) {
         cpu_io_recompile(cpu, retaddr);
     }
-
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
+
+    if (mr->global_locking) {
+        qemu_mutex_lock_iothread();
+        locked = true;
+    }
     if (mr != &io_mem_rom && mr != &io_mem_notdirty) {
         RR_DO_RECORD_OR_REPLAY(
             /* action= */
@@ -539,6 +555,9 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
             /* location= */ RR_CALLSITE_IO_WRITE_ALL);
     } else {
         memory_region_dispatch_write(mr, physaddr, val, size, iotlbentry->attrs);
+    }
+    if (locked) {
+        qemu_mutex_unlock_iothread();
     }
 }
 
