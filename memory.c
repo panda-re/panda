@@ -919,6 +919,8 @@ void memory_region_transaction_commit(void)
     AddressSpace *as;
 
     assert(memory_region_transaction_depth);
+    assert(qemu_mutex_iothread_locked());
+
     --memory_region_transaction_depth;
     if (!memory_region_transaction_depth) {
         if (memory_region_update_pending) {
@@ -2378,8 +2380,13 @@ void memory_listener_register(MemoryListener *listener, AddressSpace *as)
 
 void memory_listener_unregister(MemoryListener *listener)
 {
+    if (!listener->address_space) {
+        return;
+    }
+
     QTAILQ_REMOVE(&memory_listeners, listener, link);
     QTAILQ_REMOVE(&listener->address_space->listeners, listener, link_as);
+    listener->address_space = NULL;
 }
 
 void address_space_init(AddressSpace *as, MemoryRegion *root, const char *name)

@@ -113,9 +113,19 @@ static void cpu_common_get_memory_mapping(CPUState *cpu,
     error_setg(errp, "Obtaining memory mappings is unsupported on this CPU.");
 }
 
+/* Resetting the IRQ comes from across the code base so we take the
+ * BQL here if we need to.  cpu_interrupt assumes it is held.*/
 void cpu_reset_interrupt(CPUState *cpu, int mask)
 {
+    bool need_lock = !qemu_mutex_iothread_locked();
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
     cpu->interrupt_request &= ~mask;
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
 }
 
 void cpu_exit(CPUState *cpu)
@@ -216,6 +226,17 @@ static void cpu_common_noop(CPUState *cpu)
 static bool cpu_common_exec_interrupt(CPUState *cpu, int int_req)
 {
     return false;
+}
+
+GuestPanicInformation *cpu_get_crash_info(CPUState *cpu)
+{
+    CPUClass *cc = CPU_GET_CLASS(cpu);
+    GuestPanicInformation *res = NULL;
+
+    if (cc->get_crash_info) {
+        res = cc->get_crash_info(cpu);
+    }
+    return res;
 }
 
 void cpu_dump_state(CPUState *cpu, FILE *f, fprintf_function cpu_fprintf,
@@ -391,6 +412,11 @@ static int64_t cpu_common_get_arch_id(CPUState *cpu)
     return cpu->cpu_index;
 }
 
+static vaddr cpu_adjust_watchpoint_address(CPUState *cpu, vaddr addr, int len)
+{
+    return addr;
+}
+
 static void cpu_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
@@ -415,6 +441,7 @@ static void cpu_class_init(ObjectClass *klass, void *data)
     k->cpu_exec_enter = cpu_common_noop;
     k->cpu_exec_exit = cpu_common_noop;
     k->cpu_exec_interrupt = cpu_common_exec_interrupt;
+    k->adjust_watchpoint_address = cpu_adjust_watchpoint_address;
     set_bit(DEVICE_CATEGORY_CPU, dc->categories);
     dc->realize = cpu_common_realizefn;
     dc->unrealize = cpu_common_unrealizefn;

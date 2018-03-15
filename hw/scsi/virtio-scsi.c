@@ -436,13 +436,18 @@ static inline void virtio_scsi_release(VirtIOSCSI *s)
     }
 }
 
-void virtio_scsi_handle_ctrl_vq(VirtIOSCSI *s, VirtQueue *vq)
+bool virtio_scsi_handle_ctrl_vq(VirtIOSCSI *s, VirtQueue *vq)
 {
     VirtIOSCSIReq *req;
+    bool progress = false;
 
+    virtio_scsi_acquire(s);
     while ((req = virtio_scsi_pop_req(s, vq))) {
+        progress = true;
         virtio_scsi_handle_ctrl_req(s, req);
     }
+    virtio_scsi_release(s);
+    return progress;
 }
 
 static void virtio_scsi_handle_ctrl(VirtIODevice *vdev, VirtQueue *vq)
@@ -591,17 +596,20 @@ static void virtio_scsi_handle_cmd_req_submit(VirtIOSCSI *s, VirtIOSCSIReq *req)
     scsi_req_unref(sreq);
 }
 
-void virtio_scsi_handle_cmd_vq(VirtIOSCSI *s, VirtQueue *vq)
+bool virtio_scsi_handle_cmd_vq(VirtIOSCSI *s, VirtQueue *vq)
 {
     VirtIOSCSIReq *req, *next;
     int ret = 0;
+    bool progress = false;
 
     QTAILQ_HEAD(, VirtIOSCSIReq) reqs = QTAILQ_HEAD_INITIALIZER(reqs);
 
+    virtio_scsi_acquire(s);
     do {
         virtio_queue_set_notification(vq, 0);
 
         while ((req = virtio_scsi_pop_req(s, vq))) {
+            progress = true;
             ret = virtio_scsi_handle_cmd_req_prepare(s, req);
             if (!ret) {
                 QTAILQ_INSERT_TAIL(&reqs, req, next);
@@ -624,6 +632,8 @@ void virtio_scsi_handle_cmd_vq(VirtIOSCSI *s, VirtQueue *vq)
     QTAILQ_FOREACH_SAFE(req, &reqs, next, next) {
         virtio_scsi_handle_cmd_req_submit(s, req);
     }
+    virtio_scsi_release(s);
+    return progress;
 }
 
 static void virtio_scsi_handle_cmd(VirtIODevice *vdev, VirtQueue *vq)
@@ -752,11 +762,16 @@ out:
     virtio_scsi_release(s);
 }
 
-void virtio_scsi_handle_event_vq(VirtIOSCSI *s, VirtQueue *vq)
+bool virtio_scsi_handle_event_vq(VirtIOSCSI *s, VirtQueue *vq)
 {
+    virtio_scsi_acquire(s);
     if (s->events_dropped) {
         virtio_scsi_push_event(s, NULL, VIRTIO_SCSI_T_NO_EVENT, 0);
+        virtio_scsi_release(s);
+        return true;
     }
+    virtio_scsi_release(s);
+    return false;
 }
 
 static void virtio_scsi_handle_event(VirtIODevice *vdev, VirtQueue *vq)
@@ -888,14 +903,6 @@ static void virtio_scsi_device_realize(DeviceState *dev, Error **errp)
                  &virtio_scsi_scsi_info, vdev->bus_name);
     /* override default SCSI bus hotplug-handler, with virtio-scsi's one */
     qbus_set_hotplug_handler(BUS(&s->bus), dev, &error_abort);
-
-    if (!dev->hotplugged) {
-        scsi_bus_legacy_handle_cmdline(&s->bus, &err);
-        if (err != NULL) {
-            error_propagate(errp, err);
-            return;
-        }
-    }
 
     virtio_scsi_dataplane_setup(s, errp);
 }

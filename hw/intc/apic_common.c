@@ -251,6 +251,8 @@ static void apic_reset_common(DeviceState *dev)
     s->apicbase = APIC_DEFAULT_ADDRESS | bsp | MSR_IA32_APICBASE_ENABLE;
     s->id = s->initial_apic_id;
 
+    apic_reset_irq_delivered();
+
     s->vapic_paddr = 0;
     info->vapic_base_update(s);
 
@@ -329,7 +331,7 @@ static void apic_common_realize(DeviceState *dev, Error **errp)
         instance_id = -1;
     }
     vmstate_register_with_alias_id(NULL, instance_id, &vmstate_apic_common,
-                                   s, -1, 0);
+                                   s, -1, 0, NULL);
 }
 
 static void apic_common_unrealize(DeviceState *dev, Error **errp)
