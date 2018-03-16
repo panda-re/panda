@@ -16,20 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-
-/*
- * The file was modified for S2E Selective Symbolic Execution Framework
- *
- * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
- *
- * Currently maintained by:
- *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
- *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
- *
- * All contributors are listed in S2E-AUTHORS file.
- *
- */
-
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace-root.h"
@@ -199,9 +185,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     panda_bb_invalidate_done = false;
 
 #if defined(CONFIG_LLVM)
-    if (execute_llvm){
+    if (execute_llvm) {
         assert(itb->llvm_tc_ptr);
-        //next_tb = tcg_llvm_qemu_tb_exec(env, tb);
         ret = tcg_llvm_qemu_tb_exec(env, itb);
     } else {
         assert(tb_ptr);
@@ -210,7 +195,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #else
     ret = tcg_qemu_tb_exec(env, tb_ptr);
 #endif // CONFIG_LLVM
-
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
@@ -399,10 +383,8 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
             tb = tb_htable_lookup(cpu, pc, cs_base, flags);
             if (!tb) {
                 panda_callbacks_before_block_translate(cpu, pc);
-
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
-
                 panda_callbacks_after_block_translate(cpu, tb);
             }
 
@@ -423,7 +405,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY && panda_tb_chaining) {
+    if (rr_mode != RR_REPLAY && panda_tb_chaining) { 
 #endif
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
@@ -699,13 +681,13 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 uint64_t counter_128k = 0;
 void debug_counter(void);
 void debug_counter(void) {
-    counter_128k++;
+        counter_128k++;
 }
 #endif
 __attribute__((always_inline))
-inline void debug_checkpoint(CPUState *cpu);
-__attribute__((always_inline))
-inline void debug_checkpoint(CPUState *cpu) {
+    inline void debug_checkpoint(CPUState *cpu);
+    __attribute__((always_inline))
+    inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_mode != RR_OFF
             && cpu->rr_guest_instr_count >> 17 > counter_128k) {
@@ -756,61 +738,8 @@ int cpu_exec(CPUState *cpu)
      */
     init_delay_params(&sc, cpu);
 
-    for(;;) {
-        /* prepare setjmp context for exception handling */
-        if (sigsetjmp(cpu->jmp_env, 0) == 0) {
-            TranslationBlock *tb, *last_tb = NULL;
-            int tb_exit = 0;
-
-            /* if an exception is pending, we execute it here */
-            if (cpu_handle_exception(cpu, &ret)) {
-                break;
-            }
-
-            for(;;) {
-                bool panda_invalidate_tb = false;
-                debug_checkpoint(cpu);
-                detect_infinite_loops();
-                rr_maybe_progress();
-                //bdg Replay skipped calls from the I/O thread here
-                if (rr_in_replay()) {
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_replay_skipped_calls();
-                }
-                cpu_handle_interrupt(cpu, &last_tb);
-                panda_before_find_fast();
-                tb = tb_find(cpu, last_tb, tb_exit);
-                panda_bb_invalidate_done = panda_callbacks_after_find_fast(
-                        cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
-                qemu_log_rr(tb->pc);
-
-#ifdef CONFIG_SOFTMMU
-                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if (panda_invalidate_tb
-                        || (rr_mode == RR_REPLAY && until_interrupt > 0
-                            && tb->icount > until_interrupt)) {
-                    // retranslate so that basic block boundary matches
-                    // record & replay for interrupt delivery
-                    tb_lock();
-                    tb_phys_invalidate(tb, -1);
-                    tb_unlock();
-                    continue;
-                }
-#endif //CONFIG_SOFTMMU
-                // Check for termination in replay
-                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
-                    rr_do_end_replay(0);
-                    qemu_cpu_kick(cpu);
-                    break;
-                }
-                if (!rr_in_replay() || until_interrupt > 0) {
-                    cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-                    /* Try to align the host and virtual clocks
-                       if the guest is in advance */
-                    align_clocks(&sc, cpu);
-                }
-            } /* for(;;) */
-        } else {
+    /* prepare setjmp context for exception handling */
+    if (sigsetjmp(cpu->jmp_env, 0) != 0) {
 #if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
         /* Some compilers wrongly smash all local variables after
          * siglongjmp. There were bug reports for gcc 4.5.0 and clang.
@@ -829,19 +758,51 @@ int cpu_exec(CPUState *cpu)
             qemu_mutex_unlock_iothread();
         }
     }
-    }
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
+        bool panda_invalidate_tb = false;
+        debug_checkpoint(cpu);
+        detect_infinite_loops();
+        rr_maybe_progress();
+
+        if (rr_in_replay()) {
+            rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+            rr_replay_skipped_calls();
+        }
+
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
+            panda_before_find_fast();
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
-            cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-            /* Try to align the host and virtual clocks
-               if the guest is in advance */
-            align_clocks(&sc, cpu);
+            panda_bb_invalidate_done = panda_callbacks_after_find_fast(
+                    cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+            qemu_log_rr(tb->pc);
+
+#ifdef CONFIG_SOFTMMU
+            uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+            if (panda_invalidate_tb
+                    || (rr_mode == RR_REPLAY && until_interrupt > 0
+                        && tb->icount > until_interrupt)) {
+                tb_lock();
+                tb_phys_invalidate(tb, -1);
+                tb_unlock();
+                continue;
+            }
+#endif // CONFIG_SOFTMMU
+            if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+                rr_do_end_replay(0);
+                qemu_cpu_kick(cpu);
+                break;
+            }
+            if (!rr_in_replay() || until_interrupt > 0) {
+                cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
+                /* Try to align the host and virtual clocks
+                   if the guest is in advance */
+                align_clocks(&sc, cpu);
+            }
         }
     }
 
