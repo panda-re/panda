@@ -2929,6 +2929,9 @@ static inline void cpu_physical_memory_write_rom_internal(AddressSpace *as,
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             switch (type) {
             case WRITE_DATA:
+                if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+                    rr_device_mem_rw_call_record(addr1, buf, l, 1);
+                }
                 memcpy(ptr, buf, l);
                 invalidate_and_set_dirty(mr, addr1, l);
                 break;
