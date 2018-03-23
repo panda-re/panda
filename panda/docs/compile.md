@@ -134,8 +134,9 @@ sudo cp libdwarf/libdwarf.so /usr/local/lib/
 cd ../
 ```
 
-### Protocol buffers C style
+### Protocol Buffers
 
+#### C Library
 Protocol buffers are used by pandalog.  You want it.
 This is how I built things and installed them.
 
@@ -155,6 +156,19 @@ sh ./autogen.sh
 ./configure --disable-shared
 make
 sudo make install
+```
+
+#### Python Support
+To use protocol buffers from python scripts
+(e.g. [`plog_reader.py`](../scripts/plog_reader.py))
+use the following commands.
+The upgrade of the python package through `pip` is required
+because the version currently shipped by Ubunut/Debian is not
+very recent.
+
+```sh
+sudo apt-get install python-protobuf
+sudo pip install --upgrade protobuf
 ```
 
 ### Pycparser
