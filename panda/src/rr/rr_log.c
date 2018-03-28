@@ -72,6 +72,8 @@ volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
 
+bool rr_replay_complete = false;
+
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
 
@@ -566,7 +568,7 @@ static inline int rr_queue_size(void) {
     return distance % RR_QUEUE_MAX_LEN;
 }
 
-static inline bool rr_queue_empty(void) {
+bool rr_queue_empty(void) {
     return rr_queue_head == NULL;
 }
 
@@ -767,9 +769,11 @@ static inline RR_log_entry* get_next_entry(void) {
 static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
         RR_callsite_id call_site, bool check_callsite) {
     RR_log_entry *entry = get_next_entry();
+
     if (!entry) return NULL;
 
     RR_header header = entry->header;
+
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
     if (header.prog_point.guest_instr_count == 0) {
@@ -924,11 +928,13 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
     do {
         RR_log_entry* current_item =
             get_next_entry_checked(RR_SKIPPED_CALL, call_site, false);
+
         if (current_item == NULL) {
             // mz queue is empty or we've replayed all we can for this prog
             // point
             replay_done = 1;
-        } else {
+        } else {        
+
             RR_skipped_call_args args = current_item->variant.call_args;
             switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
@@ -1423,6 +1429,8 @@ void rr_do_end_replay(int is_error)
     rr_destroy_log();
     // turn off replay
     rr_mode = RR_OFF;
+
+    rr_replay_complete = true;
 
     // mz XXX something more graceful?
     if (is_error) {
