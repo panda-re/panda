@@ -751,9 +751,10 @@ int cpu_exec(CPUState *cpu)
             int tb_exit = 0;
 
             /* if an exception is pending, we execute it here */
-            if (cpu_handle_exception(cpu, &ret) || panda_exit_loop) {
+            if (cpu_handle_exception(cpu, &ret)) {
                 break;
             }
+            if (panda_exit_loop) break;                
 
             for(;;) {
 
