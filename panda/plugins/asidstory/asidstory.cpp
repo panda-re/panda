@@ -259,7 +259,8 @@ static inline bool pid_ok(int pid) {
 
 
 static inline bool check_proc(OsiProc *proc) {
-    if (proc && pid_ok(proc->pid)) {
+    if (!proc) return false;
+    if (pid_ok(proc->pid)) {
         int l = strlen(proc->name);
         for (int i=0; i<l; i++) 
             if (!isprint(proc->name[i]))
