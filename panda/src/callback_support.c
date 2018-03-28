@@ -216,6 +216,15 @@ void panda_callbacks_after_machine_init(void) {
     }
 }
 
+void panda_callbacks_top_loop(void) {
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.top_loop(first_cpu);
+    }
+}
+
+
 // target-i386/misc_helpers.c
 void panda_callbacks_cpuid(CPUState *env) {
     panda_cb_list *plist;
