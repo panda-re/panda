@@ -68,6 +68,8 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
+bool panda_exit_loop = false;
+
 bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
     if (plugin_name == NULL)    // PANDA argument
         panda_argv[panda_argc++] = g_strdup(plugin_arg);

@@ -60,6 +60,8 @@ int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
+extern bool panda_exit_loop;
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -742,6 +744,9 @@ int cpu_exec(CPUState *cpu)
     init_delay_params(&sc, cpu);
 
     for(;;) {
+
+        if (panda_exit_loop) break;       
+
         /* prepare setjmp context for exception handling */
         if (sigsetjmp(cpu->jmp_env, 0) == 0) {
             TranslationBlock *tb, *last_tb = NULL;
@@ -753,15 +758,20 @@ int cpu_exec(CPUState *cpu)
             }
 
             for(;;) {
+
+                if (panda_exit_loop) break;
+
                 bool panda_invalidate_tb = false;
                 debug_checkpoint(cpu);
                 detect_infinite_loops();
                 rr_maybe_progress();
+
                 //bdg Replay skipped calls from the I/O thread here
                 if (rr_in_replay()) {
                     rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
                     rr_replay_skipped_calls();
                 }
+
                 cpu_handle_interrupt(cpu, &last_tb);
                 panda_before_find_fast();
                 tb = tb_find(cpu, last_tb, tb_exit);
@@ -786,6 +796,7 @@ int cpu_exec(CPUState *cpu)
                 if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                     rr_do_end_replay(0);
                     qemu_cpu_kick(cpu);
+                    panda_exit_loop = true;
                     break;
                 }
                 if (!rr_in_replay() || until_interrupt > 0) {
@@ -821,5 +832,6 @@ int cpu_exec(CPUState *cpu)
 
     /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
     atomic_set(&tcg_current_cpu, NULL);
+
     return ret;
 }
