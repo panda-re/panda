@@ -764,17 +764,21 @@ int cpu_exec(CPUState *cpu)
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
-        bool panda_invalidate_tb = false;
-        debug_checkpoint(cpu);
-        detect_infinite_loops();
-        rr_maybe_progress();
+        while (true) {
+            bool panda_invalidate_tb = false;
+            debug_checkpoint(cpu);
+            detect_infinite_loops();
+            rr_maybe_progress();
+    
+            if (rr_in_replay()) {
+                rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                rr_replay_skipped_calls();
+            }
 
-        if (rr_in_replay()) {
-            rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-            rr_replay_skipped_calls();
-        }
+            if (cpu_handle_interrupt(cpu, &last_tb)) {
+                break;
+            }
 
-        while (!cpu_handle_interrupt(cpu, &last_tb)) {
             panda_before_find_fast();
             TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
             panda_bb_invalidate_done = panda_callbacks_after_find_fast(
