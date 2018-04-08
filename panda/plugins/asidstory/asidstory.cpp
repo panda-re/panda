@@ -263,10 +263,13 @@ static inline bool check_proc(OsiProc *proc) {
     if (pid_ok(proc->pid)) {
         int l = strlen(proc->name);
         for (int i=0; i<l; i++) 
-            if (!isprint(proc->name[i]))
+            if (!isprint(proc->name[i])) 
                 return false;
     }
-    if (strlen(proc->name) < 3) return false;
+    // 'ls', 'ps', 'nc' all are 2 characters
+    // we don't believe 1-character cmd names
+    // are there any?
+    if (strlen(proc->name) < 2) return false;
     return true;
 }
 
@@ -341,18 +344,19 @@ void saw_proc_range(CPUState *env, OsiProc *proc, uint64_t i1, uint64_t i2) {
 int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid) {
     // some fool trying to use asidstory for boot? 
     if (new_asid == 0) return 0;
-
-    if (debug) printf ("asid changed\n");
-
+    
+    uint64_t curr_instr = rr_get_guest_instr_count();
+    
+	if (debug) printf ("\nasid changed @ %lu\n", curr_instr);
+    
     if (process_mode == Process_known) {
-
+        
         if (debug) printf ("process was known for last asid interval\n");
-
+        
         // this means we knew the process during the last asid interval
         // so we'll record that info for later display
-        uint64_t curr_instr = rr_get_guest_instr_count();
         saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);
-
+        
         // just trying to arrange it so that we only spit out asidstory plot
         // for a cell once.
         int cell = curr_instr * scale; 
@@ -364,12 +368,12 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
         if (anychange) spit_asidstory();
     }    
     else {
-        if (debug) printf ("process was not known for last asid interval\n");
+        if (debug) printf ("process was not known for last asid interval %lu %lu\n", instr_first_good_proc, curr_instr);
     }
     
     process_mode = Process_unknown;   
     asid_at_asid_changed = new_asid;
-
+    
     if (debug) printf ("asid_changed: process_mode unknown\n");
 
     return 0;
@@ -396,6 +400,7 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
         return false;
     return true;
 }
+
 
 
 // before every bb, mostly just trying to figure out current proc 
