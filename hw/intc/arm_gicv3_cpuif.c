@@ -14,7 +14,6 @@
 
 #include "qemu/osdep.h"
 #include "qemu/bitops.h"
-#include "qemu/main-loop.h"
 #include "trace.h"
 #include "gicv3_internal.h"
 #include "cpu.h"
@@ -733,8 +732,6 @@ void gicv3_cpuif_update(GICv3CPUState *cs)
     int fiqlevel = 0;
     ARMCPU *cpu = ARM_CPU(cs->cpu);
     CPUARMState *env = &cpu->env;
-
-    g_assert(qemu_mutex_iothread_locked());
 
     trace_gicv3_cpuif_update(gicv3_redist_affid(cs), cs->hppi.irq,
                              cs->hppi.grp, cs->hppi.prio);
