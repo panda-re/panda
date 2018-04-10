@@ -1028,6 +1028,8 @@ static void qemu_kvm_init_cpu_signals(CPUState *cpu)
 #endif /* _WIN32 */
 
 static QemuMutex qemu_global_mutex;
+static QemuCond qemu_io_proceeded_cond;
+static unsigned iothread_requesting_mutex;
 
 static QemuThread io_thread;
 
@@ -1041,6 +1043,7 @@ void qemu_init_cpu_loop(void)
     qemu_init_sigbus();
     qemu_cond_init(&qemu_cpu_cond);
     qemu_cond_init(&qemu_pause_cond);
+    qemu_cond_init(&qemu_io_proceeded_cond);
     qemu_mutex_init(&qemu_global_mutex);
 
     qemu_thread_get_self(&io_thread);
@@ -1086,6 +1089,10 @@ static void qemu_tcg_wait_io_event(CPUState *cpu)
     }
 
     start_tcg_kick_timer();
+
+    while (iothread_requesting_mutex) {
+        qemu_cond_wait(&qemu_io_proceeded_cond, &qemu_global_mutex);
+    }
 
     CPU_FOREACH(cpu) {
         qemu_wait_io_event_common(cpu);
@@ -1247,11 +1254,9 @@ static int tcg_cpu_exec(CPUState *cpu)
         cpu->icount_decr.u16.low = decr;
         cpu->icount_extra = count;
     }
-    qemu_mutex_unlock_iothread();
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
     cpu_exec_end(cpu);
-    qemu_mutex_lock_iothread();
 #ifdef CONFIG_PROFILER
     tcg_time += profile_getclock() - ti;
 #endif
@@ -1483,14 +1488,27 @@ bool qemu_mutex_iothread_locked(void)
 
 void qemu_mutex_lock_iothread(void)
 {
-    g_assert(!qemu_mutex_iothread_locked());
-    qemu_mutex_lock(&qemu_global_mutex);
+    atomic_inc(&iothread_requesting_mutex);
+    /* In the simple case there is no need to bump the VCPU thread out of
+     * TCG code execution.
+     */
+    if (!tcg_enabled() || qemu_in_vcpu_thread() ||
+        !first_cpu || !first_cpu->created) {
+        qemu_mutex_lock(&qemu_global_mutex);
+        atomic_dec(&iothread_requesting_mutex);
+    } else {
+        if (qemu_mutex_trylock(&qemu_global_mutex)) {
+            qemu_cpu_kick_rr_cpu();
+            qemu_mutex_lock(&qemu_global_mutex);
+        }
+        atomic_dec(&iothread_requesting_mutex);
+        qemu_cond_broadcast(&qemu_io_proceeded_cond);
+    }
     iothread_locked = true;
 }
 
 void qemu_mutex_unlock_iothread(void)
 {
-    g_assert(qemu_mutex_iothread_locked());
     iothread_locked = false;
     qemu_mutex_unlock(&qemu_global_mutex);
 }
