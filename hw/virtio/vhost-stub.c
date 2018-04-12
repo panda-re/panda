@@ -17,12 +17,3 @@ VhostUserState *vhost_user_init(void)
 void vhost_user_cleanup(VhostUserState *user)
 {
 }
-
-VhostUserState *vhost_user_init(void)
-{
-    return NULL;
-}
-
-void vhost_user_cleanup(VhostUserState *user)
-{
-}
