@@ -134,7 +134,60 @@ sudo cp libdwarf/libdwarf.so /usr/local/lib/
 cd ../
 ```
 
-### Protocol Buffers
+### Protocol Buffers - Ubuntu package for 18.04LTS
+Ubuntu 18.04LTS ships with protocol buffers v3, which is incompatible with PANDA.
+Following are instructions on how to build your own deb packages for protocol
+buffers v2, and replace the ones supplied by Ubuntu.
+
+First, make the source of the v2 packages available to apt and install the 
+building environment pre-requisites:
+
+```sh
+echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial main" | sudo tee -a /etc/apt/sources.list
+sudo apt-get update
+sudo apt-get install build-essential fakeroot devscripts
+```
+
+Then, remove all installed protofbuf-related packages and create a build directory:
+
+```sh
+sudo apt-get remove --purge libprotobuf'*' protobuf'*' python-protobuf
+mkdir $HOME/build
+```
+
+Then build and install the base protobuf packages:
+
+```sh
+cd $HOME/build
+v=$(apt-cache showsrc protobuf-compiler | awk -F:\  '/^Version: 2\./{ print $2 }')
+sudo apt-get build-dep protobuf-compiler=$v
+apt-get source protobuf-compiler=$v
+cd protobuf-2.*
+debuild -e CC=gcc-5 -e CXX=g++-5 -b -uc -us
+cd ..
+dpkg -i *.deb
+```
+
+Next, build and and install the protobuf C compiler:
+
+```sh
+cd $HOME/build
+v=$(apt-cache showsrc protobuf-c-compiler | awk -F:\  '/^Version: 1\./{ print $2 }')
+sudo apt-get build-dep protobuf-c-compiler=$v
+apt-get source protobuf-c-compiler=$v
+cd protobuf-c-1.*
+debuild -e CC=gcc-5 -e CXX=g++-5 -b -uc -us
+cd ..
+dpkg -i *.deb
+```
+
+Finally, remove the old sources from apt:
+
+```sh
+sudo sed -i '/^deb-src.*xenial/d' /etc/apt/sources.list
+```
+
+### Protocol Buffers - manual installation
 
 #### C Library
 Protocol buffers are used by pandalog.  You want it.
