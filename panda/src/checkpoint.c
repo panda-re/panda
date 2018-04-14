@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <asm/unistd.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 
 #include "qemu/osdep.h"
@@ -16,9 +14,11 @@
 
 #include "panda/rr/rr_log.h"
 #include "panda/common.h"
+#include "qemu/memfd.h"
 
-#include "panda/checkpoint.h"
-
+#if defined CONFIG_LINUX && !defined CONFIG_MEMFD
+#include <sys/syscall.h>
+#include <asm/unistd.h>
 static int memfd_create(const char *name, unsigned int flags)
 {
 #ifdef __NR_memfd_create
@@ -27,6 +27,9 @@ static int memfd_create(const char *name, unsigned int flags)
     return -1;
 #endif
 }
+#endif
+
+#include "panda/checkpoint.h"
 
 static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);
 
