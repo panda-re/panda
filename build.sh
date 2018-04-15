@@ -28,8 +28,8 @@ elif (type gcc-$GCC_TOOLCHAIN_VERSION_REQ && type g++-$GCC_TOOLCHAIN_VERSION_REQ
     echo "Building with gcc-$GCC_TOOLCHAIN_VERSION_REQ/g++-$GCC_TOOLCHAIN_VERSION_REQ."
     COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_REQ --cxx=g++-$GCC_TOOLCHAIN_VERSION_REQ"
 else
-    echo "No suitable gcc/g++ found -- ABORTING"
-    exit 1
+    echo "No suitable gcc/g++ found. Trying with default."
+    COMPILER_CONFIG=""
 fi
 
 ### Check for protobuf v2.
