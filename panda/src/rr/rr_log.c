@@ -51,6 +51,7 @@
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
+#include "panda/callback_support.h"
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -514,6 +515,35 @@ void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
     });
 }
 
+// SAC e1000.c network hooks need this
+void rr_record_net_transfer(RR_callsite_id call_site,
+                            Net_transfer_type transfer_type,
+                            uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_NET_TRANSFER,
+        .variant.net_transfer_args = {
+            .type = transfer_type,
+            .src_addr = src_addr,
+            .dest_addr = dest_addr,
+            .num_bytes = num_bytes
+        }
+    });
+}
+
+
+// SAC e1000.c network hooks needs this
+void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
+{
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_HANDLE_PACKET,
+        .variant.handle_packet_args = {
+            .buf = buf,
+            .size = size,
+            .direction = direction
+        }
+    });
+}
+
 // mz record a marker for end of the log
 static inline void rr_record_end_of_log(void) {
     rr_write_item((RR_log_entry) {
@@ -568,7 +598,7 @@ static inline int rr_queue_size(void) {
     return distance % RR_QUEUE_MAX_LEN;
 }
 
-bool rr_queue_empty(void) {
+inline bool rr_queue_empty(void) {
     return rr_queue_head == NULL;
 }
 
@@ -769,11 +799,9 @@ static inline RR_log_entry* get_next_entry(void) {
 static inline RR_log_entry* get_next_entry_checked(RR_log_entry_kind kind,
         RR_callsite_id call_site, bool check_callsite) {
     RR_log_entry *entry = get_next_entry();
-
     if (!entry) return NULL;
 
     RR_header header = entry->header;
-
     // XXX FIXME this is a temporary hack to get around the fact that we
     // cannot currently do a tb_flush and a savevm in the same instant.
     if (header.prog_point.guest_instr_count == 0) {
@@ -928,13 +956,12 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
     do {
         RR_log_entry* current_item =
             get_next_entry_checked(RR_SKIPPED_CALL, call_site, false);
-
         if (current_item == NULL) {
             // mz queue is empty or we've replayed all we can for this prog
             // point
             replay_done = 1;
-        } else {        
-
+        } else {
+            
             RR_skipped_call_args args = current_item->variant.call_args;
             switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
@@ -974,6 +1001,20 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                                           /*is_write=*/1,
                                           args.variant.cpu_mem_unmap.len);
             } break;
+            case RR_CALL_HANDLE_PACKET:
+                {
+                    // run all callbacks registered for packet handling
+                    RR_handle_packet_args hp = args.variant.handle_packet_args;
+                    panda_callbacks_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.old_buf_addr);
+                } break;
+            case RR_CALL_NET_TRANSFER:
+                {
+                    // run all callbacks registered for transfers within network
+                    // card (E1000)
+                    RR_net_transfer_args nta =
+                         args.variant.net_transfer_args;
+                    panda_callbacks_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
+                } break;
             default:
                 // mz sanity check
                 rr_assert(0);
@@ -1431,7 +1472,7 @@ void rr_do_end_replay(int is_error)
     rr_mode = RR_OFF;
 
     rr_replay_complete = true;
-
+    
     // mz XXX something more graceful?
     if (is_error) {
         panda_cleanup();
