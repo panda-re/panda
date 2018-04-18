@@ -2,7 +2,9 @@
 
 message TaintedBranch {
     required CallStack call_stack = 1;
-    repeated TaintQuery taint_query = 2;
+    required bool is_cond = 2;
+    required uint64 asid = 3;
+    repeated TaintQuery taint_query = 4;
 }
     
 message TaintedBranchSummary {

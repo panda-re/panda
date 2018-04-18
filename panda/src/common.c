@@ -8,11 +8,23 @@
 #include "panda/plog.h"
 #include "panda/plog-cc-bridge.h"
 
+// if this is true we are carefully updating first_cpu->panda_guest_pc every instruction
+//extern bool panda_update_pc;
+
 target_ulong panda_current_pc(CPUState *cpu) {
-    target_ulong pc, cs_base;
-    uint32_t flags;
-    CPUArchState *env = cpu->env_ptr;  
-    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    target_ulong pc=0;
+#if defined(TARGET_I386) // || defined(TARGET_X86_64)  
+    if (panda_update_pc) 
+        pc = cpu->panda_guest_pc;
+    else
+#endif
+    {
+        target_ulong cs_base;
+        uint32_t flags;
+
+        CPUArchState *env = cpu->env_ptr;  
+        cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    }
     return pc;
 }
 

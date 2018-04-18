@@ -16,6 +16,9 @@ from traceback import print_exception
 from expect import Expect
 from tempdir import TempDir
 
+from verbosity import verbose, out_args
+
+
 debug = True
 
 def env_to_list(env):
@@ -41,17 +44,18 @@ class Qemu(object):
 
     # types a command into the qemu monitor and waits for it to complete
     def run_monitor(self, cmd):
-        if debug:
+        if debug and verbose():
             print "monitor cmd: [%s]" % cmd
-        print Style.BRIGHT + "(qemu)" + Style.RESET_ALL,
+        if verbose(): print Style.BRIGHT + "(qemu)" + Style.RESET_ALL,
         self.monitor.sendline(cmd)
         self.monitor.expect("(qemu)")
-        print
-        print
+        if verbose():
+            print
+            print
 
     def type_console(self, cmd):
         assert (not self.boot)
-        if debug:
+        if debug and verbose():
             print "console cmd: [%s]" % cmd
         self.console.send(cmd)
 
@@ -60,11 +64,12 @@ class Qemu(object):
         assert (not self.boot)
         if cmd is not None:
             self.type_console(cmd)
-        print Style.BRIGHT + self.expect_prompt + Style.RESET_ALL,
+        if verbose(): print Style.BRIGHT + self.expect_prompt + Style.RESET_ALL,
         self.console.sendline()
         self.console.expect(self.expect_prompt, timeout=timeout)
-        print
-        print
+        if verbose(): 
+            print
+            print
 
     def __enter__(self):
         monitor_path = join(self.tempdir, 'monitor')
@@ -85,8 +90,9 @@ class Qemu(object):
         if self.rr: qemu_args = ['rr', 'record'] + qemu_args
         if self.perf: qemu_args = ['perf', 'record'] + qemu_args
 
-        progress("Running qemu with args:")
-        print subprocess32.list2cmdline(qemu_args)
+        if verbose():
+            progress("Running qemu with args:")
+            print subprocess32.list2cmdline(qemu_args)
 
         self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
         while not os.path.exists(monitor_path):
@@ -99,20 +105,27 @@ class Qemu(object):
 
         self.monitor_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.monitor_socket.connect(monitor_path)
-        self.monitor = Expect(self.monitor_socket)
+        if verbose():
+            self.monitor = Expect(self.monitor_socket)
+        else:
+            self.monitor = Expect(self.monitor_socket, quiet=True)
         if not self.boot:
             self.serial_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.serial_socket.connect(serial_path)
-            self.console = Expect(self.serial_socket)
+            if verbose():
+                self.console = Expect(self.serial_socket)
+            else:
+                self.console = Expect(self.serial_socket, quiet=True)
 
         # Make sure monitor/console are in right state.
         self.monitor.expect("(qemu)")
-        print
+        if verbose(): print
         if not self.boot:
             self.console.sendline()
             self.console.expect(self.expect_prompt)
-        print
-        print
+        if verbose():
+            print
+            print
 
         return self
 
@@ -138,11 +151,11 @@ def make_iso(directory, iso_path):
         if sys.platform.startswith('linux'):
             subprocess32.check_call([
                 'genisoimage', '-RJ', '-max-iso9660-filenames', '-o', iso_path, directory
-            ], stderr=STDOUT if debug else DEVNULL)
+            ], **out_args())
         elif sys.platform == 'darwin':
             subprocess32.check_call([
                 'hdiutil', 'makehybrid', '-hfs', '-joliet', '-iso', '-o', iso_path, directory
-            ], stderr=STDOUT if debug else DEVNULL)
+            ], **out_args())
         else:
             raise NotImplementedError("Unsupported operating system!")
 
@@ -160,10 +173,10 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
             Qemu(qemu_path, qcow, snapshot, tempdir, rr=rr, perf=perf,
                  expect_prompt=expect_prompt, extra_args=extra_args) as qemu:
         if os.listdir(copy_directory):
-            progress("Creating ISO {}...".format(isoname))
+            if verbose(): progress("Creating ISO {}...".format(isoname))
             make_iso(copy_directory, isoname)
 
-            progress("Inserting CD...")
+            if verbose(): progress("Inserting CD...")
             qemu.run_monitor("change ide1-cd0 \"{}\"".format(isoname))
             qemu.run_console("mkdir -p {}".format(pipes.quote(copy_directory)))
             # Make sure cdrom didn't automount
@@ -177,7 +190,7 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
         qemu.run_console("{}/setup.sh &> /dev/null || true".format(pipes.quote(copy_directory)))
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
-        progress("Running command inside guest.")
+        if verbose(): progress("Running command inside guest.")
         qemu.type_console(subprocess32.list2cmdline(env_to_list(env) + command))
 
         # start PANDA recording
@@ -185,7 +198,7 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
         qemu.run_console(timeout=1200)
 
         # end PANDA recording
-        progress("Ending recording...")
+        if verbose(): progress("Ending recording...")
         qemu.run_monitor("end_record")
 
 def create_boot_recording(qemu_path, qcow, recording_path, boot_time):

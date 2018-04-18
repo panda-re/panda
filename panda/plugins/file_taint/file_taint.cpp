@@ -41,7 +41,7 @@ PPP_PROT_REG_CB(on_file_byte_read)
 PPP_CB_BOILERPLATE(on_file_byte_read)
 }
 
-static bool debug = false;
+static bool debug = true;
 
 const char *taint_filename = 0;
 bool positional_labels;
@@ -241,10 +241,15 @@ uint64_t last_pos = (uint64_t) -1;
 void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t pos, uint32_t buf, uint32_t count) {
     // these things are only known at enter of read call
     last_pos = pos;
+    auto it = running_procs.find(the_asid);
+    if (debug && it != running_procs.end()) {
+        printf ("proc [%d,%s]\n", (int) it->second.pid, (char *) it->second.name);
+    }        
+
     if (debug) printf ("read_enter filename=[%s]\n", filename.c_str());
     std::string read_filename = taint_stdin ? "stdin" : taint_filename;
 
-    auto it = running_procs.find(the_asid);
+
     if (taint_stdin) {
         if (it == running_procs.end()) {
             if (debug) printf("read_enter unknown proc.\n");

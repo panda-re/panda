@@ -69,11 +69,18 @@ import re
 import os
 import subprocess32 as sp
 import time
+from verbosity import verbose_off, verbose, out_args
 from run_debian import run_and_create_recording, qemu_binary
+from plog_reader import PLogReader
 
 t1 = time.time()
 
+tmpdir = os.getcwd()
+
+verbose_off()
+
 #create recording
+
 (replay_base, arch_data, stdin, fileinput, guest_cmd) = run_and_create_recording()
 
 t2 = time.time()
@@ -100,67 +107,133 @@ else:
 print "\n-----------------------------------------------------------------------------"
 print "\nFirst pass replay to figure out when to turn on taint (after file opened)\n"
 
-base_panda_args = ["-replay", replay_base, "-os", "linux-32-lava32"]
-panda_args = list(base_panda_args)
+replay_args = ["-replay", replay_base]
+osi_args = ["-os", "linux-32-lava32"]
+asidstory_plog = tmpdir + "/asidstory.plog"
+try:
+    os.remove(asidstory_plog)
+except:
+    pass
+asidstory_args = ["-pandalog", asidstory_plog, "-panda", "asidstory:summary"]
+panda_args = replay_args + osi_args + asidstory_args
 
-# replay to figure out where to turn on taint
-if stdin:
-    raise ValueError("Actually, stdin taint not working?")
-else: 
-    # file input
-    panda_args.extend(["-panda", "file_taint:filename=%s,notaint" % fileinput])
-
-# first pass to get instr to turn on taint
+# first pass to get asids, cmds and instr start /stop
+print "first pass xx " + (" ".join([qemu_binary(arch_data)] + panda_args)) + " xx"
 output = sp.check_output([qemu_binary(arch_data)] + panda_args)
+
+
+print "wrote %s" % asidstory_plog
 
 t3 = time.time()
 
-for line in output.split('\n'):
-#    print line
-    foo = re.search("saw open of file we want to taint: .* insn ([0-9]+)", line)
-    if foo:
-        insn = int(foo.groups()[0])
-        print "file opened @ insn = %d" % insn
-        print "arbitrarily reducing that by 1m"
-        insn -= 1000000
-        if insn < 0:
-            insn = 0
-        break
-        print "We'll turn on taint around instr %d" % insn
+binary_basename = os.path.basename(guest_cmd[0])
 
+# look for extent (first, last instr) for the program we ran
+first_instr = (10 ** 6) ** 2
+last_instr = 0
+with PLogReader(asidstory_plog) as plr:
+    for m in plr:
+        if m.HasField("asid_info"):
+            ai = m.asid_info
+            print "%s %s..%s" % (ai.name, ai.start_instr, ai.end_instr)
+            if ai.name == binary_basename:
+                if first_instr > int(ai.start_instr):
+                    first_instr = int(ai.start_instr)
+                if last_instr < int(ai.end_instr):
+                    last_instr = int(ai.end_instr)                    
+
+print "%s extent is instr %d..%d" % (binary_basename, first_instr, last_instr)
+print "\n-----------------------------------------------------------------------------"
+print "\nSecond pass replay to scissors \n"
+
+scissors_replay = replay_base + "_sciss"
+pad = 1
+panda_args = ["-replay", replay_base, "-panda", "scissors:name=%s,start=%d,end=%d" % (scissors_replay,first_instr-pad,last_instr+pad)]
+
+print "second pass xx " + (" ".join([qemu_binary(arch_data)] + panda_args)) + " xx"
+
+output = sp.check_output([qemu_binary(arch_data)] + panda_args)
+ 
+t4 = time.time()
 
 print "\n-----------------------------------------------------------------------------"
 print "\nSecond pass replay to actually perform taint analysis\n"
 
-# second pass to
-panda_args = list(base_panda_args)
-panda_args.extend(["-pandalog", "taint.plog"])
+# second pass to do taint analysis
+taint_plog = tmpdir + "/taint.plog"
+try:
+    os.remove(taint_plog)
+except:
+    pass
+panda_args = ["-replay", scissors_replay] + osi_args + ["-pandalog", taint_plog]
 
 if stdin:
     raise ValueError("Actually, stdin taint not working?")
 else: 
     # file input
-    more_args =  ["-panda", "file_taint:filename=%s,pos,first_instr=%d" % (fileinput, insn), \
+    more_args =  ["-panda", "file_taint:filename=%s,pos,enable_taint_on_open" % fileinput, \
                   "-panda", "tainted_instr", \
                   "-panda", "tainted_branch"]
     panda_args.extend(more_args)
 
 # first pass to get instr to turn on taint
+print "third pass xx " + (" ".join([qemu_binary(arch_data)] + panda_args)) + " xx"
 output = sp.check_output([qemu_binary(arch_data)] + panda_args)
 
-t4 = time.time()
+print "wrote %s" % taint_plog
 
-for line in output.split('\n'):
-    print line
 
-d1 = t2-t1
-d2 = t3-t2
-d3 = t4-t3
-r1 = d2/d1  # slowdown of replay vs record (mostly)
-r2 = d3/d1  # slowdown of replay with taint vs record
+t5 = time.time()
+
+
+
+
+
+uls = {}
+def update_uls(tq):
+    for tqe in tq:
+        if tqe.HasField("unique_label_set"):
+            x = tqe.unique_label_set
+            uls[x.ptr] = x.label # this is a list I think
+
+def print_tq(tq):
+    for tqe in tq:
+        print ("tq offs=%d tcn=%d " % (tqe.offset, tqe.tcn)) + (str(uls[tqe.ptr])),
+    print " "
+
+with PLogReader("taint.plog") as plr:
+    for m in plr:        
+        tq = None
+        if m.HasField("tainted_instr"):
+            print "ti ",
+            tq = m.tainted_instr.taint_query
+        if m.HasField("tainted_branch"):
+            print "tb ",
+            tq = m.tainted_branch.taint_query
+            if m.tainted_branch.is_cond:
+                print "tb ",
+            else:
+                print "tj ", 
+        if not (tq is None):
+            update_uls(tq)
+            print "instr %d pc %x: " % (m.instr, m.pc), 
+            print_tq(tq)
+            
+
+#for line in output.split('\n'):
+#    print line
+
+d1 = t2-t1  # time to create recording
+d2 = t3-t2  # time to run asidstory 
+d3 = t4-t3  # time to create scissors
+d4 = t5-t4  # time to replay with taint
+s2 = d2/d1  # slowdown of replay + asidstory vs record
+s3 = d3/d1  # slowdown of scissors vs record
+s4 = d4/d1  # slowdown of taint (on scissors) vs record
 print
-print "%.2f sec: recording" % (t2-t1)
-print "%.2f sec: first replay          (slowdown wrt record: %.2f)" % (t3-t2, r1)
-print "%.2f sec: second (taint) replay (slowdown wrt record: %.2f)" % (t4-t3, r2)
+print "%.2f sec: recording" % d1
+print "%.2f sec: 1st replay (asidstory) slowdow %.2f" % (d2, s2)
+print "%.2f sec: 2nd replay (scissors) slowdow %.2f" % (d3, s3)
+print "%.2f sec: 3rd replay (taint) slowdow %.2f" % (d4, s4)
 
 

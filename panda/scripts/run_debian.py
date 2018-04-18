@@ -69,8 +69,12 @@ import subprocess as sp
 import sys
 import argparse
 
+
 from os.path import basename, dirname, join
 from run_guest import create_recording
+
+from verbosity import verbose, out_args
+
 
 home_dir = os.getenv("HOME")
 dot_dir = join(home_dir, '.panda')
@@ -104,6 +108,7 @@ def transform_arg_copy(orig_filename):
 def EXIT_USAGE():
     print(USAGE)
     sys.exit(1)
+    
 
 def run_and_create_recording():
     global install_dir
@@ -165,11 +170,12 @@ def run_and_create_recording():
         qcow = join(dot_dir, arch_data.qcow)
 
     if not os.path.isfile(qcow):
-        print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
-        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow])
+        if verbose():
+            print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
+        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow], **out_args)
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
-            sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path])
+            sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path], **out_args)
 
     # Expand out the dot dir in extra_args if necessary
     if arch_data.extra_args:
@@ -182,10 +188,11 @@ def run_and_create_recording():
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
 
-    print "args =", guest_cmd
-    print "new_guest_cmd =", new_guest_cmd
-    print "env = ", env
-
+    if verbose():
+        print "args =", guest_cmd
+        print "new_guest_cmd =", new_guest_cmd
+        print "env = ", env
+        
     if args.replaybase is None:
         replay_base = join(binary_dir, binary_basename)
     else:

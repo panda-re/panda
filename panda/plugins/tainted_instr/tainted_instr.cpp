@@ -93,7 +93,7 @@ void taint_change(Addr a, uint64_t size) {
                 for (uint32_t i=0; i<size; i++) {
                     a.off = i;
                     if (taint2_query(a)) {
-                        ti->taint_query[j++] = taint2_query_pandalog(a, 0);
+                        ti->taint_query[j++] = taint2_query_pandalog(a, i);
                     }
                 }
                 Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;

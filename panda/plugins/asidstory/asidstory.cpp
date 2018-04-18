@@ -125,6 +125,7 @@ uint64_t max_instr = 0;
 double scale = 0;
 
 bool debug = false;
+//bool debug = true;
  
 #define MILLION 1000000
 //#define NAMELEN 10
@@ -189,6 +190,9 @@ static unsigned digits(uint64_t num) {
 }
 
 void spit_asidstory() {
+    // if pandalog we dont write asidstory file
+    if (pandalog) return;
+
     FILE *fp = fopen("asidstory", "w");
 
     std::vector<ProcessKV> count_sorted_pds(process_datas.begin(), process_datas.end());
@@ -357,15 +361,17 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
         // so we'll record that info for later display
         saw_proc_range(env, first_good_proc, instr_first_good_proc, curr_instr - 100);
         
-        // just trying to arrange it so that we only spit out asidstory plot
-        // for a cell once.
-        int cell = curr_instr * scale; 
-        bool anychange = false;
-        for (int i=0; i<cell; i++) {
-            if (!status_c[i]) anychange=true;
-            status_c[i] = true;
+        if (!pandalog) {        
+            // just trying to arrange it so that we only spit out asidstory plot
+            // for a cell once.
+            int cell = curr_instr * scale; 
+            bool anychange = false;
+            for (int i=0; i<cell; i++) {
+                if (!status_c[i]) anychange=true;
+                status_c[i] = true;
+            }
+            if (anychange) spit_asidstory();
         }
-        if (anychange) spit_asidstory();
     }    
     else {
         if (debug) printf ("process was not known for last asid interval %lu %lu\n", instr_first_good_proc, curr_instr);
@@ -405,7 +411,15 @@ static inline bool process_same(OsiProc *proc1, OsiProc *proc2) {
 
 // before every bb, mostly just trying to figure out current proc 
 int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
-
+/*
+    {
+        OsiProc *current_proc = get_current_process(env);    
+        if (check_proc(current_proc)) {
+            // first good proc 
+            printf ("instr %" PRId64 " proc %d %" PRIx64 " %s\n", rr_get_guest_instr_count(), (int) current_proc->pid, (uint64_t) current_proc->asid, current_proc->name);
+        }
+}
+*/
     // NB: we only know max instr *after* replay has started which is why this is here
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
@@ -476,15 +490,34 @@ bool init_plugin(void *self) {
     num_cells = std::max(panda_parse_uint64_opt(args, "width", 100, "number of columns to use for display"), UINT64_C(80)) - NAMELEN - 5;
     //    sample_rate = panda_parse_uint32(args, "sample_rate", sample_rate);
     //    sample_cutoff = panda_parse_uint32(args, "sample_cutoff", sample_cutoff);
-    status_c = (bool *) malloc(sizeof(bool) * num_cells);
-    for (int i=0; i<num_cells; i++) status_c[i]=false;
-    
+    if (!pandalog) {
+        status_c = (bool *) malloc(sizeof(bool) * num_cells);
+        for (int i=0; i<num_cells; i++) status_c[i]=false;
+    }
     
     min_instr = 0;   
     return true;
 }
 
 void uninit_plugin(void *self) {
-  spit_asidstory();
+//  spit_asidstory();
+    if (pandalog) {
+        for (auto &kvp : process_datas) {
+            auto &np = kvp.first;
+            auto &pd = kvp.second;
+            Panda__AsidInfo *ai = (Panda__AsidInfo *) malloc(sizeof(Panda__AsidInfo));
+            *ai = PANDA__ASID_INFO__INIT;
+            ai->asid = np.asid;
+            ai->name = strdup(np.name.c_str());
+            ai->pid = np.pid;
+            ai->start_instr = pd.first;
+            ai->end_instr = pd.last;
+            ai->count = pd.count;
+            Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+            ple.asid_info = ai;
+            pandalog_write_entry(&ple);
+            free(ai);
+        }
+    }
 }
 
