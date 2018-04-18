@@ -162,6 +162,7 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
 const char * valid_os_re[] = {
     "windows[-_]32[-_]xpsp[23]",
     "windows[-_]32[-_]7",
+    "windows[-_]32[-_]2000",
     "linux[-_]32[-_].+",
     "linux[-_]64[-_].+",
     NULL
