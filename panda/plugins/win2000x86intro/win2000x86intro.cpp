@@ -41,7 +41,6 @@ void on_free_osiproc(OsiProc *p);
 void on_free_osiprocs(OsiProcs *ps);
 void on_free_osimodules(OsiModules *ms);
 
-#define KMODE_FS           0x030          // Segment number of FS in kernel mode
 #define KPCR_CURTHREAD_OFF (0x120 + 0x04) // _KPCR.PrcbData.CurrentThread
 #define KDBG_PSLML         0x48  // _KDDEBUGGER_DATA64.PsLoadedModuleList
 #define KTHREAD_KPROC_OFF  0x22c // _KTHREAD.Process
@@ -58,7 +57,6 @@ void on_free_osimodules(OsiModules *ms);
 #define PEB_LDR_OFF        0x00c // _PEB.Ldr
 #define PEB_LDR_MEM_LINKS_OFF  0x14 // _PEB_LDR_DATA.InMemoryOrderModuleList
 #define PEB_LDR_LOAD_LINKS_OFF 0x0c // _PEB_LDR_DATA.InLoadOrderModuleList
-#define LDR_MEM_LINKS_OFF  0x008 // _LDR_DATA_TABLE_ENTRY.InMemoryOrderLinks
 #define LDR_LOAD_LINKS_OFF 0x000 // _LDR_DATA_TABLE_ENTRY.InLoadOrderLinks
 #define LDR_BASE_OFF       0x018 // _LDR_DATA_TABLE_ENTRY.DllBase
 #define LDR_SIZE_OFF       0x020 // _LDR_DATA_TABLE_ENTRY.SizeOfImage
