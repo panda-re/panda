@@ -20,7 +20,7 @@ extern "C" {
 #include "panda/addr.h"
 #include "panda/plog.h"
 
-#include "taint2/panda_hypercall_struct.h"
+#include "taint2/taint2_hypercalls.h"
 
 #include "pri/pri_types.h"
 #include "pri/pri_ext.h"

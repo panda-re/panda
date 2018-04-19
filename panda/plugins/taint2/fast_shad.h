@@ -19,24 +19,24 @@ PANDAENDCOMMENT */
 #include <cstdint>
 #include <string>
 
+#ifdef TAINT2_DEBUG
+#include "qemu/osdep.h"
+#include "qemu/log.h"
+#endif
+
 #include "taint_defines.h"
 #include "label_set.h"
 
 class FastShad;
 
 extern "C" {
-
 extern bool track_taint_state;
-
 extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t size);
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 28)
-#ifndef TAINTDEBUG
-#define tassert(cond) {}
-#define taint_log(...) {}
-#define taint_log_labels(shad, src, size) {}
-#else
+
+#ifdef TAINT2_DEBUG
 #define tassert(cond) assert((cond))
 #define taint_log(...) qemu_log_mask(CPU_LOG_TAINT_OPS, ## __VA_ARGS__);
 #define taint_log_labels(shad, src, size) \
@@ -57,11 +57,11 @@ extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t siz
         if (tainted) qemu_log("TAINTED"); \
         qemu_log("\n"); \
     }
+#else
+#define tassert(cond) {}
+#define taint_log(...) {}
+#define taint_log_labels(shad, src, size) {}
 #endif
-
-void *memset(void *dest, int val, size_t n);
-void *memcpy(void *dest, const void *src, size_t n);
-
 
 struct TaintData {
     LabelSetP ls;
