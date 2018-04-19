@@ -81,6 +81,10 @@ Description: Called whenever the state of taint changes; i.e. when taint is prop
     void taint2_query_set_ram(uint64_t pa, uint32_t *out);
     void taint2_query_set_reg(int reg_num, int offset, uint32_t *out);
 
+    // returns cardinality and the taint set.
+    // reallocates and updates buffer size as needed.
+    uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
+
     // returns taint compute number associated with addr
     uint32_t taint2_query_tcn(Addr a);
     uint32_t taint2_query_tcn_ram(uint64_t pa);
