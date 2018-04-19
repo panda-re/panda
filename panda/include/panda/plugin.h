@@ -550,6 +550,8 @@ typedef struct panda_plugin {
 } panda_plugin;
 
 void   panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void   panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb);
+void   panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb);
 void   panda_unregister_callbacks(void *plugin);
 bool   panda_load_plugin(const char *filename, const char *plugin_name);
 bool   panda_add_arg(const char *plugin_name, const char *plugin_arg);
