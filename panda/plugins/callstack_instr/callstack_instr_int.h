@@ -1,3 +1,4 @@
+typedef void uint32_t;
 typedef void target_ulong;
 typedef void CPUState;
 typedef void prog_point;
