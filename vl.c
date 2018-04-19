@@ -154,6 +154,7 @@ int pandalog = 0;
 int panda_in_main_loop = 0;
 extern bool panda_abort_requested;
 
+#include "panda/debug.h"
 #include "panda/rr/rr_log_all.h"
 
 #ifdef CONFIG_LLVM
@@ -4178,7 +4179,7 @@ int main(int argc, char **argv, char **envp)
 
                                 // panda_add_arg() currently always return true
                                 assert(panda_add_arg(plugin_start, opt_start));
-                                printf("PANDA[%s] - adding argument %s.\n", plugin_start, opt_start);
+                                fprintf(stderr, PANDA_MSG_FMT "adding argument %s.\n", plugin_start, opt_start);
 
                                 opt_start = opt_end + 1;
                             }

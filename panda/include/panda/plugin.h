@@ -14,16 +14,7 @@ PANDAENDCOMMENT */
 #ifndef __PANDA_PLUGIN_H__
 #define __PANDA_PLUGIN_H__
 
-/*
- * Macros for better debug output.
- */
-#ifdef PLUGIN_NAME
-#define PANDA_MSG PLUGIN_NAME ": "
-#else
-#define PANDA_MSG "PANDA: "
-#endif
-#define PANDA_FLAG_STATUS(flag) ((flag) ? "ENABLED" : "DISABLED")
-
+#include "panda/debug.h"
 #include "panda/cheaders.h"
 
 #ifndef CONFIG_SOFTMMU
