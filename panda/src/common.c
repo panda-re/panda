@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <glib.h>
 
+#include "panda/debug.h"
 #include "panda/plugin.h"
 #include "panda/common.h"
 #include "panda/plog.h"
@@ -213,7 +214,7 @@ void panda_set_os_name(char *os_name) {
     assert (panda_os_bits != 0);
     g_strfreev(osparts);
 
-    printf ("os_familyno=%d bits=%d os_details=[%s]\n", panda_os_familyno, panda_os_bits, panda_os_variant); 
+    fprintf(stderr, PANDA_MSG_FMT "os_familyno=%d bits=%d os_details=%s\n", PANDA_CORE_NAME, panda_os_familyno, panda_os_bits, panda_os_variant);
 }
 
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
