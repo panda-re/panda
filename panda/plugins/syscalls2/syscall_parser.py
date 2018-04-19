@@ -36,7 +36,7 @@ LOGLEVEL = logging.INFO
 logging.basicConfig(format='%(levelname)s: %(message)s', level=LOGLEVEL)
 
 # Details about operating systems and architectures to be processed.
-KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3']
+KNOWN_OS = ['linux', 'windows_7', 'windows_xpsp2', 'windows_xpsp3', 'windows_2000']
 KNOWN_ARCH = {
     'x86': {
         'bits': 32,
