@@ -73,7 +73,7 @@ import argparse
 from os.path import basename, dirname, join
 from run_guest import create_recording
 
-from verbosity import verbose, out_args
+from verbosity import verbose, out_args, vcheck_call
 
 
 home_dir = os.getenv("HOME")
@@ -170,12 +170,11 @@ def run_and_create_recording():
         qcow = join(dot_dir, arch_data.qcow)
 
     if not os.path.isfile(qcow):
-        if verbose():
-            print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
-        sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow], **out_args)
+        print "\nQcow %s doesn't exist. Downloading from moyix. Thanks moyix!\n" % qcow
+        vcheck_call(["wget", "http://panda.moyix.net/~moyix/" + arch_data.qcow, "-O", qcow]) #, **out_args())
         for extra_file in arch_data.extra_files or []:
             extra_file_path = join(dot_dir, extra_file)
-            sp.check_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path], **out_args)
+            vcheck_call(["wget", "http://panda.moyix.net/~moyix/" + extra_file, "-O", extra_file_path]) #, **out_args)
 
     # Expand out the dot dir in extra_args if necessary
     if arch_data.extra_args:

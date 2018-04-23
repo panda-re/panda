@@ -1,0 +1,11 @@
+  
+
+message TaintedLdst {
+    required bool is_load = 2;
+    required uint64 asid = 3;
+    repeated TaintQuery taint_query = 4;
+}
+
+optional TaintedLdst tainted_ldst = 42;
+
+    

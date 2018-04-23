@@ -1,0 +1,13 @@
+
+
+message Edge {
+    required uint64 begin = 1;
+    required uint64 end = 2;
+}
+
+message AsidEdges {
+    required uint64 asid = 1;
+    repeated Edge edges = 2;
+}
+
+optional AsidEdges asid_edges = 41; 

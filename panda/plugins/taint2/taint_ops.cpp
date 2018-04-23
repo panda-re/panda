@@ -244,7 +244,7 @@ void taint_pointer(
     }
 
     // query taint on pointer either being read or written
-    if (tainted_pointer & TAINT_POINTER_MODE_CHECK) {
+    if (tainted_pointer) { //  & TAINT_POINTER_MODE_CHECK) {
         taint_pointer_run(src, ptr, dest, (bool) is_store, size);
     }
 

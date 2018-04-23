@@ -72,6 +72,7 @@ class Qemu(object):
             print
 
     def __enter__(self):
+        DEVNULL = open(os.devnull, "w")
         monitor_path = join(self.tempdir, 'monitor')
         if not self.boot:
             serial_path = join(self.tempdir, 'serial')
@@ -94,7 +95,10 @@ class Qemu(object):
             progress("Running qemu with args:")
             print subprocess32.list2cmdline(qemu_args)
 
-        self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
+        if verbose():
+            self.qemu = subprocess32.Popen(qemu_args) # , stdout=DEVNULL, stderr=DEVNULL)
+        else:
+            self.qemu = subprocess32.Popen(qemu_args, stdout=DEVNULL, stderr=DEVNULL)
         while not os.path.exists(monitor_path):
             time.sleep(0.1)
         if not self.boot:

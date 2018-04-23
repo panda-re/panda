@@ -1,4 +1,5 @@
 import os
+import subprocess as sp
 
 VERBOSE = True
 OUTARGS = None
@@ -27,3 +28,14 @@ def verbose():
 def out_args():
     global OUTARGS
     return OUTARGS
+
+
+def vcheck_output(cmd_arr):
+    if verbose():
+        return sp.check_output(cmd_arr)
+    return sp.check_output(cmd_arr, stderr=(open(os.devnull, 'wb')))
+
+def vcheck_call(cmd_arr):
+    if verbose():
+        sp.check_call(cmd_arr)
+    sp.check_call(cmd_arr, **OUTARGS)
