@@ -91,7 +91,7 @@ with PANDA; the internet has documentation on how to do this.
 We've found that the most effective workflow in PANDA is to collect a recording
 of a piece of execution of interest and then analyze that recording over and
 over again. You can read more about record/replay in [our
-docs](record_replay.md). For now, what you need to know is that record/replay
+docs](#recordreplay-details). For now, what you need to know is that record/replay
 allows you to repeat an execution trace with all data exactly the same over and
 over again. You can then analyze the execution and slowly build understanding
 about where things are stored, what processes are running, when the key
