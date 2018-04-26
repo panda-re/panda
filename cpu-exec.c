@@ -705,7 +705,7 @@ static void detect_infinite_loops(void) {
 int cpu_exec(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
-    int ret;
+    int ret = -1;
     SyncClocks sc;
 
     /* replay_interrupt may need current_cpu */
