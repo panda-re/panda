@@ -370,15 +370,18 @@ void get_prog_point(CPUState* cpu, prog_point *p) {
 bool init_plugin(void *self) {
 #if defined(TARGET_I386)
     if (cs_open(CS_ARCH_X86, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
+        return false;
 #if defined(TARGET_X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &cs_handle_64) != CS_ERR_OK)
+        return false;
 #endif
 #elif defined(TARGET_ARM)
     if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &cs_handle_32) != CS_ERR_OK)
+        return false;
 #elif defined(TARGET_PPC)
     if (cs_open(CS_ARCH_PPC, CS_MODE_32, &cs_handle_32) != CS_ERR_OK)
-#endif
         return false;
+#endif
 
     // Need details in capstone to have instruction groupings
     cs_option(cs_handle_32, CS_OPT_DETAIL, CS_OPT_ON);

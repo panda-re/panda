@@ -91,7 +91,7 @@ with PANDA; the internet has documentation on how to do this.
 We've found that the most effective workflow in PANDA is to collect a recording
 of a piece of execution of interest and then analyze that recording over and
 over again. You can read more about record/replay in [our
-docs](record_replay.md). For now, what you need to know is that record/replay
+docs](#recordreplay-details). For now, what you need to know is that record/replay
 allows you to repeat an execution trace with all data exactly the same over and
 over again. You can then analyze the execution and slowly build understanding
 about where things are stored, what processes are running, when the key
@@ -387,7 +387,7 @@ end_record:
 A commandline flag `-record-from <snapshot>:<record-name>` to restores a
 qcow2 snapshot and immediately start recording is also provided for convenience.
 
-Start replays from the command line using the `-replay <name>` option. 
+Start replays from the command line using the `-replay <name>` option.
 
 Of course, just running a replay isn't very useful by itself, so you
 will probably want to run the replay with some plugins enabled that
@@ -564,13 +564,14 @@ PANDA_CB_HD_WRITE,          // Each HDD write
 PANDA_CB_GUEST_HYPERCALL,   // Hypercall from the guest (e.g. CPUID)
 PANDA_CB_MONITOR,           // Monitor callback
 PANDA_CB_CPU_RESTORE_STATE,  // In cpu_restore_state() (fault/exception)
-PANDA_CB_BEFORE_REPLAY_LOADVM,     // at start of replay, before loadvm
-PANDA_CB_VMI_PGD_CHANGED,   // After CPU's PGD is written to
+PANDA_CB_BEFORE_REPLAY_LOADVM,  // at start of replay, before loadvm
+PANDA_CB_ASID_CHANGED,          // after an ASID (address space identifier - aka PGD) write
 PANDA_CB_REPLAY_HD_TRANSFER,    // in replay, hd transfer
 PANDA_CB_REPLAY_NET_TRANSFER,   // in replay, transfers within network card (currently only E1000)
 PANDA_CB_REPLAY_BEFORE_CPU_PHYSICAL_MEM_RW_RAM,  // in replay, just before RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_AFTER_CPU_PHYSICAL_MEM_RW_RAM,   // in replay, just after RAM case of cpu_physical_mem_rw
 PANDA_CB_REPLAY_HANDLE_PACKET,    // in replay, packet in / out
+PANDA_CB_AFTER_MACHINE_INIT,     // Right after the machine is initialized, before any code runs
 ```
 For more information on each callback, see the "Callbacks" section.
 ```C
@@ -660,7 +661,7 @@ dynamically loaded. Thus, even if Plugin A has a function intended to be called
 by another plugin, it is painful to obtain access to that function from Plugin B
 (hint: `dlsym` is involved). Further, the code necessary to iterate over a
 sequence of callbacks is annoying and formulaic.Software engineering to the
-rescue! `panda_plugin_plugin.h` provides a number of convenient macros that
+rescue! `panda/plugin_plugin.h` provides a number of convenient macros that
 simplify arranging for these two types of plugin interaction. Here is how to use
 them.
 
@@ -740,9 +741,9 @@ following.
 
 5. In the same file you edited in 3, in the `extern "C" {` portion near the top
    of the file, add `PPP_PROT_REG_CB(foo);`. For more information on this, see
-   `panda_plugin_plugin.h`.
+   `panda/plugin_plugin.h`.
 
-6. Remember to `#include "panda_plugin_plugin.h"` at the top of the edited
+6. Remember to `#include "panda/plugin_plugin.h"` at the top of the edited
    source file.
 
 In order to register a callback with Plugin A that is defined in Plugin B, all
@@ -776,7 +777,7 @@ of your personal plugins.
 4. Say you have written a plugin you want to call `new_cool`.  Create a subdirectory `personal/panda/plugins/new_cool` and put the code for the new plugin there.
 5. Create a file `panda/plugins/config.panda` with names of enabled plugins as you would normally.
 6. You can use the the same makefile set-up as with regular plugins.
-7. configure with `--extra-plugins-path=/home/you/personal_plugins`
+7. configure with `--extra-plugins-path=/home/you/personal`
 8. Build as usual and you should compile `new_cool` plugin and its compiled code will be deposited in, e.g., `i386-softmmu/panda_plugins`
 
 #### Enabling or Disabling Plugins
@@ -828,7 +829,7 @@ one has a USAGE.md file linked here for further explanation.
 * [`tapindex`](../../../panda1/qemu/panda_plugins/tapindex/USAGE.md)
 
 #### Callstack Tracking
-* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) - 
+* [`callstack_instr`](../plugins/callstack_instr/USAGE.md) -
   Instruction-based callstack tracing. `Already ported from panda1`
 * [`fullstack`](../../../panda1/qemu/panda_plugins/fullstack/USAGE.md)
 * [`printstack`](../../../panda1/qemu/panda_plugins/printstack/USAGE.md)
@@ -928,10 +929,10 @@ actual logging statements.
 
 ### Adding PANDA Logging to a Plugin
 
-The `asidstory` plugin is a good example.
-Two small additions are all that are required to add pandalogging.
+There's both a C and C++ API for pandalogging; as of late 2017, the C API is just a wrapper around the C++ that exists for compatibility with C plugins.
 
-First, a new file was added to the plugin directory
+
+For both C and C++, the first step is creating a protobuf schema. The `asidstory` plugin is a good example.
 
     $ cd plugins/asidstory/
     $ cat asidstory.proto
@@ -948,11 +949,14 @@ know why).  That is a global constraint you need to be aware of across all
 plugins.  If `asidstory` uses slot 3, then plugin `foo` better not try to use it
 as well.  Don't worry; if you screw this up, you'll get an error at build time.
 
-Second, the actual logging message was inserted into `asidstory.cpp`
+#### C interface
+
+Asidstory is also an example of using the old pandalog C API.
+
 ```C
 extern "C" {
 ...
-#include "pandalog.h"
+#include "panda/plog.h"
 ...
 }
 ...
@@ -990,14 +994,15 @@ To add the logging message, you have to create the `ple`, initializing it as so:
 ```C
 Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
 ```
-That `ple` is just a C struct, defined in autogenerated code.  Look in
-`panda/qemu/panda/pandalog.pb-c.h` for the typedef of `Panda__LogEntry`.  Once
-you have a `ple`, you just populate it with the fields you want logged.  Note
-that, if fields are optional, there is always a `has_fieldname` bool you need to
-set to indicate its presence.  Well, not quite.  If the field is a pointer (an
-array or a string), a null pointer stands in for `has_fieldname=0`.
 
-Here is the part of the code above in which we populate the struct for logging
+The definition of the `Panda__LogEntry` struct can be found in `plog.pb-c.h`
+in your PANDA build directory. One such header file exists per target architecture.
+All you have to do is to populate `ple` with the fields that you want to log.
+For optional scalar fields, there is always a `has_fieldname` bool you need to
+set to indicate their presence. For optional pointer or string fields, a NULL value
+indicates that the field is not present.
+
+Here is the part of the code above in which we populate the struct for logging:
 ```C
 ple.has_asid = 1;
 ple.asid = p->asid;
@@ -1010,35 +1015,56 @@ Now all that is left is to write the entry to the pandalog.
 pandalog_write_entry(&ple);
 ```
 
+The above C functions are defined in `panda/include/panda/plog.h` and `panda/src/plog.c`, but you'll notice that they are just wrappers around C++ functions. The wrappers simply pass on the data to the C++ functions that actually do the work of reading/writing to the log. The functions that bridge the two are declared in `panda/include/panda/plog-cc-bridge.h`. 
+
+#### C++ Interface
+
+Using the C++ API is similar. The main difference is that there is a global object of the `PandaLog` class called `globalLog`, which all plugins use to read and write from the log. In addition, the C++ protobuf code provides the `LogEntry` class under the `panda` namespace, and getter and setter functions for the fields.
+
+It's also recommended to use `std::unique_ptrs` to initialize each `LogEntry`, for automatic memory management. Here's an example of this:
+
+```c
+extern PandaLog globalLog;
+...
+if (pandalog){
+    std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+    ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
+    ple->mutable_llvmentry()->set_address(addr);
+    
+    globalLog.write_entry(std::move(ple));
+}
+```
+
+The `panda::LogEntry` class is defined in the autogenerated `plog.pb.h`, and the `PandaLog` class is in `panda/src/plog-cc.cpp`.
+
 ### Building
+Any `.proto` files you add will be automatically picked up by the PANDA
+Makefile and concatenated into a single `plog.proto` file per target architecture.
+These files are subsequently processed by the `protoc` and `protoc-c` compilers to autogenerate the C++ and C protobuf files: `plog.pb.[cc/h]` and `plog.pb-c.[c/h]`.
 
-In order to use pandalogging, you will have to re-run `build.sh`.
+All the generated files are located under the target-specific
+subdirectories of your PANDA build directory.
+E.g. `build-panda/arm-softmmu/plog.pb-c.h`.
 
-This build script has been modified to additionally run a new script
-`panda/pp.sh`, which peeks into all of the plugin directories, and looks for
-`.proto` snippets, concatenating them all together into a single file:
-`panda/qemu/panda/pandalog.proto`.  This script then runs `protoc-c` on that
-specification to generate two files: `panda/qemu/panda/pandalog.pb-c.[ch]`.
-
-Feel free to peek at any of those three auto-generated files.  In particular,
-you will probably want to consult the header since it defines the logging struct
-`Panda__LogEntry`, as indicated above.
+Feel free to peek at any of those auto-generated files.
+In particular, you will probably want to consult the headers,
+since they defines the logging structs `Panda__LogEntry` and `panda::LogEntry`.
 
 ### Pandalogging During Replay
 
 PANDA logging is enabled at runtime with a new command-line arg.
 
-    --pandalog filename
+    -pandalog filename
 
 Any specified plugins that write to the pandalog will log to that file, which is
 written via `zlib` file access functions for compression.
 
 ### Looking at the Logfile
 
-There is a small program in `panda/qemu/panda/pandalog_reader.cpp`.  Compilation
-directions are at the head of that source file.
+There is a small program in `panda/src/plog_reader.cpp`, which also serves as an example of reading/writing with the C++ pandalog API.
+Compilation directions are at the head of that source file. You can also use the `panda/scripts/plog_reader.py` script to view a log, which is more convenient but slower.
 
-You can read a pandalog using this little program and also see how easy it is to
+You can read a pandalog using either program and also see how easy it is to
 unmarshall the pandalog.  Here's how to use it and some of its output.
 
     $ ./pandalog_reader /tmp/pandlog | head
@@ -1054,7 +1080,7 @@ unmarshall the pandalog.  Here's how to use it and some of its output.
     instr=268164  pc=0xc12c3586 :  asid=5349000 pid=2512 process=[bash]
 
 Note that there are two required fields always added to every pandalog entry:
-instruction count and program counter.  The rest of thes log messages come from
+instruction count and program counter.  The rest of these log messages come from
 the asidstory logging.
 
 ### External References
@@ -1698,15 +1724,15 @@ int (*user_after_syscall)(void *cpu_env, bitmask_transtbl *fcntl_flags_tbl,
 ```
 ---
 
-`after_PGD_write`: called when the CPU changes to a different address space
+`asid_changed`: called when the CPU changes to a different address space
 
-**Callback ID**: `PANDA_CB_VMI_PGD_CHANGED`
+**Callback ID**: `PANDA_CB_ASID_CHANGED`
 
 **Arguments**:
 
 * `CPUState* env`: pointer to CPUState
-* `target_ulong oldval`: old PGD (address space identifier) value
-* `target_ulong newval`: new PGD (address space identifier) value
+* `target_ulong oldval`: old ASID (address space identifier) value
+* `target_ulong newval`: new ASID (address space identifier) value
 
 **Return value**:
 
@@ -1714,7 +1740,7 @@ unused
 
 **Signature**:
 ```C
-    int (*after_PGD_write)(CPUState *env, target_ulong oldval, target_ulong newval);
+    int (*asid_changed)(CPUState *env, target_ulong oldval, target_ulong newval);
 ```
 ---
 
@@ -1866,4 +1892,30 @@ unused
 ```C
 int (*replay_handle_packet)(CPUState *env, uint8_t *buf, int size,
                             uint8_t direction, uint64_t old_buf_addr);
+```
+---
+
+`after_machine_init`: called right after the machine has been initialized,
+but before any guest code runs
+
+**Callback ID**: `PANDA_CB_AFTER_MACHINE_INIT`
+
+**Arguments**:
+
+* `CPUState *env`: pointer to CPUState
+
+**Return value**:
+
+unused
+
+**Notes**:
+
+This callback allows initialization of components that need access to
+the RAM, CPU object, etc.
+E.g. if you need to enable `taint2` taint tracking for the whole of the
+replay, this would be an appropriate place to call `taint2_enable_taint()`.
+
+**Signature**
+```C
+void after_machine_init(CPUState *env);
 ```

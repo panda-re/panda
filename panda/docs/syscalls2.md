@@ -13,7 +13,7 @@ If you look in the `syscalls2` plugin directory, you will see a number of files 
 
     linux_arm_prototypes.txt
     linux_x86_prototypes.txt
-    windows7_x86_prototypes.txt
+    windows_7_x86_prototypes.txt
     ...
 
 Each line in each of these files is the prototype for a system call, with named paramters.
@@ -41,7 +41,7 @@ For instance, you might want to know when a process is created and when one is d
 of the associated Windows data structures at those points in time to ascertain things like pid and process names.
 
 The relevant system calls for Windows 7 are `NtCreateUserProcess` and `NtTerminateProcess`, and their prototypes
-can be found in `windows7_x86_prototypes.txt`.
+can be found in `windows_7_x86_prototypes.txt`.
 
      NTSTATUS NtCreateUserProcess 
        (PHANDLE ProcessHandle, 
@@ -97,7 +97,7 @@ Or you might like to stare at the code in the `file_taint` plugin which uses `sy
 file open and read operations and uses that to add taint labels to the bytes read out of a file.
 These are two good examples of what one might do with `syscalls2`.
 
-Note that `syscalls2` is structured so that if a system call shares the same semantics across multiple operating systems, you can intercept it with a single callback. For example, once you have written the `on_NtTerminateProcess_enter` callback above, no extra work is needed to make it work on Windows XP SP3 -- you just need to run the plugin with `-panda syscalls2:profile=windowsxp_sp3_x86` instead of `windows7_x86`.
+Note that `syscalls2` is structured so that if a system call shares the same semantics across multiple operating systems, you can intercept it with a single callback. For example, once you have written the `on_NtTerminateProcess_enter` callback above, no extra work is needed to make it work on Windows XP SP3 -- you just need to run the plugin with `-panda syscalls2:profile=windows_xpsp3_x86` instead of `windows_7_x86`.
 
 The OS Profile
 ----
@@ -107,13 +107,13 @@ in such a way that `syscalls2` knows what operating system to assume when trying
 with callbacks.
 If your plugin is called `my_plugin`, then to run that plugin on a Win7 32-bit replay, the commandline should contain
 
-    -panda 'syscalls2:profile=windows7_x86'
+    -panda 'syscalls2:profile=windows_7_x86'
 
 There are currently five supported OS profiles.
 
-    windows7_x86
-    windowsxp_sp2_x86
-    windowsxp_sp3_x86
+    windows_7_x86
+    windows_xpsp2_x86
+    windows_xpsp3_x86
     linux_x86
     linux_arm
 

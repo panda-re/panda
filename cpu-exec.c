@@ -46,6 +46,8 @@ int generate_llvm = 0;
 int execute_llvm = 0;
 extern bool panda_tb_chaining;
 
+extern bool panda_exit_loop;
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -744,10 +746,16 @@ int cpu_exec(CPUState *cpu)
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
+
+        if (panda_exit_loop) break;
+
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
 
         while (true) {
+
+            if (panda_exit_loop) break;
+
             bool panda_invalidate_tb = false;
             debug_checkpoint(cpu);
             detect_infinite_loops();
@@ -782,6 +790,7 @@ int cpu_exec(CPUState *cpu)
             if (rr_mode == RR_REPLAY && rr_replay_finished()) {
                 rr_do_end_replay(0);
                 qemu_cpu_kick(cpu);
+                panda_exit_loop = true;
                 break;
             }
             if (!rr_in_replay() || until_interrupt > 0) {

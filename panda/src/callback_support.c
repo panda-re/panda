@@ -10,6 +10,26 @@
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 
+void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr) {
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_HANDLE_PACKET];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_handle_packet(cpu, buf, size, direction, old_buf_addr);
+        }
+    }
+}
+void panda_callbacks_net_transfer(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes) {
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_NET_TRANSFER];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_net_transfer(cpu, type, src_addr, dst_addr, num_bytes);
+        }
+    }
+}
 
 // These are used in exec.c
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write) {
@@ -203,6 +223,24 @@ void panda_callbacks_after_mem_write(CPUState *env, target_ulong pc,
             plist->entry.phys_mem_after_write(env, env->panda_guest_pc, paddr,
                                               data_size, &val);
         }
+    }
+}
+
+
+// vl.c
+void panda_callbacks_after_machine_init(void) {
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_AFTER_MACHINE_INIT]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.after_machine_init(first_cpu);
+    }
+}
+
+void panda_callbacks_top_loop(void) {
+    panda_cb_list *plist;
+    for(plist = panda_cbs[PANDA_CB_TOP_LOOP]; plist != NULL;
+        plist = panda_cb_list_next(plist)) {
+        plist->entry.top_loop(first_cpu);
     }
 }
 

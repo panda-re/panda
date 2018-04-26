@@ -15,23 +15,25 @@ from volatility.plugins.overlays.windows.win8_sp1_x64_syscalls import syscalls a
 from volatility.plugins.overlays.windows.win8_sp1_x86_syscalls import syscalls as win8_sp1_x86_syscalls
 from volatility.plugins.overlays.windows.xp_sp2_x86_syscalls import syscalls as xp_sp2_x86_syscalls
 from xp_sp3_x86_syscalls import syscalls as xp_sp3_x86_syscalls
+from win2000_x86_syscalls import syscalls as win2000_x86_syscalls
 
 tables = [
-    (vista_sp0_x64_syscalls, "vista_sp0_x64"),
-    (vista_sp0_x86_syscalls, "vista_sp0_x86"),
-    (vista_sp12_x64_syscalls, "vista_sp12_x64"),
-    (vista_sp12_x86_syscalls, "vista_sp12_x86"),
-    (win2003_sp0_x86_syscalls, "win2003_sp0_x86"),
-    (win2003_sp12_x64_syscalls, "win2003_sp12_x64"),
-    (win2003_sp12_x86_syscalls, "win2003_sp12_x86"),
-    (win7_sp01_x64_syscalls, "windows7_x64"),
-    (win7_sp01_x86_syscalls, "windows7_x86"),
-    (win8_sp0_x64_syscalls, "win8_sp0_x64"),
-    (win8_sp0_x86_syscalls, "win8_sp0_x86"),
-    (win8_sp1_x64_syscalls, "win8_sp1_x64"),
-    (win8_sp1_x86_syscalls, "win8_sp1_x86"),
-    (xp_sp2_x86_syscalls, "windowsxp_sp2_x86"),
-    (xp_sp3_x86_syscalls, "windowsxp_sp3_x86"),
+    (vista_sp0_x64_syscalls, "windows_vistasp0_x64"),
+    (vista_sp0_x86_syscalls, "windows_vistasp0_x86"),
+    (vista_sp12_x64_syscalls, "windows_vistasp12_x64"),
+    (vista_sp12_x86_syscalls, "windows_vistasp12_x86"),
+    (win2003_sp0_x86_syscalls, "windows_2003sp0_x86"),
+    (win2003_sp12_x64_syscalls, "windows_2003sp12_x64"),
+    (win2003_sp12_x86_syscalls, "windows_2003sp12_x86"),
+    (win7_sp01_x64_syscalls, "windows_7_x64"),
+    (win7_sp01_x86_syscalls, "windows_7_x86"),
+    (win8_sp0_x64_syscalls, "windows_8sp0_x64"),
+    (win8_sp0_x86_syscalls, "windows_8sp0_x86"),
+    (win8_sp1_x64_syscalls, "windows_8sp1_x64"),
+    (win8_sp1_x86_syscalls, "windows_8sp1_x86"),
+    (xp_sp2_x86_syscalls, "windows_xpsp2_x86"),
+    (xp_sp3_x86_syscalls, "windows_xpsp3_x86"),
+    (win2000_x86_syscalls, "windows_2000_x86"),
 ]
 
 import sys
@@ -42,7 +44,7 @@ for line in open(sys.argv[1]):
     prototypes[name] = (ret, args)
 
 for syscalls, filename in tables:
-    with open(filename + "_prototypes.txt", "w") as protofile:
+    with open('prototypes/%s_prototypes.txt' % filename, "w") as protofile:
         for i in range(len(syscalls)):
             for j in range(len(syscalls[i])):
                 ordinal = i << 12 | j

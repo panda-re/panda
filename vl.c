@@ -41,6 +41,7 @@
 #include "qemu/help_option.h"
 #include "qemu/uuid.h"
 #include <unistd.h>
+#include <glib.h>
 
 #ifdef CONFIG_SECCOMP
 #include "sysemu/seccomp.h"
@@ -142,11 +143,12 @@ int main(int argc, char **argv)
 #include "sysemu/iothread.h"
 
 extern void panda_cleanup(void);
-extern bool panda_add_arg(const char *, int);
+extern bool panda_add_arg(const char *, const char *);
 extern bool panda_load_plugin(const char *, const char *);
 extern void panda_unload_plugins(void);
 extern char *panda_plugin_path(const char *name);
 void panda_set_os_name(char *os_name);
+extern void panda_callbacks_after_machine_init(void);
 
 extern void pandalog_cc_init_write(const char * fname); 
 int pandalog = 0;
@@ -4175,11 +4177,10 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_record_from:
                 record_name = optarg;
-	            break;
+                break;
             case QEMU_OPTION_panda_arg:
-                if(!panda_add_arg(optarg, strlen(optarg))) {
-                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", optarg);
-                }
+                // panda_add_arg() currently always return true
+                assert(panda_add_arg(NULL, optarg));
                 break;
             case QEMU_OPTION_panda_plugin:
                 panda_plugin_files[nb_panda_plugins] = optarg;
@@ -4198,7 +4199,6 @@ int main(int argc, char **argv, char **envp)
 
                         char *opt_list;
                         if ((opt_list = strchr(plugin_start, ':'))) {
-                            char arg_str[255];
                             *opt_list = '\0';
                             opt_list++;
 
@@ -4207,11 +4207,9 @@ int main(int argc, char **argv, char **envp)
                                 opt_end = strchr(opt_start, ',');
                                 if (opt_end != NULL) *opt_end = '\0';
 
-                                snprintf(arg_str, 255, "%s:%s", plugin_start, opt_start);
-                                if (panda_add_arg(arg_str, strlen(arg_str))) // copies arg
-                                    printf("Adding PANDA arg %s.\n", arg_str);
-                                else
-                                    fprintf(stderr, "WARN: Couldn't add PANDA arg '%s': argument too long,\n", arg_str);
+                                // panda_add_arg() currently always return true
+                                assert(panda_add_arg(plugin_start, opt_start));
+                                printf("PANDA[%s] - adding argument %s.\n", plugin_start, opt_start);
 
                                 opt_start = opt_end + 1;
                             }
@@ -4976,6 +4974,9 @@ int main(int argc, char **argv, char **envp)
     }
 
     os_setup_post();
+
+    // Call PANDA post-machine init hook
+    panda_callbacks_after_machine_init();
 
     panda_in_main_loop = 1;
     main_loop();

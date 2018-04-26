@@ -157,75 +157,64 @@ void panda_disas(FILE *out, void *code, unsigned long size) {
     disas(out,code,size);
 }
 
-const char * valid_os[] = {
-    "windows-32-xpsp2", 
-    "windows-32-xpsp3", 
-    "windows-32-7", 
-    "linux-32-*",
-    "linux-64-*",
+
+// regular expressions used to validate the -os option
+const char * valid_os_re[] = {
+    "windows[-_]32[-_]xpsp[23]",
+    "windows[-_]32[-_]7",
+    "windows[-_]32[-_]2000",
+    "linux[-_]32[-_].+",
+    "linux[-_]64[-_].+",
     NULL
 };
 
 
-
-PandaOsType panda_os_type = OST_UNKNOWN;
-gchar *panda_os_name = NULL;
-uint32_t panda_os_bits = 0;  // 32 or 64
-gchar *panda_os_details = NULL;
+gchar *panda_os_name = NULL;                // the full name of the os, as provided by the user
+gchar *panda_os_family = NULL;              // parsed os family
+gchar *panda_os_variant = NULL;             // parsed os variant
+uint32_t panda_os_bits = 0;                 // parsed os bits
+PandaOsFamily panda_os_familyno = OS_UNKNOWN; // numeric identifier for family
 
 void panda_set_os_name(char *os_name) {
+    // validate os_name before parsing its components
+    gboolean os_supported = FALSE;
+    const gchar **os_re;
+    for (os_re=valid_os_re; *os_re != NULL; os_re++) {
+        if (g_regex_match_simple(*os_re, os_name, 0, 0)) {
+            os_supported = TRUE;
+            break;
+        }
+        //fprintf(stderr, "%s does not match regex %s\n", os_name, *os_re);
+    }
+    assert(os_supported);
+
     // set os name and split it
     panda_os_name = g_strdup(os_name);
     gchar **osparts = g_strsplit(panda_os_name, "-", 3);
 
     // set os type
-    if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_type = OST_WINDOWS; }
-    else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_type = OST_LINUX; }
-    else { panda_os_type = OST_UNKNOWN; }
+    if (0 == g_ascii_strncasecmp("windows", osparts[0], strlen("windows"))) { panda_os_familyno = OS_WINDOWS; }
+    else if (0 == g_ascii_strncasecmp("linux", osparts[0], strlen("linux"))) { panda_os_familyno = OS_LINUX; }
+    else { panda_os_familyno = OS_UNKNOWN; }
 
     // set os bits
     if (0 == g_ascii_strncasecmp("32", osparts[1], strlen("32"))) { panda_os_bits = 32; }
     else if (0 == g_ascii_strncasecmp("64", osparts[1], strlen("64"))) { panda_os_bits = 64; }
     else { panda_os_bits = 0; }
 
-    // set os details
-    panda_os_details = g_strdup(osparts[2]);
+    // set os family and variant
+    // These values are not used here, but are available to other plugins.
+    // E.g. osi_linux uses panda_os_variant to load the appropriate kernel
+    // profile from kernelinfo.conf at runtime.
+    panda_os_family = g_strdup(osparts[0]);
+    panda_os_variant = g_strdup(osparts[2]);
 
     // abort for invalid os type/bits
-    assert (!(panda_os_type == OST_UNKNOWN));
+    assert (!(panda_os_familyno == OS_UNKNOWN));
     assert (panda_os_bits != 0);
     g_strfreev(osparts);
 
-    gboolean os_details_ok = FALSE;
-    if (panda_os_type == OST_WINDOWS) {
-        const char **os;
-        for (os=valid_os; *os != NULL; os++) {
-            if (0 == strcmp(panda_os_name, *os)) {
-                os_details_ok = TRUE;
-                break;
-            }
-        }
-
-        if (!os_details_ok) {
-            fprintf(stderr, "os_name=[%s] is not on the list :\n", panda_os_name);
-            const char **os;
-            for (os=valid_os; *os != NULL; os++) {
-                fprintf(stderr, "\t[%s]\n", *os);
-            }
-        }
-    }
-    else if (panda_os_type == OST_LINUX) {
-        // Don't do any further checking on panda_os_details for linux.
-        //
-        // Currently panda_os_details is only used by the osi plugin to determine
-        // what arguments to pass to the osi_linux plugin.
-        // However, the list of acceptable arguments is not known at compile time,
-        // because osi_linux reads it from kernelinfo.conf.
-        os_details_ok = TRUE;
-    }
-    assert (os_details_ok);
-
-    printf ("os_type=%d bits=%d os_details=[%s]\n", panda_os_type, panda_os_bits, panda_os_details); 
+    printf ("os_familyno=%d bits=%d os_details=[%s]\n", panda_os_familyno, panda_os_bits, panda_os_variant); 
 }
 
 int panda_physical_memory_rw(hwaddr addr, uint8_t *buf, int len, int is_write) {
@@ -293,4 +282,4 @@ void panda_cleanup(void) {
     }
 }
 
-
+/* vim:set shiftwidth=4 ts=4 sts=4 et: */

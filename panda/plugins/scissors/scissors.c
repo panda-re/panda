@@ -21,6 +21,11 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 int before_block_exec(CPUState *env, TranslationBlock *tb);
 
+void check_start_snip(CPUState *env);
+void check_end_snip(CPUState *env);
+
+extern bool panda_exit_loop;
+
 static uint64_t start_count;
 static uint64_t actual_start_count;
 static uint64_t end_count;
@@ -33,6 +38,8 @@ static FILE *newlog = NULL;
 
 //static RR_log_entry entry;
 static RR_prog_point orig_last_prog_point = {0};
+static RR_prog_point pp_last_copied_log_entry;
+
 
 static bool snipping = false;
 static bool done = false;
@@ -89,10 +96,13 @@ static RR_prog_point copy_entry(void) {
     // Copy entry.
     RR_log_entry *item = alloc_new_entry();
 
+    long pos = ftell(oldlog);
+
     rr_fread(&(item->header.prog_point.guest_instr_count), sizeof(item->header.prog_point.guest_instr_count), 1, oldlog);
 
     if (item->header.prog_point.guest_instr_count > end_count) {
         // We don't want to copy this one.
+        fseek(oldlog, pos, SEEK_SET);
         return item->header.prog_point;
     }
 
@@ -193,10 +203,83 @@ static RR_prog_point copy_entry(void) {
     return original_prog_point;
 }
 
+
+static void start_snip(uint64_t count) {
+    sassert((oldlog = fopen(rr_nondet_log->name, "r")), 8);
+    sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1, 9);
+    printf("Original ending prog point: %" PRId64 "\n", (uint64_t) orig_last_prog_point.guest_instr_count);
+
+    actual_start_count = count;
+    printf("Saving snapshot at instr count %lu...\n", count);
+    
+    // Force running state
+    global_state_store_running();
+    printf("writing snapshot:\t%s\n", snp_name);
+    QIOChannelFile* ioc =
+        qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
+    QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
+    qemu_savevm_state(snp, NULL);
+    qemu_fclose(snp);
+    
+    printf("Beginning cut-and-paste process at prog point: % " PRId64 "\n", (uint64_t) rr_get_guest_instr_count());
+
+    printf("Writing entries to %s...\n", nondet_name);
+    newlog = fopen(nondet_name, "w");
+    sassert(newlog, 10);
+    // We'll fix this up later.
+    RR_prog_point prog_point = {0};
+    fwrite(&prog_point.guest_instr_count,
+           sizeof(prog_point.guest_instr_count), 1, newlog);
+    
+    fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
+    
+    // If there are items in the queue, then start copying the log
+    // from there
+    RR_log_entry *item = rr_get_queue_head();
+    if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
+    
+    //rw: For some reason I need to add an interrupt entry at the beginning of the log?
+    RR_log_entry temp;
+    
+    memset(&temp, 0, sizeof(RR_log_entry));
+    temp.header.kind = RR_INTERRUPT_REQUEST;
+    temp.header.callsite_loc = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
+    temp.variant.pending_interrupts = 2;
+    
+    fwrite(&temp.header.prog_point, sizeof(temp.header.prog_point), 1, newlog);
+    fwrite(&temp.header.kind, 1, 1, newlog);
+    fwrite(&temp.header.callsite_loc, 1, 1, newlog);
+    fwrite(&temp.variant.pending_interrupts, sizeof(temp.variant.pending_interrupts), 1, newlog);
+
+    while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
+        prog_point = copy_entry();
+    }
+    pp_last_copied_log_entry = prog_point;
+    
+    snipping = true;
+    printf("Continuing with replay.\n");
+}
+
+
+
+
 static void end_snip(void) {
     RR_prog_point prog_point = rr_prog_point();
-    printf("Ending cut-and-paste on prog point:\n");
-    rr_spit_prog_point(prog_point);
+    printf("Ending cut-and-paste on prog point: %" PRId64 "\n", prog_point.guest_instr_count);
+
+    RR_prog_point pp = pp_last_copied_log_entry;
+    end_count = prog_point.guest_instr_count;
+    if (pp.guest_instr_count < end_count) {
+        printf ("because actual end snip point differs from that requested on cmd line, we need to copy a few additional nd-log entries...\n");
+        while (pp.guest_instr_count < end_count && !rr_log_is_empty()) {
+            printf ("copied also log entry @ instr %" PRId64 "\n", pp.guest_instr_count);
+            pp = copy_entry();
+        }
+    }
+    
+
+    printf ("rr_queue_empy = %d\n", (int) rr_queue_empty());
+
     prog_point.guest_instr_count -= actual_start_count;
 
     RR_header end;
@@ -216,82 +299,56 @@ static void end_snip(void) {
     done = true;
 }
 
+
+bool request_start_snip = false;
+bool snip_started = false;
+bool snip_done = false;
+bool request_end_snip = false;
+bool snip_ended = false;
+
+void check_start_snip(CPUState *env) {
+    if (!request_start_snip) return;
+    // only one snip per replay!
+    if (snip_started) return;
+    if (snip_ended) return;
+    request_start_snip = false;
+    snip_started = true;
+    start_snip(rr_get_guest_instr_count());
+}
+
+void check_end_snip(CPUState *env) {
+    if (!request_end_snip) return;
+    if (snip_ended) return;
+    request_end_snip = false;
+    snip_ended = true;
+    end_snip();
+}
+
+
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     uint64_t count = rr_get_guest_instr_count();
     if (!snipping && count+tb->icount > start_count) {
-        sassert((oldlog = fopen(rr_nondet_log->name, "r")), 8);
-        sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1, 9);
-        printf("Original ending prog point: ");
-        rr_spit_prog_point(orig_last_prog_point);
-
-        actual_start_count = count;
-        printf("Saving snapshot at instr count %lu...\n", count);
-
-        // Force running state
-        global_state_store_running();
-        printf("writing snapshot:\t%s\n", snp_name);
-        QIOChannelFile* ioc =
-            qio_channel_file_new_path(snp_name, O_WRONLY | O_CREAT, 0660, NULL);
-        QEMUFile* snp = qemu_fopen_channel_output(QIO_CHANNEL(ioc));
-        qemu_savevm_state(snp, NULL);
-        qemu_fclose(snp);
-
-        printf("Beginning cut-and-paste process at prog point:\n");
-        rr_spit_prog_point(rr_prog_point());
-        printf("Writing entries to %s...\n", nondet_name);
-        newlog = fopen(nondet_name, "w");
-        sassert(newlog, 10);
-        // We'll fix this up later.
-        RR_prog_point prog_point = {0};
-        fwrite(&prog_point.guest_instr_count,
-                sizeof(prog_point.guest_instr_count), 1, newlog);
-
-        fseek(oldlog, ftell(rr_nondet_log->fp), SEEK_SET);
-
-        // If there are items in the queue, then start copying the log
-        // from there
-        RR_log_entry *item = rr_get_queue_head();
-        if (item != NULL) fseek(oldlog, item->header.file_pos, SEEK_SET);
-
-        //rw: For some reason I need to add an interrupt entry at the beginning of the log?
-        RR_log_entry temp;
-
-        memset(&temp, 0, sizeof(RR_log_entry));
-        temp.header.kind = RR_INTERRUPT_REQUEST;
-        temp.header.callsite_loc = RR_CALLSITE_CPU_HANDLE_INTERRUPT_BEFORE;
-        temp.variant.pending_interrupts = 2;
-
-        fwrite(&temp.header.prog_point, sizeof(temp.header.prog_point), 1, newlog);
-        fwrite(&temp.header.kind, 1, 1, newlog);
-        fwrite(&temp.header.callsite_loc, 1, 1, newlog);
-        fwrite(&temp.variant.pending_interrupts, sizeof(temp.variant.pending_interrupts), 1, newlog);
-
-        while (prog_point.guest_instr_count < end_count && !rr_log_is_empty()) {
-            prog_point = copy_entry();
-        }
-        
-        if (!feof(oldlog)) { // prog_point is the first one AFTER what we want
-            printf("Reached end of old nondet log.\n");
-        } else {
-            printf("Past desired ending point for log.\n");
-        }
-
-        snipping = true;
-        printf("Continuing with replay.\n");
+        panda_exit_loop = true;
+        request_start_snip = true;
     }
-
     if (snipping && !done && count > end_count) {
-        end_snip();
-
+        panda_exit_loop = true;
+        request_end_snip = true;
         rr_end_replay_requested = 1;
     }
-
     return 0;
 }
 
 bool init_plugin(void *self) {
     panda_cb pcb = { .before_block_exec = before_block_exec };
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
+    pcb.top_loop = check_start_snip;
+    panda_register_callback(self, PANDA_CB_TOP_LOOP, pcb);
+
+    pcb.top_loop = check_end_snip;
+    panda_register_callback(self, PANDA_CB_TOP_LOOP, pcb);
+
 
     start_count = 0;
     end_count = UINT64_MAX;

@@ -259,7 +259,7 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
 
     if (filename.find(read_filename) != std::string::npos) {
         target_ulong sp;
-        if (panda_os_type == OST_WINDOWS) {
+        if (panda_os_familyno == OS_WINDOWS) {
             sp = panda_current_sp(cpu) + 4;
         }
         else {
@@ -506,7 +506,7 @@ bool init_plugin(void *self) {
     printf ("first_instr = %" PRId64 " \n", first_instr);
 
     // you must use '-os os_name' cmdline arg!
-    assert (!(panda_os_type == OST_UNKNOWN));
+    assert (!(panda_os_familyno == OS_UNKNOWN));
 
     panda_require("osi");
     assert(init_osi_api());
@@ -514,10 +514,10 @@ bool init_plugin(void *self) {
 
     if (taint_stdin) {
         printf("tainting stdin\n");
-        assert (panda_os_type == OST_LINUX);
+        assert (panda_os_familyno == OS_LINUX);
     }
 
-    if (panda_os_type == OST_LINUX) {
+    if (panda_os_familyno == OS_LINUX) {
         panda_require("osi_linux");
         assert(init_osi_linux_api());
 
@@ -528,7 +528,7 @@ bool init_plugin(void *self) {
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return);
     }
 
-    if (panda_os_type == OST_WINDOWS) {
+    if (panda_os_familyno == OS_WINDOWS) {
         panda_require("wintrospection");
         assert(init_wintrospection_api());
 
