@@ -13,6 +13,7 @@
 PANDAENDCOMMENT */
 //#include "config.h"
 #include <stdint.h>
+#include <glib.h>
 
 #include "panda/plugin.h"
 #include "qapi/qmp/qdict.h"
@@ -45,7 +46,7 @@ PANDAENDCOMMENT */
 panda_cb_list *panda_cbs[PANDA_CB_LAST];
 
 // Storage for command line options
-char panda_argv[MAX_PANDA_PLUGIN_ARGS][256];
+const gchar *panda_argv[MAX_PANDA_PLUGIN_ARGS];
 int panda_argc;
 
 int nb_panda_plugins = 0;
@@ -67,17 +68,14 @@ bool panda_help_wanted = false;
 bool panda_plugin_load_failed = false;
 bool panda_abort_requested = false;
 
-bool panda_add_arg(const char *arg, int arglen) {
-    if (arglen > 255) return false;
-    strncpy(panda_argv[panda_argc++], arg, 255);
-    return true;
-}
+bool panda_exit_loop = false;
 
-bool panda_add_plugin_args(char *plugin_name, char *plugin_args) {
-    uint32_t len_add_str = strlen(plugin_name) + strlen(plugin_args) + 5;
-    char *add_str = (char *) malloc(len_add_str);
-    sprintf (add_str, "%s:%s", plugin_name, plugin_args);
-    return panda_add_arg(add_str, len_add_str);
+bool panda_add_arg(const char *plugin_name, const char *plugin_arg) {
+    if (plugin_name == NULL)    // PANDA argument
+        panda_argv[panda_argc++] = g_strdup(plugin_arg);
+    else                        // PANDA plugin argument
+        panda_argv[panda_argc++] = g_strdup_printf("%s:%s", plugin_name, plugin_arg);
+    return true;
 }
 
 // Forward declaration
@@ -138,14 +136,15 @@ extern const char *qemu_file;
 
 // translate plugin name into path to .so
 char *panda_plugin_path(const char *plugin_name) {    
-    char *plugin_path = g_malloc0(1024);
-    char *plugin_dir = getenv("PANDA_PLUGIN_DIR");
+    char *plugin_path = NULL;
+    const char *plugin_dir = g_getenv("PANDA_PLUGIN_DIR");
+
     if (plugin_dir != NULL) {
-        snprintf(plugin_path, 1024, "%s/panda_%s.so", plugin_dir, plugin_name);
+        plugin_path = g_strdup_printf("%s/panda_%s.so", plugin_dir, plugin_name);
     } else {
-        char *dir = strdup(qemu_file);
-        dir = dirname( (char *) dir);
-        snprintf(plugin_path, 1024, "%s/panda/plugins/panda_%s.so", dir, plugin_name);
+        char *dir = g_path_get_dirname(qemu_file);
+        plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s.so", dir, plugin_name);
+        g_free(dir);
     }
     return plugin_path;
 }
@@ -163,6 +162,7 @@ void panda_require(const char *plugin_name) {
         fprintf(stderr, "panda_require: FAIL: Unable to load plugin `%s' `%s'\n", plugin_name, plugin_path);
         abort();
     }
+    g_free(plugin_path);
 }
 
     
@@ -802,8 +802,7 @@ void qmp_load_plugin(bool has_file_name, const char *file_name, const char *plug
         file_name = panda_plugin_path(plugin_name);
 
     if (has_plugin_args){
-        char arg_str[255];
-        char *args = strdup(plugin_args);
+        gchar *args = g_strdup(plugin_args);
         char *args_start = args;
         char *args_end = args;
 
@@ -811,18 +810,21 @@ void qmp_load_plugin(bool has_file_name, const char *file_name, const char *plug
             args_end = strchr(args_start, ',');
             if (args_end != NULL) *args_end = '\0';
 
-            snprintf(arg_str, 255, "%s:%s", plugin_name, args_start);
-            if( !panda_add_arg(arg_str, strlen(arg_str))){
-                // TODO: do something with errp here?
-            }
+            // panda_add_arg() currently always return true
+            assert(panda_add_arg(plugin_name, args_start));
+
             args_start = args_end + 1;
         }
-        free(args);
+
+        g_free(args);
     }
 
     if(!panda_load_plugin(file_name, plugin_name)) {
         // TODO: do something with errp here?
     }
+
+    if(!has_file_name)
+        g_free((char *)file_name);
 }
 
 void qmp_unload_plugin(int64_t index, Error **errp) {

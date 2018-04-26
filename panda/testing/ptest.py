@@ -85,9 +85,10 @@ def bless(testname):
         
         # Copy output files to blessed directory
         blesseddir = os.path.join(pandaregressiondir, "blessed", testname)
+        clear_dir(blesseddir)
         tmpoutdir = os.path.join(pandaregressiondir, "tmpout", testname)
         files = os.listdir(tmpoutdir)
-        print tmpoutdir
+#        print tmpoutdir
 
         for f in files:
             progress ("Moving blessed file %s" % f)
@@ -119,6 +120,8 @@ def test(testname):
                 error ("blessed output for %s missing: %s" % (testname, bf))
                 return False
 
+            progress("tof = " + tof)
+            progress("bf =  " + bf)
             if filecmp.cmp(tof, bf):
                 progress ("New output for %s agrees with blessed" % testname)        
                 progress("Test %s succeeded" % testname)
@@ -159,7 +162,7 @@ def run_mode(the_mode, do_fn):
         progress("All %s succeeded" % the_mode)
     else:
         error("XXX Some %s failed" % the_mode)
-        raise RuntimeError("Some %s failed" % the_mode)
+        sys.exit(100)
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ PANDAENDCOMMENT */
 bool init_plugin(void *);
 void uninit_plugin(void *);
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *, target_ulong, target_ulong);
+int asid_changed(CPUState *, target_ulong, target_ulong);
 #endif
 
 PPP_PROT_REG_CB(on_get_processes)
@@ -104,7 +104,7 @@ void free_osimodules(OsiModules *ms) {
 
 
 #ifdef OSI_PROC_EVENTS
-int vmi_pgd_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
+int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     uint32_t i;
     OsiProcs *ps, *in, *out;
     ps = in = out = NULL;
@@ -140,12 +140,12 @@ extern const char *qemu_file;
 
 bool init_plugin(void *self) {
 #ifdef OSI_PROC_EVENTS
-    panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
-    panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+    panda_cb pcb = { .asid_changed = asid_changed };
+    panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
     // figure out what kind of os introspection is needed and grab it? 
-    assert (!(panda_os_type == OST_UNKNOWN));
-    if (panda_os_type == OST_LINUX) {
+    assert (!(panda_os_familyno == OS_UNKNOWN));
+    if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
         const gchar *progname = qemu_file;
         gchar *progname_path;
@@ -184,16 +184,16 @@ bool init_plugin(void *self) {
         free(kconffile_canon);
 
         // get kconfgroup
-        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_details, panda_os_bits);
+        gchar *kconfgroup = g_strdup_printf("%s:%d", panda_os_variant, panda_os_bits);
 
         // add arguments to panda
-        gchar *panda_arg;
-        panda_arg = g_strdup_printf("osi_linux:kconf_file=%s", kconffile);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
-        panda_arg = g_strdup_printf("osi_linux:kconf_group=%s", kconfgroup);
-        panda_add_arg(panda_arg, strlen(panda_arg));
-        g_free(panda_arg);
+        gchar *plugin_arg;
+        plugin_arg = g_strdup_printf("kconf_file=%s", kconffile);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
+        plugin_arg = g_strdup_printf("kconf_group=%s", kconfgroup);
+        panda_add_arg("osi_linux", plugin_arg);
+        g_free(plugin_arg);
 
         // print info and finish
         g_printf("OSI grabbing Linux introspection backend.\n");
@@ -203,7 +203,7 @@ bool init_plugin(void *self) {
 
         panda_require("osi_linux");
     }
-    if (panda_os_type == OST_WINDOWS) {
+    if (panda_os_familyno == OS_WINDOWS) {
         g_printf("OSI grabbing Windows introspection backend.\n");
         panda_require("win7x86intro");
         panda_require("wintrospection");

@@ -86,6 +86,11 @@ static unsigned int throttle_percentage;
 #define CPU_THROTTLE_PCT_MAX 99
 #define CPU_THROTTLE_TIMESLICE_NS 10000000
 
+extern void panda_callbacks_top_loop(void);
+
+extern bool rr_replay_complete;
+extern bool panda_exit_loop;
+
 bool cpu_is_stopped(CPUState *cpu)
 {
     return cpu->stopped || !runstate_is_running();
@@ -1332,6 +1337,11 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     cpu->exit_request = 1;
 
     while (1) {
+
+        if (!rr_replay_complete) {
+            panda_callbacks_top_loop();
+        }
+
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
         qemu_account_warp_timer();
 
@@ -1361,6 +1371,13 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             }
 
             cpu = CPU_NEXT(cpu);
+
+            if (panda_exit_loop) {
+                printf ("exiting loop in cpus.c. \n");
+                panda_exit_loop = false;
+                break;
+            }
+
         } /* while (cpu && !cpu->exit_request).. */
 
         /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
@@ -1374,6 +1391,7 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
         qemu_tcg_wait_io_event(QTAILQ_FIRST(&cpus));
         deal_with_unplugged_cpus();
+
     }
 
     return NULL;
