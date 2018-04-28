@@ -36,6 +36,9 @@ static char snp_name[128];
 static FILE *oldlog = NULL;
 static FILE *newlog = NULL;
 
+static RR_log_type rr_nondet_log_type;
+static unsigned long long rr_nondet_log_size;
+
 //static RR_log_entry entry;
 static RR_prog_point orig_last_prog_point = {0};
 static RR_prog_point pp_last_copied_log_entry;
@@ -82,9 +85,9 @@ static INLINEIT RR_log_entry *alloc_new_entry(void)
 }
 
 static INLINEIT bool rr_log_is_empty(void) {
-    if (rr_nondet_log->type == REPLAY){
+    if (rr_nondet_log_type == REPLAY){
         long pos = ftell(oldlog);
-        return pos == rr_nondet_log->size;
+        return pos == rr_nondet_log_size;
     } else {
         return false;
     }
@@ -203,9 +206,10 @@ static RR_prog_point copy_entry(void) {
     return original_prog_point;
 }
 
-
 static void start_snip(uint64_t count) {
     sassert((oldlog = fopen(rr_nondet_log->name, "r")), 8);
+    rr_nondet_log_type = rr_nondet_log->type;
+    rr_nondet_log_size = rr_nondet_log->size;
     sassert(fread(&orig_last_prog_point, sizeof(RR_prog_point), 1, oldlog) == 1, 9);
     printf("Original ending prog point: %" PRId64 "\n", (uint64_t) orig_last_prog_point.guest_instr_count);
 
