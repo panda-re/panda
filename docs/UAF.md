@@ -1,11 +1,7 @@
 This is an example of using PANDA for rapid vulnerability diagnosis.
 To start, clone a copy of the PANDA repository:
 
-	git clone https://github.com/moyix/panda.git
-
-We're using revision 46bf2ea for this tutorial, so run:
-
-	git checkout 46bf2ea
+	git clone -b panda1 https://github.com/panda-re/panda.git
 
 To build PANDA, cd into `panda/qemu`. Edit `build.sh` to remove the lines
 about LLVM; we won't need them for our purposes. Then run `build.sh`.
