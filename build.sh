@@ -27,8 +27,11 @@ if [ $GCC_VERSION_MAJOR -eq $GCC_TOOLCHAIN_VERSION_REQ -a $GCXX_VERSION_MAJOR -g
 elif (type gcc-$GCC_TOOLCHAIN_VERSION_REQ && type g++-$GCC_TOOLCHAIN_VERSION_REQ) >/dev/null 2>&1; then
     echo "Building with gcc-$GCC_TOOLCHAIN_VERSION_REQ/g++-$GCC_TOOLCHAIN_VERSION_REQ."
     COMPILER_CONFIG="--cc=gcc-$GCC_TOOLCHAIN_VERSION_REQ --cxx=g++-$GCC_TOOLCHAIN_VERSION_REQ"
+elif [ $GCC_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_REQ -a $GCXX_VERSION_MAJOR -lt $GCC_TOOLCHAIN_VERSION_REQ ]; then
+    echo "Older gcc/g++ found. Enforcing gnu11 mode."
+    COMPILER_CONFIG="--extra-cflags=-std=gnu11"
 else
-    echo "No suitable gcc/g++ found. Trying with default."
+    echo "Modern gcc/g++ found. Trying with default."
     COMPILER_CONFIG=""
 fi
 

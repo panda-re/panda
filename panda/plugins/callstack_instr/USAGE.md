@@ -49,12 +49,12 @@ Description: Called every time a function call returns in guest (e.g., at the `r
 // Get up to n callers from the given address space at this moment
 // Callers are returned in callers[], most recent first
 // Return value is the number of callers actually retrieved
-int get_callers(target_ulong *callers, int n, CPUState *env);
+uint32_t get_callers(target_ulong *callers, uint32_t n, CPUState *env);
 
 // Get up to n functions from the given address space at this moment
 // Functions are returned in functions[], most recent first
 // Return value is the number of callers actually retrieved
-int get_functions(target_ulong *functions, int n, CPUState *env);
+uint32_t get_functions(target_ulong *functions, uint32_t n, CPUState *env);
 
 // Get the current program point: (Caller, PC, ASID)
 // This isn't quite the right place for it, but since it's awkward
@@ -68,7 +68,6 @@ There are also functions available for getting callstack information in [pandalo
 // Create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);
 
-```C
 // Create pandalog message for callstack info
 Panda__CallStack *pandalog_callstack_create(void);
 

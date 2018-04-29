@@ -209,6 +209,47 @@ uint32_t taint2_query_reg(int reg_num, int offset) {
     return ls ? ls->size() : 0;
 }
 
+/**
+ * @brief Returns taint labels associated with address \p a.
+ * Both the number of labels and their count are returned.
+ *
+ * This function essentially combines taint2_query() and taint2_query_set().
+ * However, unlike taint2_query_set(), it will reallocate buffer \p *out and
+ * update it's size \p *outsz as needed to fit the returned labels.
+ * In the case where \p out is `nullptr`, the function is equivalent with
+ * taint2_query().
+ *
+ * \param a	the address to be queried for taint
+ * \param out	a pointer to the the buffer where taint labels will be stored.
+ * \param outsz	the number of labels that buffer \p *out can hold.
+ * \return The number of labels associated with \p a.
+ */
+extern "C" uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz) {
+    auto s = tp_labelset_get(a);
+    if (s == nullptr || s->empty()) return 0;
+
+    // only return size
+    if (out == nullptr) return s->size();
+
+    // allocate/reallocate buffer
+    uint32_t sz = s->size();
+    if (*out == nullptr || *outsz < sz) {
+        *out = (uint32_t *)realloc(*out, sz*sizeof(uint32_t));
+        *outsz = sz;
+    }
+
+    // fill buffer
+    uint32_t *buf = *out;
+    uint32_t i = 0;
+    for (uint32_t l: *s) { buf[i++] = l; }
+
+    return sz;
+}
+
+/**
+ * @brief Fills \p out with the taint labels associated with address \p a.
+ * It is assumed that \p out is large enough to hold the returned data.
+ */
 extern "C" void taint2_query_set(Addr a, uint32_t *out) {
 	auto set = tp_labelset_get(a);
 	if (set == nullptr || set->empty()) return;
