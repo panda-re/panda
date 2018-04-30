@@ -4,7 +4,6 @@
 # 	-DTAINT2_DEBUG enables debug output.
 # 	-DTAINT2_HYPERCALLS enables taint-related PANDA hypercalls, as used by LAVA
 #
-TAINT2_FLAGS   += -DTAINT2_DEBUG
 TAINT2_FLAGS   += -DTAINT2_HYPERCALLS
 
 ### Flags setup #####################################################
