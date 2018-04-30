@@ -251,7 +251,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F) {
-#ifdef TAINTDEBUG
+#ifdef TAINT2_DEBUG
     //printf("\n\n%s\n", F.getName().str().c_str());
 #endif
     if (F.front().front().getMetadata("tainted") ||
@@ -268,7 +268,7 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
             PTV.visit(I);
         }
     }
-#ifdef TAINTDEBUG
+#ifdef TAINT2_DEBUG
     //F.dump();
     /*std::string err;
     if (F.getName().startswith("tcg-llvm-tb-")) {

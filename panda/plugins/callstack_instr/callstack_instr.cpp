@@ -37,7 +37,6 @@ PANDAENDCOMMENT */
 
 extern "C" {
 #include "panda/plog.h"
-
 #include "callstack_instr_int_fns.h"
 
 bool translate_callback(CPUState* cpu, target_ulong pc);
@@ -51,7 +50,6 @@ void uninit_plugin(void *);
 
 PPP_PROT_REG_CB(on_call);
 PPP_PROT_REG_CB(on_ret);
-
 }
 
 PPP_CB_BOILERPLATE(on_call);
@@ -276,63 +274,59 @@ int after_block_exec(CPUState* cpu, TranslationBlock *tb) {
     return 1;
 }
 
-// Public interface implementation
-int get_callers(target_ulong callers[], int n, CPUState* cpu) {
+
+/**
+ * @brief Fills preallocated buffer \p callers with up to \p n call addresses.
+ */
+uint32_t get_callers(target_ulong callers[], uint32_t n, CPUState* cpu) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-    auto rit = v.rbegin();
-    int i = 0;
-    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
-        callers[i] = rit->pc;
-    }
-    return i;
+
+    n = std::min((uint32_t)v.size(), n);
+    for (uint32_t i=0; i<n; i++) { callers[i] = v[i].pc; }
+    return n;
 }
 
 
 #define CALLSTACK_MAX_SIZE 16
-// writes an entry to the pandalog with callstack info (and instr count and pc)
+/**
+ * @brief Creates a pandalog entry with the callstack information.
+ */
 Panda__CallStack *pandalog_callstack_create() {
-    assert (pandalog);
-    CPUState *cpu = first_cpu;
-    CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    uint32_t n = 0;
+    assert(pandalog);
+    CPUArchState* env = (CPUArchState*)first_cpu->env_ptr;
     std::vector<stack_entry> &v = callstacks[get_stackid(env)];
-    auto rit = v.rbegin();
-    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit) {
-        n ++;
-    }
-    Panda__CallStack *cs = (Panda__CallStack *) malloc (sizeof(Panda__CallStack));
+
+    Panda__CallStack *cs = (Panda__CallStack *)malloc(sizeof(Panda__CallStack));
     *cs = PANDA__CALL_STACK__INIT;
-    cs->n_addr = n;
-    cs->addr = (uint64_t *) malloc (sizeof(uint64_t) * n);
-    v = callstacks[get_stackid(env)];
-    rit = v.rbegin();
-    uint32_t i=0;
-    for (/*no init*/; rit != v.rend() && n < CALLSTACK_MAX_SIZE; ++rit, ++i) {
-        cs->addr[i] = rit->pc;
-    }
+    cs->n_addr = std::min((uint32_t)v.size(), (uint32_t)CALLSTACK_MAX_SIZE);
+    cs->addr = (uint64_t *)malloc(cs->n_addr * sizeof(uint64_t));
+
+    for (uint32_t i=0; i<cs->n_addr; i++) { cs->addr[i] = v[i].pc; }
+
     return cs;
 }
 
 
+/**
+ * @brief Frees a pandalog entry containing callstack information.
+ */
 void pandalog_callstack_free(Panda__CallStack *cs) {
     free(cs->addr);
     free(cs);
 }
 
 
-int get_functions(target_ulong functions[], int n, CPUState* cpu) {
+/**
+ * @brief Fills preallocated buffer \p functions with up to \p n function addresses.
+ */
+uint32_t get_functions(target_ulong functions[], uint32_t n, CPUState* cpu) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
     std::vector<target_ulong> &v = function_stacks[get_stackid(env)];
-    if (v.empty()) {
-        return 0;
-    }
-    auto rit = v.rbegin();
-    int i = 0;
-    for (/*no init*/; rit != v.rend() && i < n; ++rit, ++i) {
-        functions[i] = *rit;
-    }
-    return i;
+
+    n = std::min((uint32_t)v.size(), n);
+    for (uint32_t i=0; i<n; i++) { functions[i] = v[i]; }
+    return n;
 }
 
 void get_prog_point(CPUState* cpu, prog_point *p) {
@@ -406,3 +400,5 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
 }
+
+/* vim: set tabstop=4 softtabstop=4 expandtab ft=cpp: */

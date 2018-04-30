@@ -205,7 +205,14 @@ bool init_plugin(void *self) {
     }
     if (panda_os_familyno == OS_WINDOWS) {
         g_printf("OSI grabbing Windows introspection backend.\n");
-        panda_require("win7x86intro");
+        if (0 == strcmp(panda_os_variant, "2000")) {
+            panda_require("win2000x86intro");
+        } else if (0 == strcmp(panda_os_variant, "7")) {
+            panda_require("win7x86intro");
+        } else {
+            g_printf("No Windows introspection support for OS variant %s.\n", panda_os_variant ? panda_os_variant : "Unspecified");
+            assert(false);
+        }
         panda_require("wintrospection");
     }
     return true;

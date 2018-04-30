@@ -94,6 +94,7 @@ update_cxxflags() {
     QEMU_CXXFLAGS=
     for arg in $QEMU_CFLAGS; do
         case $arg in
+            -std=*|\
             -Wstrict-prototypes|-Wmissing-prototypes|-Wnested-externs|\
             -Wold-style-declaration|-Wold-style-definition|-Wredundant-decls)
                 ;;
