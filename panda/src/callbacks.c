@@ -11,20 +11,18 @@
  * See the COPYING file in the top-level directory. 
  * 
 PANDAENDCOMMENT */
-//#include "config.h"
 #include <stdint.h>
+#include <string.h>
+#include <dlfcn.h>
 #include <glib.h>
+#include <libgen.h>
 
 #include "panda/plugin.h"
 #include "qapi/qmp/qdict.h"
-
 #include "qmp-commands.h"
 #include "hmp.h"
 #include "qapi/error.h"
-
 #include "monitor/monitor.h"
-
-#include <libgen.h>
 
 #ifdef CONFIG_LLVM
 //#include "panda/panda_helper_call_morph.h"
@@ -33,14 +31,16 @@ PANDAENDCOMMENT */
 #include "panda/helper_runtime.h"
 #endif
 
-#include <dlfcn.h>
-#include <string.h>
-
 #include "panda/common.h"
 
-//void spit_cbs(void) ;
+const gchar *panda_bool_true_strings[] =  {"y", "yes", "true", "1", NULL};
+const gchar *panda_bool_false_strings[] = {"n", "no", "false", "0", NULL};
 
-// WARNING: this is all gloriously un-thread-safe
+#if 0
+###########################################################
+WARNING: This is all gloriously thread-unsafe!!!
+###########################################################
+#endif
 
 // Array of pointers to PANDA callback lists, one per callback type
 panda_cb_list *panda_cbs[PANDA_CB_LAST];
@@ -86,7 +86,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     uint32_t i;
     for (i=0; i<nb_panda_plugins_loaded; i++) {
         if (0 == (strcmp(filename, panda_plugins_loaded[i]))) {
-            printf ("panda_load_plugin: %s already loaded\n", filename);
+            fprintf(stderr, PANDA_MSG_FMT "%s already loaded\n", PANDA_CORE_NAME, filename);
             return true;
         }
     }    
@@ -111,7 +111,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     panda_plugins[nb_panda_plugins].plugin = plugin;
     strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
     nb_panda_plugins++;
-    fprintf(stderr, "Initializing plugin %s\n", plugin_name ? plugin_name : filename);
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, plugin_name ? plugin_name : filename);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
@@ -154,12 +154,14 @@ void panda_require(const char *plugin_name) {
     // If we're printing help, panda_require will be a no-op.
     if (panda_help_wanted) return;
 
-    printf ("panda_require: %s\n", plugin_name);
+    fprintf(stderr, PANDA_MSG_FMT "loading required plugin %s\n", PANDA_CORE_NAME, plugin_name);
+
     // translate plugin name into a path to .so
     char *plugin_path = panda_plugin_path(plugin_name);
+
     // load plugin same as in vl.c
     if (!panda_load_plugin(plugin_path, plugin_name)) {
-        fprintf(stderr, "panda_require: FAIL: Unable to load plugin `%s' `%s'\n", plugin_name, plugin_path);
+        fprintf(stderr, PANDA_MSG_FMT "FAILED to load required plugin %s from %s\n", PANDA_CORE_NAME, plugin_name, plugin_path);
         abort();
     }
     g_free(plugin_path);
@@ -224,49 +226,98 @@ void * panda_get_plugin_by_name(const char *plugin_name) {
     return NULL;
 }
 
+/**
+ * @brief Adds callback to the tail of the callback list and enables it.
+ *
+ * The order of callback registration will determine the order in which
+ * callbacks of the same type will be invoked.
+ *
+ * @note Registering a callback function twice from the same plugin will trigger
+ * an assertion error.
+ */
 void panda_register_callback(void *plugin, panda_cb_type type, panda_cb cb) {
-    panda_cb_list *plist;
-    panda_cb_list *new_list = g_new0(panda_cb_list,1);
+    panda_cb_list *plist_last = NULL;
+
+    panda_cb_list *new_list = g_new0(panda_cb_list, 1);
     new_list->entry = cb;
     new_list->owner = plugin;
-    new_list->prev = NULL;
-    new_list->next = NULL;
     new_list->enabled = true;
+
     if(panda_cbs[type] != NULL) {
-        for(plist = panda_cbs[type]; plist->next != NULL; plist = plist->next);
-        plist->next = new_list;
-        new_list->prev = plist;
+        for(panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+            // the same plugin can register the same callback function only once
+            assert(!(plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr));
+            plist_last = plist;
+        }
+        plist_last->next = new_list;
+        new_list->prev = plist_last;
     }
     else {
         panda_cbs[type] = new_list;
     }
 }
 
+/**
+ * @brief Disables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `false`. The callback remains
+ * in the callback list, so when it is enabled again it will execute in the same
+ * relative order.
+ *
+ * @note Disabling an unregistered callback will trigger an assertion error.
+ */
+void panda_disable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    bool found = false;
+    if (panda_cbs[type] != NULL) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+                found = true;
+                plist->enabled = false;
 
-/*
-void spit_cbs(void) {
-    int i;
-    for (i = 0; i < PANDA_CB_LAST; i++) {
-        panda_cb_list *plist;
-        plist = panda_cbs[i];
-        if (plist != NULL) {
-            printf ("%d: ", i);
-            while (plist != NULL) {
-                printf ("%" PRIx64 "(% " PRIx64" ) ", plist, plist->owner);
-                plist= plist->next;
+                // break out of the loop - the same plugin can register the same callback only once
+                break;
             }
-            printf ("\n");
         }
     }
- }
-*/
+    // no callback found to disable
+    assert(found);
+}
 
+/**
+ * @brief Enables the execution of the specified callback.
+ *
+ * This is done by setting the `enabled` flag to `true`. After enabling the
+ * callback, it will execute in the same relative order as before having it
+ * disabled.
+ *
+ * @note Enabling an unregistered callback will trigger an assertion error.
+ */
+void panda_enable_callback(void *plugin, panda_cb_type type, panda_cb cb) {
+    bool found = false;
+    if (panda_cbs[type] != NULL) {
+        for (panda_cb_list *plist = panda_cbs[type]; plist != NULL; plist = plist->next) {
+            if (plist->owner == plugin && (plist->entry.cbaddr) == cb.cbaddr) {
+                found = true;
+                plist->enabled = true;
 
-// Remove callbacks for this plugin
+                // break out of the loop - the same plugin can register the same callback only once
+                break;
+            }
+        }
+    }
+    // no callback found to enable
+    assert(found);
+}
+
+/**
+ * @brief Unregisters all callbacks owned by this plugin.
+ *
+ * The register callbacks are removed from their respective callback lists.
+ * This means that if they are registered again, their execution order may be
+ * different.
+ */
 void panda_unregister_callbacks(void *plugin) {
-    // printf ("panda_unregister_callbacks(%x) enter\n", plugin); spit_cbs();
-    int i;
-    for (i = 0; i < PANDA_CB_LAST; i++) {
+    for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
         bool done = false;
@@ -297,12 +348,17 @@ void panda_unregister_callbacks(void *plugin) {
         // update head
         panda_cbs[i] = plist_head;
     }
-    //  printf ("panda_unregister_callbacks(%x) exit\n", plugin);  spit_cbs();  printf ("\n\n");
 }
 
+/**
+ * @brief Enables the specified plugin.
+ *
+ * This works by enabling all the callbacks previously registered by
+ * the plugin. This means that when execution order of the callbacks
+ * is preserved.
+ */
 void panda_enable_plugin(void *plugin) {
-    int i;
-    for (i = 0; i < PANDA_CB_LAST; i++) {
+    for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
         while(plist != NULL) {
@@ -314,9 +370,15 @@ void panda_enable_plugin(void *plugin) {
     }
 }
 
+/**
+ * @brief Disables the specified plugin.
+ *
+ * This works by disabling all the callbacks registered by the plugin.
+ * This means that when the plugin is re-enabled, the callback order
+ * is preserved.
+ */
 void panda_disable_plugin(void *plugin) {
-    int i;
-    for (i = 0; i < PANDA_CB_LAST; i++) {
+    for (int i = 0; i < PANDA_CB_LAST; i++) {
         panda_cb_list *plist;
         plist = panda_cbs[i];
         while(plist != NULL) {
@@ -328,18 +390,14 @@ void panda_disable_plugin(void *plugin) {
     }
 }
 
+/**
+ * @brief Allows to navigate the callback linked list skipping disabled callbacks.
+ */
 panda_cb_list* panda_cb_list_next(panda_cb_list* plist) {
-    // Allows to navigate the callback linked list skipping disabled callbacks
-    panda_cb_list* node = plist->next;
-    if (node == NULL) {
-        return node;
+    for (panda_cb_list* node = plist->next; plist != NULL; plist = plist->next) {
+        if (!node || node->enabled) return node;
     }
-
-    if (node->enabled) {
-        return node;
-    } else {
-        return panda_cb_list_next(node);
-    }
+    return NULL;
 }
 
 bool panda_flush_tb(void) {
@@ -516,24 +574,32 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
 }
 
 static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname, const char *help, bool required) {
+    gchar *val = NULL;
     if (panda_help_wanted) goto help;
     if (!args) goto error_handling;
-    int i;
-    for (i = 0; i < args->nargs; i++) {
-        if (strcmp(args->list[i].key, argname) == 0) {
-            char *val = args->list[i].value;
-            if (strcasecmp("false", val) == 0 || strcasecmp("no", val) == 0) {
-                return false;
-            } else {
-                return true;
+    for (int i = 0; i < args->nargs; i++) {
+        if (g_ascii_strcasecmp(args->list[i].key, argname) == 0) {
+            val = args->list[i].value;
+            for (const gchar **vp=panda_bool_true_strings; *vp != NULL; vp++) {
+                if (g_ascii_strcasecmp(*vp, val) == 0) return true;
             }
+            for (const gchar **vp=panda_bool_false_strings; *vp != NULL; vp++) {
+                if (g_ascii_strcasecmp(*vp, val) == 0) return false;
+            }
+
+            // argument name matched
+            break;
         }
     }
 
 error_handling:
-    if (required) {
-        fprintf(stderr, "ERROR: plugin required bool argument \"%s\" but you did not provide it\n", argname);
-        fprintf(stderr, "Help for \"%s\": %s\n", argname, help);
+    if (val != NULL) { // value provided but not in the list of accepted values
+        fprintf(stderr, PANDA_MSG_FMT "FAILED to parse value \"%s\" for bool argument \"%s\"\n", PANDA_CORE_NAME, val, argname);
+        panda_plugin_load_failed = true;
+    }
+    else if (required) { // value not provided but required
+        fprintf(stderr, PANDA_MSG_FMT "ERROR finding required bool argument \"%s\"\n", PANDA_CORE_NAME, argname);
+        fprintf(stderr, PANDA_MSG_FMT "help for \"%s\": %s\n", PANDA_CORE_NAME, argname, help);
         panda_plugin_load_failed = true;
     }
 help:

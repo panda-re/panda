@@ -187,6 +187,12 @@ Finally, remove the old sources from apt:
 sudo sed -i '/^deb-src.*xenial/d' /etc/apt/sources.list
 ```
 
+and put "on hold" any incoming upgrades for the installed packages:
+
+```sh
+for f in *.deb; do echo ${f%%_*.deb} hold; done | sudo dpkg --set-selections
+```
+
 ### Protocol Buffers - manual installation
 
 #### C Library
