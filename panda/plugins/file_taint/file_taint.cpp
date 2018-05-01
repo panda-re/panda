@@ -275,7 +275,7 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState *cpu,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
 void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_count) {
-    ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) };
+    ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) - get_ntreadfile_esp_off() };
     auto it = seen_reads.find(thread);
     if (it != seen_reads.end()) {
         ReadInfo read_info = it->second;
@@ -335,6 +335,7 @@ void windows_read_enter(CPUState *cpu, target_ulong pc, uint32_t FileHandle, uin
         else // last resort. just assume last_pos.
             read_enter(cpu, pc, filename, last_pos, Buffer, BufferLength);
     }
+    g_free(filename);
 }
 
 #define STATUS_SUCCESS 0
