@@ -35,6 +35,22 @@ void uninit_plugin(void *);
 int get_loglevel() ;
 void set_loglevel(int new_loglevel);
 
+int cache_process_details(CPUState *cpu, TranslationBlock *tb);
+
+#ifdef TARGET_I386
+// Enable this option to record and cache process details at the start of each basic block.  By default, process
+// details are recorded and cached when a read system call is encountered.
+static bool cache_process_details_on_basic_block;
+#endif
+
+// Enable this option to do sanity checks when recording process details.  In particular, there should be a one
+// to one correspondence between ASIDs and processes normally.  Enabling this validates that assertion holds.
+static bool process_details_cache_sanity_check;
+
+// Enable this option to not assume a one to one mapping between asids and processes.  Enabling this option
+// always overwrites the running procs cache with the process details of the current process.
+static bool always_overwrite_process_details_cache;
+
 #include "file_taint_int_fns.h"
 #include "file_taint.h"
 PPP_PROT_REG_CB(on_file_byte_read)
@@ -244,6 +260,7 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
     if (debug) printf ("read_enter filename=[%s]\n", filename.c_str());
     std::string read_filename = taint_stdin ? "stdin" : taint_filename;
 
+    if(!cache_process_details_on_basic_block) cache_process_details(cpu, NULL);
     auto it = running_procs.find(the_asid);
     if (taint_stdin) {
         if (it == running_procs.end()) {
@@ -374,6 +391,7 @@ char stdin_filename[] = "stdin";
 void linux_pread_enter(CPUState *cpu, target_ulong pc,
         uint32_t fd, uint32_t buf, uint32_t count, uint64_t pos) {
     target_ulong asid = panda_current_asid(cpu);
+    if(!cache_process_details_on_basic_block) cache_process_details(cpu, NULL);
     if (running_procs.count(asid) == 0) {
         if (debug) printf ("linux_read_enter for asid=0x%x fd=%d -- dont know about that asid.  discarding \n", (unsigned int) asid, (int) fd);
         return;
@@ -442,42 +460,58 @@ void linux_open_enter(CPUState *cpu, target_ulong pc, uint32_t filename, int32_t
 
 
 
-// get current process before each bb executes
-// which will probably help us actually know the current process
-int osi_foo(CPUState *cpu, TranslationBlock *tb) {
+int cache_process_details(CPUState *cpu, TranslationBlock *tb__unused) {
     if (panda_in_kernel(cpu)) {
         OsiProc *p = get_current_process(cpu);
         //some sanity checks on what we think the current process is
         // we couldn't find the current task
         if (p == NULL) return 0;
         // this means we didnt find current task
-        if (p->offset == 0) return 0;
+        if (p->offset == 0) {
+            free_osiproc(p);
+            return 0;
+        }
         // or the name
-        if (p->name == 0) return 0;
+        if (p->name == 0) {
+            free_osiproc(p);
+            return 0;
+        }
         // weird -- this is just not ok
-        if (((int) p->pid) == -1) return 0;
+        if (((int) p->pid) == -1) {
+            free_osiproc(p);
+            return 0;
+        }
         uint32_t n = strnlen(p->name, 32);
         // yuck -- name is one char
-        if (n<2) return 0;
+        if (n<2) {
+            free_osiproc(p);
+            return 0;
+        }
         uint32_t np = 0;
         for (uint32_t i=0; i<n; i++) {
             np += (isprint(p->name[i]) != 0);
         }
         // yuck -- name doesnt consist of solely printable characters
-        if (np != n) return 0;
+        if (np != n) {
+            free_osiproc(p);
+            return 0;
+        }
         target_ulong asid = panda_current_asid(cpu);
-        if (running_procs.count(asid) == 0) {
+        if (always_overwrite_process_details_cache || (running_procs.count(asid) == 0)) {
             if (debug) printf ("adding asid=0x%x to running procs.  cmd=[%s]  task=0x%x\n", (unsigned int)  asid, p->name, (unsigned int) p->offset);
+            running_procs[asid] = *p;
+            free(p); // cannot free members of p here, they are still in use
+        } else {
+            if(process_details_cache_sanity_check) {
+                // Check that the current process details match the process details previously cached.
+                OsiProc p2 = running_procs[asid];
+                assert(p->offset == p2.offset);
+                assert(p->asid == p2.asid);
+                assert(p->pid == p2.pid);
+                assert(p->ppid == p2.ppid);
+            }
+            free_osiproc(p);
         }
-        if (running_procs.count(asid) != 0) {
-            /*
-            OsiProc *p2 = running_procs[asid];
-            // something there already
-            if (p2)
-                free_osiproc(p2);
-            */
-        }
-        running_procs[asid] = *p;
     }
     return 0;
 }
@@ -499,12 +533,24 @@ bool init_plugin(void *self) {
     enable_taint_on_open = panda_parse_bool_opt(args, "enable_taint_on_open", "don't turn on taint until the file is opened");
     first_instr = panda_parse_uint64_opt(args, "first_instr", 0, "don't turn on taint until this instruction");
     taint_stdin = panda_parse_string_opt(args, "use_stdin_for", nullptr, "not quite finished don't use");
+    cache_process_details_on_basic_block = panda_parse_bool_opt(args, "cache_process_details_on_basic_block", "record asid at the start of each basic block (previous default behavior)");
+    always_overwrite_process_details_cache = panda_parse_bool_opt(args, "always_overwrite_process_details_cache", "never cache process details, always use current process details (previous default behavior)");
+    if(!always_overwrite_process_details_cache) {
+        process_details_cache_sanity_check = panda_parse_bool_opt(args, "process_details_cache_sanity_check", "validate one to one match between asid and process during playback");
+    } else {
+        process_details_cache_sanity_check = false;
+    }
+    debug = panda_parse_bool_opt(args, "debug", "debug mode");
 
     printf ("taint_filename = [%s]\n", taint_filename);
     printf ("positional_labels = %d\n", positional_labels);
     printf ("no_taint = %d\n", no_taint);
     printf ("end_label = %d\n", end_label);
     printf ("first_instr = %" PRId64 " \n", first_instr);
+    printf ("cache_process_details_on_basic_block = %d\n", cache_process_details_on_basic_block);
+    printf ("process_details_cache_sanity_check = %d\n", process_details_cache_sanity_check);
+    printf ("always_overwrite_process_details_cache = %d\n", always_overwrite_process_details_cache);
+    printf ("debug = %d\n", debug);
 
     // you must use '-os os_name' cmdline arg!
     assert (!(panda_os_familyno == OS_UNKNOWN));
@@ -559,8 +605,10 @@ bool init_plugin(void *self) {
         panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_TRANSLATE, pcb);
     }
 
-    pcb.before_block_exec = osi_foo;
-    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    if(cache_process_details_on_basic_block) {
+        pcb.before_block_exec = cache_process_details;
+        panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+    }
 
 #else
     printf ("file_taint: only works for x86 target (really just 32-bit)\n");
