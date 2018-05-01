@@ -291,8 +291,8 @@ void read_enter(CPUState *cpu, target_ulong pc, std::string filename, uint64_t p
 
 // 3 long sys_read(unsigned int fd, char __user *buf, size_t count);
 // typedef void (*on_sys_read_return_t)(CPUState *cpu,target_ulong pc,uint32_t fd,target_ulong buf,uint32_t count);
-void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_count) {
-    ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) - get_ntreadfile_esp_off() };
+void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_count, uint32_t bytes_left_on_stack) {
+    ThreadInfo thread{ panda_current_asid(cpu), panda_current_sp(cpu) - bytes_left_on_stack };
     auto it = seen_reads.find(thread);
     if (it != seen_reads.end()) {
         ReadInfo read_info = it->second;
@@ -371,7 +371,7 @@ void windows_read_return(CPUState *cpu, target_ulong pc, uint32_t FileHandle, ui
     } else {
         if (debug) printf("file_taint: failed to read IoStatusBlock @ %x\n", IoStatusBlock);
     }
-    read_return(cpu, pc, Buffer, actual_count);
+    read_return(cpu, pc, Buffer, actual_count, get_ntreadfile_esp_off());
 }
 
 // 66 NTSTATUS NtCreateFile (PHANDLE FileHandle, ACCESS_MASK DesiredAccess, POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize, ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions, PVOID EaBuffer, ULONG EaLength);
@@ -421,13 +421,13 @@ void linux_pread_enter(CPUState *cpu, target_ulong pc,
 void linux_pread_return(CPUState *cpu, target_ulong pc,
         uint32_t fd, uint32_t buf, uint32_t count, uint64_t pos) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    read_return(cpu, pc, buf, env->regs[R_EAX]);
+    read_return(cpu, pc, buf, env->regs[R_EAX], 0);
 }
 
 void linux_read_return(CPUState *cpu, target_ulong pc,
         uint32_t fd, uint32_t buf, uint32_t count) {
     CPUArchState *env = (CPUArchState*)cpu->env_ptr;
-    read_return(cpu, pc, buf, env->regs[R_EAX]);
+    read_return(cpu, pc, buf, env->regs[R_EAX], 0);
 }
 
 void linux_read_enter(CPUState *cpu, target_ulong pc,
