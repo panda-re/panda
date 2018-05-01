@@ -408,17 +408,23 @@ char *read_unicode_string(CPUState *cpu, uint32_t pUstr) {
     uint16_t fileNameLen;
     uint32_t fileNamePtr;
     char fileNameUnicode[260*2] = {};
+    char *fileName;
 
     assert(!panda_virtual_memory_rw(cpu, pUstr,
             (uint8_t *) &fileNameLen, 2, false));
     assert(!panda_virtual_memory_rw(cpu, pUstr+4,
             (uint8_t *) &fileNamePtr, 4, false));
 
+    if((fileNameLen == 0) || (!fileNamePtr)) {
+        assert(fileName = g_strdup(""));
+        return fileName;
+    }
+
     if (fileNameLen > 259*2) {
         fileNameLen = 259*2;
     }
     assert(!panda_virtual_memory_rw(cpu, fileNamePtr, (uint8_t *)fileNameUnicode, fileNameLen, false));
-    char *fileName = (char *)malloc(fileNameLen/2+1);
+    fileName = (char *)g_malloc(fileNameLen/2+1);
     assert(fileName);
     unicode_to_ascii(fileNameUnicode, fileName, fileNameLen/2);
 
