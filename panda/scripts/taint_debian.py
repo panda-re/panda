@@ -108,7 +108,7 @@ if stdin:
     raise ValueError("Actually, stdin taint not working?")
 else: 
     # file input
-    panda_args.extend(["-panda", "file_taint:filename=%s,notaint" % fileinput])
+    panda_args.extend(["-panda", "file_taint:filename=%s,notaint=y" % fileinput])
 
 # first pass to get instr to turn on taint
 output = sp.check_output([qemu_binary(arch_data)] + panda_args)
@@ -140,7 +140,7 @@ if stdin:
     raise ValueError("Actually, stdin taint not working?")
 else: 
     # file input
-    more_args =  ["-panda", "file_taint:filename=%s,pos,first_instr=%d" % (fileinput, insn), \
+    more_args =  ["-panda", "file_taint:filename=%s,pos=y,first_instr=%d" % (fileinput, insn), \
                   "-panda", "tainted_instr", \
                   "-panda", "tainted_branch"]
     panda_args.extend(more_args)
