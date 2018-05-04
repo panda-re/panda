@@ -2714,7 +2714,9 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
-                rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
+                // We should record the memory address relative to the address space, not physical memory.
+                // During replay, this address will be translated into the physical address.
+                rr_device_mem_rw_call_record(addr, buf, l, /*is_write*/1);
             }
             panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
             memcpy(ptr, buf, l);
