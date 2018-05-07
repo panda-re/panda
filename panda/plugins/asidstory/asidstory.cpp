@@ -157,6 +157,10 @@ uint64_t instr_first_good_proc;
 
 target_ulong asid_at_asid_changed;
 
+
+uint64_t kernel_count = 0;
+uint64_t user_count = 0;
+std::map<target_ulong, uint64_t> asid_count;
     
 struct NamePid {
     Name name;
@@ -386,6 +390,11 @@ int asidstory_asid_changed(CPUState *env, target_ulong old_asid, target_ulong ne
 }
 
 
+OsiProc *asidstory_current_proc() {
+    if (process_mode == Process_known) 
+        return first_good_proc;
+    return NULL;
+}
 
 OsiProc *copy_proc(OsiProc *from, OsiProc *to) {
     if (to == NULL) 
@@ -420,6 +429,13 @@ int asidstory_before_block_exec(CPUState *env, TranslationBlock *tb) {
         }
 }
 */
+
+    if (panda_in_kernel(env)) 
+        kernel_count ++;
+    else
+        user_count ++;
+    asid_count[panda_current_asid(env)] ++;   
+
     // NB: we only know max instr *after* replay has started which is why this is here
     if (max_instr == 0) {
         max_instr = replay_get_total_num_instructions();
@@ -501,6 +517,16 @@ bool init_plugin(void *self) {
 
 void uninit_plugin(void *self) {
 //  spit_asidstory();
+
+
+    printf ("user %" PRId64 "\n", user_count);
+    printf ("kernel %" PRId64 "\n", kernel_count);
+    for (auto &kvp : asid_count) {
+//        target_ulong asid : kvp.first;
+  //      uint64_t count : kvp.second;
+        printf ("  %lx %" PRId64 "\n", (uint64_t) kvp.first, kvp.second);
+    }
+
     if (pandalog) {
         for (auto &kvp : process_datas) {
             auto &np = kvp.first;
@@ -519,5 +545,6 @@ void uninit_plugin(void *self) {
             free(ai);
         }
     }
+
 }
 
