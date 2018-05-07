@@ -155,7 +155,7 @@ Note that the `taint2` plugin is not explicitly listed here because it is automa
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 \
-        -panda taint2:no_tp \
+        -panda taint2:no_tp=y \
         -panda file_taint:filename=foo.dat \
         -panda tainted_branch \
         -pandalog foo.plog
