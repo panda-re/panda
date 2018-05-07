@@ -102,14 +102,14 @@ else:
     if saw_redirect:
         stdin = True
         if verbose(): print "... I deduced stdin"
-        else: print "tainting file input"
+        else: print "(Tainting file input)"
     else:
         fileinput = os.path.basename(guest_cmd[-1])        
         if verbose(): print "... I deduced file input [%s]" % fileinput
-        else: print "tainting stdin"
+        else: print "(Tainting stdin)"
 
 #print "\n-----------------------------------------------------------------------------"
-print "First pass replay to figure out when to turn on taint (after file opened)"
+print "Replay 1: figure out when to turn on taint (after file opened) replay=[%s]" % replay_base
 
 replay_args = ["-replay", replay_base]
 osi_args = ["-os", "linux-32-lava32"]
@@ -152,15 +152,15 @@ with PLogReader(asidstory_plog) as plr:
                 if last_instr < int(ai.end_instr):
                     last_instr = int(ai.end_instr)                    
 
-print "%s: asids=[" % binary_basename,
+print " ** %s: asids=[" % binary_basename,
 for asid in asids_for_binary:
     print "%x," % asid,
 
 print "] extent is instr %d..%d" % (first_instr, last_instr)
 #print "\n-----------------------------------------------------------------------------"
-print "Second pass replay to scissors"
-
 scissors_replay = replay_base + "_sciss"
+print "Replay 2: create scissors replay=[%s]" % scissors_replay
+
 pad = 1
 panda_args = ["-replay", replay_base, "-panda", "scissors:name=%s,start=%d,end=%d" % (scissors_replay,first_instr-pad,last_instr+pad)]
 
@@ -172,7 +172,7 @@ output = vcheck_output([qemu_binary(arch_data)] + panda_args)
 t4 = time.time()
 
 #print "\n-----------------------------------------------------------------------------"
-print "Third pass replay to actually perform taint analysis"
+print "Replay 3: perform taint analysis"
 
 # second pass to do taint analysis
 taint_plog = tmpdir + "/taint.plog"
@@ -187,7 +187,6 @@ if stdin:
 else: 
     # file input
     more_args =  ["-panda", "file_taint:filename=%s,pos,enable_taint_on_open" % fileinput, \
-#                  "-panda", "tainted_instr", \
                   "-panda", "tainted_branch", \
                   "-panda", "edges",
                   "-panda", "tainted_ldst"\
@@ -209,6 +208,7 @@ t5 = time.time()
 uls = {}
 def update_uls(tq):
     for tqe in tq:
+#        print "update_uls ptr %x" % tqe.ptr
         if tqe.HasField("unique_label_set"):
             x = tqe.unique_label_set
             uls[x.ptr] = x.label # this is a list I think
@@ -219,21 +219,52 @@ def print_tq(tq):
     print " "
 
 tainted_branches = {}
+tainted_jmp = {}
+tainted_load = {}
+tainted_store = {}
 edges = {}
 
+
+def collect_taint(tqh, asid, pc, tq):
+    assert (not (tq is None))
+    if asid in asids_for_binary:
+        if not (pc in tqh):
+            tqh[pc] = set()
+        for tqe in tq:
+            lst = tuple(uls[tqe.ptr])
+            lsinfot = tuple([tqe.tcn, lst])            
+            tqh[pc].add(lsinfot)
+#            print ("pc=%x adding taint " %pc) + (str(lsinfot)) 
+            
+
+
+print "Reading pandalog and generating taint_debian.out summary"
 with PLogReader("taint.plog") as plr:
     for m in plr:        
         tq = None
+
+        if m.HasField("tainted_branch"): tq = m.tainted_branch.taint_query
+        if m.HasField("tainted_ldst"): tq = m.tainted_ldst.taint_query
+        if not (tq is None):
+            update_uls(tq)
+
         if m.HasField("tainted_branch"):
             tq = m.tainted_branch.taint_query
-            assert (not (tq is None))
-            update_uls(tq)
-            if m.tainted_branch.is_cond:
-                if m.tainted_branch.asid in asids_for_binary:
+            if m.tainted_branch.asid in asids_for_binary:
+                if m.tainted_branch.is_cond:
                     if not (m.pc in tainted_branches):
                         tainted_branches[m.pc] = []
-                    tqr = tuple([(tqe.tcn, tqe.offset, uls[tqe.ptr]) for tqe in tq])
+                    tqr = tuple([(tqe.tcn,  uls[tqe.ptr]) for tqe in tq])
                     tainted_branches[m.pc].extend(tqr)
+                else:
+                    collect_taint(tainted_jmp, m.tainted_branch.asid, m.pc, tq)             
+
+        if m.HasField("tainted_ldst"):
+            if m.tainted_ldst.is_load:
+                collect_taint(tainted_load, m.tainted_ldst.asid, m.pc, tq)
+            else:
+                collect_taint(tainted_store, m.tainted_ldst.asid, m.pc, tq)
+
         if m.HasField("asid_edges"):
             ase = m.asid_edges
             asid = ase.asid
@@ -244,17 +275,22 @@ with PLogReader("taint.plog") as plr:
                     if not (f in edges):
                         edges[f] = set()
                     edges[f].add(t)
-        if m.HasField("tainted_ldst"):
-            print "TLDST @ pc %x" % m.pc
+            
 
+with open("taint_debian.out", "w") as out:
+    for f in edges.keys():
+        if len(edges[f]) == 1:
+            if f in sorted(tainted_branches.keys()):
+                out.write("THCC @ pc=%x %s\n" % (f, str(tainted_branches[f])))
 
-for f in edges.keys():
-    if len(edges[f]) == 1:
-#        print "HCC %x" % f
-        if f in tainted_branches:
-            print "THCC @ pc %x %s" % (f, str(tainted_branches[f]))
+    def spit_taint(tqh, name):
+        for pc in sorted(tqh.keys()):
+            out.write("%s @ pc=%x %s\n" % (name, pc, str(tqh[pc])))
         
-        
+    spit_taint(tainted_jmp, "TJMP")
+    spit_taint(tainted_load, "TLOAD")
+    spit_taint(tainted_store, "TSTORE")
+
             
 
 #for line in output.split('\n'):
