@@ -97,12 +97,33 @@ void taint_copy(
         return;
     }
 
+    // don't taint esp
+    if (shad_dest->gregs && dest == 0x10) 
+        return;
+
     taint_log("copy: %s[%lx+%lx] <- %s[%lx] ",
             shad_dest->name(), dest, size, shad_src->name(), src);
     taint_log_labels(shad_src, src, size);
 
     FastShad::copy(shad_dest, dest, shad_src, src, size);
 
+/*
+    if (shad_dest->gregs) {
+        if (dest == 0x10) {
+            bool tainted = false;
+            for (int i=0; i<size; i++) {
+                LabelSetP ls = shad_src->query(src+i);
+                if (ls) {
+                    tainted = true;
+                    break;
+                }
+            }
+            if (tainted) 
+                printf ("ESP is tainted\n");           
+        }
+    }
+*/
+    
     if (I) update_cb(shad_dest, dest, shad_src, src, size, I);
 }
 

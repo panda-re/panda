@@ -29,6 +29,11 @@ extern "C" {
 extern bool track_taint_state;
 
 extern void taint_state_changed(FastShad *fast_shad, uint64_t addr, uint64_t size);
+
+#ifdef TAINTDEBUG
+#include "qemu/osdep.h"
+#include "qemu/log.h"
+#endif
 }
 
 #define CPU_LOG_TAINT_OPS (1 << 28)
@@ -107,6 +112,8 @@ struct TaintData {
     }
 };
 
+#define REGN(addr) (addr/MAXREGSIZE)
+
 class FastShad {
 private:
     TaintData *labels;
@@ -127,10 +134,16 @@ private:
     }
 
 public:
-    FastShad(std::string name, uint64_t size);
+    bool gregs;
+
+    FastShad(std::string name, uint64_t size); 
     ~FastShad();
 
     uint64_t get_size() { return size; }
+
+    inline const char *name() {
+        return _name.c_str();
+    }
 
     // Taint an address with a labelset.
     inline void label(uint64_t addr, LabelSetP ls) {
@@ -196,6 +209,9 @@ public:
     inline void set_full(uint64_t addr, TaintData td) {
         tassert(addr < size);
 
+        // tainting of ESP should never happen
+        if (gregs) assert (REGN(addr) != 4);
+
         bool change = !(td == *get_td_p(addr));
         labels[addr] = td;
 
@@ -206,9 +222,6 @@ public:
         return (query_full(addr)).tcn;
     }
 
-    inline const char *name() {
-        return _name.c_str();
-    }
 
 };
 

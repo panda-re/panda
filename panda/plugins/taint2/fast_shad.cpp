@@ -54,6 +54,10 @@ FastShad::FastShad(std::string name, uint64_t labelsets) : _name(name) {
     labels = array;
     orig_labels = array;
     size = labelsets;
+
+    if (0 == _name.compare("Reg")) gregs = true;
+    else gregs = false;
+
 }
 
 // release all memory associated with this fast_shad.

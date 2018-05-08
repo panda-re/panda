@@ -1,5 +1,6 @@
 #include "taint_api.h"
 #include "taint2.h"
+//#include "taint_defines.h"
 
 Addr make_maddr(uint64_t a) {
     Addr ma;
@@ -204,10 +205,41 @@ uint32_t taint2_query_ram(uint64_t pa) {
     return ls ? ls->size() : 0;
 }
 
+
 uint32_t taint2_query_reg(int reg_num, int offset) {
     LabelSetP ls = tp_labelset_get(make_greg(reg_num, offset));
     return ls ? ls->size() : 0;
 }
+
+
+int qll(uint32_t label, void *stuff) {
+    qemu_log("%d,", label);
+    return 0;
+}
+
+void taint2_query_all_reg() {
+#ifdef TAINTDEBUG
+    for (int i=0; i<NUM_REGS; i++) {
+        int num_tainted = 0;
+        for (int j=0; j<sizeof(target_ulong); j++) {
+            if (tp_labelset_get(make_greg(i,j)) != NULL)
+                num_tainted ++;
+        }
+        if (num_tainted > 0) {
+            assert (i != 4);
+            qemu_log_mask(CPU_LOG_TAINT_OPS, "REG # %d, %d bytes TAINTED", i, num_tainted);
+            for (int j=0; j<sizeof(target_ulong); j++) {
+                LabelSetP ls = tp_labelset_get(make_greg(i,j));            
+                qemu_log("{");
+                if (ls) tp_ls_iter(ls, qll, NULL);
+                qemu_log("}; "); 
+            } 
+            qemu_log("\n"); 
+        }
+    }
+#endif
+}
+
 
 extern "C" void taint2_query_set(Addr a, uint32_t *out) {
 	auto set = tp_labelset_get(a);

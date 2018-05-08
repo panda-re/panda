@@ -97,11 +97,37 @@ static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
+
+#ifdef TAINTDEBUG
+void taint2_query_all_reg(void);
+#endif
+
 static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
+
+#ifdef TAINTDEBUG
+    taint2_query_all_reg();
+#endif
+
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
 }
+
+
+#ifdef TAINTDEBUG
+static void query_all_regs_run() {
+    taint2_query_all_reg();
+}
+#endif
+
+
+bool in_helper(Instruction &I) {
+    // do not instrument branches if in the bowels of helper functions
+    StringRef hn = I.getParent()->getParent()->getName();
+    if (hn.find("tcg-llvm-tb") != StringRef::npos) return false;    
+    return true;
+}
+
 
 void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store, uint64_t size) {
     // I think this has to be an LLVM register
@@ -199,9 +225,26 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.prevBbConst = const_i64p(ctx, &shad->prev_bb);
 
     ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
+
     vector<llvm::Type *> argTs{
         shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
     };
+
+
+#ifdef TAINTDEBUG
+    vector<llvm::Type *> argsQa{};
+    PTV.queryAllRegs = M.getFunction("query_all_regs");
+    if (!PTV.queryAllRegs) {
+        PTV.queryAllRegs = Function::Create (
+            FunctionType::get(llvm::Type::getVoidTy(ctx), argsQa, false),
+            GlobalVariable::ExternalLinkage, "query_all_regs", &M);
+    }
+    assert (PTV.queryAllRegs);
+    EE->addGlobalMapping(PTV.queryAllRegs, (void*) query_all_regs_run);
+#endif
+
+
+    
     PTV.branchF = M.getFunction("taint_branch");
     if (!PTV.branchF) { // insert
         PTV.branchF = Function::Create(
@@ -432,6 +475,7 @@ void PandaTaintVisitor::visitBasicBlock(BasicBlock &BB) {
     LLVMContext &ctx = BB.getContext();
     Function *F = BB.getParent();
     assert(F);
+    
     if (&F->front() == &BB && F->getName().startswith("tcg-llvm-tb-")) {
         // Entry block.
         // This is a single guest BB, so callstack should be empty.
@@ -526,6 +570,10 @@ void PandaTaintVisitor::insertTaintCopyOrDelete(Instruction &I,
 
 void PandaTaintVisitor::insertTaintPointer(Instruction &I,
         Value *ptr, Value *val, bool is_store) {
+
+    //TRL: this could be a bad idea? 
+    if (in_helper(I)) return;
+    
     LLVMContext &ctx = I.getContext();
     CallInst *popCI = insertLogPop(I);
     Value *addr = popCI;
@@ -645,7 +693,11 @@ void PandaTaintVisitor::insertTaintDelete(Instruction &I,
     inlineCallAfter(destCI ? *destCI : I, deleteF, args);
 }
 
+
 void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
+    // do not instrument branches if in the bowels of helper functions
+    if (in_helper(I)) return;
+
     if (isa<Constant>(cond)) return;
     LLVMContext &ctx = I.getContext();
 
@@ -656,6 +708,13 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     assert(F);
     if (BB == &F->front() && F->getName().startswith("tcg-llvm-tb")) return;
 
+
+#ifdef TAINTDEBUG
+    vector<Value *> noargs;
+    inlineCallBefore(I, queryAllRegs, noargs);
+#endif
+
+
     vector<Value *> args{
         llvConst, constSlot(cond), const_uint64(ctx, getValueSize(cond))
     };
@@ -663,6 +722,9 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
 }
 
 void PandaTaintVisitor::insertTaintQueryNonConstPc(Instruction &I, Value *new_pc) {
+    // do not instrument branches if in the bowels of helper functions
+    if (in_helper(I)) return;    
+
     if (isa<Constant>(new_pc)) return;
     LLVMContext &ctx = I.getContext();
 
@@ -673,7 +735,8 @@ void PandaTaintVisitor::insertTaintQueryNonConstPc(Instruction &I, Value *new_pc
 }
 
 // Terminator instructions
-void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
+void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {    
+        
     Value *ret = I.getReturnValue();
     if (!ret) return;
 
@@ -693,6 +756,7 @@ void PandaTaintVisitor::visitReturnInst(ReturnInst &I) {
         };
         inlineCallBefore(I, copyF, args);
     }
+
 
     visitTerminatorInst(I);
 }
