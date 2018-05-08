@@ -483,13 +483,25 @@ void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
     });
 }
 
+static inline uint32_t rr_chunked_crc32(void *ptr, size_t len) {
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    target_ulong offset = 0;
+    size_t remaining = len;
+    while (remaining > 0) {
+        uint32_t sz = remaining >= UINT32_MAX ? UINT32_MAX : (uint32_t)remaining;
+        crc = crc32(crc, ptr+offset, sz);
+        remaining -= sz;
+        offset += sz;
+    }
+    return crc;
+}
+
 extern QLIST_HEAD(rr_map_list, RR_MapList) rr_map_list;
 
 void rr_tracked_mem_regions_record(void) {
     RR_MapList *region;
     QLIST_FOREACH(region, &rr_map_list, link) {
-        uint32_t crc = crc32(0, Z_NULL, 0);
-        crc = crc32(crc, region->ptr, region->len);
+        uint32_t crc = rr_chunked_crc32(region->ptr, region->len);
         if (crc != region->crc) {
             // Pretend this is just a mem_rw call
             rr_device_mem_rw_call_record(region->addr, region->ptr, region->len, 1);
@@ -1508,8 +1520,7 @@ static uint32_t rr_checksum_memory_internal(void) {
     MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
-    uint32_t crc = crc32(0, Z_NULL, 0);
-    crc = crc32(crc, ptr, int128_get64(ram->size));
+    uint32_t crc = rr_chunked_crc32(ptr, ram_size);
     rcu_read_unlock();
 
     return crc;
