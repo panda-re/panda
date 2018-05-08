@@ -15,7 +15,6 @@ PANDAENDCOMMENT */
 #include <string.h>
 #include <dlfcn.h>
 #include <glib.h>
-#include <libgen.h>
 
 #include "panda/plugin.h"
 #include "qapi/qmp/qdict.h"
@@ -105,13 +104,24 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
         dlclose(plugin);
         return false;
     }
-    // populate this element in list *before* calling init_fn, please.
-    // otherwise, when osi panda_requires win7x86intro and that does some PPP_REG_CB("osi"..),
-    // that will fail bc it traverses this list to obtain osi handle.  ugh!
+
+    // Populate basic plugin info *before* calling init_fn.
+    // This allows plugins accessing handles of other plugins before
+    // initialization completes. E.g. osi does a panda_require("win7x86intro"),
+    // and then win7x86intro does a PPP_REG_CB("osi", ...) while initializing.
     panda_plugins[nb_panda_plugins].plugin = plugin;
-    strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
+    if (plugin_name) {
+        strncpy(panda_plugins[nb_panda_plugins].name, plugin_name, 256);
+    } else {
+        char *pn = g_path_get_basename((char *) filename);
+        *g_strrstr(pn, HOST_DSOSUF) = '\0';
+        strncpy(panda_plugins[nb_panda_plugins].name, pn, 256);
+        g_free(pn);
+    }
     nb_panda_plugins++;
-    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, plugin_name ? plugin_name : filename);
+
+    // Call init_fn and check status.
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins].name);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
@@ -119,17 +129,11 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
         fprintf(stderr, "PLUGIN              ARGUMENT                REQUIRED        DESCRIPTION\n");
         fprintf(stderr, "======              ========                ========        ===========\n");
     }
-    if(init_fn(plugin) && !panda_plugin_load_failed) {
-        // TRL: Don't do this here!  See above
-        //        panda_plugins[nb_panda_plugins].plugin = plugin;
-        //        strncpy(panda_plugins[nb_panda_plugins].name, basename((char *) filename), 256);
-        //        nb_panda_plugins++;
-        return true;
-    }
-    else {
+    if(!init_fn(plugin) || panda_plugin_load_failed) {
         dlclose(plugin);
         return false;
     }
+    return true;
 }
 
 extern const char *qemu_file;
@@ -140,10 +144,10 @@ char *panda_plugin_path(const char *plugin_name) {
     const char *plugin_dir = g_getenv("PANDA_PLUGIN_DIR");
 
     if (plugin_dir != NULL) {
-        plugin_path = g_strdup_printf("%s/panda_%s.so", plugin_dir, plugin_name);
+        plugin_path = g_strdup_printf("%s/panda_%s" HOST_DSOSUF, plugin_dir, plugin_name);
     } else {
         char *dir = g_path_get_dirname(qemu_file);
-        plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s.so", dir, plugin_name);
+        plugin_path = g_strdup_printf("%s/panda/plugins/panda_%s" HOST_DSOSUF, dir, plugin_name);
         g_free(dir);
     }
     return plugin_path;
@@ -217,9 +221,8 @@ void panda_unload_plugins(void) {
     }
 }
 
-void * panda_get_plugin_by_name(const char *plugin_name) {
-    int i;
-    for (i = 0; i < nb_panda_plugins; i++) {
+void *panda_get_plugin_by_name(const char *plugin_name) {
+    for (int i = 0; i < nb_panda_plugins; i++) {
         if (strncmp(panda_plugins[i].name, plugin_name, 256) == 0)
             return panda_plugins[i].plugin;
     }
