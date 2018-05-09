@@ -22,11 +22,11 @@ int load_syscall_info(void) {
 
     if (panda_os_familyno == OS_WINDOWS) {
         // for windows, take into account the panda_os_variant
-        syscall_info_dlname = g_strdup_printf("dso_%s_gen_syscall_info_%s_%s_%s.so", PLUGIN_NAME, panda_os_family, panda_os_variant, arch);
+        syscall_info_dlname = g_strdup_printf("dso_%s_gen_syscall_info_%s_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, panda_os_variant, arch);
     }
     else {
         // for everything else (i.e. linux), only use panda_os_family
-        syscall_info_dlname = g_strdup_printf("dso_%s_gen_syscall_info_%s_%s.so", PLUGIN_NAME, panda_os_family, arch);
+        syscall_info_dlname = g_strdup_printf("dso_%s_gen_syscall_info_%s_%s" HOST_DSOSUF, PLUGIN_NAME, panda_os_family, arch);
     }
 
     // panda_os_bits will be useful when support for 64bit operating systems is added
