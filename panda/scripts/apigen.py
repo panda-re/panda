@@ -102,7 +102,7 @@ def generate_code(functions, module, includes):
 
         static inline bool init_{0}_api(void);
         static inline bool init_{0}_api(void) {{
-            void *module = panda_get_plugin_by_name("panda_" API_PLUGIN_NAME ".so");
+            void *module = panda_get_plugin_by_name(API_PLUGIN_NAME);
             if (!module) {{
                 fprintf(stderr, "Couldn't load %s plugin: %s\\n", API_PLUGIN_NAME, dlerror());
                 return false;
