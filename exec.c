@@ -2154,6 +2154,7 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
         return;
     }
     vaddr = (cpu->mem_io_vaddr & TARGET_PAGE_MASK) + offset;
+    vaddr = cc->adjust_watchpoint_address(cpu, vaddr, len);
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
         if (cpu_watchpoint_address_matches(wp, vaddr, len)
             && (wp->flags & flags)) {
@@ -3304,6 +3305,7 @@ void address_space_cache_destroy(MemoryRegionCache *cache)
         xen_invalidate_map_cache_entry(cache->ptr);
     }
     memory_region_unref(cache->mr);
+    cache->mr = NULL;
 }
 
 /* Called from RCU critical section.  This function has the same

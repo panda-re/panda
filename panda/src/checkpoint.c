@@ -126,7 +126,8 @@ void panda_restart(void *opaque) {
     QIOChannelFile *iochannel = qio_channel_file_new_fd(checkpoint->memfd);
     QEMUFile *file = qemu_fopen_channel_input(QIO_CHANNEL(iochannel));
     qemu_system_reset(VMRESET_SILENT);
-    migration_incoming_state_new(file);
+    MigrationIncomingState* mis = migration_incoming_get_current();
+    mis->from_src_file = file;
 
     int snapshot_ret = qemu_loadvm_state(file);
     assert(snapshot_ret >= 0);

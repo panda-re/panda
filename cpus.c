@@ -25,6 +25,7 @@
 /* Needed early for CONFIG_BSD etc. */
 #include "qemu/osdep.h"
 #include "qemu-common.h"
+#include "qemu/config-file.h"
 #include "cpu.h"
 #include "monitor/monitor.h"
 #include "qapi/qmp/qerror.h"
@@ -45,6 +46,7 @@
 #include "qemu/main-loop.h"
 #include "qemu/bitmap.h"
 #include "qemu/seqlock.h"
+#include "tcg.h"
 #include "qapi-event.h"
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
@@ -157,6 +159,77 @@ typedef struct TimersState {
 } TimersState;
 
 static TimersState timers_state;
+bool mttcg_enabled;
+
+/*
+ * We default to false if we know other options have been enabled
+ * which are currently incompatible with MTTCG. Otherwise when each
+ * guest (target) has been updated to support:
+ *   - atomic instructions
+ *   - memory ordering primitives (barriers)
+ * they can set the appropriate CONFIG flags in ${target}-softmmu.mak
+ *
+ * Once a guest architecture has been converted to the new primitives
+ * there are two remaining limitations to check.
+ *
+ * - The guest can't be oversized (e.g. 64 bit guest on 32 bit host)
+ * - The host must have a stronger memory order than the guest
+ *
+ * It may be possible in future to support strong guests on weak hosts
+ * but that will require tagging all load/stores in a guest with their
+ * implicit memory order requirements which would likely slow things
+ * down a lot.
+ */
+
+static bool check_tcg_memory_orders_compatible(void)
+{
+#if defined(TCG_GUEST_DEFAULT_MO) && defined(TCG_TARGET_DEFAULT_MO)
+    return (TCG_GUEST_DEFAULT_MO & ~TCG_TARGET_DEFAULT_MO) == 0;
+#else
+    return false;
+#endif
+}
+
+static bool default_mttcg_enabled(void)
+{
+    QemuOpts *icount_opts = qemu_find_opts_singleton("icount");
+    const char *rr = qemu_opt_get(icount_opts, "rr");
+
+    if (rr || TCG_OVERSIZED_GUEST) {
+        return false;
+    } else {
+#ifdef TARGET_SUPPORTS_MTTCG
+        return check_tcg_memory_orders_compatible();
+#else
+        return false;
+#endif
+    }
+}
+
+void qemu_tcg_configure(QemuOpts *opts, Error **errp)
+{
+    const char *t = qemu_opt_get(opts, "thread");
+    if (t) {
+        if (strcmp(t, "multi") == 0) {
+            if (TCG_OVERSIZED_GUEST) {
+                error_setg(errp, "No MTTCG when guest word size > hosts");
+            } else {
+                if (!check_tcg_memory_orders_compatible()) {
+                    error_report("Guest expects a stronger memory ordering "
+                                 "than the host provides");
+                    error_printf("This may cause strange/hard to debug errors");
+                }
+                mttcg_enabled = true;
+            }
+        } else if (strcmp(t, "single") == 0) {
+            mttcg_enabled = false;
+        } else {
+            error_setg(errp, "Invalid 'thread' setting %s", t);
+        }
+    } else {
+        mttcg_enabled = default_mttcg_enabled();
+    }
+}
 
 int64_t cpu_get_icount_raw(void)
 {
@@ -702,6 +775,63 @@ void configure_icount(QemuOpts *opts, Error **errp)
 }
 
 /***********************************************************/
+/* TCG vCPU kick timer
+ *
+ * The kick timer is responsible for moving single threaded vCPU
+ * emulation on to the next vCPU. If more than one vCPU is running a
+ * timer event with force a cpu->exit so the next vCPU can get
+ * scheduled.
+ *
+ * The timer is removed if all vCPUs are idle and restarted again once
+ * idleness is complete.
+ */
+
+static QEMUTimer *tcg_kick_vcpu_timer;
+static CPUState *tcg_current_rr_cpu;
+
+#define TCG_KICK_PERIOD (NANOSECONDS_PER_SECOND / 10)
+
+static inline int64_t qemu_tcg_next_kick(void)
+{
+    return qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + TCG_KICK_PERIOD;
+}
+
+/* Kick the currently round-robin scheduled vCPU */
+static void qemu_cpu_kick_rr_cpu(void)
+{
+    CPUState *cpu;
+    do {
+        cpu = atomic_mb_read(&tcg_current_rr_cpu);
+        if (cpu) {
+            cpu_exit(cpu);
+        }
+    } while (cpu != atomic_mb_read(&tcg_current_rr_cpu));
+}
+
+static void kick_tcg_thread(void *opaque)
+{
+    timer_mod(tcg_kick_vcpu_timer, qemu_tcg_next_kick());
+    qemu_cpu_kick_rr_cpu();
+}
+
+static void start_tcg_kick_timer(void)
+{
+    if (!tcg_kick_vcpu_timer && CPU_NEXT(first_cpu)) {
+        tcg_kick_vcpu_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                           kick_tcg_thread, NULL);
+        timer_mod(tcg_kick_vcpu_timer, qemu_tcg_next_kick());
+    }
+}
+
+static void stop_tcg_kick_timer(void)
+{
+    if (tcg_kick_vcpu_timer) {
+        timer_del(tcg_kick_vcpu_timer);
+        tcg_kick_vcpu_timer = NULL;
+    }
+}
+
+/***********************************************************/
 void hw_error(const char *fmt, ...)
 {
     va_list ap;
@@ -959,8 +1089,11 @@ static void qemu_tcg_wait_io_event(CPUState *cpu)
         // Otherwise e.g. if the CPU has HLTd it will just sit here forever.
         if (rr_in_replay() && rr_num_instr_before_next_interrupt() == 0) break;
 
+        stop_tcg_kick_timer();
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
+
+    start_tcg_kick_timer();
 
     while (iothread_requesting_mutex) {
         qemu_cond_wait(&qemu_io_proceeded_cond, &qemu_global_mutex);
@@ -1161,6 +1294,15 @@ static void deal_with_unplugged_cpus(void)
     }
 }
 
+/* Single-threaded TCG
+ *
+ * In the single-threaded case each vCPU is simulated in turn. If
+ * there is more than a single vCPU we create a simple timer to kick
+ * the vCPU and ensure we don't get stuck in a tight loop in one vCPU.
+ * This is done explicitly rather than relying on side-effects
+ * elsewhere.
+ */
+
 static void *qemu_tcg_cpu_thread_fn(void *arg)
 {
     CPUState *cpu = arg;
@@ -1187,10 +1329,12 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         }
     }
 
-    /* process any pending work */
-    atomic_mb_set(&exit_request, 1);
+    start_tcg_kick_timer();
 
     cpu = first_cpu;
+
+    /* process any pending work */
+    cpu->exit_request = 1;
 
     while (1) {
 
@@ -1205,7 +1349,9 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             cpu = first_cpu;
         }
 
-        for (; cpu != NULL && !exit_request; cpu = CPU_NEXT(cpu)) {
+        while (cpu && !cpu->queued_work_first && !cpu->exit_request) {
+
+            atomic_mb_set(&tcg_current_rr_cpu, cpu);
 
             qemu_clock_enable(QEMU_CLOCK_VIRTUAL,
                               (cpu->singlestep_enabled & SSTEP_NOTIMER) == 0);
@@ -1224,17 +1370,21 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
                 break;
             }
 
+            cpu = CPU_NEXT(cpu);
+
             if (panda_exit_loop) {
-                printf ("exiting loop in cpus.c. \n");
                 panda_exit_loop = false;
                 break;
             }
 
+        } /* while (cpu && !cpu->exit_request).. */
 
-        } /* for cpu.. */
+        /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
+        atomic_set(&tcg_current_rr_cpu, NULL);
 
-        /* Pairs with smp_wmb in qemu_cpu_kick.  */
-        atomic_mb_set(&exit_request, 0);
+        if (cpu && cpu->exit_request) {
+            atomic_mb_set(&cpu->exit_request, 0);
+        }
 
         handle_icount_deadline();
 
@@ -1311,24 +1461,13 @@ static void qemu_cpu_kick_thread(CPUState *cpu)
 #endif
 }
 
-static void qemu_cpu_kick_no_halt(void)
-{
-    CPUState *cpu;
-    /* Ensure whatever caused the exit has reached the CPU threads before
-     * writing exit_request.
-     */
-    atomic_mb_set(&exit_request, 1);
-    cpu = atomic_mb_read(&tcg_current_cpu);
-    if (cpu) {
-        cpu_exit(cpu);
-    }
-}
-
 void qemu_cpu_kick(CPUState *cpu)
 {
     qemu_cond_broadcast(cpu->halt_cond);
     if (tcg_enabled()) {
-        qemu_cpu_kick_no_halt();
+        cpu_exit(cpu);
+        /* Also ensure current RR cpu is kicked */
+        qemu_cpu_kick_rr_cpu();
     } else {
         if (hax_enabled()) {
             /*
@@ -1376,7 +1515,7 @@ void qemu_mutex_lock_iothread(void)
         atomic_dec(&iothread_requesting_mutex);
     } else {
         if (qemu_mutex_trylock(&qemu_global_mutex)) {
-            qemu_cpu_kick_no_halt();
+            qemu_cpu_kick_rr_cpu();
             qemu_mutex_lock(&qemu_global_mutex);
         }
         atomic_dec(&iothread_requesting_mutex);
@@ -1600,6 +1739,48 @@ int vm_stop(RunState state)
     }
 
     return do_vm_stop(state);
+}
+
+/**
+ * Prepare for (re)starting the VM.
+ * Returns -1 if the vCPUs are not to be restarted (e.g. if they are already
+ * running or in case of an error condition), 0 otherwise.
+ */
+int vm_prepare_start(void)
+{
+    RunState requested;
+    int res = 0;
+
+    qemu_vmstop_requested(&requested);
+    if (runstate_is_running() && requested == RUN_STATE__MAX) {
+        return -1;
+    }
+
+    /* Ensure that a STOP/RESUME pair of events is emitted if a
+     * vmstop request was pending.  The BLOCK_IO_ERROR event, for
+     * example, according to documentation is always followed by
+     * the STOP event.
+     */
+    if (runstate_is_running()) {
+        qapi_event_send_stop(&error_abort);
+        res = -1;
+    } else {
+        replay_enable_events();
+        cpu_enable_ticks();
+        runstate_set(RUN_STATE_RUNNING);
+        vm_state_notify(1, RUN_STATE_RUNNING);
+    }
+
+    /* We are sending this now, but the CPUs will be resumed shortly later */
+    qapi_event_send_resume(&error_abort);
+    return res;
+}
+
+void vm_start(void)
+{
+    if (!vm_prepare_start()) {
+        resume_all_vcpus();
+    }
 }
 
 /* does a state transition even if the VM is already stopped,
