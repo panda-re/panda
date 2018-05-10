@@ -16,20 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-
-/*
- * The file was modified for S2E Selective Symbolic Execution Framework
- *
- * Copyright (c) 2010, Dependable Systems Laboratory, EPFL
- *
- * Currently maintained by:
- *    Volodymyr Kuznetsov <vova.kuznetsov@epfl.ch>
- *    Vitaly Chipounov <vitaly.chipounov@epfl.ch>
- *
- * All contributors are listed in S2E-AUTHORS file.
- *
- */
-
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace-root.h"
@@ -200,9 +186,8 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     panda_bb_invalidate_done = false;
 
 #if defined(CONFIG_LLVM)
-    if (execute_llvm){
+    if (execute_llvm) {
         assert(itb->llvm_tc_ptr);
-        //next_tb = tcg_llvm_qemu_tb_exec(env, tb);
         ret = tcg_llvm_qemu_tb_exec(env, itb);
     } else {
         assert(tb_ptr);
@@ -211,7 +196,6 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 #else
     ret = tcg_qemu_tb_exec(env, tb_ptr);
 #endif // CONFIG_LLVM
-
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
 
@@ -286,14 +270,18 @@ static void cpu_exec_step(CPUState *cpu)
     uint32_t flags;
 
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    tb_lock();
     tb = tb_gen_code(cpu, pc, cs_base, flags,
                      1 | CF_NOCACHE | CF_IGNORE_ICOUNT);
     tb->orig_tb = NULL;
+    tb_unlock();
     /* execute the generated code */
     trace_exec_tb_nocache(tb, pc);
     cpu_tb_exec(cpu, tb);
+    tb_lock();
     tb_phys_invalidate(tb, -1);
     tb_free(tb);
+    tb_unlock();
 }
 
 void cpu_exec_step_atomic(CPUState *cpu)
@@ -396,10 +384,8 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
             tb = tb_htable_lookup(cpu, pc, cs_base, flags);
             if (!tb) {
                 panda_callbacks_before_block_translate(cpu, pc);
-
                 /* if no translated code available, then translate it now */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, 0);
-
                 panda_callbacks_after_block_translate(cpu, tb);
             }
 
@@ -420,7 +406,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
 #ifdef CONFIG_SOFTMMU
-    if (rr_mode != RR_REPLAY && panda_tb_chaining) {
+    if (rr_mode != RR_REPLAY && panda_tb_chaining) { 
 #endif
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
@@ -527,7 +513,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
     return false;
 }
 
-static inline void cpu_handle_interrupt(CPUState *cpu,
+static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -554,7 +540,7 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
         if (interrupt_request & CPU_INTERRUPT_DEBUG) {
             cpu->interrupt_request &= ~CPU_INTERRUPT_DEBUG;
             cpu->exception_index = EXCP_DEBUG;
-            cpu_loop_exit(cpu);
+            return true;
         }
         if (replay_mode == REPLAY_MODE_PLAY && !replay_has_interrupt()) {
             /* Do nothing */
@@ -563,23 +549,23 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
             cpu->interrupt_request &= ~CPU_INTERRUPT_HALT;
             cpu->halted = 1;
             cpu->exception_index = EXCP_HLT;
-            cpu_loop_exit(cpu);
+            return true;
         }
 #if defined(TARGET_I386)
         else if (interrupt_request & CPU_INTERRUPT_INIT) {
             X86CPU *x86_cpu = X86_CPU(cpu);
             CPUArchState *env = &x86_cpu->env;
             replay_interrupt();
-            cpu_svm_check_intercept_param(env, SVM_EXIT_INIT, 0);
+            cpu_svm_check_intercept_param(env, SVM_EXIT_INIT, 0, 0);
             do_cpu_init(x86_cpu);
             cpu->exception_index = EXCP_HALTED;
-            cpu_loop_exit(cpu);
+            return true;
         }
 #else
         else if (interrupt_request & CPU_INTERRUPT_RESET) {
             replay_interrupt();
             cpu_reset(cpu);
-            cpu_loop_exit(cpu);
+            return true;
         }
 #endif
         /* The target hook has 3 exit conditions:
@@ -613,8 +599,10 @@ static inline void cpu_handle_interrupt(CPUState *cpu,
     if (unlikely(atomic_read(&cpu->exit_request) || replay_has_interrupt())) {
         atomic_set(&cpu->exit_request, 0);
         cpu->exception_index = EXCP_INTERRUPT;
-        cpu_loop_exit(cpu);
+        return true;
     }
+
+    return false;
 }
 
 static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
@@ -629,21 +617,19 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
     trace_exec_tb(tb, tb->pc);
     ret = cpu_tb_exec(cpu, tb);
-    *last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
+    tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     *tb_exit = ret & TB_EXIT_MASK;
     switch (*tb_exit) {
     case TB_EXIT_REQUESTED:
-        /* Something asked us to stop executing
-         * chained TBs; just continue round the main
-         * loop. Whatever requested the exit will also
-         * have set something else (eg exit_request or
-         * interrupt_request) which we will handle
-         * next time around the loop.  But we need to
-         * ensure the tcg_exit_req read in generated code
-         * comes before the next read of cpu->exit_request
-         * or cpu->interrupt_request.
+        /* Something asked us to stop executing chained TBs; just
+         * continue round the main loop. Whatever requested the exit
+         * will also have set something else (eg interrupt_request)
+         * which we will handle next time around the loop.  But we
+         * need to ensure the tcg_exit_req read in generated code
+         * comes before the next read of cpu->exit_request or
+         * cpu->interrupt_request.
          */
-        smp_rmb();
+        smp_mb();
         *last_tb = NULL;
         break;
     case TB_EXIT_ICOUNT_EXPIRED:
@@ -653,6 +639,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
         abort();
 #else
         int insns_left = cpu->icount_decr.u32;
+        *last_tb = NULL;
         if (cpu->icount_extra && insns_left >= 0) {
             /* Refill decrementer and continue execution.  */
             cpu->icount_extra += insns_left;
@@ -662,17 +649,17 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
         } else {
             if (insns_left > 0) {
                 /* Execute remaining instructions.  */
-                cpu_exec_nocache(cpu, insns_left, *last_tb, false);
+                cpu_exec_nocache(cpu, insns_left, tb, false);
                 align_clocks(sc, cpu);
             }
             cpu->exception_index = EXCP_INTERRUPT;
-            *last_tb = NULL;
             cpu_loop_exit(cpu);
         }
         break;
 #endif
     }
     default:
+        *last_tb = tb;
         break;
     }
 }
@@ -681,13 +668,13 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 uint64_t counter_128k = 0;
 void debug_counter(void);
 void debug_counter(void) {
-    counter_128k++;
+        counter_128k++;
 }
 #endif
 __attribute__((always_inline))
-inline void debug_checkpoint(CPUState *cpu);
-__attribute__((always_inline))
-inline void debug_checkpoint(CPUState *cpu) {
+    inline void debug_checkpoint(CPUState *cpu);
+    __attribute__((always_inline))
+    inline void debug_checkpoint(CPUState *cpu) {
 #ifdef CONFIG_DEBUG_TCG
     if (rr_mode != RR_OFF
             && cpu->rr_guest_instr_count >> 17 > counter_128k) {
@@ -704,6 +691,7 @@ static void detect_infinite_loops(void) {
     if (last_instr_count == rr_get_guest_instr_count()) {
         loop_tries++;
         if (loop_tries > 20) {
+            fprintf(stderr, "rr_guest_instr_count = %lu\n", rr_get_guest_instr_count());
             assert(false);
         }
     } else {
@@ -717,7 +705,7 @@ static void detect_infinite_loops(void) {
 int cpu_exec(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
-    int ret = 0;
+    int ret = -1;
     SyncClocks sc;
 
     /* replay_interrupt may need current_cpu */
@@ -727,12 +715,7 @@ int cpu_exec(CPUState *cpu)
         return EXCP_HALTED;
     }
 
-    atomic_mb_set(&tcg_current_cpu, cpu);
     rcu_read_lock();
-
-    if (unlikely(atomic_mb_read(&exit_request))) {
-        cpu->exit_request = 1;
-    }
 
     cc->cpu_exec_enter(cpu);
 
@@ -743,94 +726,87 @@ int cpu_exec(CPUState *cpu)
      */
     init_delay_params(&sc, cpu);
 
-    for(;;) {
+    /* prepare setjmp context for exception handling */
+    if (sigsetjmp(cpu->jmp_env, 0) != 0) {
+#if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
+        /* Some compilers wrongly smash all local variables after
+         * siglongjmp. There were bug reports for gcc 4.5.0 and clang.
+         * Reload essential local variables here for those compilers.
+         * Newer versions of gcc would complain about this code (-Wclobbered). */
+        cpu = current_cpu;
+        cc = CPU_GET_CLASS(cpu);
+#else /* buggy compiler */
+        /* Assert that the compiler does not smash local variables. */
+        g_assert(cpu == current_cpu);
+        g_assert(cc == CPU_GET_CLASS(cpu));
+#endif /* buggy compiler */
+        cpu->can_do_io = 1;
+        tb_lock_reset();
+    }
 
-        /* prepare setjmp context for exception handling */
-        if (sigsetjmp(cpu->jmp_env, 0) == 0) {
-            TranslationBlock *tb, *last_tb = NULL;
-            int tb_exit = 0;
+    /* if an exception is pending, we execute it here */
+    while (!cpu_handle_exception(cpu, &ret)) {
 
-            /* if an exception is pending, we execute it here */
-            if (cpu_handle_exception(cpu, &ret)) {
+        if (panda_exit_loop) break;
+
+        TranslationBlock *last_tb = NULL;
+        int tb_exit = 0;
+
+        while (true) {
+
+            if (panda_exit_loop) break;
+
+            bool panda_invalidate_tb = false;
+            debug_checkpoint(cpu);
+            detect_infinite_loops();
+            rr_maybe_progress();
+    
+            if (rr_in_replay()) {
+                rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
+                rr_replay_skipped_calls();
+            }
+
+            if (cpu_handle_interrupt(cpu, &last_tb)) {
                 break;
             }
-            if (panda_exit_loop) break;                
 
-            for(;;) {
-
-                if (panda_exit_loop) break;
-
-                bool panda_invalidate_tb = false;
-                debug_checkpoint(cpu);
-                detect_infinite_loops();
-                rr_maybe_progress();
-
-                //bdg Replay skipped calls from the I/O thread here
-                if (rr_in_replay()) {
-                    rr_skipped_callsite_location = RR_CALLSITE_MAIN_LOOP_WAIT;
-                    rr_replay_skipped_calls();
-                }
-
-                cpu_handle_interrupt(cpu, &last_tb);
-                panda_before_find_fast();
-                tb = tb_find(cpu, last_tb, tb_exit);
-                panda_bb_invalidate_done = panda_callbacks_after_find_fast(
-                        cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
-                qemu_log_rr(tb->pc);
+            panda_before_find_fast();
+            TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
+            panda_bb_invalidate_done = panda_callbacks_after_find_fast(
+                    cpu, tb, panda_bb_invalidate_done, &panda_invalidate_tb);
+            qemu_log_rr(tb->pc);
 
 #ifdef CONFIG_SOFTMMU
-                uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
-                if (panda_invalidate_tb
-                        || (rr_mode == RR_REPLAY && until_interrupt > 0
-                            && tb->icount > until_interrupt)) {
-                    // retranslate so that basic block boundary matches
-                    // record & replay for interrupt delivery
-                    tb_lock();
-                    tb_phys_invalidate(tb, -1);
-                    tb_unlock();
-                    continue;
-                }
-#endif //CONFIG_SOFTMMU
-                // Check for termination in replay
-                if (rr_mode == RR_REPLAY && rr_replay_finished()) {
-                    rr_do_end_replay(0);
-                    qemu_cpu_kick(cpu);
-                    panda_exit_loop = true;
-                    break;
-                }
-                if (!rr_in_replay() || until_interrupt > 0) {
-                    cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
-                    /* Try to align the host and virtual clocks
-                       if the guest is in advance */
-                    align_clocks(&sc, cpu);
-                }
-            } /* for(;;) */
-        } else {
-#if defined(__clang__) || !QEMU_GNUC_PREREQ(4, 6)
-            /* Some compilers wrongly smash all local variables after
-             * siglongjmp. There were bug reports for gcc 4.5.0 and clang.
-             * Reload essential local variables here for those compilers.
-             * Newer versions of gcc would complain about this code (-Wclobbered). */
-            cpu = current_cpu;
-            cc = CPU_GET_CLASS(cpu);
-#else /* buggy compiler */
-            /* Assert that the compiler does not smash local variables. */
-            g_assert(cpu == current_cpu);
-            g_assert(cc == CPU_GET_CLASS(cpu));
-#endif /* buggy compiler */
-            cpu->can_do_io = 1;
-            tb_lock_reset();
+            uint64_t until_interrupt = rr_num_instr_before_next_interrupt();
+            if (panda_invalidate_tb
+                    || (rr_mode == RR_REPLAY && until_interrupt > 0
+                        && tb->icount > until_interrupt)) {
+                tb_lock();
+                tb_phys_invalidate(tb, -1);
+                tb_unlock();
+                continue;
+            }
+#endif // CONFIG_SOFTMMU
+            if (rr_mode == RR_REPLAY && rr_replay_finished()) {
+                rr_do_end_replay(0);
+                qemu_cpu_kick(cpu);
+                panda_exit_loop = true;
+                break;
+            }
+            if (!rr_in_replay() || until_interrupt > 0) {
+                cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit, &sc);
+                /* Try to align the host and virtual clocks
+                   if the guest is in advance */
+                align_clocks(&sc, cpu);
+            }
         }
-    } /* for(;;) */
+    }
 
     cc->cpu_exec_exit(cpu);
     rcu_read_unlock();
 
     /* fail safe : never use current_cpu outside cpu_exec() */
     current_cpu = NULL;
-
-    /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
-    atomic_set(&tcg_current_cpu, NULL);
 
     return ret;
 }

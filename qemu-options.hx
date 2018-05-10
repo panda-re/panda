@@ -95,6 +95,26 @@ STEXI
 Select CPU model (@code{-cpu help} for list and additional feature selection)
 ETEXI
 
+DEF("accel", HAS_ARG, QEMU_OPTION_accel,
+    "-accel [accel=]accelerator[,thread=single|multi]\n"
+    "               select accelerator ('-accel help for list')\n"
+    "               thread=single|multi (enable multi-threaded TCG)", QEMU_ARCH_ALL)
+STEXI
+@item -accel @var{name}[,prop=@var{value}[,...]]
+@findex -accel
+This is used to enable an accelerator. Depending on the target architecture,
+kvm, xen, or tcg can be available. By default, tcg is used. If there is more
+than one accelerator specified, the next one is used if the previous one fails
+to initialize.
+@table @option
+@item thread=single|multi
+Controls number of TCG threads. When the TCG is multi-threaded there will be one
+thread per vCPU therefor taking advantage of additional host cores. The default
+is to enable multi-threading where both the back-end and front-ends support it and
+no incompatible TCG features have been enabled (e.g. icount/replay).
+@end table
+ETEXI
+
 DEF("smp", HAS_ARG, QEMU_OPTION_smp,
     "-smp [cpus=]n[,maxcpus=cpus][,cores=cores][,threads=threads][,sockets=sockets]\n"
     "                set the number of CPUs to 'n' [default=1]\n"
@@ -654,11 +674,6 @@ If you don't specify the "file=" argument, you define an empty drive:
 qemu-system-i386 -drive if=ide,index=1,media=cdrom
 @end example
 
-You can connect a SCSI disk with unit ID 6 on the bus #0:
-@example
-qemu-system-i386 -drive file=file,if=scsi,bus=0,unit=6
-@end example
-
 Instead of @option{-fda}, @option{-fdb}, you can use:
 @example
 qemu-system-i386 -drive file=file,index=0,if=floppy
@@ -1066,7 +1081,7 @@ DEF("spice", HAS_ARG, QEMU_OPTION_spice,
     "       [,streaming-video=[off|all|filter]][,disable-copy-paste]\n"
     "       [,disable-agent-file-xfer][,agent-mouse=[on|off]]\n"
     "       [,playback-compression=[on|off]][,seamless-migration=[on|off]]\n"
-    "       [,gl=[on|off]]\n"
+    "       [,gl=[on|off]][,rendernode=<file>]\n"
     "   enable spice\n"
     "   at least one of {port, tls-port} is mandatory\n",
     QEMU_ARCH_ALL)
@@ -1161,6 +1176,10 @@ Enable/disable spice seamless migration. Default is off.
 @item gl=[on|off]
 Enable/disable OpenGL context. Default is off.
 
+@item rendernode=<file>
+DRM render node for OpenGL rendering. If not specified, it will pick
+the first available. (Since 2.9)
+
 @end table
 ETEXI
 
@@ -1194,12 +1213,12 @@ Select type of VGA card to emulate. Valid values for @var{type} are
 Cirrus Logic GD5446 Video card. All Windows versions starting from
 Windows 95 should recognize and use this graphic card. For optimal
 performances, use 16 bit color depth in the guest and the host OS.
-(This one is the default)
+(This card was the default before QEMU 2.2)
 @item std
 Standard VGA card with Bochs VBE extensions.  If your guest OS
 supports the VESA 2.0 VBE extensions (e.g. Windows XP) and if you want
 to use high resolution modes (>= 1280x1024x16) then you should use
-this option.
+this option. (This card is the default since QEMU 2.2)
 @item vmware
 VMWare SVGA-II compatible adapter. Use it if you have sufficiently
 recent XFree86/XOrg server or Windows guest with a driver for this
@@ -1296,10 +1315,14 @@ is a TCP port number, not a display number.
 @item websocket
 
 Opens an additional TCP listening port dedicated to VNC Websocket connections.
-By definition the Websocket port is 5700+@var{display}. If @var{host} is
-specified connections will only be allowed from this host.
-As an alternative the Websocket port could be specified by using
-@code{websocket}=@var{port}.
+If a bare @var{websocket} option is given, the Websocket port is
+5700+@var{display}. An alternative port can be specified with the
+syntax @code{websocket}=@var{port}.
+
+If @var{host} is specified connections will only be allowed from this host.
+It is possible to control the websocket listen address independently, using
+the syntax @code{websocket}=@var{host}:@var{port}.
+
 If no TLS credentials are provided, the websocket connection runs in
 unencrypted mode. If TLS credentials are provided, the websocket connection
 requires encrypted client connections.
@@ -2583,7 +2606,7 @@ Example
 qemu-system-i386 --drive file=sheepdog://192.0.2.1:30000/MyVirtualMachine
 @end example
 
-See also @url{http://http://www.osrg.net/sheepdog/}.
+See also @url{https://sheepdog.github.io/sheepdog/}.
 
 @item GlusterFS
 GlusterFS is a user space distributed file system.

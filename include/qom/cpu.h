@@ -132,6 +132,8 @@ struct TranslationBlock;
  * @cpu_exec_exit: Callback for cpu_exec cleanup.
  * @cpu_exec_interrupt: Callback for processing interrupts in cpu_exec.
  * @disas_set_info: Setup architecture specific components of disassembly info
+ * @adjust_watchpoint_address: Perform a target-specific adjustment to an
+ * address before attempting to match it against watchpoints.
  *
  * Represents a CPU family or model.
  */
@@ -156,6 +158,7 @@ typedef struct CPUClass {
                            uint8_t *buf, int len, bool is_write);
     void (*dump_state)(CPUState *cpu, FILE *f, fprintf_function cpu_fprintf,
                        int flags);
+    GuestPanicInformation* (*get_crash_info)(CPUState *cpu);
     void (*dump_statistics)(CPUState *cpu, FILE *f,
                             fprintf_function cpu_fprintf, int flags);
     int64_t (*get_arch_id)(CPUState *cpu);
@@ -195,6 +198,7 @@ typedef struct CPUClass {
     bool (*cpu_exec_interrupt)(CPUState *cpu, int interrupt_request);
 
     void (*disas_set_info)(CPUState *cpu, disassemble_info *info);
+    vaddr (*adjust_watchpoint_address)(CPUState *cpu, vaddr addr, int len);
 } CPUClass;
 
 #ifdef HOST_WORDS_BIGENDIAN
@@ -414,6 +418,15 @@ extern struct CPUTailQ cpus;
 extern __thread CPUState *current_cpu;
 
 /**
+ * qemu_tcg_mttcg_enabled:
+ * Check whether we are running MultiThread TCG or not.
+ *
+ * Returns: %true if we are in MTTCG mode %false otherwise.
+ */
+extern bool mttcg_enabled;
+#define qemu_tcg_mttcg_enabled() (mttcg_enabled)
+
+/**
  * cpu_paging_enabled:
  * @cpu: The CPU whose state is to be inspected.
  *
@@ -469,6 +482,15 @@ int cpu_write_elf32_note(WriteCoreDumpFunction f, CPUState *cpu,
  */
 int cpu_write_elf32_qemunote(WriteCoreDumpFunction f, CPUState *cpu,
                              void *opaque);
+
+/**
+ * cpu_get_crash_info:
+ * @cpu: The CPU to get crash information for
+ *
+ * Gets the previously saved crash information.
+ * Caller is responsible for freeing the data.
+ */
+GuestPanicInformation *cpu_get_crash_info(CPUState *cpu);
 
 /**
  * CPUDumpFlags:

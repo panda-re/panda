@@ -335,7 +335,6 @@ void helper_rsm(CPUX86State *env)
     }
     env->hflags2 &= ~HF2_SMM_INSIDE_NMI_MASK;
     env->hflags &= ~HF_SMM_MASK;
-
     cpu_smm_update(cpu);
 
     qemu_log_mask(CPU_LOG_INT, "SMM: after RSM\n");
