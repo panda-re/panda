@@ -1373,7 +1373,6 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
             cpu = CPU_NEXT(cpu);
 
             if (panda_exit_loop) {
-                printf ("exiting loop in cpus.c. \n");
                 panda_exit_loop = false;
                 break;
             }
