@@ -110,24 +110,25 @@ def EXIT_USAGE():
     sys.exit(1)
     
 
-def run_and_create_recording():
+def run_and_create_recording(args, guest_cmd):
     global install_dir
     
-    parser = argparse.ArgumentParser(usage=USAGE)
+#    parser = argparse.ArgumentParser(usage=USAGE)
 
-    parser.add_argument("--perf", action='store_true')
-    parser.add_argument("--rr", action='store_true')
-    parser.add_argument("--cmd", action='store')
-    parser.add_argument("--env", action='store')
-    parser.add_argument("--qemu_args", action='store', default="")
-    parser.add_argument("--qcow", action='store', default="")
-    parser.add_argument("--snapshot", "-s", action='store', default="root")
-    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
-    parser.add_argument("--fileinput", action='store')
-    parser.add_argument("--stdin", action='store_true')
-    parser.add_argument("--replaybase", action='store')
+#    parser.add_argument("--perf", action='store_true')
+#    parser.add_argument("--rr", action='store_true')
+#    parser.add_argument("--cmd", action='store')
+#    parser.add_argument("--env", action='store')
+#    parser.add_argument("--qemu_args", action='store', default="")
+#    parser.add_argument("--qcow", action='store', default="")
+#    parser.add_argument("--snapshot", "-s", action='store', default="root")
+#    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
+#    parser.add_argument("--fileinput", action='store')
+#    parser.add_argument("--stdin", action='store_true')
+#    parser.add_argument("--replaybase", action='store')
 
-    args, guest_cmd = parser.parse_known_args()
+#    args, guest_cmd = parser.parse_known_args()
+
     if args.cmd:
         guest_cmd = shlex.split(args.cmd)
 
@@ -211,6 +212,28 @@ def run_and_create_recording():
     return (replay_base, arch_data, args.stdin, args.fileinput, guest_cmd)
 
 
+def run_and_create_recording_pargs():
+
+    parser = argparse.ArgumentParser(usage=USAGE)
+
+    parser.add_argument("--perf", action='store_true')
+    parser.add_argument("--rr", action='store_true')
+    parser.add_argument("--cmd", action='store')
+    parser.add_argument("--env", action='store')
+    parser.add_argument("--qemu_args", action='store', default="")
+    parser.add_argument("--qcow", action='store', default="")
+    parser.add_argument("--snapshot", "-s", action='store', default="root")
+    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
+    parser.add_argument("--fileinput", action='store')
+    parser.add_argument("--stdin", action='store_true')
+    parser.add_argument("--replaybase", action='store')
+
+    args, guest_cmd = parser.parse_known_args()
+    return run_and_create_recording(args, guest_cmd)
+
+
+
 if __name__ == "__main__":
-    run_and_create_recording()
+    run_and_create_recording_pargs()
     
+
