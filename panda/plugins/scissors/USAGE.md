@@ -8,6 +8,8 @@ The `scissors` plugin takes a long replay and extracts out a subset of it betwee
 
 For example, if you're doing a heavyweight analysis like taint tracking, and you know that the data you want to track isn't introduced until halfway through the replay, you can use `scissors` to snip out the latter half of the replay.
 
+If you don't know what starting and ending instruction count contains your region of interest, you can use QEMU's debug output to determine it. Running a replay with `-d in_asm,rr` will print the rr instruction counts of each guest instruction. 
+
 Arguments
 ---------
 
