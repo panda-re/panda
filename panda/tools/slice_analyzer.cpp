@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -102,7 +103,6 @@ int main(int argc, char **argv) {
     SMDiagnostic err;
     Module *mod = ParseIRFile(argv[1], err, ctx);
 
-
     // Load the disassembler
     LLVMInitializeAllAsmPrinters();
     LLVMInitializeAllTargets();
@@ -144,12 +144,16 @@ int main(int argc, char **argv) {
         Function *fn = mod->getFunction(name);
         assert(fn != NULL);
 
-        std::bitset<MAX_BITSET> bits;
-        bytes2bits(bytes, bits);
+        std::bitset<MAX_BITSET>* bits = new std::bitset<MAX_BITSET>();
+        bytes2bits(bytes, *bits);
 
-        if (bb_idx >= marked[fn].size())
+        if (bb_idx >= marked[fn].size()){
             marked[fn].resize(bb_idx+1);
-        marked[fn][bb_idx] = bits;
+		}
+
+        marked[fn][bb_idx] = *bits;
+	   printf("bits: %lu\n", marked[fn][bb_idx].count());
+	   std::cout << *bits << std::endl;
     }
 
     // Now, print marked assembly
@@ -163,9 +167,14 @@ int main(int argc, char **argv) {
         int i = 0;
         for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
             printf(">>> Block %d\n", i);
+
+			if (i >= marked[f].size()) {
+				break;
+			}
             int j = 0;
             std::string targetAsm = "";
             bool targetAsmSeen, targetAsmMarked = false;
+			printf("bits: %lu\n", marked[f][i].count());
 
             for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
                     insn_it != insn_ed; ++insn_it) {
@@ -186,6 +195,7 @@ int main(int argc, char **argv) {
 
                 // If this llvm instruction is marked and we haven't already printed target asm for this inst
                 if (marked[f][i][j] && !targetAsmSeen){
+					printf("i j marked: %d, %d, %d\n", i, j, bool(marked[f][i][j]));
                     //Print target asm
                     targetAsmSeen = true;
                     targetAsmMarked = true;

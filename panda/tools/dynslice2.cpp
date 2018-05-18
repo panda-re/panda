@@ -51,6 +51,18 @@ extern "C" {
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Regex.h"
 
+#include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCDisassembler.h"
+#include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstPrinter.h"
+#include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/MemoryObject.h"
+#include "llvm/Support/TargetRegistry.h"
+
 #define MAX_BITSET 2048
 
 using namespace llvm;
@@ -77,15 +89,10 @@ using namespace llvm;
 typedef std::pair<SliceVarType,uint64_t> SliceVar;
 
 int ret_ctr = 0;
+LLVMDisasmContextRef dcr;
 
 //add stuff to this as needed
 typedef struct traceEntry {
-    //traceEntry(){};
-    //traceEntry(const traceEntry&) = delete;
-    //traceEntry& operator=(const traceEntry&) = delete;
-    //traceEntry(traceEntry&&) = default;
-    //~traceEntry() = default;
-
     uint16_t bb_num;
     uint16_t inst_index;
     llvm::Function *func;
@@ -95,6 +102,8 @@ typedef struct traceEntry {
     panda::LogEntry* ple2 = NULL;
     //special snowflake?
     // memcpy may need another logentry 
+
+    std::string targetAsm;
 } traceEntry;
 
 uint64_t cpustatebase;
@@ -121,6 +130,24 @@ std::unique_ptr<panda::LogEntry> cursor;
 //******************************************************************
 // Helper functions 
 //*****************************************************************
+int hex2bytes(std::string hex, unsigned char outBytes[]){
+     const char* pos = hex.c_str();
+     for (int ct = 0; ct < hex.length()/2; ct++){
+        sscanf(pos, "%2hhx", &outBytes[ct]);
+        pos += 2;           
+    }
+}
+
+void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool marked, uint64_t baseAddr){
+    char c = marked ? '*' : ' ';
+    unsigned char* u = new unsigned char[targetAsm.length()/2];
+    hex2bytes(targetAsm, u); 
+    char *outstring = new char[50];
+
+    // disassemble target asm
+    LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, baseAddr, outstring, 50);   
+    printf("%c %s\n", c, outstring);
+}
 
 
 //******************************************************************
@@ -252,7 +279,6 @@ SliceVar VarFromCriteria(std::string str){
 	str.erase(0, str.find(" at ") + 4);
     printf("Reg: %s, addr: %s, sliceVal: %lx\n", reg.c_str(), str.c_str(), sliceVal);
 
-	
 	std::string rangeStr = str;	
     //parseRange(rangeStr);
     std::string startRange = str.substr(0, rangeStr.find("-"));
@@ -563,7 +589,6 @@ void get_usedefs_PHI(traceEntry &t,
 void get_usedefs_Select(traceEntry &t, 
 std::set<SliceVar> &uses, std::set<SliceVar> &defines){
     SelectInst *si = cast<SelectInst>(t.inst);
-    assert(t.ple->llvmentry().condition());
     
     if (t.ple->llvmentry().condition()){
         // if condition is true, choose the first select val
@@ -604,37 +629,61 @@ void get_usedefs_default(traceEntry &t, std::set<SliceVar> &uses, std::set<Slice
     insertValue(defines, t.inst);
 }
 
-void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVar> &defs) {
-    switch (t.inst->getOpcode()) {
+void get_uses_and_defs(traceEntry &te, std::set<SliceVar> &uses, std::set<SliceVar> &defs) {
+    // std::cout << t.targetAsm << std::endl;
+
+    switch (te.inst->getOpcode()) {
         case Instruction::Store:
-            printf("STORE: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
-            get_usedefs_Store(t, uses, defs);
+            printf("STORE: pc = %lx (%lu)\n", te.ple->llvmentry().pc(), te.ple->llvmentry().pc());
+            get_usedefs_Store(te, uses, defs);
             return;
         case Instruction::Load:
-            printf("LOAD: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
-            get_usedefs_Load(t, uses, defs);
+            printf("LOAD: pc = %lx (%lu)\n", te.ple->llvmentry().pc(), te.ple->llvmentry().pc());
+            get_usedefs_Load(te, uses, defs);
             return;
         case Instruction::Call:
-            printf("CALL: pc = %lx (%lu)\n", t.ple->llvmentry().pc(), t.ple->llvmentry().pc());
-            get_usedefs_Call(t, uses, defs);
+            printf("CALL: pc = %lx (%lu)\n", te.ple->llvmentry().pc(), te.ple->llvmentry().pc());
+            get_usedefs_Call(te, uses, defs);
             return;
         case Instruction::Ret:
-            get_usedefs_Ret(t, uses, defs);
+            get_usedefs_Ret(te, uses, defs);
             return;
         case Instruction::PHI:
-            get_usedefs_PHI(t, uses, defs);
+            get_usedefs_PHI(te, uses, defs);
             return;
         case Instruction::Select:
-            get_usedefs_Select(t, uses, defs);
+            get_usedefs_Select(te, uses, defs);
             return;
         case Instruction::Unreachable: // how do we even get these??
             return;
         case Instruction::Br:
-            get_usedefs_Br(t, uses, defs);
+            get_usedefs_Br(te, uses, defs);
             return;
         case Instruction::Switch:
-            get_usedefs_Switch(t, uses, defs);
+            get_usedefs_Switch(te, uses, defs);
             return;
+        case Instruction::BitCast:
+        {
+            CastInst *BC = dyn_cast<CastInst>(te.inst);
+            if (IntegerType *IT = dyn_cast<IntegerType>(BC->getDestTy())){
+                if (IT->getBitWidth() == 8){
+                    return;
+                }
+            }
+            get_usedefs_default(te, uses, defs);
+            return;
+        }
+        case Instruction::ZExt:     
+        {
+            ZExtInst *Z = dyn_cast<ZExtInst>(te.inst);
+            if (IntegerType *IT = dyn_cast<IntegerType>(Z->getDestTy())){
+                if (IT->getBitWidth() == 64){
+                    return;
+                }
+            }
+            get_usedefs_default(te, uses, defs);
+            return;
+        }    
         case Instruction::Add:
         case Instruction::Sub:
         case Instruction::Mul:
@@ -647,10 +696,8 @@ void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVa
         case Instruction::And:
         case Instruction::Xor:
         case Instruction::Or:
-        case Instruction::ZExt:
         case Instruction::SExt:
         case Instruction::Trunc:
-        case Instruction::BitCast:
         case Instruction::GetElementPtr: // possible loss of precision
         case Instruction::ExtractValue:
         case Instruction::InsertValue:
@@ -660,14 +707,14 @@ void get_uses_and_defs(traceEntry &t, std::set<SliceVar> &uses, std::set<SliceVa
         case Instruction::ICmp:
         case Instruction::FCmp:
         case Instruction::Alloca:
-            get_usedefs_default(t, uses, defs);
+            get_usedefs_default(te, uses, defs);
             return;
         default:
-            printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", t.inst->getOpcodeName());
+            printf("Note: no model for %s, assuming uses={operands} defs={lhs}\n", te.inst->getOpcodeName());
             // Try "default" operand handling
             // defs = LHS, right = operands
 
-            get_usedefs_default(t, uses, defs);
+            get_usedefs_default(te, uses, defs);
             return;
     }
     return;
@@ -801,18 +848,37 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
         has_successor = false;
         
         int inst_index = 0;
+
         for (BasicBlock::iterator i = nextBlock->begin(), e = nextBlock->end(); i != e; ++i) {
             traceEntry t;
             t.bb_num = getBlockIndex(f, nextBlock);
             t.inst_index = inst_index;
             inst_index++;
 
+            std::string targetAsm = "";
+            bool targetAsmSeen, targetAsmMarked = false;
+            if (MDNode* N = i->getMetadata("targetAsm")){
+                // if (!targetAsm.empty()){
+                targetAsm = cast<MDString>(N->getOperand(0))->getString();
+                //printf("%lx ", base_addr);
+                //base_addr += targetAsm.length()/2;
+                print_target_asm(dcr, targetAsm, targetAsmMarked, 0);
+                t.targetAsm = targetAsm;
+                // }                    
+                
+                // updated targetAsm
+                targetAsm = cast<MDString>(N->getOperand(0))->getString();
+                targetAsmSeen = false;
+                targetAsmMarked = false;
+            }
+
+      
             if(in_exception) return cursor_idx;
 
             panda::LogEntry* ple;
             if (cursor_idx >= ple_vector.size()){
                 ple = NULL;
-            } else{
+            } else {
                 ple = ple_vector[cursor_idx];
             }
 
@@ -1127,6 +1193,23 @@ int main(int argc, char **argv){
     llvm::LLVMContext &ctx = llvm::getGlobalContext();
     llvm::SMDiagnostic err;
     mod = llvm::ParseIRFile(llvm_mod_fname, err, ctx);
+    
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargetMCs();
+    LLVMInitializeAllDisassemblers();
+
+    dcr = LLVMCreateDisasm (
+        "i386-unknown-linux-gnu",
+        NULL,
+        0,
+        NULL,
+        NULL
+    );
+
+    LLVMSetDisasmOptions(dcr, 4); 
 
 	GlobalVariable* cpuStateAddr = mod->getGlobalVariable("CPUStateAddr");
 	cpuStateAddr->dump();
@@ -1246,9 +1329,8 @@ int main(int argc, char **argv){
 
             //Skip over first two entries, LLVM_FN and BB
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
-            
 
-            if (ple->pc() == 0xb76af57f){
+            //if (ple->pc() == 0xb76af57f){
                 cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
                 // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
                 // maybe i can do this lazily...
@@ -1258,7 +1340,7 @@ int main(int argc, char **argv){
                 print_set(workList);
                 // CLear ple_vector for next block
 				//break;
-            }
+            //}
 
             aligned_block.clear();
             ple_vector.clear();
