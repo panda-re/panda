@@ -1170,15 +1170,19 @@ What is missing from PANDA?  What do we know how to do but just don't have time 
 
 ## FAQ 
 * How do I modify values in a replay?
+
 PANDA does not by default allow you to modify values in a replay. 
 
 * How do I start/continue the system after a replay? 
+
 PANDA does not enable you to continue the system after a replay.
 
 * So, what can I do with PANDA? 
+
 You can use custom or prebuilt plugins to analyze a replay at the full OS level. See [plugins](#plugins) for examples.
  
 * How do I trim my replay to include the executed parts of interest?
+
 That's what the [`scissors`](../plugins/scissors/USAGE.md) plugin is for. 
 
 ## Appendix A: Callback List
