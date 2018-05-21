@@ -110,37 +110,26 @@ def EXIT_USAGE():
     sys.exit(1)
     
 
-def run_and_create_recording(args, guest_cmd):
+
+def run_and_create_recording(guest_cmd, ra_perf, ra_rr, ra_cmd, 
+                             ra_env, ra_qemu_args, ra_qcow,
+                             ra_snapshot, ra_arch, ra_fileinput,
+                             ra_stdin, ra_replaybase):
+
     global install_dir
-    
-#    parser = argparse.ArgumentParser(usage=USAGE)
 
-#    parser.add_argument("--perf", action='store_true')
-#    parser.add_argument("--rr", action='store_true')
-#    parser.add_argument("--cmd", action='store')
-#    parser.add_argument("--env", action='store')
-#    parser.add_argument("--qemu_args", action='store', default="")
-#    parser.add_argument("--qcow", action='store', default="")
-#    parser.add_argument("--snapshot", "-s", action='store', default="root")
-#    parser.add_argument("--arch", action='store', default='i386', choices=SUPPORTED_ARCHES.keys())
-#    parser.add_argument("--fileinput", action='store')
-#    parser.add_argument("--stdin", action='store_true')
-#    parser.add_argument("--replaybase", action='store')
+    # this looks weird but look at run_and_create_recordings_pargs
+    if not (ra_cmd is None):
+        guest_cmd = shlex.split(ra_cmd)
 
-#    args, guest_cmd = parser.parse_known_args()
-
-    if args.cmd:
-        guest_cmd = shlex.split(args.cmd)
-
-    if len(sys.argv) < 2:
-        EXIT_USAGE()
-
-    arch_data = SUPPORTED_ARCHES[args.arch]
+    if ra_arch is None:
+        ra_arch = "i386"
+    arch_data = SUPPORTED_ARCHES[ra_arch]
 
     env = {}
-    if args.env:
+    if ra_env:
         try:
-            env = eval(args.env)
+            env = eval(ra_env)
         except:
             print("Something went wrong parsing the environment string: [{}]".format(env))
             EXIT_USAGE()
@@ -165,8 +154,8 @@ def run_and_create_recording(args, guest_cmd):
     if not os.path.exists(install_dir):
         os.mkdir(install_dir)
 
-    if args.qcow:
-        qcow = args.qcow
+    if ra_qcow:
+        qcow = ra_qcow
     else:
         qcow = join(dot_dir, arch_data.qcow)
 
@@ -188,33 +177,50 @@ def run_and_create_recording(args, guest_cmd):
     new_guest_cmd = map(transform_arg_copy, guest_cmd)
     exename = basename(new_guest_cmd[0])
 
-    if verbose():
-        print "args =", guest_cmd
-        print "new_guest_cmd =", new_guest_cmd
-        print "env = ", env
-        
-    if args.replaybase is None:
+    if ra_replaybase is None:
         replay_base = join(binary_dir, binary_basename)
     else:
-        replay_base = args.replaybase
+        replay_base = ra_replaybase
 
     create_recording(
         qemu_binary(arch_data),
-        qcow, args.snapshot, new_guest_cmd,
+        qcow, ra_snapshot, new_guest_cmd,
         install_dir,
         replay_base,
         arch_data.prompt,
-        rr=args.rr,
-        perf=args.perf,
+        rr=ra_rr,
+        perf=ra_perf,
         env=env,
-        extra_args=extra_args + shlex.split(args.qemu_args)
+        extra_args=extra_args + shlex.split(ra_qemu_args)
     )
-    return (replay_base, arch_data, args.stdin, args.fileinput, guest_cmd)
+    return (replay_base, arch_data, ra_stdin, ra_fileinput, guest_cmd)
+
+
+
+# guest_cmd is something like "/bin/ls /etc"
+# this will run it and create a recording using all defaults 
+# returns tuple
+# (replay_base, arch_data, ra_stdin, ra_fileinput, guest_cmd)
+def run_and_create_recording_default(guest_cmd):
+    return run_and_create_recording(guest_cmd, 
+                                    # perf, rr, cmd, env
+                                    None, None, None, None, 
+                                    # qemu_args
+                                    "", 
+                                    # qcow
+                                    None, 
+                                    # snapshot
+                                    "root", None, 
+                                    None, None, None)            
+
 
 
 def run_and_create_recording_pargs():
 
     parser = argparse.ArgumentParser(usage=USAGE)
+
+    if len(sys.argv) < 2:
+        EXIT_USAGE()
 
     parser.add_argument("--perf", action='store_true')
     parser.add_argument("--rr", action='store_true')
@@ -229,7 +235,10 @@ def run_and_create_recording_pargs():
     parser.add_argument("--replaybase", action='store')
 
     args, guest_cmd = parser.parse_known_args()
-    return run_and_create_recording(args, guest_cmd)
+    return run_and_create_recording(guest_cmd, args.perf, args.rr, args.cmd, 
+                                    args.env, args.qemu_args, args.qcow,
+                                    args.snapshot, args.arch, args.fileinput,
+                                    args.stdin, args.replaybase)
 
 
 

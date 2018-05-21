@@ -148,7 +148,7 @@ class Qemu(object):
             progress("Qemu stailed. Sending SIGTERM...")
             self.qemu.terminate()
 
-        print
+#        print
 
 def make_iso(directory, iso_path):
     with open(os.devnull, "w") as DEVNULL:

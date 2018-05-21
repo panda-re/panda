@@ -70,7 +70,7 @@ import os
 import subprocess32 as sp
 import time
 from verbosity import verbose_off, verbose, vcheck_output, out_args
-from run_debian import run_and_create_recording, run_and_create_recording_pargs, qemu_binary
+from run_debian import run_and_create_recording_default, run_and_create_recording_pargs, qemu_binary
 from plog_reader import PLogReader
 
 tmpdir = os.getcwd()
@@ -188,7 +188,7 @@ class TaintPlog:
 
 # replay to find extent of guest program we want to analyze
 # in terms of start / end instr count
-def asidstory_replay(replay_base, guest_cmd):
+def asidstory_replay(arch_data, replay_base, guest_cmd):
 
     replay_args = ["-replay", replay_base]
     asidstory_plog = tmpdir + "/asidstory.plog"
@@ -228,27 +228,27 @@ def asidstory_replay(replay_base, guest_cmd):
                     if last_instr < int(ai.end_instr):
                         last_instr = int(ai.end_instr)                    
 
-    print " ** %s: asids=[" % binary_basename,
-    for asid in asids_for_binary:
-        print "%x," % asid,
+    if verbose():
+        print " ** %s: asids=[" % binary_basename,
+        for asid in asids_for_binary:
+            print "%x," % asid,
 
-    print "] extent is instr %d..%d" % (first_instr, last_instr)
+        print "] extent is instr %d..%d" % (first_instr, last_instr)
 
     return (asids_for_binary, first_instr, last_instr)
 
 
-def scissors_replay(replay_base, first_instr, last_instr, arch_data):
+def scissors_replay(arch_data, replay_base, first_instr, last_instr):
     scissors_replay_name = replay_base + "_sciss"
     pad = 1
     panda_args = ["-replay", replay_base, "-panda", "scissors:name=%s,start=%d,end=%d" % (scissors_replay_name,first_instr-pad,last_instr+pad)]
     if verbose():
         print "second pass xx " + (" ".join([qemu_binary(arch_data)] + panda_args)) + " xx"
     output = vcheck_output([qemu_binary(arch_data)] + panda_args)
-    t4 = time.time()
     return scissors_replay_name
 
 
-def taint_replay(replay_name, arch_data, fileinput):
+def taint_replay(arch_data, replay_name, stdin, fileinput):
     # second pass to do taint analysis
     taint_plog = tmpdir + "/taint.plog"
     try:
@@ -277,17 +277,24 @@ def taint_replay(replay_name, arch_data, fileinput):
 
 
 def taint_analysis(program, inp):
-    args = object()
-    args.cmd = [program, inp]
-    # create recording
-    (replay_base, arch_data, stdin, fileinput, guest_cmd) = run_and_create_recording(args)  
+    
+    guest_cmd = [program, inp]
+    # create recording (i386 linux)
+#    print "record"
+    (replay_base, arch_data, stdin, fileinput, guest_cmd) \
+        = run_and_create_recording_default(guest_cmd)
     # replay 1 to get instr extend for guest program
-    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(replay_base, guest_cmd)
+#    print "asidstory"
+    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(arch_data, replay_base, guest_cmd)
     # replay 2 to scissors
-    sciss_replay_name = scissors_replay(replay_base, first_instr, last_instr, arch_data)
-    # replay 3 is taint analyss
-    taint_plog = taint_replay(sciss_replay_name, arch_data, fileinput)
-    return TaintPlog(False, asids_for_binary, taint_plog)
+#    print "scissors"
+    sciss_replay_name = scissors_replay(arch_data, replay_base, first_instr, last_instr)
+    # replay 3 is taint analyss    
+    (inp_path, inp_fn) = os.path.split(inp)
+#    print "taint"
+    taint_plog = taint_replay(arch_data, sciss_replay_name, stdin, inp_fn)
+    return (asids_for_binary, taint_plog)
+
     
 
 
