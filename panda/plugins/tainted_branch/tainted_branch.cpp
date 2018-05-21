@@ -97,6 +97,8 @@ void uninit_plugin(void *);
 
 #ifdef CONFIG_SOFTMMU
 
+target_ulong current_bb_start_pc;
+
 bool summary = false;
 bool liveness = false;
 
@@ -159,6 +161,7 @@ void log_tbranch(Addr a, uint64_t size, bool is_cond) {
             tb->n_taint_query = num_tainted;
             tb->is_cond = is_cond;
             tb->asid = asid;
+            tb->bb_start_pc = current_bb_start_pc;
             tb->taint_query = (Panda__TaintQuery **) malloc (sizeof (Panda__TaintQuery *) * num_tainted);
             uint32_t i=0;
             for (uint32_t o=0; o<size; o++) {
@@ -181,12 +184,19 @@ void log_tbranch(Addr a, uint64_t size, bool is_cond) {
 }
 
 
+
 void tainted_cond_branch(Addr a, uint64_t size) {
     log_tbranch(a,size,true);
 }
 
 void tainted_ind_jump(Addr a, uint64_t size) {
     log_tbranch(a,size,false);    
+}
+
+
+int before_block_exec(CPUState *env, TranslationBlock *tb) {
+    current_bb_start_pc = tb->pc;
+    return 0;
 }
 
 
@@ -207,11 +217,12 @@ bool init_plugin(void *self) {
         printf ("tainted_branch summary mode\n"); 
     else
         printf ("tainted_branch full mode\n");
-    /*
+
     panda_cb pcb;
-    pcb.after_block_exec = tbranch_after_block_exec;
-    panda_register_callback(self, PANDA_CB_AFTER_BLOCK_EXEC, pcb);
-    */
+
+    pcb.before_block_exec = before_block_exec;
+    panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
+
     PPP_REG_CB("taint2", on_branch2, tainted_cond_branch); 
     if (indirect_jumps) 
         PPP_REG_CB("taint2", on_indirect_jump, tainted_ind_jump); 
