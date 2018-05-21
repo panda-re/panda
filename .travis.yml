@@ -68,7 +68,9 @@ dist: trusty
 before_install:
     - sudo pip install pycparser
     - git submodule update --init dtc
-script: sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check
+script:
+    - travis_wait 35 sleep infinity &
+    - sudo panda/scripts/install_ubuntu.sh && cd ./build && sudo make check
 #before_script:
 #  - ./configure ${CONFIG}
 #script:
