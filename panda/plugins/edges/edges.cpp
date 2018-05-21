@@ -39,12 +39,12 @@ map<Asid, Pc> last_pc;
 
 int collect_edges(CPUState *env, TranslationBlock *tb) {
     target_ulong asid = panda_current_asid(env);
-    target_ulong pc = panda_current_pc(env);
+//    target_ulong pc = panda_current_pc(env);
     if (last_pc.count(asid) != 0) {               
-        Edge e = make_pair(last_pc[asid], pc);
+        Edge e = make_pair(last_pc[asid], tb->pc);
         asid_edges[asid].insert(e);
     }
-    last_pc[asid] = pc;
+    last_pc[asid] = tb->pc;
     return 0;
 }
 
