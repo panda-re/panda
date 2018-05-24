@@ -19,5 +19,5 @@ else
 common-obj-y += vhost-stub.o
 endif
 
-common-obj-$(call lnot,$(CONFIG_LINUX)) += vhost-stub.o
+common-obj-$(call lnot,$(call land,$(CONFIG_VIRTIO),$(CONFIG_LINUX))) += vhost-stub.o
 common-obj-$(CONFIG_ALL) += vhost-stub.o
