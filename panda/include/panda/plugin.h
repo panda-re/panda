@@ -697,6 +697,7 @@ double panda_parse_double_opt(panda_arg_list *args, const char *argname, double 
 bool panda_parse_bool(panda_arg_list *args, const char *argname);
 bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help);
 bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help);
+bool panda_parse_bool_opt_def(panda_arg_list *args, const char *argname, const char *help, bool def);
 const char *panda_parse_string(panda_arg_list *args, const char *argname, const char *defval);
 const char *panda_parse_string_req(panda_arg_list *args, const char *argname, const char *help);
 const char *panda_parse_string_opt(panda_arg_list *args, const char *argname, const char *defval, const char *help);
