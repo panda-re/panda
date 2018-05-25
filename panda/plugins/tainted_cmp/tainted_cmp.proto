@@ -1,0 +1,10 @@
+  
+
+message TaintedCmp {
+    required uint64 asid = 3;
+    repeated TaintQuery taint_query = 4;
+}
+
+optional TaintedCmp tainted_cmp = 43;
+
+    
