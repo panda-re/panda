@@ -264,7 +264,8 @@ def taint_replay(arch_data, replay_name, stdin, fileinput):
         more_args =  ["-panda", "file_taint:filename=%s,pos,enable_taint_on_open" % fileinput, \
                       "-panda", "tainted_branch", \
                       "-panda", "edges",\
-                      "-panda", "tainted_ldst"\
+                      "-panda", "tainted_ldst",\
+                      "-panda", "tainted_cmp"\
         ]
         panda_args.extend(more_args)
 
@@ -302,7 +303,7 @@ if __name__ == "__main__":
 
     t1 = time.time()
     tmpdir = os.getcwd()
-    verbose_off()
+#    verbose_off()
     #create recording
     (replay_base, arch_data, stdin, fileinput, guest_cmd) = run_and_create_recording_pargs()  
     t2 = time.time()
@@ -320,25 +321,25 @@ if __name__ == "__main__":
         if saw_redirect:
             stdin = True
             if verbose(): print "... I deduced stdin"
-            else: print "(Tainting file input)"
+            else: print "(Tainting stdin)"
         else:
             fileinput = os.path.basename(guest_cmd[-1])        
             if verbose(): print "... I deduced file input [%s]" % fileinput
-            else: print "(Tainting stdin)"
+            else: print "(Tainting file input)"
 
     print "Created recording of [%s] running on guest" % guest_cmd
 
     print "Replay 1: figure out when to turn on taint (after file opened) replay=[%s]" % replay_base
     t2 = time.time()
-    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(replay_base, guest_cmd)
+    (asids_for_binary, first_instr, last_instr) =  asidstory_replay(arch_data, replay_base, guest_cmd)
 
     print "Replay 2: create scissors replay" 
     t3 = time.time()
-    sciss_replay_name = scissors_replay(replay_base, first_instr, last_instr, arch_data)
+    sciss_replay_name = scissors_replay(arch_data, replay_base, first_instr, last_instr)
    
     print "Replay 3: perform taint analysis"
     t4 = time.time()
-    taint_plog = taint_replay(sciss_replay_name, arch_data, fileinput)
+    taint_plog = taint_replay(arch_data, sciss_replay_name, stdin, fileinput)
 
     t5 = time.time()
     ta = TaintPlog(False, asids_for_binary, first_instr, last_instr, taint_plog)

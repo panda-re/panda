@@ -107,6 +107,7 @@ static taint2_memlog taint_memlog;
 
 // Configuration
 bool tainted_pointer = true;
+bool smart_tainted_pointer = true;
 bool optimize_llvm = true;
 extern bool inline_taint;
 bool debug_taint = false;
@@ -523,7 +524,12 @@ bool init_plugin(void *self) {
     panda_arg_list *args = panda_get_args("taint2");
 
     tainted_pointer = !panda_parse_bool_opt(args, "no_tp", "track taint through pointer dereference");
-    std::cerr << PANDA_MSG "Propagating taint through pointer dereference " << PANDA_FLAG_STATUS(tainted_pointer) << std::endl;
+    std::cerr << PANDA_MSG "Propagating taint through pointer dereference " << PANDA_FLAG_STATUS(tainted_pointer) <<
+ std::endl;
+
+    smart_tainted_pointer =
+        panda_parse_bool_opt_def(args, "smart_tainted_pointer", 
+                                 "if src tainted, ignore pointer taint", true);
 
     inline_taint = panda_parse_bool_opt(args, "inline", "inline taint operations");
     std::cerr << PANDA_MSG "taint ops inlining " << PANDA_FLAG_STATUS(inline_taint) << std::endl;

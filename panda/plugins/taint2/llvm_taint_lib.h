@@ -145,6 +145,7 @@ public:
     Function *resetFrameF;
     Function *breadcrumbF;
     Function *branchF;
+    Function *cmpF;
     Function *queryAllRegs;
     Function *copyRegToPcF;
 

@@ -36,6 +36,7 @@ uint64_t labelset_count;
 extern "C" {
 
 extern bool tainted_pointer;
+extern bool smart_tainted_pointer;\
 
 }
 
@@ -101,6 +102,7 @@ void taint_copy(
     if (shad_dest->gregs && dest == 0x10) 
         return;
 
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("copy: %s[%lx+%lx] <- %s[%lx] ",
             shad_dest->name(), dest, size, shad_src->name(), src);
     taint_log_labels(shad_src, src, size);
@@ -138,6 +140,7 @@ void taint_parallel_compute(
         return;
     }
 
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("pcompute: %s[%lx+%lx] <- %lx + %lx\n",
             shad->name(), dest, src_size, src1, src2);
     uint64_t i;
@@ -205,12 +208,14 @@ void taint_mix_compute(
             mixed_labels(shad, src2, src_size, false),
             true);
     bulk_set(shad, dest, dest_size, td);
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx ",
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
 }
 
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size) {
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("remove: %s[%lx+%lx]\n", shad->name(), dest, size);
     if (unlikely(dest >= shad->get_size())) {
         taint_log("Ignoring IO RW\n");
@@ -232,6 +237,7 @@ void taint_mix(
         llvm::Instruction *I) {
     TaintData td = mixed_labels(shad, src, src_size, true);
     bulk_set(shad, dest, dest_size, td);
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("mix: %s[%lx+%lx] <- %lx+%lx ",
             shad->name(), dest, dest_size, src, src_size);
     taint_log_labels(shad, dest, dest_size);
@@ -252,6 +258,7 @@ void taint_pointer(
         FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
         FastShad *shad_src, uint64_t src, uint64_t size, 
         uint64_t is_store) {
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("ptr: %s[%lx+%lx] <- %s[%lx] @ %s[%lx+%lx]\n",
             shad_dest->name(), dest, size,
             shad_src->name(), src, shad_ptr->name(), ptr, ptr_size);
@@ -265,19 +272,41 @@ void taint_pointer(
     }
 
     // query taint on pointer either being read or written
-    if (tainted_pointer) { //  & TAINT_POINTER_MODE_CHECK) {
-        taint_pointer_run(src, ptr, dest, (bool) is_store, size);
+    if (!(src == ones)) {
+        if (tainted_pointer) { //  & TAINT_POINTER_MODE_CHECK) {
+            taint_pointer_run(src, ptr, dest, (bool) is_store, size);
+        }
+
+        if (smart_tainted_pointer) {
+            bool src_tainted = false;
+            for (int i=0; i<size; i++) {
+                LabelSetP ls = shad_src->query(src+i);
+                if (ls) {
+                    src_tainted = true;
+                    break;
+                }
+            }
+            if (src_tainted) {
+                // just do a copy
+                FastShad::copy(shad_dest, dest, shad_src, src, size);
+                return;
+            }
+            // NB: if src is not tainted we just mix labels from ptr
+            // and transfer them to dest (i.e. just the rest of this  code
+        }
     }
 
+    // non-smart tainted ptr -- mix labels from ptr and src
     // this is [1234] in our example
     TaintData ptr_td = mixed_labels(shad_ptr, ptr, ptr_size, false);
+    
     if (src == ones) {
         bulk_set(shad_dest, dest, size, ptr_td);
     } else {
         for (unsigned i = 0; i < size; i++) {
             TaintData byte_td = shad_src->query_full(src + i);
             TaintData dest_td = TaintData::make_union(ptr_td, byte_td, false);
-
+            
             // Unions usually destroy controlled bits. Tainted pointer is
             // a special case.
             dest_td.cb_mask = byte_td.cb_mask;
@@ -287,6 +316,7 @@ void taint_pointer(
 }
 
 void taint_sext(FastShad *shad, uint64_t dest, uint64_t dest_size, uint64_t src, uint64_t src_size) {
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("taint_sext\n");
     FastShad::copy(shad, dest, shad, src, src_size);
     bulk_set(shad, dest + src_size, dest_size - src_size,
@@ -307,6 +337,7 @@ void taint_select(
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
                 taint_log("slct\n");
                 FastShad::copy(shad, dest, shad, src, size);
             }
@@ -386,6 +417,7 @@ void taint_host_copy(
     //taint_log("taint_host_copy\n");
     //taint_log("\tenv: %lx, addr: %lx, llv: %lx, offset: %lx\n", env_ptr, addr, llv_ptr, llv_offset);
     //taint_log("\tgreg: %lx, gspec: %lx, size: %lx, is_store: %u\n", greg_ptr, gspec_ptr, size, is_store);
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("hostcopy: %s[%lx+%lx] <- %s[%lx] (offset %lx) ",
             shad_dest->name(), dest, size, shad_src->name(), src, offset);
     taint_log_labels(shad_src, src, size);
@@ -412,6 +444,7 @@ void taint_host_memcpy(
     find_offset(greg, gspec, (uint64_t)src_offset, labels_per_reg,
             &shad_src, &addr_src);
 
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("hostmemcpy: %s[%lx+%lx] <- %s[%lx] (offsets %lx <- %lx) ",
             shad_dest->name(), dest, size, shad_src->name(), src,
             dest_offset, src_offset);
@@ -434,6 +467,7 @@ void taint_host_delete(
 
     find_offset(greg, gspec, offset, labels_per_reg, &shad, &dest);
 
+    taint_log("pc=0x%x\n", panda_current_pc(first_cpu));
     taint_log("hostdel: %s[%lx+%lx]\n", shad->name(), dest, size);
 
     shad->remove(dest, size);

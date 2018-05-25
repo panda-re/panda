@@ -515,7 +515,8 @@ panda_arg_list *panda_get_args(const char *plugin_name) {
     return panda_get_args_internal(plugin_name, false);
 }
 
-static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname, const char *help, bool required) {
+static bool panda_parse_bool_internal(panda_arg_list *args, const char *argname, 
+                                      const char *help, bool required, bool def) {
     if (panda_help_wanted) goto help;
     if (!args) goto error_handling;
     int i;
@@ -542,19 +543,25 @@ help:
     }
 
     // not found
-    return false;
+    return def;
 }
 
 bool panda_parse_bool_req(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, true);
+    return panda_parse_bool_internal(args, argname, help, true, false);
 }
 
 bool panda_parse_bool_opt(panda_arg_list *args, const char *argname, const char *help) {
-    return panda_parse_bool_internal(args, argname, help, false);
+    return panda_parse_bool_internal(args, argname, help, false, false);
 }
 
+bool panda_parse_bool_opt_def(panda_arg_list *args, const char *argname, const char *help, bool def) {
+    return panda_parse_bool_internal(args, argname, help, false, def);
+}
+
+
 bool panda_parse_bool(panda_arg_list *args, const char *argname) {
-    return panda_parse_bool_internal(args, argname, "Undocumented option. Complain to the developer!", false);
+    return panda_parse_bool_internal(args, argname, "Undocumented option. Complain to the developer!", 
+                                     false, false);
 }
 
 static target_ulong panda_parse_ulong_internal(panda_arg_list *args, const char *argname, target_ulong defval, const char *help, bool required) {

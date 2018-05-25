@@ -51,7 +51,11 @@ class Expect(object):
                     self.logfile.flush()
                     if not self.quiet: sys.stdout.flush()
                     sofar.extend(b'\n')
-                    return sofar.decode('utf8')
+                    try:
+                        x = sofar.decode('utf8')
+                    except:
+                        x = "AAAAAAAAAAAAAAAA"
+                    return x
         self.logfile.flush()
         if not self.quiet: sys.stdout.flush()
         self.sofar = sofar.decode('utf8')

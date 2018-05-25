@@ -6,3 +6,4 @@ tainted_branch
 tstringsearch
 tainted_instr
 tainted_ldst
+tainted_cmp

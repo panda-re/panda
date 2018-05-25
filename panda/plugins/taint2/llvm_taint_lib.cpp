@@ -57,6 +57,11 @@ PPP_CB_BOILERPLATE(on_ptr_load);
 PPP_PROT_REG_CB(on_ptr_store);
 PPP_CB_BOILERPLATE(on_ptr_store);
 
+PPP_PROT_REG_CB(on_cmp);
+PPP_CB_BOILERPLATE(on_cmp);
+
+
+
 }
 
 extern const char *qemu_file;
@@ -112,6 +117,14 @@ static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
 }
+
+
+// src is a non-const arg to a cmp
+static void taint_cmp_run(FastShad *shad, uint64_t src, uint64_t size) {
+    Addr a = make_laddr(src / MAXREGSIZE, 0);
+    PPP_RUN_CB(on_cmp, a, size);
+}
+
 
 
 #ifdef TAINTDEBUG
@@ -226,10 +239,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 
     ExecutionEngine *EE = tcg_llvm_ctx->getExecutionEngine();
 
-    vector<llvm::Type *> argTs{
-        shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
-    };
-
 
 #ifdef TAINTDEBUG
     vector<llvm::Type *> argsQa{};
@@ -243,7 +252,9 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     EE->addGlobalMapping(PTV.queryAllRegs, (void*) query_all_regs_run);
 #endif
 
-
+    vector<llvm::Type *> argTs{
+        shadP, llvm::Type::getInt64Ty(ctx), llvm::Type::getInt64Ty(ctx)
+    };
     
     PTV.branchF = M.getFunction("taint_branch");
     if (!PTV.branchF) { // insert
@@ -253,6 +264,21 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     }
     assert(PTV.branchF);
     EE->addGlobalMapping(PTV.branchF, (void *)taint_branch_run);
+
+    vector<llvm::Type *> argTc{
+        shadP,
+            llvm::Type::getInt64Ty(ctx), 
+            llvm::Type::getInt64Ty(ctx)
+    };
+    
+    PTV.cmpF = M.getFunction("taint_cmp");
+    if (!PTV.cmpF) {
+        PTV.cmpF = Function::Create(
+            FunctionType::get(llvm::Type::getVoidTy(ctx), argTc, false),
+            GlobalVariable::ExternalLinkage, "taint_cmp", &M);
+    }
+    assert (PTV.cmpF);
+    EE->addGlobalMapping(PTV.cmpF, (void *) taint_cmp_run);
 
     PTV.copyRegToPcF = M.getFunction("taint_copyRegToPc");
     if (!PTV.copyRegToPcF) { // insert
@@ -708,12 +734,10 @@ void PandaTaintVisitor::insertTaintBranch(Instruction &I, Value *cond) {
     assert(F);
     if (BB == &F->front() && F->getName().startswith("tcg-llvm-tb")) return;
 
-
 #ifdef TAINTDEBUG
     vector<Value *> noargs;
     inlineCallBefore(I, queryAllRegs, noargs);
 #endif
-
 
     vector<Value *> args{
         llvConst, constSlot(cond), const_uint64(ctx, getValueSize(cond))
@@ -1119,15 +1143,40 @@ void PandaTaintVisitor::visitCmpInst(CmpInst &I) {
         if (I2PI) {
             BinaryOperator *AI = dyn_cast<BinaryOperator>(I2PI->getOperand(0));
             if (AI && AI->getOpcode() == Instruction::Add
-                    && isEnvPtr(AI->getOperand(0))
-                    && intValue(AI->getOperand(1)) < 0) {
+                && isEnvPtr(AI->getOperand(0))
+                && intValue(AI->getOperand(1)) < 0) {
                 // Don't instrument tcg_exit_req / other control data compares.
                 return;
             }
         }
     }
     insertTaintCompute(I, &I, I.getOperand(0), I.getOperand(1), true);
+    
+    // we dont want to run taint_cmp callbacks if we are in a helper
+    if (in_helper(I)) return;
+
+    // insert one or two calls to taint_cmp which will
+    // run callbacks on non-const args to cmp
+    LLVMContext &ctx = I.getContext();
+    Value *o0 = I.getOperand(0);
+    Value *o1 = I.getOperand(1);
+//    printf ("visitCmpInst operands const %d %d\n", isa<Constant>(o0), isa<Constant>(o1));
+    // op0 is never a constant, but op1 can be
+    assert (!(isa<Constant>(o0)));
+    vector<Value *> args {
+        llvConst, constSlot(o0), const_uint64(ctx, getValueSize(o0))
+    };
+    inlineCallBefore(I, cmpF, args);
+    if (!isa<Constant>(o1)) {
+        vector<Value *> args {
+            llvConst, constSlot(o1), const_uint64(ctx, getValueSize(o1))
+        };
+        inlineCallBefore(I, cmpF, args);
+    }
 }
+        
+             
+
 
 void PandaTaintVisitor::visitPHINode(PHINode &I) {
     LoadInst *LI = new LoadInst(prevBbConst);
