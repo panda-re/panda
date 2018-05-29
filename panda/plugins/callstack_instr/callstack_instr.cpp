@@ -234,7 +234,7 @@ done2:
 
 int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    
+
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
     return 1;
