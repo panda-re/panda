@@ -12,6 +12,7 @@
  *
 PANDAENDCOMMENT */
 /* Change Log: */
+/* 2018-MAY-29   move where mode bit calculated as requested */
 /* 2018-APR-13   watch for x86 processor mode changing in i386 build */
 #define __STDC_FORMAT_MACROS
 
@@ -180,6 +181,16 @@ instr_type disas_block(CPUArchState* env, target_ulong pc, int size) {
 
 #if defined(TARGET_I386)
     csh handle = (env->hflags & HF_LMA_MASK) ? cs_handle_64 : cs_handle_32;
+#if !defined(TARGET_X86_64)
+    // not every block in i386 is necessary executing in the same processor mode
+    // need to make capstone match current mode or may miss call statements
+    if ((env->hflags & HF_CS32_MASK) == 0) {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_16);
+    }
+    else {
+        cs_option(handle, CS_OPT_MODE, CS_MODE_32);
+    }
+#endif
 #elif defined(TARGET_ARM)
     csh handle = cs_handle_32;
 
@@ -223,23 +234,6 @@ done2:
 
 int after_block_translate(CPUState *cpu, TranslationBlock *tb) {
     CPUArchState* env = (CPUArchState*)cpu->env_ptr;
-    
-#if defined(TARGET_I386) && !defined(TARGET_X86_64)
-    // not every block in i386 is necessarily executing in the same processor
-    // mode
-    // need to make capstone match current mode or may miss some call statements
-    // see panda/target/i386/translate.c, function gen_intermediate_code, where
-    // determine the value of disas_flags, for the source of this calculation
-    uint32_t modeBit = (tb->flags >> HF_CS32_SHIFT) & 1;
-    if (modeBit == 1)
-    {
-        cs_option(cs_handle_32, CS_OPT_MODE, CS_MODE_32);
-    }
-    else
-    {
-        cs_option(cs_handle_32, CS_OPT_MODE, CS_MODE_16);
-    }
-#endif
     
     call_cache[tb->pc] = disas_block(env, tb->pc, tb->size);
 
