@@ -149,7 +149,7 @@ def make_iso(directory, iso_path):
 # command as array of args.
 # copy_directory gets mounted in the same place on the guest as an iso/CD-ROM.
 def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
-                     recording_path, expect_prompt, isoname=None, rr=False,
+                     recording_path, expect_prompt, isoname=None, rr=False, savevm=False,
                      perf=False, env={}, extra_args=None):
     assert not (rr and perf)
 
@@ -175,6 +175,11 @@ def create_recording(qemu_path, qcow, snapshot, command, copy_directory,
         # then run that setup.sh script first (good for scriptst that need to
         # prep guest environment before script runs
         qemu.run_console("{}/setup.sh &> /dev/null || true".format(pipes.quote(copy_directory)))
+        
+        if savevm:
+            progress("Saving VM for command {}".format(command[0]))
+            qemu.run_monitor("savevm {}".format(command[0]))
+
         # Important that we type command into console before recording starts and only
         # hit enter once we've started the recording.
         progress("Running command inside guest.")

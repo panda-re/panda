@@ -34,13 +34,27 @@ static inline Value *castTo(Value *V,
     return V;
 
   // If it's a constant, just create a constant expression.
+
+  if (dyn_cast<ConstantPointerNull>(V)) {
+    printf("IS A CONSTANT PTR NULL\n");
+    return ConstantInt::get(Ty, 0);
+  }
+
   if (Constant *C = dyn_cast<Constant>(V)) {
+    // if (LLVMIsNull(C)) {
+    //   printf("IS NULL\n");
+    // }
     Constant *CE = ConstantExpr::getZExtOrBitCast(C, Ty);
     return CE;
   }
 
   // Otherwise, insert a cast instruction.
-  return CastInst::CreateZExtOrBitCast(V, Ty, Name, InsertPt);
+  if (V->getType()->isPointerTy()){
+    return CastInst::CreatePointerCast(V, Ty, Name, InsertPt);  
+  } else {
+    return CastInst::CreateZExtOrBitCast(V, Ty, Name, InsertPt);    
+  }
+  
 }
 
 /// make_vector - Helper function which is useful for building temporary vectors
@@ -59,4 +73,4 @@ inline std::vector<T> make_vector(T A, ...) {
   return Result;
 }
 
-}
+} // end namespace

@@ -34,6 +34,8 @@ dir.
 Advanced USAGE:
 
     --rr turns on Mozilla rr record for your command
+    
+    --savevm saves a QEMU snapshot of the VM
 
     --arch specifies another architecture (Default is i386)
 	
@@ -80,7 +82,7 @@ if not (os.path.exists(dot_dir)):
 
 this_script = os.path.abspath(__file__)
 this_script_dir = dirname(this_script)
-default_build_dir = join(dirname(dirname(this_script_dir)), 'build')
+default_build_dir = join(dirname(dirname(this_script_dir)), 'debug_build')
 panda_build_dir = os.getenv("PANDA_BUILD", default_build_dir)
 
 filemap = {}
@@ -112,6 +114,7 @@ def run_and_create_recording():
 
     parser.add_argument("--perf", action='store_true')
     parser.add_argument("--rr", action='store_true')
+    parser.add_argument("--savevm", action='store_true')
     parser.add_argument("--cmd", action='store')
     parser.add_argument("--env", action='store')
     parser.add_argument("--qemu_args", action='store', default="")
@@ -198,6 +201,7 @@ def run_and_create_recording():
         replay_base,
         arch_data.prompt,
         rr=args.rr,
+        savevm = args.savevm,
         perf=args.perf,
         env=env,
         extra_args=extra_args + shlex.split(args.qemu_args)
