@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    //// Load the bitcode...
+    //// Load the bitcode...`
     LLVMContext &ctx = getGlobalContext();
     SMDiagnostic err;
     Module *mod = ParseIRFile(argv[1], err, ctx);
@@ -123,6 +123,8 @@ int main(int argc, char **argv) {
 
     std::map<Function *, std::vector<std::bitset<MAX_BITSET>>> marked;
     FILE *f = fopen(argv[2], "rb");
+
+    // 
     while (!feof(f)) {
         uint32_t name_size = 0;
         uint32_t bb_idx = 0;
@@ -136,7 +138,7 @@ int main(int argc, char **argv) {
         char *cname = new char[name_size];
         fread(cname, name_size, 1, f);
         std::string name(cname, name_size);
-        printf("name %s\n", name.c_str());
+        // printf("name %s\n", name.c_str());
 
         fread(&bb_idx, sizeof(uint32_t), 1, f);
         fread(bytes, MAX_BITSET / 8, 1, f);
@@ -152,8 +154,6 @@ int main(int argc, char **argv) {
 		}
 
         marked[fn][bb_idx] = *bits;
-	   printf("bits: %lu\n", marked[fn][bb_idx].count());
-	   std::cout << *bits << std::endl;
     }
 
     // Now, print marked assembly
@@ -163,7 +163,11 @@ int main(int argc, char **argv) {
 		
 		int tb_num;
 		uint64_t base_addr;
-		sscanf(f->getName().str().c_str(), "tcg-llvm-tb-%d-%lx", &tb_num, &base_addr); 
+        int num_filled = sscanf(f->getName().str().c_str(), "tcg-llvm-tb-%d-%lx", &tb_num, &base_addr);
+		if (num_filled != 2) {
+            printf("Is not a guest tb\n");
+            continue;
+        }; 
         int i = 0;
         for (Function::iterator it = f->begin(), ed = f->end(); it != ed; ++it) {
             printf(">>> Block %d\n", i);
@@ -171,11 +175,11 @@ int main(int argc, char **argv) {
 			if (i >= marked[f].size()) {
 				break;
 			}
+
             int j = 0;
             std::string targetAsm = "";
             bool targetAsmSeen, targetAsmMarked = false;
 			printf("bits: %lu\n", marked[f][i].count());
-
             for (BasicBlock::iterator insn_it = it->begin(), insn_ed = it->end();
                     insn_it != insn_ed; ++insn_it) {
                     
@@ -195,7 +199,6 @@ int main(int argc, char **argv) {
 
                 // If this llvm instruction is marked and we haven't already printed target asm for this inst
                 if (marked[f][i][j] && !targetAsmSeen){
-					printf("i j marked: %d, %d, %d\n", i, j, bool(marked[f][i][j]));
                     //Print target asm
                     targetAsmSeen = true;
                     targetAsmMarked = true;

@@ -118,14 +118,19 @@ uint64_t endAddr;
 std::set<uint64_t> searchTbs;
 std::set<std::string> searchModules;
 
+std::string cur_vma;
+bool markedInsideBB = false; 
+
 std::set<SliceVar> workList; 
 std::vector<traceEntry> traceEntries;
 std::map<std::pair<Function*, int>, std::bitset<MAX_BITSET>> markedMap;
 
 bool debug = false;
+uint64_t last_pc = 0;
 
+std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP"};
+ 
 std::unique_ptr<panda::LogEntry> cursor; 
-
 
 //******************************************************************
 // Helper functions 
@@ -154,6 +159,7 @@ void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool mark
 // Print functions 
 //*****************************************************************
 
+
 std::string SliceVarStr(const SliceVar &s) {
     char output[128] = {};
 
@@ -167,9 +173,17 @@ std::string SliceVarStr(const SliceVar &s) {
         case HOST:
             sprintf(output, "HOST_%lx", s.second);
             break;
-        case TGT:
-            sprintf(output, "TGT_%lx", s.second);
+        case TGT: {
+            uint64_t offset = (s.second - cpustatebase)/4;
+            if (offset < registers.size()) {
+                std::string reg = registers[offset];
+                sprintf(output, "TGT_%s", reg.c_str());    
+            } else {
+                sprintf(output, "TGT_%lx", s.second);
+            }
+            
             break;
+        }
         case SPEC:
             sprintf(output, "SPEC_%lx", s.second);
             break;
@@ -230,37 +244,16 @@ void pprint_ple(panda::LogEntry *ple) {
 
 uint64_t infer_offset(const char* reg){
 	printf("infer offset of %s\n", reg);
-    if (strncmp(reg, "EAX", 3) == 0) {
-        return 0;
-    }
-    else if (strncmp(reg, "ECX", 3) == 0) {
-        return 1;
-    }
-    else if (strncmp(reg, "EDX", 3) == 0) {
-        return 2;
-    }
-    else if (strncmp(reg, "EBX", 3) == 0) {
-        return 3;
-    }
-    else if (strncmp(reg, "ESP", 3) == 0) {
-        return 4;
-    }
-    else if (strncmp(reg, "EBP", 3) == 0) {
-        return 5;
-    }
-    else if (strncmp(reg, "ESI", 3) == 0) {
-        return 6;
-    }
-    else if (strncmp(reg, "EDI", 3) == 0) {
-        return 7;
-    }
-    else if (strncmp(reg, "EIP", 3) == 0) {
-        return 8;
-    }
 
-	printf("NOT an x86 reg: %s\n", reg);
-	return -1;
+    ptrdiff_t pos = std::distance(registers.begin(), std::find(registers.begin(), registers.end(), reg));
+    if (pos < registers.size()) {
+        return pos;
+    } else {
+        printf("NOT an x86 reg: %s\n", reg);
+        return -1;
+    }
 }
+
 
 SliceVar VarFromCriteria(std::string str){
     
@@ -375,7 +368,6 @@ bool is_ignored(StringRef funcName){
     return false;
 }
 
-
 // Find the index of a block in a function
 int getBlockIndex(Function *f, BasicBlock *b) {
     int i = 0;
@@ -427,7 +419,7 @@ void get_usedefs_Store(traceEntry &t,
 
         insertAddr(defines, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), t.ple->llvmentry().num_bytes());
         insertValue(uses, SI->getValueOperand());
-        insertValue(uses, SI->getPointerOperand());
+        // insertValue(uses, SI->getPointerOperand());
     }
 };
 
@@ -449,7 +441,7 @@ void get_usedefs_Load(traceEntry &t,
     // inserts dynamic address into use list
     insertAddr(uses, static_cast<SliceVarType>(t.ple->llvmentry().addr_type()), t.ple->llvmentry().address(), t.ple->llvmentry().num_bytes());
 
-    insertValue(uses, LI);
+    // insertValue(uses, LI);
 
     insertValue(defines, t.inst);
 };
@@ -493,10 +485,10 @@ void get_usedefs_Call(traceEntry &t,
         
         insertAddr(defines, MEM, t.ple->llvmentry().address(), size);
         
-        // call looks like @helper_le_stl_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v17, i32 %tmp0_v15, i32 1, i64 3735928559)
+        // call looks like @helper_le_stl_mmu_panda(%struct.CPUX86State* %0, i32 %tmp2_v17, i32 %tmp0_v15, i32 1 tmp2_v17
         Value *store_addr = c->getArgOperand(1);
         Value *store_val  = c->getArgOperand(2);
-        insertValue(uses, store_addr);
+        // insertValue(uses, store_addr);
         insertValue(uses, store_val);
     }
     else if (func_name.startswith("llvm.memcpy")) {
@@ -631,10 +623,26 @@ void get_usedefs_default(traceEntry &t, std::set<SliceVar> &uses, std::set<Slice
 
 void get_uses_and_defs(traceEntry &te, std::set<SliceVar> &uses, std::set<SliceVar> &defs) {
     // std::cout << t.targetAsm << std::endl;
+    if (te.ple != NULL && te.ple->has_llvmentry() && te.ple->llvmentry().pc() != last_pc) {
+        printf("\n>>>>>>>>>>>NEW PC: %lx (%lu)\n", te.ple->llvmentry().pc(), te.ple->llvmentry().pc());
+        last_pc = te.ple->llvmentry().pc();
+    }
 
     switch (te.inst->getOpcode()) {
         case Instruction::Store:
             printf("STORE: pc = %lx (%lu)\n", te.ple->llvmentry().pc(), te.ple->llvmentry().pc());
+
+            // Check if we are storing to PC
+
+            // if (te.ple->llvmentry().address() == cpustatebase +8*4) {
+            //     // Check if we marked an instruction before 
+            //     if (cur_vma == "extlibcalls" && markedInsideBB) {
+            //         printf("STORING TO EIP IN CALL\n");
+            //         mark(te);
+            //         markedInsideBB = false;
+            //     }
+            // }
+
             get_usedefs_Store(te, uses, defs);
             return;
         case Instruction::Load:
@@ -783,16 +791,45 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
         } else {
             for (auto &def : defs){
                 if (worklist.find(def) != worklist.end()){
-                    printf("Definition is in worklist, adding uses to worklist\n");
+                
+                    char destbuf[200];
+                    memset(destbuf, 0, 200);
 
-                    //TODO:  How am I gonna mark instructions here? 
+                    int destoff = 0;
+                    for (const SliceVar &w : defs) {
+                        int ct = snprintf(destbuf+destoff, 30, "%s ", SliceVarStr(w).c_str());
+                        destoff += ct;
+                    }
+
+                    char buf[200];
+                    memset(buf, 0, 200);
+
+                    int off = 0;
+                    for (const SliceVar &w : uses) {
+                        int ct = snprintf(buf+off, 30, "%s ", SliceVarStr(w).c_str());
+                        off += ct;
+                    }
+
+                    printf("Def %s is in worklist, adding %s to worklist\n", destbuf, buf);
+
+                    // if (cur_vma != "extlibcalls") {
+                    //     markedInsideBB = true;
+                    //     printf("marked inside ")    
+                    // }
+
                     mark(*traceIt);
 
                     for (auto &def : defs){
                         worklist.erase(def);                 
                     }   
 
-                    worklist.insert(uses.begin(), uses.end());
+                    for (const SliceVar &w : uses) {
+                        // If the use is not ESP, insert use into worklist
+                        if (SliceVarStr(w).find("ESP") == std::string::npos) {
+                            worklist.insert(w);     
+                        }
+                    }
+                    // worklist.insert(uses.begin(), uses.end());
                     break;
                 }
             }
@@ -823,8 +860,8 @@ void slice_trace(std::vector<traceEntry> &aligned_block, std::set<SliceVar> &wor
             }
         }
 
-        printf("Worklist: ");
-        print_set(workList);
+        // printf("Worklist: ");
+        // print_set(workList);
     }
 }
 
@@ -936,7 +973,8 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                     has_successor = true;
                     BranchInst *b = cast<BranchInst>(&*i);
                     nextBlock = b->getSuccessor(!(ple->llvmentry().condition()));
-                    //nextBlock->dump();
+                    printf("Condition %d\n", !(ple->llvmentry().condition()));
+                    // nextBlock->dump();
 
                     aligned_block.push_back(t);
                     
@@ -1089,7 +1127,6 @@ int align_function(std::vector<traceEntry> &aligned_block, llvm::Function* f, st
                         t.inst = i; 
                         t.ple = new panda::LogEntry();
                         aligned_block.push_back(t);
-                        
                     }
                     else {
                         // descend into function
@@ -1155,7 +1192,7 @@ int main(int argc, char **argv){
     
     if (argc < 4) {
         printf("Usage: <llvm-mod.bc> <trace-file> <criteria-file>\n");
-        return EXIT_FAILURE;   
+        return EXIT_FAILURE; 
     }
 
     int opt, debug;
@@ -1216,15 +1253,15 @@ int main(int argc, char **argv){
 	ConstantInt* constInt = cast<ConstantInt>( cpuStateAddr->getInitializer());
 	cpustatebase = constInt->getZExtValue();
 
-    printf("EAX: %lx\n", cpustatebase +0*4);
-    printf("ECX: %lx\n", cpustatebase +1*4);
-    printf("EDX: %lx\n", cpustatebase +2*4);
-    printf("EBX: %lx\n", cpustatebase +3*4);
-    printf("ESP: %lx\n", cpustatebase +4*4);
-    printf("EBP: %lx\n", cpustatebase +5*4);
-    printf("ESI: %lx\n", cpustatebase +6*4);
-    printf("EDI: %lx\n", cpustatebase +7*4);
-    printf("EIP: %lx\n", cpustatebase +8*4);
+    printf("EAX: %lx\n", cpustatebase + 0*4);
+    printf("ECX: %lx\n", cpustatebase + 1*4);
+    printf("EDX: %lx\n", cpustatebase + 2*4);
+    printf("EBX: %lx\n", cpustatebase + 3*4);
+    printf("ESP: %lx\n", cpustatebase + 4*4);
+    printf("EBP: %lx\n", cpustatebase + 5*4);
+    printf("ESI: %lx\n", cpustatebase + 6*4);
+    printf("EDI: %lx\n", cpustatebase + 7*4);
+    printf("EIP: %lx\n", cpustatebase + 8*4);
 
     // read trace into memory
 	
@@ -1289,7 +1326,7 @@ int main(int argc, char **argv){
 
             int cursor_idx = 0;
             sprintf(namebuf, "tcg-llvm-tb-%lu-%lx", ple->llvmentry().tb_num(), ple->pc());
-			printf("********** %s **********\n", namebuf);
+			printf("\n************************************************\n********** %s **********\n************************************************\n", namebuf);
             Function *f = mod->getFunction(namebuf);
             
             assert(f != NULL);
@@ -1313,6 +1350,7 @@ int main(int argc, char **argv){
 
             //If we are not in the list of libraries/vmas of interest
             std::string module_name = ple->llvmentry().vma_name();
+            cur_vma = module_name;
             printf("lib_name: %s\n", module_name.c_str());
 
             if (searchModules.find(module_name) == searchModules.end()){
@@ -1330,17 +1368,17 @@ int main(int argc, char **argv){
             //Skip over first two entries, LLVM_FN and BB
             ple_vector.erase(ple_vector.begin(), ple_vector.begin()+2);
 
-            //if (ple->pc() == 0xb76af57f){
+            // if (ple->instr() >= 140000){
                 cursor_idx = align_function(aligned_block, f, ple_vector, cursor_idx);
                 // now, align trace and llvm bitcode by creating traceEntries with dynamic info filled in 
                 // maybe i can do this lazily...
 				slice_trace(aligned_block, workList);
 
-                printf("Working set: ");
-                print_set(workList);
+                // printf("Working set: ");
+                // print_set(workList);
                 // CLear ple_vector for next block
 				//break;
-            //}
+            // }
 
             aligned_block.clear();
             ple_vector.clear();
