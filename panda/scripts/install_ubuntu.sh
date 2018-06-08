@@ -100,6 +100,8 @@ then
 else
   progress "Already in PANDA directory."
 fi
+progress "Trying to update DTC submodule (if necessary)..."
+git submodule update --init dtc || true
 progress "Building PANDA..."
 mkdir build
 cd build
