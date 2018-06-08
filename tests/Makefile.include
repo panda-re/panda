@@ -1,6 +1,6 @@
 export SRC_PATH
 
-qapi-py = $(SRC_PATH)/scripts/qapi.py $(SRC_PATH)/scripts/ordereddict.py
+qapi-py = $(SRC_PATH)/scripts/qapi.py
 
 # Get the list of all supported sysemu targets
 SYSEMU_TARGET_LIST := $(subst -softmmu.mak,,$(notdir \
