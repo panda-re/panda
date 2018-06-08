@@ -18,7 +18,7 @@ import os
 import re
 import string
 import sys
-from ordereddict import OrderedDict
+from collections import OrderedDict
 
 builtin_types = {
     'str':      'QTYPE_QSTRING',
