@@ -53,6 +53,7 @@ extern PandaLog globalLog;
 extern int llvmtrace_flags;
 bool do_record = true;
 bool record_int = false;
+bool use_osi = false;
 
 std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP", "EFLAGS", "CC_DST", "CC_SRC", "CC_SRC2", "CC_OP", "DF"};
 
@@ -574,22 +575,6 @@ static void llvm_init(){
 
     passMngr->doInitialization();
 
-	 printf("eip: %lu\n", offsetof(CPUX86State, eip)/4);
-	 printf("cc_dst: %lu\n", offsetof(CPUX86State, cc_dst)/4);
-	 printf("xmm_regs: %lu\n", offsetof(CPUX86State, xmm_regs)/4);
-	 printf("segs: %lu\n", offsetof(CPUX86State, segs)/4);
-	 printf("ldt : %lu\n", offsetof(CPUX86State, ldt)/4);
-	 printf("tr : %lu\n", offsetof(CPUX86State, tr)/4);
-	 printf("segs gdt: %lu\n", offsetof(CPUX86State, gdt)/4);
-	 printf("segs idt: %lu\n", offsetof(CPUX86State, idt)/4);
-	 printf("cr array: %lu\n", offsetof(CPUX86State, cr)/4);
-	 printf("bnd_regs: %lu\n", offsetof(CPUX86State, bnd_regs)/4);
-	 printf("fpregs: %lu\n", offsetof(CPUX86State, fpregs)/4);
-	 printf("fpop: %lu\n", offsetof(CPUX86State, fpop)/4);
-
-
-	 printf("exception_next_eip: %lu\n", offsetof(CPUX86State, exception_next_eip)/4);
-
 }
 
 
@@ -718,17 +703,20 @@ char* lookup_libname(target_ulong curpc, OsiModules* ms){
 int before_block_exec(CPUState *env, TranslationBlock *tb) {
     // write LLVM FUNCTION to pandalog
     // Get dynamic libraries of current process
-    OsiProc *current = get_current_process(env);
-    OsiModules *ms = get_libraries(env, current);
-        
-    target_ulong curpc = panda_current_pc(env);
 
     //Look up mapping/library name
-    const char* lib_name;
-    if (ms == NULL){
-        lib_name = "";
-    } else {
-        lib_name = lookup_libname(curpc, ms);
+    const char* lib_name = NULL;
+    if (use_osi) {
+        OsiProc *current = get_current_process(env);
+        OsiModules *ms = get_libraries(env, current);
+            
+        target_ulong curpc = panda_current_pc(env);
+
+        if (ms == NULL){
+            lib_name = "";
+        } else {
+            lib_name = lookup_libname(curpc, ms);
+        }
     }
 
     if (llvmtrace_flags&1 && !record_int){
@@ -736,7 +724,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         printf("TURNING OFF RECORD\n");
         do_record = false;
     }
-    printf("lib_name: %s\n", lib_name);
+    //printf("lib_name: %s\n", lib_name);
     
     if (pandalog && do_record) {
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
@@ -782,14 +770,12 @@ bool init_plugin(void *self){
     pcb.before_block_exec = before_block_exec;
     panda_register_callback(self, PANDA_CB_BEFORE_BLOCK_EXEC, pcb);
     
-    // Initialize OS API
-    if(!init_osi_api()) return false;
-    
-    //Parse args
     panda_arg_list *args = panda_get_args("llvm_trace2");
     if (args != NULL) {
         record_int = panda_parse_bool_opt(args, "int","set to 1 to record interrupts. 0 by default");
     }
+
+    use_osi = panda_parse_bool_opt(args, "use_osi", "use operating system introspection");
 
     //Initialize pandalog
     if (!pandalog){
@@ -797,6 +783,10 @@ bool init_plugin(void *self){
         exit(1);
     }
         
+    // Initialize OS API
+    if(use_osi && !init_osi_api()) return false;
+    
+    //Parse args
     // Initialize pass manager
     
     // I have to enable llvm to get the tcg_llvm_ctx
