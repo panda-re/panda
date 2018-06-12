@@ -70,7 +70,7 @@ public:
     //void visitAllocaInst(AllocaInst &I);
     //void visitGetElementPtrInst(GetElementPtrInst &I);
     void visitCallInst(CallInst &I);
-    void handleVisitSpecialCall(CallInst &I);
+    void handleVisitIntrinsicCall(CallInst &I);
     void handleExternalHelperCall(CallInst &I);
     void visitSelectInst(SelectInst &I);
     //void visitExtractValueInst(ExtractValueInst &I);

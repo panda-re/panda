@@ -41,6 +41,8 @@
 using namespace llvm;
 
 #define MAX_BITSET 2048
+FILE *sliceAddrFile = fopen("slice_addrs", "wb");
+
 
 // Don't ever call this with an array of size < MAX_BITSET/8
 void bits2bytes(std::bitset<MAX_BITSET> &bs, uint8_t out[]) {
@@ -88,6 +90,11 @@ void print_target_asm(LLVMDisasmContextRef dcr, std::string targetAsm, bool mark
     // disassemble target asm
     LLVMDisasmInstruction(dcr, u, targetAsm.length()/2, baseAddr, outstring, 50);   
     printf("%c %s\n", c, outstring);
+
+    // Write to slice_addrs file
+    if (marked) {
+        fprintf(sliceAddrFile, "%lx\n", baseAddr);
+    }
 }
 
 
@@ -119,7 +126,7 @@ int main(int argc, char **argv) {
         NULL
     );
 
-    LLVMSetDisasmOptions(dcr, 4); 
+    LLVMSetDisasmOptions(dcr, LLVMDisassembler_Option_AsmPrinterVariant | LLVMDisassembler_Option_UseMarkup); 
 
     std::map<Function *, std::vector<std::bitset<MAX_BITSET>>> marked;
     FILE *f = fopen(argv[2], "rb");
@@ -187,8 +194,8 @@ int main(int argc, char **argv) {
 
                     if (!targetAsm.empty()){
 						printf("%lx ", base_addr);
-						base_addr += targetAsm.length()/2;
                         print_target_asm(dcr, targetAsm, targetAsmMarked, base_addr);
+                        base_addr += targetAsm.length()/2;
                     }                    
                     
                     // updated targetAsm
