@@ -6,7 +6,6 @@
 #include "panda/plugin.h"
 #include "panda/common.h"
 #include "panda/plog.h"
-#include "panda/plog-cc-bridge.h"
 
 target_ulong panda_current_pc(CPUState *cpu) {
     target_ulong pc, cs_base;
@@ -289,7 +288,7 @@ void panda_cleanup(void) {
     // PANDA: unload plugins
     panda_unload_plugins();
     if (pandalog) {
-        pandalog_cc_close();
+        pandalog_close();
     }
 }
 
