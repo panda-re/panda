@@ -36,7 +36,6 @@ static inline Value *castTo(Value *V,
   // If it's a constant, just create a constant expression.
 
   if (dyn_cast<ConstantPointerNull>(V)) {
-    printf("IS A CONSTANT PTR NULL\n");
     return ConstantInt::get(Ty, 0);
   }
 

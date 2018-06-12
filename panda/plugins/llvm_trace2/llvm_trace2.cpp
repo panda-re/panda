@@ -54,8 +54,14 @@ extern int llvmtrace_flags;
 bool do_record = true;
 bool record_int = false;
 
-std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP", "EFLAGS", "CC_DST", "CC_SRC", "CC_SRC2", "CC_OP", "DF"};
+#define cpu_off(member) (uint64_t)(&((CPUArchState *)0)->member)
+#define cpu_size(member) sizeof(((CPUArchState *)0)->member)
+#define cpu_endoff(member) (cpu_off(member) + cpu_size(member))
+#define cpu_contains(member, offset) \
+    (cpu_off(member) <= (size_t)(offset) && \
+     (size_t)(offset) < cpu_endoff(member))
 
+std::vector<std::string> registers = {"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "EIP", "EFLAGS", "CC_DST", "CC_SRC", "CC_SRC2", "CC_OP", "DF"};
 
 namespace llvm {
 
@@ -63,7 +69,6 @@ namespace llvm {
 
     PandaLLVMTracePass *PLTP; 
   // Integer types
-  // Removed const modifier since method signatures have changed
   Type *Int8Type;
   Type *Int32Type;
   Type *Int64Type;
@@ -77,10 +82,10 @@ namespace llvm {
 //void PandaLLVMTraceVisitor::visitPhiInst(){
 
 //}
+
+
 void recordStartBB(uint64_t fp, uint64_t tb_num){
     
-    //giri doesn't write to log, instead pushes onto a bb stack. 
-
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
@@ -109,7 +114,6 @@ void recordCall(uint64_t fp){
     }
 
     if (calledFunc->getName().startswith("helper_iret")){
-        printf("FOUND AN IRET IN RECORDCALL\n");
         llvmtrace_flags &= ~1;
 
         //turn on record!
@@ -171,8 +175,6 @@ void recordStore(uint64_t address, uint64_t value, uint64_t num_bytes){
         
         if ((address >= x86state) && (address < x86state + sizeof(CPUState))){
             uint32_t reg_offset = (address - x86state)/4;
-			/*printf("%u\n", reg_offset);*/
-			/*printf("%s\n", infer_register(reg_offset));*/
             ple->mutable_llvmentry()->set_addr_type(TGT); // Something in CPU state, may not necessarily be a register
             ple->mutable_llvmentry()->set_cpustate_offset(reg_offset); // Something in CPU state, may not necessarily be a register
             //TODO: Fix this and store
@@ -245,7 +247,6 @@ void PandaLLVMTraceVisitor::visitInstruction(Instruction &I) {
 }
 
 //TODO: Do i need to check metadata to see if host instruction?
-
 
 void PandaLLVMTraceVisitor::visitReturnInst(ReturnInst &I){
 
