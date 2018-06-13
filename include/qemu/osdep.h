@@ -63,6 +63,12 @@ extern int daemon(int, int);
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 27
+/* Macros defined in sys/sysmacros.h have to be explicitly included from
+ * glibc 2.27 onwards. Before they were included through sys/types.h.
+ */
+#include <sys/sysmacros.h>
+#endif
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>

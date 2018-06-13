@@ -1,7 +1,7 @@
 # This makefile gets included in test and util builds, so stub out anything
 # causing undefined references. Look in Makefile.objs to find the variable to
 # add it to - e.g. main-loop.o is in block-obj-y.
-block-obj-y += panda/src/rr/rr_log_stubs.o
+stub-obj-y += panda/src/rr/rr_log_stubs.o
 panda/src/rr/rr_log_stubs.o: | panda/src/rr
 
 panda/src/rr:

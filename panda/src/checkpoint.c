@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <asm/unistd.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 
 #include "qemu/osdep.h"
@@ -16,9 +14,11 @@
 
 #include "panda/rr/rr_log.h"
 #include "panda/common.h"
+#include "qemu/memfd.h"
 
-#include "panda/checkpoint.h"
-
+#if defined CONFIG_LINUX && !defined CONFIG_MEMFD
+#include <sys/syscall.h>
+#include <asm/unistd.h>
 static int memfd_create(const char *name, unsigned int flags)
 {
 #ifdef __NR_memfd_create
@@ -27,6 +27,9 @@ static int memfd_create(const char *name, unsigned int flags)
     return -1;
 #endif
 }
+#endif
+
+#include "panda/checkpoint.h"
 
 static QLIST_HEAD(, Checkpoint) checkpoints = QLIST_HEAD_INITIALIZER(checkpoints);
 
@@ -123,7 +126,8 @@ void panda_restart(void *opaque) {
     QIOChannelFile *iochannel = qio_channel_file_new_fd(checkpoint->memfd);
     QEMUFile *file = qemu_fopen_channel_input(QIO_CHANNEL(iochannel));
     qemu_system_reset(VMRESET_SILENT);
-    migration_incoming_state_new(file);
+    MigrationIncomingState* mis = migration_incoming_get_current();
+    mis->from_src_file = file;
 
     int snapshot_ret = qemu_loadvm_state(file);
     assert(snapshot_ret >= 0);

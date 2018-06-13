@@ -251,7 +251,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
 }
 
 bool PandaTaintFunctionPass::runOnFunction(Function &F) {
-#ifdef TAINTDEBUG
+#ifdef TAINT2_DEBUG
     //printf("\n\n%s\n", F.getName().str().c_str());
 #endif
     if (F.front().front().getMetadata("tainted") ||
@@ -268,7 +268,7 @@ bool PandaTaintFunctionPass::runOnFunction(Function &F) {
             PTV.visit(I);
         }
     }
-#ifdef TAINTDEBUG
+#ifdef TAINT2_DEBUG
     //F.dump();
     /*std::string err;
     if (F.getName().startswith("tcg-llvm-tb-")) {
@@ -909,8 +909,10 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
         } else {
             ptrConst = gsvConst;
             ptrAddr = addr.val.gs;
+        }
+
 #if defined(TARGET_ARM)
-        if (ptrAddr == cpu_off(pc) && isStore) {
+        if (ptrAddr == cpu_off(regs[15]) && isStore) {
 #elif defined(TARGET_I386)
         if (ptrAddr == cpu_off(eip) && isStore) {
 #elif defined(TARGET_PPC)
@@ -918,11 +920,10 @@ void PandaTaintVisitor::insertStateOp(Instruction &I) {
 #else
 #error "unsupported architecture"
 #endif
-                 // we are storing to pc
-                 // insert instrumentation before for querying taint
-                 // on LLVM register `val` being stored
-                insertTaintQueryNonConstPc(I, val);
-            }
+             // we are storing to pc
+             // insert instrumentation before for querying taint
+             // on LLVM register `val` being stored
+            insertTaintQueryNonConstPc(I, val);
         }
 
         Constant *destConst = isStore ? ptrConst : llvConst;

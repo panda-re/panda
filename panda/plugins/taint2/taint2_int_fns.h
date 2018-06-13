@@ -35,6 +35,9 @@ uint32_t taint2_query(Addr a);
 uint32_t taint2_query_ram(uint64_t pa);
 uint32_t taint2_query_reg(int reg_num, int offset);
 
+// query with automatic allocation of the required memory
+uint32_t taint2_query_set_a(Addr a, uint32_t **out, uint32_t *outsz);
+
 // query set fns writes taint set contents to the specified array. the size of
 // the array must be >= the cardianlity of the taint set.
 void taint2_query_set(Addr a, uint32_t *out);

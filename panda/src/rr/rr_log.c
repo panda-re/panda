@@ -51,6 +51,7 @@
 #include "migration/qemu-file.h"
 #include "io/channel-file.h"
 #include "sysemu/sysemu.h"
+#include "panda/callback_support.h"
 /******************************************************************************************/
 /* GLOBALS */
 /******************************************************************************************/
@@ -71,6 +72,8 @@ volatile sig_atomic_t rr_record_in_main_loop_wait = 0;
 volatile sig_atomic_t rr_skipped_callsite_location = 0;
 // mz the log of non-deterministic events
 RR_log* rr_nondet_log = NULL;
+
+bool rr_replay_complete = false;
 
 #define RR_RECORD_FROM_REQUEST 2
 #define RR_RECORD_REQUEST 1
@@ -480,13 +483,25 @@ void rr_device_mem_rw_call_record(hwaddr addr, const uint8_t* buf,
     });
 }
 
+static inline uint32_t rr_chunked_crc32(void *ptr, size_t len) {
+    uint32_t crc = crc32(0, Z_NULL, 0);
+    target_ulong offset = 0;
+    size_t remaining = len;
+    while (remaining > 0) {
+        uint32_t sz = remaining >= UINT32_MAX ? UINT32_MAX : (uint32_t)remaining;
+        crc = crc32(crc, ptr+offset, sz);
+        remaining -= sz;
+        offset += sz;
+    }
+    return crc;
+}
+
 extern QLIST_HEAD(rr_map_list, RR_MapList) rr_map_list;
 
 void rr_tracked_mem_regions_record(void) {
     RR_MapList *region;
     QLIST_FOREACH(region, &rr_map_list, link) {
-        uint32_t crc = crc32(0, Z_NULL, 0);
-        crc = crc32(crc, region->ptr, region->len);
+        uint32_t crc = rr_chunked_crc32(region->ptr, region->len);
         if (crc != region->crc) {
             // Pretend this is just a mem_rw call
             rr_device_mem_rw_call_record(region->addr, region->ptr, region->len, 1);
@@ -508,6 +523,35 @@ void rr_mem_region_change_record(hwaddr start_addr, uint64_t size,
             .len = strlen(name),
             .mtype = mtype,
             .added = added
+        }
+    });
+}
+
+// SAC e1000.c network hooks need this
+void rr_record_net_transfer(RR_callsite_id call_site,
+                            Net_transfer_type transfer_type,
+                            uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_NET_TRANSFER,
+        .variant.net_transfer_args = {
+            .type = transfer_type,
+            .src_addr = src_addr,
+            .dest_addr = dest_addr,
+            .num_bytes = num_bytes
+        }
+    });
+}
+
+
+// SAC e1000.c network hooks needs this
+void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int size, uint8_t direction)
+{
+    rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_HANDLE_PACKET,
+        .variant.handle_packet_args = {
+            .buf = buf,
+            .size = size,
+            .direction = direction
         }
     });
 }
@@ -566,7 +610,7 @@ static inline int rr_queue_size(void) {
     return distance % RR_QUEUE_MAX_LEN;
 }
 
-static inline bool rr_queue_empty(void) {
+inline bool rr_queue_empty(void) {
     return rr_queue_head == NULL;
 }
 
@@ -929,6 +973,7 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
             // point
             replay_done = 1;
         } else {
+            
             RR_skipped_call_args args = current_item->variant.call_args;
             switch (args.kind) {
             case RR_CALL_CPU_MEM_RW: {
@@ -968,6 +1013,20 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                                           /*is_write=*/1,
                                           args.variant.cpu_mem_unmap.len);
             } break;
+            case RR_CALL_HANDLE_PACKET:
+                {
+                    // run all callbacks registered for packet handling
+                    RR_handle_packet_args hp = args.variant.handle_packet_args;
+                    panda_callbacks_handle_packet(first_cpu, hp.buf, hp.size, hp.direction, args.old_buf_addr);
+                } break;
+            case RR_CALL_NET_TRANSFER:
+                {
+                    // run all callbacks registered for transfers within network
+                    // card (E1000)
+                    RR_net_transfer_args nta =
+                         args.variant.net_transfer_args;
+                    panda_callbacks_net_transfer(first_cpu, nta.type, nta.src_addr, nta.dest_addr, nta.num_bytes);
+                } break;
             default:
                 // mz sanity check
                 rr_assert(0);
@@ -1338,7 +1397,8 @@ int rr_do_begin_replay(const char* file_name_full, CPUState* cpu_state)
     QEMUFile* snp = qemu_fopen_channel_input(QIO_CHANNEL(ioc));
 
     qemu_system_reset(VMRESET_SILENT);
-    migration_incoming_state_new(snp);
+    MigrationIncomingState* mis = migration_incoming_get_current();
+    mis->from_src_file = snp;
     snapshot_ret = qemu_loadvm_state(snp);
     qemu_fclose(snp);
     migration_incoming_state_destroy();
@@ -1424,6 +1484,8 @@ void rr_do_end_replay(int is_error)
     // turn off replay
     rr_mode = RR_OFF;
 
+    rr_replay_complete = true;
+    
     // mz XXX something more graceful?
     if (is_error) {
         panda_cleanup();
@@ -1459,8 +1521,7 @@ static uint32_t rr_checksum_memory_internal(void) {
     MemoryRegion *ram = memory_region_find(get_system_memory(), 0x2000000, 1).mr;
     rcu_read_lock();
     void *ptr = qemu_map_ram_ptr(ram->ram_block, 0);
-    uint32_t crc = crc32(0, Z_NULL, 0);
-    crc = crc32(crc, ptr, int128_get64(ram->size));
+    uint32_t crc = rr_chunked_crc32(ptr, ram_size);
     rcu_read_unlock();
 
     return crc;

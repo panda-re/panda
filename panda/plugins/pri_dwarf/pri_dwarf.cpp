@@ -280,6 +280,7 @@ void die(const char* fmt, ...) {
 
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
+    vfprintf(stdout, fmt, args);
     va_end(args);
 }
 
@@ -1599,6 +1600,8 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
     int count = 0;
 
     populate_line_range_list(dbg, basename, base_address, needs_reloc);
+    printf ("line_range_list.size() = %d\n", (int) line_range_list.size());
+
     /* Find compilation unit header */
     while (dwarf_next_cu_header(
                 *dbg,
@@ -1686,6 +1689,9 @@ bool load_debug_info(Dwarf_Debug *dbg, const char *basename, uint64_t base_addre
 }
 
 bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_address, bool needs_reloc) {
+
+    printf ("read_debug_info %s\n", dbgfile);
+
     //std::unique_ptr<Dwarf_Debug> dbg = make_unique<Dwarf_Debug>();
     Dwarf_Debug *dbg = (Dwarf_Debug *) malloc(sizeof(Dwarf_Debug));
     Dwarf_Error err;
@@ -1717,17 +1723,18 @@ bool read_debug_info(const char* dbgfile, const char *basename, uint64_t base_ad
     return true;
 }
 
-target_ulong monitored_asid = 0;
+std::set<target_ulong> monitored_asid;
+//target_ulong monitored_asid = 0;
 unsigned num_libs_known = 0;
 
 bool correct_asid(CPUState *cpu) {
-    if (monitored_asid == 0) {
+    if (monitored_asid.size() == 0) {
         return false;
         //OsiProc *p = get_current_process(cpu);
         // checking if p is not null because we got a segfault here
         // if p is null return false, not @ correct_asid
     }
-    return monitored_asid == panda_current_asid(cpu);
+    return (monitored_asid.count(panda_current_asid(cpu)) != 0);
 }
 
 bool looking_for_libc=false;
@@ -1735,8 +1742,11 @@ const char *libc_host_path=NULL;
 std::string libc_name;
 
 void on_library_load(CPUState *cpu, target_ulong pc, char *guest_lib_name, target_ulong base_addr, target_ulong size) {
-    if (!correct_asid(cpu)) return;
     printf ("on_library_load guest_lib_name=%s\n", guest_lib_name);
+    if (!correct_asid(cpu)) {
+        printf ("current_asid=%x is not monitored\n", panda_current_asid(cpu));
+        return;
+    }
     active_libs.push_back(Lib(guest_lib_name, base_addr, base_addr + size));
     //sprintf(fname, "%s/%s", debug_path, m->name);
     //printf("Trying to load symbols for %s at %#x.\n", lib_name, base_addr);
@@ -1798,6 +1808,7 @@ bool ensure_main_exec_initialized(CPUState *cpu) {
         return false;
 
     //printf("[ensure_main_exec_initialized] looking at libraries\n");
+
     for (unsigned i = 0; i < libs->num; i++) {
         char fname[260] = {};
         OsiModule *m = &libs->module[i];
@@ -1919,11 +1930,13 @@ void on_call(CPUState *cpu, target_ulong pc) {
     if (it == line_range_list.end() || pc < it->lowpc ){
         auto it_dyn = addr_to_dynl_function.find(pc);
         if (it_dyn != addr_to_dynl_function.end()){
+            if (debug) printf ("CALL: Found line info for 0x%x\n", pc);
             pri_runcb_on_fn_start(cpu, pc, NULL, it_dyn->second.c_str());
         }
-        if (debug)
-            printf("CALL: Could not find line info for 0x%x\n", pc);
-
+        else {
+            if (debug)
+                printf("CALL: Could not find line info for 0x%x\n", pc);
+        }
         return;
     }
     cur_function = it->function_addr;
@@ -1972,10 +1985,12 @@ void on_ret(CPUState *cpu, target_ulong pc_func) {
     if (it == line_range_list.end() || pc_func < it->lowpc) {
         auto it_dyn = addr_to_dynl_function.find(pc_func);
         if (it_dyn != addr_to_dynl_function.end()){
+            if (debug) printf("RET: Found line info for 0x%x\n", pc_func);
             pri_runcb_on_fn_return(cpu, pc_func, NULL, it_dyn->second.c_str());
         }
-        if (debug)
-            printf("RET: Could not find line info for 0x%x\n", pc_func);
+        else {
+            if (debug) printf("RET: Could not find line info for 0x%x\n", pc_func);
+        }
         return;
     }
     cur_function = it->function_addr;
@@ -2278,14 +2293,18 @@ uint32_t guest_strncpy(CPUState *cpu, char *buf, size_t maxlen, target_ulong gue
 typedef void (* on_proc_change_t)(CPUState *env, target_ulong asid, OsiProc *proc);
 
 void handle_asid_change(CPUState *cpu, target_ulong asid, OsiProc *p) {
+//    printf ("handle_asid_change\n");
     if (!p) { return; }
     if (!p->name) { return; }
     if (debug) {
         printf("p-name: %s proc-to-monitor: %s\n", p->name, proc_to_monitor);
     }
+//    printf ("...really\n");
     //if (strcmp(p->name, proc_to_monitor) != 0) {
     if (strncmp(p->name, proc_to_monitor, strlen(p->name)) == 0) {
-        monitored_asid = panda_current_asid(cpu);
+        target_ulong current_asid = panda_current_asid(cpu);
+        monitored_asid.insert(current_asid);
+        printf ("monitoring asid %x\n", current_asid);
     }
     if (correct_asid(cpu) && !main_exec_initialized){
         main_exec_initialized = ensure_main_exec_initialized(cpu);
@@ -2372,10 +2391,11 @@ bool init_plugin(void *self) {
     panda_arg_list *args_gen = panda_get_args("general");
     const char *asid_s = panda_parse_string_opt(args_gen, "asid", NULL, "asid of the process to follow for pri_trace");
     if (asid_s) {
-        monitored_asid = strtoul(asid_s, NULL, 16);
-        std::cout << "Tracking process by ASID: " << std::hex << monitored_asid << "\n";
+        target_ulong asid = strtoul(asid_s, NULL, 16);
+        monitored_asid.insert(asid); 
+        std::cout << "Tracking process by ASID: " << std::hex << asid << "\n";
     } else {
-        monitored_asid = 0;
+//        monitored_asid = 0;
     }
     panda_arg_list *args = panda_get_args("pri_dwarf");
     guest_debug_path = panda_parse_string_req(args, "g_debugpath", "path to binary/build dir on guest machine");

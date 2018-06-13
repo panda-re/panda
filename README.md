@@ -40,7 +40,7 @@ sudo add-apt-repository ppa:phulin/panda
 sudo apt-get update
 sudo apt-get build-dep qemu
 sudo apt-get install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev libelf-dev \
+  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev \
   libcapstone-dev libdwarf-dev python-pycparser llvm-3.3 clang-3.3 libc++-dev
 git clone https://github.com/panda-re/panda
 mkdir -p build-panda && cd build-panda
@@ -54,6 +54,10 @@ Finally, if you want to skip the build process altogether, there is a
 [Docker image](https://hub.docker.com/r/pandare/panda). You can get it by running:
 
     docker pull pandare/panda
+
+Alternatively, you can pull the [latest build from an unofficial](https://hub.docker.com/r/thawsystems/panda) third party.
+
+    docker pull thawsystems/panda
 
 ## Support
 

@@ -1,6 +1,8 @@
 #ifndef __PANDA_CALLBACK_SUPPORT_H__
 #define __PANDA_CALLBACK_SUPPORT_H__
 
+#include "panda/rr/rr_log_all.h"
+
 // exec.c
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
@@ -28,5 +30,12 @@ void panda_callbacks_cpuid(CPUState *env);
 void panda_callbacks_cpu_restore_state(CPUState *env, TranslationBlock *tb);
 // target-i386/helper.c
 void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_ulong new_asid);
+// vl.c
+void panda_callbacks_after_machine_init(void);
+
+void panda_callbacks_top_loop(void);
+
+void panda_callbacks_net_transfer(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
+void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr);
 
 #endif

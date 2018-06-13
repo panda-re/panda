@@ -2154,6 +2154,7 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
         return;
     }
     vaddr = (cpu->mem_io_vaddr & TARGET_PAGE_MASK) + offset;
+    vaddr = cc->adjust_watchpoint_address(cpu, vaddr, len);
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
         if (cpu_watchpoint_address_matches(wp, vaddr, len)
             && (wp->flags & flags)) {
@@ -2714,7 +2715,9 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
-                rr_device_mem_rw_call_record(addr1, buf, l, /*is_write*/1);
+                // We should record the memory address relative to the address space, not physical memory.
+                // During replay, this address will be translated into the physical address.
+                rr_device_mem_rw_call_record(addr, buf, l, /*is_write*/1);
             }
             panda_callbacks_before_dma(first_cpu, addr1, buf, l, /*is_write=1*/ 1);
             memcpy(ptr, buf, l);
@@ -2929,6 +2932,9 @@ static inline void cpu_physical_memory_write_rom_internal(AddressSpace *as,
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             switch (type) {
             case WRITE_DATA:
+                if (rr_in_record() && (rr_record_in_progress || rr_record_in_main_loop_wait)) {
+                    rr_device_mem_rw_call_record(addr1, buf, l, 1);
+                }
                 memcpy(ptr, buf, l);
                 invalidate_and_set_dirty(mr, addr1, l);
                 break;
@@ -3299,6 +3305,7 @@ void address_space_cache_destroy(MemoryRegionCache *cache)
         xen_invalidate_map_cache_entry(cache->ptr);
     }
     memory_region_unref(cache->mr);
+    cache->mr = NULL;
 }
 
 /* Called from RCU critical section.  This function has the same

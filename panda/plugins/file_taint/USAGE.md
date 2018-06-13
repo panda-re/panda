@@ -40,14 +40,14 @@ A typical run might first try to find out where the file `foo.txt` is first used
 
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
-        -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt,notaint
+        -panda syscalls2:profile=linux_x86 -panda file_taint:filename=foo.txt,notaint=y
 
 By looking at the output, we may discover that the file is first opened at instruction `1215124234`. Now we can actually run the replay with taint enabled:
 
     $PANDA_PATH/x86_64-softmmu/qemu-system-x86_64 -replay foo -panda osi \
         -panda osi_linux:kconf_group=debian-3.2.63-i686 \
         -panda syscalls2:profile=linux_x86 \
-        -panda file_taint:filename=foo.txt,pos,first_instr=1215124234
+        -panda file_taint:filename=foo.txt,pos=y,first_instr=1215124234
 
 Bugs
 ----

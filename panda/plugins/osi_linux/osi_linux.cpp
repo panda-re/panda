@@ -488,8 +488,8 @@ void on_free_osimodules(OsiModules *ms) {
 /**
  * @brief Fills an OsiProc struct.
  */
-int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
-	static int vmi_pgd_changed_count = 0;
+int asid_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
+	static int asid_change_count = 0;
 	OsiProcs *ps;
 	OsiModules *ms;
 	uint32_t i;
@@ -502,15 +502,15 @@ int vmi_pgd_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 
 	// Directly call the linux-specific introspection functions.
 	// For testing the functions via their callbacks, use the osi_test plugin.
-	LOG_INFO("--- START %4d ---------------------------------------------", vmi_pgd_changed_count);
+	LOG_INFO("--- START %4d ---------------------------------------------", asid_change_count);
 	on_get_processes(env, &ps);
 	for (i=0; i< ps->num; i++) {
 		on_get_libraries(env, &ps->proc[i], &ms);
 		on_free_osimodules(ms);
 	}
 	on_free_osiprocs(ps);
-	LOG_INFO("--- END  %4d ---------------------------------------------", vmi_pgd_changed_count);
-	vmi_pgd_changed_count++;
+	LOG_INFO("--- END  %4d ---------------------------------------------", asid_change_count);
+	asid_change_count++;
 
 	return 0;
 
@@ -531,8 +531,8 @@ error:
 bool init_plugin(void *self) {
 #if defined(TARGET_I386) || defined(TARGET_ARM)
 #if (defined OSI_LINUX_TEST)
-	panda_cb pcb = { .after_PGD_write = vmi_pgd_changed };
-	panda_register_callback(self, PANDA_CB_VMI_PGD_CHANGED, pcb);
+	panda_cb pcb = { .asid_changed = asid_changed };
+	panda_register_callback(self, PANDA_CB_OSI_PGD_CHANGED, pcb);
 #endif
 
 	// Read the name of the kernel configuration to use.

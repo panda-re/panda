@@ -12,3 +12,5 @@ from ptest_utils import *
 
 record_debian("find /usr/bin", "find", "i386") 
 record_debian("netstat -a", "netstat", "i386") 
+
+
