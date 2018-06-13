@@ -1,4 +1,12 @@
+message AsidInfo {
+    required uint64 asid = 1; 
+    required string name = 2;
+    required uint32 pid = 3;
+    required uint64 start_instr = 4;
+    required uint64 end_instr = 5;
+    required uint64 count = 6;
+}
+
+optional AsidInfo asid_info = 40;
+
 optional uint64 asid = 3; 
-optional string process_name = 4;
-optional uint32 process_id = 5;
-optional uint64 total_instr = 65;
