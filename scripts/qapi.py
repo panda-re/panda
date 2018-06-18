@@ -19,13 +19,10 @@ import re
 import string
 import sys
 try:
-    from collections import OrderedDict
-except:
-    from ordereddict import OrderedDict
-try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+from collections import OrderedDict
 
 builtin_types = {
     'str':      'QTYPE_QSTRING',
@@ -346,7 +343,10 @@ class QAPISchemaParser(object):
         if incl_abs_fname in previously_included:
             return
         try:
-            fobj = open(incl_abs_fname, 'r')
+            if sys.version_info[0] >= 3:
+                fobj = open(incl_abs_fname, 'r', encoding='utf-8')
+            else:
+                fobj = open(incl_abs_fname, 'r')
         except IOError as e:
             raise QAPISemError(info, '%s: %s' % (e.strerror, include))
         exprs_include = QAPISchemaParser(fobj, previously_included, info)
@@ -1454,8 +1454,13 @@ class QAPISchemaEvent(QAPISchemaEntity):
 
 class QAPISchema(object):
     def __init__(self, fname):
+        self._fname = fname
+        if sys.version_info[0] >= 3:
+            f = open(fname, 'r', encoding='utf-8')
+        else:
+            f = open(fname, 'r')
         try:
-            parser = QAPISchemaParser(open(fname, 'r'))
+            parser = QAPISchemaParser(f)
             self.exprs = check_exprs(parser.exprs)
             self.docs = parser.docs
             self._entity_dict = {}
@@ -1467,6 +1472,7 @@ class QAPISchema(object):
         except QAPIError as err:
             print(err, file=sys.stderr)
             exit(1)
+
 
     def _def_entity(self, ent):
         # Only the predefined types are allowed to not have info
@@ -1917,7 +1923,6 @@ def gen_params(arg_type, boxed, extra):
 #
 # Common command line parsing
 #
-
 
 def parse_command_line(extra_options='', extra_long_options=[]):
 
