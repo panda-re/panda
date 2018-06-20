@@ -118,6 +118,10 @@ void recordCall(uint64_t fp){
         ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
         ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
         ple->mutable_llvmentry()->set_address(fp);
+
+        if (!calledFuncName.empty()) {
+            ple->mutable_llvmentry()->set_called_func_name(calledFuncName.str().c_str());
+        }
         
         globalLog.write_entry(std::move(ple));
     }
