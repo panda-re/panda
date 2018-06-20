@@ -40,11 +40,12 @@ static inline Value *castTo(Value *V,
   }
 
   if (Constant *C = dyn_cast<Constant>(V)) {
-    // if (LLVMIsNull(C)) {
-    //   printf("IS NULL\n");
-    // }
-    Constant *CE = ConstantExpr::getZExtOrBitCast(C, Ty);
-    return CE;
+    if (V->getType()->isPointerTy()){
+        return ConstantExpr::getPointerCast(C, Ty);
+    } else {
+        return ConstantExpr::getZExtOrBitCast(C, Ty);
+    }
+  
   }
 
   // Otherwise, insert a cast instruction.

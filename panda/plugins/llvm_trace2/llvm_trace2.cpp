@@ -104,7 +104,15 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
 void recordCall(uint64_t fp){
 
     Function* calledFunc = (Function*)fp;
-    //printf("Called fp name: %s\n", calledFunc->getName().str().c_str());
+
+    StringRef calledFuncName = calledFunc->getName();
+    // if (calledFuncName.empty()){
+    //     printf("Called fp\n");
+    //     calledFunc->print(outs());   
+    //     printf("\n");
+    // }
+    // calledFunc->print(outs());
+
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
@@ -323,19 +331,15 @@ void PandaLLVMTraceVisitor::visitLoadInst(LoadInst &I){
     Value *ptr = I.getPointerOperand();
     ptr = castTo(ptr, VoidPtrType, ptr->getName(), &I);
     // I.dump();
-    Value *loadinst;
-    // Type *containedType = I.getPointerOperand()->getType()->getContainedType(0);
-    // if (I.getType()->isIntegerTy()) {
+    Value *loadinst = castTo(&I, Int64Type, I.getName(), I.getNextNode());
 
-        loadinst = castTo(&I, Int64Type, I.getName(), I.getNextNode());
+    std::vector<Value*> args = make_vector(ptr, loadinst, ConstantInt::get(Int64Type, 4), 0);
+
+    CallInst *CI = CallInst::Create(recordLoadF, args);
     
-        std::vector<Value*> args = make_vector(ptr, loadinst, ConstantInt::get(Int64Type, 4), 0);
-
-        CallInst *CI = CallInst::Create(recordLoadF, args);
-        
-        //insert call into function
-        CI->insertAfter(static_cast<Instruction*>(loadinst));
-        CI->setMetadata("host", LLVMTraceMD);   
+    //insert call into function
+    CI->insertAfter(static_cast<Instruction*>(loadinst));
+    CI->setMetadata("host", LLVMTraceMD);   
 }
 
 void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
@@ -353,7 +357,6 @@ void PandaLLVMTraceVisitor::visitStoreInst(StoreInst &I){
     CallInst *CI = CallInst::Create(recordStoreF, args);
 
     CI->insertAfter(static_cast<Instruction*>(&I));
-
     CI->setMetadata("host", LLVMTraceMD);
 
     //handle cases where dynamic values are being used. 
@@ -501,41 +504,52 @@ void PandaLLVMTraceVisitor::handleExternalHelperCall(CallInst &I) {
 }
 
 void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
-    Function *calledFunc = I.getCalledFunction();
-    //llvm::Module *mod = tcg_llvm_ctx->getModule();
+    
+    Value *fp;  
 
-    if (!calledFunc || !calledFunc->hasName()) { return; }
+    if (I.getCalledFunction()) { 
+        // Check if value is called
+        Function *calledFunc = I.getCalledFunction();
+
+        StringRef name = calledFunc->getName();
+
+        if (name.startswith("record")) {
+            return;
+        }
+
+        if (calledFunc->isIntrinsic()){
+            //this is like a memset or memcpy
+            handleVisitIntrinsicCall(I);
+            return;
+        } else if (external_helper_funcs.count(name)) {
+            // model the MMU load/store functions with regular loads/stores from dmemory
+           handleExternalHelperCall(I);
+            return;
+        } else if (calledFunc->isDeclaration()) {
+            return;
+        }
+
+        printf("call to helper %s\n", name.str().c_str());
+
+        //fp = castTo(I.getCalledFunction(), VoidPtrType, name, &I);   
+        fp = ConstantInt::get(Int64Type, (uint64_t)calledFunc);
+
+        //Clear llvmtrace interrupt flag if an iret
+        if (name.startswith("helper_iret")){
+            printf("HELPER IRET ENCOUNTERED\n");
+            llvmtrace_flags &= ~1;
+            printf("iret addr: %p\n", fp); 
+        }
+    } else if (I.getCalledValue()){
+        // called function is not a constant function
+        Value *calledVal = I.getCalledValue();
+
+        printf("call to function value \n");
+        calledVal->print(outs());
+        fp = ConstantInt::get(Int64Type, (uint64_t)calledVal);
+    }
      
-    StringRef name = calledFunc->getName();
-
-    Value *fp;
-    if (name.startswith("record")) {
-        return;
-    }
-
-    if (calledFunc->isIntrinsic()){
-        //this is like a memset or memcpy
-        handleVisitIntrinsicCall(I);
-        return;
-    } else if (external_helper_funcs.count(name)) {
-        // model the MMU load/store functions with regular loads/stores from dmemory
-       handleExternalHelperCall(I);
-        return;
-    } else if (calledFunc->isDeclaration()) {
-        return;
-    }
-
-    printf("call to helper %s\n", name.str().c_str());
-
-    //fp = castTo(I.getCalledFunction(), VoidPtrType, name, &I);   
-    fp = ConstantInt::get(Int64Type, (uint64_t)I.getCalledFunction());
-    //Clear llvmtrace interrupt flag if an iret
-    if (name.startswith("helper_iret")){
-        printf("HELPER IRET ENCOUNTERED\n");
-        llvmtrace_flags &= ~1;
-        fp->dump();
-        printf("iret addr: %p\n", fp); 
-    }
+  
 
     //TODO: Should i do something about helper functions?? 
 
@@ -581,7 +595,7 @@ static void llvm_init(){
 
 void instrumentBasicBlock(BasicBlock &BB){
     Module *module = tcg_llvm_ctx->getModule();
-    Value *FP = castTo(BB.getParent(), VoidPtrType, "", BB.getTerminator());
+    Value *FP = castTo(BB.getParent(), VoidPtrType, "", BB.getFirstInsertionPt());
     Value *tb_num_val;
     if (BB.getParent()->getName().startswith("tcg-llvm-tb-")) {
         int tb_num; 
@@ -607,8 +621,7 @@ void instrumentBasicBlock(BasicBlock &BB){
     // execution.
 
     std::vector<Value*> args = make_vector<Value *>(FP, tb_num_val, 0);
-    Instruction *F = BB.getFirstInsertionPt();
-    CallInst::Create(recordStartBBF, args, "", F);
+    CallInst::Create(recordStartBBF, args, "", BB.getFirstInsertionPt());
 }
 
 char PandaLLVMTracePass::ID = 0;
@@ -669,7 +682,9 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 };
 
 
-} // namespace llvm
+} // end  namespace llvm
+
+
 // I'll need a pass manager to traverse stuff. 
 
 //*************************************************************************
@@ -718,9 +733,10 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         } else {
             lib_name = lookup_libname(curpc, ms);
         }
+        printf("lib_name %s\n", lib_name);
     }
 
-    if (llvmtrace_flags&1 && !record_int){
+    if (llvmtrace_flags & 1 && !record_int){
         // this is an interrupt, and we don't want to record interrupts. turn off record
         printf("TURNING OFF RECORD\n");
         do_record = false;
@@ -773,7 +789,7 @@ bool init_plugin(void *self){
     
     panda_arg_list *args = panda_get_args("llvm_trace2");
     if (args != NULL) {
-        record_int = panda_parse_bool_opt(args, "int","set to 1 to record interrupts. 0 by default");
+        record_int = panda_parse_bool_opt(args, "int", "set to 1 to record interrupts. 0 by default");
     }
 
     use_osi = panda_parse_bool_opt(args, "use_osi", "use operating system introspection");
