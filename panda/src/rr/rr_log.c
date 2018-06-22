@@ -1028,6 +1028,8 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                                           args.variant.cpu_mem_unmap.len);
             } break;
             case RR_CALL_HD_TRANSFER: {
+                RR_hd_transfer_args hdt = args.variant.hd_transfer_args;
+                panda_callbacks_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
             } break;
             case RR_CALL_HANDLE_PACKET:
                 {
