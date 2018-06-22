@@ -35,6 +35,8 @@ void panda_callbacks_after_machine_init(void);
 
 void panda_callbacks_top_loop(void);
 
+void panda_callbacks_hd_transfer(CPUState *cpu, Hd_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
+
 void panda_callbacks_net_transfer(CPUState *cpu, Net_transfer_type type, uint64_t src_addr, uint64_t dst_addr, uint32_t num_bytes);
 void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr);
 
