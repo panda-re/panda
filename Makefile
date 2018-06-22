@@ -301,7 +301,11 @@ qemu-version.h: FORCE
 				printf '""\n'; \
 			fi; \
 		fi) > $@.tmp)
-	$(call quiet-command, cmp -s $@ $@.tmp || mv $@.tmp $@)
+	$(call quiet-command, if ! cmp -s $@ $@.tmp; then \
+	  mv $@.tmp $@; \
+	 else \
+	  rm $@.tmp; \
+	 fi)
 
 config-host.h: config-host.h-timestamp
 config-host.h-timestamp: config-host.mak
@@ -514,7 +518,7 @@ distclean: clean
 	rm -f qemu-doc.vr qemu-doc.txt
 	rm -f config.log
 	rm -f linux-headers/asm
-	rm -f qemu-ga-qapi.texi qemu-qapi.texi
+	rm -f qemu-ga-qapi.texi qemu-qapi.texi version.texi
 	rm -f docs/qemu-qmp-ref.7 docs/qemu-ga-ref.7
 	rm -f docs/qemu-qmp-ref.txt docs/qemu-ga-ref.txt
 	rm -f docs/qemu-qmp-ref.pdf docs/qemu-ga-ref.pdf
@@ -591,7 +595,7 @@ endif
 endif
 
 
-install: all $(if $(BUILD_DOCS),install-doc) \
+install: all $(if $(BUILD_DOCS),install-doc) $(BUILD_DIR)/trace-events-all \
 install-datadir install-localstatedir
 ifneq ($(TOOLS),)
 	$(call install-prog,$(subst qemu-ga,qemu-ga$(EXESUF),$(TOOLS)),$(DESTDIR)$(bindir))
@@ -661,21 +665,24 @@ ui/console-gl.o: $(SRC_PATH)/ui/console-gl.c \
 
 # documentation
 MAKEINFO=makeinfo
-MAKEINFOFLAGS=--no-split --number-sections -D 'VERSION $(VERSION)'
-TEXIFLAG=$(if $(V),,--quiet) --command='@set VERSION $(VERSION)'
+MAKEINFOFLAGS=--no-split --number-sections
+TEXIFLAG=$(if $(V),,--quiet)
 
-%.html: %.texi
+version.texi: $(SRC_PATH)/VERSION
+	$(call quiet-command,echo "@set VERSION $(VERSION)" > $@,"GEN","$@")
+
+%.html: %.texi version.texi
 	$(call quiet-command,LC_ALL=C $(MAKEINFO) $(MAKEINFOFLAGS) --no-headers \
 	--html $< -o $@,"GEN","$@")
 
-%.info: %.texi
+%.info: %.texi version.texi
 	$(call quiet-command,$(MAKEINFO) $(MAKEINFOFLAGS) $< -o $@,"GEN","$@")
 
-%.txt: %.texi
+%.txt: %.texi version.texi
 	$(call quiet-command,LC_ALL=C $(MAKEINFO) $(MAKEINFOFLAGS) --no-headers \
 	--plaintext $< -o $@,"GEN","$@")
 
-%.pdf: %.texi
+%.pdf: %.texi version.texi
 	$(call quiet-command,texi2pdf $(TEXIFLAG) -I $(SRC_PATH) -I . $< -o $@,"GEN","$@")
 
 qemu-options.texi: $(SRC_PATH)/qemu-options.hx $(SRC_PATH)/scripts/hxtool

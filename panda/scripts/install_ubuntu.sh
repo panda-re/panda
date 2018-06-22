@@ -25,7 +25,8 @@ sudo apt-get -y build-dep qemu
 
 progress "Installing PANDA dependencies..."
 sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config
+  libprotobuf-c0-dev libprotoc-dev python-protobuf libelf-dev libc++-dev pkg-config \
+  libwiretap-dev libwireshark-dev
 
 pushd /tmp
 
@@ -99,6 +100,8 @@ then
 else
   progress "Already in PANDA directory."
 fi
+progress "Trying to update DTC submodule (if necessary)..."
+git submodule update --init dtc || true
 progress "Building PANDA..."
 mkdir build
 cd build
