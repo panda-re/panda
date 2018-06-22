@@ -395,48 +395,26 @@ PTR get_next_mod(CPUState *cpu, PTR mod) {
     return next;
 }
 
-// Hack
-static void unicode_to_ascii(char *uni, char *ascii, int len) {
-    int i;
-    for (i = 0; i < len; i++) {
-        ascii[i] = uni[i*2];
-    }
-    ascii[i] = '\0';
-}
-
 char *read_unicode_string(CPUState *cpu, uint32_t pUstr) {
-    uint16_t fileNameLen;
-    uint32_t fileNamePtr;
-    char fileNameUnicode[260*2] = {};
-    char *fileName;
+    win_unicode_string_t s;
+    assert(-1 != panda_virtual_memory_rw(cpu, pUstr, (uint8_t *)&s, sizeof(s), false));
 
-    assert(!panda_virtual_memory_rw(cpu, pUstr,
-            (uint8_t *) &fileNameLen, 2, false));
-    assert(!panda_virtual_memory_rw(cpu, pUstr+4,
-            (uint8_t *) &fileNamePtr, 4, false));
-
-    if((fileNameLen == 0) || (!fileNamePtr)) {
-        assert(fileName = g_strdup(""));
-        return fileName;
+    if (s.Length == 0 || !s.Buffer) {
+        return g_strdup("");
     }
 
-    if (fileNameLen > 259*2) {
-        fileNameLen = 259*2;
-    }
-    assert(!panda_virtual_memory_rw(cpu, fileNamePtr, (uint8_t *)fileNameUnicode, fileNameLen, false));
-    fileName = (char *)g_malloc(fileNameLen/2+1);
-    assert(fileName);
-    unicode_to_ascii(fileNameUnicode, fileName, fileNameLen/2);
+    // Length field is in bytes - see: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380518(v=vs.85).aspx
+    char *fileName = g_malloc0((s.Length+1)*sizeof(char));
+    assert(-1 != panda_virtual_memory_rw(cpu, s.Buffer, (uint8_t *)fileName, s.Length, false));
+    char *fileName_ascii = g_str_to_ascii(fileName, "C");
 
-    return fileName;
+    g_free(fileName);
+    return fileName_ascii;
 }
 
-
-char * get_objname(CPUState *cpu, uint32_t obj) {
+char *get_objname(CPUState *cpu, uint32_t obj) {
   uint32_t pObjectName;
-
-  assert(!panda_virtual_memory_rw(cpu, obj+OBJNAME_OFF,
-              (uint8_t *) &pObjectName, 4, false));
+  assert(-1 != panda_virtual_memory_rw(cpu, obj+OBJNAME_OFF, (uint8_t *)&pObjectName, sizeof(pObjectName), false));
   return read_unicode_string(cpu, pObjectName);
 }
 
@@ -445,11 +423,12 @@ char *get_file_obj_name(CPUState *cpu, uint32_t fobj) {
 }
 
 int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj) {
-    int64_t file_pos = -1;
-    if (-1 == panda_virtual_memory_rw(cpu, fobj+FILE_OBJECT_POS_OFF, (uint8_t *)&file_pos, 8, false))
-        return -1;
-    else
-        return file_pos;
+    int64_t file_pos;
+	if (-1 == panda_virtual_memory_rw(cpu, fobj+FILE_OBJECT_POS_OFF, (uint8_t *)&file_pos, sizeof(file_pos), false)) {
+	  return -1;
+	} else {
+	  return file_pos;
+	}
 }
 
 char *get_handle_object_name(CPUState *cpu, HandleObject *ho) {
@@ -600,3 +579,5 @@ bool init_plugin(void *self) {
 void uninit_plugin(void *self) {
     printf("Unloading wintrospection plugin\n");
 }
+
+/* vim: set tabstop=4 softtabstop=4 expandtab: */

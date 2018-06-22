@@ -112,7 +112,7 @@ to add a callback to be run inside of plugin A.
 #define PPP_REG_CB(other_plugin, cb_name, cb_func)			\
   {									\
     dlerror();								\
-    void *op = panda_get_plugin_by_name("panda_" other_plugin ".so");	\
+    void *op = panda_get_plugin_by_name(other_plugin);			\
     if (!op) {								\
       printf("In trying to add plugin callback, couldn't load %s plugin\n", other_plugin); \
       assert (op);							\

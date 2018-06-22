@@ -8,6 +8,14 @@ typedef struct handle_object_struct {
     uint32_t pObj;
 } HandleObject;
 
+
+// See: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380518(v=vs.85).aspx
+typedef struct {
+    uint16_t Length;        // length excluding terminator in bytes
+    uint16_t MaximumLength; // allocated memory for buffer
+    target_ulong Buffer;    // pointer to allocated memory
+} win_unicode_string_t;
+
 // Size of guest pointer.
 // Note that this can't just be target_ulong since
 // a 32-bit OS will run on x86_64-softmmu

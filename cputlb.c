@@ -512,6 +512,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         /* record= */ rr_input_8(&val),
         /* replay= */ rr_input_8(&val),
         /* location= */ RR_CALLSITE_IO_READ_ALL);
+
     return val;
 }
 
@@ -530,6 +531,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
 
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
+
     if (mr != &io_mem_rom && mr != &io_mem_notdirty) {
         RR_DO_RECORD_OR_REPLAY(
             /* action= */
