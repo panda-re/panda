@@ -10,6 +10,18 @@
 #include "exec/cpu-common.h"
 #include "exec/ram_addr.h"
 
+void panda_callbacks_hd_transfer(CPUState *cpu, Hd_transfer_type type, uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_HD_TRANSFER];
+             plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+                 plist->entry.replay_hd_transfer(cpu, type, src_addr, dest_addr, num_bytes);
+        }
+    }
+}
+
 void panda_callbacks_handle_packet(CPUState *cpu, uint8_t *buf, size_t size, uint8_t direction, uint64_t old_buf_addr) {
     if (rr_mode == RR_REPLAY) {
         panda_cb_list *plist;

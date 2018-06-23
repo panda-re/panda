@@ -556,6 +556,20 @@ void rr_record_handle_packet_call(RR_callsite_id call_site, uint8_t *buf, int si
     });
 }
 
+void rr_record_hd_transfer(RR_callsite_id call_site,
+				  Hd_transfer_type transfer_type,
+				  uint64_t src_addr, uint64_t dest_addr, uint32_t num_bytes) {
+	rr_record_skipped_call((RR_skipped_call_args) {
+        .kind = RR_CALL_HD_TRANSFER,
+        .variant.hd_transfer_args = {
+            .type = transfer_type,
+            .src_addr = src_addr,
+            .dest_addr = dest_addr,
+            .num_bytes = num_bytes
+        }
+    });
+}
+
 // mz record a marker for end of the log
 static inline void rr_record_end_of_log(void) {
     rr_write_item((RR_log_entry) {
@@ -1012,6 +1026,10 @@ void rr_replay_skipped_calls_internal(RR_callsite_id call_site)
                 cpu_physical_memory_unmap(host_buf, plen,
                                           /*is_write=*/1,
                                           args.variant.cpu_mem_unmap.len);
+            } break;
+            case RR_CALL_HD_TRANSFER: {
+                RR_hd_transfer_args hdt = args.variant.hd_transfer_args;
+                panda_callbacks_hd_transfer(first_cpu, hdt.type, hdt.src_addr, hdt.dest_addr, hdt.num_bytes);
             } break;
             case RR_CALL_HANDLE_PACKET:
                 {
