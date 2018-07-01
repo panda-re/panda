@@ -625,25 +625,23 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
             args.push_back(castTo(I.getArgOperand(i), Int64Type, "", &I));
         }
 
-        CallInst *NewCI = CallInst::Create(replaceIndirectCallF, args);
-
-        NewCI->insertBefore(static_cast<Instruction*>(&I));
-        NewCI->setMetadata("host", LLVMTraceMD);
-
         //TODO: Fix for calls that return values
         // Only delete call if no uses 
         if (I.use_empty()){
+
+            CallInst *NewCI = CallInst::Create(replaceIndirectCallF, args);
+
+            NewCI->insertBefore(static_cast<Instruction*>(&I));
+            NewCI->setMetadata("host", LLVMTraceMD);
+
             I.getParent()->getInstList().erase(&I);
+        } else {
+            printf("Indirect call has uses, not replacing with trampoline\n");
         }
 
     }
 
     //TODO: Should i do something about helper functions?? 
-
-    //record return of call inst
-    //CallInst *returnInst = CallInst::Create(recordReturn, args, "", &I);
-    //I.dump(); 
-
     //handle cases where dynamic values are being used. 
 }
 
