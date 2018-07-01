@@ -16,15 +16,19 @@ PANDAENDCOMMENT */
  * The C struct is defined in llvm_trace2.proto
  *
  */
+#define UNW_LOCAL_ONLY
 
 #include <vector>
 #include <set>
 #include <string>
+#include <libunwind.h>
 
 #include "llvm_trace2.h"
+// #include "function_table.h"
 #include "Extras.h"
 
 extern "C" {
+void replaceIndirectCall(uint64_t A, ...);
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 #include "panda/plugin_plugin.h"
@@ -44,6 +48,7 @@ extern "C" {
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/StringRef.h"
@@ -92,10 +97,67 @@ void recordStartBB(uint64_t fp, uint64_t tb_num){
         ple->mutable_llvmentry()->set_type(FunctionCode::BB);
         ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
 
-
         if (tb_num > 0){
             ple->mutable_llvmentry()->set_tb_num(tb_num);
         }
+        
+        globalLog.write_entry(std::move(ple));
+    }
+}
+
+void replaceIndirectCall(uint64_t fp, uint64_t num_args, ...){
+
+    va_list Args;
+    va_start(Args, num_args);
+    std::vector<uint64_t> Result;
+    for (int i = 0; i < num_args; i++) {
+        uint64_t Val = va_arg(Args, uint64_t);
+        Result.push_back(Val);
+    }
+    va_end(Args);
+
+    // Look up called function pointer
+    Module *mod = tcg_llvm_ctx->getModule();
+    ExecutionEngine *execEngine = tcg_llvm_ctx->getExecutionEngine();
+
+
+    unw_cursor_t cursor;
+    unw_context_t context;
+    unw_word_t offset;
+
+    // Initialize cursor to current frame for local unwinding.
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+    char func_name[64];
+
+    // Set PC for unwind to function pointer
+    unw_set_reg(&cursor, UNW_REG_IP, fp);
+     if (unw_get_proc_name(&cursor, func_name, sizeof(func_name), &offset) == 0) {
+    }
+    printf("Indirectly calling func %s\n", func_name);
+    Function* llvmNewFunc = mod->getFunction(StringRef(func_name));
+
+    std::vector<GenericValue> args(llvmNewFunc->getFunctionType()->getNumParams());
+
+    // Construct GenericValue arguments for Function
+    for (int i = 0; i < llvmNewFunc->getFunctionType()->getNumParams(); i++) {
+        if (llvmNewFunc->getFunctionType()->getParamType(i)->isPointerTy()){
+            args[i].PointerVal = (void*) Result[i];        
+        } else {
+            args[i].IntVal = APInt(64, Result[i]);        
+        }
+    }
+
+    // Call LLVM version of function with passed-in args
+    GenericValue retval = execEngine->runFunction(llvmNewFunc, args);
+
+    if (pandalog && do_record){
+        std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
+        ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
+        ple->mutable_llvmentry()->set_type(FunctionCode::FUNC_CODE_INST_CALL);
+        ple->mutable_llvmentry()->set_address(fp);
+
+        ple->mutable_llvmentry()->set_called_func_name(func_name);
         
         globalLog.write_entry(std::move(ple));
     }
@@ -106,13 +168,7 @@ void recordCall(uint64_t fp){
     Function* calledFunc = (Function*)fp;
 
     StringRef calledFuncName = calledFunc->getName();
-    // if (calledFuncName.empty()){
-    //     printf("Called fp\n");
-    //     calledFunc->print(outs());   
-    //     printf("\n");
-    // }
-    // calledFunc->print(outs());
-
+ 
     if (pandalog && do_record){
         std::unique_ptr<panda::LogEntry> ple (new panda::LogEntry());
         ple->mutable_llvmentry()->set_pc(first_cpu->panda_guest_pc);
@@ -534,7 +590,6 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
         }
 
         printf("call to helper %s\n", name.str().c_str());
-
         //fp = castTo(I.getCalledFunction(), VoidPtrType, name, &I);   
         fp = ConstantInt::get(Int64Type, (uint64_t)calledFunc);
 
@@ -544,25 +599,46 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
             llvmtrace_flags &= ~1;
             printf("iret addr: %p\n", fp); 
         }
+
+        std::vector<Value*> args = make_vector(fp, 0);
+
+        CallInst *CI = CallInst::Create(recordCallF, args);
+
+        CI->insertAfter(static_cast<Instruction*>(&I));
+        CI->setMetadata("host", LLVMTraceMD);
+
     } else if (I.getCalledValue()){
-        // called function is not a constant function
+        //Called function is not a constant function
         Value *calledVal = I.getCalledValue();
 
         printf("call to function value \n");
         calledVal->print(outs());
-        fp = ConstantInt::get(Int64Type, (uint64_t)calledVal);
+
+        fp = castTo(calledVal, Int64Type, "", &I);
+
+        std::vector<Value*> args;
+        args.push_back(fp);
+
+        args.push_back(ConstantInt::get(Int64Type, I.getNumArgOperands()));
+
+        for (int i = 0; i < I.getNumArgOperands(); i++){
+            args.push_back(castTo(I.getArgOperand(i), Int64Type, "", &I));
+        }
+
+        CallInst *NewCI = CallInst::Create(replaceIndirectCallF, args);
+
+        NewCI->insertBefore(static_cast<Instruction*>(&I));
+        NewCI->setMetadata("host", LLVMTraceMD);
+
+        //TODO: Fix for calls that return values
+        // Only delete call if no uses 
+        if (I.use_empty()){
+            I.getParent()->getInstList().erase(&I);
+        }
+
     }
-     
-  
 
     //TODO: Should i do something about helper functions?? 
-
-    std::vector<Value*> args = make_vector(fp, 0);
-
-    CallInst *CI = CallInst::Create(recordCallF, args);
-
-    CI->insertAfter(static_cast<Instruction*>(&I));
-    CI->setMetadata("host", LLVMTraceMD);
 
     //record return of call inst
     //CallInst *returnInst = CallInst::Create(recordReturn, args, "", &I);
@@ -658,14 +734,27 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
 
     //initialize all the other record/logging functions
     PLTV->recordLoadF = cast<Function>(module.getOrInsertFunction("recordLoad", VoidType, VoidPtrType, Int64Type, Int64Type, nullptr));
+
     PLTV->recordStoreF = cast<Function>(module.getOrInsertFunction("recordStore", VoidType, VoidPtrType, Int64Type, Int64Type, nullptr));
+
     PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
+
+    SmallVector<Type *, 0> ArgTys;
+
+    FunctionType* fType = FunctionType::get(VoidType, ArgTys, true);
+    PLTV->replaceIndirectCallF = cast<Function>(module.getOrInsertFunction("replaceIndirectCall", fType));
+
     PLTV->recordSelectF = cast<Function>(module.getOrInsertFunction("recordSelect", VoidType, Int8Type, nullptr));
+
     PLTV->recordSwitchF = cast<Function>(module.getOrInsertFunction("recordSwitch", VoidType, Int64Type, nullptr));
+
     PLTV->recordBranchF = cast<Function>(module.getOrInsertFunction("recordBranch", VoidType, Int8Type, nullptr));
+
     // recordStartBB: 
     PLTV->recordStartBBF = cast<Function>(module.getOrInsertFunction("recordStartBB", VoidType, VoidPtrType, Int64Type, nullptr));
+
     PLTV->recordBBF = cast<Function>(module.getOrInsertFunction("recordBB", VoidType, VoidPtrType, Int32Type, nullptr));
+
     PLTV->recordReturnF = cast<Function>(module.getOrInsertFunction("recordReturn", VoidType, nullptr));
 
     //add external linkages
@@ -676,12 +765,15 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     ADD_MAPPING(recordLoad);
     ADD_MAPPING(recordStore);
     ADD_MAPPING(recordCall);
+    ADD_MAPPING(replaceIndirectCall);
     ADD_MAPPING(recordSelect);
     ADD_MAPPING(recordSwitch);
     ADD_MAPPING(recordBranch);
     ADD_MAPPING(recordStartBB);
     ADD_MAPPING(recordBB);
     ADD_MAPPING(recordReturn);
+
+    // execEngine->addGlobalMapping(module.getFunction("replaceIndirectCall"), (void*)replaceIndirectCall);
     return true; //modified program
 };
 

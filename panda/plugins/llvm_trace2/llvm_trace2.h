@@ -45,7 +45,6 @@ public:
     //Default Destructor    
     ~PandaLLVMTraceVisitor() {};
 
-    Function *log_dynvalF;
     Function *recordBBF;
     Function *recordStartBBF;
     Function *recordStoreF;
@@ -55,11 +54,12 @@ public:
     Function *recordBranchF;
     Function *recordPhiF;
     Function *recordCallF;
+    Function *replaceIndirectCallF;
     Function *recordReturnF;
     Module *module;
 
       // Overrides.
-    void visitLoadInst(LoadInst &I);
+    void visitLoadInst(LoadInst &I);  
     void visitStoreInst(StoreInst &I);
     void visitInstruction(Instruction &I);
     //void visitFunction(Function& F);

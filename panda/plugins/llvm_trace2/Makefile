@@ -3,9 +3,9 @@
 QEMU_CXXFLAGS+= $(LLVM_CXXFLAGS)
 # If you need custom CFLAGS or LIBS, set them up here
 # CFLAGS+=
-# LIBS+=
+LIBS+=-lunwind
 
-QEMU_CXXFLAGS+= -Wno-type-limits -Wno-cast-qual
+QEMU_CXXFLAGS+= -Wno-type-limits -Wno-cast-qual -lunwind
 
 # The main rule for your plugin. List all object-file dependencies.
 $(PLUGIN_TARGET_DIR)/panda_$(PLUGIN_NAME).so: \
