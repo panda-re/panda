@@ -35,7 +35,7 @@ PANDAENDCOMMENT */
 #include "panda/plugin_plugin.h"
 #include "panda/tcg-llvm.h"
 
-#include "fast_shad.h"
+#include "shad.h"
 #include "llvm_taint_lib.h"
 #include "taint_ops.h"
 #include "taint2.h"
@@ -97,7 +97,8 @@ static inline Constant *const_struct_ptr(LLVMContext &C, llvm::Type *ptrT, void 
     return ConstantExpr::getIntToPtr(const_uint64_ptr(C, ptr), ptrT);
 }
 
-static void taint_branch_run(FastShad *shad, uint64_t src, uint64_t size) {
+static void taint_branch_run(Shad *shad, uint64_t src, uint64_t size)
+{
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_branch2, a, size);
@@ -114,7 +115,8 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
     }
 }
 
-static void taint_copyRegToPc_run(FastShad *shad, uint64_t src, uint64_t size) {
+static void taint_copyRegToPc_run(Shad *shad, uint64_t src, uint64_t size)
+{
     // this arg should be the register number
     Addr a = make_laddr(src / MAXREGSIZE, 0);
     PPP_RUN_CB(on_indirect_jump, a, size);
@@ -173,7 +175,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.resetFrameF = M.getFunction("taint_reset_frame");
     PTV.breadcrumbF = M.getFunction("taint_breadcrumb");
 
-    llvm::Type *shadT = M.getTypeByName("class.FastShad");
+    llvm::Type *shadT = M.getTypeByName("class.Shad");
     assert(shadT);
     llvm::Type *shadP = PointerType::getUnqual(shadT);
 
