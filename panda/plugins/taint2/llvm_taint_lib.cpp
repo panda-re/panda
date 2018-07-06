@@ -12,6 +12,11 @@
  * See the COPYING file in the top-level directory.
  *
 PANDAENDCOMMENT */
+/*
+ * Change Log:
+ * 2018-MAY-15   Use copy to propagate taint instead of mix if doing an LLVM
+ *               SHL instruction but with a shift of 0 bits (which does nothing)
+ */
 
 #include <iostream>
 #include <vector>
@@ -747,6 +752,26 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
     if (I.getMetadata("host")) return;
     switch (I.getOpcode()) {
+        case Instruction::Shl:
+        {
+            // operand 1 is the number of bits to shift
+            // if shifting 0 bits, then you're not really shifting at all, so
+            // don't propagate the taint that may be in one byte to them all
+            Value *op1 = I.getOperand(1);
+            if (isa<Constant>(op1))
+            {
+                if (intValue(op1) != 0)
+                {
+                    is_mixed = true;
+                }
+            }
+            else
+            {
+                is_mixed = true;
+            }
+        }
+        break;
+        
         case Instruction::Add:
             {
                 BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
@@ -765,7 +790,6 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
         case Instruction::URem:
         case Instruction::SRem:
         case Instruction::FRem:
-        case Instruction::Shl:
         case Instruction::LShr:
         case Instruction::AShr:
             is_mixed = true;
