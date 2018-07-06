@@ -47,7 +47,7 @@
 #include "shad_dir_32.h"
 #include "shad_dir_64.h"
 #include "llvm_taint_lib.h"
-#include "fast_shad.h"
+#include "shad.h"
 #include "taint_ops.h"
 #include "taint2.h"
 #include "label_set.h"
@@ -67,7 +67,7 @@ int after_block_exec(CPUState *cpu, TranslationBlock *tb);
 int phys_mem_write_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, target_ulong size, void *buf);
 
-void taint_state_changed(FastShad *, uint64_t, uint64_t);
+void taint_state_changed(Shad *, uint64_t, uint64_t);
 PPP_PROT_REG_CB(on_taint_change);
 PPP_CB_BOILERPLATE(on_taint_change);
 
@@ -118,10 +118,53 @@ int phys_mem_read_callback(CPUState *cpu, target_ulong pc, target_ulong addr, ta
     return 0;
 }
 
+int replay_hd_transfer_callback(CPUState *cpu, uint32_t type, uint64_t src_addr,
+                                uint64_t dst_addr, uint32_t num_bytes)
+{
+    if (!taintEnabled) {
+        return 0;
+    }
+
+    Shad *src_shad, *dst_shad;
+
+    switch (type) {
+    case HD_TRANSFER_PORT_TO_IOB:
+        src_shad = &shadow->ports;
+        dst_shad = &shadow->io;
+        break;
+    case HD_TRANSFER_IOB_TO_PORT:
+        src_shad = &shadow->io;
+        dst_shad = &shadow->ports;
+        break;
+    case HD_TRANSFER_HD_TO_IOB:
+        src_shad = &shadow->hd;
+        dst_shad = &shadow->io;
+        break;
+    case HD_TRANSFER_IOB_TO_HD:
+        src_shad = &shadow->io;
+        dst_shad = &shadow->hd;
+        break;
+    case HD_TRANSFER_HD_TO_RAM:
+        src_shad = &shadow->hd;
+        dst_shad = &shadow->ram;
+        break;
+    case HD_TRANSFER_RAM_TO_HD:
+        src_shad = &shadow->ram;
+        dst_shad = &shadow->hd;
+        break;
+    default:
+        fprintf(stderr, "invalid HD transfer type\n");
+        return 0;
+    }
+
+    Shad::copy(dst_shad, dst_addr, src_shad, src_addr, num_bytes);
+
+    return 0;
+}
+
 void taint2_enable_tainted_pointer(void) {
     tainted_pointer = true;
 }
-
 
 void taint2_enable_taint(void) {
     if(taintEnabled) {return;}
@@ -137,6 +180,9 @@ void taint2_enable_taint(void) {
     panda_register_callback(taint2_plugin, PANDA_CB_PHYS_MEM_BEFORE_WRITE, pcb);
     pcb.asid_changed = asid_changed_callback;
     panda_register_callback(taint2_plugin, PANDA_CB_ASID_CHANGED, pcb);
+
+    pcb.replay_hd_transfer = replay_hd_transfer_callback;
+    panda_register_callback(taint2_plugin, PANDA_CB_REPLAY_HD_TRANSFER, pcb);
 
     panda_enable_precise_pc(); //before_block_exec requires precise_pc for panda_current_asid
 
@@ -230,24 +276,31 @@ void panda_virtual_string_read(CPUState *cpu, target_ulong vaddr, char *str) {
  * @brief Wrapper for running the registered `on_taint_change` PPP callbacks.
  * Called by the shadow memory implementation whenever changes occur to it.
  */
-void taint_state_changed(FastShad *fast_shad, uint64_t shad_addr, uint64_t size) {
+void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
+{
     Addr addr;
-    if (fast_shad == &shadow->llv) {
+    if (shad == &shadow->llv) {
         addr = make_laddr(shad_addr / MAXREGSIZE, shad_addr % MAXREGSIZE);
-    } else if (fast_shad == &shadow->ram) {
+    } else if (shad == &shadow->ram) {
         addr = make_maddr(shad_addr);
-    } else if (fast_shad == &shadow->grv) {
+    } else if (shad == &shadow->grv) {
         addr = make_greg(shad_addr / sizeof(target_ulong), shad_addr % sizeof(target_ulong));
-    } else if (fast_shad == &shadow->gsv) {
+    } else if (shad == &shadow->gsv) {
         addr.typ = GSPEC;
         addr.val.gs = shad_addr;
         addr.off = 0;
         addr.flag = (AddrFlag)0;
-    } else if (fast_shad == &shadow->ret) {
+    } else if (shad == &shadow->ret) {
         addr.typ = RET;
         addr.val.ret = 0;
         addr.off = shad_addr;
         addr.flag = (AddrFlag)0;
+    } else if (shad == &shadow->hd) {
+        addr = make_haddr(shad_addr);
+    } else if (shad == &shadow->io) {
+        addr = make_iaddr(shad_addr);
+    } else if (shad == &shadow->ports) {
+        addr = make_paddr(shad_addr);
     } else return;
 
     PPP_RUN_CB(on_taint_change, addr, size);

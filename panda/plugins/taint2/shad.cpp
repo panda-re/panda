@@ -25,14 +25,18 @@ PANDAENDCOMMENT */
 #include <sys/mman.h>
 
 #include "taint_defines.h"
-#include "fast_shad.h"
+#include "shad.h"
 
 #include <set>
 #include <string>
 
+Shad::~Shad() = default;
+
 typedef const std::set<uint32_t> *LabelSetP;
 
-FastShad::FastShad(std::string name, uint64_t labelsets) : _name(name) {
+FastShad::FastShad(std::string name, uint64_t labelsets)
+{
+    this->_name = name;
     uint64_t bytes = sizeof(TaintData) * labelsets;
 
     TaintData *array;
@@ -63,4 +67,13 @@ FastShad::~FastShad() {
     } else {
         munmap(orig_labels, sizeof(TaintData) * size);
     }
+}
+
+LazyShad::LazyShad(std::string name, uint64_t max_size)
+{
+    assert(max_size > 0);
+}
+
+LazyShad::~LazyShad()
+{
 }
