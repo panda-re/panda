@@ -17,6 +17,12 @@
  * Ryan Whelan, Tim Leek, Sam Coe, Nathan VanBenschoten
  */
 
+/*
+ * Change Log:
+ * 2018-MAY-07   Add detaint_cb0 option to remove taint from bytes whose
+ *               control bits are all zero.
+ */
+ 
 // This needs to be defined before anything is included in order to get
 // the PRIx64 macro
 #ifndef __STDC_FORMAT_MACROS
@@ -96,6 +102,7 @@ bool tainted_pointer = true;
 bool optimize_llvm = true;
 extern bool inline_taint;
 bool debug_taint = false;
+bool detaint_cb0_bytes = false;
 
 /*
  * These memory callbacks are only for whole-system mode.  User-mode memory
@@ -289,6 +296,8 @@ bool init_plugin(void *self) {
     std::cerr << PANDA_MSG "llvm optimizations " << PANDA_FLAG_STATUS(optimize_llvm) << std::endl;
     debug_taint = panda_parse_bool_opt(args, "debug", "enable taint debugging");
     std::cerr << PANDA_MSG "taint debugging " << PANDA_FLAG_STATUS(debug_taint) << std::endl;
+    detaint_cb0_bytes = panda_parse_bool_opt(args, "detaint_cb0", "detaint bytes whose control mask bits are 0");
+    std::cerr << PANDA_MSG "detaint if control bits 0 " << PANDA_FLAG_STATUS(detaint_cb0_bytes) << std::endl;
 
     // load dependencies
     panda_require("callstack_instr");
