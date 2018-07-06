@@ -45,14 +45,14 @@ extern bool detaint_cb0_bytes;
 
 }
 
-void detaint_on_cb0(FastShad *shad, uint64_t addr, uint64_t size);
+void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte.
 // This reduces false positives by removing taint from bytes which were formerly
 // tainted, but whose values are no longer controlled by any tainted data.
-void detaint_on_cb0(FastShad *shad, uint64_t addr, uint64_t size)
+void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
 {
     uint64_t curAddr = 0;
     for (int i = 0; i < size; i++)
