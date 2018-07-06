@@ -12,6 +12,11 @@
  *
 PANDAENDCOMMENT */
 
+/*
+ * Change Log:
+ * 2018-MAY-07   Detaint bytes whose control mask bits all become 0
+ */
+ 
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -36,9 +41,31 @@ uint64_t labelset_count;
 extern "C" {
 
 extern bool tainted_pointer;
+extern bool detaint_cb0_bytes;
 
 }
 
+void detaint_on_cb0(FastShad *shad, uint64_t addr, uint64_t size);
+void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
+
+// Remove the taint marker from any bytes whose control mask bits go to 0.
+// A 0 control mask bit means that bit does not impact the value in the byte.
+// This reduces false positives by removing taint from bytes which were formerly
+// tainted, but whose values are no longer controlled by any tainted data.
+void detaint_on_cb0(FastShad *shad, uint64_t addr, uint64_t size)
+{
+    uint64_t curAddr = 0;
+    for (int i = 0; i < size; i++)
+    {
+        curAddr = addr + i;
+        TaintData td = shad->query_full(curAddr);
+        if (td.cb_mask == 0)
+        {
+            taint_delete(shad, curAddr, 1);
+            taint_log("detaint: control bits 0 for 0x%lx\n", curAddr);
+        }
+    }
+}
 // Memlog functions.
 
 uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
@@ -154,6 +181,11 @@ void taint_parallel_compute(
             cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
+    
+    if (detaint_cb0_bytes)
+    {
+        detaint_on_cb0(shad, dest, src_size);
+    }
 }
 
 static inline TaintData mixed_labels(FastShad *shad, uint64_t addr, uint64_t size,
@@ -259,8 +291,18 @@ void taint_pointer(
 
             // Unions usually destroy controlled bits. Tainted pointer is
             // a special case.
+            uint8_t oldCBMask = dest_td.cb_mask;
             dest_td.cb_mask = byte_td.cb_mask;
-            shad_dest->set_full(dest + i, dest_td);
+            if (detaint_cb0_bytes && (byte_td.cb_mask == 0) && (oldCBMask != 0))
+            {
+                taint_delete(shad_dest, (dest + i), 1);
+                taint_log("detaint: control bits 0 for 0x%lx\n",
+                    (dest + i));
+            }
+            else
+            {
+                shad_dest->set_full(dest + i, dest_td);
+            }
         }
     }
 }
@@ -639,4 +681,9 @@ static void update_cb(
             orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
     write_cb_masks(shad_dest, dest, size, cb_masks);
+    
+    if (detaint_cb0_bytes)
+    {
+        detaint_on_cb0(shad_dest, dest, size);
+    }
 }
