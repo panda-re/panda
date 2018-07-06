@@ -288,6 +288,12 @@ void taint_state_changed(Shad *shad, uint64_t shad_addr, uint64_t size)
         addr.val.ret = 0;
         addr.off = shad_addr;
         addr.flag = (AddrFlag)0;
+    } else if (shad == &shadow->hd) {
+        addr = make_haddr(shad_addr);
+    } else if (shad == &shadow->io) {
+        addr = make_iaddr(shad_addr);
+    } else if (shad == &shadow->ports) {
+        addr = make_paddr(shad_addr);
     } else return;
 
     PPP_RUN_CB(on_taint_change, addr, size);

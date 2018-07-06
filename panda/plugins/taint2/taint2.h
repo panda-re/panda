@@ -86,6 +86,9 @@ struct ShadowState {
 };
 
 extern "C" {
+Addr make_haddr(uint64_t a);
+Addr make_iaddr(uint64_t a);
+Addr make_paddr(uint64_t a);
 Addr make_maddr(uint64_t a);
 Addr make_laddr(uint64_t a, uint64_t o);
 Addr make_greg(uint64_t r, uint16_t off);

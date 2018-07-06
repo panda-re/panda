@@ -12,8 +12,8 @@
  *
 PANDAENDCOMMENT */
 
-#ifndef __FAST_SHAD_H
-#define __FAST_SHAD_H
+#ifndef __SHAD_H
+#define __SHAD_H
 
 #include <algorithm>
 #include <cassert>
