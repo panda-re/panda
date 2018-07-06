@@ -36,13 +36,13 @@ else
 fi
 
 ### Check for protobuf v2.
-if pkg-config --exists protobuf "protobuf > 1 protobuf < 3"; then
-    echo "Using protobuf $(pkg-config --modversion protobuf)."
-else
-    echo "Found incompatible protobuf $(pkg-config --modversion protobuf) -- ABORTING"
-    echo "See panda/docs/compile.md for instructions on building protobuf v2."
-    exit 1
-fi
+#if pkg-config --exists protobuf "protobuf > 1 protobuf < 3"; then
+#    echo "Using protobuf $(pkg-config --modversion protobuf)."
+#else
+#    echo "Found incompatible protobuf $(pkg-config --modversion protobuf) -- ABORTING"
+#    echo "See panda/docs/compile.md for instructions on building protobuf v2."
+#    exit 1
+#fi
 
 ### Check that PANDA_LLVM is correct and attempt to fix it if not.
 if [ "$PANDA_LLVM" != "" ] && [ ! -d "$PANDA_LLVM" ]; then
