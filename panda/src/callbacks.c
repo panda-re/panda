@@ -121,7 +121,7 @@ bool panda_load_plugin(const char *filename, const char *plugin_name) {
     nb_panda_plugins++;
 
     // Call init_fn and check status.
-    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins].name);
+    fprintf(stderr, PANDA_MSG_FMT "initializing %s\n", PANDA_CORE_NAME, panda_plugins[nb_panda_plugins-1].name);
     panda_help_wanted = false;
     panda_args_set_help_wanted(plugin_name);
     if (panda_help_wanted) {
