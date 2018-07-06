@@ -29,6 +29,7 @@ Arguments
 * `binary`: boolean. Whether to use binary taint (i.e., data is tainted or not tainted, rather than supporting arbitrary numbers of labels).
 * `word`: boolean. Whether to track taint at word-level (i.e., 4 bytes on a 32-bit architecture) as opposed to byte-level. Can provide a performance improvement at the cost of reduced precision.
 * `opt`:  boolean. Whether to run an optimization pass on the instrumented LLVM code.
+* `detaint_cb0`: boolean. Whether to detaint bytes whose control mask bits have become 0. Can reduce false positives when tainted data no longer influences a byte's value.
 
 Dependencies
 ------------
