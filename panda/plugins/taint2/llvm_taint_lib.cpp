@@ -113,7 +113,7 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
     // I think this has to be an LLVM register
     Addr ptr_addr = make_laddr(ptr / MAXREGSIZE, 0);
     if (is_store) {
-        PPP_RUN_CB(on_ptr_store, ptr_addr, dest, size);    
+        PPP_RUN_CB(on_ptr_store, ptr_addr, dest, size);
     }
     else {
         PPP_RUN_CB(on_ptr_load, ptr_addr, src, size);
@@ -598,7 +598,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
     }
-    assert(getValueSize(src1) == getValueSize(src1));
+    assert(getValueSize(src1) == getValueSize(src1)); //what?? for cache?
 
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
@@ -880,7 +880,7 @@ bool PandaTaintVisitor::getAddr(Value *addrVal, Addr& addrOut) {
         return true;
     }
 
-#if defined (TARGET_PPC) 
+#if defined (TARGET_PPC)
     if (contains_offset(gpr)) {
         addrOut.typ = GREG;
         addrOut.val.gr = (offset - cpu_off(gpr)) / cpu_size(gpr[0]);
@@ -1008,8 +1008,8 @@ void PandaTaintVisitor::visitStoreInst(StoreInst &I) {
 
 /*
  * In TCG->LLVM translation, it seems like this instruction is only used to get
- * the pointer to the CPU state.  Because of this, we will just delete taint at
- * the destination LLVM register.
+ * the pointer to the CPU state.  Because of this, we will just delete taint in
+ * later ops at the destination LLVM register.
  */
 void PandaTaintVisitor::visitGetElementPtrInst(GetElementPtrInst &I) {
     insertTaintMix(I, I.getOperand(0));

@@ -16,7 +16,7 @@ PANDAENDCOMMENT */
  * Change Log:
  * 2018-MAY-07   Detaint bytes whose control mask bits all become 0
  */
- 
+
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -182,7 +182,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad, dest, src_size);
@@ -260,10 +260,18 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
 // union that mix with each byte of the actual copied data. So if the pointer
 // is labeled [1], [2], [3], [4], and the bytes are labeled [5], [6], [7], [8],
 // we get [12345], [12346], [12347], [12348] as output taint of the load/store.
+<<<<<<< 107343da20d452b542fa970ae40e40722961c7fb
 void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
                    uint64_t ptr_size, Shad *shad_src, uint64_t src,
                    uint64_t size, uint64_t is_store)
 {
+=======
+void taint_pointer(
+        FastShad *shad_dest, uint64_t dest,
+        FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
+        FastShad *shad_src, uint64_t src, uint64_t size,
+        uint64_t is_store) {
+>>>>>>> a few debug prints
     taint_log("ptr: %s[%lx+%lx] <- %s[%lx] @ %s[%lx+%lx]\n",
             shad_dest->name(), dest, size,
             shad_src->name(), src, shad_ptr->name(), ptr, ptr_size);
@@ -332,13 +340,14 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
             if (src != ones) { // otherwise it's a constant.
                 taint_log("slct\n");
                 Shad::copy(shad, dest, shad, src, size);
+                taint_log("does_it_happen?\n");
             }
             return;
         }
 
         src = va_arg(argp, uint64_t);
         srcsel = va_arg(argp, uint64_t);
-    } 
+    }
 
     tassert(false && "Couldn't find selected argument!!");
 }
@@ -355,7 +364,7 @@ static void find_offset(Shad *greg, Shad *gspec, uint64_t offset,
 {
 #ifdef TARGET_PPC
     if (cpu_contains(gpr, offset)) {
-#else 
+#else
     if (cpu_contains(regs, offset)) {
 #endif
         *dest = greg;
@@ -421,7 +430,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
                        uint64_t labels_per_reg)
 {
     int64_t dest_offset = dest - env_ptr, src_offset = src - env_ptr;
-    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) || 
+    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) ||
             src_offset < 0 || (size_t)src_offset >= sizeof(CPUArchState)) {
         taint_log("hostmemcpy: irrelevant\n");
         return;
@@ -684,7 +693,7 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
             orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
     write_cb_masks(shad_dest, dest, size, cb_masks);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad_dest, dest, size);
