@@ -63,13 +63,13 @@ if [ "$PANDA_LLVM" != "" ]; then
     echo "Found PANDA LLVM on ${PANDA_LLVM_ROOT} -- LLVM SUPPORT IS ENABLED"
     LLVM_CONFIG="--enable-llvm --with-llvm=${PANDA_LLVM}"
 else
-  ## Fallback to system LLVM.
-    if llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]; then
-        echo "Found SYSTEM LLVM -- LLVM SUPPORT IS ENABLED"
-        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config --prefix)"
-    elif llvm-config-3.3 --version >/dev/null 2>/dev/null; then
-        echo "Found SYSTEM LLVM -- LLVM SUPPORT IS ENABLED"
+    ## Fallback to system LLVM.
+    if llvm-config-3.3 --version >/dev/null 2>/dev/null; then
+        echo "Found LLVM on $(llvm-config-3.3 --prefix) -- LLVM SUPPORT IS ENABLED"
         LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config-3.3 --prefix)"
+    elif llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]; then
+        echo "Found LLVM on $(llvm-config --prefix) -- LLVM SUPPORT IS ENABLED"
+        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config --prefix)"
     else
         echo "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
         LLVM_CONFIG=""
