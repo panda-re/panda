@@ -600,7 +600,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
     if (!is_mixed) {
         assert(getValueSize(dest) == getValueSize(src1));
     }
-    assert(getValueSize(src1) == getValueSize(src1)); //what?? for cache?
+    assert(getValueSize(src1) == getValueSize(src2));
 
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
@@ -636,6 +636,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     }
     //neither are constants, but one can be an untainted zero
 
+    assert(getValueSize(src1) == getValueSize(src2)); //if this fails we can keep size independent
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
