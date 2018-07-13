@@ -48,6 +48,7 @@ extern bool detaint_cb0_bytes;
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
 
+
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte.
 // This reduces false positives by removing taint from bytes which were formerly
@@ -66,6 +67,7 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
         }
     }
 }
+
 // Memlog functions.
 
 uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
@@ -224,6 +226,38 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
     taint_log_labels(shad, dest, dest_size);
 }
 
+void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
+                       uint64_t src1, uint64_t src2, uint64_t src_size,
+                       llvm::Instruction *inst)
+{
+    taint_log("mul_compute invoked! ");
+
+    bool isTainted1 = shad->query_full(src1).cb_mask != 0;
+    bool isTainted2 = shad->query_full(src2).cb_mask != 0;
+    tassert((isTainted1 || isTainted2) && "error: should not both be untainted");
+    if (!(isTainted1 && isTainted2)){ //the case we won't propagate
+        llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
+        if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(cleanArg)){
+            if (CI->isZero())  return ;
+            //TODO isOne() ? parallel taint
+        } else if (llvm::ConstantFP *CFP = llvm::dyn_cast<llvm::ConstantFP>(cleanArg)){
+            if (CFP->isZero() ) return ;
+        }
+        else{
+            taint_log("mul_compute arg of type %s", cleanArg->getType());
+        }
+    }
+
+    TaintData td = TaintData::make_union(
+            mixed_labels(shad, src1, src_size, false),
+            mixed_labels(shad, src2, src_size, false),
+            true);
+    bulk_set(shad, dest, dest_size, td);
+    taint_log("mul_compute: %s[%lx+%lx] <- %lx + %lx ",
+            shad->name(), dest, dest_size, src1, src2);
+    taint_log_labels(shad, dest, dest_size);
+}
+
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
 {
     taint_log("remove: %s[%lx+%lx]\n", shad->name(), dest, size);
@@ -260,18 +294,10 @@ void taint_pointer_run(uint64_t src, uint64_t ptr, uint64_t dest, bool is_store,
 // union that mix with each byte of the actual copied data. So if the pointer
 // is labeled [1], [2], [3], [4], and the bytes are labeled [5], [6], [7], [8],
 // we get [12345], [12346], [12347], [12348] as output taint of the load/store.
-<<<<<<< 107343da20d452b542fa970ae40e40722961c7fb
 void taint_pointer(Shad *shad_dest, uint64_t dest, Shad *shad_ptr, uint64_t ptr,
                    uint64_t ptr_size, Shad *shad_src, uint64_t src,
                    uint64_t size, uint64_t is_store)
 {
-=======
-void taint_pointer(
-        FastShad *shad_dest, uint64_t dest,
-        FastShad *shad_ptr, uint64_t ptr, uint64_t ptr_size,
-        FastShad *shad_src, uint64_t src, uint64_t size,
-        uint64_t is_store) {
->>>>>>> a few debug prints
     taint_log("ptr: %s[%lx+%lx] <- %s[%lx] @ %s[%lx+%lx]\n",
             shad_dest->name(), dest, size,
             shad_src->name(), src, shad_ptr->name(), ptr, ptr_size);
