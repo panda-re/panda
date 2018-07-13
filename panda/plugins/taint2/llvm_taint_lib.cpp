@@ -167,6 +167,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixF = M.getFunction("taint_mix"),
     PTV.pointerF = M.getFunction("taint_pointer"),
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
+    PTV.mulCompF = M.getFunction("taint_mul_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
     PTV.sextF = M.getFunction("taint_sext");
@@ -233,6 +234,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_mix);
     ADD_MAPPING(taint_pointer);
     ADD_MAPPING(taint_mix_compute);
+    ADD_MAPPING(taint_mul_compute);
     ADD_MAPPING(taint_parallel_compute);
     ADD_MAPPING(taint_copy);
     ADD_MAPPING(taint_sext);
@@ -611,6 +613,40 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
     inlineCallAfter(I, is_mixed ? mixCompF : parallelCompF, args);
 }
 
+// if we multiply tainted_val * 0, and 0 is untainted,
+// the result is no longer controlable, so do not propagate taint
+void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
+    LLVMContext &ctx = I.getContext();
+    if (!dest) dest = &I;
+
+    if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        return; // do nothing, should not happen in optimized code
+    } else if (isa<Constant>(src1)) {
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
+            if (CFP->isZero()) return;
+        }
+    } else if (isa<Constant>(src2)) {
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
+            if (CFP->isZero()) return;
+        }
+    }
+    //neither are constants, but one can be an untainted zero
+
+    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    Constant *src_size = const_uint64(ctx, getValueSize(src1));
+
+    vector<Value *> args{
+        llvConst, constSlot(dest), dest_size,
+        constSlot(src1), constSlot(src2), src_size,
+        constInstr(&I)
+    };
+    inlineCallAfter(I, mulCompF, args);
+}
+
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
     LLVMContext &ctx = I.getContext();
     Value *dest = &I;
@@ -754,6 +790,8 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
     bool is_mixed = false;
     if (I.getMetadata("host")) return;
     switch (I.getOpcode()) {
+        case Instruction::LShr:
+        case Instruction::AShr:
         case Instruction::Shl:
         {
             // operand 1 is the number of bits to shift
@@ -773,7 +811,11 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
             }
         }
         break;
-        
+
+        case Instruction::Mul:
+        case Instruction::FMul:
+            insertTaintMul(I, &I, I.getOperand(0), I.getOperand(1));
+            return;
         case Instruction::Add:
             {
                 BinaryOperator *AI = dyn_cast<BinaryOperator>(&I);
@@ -782,18 +824,14 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
                 else if (isIrrelevantAdd(AI)) return;
             } // fall through otherwise.
         case Instruction::Sub:
-        case Instruction::Mul:
         case Instruction::UDiv:
         case Instruction::SDiv:
         case Instruction::FAdd:
         case Instruction::FSub:
-        case Instruction::FMul:
         case Instruction::FDiv:
         case Instruction::URem:
         case Instruction::SRem:
         case Instruction::FRem:
-        case Instruction::LShr:
-        case Instruction::AShr:
             is_mixed = true;
             break;
             // mixed; i.e. operation is not bitwise, so taint transfers
@@ -1430,6 +1468,9 @@ void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {
 
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
     assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
+    printf("Found shufflevector, is this a c helper\n");
+    printf("taint2: shufflevector in basic block: %s.\n",
+        I.getParent()->getName().str().c_str());
     insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
 }
 
