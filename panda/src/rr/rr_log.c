@@ -1619,6 +1619,11 @@ void rr_do_end_replay(int is_error)
     }
     rr_max_num_queue_entries = 0;
 
+<<<<<<< HEAD
+=======
+    //printf("Checksum of guest memory: %#08x\n", rr_checksum_memory_internal());
+
+>>>>>>> b76306859f... commenting calls to rr_checksum_memory_internal() to prevent Seg Fault
     // mz some more sanity checks - the queue should contain only the RR_LAST
     // element
     if (is_error) {
