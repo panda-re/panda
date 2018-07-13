@@ -231,9 +231,12 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        llvm::Instruction *inst)
 {
     taint_log("mul_compute invoked! ");
-
-    bool isTainted1 = shad->query_full(src1).cb_mask != 0;
-    bool isTainted2 = shad->query_full(src2).cb_mask != 0;
+    bool isTainted1 = false;
+    bool isTainted2 = false;
+    for (int i = 0; i < src_size; ++i) {
+        isTainted1 |= shad->query_full(src1+i).cb_mask != 0;
+        isTainted2 |= shad->query_full(src2+i).cb_mask != 0;
+    }
     tassert((isTainted1 || isTainted2) && "error: should not both be untainted");
     if (!(isTainted1 && isTainted2)){ //the case we won't propagate
         llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
@@ -248,14 +251,7 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         }
     }
 
-    TaintData td = TaintData::make_union(
-            mixed_labels(shad, src1, src_size, false),
-            mixed_labels(shad, src2, src_size, false),
-            true);
-    bulk_set(shad, dest, dest_size, td);
-    taint_log("mul_compute: %s[%lx+%lx] <- %lx + %lx ",
-            shad->name(), dest, dest_size, src1, src2);
-    taint_log_labels(shad, dest, dest_size);
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
