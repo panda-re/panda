@@ -28,7 +28,6 @@ PANDAENDCOMMENT */
 #include "Extras.h"
 
 extern "C" {
-void replaceIndirectCall(uint64_t A, ...);
 #include "panda/plugin.h"
 #include "panda/tcg-llvm.h"
 #include "panda/plugin_plugin.h"
@@ -120,7 +119,6 @@ void replaceIndirectCall(uint64_t fp, uint64_t num_args, ...){
     Module *mod = tcg_llvm_ctx->getModule();
     ExecutionEngine *execEngine = tcg_llvm_ctx->getExecutionEngine();
 
-
     unw_cursor_t cursor;
     unw_context_t context;
     unw_word_t offset;
@@ -132,8 +130,11 @@ void replaceIndirectCall(uint64_t fp, uint64_t num_args, ...){
 
     // Set PC for unwind to function pointer
     unw_set_reg(&cursor, UNW_REG_IP, fp);
-     if (unw_get_proc_name(&cursor, func_name, sizeof(func_name), &offset) == 0) {
+    if (unw_get_proc_name(&cursor, func_name, sizeof(func_name), &offset) == 0) {
+        printf("Indirect call to unknown function");
+        return;
     }
+
     printf("Indirectly calling func %s\n", func_name);
     Function* llvmNewFunc = mod->getFunction(StringRef(func_name));
 
@@ -612,7 +613,6 @@ void PandaLLVMTraceVisitor::visitCallInst(CallInst &I){
         Value *calledVal = I.getCalledValue();
 
         printf("call to function value \n");
-        calledVal->print(outs());
 
         fp = castTo(calledVal, Int64Type, "", &I);
 
@@ -738,7 +738,6 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     PLTV->recordCallF = cast<Function>(module.getOrInsertFunction("recordCall", VoidType, Int64Type, nullptr));
 
     SmallVector<Type *, 0> ArgTys;
-
     FunctionType* fType = FunctionType::get(VoidType, ArgTys, true);
     PLTV->replaceIndirectCallF = cast<Function>(module.getOrInsertFunction("replaceIndirectCall", fType));
 
@@ -771,7 +770,6 @@ bool PandaLLVMTracePass::doInitialization(Module &module){
     ADD_MAPPING(recordBB);
     ADD_MAPPING(recordReturn);
 
-    // execEngine->addGlobalMapping(module.getFunction("replaceIndirectCall"), (void*)replaceIndirectCall);
     return true; //modified program
 };
 
@@ -794,12 +792,12 @@ const char* infer_register(uint32_t offset){
     }
 }
 
-char* lookup_libname(target_ulong curpc, OsiModules* ms){
+OsiModule* lookup_libname(target_ulong curpc, OsiModules* ms){
     for (int i = 0; i < ms->num; i++){
         if (curpc >= ms->module[i].base && curpc <= ms->module[i].base + ms->module[i].size){
             //we've found the module this belongs to
             //return name of module
-            return ms->module[i].name;
+            return &ms->module[i];
         }
     }
     return NULL;
@@ -815,7 +813,7 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
     // Get dynamic libraries of current process
 
     //Look up mapping/library name
-    const char* lib_name = NULL;
+    OsiModule* lib = NULL;
     if (use_osi) {
         OsiProc *current = get_current_process(env);
         OsiModules *ms = get_libraries(env, current);
@@ -823,11 +821,13 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         target_ulong curpc = panda_current_pc(env);
 
         if (ms == NULL){
-            lib_name = "";
+            lib = NULL;
         } else {
-            lib_name = lookup_libname(curpc, ms);
+            lib = lookup_libname(curpc, ms);
+            if (lib != NULL) {
+                printf("lib_name %s\n", lib->name);
+            }
         }
-        printf("lib_name %s\n", lib_name);
     }
 
     if (llvmtrace_flags & 1 && !record_int){
@@ -849,8 +849,9 @@ int before_block_exec(CPUState *env, TranslationBlock *tb) {
         
             ple->mutable_llvmentry()->set_flags(llvmtrace_flags);
             
-            if (lib_name != NULL){
-                ple->mutable_llvmentry()->set_vma_name(lib_name);
+            if (lib != NULL){
+                ple->mutable_llvmentry()->set_vma_name(lib->name);
+                ple->mutable_llvmentry()->set_vma_base(lib->base);
             }
         }   
         
