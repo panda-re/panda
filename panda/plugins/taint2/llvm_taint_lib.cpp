@@ -831,9 +831,14 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
         case Instruction::Sub:
         case Instruction::UDiv:
         case Instruction::SDiv:
-        case Instruction::FAdd:
-        case Instruction::FSub:
         case Instruction::FDiv:
+        case Instruction::FSub:
+            if (I.getOperand(0) == I.getOperand(1)){ //afaik you can test value equal like this
+                return; // these operations have exactly 1 result if op is repeated, no need to taint
+            }
+            is_mixed = true;
+            break;
+        case Instruction::FAdd:
         case Instruction::URem:
         case Instruction::SRem:
         case Instruction::FRem:
