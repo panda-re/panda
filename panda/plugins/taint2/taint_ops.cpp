@@ -247,7 +247,7 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
             if (CFP->isZero() ) return ;
         }
         else{
-            taint_log("mul_compute arg of type %s", cleanArg->getType());
+            taint_log("mul_compute arg of type %s", cleanArg->getType()->getStructName().str().c_str());
         }
     }
 
