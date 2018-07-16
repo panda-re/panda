@@ -627,14 +627,18 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
         } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
             if (CFP->isZero()) return;
         }
+        insertTaintMix(I, src2);
+        return;
     } else if (isa<Constant>(src2)) {
         if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
             if (CI->isZero()) return;
         } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
             if (CFP->isZero()) return;
         }
+        insertTaintMix(I, src1);
+        return;
     }
-    //neither are constants, but one can be an untainted zero
+    //neither are constants, but one can be a dynamic untainted zero
 
     assert(getValueSize(src1) == getValueSize(src2)); //if this fails we can keep size independent
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
