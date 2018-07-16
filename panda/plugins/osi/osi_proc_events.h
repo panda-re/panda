@@ -1,17 +1,6 @@
-#ifndef OSI_PROC_EVENTS_H
-#define OSI_PROC_EVENTS_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "config.h"
-#include "qemu-common.h"
+#pragma once
+#include "panda/plugin.h"
 #include "osi_types.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 /*!
  * @brief Branch prediction hint macros.
@@ -78,4 +67,3 @@ void procstate_update(OsiProcs *ps, OsiProcs **in, OsiProcs **out);
 }
 #endif
 
-#endif
