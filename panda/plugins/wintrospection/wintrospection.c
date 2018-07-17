@@ -19,6 +19,8 @@ PANDAENDCOMMENT */
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <iconv.h>
+
 #include "panda/rr/rr_log.h"
 
 #include "osi/osi_types.h"
@@ -415,21 +417,38 @@ PTR get_next_mod(CPUState *cpu, PTR mod) {
     return next;
 }
 
-char *read_unicode_string(CPUState *cpu, uint32_t pUstr) {
+char *read_unicode_string(CPUState *cpu, uint32_t pUstr)
+{
     win_unicode_string_t s;
-    assert(-1 != panda_virtual_memory_rw(cpu, pUstr, (uint8_t *)&s, sizeof(s), false));
+    assert(-1 != panda_virtual_memory_rw(cpu, pUstr, (uint8_t *)&s, sizeof(s),
+                                         false));
 
     if (s.Length == 0 || !s.Buffer) {
-        return g_strdup("");
+        return strdup("");
     }
 
-    // Length field is in bytes - see: https://msdn.microsoft.com/en-us/library/windows/desktop/aa380518(v=vs.85).aspx
-    char *fileName = g_malloc0((s.Length+1)*sizeof(char));
-    assert(-1 != panda_virtual_memory_rw(cpu, s.Buffer, (uint8_t *)fileName, s.Length, false));
-    char *fileName_ascii = g_str_to_ascii(fileName, "C");
+    size_t in_remaining = s.Length + 1;
+    char *utf16 = (char *)malloc(in_remaining);
+    assert(-1 != panda_virtual_memory_rw(cpu, s.Buffer, (uint8_t *)utf16,
+                                         s.Length, false));
+    char *cur16 = utf16;
 
-    g_free(fileName);
-    return fileName_ascii;
+    size_t out_remaining = in_remaining;
+    char *utf8 = (char *)malloc(out_remaining);
+    char *cur8 = utf8;
+
+    iconv_t cd = iconv_open("UTF-8", "UTF-16");
+    iconv(cd, &cur16, &in_remaining, &cur8, &out_remaining);
+    iconv_close(cd);
+
+    char *result = strdup(utf8);
+
+    free(utf16);
+    free(utf8);
+
+    fprintf(stderr, "debug filename=%s\n", result);
+
+    return result;
 }
 
 char *get_objname(CPUState *cpu, uint32_t obj) {
@@ -439,7 +458,7 @@ char *get_objname(CPUState *cpu, uint32_t obj) {
 }
 
 char *get_file_obj_name(CPUState *cpu, uint32_t fobj) {
-    return read_unicode_string(cpu, fobj+FILE_OBJECT_NAME_OFF);
+    return read_unicode_string(cpu, fobj + FILE_OBJECT_NAME_OFF);
 }
 
 int64_t get_file_obj_pos(CPUState *cpu, uint32_t fobj) {
