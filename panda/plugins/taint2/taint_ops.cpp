@@ -14,7 +14,7 @@ PANDAENDCOMMENT */
 
 /*
  * Change Log:
- * 2018-MAY-07   Detaint bytes whose control mask bits all become 0
+ * dynamic check if mul X 0, where 0 is untainted happens
  */
 
 #ifndef __STDC_FORMAT_MACROS
@@ -240,17 +240,26 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
     tassert((isTainted1 || isTainted2) && "error: should not both be untainted");
     if (!(isTainted1 && isTainted2)){ //the case we won't propagate
         llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
+        // newer version of llvm api add constant->isOne, so you could clean this up
         if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(cleanArg)){
             if (CI->isZero())  return ;
-            //TODO isOne() ? parallel taint
+            else if (CI->isOne()) { //mul X untainted 1(one) should be a parallel taint
+                taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+                taint_log("hello from mul X 1");
+                return;
+            }
         } else if (llvm::ConstantFP *CFP = llvm::dyn_cast<llvm::ConstantFP>(cleanArg)){
             if (CFP->isZero() ) return ;
-        }
-        else{
+            // CFP->isOne() does not in this llvm versionexist
+            //else if (CFP->isOne()) { //mul X untainted 1(one) should be a parallel taint
+                //taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+                //taint_log("hello from mul X 1");
+                //return;
+            //}
+        } else{
             taint_log("mul_compute arg of type %s", cleanArg->getType()->getStructName().str().c_str());
         }
     }
-
     taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
 }
 

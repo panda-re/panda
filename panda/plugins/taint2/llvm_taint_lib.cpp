@@ -14,8 +14,8 @@
 PANDAENDCOMMENT */
 /*
  * Change Log:
- * 2018-MAY-15   Use copy to propagate taint instead of mix if doing an LLVM
- *               SHL instruction but with a shift of 0 bits (which does nothing)
+ * Added taint propagation truncation for mul X 0, lshr 0 , ashr 0
+ *  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
  */
 
 #include <iostream>
@@ -615,6 +615,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 
 // if we multiply tainted_val * 0, and 0 is untainted,
 // the result is no longer controlable, so do not propagate taint
+// if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
@@ -622,6 +623,7 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     if (isa<Constant>(src1) && isa<Constant>(src2)) {
         return; // do nothing, should not happen in optimized code
     } else if (isa<Constant>(src1)) {
+        //one oper is const (necessarily not tainted), so do a static check
         if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
             if (CI->isZero()) return;
         } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
@@ -640,7 +642,8 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     }
     //neither are constants, but one can be a dynamic untainted zero
 
-    assert(getValueSize(src1) == getValueSize(src2)); //if this fails we can keep size independent
+    assert(getValueSize(src1) == getValueSize(src2));
+    //never seen this assert fail, could be cause src is assembly
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
@@ -833,8 +836,8 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
         case Instruction::SDiv:
         case Instruction::FDiv:
         case Instruction::FSub:
-            if (I.getOperand(0) == I.getOperand(1)){ //afaik you can test value equal like this
-                return; // these operations have exactly 1 result if op is repeated, no need to taint
+            if (I.getOperand(0) == I.getOperand(1)){
+                return; // these operations have exactly 1 result if oper is repeated, no need to taint
             }
             is_mixed = true;
             break;
