@@ -242,6 +242,7 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
         llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
         // newer version of llvm api add constant->isOne, so you could clean this up
         if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(cleanArg)){
+            printf("constantint\n");
             if (CI->isZero())  return ;
             else if (CI->isOne()) { //mul X untainted 1(one) should be a parallel taint
                 taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
