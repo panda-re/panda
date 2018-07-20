@@ -617,42 +617,43 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 // the result is no longer controlable, so do not propagate taint
 // if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
-    LLVMContext &ctx = I.getContext();
-    if (!dest) dest = &I;
+    insertTaintCompute(I, dest, src1, src2, true);;
+    //LLVMContext &ctx = I.getContext();
+    //if (!dest) dest = &I;
 
-    if (isa<Constant>(src1) && isa<Constant>(src2)) {
-        return; // do nothing, should not happen in optimized code
-    } else if (isa<Constant>(src1)) {
-        //one oper is const (necessarily not tainted), so do a static check
-        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
-            if (CI->isZero()) return;
-        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
-            if (CFP->isZero()) return;
-        }
-        insertTaintMix(I, src2);
-        return;
-    } else if (isa<Constant>(src2)) {
-        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
-            if (CI->isZero()) return;
-        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
-            if (CFP->isZero()) return;
-        }
-        insertTaintMix(I, src1);
-        return;
-    }
-    //neither are constants, but one can be a dynamic untainted zero
+    //if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        //return; // do nothing, should not happen in optimized code
+    //} else if (isa<Constant>(src1)) {
+        ////one oper is const (necessarily not tainted), so do a static check
+        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
+            //if (CI->isZero()) return;
+        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
+            //if (CFP->isZero()) return;
+        //}
+        //insertTaintMix(I, src2);
+        //return;
+    //} else if (isa<Constant>(src2)) {
+        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
+            //if (CI->isZero()) return;
+        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
+            //if (CFP->isZero()) return;
+        //}
+        //insertTaintMix(I, src1);
+        //return;
+    //}
+    ////neither are constants, but one can be a dynamic untainted zero
 
-    assert(getValueSize(src1) == getValueSize(src2));
-    //never seen this assert fail, could be cause src is assembly
-    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
-    Constant *src_size = const_uint64(ctx, getValueSize(src1));
+    //assert(getValueSize(src1) == getValueSize(src2));
+    ////never seen this assert fail, could be cause src is assembly
+    //Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    //Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
-    vector<Value *> args{
-        llvConst, constSlot(dest), dest_size,
-        constSlot(src1), constSlot(src2), src_size,
-        constInstr(&I)
-    };
-    inlineCallAfter(I, mulCompF, args);
+    //vector<Value *> args{
+        //llvConst, constSlot(dest), dest_size,
+        //constSlot(src1), constSlot(src2), src_size,
+        //constInstr(&I)
+    //};
+    //inlineCallAfter(I, mulCompF, args);
 }
 
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
@@ -801,24 +802,24 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
         case Instruction::LShr:
         case Instruction::AShr:
         case Instruction::Shl:
-        {
-            // operand 1 is the number of bits to shift
-            // if shifting 0 bits, then you're not really shifting at all, so
-            // don't propagate the taint that may be in one byte to them all
-            Value *op1 = I.getOperand(1);
-            if (isa<Constant>(op1))
             {
-                if (intValue(op1) != 0)
+                // operand 1 is the number of bits to shift
+                // if shifting 0 bits, then you're not really shifting at all, so
+                // don't propagate the taint that may be in one byte to them all
+                Value *op1 = I.getOperand(1);
+                if (isa<Constant>(op1))
+                {
+                    if (intValue(op1) != 0)
+                    {
+                        is_mixed = true;
+                    }
+                }
+                else
                 {
                     is_mixed = true;
                 }
             }
-            else
-            {
-                is_mixed = true;
-            }
-        }
-        break;
+            break;
 
         case Instruction::Mul:
         case Instruction::FMul:
