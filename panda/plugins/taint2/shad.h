@@ -321,8 +321,8 @@ class LazyShad : public Shad
     {
         taint_log("LABEL: %s[%lx] (%p)\n", name(), addr, ls);
 
-        TaintData td;
-        td.ls = ls;
+        // use constructor that sets cb_mask to 0xFF, or it's not really tainted
+        TaintData td = TaintData(ls);
 
         labels[addr] = td;
     }
@@ -332,9 +332,9 @@ class LazyShad : public Shad
         bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size)) {
             change = true;
-            for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
-                labels.erase(cur);
-            }
+        }
+        for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
+             labels.erase(cur);
         }
 
         if (change) {
