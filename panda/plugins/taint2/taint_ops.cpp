@@ -29,6 +29,8 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
 
+#include <llvm/Support/raw_ostream.h>
+
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -230,37 +232,43 @@ void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
                        llvm::Instruction *inst)
 {
-    taint_log("mul_compute invoked! ");
-    bool isTainted1 = false;
-    bool isTainted2 = false;
-    for (int i = 0; i < src_size; ++i) {
-        isTainted1 |= shad->query_full(src1+i).cb_mask != 0;
-        isTainted2 |= shad->query_full(src2+i).cb_mask != 0;
-    }
-    tassert((isTainted1 || isTainted2) && "error: should not both be untainted");
-    if (!(isTainted1 && isTainted2)){ //the case we won't propagate
-        llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
-        // newer version of llvm api add constant->isOne, so you could clean this up
-        if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(cleanArg)){
-            printf("constantint\n");
-            if (CI->isZero())  return ;
-            else if (CI->isOne()) { //mul X untainted 1(one) should be a parallel taint
-                taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
-                taint_log("hello from mul X 1");
-                return;
-            }
-        } else if (llvm::ConstantFP *CFP = llvm::dyn_cast<llvm::ConstantFP>(cleanArg)){
-            if (CFP->isZero() ) return ;
-            // CFP->isOne() does not in this llvm versionexist
-            //else if (CFP->isOne()) { //mul X untainted 1(one) should be a parallel taint
+    //std::string type_str;
+    //llvm::raw_string_ostream rso(type_str);
+    //taint_log("mul_compute invoked! \t");
+    //bool isTainted1 = false;
+    //bool isTainted2 = false;
+    //for (int i = 0; i < src_size; ++i) {
+        //isTainted1 |= shad->query_full(src1+i).cb_mask != 0;
+        //isTainted2 |= shad->query_full(src2+i).cb_mask != 0;
+    //}
+    //if (!isTainted1 && !isTainted2) {
+        //taint_log("mul_com untainted args \n");
+        //return; //nothing to propagate
+    //} else if (!(isTainted1 && isTainted2)){ //the case we won't propagate
+        //llvm::Value *cleanArg = isTainted1 ? inst->getOperand(1) : inst->getOperand(0);
+        //cleanArg->getType()->print(rso);
+        //taint_log("mul_compute val type %s", rso.str().c_str());
+        //// newer version of llvm api add constant->isOne, so you could clean this up
+        //if (llvm::ConstantInt *CI = llvm::dyn_cast<llvm::ConstantInt>(cleanArg)){
+            //printf("constantint\n");
+            //if (CI->isZero())  return ;
+            //else if (CI->isOne()) { //mul X untainted 1(one) should be a parallel taint
                 //taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
                 //taint_log("hello from mul X 1");
                 //return;
             //}
-        } else{
-            taint_log("mul_compute arg of type %s", cleanArg->getType()->getStructName().str().c_str());
-        }
-    }
+        //} else if (llvm::ConstantFP *CFP = llvm::dyn_cast<llvm::ConstantFP>(cleanArg)){
+            //if (CFP->isZero() ) return ;
+            //// CFP->isOne() does not in this llvm versionexist
+            ////else if (CFP->isOne()) { //mul X untainted 1(one) should be a parallel taint
+                ////taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+                ////taint_log("hello from mul X 1");
+                ////return;
+            ////}
+        //} else{
+            //taint_log("mul_compute arg of type %s", cleanArg->getType()->getStructName().str().c_str());
+        //}
+    //}
     taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
 }
 
@@ -370,9 +378,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
-                taint_log("slct\n");
                 Shad::copy(shad, dest, shad, src, size);
-                taint_log("does_it_happen?\n");
             }
             return;
         }
