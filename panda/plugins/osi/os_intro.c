@@ -46,8 +46,8 @@ PPP_PROT_REG_CB(on_free_osiproc)
 PPP_PROT_REG_CB(on_free_osiprocs)
 PPP_PROT_REG_CB(on_free_osimodules)
 #ifdef OSI_PROC_EVENTS
-PPP_PROT_REG_CB(on_new_process)
-PPP_PROT_REG_CB(on_finished_process)
+PPP_PROT_REG_CB(on_process_start)
+PPP_PROT_REG_CB(on_process_end)
 #endif
 
 PPP_CB_BOILERPLATE(on_get_processes)
@@ -58,8 +58,8 @@ PPP_CB_BOILERPLATE(on_free_osiproc)
 PPP_CB_BOILERPLATE(on_free_osiprocs)
 PPP_CB_BOILERPLATE(on_free_osimodules)
 #ifdef OSI_PROC_EVENTS
-PPP_CB_BOILERPLATE(on_new_process)
-PPP_CB_BOILERPLATE(on_finished_process)
+PPP_CB_BOILERPLATE(on_process_start)
+PPP_CB_BOILERPLATE(on_process_end)
 #endif
 
 // The copious use of pointers to pointers in this file is due to
@@ -119,7 +119,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for finished processes */
     if (out != NULL) {
         for (i=0; i<out->num; i++) {
-            PPP_RUN_CB(on_finished_process, cpu, &out->proc[i]);
+            PPP_RUN_CB(on_process_end, cpu, &out->proc[i]);
         }
         free_osiprocs(out);
     }
@@ -127,7 +127,7 @@ int asid_changed(CPUState *cpu, target_ulong oldval, target_ulong newval) {
     /* invoke callbacks for new processes */
     if (in != NULL) {
         for (i=0; i<in->num; i++) {
-            PPP_RUN_CB(on_new_process, cpu, &in->proc[i]);
+            PPP_RUN_CB(on_process_start, cpu, &in->proc[i]);
         }
         free_osiprocs(in);
     }
