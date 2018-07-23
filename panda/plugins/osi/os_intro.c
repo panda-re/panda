@@ -143,8 +143,10 @@ bool init_plugin(void *self) {
     panda_cb pcb = { .asid_changed = asid_changed };
     panda_register_callback(self, PANDA_CB_ASID_CHANGED, pcb);
 #endif
-    // figure out what kind of os introspection is needed and grab it? 
+    // No os supplied on command line? E.g. -os linux-32-ubuntu:4.4.0-130-generic
     assert (!(panda_os_familyno == OS_UNKNOWN));
+
+    // figure out what kind of os introspection is needed and grab it? 
     if (panda_os_familyno == OS_LINUX) {
         // sadly, all of this is to find kernelinfo.conf file
         const gchar *progname = qemu_file;
