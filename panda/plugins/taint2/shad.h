@@ -24,7 +24,11 @@ PANDAENDCOMMENT */
 
 #ifdef TAINT2_DEBUG
 #include "qemu/osdep.h"
+
+// force qemu_log to be undecorated so it can be found
+extern "C" {
 #include "qemu/log.h"
+}
 #endif
 
 #include "taint_defines.h"
@@ -120,6 +124,12 @@ class Shad
     // addr+size-1] are tainted.
     virtual bool range_tainted(uint64_t addr, uint64_t size) = 0;
 
+    // Puts the given TaintData object on the given address, without reporting
+    // a taint change.  This method should ONLY be called internal to the Shad
+    // inheritance tree, and only by methods that already take care of reporting
+    // taint changes.
+    virtual void set_full_quiet(uint64_t addr, TaintData td) = 0;
+        
   public:
     virtual ~Shad() = 0;
 
@@ -144,7 +154,10 @@ class Shad
 
         for (uint64_t i = 0; i < size; i++) {
             auto td = shad_src->query_full(src + i);
-            shad_dest->set_full(dest + i, td);
+            
+            // don't report taint changes when store the taint data, as it is
+            // already taken care of for all bytes below
+            shad_dest->set_full_quiet(dest + i, td);
         }
 
         if (change) taint_state_changed(shad_dest, dest, size);
@@ -197,6 +210,13 @@ class FastShad : public Shad
         return false;
     }
 
+    // Set taint quietly - ie. no taint change report is made.
+    void set_full_quiet(uint64_t addr, TaintData td) override
+    {
+        tassert(addr < size);
+        labels[addr] = td;
+    }
+    
   public:
     FastShad(std::string name, uint64_t size);
     ~FastShad();
@@ -278,7 +298,7 @@ class LazyShad : public Shad
   protected:
     bool range_tainted(uint64_t addr, uint64_t size) override
     {
-        for (uint64_t cur = addr; cur < addr + size - 1; cur++) {
+        for (uint64_t cur = addr; cur < addr + size; cur++) {
             auto it = labels.find(cur);
             if (it != labels.end() && it->second.ls) {
                 return true;
@@ -287,6 +307,12 @@ class LazyShad : public Shad
         return false;
     }
 
+    // Set taint quietly - ie. no taint change report is made
+    void set_full_quiet(uint64_t addr, TaintData td) override
+    {
+        labels[addr] = td;
+    }
+    
   public:
     LazyShad(std::string name, uint64_t size);
     ~LazyShad();
@@ -295,8 +321,8 @@ class LazyShad : public Shad
     {
         taint_log("LABEL: %s[%lx] (%p)\n", name(), addr, ls);
 
-        TaintData td;
-        td.ls = ls;
+        // use constructor that sets cb_mask to 0xFF, or it's not really tainted
+        TaintData td = TaintData(ls);
 
         labels[addr] = td;
     }
@@ -306,9 +332,9 @@ class LazyShad : public Shad
         bool change = false;
         if (track_taint_state && range_tainted(addr, remove_size)) {
             change = true;
-            for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
-                labels.erase(cur);
-            }
+        }
+        for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
+             labels.erase(cur);
         }
 
         if (change) {
