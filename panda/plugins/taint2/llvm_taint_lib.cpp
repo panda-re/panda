@@ -618,42 +618,41 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 // if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
     insertTaintCompute(I, dest, src1, src2, true);;
-    //LLVMContext &ctx = I.getContext();
-    //if (!dest) dest = &I;
+    LLVMContext &ctx = I.getContext();
+    if (!dest) dest = &I;
 
-    //if (isa<Constant>(src1) && isa<Constant>(src2)) {
-        //return; // do nothing, should not happen in optimized code
-    //} else if (isa<Constant>(src1)) {
-        ////one oper is const (necessarily not tainted), so do a static check
-        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
-            //if (CI->isZero()) return;
-        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
-            //if (CFP->isZero()) return;
-        //}
-        //insertTaintMix(I, src2);
-        //return;
-    //} else if (isa<Constant>(src2)) {
-        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
-            //if (CI->isZero()) return;
-        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
-            //if (CFP->isZero()) return;
-        //}
-        //insertTaintMix(I, src1);
-        //return;
-    //}
-    ////neither are constants, but one can be a dynamic untainted zero
+    if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        return; // do nothing, should not happen in optimized code
+    } else if (isa<Constant>(src1)) {
+        //one oper is const (necessarily not tainted), so do a static check
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
+            if (CFP->isZero()) return;
+        }
+        insertTaintMix(I, src2);
+        return;
+    } else if (isa<Constant>(src2)) {
+        if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
+            if (CI->isZero()) return;
+        } else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
+            if (CFP->isZero()) return;
+        }
+        insertTaintMix(I, src1);
+        return;
+    }
+    //neither are constants, but one can be a dynamic untainted zero
 
-    //assert(getValueSize(src1) == getValueSize(src2));
-    ////never seen this assert fail, could be cause src is assembly
-    //Constant *dest_size = const_uint64(ctx, getValueSize(dest));
-    //Constant *src_size = const_uint64(ctx, getValueSize(src1));
+    assert(getValueSize(src1) == getValueSize(src2));
+    Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
-    //vector<Value *> args{
-        //llvConst, constSlot(dest), dest_size,
-        //constSlot(src1), constSlot(src2), src_size,
-        //constInstr(&I)
-    //};
-    //inlineCallAfter(I, mulCompF, args);
+    vector<Value *> args{
+        llvConst, constSlot(dest), dest_size,
+        constSlot(src1), constSlot(src2), src_size,
+        constInstr(&I)
+    };
+    inlineCallAfter(I, mulCompF, args);
 }
 
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
