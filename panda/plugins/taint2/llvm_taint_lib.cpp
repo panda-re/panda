@@ -167,6 +167,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixF = M.getFunction("taint_mix"),
     PTV.pointerF = M.getFunction("taint_pointer"),
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
+    PTV.taintQueryF = M.getFunction("taint_query_wrapper"),
     PTV.mulCompF = M.getFunction("taint_mul_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
@@ -234,6 +235,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_mix);
     ADD_MAPPING(taint_pointer);
     ADD_MAPPING(taint_mix_compute);
+    ADD_MAPPING(taint_query_wrapper);
     ADD_MAPPING(taint_mul_compute);
     ADD_MAPPING(taint_parallel_compute);
     ADD_MAPPING(taint_copy);
@@ -617,7 +619,6 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 // the result is no longer controlable, so do not propagate taint
 // if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
-    insertTaintCompute(I, dest, src1, src2, true);;
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
 
@@ -647,12 +648,54 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
-    vector<Value *> args{
-        llvConst, constSlot(dest), dest_size,
-        constSlot(src1), constSlot(src2), src_size,
+    BasicBlock *cont1 = BasicBlock::Create(ctx, "cont1");
+    BasicBlock *cont2 = BasicBlock::Create(ctx, "cont2");
+    BasicBlock *check1 = BasicBlock::Create(ctx, "check1");
+    BasicBlock *parallelcompB = BasicBlock::Create(ctx, "parallelcompB");
+    BasicBlock *mixcompB = BasicBlock::Create(ctx, "mixcompB");
+
+    auto b = IRBuilder();
+    BasicBlock *entry = I->getParent();
+    Instruction *nextI = I->getNextNode();
+    BasicBlock *exit = splitBasicBlock(nextI, "exit");
+
+    b.setInsertPoint(entry->getTerminator());
+    Value * src1slot = constSlot(src1);
+    vector<Value *> args{llvConst, src1slot, src_size };
+    auto op1t = b.CreateCall(taintQueryF, args );
+    Value * src2slot = constSlot(src2);
+    args = {llvConst, src2slot, src_size };
+    auto op2t = b.CreateCall(taintQueryF, args );
+    auto eitherTainted = b.CreateOr(op1t, op2t);
+    b.CreateCondBr(eitherTainted, cont1, exit);
+
+    b.setInsertPoint(cont1);
+    auto both = b.CreateAnd(op1t, op2t);
+    b.CreateCondBr(both, mixcompB, cont2 );
+
+    b.setInsertPoint(cont2);
+    auto cleanArg = b.CreateSelect(op1t, src2, src1);
+    auto isZero = b.CreateICmpEQ(cleanArg, Constant::getNullValue()); //todo also fp then || ?
+    b.CreateCondBr(isZero, exit, check1 );
+
+    b.setInsertPoint(check1);
+    auto isOne = b.CreateICmpEQ(cleanArg, ConstantInt::get(Type::IntTy, 1)); //todo fp
+    b.CreateCondBr(isOne, parallelcompB, mixcompB );
+
+    b.setInsertPoint(parallelcompB);
+    auto dslot = constSlot(dest);
+    args = {
+        llvConst, dslot, dest_size,
+        src1slot, src2slot, src_size,
         constInstr(&I)
     };
-    inlineCallAfter(I, mulCompF, args);
+    b.createCall(parallelCompF, args);
+    b.createBr(exit);
+
+    b.setInsertPoint(mixcompB);
+    b.createCall(mixCompF, args);
+    b.createBr(exit);
+
 }
 
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {

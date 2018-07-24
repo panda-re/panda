@@ -75,6 +75,8 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
                        llvm::Instruction *ignored);
 
+void taint_query_wrapper(Shad *shad, uint64_t src, uint64_t size);
+
 //for mul or fmul. can do parallel or mixed or no prop depending on vals and their taints
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
