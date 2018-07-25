@@ -27,6 +27,7 @@ PANDAENDCOMMENT */
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Pass.h>
@@ -618,6 +619,87 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 // if we multiply tainted_val * 0, and 0 is untainted,
 // the result is no longer controlable, so do not propagate taint
 // if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
+//void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
+    //LLVMContext &ctx = I.getContext();
+    //if (!dest) dest = &I;
+
+    //if (isa<Constant>(src1) && isa<Constant>(src2)) {
+        //return; // do nothing, should not happen in optimized code
+    //} else if (isa<Constant>(src1)) {
+        ////one oper is const (necessarily not tainted), so do a static check
+        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
+            //if (CI->isZero()) return;
+        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
+            //if (CFP->isZero()) return;
+        //}
+        //insertTaintMix(I, src2);
+        //return;
+    //} else if (isa<Constant>(src2)) {
+        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
+            //if (CI->isZero()) return;
+        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
+            //if (CFP->isZero()) return;
+        //}
+        //insertTaintMix(I, src1);
+        //return;
+    //}
+    ////neither are constants, but one can be a dynamic untainted zero
+
+    //assert(getValueSize(src1) == getValueSize(src2));
+    //Constant *dest_size = const_uint64(ctx, getValueSize(dest));
+    //Constant *src_size = const_uint64(ctx, getValueSize(src1));
+
+    //BasicBlock *cont1 = BasicBlock::Create(ctx, "cont1");
+    //BasicBlock *cont2 = BasicBlock::Create(ctx, "cont2");
+    //BasicBlock *check1 = BasicBlock::Create(ctx, "check1");
+    //BasicBlock *parallelcompB = BasicBlock::Create(ctx, "parallelcompB");
+    //BasicBlock *mixcompB = BasicBlock::Create(ctx, "mixcompB");
+
+    //auto b = IRBuilder<>(ctx);
+    //BasicBlock *entry = I.getParent();
+    //Instruction *nextI = I.getNextNode();
+    //BasicBlock *exit = splitBasicBlock(nextI, "exit");
+
+    //b.SetInsertPoint(entry->getTerminator());
+    //Value * src1slot = constSlot(src1);
+    //vector<Value *> args{llvConst, src1slot, src_size };
+    //auto op1t = b.CreateCall(taintQueryF, args );
+    //Value * src2slot = constSlot(src2);
+    //args = {llvConst, src2slot, src_size };
+    //auto op2t = b.CreateCall(taintQueryF, args );
+    //auto eitherTainted = b.CreateOr(op1t, op2t);
+    //b.CreateCondBr(eitherTainted, cont1, exit);
+
+    //b.SetInsertPoint(cont1);
+    //auto both = b.CreateAnd(op1t, op2t);
+    //b.CreateCondBr(both, mixcompB, cont2 );
+
+    //b.SetInsertPoint(cont2);
+    //auto cleanArg = b.CreateSelect(op1t, src2, src1);
+    //auto isZero = b.CreateICmpEQ(cleanArg, Constant::getNullValue()); //todo also fp then || ?
+    //b.CreateCondBr(isZero, exit, check1 );
+
+    //b.SetInsertPoint(check1);
+    //auto isOne = b.CreateICmpEQ(cleanArg, ConstantInt::get(Type::IntTy, 1)); //todo fp
+    //b.CreateCondBr(isOne, parallelcompB, mixcompB );
+
+    //b.SetInsertPoint(parallelcompB);
+    //auto dslot = constSlot(dest);
+    //args = {
+        //llvConst, dslot, dest_size,
+        //src1slot, src2slot, src_size,
+        //constInstr(&I)
+    //};
+    //b.CreateCall(parallelCompF, args);
+    //b.CreateBr(exit);
+
+    //b.SetInsertPoint(mixcompB);
+    //b.CreateCall(mixCompF, args);
+    //b.CreateBr(exit);
+
+//}
+
+//2
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
@@ -648,53 +730,25 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
 
-    BasicBlock *cont1 = BasicBlock::Create(ctx, "cont1");
-    BasicBlock *cont2 = BasicBlock::Create(ctx, "cont2");
-    BasicBlock *check1 = BasicBlock::Create(ctx, "check1");
-    BasicBlock *parallelcompB = BasicBlock::Create(ctx, "parallelcompB");
-    BasicBlock *mixcompB = BasicBlock::Create(ctx, "mixcompB");
-
-    auto b = IRBuilder();
-    BasicBlock *entry = I->getParent();
-    Instruction *nextI = I->getNextNode();
-    BasicBlock *exit = splitBasicBlock(nextI, "exit");
-
-    b.setInsertPoint(entry->getTerminator());
+    auto b = IRBuilder<>(ctx);
+    Instruction *nextI = I.getNextNode();
+    b.SetInsertPoint(nextI);
     Value * src1slot = constSlot(src1);
-    vector<Value *> args{llvConst, src1slot, src_size };
-    auto op1t = b.CreateCall(taintQueryF, args );
     Value * src2slot = constSlot(src2);
-    args = {llvConst, src2slot, src_size };
-    auto op2t = b.CreateCall(taintQueryF, args );
-    auto eitherTainted = b.CreateOr(op1t, op2t);
-    b.CreateCondBr(eitherTainted, cont1, exit);
-
-    b.setInsertPoint(cont1);
-    auto both = b.CreateAnd(op1t, op2t);
-    b.CreateCondBr(both, mixcompB, cont2 );
-
-    b.setInsertPoint(cont2);
-    auto cleanArg = b.CreateSelect(op1t, src2, src1);
-    auto isZero = b.CreateICmpEQ(cleanArg, Constant::getNullValue()); //todo also fp then || ?
-    b.CreateCondBr(isZero, exit, check1 );
-
-    b.setInsertPoint(check1);
-    auto isOne = b.CreateICmpEQ(cleanArg, ConstantInt::get(Type::IntTy, 1)); //todo fp
-    b.CreateCondBr(isOne, parallelcompB, mixcompB );
-
-    b.setInsertPoint(parallelcompB);
     auto dslot = constSlot(dest);
-    args = {
+    std::string type_str;
+    raw_string_ostream rso(type_str);
+    src1->getType()->print(rso);
+    printf("argtype %s", rso.str().c_str());
+    //this might be 32bit arch specific
+    Value *arg1 = b.CreateBitCast(src1, Type::getInt32Ty(ctx));
+    Value *arg2 = b.CreateBitCast(src2, Type::getInt32Ty(ctx));
+    vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
-        constInstr(&I)
+        constInstr(&I), arg1, arg2
     };
-    b.createCall(parallelCompF, args);
-    b.createBr(exit);
-
-    b.setInsertPoint(mixcompB);
-    b.createCall(mixCompF, args);
-    b.createBr(exit);
+    b.CreateCall(mulCompF, args);
 
 }
 
