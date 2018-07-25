@@ -108,6 +108,7 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
     OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
     ms->num = 0;
     ms->module = NULL;
+    ms->capacity = 1;
     PTR peb = 0, ldr = 0;
     // PEB->Ldr->InMemoryOrderModuleList
     if (-1 == panda_virtual_memory_rw(cpu, eproc+EPROC_PEB_OFF, (uint8_t *)&peb, sizeof(PTR), false) ||
@@ -115,13 +116,19 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
         *out_ms = NULL; return;
     }
 
+    if (ldr == NULL) {
+        *out_ms = NULL;
+        return;
+    }
+
     // Fake "first mod": the address of where the list head would
     // be if it were a LDR_DATA_TABLE_ENTRY
     PTR first_mod = ldr+PEB_LDR_LOAD_LINKS_OFF-LDR_LOAD_LINKS_OFF;
     PTR current_mod = get_next_mod(cpu, first_mod);
+
     // We want while loop here -- we are starting at the head,
     // which is not a valid module
-    while (current_mod != first_mod) {
+    while (current_mod != first_mod) {                     
         add_mod(cpu, ms, current_mod, false);
         current_mod = get_next_mod(cpu, current_mod);
         if (!current_mod) break;
@@ -143,6 +150,7 @@ void on_get_modules(CPUState *cpu, OsiModules **out_ms) {
 
     OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
     ms->num = 0;
+    ms->capacity = 1;
     ms->module = NULL;
     PTR current_mod = get_next_mod(cpu, PsLoadedModuleList);
 
