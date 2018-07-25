@@ -333,7 +333,7 @@ class LazyShad : public Shad
         if (track_taint_state && range_tainted(addr, remove_size)) {
             change = true;
         }
-        for (uint64_t cur = addr; cur < addr + remove_size - 1; cur++) {
+        for (uint64_t cur = addr; cur < addr + remove_size; cur++) {
              labels.erase(cur);
         }
 
