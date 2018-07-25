@@ -124,6 +124,7 @@ void on_get_libraries(CPUState *cpu, OsiProc *p, OsiModules **out_ms) {
 
     OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
     ms->num = 0;
+    ms->capacity = 1;
     ms->module = NULL;
 
     PTR current_mod = first_mod;
@@ -152,6 +153,7 @@ void on_get_modules(CPUState *cpu, OsiModules **out_ms) {
 
     OsiModules *ms = (OsiModules *)malloc(sizeof(OsiModules));
     ms->num = 0;
+    ms->capacity = 1;   
     ms->module = NULL;
     PTR current_mod = PsLoadedModuleList;
 

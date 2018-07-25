@@ -17,6 +17,7 @@ typedef struct osi_proc_struct {
 
 typedef struct osi_procs_struct {
     uint32_t num;
+    uint32_t capacity;
     OsiProc *proc;
 } OsiProcs;
 
@@ -30,6 +31,7 @@ typedef struct osi_module_struct {
 
 typedef struct osi_modules_struct {
     uint32_t num;
+    uint32_t capacity;
     OsiModule *module;
 } OsiModules;
 
