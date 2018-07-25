@@ -131,10 +131,10 @@ char *get_unicode_str(CPUState *cpu, PTR ustr) {
 
 
 void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc) {
-    static uint32_t capacity = 8;
-    if ((ps->proc == NULL) || (ps->num == capacity)) {
-        capacity *= 2;
-        ps->proc = (OsiProc *)realloc(ps->proc, sizeof(OsiProc) * capacity);
+
+    if ((ps->proc == NULL) || (ps->num == ps->capacity)) {
+        ps->capacity *= 2;
+        ps->proc = (OsiProc *)realloc(ps->proc, sizeof(OsiProc) * ps->capacity);
         assert(ps->proc);
     }
 
@@ -143,10 +143,9 @@ void add_proc(CPUState *cpu, OsiProcs *ps, PTR eproc) {
 }
 
 void add_mod(CPUState *cpu, OsiModules *ms, PTR mod, bool ignore_basename) {
-    static uint32_t capacity = 8;
-    if ((ms->module == NULL ) || (ms->num == capacity)) {
-        capacity *= 2;
-        ms->module = (OsiModule *)realloc(ms->module, sizeof(OsiModule) * capacity);
+    if ((ms->module == NULL ) || (ms->num == ms->capacity)) {
+        ms->capacity *= 2;
+        ms->module = (OsiModule *)realloc(ms->module, sizeof(OsiModule) * ms->capacity);
         assert(ms->module);
     }
 
@@ -181,6 +180,7 @@ void on_get_processes(CPUState *cpu, OsiProcs **out_ps) {
 
     OsiProcs *ps = (OsiProcs *)malloc(sizeof(OsiProcs));
     ps->num = 0;
+    ps->capacity = 1;
     ps->proc = NULL;
 
     do {
