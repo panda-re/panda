@@ -481,6 +481,8 @@ static uint64_t serial_ioport_read(void *opaque, hwaddr addr, unsigned size)
                     timer_mod(s->fifo_timeout_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + s->char_transmit_time * 4);
                 }
                 s->timeout_ipending = 0;
+                fprintf(stderr, "serial ioport read (val = \'%c\')\n",
+                        (char)ret);
             } else {
                 ret = s->rbr;
                 s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
@@ -602,6 +604,7 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
         int i;
         for (i = 0; i < size; i++) {
             recv_fifo_put(s, buf[i]);
+            fprintf(stderr, "push to fifo (value = \'%c\')\n", buf[i]);
         }
         s->lsr |= UART_LSR_DR;
         /* call the timeout receive callback in 4 char transmit time */

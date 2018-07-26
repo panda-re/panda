@@ -19,6 +19,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define DO_EXPAND(VAL) VAL##1
+#define EXPAND(VAL) DO_EXPAND(VAL)
+
 /* warning: addr must be aligned */
 static inline uint32_t glue(address_space_ldl_internal, SUFFIX)(ARG1_DECL,
     hwaddr addr, MemTxAttrs attrs, MemTxResult *result,
@@ -50,6 +53,13 @@ static inline uint32_t glue(address_space_ldl_internal, SUFFIX)(ARG1_DECL,
 #else
         if (endian == DEVICE_BIG_ENDIAN) {
             val = bswap32(val);
+        }
+#endif
+
+#if (EXPAND(SUFFIX) == 1)
+        // Only true for the function address_space_ldl_internal
+        if (as == &address_space_io) {
+            fprintf(stderr, "after port io (long)\n");
         }
 #endif
     } else {
@@ -237,6 +247,13 @@ uint32_t glue(address_space_ldub, SUFFIX)(ARG1_DECL,
             /*record*/   rr_input_4(&r); rr_input_8(&val),
             /*replay*/   rr_input_4(&r); rr_input_8(&val),
             /*location*/ RR_CALLSITE_READ_1);
+
+#if (EXPAND(SUFFIX) == 1)
+        // Only true for the function address_space_ldub
+        if (as == &address_space_io) {
+            fprintf(stderr, "after port io (byte)\n");
+        }
+#endif
     } else {
         /* RAM case */
         ptr = MAP_RAM(mr, addr1);
@@ -290,6 +307,13 @@ static inline uint32_t glue(address_space_lduw_internal, SUFFIX)(ARG1_DECL,
 #else
         if (endian == DEVICE_BIG_ENDIAN) {
             val = bswap16(val);
+        }
+#endif
+
+#if (EXPAND(SUFFIX) == 1)
+        // Only true for the function address_space_lduw_internal
+        if (as == &address_space_io) {
+            fprintf(stderr, "after port io (word)\n");
         }
 #endif
     } else {
