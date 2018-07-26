@@ -285,7 +285,7 @@ bool taint_query_wrapper(Shad *shad, uint64_t src, uint64_t size){
 //2
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
                        uint64_t src1, uint64_t src2, uint64_t src_size,
-                       llvm::Instruction *inst, uint32_t arg1, uint32_t arg2)
+                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2)
 {
     std::string type_str;
     llvm::raw_string_ostream rso(type_str);

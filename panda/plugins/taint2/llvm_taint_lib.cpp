@@ -741,8 +741,8 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     src1->getType()->print(rso);
     printf("argtype %s", rso.str().c_str());
     //this might be 32bit arch specific
-    Value *arg1 = b.CreateBitCast(src1, Type::getInt32Ty(ctx));
-    Value *arg2 = b.CreateBitCast(src2, Type::getInt32Ty(ctx));
+    Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
+    Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
     vector<Value*> args{
         llvConst, dslot, dest_size,
         src1slot, src2slot, src_size,
