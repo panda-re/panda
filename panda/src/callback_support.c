@@ -292,4 +292,22 @@ void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_u
     }
 }
 
+void panda_callbacks_after_portio(CPUState *cpu, int is_write,
+                                  uint32_t port_addr, uint32_t value,
+                                  uint32_t num_bytes)
+{
+    fprintf(stderr, "after port io\n");
+}
+
+void panda_callbacks_serial_receive(CPUState *cpu, uint64_t fifo_addr,
+                                    uint8_t value)
+{
+    fprintf(stderr, "serial receive\n");
+}
+
+void panda_callbacks_serial_read(CPUState *cpu, uint64_t fifo_addr,
+                                 uint32_t port_addr, uint8_t value)
+{
+    fprintf(stderr, "serial read\n");
+}
 
