@@ -253,6 +253,16 @@ static RR_log_entry *rr_read_item(void) {
                         assert(fread(&(args->variant.net_transfer_args),
                               sizeof(args->variant.net_transfer_args), 1, rr_nondet_log->fp) == 1);
                         break;
+                    case RR_CALL_SERIAL_RECEIVE:
+                        assert(fread(&(args->variant.serial_receive_args),
+                                     sizeof(args->variant.serial_receive_args),
+                                     1, rr_nondet_log->fp) == 1);
+                        break;
+                    case RR_CALL_SERIAL_READ:
+                        assert(fread(&(args->variant.serial_read_args),
+                                     sizeof(args->variant.serial_read_args), 1,
+                                     rr_nondet_log->fp) == 1);
+                        break;
                     default:
                         //mz unimplemented
                         printf("rr_read_item: Call type %d unimplemented!\n", args->kind);

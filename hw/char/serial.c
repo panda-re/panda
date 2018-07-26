@@ -31,6 +31,8 @@
 #include "exec/address-spaces.h"
 #include "qemu/error-report.h"
 
+#include "panda/rr/rr_log_all.h"
+
 //#define DEBUG_SERIAL
 
 #define UART_LCR_DLAB	0x80	/* Divisor latch access bit */
@@ -481,8 +483,10 @@ static uint64_t serial_ioport_read(void *opaque, hwaddr addr, unsigned size)
                     timer_mod(s->fifo_timeout_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + s->char_transmit_time * 4);
                 }
                 s->timeout_ipending = 0;
-                fprintf(stderr, "serial ioport read (val = \'%c\')\n",
-                        (char)ret);
+                if (rr_in_record()) {
+                    rr_record_serial_read(RR_CALLSITE_SERIAL_READ, 0x0,
+                                          s->io.addr, ret);
+                }
             } else {
                 ret = s->rbr;
                 s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
@@ -604,7 +608,7 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
         int i;
         for (i = 0; i < size; i++) {
             recv_fifo_put(s, buf[i]);
-            fprintf(stderr, "push to fifo (value = \'%c\')\n", buf[i]);
+            rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE, 0x0, buf[i]);
         }
         s->lsr |= UART_LSR_DR;
         /* call the timeout receive callback in 4 char transmit time */

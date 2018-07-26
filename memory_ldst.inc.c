@@ -59,7 +59,7 @@ static inline uint32_t glue(address_space_ldl_internal, SUFFIX)(ARG1_DECL,
 #if (EXPAND(SUFFIX) == 1)
         // Only true for the function address_space_ldl_internal
         if (as == &address_space_io) {
-            fprintf(stderr, "after port io (long)\n");
+            panda_callbacks_after_portio(first_cpu, 0, addr, (uint32_t)val, 4);
         }
 #endif
     } else {
@@ -251,7 +251,7 @@ uint32_t glue(address_space_ldub, SUFFIX)(ARG1_DECL,
 #if (EXPAND(SUFFIX) == 1)
         // Only true for the function address_space_ldub
         if (as == &address_space_io) {
-            fprintf(stderr, "after port io (byte)\n");
+            panda_callbacks_after_portio(first_cpu, 0, addr, (uint32_t)val, 1);
         }
 #endif
     } else {
@@ -313,7 +313,7 @@ static inline uint32_t glue(address_space_lduw_internal, SUFFIX)(ARG1_DECL,
 #if (EXPAND(SUFFIX) == 1)
         // Only true for the function address_space_lduw_internal
         if (as == &address_space_io) {
-            fprintf(stderr, "after port io (word)\n");
+            panda_callbacks_after_portio(first_cpu, 0, addr, (uint32_t)val, 2);
         }
 #endif
     } else {
