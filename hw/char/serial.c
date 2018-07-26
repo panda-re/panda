@@ -475,18 +475,21 @@ static uint64_t serial_ioport_read(void *opaque, hwaddr addr, unsigned size)
             ret = s->divider & 0xff;
         } else {
             if(s->fcr & UART_FCR_FE) {
+                bool record = rr_in_record() && !fifo8_is_empty(&s->recv_fifo);
+                uint64_t fifo_addr =
+                    (uint64_t)&s->recv_fifo.data[s->recv_fifo.head];
                 ret = fifo8_is_empty(&s->recv_fifo) ?
                             0 : fifo8_pop(&s->recv_fifo);
+                if (record) {
+                    rr_record_serial_read(RR_CALLSITE_SERIAL_READ, fifo_addr,
+                                          s->io.addr, ret);
+                }
                 if (s->recv_fifo.num == 0) {
                     s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
                 } else {
                     timer_mod(s->fifo_timeout_timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + s->char_transmit_time * 4);
                 }
                 s->timeout_ipending = 0;
-                if (rr_in_record()) {
-                    rr_record_serial_read(RR_CALLSITE_SERIAL_READ, 0x0,
-                                          s->io.addr, ret);
-                }
             } else {
                 ret = s->rbr;
                 s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
@@ -607,8 +610,14 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
     if(s->fcr & UART_FCR_FE) {
         int i;
         for (i = 0; i < size; i++) {
+            uint64_t fifo_addr =
+                (uint64_t)&s->recv_fifo
+                    .data[(s->recv_fifo.head + s->recv_fifo.num) %
+                          s->recv_fifo.capacity];
+
             recv_fifo_put(s, buf[i]);
-            rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE, 0x0, buf[i]);
+            rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE, fifo_addr,
+                                     buf[i]);
         }
         s->lsr |= UART_LSR_DR;
         /* call the timeout receive callback in 4 char transmit time */
