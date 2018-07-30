@@ -14,7 +14,7 @@
 PANDAENDCOMMENT */
 /*
  * Change Log:
- * Added taint propagation truncation for mul X 0, lshr 0 , ashr 0
+ * Added taint propagation truncation for mul X 0, mul X 1, lshr 0 , ashr 0
  *  sub, sdiv, udiv, fsub, fdiv (x,x) == no taint op
  */
 
@@ -618,88 +618,7 @@ void PandaTaintVisitor::insertTaintCompute(Instruction &I, Value *dest, Value *s
 
 // if we multiply tainted_val * 0, and 0 is untainted,
 // the result is no longer controlable, so do not propagate taint
-// if tainted_val * 1, do a parallel compute, done in called function, can hoist here too for perf?
-//void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
-    //LLVMContext &ctx = I.getContext();
-    //if (!dest) dest = &I;
-
-    //if (isa<Constant>(src1) && isa<Constant>(src2)) {
-        //return; // do nothing, should not happen in optimized code
-    //} else if (isa<Constant>(src1)) {
-        ////one oper is const (necessarily not tainted), so do a static check
-        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src1)){
-            //if (CI->isZero()) return;
-        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src1)){
-            //if (CFP->isZero()) return;
-        //}
-        //insertTaintMix(I, src2);
-        //return;
-    //} else if (isa<Constant>(src2)) {
-        //if (llvm::ConstantInt* CI = dyn_cast<llvm::ConstantInt>(src2)){
-            //if (CI->isZero()) return;
-        //} else if (llvm::ConstantFP* CFP = dyn_cast<llvm::ConstantFP>(src2)){
-            //if (CFP->isZero()) return;
-        //}
-        //insertTaintMix(I, src1);
-        //return;
-    //}
-    ////neither are constants, but one can be a dynamic untainted zero
-
-    //assert(getValueSize(src1) == getValueSize(src2));
-    //Constant *dest_size = const_uint64(ctx, getValueSize(dest));
-    //Constant *src_size = const_uint64(ctx, getValueSize(src1));
-
-    //BasicBlock *cont1 = BasicBlock::Create(ctx, "cont1");
-    //BasicBlock *cont2 = BasicBlock::Create(ctx, "cont2");
-    //BasicBlock *check1 = BasicBlock::Create(ctx, "check1");
-    //BasicBlock *parallelcompB = BasicBlock::Create(ctx, "parallelcompB");
-    //BasicBlock *mixcompB = BasicBlock::Create(ctx, "mixcompB");
-
-    //auto b = IRBuilder<>(ctx);
-    //BasicBlock *entry = I.getParent();
-    //Instruction *nextI = I.getNextNode();
-    //BasicBlock *exit = splitBasicBlock(nextI, "exit");
-
-    //b.SetInsertPoint(entry->getTerminator());
-    //Value * src1slot = constSlot(src1);
-    //vector<Value *> args{llvConst, src1slot, src_size };
-    //auto op1t = b.CreateCall(taintQueryF, args );
-    //Value * src2slot = constSlot(src2);
-    //args = {llvConst, src2slot, src_size };
-    //auto op2t = b.CreateCall(taintQueryF, args );
-    //auto eitherTainted = b.CreateOr(op1t, op2t);
-    //b.CreateCondBr(eitherTainted, cont1, exit);
-
-    //b.SetInsertPoint(cont1);
-    //auto both = b.CreateAnd(op1t, op2t);
-    //b.CreateCondBr(both, mixcompB, cont2 );
-
-    //b.SetInsertPoint(cont2);
-    //auto cleanArg = b.CreateSelect(op1t, src2, src1);
-    //auto isZero = b.CreateICmpEQ(cleanArg, Constant::getNullValue()); //todo also fp then || ?
-    //b.CreateCondBr(isZero, exit, check1 );
-
-    //b.SetInsertPoint(check1);
-    //auto isOne = b.CreateICmpEQ(cleanArg, ConstantInt::get(Type::IntTy, 1)); //todo fp
-    //b.CreateCondBr(isOne, parallelcompB, mixcompB );
-
-    //b.SetInsertPoint(parallelcompB);
-    //auto dslot = constSlot(dest);
-    //args = {
-        //llvConst, dslot, dest_size,
-        //src1slot, src2slot, src_size,
-        //constInstr(&I)
-    //};
-    //b.CreateCall(parallelCompF, args);
-    //b.CreateBr(exit);
-
-    //b.SetInsertPoint(mixcompB);
-    //b.CreateCall(mixCompF, args);
-    //b.CreateBr(exit);
-
-//}
-
-//2
+// if tainted_val * 1, do a parallel compute
 void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1, Value *src2) {
     LLVMContext &ctx = I.getContext();
     if (!dest) dest = &I;
@@ -725,7 +644,6 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
         return;
     }
     //neither are constants, but one can be a dynamic untainted zero
-
     assert(getValueSize(src1) == getValueSize(src2));
     Constant *dest_size = const_uint64(ctx, getValueSize(dest));
     Constant *src_size = const_uint64(ctx, getValueSize(src1));
@@ -733,14 +651,9 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
     auto b = IRBuilder<>(ctx);
     Instruction *nextI = I.getNextNode();
     b.SetInsertPoint(nextI);
-    Value * src1slot = constSlot(src1);
-    Value * src2slot = constSlot(src2);
-    auto dslot = constSlot(dest);
-    std::string type_str;
-    raw_string_ostream rso(type_str);
-    src1->getType()->print(rso);
-    printf("argtype %s", rso.str().c_str());
-    //this might be 32bit arch specific
+    Value *src1slot = constSlot(src1);
+    Value *src2slot = constSlot(src2);
+    Value *dslot = constSlot(dest);
     Value *arg1 = b.CreateSExtOrBitCast(src1, Type::getInt64Ty(ctx));
     Value *arg2 = b.CreateSExtOrBitCast(src2, Type::getInt64Ty(ctx));
     vector<Value*> args{
@@ -749,7 +662,6 @@ void PandaTaintVisitor::insertTaintMul(Instruction &I, Value *dest, Value *src1,
         constInstr(&I), arg1, arg2
     };
     b.CreateCall(mulCompF, args);
-
 }
 
 void PandaTaintVisitor::insertTaintSext(Instruction &I, Value *src) {
@@ -927,15 +839,16 @@ void PandaTaintVisitor::visitBinaryOperator(BinaryOperator &I) {
                 assert(AI);
                 if (isCPUStateAdd(AI)) return;
                 else if (isIrrelevantAdd(AI)) return;
-            } // fall through otherwise.
+            }
+            is_mixed = true;
+            break;
         case Instruction::Sub:
         case Instruction::UDiv:
         case Instruction::SDiv:
         case Instruction::FDiv:
         case Instruction::FSub:
-            if (I.getOperand(0) == I.getOperand(1)){
-                return; // these operations have exactly 1 result if oper is repeated, no need to taint
-            }
+            // these operations have exactly 1 result if operand is repeated, no need to taint
+            if (I.getOperand(0) == I.getOperand(1))    return;
             is_mixed = true;
             break;
         case Instruction::FAdd:
