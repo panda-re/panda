@@ -133,7 +133,6 @@ public:
     Function *pointerF;
     Function *mixCompF;
     Function *mulCompF;
-    Function *taintQueryF;
     Function *parallelCompF;
     Function *copyF;
     Function *moveF;

@@ -30,8 +30,6 @@ PANDAENDCOMMENT */
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Value.h>
 
-#include <llvm/Support/raw_ostream.h>
-
 #include "panda/plugin.h"
 #include "panda/plugin_plugin.h"
 
@@ -50,7 +48,6 @@ extern bool detaint_cb0_bytes;
 
 void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size);
 void taint_delete(FastShad *shad, uint64_t dest, uint64_t size);
-
 
 // Remove the taint marker from any bytes whose control mask bits go to 0.
 // A 0 control mask bit means that bit does not impact the value in the byte.
@@ -227,14 +224,6 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx ",
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
-}
-
-bool taint_query_wrapper(Shad *shad, uint64_t src, uint64_t size){
-    bool isTainted = false;
-    for (int i = 0; i < size; ++i) {
-        isTainted |= shad->query(src + i) != NULL;
-    }
-    return isTainted;
 }
 
 void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
