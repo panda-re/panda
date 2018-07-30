@@ -27,7 +27,6 @@ PANDAENDCOMMENT */
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/Support/SourceMgr.h>
-#include <llvm/Support/raw_ostream.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Pass.h>
@@ -168,7 +167,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.mixF = M.getFunction("taint_mix"),
     PTV.pointerF = M.getFunction("taint_pointer"),
     PTV.mixCompF = M.getFunction("taint_mix_compute"),
-    PTV.taintQueryF = M.getFunction("taint_query_wrapper"),
     PTV.mulCompF = M.getFunction("taint_mul_compute"),
     PTV.parallelCompF = M.getFunction("taint_parallel_compute"),
     PTV.copyF = M.getFunction("taint_copy");
@@ -236,7 +234,6 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     ADD_MAPPING(taint_mix);
     ADD_MAPPING(taint_pointer);
     ADD_MAPPING(taint_mix_compute);
-    ADD_MAPPING(taint_query_wrapper);
     ADD_MAPPING(taint_mul_compute);
     ADD_MAPPING(taint_parallel_compute);
     ADD_MAPPING(taint_copy);
@@ -1491,9 +1488,6 @@ void PandaTaintVisitor::visitInsertElementInst(InsertElementInst &I) {
 
 void PandaTaintVisitor::visitShuffleVectorInst(ShuffleVectorInst &I) {
     assert(I.getType()->getBitWidth() <= 8 * MAXREGSIZE);
-    printf("Found shufflevector, is this a c helper\n");
-    printf("taint2: shufflevector in basic block: %s.\n",
-        I.getParent()->getName().str().c_str());
     insertTaintCompute(I, I.getOperand(0), I.getOperand(1), true);
 }
 
