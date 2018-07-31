@@ -14,9 +14,10 @@ PANDAENDCOMMENT */
 
 /*
  * Change Log:
- * 2018-MAY-07   Detaint bytes whose control mask bits all become 0
+ * dynamic check if there is a mul X 0 or mul X 1, for no taint prop or parallel
+ * propagation respetively
  */
- 
+
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -66,6 +67,7 @@ void detaint_on_cb0(Shad *shad, uint64_t addr, uint64_t size)
         }
     }
 }
+
 // Memlog functions.
 
 uint64_t taint_memlog_pop(taint2_memlog *taint_memlog) {
@@ -182,7 +184,7 @@ void taint_parallel_compute(Shad *shad, uint64_t dest, uint64_t ignored,
             cb_mask_1.cb_mask, cb_mask_2.cb_mask, cb_mask_out.cb_mask);
     taint_log_labels(shad, dest, src_size);
     write_cb_masks(shad, dest, src_size, cb_mask_out);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad, dest, src_size);
@@ -222,6 +224,32 @@ void taint_mix_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
     taint_log("mcompute: %s[%lx+%lx] <- %lx + %lx ",
             shad->name(), dest, dest_size, src1, src2);
     taint_log_labels(shad, dest, dest_size);
+}
+
+void taint_mul_compute(Shad *shad, uint64_t dest, uint64_t dest_size,
+                       uint64_t src1, uint64_t src2, uint64_t src_size,
+                       llvm::Instruction *inst, uint64_t arg1, uint64_t arg2)
+{
+    bool isTainted1 = false;
+    bool isTainted2 = false;
+    for (int i = 0; i < src_size; ++i) {
+        isTainted1 |= shad->query(src1+i) != NULL;
+        isTainted2 |= shad->query(src2+i) != NULL;
+    }
+    if (!isTainted1 && !isTainted2) {
+        taint_log("mul_com: untainted args \n");
+        return; //nothing to propagate
+    } else if (!(isTainted1 && isTainted2)){ //the case we do special stuff
+        uint64_t cleanArg = isTainted1 ? arg2 : arg1;
+        taint_log("mul_com: one untainted arg %lu \n", cleanArg);
+        if (cleanArg == 0) return ; // mul X untainted 0 -> no taint prop
+        else if (cleanArg == 1) { //mul X untainted 1(one) should be a parallel taint
+            taint_parallel_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
+            taint_log("mul_com: mul X 1\n");
+            return;
+        }
+    }
+    taint_mix_compute(shad, dest, dest_size, src1, src2,  src_size, inst);
 }
 
 void taint_delete(Shad *shad, uint64_t dest, uint64_t size)
@@ -330,7 +358,6 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
     while (!(src == ones && srcsel == ones)) {
         if (srcsel == selector) { // bingo!
             if (src != ones) { // otherwise it's a constant.
-                taint_log("slct\n");
                 Shad::copy(shad, dest, shad, src, size);
             }
             return;
@@ -338,7 +365,7 @@ void taint_select(Shad *shad, uint64_t dest, uint64_t size, uint64_t selector,
 
         src = va_arg(argp, uint64_t);
         srcsel = va_arg(argp, uint64_t);
-    } 
+    }
 
     tassert(false && "Couldn't find selected argument!!");
 }
@@ -355,7 +382,7 @@ static void find_offset(Shad *greg, Shad *gspec, uint64_t offset,
 {
 #ifdef TARGET_PPC
     if (cpu_contains(gpr, offset)) {
-#else 
+#else
     if (cpu_contains(regs, offset)) {
 #endif
         *dest = greg;
@@ -421,7 +448,7 @@ void taint_host_memcpy(uint64_t env_ptr, uint64_t dest, uint64_t src,
                        uint64_t labels_per_reg)
 {
     int64_t dest_offset = dest - env_ptr, src_offset = src - env_ptr;
-    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) || 
+    if (dest_offset < 0 || (size_t)dest_offset >= sizeof(CPUArchState) ||
             src_offset < 0 || (size_t)src_offset >= sizeof(CPUArchState)) {
         taint_log("hostmemcpy: irrelevant\n");
         return;
@@ -497,6 +524,7 @@ static inline void write_cb_masks(Shad *shad, uint64_t addr, uint64_t size,
     }
 }
 
+//seems implied via callers that for dyadic operations 'I' will have one tainted and one untainted arg
 static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
                       uint64_t src, uint64_t size, llvm::Instruction *I)
 {
@@ -570,7 +598,7 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
             break;
 
         case llvm::Instruction::Mul:
-        {
+        { //TODO can implement this through strength reduction to shift and sub
             tassert(last_literal != ~0UL);
             // Powers of two in last_literal destroy reversibility.
             uint64_t trailing_zeroes = __builtin_ctz(last_literal);
@@ -684,7 +712,7 @@ static void update_cb(Shad *shad_dest, uint64_t dest, Shad *shad_src,
             orig_zero_mask, zero_mask, orig_one_mask, one_mask);
 
     write_cb_masks(shad_dest, dest, size, cb_masks);
-    
+
     if (detaint_cb0_bytes)
     {
         detaint_on_cb0(shad_dest, dest, size);
