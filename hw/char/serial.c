@@ -246,7 +246,13 @@ static void serial_xmit(SerialState *s)
 
             if (s->fcr & UART_FCR_FE) {
                 assert(!fifo8_is_empty(&s->xmit_fifo));
+                uint64_t fifo_addr =
+                    (uint64_t)&s->xmit_fifo.data[s->xmit_fifo.head];
                 s->tsr = fifo8_pop(&s->xmit_fifo);
+                if (rr_in_record()) {
+                    rr_record_serial_send(RR_CALLSITE_SERIAL_SEND, fifo_addr,
+                                          s->tsr);
+                }
                 if (!s->xmit_fifo.num) {
                     s->lsr |= UART_LSR_THRE;
                 }
@@ -334,7 +340,15 @@ static void serial_ioport_write(void *opaque, hwaddr addr, uint64_t val,
                 if (fifo8_is_full(&s->xmit_fifo)) {
                     fifo8_pop(&s->xmit_fifo);
                 }
+                uint64_t fifo_addr =
+                    (uint64_t)&s->xmit_fifo
+                        .data[(s->xmit_fifo.head + s->xmit_fifo.num) %
+                              s->xmit_fifo.capacity];
                 fifo8_push(&s->xmit_fifo, s->thr);
+                if (rr_in_record()) {
+                    rr_record_serial_write(RR_CALLSITE_SERIAL_WRITE, fifo_addr,
+                                           s->io.addr, s->thr);
+                }
             }
             s->thr_ipending = 0;
             s->lsr &= ~UART_LSR_THRE;

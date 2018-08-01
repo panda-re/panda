@@ -330,3 +330,27 @@ void panda_callbacks_serial_read(CPUState *cpu, uint64_t fifo_addr,
     }
 }
 
+void panda_callbacks_serial_send(CPUState *cpu, uint64_t fifo_addr,
+                                 uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_SEND]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_send(cpu, fifo_addr, value);
+        }
+    }
+}
+
+void panda_callbacks_serial_write(CPUState *cpu, uint64_t fifo_addr,
+                                  uint32_t port_addr, uint8_t value)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_SERIAL_WRITE]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_serial_write(cpu, fifo_addr, port_addr, value);
+        }
+    }
+}
+

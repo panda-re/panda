@@ -119,6 +119,8 @@ extern void rr_signal_disagreement(RR_prog_point current,
         ACTION(RR_CALL_HANDLE_PACKET),  /* packet handling on send/receive */  \
         ACTION(RR_CALL_SERIAL_RECEIVE), /* receive byte on serial port */      \
         ACTION(RR_CALL_SERIAL_READ),    /* read byte from serial rx fifo */    \
+        ACTION(RR_CALL_SERIAL_SEND),    /* send byte on serial port */         \
+        ACTION(RR_CALL_SERIAL_WRITE),   /* write byte to serial tx fifo */     \
         ACTION(RR_CALL_LAST)
 
 typedef enum {
@@ -210,6 +212,7 @@ static inline const char* get_log_entry_kind_string(RR_log_entry_kind kind)
         ACTION(RR_CALLSITE_E1000_TXDESC_WRITEBACK),                            \
         ACTION(RR_CALLSITE_E1000_START_XMIT),                                  \
         ACTION(RR_CALLSITE_SERIAL_RECEIVE), ACTION(RR_CALLSITE_SERIAL_READ),   \
+        ACTION(RR_CALLSITE_SERIAL_SEND), ACTION(RR_CALLSITE_SERIAL_WRITE),     \
         ACTION(RR_CALLSITE_LAST)
 
 typedef enum {
@@ -513,6 +516,22 @@ void rr_record_serial_receive(RR_callsite_id call_site, uint64_t fifo_addr,
                               uint8_t value);
 void rr_record_serial_read(RR_callsite_id call_site, uint64_t fifo_addr,
                            uint32_t port_addr, uint8_t value);
+
+typedef struct {
+    uint64_t fifo_addr;
+    uint8_t value;
+} RR_serial_send_args;
+
+typedef struct {
+    uint64_t fifo_addr;
+    uint32_t port_addr;
+    uint8_t value;
+} RR_serial_write_args;
+
+void rr_record_serial_send(RR_callsite_id call_site, uint64_t fifo_addr,
+                           uint8_t value);
+void rr_record_serial_write(RR_callsite_id call_site, uint64_t fifo_addr,
+                            uint32_t port_addr, uint8_t value);
 
 // Needed from main-loop.c which is not target-specific
 void rr_tracked_mem_regions_record(void);
