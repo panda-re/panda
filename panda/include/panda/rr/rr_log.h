@@ -82,6 +82,8 @@ typedef struct {
         RR_handle_packet_args handle_packet_args;
         RR_serial_receive_args serial_receive_args;
         RR_serial_read_args serial_read_args;
+        RR_serial_send_args serial_send_args;
+        RR_serial_write_args serial_write_args;
     } variant;
     // mz XXX HACK
     uint64_t old_buf_addr;

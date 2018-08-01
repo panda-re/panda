@@ -67,6 +67,10 @@ typedef enum panda_cb_type {
                                     // into the serial RX FIFO
     PANDA_CB_REPLAY_SERIAL_READ,  // in replay, right after a value is read from
                                   // the serial RX FIFO.
+    PANDA_CB_REPLAY_SERIAL_SEND,  // in replay, right after data is popped from
+                                  // the serial TX FIFO
+    PANDA_CB_REPLAY_SERIAL_WRITE, // in replay, right after data is pushed into
+                                  // the serial TX FIFO.
     PANDA_CB_REPLAY_BEFORE_DMA,   // in replay, just before RAM case of
                                   // cpu_physical_mem_rw
     PANDA_CB_REPLAY_AFTER_DMA,    // in replay, just after RAM case of
@@ -583,6 +587,37 @@ typedef union panda_cb {
     */
     int (*replay_serial_read)(CPUState *env, uint64_t fifo_addr,
                               uint32_t port_addr, uint8_t value);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_SEND,
+
+       In replay only, called when a byte is sent on the serial port.
+
+       Arguments:
+        CPUState* env:        pointer to CPUState
+        uint64_t fifo_addr:   address of the data within the fifo
+        uint8_t value:        value received
+
+       Return value:
+        unused
+    */
+    int (*replay_serial_send)(CPUState *env, uint64_t fifo_addr, uint8_t value);
+
+    /* Callback ID:     PANDA_CB_REPLAY_SERIAL_WRITE,
+
+       In replay only, called when a byte written to the serial TX FIFO
+
+       Arguments:
+        CPUState* env:        pointer to CPUState
+        uint64_t fifo_addr:   address of the data within the fifo (source)
+        uint32_t port_addr:   address of the IO port where data is being
+                              read (destination)
+        uint8_t value:        value read
+
+       Return value:
+        unused
+    */
+    int (*replay_serial_write)(CPUState *env, uint64_t fifo_addr,
+                               uint32_t port_addr, uint8_t value);
 
     /* Callback ID:     PANDA_CB_AFTER_MACHINE_INIT
 
