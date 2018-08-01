@@ -551,6 +551,12 @@ void glue(address_space_stb, SUFFIX)(ARG1_DECL,
     mr = TRANSLATE(addr, &addr1, &l, true);
     if (!IS_DIRECT(mr, true)) {
         release_lock |= prepare_mmio_access(mr);
+#if (EXPAND(SUFFIX) == 1)
+        // Only true for the function address_space_stb
+        if (as == &address_space_io) {
+            panda_callbacks_before_portio(first_cpu, 1, addr, val, 1);
+        }
+#endif
         RR_DO_RECORD_OR_REPLAY(
         /*action=*/
         r = memory_region_dispatch_write(mr, addr1, val, 1, attrs),

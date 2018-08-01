@@ -292,6 +292,20 @@ void panda_callbacks_asid_changed(CPUState *env, target_ulong old_asid, target_u
     }
 }
 
+void panda_callbacks_before_portio(CPUState *cpu, int is_write,
+                                   uint32_t port_addr, uint32_t value,
+                                   uint32_t num_bytes)
+{
+    if (rr_mode == RR_REPLAY) {
+        panda_cb_list *plist;
+        for (plist = panda_cbs[PANDA_CB_REPLAY_BEFORE_PORTIO]; plist != NULL;
+             plist = panda_cb_list_next(plist)) {
+            plist->entry.replay_before_portio(cpu, is_write, port_addr, value,
+                                              num_bytes);
+        }
+    }
+}
+
 void panda_callbacks_after_portio(CPUState *cpu, int is_write,
                                   uint32_t port_addr, uint32_t value,
                                   uint32_t num_bytes)

@@ -75,7 +75,8 @@ typedef enum panda_cb_type {
                                   // cpu_physical_mem_rw
     PANDA_CB_REPLAY_AFTER_DMA,    // in replay, just after RAM case of
                                   // cpu_physical_mem_rw
-    PANDA_CB_REPLAY_AFTER_PORTIO, // in replay, just after Port IO.
+    PANDA_CB_REPLAY_BEFORE_PORTIO,
+    PANDA_CB_REPLAY_AFTER_PORTIO,  // in replay, just after Port IO.
     PANDA_CB_REPLAY_HANDLE_PACKET, // in replay, packet in / out
     PANDA_CB_AFTER_MACHINE_INIT,   // Right after the machine is initialized,
                                    // before any code runs
@@ -507,6 +508,22 @@ typedef union panda_cb {
         uint32_t num_bytes:  size of transfer
     */
     int (*replay_after_dma)(CPUState *env, uint32_t is_write, uint8_t* src_addr, uint64_t dest_addr, uint32_t num_bytes);
+
+    /* Callback ID:     PANDA_CB_REPLAY_AFTER_PORTIO,
+
+       In replay only, we just performed Port IO.
+
+       Arguments:
+        CPUState* env:       pointer to CPUState
+        uint32_t is_write:   type of transfer going on    (is_write == 1 means
+                             Port -> IO else IO -> Port)
+        uint32_t port_addr:  the port address (source)
+        uint32_t value:      the value read off the port.
+        uint32_t size:       size of transfer in bytes (1, 2, or 4)
+    */
+    int (*replay_before_portio)(CPUState *env, uint32_t is_write,
+                                uint32_t port_addr, uint32_t value,
+                                uint32_t size);
 
     /* Callback ID:     PANDA_CB_REPLAY_AFTER_PORTIO,
 
