@@ -194,6 +194,7 @@ bool PandaTaintFunctionPass::doInitialization(Module &M) {
     PTV.grvConst = const_struct_ptr(ctx, shadP, &shad->grv);
     PTV.gsvConst = const_struct_ptr(ctx, shadP, &shad->gsv);
     PTV.retConst = const_struct_ptr(ctx, shadP, &shad->ret);
+    PTV.portConst = const_struct_ptr(ctx, shadP, &shad->ports);
 
     PTV.dataLayout = new DataLayout(&M);
 
@@ -1303,6 +1304,18 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
         } else if (inoutFuncs.count(calledName) > 0) {
+            if (calledName == "helper_outb") {
+                // Cast the port to a 64-bit unsigned int since that's what the
+                // shadow memory accept as addresses.
+                auto cast_inst = CastInst::CreateIntegerCast(I.getArgOperand(1),
+                    Type::getInt64Ty(ctx), false);
+                cast_inst->insertBefore(&I);
+
+                vector<Value *> copy_args { portConst, cast_inst, llvConst,
+                    constSlot(I.getArgOperand(2)), const_uint64(ctx, 1), constInstr(&I) };
+                auto call_inst = CallInst::Create(copyF, copy_args);
+                call_inst->insertBefore(&I);
+            }
             return;
         }
         // Else fall through to named case.
