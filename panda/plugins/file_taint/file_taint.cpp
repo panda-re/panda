@@ -66,6 +66,7 @@ bool enable_taint_on_open;
 
 #define MAX_FILENAME 256
 bool saw_open = false;
+bool taint_enabled = false;
 bool read_callback = false;
 uint32_t the_asid = 0;
 uint32_t the_fd;
@@ -167,6 +168,7 @@ void open_enter(CPUState *cpu, target_ulong pc, std::string filename, int32_t fl
         if (enable_taint_on_open && !no_taint && !taint2_enabled()) {
             uint64_t ins = rr_get_guest_instr_count();
             taint2_enable_taint();
+            taint_enabled = true;
             if (debug) printf ("file_taint: enabled taint2 @ ins  %" PRId64 "\n", ins);
         }
     }
@@ -304,6 +306,8 @@ void read_return(CPUState *cpu, target_ulong pc, uint32_t buf, uint32_t actual_c
         if (read_start < end_label && read_end > start_label) {
             uint32_t range_start = std::max(read_start, start_label);
             uint32_t range_end = std::min(read_end, end_label);
+
+            assert(taint_enabled); // Can't taint if we missed the file open
             printf("*** applying %s taint labels %u..%u to buffer @ %lu\n",
                     positional_labels ? "positional" : "uniform",
                     range_start, range_end - 1, rr_get_guest_instr_count());
@@ -456,6 +460,13 @@ void linux_open_enter(CPUState *cpu, target_ulong pc, uint32_t filename, int32_t
     if (debug) printf ("linux open asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(cpu), the_filename);
     open_enter(cpu, pc, the_filename, flags, mode);
 }
+
+void linux_openat_enter(CPUState *cpu, target_ulong pc, int32_t dirfd, uint32_t filename, int32_t flags, int32_t mode) {
+    char the_filename[MAX_FILENAME];
+    guest_strncpy(cpu, the_filename, MAX_FILENAME, filename);
+    if (debug) printf ("linux openat asid=0x%x filename=[%s]\n", (unsigned int) panda_current_asid(cpu), the_filename);
+    open_enter(cpu, pc, the_filename, flags, mode);
+}
 #endif /* TARGET_I386 */
 
 
@@ -570,6 +581,7 @@ bool init_plugin(void *self) {
 
         PPP_REG_CB("syscalls2", on_sys_open_enter, linux_open_enter);
         PPP_REG_CB("syscalls2", on_sys_read_enter, linux_read_enter);
+        PPP_REG_CB("syscalls2", on_sys_openat_enter, linux_openat_enter);
         PPP_REG_CB("syscalls2", on_sys_read_return, linux_read_return);
         PPP_REG_CB("syscalls2", on_sys_pread64_enter, linux_pread_enter);
         PPP_REG_CB("syscalls2", on_sys_pread64_return, linux_pread_return);
