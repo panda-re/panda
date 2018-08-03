@@ -158,6 +158,7 @@ public:
     Constant *grvConst;
     Constant *gsvConst;
     Constant *retConst;
+    Constant *portConst;
 
     Constant *prevBbConst;
 
