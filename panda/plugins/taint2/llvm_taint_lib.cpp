@@ -1305,16 +1305,33 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
             return;
         } else if (inoutFuncs.count(calledName) > 0) {
             if (calledName == "helper_outb") {
+                CastInst *port_addr_cast = CastInst::CreateIntegerCast(
+                    I.getArgOperand(1), Type::getInt64Ty(ctx), false);
+
                 // Cast the port to a 64-bit unsigned int since that's what the
                 // shadow memory accept as addresses.
-                auto cast_inst = CastInst::CreateIntegerCast(I.getArgOperand(1),
-                    Type::getInt64Ty(ctx), false);
-                cast_inst->insertBefore(&I);
+                port_addr_cast->insertBefore(&I);
 
-                vector<Value *> copy_args { portConst, cast_inst, llvConst,
-                    constSlot(I.getArgOperand(2)), const_uint64(ctx, 1), constInstr(&I) };
+                vector<Value *> copy_args{portConst,
+                                          port_addr_cast,
+                                          llvConst,
+                                          constSlot(I.getArgOperand(2)),
+                                          const_uint64(ctx, 1),
+                                          constInstr(&I)};
                 auto call_inst = CallInst::Create(copyF, copy_args);
                 call_inst->insertBefore(&I);
+            } else if (calledName == "helper_inb") {
+                CastInst *port_addr_cast = CastInst::CreateIntegerCast(
+                    I.getArgOperand(1), Type::getInt64Ty(ctx), false);
+                // Cast the port to a 64-bit unsigned int since that's what the
+                // shadow memory accept as addresses.
+                port_addr_cast->insertBefore(&I);
+
+                vector<Value *> copy_args{
+                    llvConst,       constSlot(&I),        portConst,
+                    port_addr_cast, const_uint64(ctx, 1), constInstr(&I)};
+                auto call_inst = CallInst::Create(copyF, copy_args);
+                call_inst->insertAfter(&I);
             }
             return;
         }

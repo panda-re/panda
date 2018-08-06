@@ -19,7 +19,35 @@ extern "C" {
 
 bool init_plugin(void *);
 void uninit_plugin(void *);
+}
 
+int serial_receive_callback(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
+{
+    fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
+    fprintf(stderr, "  Address in IO Shadow = 0x%lX\n", fifo_addr);
+    fprintf(stderr, "  Label = 0x%X\n", value);
+
+    taint2_enable_taint();
+    taint2_label_io_additive(fifo_addr, 0xDEADFEED);
+    return 0;
+}
+
+int serial_read_callback(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
+                         uint8_t value)
+{
+    fprintf(stderr,
+            "serial read (fifo_addr=0x%lX, port_addr=0x%X, value=\'%c\')\n",
+            fifo_addr, port_addr, value);
+
+    // Iterate over the labels for the address in the FIFO and add them to the
+    // port shadow.
+    taint2_labelset_io_iter(fifo_addr,
+                            [](uint32_t elt, void *port_addr) {
+                                taint2_label_port(*(uint32_t *)port_addr, elt);
+                                return 0;
+                            },
+                            &port_addr);
+    return 0;
 }
 
 int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr, uint8_t value)
@@ -61,6 +89,12 @@ bool init_plugin(void *self)
     assert(init_taint2_api());
 
     panda_cb pcb;
+
+    pcb.replay_serial_receive = serial_receive_callback;
+    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_RECEIVE, pcb);
+
+    pcb.replay_serial_read = serial_read_callback;
+    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_READ, pcb);
 
     pcb.replay_serial_write = serial_write;
     panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_WRITE, pcb);
