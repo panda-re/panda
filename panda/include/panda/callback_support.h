@@ -6,12 +6,6 @@
 // exec.c
 void panda_callbacks_before_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
 void panda_callbacks_after_dma(CPUState *cpu, hwaddr addr1, const uint8_t *buf, hwaddr l, int is_write);
-void panda_callbacks_before_portio(CPUState *cpu, int is_write,
-                                   uint32_t port_addr, uint32_t value,
-                                   uint32_t num_bytes);
-void panda_callbacks_after_portio(CPUState *cpu, int is_write,
-                                  uint32_t port_addr, uint32_t value,
-                                  uint32_t num_bytes);
 
 // cpu-exec.c
 void panda_callbacks_before_block_exec(CPUState *cpu, TranslationBlock *tb);
