@@ -1303,36 +1303,46 @@ void PandaTaintVisitor::visitCallInst(CallInst &I) {
         } else if (calledName == "ldexp" || calledName == "atan2") {
             insertTaintCompute(I, I.getArgOperand(0), I.getArgOperand(1), true);
             return;
+        } else if (calledName == "helper_outb") {
+            // Cast the port address to a 64-bit unsigned integer as that's what
+            // the taint copy function accepts for the destination address.
+            CastInst *port_addr_cast = CastInst::CreateIntegerCast(
+                I.getArgOperand(1), Type::getInt64Ty(ctx), false);
+            port_addr_cast->insertBefore(&I);
+
+            // Call taint_copy to copy taint from LLVM to Port. The helper's
+            // third argument is the value we are going to write to the IO port.
+            // The taint data (if any) is associated with this argument.
+            vector<Value *> copy_args{portConst,
+                                      port_addr_cast,
+                                      llvConst,
+                                      constSlot(I.getArgOperand(2)),
+                                      const_uint64(ctx, 1),
+                                      constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For output, we have to propagate taint before the helper function
+            // is executed because the helper would likely have some side effect
+            // on the device.
+            call_inst->insertBefore(&I);
+        } else if (calledName == "helper_inb") {
+            // Cast the port address to a 64-bit unsigned integer as that's what
+            // the taint copy function accepts for the source address.
+            CastInst *port_addr_cast = CastInst::CreateIntegerCast(
+                I.getArgOperand(1), Type::getInt64Ty(ctx), false);
+            port_addr_cast->insertBefore(&I);
+
+            // Call taint_copy to copy taint from Port to LLVM. The helper's
+            // return value is the value on the IO port and so the taint data
+            // (if any) will be associated with the return value.
+            vector<Value *> copy_args{
+                llvConst,       constSlot(&I),        portConst,
+                port_addr_cast, const_uint64(ctx, 1), constInstr(&I)};
+            auto call_inst = CallInst::Create(copyF, copy_args);
+            // For input, we have to propagate taint after the helper function
+            // is executed since the value on the port isn't available until
+            // after the helper returns.
+            call_inst->insertAfter(&I);
         } else if (inoutFuncs.count(calledName) > 0) {
-            if (calledName == "helper_outb") {
-                CastInst *port_addr_cast = CastInst::CreateIntegerCast(
-                    I.getArgOperand(1), Type::getInt64Ty(ctx), false);
-
-                // Cast the port to a 64-bit unsigned int since that's what the
-                // shadow memory accept as addresses.
-                port_addr_cast->insertBefore(&I);
-
-                vector<Value *> copy_args{portConst,
-                                          port_addr_cast,
-                                          llvConst,
-                                          constSlot(I.getArgOperand(2)),
-                                          const_uint64(ctx, 1),
-                                          constInstr(&I)};
-                auto call_inst = CallInst::Create(copyF, copy_args);
-                call_inst->insertBefore(&I);
-            } else if (calledName == "helper_inb") {
-                CastInst *port_addr_cast = CastInst::CreateIntegerCast(
-                    I.getArgOperand(1), Type::getInt64Ty(ctx), false);
-                // Cast the port to a 64-bit unsigned int since that's what the
-                // shadow memory accept as addresses.
-                port_addr_cast->insertBefore(&I);
-
-                vector<Value *> copy_args{
-                    llvConst,       constSlot(&I),        portConst,
-                    port_addr_cast, const_uint64(ctx, 1), constInstr(&I)};
-                auto call_inst = CallInst::Create(copyF, copy_args);
-                call_inst->insertAfter(&I);
-            }
             return;
         }
         // Else fall through to named case.
