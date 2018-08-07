@@ -131,6 +131,8 @@ class Shad
     virtual void set_full_quiet(uint64_t addr, TaintData td) = 0;
 
   public:
+    Shad(std::string name, uint64_t max_size);
+
     virtual ~Shad() = 0;
 
     uint64_t get_size()
