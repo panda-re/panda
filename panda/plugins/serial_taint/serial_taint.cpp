@@ -21,24 +21,30 @@ bool init_plugin(void *);
 void uninit_plugin(void *);
 }
 
+uint32_t input_label;
+bool positional_labels;
+uint32_t pos_current_label = 0;
+
 int serial_receive_callback(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
 {
     fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
     fprintf(stderr, "  Address in IO Shadow = 0x%lX\n", fifo_addr);
-    fprintf(stderr, "  Label = 0x%X\n", value);
+    fprintf(stderr, "  Value = 0x%X\n", value);
 
     taint2_enable_taint();
-    taint2_label_io_additive(fifo_addr, 0xDEADFEED);
+    uint32_t label = input_label;
+    if (positional_labels) {
+        label = pos_current_label++;
+    }
+    fprintf(stderr, "  Label = 0x%X\n", label);
+    taint2_label_io(fifo_addr, label);
+
     return 0;
 }
 
 int serial_read_callback(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
                          uint8_t value)
 {
-    fprintf(stderr,
-            "serial read (fifo_addr=0x%lX, port_addr=0x%X, value=\'%c\')\n",
-            fifo_addr, port_addr, value);
-
     // Iterate over the labels for the address in the FIFO and add them to the
     // port shadow.
     taint2_labelset_io_iter(fifo_addr,
@@ -50,18 +56,23 @@ int serial_read_callback(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
     return 0;
 }
 
-int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr, uint8_t value)
+int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
+                 uint8_t value)
 {
     if (!taint2_enabled()) {
-        // During a write, if taint hasn't been enabled we don't need to do anything.
+        // During a write, if taint hasn't been enabled we don't need to do
+        // anything.
         return 0;
     }
 
     // During a write, propagate taint from the port shadow to IO shadow.
-    taint2_labelset_port_iter(port_addr, [](uint32_t label, void *fifo_addr) {
-        taint2_label_io_additive(*(uint64_t *)fifo_addr, label);
-        return 0;
-    }, &fifo_addr);
+    taint2_labelset_port_iter(port_addr,
+                              [](uint32_t label, void *fifo_addr) {
+                                  taint2_label_io(*(uint64_t *)fifo_addr,
+                                                  label);
+                                  return 0;
+                              },
+                              &fifo_addr);
 
     return 0;
 }
@@ -69,38 +80,70 @@ int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr, uint8_t 
 int serial_send(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
 {
     if (!taint2_enabled()) {
-        // During a send, if taint hasn't been enabled we don't need to do anything.
+        // During a send, if taint hasn't been enabled we don't need to do
+        // anything.
         return 0;
     }
 
-    // During a send, now we report whether or not the byte going out the port is tainted.
-    taint2_labelset_io_iter(fifo_addr, [](uint32_t label, void *pval) {
-        uint8_t value = *(uint8_t *)pval;
-        fprintf(stderr, "Tainted Serial TX (value=0x%X, label=0x%X)\n", value, label);
-        return 0;
-    }, &value);            
-
+    // If the panda log is enabled, we report taint there. Otherwise, just print
+    // out a message when a tainted transmit occurs.
+    if (pandalog) {
+        Panda__SerialTx *tx = (Panda__SerialTx *)malloc(sizeof(*tx));
+        *tx = PANDA__SERIAL_TX__INIT;
+        tx->value = value;
+        tx->n_labels = taint2_query_io(fifo_addr);
+        tx->labels = (uint32_t *)malloc(sizeof(*tx->labels) * tx->n_labels);
+        taint2_query_set_io(fifo_addr, tx->labels);
+        Panda__LogEntry ple = PANDA__LOG_ENTRY__INIT;
+        ple.serial_tx = tx;
+        pandalog_write_entry(&ple);
+        free(tx->labels);
+        free(tx);
+    } else if (taint2_query_io(fifo_addr) > 0) {
+        fprintf(stderr, "Tainted Serial TX (value=0x%X)\n", value);
+    }
     return 0;
 }
 
 bool init_plugin(void *self)
 {
+    // Setup Taint 2
     panda_require("taint2");
     assert(init_taint2_api());
 
+    // Parse plugin arguments.
+    panda_arg_list *args = panda_get_args("serial_taint");
+    input_label = panda_parse_uint32_opt(
+        args, "input_label", 0xC0FFEE42,
+        "the label to apply to incoming serial port data");
+    positional_labels = panda_parse_bool_opt(args, "positional_labels",
+                                             "enables positional labels");
+    bool taint_input = !panda_parse_bool_opt(
+        args, "disable_taint_input", "disable tainting of serial input");
+    bool report_tainted_sends = !panda_parse_bool_opt(
+        args, "disable_taint_reports", "disable reporting of tainted sends");
+
     panda_cb pcb;
 
-    pcb.replay_serial_receive = serial_receive_callback;
-    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_RECEIVE, pcb);
+    // Only need to register read and receive callbacks if we're tainting
+    // incoming data.
+    if (taint_input) {
+        pcb.replay_serial_receive = serial_receive_callback;
+        panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_RECEIVE, pcb);
 
-    pcb.replay_serial_read = serial_read_callback;
-    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_READ, pcb);
+        pcb.replay_serial_read = serial_read_callback;
+        panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_READ, pcb);
+    }
 
-    pcb.replay_serial_write = serial_write;
-    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_WRITE, pcb);
+    // Only need to register write and send callbacks if we're reporting tainted
+    // serial port output.
+    if (report_tainted_sends) {
+        pcb.replay_serial_write = serial_write;
+        panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_WRITE, pcb);
 
-    pcb.replay_serial_send = serial_send;
-    panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_SEND, pcb);
+        pcb.replay_serial_send = serial_send;
+        panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_SEND, pcb);
+    }
 
     return true;
 }

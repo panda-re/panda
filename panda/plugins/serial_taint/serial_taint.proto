@@ -1,0 +1,6 @@
+message SerialTx {
+    required uint32 value = 1;
+    repeated uint32 labels = 2;
+}
+
+optional SerialTx serial_tx = 102;
