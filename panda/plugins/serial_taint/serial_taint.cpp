@@ -45,14 +45,15 @@ int serial_receive_callback(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
 int serial_read_callback(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
                          uint8_t value)
 {
-    // Iterate over the labels for the address in the FIFO and add them to the
-    // port shadow.
+#ifdef TARGET_I386
+    // Copy taint from the IO shadow into the EAX register.
     taint2_labelset_io_iter(fifo_addr,
-                            [](uint32_t elt, void *port_addr) {
-                                taint2_label_port(*(uint32_t *)port_addr, elt);
+                            [](uint32_t elt, void *unused) {
+                                taint2_label_reg_additive(R_EAX, 0, elt);
                                 return 0;
                             },
-                            &port_addr);
+                            NULL);
+#endif
     return 0;
 }
 
@@ -65,14 +66,17 @@ int serial_write(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
         return 0;
     }
 
-    // During a write, propagate taint from the port shadow to IO shadow.
-    taint2_labelset_port_iter(port_addr,
-                              [](uint32_t label, void *fifo_addr) {
-                                  taint2_label_io(*(uint64_t *)fifo_addr,
-                                                  label);
-                                  return 0;
-                              },
-                              &fifo_addr);
+#ifdef TARGET_I386
+    // During a write, propagate taint from the register shadow at EAX to IO
+    // shadow.
+    taint2_labelset_reg_iter(R_EAX, 0,
+                             [](uint32_t label, void *p_fifo_addr) {
+                                 taint2_label_io(*(uint64_t *)p_fifo_addr,
+                                                 label);
+                                 return 0;
+                             },
+                             &fifo_addr);
+#endif
 
     return 0;
 }
