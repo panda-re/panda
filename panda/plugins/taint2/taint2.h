@@ -46,14 +46,13 @@ struct ShadowState {
     FastShad gsv;  // guest special values, like FP, and parts of CPUState
     LazyShad hd;   // Hard Drive
     LazyShad io;   // I/O Buffer
-    LazyShad ports; // Port I/O
 
     ShadowState()
         : prev_bb(0), num_vals(MAXFRAMESIZE), ram("RAM", ram_size),
           llv("LLVM", MAXFRAMESIZE * FUNCTIONFRAMES * MAXREGSIZE),
           ret("Ret", MAXREGSIZE), grv("Reg", NUM_REGS * sizeof(target_ulong)),
           gsv("CPUState", sizeof(CPUArchState)), hd("HD", UINT64_MAX),
-          io("IO", UINT64_MAX), ports("Port", UINT32_MAX)
+          io("IO", UINT64_MAX)
     {
     }
 
@@ -64,8 +63,6 @@ struct ShadowState {
                 return std::make_pair(&hd, a.val.ha + a.off);
             case IADDR:
                 return std::make_pair(&io, a.val.ia + a.off);
-            case PADDR:
-                return std::make_pair(&ports, a.val.pa + a.off);
             case CONST:
                 return std::make_pair(nullptr, 0);
             case MADDR:
@@ -88,7 +85,6 @@ struct ShadowState {
 extern "C" {
 Addr make_haddr(uint64_t a);
 Addr make_iaddr(uint64_t a);
-Addr make_paddr(uint64_t a);
 Addr make_maddr(uint64_t a);
 Addr make_laddr(uint64_t a, uint64_t o);
 Addr make_greg(uint64_t r, uint16_t off);
