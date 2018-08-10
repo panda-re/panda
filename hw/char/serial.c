@@ -511,6 +511,10 @@ static uint64_t serial_ioport_read(void *opaque, hwaddr addr, unsigned size)
                 s->timeout_ipending = 0;
             } else {
                 ret = s->rbr;
+                if (rr_in_record()) {
+                    rr_record_serial_read(RR_CALLSITE_SERIAL_READ,
+                                          (uint64_t)&s->rbr, s->io.addr, ret);
+                }
                 s->lsr &= ~(UART_LSR_DR | UART_LSR_BI);
             }
             serial_update_irq(s);
@@ -635,8 +639,10 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
                           s->recv_fifo.capacity];
 
             recv_fifo_put(s, buf[i]);
-            rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE, fifo_addr,
-                                     buf[i]);
+            if (rr_in_record()) {
+                rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE, fifo_addr,
+                                         buf[i]);
+            }
         }
         s->lsr |= UART_LSR_DR;
         /* call the timeout receive callback in 4 char transmit time */
@@ -645,6 +651,10 @@ static void serial_receive1(void *opaque, const uint8_t *buf, int size)
         if (s->lsr & UART_LSR_DR)
             s->lsr |= UART_LSR_OE;
         s->rbr = buf[0];
+        if (rr_in_record()) {
+            rr_record_serial_receive(RR_CALLSITE_SERIAL_RECEIVE,
+                                     (uint64_t)&s->rbr, buf[0]);
+        }
         s->lsr |= UART_LSR_DR;
     }
     serial_update_irq(s);
