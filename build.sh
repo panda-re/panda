@@ -88,6 +88,9 @@ if pkg-config --exists --atleast-version 4.9 xencontrol; then
     #MISC_CONFIG="$MISC_CONFIG --disable-xen"
 fi
 
+### Enable extra osi plugin functionality.
+#MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_PROC_EVENTS --extra-cflags=-DOSI_MAX_PROC=256"
+
 "$(dirname $0)/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
     --prefix="$(pwd)/install" \
