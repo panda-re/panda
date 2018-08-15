@@ -506,7 +506,7 @@ int asid_changed(CPUState *env, target_ulong oldval, target_ulong newval) {
 
 	if (!panda_in_kernel(env)) {
 		// This shouldn't ever happen, as PGD is updated only in kernel mode.
-		LOG_ERR("Can't do introspection in user mode.");
+		LOG_ERROR("Can't do introspection in user mode.");
 		goto error;
 	}
 
@@ -553,7 +553,7 @@ bool init_plugin(void *self) {
 
 	// Load kernel offsets.
 	if (read_kernelinfo(kconf_file, kconf_group, &ki) != 0) {
-		LOG_ERR("Failed to read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
+		LOG_ERROR("Failed to read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);
 		goto error;
 	}
 	LOG_INFO("Read kernel info from group \"%s\" of file \"%s\".", kconf_group, kconf_file);

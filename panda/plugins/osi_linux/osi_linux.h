@@ -15,8 +15,16 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
-#ifndef OSI_LINUX_H
-#define OSI_LINUX_H
+#pragma once
+#include "panda/plugin.h"
+
+/**
+ *  @brief Debug macros.
+ */
+#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "(ERROR:%s:%s) " fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "(WARN:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "(INFO:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
 
 /**
  * @brief Pointer type of the guest VM.
@@ -94,9 +102,6 @@
 #else
 #error	"_ESP macro not defined for target architecture."
 #endif
-
-#define LOG_ERR(fmt, args...) fprintf(stderr, "ERROR(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
-#define LOG_INFO(fmt, args...) fprintf(stderr, "INFO(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
 
 /** @brief Print format for guest VM pointers. */
 #define TARGET_FMT_PTR TARGET_FMT_lx
@@ -533,6 +538,5 @@ static inline PTR get_task_struct_next(CPUState *env, PTR task_struct) {
 		return tasks-ki.task.tasks_offset;
 	}
 }
-#endif
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
