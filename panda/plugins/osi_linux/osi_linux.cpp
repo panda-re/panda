@@ -120,9 +120,11 @@ static uint64_t get_fd_pos(CPUState *env, PTR task_struct, int fd) {
 
 
 /**
- * @brief Fills an OsiProc struct.
+ * @brief Fills an OsiProc struct. Any existing contents are overwritten.
  */
 static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
+	memset(p, 0, sizeof(OsiProc));
+
 	p->offset = task_addr;	// XXX: Not sure what this is. Storing task_addr here seems logical.
 	p->name = get_name(env, task_addr, p->name);
 	p->pid = get_pid(env, task_addr);
@@ -212,7 +214,7 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 		// valid task struct
 		// got a reasonable looking process.
 		// return it and save in cache
-		p = (OsiProc *)g_malloc0(sizeof(OsiProc));
+		p = (OsiProc *)g_malloc(sizeof(OsiProc));
 		fill_osiproc(env, p, ts);
 	}
 	*out_p = p;
@@ -225,7 +227,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	PTR ts_first, ts_current;
 	OsiProcs *ps;
 	OsiProc *p;
-	uint32_t ps_capacity = 16;
+	uint32_t ps_capacity;
 #ifdef OSI_LINUX_LIST_THREADS
 	PTR tg_first, tg_next;
 #endif
@@ -253,14 +255,13 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	}
 
 	ps = (OsiProcs *)g_malloc0(sizeof(OsiProcs));
-	ps->proc = g_new(OsiProc, ps_capacity);
+	ps_capacity = 0;
 	do {
 		if (ps->num == ps_capacity) {
-			ps_capacity *= 2;
+			ps_capacity += 128;
 			ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
 		}
 		p = &ps->proc[ps->num++];
-		memset(p, 0, sizeof(OsiProc));	// fill_osiproc() expects p to be zeroed-out.
 		fill_osiproc(env, p, ts_current);
 
 #ifdef OSI_LINUX_LIST_THREADS
@@ -274,7 +275,6 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 				ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
 			}
 			p = &ps->proc[ps->num++];
-			memset(p, 0, sizeof(OsiProc)); // fill_osiproc() expects p to be zeroed-out.
 			fill_osiproc(env, p, ts_current);
 		}
 		ts_current = tg_first-ki.task.thread_group_offset;
