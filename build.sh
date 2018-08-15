@@ -88,8 +88,9 @@ if pkg-config --exists --atleast-version 4.9 xencontrol; then
     #MISC_CONFIG="$MISC_CONFIG --disable-xen"
 fi
 
-### Enable extra osi plugin functionality.
+### Enable extra osi plugin functionality and debugging.
 #MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_PROC_EVENTS --extra-cflags=-DOSI_MAX_PROC=256"
+#MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_LINUX_PSDEBUG"
 
 ### Force QEMU options definitions to be regenerated.
 rm -f "$(dirname "$0")"/qemu-options.def

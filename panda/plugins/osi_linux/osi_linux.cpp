@@ -134,7 +134,7 @@ static void fill_osiproc(CPUState *env, OsiProc *p, PTR task_addr) {
 	panda_memory_errors = 0;
 	p->asid = get_pgd(env, task_addr);
 
-#if (defined OSI_LINUX_TEST)
+#if defined(OSI_LINUX_TEST)
 	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PID ":" TARGET_FMT_PID ":" TARGET_FMT_PTR ":%s", task_addr, (int)p->ppid, (int)p->pid, p->asid, p->name);
 #endif
 }
@@ -181,7 +181,7 @@ static void fill_osimodule(CPUState *env, OsiModule *m, PTR vma_addr) {
 		}
 	}
 
-#if (defined OSI_LINUX_TEST)
+#if defined(OSI_LINUX_TEST)
 	LOG_INFO(TARGET_FMT_PTR ":" TARGET_FMT_PTR ":" TARGET_FMT_PID "p:%s:%s", m->offset, m->base, NPAGES(m->size), m->name, m->file);
 #endif
 }
@@ -220,6 +220,10 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	*out_p = p;
 }
 
+#define TS_THREAD(env, ts) ((ts + ki.task.thread_group_offset != get_thread_group(env, ts)) ? 1 : 0)
+#define TS_THREAD_CHR(env, ts) (TS_THREAD(env, ts_current) ? 'T' : 'P')
+#define TS_LEADER(env, ts) ((get_pid(env, ts) == get_tgid(env, ts)) ? 1 : 0)
+#define TS_LEADER_CHR(env, ts) (TS_LEADER(env, ts_current) ? 'L' : 'F')
 /**
  * @brief PPP callback to retrieve process list from the running OS.
  */
@@ -251,9 +255,18 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 #endif
 	if (ts_current == (PTR)NULL) goto error0;
+
+#if defined(OSI_LINUX_PSDEBUG)
+	LOG_INFO("START0 %c:%c " TARGET_FMT_PTR " " TARGET_FMT_PTR "\n", TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current), ts_first, ts_current);
+	LOG_INFO("\t %d-%d\n", get_pid(env, ts_current), get_tgid(env, ts_current));
+#endif
 	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
 	}
+#if defined(OSI_LINUX_PSDEBUG)
+		LOG_INFO("START1 %c:%c " TARGET_FMT_PTR " " TARGET_FMT_PTR "\n", TS_THREAD_CHR(env, ts_current), TS_LEADER_CHR(env, ts_current), ts_first, ts_current);
+		LOG_INFO("\t %d-%d\n", get_pid(env, ts_current), get_tgid(env, ts_current));
+#endif
 
 	ps = (OsiProcs *)g_malloc0(sizeof(OsiProcs));
 	ps_capacity = 0;
@@ -263,7 +276,11 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 			ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
 		}
 		p = &ps->proc[ps->num++];
+
 		fill_osiproc(env, p, ts_current);
+#if defined(OSI_LINUX_PSDEBUG)
+		LOG_INFO("\t %d " TARGET_FMT_PTR " " TARGET_FMT_PTR " %s %d %d %c:%c\n", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
+#endif
 		OSI_MAX_PROC_CHECK(ps->num, "traversing process list");
 
 #ifdef OSI_LINUX_LIST_THREADS
@@ -273,11 +290,15 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
 			ts_current = tg_next - ki.task.thread_group_offset;
 			if (ps->num == ps_capacity) {
-				ps_capacity *= 2;
+				ps_capacity += 128;
 				ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
 			}
 			p = &ps->proc[ps->num++];
+
 			fill_osiproc(env, p, ts_current);
+#if defined(OSI_LINUX_PSDEBUG)
+			LOG_INFO("\t %d " TARGET_FMT_PTR " " TARGET_FMT_PTR " %s %d %d %c:%c\n", ps->num, ts_current, p->asid, p->name, (int)p->pid, (int)get_tgid(env, ts_current), TS_THREAD_CHR(env, ts_current),  TS_LEADER_CHR(env, ts_current));
+#endif
 			OSI_MAX_PROC_CHECK(ps->num, "traversing thread group list");
 		}
 		ts_current = tg_first - ki.task.thread_group_offset;
