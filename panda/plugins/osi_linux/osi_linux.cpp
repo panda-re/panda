@@ -200,12 +200,12 @@ void on_get_current_process(CPUState *env, OsiProc **out_p) {
 	PTR ts;
 
 #if defined(TARGET_I386)
-    target_ulong kernel_esp;
-    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
-        *out_p = NULL;
-        return;
-    }
-    ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ulong kernel_esp;
+	if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
+		*out_p = NULL;
+		return;
+	}
+	ts = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
 #else
 	//	target_long asid = panda_current_asid(env);
 	ts = get_task_struct(env, (_ESP & THREADINFO_MASK));
@@ -238,19 +238,20 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 	// Always starting the traversal with a process has the benefits of:
 	// 	a. Simplifying the traversal when OSI_LINUX_LIST_THREADS is disabled.
 	//  b. Avoiding an infinite loop when OSI_LINUX_LIST_THREADS is enabled and
-	//	 the current task is a thread.
+	//     the current task is a thread.
 	// See kernel_structs.html for details.
 #if defined(TARGET_I386)
-    target_ulong kernel_esp;
-    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0)
-        ts_first = ts_current = (PTR)NULL;
-    else
-        ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ulong kernel_esp;
+	if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
+		ts_first = ts_current = (PTR)NULL;
+	} else {
+		ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	}
 #else
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 #endif
 	if (ts_current == (PTR)NULL) goto error0;
-	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
+	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
 	}
 
@@ -267,9 +268,9 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 #ifdef OSI_LINUX_LIST_THREADS
 		// Traverse thread group list.
 		// It is assumed that ts_current is a thread group leader.
-		tg_first = ts_current+ki.task.thread_group_offset;
+		tg_first = ts_current + ki.task.thread_group_offset;
 		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
-			ts_current = tg_next-ki.task.thread_group_offset;
+			ts_current = tg_next - ki.task.thread_group_offset;
 			if (ps->num == ps_capacity) {
 				ps_capacity *= 2;
 				ps->proc = g_renew(OsiProc, ps->proc, ps_capacity);
@@ -277,7 +278,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 			p = &ps->proc[ps->num++];
 			fill_osiproc(env, p, ts_current);
 		}
-		ts_current = tg_first-ki.task.thread_group_offset;
+		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 
 #if 0
@@ -334,17 +335,19 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 #endif
 
 #if defined(TARGET_I386)
-    target_ulong kernel_esp;
-    if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0)
-        ts_first = ts_current = (PTR)NULL;
-    else
-        ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	target_ulong kernel_esp;
+	if (panda_virtual_memory_rw(env, TSS_BASE, (uint8_t *)&kernel_esp, sizeof(kernel_esp), false ) < 0) {
+		ts_first = ts_current = (PTR)NULL;
+	}
+	else {
+		ts_first = ts_current = get_task_struct(env, (kernel_esp & THREADINFO_MASK));
+	}
 #else
 	// Get a starting process.
 	ts_first = ts_current = get_task_struct(env, (_ESP & THREADINFO_MASK));
 #endif
 	if (ts_current == (PTR)NULL) goto error0;
-	if (ts_current+ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
+	if (ts_current + ki.task.thread_group_offset != get_thread_group(env, ts_current)) {
 		ts_first = ts_current = get_task_struct_next(env, ts_current);
 	}
 
@@ -356,17 +359,17 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 	do {
 		if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
 #ifdef OSI_LINUX_LIST_THREADS
-		tg_first = ts_current+ki.task.thread_group_offset;
+		tg_first = ts_current + ki.task.thread_group_offset;
 		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
-			ts_current = tg_next-ki.task.thread_group_offset;
+			ts_current = tg_next - ki.task.thread_group_offset;
 			if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
 		}
-		ts_current = tg_first-ki.task.thread_group_offset;
+		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 		ts_current = get_task_struct_next(env, ts_current);
 	} while(ts_current != (PTR)NULL && ts_current != ts_first);
-pid_found:
 
+pid_found:
 	// memory read error or process not found
 	if (ts_current == (PTR)NULL || current_pid != p->pid) goto error0;
 
@@ -576,4 +579,4 @@ void uninit_plugin(void *self) {
 	return;
 }
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */
