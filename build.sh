@@ -91,7 +91,10 @@ fi
 ### Enable extra osi plugin functionality.
 #MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_PROC_EVENTS --extra-cflags=-DOSI_MAX_PROC=256"
 
-"$(dirname $0)/configure" \
+### Force QEMU options definitions to be regenerated.
+rm -f "$(dirname "$0")"/qemu-options.def
+
+"$(dirname "$0")/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
     --prefix="$(pwd)/install" \
     $COMPILER_CONFIG \
