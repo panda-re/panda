@@ -264,6 +264,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 		}
 		p = &ps->proc[ps->num++];
 		fill_osiproc(env, p, ts_current);
+		OSI_MAX_PROC_CHECK(ps->num, "traversing process list");
 
 #ifdef OSI_LINUX_LIST_THREADS
 		// Traverse thread group list.
@@ -277,6 +278,7 @@ void on_get_processes(CPUState *env, OsiProcs **out_ps) {
 			}
 			p = &ps->proc[ps->num++];
 			fill_osiproc(env, p, ts_current);
+			OSI_MAX_PROC_CHECK(ps->num, "traversing thread group list");
 		}
 		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
@@ -333,6 +335,9 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 #ifdef OSI_LINUX_LIST_THREADS
 	PTR tg_first, tg_next;
 #endif
+#if OSI_MAX_PROC > 0
+	uint32_t np = 0;
+#endif
 
 #if defined(TARGET_I386)
 	target_ulong kernel_esp;
@@ -363,10 +368,12 @@ void on_get_libraries(CPUState *env, OsiProc *p, OsiModules **out_ms) {
 		while ((tg_next = get_thread_group(env, ts_current)) != tg_first) {
 			ts_current = tg_next - ki.task.thread_group_offset;
 			if ((current_pid = get_pid(env, ts_current)) == p->pid) goto pid_found;
+			OSI_MAX_PROC_CHECK(np++, "looking up pid in thread group");
 		}
 		ts_current = tg_first - ki.task.thread_group_offset;
 #endif
 		ts_current = get_task_struct_next(env, ts_current);
+		OSI_MAX_PROC_CHECK(np++, "looking up pid in process list");
 	} while(ts_current != (PTR)NULL && ts_current != ts_first);
 
 pid_found:
