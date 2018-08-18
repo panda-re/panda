@@ -4,7 +4,7 @@
  *
  * This header file is not meant to be used by plugins building
  * upon the functionality of Linux OSI.
- * For <a href="https://github.com/moyix/panda/blob/master/docs/ppp.md">Plugin-Plugin</a>
+ * For <a href="https://github.com/panda-re/panda/blob/master/panda/docs/manual.md#plugin-plugin-interaction">Plugin-Plugin</a>
  * interactions, `osi_linux_ext.h` should be used.
  *
  * The offset getter macros have been based off the code from
@@ -15,12 +15,16 @@
  * @copyright This work is licensed under the terms of the GNU GPL, version 2.
  * See the COPYING file in the top-level directory.
  */
-#ifndef OSI_LINUX_H
-#define OSI_LINUX_H
+#pragma once
+#include "panda/plugin.h"
 
-// For byte array reversal.
-#define PLUGIN_NAME "osi_linux"
-#define DEFAULT_KERNELINFO_GROUP "debian-3.2.65-i686"
+/**
+ *  @brief Debug macros.
+ */
+#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_ERROR(fmt, args...) fprintf(stderr, PANDA_MSG "(ERROR:%s:%s) " fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_WARN(fmt, args...)  fprintf(stderr, PANDA_MSG "(WARN:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
+#define LOG_INFO(fmt, args...)  fprintf(stderr, PANDA_MSG "(INFO:%s:%s) "  fmt "\n", __FILENAME__, __func__, ## args)
 
 /**
  * @brief Pointer type of the guest VM.
@@ -30,6 +34,31 @@
  * assumption to make -- at least in the context of a research prototype.
  */
 #define PTR target_ulong
+
+/**
+ * @brief Maximum number of processes. Rough way to detect infinite loops
+ * when iterating the process list. Undefining the macro will disable the
+ * checks.
+ */
+#ifndef OSI_MAX_PROC
+#define OSI_MAX_PROC 0
+#endif
+
+/**
+ * @brief Macro that checks if \p n has exceeded OSI_MAX_PROC and break
+ * out of the current loop after printing the message \p s.
+ */
+#if OSI_MAX_PROC > 0
+#define OSI_MAX_PROC_CHECK(n, s) {\
+	uint32_t __n = (n);\
+	if (__n > OSI_MAX_PROC) {\
+		fprintf(stderr, PANDA_MSG "Potential infinite loop at instruction %" PRId64 " while " s ". Breaking out.\n", rr_get_guest_instr_count());\
+		break;\
+	}\
+}
+#else
+#define OSI_MAX_PROC_CHECK(n, s)
+#endif
 
 /**
  * @brief Page size used by the kernel. Used to calculate THREADINFO_MASK.
@@ -73,9 +102,6 @@
 #else
 #error	"_ESP macro not defined for target architecture."
 #endif
-
-#define LOG_ERR(fmt, args...) fprintf(stderr, "ERROR(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
-#define LOG_INFO(fmt, args...) fprintf(stderr, "INFO(%s:%s): " fmt "\n", __FILE__, __func__, ## args)
 
 /** @brief Print format for guest VM pointers. */
 #define TARGET_FMT_PTR TARGET_FMT_lx
@@ -140,6 +166,11 @@ IMPLEMENT_OFFSET_GET(get_task_struct, thread_info_addr, PTR, ki.task.task_offset
 IMPLEMENT_OFFSET_GET(get_thread_group, task_struct, PTR, ki.task.thread_group_offset, 0)
 
 /**
+ * @brief Retrieves the thread group leader address from task_struct.
+ */
+IMPLEMENT_OFFSET_GET(get_group_leader, task_struct, PTR, ki.task.group_leader_offset, 0)
+
+/**
  * @brief Retrieves the tasks address from a task_struct.
  * This is used to iterate the process list.
  */
@@ -149,6 +180,11 @@ IMPLEMENT_OFFSET_GET(get_tasks, task_struct, PTR, ki.task.tasks_offset, 0)
  * @brief Retrieves the pid from a task_struct.
  */
 IMPLEMENT_OFFSET_GET(get_pid, task_struct, int, ki.task.pid_offset, 0)
+
+/**
+ * @brief Retrieves the tgid from a task_struct.
+ */
+IMPLEMENT_OFFSET_GET(get_tgid, task_struct, int, ki.task.tgid_offset, 0)
 
 /**
  * @brief Retrieves the address of the stack from a task_struct.
@@ -493,11 +529,14 @@ static inline char *get_name(CPUState *env, PTR task_struct, char *name) {
  * @brief Retrieves the address of the following task_struct in the process list.
  */
 static inline PTR get_task_struct_next(CPUState *env, PTR task_struct) {
-	PTR tasks = get_tasks(env, task_struct);
+    PTR tasks = get_tasks(env, task_struct);
 
-	if (!tasks) return (PTR)NULL;
-	else return tasks-ki.task.tasks_offset;
+    if (!tasks) {
+		return (PTR)NULL;
+	}
+    else {
+		return tasks-ki.task.tasks_offset;
+	}
 }
-#endif
 
-/* vim:set tabstop=4 softtabstop=4 noexpandtab */
+/* vim:set tabstop=4 softtabstop=4 noexpandtab: */

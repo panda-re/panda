@@ -5,8 +5,12 @@ PLUGIN_OBJ_FILES=$(PLUGIN_OBJ_DIR)/kernelinfo_read.o
 # Influential plugin-specific flags.
 # Include threads when listing all processes.
 #QEMU_CFLAGS += -DOSI_LINUX_LIST_THREADS
+
 # Enable test mode. See osi_linux.cpp:asid_changed().
 #QEMU_CFLAGS += -DOSI_LINUX_TEST
+
+# Enable extra debugging for process listing.
+#QEMU_CFLAGS += -DOSI_LINUX_PSDEBUG
 
 $(PLUGIN_OBJ_DIR)/kernelinfo_read.o: $(PLUGIN_SRC_DIR)/utils/kernelinfo/kernelinfo_read.c
 	@[ -d  $(dir $@) ] || mkdir -p $(dir $@)

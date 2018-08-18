@@ -1620,7 +1620,8 @@ void TCGLLVMContext::generateCode(TCGContext *s, TranslationBlock *tb)
     m_private->generateCode(s, tb);
 }
 
-void TCGLLVMContext::writeModule(const char *path) {
+void TCGLLVMContext::writeModule(const char *path)
+{
     std::string Error;
     raw_fd_ostream outfile(path, Error, raw_fd_ostream::F_Binary);
     std::string err;
@@ -1634,20 +1635,18 @@ void TCGLLVMContext::writeModule(const char *path) {
 /*****************************/
 /* Functions for QEMU c code */
 
-TCGLLVMContext* tcg_llvm_initialize()
+void tcg_llvm_initialize()
 {
-    if (!llvm_start_multithreaded()) {
-        fprintf(stderr, "Could not initialize LLVM threading\n");
-        exit(-1);
-    }
-    return new TCGLLVMContext;
+    assert(tcg_llvm_ctx == NULL);
+    assert(llvm_start_multithreaded());
+    tcg_llvm_ctx = new TCGLLVMContext;
 }
 
-void tcg_llvm_destroy() {
-    if (tcg_llvm_ctx) {
-        delete tcg_llvm_ctx;
-        tcg_llvm_ctx = NULL;
-    }
+void tcg_llvm_destroy()
+{
+    assert(tcg_llvm_ctx != NULL);
+    delete tcg_llvm_ctx;
+    tcg_llvm_ctx = NULL;
 }
 
 void tcg_llvm_gen_code(TCGLLVMContext *l, TCGContext *s, TranslationBlock *tb)
@@ -1688,7 +1687,8 @@ uintptr_t tcg_llvm_qemu_tb_exec(CPUArchState *env, TranslationBlock *tb)
     return next_tb;
 }
 
-void tcg_llvm_write_module(TCGLLVMContext *l, const char *path) {
+void tcg_llvm_write_module(TCGLLVMContext *l, const char *path)
+{
     l->writeModule(path);
 }
 

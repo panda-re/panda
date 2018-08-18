@@ -1671,7 +1671,10 @@ int (*before_loadvm)(void);
 ```
 ---
 
-`asid_changed`: called when the CPU changes to a different address space
+`asid_changed`: Called right before the CPU ASID register (e.g. `cr3`
+for x86) is updated. The state of other CPU registers may or may not
+have been updated (depends on the QEMU implementation).
+**The callback is currently only implemented for x86.**
 
 **Callback ID**: `PANDA_CB_ASID_CHANGED`
 
