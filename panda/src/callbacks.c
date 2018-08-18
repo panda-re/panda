@@ -440,30 +440,28 @@ void panda_disable_tb_chaining(void){
 }
 
 #ifdef CONFIG_LLVM
-void panda_enable_llvm(void){
+void panda_enable_llvm(void) {
     panda_do_flush_tb();
     execute_llvm = 1;
     generate_llvm = 1;
-    tcg_llvm_ctx = tcg_llvm_initialize();
+    tcg_llvm_initialize();
 }
 
-extern CPUState *env;
-
-void panda_disable_llvm(void){
+void panda_disable_llvm(void) {
+    panda_do_flush_tb();
     execute_llvm = 0;
     generate_llvm = 0;
     tcg_llvm_destroy();
     tcg_llvm_ctx = NULL;
 }
 
-void panda_enable_llvm_helpers(void){
+void panda_enable_llvm_helpers(void) {
     init_llvm_helpers();
 }
 
-void panda_disable_llvm_helpers(void){
+void panda_disable_llvm_helpers(void) {
     uninit_llvm_helpers();
 }
-
 #endif
 
 void panda_memsavep(FILE *f) {

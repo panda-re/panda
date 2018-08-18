@@ -36,13 +36,15 @@ else
 fi
 
 ### Check for protobuf v2.
-#if pkg-config --exists protobuf "protobuf > 1 protobuf < 3"; then
-#    echo "Using protobuf $(pkg-config --modversion protobuf)."
-#else
-#    echo "Found incompatible protobuf $(pkg-config --modversion protobuf) -- ABORTING"
-#    echo "See panda/docs/compile.md for instructions on building protobuf v2."
-#    exit 1
-#fi
+if ! pkg-config --exists protobuf; then
+    echo "No pkg-config for protobuf. Continuing anyway..."
+elif pkg-config --exists protobuf "protobuf > 1 protobuf < 3"; then
+    echo "Using protobuf $(pkg-config --modversion protobuf)."
+else
+    echo "Found incompatible protobuf $(pkg-config --modversion protobuf) -- ABORTING"
+    echo "See panda/docs/compile.md for instructions on building protobuf v2."
+    exit 1
+fi
 
 ### Check that PANDA_LLVM is correct and attempt to fix it if not.
 if [ "$PANDA_LLVM" != "" ] && [ ! -d "$PANDA_LLVM" ]; then
@@ -63,13 +65,13 @@ if [ "$PANDA_LLVM" != "" ]; then
     echo "Found PANDA LLVM on ${PANDA_LLVM_ROOT} -- LLVM SUPPORT IS ENABLED"
     LLVM_CONFIG="--enable-llvm --with-llvm=${PANDA_LLVM}"
 else
-  ## Fallback to system LLVM.
-    if llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]; then
-        echo "Found SYSTEM LLVM -- LLVM SUPPORT IS ENABLED"
-        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config --prefix)"
-    elif llvm-config-3.3 --version >/dev/null 2>/dev/null; then
-        echo "Found SYSTEM LLVM -- LLVM SUPPORT IS ENABLED"
+    ## Fallback to system LLVM.
+    if llvm-config-3.3 --version >/dev/null 2>/dev/null; then
+        echo "Found LLVM on $(llvm-config-3.3 --prefix) -- LLVM SUPPORT IS ENABLED"
         LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config-3.3 --prefix)"
+    elif llvm-config --version >/dev/null 2>/dev/null && [ $(llvm-config --version) == "3.3" ]; then
+        echo "Found LLVM on $(llvm-config --prefix) -- LLVM SUPPORT IS ENABLED"
+        LLVM_CONFIG="--enable-llvm --with-llvm=$(llvm-config --prefix)"
     else
         echo "No suitable LLVM found -- LLVM SUPPORT IS DISABLED"
         LLVM_CONFIG=""
@@ -86,7 +88,14 @@ if pkg-config --exists --atleast-version 4.9 xencontrol; then
     #MISC_CONFIG="$MISC_CONFIG --disable-xen"
 fi
 
-"$(dirname $0)/configure" \
+### Enable extra osi plugin functionality and debugging.
+#MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_PROC_EVENTS --extra-cflags=-DOSI_MAX_PROC=256"
+#MISC_CONFIG="$MISC_CONFIG --extra-cflags=-DOSI_LINUX_PSDEBUG"
+
+### Force QEMU options definitions to be regenerated.
+rm -f "$(dirname "$0")"/qemu-options.def
+
+"$(dirname "$0")/configure" \
     --target-list=x86_64-softmmu,i386-softmmu,arm-softmmu,ppc-softmmu \
     --prefix="$(pwd)/install" \
     $COMPILER_CONFIG \
