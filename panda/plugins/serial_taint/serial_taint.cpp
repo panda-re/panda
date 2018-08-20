@@ -25,7 +25,7 @@ uint32_t input_label;
 bool positional_labels;
 uint32_t pos_current_label = 0;
 
-int serial_receive_callback(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
+int serial_receive(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
 {
     fprintf(stderr, "Applying taint labels to incoming serial port data.\n");
     fprintf(stderr, "  Address in IO Shadow = 0x%lX\n", fifo_addr);
@@ -42,9 +42,15 @@ int serial_receive_callback(CPUState *cpu, uint64_t fifo_addr, uint8_t value)
     return 0;
 }
 
-int serial_read_callback(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
-                         uint8_t value)
+int serial_read(CPUState *cpu, uint64_t fifo_addr, uint32_t port_addr,
+                uint8_t value)
 {
+    if (!taint2_enabled()) {
+        // Taint hasn't yet been enabled, no need to copy taint between EAX
+        // and IO buffer.
+        return 0;
+    }
+
 #ifdef TARGET_I386
     // Copy taint from the IO shadow into the EAX register.
     taint2_labelset_io_iter(fifo_addr,
@@ -132,10 +138,10 @@ bool init_plugin(void *self)
     // Only need to register read and receive callbacks if we're tainting
     // incoming data.
     if (taint_input) {
-        pcb.replay_serial_receive = serial_receive_callback;
+        pcb.replay_serial_receive = serial_receive;
         panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_RECEIVE, pcb);
 
-        pcb.replay_serial_read = serial_read_callback;
+        pcb.replay_serial_read = serial_read;
         panda_register_callback(self, PANDA_CB_REPLAY_SERIAL_READ, pcb);
     }
 
